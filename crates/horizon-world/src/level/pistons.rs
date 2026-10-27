@@ -63,6 +63,21 @@ pub struct BlockEventData {
     pub param_b: i32,
 }
 
+/// A piston about to push or pull, as a server's plugins hear of it
+/// (`BlockPistonExtendEvent`, `BlockPistonRetractEvent`).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PistonMove {
+    /// The piston's base.
+    pub pos: BlockPos,
+    /// Where it faces.
+    pub direction: Direction,
+    pub extending: bool,
+    pub sticky: bool,
+    /// The blocks it moves (not those it breaks): pushed when extending,
+    /// pulled by a sticky piston retracting.
+    pub blocks: Vec<BlockPos>,
+}
+
 #[derive(PartialEq, Eq)]
 struct PosKey(BlockPos);
 impl JavaKey for PosKey {
@@ -640,6 +655,53 @@ impl<L: LevelAccess + ?Sized> Sim<'_, L> {
         let _ = push_direction;
         true
     }
+    /// The move the piston event `a` at `pos` would make now, by the checks
+    /// of `piston_trigger_event`; None when it makes none. A sticky piston's
+    /// pull is resolved with its head still in place.
+    fn piston_preview(&self, pos: BlockPos, state: BlockStateId, a: i32) -> Option<PistonMove> {
+        let b = self.b;
+        if !b.data(state).is(super::classes::Class::PistonBase) {
+            return None;
+        }
+        let direction = b.facing(state);
+        let sticky = self.is_sticky_piston(state);
+        if !self.level.is_client_side() {
+            let extend = self.piston_neighbor_signal(pos, direction);
+            if (extend && (a == 1 || a == 2)) || (!extend && a == 0) {
+                return None;
+            }
+        }
+        let blocks = if a == 0 {
+            self.piston_resolve(pos, direction, true)?.0
+        } else if a == 1 || a == 2 {
+            let two = rel_n(pos, direction, 2);
+            let pulled = self.state(two);
+            let is_piston =
+                b.is_block(pulled, b.named.piston) || b.is_block(pulled, b.named.sticky_piston);
+            let pulls = sticky
+                && a == 1
+                && !b.is_air(pulled)
+                && !b.is_block(pulled, b.named.moving_piston)
+                && self.is_pushable(pulled, two, direction.opposite(), false, direction)
+                && (b.facts(pulled).push == PushReaction::PushPull || is_piston);
+            if pulls {
+                self.piston_resolve(pos, direction, false)
+                    .map(|r| r.0)
+                    .unwrap_or_default()
+            } else {
+                Vec::new()
+            }
+        } else {
+            return None;
+        };
+        Some(PistonMove {
+            pos,
+            direction,
+            extending: a == 0,
+            sticky,
+            blocks,
+        })
+    }
     /// `PistonBaseBlock.triggerEvent`.
     fn piston_trigger_event(
         &mut self,
@@ -780,26 +842,83 @@ impl Behaviours {
                 reschedule.push(event);
                 continue;
             }
-            let mut sim = self.sim(level, ticks);
-            let state = sim.state(event.pos);
-            if self.block(state) == event.block
-                && sim.trigger_event(state, event.pos, event.param_a, event.param_b)
-            {
-                // ServerLevel.runBlockEvents broadcasts a handled event to
-                // the clients (`ClientboundBlockEventPacket`); their copy of
-                // the block re-runs `triggerEvent` (a piston's `moveBlocks`).
-                sim.emit(LevelEvent::BlockEntityEvent {
-                    pos: event.pos,
-                    state,
-                    a: event.param_a,
-                    b: event.param_b,
-                });
-            }
+            self.run_block_event(level, ticks, event);
         }
         for event in reschedule {
             if !ticks.block_events.contains(&event) {
                 ticks.block_events.push(event);
             }
+        }
+    }
+    /// One event of `runBlockEvents`.
+    fn run_block_event<L: LevelAccess + ?Sized>(
+        &self,
+        level: &mut L,
+        ticks: &mut Ticks,
+        event: BlockEventData,
+    ) {
+        let mut sim = self.sim(level, ticks);
+        let state = sim.state(event.pos);
+        if self.block(state) == event.block
+            && sim.trigger_event(state, event.pos, event.param_a, event.param_b)
+        {
+            // ServerLevel.runBlockEvents broadcasts a handled event to
+            // the clients (`ClientboundBlockEventPacket`); their copy of
+            // the block re-runs `triggerEvent` (a piston's `moveBlocks`).
+            sim.emit(LevelEvent::BlockEntityEvent {
+                pos: event.pos,
+                state,
+                a: event.param_a,
+                b: event.param_b,
+            });
+        }
+    }
+    /// `run_block_events` up to the next piston move, which stays at the head
+    /// of the queue and comes back: a server asks its plugins, then calls
+    /// `run_piston_move` with their answer and this again, until it returns
+    /// None (the queue has run, as `run_block_events` runs it).
+    pub fn run_block_events_to_piston<L: LevelAccess + ?Sized>(
+        &self,
+        level: &mut L,
+        ticks: &mut Ticks,
+    ) -> Option<PistonMove> {
+        while let Some(&event) = ticks.block_events.first() {
+            if !level.is_ticking_chunk(event.pos.chunk()) {
+                ticks.block_events.remove(0);
+                ticks.block_events_later.push(event);
+                continue;
+            }
+            let sim = self.sim(level, ticks);
+            let state = sim.state(event.pos);
+            if self.block(state) == event.block
+                && let Some(preview) = sim.piston_preview(event.pos, state, event.param_a)
+            {
+                return Some(preview);
+            }
+            ticks.block_events.remove(0);
+            self.run_block_event(level, ticks, event);
+        }
+        for event in std::mem::take(&mut ticks.block_events_later) {
+            if !ticks.block_events.contains(&event) {
+                ticks.block_events.push(event);
+            }
+        }
+        None
+    }
+    /// The piston move `run_block_events_to_piston` returned: made, or
+    /// dropped when the plugins cancelled it (the piston stays as it is).
+    pub fn run_piston_move<L: LevelAccess + ?Sized>(
+        &self,
+        level: &mut L,
+        ticks: &mut Ticks,
+        allowed: bool,
+    ) {
+        if ticks.block_events.is_empty() {
+            return;
+        }
+        let event = ticks.block_events.remove(0);
+        if allowed {
+            self.run_block_event(level, ticks, event);
         }
     }
     /// `Level.tickBlockEntities` for moving pistons (the only block entities

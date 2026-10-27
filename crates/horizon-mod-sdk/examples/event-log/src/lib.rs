@@ -5,7 +5,7 @@
 use horizon_mod_sdk::plugin::*;
 use std::collections::BTreeSet;
 
-const KINDS: [(&str, EventKind); 32] = [
+const KINDS: [(&str, EventKind); 36] = [
     ("player-join", EventKind::PlayerJoin),
     ("player-quit", EventKind::PlayerQuit),
     ("player-login", EventKind::PlayerLogin),
@@ -29,6 +29,10 @@ const KINDS: [(&str, EventKind); 32] = [
     ("player-resource-pack", EventKind::PlayerResourcePack),
     ("block-break", EventKind::BlockBreak),
     ("block-place", EventKind::BlockPlace),
+    ("block-piston-extend", EventKind::BlockPistonExtend),
+    ("block-piston-retract", EventKind::BlockPistonRetract),
+    ("block-from-to", EventKind::BlockFromTo),
+    ("block-grow", EventKind::BlockGrow),
     ("entity-damage", EventKind::EntityDamage),
     ("entity-death", EventKind::EntityDeath),
     ("entity-spawn", EventKind::EntitySpawn),
@@ -52,14 +56,20 @@ fn pos(p: &BlockPos) -> String {
 /// The kind's name and what the log line says of the event.
 fn describe(e: &Event) -> (&'static str, String) {
     match e {
-        Event::PlayerJoin(e) => ("player-join", format!("{} first={}", e.player.name, e.first_join)),
+        Event::PlayerJoin(e) => (
+            "player-join",
+            format!("{} first={}", e.player.name, e.first_join),
+        ),
         Event::PlayerQuit(e) => ("player-quit", format!("{} {}", e.player.name, e.reason)),
         Event::PlayerLogin(e) => ("player-login", e.player.name.clone()),
         Event::PlayerChat(e) => ("player-chat", format!("{}: {}", e.player.name, e.message)),
         Event::PlayerCommand(e) => ("player-command", format!("{}: /{}", e.player.name, e.line)),
         Event::PlayerMove(e) => (
             "player-move",
-            format!("{} {:.1} {:.1} {:.1}", e.player.name, e.to.x, e.to.y, e.to.z),
+            format!(
+                "{} {:.1} {:.1} {:.1}",
+                e.player.name, e.to.x, e.to.y, e.to.z
+            ),
         ),
         Event::PlayerInteract(e) => (
             "player-interact",
@@ -74,27 +84,89 @@ fn describe(e: &Event) -> (&'static str, String) {
             "player-interact-entity",
             format!("{} {}", e.player.name, e.entity.kind),
         ),
-        Event::PlayerToggleSneak(e) => ("player-toggle-sneak", format!("{} {}", e.player.name, e.sneaking)),
-        Event::PlayerToggleSprint(e) => ("player-toggle-sprint", format!("{} {}", e.player.name, e.sprinting)),
-        Event::PlayerToggleFlight(e) => ("player-toggle-flight", format!("{} {}", e.player.name, e.flying)),
+        Event::PlayerToggleSneak(e) => (
+            "player-toggle-sneak",
+            format!("{} {}", e.player.name, e.sneaking),
+        ),
+        Event::PlayerToggleSprint(e) => (
+            "player-toggle-sprint",
+            format!("{} {}", e.player.name, e.sprinting),
+        ),
+        Event::PlayerToggleFlight(e) => (
+            "player-toggle-flight",
+            format!("{} {}", e.player.name, e.flying),
+        ),
         Event::PlayerItemHeld(e) => (
             "player-item-held",
             format!("{} {} -> {}", e.player.name, e.previous, e.current),
         ),
-        Event::PlayerDropItem(e) => ("player-drop-item", format!("{} {}", e.player.name, e.item.id)),
+        Event::PlayerDropItem(e) => (
+            "player-drop-item",
+            format!("{} {}", e.player.name, e.item.id),
+        ),
         Event::PlayerSwapHands(e) => ("player-swap-hands", e.player.name.clone()),
         Event::PlayerRespawn(e) => ("player-respawn", e.player.name.clone()),
         Event::PlayerDeath(e) => (
             "player-death",
             format!("{} keep-inventory={}", e.player.name, e.keep_inventory),
         ),
-        Event::PlayerGameModeChange(e) => ("player-game-mode-change", format!("{} {:?}", e.player.name, e.mode)),
-        Event::PlayerChangedWorld(e) => ("player-changed-world", format!("{} from {}", e.player.name, e.from)),
-        Event::SignChange(e) => ("sign-change", format!("{} {}", e.player.name, e.lines.join("|"))),
+        Event::PlayerGameModeChange(e) => (
+            "player-game-mode-change",
+            format!("{} {:?}", e.player.name, e.mode),
+        ),
+        Event::PlayerChangedWorld(e) => (
+            "player-changed-world",
+            format!("{} from {}", e.player.name, e.from),
+        ),
+        Event::SignChange(e) => (
+            "sign-change",
+            format!("{} {}", e.player.name, e.lines.join("|")),
+        ),
         Event::PluginMessage(e) => ("plugin-message", format!("{} {}", e.player.name, e.channel)),
-        Event::PlayerResourcePack(e) => ("player-resource-pack", format!("{} {}", e.player.name, e.status)),
-        Event::BlockBreak(e) => ("block-break", format!("{} {} {}", e.player.name, e.block.state, pos(&e.block.pos))),
-        Event::BlockPlace(e) => ("block-place", format!("{} {} {}", e.player.name, e.block.state, pos(&e.block.pos))),
+        Event::PlayerResourcePack(e) => (
+            "player-resource-pack",
+            format!("{} {}", e.player.name, e.status),
+        ),
+        Event::BlockBreak(e) => (
+            "block-break",
+            format!("{} {} {}", e.player.name, e.block.state, pos(&e.block.pos)),
+        ),
+        Event::BlockPlace(e) => (
+            "block-place",
+            format!("{} {} {}", e.player.name, e.block.state, pos(&e.block.pos)),
+        ),
+        Event::BlockPistonExtend(e) => (
+            "block-piston-extend",
+            format!(
+                "{} {} {} blocks",
+                pos(&e.block.pos),
+                e.direction,
+                e.blocks.len()
+            ),
+        ),
+        Event::BlockPistonRetract(e) => (
+            "block-piston-retract",
+            format!(
+                "{} {} {} blocks",
+                pos(&e.block.pos),
+                e.direction,
+                e.blocks.len()
+            ),
+        ),
+        Event::BlockFromTo(e) => (
+            "block-from-to",
+            format!(
+                "{} {} -> {} {}",
+                e.block.state,
+                pos(&e.block.pos),
+                pos(&e.to.pos),
+                e.face
+            ),
+        ),
+        Event::BlockGrow(e) => (
+            "block-grow",
+            format!("{} -> {} {}", e.block.state, e.new_state, pos(&e.block.pos)),
+        ),
         Event::EntityDamage(e) => (
             "entity-damage",
             format!(
@@ -108,8 +180,14 @@ fn describe(e: &Event) -> (&'static str, String) {
         Event::EntityDeath(e) => ("entity-death", e.entity.kind.clone()),
         Event::EntitySpawn(e) => ("entity-spawn", format!("{} {}", e.entity.kind, e.reason)),
         Event::EntityExplode(e) => ("entity-explode", format!("{} blocks", e.blocks.len())),
-        Event::InventoryClick(e) => ("inventory-click", format!("{} {} slot {}", e.player.name, e.view.kind, e.slot)),
-        Event::InventoryClose(e) => ("inventory-close", format!("{} {}", e.player.name, e.view.kind)),
+        Event::InventoryClick(e) => (
+            "inventory-click",
+            format!("{} {} slot {}", e.player.name, e.view.kind, e.slot),
+        ),
+        Event::InventoryClose(e) => (
+            "inventory-close",
+            format!("{} {}", e.player.name, e.view.kind),
+        ),
         Event::ServerCommand(e) => ("server-command", e.line.clone()),
         Event::PluginState(e) => ("plugin-state", format!("{} {}", e.plugin, e.enabled)),
         Event::PluginCall(e) => ("plugin-call", e.from.clone()),
@@ -147,7 +225,11 @@ impl Plugin for EventLog {
             // The player's own moves come every tick: only those that matter.
             server::console(&format!(
                 "EVENT {kind} {details}{}",
-                if event.is_cancelled() { " (cancelled)" } else { "" }
+                if event.is_cancelled() {
+                    " (cancelled)"
+                } else {
+                    ""
+                }
             ));
             return;
         }
@@ -163,7 +245,13 @@ impl Plugin for EventLog {
         }
     }
 
-    fn on_command(&mut self, sender: &Sender, _command: &str, _label: &str, args: &[String]) -> bool {
+    fn on_command(
+        &mut self,
+        sender: &Sender,
+        _command: &str,
+        _label: &str,
+        args: &[String],
+    ) -> bool {
         match (args.first().map(String::as_str), args.get(1)) {
             (Some("cancel"), Some(kind)) => {
                 self.cancel.insert(kind.clone());
@@ -186,7 +274,12 @@ impl Plugin for EventLog {
         true
     }
 
-    fn on_tab_complete(&mut self, _sender: &Sender, _command: &str, args: &[String]) -> Vec<String> {
+    fn on_tab_complete(
+        &mut self,
+        _sender: &Sender,
+        _command: &str,
+        args: &[String],
+    ) -> Vec<String> {
         let last = args.last().cloned().unwrap_or_default();
         match args.len() {
             1 => ["cancel", "allow", "rewrite", "list"]

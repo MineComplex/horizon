@@ -6,18 +6,16 @@ use horizon_world::{
     living_fluid::{LivingFluidWorld, TravelFluidTag},
 };
 impl MotionWorld<'_, '_, '_> {
-    pub(super) fn environment_hurt(&mut self, source: &str, damage: f32) -> Result<()> {
+    pub(super) fn environment_hurt(&mut self, source: &'static str, damage: f32) -> Result<()> {
         if self.player.invulnerable || self.player.spectator {
             return Ok(());
         }
-        let id = self
-            .resources
-            .health
-            .damage
-            .id(source)
-            .ok_or("missing environment damage type")?;
-        self.player
-            .hurt(&self.resources.health, self.scene.health_rules, id, damage)?;
+        self.player.hurt_by_surroundings(
+            &self.resources.health,
+            self.scene.health_rules,
+            source,
+            damage,
+        )?;
         Ok(())
     }
     pub(super) fn tick_remaining_fire(&mut self) -> Result<()> {
@@ -97,14 +95,12 @@ impl MotionWorld<'_, '_, '_> {
     /// the blocks at the eyes).
     pub fn server_hazards_tick(&mut self, in_wall: bool) -> Result<()> {
         if self.player.position.y < f64::from(crate::chunk::MIN_Y - 64) {
-            let id = self
-                .resources
-                .health
-                .damage
-                .id("minecraft:out_of_world")
-                .ok_or("missing environment damage type")?;
-            self.player
-                .hurt(&self.resources.health, self.scene.health_rules, id, 4.0)?;
+            self.player.hurt_by_surroundings(
+                &self.resources.health,
+                self.scene.health_rules,
+                "minecraft:out_of_world",
+                4.0,
+            )?;
         }
         if in_wall {
             self.environment_hurt("minecraft:in_wall", 1.0)?;

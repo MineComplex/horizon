@@ -126,6 +126,59 @@ def after(lines, step):
     return out
 
 
+def block_events(o, c, server, port):
+    """Pistons, fluids and growth fire their block events while a player
+    keeps the spawn's chunks ticking; a cancelled piston stays put."""
+    out = []
+    run = threading.Thread(
+        target=lambda: out.extend(client(o.client, port, "Builder", ["wait 9000"], timeout=60))
+    )
+    run.start()
+    server.wait_for(r"EVENT player-join Builder", timeout=30)
+    for line in (
+        "setblock 8 80 8 minecraft:piston[facing=east]",
+        "setblock 9 80 8 minecraft:stone",
+        "setblock 8 80 7 minecraft:redstone_block",
+    ):
+        server.console(line)
+    time.sleep(1.0)
+    server.console("setblock 8 80 7 minecraft:air")
+    server.console("eventlog cancel block-piston-extend")
+    for line in (
+        "setblock 8 80 4 minecraft:piston[facing=east]",
+        "setblock 9 80 4 minecraft:stone",
+        "setblock 8 80 3 minecraft:redstone_block",
+    ):
+        server.console(line)
+    time.sleep(1.0)
+    server.console("execute if block 9 80 4 minecraft:stone")
+    server.console("eventlog allow block-piston-extend")
+    # Water poured in the air flows down.
+    server.console("setblock 8 90 12 minecraft:water")
+    # Wheat about to ripen, with the random ticks sped up.
+    server.console("fill 12 79 0 20 79 8 minecraft:farmland")
+    server.console("fill 12 80 0 20 80 8 minecraft:wheat[age=6]")
+    server.console("gamerule random_tick_speed 300")
+    time.sleep(3.0)
+    server.console("gamerule random_tick_speed 3")
+    run.join()
+    log = "\n".join(server.lines)
+
+    def saw(what, pattern):
+        c.check(f"the server fires {what}", re.search(pattern, log) is not None, pattern)
+
+    saw("block-piston-extend", r"EVENT block-piston-extend 8 80 8 east 1 blocks(?! \(cancelled\))")
+    saw("block-piston-retract", r"EVENT block-piston-retract 8 80 8 east 0 blocks")
+    saw("block-piston-extend cancelled", r"EVENT block-piston-extend 8 80 4 east 1 blocks \(cancelled\)")
+    c.check(
+        "a cancelled piston leaves the block where it was",
+        re.search(r"Test passed", log) is not None,
+        [x for x in server.lines if "Test " in x],
+    )
+    saw("block-from-to for water flowing down", r"EVENT block-from-to minecraft:water\S* 8 90 12 -> 8 89 12 down")
+    saw("block-grow for ripening wheat", r"EVENT block-grow minecraft:wheat\[age=6\] -> minecraft:wheat\[age=7\]")
+
+
 def events(o, c, server, port):
     """The event-log plugin logs every event it hears (`EVENT <kind> ...`):
     one player does what fires each hook the client can reach."""
@@ -181,6 +234,11 @@ def events(o, c, server, port):
     server.wait_for(r"EVENT player-swap-hands Tester", timeout=60)
     # While a player keeps the spawn's chunks ticking.
     server.console("summon minecraft:zombie 0 70 0")
+    # Burning: the surroundings hurt it once a second (entity-damage on_fire).
+    server.console("summon minecraft:pig 2 70 0 {Fire:200s}")
+    # And the player standing in fire.
+    server.console("execute at Tester run setblock ~ ~-1 ~ minecraft:netherrack")
+    server.console("execute at Tester run setblock ~ ~ ~ minecraft:fire")
     server.console("summon minecraft:tnt 0 70 6 {fuse:1}")
     time.sleep(1.5)
     server.console("kill Tester")
@@ -217,6 +275,15 @@ def events(o, c, server, port):
         chat,
     )
     saw("entity-spawn for /summon", r"EVENT entity-spawn minecraft:zombie")
+    saw("entity-damage for a burning mob", r"EVENT entity-damage minecraft:pig minecraft:on_fire 1\.0 by -")
+    saw("entity-damage for a player in fire", r"EVENT entity-damage minecraft:player minecraft:in_fire 1\.0 by -")
+    # A hit lands every 10 ticks at most (LivingEntity.hurtServer), so about
+    # three in the second and a half in the fire, not one a tick.
+    c.check(
+        "no entity-damage for the surroundings inside the hurt cooldown",
+        len(re.findall(r"EVENT entity-damage minecraft:player minecraft:in_fire", log)) <= 6,
+        re.findall(r"EVENT entity-damage minecraft:player minecraft:in_fire", log),
+    )
     saw("entity-explode", r"EVENT entity-explode \d+ blocks")
 
 
@@ -433,6 +500,7 @@ def main():
         line = server.wait_for(r"Alex", timeout=10)
         c.check("the server logged Alex", True, line)
         events(o, c, server, port)
+        block_events(o, c, server, port)
         server.console("stop")
         server.wait_for(r"Disabling Essentials", timeout=60)
         c.check("the plugin is disabled when the server stops", True)

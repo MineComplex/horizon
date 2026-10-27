@@ -16,6 +16,16 @@ use horizon_core::{
 };
 use std::collections::HashMap;
 
+/// Where a ticking fluid is about to flow, as a server's plugins hear of it
+/// (`BlockFromToEvent`): down first; to the sides after it, unless the flow
+/// down is cancelled.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct FluidFlow {
+    pub from: BlockPos,
+    pub down: Option<BlockPos>,
+    pub sides: Vec<BlockPos>,
+}
+
 /// `LiquidBlock.POSSIBLE_FLOW_DIRECTIONS`.
 const POSSIBLE_FLOW_DIRECTIONS: [Direction; 5] = [
     Direction::Down,
@@ -516,6 +526,9 @@ impl<L: LevelAccess + ?Sized> Sim<'_, L> {
         if neighbour > 0 {
             for (direction, new_fluid) in self.spread_targets(kind, pos, state) {
                 let neighbour_pos = rel(pos, direction);
+                if self.ticks.flow_vetoes.contains(&neighbour_pos) {
+                    continue;
+                }
                 let neighbour_state = self.state(neighbour_pos);
                 self.spread_to(kind, neighbour_pos, neighbour_state, direction, new_fluid);
             }
@@ -534,6 +547,9 @@ impl<L: LevelAccess + ?Sized> Sim<'_, L> {
             if self.can_be_replaced_with(below_fluid, below_pos, new_below.kind(), Direction::Down)
                 && self.can_hold_specific_fluid(below_state, new_below.kind())
             {
+                if self.ticks.flow_vetoes.contains(&below_pos) {
+                    return;
+                }
                 self.spread_to(kind, below_pos, below_state, Direction::Down, new_below);
                 if self.source_neighbour_count(kind, pos) >= 3 {
                     self.spread_to_sides(kind, pos, fluid, state);
@@ -568,6 +584,61 @@ impl<L: LevelAccess + ?Sized> Sim<'_, L> {
             }
         }
         self.spread(kind, pos, state, fluid);
+    }
+    /// Where `fluid_tick` at `pos` would flow now, without flowing: its new
+    /// state there, then `spread`'s targets. None when it flows nowhere.
+    pub(crate) fn fluid_flow_preview(&self, pos: BlockPos) -> Option<FluidFlow> {
+        let mut state = self.state(pos);
+        let mut fluid = self.b.fluid(state);
+        let kind = fluid.kind();
+        if kind == FluidKind::Empty {
+            return None;
+        }
+        if !fluid.is_source() {
+            let new_fluid = self.new_liquid(kind, pos, state);
+            if new_fluid.kind() == FluidKind::Empty {
+                return None;
+            } else if new_fluid != fluid {
+                fluid = new_fluid;
+                state = self.b.legacy_block(fluid);
+            }
+        }
+        let mut flow = FluidFlow {
+            from: pos,
+            ..FluidFlow::default()
+        };
+        let sides = |sim: &Self| -> Vec<BlockPos> {
+            let mut neighbour = i32::from(fluid.amount()) - sim.drop_off(kind);
+            if fluid.falling() {
+                neighbour = 7;
+            }
+            if neighbour <= 0 {
+                return Vec::new();
+            }
+            sim.spread_targets(kind, pos, state)
+                .into_iter()
+                .map(|(direction, _)| rel(pos, direction))
+                .collect()
+        };
+        let below_pos = below(pos);
+        let below_state = self.state(below_pos);
+        let below_fluid = self.b.fluid(below_state);
+        if self.can_maybe_pass_through(kind, state, Direction::Down, below_state, below_fluid) {
+            let new_below = self.new_liquid(kind, below_pos, below_state);
+            if self.can_be_replaced_with(below_fluid, below_pos, new_below.kind(), Direction::Down)
+                && self.can_hold_specific_fluid(below_state, new_below.kind())
+            {
+                flow.down = Some(below_pos);
+                if self.source_neighbour_count(kind, pos) >= 3 {
+                    flow.sides = sides(self);
+                }
+                return Some(flow);
+            }
+        }
+        if fluid.is_source() || !self.is_water_hole(kind, state, below_state) {
+            flow.sides = sides(self);
+        }
+        (!flow.sides.is_empty()).then_some(flow)
     }
     fn spread_delay(
         &mut self,

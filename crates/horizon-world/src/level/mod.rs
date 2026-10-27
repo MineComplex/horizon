@@ -137,8 +137,9 @@ mod tests;
 pub use buckets::BucketContent;
 pub use data::{BlockData, ItemBinding, ItemKind, Named, Props, PushReaction, StateFacts, Tags};
 pub use falling::Landing;
+pub use fluids::FluidFlow;
 pub use interact::{InteractionResult, PlayerContext, PlayerEffect};
-pub use pistons::{BlockEventData, MovingPiston};
+pub use pistons::{BlockEventData, MovingPiston, PistonMove};
 pub use place::{PlaceContext, PlaceOutcome};
 pub use states::{BlockId, PropKey, StateTable};
 pub use tick::{Precipitation, PrecipitationKind};
@@ -217,6 +218,12 @@ pub enum EntityQuery {
 /// Side effects reported to the caller, in vanilla call order.
 #[derive(Clone, Debug, PartialEq)]
 pub enum LevelEvent {
+    /// A plant grew from a random tick (`BlockGrowEvent`), when the level
+    /// `reports_growth`: the blocks it set, each with the state it replaced
+    /// and the new one; the first is the block that grew.
+    Grew {
+        changes: Vec<(BlockPos, BlockStateId, BlockStateId)>,
+    },
     /// `Level.levelEvent(type, pos, data)`, using vanilla's numeric event IDs
     /// (e.g. 2001 block destroyed with `data` = state ID, 1501 lava
     /// extinguished, 1009 fire extinguished, 1502 redstone torch burnout,
@@ -421,6 +428,11 @@ pub trait LevelAccess {
         true
     }
     fn emit(&mut self, _event: LevelEvent) {}
+    /// Report the plants that grow (`LevelEvent::Grew`): a server whose
+    /// plugins hear of growth, and may put the blocks back.
+    fn reports_growth(&self) -> bool {
+        false
+    }
     /// `LevelChunk.setBlockState` replaced a block that had a block entity by
     /// another block: run `BlockEntity.preRemoveSideEffects` when
     /// `side_effects` (containers spill their contents, a jukebox pops its

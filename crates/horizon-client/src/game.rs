@@ -623,6 +623,8 @@ struct GameLevel<'w> {
     /// `Level.isClientSide`: a client's copy of the level (a guest of a LAN
     /// world, a window on its server thread, a dedicated server's client).
     client_side: bool,
+    /// Plugins hear of plants growing (`LevelEvent::Grew`).
+    growth_events: bool,
 }
 struct PlayerCollision {
     y: f64,
@@ -714,6 +716,9 @@ impl GameLevel<'_> {
 impl LevelAccess for GameLevel<'_> {
     fn is_client_side(&self) -> bool {
         self.client_side
+    }
+    fn reports_growth(&self) -> bool {
+        self.growth_events
     }
     fn world_surface(&self, x: i32, z: i32) -> i32 {
         self.world.world_surface(x, z, |s| self.facts.is_air(s))
@@ -2688,6 +2693,7 @@ impl Game<'_> {
             tnts: &self.tnts,
             falling: &self.falling,
         };
+        let growth_events = self.plugin_growth_events();
         let mut level = GameLevel {
             cart_boxes,
             arrow_boxes,
@@ -2725,10 +2731,51 @@ impl Game<'_> {
             random_tick_sections: &mut self.random_tick_sections,
             lid_openers: &self.lid_openers,
             client_side: self.remote.is_some(),
+            growth_events,
         };
         let result = f(self.res.behaviours(), &mut level, &mut self.block_ticks);
         self.flush_spill();
         result
+    }
+    /// Plugins hear of plants growing (`BlockGrowEvent`).
+    fn plugin_growth_events(&self) -> bool {
+        #[cfg(feature = "mods")]
+        return self.plugins_listen(horizon_mods::plugin::EventKind::BlockGrow);
+        #[cfg(not(feature = "mods"))]
+        false
+    }
+    /// Plugins hear of pistons moving (`BlockPistonExtendEvent`,
+    /// `BlockPistonRetractEvent`).
+    fn plugin_piston_events(&self) -> bool {
+        #[cfg(feature = "mods")]
+        return self.plugins_listen(horizon_mods::plugin::EventKind::BlockPistonExtend)
+            || self.plugins_listen(horizon_mods::plugin::EventKind::BlockPistonRetract);
+        #[cfg(not(feature = "mods"))]
+        false
+    }
+    /// `ServerLevel.runBlockEvents` with the plugins asked before each piston
+    /// moves, then `tickBlockEntities`.
+    fn run_block_events_asking(&mut self) -> Result<()> {
+        loop {
+            let next =
+                self.with_level(|b, level, ticks| b.run_block_events_to_piston(level, ticks));
+            if !self.level_events.is_empty() {
+                self.process_level_events()?;
+            }
+            let Some(mv) = next else {
+                break;
+            };
+            #[cfg(feature = "mods")]
+            let allowed = self.plugin_piston(&mv);
+            #[cfg(not(feature = "mods"))]
+            let allowed = {
+                let _ = mv;
+                true
+            };
+            self.with_level(|b, level, ticks| b.run_piston_move(level, ticks, allowed));
+        }
+        self.with_level(|b, level, ticks| b.tick_block_entities(level, ticks));
+        Ok(())
     }
     /// Level.setBlock(pos, state, UPDATE_ALL) with neighbour/shape updates.
     fn level_set(&mut self, pos: [i32; 3], state: BlockStateId) -> Result<()> {
@@ -2919,6 +2966,9 @@ impl Game<'_> {
         });
         self.process_level_events()?;
         self.tick_scheduled()?;
+        // Plugins hear of each piston before it moves: the queue runs a step
+        // at a time out here.
+        let asking = self.plugin_piston_events();
         self.with_level(|b, level, ticks| {
             for (x, z) in ticking {
                 // The sections are read again only after a block changed.
@@ -2939,9 +2989,15 @@ impl Game<'_> {
                     sections.from(from)
                 });
             }
-            b.run_block_events(level, ticks);
-            b.tick_block_entities(level, ticks);
+            if !asking {
+                b.run_block_events(level, ticks);
+                b.tick_block_entities(level, ticks);
+            }
         });
+        if asking {
+            self.process_level_events()?;
+            self.run_block_events_asking()?;
+        }
         self.sync_moving_pistons();
         self.process_level_events()
     }
@@ -2965,7 +3021,20 @@ impl Game<'_> {
             if !self.with_level(|b, level, ticks| b.scheduled_begin(level, ticks, fluids)) {
                 continue;
             }
+            // BlockFromToEvent: plugins hear where each fluid tick flows first.
+            #[cfg(feature = "mods")]
+            let flows = fluids && self.plugins_listen(horizon_mods::plugin::EventKind::BlockFromTo);
             loop {
+                #[cfg(feature = "mods")]
+                if flows
+                    && let Some(flow) =
+                        self.with_level(|b, level, ticks| b.scheduled_fluid_flow(level, ticks))
+                {
+                    let vetoes = self.plugin_fluid_flow(&flow);
+                    if !vetoes.is_empty() {
+                        self.with_level(|b, _, ticks| b.veto_flow(ticks, vetoes));
+                    }
+                }
                 let more =
                     self.with_level(|b, level, ticks| b.scheduled_step(level, ticks, fluids));
                 if !self.level_events.is_empty() {
@@ -3278,6 +3347,13 @@ impl Game<'_> {
                     state,
                     kind: "shrieker_respond",
                 } => self.shrieker_block_event(pos, state),
+                // BlockGrowEvent for a plant that grew.
+                LevelEvent::Grew { changes } => {
+                    #[cfg(feature = "mods")]
+                    self.plugin_grew(&changes);
+                    #[cfg(not(feature = "mods"))]
+                    let _ = changes;
+                }
                 LevelEvent::BlockEntityEvent { pos, a, b, .. } => {
                     self.block_entity_event([pos.x, pos.y, pos.z], a, b)
                 }

@@ -1200,6 +1200,39 @@ A player placed a block: `block` is the new one, `replaced` the state that was t
 | `hand` | `hand` |  |
 | `cancelled` | `bool` |  |
 
+### record `block-piston-event`
+
+A piston is about to push (`block-piston-extend`) or pull (`block-piston-retract`) blocks: `block` is the piston, `blocks` those it moves (not those it breaks; none when a piston retracts alone). Cancelling leaves the piston as it is.
+
+| Field | Type | |
+| --- | --- | --- |
+| `block` | `block` |  |
+| `direction` | `string` | Where it faces: `north`, `up` ... |
+| `sticky` | `bool` |  |
+| `blocks` | `list<block-pos>` |  |
+| `cancelled` | `bool` |  |
+
+### record `block-from-to-event`
+
+A fluid is about to flow from `block` into `to`, towards `face` (`down`, `north` ...). Cancelling the flow down stops it flowing to the sides this tick too.
+
+| Field | Type | |
+| --- | --- | --- |
+| `block` | `block` |  |
+| `to` | `block` |  |
+| `face` | `string` |  |
+| `cancelled` | `bool` |  |
+
+### record `block-grow-event`
+
+A plant grew in a random tick (crops, stems and their fruit, cactus, sugar cane, berry bushes, cocoa, nether wart): `block` is the block that grew as it was, `new-state` what it is now (the world already shows it). Cancelling puts back every block the growth set.
+
+| Field | Type | |
+| --- | --- | --- |
+| `block` | `block` |  |
+| `new-state` | `string` |  |
+| `cancelled` | `bool` |  |
+
 ### record `entity-damage-event`
 
 An entity is about to be hurt by `cause` (a damage type, `minecraft:fall`); `damage` is the amount before armour.
@@ -1348,6 +1381,10 @@ Every event. A listener receives each kind it registered for.
 | `player-resource-pack` | `player-resource-pack-event` |  |
 | `block-break` | `block-break-event` |  |
 | `block-place` | `block-place-event` |  |
+| `block-piston-extend` | `block-piston-event` |  |
+| `block-piston-retract` | `block-piston-event` |  |
+| `block-from-to` | `block-from-to-event` |  |
+| `block-grow` | `block-grow-event` |  |
 | `entity-damage` | `entity-damage-event` |  |
 | `entity-death` | `entity-death-event` |  |
 | `entity-spawn` | `entity-spawn-event` |  |
@@ -1387,6 +1424,10 @@ The kinds of `event`, for `plugin-listeners.listen`.
 | `player-resource-pack` |  |
 | `block-break` |  |
 | `block-place` |  |
+| `block-piston-extend` |  |
+| `block-piston-retract` |  |
+| `block-from-to` |  |
+| `block-grow` |  |
 | `entity-damage` |  |
 | `entity-death` |  |
 | `entity-spawn` |  |

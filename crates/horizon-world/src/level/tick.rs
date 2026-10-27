@@ -261,7 +261,10 @@ impl<L: LevelAccess + ?Sized> Sim<'_, L> {
                     if self.rand_int(5) == 0 {
                         let age = b.table.int(state, p.age);
                         if age < 2 {
-                            self.set_block(pos, b.table.set_int(state, p.age, age + 1), 2);
+                            let next = b.table.set_int(state, p.age, age + 1);
+                            self.grow(&[pos], |s| {
+                                s.set_block(pos, next, 2);
+                            });
                         }
                     }
                 }
@@ -332,7 +335,10 @@ impl<L: LevelAccess + ?Sized> Sim<'_, L> {
                 Class::NetherWart => {
                     let age = b.table.int(state, p.age);
                     if age < 3 && self.rand_int(10) == 0 {
-                        self.set_block(pos, b.table.set_int(state, p.age, age + 1), 2);
+                        let next = b.table.set_int(state, p.age, age + 1);
+                        self.grow(&[pos], |s| {
+                            s.set_block(pos, next, 2);
+                        });
                     }
                 }
                 Class::Nylium => {
@@ -370,8 +376,11 @@ impl<L: LevelAccess + ?Sized> Sim<'_, L> {
                         if height < 3 {
                             let age = b.table.int(state, p.age);
                             if age == 15 {
-                                self.set_block_and_update(above(pos), b.default_of(block));
-                                self.set_block(pos, b.table.set_int(state, p.age, 0), 260);
+                                let reset = b.table.set_int(state, p.age, 0);
+                                self.grow(&[above(pos), pos], |s| {
+                                    s.set_block_and_update(above(pos), b.default_of(block));
+                                    s.set_block(pos, reset, 260);
+                                });
                             } else {
                                 self.set_block(pos, b.table.set_int(state, p.age, age + 1), 260);
                             }
@@ -382,7 +391,9 @@ impl<L: LevelAccess + ?Sized> Sim<'_, L> {
                     let age = b.table.int(state, p.age);
                     if age < 3 && self.rand_int(5) == 0 && self.raw_brightness(above(pos), 0) >= 9 {
                         let next = b.table.set_int(state, p.age, age + 1);
-                        self.set_block(pos, next, 2);
+                        self.grow(&[pos], |s| {
+                            s.set_block(pos, next, 2);
+                        });
                         self.game_event(pos, "minecraft:block_change");
                     }
                 }
@@ -743,6 +754,25 @@ impl<L: LevelAccess + ?Sized> Sim<'_, L> {
         }
         speed
     }
+    /// A plant's growth: `set` sets the blocks at `at` (the one that grows
+    /// first); a level that `reports_growth` hears of those it changed.
+    fn grow(&mut self, at: &[BlockPos], set: impl FnOnce(&mut Self)) {
+        if !self.level.reports_growth() {
+            set(self);
+            return;
+        }
+        let old: Vec<BlockStateId> = at.iter().map(|&p| self.state(p)).collect();
+        set(self);
+        let changes: Vec<_> = at
+            .iter()
+            .zip(old)
+            .map(|(&p, old)| (p, old, self.state(p)))
+            .filter(|(_, old, new)| old != new)
+            .collect();
+        if !changes.is_empty() {
+            self.emit(LevelEvent::Grew { changes });
+        }
+    }
     fn crop_random_tick(&mut self, state: BlockStateId, pos: BlockPos) {
         let b = self.b;
         if self.raw_brightness(pos, 0) < 9 {
@@ -754,7 +784,9 @@ impl<L: LevelAccess + ?Sized> Sim<'_, L> {
             let speed = self.crop_growth_speed(b.block(state), pos);
             if self.rand_int((25.0 / speed) as i32 + 1) == 0 {
                 let next = self.crop_state_for_age(state, age + 1);
-                self.set_block(pos, next, 2);
+                self.grow(&[pos], |s| {
+                    s.set_block(pos, next, 2);
+                });
             }
         }
     }
@@ -769,7 +801,10 @@ impl<L: LevelAccess + ?Sized> Sim<'_, L> {
         }
         let age = b.table.int(state, b.props.age);
         if age < 7 {
-            self.set_block(pos, b.table.set_int(state, b.props.age, age + 1), 2);
+            let next = b.table.set_int(state, b.props.age, age + 1);
+            self.grow(&[pos], |s| {
+                s.set_block(pos, next, 2);
+            });
             return;
         }
         let direction = HORIZONTAL[self.rand_int(4) as usize];
@@ -783,12 +818,13 @@ impl<L: LevelAccess + ?Sized> Sim<'_, L> {
                 .is_some_and(|tag| b.in_set(below_state, tag))
         {
             if let (Some(fruit), Some(stem)) = (data.link, data.link2) {
-                self.set_block_and_update(relative, b.default_of(fruit));
-                self.set_block_and_update(
-                    pos,
-                    b.table
-                        .set_dir(b.default_of(stem), b.props.facing, direction),
-                );
+                let attached = b
+                    .table
+                    .set_dir(b.default_of(stem), b.props.facing, direction);
+                self.grow(&[relative, pos], |s| {
+                    s.set_block_and_update(relative, b.default_of(fruit));
+                    s.set_block_and_update(pos, attached);
+                });
             }
         }
     }
@@ -873,13 +909,18 @@ impl<L: LevelAccess + ?Sized> Sim<'_, L> {
         if age == 8 && self.can_survive(b.default_of(block), above_pos) {
             let chance = if height >= 3 { 0.25 } else { 0.1 };
             if self.random().next_double() <= chance {
-                self.set_block_and_update(above_pos, b.default_of(b.named.cactus_flower));
+                let flower = b.default_of(b.named.cactus_flower);
+                self.grow(&[above_pos], |s| {
+                    s.set_block_and_update(above_pos, flower);
+                });
             }
         } else if age == 15 && height < 3 {
-            self.set_block_and_update(above_pos, b.default_of(block));
             let reset = b.table.set_int(state, b.props.age, 0);
-            self.set_block(pos, reset, 260);
-            self.neighbor_changed_full(reset, above_pos, block, false);
+            self.grow(&[above_pos, pos], |s| {
+                s.set_block_and_update(above_pos, b.default_of(block));
+                s.set_block(pos, reset, 260);
+                s.neighbor_changed_full(reset, above_pos, block, false);
+            });
         }
         if age < 15 {
             self.set_block(pos, b.table.set_int(state, b.props.age, age + 1), 260);
@@ -1546,6 +1587,7 @@ impl Behaviours {
             if TickTypeId(fluid as u32) == tick.kind {
                 sim.fluid_tick(tick.pos);
             }
+            ticks.flow_vetoes.clear();
         }
         let _ = ticks.fluids.finish_tick();
         ticks.handling_tick = false;
@@ -1606,6 +1648,26 @@ impl Behaviours {
             }
         }
         true
+    }
+    /// Where the next due fluid tick would flow (`BlockFromToEvent`s), before
+    /// `scheduled_step` runs it; None when it flows nowhere or none is due.
+    pub fn scheduled_fluid_flow<L: LevelAccess + ?Sized>(
+        &self,
+        level: &mut L,
+        ticks: &mut Ticks,
+    ) -> Option<super::FluidFlow> {
+        let tick = ticks.fluids.peek_tick()?;
+        let sim = self.sim(level, ticks);
+        let fluid = self.fluid(sim.state(tick.pos)).kind();
+        if TickTypeId(fluid as u32) != tick.kind {
+            return None;
+        }
+        sim.fluid_flow_preview(tick.pos)
+    }
+    /// The positions the next fluid tick may not flow into (the plugins
+    /// cancelled those flows).
+    pub fn veto_flow(&self, ticks: &mut Ticks, to: Vec<BlockPos>) {
+        ticks.flow_vetoes = to;
     }
     /// End a `scheduled_begin` phase.
     pub fn scheduled_finish(&self, ticks: &mut Ticks, fluids: bool) {

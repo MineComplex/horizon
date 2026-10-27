@@ -32,6 +32,12 @@ pub struct Ticks {
     pub(crate) next_block_entity_id: u64,
     /// `ServerLevel.blockEvents`, run by `Behaviours::run_block_events`.
     pub block_events: Vec<super::pistons::BlockEventData>,
+    /// Events of chunks that don't tick, set aside while
+    /// `Behaviours::run_block_events_to_piston` steps through the queue.
+    pub(crate) block_events_later: Vec<super::pistons::BlockEventData>,
+    /// Where the next fluid tick may not flow (plugins cancelled it), set by
+    /// `Behaviours::veto_flow` and cleared once the tick ran.
+    pub(crate) flow_vetoes: Vec<BlockPos>,
     /// `ServerLevel.isHandlingTick` (true while scheduled ticks run).
     pub(crate) handling_tick: bool,
     /// Worldgen shape updates collect the ticks they schedule here, for the
@@ -67,6 +73,8 @@ impl Ticks {
             moving_pistons: Vec::new(),
             next_block_entity_id: 0,
             block_events: Vec::new(),
+            block_events_later: Vec::new(),
+            flow_vetoes: Vec::new(),
             handling_tick: false,
             capture: None,
         }

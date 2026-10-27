@@ -796,6 +796,107 @@ impl Game<'_> {
         }
     }
 
+    /// A block of this level as a plugin reads it.
+    fn plugin_level_block(&self, pos: horizon_core::position::BlockPos) -> types::Block {
+        self.plugin_block(self.dim.id(), [pos.x, pos.y, pos.z])
+    }
+
+    /// A piston about to move: `BlockPistonExtendEvent` or
+    /// `BlockPistonRetractEvent`. False when a plugin cancelled it.
+    pub(super) fn plugin_piston(&mut self, mv: &horizon_world::level::PistonMove) -> bool {
+        let block = self.plugin_level_block(mv.pos);
+        let e = ev::BlockPistonEvent {
+            block,
+            direction: face_name(mv.direction as u8).into(),
+            sticky: mv.sticky,
+            blocks: mv
+                .blocks
+                .iter()
+                .map(|p| types::BlockPos {
+                    x: p.x,
+                    y: p.y,
+                    z: p.z,
+                })
+                .collect(),
+            cancelled: false,
+        };
+        let event = if mv.extending {
+            Event::BlockPistonExtend(e)
+        } else {
+            Event::BlockPistonRetract(e)
+        };
+        !plugin::is_cancelled(&self.plugin_fire(None, event))
+    }
+
+    /// A fluid about to flow: `BlockFromToEvent` for each block it flows
+    /// into. The blocks the plugins kept it out of.
+    pub(super) fn plugin_fluid_flow(
+        &mut self,
+        flow: &horizon_world::level::FluidFlow,
+    ) -> Vec<horizon_core::position::BlockPos> {
+        let mut vetoes = Vec::new();
+        let from = self.plugin_level_block(flow.from);
+        let ask = |game: &mut Self, to: horizon_core::position::BlockPos| {
+            let d = [to.x - flow.from.x, to.y - flow.from.y, to.z - flow.from.z];
+            let face = (0..6u8).find(|&f| face_offset(f) == d).unwrap_or(0);
+            let back = game.plugin_fire(
+                None,
+                Event::BlockFromTo(ev::BlockFromToEvent {
+                    block: from.clone(),
+                    to: game.plugin_level_block(to),
+                    face: face_name(face).into(),
+                    cancelled: false,
+                }),
+            );
+            plugin::is_cancelled(&back)
+        };
+        if let Some(down) = flow.down
+            && ask(self, down)
+        {
+            // FlowingFluid.spread stops there: no flow to the sides.
+            return vec![down];
+        }
+        for &to in &flow.sides {
+            if ask(self, to) {
+                vetoes.push(to);
+            }
+        }
+        vetoes
+    }
+
+    /// A plant grew: `BlockGrowEvent`. A cancelled growth puts back the
+    /// blocks it set (those nothing changed since).
+    pub(super) fn plugin_grew(
+        &mut self,
+        changes: &[(
+            horizon_core::position::BlockPos,
+            horizon_world::registry::BlockStateId,
+            horizon_world::registry::BlockStateId,
+        )],
+    ) {
+        let Some(&(pos, old, new)) = changes.first() else {
+            return;
+        };
+        let mut block = self.plugin_level_block(pos);
+        block.state = self.state_string(old);
+        let back = self.plugin_fire(
+            None,
+            Event::BlockGrow(ev::BlockGrowEvent {
+                block,
+                new_state: self.state_string(new),
+                cancelled: false,
+            }),
+        );
+        if !plugin::is_cancelled(&back) {
+            return;
+        }
+        for &(pos, old, new) in changes.iter().rev() {
+            if self.world.block(pos.x, pos.y, pos.z) == new {
+                let _ = self.level_set([pos.x, pos.y, pos.z], old);
+            }
+        }
+    }
+
     /// The damage the mobs' surroundings dealt them in their ticks (fire,
     /// lava, drowning, suffocation, the void, harmful effects), held back in
     /// `Mob::env_damage`: `EntityDamageEvent` for each hit, then the hit.
@@ -825,6 +926,29 @@ impl Game<'_> {
                 if !m.alive() && self.died.insert(id) {
                     dead.push(m.clone());
                 }
+            }
+        }
+    }
+
+    /// The damage the surroundings dealt the player whose turn it is (fire,
+    /// lava, magma, cactus, berry bushes, campfires, freezing, drowning,
+    /// suffocation, the void), held back in its motion: `EntityDamageEvent`
+    /// for each hit, then the hit.
+    pub(super) fn plugin_player_env_damage(&mut self) {
+        let Some(player) = self.player.as_mut() else {
+            return;
+        };
+        player.defer_env_damage = false;
+        let held = std::mem::take(&mut player.env_damage);
+        for (cause, amount) in held {
+            let Some(amount) = self.plugin_damage_acting(cause, amount, None) else {
+                continue;
+            };
+            let (rules, health) = (self.world.health_rules, &self.motion.health);
+            if let Some(player) = self.player.as_mut()
+                && let Some(id) = health.damage.id(cause)
+            {
+                let _ = player.hurt(health, rules, id, amount);
             }
         }
     }

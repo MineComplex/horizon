@@ -2346,6 +2346,9 @@ impl Game<'_> {
             let (rules, motion) = (game.world.health_rules, game.motion);
             let health = &motion.health;
             let freeze_immune = game.wears_freeze_immune();
+            // Plugins hear of the damage the surroundings deal: it waits for them.
+            #[cfg(feature = "mods")]
+            let defer = game.plugins_listen(horizon_mods::plugin::EventKind::EntityDamage);
             let Some(player) = game.player.as_mut() else {
                 return (Vec::new(), None);
             };
@@ -2358,6 +2361,10 @@ impl Game<'_> {
                 resources: game.motion,
             };
             w.player.health.advance_clock();
+            #[cfg(feature = "mods")]
+            {
+                w.player.defer_env_damage = defer;
+            }
             let _ = w.fluid_base_tick();
             w.player.ground.on_ground = from_ground;
             let travelled: Vec<[f64; 3]> = moves.iter().map(|m| m.0).collect();
@@ -2437,6 +2444,9 @@ impl Game<'_> {
                 game.movement_stats(Vec3::new(d[0], d[1], d[2]));
             }
             // LivingEntity.baseTick: outside the world border, then tickEffects.
+            // EntityDamageEvent for the damage of the surroundings held back above.
+            #[cfg(feature = "mods")]
+            game.plugin_player_env_damage();
             game.border_damage();
             game.tick_mob_effects();
             // Soul Speed's effects (LivingEntity.baseTick's location_changed

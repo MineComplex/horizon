@@ -284,6 +284,31 @@ impl PlayerHealth {
     }
 }
 impl PlayerMotion {
+    /// Damage of type `source` from the player's surroundings: dealt now, or
+    /// held in `env_damage` while `defer_env_damage` is set.
+    pub fn hurt_by_surroundings(
+        &mut self,
+        resources: &HealthResources,
+        rules: HealthRules,
+        source: &'static str,
+        amount: f32,
+    ) -> Result<bool> {
+        let id = resources
+            .damage
+            .id(source)
+            .ok_or("missing environment damage type")?;
+        if self.defer_env_damage {
+            // LivingEntity.hurtServer drops a hit no stronger than the last
+            // inside the cooldown: no event for it (lava hurts every tick).
+            let h = &self.health.hurt;
+            if h.cooldown > 10 && amount <= h.last_hurt {
+                return Ok(false);
+            }
+            self.env_damage.push((source, amount));
+            return Ok(false);
+        }
+        self.hurt(resources, rules, id, amount)
+    }
     pub fn hurt(
         &mut self,
         resources: &HealthResources,

@@ -505,6 +505,12 @@ impl LevelTicks {
         self.containers_to_tick = containers;
         Ok(())
     }
+    /// The tick `next_tick` returns next, left in place.
+    pub fn peek_tick(&self) -> Option<ScheduledTick> {
+        self.collecting
+            .then(|| self.to_run.front().copied())
+            .flatten()
+    }
     /// Pop immediately before invoking block/fluid behavior. The current tick is
     /// already-run, absent from will_tick, and available to area copying.
     pub fn next_tick(&mut self) -> Result<Option<ScheduledTick>, TickError> {

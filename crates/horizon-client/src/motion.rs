@@ -316,6 +316,11 @@ pub struct PlayerMotion {
     /// server takes it at the end of a guest's turn.
     pub teleported: bool,
     pub events: Vec<MotionEvent>,
+    /// Hold the damage of the surroundings in `env_damage` instead of
+    /// dealing it: the server asks the plugins (`EntityDamageEvent`) first.
+    pub defer_env_damage: bool,
+    /// That held damage: (damage type, amount).
+    pub env_damage: Vec<(&'static str, f32)>,
     pub attributes: LiveAttributes<Box<dyn FnMut() -> i32>>,
     pub impulse: ImpulseContext,
     /// `ServerPlayer.spawnExtraParticlesOnFall`: a mace smash on a grounded
@@ -505,6 +510,8 @@ impl PlayerMotion {
             sync_position: false,
             teleported: false,
             events: Vec::new(),
+            defer_env_damage: false,
+            env_damage: Vec::new(),
             attributes,
             fluids: PlayerFluids::default(),
             in_powder_snow: false,
@@ -1151,17 +1158,12 @@ impl MotionWorld<'_, '_, '_> {
     }
     /// `hurtServer(damageSources().freeze(), 1)` for a fully frozen player.
     fn freeze_damage(&mut self) -> Result<()> {
-        let id = self
-            .resources
-            .health
-            .damage
-            .id("minecraft:freeze")
-            .ok_or("missing freeze damage type")?;
         self.player.events.push(MotionEvent::Health(
             crate::health::HealthEvent::FreezeDamage(1.0),
         ));
         let rules = self.scene.health_rules;
-        self.player.hurt(&self.resources.health, rules, id, 1.0)?;
+        self.player
+            .hurt_by_surroundings(&self.resources.health, rules, "minecraft:freeze", 1.0)?;
         Ok(())
     }
     /// `Entity.applyEffectsFromBlocks` for the blocks Horizon's player reacts
@@ -1598,17 +1600,16 @@ impl MotionWorld<'_, '_, '_> {
         if known.x * known.x + known.z * known.z > 0.0
             && (known.x.abs() >= f64::from(0.003_f32) || known.z.abs() >= f64::from(0.003_f32))
         {
-            let id = self
-                .resources
-                .health
-                .damage
-                .id("minecraft:sweet_berry_bush")
-                .ok_or("missing sweet_berry_bush damage type")?;
             self.player.events.push(MotionEvent::Health(
                 crate::health::HealthEvent::SweetBerryBushDamage(1.0),
             ));
             let rules = self.scene.health_rules;
-            self.player.hurt(&self.resources.health, rules, id, 1.0)?;
+            self.player.hurt_by_surroundings(
+                &self.resources.health,
+                rules,
+                "minecraft:sweet_berry_bush",
+                1.0,
+            )?;
         }
         Ok(())
     }
