@@ -819,7 +819,8 @@ impl Game<'_> {
             return false;
         }
         self.vehicle_attack_sounds();
-        self.hurt_boat(i, damage, self.creative);
+        let creative = self.creative;
+        self.hurt_boat(i, damage, creative);
         self.swing_arm();
         true
     }

@@ -4448,8 +4448,9 @@ impl Game<'_> {
             }
             return Ok(true);
         }
+        let held = self.held_slot();
         if !on_block
-            && (self.raise_shield(self.held_slot())
+            && (self.raise_shield(held)
                 || self.use_fishing_rod(&stack)
             || self.use_crossbow(&stack)
             || self.use_trident(&stack)
@@ -13655,6 +13656,10 @@ impl<'a> Game<'a> {
         let inventory = vec![None; 36];
         let now = Instant::now();
         let look = options.look;
+        // The manager starts with the saved option (MusicManager's constructor).
+        let mut music = horizon_client::music::MusicManager::default();
+        music.frequency =
+            horizon_client::music::MusicFrequency::parse(&settings.file.name("musicFrequency"));
         let particles = horizon_client::particles::ParticleEngine::new(
             &root,
             &gui.atlas.sprites,
@@ -13764,14 +13769,7 @@ impl<'a> Game<'a> {
             level,
             session_lock: None,
             audio,
-            music: {
-                // The manager starts with the saved option (MusicManager's constructor).
-                let mut music = horizon_client::music::MusicManager::default();
-                music.frequency = horizon_client::music::MusicFrequency::parse(
-                    &settings.file.name("musicFrequency"),
-                );
-                music
-            },
+            music,
             ambience: Default::default(),
             sound_paused: false,
             cart_sounds: HashSet::new(),

@@ -56,7 +56,8 @@ impl Game<'_> {
     }
     /// `swing(hand)` for the hand that acts, with the default animation.
     pub(super) fn swing_arm(&mut self) {
-        self.swing_hand(self.hand, SwingAnimation::DEFAULT);
+        let hand = self.hand;
+        self.swing_hand(hand, SwingAnimation::DEFAULT);
     }
     /// `Player.resetAttackStrengthTicker`.
     pub(super) fn reset_attack_strength(&mut self) {

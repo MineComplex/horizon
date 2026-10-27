@@ -3134,7 +3134,8 @@ impl Game<'_> {
                     taken.push((item_id, before));
                 }
                 Some(rest) if rest.count < before => {
-                    self.guest_pickup(host, id, self.dropped[i].clone());
+                    let stack = self.dropped[i].clone();
+                    self.guest_pickup(host, id, stack);
                     self.dropped[i].stack = rest;
                     taken.push((item_id, before - self.dropped[i].stack.count));
                 }

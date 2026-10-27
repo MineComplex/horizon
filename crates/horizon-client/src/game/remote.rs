@@ -2445,7 +2445,8 @@ impl Game<'_> {
             C::ChangeDifficulty(p) => {
                 self.world_data.difficulty = p.difficulty.clamp(0, 3) as u8;
                 self.level.difficulty_locked = p.locked;
-                self.remote_world_options_difficulty(self.world_data.difficulty, p.locked);
+                let difficulty = self.world_data.difficulty;
+                self.remote_world_options_difficulty(difficulty, p.locked);
             }
             C::GameRuleValues(p) => self.remote_world_options_rules(p.entries),
             // ClientPacketListener.handleSetHealth: LocalPlayer.hurtTo.
@@ -4849,7 +4850,8 @@ impl Game<'_> {
             id if horizon_client::spear::Kinetic::of(id).is_some() => true,
             // ShieldItem.use: anything that blocks attacks, off cooldown.
             _ => {
-                self.raise_shield(self.held_slot());
+                let slot = self.held_slot();
+                self.raise_shield(slot);
                 return;
             }
         };

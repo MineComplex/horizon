@@ -476,6 +476,7 @@ impl Game<'_> {
                     v.y + if on_ground { 0.0 } else { pv.y },
                     v.z + pv.z,
                 );
+                let owner = self.player_display_text();
                 self.launch_thrown(
                     ItemStack {
                         count: 1,
@@ -483,7 +484,7 @@ impl Game<'_> {
                     },
                     Vec3::new(eye[0], eye[1] - 0.1, eye[2]),
                     v,
-                    Some(self.player_display_text()),
+                    Some(owner),
                 );
                 self.swing_arm();
                 self.consume_held();

@@ -3299,7 +3299,8 @@ impl Game<'_> {
             self.mobs[index].removed = true;
             if self.creative {
                 if let Some(rest) = self.give(filled) {
-                    self.spawn_item(rest, self.eye_position().unwrap_or([0.0; 3]), [0.0; 3], 40);
+                    let eye = self.eye_position().unwrap_or([0.0; 3]);
+                    self.spawn_item(rest, eye, [0.0; 3], 40);
                 }
             } else {
                 *self.held_mut() = Some(filled);
@@ -3765,8 +3766,9 @@ impl Game<'_> {
                 let left = 24_000 - m.extra.age;
                 m.extra.age += ((left / 20) as f32 * 0.1) as i32 * 20;
                 // One happy villager particle at rest about the body.
+                let id = self.mobs[index].id;
                 self.particles_around_mob(
-                    self.mobs[index].id,
+                    id,
                     "happy_villager",
                     horizon_client::particles::Burst::HORSE_EATING,
                 );
