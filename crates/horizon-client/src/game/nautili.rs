@@ -32,7 +32,7 @@ impl Game<'_> {
     }
     fn nautilus_sound(&mut self, index: usize, sound: &str) {
         let at = self.mobs[index].center();
-        self.audio
+        self.sounds
             .play(&format!("minecraft:{sound}"), Some(at), 1.0, 1.0);
     }
     /// `AbstractNautilus.mobInteract`. Returns whether the click was used.

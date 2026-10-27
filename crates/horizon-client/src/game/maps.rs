@@ -712,7 +712,7 @@ impl Game<'_> {
             self.give_or_drop_stack(filled);
         }
         let at = [p.x, p.y, p.z];
-        self.audio.play(
+        self.sounds.play(
             "minecraft:ui.cartography_table.take_result",
             Some(at),
             1.0,
@@ -739,7 +739,7 @@ impl Game<'_> {
             return false;
         }
         let at = [x, y, z].map(|v| f64::from(v) + 0.5);
-        self.audio
+        self.sounds
             .play("minecraft:item.lodestone_compass.lock", Some(at), 1.0, 1.0);
         let target = Tag::compound([(
             "target",

@@ -367,7 +367,7 @@ impl Game<'_> {
                         host.hub.send_to(conn, &packet);
                     }
                 }
-                None => self.audio.play_on(source, &sound, Some(at), v, pitch),
+                None => self.sounds.play_on(source, &sound, Some(at), v, pitch),
             }
             tracker.mark(&holder(self.target_name(t)));
         }
@@ -412,7 +412,11 @@ impl Game<'_> {
                 Target::Player if self.lan_acting.is_some() => {
                     self.guest_packets.push(packet.clone());
                 }
-                Target::Player => self.audio.stop_sounds(sound.as_deref(), source),
+                Target::Player => {
+                    let selection =
+                        horizon_client::audio::Audio::stop_selection(sound.as_deref(), source);
+                    self.sounds.stop_sounds(sound.as_deref(), source, selection);
+                }
                 Target::Guest(conn) => {
                     if let Some(host) = self.lan.as_ref() {
                         host.hub.send_to(conn, &packet);

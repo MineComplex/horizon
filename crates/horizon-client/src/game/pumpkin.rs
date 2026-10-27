@@ -57,7 +57,7 @@ impl Game<'_> {
             let vz = 0.05 * dz + r.next_double() * 0.02;
             self.spawn_item(seeds, at, [vx, 0.05, vz], 0);
         }
-        self.audio.play(
+        self.sounds.play(
             "minecraft:block.pumpkin.carve",
             Some([
                 f64::from(pos[0]) + 0.5,

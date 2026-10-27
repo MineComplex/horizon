@@ -120,7 +120,7 @@ impl Game<'_> {
             // PrimedTnt.getRandomShortFuse
             r.next_int_bound(20).unwrap_or(0) + 10
         } else {
-            self.audio.play(
+            self.sounds.play(
                 "minecraft:entity.tnt.primed",
                 Some([
                     f64::from(pos.x) + 0.5,

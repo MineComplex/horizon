@@ -367,35 +367,35 @@ impl Game<'_> {
         let c = Self::center(pos);
         match id {
             1000 => self
-                .audio
+                .sounds
                 .play("minecraft:block.dispenser.dispense", Some(c), 1.0, 1.0),
             1001 => self
-                .audio
+                .sounds
                 .play("minecraft:block.dispenser.fail", Some(c), 1.0, 1.2),
             1002 => self
-                .audio
+                .sounds
                 .play("minecraft:block.dispenser.launch", Some(c), 1.0, 1.2),
             1004 => self
-                .audio
+                .sounds
                 .play("minecraft:entity.firework_rocket.shoot", Some(c), 1.0, 1.2),
             // LevelEventHandler runs on the client: its pitch draws come from
             // the client level's random, never the server stream.
             1018 => {
                 let r = self.particles.random();
                 let pitch = (r.next_float() - r.next_float()) * 0.2 + 1.0;
-                self.audio
+                self.sounds
                     .play("minecraft:entity.blaze.shoot", Some(c), 2.0, pitch);
             }
             1051 => {
                 let pitch = 0.4 / (self.particles.random().next_float() * 0.4 + 0.8);
-                self.audio
+                self.sounds
                     .play("minecraft:entity.wind_charge.throw", Some(c), 0.5, pitch);
             }
             1049 => self
-                .audio
+                .sounds
                 .play("minecraft:block.crafter.craft", Some(c), 1.0, 1.0),
             1050 => self
-                .audio
+                .sounds
                 .play("minecraft:block.crafter.fail", Some(c), 1.0, 1.0),
             // LevelEventHandler.shootParticles: smoke for dispensers, white
             // smoke out of a crafter's front.
@@ -865,7 +865,7 @@ impl Game<'_> {
         };
         if let Some(at) = at {
             if let Some(sound) = sound {
-                self.audio.play(&sound, Some([at.x, at.y, at.z]), 1.0, 1.0);
+                self.sounds.play(&sound, Some([at.x, at.y, at.z]), 1.0, 1.0);
             }
             let who = match target {
                 Target::Mob(i) => Some(horizon_client::mobs::Who::Mob(self.mobs[i].id)),
@@ -1400,7 +1400,7 @@ impl Game<'_> {
         let target = Self::pos_of(front);
         let rot = self.world.random.next_double() * f64::from(std::f32::consts::TAU);
         self.add_primed_tnt(target, rot, 80);
-        self.audio.play(
+        self.sounds.play(
             "minecraft:entity.tnt.primed",
             Some([
                 f64::from(target.x) + 0.5,
@@ -1640,7 +1640,7 @@ impl Game<'_> {
                         Some(next),
                     );
                 }
-                self.audio.play(
+                self.sounds.play(
                     "minecraft:block.respawn_anchor.charge",
                     Some(Self::center(target)),
                     1.0,
@@ -1684,7 +1684,7 @@ impl Game<'_> {
         if !self.in_block_tag("minecraft:beehives", &name) || level.is_none_or(|l| l < 5) {
             return Ok(false);
         }
-        self.audio.play(
+        self.sounds.play(
             "minecraft:block.beehive.shear",
             Some(Self::center(target)),
             1.0,
@@ -1806,13 +1806,13 @@ impl Game<'_> {
                     let ctx = self.who_context(Some(horizon_client::mobs::Who::Mob(id)), None);
                     self.post_game_event("minecraft:unequip", [at.x, at.y, at.z], ctx);
                     self.mobs[i].extra.ints[3] = sulfur_cube::PICKUP_TIMER;
-                    self.audio
+                    self.sounds
                         .play("minecraft:entity.sulfur_cube.eject", sound_at, 1.0, 1.0);
                 }
                 Species::Sheep if !m.extra.sheared && !m.is_baby() => {
                     let color =
                         horizon_client::mobs::render::DYE_NAMES[m.extra.color as usize & 15];
-                    self.audio
+                    self.sounds
                         .play("minecraft:entity.sheep.shear", sound_at, 1.0, 1.0);
                     let drops = self.sequence_loot(
                         "minecraft:shearing/sheep",
@@ -1846,7 +1846,7 @@ impl Game<'_> {
                 }
                 Species::Bogged if !m.extra.sheared => {
                     let height = f64::from(m.height());
-                    self.audio
+                    self.sounds
                         .play("minecraft:entity.bogged.shear", sound_at, 1.0, 1.0);
                     let drops = self.sequence_loot(
                         "minecraft:shearing/bogged",
@@ -1860,7 +1860,7 @@ impl Game<'_> {
                 }
                 Species::SnowGolem if !m.extra.sheared => {
                     let eye = m.eye_height();
-                    self.audio
+                    self.sounds
                         .play("minecraft:entity.snow_golem.shear", sound_at, 1.0, 1.0);
                     self.mobs[i].extra.sheared = true;
                     let drops = self.sequence_loot(
@@ -1874,7 +1874,7 @@ impl Game<'_> {
                 }
                 // CopperGolem.shear: the antenna's flower drops 1.5 up.
                 Species::CopperGolem if self.golem_shearable(i) => {
-                    self.audio
+                    self.sounds
                         .play("minecraft:entity.copper_golem.shear", sound_at, 1.0, 1.0);
                     let antenna = self.mobs[i].saddle_item();
                     let id = self.mobs[i].id;
@@ -1889,7 +1889,7 @@ impl Game<'_> {
                 Species::Mooshroom if !m.is_baby() => {
                     let variant = if m.extra.variant == 1 { "brown" } else { "red" };
                     let height = f64::from(m.height());
-                    self.audio
+                    self.sounds
                         .play("minecraft:entity.mooshroom.shear", sound_at, 1.0, 1.0);
                     // convertTo(COW): the cow takes its place, then the mushrooms drop.
                     self.convert_mob(i, "minecraft:cow");
@@ -1980,7 +1980,7 @@ impl Game<'_> {
         let ctx = self.who_context(Some(who), None);
         self.post_game_event("minecraft:shear", [at.x, at.y, at.z], ctx);
         let block = [at.x.floor() + 0.5, at.y.floor() + 0.5, at.z.floor() + 0.5];
-        self.audio
+        self.sounds
             .play("minecraft:item.shears.snip", Some(block), 1.0, 1.0);
         true
     }
@@ -2008,7 +2008,7 @@ impl Game<'_> {
             for d in drops {
                 self.spawn_at_location(at, 0.0, d);
             }
-            self.audio.play(
+            self.sounds.play(
                 "minecraft:entity.armadillo.brush",
                 Some([at.x, at.y, at.z]),
                 1.0,
@@ -2050,7 +2050,7 @@ impl Game<'_> {
             // setItemSlot: a body item without `equippable` posts UNEQUIP.
             let ctx = self.who_context(Some(horizon_client::mobs::Who::Mob(id)), None);
             self.post_game_event("minecraft:unequip", [at.x, at.y, at.z], ctx);
-            self.audio.play(
+            self.sounds.play(
                 "minecraft:entity.sulfur_cube.absorb",
                 Some([at.x, at.y, at.z]),
                 1.0,
@@ -2097,7 +2097,7 @@ impl Game<'_> {
                 data: 0,
             });
         self.process_level_events()?;
-        self.audio.play(
+        self.sounds.play(
             "minecraft:item.honeycomb.wax_on",
             Some(Self::center(target)),
             1.0,
@@ -2130,7 +2130,7 @@ impl Game<'_> {
             self.particles
                 .add(&ParticleOptions::simple(ParticleType::Splash), p, [0.0; 3]);
         }
-        self.audio.play(
+        self.sounds.play(
             "minecraft:item.bottle.empty",
             Some(Self::center(pos)),
             1.0,

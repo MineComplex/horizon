@@ -85,7 +85,7 @@ impl Game<'_> {
             f64::from(pos[1]) + 0.5,
             f64::from(pos[2]) + 0.5,
         ];
-        self.audio.play(sound, Some(at), 1.0, 1.0);
+        self.sounds.play(sound, Some(at), 1.0, 1.0);
     }
     /// `LoomScreen.mouseClicked` on a pattern button: `clickMenuButton`, and
     /// the select sound when the menu took it.
@@ -97,7 +97,7 @@ impl Game<'_> {
             Some(*flag)
         });
         if taken {
-            self.audio
+            self.sounds
                 .play("minecraft:ui.loom.select_pattern", None, 1.0, 1.0);
             self.remote_station_button(index as i32);
         }

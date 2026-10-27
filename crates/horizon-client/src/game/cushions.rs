@@ -241,7 +241,7 @@ impl Game<'_> {
         if self.cushion_in_fire(&self.cushions[placed]) {
             self.break_cushion(placed, false);
         }
-        self.audio.play(
+        self.sounds.play(
             "minecraft:entity.cushion.place",
             Some([position.x, position.y, position.z]),
             0.75,
@@ -288,7 +288,7 @@ impl Game<'_> {
         }
         self.riding = Some(id);
         let p = self.cushions[i].position;
-        self.audio.play(
+        self.sounds.play(
             "minecraft:entity.cushion.sit",
             Some([p.x, p.y, p.z]),
             1.0,
@@ -323,7 +323,7 @@ impl Game<'_> {
         if self.riding == Some(c.id) {
             self.riding = None;
         }
-        self.audio.play(
+        self.sounds.play(
             "minecraft:entity.cushion.break",
             Some([p.x, p.y, p.z]),
             1.0,
@@ -353,7 +353,7 @@ impl Game<'_> {
         let particle_at = [p.x, p.y + 0.25 * (2.0 / 3.0), p.z];
         // Guest actions temporarily take self.lan; flush once the hub is back.
         // Queue before resolving a sprite: a dedicated server has no renderer.
-        if self.audio.capture.is_some() {
+        if self.sounds.capture.is_some() {
             self.lan_cushion_breaks.push((state, particle_at));
         }
         let at = [p.x.floor() as i32, p.y.floor() as i32, p.z.floor() as i32];
@@ -416,7 +416,7 @@ impl Game<'_> {
             }
             // `Cushion.removePassenger`: the get-up sound for a rider that
             // left rather than one whose cushion was killed.
-            self.audio.play(
+            self.sounds.play(
                 "minecraft:entity.cushion.get_up",
                 Some([c.position.x, c.position.y, c.position.z]),
                 1.0,

@@ -81,7 +81,7 @@ impl Game<'_> {
                 let at = [pos.x, pos.y, pos.z];
                 let pitch =
                     (self.world.random.next_float() - self.world.random.next_float()) * 1.4 + 2.0;
-                self.audio
+                self.sounds
                     .play("minecraft:entity.item.pickup", Some(at), 0.2, pitch);
                 self.mobs[i].extra.point = None;
             } else {
@@ -170,7 +170,7 @@ impl Game<'_> {
                 3.0, 3.75, 4.0,
             ];
             let pitch = PITCHES[self.world.random.next_int_bound(16).unwrap_or(4) as usize];
-            self.audio
+            self.sounds
                 .play("minecraft:entity.allay.item_thrown", Some(from), 1.0, pitch);
         }
     }
@@ -193,7 +193,7 @@ impl Game<'_> {
             // Allay.duplicateAllay: entity event 18, three spawnHeartParticle.
             let id = self.mobs[index].id;
             self.mob_event_particles(id, 18);
-            self.audio
+            self.sounds
                 .play("minecraft:block.amethyst_block.chime", Some(at), 2.0, 1.0);
             self.consume_held();
             return true;
@@ -206,7 +206,7 @@ impl Game<'_> {
             m.extra.tame = true;
             // `Allay.mobInteract` remembers LIKED_PLAYER by UUID.
             m.extra.owner = Some(acting);
-            self.audio
+            self.sounds
                 .play("minecraft:entity.allay.item_given", Some(at), 2.0, 1.0);
             self.consume_held();
             return true;
@@ -221,7 +221,7 @@ impl Game<'_> {
             let carried = std::mem::take(&mut m.extra.ints[1]);
             m.extra.tame = false;
             m.extra.owner = None;
-            self.audio
+            self.sounds
                 .play("minecraft:entity.allay.item_taken", Some(at), 2.0, 1.0);
             if carried > 0 {
                 self.spawn_item(

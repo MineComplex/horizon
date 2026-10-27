@@ -1205,7 +1205,7 @@ impl Game<'_> {
                     } else {
                         let r = &mut g.world.random;
                         let pitch = ((r.next_float() - r.next_float()) * 0.7 + 1.0) * 2.0;
-                        g.audio
+                        g.sounds
                             .play("minecraft:entity.item.pickup", Some(p), 0.2, pitch);
                     }
                 }

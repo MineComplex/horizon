@@ -339,7 +339,7 @@ impl Game<'_> {
             return false;
         }
         self.next_entity += 1;
-        self.audio.play(
+        self.sounds.play(
             "minecraft:entity.armor_stand.place",
             Some([foot.x, foot.y, foot.z]),
             0.75,
@@ -496,20 +496,20 @@ impl Game<'_> {
         let at = [at.x, at.y, at.z];
         if self.creative {
             self.armor_stands.remove(i);
-            self.audio
+            self.sounds
                 .play("minecraft:entity.armor_stand.break", Some(at), 1.0, 1.0);
             return true;
         }
         if time - self.armor_stands[i].last_hit > 5 {
             // First hit: entity event 32, the wobble and the hit sound.
             self.armor_stands[i].last_hit = time;
-            self.audio
+            self.sounds
                 .play("minecraft:entity.armor_stand.hit", Some(at), 0.3, 1.0);
             return true;
         }
         // brokenByPlayer: the stand item, then brokenByAnything: the equipment.
         let a = self.armor_stands.remove(i);
-        self.audio
+        self.sounds
             .play("minecraft:entity.armor_stand.break", Some(at), 1.0, 1.0);
         let center = [at[0], at[1] + if a.small { 0.4875 } else { 0.9875 }, at[2]];
         let stand = ItemStack {
@@ -558,7 +558,7 @@ impl Game<'_> {
             for stack in drops {
                 self.pop_resource(pos, stack);
             }
-            self.audio
+            self.sounds
                 .play("minecraft:entity.armor_stand.break", Some(at), 1.0, 1.0);
             self.world.modified.insert((pos[0] >> 4, pos[2] >> 4));
         }

@@ -238,7 +238,7 @@ impl Game<'_> {
                 TrialEvent::BlockUpdated => self.mark_block_entity_updated(key),
                 TrialEvent::LevelEvent(id, at, data) => self.level_event_at(id, at, data),
                 TrialEvent::Sound(name) => {
-                    self.audio
+                    self.sounds
                         .play(&format!("minecraft:{name}"), Some(center), 1.0, 1.0)
                 }
                 // Written with the state above.
@@ -256,7 +256,7 @@ impl Game<'_> {
                         m.removed = true;
                     }
                 }
-                TrialEvent::SoundAt(name, at, pitch) => self.audio.play(
+                TrialEvent::SoundAt(name, at, pitch) => self.sounds.play(
                     &format!("minecraft:{name}"),
                     Some(at.map(|v| f64::from(v) + 0.5)),
                     1.0,
@@ -308,7 +308,7 @@ impl Game<'_> {
             ));
         if new {
             let eye = self.eye_position().unwrap_or_default();
-            self.audio
+            self.sounds
                 .play("minecraft:event.mob_effect.trial_omen", Some(eye), 1.0, 1.0);
         }
     }

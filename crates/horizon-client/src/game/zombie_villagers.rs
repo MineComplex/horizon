@@ -73,7 +73,7 @@ impl Game<'_> {
         convert_to_zombie_villager(&old, z);
         let killer_at = self.mobs[k].position;
         let pitch = (self.world.random.next_float() - self.world.random.next_float()) * 0.2 + 1.0;
-        self.audio.play(
+        self.sounds.play(
             "minecraft:entity.zombie.infect",
             Some([killer_at.x, killer_at.y, killer_at.z]),
             2.0,
@@ -143,7 +143,7 @@ impl Game<'_> {
             self.trigger_cured_zombie_villager(&zombie_view, &villager_view);
         }
         let pitch = (self.world.random.next_float() - self.world.random.next_float()) * 0.2 + 1.0;
-        self.audio.play(
+        self.sounds.play(
             "minecraft:entity.zombie_villager.converted",
             Some(at),
             2.0,

@@ -1302,7 +1302,7 @@ impl Game<'_> {
                 f64::from(pos[1]) + 0.5,
                 f64::from(pos[2]) + 0.5,
             ];
-            self.audio
+            self.sounds
                 .play(&s.place, Some(at), (s.volume + 1.0) / 2.0, s.pitch * 0.8);
             if let Some(r) = self.remote.as_mut() {
                 r.placing = None;
@@ -1859,16 +1859,20 @@ impl Game<'_> {
                         .filter(|s| *s < horizon_client::settings::SOUND_SOURCES.len())
                     {
                         Some(source) => {
-                            self.audio
+                            self.sounds
                                 .play_on(source, &name, Some(at), p.volume, p.pitch)
                         }
-                        None => self.audio.play(&name, Some(at), p.volume, p.pitch),
+                        None => self.sounds.play(&name, Some(at), p.volume, p.pitch),
                     }
                 }
             }
-            C::StopSound(p) => self
-                .audio
-                .stop_sounds(p.sound.as_deref(), p.source.map(|s| s as usize)),
+            C::StopSound(p) => {
+                let source = p.source.map(|s| s as usize);
+                let selection =
+                    horizon_client::audio::Audio::stop_selection(p.sound.as_deref(), source);
+                self.sounds
+                    .stop_sounds(p.sound.as_deref(), source, selection);
+            }
             C::AddEntity(p) => {
                 let kind = self
                     .remote
@@ -2240,7 +2244,7 @@ impl Game<'_> {
                         * 0.7
                         + 1.0)
                         * 2.0;
-                    self.audio
+                    self.sounds
                         .play("minecraft:entity.item.pickup", Some(eye), 0.2, pitch);
                 }
                 // ItemPickupParticle toward the collector (this player, another one or a mob).
@@ -2539,7 +2543,7 @@ impl Game<'_> {
                     if p.param == 1.0
                         && let Some(at) = self.player.as_ref().map(|m| m.position)
                     {
-                        self.audio.play(
+                        self.sounds.play(
                             "minecraft:entity.elder_guardian.curse",
                             Some([at.x, at.y, at.z]),
                             1.0,
@@ -3709,14 +3713,14 @@ impl Game<'_> {
                     } else {
                         (sounds.volume * 0.15, sounds.pitch)
                     };
-                    self.audio.play(&sounds.step, Some(feet), volume, pitch);
+                    self.sounds.play(&sounds.step, Some(feet), volume, pitch);
                 }
                 horizon_client::motion::MotionEvent::Swim { volume, pitch } => {
-                    self.audio
+                    self.sounds
                         .play("minecraft:entity.player.swim", Some(feet), volume, pitch);
                 }
                 horizon_client::motion::MotionEvent::Chime { volume, pitch } => {
-                    self.audio.play(
+                    self.sounds.play(
                         "minecraft:block.amethyst_block.chime",
                         Some(feet),
                         volume,
@@ -3733,7 +3737,7 @@ impl Game<'_> {
                 // the slide sound, heard here (LocalPlayer.playSound); the
                 // particles come from the server's event 53.
                 horizon_client::motion::MotionEvent::HoneySlide { sound: true, .. } => {
-                    self.audio
+                    self.sounds
                         .play("minecraft:block.honey_block.slide", Some(feet), 1.0, 1.0);
                 }
                 _ => {}
@@ -4427,7 +4431,7 @@ impl Game<'_> {
                 f64::from(pos[1]) + 0.5,
                 f64::from(pos[2]) + 0.5,
             ];
-            self.audio.play(
+            self.sounds.play(
                 &s.break_sound,
                 Some(at),
                 (s.volume + 1.0) / 2.0,
@@ -4609,7 +4613,7 @@ impl Game<'_> {
                 .is_some();
             if waxes {
                 self.level_event_at(3003, hit.pos, 0);
-                self.audio
+                self.sounds
                     .play("minecraft:item.honeycomb.wax_on", Some(at), 1.0, 1.0);
             }
             waxes
@@ -4617,7 +4621,7 @@ impl Game<'_> {
             self.block_transform(stack, hit.pos, hit.face)
         {
             self.transform_particle(&particle, hit.pos);
-            self.audio.play(&sound, Some(at), 1.0, 1.0);
+            self.sounds.play(&sound, Some(at), 1.0, 1.0);
             true
         } else {
             false
@@ -4654,7 +4658,7 @@ impl Game<'_> {
             } else {
                 format!("minecraft:{sound}")
             };
-            self.audio.play(&name, Some(at), *volume, *pitch);
+            self.sounds.play(&name, Some(at), *volume, *pitch);
         }
     }
 

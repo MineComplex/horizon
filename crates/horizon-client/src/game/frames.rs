@@ -149,7 +149,7 @@ impl Game<'_> {
             return false;
         }
         self.next_entity += 1;
-        self.audio
+        self.sounds
             .play(&sound(&frame, "place"), Some(center(&frame)), 1.0, 1.0);
         self.world.modified.insert((pos[0] >> 4, pos[2] >> 4));
         self.item_frames.push(frame);
@@ -211,7 +211,7 @@ impl Game<'_> {
                 return false;
             };
             self.item_frames[i].item = Some(ItemStack { count: 1, ..held });
-            self.audio
+            self.sounds
                 .play(&sound(&self.item_frames[i], "add_item"), Some(at), 1.0, 1.0);
             if !self.creative {
                 self.consume_held();
@@ -220,7 +220,7 @@ impl Game<'_> {
             let f = &mut self.item_frames[i];
             f.rotation = (f.rotation + 1) % 8;
             let s = sound(f, "rotate_item");
-            self.audio.play(&s, Some(at), 1.0, 1.0);
+            self.sounds.play(&s, Some(at), 1.0, 1.0);
         }
         let p = self.item_frames[i].pos;
         self.world.modified.insert((p[0] >> 4, p[2] >> 4));
@@ -246,7 +246,7 @@ impl Game<'_> {
         } else {
             self.item_frames[i].clone()
         };
-        self.audio.play(
+        self.sounds.play(
             &sound(&f, if with_frame { "break" } else { "remove_item" }),
             Some(at),
             1.0,
@@ -308,7 +308,7 @@ impl Game<'_> {
                 let f = self.item_frames[i].clone();
                 if !self.frame_survives(&f) {
                     self.item_frames.remove(i);
-                    self.audio
+                    self.sounds
                         .play(&sound(&f, "break"), Some(center(&f)), 1.0, 1.0);
                     self.drop_frame_items(&f, true, false);
                     if f.item.is_some() {

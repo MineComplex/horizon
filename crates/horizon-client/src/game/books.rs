@@ -656,7 +656,7 @@ impl Game<'_> {
             self.lectern_button(key, if forward { 2 } else { 1 });
             return;
         }
-        self.audio
+        self.sounds
             .play("minecraft:item.book.page_turn", None, 1.0, 1.0);
     }
     fn set_lectern_powered(&mut self, key: (i32, i32, i32), powered: bool) {
@@ -742,7 +742,7 @@ impl Game<'_> {
             f64::from(pos[1]) + 0.5,
             f64::from(pos[2]) + 0.5,
         ];
-        self.audio
+        self.sounds
             .play("minecraft:item.book.put", Some(at), 1.0, 1.0);
         self.container_changed(key);
         true
@@ -970,7 +970,7 @@ impl Game<'_> {
         let inside =
             |x: f32, y: f32, bw: f32, bh: f32| mx >= x && my >= y && mx < x + bw && my < y + bh;
         let click = |game: &mut Self| {
-            game.audio
+            game.sounds
                 .play("minecraft:ui.button.click", None, 0.25, 1.0)
         };
         match &self.book {

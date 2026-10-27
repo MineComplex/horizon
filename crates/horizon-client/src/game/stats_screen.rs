@@ -455,7 +455,7 @@ impl Game<'_> {
             {
                 self.stats_ui.tab = i;
                 self.stats_ui.scroll.amount = 0.0;
-                self.audio
+                self.sounds
                     .play("minecraft:ui.button.click", None, 0.25, 1.0);
                 return;
             }
@@ -467,7 +467,7 @@ impl Game<'_> {
             200.0,
             20.0,
         ) {
-            self.audio
+            self.sounds
                 .play("minecraft:ui.button.click", None, 0.25, 1.0);
             self.screen = Screen::Paused;
             return;
@@ -484,7 +484,7 @@ impl Game<'_> {
                         Some((sc, _)) if sc == c => None,
                         _ => Some((c, -1)),
                     };
-                    self.audio
+                    self.sounds
                         .play("minecraft:ui.button.click", None, 0.25, 1.0);
                 }
             }

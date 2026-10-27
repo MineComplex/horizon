@@ -59,7 +59,7 @@ impl Game<'_> {
             } else {
                 "minecraft:entity.pig.saddle"
             };
-            self.audio.play(sound, Some(at), 0.5, 1.0);
+            self.sounds.play(sound, Some(at), 0.5, 1.0);
             self.consume_held();
             self.world
                 .modified
@@ -180,7 +180,7 @@ impl Game<'_> {
         if let Some(sound) = sound {
             let pitch =
                 (self.world.random.next_float() - self.world.random.next_float()) * 0.2 + 1.0;
-            self.audio.play(sound, Some(at), 0.5, pitch);
+            self.sounds.play(sound, Some(at), 0.5, pitch);
             self.consume_held();
             self.world
                 .modified
@@ -262,7 +262,7 @@ impl Game<'_> {
             _ => "minecraft:entity.horse.eat",
         };
         let pitch = (self.world.random.next_float() - self.world.random.next_float()) * 0.2 + 1.0;
-        self.audio.play(sound, Some(at), 1.0, pitch);
+        self.sounds.play(sound, Some(at), 1.0, pitch);
         // Animal.setInLove: entity event 18.
         if loved {
             self.mob_event_particles(id, 18);
@@ -339,7 +339,7 @@ impl Game<'_> {
             if equine::is_equine(m.species()) {
                 let sound = "minecraft:entity.horse.jump";
                 let at = m.center();
-                self.audio.play(sound, Some(at), 0.4, 1.0);
+                self.sounds.play(sound, Some(at), 0.4, 1.0);
             }
         }
         let m = &mut self.mobs[i];

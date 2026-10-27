@@ -60,7 +60,7 @@ impl Game<'_> {
     fn extinguish_sound(&mut self, at: [f64; 3]) {
         let r = self.particles.random();
         let pitch = 1.6 + (r.next_float() - r.next_float()) * 0.4;
-        self.audio.play(
+        self.sounds.play(
             "minecraft:entity.generic.extinguish_fire",
             Some(at),
             0.7,
@@ -117,7 +117,7 @@ impl Game<'_> {
             .as_ref()
             .map(|p| [p.position.x, p.position.y, p.position.z])
         {
-            self.audio.play(
+            self.sounds.play(
                 "minecraft:item.bucket.fill_powder_snow",
                 Some(eye),
                 1.0,

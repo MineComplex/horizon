@@ -12,7 +12,7 @@ impl Game<'_> {
     fn llama_sound(&mut self, index: usize, sound: &str, volume: f32) {
         let at = self.mobs[index].center();
         let pitch = (self.world.random.next_float() - self.world.random.next_float()) * 0.2 + 1.0;
-        self.audio
+        self.sounds
             .play(&format!("minecraft:{sound}"), Some(at), volume, pitch);
     }
     /// `Llama.handleEating`: wheat and hay bales heal, age up a baby, raise
@@ -110,7 +110,7 @@ impl Game<'_> {
                 // Equippable.canBeSheared: the carpet comes off.
                 let at = m.center();
                 let carpet = self.mobs[index].extra.head.take().unwrap_or_default();
-                self.audio
+                self.sounds
                     .play("minecraft:item.llama_carpet.unequip", Some(at), 1.0, 1.0);
                 self.spawn_item(ItemStack::new(&carpet, 1), at, [0.0, 0.2, 0.0], 10);
                 self.damage_held_tool();

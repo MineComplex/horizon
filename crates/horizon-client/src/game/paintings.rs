@@ -160,7 +160,7 @@ impl Game<'_> {
             (lo[1] + hi[1]) / 2.0,
             (lo[2] + hi[2]) / 2.0,
         ];
-        self.audio
+        self.sounds
             .play("minecraft:entity.painting.place", Some(at), 1.0, 1.0);
         self.paintings.push(candidate);
         self.world.modified.insert((pos[0] >> 4, pos[2] >> 4));
@@ -210,7 +210,7 @@ impl Game<'_> {
         if !self.world_data.rules.bool("entity_drops") {
             return;
         }
-        self.audio
+        self.sounds
             .play("minecraft:entity.painting.break", Some(at), 1.0, 1.0);
         if by_player && self.creative {
             return;

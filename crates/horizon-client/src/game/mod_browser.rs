@@ -355,7 +355,7 @@ impl Game<'_> {
         };
         if let Some(to) = step {
             self.mods.browser.page = to;
-            self.audio
+            self.sounds
                 .play("minecraft:ui.button.click", None, 0.25, 1.0);
             return true;
         }

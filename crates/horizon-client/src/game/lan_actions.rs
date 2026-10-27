@@ -1186,7 +1186,7 @@ impl Game<'_> {
                     self.spawn_protection_message(host, conn, p.pos);
                 } else {
                     let logged = self.world.block_log.as_ref().map_or(0, Vec::len);
-                    let heard = self.audio.capture.as_ref().map_or(0, Vec::len);
+                    let heard = self.sounds.capture.as_ref().map_or(0, Vec::len);
                     let swung = self.as_guest(host, conn, |g| {
                         g.forced_hit = Some(hit);
                         g.guest_use = Some(GuestUse::OnBlock(hand));
@@ -2817,7 +2817,7 @@ impl Game<'_> {
                     if sound {
                         let name = "minecraft:block.honey_block.slide";
                         let source = horizon_client::settings::sound_source(name) as i32;
-                        self.audio.play_unshared(name, Some(at), 1.0, 1.0);
+                        self.sounds.play_unshared(name, Some(at), 1.0, 1.0);
                         host.hub.sound(name, at, 1.0, 1.0, source, Some(conn));
                     }
                     if particles {
@@ -3204,7 +3204,7 @@ impl Game<'_> {
         // ClientPacketListener.handleTakeItemEntity's sound, at the orb.
         let pitch = (self.world.random.next_float() - self.world.random.next_float()) * 0.35 + 0.9;
         let p = orb.position;
-        self.audio.play(
+        self.sounds.play(
             "minecraft:entity.experience_orb.pickup",
             Some([p.x, p.y, p.z]),
             0.1,
@@ -3264,7 +3264,7 @@ impl Game<'_> {
                 (at, name.trim_start_matches("minecraft:").to_owned())
             })
             .collect();
-        if let Some(capture) = self.audio.capture.as_mut() {
+        if let Some(capture) = self.sounds.capture.as_mut() {
             let mut i = heard.min(capture.len());
             while i < capture.len() {
                 let (name, at, ..) = &capture[i];
@@ -3287,7 +3287,7 @@ impl Game<'_> {
         {
             return;
         }
-        let Some(capture) = self.audio.capture.as_mut() else {
+        let Some(capture) = self.sounds.capture.as_mut() else {
             return;
         };
         let sounds: Vec<_> = capture.drain(heard.min(capture.len())..).collect();
@@ -3299,8 +3299,8 @@ impl Game<'_> {
 
     /// Positional sounds and level events of the tick, for the guests.
     pub(super) fn lan_broadcast_effects(&mut self, host: &mut LanHost) {
-        let sounds = self.audio.capture.take().unwrap_or_default();
-        self.audio.capture = Some(Vec::new());
+        let sounds = self.sounds.capture.take().unwrap_or_default();
+        self.sounds.capture = Some(Vec::new());
         let blocks: Vec<[f64; 3]> = std::mem::take(&mut host.broken);
         for (name, at, volume, pitch) in sounds {
             // Block breaks are heard through the level event.

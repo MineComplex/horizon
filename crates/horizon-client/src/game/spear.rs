@@ -34,7 +34,7 @@ impl Game<'_> {
             self.stabbed.retain(|(who, _), _| *who != actor);
             if let Some(p) = &self.player {
                 let at = [p.position.x, p.position.y, p.position.z];
-                self.audio.play(kinetic.sound, Some(at), 1.0, 1.0);
+                self.sounds.play(kinetic.sound, Some(at), 1.0, 1.0);
             }
         }
         true
@@ -178,7 +178,7 @@ impl Game<'_> {
         }
         if affected {
             // Level.broadcastEntityEvent(player, 2), felt by the player too.
-            if self.audio.capture.is_some() {
+            if self.sounds.capture.is_some() {
                 self.lan_kinetic_hits.push(actor);
             }
             let who = actor.map_or(OWN, |conn| conn as i32);
@@ -286,7 +286,7 @@ impl Game<'_> {
             .is_none_or(|&t| now - t > HIT_FEEDBACK_TICKS)
         {
             self.kinetic_feedback.insert(entity, now);
-            self.audio
+            self.sounds
                 .play_unshared(kinetic.hit_sound, Some(at), 1.0, 1.0);
         }
     }

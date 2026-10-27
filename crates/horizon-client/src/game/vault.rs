@@ -182,7 +182,7 @@ impl Game<'_> {
                 VaultEvent::BlockUpdated => self.mark_block_entity_updated(key),
                 VaultEvent::LevelEvent(id, data) => self.level_event_at(id, pos, data),
                 VaultEvent::Sound(name, volume, pitch) => {
-                    self.audio
+                    self.sounds
                         .play(&format!("minecraft:{name}"), Some(center), volume, pitch)
                 }
                 // Vec3.atBottomCenterOf(pos).relative(UP, 1.2), lowered by spawnItem.

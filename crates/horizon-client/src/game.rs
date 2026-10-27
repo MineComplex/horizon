@@ -1551,6 +1551,9 @@ struct Game<'a> {
     level: Level,
     session_lock: Option<horizon_client::save::SessionLock>,
     audio: Audio,
+    /// The sounds the game decided to play (seeds, the guests' capture, the control socket's
+    /// counts); `flush_sounds` hands them to `audio`.
+    sounds: horizon_client::sound_out::SoundOut,
     music: horizon_client::music::MusicManager,
     ambience: horizon_client::ambience::Ambience,
     /// The sound engine was told the game paused (pauseAllExcept).
@@ -2731,7 +2734,7 @@ impl Game<'_> {
             // shortcut: age is the fresh-drop clock; use entity ticks for saved/frozen-age phase parity.
             if environment.should_play_lava_hurt_sound(item.age) {
                 let pitch = 2.0 + self.world.random.next_float() * 0.4;
-                self.audio.play(
+                self.sounds.play(
                     "minecraft:entity.generic.burn",
                     Some([item.position.x, item.position.y, item.position.z]),
                     0.4,
@@ -2793,7 +2796,7 @@ impl Game<'_> {
                             * 0.7
                             + 1.0)
                             * 2.0;
-                        self.audio
+                        self.sounds
                             .play("minecraft:entity.item.pickup", Some(feet), 0.2, pitch);
                         continue;
                     }
@@ -2811,8 +2814,12 @@ impl Game<'_> {
                                 * 0.7
                                 + 1.0)
                                 * 2.0;
-                            self.audio
-                                .play("minecraft:entity.item.pickup", Some(feet), 0.2, pitch);
+                            self.sounds.play(
+                                "minecraft:entity.item.pickup",
+                                Some(feet),
+                                0.2,
+                                pitch,
+                            );
                         }
                         item.stack = rest;
                     }
@@ -3337,7 +3344,7 @@ impl Game<'_> {
                         f64::from(pos.y) + 0.5,
                         f64::from(pos.z) + 0.5,
                     ];
-                    self.audio.play(
+                    self.sounds.play(
                         &sounds.break_sound,
                         Some(c),
                         (sounds.volume + 1.0) / 2.0,
@@ -3382,7 +3389,7 @@ impl Game<'_> {
                 } => {
                     self.growth_particles(pos, data);
                     let at = [pos.x, pos.y, pos.z].map(|v| f64::from(v) + 0.5);
-                    self.audio
+                    self.sounds
                         .play("minecraft:item.bone_meal.use", Some(at), 1.0, 1.0);
                 }
                 LevelEvent::LevelEvent {
@@ -3528,9 +3535,9 @@ impl Game<'_> {
                         if matches!(id, 1019 | 1021 | 1029 | 1030 | 1053 | 1054) {
                             // Clients play the anvil sound from its level event;
                             // capturing it also sends a duplicate sound packet.
-                            self.audio.play_unshared(name, c, volume, pitch);
+                            self.sounds.play_unshared(name, c, volume, pitch);
                         } else {
-                            self.audio.play(name, c, volume, pitch);
+                            self.sounds.play(name, c, volume, pitch);
                         }
                     }
                     // LevelEventHandler 1501 and 1502 draw their smoke after the sound.
@@ -3559,7 +3566,7 @@ impl Game<'_> {
                     } else {
                         format!("minecraft:{sound}")
                     };
-                    self.audio.play(&name, Some(c), volume, pitch);
+                    self.sounds.play(&name, Some(c), volume, pitch);
                 }
                 // Handled as the behaviour emits it (GameLevel::emit).
                 LevelEvent::DropResources { pos, state } => {
@@ -3646,7 +3653,7 @@ impl Game<'_> {
                         f64::from(pos.y) + 0.5,
                         f64::from(pos.z) + 0.5,
                     ];
-                    self.audio
+                    self.sounds
                         .play("minecraft:block.frogspawn.hatch", Some(at), 1.0, 1.0);
                     let count = 2 + self.world.random.next_int_bound(4).unwrap_or(0);
                     for _ in 0..count {
@@ -4691,7 +4698,7 @@ impl Game<'_> {
                     let b = horizon_core::position::BlockPos::containing(p.position);
                     [b.x, b.y, b.z].map(|v| f64::from(v) + 0.5)
                 });
-                self.audio.play(sound, at, 1.0, 1.0);
+                self.sounds.play(sound, at, 1.0, 1.0);
             }
         }
     }
@@ -5099,6 +5106,7 @@ impl Game<'_> {
         self.with_level(|b, level, ticks| b.notify_written(level, ticks, position, flags));
     }
     fn tick(&mut self) -> Result<()> {
+        self.flush_sounds();
         if self.agent.hold_server {
             return Ok(());
         }
@@ -5282,14 +5290,14 @@ impl Game<'_> {
                     } else {
                         (sounds.volume * 0.15, sounds.pitch)
                     };
-                    self.audio.play(&sounds.step, Some(feet), volume, pitch);
+                    self.sounds.play(&sounds.step, Some(feet), volume, pitch);
                 }
                 MotionEvent::Swim { volume, pitch } => {
-                    self.audio
+                    self.sounds
                         .play("minecraft:entity.player.swim", Some(feet), volume, pitch);
                 }
                 MotionEvent::Chime { volume, pitch } => {
-                    self.audio.play(
+                    self.sounds.play(
                         "minecraft:block.amethyst_block.chime",
                         Some(feet),
                         volume,
@@ -5336,7 +5344,7 @@ impl Game<'_> {
                         }
                         _ => continue,
                     };
-                    self.audio.play(name, Some(feet), volume, pitch);
+                    self.sounds.play(name, Some(feet), volume, pitch);
                 }
                 // Player.causeFallDamage: a fall of 2 blocks or more counts.
                 MotionEvent::Fall(horizon_client::landing::FallEvent::Statistic(cm)) => {
@@ -5356,7 +5364,7 @@ impl Game<'_> {
                     sound, particles, ..
                 } => {
                     if sound {
-                        self.audio
+                        self.sounds
                             .play("minecraft:block.honey_block.slide", Some(feet), 1.0, 1.0);
                     }
                     if particles {
@@ -5386,7 +5394,7 @@ impl Game<'_> {
                     } else {
                         "minecraft:entity.player.splash"
                     };
-                    self.audio.play(name, Some(feet), volume, pitch);
+                    self.sounds.play(name, Some(feet), volume, pitch);
                 }
                 MotionEvent::SplashParticle {
                     bubble,
@@ -5454,7 +5462,7 @@ impl Game<'_> {
             if !self.spectator() {
                 self.drop_inventory(at);
             }
-            self.audio
+            self.sounds
                 .play("minecraft:entity.player.death", Some(at), 1.0, 1.0);
             // LivingEntity.die: the LAN guests see the host's death animation.
             if let Some(host) = &self.lan {
@@ -5967,7 +5975,7 @@ impl Game<'_> {
         if let Some(title) = &mut self.title {
             title.poll_backup();
             if let Some(sound) = title.update_toast(self.settings.notification_display_time) {
-                self.audio.play(sound, None, 1.0, 1.0);
+                self.sounds.play(sound, None, 1.0, 1.0);
             }
         }
         if let Some(title) = &self.title {
@@ -6158,10 +6166,10 @@ impl Game<'_> {
                         .iter()
                         .position(|s| *s == "player")
                         .unwrap_or(0);
-                    let capture = self.audio.capture.take();
-                    self.audio
+                    let capture = self.sounds.capture.take();
+                    self.sounds
                         .play_on(players, "ui.hud.bubble_pop", Some(at), volume, pitch);
-                    self.audio.capture = capture;
+                    self.sounds.capture = capture;
                 }
             }
             if contextual == ContextualBar::Locator {
@@ -6763,7 +6771,7 @@ impl Game<'_> {
         } else {
             (0.8, 0.8 + self.world.random.next_float() * 0.4)
         };
-        self.audio.play(sound, Some(at), volume, pitch);
+        self.sounds.play(sound, Some(at), volume, pitch);
     }
     /// The open menu as the verified engine (`horizon_client::menu`): the
     /// game's slots are copied in, `run` acts on it, and the slots, carried
@@ -8525,7 +8533,7 @@ impl Game<'_> {
         let origin = from.unwrap_or(at);
         let spread = [at[0] - origin[0], 0.0, at[2] - origin[2]];
         self.lan_send_particles(&sweep, at, spread, 0.0, 0);
-        self.audio
+        self.sounds
             .play("minecraft:entity.player.attack.sweep", from, 1.0, 1.0);
     }
     /// What `Player.doSweepAttack` deals before the target's enchantment
@@ -8608,7 +8616,7 @@ impl Game<'_> {
         let player = self.player.as_ref();
         let from = player.map(|p| [p.position.x, p.position.y, p.position.z]);
         if full && player.is_some_and(|p| p.sprinting) {
-            self.audio
+            self.sounds
                 .play("minecraft:entity.player.attack.knockback", from, 1.0, 1.0);
         }
         let sound = if full {
@@ -8619,7 +8627,7 @@ impl Game<'_> {
         if let Some(at) = self.sweep_attack_position(self.attack_strength_scale(), false) {
             self.sweep_attack(at, from);
         } else {
-            self.audio.play(sound, from, 1.0, 1.0);
+            self.sounds.play(sound, from, 1.0, 1.0);
         }
     }
     /// Player.attack with the attack-strength charge, crits and knockback.
@@ -8691,7 +8699,7 @@ impl Game<'_> {
         let player = self.player.as_ref();
         let from = player.map(|p| [p.position.x, p.position.y, p.position.z]);
         if knockback_attack {
-            self.audio
+            self.sounds
                 .play("minecraft:entity.player.attack.knockback", from, 1.0, 1.0);
         }
         // LivingEntity.setLastHurtMob (tamed wolves join in).
@@ -8799,7 +8807,7 @@ impl Game<'_> {
                 self.sweep_attack(at, from);
                 self.sweep_damage(index, scale);
             } else {
-                self.audio.play(sound, from, 1.0, 1.0);
+                self.sounds.play(sound, from, 1.0, 1.0);
             }
             // The hurt or death sound the mob raised (getHurtSound / getDeathSound,
             // its voice pitch from its own random).
@@ -8808,7 +8816,7 @@ impl Game<'_> {
             for event in queued {
                 match event {
                     horizon_client::mobs::MobEvent::Sound(s, at, volume, pitch) => {
-                        self.audio
+                        self.sounds
                             .play(&format!("minecraft:{s}"), Some(at), volume, pitch);
                     }
                     horizon_client::mobs::MobEvent::Infested { .. } => infested = true,
@@ -8831,7 +8839,7 @@ impl Game<'_> {
                 p.cause_food_exhaustion(0.1);
             }
         } else {
-            self.audio
+            self.sounds
                 .play("minecraft:entity.player.attack.nodamage", from, 1.0, 1.0);
         }
     }
@@ -9581,7 +9589,7 @@ impl Game<'_> {
         }
         if broke {
             if let Some(eye) = self.eye_position() {
-                self.audio.play(
+                self.sounds.play(
                     "minecraft:entity.item.break",
                     Some(eye),
                     0.8,
@@ -9696,7 +9704,7 @@ impl Game<'_> {
             self.level_set(pos, new)?;
         }
         if let Some(sound) = result.sound {
-            self.audio.play(
+            self.sounds.play(
                 sound,
                 Some([
                     f64::from(pos[0]) + 0.5,
@@ -9810,7 +9818,7 @@ impl Game<'_> {
                 ItemStack::new("minecraft:hanging_roots", 1),
             );
         }
-        self.audio.play(
+        self.sounds.play(
             &sound,
             Some([
                 f64::from(pos[0]) + 0.5,
@@ -9895,7 +9903,7 @@ impl Game<'_> {
                 *cell = None;
                 self.stats.add("broken", &broken, 1);
                 if let Some(eye) = self.eye_position() {
-                    self.audio.play(
+                    self.sounds.play(
                         "minecraft:entity.item.break",
                         Some(eye),
                         0.8,
@@ -10000,7 +10008,7 @@ impl Game<'_> {
                 return Ok(UseResult::Pass);
             };
             self.process_level_events()?;
-            self.audio.play(sound, Some(at(hit.pos)), 1.0, 1.0);
+            self.sounds.play(sound, Some(at(hit.pos)), 1.0, 1.0);
             self.trigger_item("minecraft:filled_bucket", &ItemStack::new(filled, 1));
             if !self.creative {
                 self.consume_held();
@@ -10087,7 +10095,7 @@ impl Game<'_> {
                 self.trigger_block("minecraft:item_used_on_block", hit.pos, stack);
                 self.level_set(hit.pos, state)?;
                 self.level_event_at(3003, hit.pos, 0);
-                self.audio.play(
+                self.sounds.play(
                     "minecraft:item.honeycomb.wax_on",
                     Some(at(hit.pos)),
                     1.0,
@@ -10120,7 +10128,7 @@ impl Game<'_> {
                     .ok_or("missing lit block state")?;
                 state.properties.insert("lit".into(), "true".into());
                 self.level_set(hit.pos, registry.resolve(&state)?)?;
-                self.audio.play(
+                self.sounds.play(
                     if item == "fire_charge" {
                         "minecraft:item.firecharge.use"
                     } else {
@@ -10154,7 +10162,7 @@ impl Game<'_> {
                     item == "fire_charge",
                     &mut self.world.random,
                 );
-                self.audio.play(sound, Some(at(target)), 1.0, pitch);
+                self.sounds.play(sound, Some(at(target)), 1.0, pitch);
                 if item == "fire_charge" {
                     self.consume_held();
                 } else {
@@ -10376,7 +10384,7 @@ impl Game<'_> {
             let at = self.eye_position();
             let pitch =
                 (self.world.random.next_float() - self.world.random.next_float()) * 0.35 + 0.9;
-            self.audio
+            self.sounds
                 .play("minecraft:entity.experience_orb.pickup", at, 0.1, pitch);
             self.give_orb_points(gained);
         }
@@ -10413,7 +10421,7 @@ impl Game<'_> {
         {
             self.last_level_up = self.ticks;
             let volume = if level > 30 { 1.0 } else { level as f32 / 30.0 };
-            self.audio
+            self.sounds
                 .play("minecraft:entity.player.levelup", at, volume * 0.75, 1.0);
         }
     }
@@ -10480,7 +10488,7 @@ impl Game<'_> {
         self.add_projectile(arrow);
         self.player_projectile_shot();
         let pitch = 1.0 / (self.world.random.next_float() * 0.4 + 1.2) + power * 0.5;
-        self.audio
+        self.sounds
             .play("minecraft:entity.arrow.shoot", Some(eye), 1.0, pitch);
         if !self.creative
             && !infinity
@@ -13769,6 +13777,9 @@ impl<'a> Game<'a> {
             level,
             session_lock: None,
             audio,
+            sounds: horizon_client::sound_out::SoundOut::new(
+                horizon_client::sound_engine::unique_seed(),
+            ),
             music,
             ambience: Default::default(),
             sound_paused: false,

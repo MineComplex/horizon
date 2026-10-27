@@ -189,7 +189,7 @@ impl Game<'_> {
             at = [at[0] + dx, at[1] + dy, at[2] + dz];
         }
         let pitch = self.world.random.next_float() * 0.1 + 0.9;
-        self.audio.play(sound, Some(at), 0.5, pitch);
+        self.sounds.play(sound, Some(at), 0.5, pitch);
     }
     /// The open or close sound of the container block at `key`, if it has one.
     /// Callers play it only when the opener count crosses zero

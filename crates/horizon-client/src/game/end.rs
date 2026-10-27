@@ -378,7 +378,7 @@ impl Game<'_> {
         self.swing_arm();
         let center = hit.pos.map(|v| f64::from(v) + 0.5);
         // LevelEvent 1503: END_PORTAL_FRAME_FILL.
-        self.audio.play(
+        self.sounds.play(
             "minecraft:block.end_portal_frame.fill",
             Some(center),
             1.0,
@@ -457,7 +457,7 @@ impl Game<'_> {
                 *n = n.saturating_sub(1);
                 if *n == 0 {
                     self.end.flash.sound_in = None;
-                    self.audio
+                    self.sounds
                         .play("minecraft:weather.end_flash", None, 1.0, 1.0);
                 }
             }
@@ -607,7 +607,7 @@ impl Game<'_> {
         self.sway = Default::default();
         self.apply_equipment();
         let pitch = self.world.random.next_float() * 0.4 + 0.8;
-        self.audio
+        self.sounds
             .play("minecraft:block.portal.travel", None, 0.25, pitch);
         Ok(())
     }
@@ -1271,7 +1271,7 @@ impl Game<'_> {
         let r = self.world.random.next_float();
         let pitch = 0.33 + r * (0.5 - 0.33);
         let at = [p.position.x, p.position.y, p.position.z];
-        self.audio
+        self.sounds
             .play("minecraft:entity.ender_eye.launch", Some(at), 1.0, pitch);
         self.consume_held();
         self.swing_arm();
@@ -1291,7 +1291,7 @@ impl Game<'_> {
                 return true;
             }
             let at = eye.position.to_array();
-            self.audio
+            self.sounds
                 .play("minecraft:entity.ender_eye.death", Some(at), 1.0, 1.0);
             if eye.survive {
                 // new ItemEntity(level, x, y, z, item): random spread, 0.2 up.

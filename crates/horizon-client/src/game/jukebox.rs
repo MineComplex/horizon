@@ -115,7 +115,7 @@ impl Game<'_> {
             .set_overlay(Text::translate("record.nowPlaying", &[description]), true);
         self.update_song_volumes();
         self.notify_record_playing(pos, true);
-        if self.audio.capture.is_some() {
+        if self.sounds.capture.is_some() {
             self.lan_songs.push((pos, Some(song.to_owned())));
         }
     }
@@ -128,7 +128,7 @@ impl Game<'_> {
     fn stop_song(&mut self, pos: [i32; 3]) {
         self.stop_sound(pos);
         self.notify_record_playing(pos, false);
-        if self.audio.capture.is_some() {
+        if self.sounds.capture.is_some() {
             self.lan_songs.push((pos, None));
         }
     }

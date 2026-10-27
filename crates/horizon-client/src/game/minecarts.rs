@@ -648,7 +648,7 @@ impl Game<'_> {
         }
         c.fuse = 80;
         let at = [c.position.x, c.position.y, c.position.z];
-        self.audio
+        self.sounds
             .play("minecraft:entity.tnt.primed", Some(at), 1.0, 1.0);
     }
     fn explode_cart(&mut self, c: &Minecart, speed_sqr: f64) {
@@ -1076,7 +1076,7 @@ impl Game<'_> {
                 if c.kind == CartKind::Chest {
                     let at = [c.position.x, c.position.y, c.position.z];
                     let pitch = self.world.random.next_float() * 0.1 + 0.9;
-                    self.audio
+                    self.sounds
                         .play("minecraft:block.chest.open", Some(at), 0.5, pitch);
                 }
             }
@@ -1126,7 +1126,7 @@ impl Game<'_> {
         {
             let at = [c.position.x, c.position.y, c.position.z];
             let pitch = self.world.random.next_float() * 0.1 + 0.9;
-            self.audio
+            self.sounds
                 .play("minecraft:block.chest.close", Some(at), 0.5, pitch);
         }
     }

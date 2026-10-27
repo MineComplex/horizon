@@ -96,7 +96,7 @@ impl Game<'_> {
             } else {
                 "minecraft:block.sign.waxed_interact_fail"
             };
-            self.audio
+            self.sounds
                 .play(sound, Some(pos.map(|v| f64::from(v) + 0.5)), 1.0, 1.0);
         } else if self.may_build() {
             let front = self.facing_sign_front(key);
@@ -172,7 +172,7 @@ impl Game<'_> {
         if item == "minecraft:honeycomb" {
             self.level_event_at(3003, pos, 0);
         }
-        self.audio.play(sound, Some(centre), 1.0, 1.0);
+        self.sounds.play(sound, Some(centre), 1.0, 1.0);
         self.mark_block_entity_updated(key);
         let state = self.world.block(pos[0], pos[1], pos[2]);
         self.post_block_game_event(

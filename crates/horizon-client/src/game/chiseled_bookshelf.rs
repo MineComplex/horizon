@@ -78,7 +78,7 @@ impl Game<'_> {
             });
             self.consume_held();
             self.chiseled_bookshelf_update_state(pos, slot);
-            self.audio.play(sound, Some(centre), 1.0, 1.0);
+            self.sounds.play(sound, Some(centre), 1.0, 1.0);
             self.trigger_block("minecraft:item_used_on_block", pos, &book);
             return Some(true);
         }
@@ -97,7 +97,7 @@ impl Game<'_> {
         } else {
             "minecraft:block.chiseled_bookshelf.pickup"
         };
-        self.audio.play(sound, Some(centre), 1.0, 1.0);
+        self.sounds.play(sound, Some(centre), 1.0, 1.0);
         self.give_or_drop(retrieved);
         self.post_block_game_event("minecraft:block_change", pos, Some(Who::Player), None);
         Some(true)

@@ -472,7 +472,7 @@ impl Game<'_> {
             if let Some(p) = self.mods.browser.recipes.as_mut() {
                 p.page = to;
             }
-            self.audio
+            self.sounds
                 .play("minecraft:ui.button.click", None, 0.25, 1.0);
             self.mods
                 .mods
@@ -480,7 +480,7 @@ impl Game<'_> {
             return true;
         }
         if let Some((tab, _, _)) = self.recipe_tab_hovered(layout) {
-            self.audio
+            self.sounds
                 .play("minecraft:ui.button.click", None, 0.25, 1.0);
             self.mods
                 .mods
@@ -488,7 +488,7 @@ impl Game<'_> {
             return true;
         }
         if inside(cursor, self.back_button(layout).0) {
-            self.audio
+            self.sounds
                 .play("minecraft:ui.button.click", None, 0.25, 1.0);
             self.mods.mods.browser_event(owner, BrowserEvent::Back);
             return true;
@@ -510,7 +510,7 @@ impl Game<'_> {
         });
         if let Some((i, _)) = action {
             if pages.recipes[i].action == Some(true) {
-                self.audio
+                self.sounds
                     .play("minecraft:ui.button.click", None, 0.25, 1.0);
                 self.mods
                     .mods

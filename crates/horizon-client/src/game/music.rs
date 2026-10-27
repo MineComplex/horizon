@@ -41,7 +41,14 @@ impl Game<'_> {
             carts,
             frozen: !self.clock.runs_normally(),
         };
+        self.flush_sounds();
         self.audio.tick(self.pause, &ctx);
+    }
+    /// Play what the game queued (`SoundOut`) on the window's mixer, in order.
+    pub(super) fn flush_sounds(&mut self) {
+        for cmd in std::mem::take(&mut self.sounds.queue) {
+            self.audio.apply(cmd);
+        }
     }
     /// `getSituationalMusic` and `getMusicVolume`.
     fn situational_music(&self) -> (Option<Music>, f32) {

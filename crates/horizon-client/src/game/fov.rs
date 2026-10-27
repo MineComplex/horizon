@@ -154,13 +154,14 @@ impl Game<'_> {
         if self.using.is_none() {
             self.using = Some((self.held_slot(), 0));
             let at = self.eye_position();
-            self.audio.play("minecraft:item.spyglass.use", at, 1.0, 1.0);
+            self.sounds
+                .play("minecraft:item.spyglass.use", at, 1.0, 1.0);
         }
     }
     /// `SpyglassItem.releaseUsing` / `finishUsingItem` (after 1200 ticks).
     pub(super) fn stop_spyglass(&mut self) {
         let at = self.eye_position();
-        self.audio
+        self.sounds
             .play("minecraft:item.spyglass.stop_using", at, 1.0, 1.0);
     }
     /// `Hud.extractCameraOverlays`: the spyglass scope, its size easing

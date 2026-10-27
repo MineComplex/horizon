@@ -565,7 +565,7 @@ impl Game<'_> {
         self.sway = Default::default();
         self.apply_equipment();
         let pitch = self.world.random.next_float() * 0.4 + 0.8;
-        self.audio
+        self.sounds
             .play("minecraft:block.portal.travel", None, 0.25, pitch);
         Ok(())
     }
@@ -592,7 +592,7 @@ impl Game<'_> {
         }
         if self.screen_fx.portal == 0.0 {
             let pitch = self.world.random.next_float() * 0.4 + 0.8;
-            self.audio
+            self.sounds
                 .play("minecraft:block.portal.trigger", None, 0.25, pitch);
         }
         true

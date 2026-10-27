@@ -24,7 +24,7 @@ fn abgr(r: f32, g: f32, b: f32) -> u32 {
 }
 impl Game<'_> {
     fn lead_sound(&mut self, sound: &str, at: [f64; 3]) {
-        self.audio
+        self.sounds
             .play(&format!("minecraft:item.lead.{sound}"), Some(at), 1.0, 1.0);
     }
     /// `Leashable.canHaveALeashAttachedTo` for the mob at `index` and a
@@ -186,7 +186,7 @@ impl Game<'_> {
                 dropped = true;
             }
             if dropped {
-                self.audio
+                self.sounds
                     .play("minecraft:item.shears.snip", Some(at), 1.0, 1.0);
                 self.damage_held_tool();
                 return true;
@@ -253,7 +253,7 @@ impl Game<'_> {
                 let id = self.mobs[i].id;
                 self.break_leash(id, true, false);
             }
-            self.audio
+            self.sounds
                 .play("minecraft:item.shears.snip", Some(at), 1.0, 1.0);
             self.damage_held_tool();
             return true;

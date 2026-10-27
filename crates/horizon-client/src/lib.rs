@@ -170,6 +170,7 @@ pub use horizon_game::signs;
 pub use horizon_game::skins;
 pub mod sound_engine;
 pub mod sound_events;
+pub use horizon_game::sound_out;
 pub use horizon_game::spans;
 pub use horizon_game::spear;
 pub use horizon_game::sprint;

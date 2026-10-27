@@ -60,7 +60,7 @@ impl Game<'_> {
         if let Some((nutrition, saturation)) = info.food {
             let at = self.feet();
             let pitch = self.world.random.triangle_float(1.0, 0.4);
-            self.audio.play(&consumable.sound, at, 1.0, pitch);
+            self.sounds.play(&consumable.sound, at, 1.0, pitch);
             if let Some(p) = self.player.as_mut() {
                 // FoodData.eat(nutrition, saturation)
                 let food = &mut p.health.food;
@@ -69,7 +69,7 @@ impl Game<'_> {
             }
             // Mth.randomBetween(random, 0.9, 1.0)
             let pitch = self.world.random.next_float() * (1.0f32 - 0.9f32) + 0.9;
-            self.audio
+            self.sounds
                 .play("minecraft:entity.player.burp", self.feet(), 0.5, pitch);
         }
         // SuspiciousStewEffects.onConsume, a ConsumableListener: each entry is
@@ -268,7 +268,7 @@ impl EmissionWorld for Emitter<'_, '_> {
     /// `Entity.playSound`: at the player's position.
     fn play_sound(&mut self, sound: String, volume: f32, pitch: f32) -> Result<(), Infallible> {
         let at = self.0.feet();
-        self.0.audio.play(&sound, at, volume, pitch);
+        self.0.sounds.play(&sound, at, volume, pitch);
         Ok(())
     }
 }
@@ -325,7 +325,7 @@ impl TeleportConsumeWorld for Teleporter<'_, '_> {
         false
     }
     fn teleport_sound(&mut self, _: Dim, at: Vec3, _: bool) -> Result<(), Infallible> {
-        self.0.audio.play(
+        self.0.sounds.play(
             "minecraft:item.chorus_fruit.teleport",
             Some([at.x, at.y, at.z]),
             1.0,

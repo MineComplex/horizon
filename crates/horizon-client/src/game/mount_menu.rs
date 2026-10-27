@@ -288,7 +288,7 @@ impl Game<'_> {
         let (x, z) = (at[0].floor() as i32 >> 4, at[2].floor() as i32 >> 4);
         self.world.modified.insert((x, z));
         if let Some(sound) = sound {
-            self.audio.play(&sound, Some(at), 0.5, 1.0);
+            self.sounds.play(&sound, Some(at), 0.5, 1.0);
         }
     }
     pub(super) fn mount_slots(&self) -> Option<Vec<usize>> {

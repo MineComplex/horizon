@@ -323,7 +323,7 @@ impl Game<'_> {
             let sound = self
                 .remote_sound_name(&p.sound)
                 .unwrap_or_else(|| "minecraft:entity.generic.explode".to_owned());
-            self.audio.play(&sound, Some(p.center), 4.0, pitch);
+            self.sounds.play(&sound, Some(p.center), 4.0, pitch);
         }
         if let Some(options) = self.received_particle(&p.particle, p.center) {
             self.particles.add(&options, p.center, [1.0, 0.0, 0.0]);
@@ -365,7 +365,7 @@ impl Game<'_> {
     ) {
         if self.lan.is_none() {
             // The server is running (its sounds are captured for the guests).
-            if self.audio.capture.is_some() {
+            if self.sounds.capture.is_some() {
                 self.creatures
                     .lan_particles
                     .push((options.clone(), at, spread, speed, count));

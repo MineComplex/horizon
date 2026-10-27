@@ -88,6 +88,7 @@ pub mod scoreboard_cmd;
 pub mod sculk;
 pub mod signs;
 pub mod skins;
+pub mod sound_out;
 pub mod spans;
 pub mod spear;
 pub mod sprint;

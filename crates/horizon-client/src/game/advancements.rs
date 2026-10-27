@@ -1098,7 +1098,7 @@ impl Game<'_> {
                 && !std::mem::replace(&mut sound_played, true)
             {
                 let event = if show { "ui.toast.in" } else { "ui.toast.out" };
-                self.audio
+                self.sounds
                     .play(&format!("minecraft:{event}"), None, 1.0, 1.0);
             }
             i += 1;
@@ -1119,7 +1119,7 @@ impl Game<'_> {
             challenge_sound |= !t.is_recipe() && t.frame == Frame::Challenge;
         }
         if challenge_sound {
-            self.audio
+            self.sounds
                 .play("minecraft:ui.toast.challenge_complete", None, 1.0, 1.0);
         }
         if hidden {

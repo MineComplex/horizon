@@ -486,7 +486,7 @@ impl Game<'_> {
                         let v = view_vector(b.yaw, 0.0);
                         let (dx, dz) = if i == 1 { (-v[2], v[0]) } else { (v[2], -v[0]) };
                         let pitch = 0.8 + 0.4 * self.world.random.next_float();
-                        self.audio.play(
+                        self.sounds.play(
                             sound,
                             Some([b.position.x + dx, b.position.y, b.position.z + dz]),
                             1.0,
@@ -564,7 +564,7 @@ impl Game<'_> {
     /// `Entity.lavaHurt`'s sound once the hurt went through.
     pub(super) fn lava_hurt_sound(&mut self, at: [f64; 3]) {
         let pitch = 2.0 + self.world.random.next_float() * 0.4;
-        self.audio
+        self.sounds
             .play("minecraft:entity.generic.burn", Some(at), 0.4, pitch);
     }
     /// Whether a vehicle's box, deflated by 1e-5, reaches into lava below its

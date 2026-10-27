@@ -249,7 +249,7 @@ impl Game<'_> {
         } else {
             "minecraft:item.mace.smash_air"
         };
-        self.audio.play(sound, Some(feet), 1.0, 1.0);
+        self.sounds.play(sound, Some(feet), 1.0, 1.0);
         self.smash_knockback(index, fall);
     }
     /// `MaceItem.knockback`: the dust pillar (level event 2013) under the

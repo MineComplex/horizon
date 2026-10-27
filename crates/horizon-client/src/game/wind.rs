@@ -70,7 +70,7 @@ impl Game<'_> {
         );
         self.add_projectile(proj);
         let pitch = 0.4 / (self.world.random.next_float() * 0.4 + 0.8);
-        self.audio
+        self.sounds
             .play("minecraft:entity.wind_charge.throw", Some(eye), 0.5, pitch);
         self.stats.add("used", "minecraft:wind_charge", 1);
         self.swing_arm();
@@ -456,7 +456,7 @@ impl Game<'_> {
         let pitch = (1.0
             + (super::explosion::client_float() - super::explosion::client_float()) * 0.2)
             * 0.7;
-        self.audio.play(sound, Some(center), 4.0, pitch);
+        self.sounds.play(sound, Some(center), 4.0, pitch);
         // Explosion.isSmall: below a radius of 2.
         let ty = if radius < 2.0 {
             ParticleType::GustEmitterSmall
@@ -495,7 +495,7 @@ impl Game<'_> {
                     f64::from(pos[1]) + 0.5,
                     f64::from(pos[2]) + 0.5,
                 ];
-                self.audio.play(
+                self.sounds.play(
                     "minecraft:entity.generic.extinguish_fire",
                     Some(at),
                     1.0,

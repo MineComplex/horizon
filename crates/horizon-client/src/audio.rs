@@ -11,7 +11,8 @@ use crate::sound_engine::{
 use crate::sound_events::{Sound, SoundRegistry};
 #[cfg(feature = "audio")]
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
-use horizon_core::random::{LegacyRandom, RandomSource};
+use horizon_core::random::LegacyRandom;
+use horizon_game::sound_out::SoundCmd;
 use std::{
     collections::HashMap,
     fs,
@@ -151,19 +152,6 @@ pub struct Audio {
     pub listener: [f64; 3],
     pub listener_yaw: f32,
     pub master: f32,
-    /// Seeds of positional plays (the client level random's `nextLong`).
-    random: LegacyRandom,
-    /// A `SoundSource` index the next sound plays on (`/playsound`).
-    source_override: Option<usize>,
-    /// Positional sounds played since the last drain, kept while the world
-    /// is open to the network so guests hear them too.
-    pub capture: Option<Vec<(String, [f64; 3], f32, f32)>>,
-    /// How many times each positional sound played (the control socket's `status`),
-    /// with or without an audio device.
-    pub heard: std::collections::BTreeMap<String, u32>,
-    /// How many times each selection was stopped ("record *", "* minecraft:…", `*` for
-    /// any), with or without an audio device, as `heard`.
-    pub stopped: std::collections::BTreeMap<String, u32>,
 }
 fn decode(path: &Path) -> Option<(Vec<f32>, u32)> {
     use symphonia::core::{
@@ -594,11 +582,6 @@ impl Audio {
             listener: [0.0; 3],
             listener_yaw: 0.0,
             master: 1.0,
-            random: LegacyRandom::new(crate::sound_engine::unique_seed()),
-            source_override: None,
-            capture: None,
-            heard: Default::default(),
-            stopped: Default::default(),
         }
     }
     #[cfg(not(feature = "audio"))]
@@ -705,19 +688,19 @@ impl Audio {
         cache.entries.clear();
         cache.bytes = 0;
     }
-    /// Play a sound event at a world position, as `ClientLevel.playLocalSound`
-    /// (a `SimpleSoundInstance` seeded from the level random), or relative to
-    /// the listener without attenuation (`None`).
-    pub fn play(&mut self, event: &str, at: Option<[f64; 3]>, volume: f32, pitch: f32) {
-        let seed = self.random.next_long();
-        self.play_seeded(event, at, volume, pitch, seed);
-    }
-    /// `play` for this client only: a sound a packet's handler plays
-    /// (`playLocalSound`), which the guests play from that packet themselves.
-    pub fn play_unshared(&mut self, event: &str, at: Option<[f64; 3]>, volume: f32, pitch: f32) {
-        let capture = self.capture.take();
-        self.play(event, at, volume, pitch);
-        self.capture = capture;
+    /// Play what the game decided (`horizon_game::sound_out::SoundOut`), in order.
+    pub fn apply(&mut self, cmd: SoundCmd) {
+        match cmd {
+            SoundCmd::Play {
+                event,
+                at,
+                volume,
+                pitch,
+                seed,
+                source,
+            } => self.play_now(&event, at, volume, pitch, seed, source),
+            SoundCmd::Stop { event, source } => self.stop_now(event.as_deref(), source),
+        }
     }
     /// `AbstractWidget.playButtonClickSound`: an unseeded, relative UI sound.
     pub fn play_button_click(&mut self) {
@@ -731,26 +714,20 @@ impl Audio {
             false,
         );
     }
-    /// `play` with the seed a sound packet carries.
-    pub fn play_seeded(
+    /// A sound event at a position (or relative to the listener) with its seed, on `source` when
+    /// given, else the event's own `SoundSource`.
+    fn play_now(
         &mut self,
         event: &str,
         at: Option<[f64; 3]>,
         volume: f32,
         pitch: f32,
         seed: i64,
+        source: Option<usize>,
     ) {
-        if let (Some(capture), Some(at)) = (self.capture.as_mut(), at) {
-            capture.push((event.to_owned(), at, volume, pitch));
-        }
-        if at.is_some() {
-            *self.heard.entry(event.to_owned()).or_default() += 1;
-        }
         self.sync_volumes();
         let event = crate::sound_events::normalize(event);
-        let source = self
-            .source_override
-            .unwrap_or_else(|| crate::settings::sound_source(&event));
+        let source = source.unwrap_or_else(|| crate::settings::sound_source(&event));
         let random = LegacyRandom::new(seed);
         let instance = match at {
             Some(at) => SoundInstance::at(&event, source, volume, pitch, random, at),
@@ -768,19 +745,6 @@ impl Audio {
             ),
         };
         self.play_instance(instance, false);
-    }
-    /// Play a sound on a given `SoundSource` index (`/playsound`).
-    pub fn play_on(
-        &mut self,
-        source: usize,
-        event: &str,
-        at: Option<[f64; 3]>,
-        volume: f32,
-        pitch: f32,
-    ) {
-        self.source_override = Some(source);
-        self.play(event, at, volume, pitch);
-        self.source_override = None;
     }
     /// `SimpleSoundInstance.forJukeboxSong` at a jukebox; the handle stays
     /// until `release`.
@@ -820,18 +784,21 @@ impl Audio {
         v.sort();
         v
     }
-    /// `ClientboundStopSoundPacket`: stop the playing sounds of an event
-    /// and/or a source.
-    pub fn stop_sounds(&mut self, event: Option<&str>, source: Option<usize>) {
-        let event = event.map(crate::sound_events::normalize);
-        let selection = format!(
+    /// How the control socket counts a stop: "<source or *> <event or *>".
+    pub fn stop_selection(event: Option<&str>, source: Option<usize>) -> String {
+        format!(
             "{} {}",
             source
                 .and_then(|s| crate::settings::SOUND_SOURCES.get(s))
                 .map_or("*", |s| s),
-            event.as_deref().unwrap_or("*")
-        );
-        *self.stopped.entry(selection).or_default() += 1;
+            event
+                .map(crate::sound_events::normalize)
+                .as_deref()
+                .unwrap_or("*")
+        )
+    }
+    fn stop_now(&mut self, event: Option<&str>, source: Option<usize>) {
+        let event = event.map(crate::sound_events::normalize);
         self.engine
             .stop_matching(event.as_deref(), source, &mut self.backend);
     }
@@ -886,7 +853,6 @@ mod tests {
         // sample is harmless: this test checks the source the engine creates.
         audio.engine.loaded = true;
         audio.backend.live = true;
-        let mut random = audio.random.clone();
         audio.play_button_click();
         let instance = audio.engine.instance(1).expect("click reached the engine");
         assert_eq!(instance.identifier, "minecraft:ui.button.click");
@@ -897,7 +863,6 @@ mod tests {
         assert_eq!(instance.position, [0.0; 3]);
         assert!(instance.relative);
         assert!(!instance.looping);
-        assert_eq!(audio.random.next_long(), random.next_long());
         audio.pause();
         assert_eq!(
             audio.backend.mixer.lock().unwrap().channels[&1].state,

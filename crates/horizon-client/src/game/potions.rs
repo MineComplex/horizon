@@ -279,7 +279,7 @@ impl Game<'_> {
             {
                 m.velocity = velocity;
             }
-            self.audio
+            self.sounds
                 .play("minecraft:entity.silverfish.hurt", Some(at), 1.0, 1.0);
         }
     }
@@ -447,7 +447,7 @@ impl Game<'_> {
                     }
                     _ => ("minecraft:entity.lingering_potion.throw", 0.5),
                 };
-                self.audio.play(sound, Some(eye), 0.5, pitch);
+                self.sounds.play(sound, Some(eye), 0.5, pitch);
                 // Projectile.shootFromRotation(xRot, yRot, -20, 0.5, 1.0).
                 let (yaw, pitch) = (self.yaw.to_radians(), self.pitch.to_radians());
                 let dir = [
@@ -503,7 +503,7 @@ impl Game<'_> {
                     f64::from(hit.pos[1]) + 0.5,
                     f64::from(hit.pos[2]) + 0.5,
                 ];
-                self.audio
+                self.sounds
                     .play("minecraft:item.bottle.fill", Some(at), 1.0, 1.0);
                 let water = ItemStack::new("minecraft:potion", 1).with_potion("minecraft:water");
                 self.fill_held(water);
@@ -540,7 +540,7 @@ impl Game<'_> {
         // Consumable.emitParticlesAndSounds: the drink sound every 4 ticks near the end.
         if remaining <= 25 && remaining.is_multiple_of(4) {
             let pitch = self.world.random.next_float() * 0.1 + 0.9;
-            self.audio
+            self.sounds
                 .play("minecraft:entity.generic.drink", Some(eye), 0.5, pitch);
         }
         if ticks < 32 {

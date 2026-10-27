@@ -711,7 +711,7 @@ impl Game<'_> {
             f64::from(pos[1]) + 0.5,
             f64::from(pos[2]) + 0.5,
         ];
-        self.audio.play(sound, Some(at), volume, pitch);
+        self.sounds.play(sound, Some(at), volume, pitch);
     }
     pub(super) fn give_or_drop(&mut self, stack: ItemStack) {
         if let Some(rest) = self.give(stack)
@@ -934,7 +934,7 @@ impl Game<'_> {
                 Some(*flag)
             });
             if taken {
-                self.audio
+                self.sounds
                     .play("minecraft:ui.stonecutter.select_recipe", None, 1.0, 1.0);
                 self.remote_station_button(index as i32);
                 return true;

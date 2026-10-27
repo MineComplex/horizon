@@ -417,7 +417,7 @@ impl Game<'_> {
                         let p = at.map(|c| f64::from(c) + 0.5);
                         // playLocalSound: guests make their own rain, so a host
                         // must not capture it for them.
-                        self.audio.play_unshared(name, Some(p), volume, pitch);
+                        self.sounds.play_unshared(name, Some(p), volume, pitch);
                     }
                 }
             }
@@ -446,7 +446,7 @@ impl Game<'_> {
         self.particles.tick(&level);
         self.tick_pickups();
         for (name, at, volume, pitch) in std::mem::take(&mut self.particles.sounds) {
-            self.audio.play(name, Some(at), volume, pitch);
+            self.sounds.play(name, Some(at), volume, pitch);
         }
     }
 }

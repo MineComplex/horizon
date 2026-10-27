@@ -529,7 +529,7 @@ impl Game<'_> {
             let (sound, finished) = toast.update(multiplier);
             if let Some(show) = sound {
                 let event = if show { "ui.toast.in" } else { "ui.toast.out" };
-                self.audio
+                self.sounds
                     .play(&format!("minecraft:{event}"), None, 1.0, 1.0);
             }
             if finished {

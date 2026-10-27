@@ -1078,8 +1078,8 @@ impl Game<'_> {
         status["pending_uploads"] = self.pending_uploads.len().into();
         status["destroying"] = json!(destroying);
         status["physical_keys"] = json!(physical_keys);
-        status["heard"] = json!(self.audio.heard);
-        status["stopped_sounds"] = json!(self.audio.stopped);
+        status["heard"] = json!(self.sounds.heard);
+        status["stopped_sounds"] = json!(self.sounds.stopped);
         // Boats, minecarts, armor stands, item frames and paintings.
         status["objects"] = json!(self.objects_status());
         status["lightning"] = json!({"bolts": self.bolts.len(), "struck": self.lightning_seen[0],

@@ -92,7 +92,7 @@ impl Game<'_> {
                 let state = self.world.block(pos[0], pos[1], pos[2]);
                 if first {
                     let sounds = self.res.facts().get(state).sounds.clone();
-                    self.audio.play(
+                    self.sounds.play(
                         &sounds.hit,
                         Some(pos.map(|v| f64::from(v) + 0.5)),
                         (sounds.volume + 1.0) / 8.0,
