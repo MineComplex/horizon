@@ -30,19 +30,19 @@ impl Game<'_> {
     /// and monsters spawning, a copy of it appears out of sight and takes
     /// `target`; both then call less often.
     pub(super) fn call_reinforcements(&mut self, caller: u32, target: Who) {
-        let Some(index) = self.sim.mobs.iter().position(|m| m.id == caller) else {
+        let Some(index) = self.mobs.iter().position(|m| m.id == caller) else {
             return;
         };
-        if self.sim.world.health_rules.difficulty != Difficulty::Hard {
+        if self.world.health_rules.difficulty != Difficulty::Hard {
             return;
         }
-        let zombie = &mut self.sim.mobs[index];
+        let zombie = &mut self.mobs[index];
         if f64::from(zombie.random.next_float()) >= zombie.attrs.spawn_reinforcements {
             return;
         }
         // ServerLevel.isSpawningMonsters.
-        if !self.sim.world_data.rules.bool("spawn_mobs")
-            || !self.sim.world_data.rules.bool("spawn_monsters")
+        if !self.world_data.rules.bool("spawn_mobs")
+            || !self.world_data.rules.bool("spawn_monsters")
         {
             return;
         }

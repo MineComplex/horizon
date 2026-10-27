@@ -23,54 +23,6 @@ pub(super) struct ObjectHit {
 }
 
 impl Game<'_> {
-    /// The local player's tick in its vehicle, in place of its own movement:
-    /// false when it rides nothing.
-    pub(super) fn remote_ride(&mut self, keys: Keys) -> bool {
-        let Some(id) = self.riding else {
-            return false;
-        };
-        if let Some(i) = self.mobs.iter().position(|m| m.id == id) {
-            // An animal moves on the server with the rider's input
-            // (PlayerInput); here the jump bar charges for the HUD and the
-            // rider sits where `positionRider` puts it.
-            self.charge_mount_jump(i, keys);
-            self.position_rider();
-            return true;
-        }
-        let seat = if let Some(c) = self.cushions.iter().find(|c| c.id == id) {
-            // The seat does not move; the rider sits on the cushion.
-            Some(c.seat())
-        } else if let Some(i) = self.boats.iter().position(|b| b.id == id) {
-            // AbstractBoat.tick on the controlling client: steer and move.
-            let mut b = self.boats[i].clone();
-            b.input = [keys.left, keys.right, keys.forward, keys.backward];
-            let b = self.tick_boat(b, true);
-            // positionRider: the seat turns with the boat; clampRotation.
-            self.yaw += b.delta_rotation;
-            let delta = (self.yaw - b.yaw + 180.0).rem_euclid(360.0) - 180.0;
-            self.yaw += delta.clamp(-105.0, 105.0) - delta;
-            self.boats[i] = b;
-            // In front of a mob that shares the boat.
-            Some(self.player_boat_seat(i))
-        } else {
-            // A minecart: the server moves it, the rider sits in it.
-            self.sim.carts.iter().find(|c| c.id == id).map(|c| {
-                c.position
-                    .add_vector(Vec3::new(0.0, super::minecarts::SEAT, 0.0))
-            })
-        };
-        if let Some(p) = self.sim.player.as_mut() {
-            self.sim.previous_position = p.position;
-            if let Some(v) = seat {
-                p.position = v;
-            }
-            p.velocity = Vec3::ZERO;
-            p.fall_distance = 0.0;
-        }
-        true
-    }
-}
-impl crate::game::Sim<'_> {
     /// The nearest boat, minecart, item frame, armor stand or painting the
     /// view hits within reach; also End crystals when attacking.
     pub(super) fn remote_object_hit(&self, attacking: bool) -> Option<ObjectHit> {
@@ -147,6 +99,7 @@ impl crate::game::Sim<'_> {
             ],
         })
     }
+
     /// `ClientPacketListener.handleSetEntityPassengersPacket`: who rides
     /// `vehicle` now. The local player gets in or out; mobs and other
     /// players sit where the server keeps them.
@@ -188,6 +141,54 @@ impl crate::game::Sim<'_> {
             }
         }
     }
+
+    /// The local player's tick in its vehicle, in place of its own movement:
+    /// false when it rides nothing.
+    pub(super) fn remote_ride(&mut self, keys: Keys) -> bool {
+        let Some(id) = self.riding else {
+            return false;
+        };
+        if let Some(i) = self.mobs.iter().position(|m| m.id == id) {
+            // An animal moves on the server with the rider's input
+            // (PlayerInput); here the jump bar charges for the HUD and the
+            // rider sits where `positionRider` puts it.
+            self.charge_mount_jump(i, keys);
+            self.position_rider();
+            return true;
+        }
+        let seat = if let Some(c) = self.cushions.iter().find(|c| c.id == id) {
+            // The seat does not move; the rider sits on the cushion.
+            Some(c.seat())
+        } else if let Some(i) = self.boats.iter().position(|b| b.id == id) {
+            // AbstractBoat.tick on the controlling client: steer and move.
+            let mut b = self.boats[i].clone();
+            b.input = [keys.left, keys.right, keys.forward, keys.backward];
+            let b = self.tick_boat(b, true);
+            // positionRider: the seat turns with the boat; clampRotation.
+            self.yaw += b.delta_rotation;
+            let delta = (self.yaw - b.yaw + 180.0).rem_euclid(360.0) - 180.0;
+            self.yaw += delta.clamp(-105.0, 105.0) - delta;
+            self.boats[i] = b;
+            // In front of a mob that shares the boat.
+            Some(self.player_boat_seat(i))
+        } else {
+            // A minecart: the server moves it, the rider sits in it.
+            self.carts.iter().find(|c| c.id == id).map(|c| {
+                c.position
+                    .add_vector(Vec3::new(0.0, super::minecarts::SEAT, 0.0))
+            })
+        };
+        if let Some(p) = self.player.as_mut() {
+            self.previous_position = p.position;
+            if let Some(v) = seat {
+                p.position = v;
+            }
+            p.velocity = Vec3::ZERO;
+            p.fall_distance = 0.0;
+        }
+        true
+    }
+
     /// `LocalPlayer.tick` for a passenger: the boat it controls goes to the
     /// server every tick with its paddles (the rider's own position does not).
     pub(super) fn remote_vehicle_packets(&self) -> Vec<S> {
@@ -210,6 +211,7 @@ impl crate::game::Sim<'_> {
             }),
         ]
     }
+
     /// `ClientPacketListener.handleMoveVehicle`: the server put the boat the
     /// player drives back.
     pub(super) fn remote_move_vehicle(&mut self, position: [f64; 3], yaw: f32) {

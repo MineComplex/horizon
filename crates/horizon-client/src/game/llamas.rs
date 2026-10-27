@@ -9,6 +9,12 @@ use horizon_client::{
 use horizon_core::random::RandomSource;
 
 impl Game<'_> {
+    fn llama_sound(&mut self, index: usize, sound: &str, volume: f32) {
+        let at = self.mobs[index].center();
+        let pitch = (self.world.random.next_float() - self.world.random.next_float()) * 0.2 + 1.0;
+        self.sounds
+            .play(&format!("minecraft:{sound}"), Some(at), volume, pitch);
+    }
     /// `Llama.handleEating`: wheat and hay bales heal, age up a baby, raise
     /// the temper and, from a hay bale, put a tame adult in love.
     fn feed_llama(&mut self, index: usize, item: &str) -> bool {
@@ -123,24 +129,16 @@ impl Game<'_> {
             return true;
         }
         // doPlayerRide; mounting drops a lead.
-        let id = self.sim.mobs[index].id;
+        let id = self.mobs[index].id;
         self.break_leash(id, true, false);
-        let m = &mut self.sim.mobs[index];
+        let m = &mut self.mobs[index];
         m.extra.flag = false;
         m.extra.counter = 0;
-        self.sim.yaw = m.yaw;
-        self.sim.riding = Some(m.id);
-        self.sim.mount.reset_jump();
+        self.yaw = m.yaw;
+        self.riding = Some(m.id);
+        self.mount.reset_jump();
         self.trigger_player("minecraft:started_riding");
         true
-    }
-}
-impl crate::game::Sim<'_> {
-    fn llama_sound(&mut self, index: usize, sound: &str, volume: f32) {
-        let at = self.mobs[index].center();
-        let pitch = (self.world.random.next_float() - self.world.random.next_float()) * 0.2 + 1.0;
-        self.sounds
-            .play(&format!("minecraft:{sound}"), Some(at), volume, pitch);
     }
     fn is_led_by_trader(&self, index: usize) -> bool {
         let m = &self.mobs[index];

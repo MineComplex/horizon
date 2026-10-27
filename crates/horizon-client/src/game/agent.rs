@@ -313,6 +313,20 @@ pub(super) enum Handled {
 }
 
 impl Game<'_> {
+    pub(super) fn state_string(&self, state: BlockStateId) -> String {
+        let Some(s) = self.pack.assets.registry.state(state) else {
+            return "?".into();
+        };
+        if s.properties.is_empty() {
+            return s.name.clone();
+        }
+        let props: Vec<String> = s
+            .properties
+            .iter()
+            .map(|(k, v)| format!("{k}={v}"))
+            .collect();
+        format!("{}[{}]", s.name, props.join(","))
+    }
     fn block_json(&self, pos: [i32; 3]) -> Value {
         let state = self.world.block(pos[0], pos[1], pos[2]);
         let mut v = json!({
@@ -334,6 +348,94 @@ impl Game<'_> {
             v["sign"] = json!({ "front": sign.front.lines, "back": sign.back.lines });
         }
         v
+    }
+    pub(super) fn stack_value(&self, s: &ItemStack) -> Value {
+        let mut v = json!({ "item": &*s.item, "count": s.count });
+        if s.damage > 0 {
+            v["damage"] = json!(s.damage);
+        }
+        if let Some(c) = horizon_client::item_data::encode_components(s) {
+            v["components"] = json!(horizon_client::snbt::to_snbt(&c));
+        }
+        v
+    }
+    fn slot_value(&self, slot: usize, s: &Option<ItemStack>) -> Value {
+        match s {
+            Some(s) => {
+                let mut v = self.stack_value(s);
+                v["slot"] = json!(slot);
+                v
+            }
+            None => json!({ "slot": slot, "item": null }),
+        }
+    }
+    fn need_world(&self) -> Result<()> {
+        if self.title.is_some() {
+            return Err("no world open (title screen); use: open WORLD [SEED] [creative]".into());
+        }
+        Ok(())
+    }
+    fn playing(&self) -> Result<()> {
+        if self.title.is_some() {
+            return Err("no world open (title screen); use: open WORLD [SEED] [creative]".into());
+        }
+        if self.player.is_none() {
+            return Err("the player has not spawned yet; try wait-ready".into());
+        }
+        if self.screen != Screen::Playing || self.book.is_some() || self.sign_edit.is_some() {
+            return Err(format!(
+                "the {} screen is open; close it first (close, or click-button)",
+                self.screen_label()
+            )
+            .into());
+        }
+        Ok(())
+    }
+    pub(super) fn screen_label(&self) -> &'static str {
+        if self.dialog_open() {
+            return "dialog";
+        }
+        if self.title.is_some() {
+            return "title";
+        }
+        if self.book.is_some() {
+            return "book";
+        }
+        if self.sign_edit.is_some() {
+            return "sign";
+        }
+        match self.screen {
+            Screen::Playing => "playing",
+            Screen::GameModeSwitcher => "gamemode-switcher",
+            Screen::Paused => "paused",
+            Screen::Options => "options",
+            Screen::Inventory if self.station.is_some() => "station",
+            Screen::Inventory if self.container.is_some() => "container",
+            Screen::Inventory => "inventory",
+            Screen::Creative => "creative",
+            Screen::Dead => "dead",
+            Screen::Chat => "chat",
+            Screen::Stats => "stats",
+            Screen::Advancements => "advancements",
+            Screen::WorldOptions => "world-options",
+            Screen::ServerLinks => "server-links",
+            Screen::ConfirmLink => "confirm-link",
+            Screen::DialogWarning => "dialog-warning",
+            Screen::CommandBlock => "command-block",
+            Screen::Win => "win",
+            Screen::Mod => "mod",
+        }
+    }
+    pub(super) fn inventory_counts(&self) -> BTreeMap<String, i64> {
+        counts(
+            self.inventory
+                .iter()
+                .chain(self.armor.iter())
+                .chain(std::iter::once(&self.offhand))
+                .chain(std::iter::once(&self.carried))
+                .flatten()
+                .cloned(),
+        )
     }
 
     /// The block or entity under the crosshair.
@@ -376,7 +478,7 @@ impl Game<'_> {
                 "fall_flying": p.fall_flying,
                 "sneaking": self.keys.contains(&KeyCode::ShiftLeft),
                 "sprinting": p.sprinting,
-                "fov_modifier": self.front.view.fov_modifier,
+                "fov_modifier": self.view.fov_modifier,
                 "health": p.health.health(),
                 "absorption": p.health.absorption(),
                 // The hurt animation's ticks left (the camera's hurt tilt).
@@ -414,13 +516,102 @@ impl Game<'_> {
             "paused": self.pause,
             // Mouse movement turns the camera (`apply_mouse_look`): the real
             // pointer is grabbed, or an agent's `mouse-move` stands in for it.
-            "pointer_grabbed": self.front.captured || self.agent_pointer,
+            "pointer_grabbed": self.captured || self.agent_pointer,
             "player": player,
             "selected": self.selected + 1,
             "held": self.held().map(|s| self.stack_value(s)),
             "looking_at": self.looking_at(),
             "busy": self.agent.task.as_ref().map(|t| t.name),
             "ticks": self.ticks,
+        })
+    }
+
+    fn title_value(&self) -> Value {
+        use horizon_client::title::Mode;
+        let Some(title) = &self.title else {
+            return Value::Null;
+        };
+        match &title.mode {
+            Mode::Main => json!({ "mode": "main" }),
+            Mode::Error { message, .. } => {
+                json!({ "mode": "error", "message": message })
+            }
+            Mode::Multiplayer(horizon_client::multiplayer::Screen::Disconnected {
+                reason, ..
+            }) => {
+                json!({ "mode": "multiplayer", "disconnected": reason })
+            }
+            Mode::Multiplayer(_) => json!({ "mode": "multiplayer" }),
+        }
+    }
+
+    fn entities_value(&self, radius: f64, kind: Option<&str>) -> Value {
+        let Some(p) = &self.player else {
+            return json!({ "entities": [] });
+        };
+        let me = [p.position.x, p.position.y, p.position.z];
+        let want = kind.map(namespaced);
+        let mut list: Vec<(f64, Value)> = Vec::new();
+        let mut push = |pos: [f64; 3], ty: &str, v: Value| {
+            let d = dist(me, pos);
+            if d <= radius && want.as_deref().is_none_or(|w| w == ty) {
+                let mut v = v;
+                v["type"] = json!(ty);
+                v["pos"] = json!(pos);
+                v["distance"] = json!(d);
+                list.push((d, v));
+            }
+        };
+        for m in self.mobs.iter().filter(|m| m.alive()) {
+            let mut v = json!({ "id": m.id, "kind": "mob", "health": m.health, "baby": m.is_baby(), "hurt_time": m.hurt_time });
+            // VillagerData as this game knows it: on a client, what the
+            // server's synched data says.
+            if matches!(m.species(), Species::Villager | Species::ZombieVillager) {
+                v["villager"] = json!({
+                    "type": VILLAGER_TYPES[m.extra.variant as usize % VILLAGER_TYPES.len()],
+                    "profession": PROFESSIONS[m.extra.variant2 as usize % PROFESSIONS.len()],
+                    "level": m.extra.variant3,
+                });
+            }
+            push(
+                [m.position.x, m.position.y, m.position.z],
+                m.kind.id.as_ref(),
+                v,
+            );
+        }
+        for item in &self.dropped {
+            push(
+                [item.position.x, item.position.y, item.position.z],
+                "minecraft:item",
+                json!({ "id": item.id, "kind": "item", "item": self.stack_value(&item.stack) }),
+            );
+        }
+        for orb in &self.orbs {
+            push(
+                [orb.position.x, orb.position.y, orb.position.z],
+                "minecraft:experience_orb",
+                json!({ "kind": "orb", "value": orb.value }),
+            );
+        }
+        list.sort_by(|a, b| a.0.total_cmp(&b.0));
+        json!({ "entities": list.into_iter().map(|(_, v)| v).collect::<Vec<_>>() })
+    }
+
+    fn inventory_value(&self) -> Value {
+        let armor = ["head", "chest", "legs", "feet"];
+        json!({
+            "selected": self.selected + 1,
+            "held": self.held().map(|s| self.stack_value(s)),
+            "hotbar": (0..9).map(|i| self.slot_value(i, &self.inventory[i])).collect::<Vec<_>>(),
+            "main": (9..36).map(|i| self.slot_value(i, &self.inventory[i])).collect::<Vec<_>>(),
+            "armor": armor.iter().enumerate().map(|(i, name)| {
+                let mut v = self.slot_value(500 + i, &self.armor[i]);
+                v["part"] = json!(name);
+                v
+            }).collect::<Vec<_>>(),
+            "offhand": self.slot_value(504, &self.offhand),
+            "carried": self.carried.as_ref().map(|s| self.stack_value(s)),
+            "counts": self.inventory_counts(),
         })
     }
 
@@ -486,6 +677,167 @@ impl Game<'_> {
         v
     }
 
+    fn messages_value(&self, n: usize) -> Value {
+        let titles = &self.titles;
+        json!({
+            "chat": self.remote_chat(n).unwrap_or_else(|| self.ui.chat.recent_lines(n)),
+            "order": "newest first",
+            // The chat lines as drawn: colours, click and hover events.
+            "styled": self.ui.chat.recent_components(n),
+            "title": (titles.time > 0).then(|| titles.title.as_ref().map(|t| t.plain())).flatten(),
+            "subtitle": (titles.time > 0).then(|| titles.subtitle.as_ref().map(|t| t.plain())).flatten(),
+            "actionbar": (titles.overlay_time > 0).then(|| titles.overlay.as_ref().map(|t| t.plain())).flatten(),
+        })
+    }
+
+    /// Whether a block stops movement, for the path finder.
+    fn blocks_motion(&self, pos: [i32; 3]) -> bool {
+        let f = self
+            .res
+            .facts()
+            .get(self.world.block(pos[0], pos[1], pos[2]));
+        f.full_collision || f.legacy_solid
+    }
+    fn walkable(&self, n: Node) -> bool {
+        let below = self.world.block(n[0], n[1] - 1, n[2]);
+        let lava = |p: [i32; 3]| {
+            &*self
+                .res
+                .facts()
+                .get(self.world.block(p[0], p[1], p[2]))
+                .name
+                == "minecraft:lava"
+        };
+        self.world.chunks.contains_key(&(n[0] >> 4, n[2] >> 4))
+            && (self.blocks_motion([n[0], n[1] - 1, n[2]])
+                || self.res.facts().get(below).fluid != horizon_client::blocks::Fluid::None)
+            && !self.blocks_motion(n)
+            && !self.blocks_motion([n[0], n[1] + 1, n[2]])
+            && !lava(n)
+            && !lava([n[0], n[1] - 1, n[2]])
+    }
+    /// A* over standable feet positions: steps up one block, drops up to three.
+    fn find_path(&self, from: Node, goal: [f64; 3], near: f64) -> Option<Vec<Node>> {
+        use std::{cmp::Reverse, collections::BinaryHeap};
+        let reached = |n: Node| {
+            let c = [
+                f64::from(n[0]) + 0.5,
+                f64::from(n[1]),
+                f64::from(n[2]) + 0.5,
+            ];
+            ((c[0] - goal[0]).powi(2) + (c[2] - goal[2]).powi(2)).sqrt() <= near.max(0.5)
+                && (c[1] - goal[1]).abs() <= near.max(1.0) + 0.5
+        };
+        let h = |n: Node| {
+            ((f64::from(n[0]) + 0.5 - goal[0]).abs()
+                + (f64::from(n[1]) - goal[1]).abs()
+                + (f64::from(n[2]) + 0.5 - goal[2]).abs())
+                * 10.0
+        };
+        let mut open = BinaryHeap::new();
+        let mut cost: HashMap<Node, u32> = HashMap::new();
+        let mut came: HashMap<Node, Node> = HashMap::new();
+        cost.insert(from, 0);
+        open.push(Reverse((h(from) as u32, from)));
+        let mut expanded = 0;
+        while let Some(Reverse((_, n))) = open.pop() {
+            if reached(n) {
+                let mut path = vec![n];
+                let mut at = n;
+                while let Some(&p) = came.get(&at) {
+                    path.push(p);
+                    at = p;
+                }
+                path.reverse();
+                return Some(path);
+            }
+            expanded += 1;
+            if expanded > 30_000 {
+                return None;
+            }
+            let base = cost[&n];
+            for d in [[1, 0], [-1, 0], [0, 1], [0, -1]] {
+                for dy in [0, 1, -1, -2, -3] {
+                    let m = [n[0] + d[0], n[1] + dy, n[2] + d[1]];
+                    // A step up needs head room above the start; a drop needs
+                    // the column in front clear down to the landing.
+                    let clear = match dy {
+                        1 => !self.blocks_motion([n[0], n[1] + 2, n[2]]),
+                        d if d < 0 => {
+                            (m[1]..=n[1] + 1).all(|y| !self.blocks_motion([m[0], y, m[2]]))
+                        }
+                        _ => true,
+                    };
+                    if !clear || !self.walkable(m) {
+                        continue;
+                    }
+                    let water = self
+                        .res
+                        .facts()
+                        .get(self.world.block(m[0], m[1], m[2]))
+                        .fluid
+                        != horizon_client::blocks::Fluid::None;
+                    let step = 10 + if dy != 0 { 5 } else { 0 } + if water { 30 } else { 0 };
+                    let c = base + step;
+                    if cost.get(&m).is_none_or(|&old| c < old) {
+                        cost.insert(m, c);
+                        came.insert(m, n);
+                        open.push(Reverse((c + h(m) as u32, m)));
+                    }
+                    break;
+                }
+            }
+        }
+        None
+    }
+
+    /// Point the view at `at` from the eye.
+    fn face_point(&mut self, at: [f64; 3]) -> Result<()> {
+        let eye = self.eye_position().ok_or("no player")?;
+        let (yaw, pitch) = yaw_pitch(eye, at);
+        self.yaw = yaw;
+        self.pitch = pitch.clamp(-90.0, 90.0);
+        Ok(())
+    }
+    /// Aim at a face of `pos` the crosshair can reach; the face hit.
+    fn aim_block(&mut self, pos: [i32; 3], face: Option<[i32; 3]>) -> Result<[i32; 3]> {
+        let eye = self.eye_position().ok_or("no player")?;
+        let centre = pos.map(|v| f64::from(v) + 0.5);
+        let mut faces: Vec<[i32; 3]> = match face {
+            Some(f) => vec![f],
+            None => FACES.iter().map(|(_, d)| *d).collect(),
+        };
+        // Faces turned towards the eye first, nearest first.
+        faces.sort_by(|a, b| {
+            let point = |f: &[i32; 3]| [0, 1, 2].map(|i| centre[i] + f64::from(f[i]) * 0.45);
+            dist(eye, point(a)).total_cmp(&dist(eye, point(b)))
+        });
+        for f in faces {
+            for inset in [0.45, 0.3, 0.0] {
+                let point = [0, 1, 2].map(|i| centre[i] + f64::from(f[i]) * inset);
+                let (yaw, pitch) = yaw_pitch(eye, point);
+                let dir = super::view_vector(yaw, pitch);
+                if let Some(hit) = self.clip_ray(eye, dir, self.reach())
+                    && hit.pos == pos
+                    && (face.is_none() || hit.face == f)
+                {
+                    self.yaw = yaw;
+                    self.pitch = pitch;
+                    return Ok(hit.face);
+                }
+            }
+        }
+        let d = dist(eye, centre);
+        if d > self.reach() + 0.9 {
+            return Err(format!(
+                "block {pos:?} is {d:.1} blocks away, out of reach ({:.1}); goto it first",
+                self.reach()
+            )
+            .into());
+        }
+        Err(format!("no face of block {pos:?} is visible from here").into())
+    }
+
     /// A left or right click, as the mouse would.
     fn agent_mouse(&mut self, button: MouseButton, pressed: bool) -> Result<()> {
         self.play_mouse(button, pressed)
@@ -520,9 +872,8 @@ impl Game<'_> {
         points: &[(f32, f32)],
         button: MouseButton,
     ) -> Result<()> {
-        let id = self.front.window.as_ref().ok_or("no window yet")?.id();
+        let id = self.window.as_ref().ok_or("no window yet")?.id();
         let scale = self
-            .front
             .renderer
             .as_ref()
             .map(|r| horizon_client::hud::HudBatch::new([r.config.width, r.config.height]).scale)
@@ -560,6 +911,22 @@ impl Game<'_> {
             },
         );
         Ok(())
+    }
+
+    fn start_task(
+        &mut self,
+        name: &'static str,
+        kind: TaskKind,
+        reply: &Sender<String>,
+        timeout: f64,
+    ) -> Result<Handled> {
+        self.agent.task = Some(Task {
+            kind,
+            reply: reply.clone(),
+            deadline: Instant::now() + Duration::from_secs_f64(timeout.clamp(0.05, 3600.0)),
+            name,
+        });
+        Ok(Handled::Deferred)
     }
 
     /// Agent commands; `Handled::No` when `words[0]` is not one of them.
@@ -1074,9 +1441,8 @@ impl Game<'_> {
             "scroll-at" => {
                 let (x, y) = (a.f64(0, "X")? as f32, a.f64(1, "Y")? as f32);
                 let steps = a.f64(2, "STEPS")? as f32;
-                let id = self.front.window.as_ref().ok_or("no window yet")?.id();
+                let id = self.window.as_ref().ok_or("no window yet")?.id();
                 let scale = self
-                    .front
                     .renderer
                     .as_ref()
                     .map(|r| {
@@ -1240,6 +1606,33 @@ impl Game<'_> {
         }
     }
 
+    /// Select the hotbar slot holding `item`.
+    fn select_item(&mut self, item: &str) -> Result<()> {
+        if let Some(i) =
+            (0..9).find(|&i| self.inventory[i].as_ref().is_some_and(|s| &*s.item == item))
+        {
+            self.selected = i;
+            return Ok(());
+        }
+        if self.inventory.iter().flatten().any(|s| &*s.item == item) {
+            return Err(format!(
+                "{item} is in the main inventory, not the hotbar; move it with open-inventory and click-slot"
+            )
+            .into());
+        }
+        Err(format!("no {item} in the inventory").into())
+    }
+
+    /// Mouse motion turns the view only in the world with no screen open
+    /// (`MouseHandler` turns the player while the mouse is grabbed).
+    fn turning(&self) -> Result<()> {
+        self.playing()?;
+        if self.agent.glide.is_some() {
+            return Err("already turning; wait for it or send stop".into());
+        }
+        Ok(())
+    }
+
     fn start_glide(
         &mut self,
         total: (f64, f64),
@@ -1304,7 +1697,7 @@ impl Game<'_> {
         let due = (g.total.0 * f, g.total.1 * f);
         let step = (due.0 - g.fed.0, due.1 - g.fed.1);
         if step != (0.0, 0.0) {
-            self.front.mouse.add_motion(step.0, step.1);
+            self.mouse.add_motion(step.0, step.1);
             self.agent_pointer = true;
             g.fed = due;
             g.fed_frame = self.frames;
@@ -1344,6 +1737,12 @@ impl Game<'_> {
             }
             None => self.agent.task = Some(task),
         }
+    }
+
+    fn position(&self) -> [f64; 3] {
+        self.player
+            .as_ref()
+            .map_or([0.0; 3], |p| [p.position.x, p.position.y, p.position.z])
     }
 
     /// One frame of a task: Some(reply) when it is over.
@@ -1482,472 +1881,6 @@ impl Game<'_> {
         }
     }
 
-    fn step_break(
-        &mut self,
-        b: &mut Break,
-        timed_out: bool,
-        interrupted: Option<&str>,
-    ) -> Option<Value> {
-        let state = self.world.block(b.pos[0], b.pos[1], b.pos[2]);
-        if b.collect_until.is_none() {
-            if let Some(why) = interrupted {
-                return Some(json!({ "error": why, "pos": b.pos }));
-            }
-            if state != b.before {
-                // Broken: collect what drops for a moment.
-                let _ = self.agent_mouse(MouseButton::Left, false);
-                b.broke_tick = self.ticks;
-                b.collect_until = Some(self.ticks + 20);
-            } else if timed_out {
-                let _ = self.agent_mouse(MouseButton::Left, false);
-                return Some(
-                    json!({ "error": "timed out before the block broke", "pos": b.pos,
-                                    "block": self.state_string(state), "ticks": self.ticks - b.started_tick }),
-                );
-            } else if self.screen != Screen::Playing {
-                return Some(
-                    json!({ "error": format!("the {} screen opened", self.screen_label()), "pos": b.pos }),
-                );
-            } else {
-                // Keep the crosshair on the block (the player may drift).
-                if self.pick().is_none_or(|h| h.pos != b.pos)
-                    && let Err(e) = self.aim_block(b.pos, None)
-                {
-                    let _ = self.agent_mouse(MouseButton::Left, false);
-                    return Some(json!({ "error": e.to_string(), "pos": b.pos }));
-                }
-                if !self.left {
-                    let _ = self.agent_mouse(MouseButton::Left, true);
-                }
-                return None;
-            }
-        }
-        // New item entities near the block are its drops.
-        let centre = b.pos.map(|v| f64::from(v) + 0.5);
-        for item in &self.dropped {
-            if !b.items_before.contains(&item.id)
-                && dist(centre, [item.position.x, item.position.y, item.position.z]) < 3.0
-            {
-                b.drops.insert(item.id, item.stack.clone());
-            }
-        }
-        let remaining = b
-            .drops
-            .keys()
-            .filter(|id| self.dropped.iter().any(|i| i.id == **id))
-            .count();
-        let until = b.collect_until.unwrap_or(0);
-        if (self.ticks < until && (remaining > 0 || self.ticks < b.broke_tick + 3)) && !timed_out {
-            return None;
-        }
-        Some(json!({
-            "ok": true,
-            "pos": b.pos,
-            "block_before": self.state_string(b.before),
-            "block": self.state_string(state),
-            "ticks": b.broke_tick - b.started_tick,
-            "drops": counts(b.drops.values().cloned()),
-            "picked_up": delta(&b.inventory, &self.inventory_counts()),
-            "items_left_on_ground": remaining,
-            "on_ground": self.dropped.iter().filter(|i| b.drops.contains_key(&i.id)).map(|i| json!({
-                "id": i.id, "item": &*i.stack.item, "count": i.stack.count,
-                "pos": [i.position.x, i.position.y, i.position.z],
-            })).collect::<Vec<_>>(),
-        }))
-    }
-}
-impl crate::game::Sim<'_> {
-    pub(super) fn state_string(&self, state: BlockStateId) -> String {
-        let Some(s) = self.pack.assets.registry.state(state) else {
-            return "?".into();
-        };
-        if s.properties.is_empty() {
-            return s.name.clone();
-        }
-        let props: Vec<String> = s
-            .properties
-            .iter()
-            .map(|(k, v)| format!("{k}={v}"))
-            .collect();
-        format!("{}[{}]", s.name, props.join(","))
-    }
-    pub(super) fn stack_value(&self, s: &ItemStack) -> Value {
-        let mut v = json!({ "item": &*s.item, "count": s.count });
-        if s.damage > 0 {
-            v["damage"] = json!(s.damage);
-        }
-        if let Some(c) = horizon_client::item_data::encode_components(s) {
-            v["components"] = json!(horizon_client::snbt::to_snbt(&c));
-        }
-        v
-    }
-    fn slot_value(&self, slot: usize, s: &Option<ItemStack>) -> Value {
-        match s {
-            Some(s) => {
-                let mut v = self.stack_value(s);
-                v["slot"] = json!(slot);
-                v
-            }
-            None => json!({ "slot": slot, "item": null }),
-        }
-    }
-    fn need_world(&self) -> Result<()> {
-        if self.title.is_some() {
-            return Err("no world open (title screen); use: open WORLD [SEED] [creative]".into());
-        }
-        Ok(())
-    }
-    fn playing(&self) -> Result<()> {
-        if self.title.is_some() {
-            return Err("no world open (title screen); use: open WORLD [SEED] [creative]".into());
-        }
-        if self.player.is_none() {
-            return Err("the player has not spawned yet; try wait-ready".into());
-        }
-        if self.screen != Screen::Playing || self.book.is_some() || self.sign_edit.is_some() {
-            return Err(format!(
-                "the {} screen is open; close it first (close, or click-button)",
-                self.screen_label()
-            )
-            .into());
-        }
-        Ok(())
-    }
-    pub(super) fn screen_label(&self) -> &'static str {
-        if self.dialog_open() {
-            return "dialog";
-        }
-        if self.title.is_some() {
-            return "title";
-        }
-        if self.book.is_some() {
-            return "book";
-        }
-        if self.sign_edit.is_some() {
-            return "sign";
-        }
-        match self.screen {
-            Screen::Playing => "playing",
-            Screen::GameModeSwitcher => "gamemode-switcher",
-            Screen::Paused => "paused",
-            Screen::Options => "options",
-            Screen::Inventory if self.station.is_some() => "station",
-            Screen::Inventory if self.container.is_some() => "container",
-            Screen::Inventory => "inventory",
-            Screen::Creative => "creative",
-            Screen::Dead => "dead",
-            Screen::Chat => "chat",
-            Screen::Stats => "stats",
-            Screen::Advancements => "advancements",
-            Screen::WorldOptions => "world-options",
-            Screen::ServerLinks => "server-links",
-            Screen::ConfirmLink => "confirm-link",
-            Screen::DialogWarning => "dialog-warning",
-            Screen::CommandBlock => "command-block",
-            Screen::Win => "win",
-            Screen::Mod => "mod",
-        }
-    }
-    pub(super) fn inventory_counts(&self) -> BTreeMap<String, i64> {
-        counts(
-            self.inventory
-                .iter()
-                .chain(self.armor.iter())
-                .chain(std::iter::once(&self.offhand))
-                .chain(std::iter::once(&self.carried))
-                .flatten()
-                .cloned(),
-        )
-    }
-    fn title_value(&self) -> Value {
-        use horizon_client::title::Mode;
-        let Some(title) = &self.title else {
-            return Value::Null;
-        };
-        match &title.mode {
-            Mode::Main => json!({ "mode": "main" }),
-            Mode::Error { message, .. } => {
-                json!({ "mode": "error", "message": message })
-            }
-            Mode::Multiplayer(horizon_client::multiplayer::Screen::Disconnected {
-                reason, ..
-            }) => {
-                json!({ "mode": "multiplayer", "disconnected": reason })
-            }
-            Mode::Multiplayer(_) => json!({ "mode": "multiplayer" }),
-        }
-    }
-    fn entities_value(&self, radius: f64, kind: Option<&str>) -> Value {
-        let Some(p) = &self.player else {
-            return json!({ "entities": [] });
-        };
-        let me = [p.position.x, p.position.y, p.position.z];
-        let want = kind.map(namespaced);
-        let mut list: Vec<(f64, Value)> = Vec::new();
-        let mut push = |pos: [f64; 3], ty: &str, v: Value| {
-            let d = dist(me, pos);
-            if d <= radius && want.as_deref().is_none_or(|w| w == ty) {
-                let mut v = v;
-                v["type"] = json!(ty);
-                v["pos"] = json!(pos);
-                v["distance"] = json!(d);
-                list.push((d, v));
-            }
-        };
-        for m in self.mobs.iter().filter(|m| m.alive()) {
-            let mut v = json!({ "id": m.id, "kind": "mob", "health": m.health, "baby": m.is_baby(), "hurt_time": m.hurt_time });
-            // VillagerData as this game knows it: on a client, what the
-            // server's synched data says.
-            if matches!(m.species(), Species::Villager | Species::ZombieVillager) {
-                v["villager"] = json!({
-                    "type": VILLAGER_TYPES[m.extra.variant as usize % VILLAGER_TYPES.len()],
-                    "profession": PROFESSIONS[m.extra.variant2 as usize % PROFESSIONS.len()],
-                    "level": m.extra.variant3,
-                });
-            }
-            push(
-                [m.position.x, m.position.y, m.position.z],
-                m.kind.id.as_ref(),
-                v,
-            );
-        }
-        for item in &self.dropped {
-            push(
-                [item.position.x, item.position.y, item.position.z],
-                "minecraft:item",
-                json!({ "id": item.id, "kind": "item", "item": self.stack_value(&item.stack) }),
-            );
-        }
-        for orb in &self.orbs {
-            push(
-                [orb.position.x, orb.position.y, orb.position.z],
-                "minecraft:experience_orb",
-                json!({ "kind": "orb", "value": orb.value }),
-            );
-        }
-        list.sort_by(|a, b| a.0.total_cmp(&b.0));
-        json!({ "entities": list.into_iter().map(|(_, v)| v).collect::<Vec<_>>() })
-    }
-    fn inventory_value(&self) -> Value {
-        let armor = ["head", "chest", "legs", "feet"];
-        json!({
-            "selected": self.selected + 1,
-            "held": self.held().map(|s| self.stack_value(s)),
-            "hotbar": (0..9).map(|i| self.slot_value(i, &self.inventory[i])).collect::<Vec<_>>(),
-            "main": (9..36).map(|i| self.slot_value(i, &self.inventory[i])).collect::<Vec<_>>(),
-            "armor": armor.iter().enumerate().map(|(i, name)| {
-                let mut v = self.slot_value(500 + i, &self.armor[i]);
-                v["part"] = json!(name);
-                v
-            }).collect::<Vec<_>>(),
-            "offhand": self.slot_value(504, &self.offhand),
-            "carried": self.carried.as_ref().map(|s| self.stack_value(s)),
-            "counts": self.inventory_counts(),
-        })
-    }
-    fn messages_value(&self, n: usize) -> Value {
-        let titles = &self.titles;
-        json!({
-            "chat": self.remote_chat(n).unwrap_or_else(|| self.ui.chat.recent_lines(n)),
-            "order": "newest first",
-            // The chat lines as drawn: colours, click and hover events.
-            "styled": self.ui.chat.recent_components(n),
-            "title": (titles.time > 0).then(|| titles.title.as_ref().map(|t| t.plain())).flatten(),
-            "subtitle": (titles.time > 0).then(|| titles.subtitle.as_ref().map(|t| t.plain())).flatten(),
-            "actionbar": (titles.overlay_time > 0).then(|| titles.overlay.as_ref().map(|t| t.plain())).flatten(),
-        })
-    }
-    /// Whether a block stops movement, for the path finder.
-    fn blocks_motion(&self, pos: [i32; 3]) -> bool {
-        let f = self
-            .res
-            .facts()
-            .get(self.world.block(pos[0], pos[1], pos[2]));
-        f.full_collision || f.legacy_solid
-    }
-    fn walkable(&self, n: Node) -> bool {
-        let below = self.world.block(n[0], n[1] - 1, n[2]);
-        let lava = |p: [i32; 3]| {
-            &*self
-                .res
-                .facts()
-                .get(self.world.block(p[0], p[1], p[2]))
-                .name
-                == "minecraft:lava"
-        };
-        self.world.chunks.contains_key(&(n[0] >> 4, n[2] >> 4))
-            && (self.blocks_motion([n[0], n[1] - 1, n[2]])
-                || self.res.facts().get(below).fluid != horizon_client::blocks::Fluid::None)
-            && !self.blocks_motion(n)
-            && !self.blocks_motion([n[0], n[1] + 1, n[2]])
-            && !lava(n)
-            && !lava([n[0], n[1] - 1, n[2]])
-    }
-    /// A* over standable feet positions: steps up one block, drops up to three.
-    fn find_path(&self, from: Node, goal: [f64; 3], near: f64) -> Option<Vec<Node>> {
-        use std::{cmp::Reverse, collections::BinaryHeap};
-        let reached = |n: Node| {
-            let c = [
-                f64::from(n[0]) + 0.5,
-                f64::from(n[1]),
-                f64::from(n[2]) + 0.5,
-            ];
-            ((c[0] - goal[0]).powi(2) + (c[2] - goal[2]).powi(2)).sqrt() <= near.max(0.5)
-                && (c[1] - goal[1]).abs() <= near.max(1.0) + 0.5
-        };
-        let h = |n: Node| {
-            ((f64::from(n[0]) + 0.5 - goal[0]).abs()
-                + (f64::from(n[1]) - goal[1]).abs()
-                + (f64::from(n[2]) + 0.5 - goal[2]).abs())
-                * 10.0
-        };
-        let mut open = BinaryHeap::new();
-        let mut cost: HashMap<Node, u32> = HashMap::new();
-        let mut came: HashMap<Node, Node> = HashMap::new();
-        cost.insert(from, 0);
-        open.push(Reverse((h(from) as u32, from)));
-        let mut expanded = 0;
-        while let Some(Reverse((_, n))) = open.pop() {
-            if reached(n) {
-                let mut path = vec![n];
-                let mut at = n;
-                while let Some(&p) = came.get(&at) {
-                    path.push(p);
-                    at = p;
-                }
-                path.reverse();
-                return Some(path);
-            }
-            expanded += 1;
-            if expanded > 30_000 {
-                return None;
-            }
-            let base = cost[&n];
-            for d in [[1, 0], [-1, 0], [0, 1], [0, -1]] {
-                for dy in [0, 1, -1, -2, -3] {
-                    let m = [n[0] + d[0], n[1] + dy, n[2] + d[1]];
-                    // A step up needs head room above the start; a drop needs
-                    // the column in front clear down to the landing.
-                    let clear = match dy {
-                        1 => !self.blocks_motion([n[0], n[1] + 2, n[2]]),
-                        d if d < 0 => {
-                            (m[1]..=n[1] + 1).all(|y| !self.blocks_motion([m[0], y, m[2]]))
-                        }
-                        _ => true,
-                    };
-                    if !clear || !self.walkable(m) {
-                        continue;
-                    }
-                    let water = self
-                        .res
-                        .facts()
-                        .get(self.world.block(m[0], m[1], m[2]))
-                        .fluid
-                        != horizon_client::blocks::Fluid::None;
-                    let step = 10 + if dy != 0 { 5 } else { 0 } + if water { 30 } else { 0 };
-                    let c = base + step;
-                    if cost.get(&m).is_none_or(|&old| c < old) {
-                        cost.insert(m, c);
-                        came.insert(m, n);
-                        open.push(Reverse((c + h(m) as u32, m)));
-                    }
-                    break;
-                }
-            }
-        }
-        None
-    }
-    /// Point the view at `at` from the eye.
-    fn face_point(&mut self, at: [f64; 3]) -> Result<()> {
-        let eye = self.eye_position().ok_or("no player")?;
-        let (yaw, pitch) = yaw_pitch(eye, at);
-        self.yaw = yaw;
-        self.pitch = pitch.clamp(-90.0, 90.0);
-        Ok(())
-    }
-    /// Aim at a face of `pos` the crosshair can reach; the face hit.
-    fn aim_block(&mut self, pos: [i32; 3], face: Option<[i32; 3]>) -> Result<[i32; 3]> {
-        let eye = self.eye_position().ok_or("no player")?;
-        let centre = pos.map(|v| f64::from(v) + 0.5);
-        let mut faces: Vec<[i32; 3]> = match face {
-            Some(f) => vec![f],
-            None => FACES.iter().map(|(_, d)| *d).collect(),
-        };
-        // Faces turned towards the eye first, nearest first.
-        faces.sort_by(|a, b| {
-            let point = |f: &[i32; 3]| [0, 1, 2].map(|i| centre[i] + f64::from(f[i]) * 0.45);
-            dist(eye, point(a)).total_cmp(&dist(eye, point(b)))
-        });
-        for f in faces {
-            for inset in [0.45, 0.3, 0.0] {
-                let point = [0, 1, 2].map(|i| centre[i] + f64::from(f[i]) * inset);
-                let (yaw, pitch) = yaw_pitch(eye, point);
-                let dir = super::view_vector(yaw, pitch);
-                if let Some(hit) = self.clip_ray(eye, dir, self.reach())
-                    && hit.pos == pos
-                    && (face.is_none() || hit.face == f)
-                {
-                    self.yaw = yaw;
-                    self.pitch = pitch;
-                    return Ok(hit.face);
-                }
-            }
-        }
-        let d = dist(eye, centre);
-        if d > self.reach() + 0.9 {
-            return Err(format!(
-                "block {pos:?} is {d:.1} blocks away, out of reach ({:.1}); goto it first",
-                self.reach()
-            )
-            .into());
-        }
-        Err(format!("no face of block {pos:?} is visible from here").into())
-    }
-    fn start_task(
-        &mut self,
-        name: &'static str,
-        kind: TaskKind,
-        reply: &Sender<String>,
-        timeout: f64,
-    ) -> Result<Handled> {
-        self.agent.task = Some(Task {
-            kind,
-            reply: reply.clone(),
-            deadline: Instant::now() + Duration::from_secs_f64(timeout.clamp(0.05, 3600.0)),
-            name,
-        });
-        Ok(Handled::Deferred)
-    }
-    /// Select the hotbar slot holding `item`.
-    fn select_item(&mut self, item: &str) -> Result<()> {
-        if let Some(i) =
-            (0..9).find(|&i| self.inventory[i].as_ref().is_some_and(|s| &*s.item == item))
-        {
-            self.selected = i;
-            return Ok(());
-        }
-        if self.inventory.iter().flatten().any(|s| &*s.item == item) {
-            return Err(format!(
-                "{item} is in the main inventory, not the hotbar; move it with open-inventory and click-slot"
-            )
-            .into());
-        }
-        Err(format!("no {item} in the inventory").into())
-    }
-    /// Mouse motion turns the view only in the world with no screen open
-    /// (`MouseHandler` turns the player while the mouse is grabbed).
-    fn turning(&self) -> Result<()> {
-        self.playing()?;
-        if self.agent.glide.is_some() {
-            return Err("already turning; wait for it or send stop".into());
-        }
-        Ok(())
-    }
-    fn position(&self) -> [f64; 3] {
-        self.player
-            .as_ref()
-            .map_or([0.0; 3], |p| [p.position.x, p.position.y, p.position.z])
-    }
     fn step_goto(&mut self, g: &mut Goto, timed_out: bool) -> Option<Value> {
         let p = self.position();
         let on_ground = self.player.as_ref().is_some_and(|p| p.ground.on_ground);
@@ -2035,6 +1968,80 @@ impl crate::game::Sim<'_> {
             self.keys.remove(&KeyCode::Space);
         }
         None
+    }
+
+    fn step_break(
+        &mut self,
+        b: &mut Break,
+        timed_out: bool,
+        interrupted: Option<&str>,
+    ) -> Option<Value> {
+        let state = self.world.block(b.pos[0], b.pos[1], b.pos[2]);
+        if b.collect_until.is_none() {
+            if let Some(why) = interrupted {
+                return Some(json!({ "error": why, "pos": b.pos }));
+            }
+            if state != b.before {
+                // Broken: collect what drops for a moment.
+                let _ = self.agent_mouse(MouseButton::Left, false);
+                b.broke_tick = self.ticks;
+                b.collect_until = Some(self.ticks + 20);
+            } else if timed_out {
+                let _ = self.agent_mouse(MouseButton::Left, false);
+                return Some(
+                    json!({ "error": "timed out before the block broke", "pos": b.pos,
+                                    "block": self.state_string(state), "ticks": self.ticks - b.started_tick }),
+                );
+            } else if self.screen != Screen::Playing {
+                return Some(
+                    json!({ "error": format!("the {} screen opened", self.screen_label()), "pos": b.pos }),
+                );
+            } else {
+                // Keep the crosshair on the block (the player may drift).
+                if self.pick().is_none_or(|h| h.pos != b.pos)
+                    && let Err(e) = self.aim_block(b.pos, None)
+                {
+                    let _ = self.agent_mouse(MouseButton::Left, false);
+                    return Some(json!({ "error": e.to_string(), "pos": b.pos }));
+                }
+                if !self.left {
+                    let _ = self.agent_mouse(MouseButton::Left, true);
+                }
+                return None;
+            }
+        }
+        // New item entities near the block are its drops.
+        let centre = b.pos.map(|v| f64::from(v) + 0.5);
+        for item in &self.dropped {
+            if !b.items_before.contains(&item.id)
+                && dist(centre, [item.position.x, item.position.y, item.position.z]) < 3.0
+            {
+                b.drops.insert(item.id, item.stack.clone());
+            }
+        }
+        let remaining = b
+            .drops
+            .keys()
+            .filter(|id| self.dropped.iter().any(|i| i.id == **id))
+            .count();
+        let until = b.collect_until.unwrap_or(0);
+        if (self.ticks < until && (remaining > 0 || self.ticks < b.broke_tick + 3)) && !timed_out {
+            return None;
+        }
+        Some(json!({
+            "ok": true,
+            "pos": b.pos,
+            "block_before": self.state_string(b.before),
+            "block": self.state_string(state),
+            "ticks": b.broke_tick - b.started_tick,
+            "drops": counts(b.drops.values().cloned()),
+            "picked_up": delta(&b.inventory, &self.inventory_counts()),
+            "items_left_on_ground": remaining,
+            "on_ground": self.dropped.iter().filter(|i| b.drops.contains_key(&i.id)).map(|i| json!({
+                "id": i.id, "item": &*i.stack.item, "count": i.stack.count,
+                "pos": [i.position.x, i.position.y, i.position.z],
+            })).collect::<Vec<_>>(),
+        }))
     }
 }
 

@@ -23,8 +23,7 @@ fn slot_in_group(group: &str, slot: &str) -> bool {
         || (group == "armor" && matches!(slot, "feet" | "legs" | "chest" | "head" | "body"))
 }
 
-impl Game<'_> {}
-impl crate::game::Sim<'_> {
+impl Game<'_> {
     /// `getAttributeValue(KNOCKBACK_RESISTANCE)` of a mob: its own value plus
     /// the modifiers of the items it wears or holds in matching slots.
     pub(super) fn mob_knockback_resistance(&self, m: &Mob) -> f64 {
@@ -55,6 +54,7 @@ impl crate::game::Sim<'_> {
         }
         finalize::value_with(m, Attr::KnockbackResistance, &extra)
     }
+
     /// The registry id of a client-syncable attribute the entity type has
     /// (`AttributeMap.getInstance` is null for the others), by name.
     fn synced_attribute(&self, entity: &str, name: &str) -> Option<i32> {
@@ -63,6 +63,7 @@ impl crate::game::Sim<'_> {
         (catalog.attribute(id).syncable && catalog.default_base(entity, id).is_some())
             .then(|| id.registry_id())
     }
+
     /// The type's base value of an attribute, as the instance starts.
     fn attribute_default(&self, entity: &str, name: &str) -> f64 {
         let catalog = &self.motion.attributes;
@@ -71,6 +72,7 @@ impl crate::game::Sim<'_> {
             .and_then(|id| catalog.default_base(entity, id))
             .unwrap_or(0.0)
     }
+
     /// `LivingEntity.collectEquipmentChanges`: each worn or held item's
     /// attribute modifiers, slot by slot in `EquipmentSlot` order, create
     /// their instances (an instance without a modifier keeps its base).
@@ -107,6 +109,7 @@ impl crate::game::Sim<'_> {
             }
         }
     }
+
     /// A mob's synced instances: movement speed (its first `aiStep` reads it,
     /// `LivingEntity.removeFrost`), what finalizeSpawn set, the baby speed
     /// modifier, its effects' modifiers, its equipment's, and what
@@ -203,6 +206,7 @@ impl crate::game::Sim<'_> {
         );
         self.generic_attributes_of(Target::Mob(m.id), out);
     }
+
     /// An armor stand's synced instances: movement speed (its first
     /// `aiStep`), its equipment's modifiers and what `/attribute` changed.
     pub(super) fn stand_attributes(
@@ -226,6 +230,7 @@ impl crate::game::Sim<'_> {
         self.generic_attributes_of(Target::Stand(id), &mut out);
         out
     }
+
     /// The instances a server player's tick creates, and
     /// `ServerPlayer.updatePlayerAttributes`: a creative player reaches 0.5
     /// further to blocks and 2 to entities. Its client reads the reach from
@@ -268,6 +273,7 @@ impl crate::game::Sim<'_> {
             }
         }
     }
+
     /// The instances `/attribute` created in an entity's generic map
     /// replace the ones derived from its state.
     fn generic_attributes_of(&self, t: Target, out: &mut Vec<AttributeSnapshot>) {

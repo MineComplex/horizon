@@ -57,6 +57,17 @@ fn rains_at(world: &World, biomes: &Biomes, x: i32, y: i32, z: i32) -> bool {
 }
 
 impl Game<'_> {
+    pub(super) fn forward(&self) -> [f64; 3] {
+        let (yaw, pitch) = (
+            f64::from(self.yaw).to_radians(),
+            f64::from(self.pitch).to_radians(),
+        );
+        [
+            -yaw.sin() * pitch.cos(),
+            -pitch.sin(),
+            yaw.cos() * pitch.cos(),
+        ]
+    }
     /// `FogRenderer.setupFog` for the frame's camera.
     pub(super) fn frame_fog(
         &self,
@@ -81,14 +92,14 @@ impl Game<'_> {
         };
         horizon_client::fog::setup_fog(
             tables,
-            &self.front.fog,
+            &self.fog,
             &FogInputs {
                 fog_type,
                 sky,
                 water_fog_color,
                 biome,
                 render_distance_chunks: self.terrain_distance(),
-                distant_terrain: self.front.lod.is_some(),
+                distant_terrain: self.lod.is_some(),
                 cloud_range_chunks: self.settings.cloud_range,
                 camera_y: camera.y,
                 min_y: self.level_min_y(),
@@ -100,12 +111,42 @@ impl Game<'_> {
                 blindness: None,
                 darkness: self.darkness_fog(),
                 darken_world: self
-                    .front
                     .boss_overlay
                     .darken_amount(self.clock.fraction() as f32),
-                boss_world_fog: self.front.boss_overlay.should_create_world_fog(),
+                boss_world_fog: self.boss_overlay.should_create_world_fog(),
             },
         )
+    }
+    /// `ClientLevelData.isFlat`: on the server thread, the world-wide flag.
+    fn level_flat(&self) -> bool {
+        match self.remote.as_ref() {
+            Some(r) => r.flat,
+            None => self.world_flat,
+        }
+    }
+    /// `Level.getMinY`: the current dimension type's minimum y.
+    fn level_min_y(&self) -> i32 {
+        match self.remote.as_ref() {
+            Some(r) => r.dimension.min_y,
+            None => self.dim.min_y(),
+        }
+    }
+    /// `SkyRenderer.shouldRenderDarkDisc`: eye below the horizon and not under
+    /// water. `ClientLevelData.getHorizonHeight`: the bottom of a flat world,
+    /// otherwise y 63.
+    pub(super) fn dark_disc(&self, camera: glam::DVec3) -> bool {
+        let horizon = if self.level_flat() {
+            f64::from(self.level_min_y())
+        } else {
+            63.0
+        };
+        camera.y < horizon
+            && fog_type(
+                &self.world,
+                self.res.facts(),
+                [camera.x, camera.y, camera.z],
+                self.forward(),
+            ) != FogType::Water
     }
     /// `ScreenEffectRenderer` + `Hud` camera overlays for this frame.
     pub(super) fn screen_quads(&self, partial: f32, size: [u32; 2]) -> Vec<ScreenQuad> {
@@ -149,7 +190,7 @@ impl Game<'_> {
             (in_water && !spectator).then(|| (self.eye_brightness(eye), self.yaw, self.pitch));
         // Hud.extractCameraOverlays; the spyglass scope (and its easing) is
         // drawn on the HUD by draw_spyglass.
-        let fx = &self.front.screen_fx;
+        let fx = &self.screen_fx;
         let overlays = hud_overlays::CameraOverlays {
             vignette: self.settings.vignette.then_some((
                 fx.vignette_brightness,
@@ -171,12 +212,12 @@ impl Game<'_> {
             nausea: 0.0,
             screen_effect_scale: 1.0,
         };
-        let mut scope = self.front.scope_scale;
+        let mut scope = self.scope_scale;
         let gui_overlays =
             hud_overlays::camera_overlays(size[0] as i32, size[1] as i32, &overlays, &mut scope);
-        self.front.screen_fx.build(&ScreenInputs {
-            sprites: &self.front.gui.atlas.sprites,
-            flags: &self.front.gui.atlas.flags,
+        self.screen_fx.build(&ScreenInputs {
+            sprites: &self.gui.atlas.sprites,
+            flags: &self.gui.atlas.flags,
             aspect: size[0] as f32 / size[1].max(1) as f32,
             partial,
             block_overlay,
@@ -187,17 +228,29 @@ impl Game<'_> {
             gui_overlays: &gui_overlays,
         })
     }
+    /// `Lightmap.getBrightness(getMaxLocalRawBrightness(eye))`.
+    fn eye_brightness(&self, eye: [f64; 3]) -> f32 {
+        let b = [
+            eye[0].floor() as i32,
+            eye[1].floor() as i32,
+            eye[2].floor() as i32,
+        ];
+        let packed = self.world.light(b[0], b[1], b[2]);
+        let sky = i32::from(packed >> 4) - self.sky_darken();
+        let raw = sky.max(i32::from(packed & 15)).clamp(0, 15) as u8;
+        lightmap_brightness(if self.dim == Dim::Nether { 0.1 } else { 0.0 }, raw)
+    }
     pub(super) fn tick_particles(&mut self) {
-        self.front.fog.tick_flicker();
+        self.fog.tick_flicker();
         let eye = self.eye_position();
         if let Some(e) = eye {
             let brightness = self.eye_brightness(e);
             let inside_portal = self.client_portal_effect();
-            self.front.screen_fx.tick(brightness, inside_portal);
+            self.screen_fx.tick(brightness, inside_portal);
             // LocalPlayer water vision and AtmosphericFogEnvironment rain fog.
             let in_water =
                 fog_type(&self.world, self.res.facts(), e, self.forward()) == FogType::Water;
-            self.front.fog.tick(in_water);
+            self.fog.tick(in_water);
             let b = [
                 e[0].floor() as i32,
                 e[1].floor() as i32,
@@ -209,16 +262,15 @@ impl Game<'_> {
                 0.0
             };
             let biome = self
-                .sim
                 .world
                 .chunks
                 .get(&(b[0] >> 4, b[2] >> 4))
                 .map_or(0, |c| c.biome(b[0], b[1], b[2]));
-            let rains = self.sim.res.biomes().get(biome).precipitation;
+            let rains = self.res.biomes().get(biome).precipitation;
             update_rain_fog(
-                &mut self.front.fog,
+                &mut self.fog,
                 rain,
-                self.sim.world.light(b[0], b[1], b[2]) >> 4,
+                self.world.light(b[0], b[1], b[2]) >> 4,
                 rains,
                 1.0,
             );
@@ -227,24 +279,24 @@ impl Game<'_> {
         if let Some(e) = eye {
             self.particles.camera = e;
         }
-        let (rain, _) = if self.sim.dim == Dim::Overworld {
-            self.sim.world.weather.levels(1.0)
+        let (rain, _) = if self.dim == Dim::Overworld {
+            self.world.weather.levels(1.0)
         } else {
             (0.0, 0.0)
         };
-        let marker = marker_particle_target(self.sim.mode, self.stack_in(self.sim.selected));
+        let marker = marker_particle_target(self.mode, self.stack_in(self.selected));
         let marker_options = |state| {
             // BlockMarker: the particle sprite, untinted.
-            let sprite = Self::block_particle_sprite(&self.sim.pack, state)?;
+            let sprite = Self::block_particle_sprite(&self.pack, state)?;
             Some(ParticleOptions::block(
                 ParticleType::BlockMarker,
                 sprite,
                 0xFFFFFF,
             ))
         };
-        let world = &self.sim.world;
-        let facts = self.sim.res.facts();
-        let biomes = self.sim.res.biomes();
+        let world = &self.world;
+        let facts = self.res.facts();
+        let biomes = self.res.biomes();
         let raining = rain > 0.2;
         let raining_at = |p: [i32; 3]| {
             raining
@@ -254,13 +306,12 @@ impl Game<'_> {
         let height_no_leaves =
             |p: [i32; 3]| motion_blocking_leaves(world, facts, p[0], p[2], i32::MAX, false);
         // The day timeline: firefly bush sounds from 12600 to 23400.
-        let firefly_bush_sounds = self.sim.dim == Dim::Overworld
-            && (12600..23401).contains(&self.sim.world.day_time.rem_euclid(24000));
-        let tables = &self.sim.pack.context.tables;
+        let firefly_bush_sounds = self.dim == Dim::Overworld
+            && (12600..23401).contains(&self.world.day_time.rem_euclid(24000));
+        let tables = &self.pack.context.tables;
         let model_offset = |state, x, z| tables.offset(state, x, z);
         let gateway_particles = |state, p| {
-            self.sim
-                .res
+            self.res
                 .block_entity_render()
                 .gateway_faces(world, state, p)
                 .len()
@@ -289,9 +340,9 @@ impl Game<'_> {
                 e[1].floor() as i32,
                 e[2].floor() as i32,
             ];
-            animate_tick(self.sim.res.animate(), &mut self.sim.particles, &ctx, block);
+            animate_tick(self.res.animate(), &mut self.particles, &ctx, block);
             // The Horizon Weather option off means no rain visuals or sounds at all.
-            if rain > 0.0 && self.sim.settings.horizon.weather {
+            if rain > 0.0 && self.settings.horizon.weather {
                 // ClientLevel.tickWeatherEffects: rain splashes within the weather
                 // radius, and the rain sound.
                 let mut random = LegacyRandom::new(self.world.game_time.wrapping_mul(312_987_231));
@@ -346,17 +397,16 @@ impl Game<'_> {
                         f64::from(below) + block_top.max(fluid_top),
                         f64::from(z) + bz,
                     ];
-                    self.sim
-                        .particles
+                    self.particles
                         .add(&ParticleOptions::simple(ty), p, [0.0; 3]);
                 }
                 // The last rain column of the tick makes the sound, more often the
                 // longer it has been quiet; indoors it is the quieter one.
                 if let Some(at) = rain_position {
-                    let waited = self.sim.rain_sound_time;
-                    self.sim.rain_sound_time += 1;
+                    let waited = self.rain_sound_time;
+                    self.rain_sound_time += 1;
                     if random.next_int_bound(3).unwrap_or(0) < waited {
-                        self.sim.rain_sound_time = 0;
+                        self.rain_sound_time = 0;
                         let roof =
                             motion_blocking(world, facts, block[0], block[2], MIN_Y + HEIGHT);
                         let (name, volume, pitch) = if at[1] > block[1] + 1 && roof > block[1] {
@@ -367,18 +417,18 @@ impl Game<'_> {
                         let p = at.map(|c| f64::from(c) + 0.5);
                         // playLocalSound: guests make their own rain, so a host
                         // must not capture it for them.
-                        self.sim.sounds.play_unshared(name, Some(p), volume, pitch);
+                        self.sounds.play_unshared(name, Some(p), volume, pitch);
                     }
                 }
             }
         }
-        if let Some(r) = &self.front.renderer {
+        if let Some(r) = &self.renderer {
             campfire_particles(
-                self.sim.res.animate(),
-                &mut self.sim.particles,
+                self.res.animate(),
+                &mut self.particles,
                 &ctx,
                 r.block_entities(),
-                &|pos| match self.sim.world.block_entities.get(&(pos[0], pos[1], pos[2])) {
+                &|pos| match self.world.block_entities.get(&(pos[0], pos[1], pos[2])) {
                     Some(BlockEntity::Campfire(c)) => c.items.each_ref().map(Option::is_some),
                     _ => [false; 4],
                 },
@@ -387,73 +437,16 @@ impl Game<'_> {
         let level = ParticleLevel {
             world,
             facts,
-            collision: self.sim.collision,
+            collision: self.collision,
             player: self
-                .sim
                 .player
                 .as_ref()
                 .map(|p| ([p.position.x, p.position.y, p.position.z], p.velocity.y)),
         };
-        self.sim.particles.tick(&level);
+        self.particles.tick(&level);
         self.tick_pickups();
-        for (name, at, volume, pitch) in std::mem::take(&mut self.sim.particles.sounds) {
-            self.sim.sounds.play(name, Some(at), volume, pitch);
+        for (name, at, volume, pitch) in std::mem::take(&mut self.particles.sounds) {
+            self.sounds.play(name, Some(at), volume, pitch);
         }
-    }
-}
-impl crate::game::Sim<'_> {
-    pub(super) fn forward(&self) -> [f64; 3] {
-        let (yaw, pitch) = (
-            f64::from(self.yaw).to_radians(),
-            f64::from(self.pitch).to_radians(),
-        );
-        [
-            -yaw.sin() * pitch.cos(),
-            -pitch.sin(),
-            yaw.cos() * pitch.cos(),
-        ]
-    }
-    /// `ClientLevelData.isFlat`: on the server thread, the world-wide flag.
-    fn level_flat(&self) -> bool {
-        match self.remote.as_ref() {
-            Some(r) => r.flat,
-            None => self.world_flat,
-        }
-    }
-    /// `Level.getMinY`: the current dimension type's minimum y.
-    fn level_min_y(&self) -> i32 {
-        match self.remote.as_ref() {
-            Some(r) => r.dimension.min_y,
-            None => self.dim.min_y(),
-        }
-    }
-    /// `SkyRenderer.shouldRenderDarkDisc`: eye below the horizon and not under
-    /// water. `ClientLevelData.getHorizonHeight`: the bottom of a flat world,
-    /// otherwise y 63.
-    pub(super) fn dark_disc(&self, camera: glam::DVec3) -> bool {
-        let horizon = if self.level_flat() {
-            f64::from(self.level_min_y())
-        } else {
-            63.0
-        };
-        camera.y < horizon
-            && fog_type(
-                &self.world,
-                self.res.facts(),
-                [camera.x, camera.y, camera.z],
-                self.forward(),
-            ) != FogType::Water
-    }
-    /// `Lightmap.getBrightness(getMaxLocalRawBrightness(eye))`.
-    fn eye_brightness(&self, eye: [f64; 3]) -> f32 {
-        let b = [
-            eye[0].floor() as i32,
-            eye[1].floor() as i32,
-            eye[2].floor() as i32,
-        ];
-        let packed = self.world.light(b[0], b[1], b[2]);
-        let sky = i32::from(packed >> 4) - self.sky_darken();
-        let raw = sky.max(i32::from(packed & 15)).clamp(0, 15) as u8;
-        lightmap_brightness(if self.dim == Dim::Nether { 0.1 } else { 0.0 }, raw)
     }
 }

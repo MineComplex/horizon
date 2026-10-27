@@ -52,16 +52,16 @@ fn triggers(name: &str) -> bool {
 impl Game<'_> {
     /// `WindChargeItem.use`.
     pub(super) fn throw_wind_charge(&mut self) -> Result<bool> {
-        let (Some(eye), Some(p)) = (self.eye_position(), self.sim.player.as_ref()) else {
+        let (Some(eye), Some(p)) = (self.eye_position(), self.player.as_ref()) else {
             return Ok(false);
         };
         let (velocity, on_ground, pos) = (p.velocity, p.ground.on_ground, p.position);
         let start = Vec3::new(pos.x, eye[1], pos.z);
         let mut proj = Projectile::new(ProjectileKind::WindCharge, start, Some(Who::Player));
         proj.shoot_from_rotation(
-            &mut self.sim.world.random,
-            self.sim.pitch,
-            self.sim.yaw,
+            &mut self.world.random,
+            self.pitch,
+            self.yaw,
             0.0,
             1.5,
             1.0,
@@ -135,10 +135,69 @@ impl Game<'_> {
                     m.damage(1.0, source);
                 }
                 if p.owner == Some(Who::Player) {
-                    self.sim.last_hurt_by_player.insert(id, self.sim.lan_acting);
+                    self.last_hurt_by_player.insert(id, self.lan_acting);
                 }
             }
         }
+    }
+    /// The exploded positions: rays through everything but the blocks that
+    /// stop wind (`blocks_wind_charge_explosions`).
+    fn wind_positions(&mut self, center: [f64; 3], radius: f32) -> Vec<[i32; 3]> {
+        let stops = self
+            .res
+            .items()
+            .block_tags
+            .get("minecraft:blocks_wind_charge_explosions")
+            .cloned()
+            .unwrap_or_default();
+        let (min_y, max_y) = (horizon_client::chunk::MIN_Y, 320);
+        let mut set: BTreeSet<[i32; 3]> = BTreeSet::new();
+        for xx in 0..16 {
+            for yy in 0..16 {
+                for zz in 0..16 {
+                    if !(xx == 0 || xx == 15 || yy == 0 || yy == 15 || zz == 0 || zz == 15) {
+                        continue;
+                    }
+                    let mut d = [
+                        f64::from(xx as f32 / 15.0 * 2.0 - 1.0),
+                        f64::from(yy as f32 / 15.0 * 2.0 - 1.0),
+                        f64::from(zz as f32 / 15.0 * 2.0 - 1.0),
+                    ];
+                    let len = (d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).sqrt();
+                    for c in &mut d {
+                        *c /= len;
+                    }
+                    let mut power = radius * (0.7 + self.world.random.next_float() * 0.6);
+                    let mut at = center;
+                    while power > 0.0 {
+                        let pos = [
+                            at[0].floor() as i32,
+                            at[1].floor() as i32,
+                            at[2].floor() as i32,
+                        ];
+                        if pos[1] < min_y || pos[1] >= max_y {
+                            break;
+                        }
+                        let name = &self
+                            .res
+                            .facts()
+                            .get(self.world.block(pos[0], pos[1], pos[2]))
+                            .name;
+                        if stops.contains(&**name) {
+                            power -= (3_600_000.0_f32 + 0.3) * 0.3;
+                        }
+                        if power > 0.0 {
+                            set.insert(pos);
+                        }
+                        for i in 0..3 {
+                            at[i] += d[i] * f64::from(0.3_f32);
+                        }
+                        power -= 0.225_000_01;
+                    }
+                }
+            }
+        }
+        set.into_iter().collect()
     }
     /// `ServerExplosion.hurtEntities` for a calculator that damages nothing:
     /// knockback scaled by distance, exposure and the multiplier. Returns the
@@ -287,6 +346,66 @@ impl Game<'_> {
         }
         self.tnts = tnts;
         pushed
+    }
+    /// `ServerExplosion.hurtEntities` for the player (not a spectator, nor a
+    /// creative player flying): the push, less with explosion knockback
+    /// resistance, and `ServerPlayer.onExplosionHit`. Returns the push.
+    fn wind_push_player(
+        &mut self,
+        center: [f64; 3],
+        radius: f32,
+        multiplier: f32,
+        wind_charge: bool,
+    ) -> Option<[f64; 3]> {
+        if self.spectator() {
+            return None;
+        }
+        let resistance = self
+            .player
+            .as_mut()
+            .and_then(|p| p.attribute("minecraft:explosion_knockback_resistance").ok())
+            .unwrap_or(0.0);
+        let creative = self.creative;
+        let p = self.player.as_ref()?;
+        let feet = [p.position.x, p.position.y, p.position.z];
+        let dist = ((feet[0] - center[0]).powi(2)
+            + (feet[1] - center[1]).powi(2)
+            + (feet[2] - center[2]).powi(2))
+        .sqrt()
+            / f64::from(radius * 2.0);
+        if dist > 1.0 || creative && p.flying {
+            return None;
+        }
+        let w = f64::from(p.dimensions.width) / 2.0;
+        let h = f64::from(p.dimensions.height);
+        let eye = [
+            feet[0] - center[0],
+            feet[1] + f64::from(p.dimensions.eye_height) - center[1],
+            feet[2] - center[2],
+        ];
+        let exposure = self.seen_percent(
+            center,
+            [feet[0] - w, feet[1], feet[2] - w],
+            [feet[0] + w, feet[1] + h, feet[2] + w],
+        );
+        let power = (1.0 - dist) * f64::from(exposure) * f64::from(multiplier) * (1.0 - resistance);
+        let l = (eye[0] * eye[0] + eye[1] * eye[1] + eye[2] * eye[2]).sqrt();
+        let push = if l < 1.0e-5 {
+            [0.0; 3]
+        } else {
+            eye.map(|d| d / l * power)
+        };
+        let p = self.player.as_mut()?;
+        p.velocity = Vec3::new(
+            p.velocity.x + push[0],
+            p.velocity.y + push[1],
+            p.velocity.z + push[2],
+        );
+        // ServerPlayer.onExplosionHit: a wind charge's burst cancels the
+        // fall; any other burst ends the grace of the last impulse.
+        let at = p.position;
+        p.impulse.set_ignore_fall_damage(wind_charge, Some(at));
+        Some(push)
     }
     /// The burst: knockback, the blocks that react, the gust and the sound.
     pub(super) fn wind_burst(
@@ -437,7 +556,6 @@ impl Game<'_> {
         });
         let Some(model) = model else { return };
         let Some(r) = self
-            .front
             .gui
             .atlas
             .sprites
@@ -462,127 +580,6 @@ impl Game<'_> {
             0,
             out,
         );
-    }
-}
-impl crate::game::Sim<'_> {
-    /// The exploded positions: rays through everything but the blocks that
-    /// stop wind (`blocks_wind_charge_explosions`).
-    fn wind_positions(&mut self, center: [f64; 3], radius: f32) -> Vec<[i32; 3]> {
-        let stops = self
-            .res
-            .items()
-            .block_tags
-            .get("minecraft:blocks_wind_charge_explosions")
-            .cloned()
-            .unwrap_or_default();
-        let (min_y, max_y) = (horizon_client::chunk::MIN_Y, 320);
-        let mut set: BTreeSet<[i32; 3]> = BTreeSet::new();
-        for xx in 0..16 {
-            for yy in 0..16 {
-                for zz in 0..16 {
-                    if !(xx == 0 || xx == 15 || yy == 0 || yy == 15 || zz == 0 || zz == 15) {
-                        continue;
-                    }
-                    let mut d = [
-                        f64::from(xx as f32 / 15.0 * 2.0 - 1.0),
-                        f64::from(yy as f32 / 15.0 * 2.0 - 1.0),
-                        f64::from(zz as f32 / 15.0 * 2.0 - 1.0),
-                    ];
-                    let len = (d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).sqrt();
-                    for c in &mut d {
-                        *c /= len;
-                    }
-                    let mut power = radius * (0.7 + self.world.random.next_float() * 0.6);
-                    let mut at = center;
-                    while power > 0.0 {
-                        let pos = [
-                            at[0].floor() as i32,
-                            at[1].floor() as i32,
-                            at[2].floor() as i32,
-                        ];
-                        if pos[1] < min_y || pos[1] >= max_y {
-                            break;
-                        }
-                        let name = &self
-                            .res
-                            .facts()
-                            .get(self.world.block(pos[0], pos[1], pos[2]))
-                            .name;
-                        if stops.contains(&**name) {
-                            power -= (3_600_000.0_f32 + 0.3) * 0.3;
-                        }
-                        if power > 0.0 {
-                            set.insert(pos);
-                        }
-                        for i in 0..3 {
-                            at[i] += d[i] * f64::from(0.3_f32);
-                        }
-                        power -= 0.225_000_01;
-                    }
-                }
-            }
-        }
-        set.into_iter().collect()
-    }
-    /// `ServerExplosion.hurtEntities` for the player (not a spectator, nor a
-    /// creative player flying): the push, less with explosion knockback
-    /// resistance, and `ServerPlayer.onExplosionHit`. Returns the push.
-    fn wind_push_player(
-        &mut self,
-        center: [f64; 3],
-        radius: f32,
-        multiplier: f32,
-        wind_charge: bool,
-    ) -> Option<[f64; 3]> {
-        if self.spectator() {
-            return None;
-        }
-        let resistance = self
-            .player
-            .as_mut()
-            .and_then(|p| p.attribute("minecraft:explosion_knockback_resistance").ok())
-            .unwrap_or(0.0);
-        let creative = self.creative;
-        let p = self.player.as_ref()?;
-        let feet = [p.position.x, p.position.y, p.position.z];
-        let dist = ((feet[0] - center[0]).powi(2)
-            + (feet[1] - center[1]).powi(2)
-            + (feet[2] - center[2]).powi(2))
-        .sqrt()
-            / f64::from(radius * 2.0);
-        if dist > 1.0 || creative && p.flying {
-            return None;
-        }
-        let w = f64::from(p.dimensions.width) / 2.0;
-        let h = f64::from(p.dimensions.height);
-        let eye = [
-            feet[0] - center[0],
-            feet[1] + f64::from(p.dimensions.eye_height) - center[1],
-            feet[2] - center[2],
-        ];
-        let exposure = self.seen_percent(
-            center,
-            [feet[0] - w, feet[1], feet[2] - w],
-            [feet[0] + w, feet[1] + h, feet[2] + w],
-        );
-        let power = (1.0 - dist) * f64::from(exposure) * f64::from(multiplier) * (1.0 - resistance);
-        let l = (eye[0] * eye[0] + eye[1] * eye[1] + eye[2] * eye[2]).sqrt();
-        let push = if l < 1.0e-5 {
-            [0.0; 3]
-        } else {
-            eye.map(|d| d / l * power)
-        };
-        let p = self.player.as_mut()?;
-        p.velocity = Vec3::new(
-            p.velocity.x + push[0],
-            p.velocity.y + push[1],
-            p.velocity.z + push[2],
-        );
-        // ServerPlayer.onExplosionHit: a wind charge's burst cancels the
-        // fall; any other burst ends the grace of the last impulse.
-        let at = p.position;
-        p.impulse.set_ignore_fall_damage(wind_charge, Some(at));
-        Some(push)
     }
 }
 #[cfg(test)]

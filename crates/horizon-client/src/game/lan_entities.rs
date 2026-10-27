@@ -71,6 +71,29 @@ fn stand_poses(a: &horizon_client::entities::ArmorStand) -> Vec<(u8, i32, Value)
 }
 
 impl Game<'_> {
+    /// Who rides what (`Entity.getPassengers`): mobs on mobs, and the
+    /// host in its boat or minecart.
+    pub(super) fn lan_riding(
+        &self,
+        host_entity: Option<i32>,
+        guests: &[(u32, i32)],
+        riding: &mut Riding,
+    ) {
+        riding.clear();
+        // The server's players in their boats and minecarts.
+        for &(vehicle, guest) in guests {
+            riding.add(vehicle as i32, guest);
+        }
+        for m in self.mobs.iter().filter(|m| !m.removed) {
+            if let Some(vehicle) = m.extra.mount {
+                riding.add(vehicle as i32, m.id as i32);
+            }
+        }
+        if let (Some(host), Some(vehicle)) = (host_entity, self.riding) {
+            riding.add(vehicle as i32, host);
+        }
+    }
+
     /// Boats, minecarts, armor stands, item frames, paintings and the
     /// entities kept unsimulated, as guests track them.
     pub(super) fn lan_object_states(
@@ -245,32 +268,54 @@ impl Game<'_> {
         }
     }
 }
-impl crate::game::Sim<'_> {
-    /// Who rides what (`Entity.getPassengers`): mobs on mobs, and the
-    /// host in its boat or minecart.
-    pub(super) fn lan_riding(
-        &self,
-        host_entity: Option<i32>,
-        guests: &[(u32, i32)],
-        riding: &mut Riding,
-    ) {
-        riding.clear();
-        // The server's players in their boats and minecarts.
-        for &(vehicle, guest) in guests {
-            riding.add(vehicle as i32, guest);
-        }
-        for m in self.mobs.iter().filter(|m| !m.removed) {
-            if let Some(vehicle) = m.extra.mount {
-                riding.add(vehicle as i32, m.id as i32);
-            }
-        }
-        if let (Some(host), Some(vehicle)) = (host_entity, self.riding) {
-            riding.add(vehicle as i32, host);
-        }
-    }
-}
 
 impl Game<'_> {
+    /// Gives the entities Horizon keeps without an id one (`Entity.id`, from
+    /// the same counter as the rest) before they are first tracked.
+    pub(super) fn lan_assign_ids(&mut self) {
+        // LeashFenceKnotEntity: one per fence post with a lead on it
+        // (`notifyLeasheeRemoved` discards it once the last lead is gone).
+        let knots: Vec<[i32; 3]> = self
+            .mobs
+            .iter()
+            .filter(|m| !m.removed)
+            .filter_map(|m| match m.extra.leash {
+                Some(horizon_client::mobs::leash::Holder::Knot(p)) => Some(p),
+                _ => None,
+            })
+            .collect();
+        self.knot_ids.retain(|p, _| knots.contains(p));
+        for p in knots {
+            self.knot_ids.entry(p).or_insert_with(|| {
+                self.next_entity += 1;
+                self.next_entity
+            });
+        }
+        let next = &mut self.next_entity;
+        let mut give = |id: &mut u32| {
+            if *id == 0 {
+                *next += 1;
+                *id = *next;
+            }
+        };
+        self.tnts.iter_mut().for_each(|t| give(&mut t.id));
+        self.falling.iter_mut().for_each(|f| give(&mut f.id));
+        self.creatures
+            .projectiles
+            .iter_mut()
+            .for_each(|p| give(&mut p.id));
+        self.tridents.iter_mut().for_each(|t| give(&mut t.id));
+        self.rockets.iter_mut().for_each(|r| give(&mut r.id));
+        self.crystals.iter_mut().for_each(|c| give(&mut c.id));
+        self.bolts.iter_mut().for_each(|b| give(&mut b.id));
+        self.potions.thrown_ids().for_each(&mut give);
+        self.end.eye_ids().for_each(&mut give);
+        self.breath_clouds.iter_mut().for_each(|b| give(&mut b.id));
+        self.dragon_fireballs
+            .iter_mut()
+            .for_each(|b| give(&mut b.id));
+    }
+
     /// Primed TNT, falling blocks, projectiles, tridents, firework rockets and
     /// end crystals, as guests track them.
     fn lan_projectile_states(&self, host_entity: Option<i32>, hub: &mut Hub, out: &mut States) {
@@ -482,53 +527,6 @@ impl Game<'_> {
             out.push(e);
         }
         out.extend(self.lan_dragon_state());
-    }
-}
-impl crate::game::Sim<'_> {
-    /// Gives the entities Horizon keeps without an id one (`Entity.id`, from
-    /// the same counter as the rest) before they are first tracked.
-    pub(super) fn lan_assign_ids(&mut self) {
-        // LeashFenceKnotEntity: one per fence post with a lead on it
-        // (`notifyLeasheeRemoved` discards it once the last lead is gone).
-        let knots: Vec<[i32; 3]> = self
-            .mobs
-            .iter()
-            .filter(|m| !m.removed)
-            .filter_map(|m| match m.extra.leash {
-                Some(horizon_client::mobs::leash::Holder::Knot(p)) => Some(p),
-                _ => None,
-            })
-            .collect();
-        self.knot_ids.retain(|p, _| knots.contains(p));
-        for p in knots {
-            self.knot_ids.entry(p).or_insert_with(|| {
-                self.next_entity += 1;
-                self.next_entity
-            });
-        }
-        let next = &mut self.next_entity;
-        let mut give = |id: &mut u32| {
-            if *id == 0 {
-                *next += 1;
-                *id = *next;
-            }
-        };
-        self.tnts.iter_mut().for_each(|t| give(&mut t.id));
-        self.falling.iter_mut().for_each(|f| give(&mut f.id));
-        self.creatures
-            .projectiles
-            .iter_mut()
-            .for_each(|p| give(&mut p.id));
-        self.tridents.iter_mut().for_each(|t| give(&mut t.id));
-        self.rockets.iter_mut().for_each(|r| give(&mut r.id));
-        self.crystals.iter_mut().for_each(|c| give(&mut c.id));
-        self.bolts.iter_mut().for_each(|b| give(&mut b.id));
-        self.potions.thrown_ids().for_each(&mut give);
-        self.end.eye_ids().for_each(&mut give);
-        self.breath_clouds.iter_mut().for_each(|b| give(&mut b.id));
-        self.dragon_fireballs
-            .iter_mut()
-            .for_each(|b| give(&mut b.id));
     }
 }
 

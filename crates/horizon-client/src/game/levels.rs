@@ -129,6 +129,133 @@ impl Levels {
 }
 
 impl Game<'_> {
+    /// A new level for `dim`, opened from the save (`MinecraftServer.createLevels`).
+    fn open_level(&self, dim: Dim) -> Result<Parked> {
+        let (streaming, save, locator) = super::world_loading::make_streaming(
+            &self.res,
+            &self.pack,
+            &self.options,
+            &self.settings,
+            &self.world_root,
+            dim,
+            self.level.seed,
+        )?;
+        let mut world = World::new(self.res.facts().air, self.level.seed);
+        world.fast_lava = dim == Dim::Nether;
+        Ok(Parked {
+            world,
+            streaming,
+            locator,
+            save,
+            block_ticks: Ticks::new(self.level.seed as i32),
+            tick_chunks: Default::default(),
+            tickets: Default::default(),
+            random_tick_sections: Default::default(),
+            level_events: Vec::new(),
+            falling: Vec::new(),
+            paintings: Vec::new(),
+            item_frames: Vec::new(),
+            armor_stands: Vec::new(),
+            cushions: Vec::new(),
+            others: Vec::new(),
+            boats: Vec::new(),
+            carts: Vec::new(),
+            jukebox_sounds: HashMap::new(),
+            bolts: Vec::new(),
+            crystals: Vec::new(),
+            dragon: None,
+            dragon_fireballs: Vec::new(),
+            breath_clouds: Vec::new(),
+            tridents: Vec::new(),
+            rockets: Vec::new(),
+            ominous_spawners: Vec::new(),
+            tnts: Vec::new(),
+            hoppers: HashMap::new(),
+            mobs: Vec::new(),
+            knot_ids: HashMap::new(),
+            projectiles: Vec::new(),
+            dropped: Vec::new(),
+            orbs: Vec::new(),
+            persist: Default::default(),
+            lectern_pulses: Vec::new(),
+            lid_openers: HashMap::new(),
+            lan_events: Vec::new(),
+            lan_block_events: Vec::new(),
+            lan_entity_events: Vec::new(),
+            lan_critical_hits: Vec::new(),
+            anims: Default::default(),
+            raiding: Default::default(),
+            sculk: Default::default(),
+            creaking: Default::default(),
+            idle: 0,
+        })
+    }
+
+    /// Exchange the level in place with `p`.
+    fn swap_level(&mut self, p: &mut Parked) {
+        use std::mem::swap;
+        swap(&mut self.world, &mut p.world);
+        swap(&mut self.streaming, &mut p.streaming);
+        let mut locator = self.end.locator();
+        swap(&mut locator, &mut p.locator);
+        self.end.set_locator(locator);
+        self.share_spawn_conditions();
+        swap(&mut self.save, &mut p.save);
+        swap(&mut self.block_ticks, &mut p.block_ticks);
+        swap(&mut self.tick_chunks, &mut p.tick_chunks);
+        swap(&mut self.tickets, &mut p.tickets);
+        swap(&mut self.random_tick_sections, &mut p.random_tick_sections);
+        swap(&mut self.level_events, &mut p.level_events);
+        swap(&mut self.falling, &mut p.falling);
+        swap(&mut self.paintings, &mut p.paintings);
+        swap(&mut self.item_frames, &mut p.item_frames);
+        swap(&mut self.armor_stands, &mut p.armor_stands);
+        swap(&mut self.cushions, &mut p.cushions);
+        swap(&mut self.others, &mut p.others);
+        swap(&mut self.boats, &mut p.boats);
+        swap(&mut self.carts, &mut p.carts);
+        swap(&mut self.jukebox_sounds, &mut p.jukebox_sounds);
+        swap(&mut self.bolts, &mut p.bolts);
+        swap(&mut self.crystals, &mut p.crystals);
+        swap(&mut self.dragon, &mut p.dragon);
+        swap(&mut self.dragon_fireballs, &mut p.dragon_fireballs);
+        swap(&mut self.breath_clouds, &mut p.breath_clouds);
+        swap(&mut self.tridents, &mut p.tridents);
+        swap(&mut self.rockets, &mut p.rockets);
+        swap(&mut self.ominous_spawners, &mut p.ominous_spawners);
+        swap(&mut self.tnts, &mut p.tnts);
+        swap(&mut self.hoppers, &mut p.hoppers);
+        swap(&mut self.mobs, &mut p.mobs);
+        swap(&mut self.knot_ids, &mut p.knot_ids);
+        swap(&mut self.creatures.projectiles, &mut p.projectiles);
+        swap(&mut self.dropped, &mut p.dropped);
+        swap(&mut self.orbs, &mut p.orbs);
+        swap(&mut self.persist, &mut p.persist);
+        swap(&mut self.lectern_pulses, &mut p.lectern_pulses);
+        swap(&mut self.lid_openers, &mut p.lid_openers);
+        swap(&mut self.lan_events, &mut p.lan_events);
+        swap(&mut self.lan_block_events, &mut p.lan_block_events);
+        swap(&mut self.lan_entity_events, &mut p.lan_entity_events);
+        swap(&mut self.lan_critical_hits, &mut p.lan_critical_hits);
+        let (a, b) = (&mut self.be_anims, &mut p.anims);
+        swap(&mut a.chests, &mut b.chests);
+        swap(&mut a.books, &mut b.books);
+        swap(&mut a.shulkers, &mut b.shulkers);
+        swap(&mut a.bells, &mut b.bells);
+        swap(&mut a.conduits, &mut b.conduits);
+        swap(&mut a.skulls, &mut b.skulls);
+        swap(&mut a.pots, &mut b.pots);
+        swap(&mut a.gateways, &mut b.gateways);
+        swap(&mut a.gateway_servers, &mut b.gateway_servers);
+        swap(&mut a.conduit_servers, &mut b.conduit_servers);
+        self.raiding.swap_level(&mut p.raiding);
+        self.sculk.swap_level(&mut p.sculk);
+        self.creaking.swap_level(&mut p.creaking);
+        // What only the client draws starts over.
+        self.particles.clear();
+        self.pickups.clear();
+    }
+
     /// Put `target`'s level in place, opening it first if it is not loaded.
     /// The level that was in place is kept with the others; the shared
     /// clock and weather go with the swap. `host` is the hub when the caller
@@ -364,132 +491,5 @@ impl Game<'_> {
             self.save_level(wait)?;
         }
         self.enter_level(None, back)
-    }
-}
-impl crate::game::Sim<'_> {
-    /// A new level for `dim`, opened from the save (`MinecraftServer.createLevels`).
-    fn open_level(&self, dim: Dim) -> Result<Parked> {
-        let (streaming, save, locator) = super::world_loading::make_streaming(
-            &self.res,
-            &self.pack,
-            &self.options,
-            &self.settings,
-            &self.world_root,
-            dim,
-            self.level.seed,
-        )?;
-        let mut world = World::new(self.res.facts().air, self.level.seed);
-        world.fast_lava = dim == Dim::Nether;
-        Ok(Parked {
-            world,
-            streaming,
-            locator,
-            save,
-            block_ticks: Ticks::new(self.level.seed as i32),
-            tick_chunks: Default::default(),
-            tickets: Default::default(),
-            random_tick_sections: Default::default(),
-            level_events: Vec::new(),
-            falling: Vec::new(),
-            paintings: Vec::new(),
-            item_frames: Vec::new(),
-            armor_stands: Vec::new(),
-            cushions: Vec::new(),
-            others: Vec::new(),
-            boats: Vec::new(),
-            carts: Vec::new(),
-            jukebox_sounds: HashMap::new(),
-            bolts: Vec::new(),
-            crystals: Vec::new(),
-            dragon: None,
-            dragon_fireballs: Vec::new(),
-            breath_clouds: Vec::new(),
-            tridents: Vec::new(),
-            rockets: Vec::new(),
-            ominous_spawners: Vec::new(),
-            tnts: Vec::new(),
-            hoppers: HashMap::new(),
-            mobs: Vec::new(),
-            knot_ids: HashMap::new(),
-            projectiles: Vec::new(),
-            dropped: Vec::new(),
-            orbs: Vec::new(),
-            persist: Default::default(),
-            lectern_pulses: Vec::new(),
-            lid_openers: HashMap::new(),
-            lan_events: Vec::new(),
-            lan_block_events: Vec::new(),
-            lan_entity_events: Vec::new(),
-            lan_critical_hits: Vec::new(),
-            anims: Default::default(),
-            raiding: Default::default(),
-            sculk: Default::default(),
-            creaking: Default::default(),
-            idle: 0,
-        })
-    }
-    /// Exchange the level in place with `p`.
-    fn swap_level(&mut self, p: &mut Parked) {
-        use std::mem::swap;
-        swap(&mut self.world, &mut p.world);
-        swap(&mut self.streaming, &mut p.streaming);
-        let mut locator = self.end.locator();
-        swap(&mut locator, &mut p.locator);
-        self.end.set_locator(locator);
-        self.share_spawn_conditions();
-        swap(&mut self.save, &mut p.save);
-        swap(&mut self.block_ticks, &mut p.block_ticks);
-        swap(&mut self.tick_chunks, &mut p.tick_chunks);
-        swap(&mut self.tickets, &mut p.tickets);
-        swap(&mut self.random_tick_sections, &mut p.random_tick_sections);
-        swap(&mut self.level_events, &mut p.level_events);
-        swap(&mut self.falling, &mut p.falling);
-        swap(&mut self.paintings, &mut p.paintings);
-        swap(&mut self.item_frames, &mut p.item_frames);
-        swap(&mut self.armor_stands, &mut p.armor_stands);
-        swap(&mut self.cushions, &mut p.cushions);
-        swap(&mut self.others, &mut p.others);
-        swap(&mut self.boats, &mut p.boats);
-        swap(&mut self.carts, &mut p.carts);
-        swap(&mut self.jukebox_sounds, &mut p.jukebox_sounds);
-        swap(&mut self.bolts, &mut p.bolts);
-        swap(&mut self.crystals, &mut p.crystals);
-        swap(&mut self.dragon, &mut p.dragon);
-        swap(&mut self.dragon_fireballs, &mut p.dragon_fireballs);
-        swap(&mut self.breath_clouds, &mut p.breath_clouds);
-        swap(&mut self.tridents, &mut p.tridents);
-        swap(&mut self.rockets, &mut p.rockets);
-        swap(&mut self.ominous_spawners, &mut p.ominous_spawners);
-        swap(&mut self.tnts, &mut p.tnts);
-        swap(&mut self.hoppers, &mut p.hoppers);
-        swap(&mut self.mobs, &mut p.mobs);
-        swap(&mut self.knot_ids, &mut p.knot_ids);
-        swap(&mut self.creatures.projectiles, &mut p.projectiles);
-        swap(&mut self.dropped, &mut p.dropped);
-        swap(&mut self.orbs, &mut p.orbs);
-        swap(&mut self.persist, &mut p.persist);
-        swap(&mut self.lectern_pulses, &mut p.lectern_pulses);
-        swap(&mut self.lid_openers, &mut p.lid_openers);
-        swap(&mut self.lan_events, &mut p.lan_events);
-        swap(&mut self.lan_block_events, &mut p.lan_block_events);
-        swap(&mut self.lan_entity_events, &mut p.lan_entity_events);
-        swap(&mut self.lan_critical_hits, &mut p.lan_critical_hits);
-        let (a, b) = (&mut self.be_anims, &mut p.anims);
-        swap(&mut a.chests, &mut b.chests);
-        swap(&mut a.books, &mut b.books);
-        swap(&mut a.shulkers, &mut b.shulkers);
-        swap(&mut a.bells, &mut b.bells);
-        swap(&mut a.conduits, &mut b.conduits);
-        swap(&mut a.skulls, &mut b.skulls);
-        swap(&mut a.pots, &mut b.pots);
-        swap(&mut a.gateways, &mut b.gateways);
-        swap(&mut a.gateway_servers, &mut b.gateway_servers);
-        swap(&mut a.conduit_servers, &mut b.conduit_servers);
-        self.raiding.swap_level(&mut p.raiding);
-        self.sculk.swap_level(&mut p.sculk);
-        self.creaking.swap_level(&mut p.creaking);
-        // What only the client draws starts over.
-        self.particles.clear();
-        self.pickups.clear();
     }
 }

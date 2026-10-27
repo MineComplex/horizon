@@ -17,6 +17,10 @@ pub const HELP: &[&str] = &[
 ];
 
 impl Game<'_> {
+    /// Parse `name[k=v,...]` into a registry state (defaults for missing properties).
+    fn parse_state(&self, text: &str) -> Result<BlockStateId> {
+        parse_state(self.pack.assets.registry, text)
+    }
     pub(super) fn render_command(&mut self, words: &[&str]) -> Result<Option<Value>> {
         let int = |i: usize| -> Result<i32> {
             Ok(words
@@ -105,12 +109,6 @@ impl Game<'_> {
             }
             other => Err(format!("unknown render command {other}").into()),
         }
-    }
-}
-impl crate::game::Sim<'_> {
-    /// Parse `name[k=v,...]` into a registry state (defaults for missing properties).
-    fn parse_state(&self, text: &str) -> Result<BlockStateId> {
-        parse_state(self.pack.assets.registry, text)
     }
 }
 
