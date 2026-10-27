@@ -104,7 +104,7 @@ impl Game<'_> {
             };
             self.tweak_place(&mut drag, slot);
             self.inv_drag = None;
-            self.inv_clicks.skip_release();
+            self.front.inv_clicks.skip_release();
             self.tweaks.drag = Some(drag);
             return true;
         }
@@ -159,7 +159,7 @@ impl Game<'_> {
                     if !drag.active {
                         drag.active = true;
                         self.inv_drag = None;
-                        self.inv_clicks.skip_release();
+                        self.front.inv_clicks.skip_release();
                     }
                     if shift {
                         self.tweak_click(slot, 0, Input::QuickMove);
@@ -322,10 +322,10 @@ impl Game<'_> {
     /// The sort buttons: a bordered square with three bars, lighter under
     /// the cursor.
     pub(super) fn draw_sort_buttons(&self, batch: &mut HudBatch, ox: f32, oy: f32) {
-        let atlas = &self.gui.atlas;
+        let atlas = &self.front.gui.atlas;
         for ((x, y), _) in self.sort_buttons() {
             let (x, y) = (ox + x, oy + y);
-            let (cx, cy) = self.cursor;
+            let (cx, cy) = self.front.cursor;
             let hovered = cx >= x && cx < x + SORT_BUTTON && cy >= y && cy < y + SORT_BUTTON;
             let face = if hovered {
                 rgba(220, 220, 220, 255)
@@ -349,12 +349,12 @@ impl Game<'_> {
     }
     /// A left press on a sort button sorts its slots (true).
     pub(super) fn sort_press(&mut self) -> bool {
-        let Some(r) = self.renderer.as_ref() else {
+        let Some(r) = self.front.renderer.as_ref() else {
             return false;
         };
         let batch = HudBatch::new([r.config.width, r.config.height]);
         let (ox, oy) = self.inventory_origin(&batch);
-        let (cx, cy) = self.cursor;
+        let (cx, cy) = self.front.cursor;
         let hit = self.sort_buttons().into_iter().find(|((x, y), _)| {
             let (x, y) = (ox + x, oy + y);
             cx >= x && cx < x + SORT_BUTTON && cy >= y && cy < y + SORT_BUTTON

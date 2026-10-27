@@ -44,12 +44,16 @@ impl Game<'_> {
             return false;
         }
         let at = m.center();
-        let sneaking = self.keys.contains(&winit::keyboard::KeyCode::ShiftLeft);
+        let sneaking = self
+            .front
+            .keys
+            .contains(&winit::keyboard::KeyCode::ShiftLeft);
         let harnessed = m.extra.head.is_some();
         // Equippable.equipOnInteract: a harness goes on a bare adult.
         if item.ends_with("_harness") && item.starts_with("minecraft:") && !harnessed {
             self.mobs[index].extra.head = Some(item.into());
-            self.audio
+            self.front
+                .audio
                 .play("minecraft:entity.happy_ghast.equip", Some(at), 1.0, 1.0);
             self.consume_held();
             return true;
@@ -60,7 +64,8 @@ impl Game<'_> {
             && !sneaking
             && let Some(harness) = self.mobs[index].extra.head.take()
         {
-            self.audio
+            self.front
+                .audio
                 .play("minecraft:entity.happy_ghast.unequip", Some(at), 1.0, 1.0);
             self.spawn_item(ItemStack::new(&harness, 1), at, [0.0, 0.2, 0.0], 10);
             self.damage_held_tool();
@@ -136,7 +141,8 @@ impl Game<'_> {
             m.body_yaw = yaw;
             m.head_yaw = yaw;
             let at = m.center();
-            self.audio
+            self.front
+                .audio
                 .play("minecraft:entity.ghastling.spawn", Some(at), 1.0, 1.0);
         }
     }

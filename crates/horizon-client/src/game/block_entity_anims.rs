@@ -32,16 +32,18 @@ impl Game<'_> {
     pub(super) fn block_entity_event(&mut self, pos: [i32; 3], a: i32, b: i32) {
         let state = self.world.block(pos[0], pos[1], pos[2]).0;
         let time = self.world.game_time;
-        match self.be_anims.ticker(state) {
+        match self.front.be_anims.ticker(state) {
             Some(Ticker::Lid) => {
-                self.be_anims
+                self.front
+                    .be_anims
                     .chests
                     .entry(pos)
                     .or_default()
                     .trigger_event(a, b);
             }
             Some(Ticker::Shulker { .. }) => {
-                self.be_anims
+                self.front
+                    .be_anims
                     .shulkers
                     .entry(pos)
                     .or_default()
@@ -49,7 +51,8 @@ impl Game<'_> {
             }
             Some(Ticker::Bell) => {
                 let gathered = self.bell_gather(pos);
-                self.be_anims
+                self.front
+                    .be_anims
                     .bells
                     .entry(pos)
                     .or_default()
@@ -57,14 +60,16 @@ impl Game<'_> {
             }
             Some(Ticker::Gateway) => {
                 let initial = self.gateway_loaded(pos);
-                self.be_anims
+                self.front
+                    .be_anims
                     .gateways
                     .entry(pos)
                     .or_insert(initial)
                     .trigger_event(a, b);
             }
             Some(Ticker::Pot) => {
-                self.be_anims
+                self.front
+                    .be_anims
                     .pots
                     .entry(pos)
                     .or_default()
@@ -87,7 +92,7 @@ impl Game<'_> {
     pub(super) fn container_openers_changed(&mut self, key: (i32, i32, i32), open: bool) -> bool {
         let pos = [key.0, key.1, key.2];
         let state = self.world.block(pos[0], pos[1], pos[2]).0;
-        match self.be_anims.ticker(state) {
+        match self.front.be_anims.ticker(state) {
             Some(Ticker::Lid) => {
                 let edge = self.lid_openers_changed(key, open);
                 if let Some(other) = self.chest_other_half(key) {
@@ -106,7 +111,7 @@ impl Game<'_> {
                 self.barrel_openers_changed(key, open)
             }
             Some(Ticker::Shulker { .. }) => {
-                let shulker = self.be_anims.shulkers.entry(pos).or_default();
+                let shulker = self.front.be_anims.shulkers.entry(pos).or_default();
                 let (count, edge) = if open {
                     shulker.start_open()
                 } else {
@@ -204,10 +209,11 @@ impl Game<'_> {
     /// room to rise (`level.noCollision` of the half-open lid box).
     pub(super) fn shulker_can_open(&self, pos: [i32; 3]) -> bool {
         let state = self.world.block(pos[0], pos[1], pos[2]).0;
-        let Some(Ticker::Shulker { facing }) = self.be_anims.ticker(state) else {
+        let Some(Ticker::Shulker { facing }) = self.front.be_anims.ticker(state) else {
             return true;
         };
         let closed = self
+            .front
             .be_anims
             .shulkers
             .get(&pos)
@@ -234,7 +240,7 @@ impl Game<'_> {
         if self.remote.is_none() {
             self.tick_conduit_servers();
         }
-        let Some(r) = &self.renderer else {
+        let Some(r) = &self.front.renderer else {
             if self.remote.is_none() {
                 self.tick_gateway_servers();
             }
@@ -243,17 +249,17 @@ impl Game<'_> {
         // Sorted by position: the order they tick in, and a quick lookup.
         // Read again only when the drawn block entities changed.
         let revision = r.block_entity_revision();
-        if self.be_anims.present_revision != Some(revision) {
+        if self.front.be_anims.present_revision != Some(revision) {
             let mut present: Vec<([i32; 3], Ticker)> = r
                 .block_entities()
-                .filter_map(|(p, s)| Some((*p, self.be_anims.ticker(*s)?)))
+                .filter_map(|(p, s)| Some((*p, self.front.be_anims.ticker(*s)?)))
                 .collect();
             present.sort_unstable_by_key(|(p, _)| *p);
-            self.be_anims.retain_present(&present);
-            self.be_anims.present = present;
-            self.be_anims.present_revision = Some(revision);
+            self.front.be_anims.retain_present(&present);
+            self.front.be_anims.present = present;
+            self.front.be_anims.present_revision = Some(revision);
         }
-        let positions = std::mem::take(&mut self.be_anims.present);
+        let positions = std::mem::take(&mut self.front.be_anims.present);
         let players: Vec<[f64; 3]> = match &self.player {
             Some(p) if !self.spectator() => vec![[p.position.x, p.position.y, p.position.z]],
             _ => Vec::new(),
@@ -275,9 +281,9 @@ impl Game<'_> {
             .unwrap_or_default();
         for &(pos, ticker) in &positions {
             match ticker {
-                Ticker::Lid => self.be_anims.chests.entry(pos).or_default().tick(),
+                Ticker::Lid => self.front.be_anims.chests.entry(pos).or_default().tick(),
                 Ticker::Book => {
-                    let anims = &mut self.be_anims;
+                    let anims = &mut self.front.be_anims;
                     anims
                         .books
                         .entry(pos)
@@ -287,14 +293,20 @@ impl Game<'_> {
                 Ticker::Shulker { facing } => {
                     // The lid's push of entities in its way (moveCollidedEntities)
                     // and the neighbour updates are left to the level.
-                    self.be_anims
+                    self.front
+                        .be_anims
                         .shulkers
                         .entry(pos)
                         .or_default()
                         .tick(pos, facing);
                 }
                 Ticker::Skull { powered } => {
-                    self.be_anims.skulls.entry(pos).or_default().tick(powered);
+                    self.front
+                        .be_anims
+                        .skulls
+                        .entry(pos)
+                        .or_default()
+                        .tick(powered);
                 }
                 Ticker::Bell => {
                     let player = self.player_view().map(|p| BellEntity {
@@ -315,6 +327,7 @@ impl Game<'_> {
                         })
                     };
                     let tick = self
+                        .front
                         .be_anims
                         .bells
                         .entry(pos)
@@ -328,8 +341,12 @@ impl Game<'_> {
                     // On a server its own copy does this and sends the sound.
                     if tick.resonate && self.remote.is_none() {
                         // The server's copy plays the resonance for everyone.
-                        self.audio
-                            .play("minecraft:block.bell.resonate", Some(centre), 1.0, 1.0);
+                        self.front.audio.play(
+                            "minecraft:block.bell.resonate",
+                            Some(centre),
+                            1.0,
+                            1.0,
+                        );
                     }
                     if let Some((particles, glow)) = tick.ended {
                         for (p, color) in particles {
@@ -365,7 +382,7 @@ impl Game<'_> {
                             .is_some_and(|s| frames.contains(&s.name))
                     };
                     let time = world.game_time;
-                    let anims = &mut self.be_anims;
+                    let anims = &mut self.front.be_anims;
                     let particles = anims.conduits.entry(pos).or_default().client_tick(
                         pos,
                         time,
@@ -384,7 +401,7 @@ impl Game<'_> {
                     // The server copy's portalTick runs first; its block event
                     // reaches the client copy before the client ticks it.
                     let initial = self.gateway_loaded(pos);
-                    let anims = &mut self.be_anims;
+                    let anims = &mut self.front.be_anims;
                     let server = anims.gateway_servers.entry(pos).or_insert(initial);
                     // A server sends its copy's block event instead.
                     let triggered = self.remote.is_none() && server.portal_tick();
@@ -396,7 +413,7 @@ impl Game<'_> {
                 }
             }
         }
-        self.be_anims.present = positions;
+        self.front.be_anims.present = positions;
     }
     /// `ConduitBlockEntity.serverTick` of every conduit in the chunks that
     /// tick blocks, with or without a renderer. The conduits are looked for
@@ -406,7 +423,13 @@ impl Game<'_> {
         if self.world.game_time % 40 == 0 {
             self.find_conduits();
         }
-        let mut positions: Vec<[i32; 3]> = self.be_anims.conduit_servers.keys().copied().collect();
+        let mut positions: Vec<[i32; 3]> = self
+            .front
+            .be_anims
+            .conduit_servers
+            .keys()
+            .copied()
+            .collect();
         positions.sort_unstable();
         for pos in positions {
             self.tick_conduit_server(pos);
@@ -416,7 +439,7 @@ impl Game<'_> {
     /// chunks that tick blocks, keeping the state of those already known.
     fn find_conduits(&mut self) {
         let levels = self.tickets.levels();
-        let kinds = &self.be_anims.kinds;
+        let kinds = &self.front.be_anims.kinds;
         let is_conduit = |id: u32| matches!(kinds.get(id as usize), Some(Some(Ticker::Conduit)));
         let mut found = Vec::new();
         for (&(cx, cz), chunk) in &self.world.chunks {
@@ -438,10 +461,10 @@ impl Game<'_> {
                 }
             }
         }
-        let mut old = std::mem::take(&mut self.be_anims.conduit_servers);
+        let mut old = std::mem::take(&mut self.front.be_anims.conduit_servers);
         for pos in found {
             let known = old.remove(&pos).unwrap_or_default();
-            self.be_anims.conduit_servers.insert(pos, known);
+            self.front.be_anims.conduit_servers.insert(pos, known);
         }
     }
     /// `ConduitBlockEntity.serverTick` of the conduit at `pos`, in a chunk
@@ -450,9 +473,9 @@ impl Game<'_> {
     /// sounds.
     fn tick_conduit_server(&mut self, pos: [i32; 3]) {
         let state = self.world.block(pos[0], pos[1], pos[2]).0;
-        if self.be_anims.ticker(state) != Some(Ticker::Conduit) {
+        if self.front.be_anims.ticker(state) != Some(Ticker::Conduit) {
             // Broken since the chunks were searched.
-            self.be_anims.conduit_servers.remove(&pos);
+            self.front.be_anims.conduit_servers.remove(&pos);
             return;
         }
         if !self.tickets.levels().block_ticking_at(pos[0], pos[2])
@@ -462,6 +485,7 @@ impl Game<'_> {
         }
         let time = self.world.game_time;
         let mut conduit = self
+            .front
             .be_anims
             .conduit_servers
             .remove(&pos)
@@ -499,7 +523,7 @@ impl Game<'_> {
                 } else {
                     "minecraft:block.conduit.deactivate"
                 };
-                self.audio.play(sound, Some(centre), 1.0, 1.0);
+                self.front.audio.play(sound, Some(centre), 1.0, 1.0);
             }
             if let Some(frames) = check.frames {
                 self.conduit_apply_effects(pos, frames);
@@ -508,18 +532,19 @@ impl Game<'_> {
         }
         let (ambient, short) = conduit.ambient(time, &mut self.world.random);
         if ambient {
-            self.audio
+            self.front
+                .audio
                 .play("minecraft:block.conduit.ambient", Some(centre), 1.0, 1.0);
         }
         if short {
-            self.audio.play(
+            self.front.audio.play(
                 "minecraft:block.conduit.ambient_short",
                 Some(centre),
                 1.0,
                 1.0,
             );
         }
-        self.be_anims.conduit_servers.insert(pos, conduit);
+        self.front.be_anims.conduit_servers.insert(pos, conduit);
     }
     /// `ConduitBlockEntity.applyEffects`: conduit power for every player
     /// in water or rain within `frames / 7 * 16` blocks.
@@ -594,7 +619,8 @@ impl Game<'_> {
         };
         let at = [m.position.x, m.position.y, m.position.z];
         m.damage(4.0, Damage::of(DamageKind::Magic));
-        self.audio
+        self.front
+            .audio
             .play("minecraft:block.conduit.attack.target", Some(at), 1.0, 1.0);
     }
     /// `ConduitBlockEntity.selectNewTarget`: one of the enemies in water or
@@ -631,7 +657,7 @@ impl Game<'_> {
     }
     /// The conduit's `destroyTarget` as the client draws it.
     fn conduit_target(&self, pos: [i32; 3]) -> Option<ConduitTarget> {
-        let id = self.be_anims.conduit_servers.get(&pos)?.target?;
+        let id = self.front.be_anims.conduit_servers.get(&pos)?.target?;
         let m = self.mobs.iter().find(|m| m.id == id && !m.removed)?;
         Some(ConduitTarget {
             position: [m.position.x, m.position.y, m.position.z],
@@ -647,6 +673,7 @@ impl Game<'_> {
     fn tick_gateway_servers(&mut self) {
         let levels = self.tickets.levels();
         let mut positions: Vec<[i32; 3]> = self
+            .front
             .be_anims
             .gateway_servers
             .keys()
@@ -656,6 +683,7 @@ impl Game<'_> {
         positions.sort_unstable();
         for pos in positions {
             let triggered = self
+                .front
                 .be_anims
                 .gateway_servers
                 .get_mut(&pos)
@@ -670,6 +698,7 @@ impl Game<'_> {
     pub(super) fn gateway_enter(&mut self, pos: [i32; 3]) -> bool {
         let initial = self.gateway_loaded(pos);
         let entered = self
+            .front
             .be_anims
             .gateway_servers
             .entry(pos)
@@ -720,12 +749,13 @@ impl Game<'_> {
         } else {
             Default::default()
         };
-        self.be_anims
+        self.front
+            .be_anims
             .block_anim(pos, self.world.game_time, partial, sherds)
     }
     /// `ChestLidController.getOpenness(partial)` at `pos`.
     pub(super) fn chest_lid(&self, pos: [i32; 3], partial: f32) -> f32 {
-        self.be_anims.lid(pos, partial)
+        self.front.be_anims.lid(pos, partial)
     }
     /// `SkullBlockRenderer.getPlayerSkin`: the skin sprite of the profile of
     /// the player head at `pos`. The skin download is started here; while it
@@ -754,7 +784,7 @@ impl Game<'_> {
         });
         if let Some((url, location)) = download {
             let mut downloads = self.skin_downloads.borrow_mut();
-            if self.gui.atlas.sprites.contains_key(&location) {
+            if self.front.gui.atlas.sprites.contains_key(&location) {
                 let _ = downloads.state(skins::Kind::Skin, &url);
                 return Some(location);
             }

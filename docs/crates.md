@@ -20,13 +20,14 @@ Velocity analog.
 3. `Game::world_data` (`horizon_game::world_data::WorldData`): game rules, difficulty, clock, time markers,
    timelines and the command registries, out of the window's `UiState`.
 
+4. `Game::front` (`Frontend` in game.rs): the 84 fields only a window uses (window, renderer, input,
+   fog, LOD, camera, sounds, HUD widgets) in one struct, apart from the simulation's.
+
 ## Next
 
-4. Split the rest of `Game` (`horizon-client/src/game.rs` + `game/`, ~330 fields): about 50 fields hold
-   client-only state (window, renderer, HUD, fog, LOD, sounds, screens), read in ~100 of its 220 files.
-   Gather them into one client sub-struct, then move the server half of `Game` and its `impl` blocks into a
-   crate without the window, with the few calls server code makes into the client (sounds, particles,
-   screens) behind a trait.
-5. A dedicated server binary built from that crate alone (today `horizon-client --dedicated`).
-6. `horizon-server-api`: the Bukkit-like API as native Rust plugins (traits, dynamic libraries), the way
+5. Move the server half of `Game` and its `impl` blocks into a crate without the window: the methods that
+   touch `self.front` stay in the client, and the calls server code makes into it (sounds, particles,
+   screens) go through a trait.
+6. A dedicated server binary built from that crate alone (today `horizon-client --dedicated`).
+7. `horizon-server-api`: the Bukkit-like API as native Rust plugins (traits, dynamic libraries), the way
    `horizon-proxy` loads its plugins.

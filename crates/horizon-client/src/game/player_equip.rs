@@ -79,7 +79,7 @@ impl Game<'_> {
                 .iter()
                 .position(|s| *s == "player")
                 .unwrap_or(0);
-            self.audio.play_on(players, sound, Some(at), 1.0, 1.0);
+            self.front.audio.play_on(players, sound, Some(at), 1.0, 1.0);
         }
         if ARMOR.contains(&slot) {
             let event = if equippable.is_some() {

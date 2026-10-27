@@ -32,7 +32,8 @@ impl Game<'_> {
     }
     fn nautilus_sound(&mut self, index: usize, sound: &str) {
         let at = self.mobs[index].center();
-        self.audio
+        self.front
+            .audio
             .play(&format!("minecraft:{sound}"), Some(at), 1.0, 1.0);
     }
     /// `AbstractNautilus.mobInteract`. Returns whether the click was used.
@@ -49,8 +50,14 @@ impl Game<'_> {
             .map(|t| t.iter().cloned().collect())
             .unwrap_or_default();
         let food = nautilus::is_food(m, item, &taming);
-        let sneaking = self.keys.contains(&winit::keyboard::KeyCode::ShiftLeft)
-            || self.keys.contains(&winit::keyboard::KeyCode::ShiftRight);
+        let sneaking = self
+            .front
+            .keys
+            .contains(&winit::keyboard::KeyCode::ShiftLeft)
+            || self
+                .front
+                .keys
+                .contains(&winit::keyboard::KeyCode::ShiftRight);
         let tame = m.extra.tame;
         if m.is_baby() {
             // Animal.mobInteract: food grows a baby up by a tenth.

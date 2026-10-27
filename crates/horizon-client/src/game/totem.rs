@@ -116,7 +116,8 @@ impl Game<'_> {
             body.height,
             30,
         );
-        self.audio
+        self.front
+            .audio
             .play_unshared("minecraft:item.totem.use", Some(body.at), 1.0, 1.0);
         if own {
             self.pad_rumble(horizon_client::gamepad::Rumble::Totem);

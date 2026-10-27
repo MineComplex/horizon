@@ -262,7 +262,8 @@ impl Game<'_> {
         m.extra.point = None;
         m.nav_stop();
         let at = m.center();
-        self.audio
+        self.front
+            .audio
             .play("minecraft:entity.piglin.admiring_item", Some(at), 1.0, 1.0);
     }
     /// `PiglinAi.mobInteract`: hand a piglin a gold ingot (only piglin

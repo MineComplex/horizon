@@ -137,7 +137,8 @@ impl Game<'_> {
             match e {
                 HeartEvent::SetBlock(at, state) => self.level_set(at, state)?,
                 HeartEvent::Sound(name, at, volume, pitch) => {
-                    self.audio
+                    self.front
+                        .audio
                         .play(&format!("minecraft:{name}"), Some(at), volume, pitch)
                 }
                 HeartEvent::Trail {

@@ -199,7 +199,7 @@ impl Game<'_> {
             f64::from(p[1]) + 0.5,
             f64::from(p[2]) + 0.5,
         ];
-        self.audio.play(sound, Some(at), 1.0, 1.0);
+        self.front.audio.play(sound, Some(at), 1.0, 1.0);
     }
     /// `updateBase`: complete layers of `beacon_base_blocks` below.
     fn beacon_base(&self, x: i32, y: i32, z: i32) -> i32 {
@@ -331,7 +331,8 @@ impl Game<'_> {
                         s.beacon[1] = Some(e);
                     }
                 }
-                self.audio
+                self.front
+                    .audio
                     .play("minecraft:ui.button.click", None, 0.25, 1.0);
             }
             return true;
@@ -344,7 +345,8 @@ impl Game<'_> {
                 && let Some(s) = self.station.as_mut()
             {
                 s.beacon[1] = Some(p);
-                self.audio
+                self.front
+                    .audio
                     .play("minecraft:ui.button.click", None, 0.25, 1.0);
             }
             return true;
@@ -352,7 +354,8 @@ impl Game<'_> {
         if inside(l, 164.0, 107.0, 22.0, 22.0) {
             let paid = self.station.as_ref().is_some_and(|s| s.inputs[0].is_some());
             if paid && sel[0].is_some() {
-                self.audio
+                self.front
+                    .audio
                     .play("minecraft:ui.button.click", None, 0.25, 1.0);
                 self.confirm_beacon(sel);
                 self.close_beacon_screen();
@@ -360,7 +363,8 @@ impl Game<'_> {
             return true;
         }
         if inside(l, 190.0, 107.0, 22.0, 22.0) {
-            self.audio
+            self.front
+                .audio
                 .play("minecraft:ui.button.click", None, 0.25, 1.0);
             self.close_beacon_screen();
             return true;
@@ -405,11 +409,11 @@ impl Game<'_> {
     pub(super) fn draw_beacon(&mut self, batch: &mut HudBatch) {
         let (ox, oy) = self.inventory_origin(batch);
         let (bx, by) = (ox + SHIFT, oy);
-        let local = (self.cursor.0 - bx, self.cursor.1 - by);
+        let local = (self.front.cursor.0 - bx, self.front.cursor.1 - by);
         let levels = self.beacon_levels();
         let sel = self.station.as_ref().map_or([None; 2], |s| s.beacon);
         let paid = self.station.as_ref().is_some_and(|s| s.inputs[0].is_some());
-        let atlas = &self.gui.atlas;
+        let atlas = &self.front.gui.atlas;
         batch.fill(
             atlas,
             0.0,
@@ -430,7 +434,7 @@ impl Game<'_> {
             ("block.minecraft.beacon.secondary", "Secondary Power", 169.0),
         ] {
             let text = self.translate(key, fallback);
-            let atlas = &self.gui.atlas;
+            let atlas = &self.front.gui.atlas;
             let w = HudBatch::text_width(atlas, &text);
             batch.text(
                 atlas,
@@ -445,7 +449,7 @@ impl Game<'_> {
             let x = [20.0, 41.0, 63.0, 86.0, 108.0][i];
             self.draw_item(batch, &ItemStack::new(item, 1), bx + x, by + 109.0);
         }
-        let atlas = &self.gui.atlas;
+        let atlas = &self.front.gui.atlas;
         let mut tooltip = None;
         let button =
             |batch: &mut HudBatch, x: f32, y: f32, active: bool, selected: bool, icon: &str| {
@@ -524,10 +528,10 @@ impl Game<'_> {
             }
         }
         let mut stack_tip = None;
-        if let Some(slot) = self.slot_at(batch, self.cursor.0, self.cursor.1) {
+        if let Some(slot) = self.slot_at(batch, self.front.cursor.0, self.front.cursor.1) {
             let (sx, sy) = self.slot_position(slot);
             batch.fill(
-                &self.gui.atlas,
+                &self.front.gui.atlas,
                 ox + sx,
                 oy + sy,
                 16.0,
@@ -539,20 +543,21 @@ impl Game<'_> {
         if self.carried.is_some() {
             self.draw_carried(batch);
         } else if let Some(stack) = stack_tip {
-            self.draw_stack_tooltip(batch, &stack, self.cursor.0, self.cursor.1);
+            self.draw_stack_tooltip(batch, &stack, self.front.cursor.0, self.front.cursor.1);
         } else if let Some(key) = tooltip {
             let text = self.translate(&key, &key);
             self.draw_tooltip_lines(
                 batch,
                 &[(horizon_client::text::Text::literal(text), u32::MAX)],
-                self.cursor.0,
-                self.cursor.1,
+                self.front.cursor.0,
+                self.front.cursor.1,
             );
         }
     }
     /// `BeaconRenderer`: each section's rotating solid beam and its glow.
     pub(super) fn beacon_geometry(&self, camera: glam::DVec3, alpha: f64, out: &mut Vec<Vertex>) {
         let Some(s) = self
+            .front
             .gui
             .atlas
             .sprites

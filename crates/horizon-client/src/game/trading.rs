@@ -380,7 +380,7 @@ impl Game<'_> {
         self.station = Some(s);
         self.screen = super::Screen::Inventory;
         self.capture(false);
-        self.right = false;
+        self.front.right = false;
     }
     /// The trading mob's random before a menu click (it ticks meanwhile).
     pub(super) fn merchant_sync_in(&self, session: &mut merchant::Session, mob: Option<u32>) {
@@ -439,7 +439,7 @@ impl Game<'_> {
                         (false, true) => "minecraft:entity.wandering_trader.yes",
                         (false, false) => "minecraft:entity.wandering_trader.no",
                     };
-                    self.audio.play(sound, Some(origin), 1.0, pitch);
+                    self.front.audio.play(sound, Some(origin), 1.0, pitch);
                 }
                 merchant::Event::Traded(index) => {
                     traded.extend(session.offers.get(index).map(|o| o.result.clone()));
@@ -517,7 +517,8 @@ impl Game<'_> {
                 if let Some(m) = self.station.as_mut().and_then(|s| s.merchant.as_mut()) {
                     m.focused = Some(i);
                 }
-                self.audio
+                self.front
+                    .audio
                     .play("minecraft:ui.button.click", None, 0.25, 1.0);
                 self.try_move_items(index);
                 return true;
@@ -547,7 +548,7 @@ impl Game<'_> {
     /// `MerchantScreen` rendering.
     pub(super) fn draw_merchant(&mut self, batch: &mut HudBatch) -> bool {
         let (ox, oy) = self.inventory_origin(batch);
-        let local = (self.cursor.0 - ox, self.cursor.1 - oy);
+        let local = (self.front.cursor.0 - ox, self.front.cursor.1 - oy);
         let Some(m) = self.station.as_ref().and_then(|s| s.merchant.as_ref()) else {
             return false;
         };
@@ -566,7 +567,7 @@ impl Game<'_> {
         );
         let offers = m.session.offers.clone();
         let costs: Vec<ItemStack> = offers.iter().map(|o| o.cost_a(self.res.items())).collect();
-        let atlas = &self.gui.atlas;
+        let atlas = &self.front.gui.atlas;
         batch.fill(
             atlas,
             0.0,
@@ -705,7 +706,7 @@ impl Game<'_> {
             } else {
                 "gui/sprites/widget/button"
             };
-            batch.sprite_scaled(&self.gui.atlas, sprite, bx, by, 88.0, 20.0, u32::MAX);
+            batch.sprite_scaled(&self.front.gui.atlas, sprite, bx, by, 88.0, 20.0, u32::MAX);
             let y = oy + 16.0 + 1.0 + 20.0 * row as f32 + 2.0;
             let base = offer.base_cost_a.stack.clone();
             let cost_a = costs[index].clone();
@@ -723,7 +724,7 @@ impl Game<'_> {
                     x,
                     y,
                 );
-                let atlas = &self.gui.atlas;
+                let atlas = &self.front.gui.atlas;
                 let t = base.count.to_string();
                 batch.text(
                     atlas,
@@ -758,7 +759,7 @@ impl Game<'_> {
                 "trade_arrow"
             };
             batch.sprite(
-                &self.gui.atlas,
+                &self.front.gui.atlas,
                 &format!("gui/sprites/container/villager/{arrow}"),
                 ox + SHIFT + 60.0,
                 y + 3.0,
@@ -785,10 +786,10 @@ impl Game<'_> {
             let stack = self.slot_mut(i).clone();
             self.draw_slot_item(batch, drag.as_ref(), i, stack, ox + sx, oy + sy);
         }
-        if let Some(slot) = self.slot_at(batch, self.cursor.0, self.cursor.1) {
+        if let Some(slot) = self.slot_at(batch, self.front.cursor.0, self.front.cursor.1) {
             let (sx, sy) = self.slot_position(slot);
             batch.fill(
-                &self.gui.atlas,
+                &self.front.gui.atlas,
                 ox + sx,
                 oy + sy,
                 16.0,
@@ -819,9 +820,9 @@ impl Game<'_> {
                 .to_owned();
             let lines: Vec<(String, u32)> =
                 text.split('\n').map(|l| (l.to_owned(), u32::MAX)).collect();
-            self.draw_tooltip_lines(batch, &lines, self.cursor.0, self.cursor.1);
+            self.draw_tooltip_lines(batch, &lines, self.front.cursor.0, self.front.cursor.1);
         } else if let Some(stack) = tooltip {
-            self.draw_stack_tooltip(batch, &stack, self.cursor.0, self.cursor.1);
+            self.draw_stack_tooltip(batch, &stack, self.front.cursor.0, self.front.cursor.1);
         }
         true
     }

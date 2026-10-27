@@ -176,7 +176,7 @@ impl Game<'_> {
         } else {
             "minecraft:block.composter.fill"
         };
-        self.audio.play(sound, Some(center), 1.0, 1.0);
+        self.front.audio.play(sound, Some(center), 1.0, 1.0);
         // getShape(..).max(Y, 0.5, 0.5): the compost surface (SHAPES[8] = SHAPES[7]).
         let level = self.composter_level([pos.x, pos.y, pos.z]).unwrap_or(0);
         let height = f64::from((1 + level.min(7) * 2).clamp(2, 16)) / 16.0 + 0.03125;

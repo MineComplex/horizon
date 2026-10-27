@@ -1039,7 +1039,8 @@ impl Game<'_> {
             d.ambient_time = -AMBIENT_INTERVAL;
             let at = [d.position.x, d.position.y, d.position.z];
             let pitch = 0.8 + self.world.random.next_float() * 0.3;
-            self.audio
+            self.front
+                .audio
                 .play("minecraft:entity.ender_dragon.hurt", Some(at), 5.0, pitch);
         }
         hurt
@@ -1619,7 +1620,7 @@ impl Game<'_> {
             Phase::Attacking { ticks } => {
                 if *ticks == 0 {
                     let pitch = 0.8 + self.world.random.next_float() * 0.3;
-                    self.audio.play(
+                    self.front.audio.play(
                         "minecraft:entity.ender_dragon.growl",
                         Some([pos.x, pos.y, pos.z]),
                         2.5,
@@ -1769,7 +1770,7 @@ impl Game<'_> {
             // LivingEntity.getVoicePitch, from the dragon's own random.
             let r = &mut d.random;
             let pitch = (r.next_float() - r.next_float()) * 0.2 + 1.0;
-            self.audio.play(
+            self.front.audio.play(
                 "minecraft:entity.ender_dragon.ambient",
                 Some(at),
                 5.0,
@@ -1793,7 +1794,8 @@ impl Game<'_> {
         let at = [d.position.x, d.position.y, d.position.z];
         if flap_was <= -0.3 && flap_now >= -0.3 {
             let pitch = 0.8 + self.world.random.next_float() * 0.3;
-            self.audio
+            self.front
+                .audio
                 .play("minecraft:entity.ender_dragon.flap", Some(at), 5.0, pitch);
         }
         let d = self.dragon.as_mut().expect("dragon");
@@ -1802,7 +1804,8 @@ impl Game<'_> {
             if d.growl < 0 {
                 d.growl = 200 + d.random.next_int_bound(200).unwrap_or(0);
                 let pitch = 0.8 + self.world.random.next_float() * 0.3;
-                self.audio
+                self.front
+                    .audio
                     .play("minecraft:entity.ender_dragon.growl", Some(at), 2.5, pitch);
             }
         }
@@ -2135,7 +2138,7 @@ impl Game<'_> {
             .sqrt()
             .max(1.0e-6);
         let v = Vec3::new(dir.x / l, dir.y / l, dir.z / l);
-        self.audio.play(
+        self.front.audio.play(
             "minecraft:entity.ender_dragon.shoot",
             Some([at.x, at.y, at.z]),
             10.0,
@@ -2303,15 +2306,16 @@ impl Game<'_> {
     /// (or a server's packets) put on this client's overlay.
     pub(super) fn draw_boss_bars(&self, batch: &mut HudBatch) {
         let bars = self
+            .front
             .boss_overlay
             .bars(horizon_client::boss_overlay::now_millis());
         let draws = hud_overlays::boss_overlay(
             batch.width as i32,
             batch.height as i32,
             &bars,
-            &self.gui.atlas.font,
+            &self.front.gui.atlas.font,
         );
-        hud_layout::paint(batch, &self.gui.atlas, &draws);
+        hud_layout::paint(batch, &self.front.gui.atlas, &draws);
     }
     /// The dragon fight's bar for a player at `at`
     /// (`EnderDragonFight.dragonEvent`, visible while the fight is not won
@@ -2332,7 +2336,7 @@ impl Game<'_> {
     }
     /// `BossHealthOverlay.shouldPlayMusic`.
     pub(super) fn boss_music(&self) -> bool {
-        self.boss_overlay.should_play_music()
+        self.front.boss_overlay.should_play_music()
     }
 }
 pub(super) struct DragonFireball {
@@ -2419,7 +2423,8 @@ impl Game<'_> {
         };
         let a = alpha as f32;
         let sprite = |n: &str| {
-            self.gui
+            self.front
+                .gui
                 .atlas
                 .sprites
                 .get(n)
@@ -2590,7 +2595,7 @@ impl Game<'_> {
     }
     /// `submitRays`: the death rays from a fixed seed, fading in white to magenta.
     fn dragon_rays(&self, base: glam::Mat4, t: f32, out: &mut Vec<Vertex>) {
-        let white = self.gui.atlas.font.white();
+        let white = self.front.gui.atlas.font.white();
         let uv = [white.u0, white.v0];
         let over = if t > 0.8 {
             ((t - 0.8) / 0.2).min(1.0)
@@ -2648,6 +2653,7 @@ impl Game<'_> {
         out: &mut Vec<Vertex>,
     ) {
         let Some(s) = self
+            .front
             .gui
             .atlas
             .sprites
@@ -2712,6 +2718,7 @@ impl Game<'_> {
         out: &mut Vec<Vertex>,
     ) {
         let Some(s) = self
+            .front
             .gui
             .atlas
             .sprites
@@ -3127,7 +3134,7 @@ impl Game<'_> {
     /// `LevelEvent 3001`: the dragon's growl over the island.
     fn respawn_growl(&mut self) {
         let pitch = 0.8 + self.world.random.next_float() * 0.3;
-        self.audio.play(
+        self.front.audio.play(
             "minecraft:entity.ender_dragon.growl",
             Some([0.5, 128.5, 0.5]),
             64.0,
@@ -3513,7 +3520,8 @@ impl Game<'_> {
         let at = [d.position.x, d.position.y, d.position.z];
         if flap_was <= -0.3 && flap_now >= -0.3 {
             let pitch = 0.8 + self.world.random.next_float() * 0.3;
-            self.audio
+            self.front
+                .audio
                 .play("minecraft:entity.ender_dragon.flap", Some(at), 5.0, pitch);
         }
         let d = self.dragon.as_mut().expect("dragon");
@@ -3522,7 +3530,8 @@ impl Game<'_> {
             if d.growl < 0 {
                 d.growl = 200 + d.random.next_int_bound(200).unwrap_or(0);
                 let pitch = 0.8 + self.world.random.next_float() * 0.3;
-                self.audio
+                self.front
+                    .audio
                     .play("minecraft:entity.ender_dragon.growl", Some(at), 2.5, pitch);
             }
         }

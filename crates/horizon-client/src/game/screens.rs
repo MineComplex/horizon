@@ -126,7 +126,7 @@ impl Game<'_> {
     }
     pub(super) fn draw_pause_menu(&mut self, batch: &mut HudBatch) {
         let friends = self.friends_view().shown;
-        let atlas = &self.gui.atlas;
+        let atlas = &self.front.gui.atlas;
         let (w, h) = (batch.width, batch.height);
         ui::menu_background(batch, atlas, 0.0, 0.0, w, h, true);
         let title = Text::translate("menu.game", &[]);
@@ -142,7 +142,7 @@ impl Game<'_> {
         let links = !self.server_links().is_empty();
         let mut tooltip = None;
         for (x, y, bw, key, id, active) in pause_buttons(w, h, self.external_server(), links) {
-            let hover = active && ui::hovered(self.cursor, x, y, bw, 20.0);
+            let hover = active && ui::hovered(self.front.cursor, x, y, bw, 20.0);
             ui::button(
                 batch,
                 atlas,
@@ -161,7 +161,7 @@ impl Game<'_> {
         }
         for (i, (x, y, sprite)) in pause_icons(w, h, links).into_iter().enumerate() {
             let active = i == FRIENDS_ICON && friends;
-            let hover = ui::hovered(self.cursor, x, y, 20.0, 20.0);
+            let hover = ui::hovered(self.front.cursor, x, y, 20.0, 20.0);
             // The icon has no label: name it for controller focus and the
             // control socket's widget tree.
             if i == FRIENDS_ICON {
@@ -198,12 +198,13 @@ impl Game<'_> {
                 .into_iter()
                 .map(|(line, _)| line)
                 .collect();
-            ui::tooltip(batch, atlas, &lines, self.cursor);
+            ui::tooltip(batch, atlas, &lines, self.front.cursor);
         }
     }
     pub(super) fn pause_click(&mut self) -> Result<()> {
         let (w, h) = {
             let size = self
+                .front
                 .renderer
                 .as_ref()
                 .map_or([1, 1], |r| [r.config.width, r.config.height]);
@@ -214,11 +215,11 @@ impl Game<'_> {
         let friends = pause_icons(w, h, links)[FRIENDS_ICON];
         let hit = pause_buttons(w, h, self.external_server(), links)
             .into_iter()
-            .find(|b| b.5 && ui::hovered(self.cursor, b.0, b.1, b.2, 20.0))
+            .find(|b| b.5 && ui::hovered(self.front.cursor, b.0, b.1, b.2, 20.0))
             .map(|b| b.4)
             .or_else(|| {
                 (self.friends_view().shown
-                    && ui::hovered(self.cursor, friends.0, friends.1, 20.0, 20.0))
+                    && ui::hovered(self.front.cursor, friends.0, friends.1, 20.0, 20.0))
                 .then_some(10)
             });
         match hit {
@@ -240,13 +241,13 @@ impl Game<'_> {
             _ => {}
         }
         if hit.is_some() {
-            self.audio.play_button_click();
+            self.front.audio.play_button_click();
         }
         Ok(())
     }
     /// DeathScreen: gradient, the title at double size, the cause and score.
     pub(super) fn draw_death_screen(&mut self, batch: &mut HudBatch) {
-        let atlas = &self.gui.atlas;
+        let atlas = &self.front.gui.atlas;
         let (w, h) = (batch.width, batch.height);
         // fillGradient(0x60500000 -> 0xA0803030).
         let rows = h.ceil() as i32;
@@ -308,7 +309,7 @@ impl Game<'_> {
             .died_at
             .is_none_or(|t| t.elapsed().as_millis() >= 1000);
         for (x, y, key, _) in death_buttons(w, h, self.level.hardcore) {
-            let hover = active && ui::hovered(self.cursor, x, y, 200.0, 20.0);
+            let hover = active && ui::hovered(self.front.cursor, x, y, 200.0, 20.0);
             ui::button(
                 batch,
                 atlas,
@@ -346,11 +347,11 @@ impl Game<'_> {
         }
         if self.remote.is_some() {
             self.ui.death_text = None;
-            self.toggles.respawn();
+            self.front.toggles.respawn();
             self.remote_respawn();
         } else if self.respawn_config.is_some() {
             // LocalPlayer.respawn: KeyMapping.resetToggleKeys.
-            self.toggles.respawn();
+            self.front.toggles.respawn();
             // PlayerList.respawn at the respawn anchor, once it is loaded.
             self.begin_anchor_respawn()?;
             self.screen = Screen::Playing;
@@ -359,7 +360,7 @@ impl Game<'_> {
             self.capture(true);
         } else {
             // LocalPlayer.respawn: KeyMapping.resetToggleKeys.
-            self.toggles.respawn();
+            self.front.toggles.respawn();
             self.respawn_out_of_end()?;
             self.player = None;
             self.screen = Screen::Playing;
@@ -383,13 +384,14 @@ impl Game<'_> {
             return Ok(());
         }
         let size = self
+            .front
             .renderer
             .as_ref()
             .map_or([1, 1], |r| [r.config.width, r.config.height]);
         let b = HudBatch::new(size);
         let hit = death_buttons(b.width, b.height, self.level.hardcore)
             .into_iter()
-            .find(|d| ui::hovered(self.cursor, d.0, d.1, 200.0, 20.0))
+            .find(|d| ui::hovered(self.front.cursor, d.0, d.1, 200.0, 20.0))
             .map(|d| d.3);
         match hit {
             Some(0) => self.respawn_player()?,
@@ -397,7 +399,7 @@ impl Game<'_> {
             _ => {}
         }
         if hit.is_some() {
-            self.audio.play_button_click();
+            self.front.audio.play_button_click();
         }
         Ok(())
     }

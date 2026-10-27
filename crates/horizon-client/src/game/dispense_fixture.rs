@@ -274,7 +274,7 @@ impl Game<'_> {
         // Creating the targets must not move the stream the dispenser draws from.
         self.world.random = LegacyRandom::new(seed);
         self.world.block_log = Some(Vec::new());
-        self.audio.capture = Some(Vec::new());
+        self.front.audio.capture = Some(Vec::new());
         LOG.with(|log| *log.borrow_mut() = Some(Vec::new()));
         let old_mobs: Vec<u32> = self.mobs.iter().map(|m| m.id).collect();
         let old_stands: Vec<u32> = self.armor_stands.iter().map(|s| s.id).collect();
@@ -427,7 +427,7 @@ impl Game<'_> {
         }
         let log = LOG.with(|log| log.borrow_mut().take()).unwrap_or_default();
         out.extend(log);
-        for (sound, at, _, _) in self.audio.capture.take().unwrap_or_default() {
+        for (sound, at, _, _) in self.front.audio.capture.take().unwrap_or_default() {
             out.push(format!("S {} {sound}", floor_pos(at)));
         }
         out.extend(used);
@@ -523,9 +523,9 @@ impl Game<'_> {
         self.player = Some(player);
         self.yaw = op["yaw"].as_f64().unwrap_or(0.0) as f32;
         self.pitch = 90.0;
-        self.keys.clear();
+        self.front.keys.clear();
         if op["sneaking"].as_bool().unwrap_or(false) {
-            self.keys.insert(KeyCode::ShiftLeft);
+            self.front.keys.insert(KeyCode::ShiftLeft);
         }
         self.using = None;
         self.inventory[self.selected] = stack.clone();
@@ -655,7 +655,8 @@ impl Game<'_> {
         // The hurt sound the mob raised, where it stands.
         for event in std::mem::take(&mut self.mobs[index].outbox) {
             if let horizon_client::mobs::MobEvent::Sound(s, at, volume, pitch) = event {
-                self.audio
+                self.front
+                    .audio
                     .play(&format!("minecraft:{s}"), Some(at), volume, pitch);
             }
         }
@@ -849,7 +850,7 @@ impl Game<'_> {
         )?);
         self.yaw = 0.0;
         self.pitch = 90.0;
-        self.keys.clear();
+        self.front.keys.clear();
         self.inventory[self.selected] = stack.clone();
         self.offhand = None;
         let state = self.world.block(pos.x, pos.y, pos.z);

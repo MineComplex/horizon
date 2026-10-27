@@ -469,7 +469,7 @@ impl Game<'_> {
             owner: None,
             dampening_state: self.state_dampens(state),
             spectator: self.spectator(),
-            stepping_carefully: self.keys.contains(&KeyCode::ShiftLeft),
+            stepping_carefully: self.front.keys.contains(&KeyCode::ShiftLeft),
             dampens: false,
             targetable: !dead && !creative && !self.spectator(),
             living: true,
@@ -859,7 +859,7 @@ impl Game<'_> {
                         center(relative),
                         ctx,
                     );
-                    self.audio.play(
+                    self.front.audio.play(
                         "minecraft:block.amethyst_block.resonate",
                         Some(center(relative)),
                         1.0,
@@ -1034,7 +1034,7 @@ impl Game<'_> {
             f64::from(offset(key.1)),
             f64::from(offset(key.2)),
         ];
-        self.audio.play(sound, Some(at), 5.0, 1.0);
+        self.front.audio.play(sound, Some(at), 5.0, 1.0);
     }
     /// `SpawnUtil.trySpawnMob(WARDEN, TRIGGERED, level, pos, 20, 5, 6,
     /// ON_TOP_OF_COLLIDER, false)`: every candidate spot creates a warden
@@ -1210,7 +1210,7 @@ impl Game<'_> {
             let in_water =
                 horizon_client::fog::fog_type(&self.world, self.res.facts(), eye, self.forward())
                     == FogType::Water;
-            return self.fog.water_vision(in_water);
+            return self.front.fog.water_vision(in_water);
         }
         0.0
     }
@@ -1308,7 +1308,8 @@ impl Game<'_> {
             self.particles.add(&options, p, [0.0; 3]);
         }
         let pitch = 0.6 + self.world.random.next_float() * 0.4;
-        self.audio
+        self.front
+            .audio
             .play("minecraft:block.sculk_catalyst.bloom", Some(c), 2.0, pitch);
     }
 
@@ -1324,7 +1325,8 @@ impl Game<'_> {
             if r.next_float() < 0.3 + count as f32 * 0.1 {
                 let volume = 0.15 + 0.02 * (count * count) as f32 * r.next_float();
                 let pitch = 0.4 + 0.3 * count as f32 * r.next_float();
-                self.audio
+                self.front
+                    .audio
                     .play("minecraft:block.sculk.charge", Some(c), volume, pitch);
             }
             let face_data = data & 63;
@@ -1369,7 +1371,8 @@ impl Game<'_> {
                 }
             }
         } else {
-            self.audio
+            self.front
+                .audio
                 .play("minecraft:block.sculk.charge", Some(c), 1.0, 1.0);
             let solid = self
                 .res
@@ -1437,7 +1440,7 @@ impl Game<'_> {
         let state = self.world.block(pos.x, pos.y, pos.z);
         if self.state_property(state, "waterlogged") != Some("true") {
             let pitch = 0.6 + self.particles.random().next_float() * 0.4;
-            self.audio.play(
+            self.front.audio.play(
                 "minecraft:block.sculk_shrieker.shriek",
                 Some([f64::from(pos.x) + 0.5, top, f64::from(pos.z) + 0.5]),
                 2.0,
@@ -1539,7 +1542,7 @@ impl Game<'_> {
             )
         });
         if let Some((at, on_ground, health, flying)) = player {
-            let crouch = self.keys.contains(&KeyCode::ShiftLeft);
+            let crouch = self.front.keys.contains(&KeyCode::ShiftLeft);
             if on_ground && !self.spectator() {
                 self.step_on_redstone_ore(at, crouch);
             }

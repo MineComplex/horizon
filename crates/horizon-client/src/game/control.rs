@@ -71,7 +71,9 @@ impl Game<'_> {
         let tick_ms = self
             .integrated
             .as_ref()
-            .map_or(self.debug_charts.smoothed_tick_ms, |s| s.smoothed_tick_ms());
+            .map_or(self.front.debug_charts.smoothed_tick_ms, |s| {
+                s.smoothed_tick_ms()
+            });
         let Some(flight) = self.flight.as_mut() else {
             return;
         };
@@ -95,14 +97,14 @@ impl Game<'_> {
         if t >= 1.0
             && let Some(flight) = self.flight.take()
         {
-            let mut summary = self.frame_stats.summary();
+            let mut summary = self.front.frame_stats.summary();
             let n = flight.tick_ms.len().max(1) as f32;
             summary["tick_ms"] = (flight.tick_ms.iter().sum::<f32>() / n).into();
             summary["tick_ms_max"] = flight.tick_ms.iter().copied().fold(0.0, f32::max).into();
             if flight.raw {
-                summary["frame_ms"] = self.frame_stats.frame_millis().into();
-                summary["cpu_ms"] = self.frame_stats.cpu_millis().into();
-                summary["gpu_ms"] = self.frame_stats.gpu_millis().into();
+                summary["frame_ms"] = self.front.frame_stats.frame_millis().into();
+                summary["cpu_ms"] = self.front.frame_stats.cpu_millis().into();
+                summary["gpu_ms"] = self.front.frame_stats.gpu_millis().into();
             }
             let _ = flight.reply.send(summary.to_string());
         }
@@ -110,12 +112,12 @@ impl Game<'_> {
     pub(super) fn poll_control(&mut self, event_loop: &ActiveEventLoop) {
         if let Some((deadline, reply)) = self.pending_bench.take() {
             if Instant::now() >= deadline {
-                let _ = reply.send(self.frame_stats.summary().to_string());
+                let _ = reply.send(self.front.frame_stats.summary().to_string());
             } else {
                 self.pending_bench = Some((deadline, reply));
             }
         }
-        horizon_client::widgets::end_frame(self.frames);
+        horizon_client::widgets::end_frame(self.front.frames);
         self.advance_agent();
         for request in self.ui_wait.ready() {
             self.answer(request, event_loop);
@@ -210,7 +212,7 @@ impl Game<'_> {
                 .collect::<Vec<_>>() }))),
             "setblock" | "fill" | "particle" | "signedit" => self.render_command(&words),
             "section-draws" => {
-                let r = self.renderer.as_mut().ok_or("no renderer")?;
+                let r = self.front.renderer.as_mut().ok_or("no renderer")?;
                 match words.get(1).copied() {
                     None => {}
                     Some("flat") => r.set_flat_draws(true)?,
@@ -220,7 +222,7 @@ impl Game<'_> {
                 Ok(Some(json!({ "ok": true, "flat": r.flat_draws() })))
             }
             "section-cull" => {
-                let r = self.renderer.as_mut().ok_or("no renderer")?;
+                let r = self.front.renderer.as_mut().ok_or("no renderer")?;
                 match words.get(1).copied() {
                     None => {}
                     Some("on") => r.set_section_cull(true)?,
@@ -230,7 +232,7 @@ impl Game<'_> {
                 Ok(Some(json!({ "ok": true, "cull": r.section_cull() })))
             }
             "section-sides" => {
-                let r = self.renderer.as_mut().ok_or("no renderer")?;
+                let r = self.front.renderer.as_mut().ok_or("no renderer")?;
                 match words.get(1).copied() {
                     None => {}
                     Some("on") => r.set_section_sides(true),
@@ -303,7 +305,7 @@ impl Game<'_> {
                 // A held edit modifier (`key super down`) and A/C/V/X: the
                 // open book's Select All, Copy, Paste or Cut.
                 if self.book.is_some() && arg(2)? != "up" {
-                    let held = |k: [KeyCode; 2]| k.iter().any(|k| self.keys.contains(k));
+                    let held = |k: [KeyCode; 2]| k.iter().any(|k| self.front.keys.contains(k));
                     let edit = if cfg!(target_os = "macos") {
                         held([KeyCode::SuperLeft, KeyCode::SuperRight])
                     } else {
@@ -325,17 +327,17 @@ impl Game<'_> {
                     use horizon_client::debug_keys::KeyAction;
                     let action = arg(2)?;
                     if action != "up" {
-                        self.physical_keys.insert(key);
+                        self.front.physical_keys.insert(key);
                         if self.debug_key(key, KeyAction::Press) {
                             if action == "tap" {
-                                self.physical_keys.remove(&key);
+                                self.front.physical_keys.remove(&key);
                                 self.debug_key(key, KeyAction::Release);
                             }
                             return ok();
                         }
                     }
                     if action == "up" {
-                        self.physical_keys.remove(&key);
+                        self.front.physical_keys.remove(&key);
                         self.debug_key(key, KeyAction::Release);
                     }
                 }
@@ -371,18 +373,18 @@ impl Game<'_> {
                 match arg(2)? {
                     "down" => self.control_key_down(key)?,
                     "up" => {
-                        self.keys.remove(&key);
-                        self.physical_keys.remove(&key);
+                        self.front.keys.remove(&key);
+                        self.front.physical_keys.remove(&key);
                     }
                     // The system's auto-repeat while the key is held.
                     "repeat" => {
-                        self.physical_keys.insert(physical);
+                        self.front.physical_keys.insert(physical);
                         self.mapped_key(key, true, true)?;
                     }
                     "tap" => {
                         self.control_key_down(key)?;
-                        self.keys.remove(&key);
-                        self.physical_keys.remove(&physical);
+                        self.front.keys.remove(&key);
+                        self.front.physical_keys.remove(&physical);
                         self.debug_key(physical, horizon_client::debug_keys::KeyAction::Release);
                     }
                     other => {
@@ -395,10 +397,10 @@ impl Game<'_> {
                 ok()
             }
             "release" => {
-                self.keys.clear();
-                self.physical_keys.clear();
-                self.left = false;
-                self.right = false;
+                self.front.keys.clear();
+                self.front.physical_keys.clear();
+                self.front.left = false;
+                self.front.right = false;
                 ok()
             }
             "mouse" => {
@@ -578,7 +580,7 @@ impl Game<'_> {
                 ok()
             }
             "screenshot" => {
-                let renderer = self.renderer.as_mut().ok_or("no renderer yet")?;
+                let renderer = self.front.renderer.as_mut().ok_or("no renderer yet")?;
                 if self.pending_screenshot.is_some() {
                     return Err("a screenshot is already pending".into());
                 }
@@ -624,7 +626,7 @@ impl Game<'_> {
                 match self.screen {
                     Screen::Chat => self.chat_type(text),
                     Screen::CommandBlock => self.command_block_type(text),
-                    Screen::Options => self.ui.options.type_text(&self.gui.atlas, text),
+                    Screen::Options => self.ui.options.type_text(&self.front.gui.atlas, text),
                     // The port, or the game rules' search and number boxes.
                     Screen::WorldOptions if text == "\\b" => self.world_options_text(None),
                     Screen::WorldOptions => self.world_options_text(Some(text)),
@@ -700,9 +702,9 @@ impl Game<'_> {
                 Ok(Some(json!({ "chat": lines })))
             }
             "stats" => {
-                let summary = self.frame_stats.summary();
+                let summary = self.front.frame_stats.summary();
                 if words.get(1) == Some(&"reset") {
-                    self.frame_stats.reset();
+                    self.front.frame_stats.reset();
                 }
                 Ok(Some(summary))
             }
@@ -711,7 +713,7 @@ impl Game<'_> {
                 if self.pending_bench.is_some() {
                     return Err("a benchmark is already running".into());
                 }
-                self.frame_stats.reset();
+                self.front.frame_stats.reset();
                 self.pending_bench = Some((
                     Instant::now() + Duration::from_secs_f64(seconds),
                     reply.clone(),
@@ -725,7 +727,7 @@ impl Game<'_> {
                 }
                 let n = |i: usize| -> Result<f64> { Ok(arg(i)?.parse()?) };
                 let pitch = words.get(8).map_or(Ok(10.0), |p| p.parse::<f32>())?;
-                self.frame_stats.reset();
+                self.front.frame_stats.reset();
                 self.flight = Some(Flight {
                     from: Vec3::new(n(1)?, n(2)?, n(3)?),
                     to: Vec3::new(n(4)?, n(5)?, n(6)?),
@@ -844,7 +846,7 @@ impl Game<'_> {
     }
 
     fn control_key_down(&mut self, key: KeyCode) -> Result<()> {
-        self.physical_keys.insert(key);
+        self.front.physical_keys.insert(key);
         if self.screen == Screen::Chat {
             self.chat_key_code(key, None);
             return Ok(());
@@ -852,7 +854,7 @@ impl Game<'_> {
         if self.screen == Screen::Options {
             return self.options_key(key, None);
         }
-        if self.keys.insert(key) {
+        if self.front.keys.insert(key) {
             self.key_pressed(key)?;
         }
         Ok(())
@@ -955,7 +957,7 @@ impl Game<'_> {
             let state = self.world.block(hit.pos[0], hit.pos[1], hit.pos[2]);
             json!({ "pos": hit.pos, "block": &*self.res.facts().get(state).name })
         });
-        let renderer = self.renderer.as_ref().map(|r| {
+        let renderer = self.front.renderer.as_ref().map(|r| {
             let [arena_bytes, section_vertex_bytes] = r.section_vertex_bytes();
             // Device memory by the backend's allocator (Vulkan; absent elsewhere).
             let memory = r.device.generate_allocator_report();
@@ -987,6 +989,7 @@ impl Game<'_> {
         });
         // The keyboard as the OS reports it (screens read Shift and Ctrl here).
         let mut physical_keys: Vec<_> = self
+            .front
             .physical_keys
             .iter()
             .map(|k| format!("{k:?}"))
@@ -996,14 +999,14 @@ impl Game<'_> {
             "distance": self.settings.horizon.lod_distance,
             "effective_distance": self.lod_distance(),
             "terrain_distance": self.terrain_distance(),
-            "source": if self.lod.is_none() { "none" } else if self.integrated.is_some() { "integrated" } else { "local" },
-            "source_attempted": self.lod_source_attempted,
-            "active_tiles": self.lod.as_ref().map_or(0, |lod| lod.stats().0),
-            "cached_tiles": self.lod.as_ref().map_or(0, |lod| lod.stats().1),
+            "source": if self.front.lod.is_none() { "none" } else if self.integrated.is_some() { "integrated" } else { "local" },
+            "source_attempted": self.front.lod_source_attempted,
+            "active_tiles": self.front.lod.as_ref().map_or(0, |lod| lod.stats().0),
+            "cached_tiles": self.front.lod.as_ref().map_or(0, |lod| lod.stats().1),
             "far_detail": self.settings.horizon.far_detail.name(),
-            "resident_quads": self.renderer.as_ref().map_or(0, |r| r.lod_quads()),
-            "pending_observations": self.lod_observe.len(),
-            "refined_samples": self.lod.as_ref().map_or(0, |lod| lod.refined_samples()),
+            "resident_quads": self.front.renderer.as_ref().map_or(0, |r| r.lod_quads()),
+            "pending_observations": self.front.lod_observe.len(),
+            "refined_samples": self.front.lod.as_ref().map_or(0, |lod| lod.refined_samples()),
         });
         // The other players' cracks this client draws (LevelRenderer.destroyingBlocks).
         let destroying: Vec<_> = self
@@ -1020,7 +1023,7 @@ impl Game<'_> {
                 "pause_menu": self.pause_menu,
                 "advanced_tooltips": self.settings.file.bool("advancedItemTooltips"),
                 "pause_on_lost_focus": self.settings.file.bool("pauseOnLostFocus"),
-                "clipboard": self.clipboard.copied(),
+                "clipboard": self.front.clipboard.copied(),
             },
             "dimension": self.dim.id(),
             "creative": self.creative,
@@ -1031,14 +1034,14 @@ impl Game<'_> {
             "selected": self.selected + 1,
             "held": self.held().map(|s| json!({ "item": &*s.item, "count": s.count })),
             "offhand": self.offhand.as_ref().map(|s| json!({ "item": &*s.item, "count": s.count, "damage": s.damage })),
-            "keys": self.keys.iter().map(|k| format!("{k:?}")).collect::<Vec<_>>(),
+            "keys": self.front.keys.iter().map(|k| format!("{k:?}")).collect::<Vec<_>>(),
             // The keyboard as the OS reports it (Shift and Ctrl in screens).
-            "fps": self.fps,
-            "frames": self.frames,
+            "fps": self.front.fps,
+            "frames": self.front.frames,
             "ticks": self.ticks,
             "day_time": self.world.day_time,
-            "music": self.music.current(&self.audio.engine),
-            "sounds": self.audio.census(),
+            "music": self.front.music.current(&self.front.audio.engine),
+            "sounds": self.front.audio.census(),
             "fishing": self.hook_status(),
             "tridents": self.tridents.len(),
             "rockets": self.rockets.len(),
@@ -1052,13 +1055,13 @@ impl Game<'_> {
             "chunks": self.world.chunks.len(),
             "mobs": self.mobs.len(),
             "block_entities": self.world.block_entities.len(),
-            "pending_chunks": self.streaming.pending() + self.pending_uploads.len() + self.remote_backlog(),
+            "pending_chunks": self.streaming.pending() + self.front.pending_uploads.len() + self.remote_backlog(),
             "generated_chunks": self.streaming.generated_total,
             "meshed_sections": self.streaming.meshed_total,
             "streaming": self.streaming.stages().into_iter().map(|(k, v)| (k.to_string(), v.into())).collect::<serde_json::Map<_, _>>(),
             "dirty_light": self.world.dirty_light.len(),
             "renderer": renderer,
-            "display": self.window.as_deref().and_then(horizon_client::telemetry::monitor).map(|m| json!({
+            "display": self.front.window.as_deref().and_then(horizon_client::telemetry::monitor).map(|m| json!({
                 "width": m.size().width,
                 "height": m.size().height,
                 "scale": m.scale_factor(),
@@ -1072,14 +1075,14 @@ impl Game<'_> {
                 .map(|e| self.shown_name_tags(glam::DVec3::from_array(e))),
         });
         status["lod"] = lod;
-        let (target, sampled) = self.lod.as_ref().map_or((0, 0), |lod| lod.progress());
+        let (target, sampled) = self.front.lod.as_ref().map_or((0, 0), |lod| lod.progress());
         status["lod"]["target_tiles"] = target.into();
         status["lod"]["sampled_target_tiles"] = sampled.into();
-        status["pending_uploads"] = self.pending_uploads.len().into();
+        status["pending_uploads"] = self.front.pending_uploads.len().into();
         status["destroying"] = json!(destroying);
         status["physical_keys"] = json!(physical_keys);
-        status["heard"] = json!(self.audio.heard);
-        status["stopped_sounds"] = json!(self.audio.stopped);
+        status["heard"] = json!(self.front.audio.heard);
+        status["stopped_sounds"] = json!(self.front.audio.stopped);
         // Boats, minecarts, armor stands, item frames and paintings.
         status["objects"] = json!(self.objects_status());
         status["lightning"] = json!({"bolts": self.bolts.len(), "struck": self.lightning_seen[0],

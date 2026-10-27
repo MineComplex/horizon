@@ -279,7 +279,8 @@ impl Game<'_> {
             {
                 m.velocity = velocity;
             }
-            self.audio
+            self.front
+                .audio
                 .play("minecraft:entity.silverfish.hurt", Some(at), 1.0, 1.0);
         }
     }
@@ -447,7 +448,7 @@ impl Game<'_> {
                     }
                     _ => ("minecraft:entity.lingering_potion.throw", 0.5),
                 };
-                self.audio.play(sound, Some(eye), 0.5, pitch);
+                self.front.audio.play(sound, Some(eye), 0.5, pitch);
                 // Projectile.shootFromRotation(xRot, yRot, -20, 0.5, 1.0).
                 let (yaw, pitch) = (self.yaw.to_radians(), self.pitch.to_radians());
                 let dir = [
@@ -502,7 +503,8 @@ impl Game<'_> {
                     f64::from(hit.pos[1]) + 0.5,
                     f64::from(hit.pos[2]) + 0.5,
                 ];
-                self.audio
+                self.front
+                    .audio
                     .play("minecraft:item.bottle.fill", Some(at), 1.0, 1.0);
                 let water = ItemStack::new("minecraft:potion", 1).with_potion("minecraft:water");
                 self.fill_held(water);
@@ -539,7 +541,8 @@ impl Game<'_> {
         // Consumable.emitParticlesAndSounds: the drink sound every 4 ticks near the end.
         if remaining <= 25 && remaining.is_multiple_of(4) {
             let pitch = self.world.random.next_float() * 0.1 + 0.9;
-            self.audio
+            self.front
+                .audio
                 .play("minecraft:entity.generic.drink", Some(eye), 0.5, pitch);
         }
         if ticks < 32 {
@@ -1292,7 +1295,7 @@ impl Game<'_> {
             .map(hud_overlays::EffectIcon::from)
             .collect();
         let draws = hud_overlays::effects(batch.width as i32, false, &icons);
-        hud_layout::paint(batch, &self.gui.atlas, &draws);
+        hud_layout::paint(batch, &self.front.gui.atlas, &draws);
     }
     /// `EffectsInInventory`: panels to the right of survival/creative inventory.
     pub(super) fn draw_inventory_effects(
@@ -1308,15 +1311,15 @@ impl Game<'_> {
             &self.potions.effects.list,
             self.clock.rate(),
             &|key| self.pack.names.display_get(key),
-            &|text| self.gui.atlas.font.width(text).ceil() as i32,
+            &|text| self.front.gui.atlas.font.width(text).ceil() as i32,
         );
         if let Some(lines) = inventory_effects::paint(
             batch,
-            &self.gui.atlas,
+            &self.front.gui.atlas,
             &panels,
-            [self.cursor.0 as i32, self.cursor.1 as i32],
+            [self.front.cursor.0 as i32, self.front.cursor.1 as i32],
         ) {
-            self.draw_tooltip_lines(batch, &lines, self.cursor.0, self.cursor.1);
+            self.draw_tooltip_lines(batch, &lines, self.front.cursor.0, self.front.cursor.1);
         }
     }
     /// Effects saved in level.dat (`Player.active_effects`).

@@ -120,7 +120,7 @@ impl Game<'_> {
             // PrimedTnt.getRandomShortFuse
             r.next_int_bound(20).unwrap_or(0) + 10
         } else {
-            self.audio.play(
+            self.front.audio.play(
                 "minecraft:entity.tnt.primed",
                 Some([
                     f64::from(pos.x) + 0.5,
@@ -249,7 +249,7 @@ impl Game<'_> {
                     .pack
                     .layer_names
                     .get(&face.layer)
-                    .and_then(|name| self.gui.atlas.sprites.get(name).copied());
+                    .and_then(|name| self.front.gui.atlas.sprites.get(name).copied());
             }
         }
         let range = super::entity_culling::default_range(

@@ -339,7 +339,7 @@ impl Game<'_> {
         self.lan_enchant_offers(host, gi, gs);
         let pitch = self.world.random.next_float() * 0.1 + 0.9;
         let at = gs.pos.map(|v| f64::from(v) + 0.5);
-        self.audio.play(
+        self.front.audio.play(
             "minecraft:block.enchantment_table.use",
             Some(at),
             1.0,
@@ -372,7 +372,7 @@ impl Game<'_> {
         gs.last_sound = self.ticks;
         let at = gs.pos.map(|v| f64::from(v) + 0.5);
         for sound in sounds {
-            self.audio.play(sound, Some(at), 1.0, 1.0);
+            self.front.audio.play(sound, Some(at), 1.0, 1.0);
         }
     }
 

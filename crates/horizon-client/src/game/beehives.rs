@@ -58,6 +58,7 @@ impl HiveHost for GameHive<'_, '_> {
     }
     fn sound(&mut self, name: &'static str, at: [f64; 3]) {
         self.game
+            .front
             .audio
             .play(&format!("minecraft:{name}"), Some(at), 1.0, 1.0);
     }
@@ -237,14 +238,17 @@ impl Game<'_> {
             ) {
                 self.pop_resource(pos, stack);
             }
-            self.audio
+            self.front
+                .audio
                 .play("minecraft:block.beehive.shear", at, 1.0, 1.0);
             self.damage_held(1);
             self.post_block_game_event("minecraft:shear", pos, self.sculk_actor(), None);
         } else {
             // shrink(1), then the honey bottle in the hand, the inventory or
             // on the ground.
-            self.audio.play("minecraft:item.bottle.fill", at, 1.0, 1.0);
+            self.front
+                .audio
+                .play("minecraft:item.bottle.fill", at, 1.0, 1.0);
             let cell = self.held_mut();
             if let Some(s) = cell.as_mut() {
                 s.count -= 1;

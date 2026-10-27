@@ -62,7 +62,7 @@ impl Game<'_> {
                 p.dimensions.eye_height
             }
         });
-        self.view.tick(eye, target);
+        self.front.view.tick(eye, target);
     }
     /// The player's `deathTime` while dead or dying: whole ticks counted by
     /// `LivingEntity.tickDeath`, so `deathTime + partialTicks` in
@@ -84,7 +84,7 @@ impl Game<'_> {
     }
     /// `Camera.calculateFov` with `modifyFovBasedOnDeathOrFluid`.
     pub(super) fn fov_degrees(&self, partial: f32, camera: [f64; 3]) -> f32 {
-        let fov = self.view.calculate_fov(
+        let fov = self.front.view.calculate_fov(
             partial,
             self.settings.fov as i32,
             self.fov_effect_scale(),
@@ -96,7 +96,7 @@ impl Game<'_> {
     }
     /// `Camera.calculateHudFov`: the first-person hand's field of view.
     pub(super) fn hud_fov_degrees(&self, partial: f32, camera: [f64; 3]) -> f32 {
-        self.view.calculate_hud_fov(
+        self.front.view.calculate_hud_fov(
             partial,
             self.fov_effect_scale(),
             self.death_time(),
@@ -118,8 +118,10 @@ impl Game<'_> {
                 death_time: self.death_time().map(|t| t as f32 + partial),
             }),
             player: Some((
-                self.avatar.backwards_interpolated_walk_distance(partial),
-                self.avatar.interpolated_bob(partial),
+                self.front
+                    .avatar
+                    .backwards_interpolated_walk_distance(partial),
+                self.front.avatar.interpolated_bob(partial),
             )),
         };
         let tilt = self.settings.file.double("damageTiltStrength");
@@ -140,13 +142,14 @@ impl Game<'_> {
             (p.position.x - start[0]) as f32,
             (p.position.z - start[2]) as f32,
         );
-        self.avatar.tick();
-        self.avatar
+        self.front.avatar.tick();
+        self.front
+            .avatar
             .update_bob(ground && alive && !swimming, velocity);
         if riding {
-            self.avatar.reset_bob();
+            self.front.avatar.reset_bob();
         } else {
-            self.avatar.add_walked(dx, dz);
+            self.front.avatar.add_walked(dx, dz);
         }
     }
     /// `SpyglassItem.use`: start scoping.
@@ -154,29 +157,35 @@ impl Game<'_> {
         if self.using.is_none() {
             self.using = Some((self.held_slot(), 0));
             let at = self.eye_position();
-            self.audio.play("minecraft:item.spyglass.use", at, 1.0, 1.0);
+            self.front
+                .audio
+                .play("minecraft:item.spyglass.use", at, 1.0, 1.0);
         }
     }
     /// `SpyglassItem.releaseUsing` / `finishUsingItem` (after 1200 ticks).
     pub(super) fn stop_spyglass(&mut self) {
         let at = self.eye_position();
-        self.audio
+        self.front
+            .audio
             .play("minecraft:item.spyglass.stop_using", at, 1.0, 1.0);
     }
     /// `Hud.extractCameraOverlays`: the spyglass scope, its size easing
     /// towards 1.125 by half the frame's game ticks and reset to 0.5 while
     /// not scoping in first person.
     pub(super) fn draw_spyglass(&mut self, batch: &mut HudBatch) {
-        self.scope_scale += 0.5 * self.frame_ticks * (1.125 - self.scope_scale);
+        self.front.scope_scale += 0.5 * self.front.frame_ticks * (1.125 - self.front.scope_scale);
         if !self.camera_type.first_person() {
             return;
         }
         if !self.scoping() {
-            self.scope_scale = 0.5;
+            self.front.scope_scale = 0.5;
             return;
         }
-        let draws =
-            hud_overlays::spyglass(batch.width as i32, batch.height as i32, self.scope_scale);
-        hud_layout::paint(batch, &self.gui.atlas, &draws);
+        let draws = hud_overlays::spyglass(
+            batch.width as i32,
+            batch.height as i32,
+            self.front.scope_scale,
+        );
+        hud_layout::paint(batch, &self.front.gui.atlas, &draws);
     }
 }

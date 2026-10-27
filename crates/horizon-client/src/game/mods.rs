@@ -465,14 +465,14 @@ impl Game<'_> {
             .map(|&(name, key)| {
                 let label = keybinds::display_name(self.settings.keys.get(name)).plain();
                 let down = match key {
-                    Some(k) => self.keys.contains(&k),
+                    Some(k) => self.front.keys.contains(&k),
                     None => mouse[usize::from(name == "key.use")],
                 };
                 (name, label, down)
             })
             .collect();
         if self.mods.font_widths.is_empty() {
-            let atlas = &self.gui.atlas;
+            let atlas = &self.front.gui.atlas;
             self.mods.font_widths = (0..FONT_CHARS)
                 .map(|c| char::from_u32(c).map_or(6.0, |c| atlas.glyph_cell(c).1))
                 .collect();
@@ -536,7 +536,7 @@ impl Game<'_> {
         dir: [f64; 3],
         reach: f64,
     ) -> Option<([i32; 3], [f64; 3], horizon_world::registry::BlockStateId)> {
-        let lod = self.lod.as_ref()?;
+        let lod = self.front.lod.as_ref()?;
         let mut t = 0.0;
         while t <= reach {
             let p = [0, 1, 2].map(|i| eye[i] + dir[i] * t);
@@ -764,7 +764,7 @@ impl Game<'_> {
     pub(super) fn add_mod_chat_line(&mut self, line: Text) {
         let focused = self.screen == Screen::Chat;
         self.ui.chat.add(
-            &self.gui.atlas,
+            &self.front.gui.atlas,
             line,
             None,
             horizon_client::chat::ChatSource::Client,
@@ -790,7 +790,7 @@ impl Game<'_> {
                 .iter()
                 .map(|l| (l.text.as_str(), l.color))
                 .collect();
-            extras_hud::draw_lines(batch, &self.gui.atlas, corners, corner, &lines);
+            extras_hud::draw_lines(batch, &self.front.gui.atlas, corners, corner, &lines);
         }
         // Capability `render`'s corner panels, placed the same way.
         for panel in self.mods.mods.corner_panels() {
@@ -982,7 +982,7 @@ impl Game<'_> {
         // Item icons draw in a second pass: `draw_item` needs `&mut self`,
         // so `atlas` may not stay borrowed across it.
         let mut items: Vec<(String, f32, f32)> = Vec::new();
-        let atlas = &self.gui.atlas;
+        let atlas = &self.front.gui.atlas;
         let in_world = self.player.is_some();
         ui::menu_background(batch, atlas, 0.0, 0.0, batch.width, batch.height, in_world);
         ui::centered_text(
@@ -1000,7 +1000,7 @@ impl Game<'_> {
         let keys = Self::mod_page_keys(&self.mods.mods, ms);
         for (i, k) in keys.iter().enumerate() {
             let wy = MOD_UI_TOP + i as f32 * MOD_UI_KEY_ROW;
-            let hover = ui::hovered(self.cursor, x, wy, MOD_UI_COLUMN, 20.0);
+            let hover = ui::hovered(self.front.cursor, x, wy, MOD_UI_COLUMN, 20.0);
             let waiting = ms.binding.as_deref() == Some(k.name.as_str());
             let label = Self::mod_key_label(k, waiting);
             ui::button(
@@ -1021,7 +1021,7 @@ impl Game<'_> {
         for (w, &(wy, wh)) in widgets.iter().zip(&layout) {
             match w {
                 UiWidget::Button(b) => {
-                    let hover = ui::hovered(self.cursor, x, wy, MOD_UI_COLUMN, 20.0);
+                    let hover = ui::hovered(self.front.cursor, x, wy, MOD_UI_COLUMN, 20.0);
                     let label = Text::literal(b.label.clone());
                     ui::button(
                         batch,
@@ -1090,7 +1090,7 @@ impl Game<'_> {
                         .min(l.rows.len());
                     for (vi, ri) in (first..last).enumerate() {
                         let ry = rows_top + vi as f32 * 12.0 - (scroll.amount % 12.0);
-                        if ui::hovered(self.cursor, x, ry, MOD_UI_COLUMN - 6.0, 12.0) {
+                        if ui::hovered(self.front.cursor, x, ry, MOD_UI_COLUMN - 6.0, 12.0) {
                             batch.fill(atlas, x + 1.0, ry, MOD_UI_COLUMN - 8.0, 12.0, 0x20FF_FFFF);
                         }
                         if l.selected == Some(ri as u32) {
@@ -1117,7 +1117,13 @@ impl Game<'_> {
                 }
             }
         }
-        let hover = ui::hovered(self.cursor, cx - 100.0, batch.height - 27.0, 200.0, 20.0);
+        let hover = ui::hovered(
+            self.front.cursor,
+            cx - 100.0,
+            batch.height - 27.0,
+            200.0,
+            20.0,
+        );
         ui::button(
             batch,
             atlas,
@@ -1151,9 +1157,9 @@ impl Game<'_> {
             return;
         }
         let (w, h) = self.gui_size();
-        let cursor = self.cursor;
+        let cursor = self.front.cursor;
         if ui::hovered(cursor, (w / 2.0).floor() - 100.0, h - 27.0, 200.0, 20.0) {
-            self.audio.play_button_click();
+            self.front.audio.play_button_click();
             self.close_mod_screen(true);
             return;
         }
@@ -1173,7 +1179,7 @@ impl Game<'_> {
         });
         if let Some(i) = picked {
             let name = keys[i].name.clone();
-            self.audio.play_button_click();
+            self.front.audio.play_button_click();
             if let Some(ms) = self.mods.screen.as_mut() {
                 ms.binding = Some(name);
             }
@@ -1189,7 +1195,7 @@ impl Game<'_> {
             if let UiWidget::Button(b) = w
                 && ui::hovered(cursor, x, wy, MOD_UI_COLUMN, 20.0)
             {
-                self.audio.play_button_click();
+                self.front.audio.play_button_click();
                 let owner = self.mods.screen.as_ref().map_or(0, |ms| ms.owner);
                 self.mods.mods.ui_select(owner, b.id, 0);
                 self.show_mod_output();
@@ -1208,7 +1214,7 @@ impl Game<'_> {
             }
         }
         if let Some((id, row)) = hit {
-            self.audio.play_button_click();
+            self.front.audio.play_button_click();
             self.mods.mods.ui_select(owner, id, row);
             self.show_mod_output();
         }
@@ -1216,7 +1222,7 @@ impl Game<'_> {
     /// The wheel over a `list` scrolls it.
     pub(super) fn mod_screen_scroll(&mut self, delta: f32) {
         let (w, h) = self.gui_size();
-        let cursor = self.cursor;
+        let cursor = self.front.cursor;
         let Some(ms) = self.mods.screen.as_mut() else {
             return;
         };

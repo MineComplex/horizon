@@ -12,7 +12,8 @@ impl Game<'_> {
     fn llama_sound(&mut self, index: usize, sound: &str, volume: f32) {
         let at = self.mobs[index].center();
         let pitch = (self.world.random.next_float() - self.world.random.next_float()) * 0.2 + 1.0;
-        self.audio
+        self.front
+            .audio
             .play(&format!("minecraft:{sound}"), Some(at), volume, pitch);
     }
     /// `Llama.handleEating`: wheat and hay bales heal, age up a baby, raise
@@ -74,7 +75,10 @@ impl Game<'_> {
         if !m.alive() || Some(m.id) == self.riding {
             return false;
         }
-        let sneaking = self.keys.contains(&winit::keyboard::KeyCode::ShiftLeft);
+        let sneaking = self
+            .front
+            .keys
+            .contains(&winit::keyboard::KeyCode::ShiftLeft);
         let (baby, tamed, vehicle) = (m.is_baby(), m.extra.tame, m.rider.is_some());
         let open_inventory = !baby && tamed && sneaking;
         if !vehicle && !open_inventory && !item.is_empty() {
@@ -110,7 +114,8 @@ impl Game<'_> {
                 // Equippable.canBeSheared: the carpet comes off.
                 let at = m.center();
                 let carpet = self.mobs[index].extra.head.take().unwrap_or_default();
-                self.audio
+                self.front
+                    .audio
                     .play("minecraft:item.llama_carpet.unequip", Some(at), 1.0, 1.0);
                 self.spawn_item(ItemStack::new(&carpet, 1), at, [0.0, 0.2, 0.0], 10);
                 self.damage_held_tool();

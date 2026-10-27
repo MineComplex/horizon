@@ -21,11 +21,11 @@ fn uuid(ints: [i32; 4]) -> u128 {
 impl Game<'_> {
     /// `ClientPacketListener.handleWaypoint`.
     pub(super) fn handle_waypoint(&mut self, packet: &TrackedWaypoint) {
-        self.waypoints.apply(packet);
+        self.front.waypoints.apply(packet);
     }
     /// A new connection or world starts with no waypoints.
     pub(super) fn clear_waypoints(&mut self) {
-        self.waypoints = ClientWaypoints::default();
+        self.front.waypoints = ClientWaypoints::default();
     }
     /// `LocalPlayer.setExperienceValues`: a change of progress shows the
     /// experience bar for 100 ticks, except the first one
@@ -118,9 +118,9 @@ impl Game<'_> {
             fov,
             project: &project,
             entity: &entity,
-            styles: &self.waypoint_styles,
+            styles: &self.front.waypoint_styles,
             tick: self.ticks,
         };
-        self.waypoints.draw(&view)
+        self.front.waypoints.draw(&view)
     }
 }

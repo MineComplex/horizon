@@ -422,7 +422,7 @@ impl Game<'_> {
             let desired = self.boss_events_for(viewer);
             for event in self.diff_boss_events(viewer, desired) {
                 if viewer.local {
-                    self.boss_overlay.apply(&event, now);
+                    self.front.boss_overlay.apply(&event, now);
                 } else if let Some(conn) = viewer.conn {
                     packets.push((conn, C::BossEvent(event)));
                 }
@@ -623,7 +623,9 @@ impl Game<'_> {
     }
     /// `ClientPacketListener.handleBossUpdate`.
     pub(super) fn apply_boss_event(&mut self, packet: &play::BossEvent) {
-        self.boss_overlay.apply(packet, boss_overlay::now_millis());
+        self.front
+            .boss_overlay
+            .apply(packet, boss_overlay::now_millis());
     }
 }
 

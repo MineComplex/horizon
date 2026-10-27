@@ -150,7 +150,7 @@ impl Game<'_> {
                 out
             };
         }
-        self.world_data.registries.sounds = self.audio.event_names();
+        self.world_data.registries.sounds = self.front.audio.event_names();
         self.world_data.registries.attributes = [
             "armor",
             "armor_toughness",
@@ -378,11 +378,12 @@ impl Game<'_> {
         }
         self.refresh_dynamic_registries();
         let size = self
+            .front
             .renderer
             .as_ref()
             .map_or([1280, 720], |r| [r.config.width, r.config.height]);
         let b = HudBatch::new(size);
-        let m = Measure(&self.gui.atlas.font);
+        let m = Measure(&self.front.gui.atlas.font);
         let c = Commands {
             dispatcher: chat_tree(&self.remote, &self.mods),
             registries: &self.world_data.registries,
@@ -400,9 +401,9 @@ impl Game<'_> {
         self.ui.chat_screen = Some(screen);
         self.ui.chat_opened = Some(std::time::Instant::now());
         self.screen = Screen::Chat;
-        self.keys.clear();
-        self.left = false;
-        self.right = false;
+        self.front.keys.clear();
+        self.front.left = false;
+        self.front.right = false;
         self.capture(false);
     }
     pub(super) fn close_chat(&mut self) {
@@ -492,7 +493,7 @@ impl Game<'_> {
         let focused = self.screen == Screen::Chat;
         let heard = self.mods.running().then(|| text.plain());
         self.ui.chat.add(
-            &self.gui.atlas,
+            &self.front.gui.atlas,
             text,
             indicator,
             source,
@@ -506,13 +507,13 @@ impl Game<'_> {
     /// Keys while the chat screen is open.
     pub(super) fn chat_key(&mut self, event: &KeyEvent) {
         if let Some(shortcut) = self.edit_shortcut(event) {
-            let m = Measure(&self.gui.atlas.font);
+            let m = Measure(&self.front.gui.atlas.font);
             let c = Commands {
                 dispatcher: chat_tree(&self.remote, &self.mods),
                 registries: &self.world_data.registries,
             };
             if let Some(screen) = self.ui.chat_screen.as_mut() {
-                screen.shortcut(&m, &c, shortcut, &mut self.clipboard);
+                screen.shortcut(&m, &c, shortcut, &mut self.front.clipboard);
             }
             return;
         }
@@ -529,9 +530,9 @@ impl Game<'_> {
         } else {
             (KeyCode::ControlLeft, KeyCode::ControlRight)
         };
-        let ctrl = self.keys.contains(&left) || self.keys.contains(&right);
-        let shift =
-            self.keys.contains(&KeyCode::ShiftLeft) || self.keys.contains(&KeyCode::ShiftRight);
+        let ctrl = self.front.keys.contains(&left) || self.front.keys.contains(&right);
+        let shift = self.front.keys.contains(&KeyCode::ShiftLeft)
+            || self.front.keys.contains(&KeyCode::ShiftRight);
         match key {
             // ChatScreen.keyPressed: the chat scrolls a page.
             KeyCode::PageUp | KeyCode::PageDown
@@ -552,7 +553,7 @@ impl Game<'_> {
         let Some(mut screen) = self.ui.chat_screen.take() else {
             return;
         };
-        let m = Measure(&self.gui.atlas.font);
+        let m = Measure(&self.front.gui.atlas.font);
         let c = Commands {
             dispatcher: chat_tree(&self.remote, &self.mods),
             registries: &self.world_data.registries,
@@ -592,7 +593,7 @@ impl Game<'_> {
         range: (usize, usize),
         list: Vec<(String, Option<String>)>,
     ) {
-        let m = Measure(&self.gui.atlas.font);
+        let m = Measure(&self.front.gui.atlas.font);
         let c = Commands {
             dispatcher: chat_tree(&self.remote, &self.mods),
             registries: &self.world_data.registries,
@@ -603,7 +604,7 @@ impl Game<'_> {
     }
     /// Text typed into the chat box (control socket `chat`).
     pub(super) fn chat_type(&mut self, text: &str) {
-        let m = Measure(&self.gui.atlas.font);
+        let m = Measure(&self.front.gui.atlas.font);
         let c = Commands {
             dispatcher: chat_tree(&self.remote, &self.mods),
             registries: &self.world_data.registries,
@@ -644,7 +645,7 @@ impl Game<'_> {
             let focused = self.screen == Screen::Chat;
             let heard = self.mods.running().then(|| line.plain());
             self.ui.chat.add(
-                &self.gui.atlas,
+                &self.front.gui.atlas,
                 line,
                 None,
                 ChatSource::Player,
@@ -659,8 +660,8 @@ impl Game<'_> {
         }
     }
     pub(super) fn chat_scroll(&mut self, amount: f32) {
-        let cursor = self.cursor;
-        let height = self.renderer.as_ref().map_or(720.0, |r| {
+        let cursor = self.front.cursor;
+        let height = self.front.renderer.as_ref().map_or(720.0, |r| {
             HudBatch::new([r.config.width, r.config.height]).height
         });
         let _ = height;
@@ -676,17 +677,17 @@ impl Game<'_> {
         self.ui.chat.scroll_by(amount as i32, true);
     }
     pub(super) fn chat_click(&mut self) {
-        let cursor = self.cursor;
-        let height = self.renderer.as_ref().map_or(720.0, |r| {
+        let cursor = self.front.cursor;
+        let height = self.front.renderer.as_ref().map_or(720.0, |r| {
             HudBatch::new([r.config.width, r.config.height]).height
         });
-        let m = Measure(&self.gui.atlas.font);
+        let m = Measure(&self.front.gui.atlas.font);
         let c = Commands {
             dispatcher: chat_tree(&self.remote, &self.mods),
             registries: &self.world_data.registries,
         };
         if self.ui.in_bed_chat && self.sleeping.is_some() {
-            let width = self.renderer.as_ref().map_or(1280.0, |r| {
+            let width = self.front.renderer.as_ref().map_or(1280.0, |r| {
                 HudBatch::new([r.config.width, r.config.height]).width
             });
             let (x, y, w, h) = Self::leave_bed_button(width, height);
@@ -703,14 +704,14 @@ impl Game<'_> {
             return;
         }
         match self.ui.chat.click_at(
-            &self.gui.atlas.font,
+            &self.front.gui.atlas.font,
             height as i32,
             cursor.0 as f64,
             cursor.1 as f64,
         ) {
             Some(ClickEvent::CopyToClipboard(value)) => {
                 use horizon_client::clipboard::Clipboard;
-                self.clipboard.set(&value);
+                self.front.clipboard.set(&value);
             }
             Some(ClickEvent::OpenFile(path)) => {
                 super::packs::open_folder(std::path::Path::new(&path));
@@ -749,7 +750,7 @@ impl Game<'_> {
             .append(Text::literal("\n"))
             .append(warning);
         horizon_client::confirm_screen::Confirm::new(
-            &self.gui.atlas.font,
+            &self.front.gui.atlas.font,
             size,
             &Text::translate("chat.link.confirm", &[]),
             &message,
@@ -759,7 +760,7 @@ impl Game<'_> {
         let Some(url) = &self.link_prompt else {
             return;
         };
-        let atlas = &self.gui.atlas;
+        let atlas = &self.front.gui.atlas;
         let (w, h) = (batch.width, batch.height);
         horizon_client::ui::menu_background(batch, atlas, 0.0, 0.0, w, h, true);
         let (yes, no) = (
@@ -767,7 +768,7 @@ impl Game<'_> {
             Text::translate("gui.no", &[]),
         );
         self.link_prompt_layout(url, (w, h))
-            .draw(batch, atlas, self.cursor, [&yes, &no]);
+            .draw(batch, atlas, self.front.cursor, [&yes, &no]);
     }
     /// The prompt's answer: the link opens on yes; either way the chat is back.
     pub(super) fn answer_link_prompt(&mut self, yes: bool) {
@@ -783,9 +784,9 @@ impl Game<'_> {
         };
         let answer = self
             .link_prompt_layout(url, self.gui_size())
-            .answer_at(self.cursor);
+            .answer_at(self.front.cursor);
         if let Some(yes) = answer {
-            self.audio.play_button_click();
+            self.front.audio.play_button_click();
             self.answer_link_prompt(yes);
         }
     }
@@ -797,13 +798,13 @@ impl Game<'_> {
         }
         self.ui
             .chat
-            .draw(batch, &self.gui.atlas, self.ticks, focused);
+            .draw(batch, &self.front.gui.atlas, self.ticks, focused);
     }
     pub(super) fn draw_chat_screen(&mut self, batch: &mut HudBatch) {
         let Some(mut screen) = self.ui.chat_screen.take() else {
             return;
         };
-        let m = Measure(&self.gui.atlas.font);
+        let m = Measure(&self.front.gui.atlas.font);
         let c = Commands {
             dispatcher: chat_tree(&self.remote, &self.mods),
             registries: &self.world_data.registries,
@@ -815,13 +816,16 @@ impl Game<'_> {
         } else {
             self.settings.text_background(0.0) as i32
         };
-        let mouse = (self.cursor.0.floor() as i32, self.cursor.1.floor() as i32);
+        let mouse = (
+            self.front.cursor.0.floor() as i32,
+            self.front.cursor.1.floor() as i32,
+        );
         let blink = self
             .ui
             .chat_opened
             .map_or(0, |t| t.elapsed().as_millis() as u64);
         let draws = screen.draw(&m, mouse, blink, background);
-        horizon_client::screen_draw::paint(batch, &self.gui.atlas, &draws);
+        horizon_client::screen_draw::paint(batch, &self.front.gui.atlas, &draws);
         self.ui.chat_screen = Some(screen);
         if self.ui.in_bed_chat && self.sleeping.is_some() {
             let (x, y, w, h) = Self::leave_bed_button(batch.width, batch.height);
@@ -841,17 +845,17 @@ impl Game<'_> {
                 true,
                 horizon_client::screen_draw::inside(mouse, x, y, w, h),
             );
-            horizon_client::screen_draw::paint(batch, &self.gui.atlas, &button);
+            horizon_client::screen_draw::paint(batch, &self.front.gui.atlas, &button);
         }
         // The hovered message part's tooltip, one row per line of its text.
         if let Some(hover) = self.ui.chat.hover_at(
-            &self.gui.atlas.font,
+            &self.front.gui.atlas.font,
             batch.height as i32,
-            f64::from(self.cursor.0),
-            f64::from(self.cursor.1),
+            f64::from(self.front.cursor.0),
+            f64::from(self.front.cursor.1),
         ) {
             let lines = hover_rows(&hover);
-            self.draw_tooltip_lines(batch, &lines, self.cursor.0, self.cursor.1);
+            self.draw_tooltip_lines(batch, &lines, self.front.cursor.0, self.front.cursor.1);
         }
     }
     /// Advance the overworld clock (ServerClockManager.tick) when
@@ -1031,7 +1035,7 @@ impl Game<'_> {
             return;
         }
         let name = screenshot_name(&dir);
-        let Some(renderer) = self.renderer.as_mut() else {
+        let Some(renderer) = self.front.renderer.as_mut() else {
             return;
         };
         let path = dir.join(name);
@@ -1060,7 +1064,7 @@ impl Game<'_> {
         };
         let focused = self.screen == Screen::Chat;
         self.ui.chat.add(
-            &self.gui.atlas,
+            &self.front.gui.atlas,
             message,
             None,
             ChatSource::Client,

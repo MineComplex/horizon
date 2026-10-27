@@ -178,10 +178,11 @@ impl Game<'_> {
             textures,
         } = staged;
         // Keep the working GPU resources, and hand its window surface over.
-        if let Some(renderer) = &mut self.renderer {
+        if let Some(renderer) = &mut self.front.renderer {
             renderer.release_surface();
         }
         let renderer = match self
+            .front
             .window
             .clone()
             .map(|window| {
@@ -190,7 +191,7 @@ impl Game<'_> {
                     self.options.offscreen,
                     &pack,
                     &gui,
-                    self.renderer.as_ref(),
+                    self.front.renderer.as_ref(),
                     Some(textures),
                     self.settings.horizon.api,
                 )
@@ -199,7 +200,7 @@ impl Game<'_> {
         {
             Ok(renderer) => renderer,
             Err(error) => {
-                if let Some(renderer) = &mut self.renderer {
+                if let Some(renderer) = &mut self.front.renderer {
                     renderer.recreate_surface().map_err(|restore| {
                         format!(
                             "{error}; could not restore the previous rendering surface: {restore}"
@@ -210,18 +211,21 @@ impl Game<'_> {
             }
         };
         // Everything loaded: switch over.
-        self.waypoint_styles = horizon_client::locator_bar::WaypointStyles::load(&root);
+        self.front.waypoint_styles = horizon_client::locator_bar::WaypointStyles::load(&root);
         self.armor_stand_assets.reload_trims(&root);
         self.random_tick_sections.clear();
         self.portals.sections.clear();
         self.options.resources = root.clone();
         let context = pack.context.clone();
         self.pack = pack;
-        self.gui = gui;
+        self.front.gui = gui;
         // The atlas's sprites moved: the particle engine re-reads every rect
         // and the packs' sprite sets, or every particle draws a stale region.
-        self.particles
-            .reload(&root, &self.gui.atlas.sprites, &self.gui.atlas.translucent);
+        self.particles.reload(
+            &root,
+            &self.front.gui.atlas.sprites,
+            &self.front.gui.atlas.translucent,
+        );
         horizon_client::ui_theme::reset_atlas();
         // Villager hats come from the pack's texture metadata (shared data, swapped in place).
         *self
@@ -234,17 +238,17 @@ impl Game<'_> {
         horizon_client::ui::load_metadata(&root);
         lang::set(lang::Language::load(&[&root], &lang::code()));
         self.refresh_remote_language();
-        self.audio.reload(&root);
+        self.front.audio.reload(&root);
         self.clear_lod();
         self.streaming.reload_resources(&mut self.world, context);
-        self.pending_uploads.clear();
+        self.front.pending_uploads.clear();
         // New GPU textures: a renderer built from the reloaded resources; the
         // sections are uploaded again as they are meshed.
         if let Some(renderer) = renderer {
-            self.renderer = Some(renderer);
+            self.front.renderer = Some(renderer);
             self.apply_ui_settings();
         }
-        self.ui.chat.rescale(&self.gui.atlas);
+        self.ui.chat.rescale(&self.front.gui.atlas);
         // The creative screen survives the reload; item names may not.
         self.creative_screen.forget_items();
         Ok(())

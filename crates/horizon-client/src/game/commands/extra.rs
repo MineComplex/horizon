@@ -193,7 +193,10 @@ impl Game<'_> {
             self.set_camera(None);
             return;
         }
-        let sneaking = self.keys.contains(&winit::keyboard::KeyCode::ShiftLeft)
+        let sneaking = self
+            .front
+            .keys
+            .contains(&winit::keyboard::KeyCode::ShiftLeft)
             && self.screen == super::Screen::Playing;
         match self.target_position(t) {
             Some(p) if !sneaking => {

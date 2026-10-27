@@ -297,7 +297,7 @@ impl Game<'_> {
             Ok(Some((at, yaw))) => {
                 if !config.forced && anchor {
                     let [x, y, z] = config.pos.map(f64::from);
-                    self.audio.play(
+                    self.front.audio.play(
                         "minecraft:block.respawn_anchor.deplete",
                         Some([x, y, z]),
                         1.0,

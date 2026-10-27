@@ -95,10 +95,10 @@ impl Game<'_> {
                 .modified
                 .extend(self.world.chunks.keys().copied());
         }
-        self.keys.clear();
-        self.physical_keys.clear();
-        self.left = false;
-        self.right = false;
+        self.front.keys.clear();
+        self.front.physical_keys.clear();
+        self.front.left = false;
+        self.front.right = false;
         self.pending_save = Some(ClosingSave {
             quit: false,
             close: false,
@@ -228,7 +228,7 @@ impl Game<'_> {
     }
 
     pub(super) fn render_closing_save(&mut self) -> Result<()> {
-        let Some(renderer) = &mut self.renderer else {
+        let Some(renderer) = &mut self.front.renderer else {
             return Ok(());
         };
         let mut hud = HudBatch::new([renderer.config.width, renderer.config.height]);
@@ -240,7 +240,7 @@ impl Game<'_> {
         };
         horizon_client::level_loading::draw_progress(
             &mut hud,
-            &self.gui.atlas,
+            &self.front.gui.atlas,
             "Saving world...",
             progress,
         );

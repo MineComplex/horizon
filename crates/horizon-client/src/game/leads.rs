@@ -24,7 +24,8 @@ fn abgr(r: f32, g: f32, b: f32) -> u32 {
 }
 impl Game<'_> {
     fn lead_sound(&mut self, sound: &str, at: [f64; 3]) {
-        self.audio
+        self.front
+            .audio
             .play(&format!("minecraft:item.lead.{sound}"), Some(at), 1.0, 1.0);
     }
     /// `Leashable.canHaveALeashAttachedTo` for the mob at `index` and a
@@ -141,7 +142,10 @@ impl Game<'_> {
     }
     /// `Entity.interact`'s leash part for a mob. Returns whether it was used.
     pub(super) fn interact_leash(&mut self, index: usize, item: &str) -> bool {
-        let sneaking = self.keys.contains(&winit::keyboard::KeyCode::ShiftLeft);
+        let sneaking = self
+            .front
+            .keys
+            .contains(&winit::keyboard::KeyCode::ShiftLeft);
         let id = self.mobs[index].id;
         let at = self.mobs[index].center();
         if !self.mobs[index].alive() {
@@ -186,7 +190,8 @@ impl Game<'_> {
                 dropped = true;
             }
             if dropped {
-                self.audio
+                self.front
+                    .audio
                     .play("minecraft:item.shears.snip", Some(at), 1.0, 1.0);
                 self.damage_held_tool();
                 return true;
@@ -246,14 +251,18 @@ impl Game<'_> {
             .filter(|&i| self.mobs[i].extra.leash == Some(Holder::Knot(knot_pos)))
             .collect();
         let held_item = self.held().map(|s| s.item.to_string());
-        let sneaking = self.keys.contains(&winit::keyboard::KeyCode::ShiftLeft);
+        let sneaking = self
+            .front
+            .keys
+            .contains(&winit::keyboard::KeyCode::ShiftLeft);
         // Shears snip every lead on the knot.
         if held_item.as_deref() == Some("minecraft:shears") && !existing.is_empty() {
             for i in existing {
                 let id = self.mobs[i].id;
                 self.break_leash(id, true, false);
             }
-            self.audio
+            self.front
+                .audio
                 .play("minecraft:item.shears.snip", Some(at), 1.0, 1.0);
             self.damage_held_tool();
             return true;
@@ -290,7 +299,7 @@ impl Game<'_> {
     }
     /// `LeashFeatureRenderer` for every lead and `LeashKnotRenderer` for the knots.
     pub(super) fn leash_geometry(&self, camera: glam::DVec3, alpha: f64, out: &mut Vec<Vertex>) {
-        let atlas = &self.gui.atlas;
+        let atlas = &self.front.gui.atlas;
         let white = atlas.font.white();
         let uv = [
             [white.u0, white.v1],
@@ -445,7 +454,10 @@ impl Game<'_> {
             return rot_y(v, -yaw) + eye;
         }
         let yaw = f64::from(self.yaw.to_radians());
-        let crouching = self.keys.contains(&winit::keyboard::KeyCode::ShiftLeft);
+        let crouching = self
+            .front
+            .keys
+            .contains(&winit::keyboard::KeyCode::ShiftLeft);
         let v = glam::DVec3::new(
             -0.22,
             f64::from(p.dimensions.height) - 1.0,

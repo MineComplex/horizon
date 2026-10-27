@@ -262,7 +262,7 @@ impl Game<'_> {
             }),
             mount,
         };
-        let mut view = self.view;
+        let mut view = self.front.view;
         let kind = match self.camera_type {
             CameraType::FirstPerson => horizon_client::camera::CameraType::FirstPerson,
             CameraType::ThirdPersonBack => horizon_client::camera::CameraType::ThirdPersonBack,
@@ -298,7 +298,7 @@ impl Game<'_> {
             .ok()?;
             (!hit.miss).then_some([hit.hit.location.x, hit.hit.location.y, hit.hit.location.z])
         });
-        self.view = view;
+        self.front.view = view;
         Some((
             glam::DVec3::from_array(view.position),
             view.y_rot,
@@ -422,7 +422,7 @@ impl Game<'_> {
     /// Whether the player's own model shows in the world view.
     fn player_model_shown(&self) -> bool {
         // A shader pack's shadow pass draws the player in first person too (shadowPlayer).
-        (!self.camera_type.first_person() || self.pack_shadow_casters.1)
+        (!self.camera_type.first_person() || self.front.pack_shadow_casters.1)
             && self.sleeping.is_none()
             && !self.spectator()
             && self.potions.effects.get("minecraft:invisibility").is_none()
@@ -450,7 +450,7 @@ impl Game<'_> {
             m.position.z.floor() as i32,
         );
         let packed = (u32::from(light >> 4) * 16) | ((u32::from(light & 15) * 16) << 8);
-        let atlas = &self.gui.atlas;
+        let atlas = &self.front.gui.atlas;
         let lookup = |name: &str| atlas.sprites.get(name).map(|r| [r.u0, r.v0, r.u1, r.v1]);
         let start = out.len();
         horizon_client::mobs::render::render_with(
@@ -501,8 +501,8 @@ impl Game<'_> {
             return;
         }
         let (cx, cy) = ((x0 + x1) / 2.0, (y0 + y1) / 2.0);
-        let x_angle = ((cx - self.cursor.0) / 40.0).atan();
-        let y_angle = ((cy - self.cursor.1) / 40.0).atan();
+        let x_angle = ((cx - self.front.cursor.0) / 40.0).atan();
+        let y_angle = ((cy - self.front.cursor.1) / 40.0).atan();
         let mut m = m.clone();
         // The render state: still, facing out, the head toward the cursor.
         m.previous = m.position;
@@ -515,7 +515,7 @@ impl Game<'_> {
         m.position.y += 0.125 * f64::from(u8::from(m.extra.crouching));
         m.previous = m.position;
         let camera = glam::DVec3::new(m.position.x, m.position.y, m.position.z);
-        let atlas = &self.gui.atlas;
+        let atlas = &self.front.gui.atlas;
         let lookup = |name: &str| atlas.sprites.get(name).map(|r| [r.u0, r.v0, r.u1, r.v1]);
         let mut verts = Vec::new();
         horizon_client::mobs::render::render_with(
@@ -588,7 +588,7 @@ impl Game<'_> {
         };
         let (Some(model), Some(rect)) = (
             assets.player.get("elytra"),
-            self.gui.atlas.sprites.get(texture),
+            self.front.gui.atlas.sprites.get(texture),
         ) else {
             return;
         };
@@ -630,7 +630,11 @@ impl Game<'_> {
         }
         let (Some(model), Some(rect)) = (
             self.res.spin_attack().as_ref(),
-            self.gui.atlas.sprites.get("entity/trident/trident_riptide"),
+            self.front
+                .gui
+                .atlas
+                .sprites
+                .get("entity/trident/trident_riptide"),
         ) else {
             return;
         };

@@ -72,7 +72,7 @@ impl Game<'_> {
         let switcher_open = self.screen == Screen::GameModeSwitcher;
         if switcher_open && pressed {
             if name == self.settings.keys.get("key.debug.switchGameMode") {
-                if let Some(switcher) = &mut self.gamemode_switcher {
+                if let Some(switcher) = &mut self.front.gamemode_switcher {
                     switcher.cycle();
                 }
             } else if key == KeyCode::Escape {
@@ -124,12 +124,12 @@ impl Game<'_> {
             return false;
         }
         let crash_down = keybinds::key_code(self.settings.keys.get("key.debug.crash"))
-            .is_some_and(|k| self.physical_keys.contains(&k));
-        let shift = self.physical_keys.contains(&KeyCode::ShiftLeft)
-            || self.physical_keys.contains(&KeyCode::ShiftRight);
+            .is_some_and(|k| self.front.physical_keys.contains(&k));
+        let shift = self.front.physical_keys.contains(&KeyCode::ShiftLeft)
+            || self.front.physical_keys.contains(&KeyCode::ShiftRight);
         let now = self.debug_millis();
         let binds = self.settings.keys.clone();
-        let mut keys = std::mem::take(&mut self.debug_keys);
+        let mut keys = std::mem::take(&mut self.front.debug_keys);
         let modifier_was_down = keys.modifier_down;
         let to_game = keys.key_press(
             &mut Host { game: self },
@@ -140,7 +140,7 @@ impl Game<'_> {
             crash_down,
             now,
         );
-        self.debug_keys = keys;
+        self.front.debug_keys = keys;
         if switcher_open {
             if name == binds.get("key.debug.modifier") {
                 self.close_gamemode_switcher(true);
@@ -168,7 +168,7 @@ impl Game<'_> {
     /// `KeyboardHandler.tick`: the debug crash countdown.
     pub(super) fn tick_debug_keys(&mut self) -> Result<()> {
         let now = self.debug_millis();
-        match self.debug_keys.tick(now) {
+        match self.front.debug_keys.tick(now) {
             None => {}
             Some(CrashNotice::Message) => {
                 let args = [
@@ -196,11 +196,11 @@ impl Game<'_> {
     /// The network charts' samples each tick: `PingDebugMonitor.tick` while
     /// they show, `BandwidthDebugMonitor.tick` always.
     pub(super) fn tick_debug_charts(&mut self) {
-        let shown = self.debug && self.debug_charts.network;
+        let shown = self.debug && self.front.debug_charts.network;
         let Some(r) = &self.remote else {
             // The integrated server answers within the tick.
             if shown {
-                self.debug_charts.ping.log(0);
+                self.front.debug_charts.ping.log(0);
             }
             return;
         };
@@ -213,8 +213,8 @@ impl Game<'_> {
             ]
         });
         if let Some([bytes, sent, received]) = received {
-            self.debug_charts.log_bandwidth(bytes);
-            self.debug_charts.log_packets([sent, received]);
+            self.front.debug_charts.log_bandwidth(bytes);
+            self.front.debug_charts.log_packets([sent, received]);
         }
         if shown {
             use horizon_protocol::packets::{play::Serverbound, status::Ping};
@@ -246,7 +246,7 @@ impl Game<'_> {
         };
         // `DebugScreenOverlay`: the single-player variants for a local server.
         let remote = !self.has_singleplayer_server();
-        let c = &self.debug_charts;
+        let c = &self.front.debug_charts;
         [
             format!(
                 "Debug charts: {}; {};",
@@ -289,6 +289,7 @@ impl Game<'_> {
         // fps: DebugEntryFps.
         let limit = self.framerate_limit();
         let present = self
+            .front
             .renderer
             .as_ref()
             .map_or("", |r| match r.config.present_mode {
@@ -299,6 +300,7 @@ impl Game<'_> {
                 _ => "",
             });
         let refresh = self
+            .front
             .window
             .as_ref()
             .and_then(|w| w.current_monitor())
@@ -308,7 +310,7 @@ impl Game<'_> {
             });
         d.priority(format!(
             "{} fps T: {}{present} @{refresh}Hz",
-            self.fps.round() as i32,
+            self.front.fps.round() as i32,
             if limit == 260 {
                 "inf".into()
             } else {
@@ -351,14 +353,14 @@ impl Game<'_> {
         d.line("Filtering: None");
         d.line(format!(
             "Terrain Rendering: {}",
-            if self.renderer.as_ref().is_some_and(|r| r.multi_draw) {
+            if self.front.renderer.as_ref().is_some_and(|r| r.multi_draw) {
                 "multidrawindirect"
             } else {
                 "naive"
             }
         ));
         // system_specs (no Java line: Horizon has no JVM).
-        if let Some(r) = self.renderer.as_ref() {
+        if let Some(r) = self.front.renderer.as_ref() {
             static CPU: std::sync::OnceLock<String> = std::sync::OnceLock::new();
             d.group(
                 "system",
@@ -382,7 +384,7 @@ impl Game<'_> {
                     }
                 )],
             );
-            if let Some(w) = self.window.as_ref() {
+            if let Some(w) = self.front.window.as_ref() {
                 let density = w.scale_factor();
                 let logical = w.inner_size().to_logical::<f64>(density);
                 d.group(
@@ -417,7 +419,7 @@ impl Game<'_> {
             );
         }
         // Horizon's own: the shader pack's GPU time per pass (an empty group would move others).
-        let pass_lines = self.renderer.as_ref().map_or_else(Vec::new, |r| {
+        let pass_lines = self.front.renderer.as_ref().map_or_else(Vec::new, |r| {
             debug_overlay::shader_pass_lines(&r.shader_pass_times())
         });
         if !pass_lines.is_empty() {
@@ -425,7 +427,11 @@ impl Game<'_> {
         }
         // tps: DebugEntryTps for local and remote connections.
         if self.player.is_some() {
-            let [tx, rx] = self.debug_charts.packet_rates.map(|n| n.round() as i64);
+            let [tx, rx] = self
+                .front
+                .debug_charts
+                .packet_rates
+                .map(|n| n.round() as i64);
             let (target, status) = if self.clock.sprinting() {
                 ("-".to_owned(), " (sprinting)")
             } else if self.clock.stepping() {
@@ -442,7 +448,7 @@ impl Game<'_> {
                 let tick_ms = self
                     .integrated
                     .as_ref()
-                    .map_or(self.debug_charts.smoothed_tick_ms, |server| {
+                    .map_or(self.front.debug_charts.smoothed_tick_ms, |server| {
                         server.smoothed_tick_ms()
                     });
                 d.line(format!(
@@ -456,9 +462,9 @@ impl Game<'_> {
             }
         }
         let (left, right) = d.columns(&self.debug_chart_lines());
-        let atlas = &self.gui.atlas;
+        let atlas = &self.front.gui.atlas;
         let mut draws = debug_overlay::draw(&atlas.font, [&left, &right], scale, width);
-        let charts = self.debug_charts.draw(
+        let charts = self.front.debug_charts.draw(
             &atlas.font,
             width,
             height,
@@ -470,8 +476,8 @@ impl Game<'_> {
             scale, scale,
         )]));
         draws.extend(charts);
-        if self.debug_charts.lightmap
-            && let Some(r) = &self.renderer
+        if self.front.debug_charts.lightmap
+            && let Some(r) = &self.front.renderer
         {
             draws.extend(horizon_client::debug_chart::lightmap(
                 &r.lightmap_pixels,
@@ -647,15 +653,15 @@ impl Game<'_> {
                 true
             }
             DebugAction::FpsCharts => {
-                self.debug_charts.toggle_fps(&mut self.debug);
+                self.front.debug_charts.toggle_fps(&mut self.debug);
                 true
             }
             DebugAction::NetworkCharts => {
-                self.debug_charts.toggle_network(&mut self.debug);
+                self.front.debug_charts.toggle_network(&mut self.debug);
                 true
             }
             DebugAction::LightmapTexture => {
-                self.debug_charts.toggle_lightmap(&mut self.debug);
+                self.front.debug_charts.toggle_lightmap(&mut self.debug);
                 true
             }
             // Screens and overlays Horizon does not draw yet (the debug
@@ -746,7 +752,7 @@ impl Game<'_> {
     /// `KeyboardHandler.setClipboard`.
     fn set_clipboard(&mut self, text: &str) {
         use horizon_client::clipboard::Clipboard;
-        self.clipboard.set(text);
+        self.front.clipboard.set(text);
     }
     /// The debug renderers' gizmos for a frame (`DebugRenderer.emitGizmos`).
     pub(super) fn debug_gizmos(&self, alpha: f32) -> Gizmos {

@@ -266,13 +266,20 @@ impl Game<'_> {
     pub(super) fn end_flash_geometry(&self) -> Vec<Vertex> {
         let mut out = Vec::new();
         // The old combined sky/flash draw also skipped the flash without a sky sprite.
-        if !self.gui.atlas.sprites.contains_key("environment/end_sky") {
+        if !self
+            .front
+            .gui
+            .atlas
+            .sprites
+            .contains_key("environment/end_sky")
+        {
             return out;
         }
         // SkyRenderer.renderEndFlash: the end_flash sprite at height 100, scale 60.
         let intensity = self.end.flash.intensity(self.clock.fraction() as f32);
         if intensity > 1e-5
             && let Some(r) = self
+                .front
                 .gui
                 .atlas
                 .sprites
@@ -313,7 +320,7 @@ impl Game<'_> {
     pub(super) fn end_flash_sky(&self, sky: &mut horizon_client::environment::Sky, partial: f64) {
         if self.dim == Dim::End && !self.settings.file.bool("hideLightningFlashes") {
             let intensity = self.end.flash.intensity(partial as f32);
-            sky.sky_light_factor += if self.boss_overlay.should_create_world_fog() {
+            sky.sky_light_factor += if self.front.boss_overlay.should_create_world_fog() {
                 intensity / 3.0
             } else {
                 intensity
@@ -378,7 +385,7 @@ impl Game<'_> {
         self.swing_arm();
         let center = hit.pos.map(|v| f64::from(v) + 0.5);
         // LevelEvent 1503: END_PORTAL_FRAME_FILL.
-        self.audio.play(
+        self.front.audio.play(
             "minecraft:block.end_portal_frame.fill",
             Some(center),
             1.0,
@@ -457,7 +464,8 @@ impl Game<'_> {
                 *n = n.saturating_sub(1);
                 if *n == 0 {
                     self.end.flash.sound_in = None;
-                    self.audio
+                    self.front
+                        .audio
                         .play("minecraft:weather.end_flash", None, 1.0, 1.0);
                 }
             }
@@ -603,11 +611,12 @@ impl Game<'_> {
         player.fall_distance = 0.0;
         self.previous_position = player.position;
         self.player = Some(player);
-        self.pad.player_replaced();
-        self.sway = Default::default();
+        self.front.pad.player_replaced();
+        self.front.sway = Default::default();
         self.apply_equipment();
         let pitch = self.world.random.next_float() * 0.4 + 0.8;
-        self.audio
+        self.front
+            .audio
             .play("minecraft:block.portal.travel", None, 0.25, pitch);
         Ok(())
     }
@@ -1156,7 +1165,8 @@ impl Game<'_> {
     fn end_crystal_geometry(&self, camera: glam::DVec3, out: &mut Vec<Vertex>) {
         let (Some(model), Some(r)) = (
             self.crystal_model.as_ref(),
-            self.gui
+            self.front
+                .gui
                 .atlas
                 .sprites
                 .get("entity/end_crystal/end_crystal")
@@ -1271,7 +1281,8 @@ impl Game<'_> {
         let r = self.world.random.next_float();
         let pitch = 0.33 + r * (0.5 - 0.33);
         let at = [p.position.x, p.position.y, p.position.z];
-        self.audio
+        self.front
+            .audio
             .play("minecraft:entity.ender_eye.launch", Some(at), 1.0, pitch);
         self.consume_held();
         self.swing_arm();
@@ -1291,7 +1302,8 @@ impl Game<'_> {
                 return true;
             }
             let at = eye.position.to_array();
-            self.audio
+            self.front
+                .audio
                 .play("minecraft:entity.ender_eye.death", Some(at), 1.0, 1.0);
             if eye.survive {
                 // new ItemEntity(level, x, y, z, item): random spread, 0.2 up.
@@ -1375,7 +1387,7 @@ impl Game<'_> {
     }
     /// ThrownItemRenderer: the ender eye item facing the camera.
     fn eye_geometry(&self, camera: glam::DVec3, out: &mut Vec<Vertex>) {
-        let Some(r) = self.gui.atlas.sprites.get("item/ender_eye").copied() else {
+        let Some(r) = self.front.gui.atlas.sprites.get("item/ender_eye").copied() else {
             return;
         };
         let alpha = self.clock.fraction();

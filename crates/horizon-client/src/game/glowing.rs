@@ -42,7 +42,8 @@ impl Game<'_> {
     /// alpha kept (`OutlineBufferSource`'s team-coloured copy of each draw).
     pub(super) fn mark_outline(&self, vertices: &[Vertex], rgb: u32) {
         let color = horizon_client::mobs::render::abgr(rgb);
-        self.glowing_vertices
+        self.front
+            .glowing_vertices
             .borrow_mut()
             .extend(vertices.iter().map(|v| Vertex {
                 color,

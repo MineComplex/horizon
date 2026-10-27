@@ -194,7 +194,7 @@ impl Game<'_> {
     pub(super) fn item_host(&self) -> Host<'_> {
         Host {
             banners: &self.res.stations().banners,
-            sprites: &self.gui.atlas.sprites,
+            sprites: &self.front.gui.atlas.sprites,
             skins: &self.skin_downloads,
             profiles: &self.skin_profiles,
         }
@@ -208,12 +208,12 @@ impl Game<'_> {
             Dim::End => "minecraft:the_end",
         };
         let key = (
-            self.frames,
+            self.front.frames,
             self.world.game_time,
             self.world.day_time,
             dimension,
         );
-        let mut cached = self.item_level_cache.borrow_mut();
+        let mut cached = self.front.item_level_cache.borrow_mut();
         if let Some((at, level)) = cached.as_ref()
             && *at == key
         {
@@ -293,7 +293,7 @@ impl Game<'_> {
         item_render::gui::draw(
             &state,
             &self.pack.item_renderer,
-            &self.gui.atlas.sprites,
+            &self.front.gui.atlas.sprites,
             &self.item_host(),
             batch,
             x,
@@ -305,7 +305,8 @@ impl Game<'_> {
     }
     /// The `GLINT_TEXTURING` inputs the atlas and options provide.
     pub(super) fn glint(&self) -> Option<item_render::Glint> {
-        self.gui
+        self.front
+            .gui
             .atlas
             .sprites
             .get("misc/enchanted_glint_item")
@@ -342,7 +343,7 @@ impl Game<'_> {
         };
         state.submit(
             &self.pack.item_renderer,
-            &self.gui.atlas.sprites,
+            &self.front.gui.atlas.sprites,
             &self.item_host(),
             pose,
             &mut sink,
@@ -364,7 +365,7 @@ impl Game<'_> {
         };
         state.submit(
             &self.pack.item_renderer,
-            &self.gui.atlas.sprites,
+            &self.front.gui.atlas.sprites,
             &self.item_host(),
             pose,
             &mut sink,

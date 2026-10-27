@@ -60,7 +60,8 @@ impl Game<'_> {
             }
             let at = [m.position.x, m.position.y, m.position.z];
             if sniffer::state(m) == sniffer::SEARCHING && m.age.is_multiple_of(20) {
-                self.audio
+                self.front
+                    .audio
                     .play("minecraft:entity.sniffer.searching", Some(at), 1.0, 1.0);
                 continue;
             }
@@ -71,7 +72,8 @@ impl Game<'_> {
                 continue;
             };
             if ms == 0 {
-                self.audio
+                self.front
+                    .audio
                     .play("minecraft:entity.sniffer.digging", Some(at), 1.0, 1.0);
             }
             if ms <= 1700 || ms >= 6000 {
@@ -95,7 +97,7 @@ impl Game<'_> {
             }
             if self.mobs[i].age.is_multiple_of(10) {
                 let hit = self.res.facts().get(below).sounds.hit.clone();
-                self.audio.play(&hit, Some(at), 0.5, 0.5);
+                self.front.audio.play(&hit, Some(at), 0.5, 0.5);
             }
         }
     }

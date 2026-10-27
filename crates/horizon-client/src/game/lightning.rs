@@ -258,14 +258,14 @@ impl Game<'_> {
         bolts.retain_mut(|b| {
             if b.life == 2 {
                 let pitch = 0.8 + self.world.random.next_float() * 0.2;
-                self.audio.play(
+                self.front.audio.play(
                     "minecraft:entity.lightning_bolt.thunder",
                     Some(b.at),
                     10000.0,
                     pitch,
                 );
                 let pitch = 0.5 + self.world.random.next_float() * 0.2;
-                self.audio.play(
+                self.front.audio.play(
                     "minecraft:entity.lightning_bolt.impact",
                     Some(b.at),
                     2.0,
@@ -400,8 +400,12 @@ impl Game<'_> {
                     if !b.converted.contains(&m.id) {
                         b.converted.push(m.id);
                         m.extra.variant = 1 - m.extra.variant.min(1);
-                        self.audio
-                            .play("minecraft:entity.mooshroom.convert", Some(at), 2.0, 1.0);
+                        self.front.audio.play(
+                            "minecraft:entity.mooshroom.convert",
+                            Some(at),
+                            2.0,
+                            1.0,
+                        );
                     }
                     continue;
                 }

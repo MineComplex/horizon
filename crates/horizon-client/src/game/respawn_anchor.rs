@@ -128,7 +128,8 @@ impl Game<'_> {
             f64::from(pos[1]) + 0.5,
             f64::from(pos[2]) + 0.5,
         ];
-        self.audio
+        self.front
+            .audio
             .play("minecraft:block.respawn_anchor.charge", Some(at), 1.0, 1.0);
         Ok(())
     }
@@ -193,7 +194,7 @@ impl Game<'_> {
                 f64::from(pos[1]) + 0.5,
                 f64::from(pos[2]) + 0.5,
             ];
-            self.audio.play(
+            self.front.audio.play(
                 "minecraft:block.respawn_anchor.set_spawn",
                 Some(at),
                 1.0,
@@ -260,7 +261,7 @@ impl Game<'_> {
         ];
         if &*name == "minecraft:straw_bed" {
             // StrawBedBlock.destroyBed.
-            self.audio.play(
+            self.front.audio.play(
                 "minecraft:block.straw_bed.break_leave",
                 Some(center),
                 1.0,
@@ -627,7 +628,7 @@ impl Game<'_> {
                 self.clock.reset();
                 self.previous_position = position;
                 self.player = Some(player);
-                self.sway = Default::default();
+                self.front.sway = Default::default();
                 self.apply_equipment();
                 // ClientboundSoundPacket at the block's corner, seeded from the level random.
                 let state = self
@@ -640,8 +641,12 @@ impl Game<'_> {
                         f64::from(config.pos[1]),
                         f64::from(config.pos[2]),
                     ];
-                    self.audio
-                        .play("minecraft:block.respawn_anchor.deplete", Some(at), 1.0, 1.0);
+                    self.front.audio.play(
+                        "minecraft:block.respawn_anchor.deplete",
+                        Some(at),
+                        1.0,
+                        1.0,
+                    );
                 }
                 Ok(())
             }

@@ -51,7 +51,7 @@ impl Game<'_> {
     /// Once per frame: the frame's time, and keys let go behind screens.
     pub(super) fn extras_frame(&mut self, elapsed: Duration) {
         // Under agent control the window may lack focus without pausing.
-        let focused = self.focused || self.control.is_some();
+        let focused = self.front.focused || self.control.is_some();
         let playing = self.screen == Screen::Playing && self.title.is_none() && focused;
         if !playing {
             self.extras.mouse = [false; 2];
@@ -186,11 +186,14 @@ impl Game<'_> {
         if !self.extras.minimap.compose(view) {
             return;
         }
-        let Some(rect) = self.gui.atlas.sprites.get(MINIMAP_SPRITE).copied() else {
+        let Some(rect) = self.front.gui.atlas.sprites.get(MINIMAP_SPRITE).copied() else {
             return;
         };
-        let (w, h) = (self.gui.atlas.width as f32, self.gui.atlas.height as f32);
-        self.map_patches.push(horizon_client::font::Patch {
+        let (w, h) = (
+            self.front.gui.atlas.width as f32,
+            self.front.gui.atlas.height as f32,
+        );
+        self.front.map_patches.push(horizon_client::font::Patch {
             x: (rect.u0 * w).round() as u32,
             y: (rect.v0 * h).round() as u32,
             width: minimap::SIZE as u32,
@@ -233,7 +236,7 @@ impl Game<'_> {
         }
         let visible = |corner| !(self.debug && corner == Corner::TopLeft);
         let mut corners = Corners::new(batch.width, batch.height, self.effect_rows_height());
-        let atlas = &self.gui.atlas;
+        let atlas = &self.front.gui.atlas;
         if let Some((map_corner, map_size, view)) = map
             && visible(map_corner)
             && !self.extras.minimap.image.is_empty()

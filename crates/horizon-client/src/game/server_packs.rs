@@ -417,10 +417,10 @@ impl Game<'_> {
         // The overlay swallows input until the apply (`LoadingOverlay`):
         // release what is held so nothing keeps acting while it covers the
         // frame (`KeyMapping.releaseAll` when a screen opens).
-        self.keys.clear();
-        self.physical_keys.clear();
-        self.left = false;
-        self.right = false;
+        self.front.keys.clear();
+        self.front.physical_keys.clear();
+        self.front.left = false;
+        self.front.right = false;
         let vanilla = self.vanilla_root();
         if self.ui.vanilla_root.as_os_str().is_empty() {
             self.ui.vanilla_root = vanilla.clone();
@@ -491,7 +491,7 @@ impl Game<'_> {
         let Some(prompt) = &self.server_packs.prompt else {
             return;
         };
-        let atlas = &self.gui.atlas;
+        let atlas = &self.front.gui.atlas;
         let (w, h) = (batch.width, batch.height);
         if self.player.is_none() {
             // In place of the connecting screen, on its background.
@@ -508,7 +508,7 @@ impl Game<'_> {
         let (_, _, [yes, no]) = prompt.texts();
         prompt
             .layout(atlas, (w, h))
-            .draw(batch, atlas, self.cursor, [&yes, &no]);
+            .draw(batch, atlas, self.front.cursor, [&yes, &no]);
     }
     /// The download notifiers' toasts, each in a free 32-pixel slot of the
     /// `ToastManager` (`hidden`, F1, keeps them timing out undrawn).
@@ -529,7 +529,8 @@ impl Game<'_> {
             let (sound, finished) = toast.update(multiplier);
             if let Some(show) = sound {
                 let event = if show { "ui.toast.in" } else { "ui.toast.out" };
-                self.audio
+                self.front
+                    .audio
                     .play(&format!("minecraft:{event}"), None, 1.0, 1.0);
             }
             if finished {
@@ -537,7 +538,7 @@ impl Game<'_> {
                 continue;
             }
             if let (false, Some(slot)) = (hidden, toast.slot) {
-                toast.draw(&self.gui.atlas, batch, 32.0 * slot as f32);
+                toast.draw(&self.front.gui.atlas, batch, 32.0 * slot as f32);
             }
         }
     }
@@ -547,11 +548,11 @@ impl Game<'_> {
             return Ok(());
         };
         let answer = prompt
-            .layout(&self.gui.atlas, self.gui_size())
-            .answer_at(self.cursor);
+            .layout(&self.front.gui.atlas, self.gui_size())
+            .answer_at(self.front.cursor);
         match answer {
             Some(yes) => {
-                self.audio.play_button_click();
+                self.front.audio.play_button_click();
                 self.answer_pack_prompt(yes)
             }
             None => Ok(()),

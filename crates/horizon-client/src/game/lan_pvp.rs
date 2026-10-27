@@ -260,7 +260,7 @@ impl Game<'_> {
         };
         let harm = horizon_client::scoreboard::teams_allow_damage(team, s.team.as_ref());
         if s.knockback_attack {
-            self.audio.play(
+            self.front.audio.play(
                 "minecraft:entity.player.attack.knockback",
                 Some(s.from),
                 1.0,
@@ -354,7 +354,7 @@ impl Game<'_> {
         if let Some(at) = s.sweep.filter(|_| hurt) {
             self.sweep_attack(at, Some(s.from));
         } else {
-            self.audio.play(sound, Some(s.from), 1.0, 1.0);
+            self.front.audio.play(sound, Some(s.from), 1.0, 1.0);
         }
         hurt
     }
