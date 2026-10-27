@@ -78,7 +78,7 @@ impl Game<'_> {
             });
             self.consume_held();
             self.chiseled_bookshelf_update_state(pos, slot);
-            self.front.audio.play(sound, Some(centre), 1.0, 1.0);
+            self.audio.play(sound, Some(centre), 1.0, 1.0);
             self.trigger_block("minecraft:item_used_on_block", pos, &book);
             return Some(true);
         }
@@ -97,10 +97,24 @@ impl Game<'_> {
         } else {
             "minecraft:block.chiseled_bookshelf.pickup"
         };
-        self.front.audio.play(sound, Some(centre), 1.0, 1.0);
+        self.audio.play(sound, Some(centre), 1.0, 1.0);
         self.give_or_drop(retrieved);
         self.post_block_game_event("minecraft:block_change", pos, Some(Who::Player), None);
         Some(true)
+    }
+
+    /// The bookshelf's six slots (made if the block has no block entity yet).
+    fn bookshelf_items(&mut self, pos: [i32; 3]) -> Option<&mut [Option<ItemStack>; 6]> {
+        let entity = self
+            .world
+            .block_entities
+            .get_or_insert_with((pos[0], pos[1], pos[2]), || {
+                BlockEntity::ChiseledBookshelf(Box::default())
+            });
+        match entity {
+            BlockEntity::ChiseledBookshelf(b) => Some(&mut b.items),
+            _ => None,
+        }
     }
 
     /// `ChiseledBookShelfBlockEntity.updateState`: `slot` becomes the last
@@ -159,21 +173,6 @@ impl Game<'_> {
         });
         if let Some(slot) = moved {
             self.chiseled_bookshelf_update_state([pos.0, pos.1, pos.2], slot);
-        }
-    }
-}
-impl crate::game::Sim<'_> {
-    /// The bookshelf's six slots (made if the block has no block entity yet).
-    fn bookshelf_items(&mut self, pos: [i32; 3]) -> Option<&mut [Option<ItemStack>; 6]> {
-        let entity = self
-            .world
-            .block_entities
-            .get_or_insert_with((pos[0], pos[1], pos[2]), || {
-                BlockEntity::ChiseledBookshelf(Box::default())
-            });
-        match entity {
-            BlockEntity::ChiseledBookshelf(b) => Some(&mut b.items),
-            _ => None,
         }
     }
 }

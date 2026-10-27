@@ -11,6 +11,19 @@ use horizon_client::{
 use horizon_core::{position::BlockPos, random::RandomSource};
 
 impl Game<'_> {
+    /// The composter's `level` at `pos`, None when it isn't a composter.
+    pub(super) fn composter_level(&self, pos: [i32; 3]) -> Option<i32> {
+        let state = self.world.block(pos[0], pos[1], pos[2]);
+        let s = self.pack.assets.registry.state(state)?;
+        if &*s.name != "minecraft:composter" {
+            return None;
+        }
+        s.properties.get("level")?.parse().ok()
+    }
+    /// The item's `compostable` layers provider.
+    fn compostable(&self, stack: &ItemStack) -> Option<serde_json::Value> {
+        self.res.items().get(&stack.item)?.compostable.clone()
+    }
     /// `ComposterBlock.addLayer` and level event 1500: the provider is
     /// evaluated in the composter's block-interaction loot context (its
     /// state; the level random), then the layer is added. True when it was.
@@ -163,7 +176,7 @@ impl Game<'_> {
         } else {
             "minecraft:block.composter.fill"
         };
-        self.front.audio.play(sound, Some(center), 1.0, 1.0);
+        self.audio.play(sound, Some(center), 1.0, 1.0);
         // getShape(..).max(Y, 0.5, 0.5): the compost surface (SHAPES[8] = SHAPES[7]).
         let level = self.composter_level([pos.x, pos.y, pos.z]).unwrap_or(0);
         let height = f64::from((1 + level.min(7) * 2).clamp(2, 16)) / 16.0 + 0.03125;
@@ -182,20 +195,5 @@ impl Game<'_> {
             ];
             self.particles.add(&options, p, v);
         }
-    }
-}
-impl crate::game::Sim<'_> {
-    /// The composter's `level` at `pos`, None when it isn't a composter.
-    pub(super) fn composter_level(&self, pos: [i32; 3]) -> Option<i32> {
-        let state = self.world.block(pos[0], pos[1], pos[2]);
-        let s = self.pack.assets.registry.state(state)?;
-        if &*s.name != "minecraft:composter" {
-            return None;
-        }
-        s.properties.get("level")?.parse().ok()
-    }
-    /// The item's `compostable` layers provider.
-    fn compostable(&self, stack: &ItemStack) -> Option<serde_json::Value> {
-        self.res.items().get(&stack.item)?.compostable.clone()
     }
 }

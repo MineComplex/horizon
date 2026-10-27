@@ -32,6 +32,42 @@ impl Game<'_> {
         self.swing_arm();
         true
     }
+    /// `Entity.belowNameDisplay`: the score holder's score in the objective
+    /// shown below names, then a space and the objective's name.
+    fn below_name_text(&self, holder: &str) -> Option<Text> {
+        let board = &self.score.board;
+        let objective = board.display_objective(sb::SLOT_BELOW_NAME)?;
+        let score = board.score(holder, &objective.name)?;
+        // numberFormatOrDefault(StyledFormat.NO_STYLE).
+        let format = score
+            .number_format
+            .clone()
+            .or_else(|| objective.number_format.clone())
+            .unwrap_or(sb::NumberFormat::Styled(serde_json::json!({})));
+        let mut t = Text::empty();
+        t.push(format.format(score.value));
+        t.push(Text::literal(" "));
+        t.push(objective.display_text());
+        Some(t)
+    }
+    /// The other players' models and names: the guests on a LAN host, the
+    /// players a server sends on a client.
+    fn other_players(&self) -> Vec<(&Mob, String)> {
+        let mut out = Vec::new();
+        if let Some(host) = &self.lan {
+            for (conn, m) in &host.models {
+                if let Some(g) = host.hub.guest(*conn) {
+                    out.push((m, g.name.clone()));
+                }
+            }
+        }
+        for (id, name) in self.remote_player_names() {
+            if let Some(m) = self.mobs.iter().find(|m| m.id == id) {
+                out.push((m, name));
+            }
+        }
+        out
+    }
     /// The names the name tags show this frame (the control socket's status).
     pub(super) fn shown_name_tags(&self, camera: glam::DVec3) -> Vec<String> {
         self.name_tags(camera, 1.0)
@@ -295,7 +331,7 @@ impl Game<'_> {
         let forward = glam::DVec3::from_array(view_vector(self.yaw, self.pitch));
         let right = forward.cross(glam::DVec3::Y).normalize_or_zero();
         let up = right.cross(forward).normalize_or_zero();
-        let white = self.front.gui.atlas.font.white();
+        let white = self.gui.atlas.font.white();
         let away = forward.as_vec3() * 0.002;
         for (text, lift) in lines {
             let o = (o + glam::DVec3::new(0.0, *lift, 0.0)).as_vec3();
@@ -319,7 +355,7 @@ impl Game<'_> {
                 .collect();
             let width: f32 = chars
                 .iter()
-                .map(|(c, _)| self.front.gui.atlas.glyph(*c).map_or(6.0, |g| g.1))
+                .map(|(c, _)| self.gui.atlas.glyph(*c).map_or(6.0, |g| g.1))
                 .sum();
             let x0 = -(width / 2.0).trunc();
             let y0 = if text.plain() == "deadmau5" {
@@ -358,7 +394,7 @@ impl Game<'_> {
             }
             let mut x = x0;
             for (ch, color) in chars {
-                let Some((g, advance)) = self.front.gui.atlas.glyph(ch) else {
+                let Some((g, advance)) = self.gui.atlas.glyph(ch) else {
                     x += 6.0;
                     continue;
                 };
@@ -374,44 +410,6 @@ impl Game<'_> {
                 x += advance;
             }
         }
-    }
-}
-impl crate::game::Sim<'_> {
-    /// `Entity.belowNameDisplay`: the score holder's score in the objective
-    /// shown below names, then a space and the objective's name.
-    fn below_name_text(&self, holder: &str) -> Option<Text> {
-        let board = &self.score.board;
-        let objective = board.display_objective(sb::SLOT_BELOW_NAME)?;
-        let score = board.score(holder, &objective.name)?;
-        // numberFormatOrDefault(StyledFormat.NO_STYLE).
-        let format = score
-            .number_format
-            .clone()
-            .or_else(|| objective.number_format.clone())
-            .unwrap_or(sb::NumberFormat::Styled(serde_json::json!({})));
-        let mut t = Text::empty();
-        t.push(format.format(score.value));
-        t.push(Text::literal(" "));
-        t.push(objective.display_text());
-        Some(t)
-    }
-    /// The other players' models and names: the guests on a LAN host, the
-    /// players a server sends on a client.
-    fn other_players(&self) -> Vec<(&Mob, String)> {
-        let mut out = Vec::new();
-        if let Some(host) = &self.lan {
-            for (conn, m) in &host.models {
-                if let Some(g) = host.hub.guest(*conn) {
-                    out.push((m, g.name.clone()));
-                }
-            }
-        }
-        for (id, name) in self.remote_player_names() {
-            if let Some(m) = self.mobs.iter().find(|m| m.id == id) {
-                out.push((m, name));
-            }
-        }
-        out
     }
 }
 

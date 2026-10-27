@@ -34,10 +34,7 @@ impl Game<'_> {
         if m.kind.flags.animal && m.kind.food.iter().any(|f| f.as_str() == item) {
             return true;
         }
-        let sneaking = self
-            .front
-            .keys
-            .contains(&winit::keyboard::KeyCode::ShiftLeft);
+        let sneaking = self.keys.contains(&winit::keyboard::KeyCode::ShiftLeft);
         match m.species() {
             // Villager / WanderingTrader.mobInteract: trading, or a baby's head shake.
             Species::Villager | Species::WanderingTrader => item != "minecraft:villager_spawn_egg",

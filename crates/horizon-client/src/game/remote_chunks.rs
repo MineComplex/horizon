@@ -215,8 +215,7 @@ pub(super) enum Next {
     Lost,
 }
 
-impl Game<'_> {}
-impl crate::game::Sim<'_> {
+impl Game<'_> {
     /// `handleLevelChunkWithLight`: the column replaces any loaded one, and
     /// its block entities load their update tags. `decoded` is the column the
     /// decoder made with `format`; another format since means decode again.
@@ -266,6 +265,7 @@ impl crate::game::Sim<'_> {
             self.remote_block_entity_data([pos.0, pos.1, pos.2], info.kind, &info.tag);
         }
     }
+
     /// `handleLightUpdatePacket`: the sections it names take its light.
     pub(super) fn remote_light_update(&mut self, p: &play::LightUpdate) {
         let Some(format) = self.remote.as_ref().map(|r| r.chunk_format.clone()) else {

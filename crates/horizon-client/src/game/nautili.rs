@@ -9,14 +9,21 @@ use horizon_client::{
 use horizon_core::random::RandomSource;
 
 impl Game<'_> {
+    fn item_tagged(&self, tag: &str, item: &str) -> bool {
+        self.res
+            .items()
+            .item_tags
+            .get(tag)
+            .is_some_and(|t| t.contains(item))
+    }
     /// `AbstractNautilus.usePlayerItem`: bucketed fish leave a water bucket.
     fn use_nautilus_food(&mut self, item: &str) {
         let bucket = self.item_tagged("minecraft:nautilus_bucket_food", item);
         self.consume_held();
-        if bucket && !self.sim.creative {
+        if bucket && !self.creative {
             let water = ItemStack::new("minecraft:water_bucket", 1);
-            if self.sim.inventory[self.sim.selected].is_none() {
-                self.sim.inventory[self.sim.selected] = Some(water);
+            if self.inventory[self.selected].is_none() {
+                self.inventory[self.selected] = Some(water);
             } else if let Some(rest) = self.give(water) {
                 let at = self.eye_position().unwrap_or([0.0; 3]);
                 self.spawn_item(rest, at, [0.0; 3], 40);
@@ -25,8 +32,7 @@ impl Game<'_> {
     }
     fn nautilus_sound(&mut self, index: usize, sound: &str) {
         let at = self.mobs[index].center();
-        self.front
-            .audio
+        self.audio
             .play(&format!("minecraft:{sound}"), Some(at), 1.0, 1.0);
     }
     /// `AbstractNautilus.mobInteract`. Returns whether the click was used.
@@ -43,14 +49,8 @@ impl Game<'_> {
             .map(|t| t.iter().cloned().collect())
             .unwrap_or_default();
         let food = nautilus::is_food(m, item, &taming);
-        let sneaking = self
-            .front
-            .keys
-            .contains(&winit::keyboard::KeyCode::ShiftLeft)
-            || self
-                .front
-                .keys
-                .contains(&winit::keyboard::KeyCode::ShiftRight);
+        let sneaking = self.keys.contains(&winit::keyboard::KeyCode::ShiftLeft)
+            || self.keys.contains(&winit::keyboard::KeyCode::ShiftRight);
         let tame = m.extra.tame;
         if m.is_baby() {
             // Animal.mobInteract: food grows a baby up by a tenth.
@@ -75,11 +75,11 @@ impl Game<'_> {
             if !tame && food {
                 // tryToTame: one time in three.
                 self.use_nautilus_food(item);
-                let m = &mut self.sim.mobs[index];
+                let m = &mut self.mobs[index];
                 let tamed = m.random.next_int_bound(3).unwrap_or(1) == 0;
                 if tamed {
                     m.extra.tame = true;
-                    m.extra.owner = self.sim.level.player_uuid.or(Some([0, 0, 0, 1]));
+                    m.extra.owner = self.level.player_uuid.or(Some([0, 0, 0, 1]));
                     m.persistent = true;
                     m.nav_stop();
                     m.ai.target = None;
@@ -106,9 +106,9 @@ impl Game<'_> {
             }
             // Equippable.equipOnInteract: a saddle or nautilus armour on a
             // tame adult.
-            let m = &mut self.sim.mobs[index];
+            let m = &mut self.mobs[index];
             if item == "minecraft:saddle" && tame && !m.extra.saddled {
-                let held = self.sim.inventory[self.sim.selected].clone();
+                let held = self.inventory[self.selected].clone();
                 m.set_saddle(held);
                 let sound = nautilus::saddle_sound(m);
                 self.nautilus_sound(index, sound);
@@ -145,14 +145,5 @@ impl Game<'_> {
             return true;
         }
         false
-    }
-}
-impl crate::game::Sim<'_> {
-    fn item_tagged(&self, tag: &str, item: &str) -> bool {
-        self.res
-            .items()
-            .item_tags
-            .get(tag)
-            .is_some_and(|t| t.contains(item))
     }
 }

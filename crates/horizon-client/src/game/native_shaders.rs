@@ -40,7 +40,7 @@ impl Game<'_> {
     /// Builds the pack at `path` when its files changed since it was last read.
     pub(super) fn tick_native_shader_pack(&mut self, path: &Path) {
         let now = Instant::now();
-        let state = &mut self.front.native_shaders;
+        let state = &mut self.native_shaders;
         if state.looked.is_some_and(|t| now - t < LOOK_EVERY) {
             return;
         }
@@ -51,7 +51,7 @@ impl Game<'_> {
         }
         let reload = state.stamp.is_some();
         state.stamp = stamp;
-        let Some(renderer) = &mut self.front.renderer else {
+        let Some(renderer) = &mut self.renderer else {
             return;
         };
         let result = Pack::read(path).map_err(|e| vec![e]).and_then(|pack| {

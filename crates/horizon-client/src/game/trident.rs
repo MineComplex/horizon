@@ -190,6 +190,24 @@ impl Game<'_> {
         let (at, top) = (p.position, p.bounds().max_position().y);
         water || self.in_rain(at, top)
     }
+    /// The living entities a spinning player can touch this tick, for
+    /// `LivingEntity.checkAutoSpinAttack` (none when not spinning).
+    pub(super) fn spin_targets(&self) -> Vec<(u32, Aabb)> {
+        let Some(p) = self
+            .player
+            .as_ref()
+            .filter(|p| p.auto_spin_attack_ticks > 0)
+        else {
+            return Vec::new();
+        };
+        // A spin moves a few blocks a tick at most.
+        let near = p.bounds().inflate(Vec3::new(16.0, 16.0, 16.0));
+        self.mobs
+            .iter()
+            .filter(|m| m.alive() && m.bounds().intersects(near))
+            .map(|m| (m.id, m.bounds()))
+            .collect()
+    }
     /// `Player.doAutoAttackOnTouch`: the touched entity takes `Player.attack`
     /// with the spin's damage; once the spin is over its damage is cleared.
     pub(super) fn end_spin_attack(&mut self, hit: Option<u32>) {
@@ -222,8 +240,7 @@ impl Game<'_> {
             return;
         }
         self.spawn_bolt(at, false);
-        self.front
-            .audio
+        self.audio
             .play("minecraft:item.trident.thunder", Some(at), 5.0, 1.0);
     }
     /// `minecraft:hit_block` of Channeling (`AbstractArrow.hitBlockEnchantmentEffects`):
@@ -329,7 +346,7 @@ impl Game<'_> {
             }
             if !server_client {
                 let sound = format!("minecraft:item.trident.riptide_{}", riptide.min(3));
-                self.front.audio.play(&sound, at, 1.0, 1.0);
+                self.audio.play(&sound, at, 1.0, 1.0);
             }
             return;
         }
@@ -350,21 +367,20 @@ impl Game<'_> {
             Some(Who::Player),
         );
         let (v, on_ground) = self
-            .sim
             .player
             .as_ref()
             .map_or((Vec3::ZERO, true), |p| (p.velocity, p.ground.on_ground));
         projectile.shoot_from_rotation(
-            &mut self.sim.world.random,
-            self.sim.pitch,
-            self.sim.yaw,
+            &mut self.world.random,
+            self.pitch,
+            self.yaw,
             0.0,
             2.5,
             1.0,
             v,
             on_ground,
         );
-        self.sim.tridents.push(ThrownTrident {
+        self.tridents.push(ThrownTrident {
             id: 0,
             loyalty: thrown.enchantment_level("minecraft:loyalty"),
             stack: thrown,
@@ -378,13 +394,12 @@ impl Game<'_> {
             dealt_damage: false,
             no_physics: false,
             returning: 0,
-            creative_only: self.sim.creative,
+            creative_only: self.creative,
             owner: 0,
-            guest: self.sim.lan_acting,
+            guest: self.lan_acting,
         });
         self.player_projectile_shot();
-        self.front
-            .audio
+        self.audio
             .play("minecraft:item.trident.throw", at, 1.0, 1.0);
     }
     /// The thrower's `PLAYER_HURT_ENTITY` for a trident hit: run as the
@@ -426,7 +441,7 @@ impl Game<'_> {
                 t.in_ground = false;
                 t.loyalty_pull(owner_eye);
                 if t.returning == 0 {
-                    self.front.audio.play(
+                    self.audio.play(
                         "minecraft:item.trident.return",
                         Some([t.position.x, t.position.y, t.position.z]),
                         10.0,
@@ -469,14 +484,14 @@ impl Game<'_> {
                         direct_attacker: Some("minecraft:trident"),
                         is_direct: true,
                         damage_type: Some("minecraft:trident"),
-                        items: Some(self.sim.res.items()),
+                        items: Some(self.res.items()),
                         ..Default::default()
                     };
-                    let damage = self.sim.res.stations().enchantments.modify_value(
+                    let damage = self.res.stations().enchantments.modify_value(
                         Some(&t.stack),
                         "minecraft:damage",
                         &ctx,
-                        &mut self.sim.world.random,
+                        &mut self.world.random,
                         8.0,
                     );
                     t.dealt_damage = true;
@@ -513,7 +528,7 @@ impl Game<'_> {
                         };
                         self.thrower_hit(t.guest, &victim, direct, damage);
                     }
-                    self.front.audio.play(
+                    self.audio.play(
                         "minecraft:item.trident.hit",
                         Some([t.position.x, t.position.y, t.position.z]),
                         1.0,
@@ -547,7 +562,7 @@ impl Game<'_> {
                             }
                             t.in_ground = true;
                             t.velocity = Vec3::ZERO;
-                            self.front.audio.play(
+                            self.audio.play(
                                 "minecraft:item.trident.hit_ground",
                                 Some([t.position.x, t.position.y, t.position.z]),
                                 1.0,
@@ -584,7 +599,7 @@ impl Game<'_> {
                 let pitch =
                     ((self.world.random.next_float() - self.world.random.next_float()) * 0.7 + 1.0)
                         * 2.0;
-                self.front.audio.play(
+                self.audio.play(
                     "minecraft:entity.item.pickup",
                     Some([feet.x, feet.y, feet.z]),
                     0.2,
@@ -602,7 +617,6 @@ impl Game<'_> {
             return;
         };
         let Some(uv) = self
-            .front
             .gui
             .atlas
             .sprites
@@ -657,25 +671,5 @@ impl Game<'_> {
                 out,
             );
         }
-    }
-}
-impl crate::game::Sim<'_> {
-    /// The living entities a spinning player can touch this tick, for
-    /// `LivingEntity.checkAutoSpinAttack` (none when not spinning).
-    pub(super) fn spin_targets(&self) -> Vec<(u32, Aabb)> {
-        let Some(p) = self
-            .player
-            .as_ref()
-            .filter(|p| p.auto_spin_attack_ticks > 0)
-        else {
-            return Vec::new();
-        };
-        // A spin moves a few blocks a tick at most.
-        let near = p.bounds().inflate(Vec3::new(16.0, 16.0, 16.0));
-        self.mobs
-            .iter()
-            .filter(|m| m.alive() && m.bounds().intersects(near))
-            .map(|m| (m.id, m.bounds()))
-            .collect()
     }
 }

@@ -107,6 +107,22 @@ pub(super) fn pack_infos(vanilla: &Path) -> Vec<PackInfo> {
     infos
 }
 impl Game<'_> {
+    pub(super) fn vanilla_root(&self) -> PathBuf {
+        if self.ui.vanilla_root.as_os_str().is_empty() {
+            self.options.resources.clone()
+        } else {
+            self.ui.vanilla_root.clone()
+        }
+    }
+    /// The packs the pack screen offers and the current selection
+    /// (`PackSelectionScreen` makes its `PackSelectionModel` from them).
+    pub(super) fn refresh_pack_lists(&mut self) {
+        let infos = pack_infos(&self.vanilla_root());
+        let o = &mut self.ui.options;
+        o.pack_infos = infos;
+        o.pack_selection = self.settings.resource_packs.clone();
+        o.pack_screen = None;
+    }
     /// `Minecraft.reloadResourcePacks`: rebuild the overlay and reload every
     /// client resource from it, as vanilla's reload listeners do: block
     /// models and sprites (every section is meshed again,
@@ -131,117 +147,6 @@ impl Game<'_> {
             self.ui.options.resource_error = Some(e.to_string());
         }
     }
-    /// The render-thread half: the renderer on the new pack's textures, then
-    /// the swap (`ReloadInstance`'s application listeners).
-    pub(super) fn apply_staged_pack(&mut self, staged: StagedPack) -> horizon_client::Result<()> {
-        let StagedPack {
-            root,
-            gui,
-            pack,
-            textures,
-        } = staged;
-        // Keep the working GPU resources, and hand its window surface over.
-        if let Some(renderer) = &mut self.front.renderer {
-            renderer.release_surface();
-        }
-        let renderer = match self
-            .front
-            .window
-            .clone()
-            .map(|window| {
-                build_renderer(
-                    window,
-                    self.options.offscreen,
-                    &pack,
-                    &gui,
-                    self.front.renderer.as_ref(),
-                    Some(textures),
-                    self.settings.horizon.api,
-                )
-            })
-            .transpose()
-        {
-            Ok(renderer) => renderer,
-            Err(error) => {
-                if let Some(renderer) = &mut self.front.renderer {
-                    renderer.recreate_surface().map_err(|restore| {
-                        format!(
-                            "{error}; could not restore the previous rendering surface: {restore}"
-                        )
-                    })?;
-                }
-                return Err(error);
-            }
-        };
-        // Everything loaded: switch over.
-        self.front.waypoint_styles = horizon_client::locator_bar::WaypointStyles::load(&root);
-        self.armor_stand_assets.reload_trims(&root);
-        self.random_tick_sections.clear();
-        self.portals.sections.clear();
-        self.sim.options.resources = root.clone();
-        let context = pack.context.clone();
-        self.sim.pack = pack;
-        self.front.gui = gui;
-        // The atlas's sprites moved: the particle engine re-reads every rect
-        // and the packs' sprite sets, or every particle draws a stale region.
-        self.sim.particles.reload(
-            &root,
-            &self.front.gui.atlas.sprites,
-            &self.front.gui.atlas.translucent,
-        );
-        horizon_client::ui_theme::reset_atlas();
-        // Villager hats come from the pack's texture metadata (shared data, swapped in place).
-        *self
-            .res
-            .mob_data()
-            .villager_hats
-            .write()
-            .unwrap_or_else(std::sync::PoisonError::into_inner) =
-            horizon_client::mobs::villager_hats::VillagerHats::load(&root);
-        horizon_client::ui::load_metadata(&root);
-        lang::set(lang::Language::load(&[&root], &lang::code()));
-        self.refresh_remote_language();
-        self.front.audio.reload(&root);
-        self.clear_lod();
-        self.sim
-            .streaming
-            .reload_resources(&mut self.sim.world, context);
-        self.front.pending_uploads.clear();
-        // New GPU textures: a renderer built from the reloaded resources; the
-        // sections are uploaded again as they are meshed.
-        if let Some(renderer) = renderer {
-            self.front.renderer = Some(renderer);
-            self.apply_ui_settings();
-        }
-        self.sim.ui.chat.rescale(&self.front.gui.atlas);
-        // The creative screen survives the reload; item names may not.
-        self.sim.creative_screen.forget_items();
-        Ok(())
-    }
-    /// `Minecraft.reloadResourcePacks`: the reload staged on the spot, then
-    /// applied (`PackReload` runs the same two phases across frames).
-    pub(super) fn reload_selected_packs(&mut self) -> horizon_client::Result<()> {
-        let staged = self.stage_selected_packs()?;
-        self.apply_staged_pack(staged)
-    }
-}
-impl crate::game::Sim<'_> {
-    pub(super) fn vanilla_root(&self) -> PathBuf {
-        if self.ui.vanilla_root.as_os_str().is_empty() {
-            self.options.resources.clone()
-        } else {
-            self.ui.vanilla_root.clone()
-        }
-    }
-    /// The packs the pack screen offers and the current selection
-    /// (`PackSelectionScreen` makes its `PackSelectionModel` from them).
-    pub(super) fn refresh_pack_lists(&mut self) {
-        let infos = pack_infos(&self.vanilla_root());
-        let o = &mut self.ui.options;
-        o.pack_infos = infos;
-        o.pack_selection = self.settings.resource_packs.clone();
-        o.pack_screen = None;
-    }
     /// The CPU half of the reload, safe on a worker (`PackReload` runs it):
     /// `apply_staged_pack` finishes the GPU half and the swap.
     pub(super) fn stage_selected_packs(&mut self) -> horizon_client::Result<StagedPack> {
@@ -262,6 +167,93 @@ impl crate::game::Sim<'_> {
             self.settings.japanese_glyphs,
             &super::Progress::new(),
         )
+    }
+    /// The render-thread half: the renderer on the new pack's textures, then
+    /// the swap (`ReloadInstance`'s application listeners).
+    pub(super) fn apply_staged_pack(&mut self, staged: StagedPack) -> horizon_client::Result<()> {
+        let StagedPack {
+            root,
+            gui,
+            pack,
+            textures,
+        } = staged;
+        // Keep the working GPU resources, and hand its window surface over.
+        if let Some(renderer) = &mut self.renderer {
+            renderer.release_surface();
+        }
+        let renderer = match self
+            .window
+            .clone()
+            .map(|window| {
+                build_renderer(
+                    window,
+                    self.options.offscreen,
+                    &pack,
+                    &gui,
+                    self.renderer.as_ref(),
+                    Some(textures),
+                    self.settings.horizon.api,
+                )
+            })
+            .transpose()
+        {
+            Ok(renderer) => renderer,
+            Err(error) => {
+                if let Some(renderer) = &mut self.renderer {
+                    renderer.recreate_surface().map_err(|restore| {
+                        format!(
+                            "{error}; could not restore the previous rendering surface: {restore}"
+                        )
+                    })?;
+                }
+                return Err(error);
+            }
+        };
+        // Everything loaded: switch over.
+        self.waypoint_styles = horizon_client::locator_bar::WaypointStyles::load(&root);
+        self.armor_stand_assets.reload_trims(&root);
+        self.random_tick_sections.clear();
+        self.portals.sections.clear();
+        self.options.resources = root.clone();
+        let context = pack.context.clone();
+        self.pack = pack;
+        self.gui = gui;
+        // The atlas's sprites moved: the particle engine re-reads every rect
+        // and the packs' sprite sets, or every particle draws a stale region.
+        self.particles
+            .reload(&root, &self.gui.atlas.sprites, &self.gui.atlas.translucent);
+        horizon_client::ui_theme::reset_atlas();
+        // Villager hats come from the pack's texture metadata (shared data, swapped in place).
+        *self
+            .res
+            .mob_data()
+            .villager_hats
+            .write()
+            .unwrap_or_else(std::sync::PoisonError::into_inner) =
+            horizon_client::mobs::villager_hats::VillagerHats::load(&root);
+        horizon_client::ui::load_metadata(&root);
+        lang::set(lang::Language::load(&[&root], &lang::code()));
+        self.refresh_remote_language();
+        self.audio.reload(&root);
+        self.clear_lod();
+        self.streaming.reload_resources(&mut self.world, context);
+        self.pending_uploads.clear();
+        // New GPU textures: a renderer built from the reloaded resources; the
+        // sections are uploaded again as they are meshed.
+        if let Some(renderer) = renderer {
+            self.renderer = Some(renderer);
+            self.apply_ui_settings();
+        }
+        self.ui.chat.rescale(&self.gui.atlas);
+        // The creative screen survives the reload; item names may not.
+        self.creative_screen.forget_items();
+        Ok(())
+    }
+    /// `Minecraft.reloadResourcePacks`: the reload staged on the spot, then
+    /// applied (`PackReload` runs the same two phases across frames).
+    pub(super) fn reload_selected_packs(&mut self) -> horizon_client::Result<()> {
+        let staged = self.stage_selected_packs()?;
+        self.apply_staged_pack(staged)
     }
 }
 

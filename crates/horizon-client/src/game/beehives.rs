@@ -58,13 +58,37 @@ impl HiveHost for GameHive<'_, '_> {
     }
     fn sound(&mut self, name: &'static str, at: [f64; 3]) {
         self.game
-            .front
             .audio
             .play(&format!("minecraft:{name}"), Some(at), 1.0, 1.0);
     }
 }
 
 impl Game<'_> {
+    fn hive_with_honey(&self, state: BlockStateId, level: i32) -> Option<BlockStateId> {
+        let registry = self.pack.assets.registry;
+        let mut s = registry.state(state)?.clone();
+        s.properties
+            .insert("honey_level".to_owned(), level.to_string());
+        registry.resolve(&s).ok()
+    }
+    /// The hive's honey level and front, from its block state.
+    pub(super) fn hive_state(&self, at: [i32; 3]) -> Option<(Option<i32>, [i32; 2])> {
+        let state = self.world.block(at[0], at[1], at[2]);
+        let name = &self.res.facts().get(state).name;
+        if !self
+            .res
+            .items()
+            .block_tags
+            .get("minecraft:beehives")
+            .is_some_and(|t| t.contains(&**name))
+        {
+            return None;
+        }
+        let props = &self.pack.assets.registry.state(state)?.properties;
+        let honey = props.get("honey_level").and_then(|v| v.parse().ok());
+        let facing = beehive::facing_step(props.get("facing").map(String::as_str));
+        Some((honey, facing))
+    }
     /// `BeehiveBlockEntity.serverTick` of the hive at `key`, after an
     /// emergency exit if fire is beside it (`BeehiveBlock.updateShape`).
     pub(super) fn tick_beehive(&mut self, key: (i32, i32, i32)) {
@@ -213,17 +237,14 @@ impl Game<'_> {
             ) {
                 self.pop_resource(pos, stack);
             }
-            self.front
-                .audio
+            self.audio
                 .play("minecraft:block.beehive.shear", at, 1.0, 1.0);
             self.damage_held(1);
             self.post_block_game_event("minecraft:shear", pos, self.sculk_actor(), None);
         } else {
             // shrink(1), then the honey bottle in the hand, the inventory or
             // on the ground.
-            self.front
-                .audio
-                .play("minecraft:item.bottle.fill", at, 1.0, 1.0);
+            self.audio.play("minecraft:item.bottle.fill", at, 1.0, 1.0);
             let cell = self.held_mut();
             if let Some(s) = cell.as_mut() {
                 s.count -= 1;
@@ -326,41 +347,14 @@ impl Game<'_> {
                 .random
                 .next_int_bound(players.len() as i32)
                 .unwrap_or(0) as usize;
-            self.sim.mobs[i].ai.target = Some(Who::Player);
+            self.mobs[i].ai.target = Some(Who::Player);
             // The player a mob sees is its guest binding, else the window's.
-            if let Some(host) = self.sim.lan.as_mut() {
+            if let Some(host) = self.lan.as_mut() {
                 match players[pick] {
-                    Some(conn) => host.mob_players.insert(self.sim.mobs[i].id, conn),
-                    None => host.mob_players.remove(&self.sim.mobs[i].id),
+                    Some(conn) => host.mob_players.insert(self.mobs[i].id, conn),
+                    None => host.mob_players.remove(&self.mobs[i].id),
                 };
             }
         }
-    }
-}
-impl crate::game::Sim<'_> {
-    fn hive_with_honey(&self, state: BlockStateId, level: i32) -> Option<BlockStateId> {
-        let registry = self.pack.assets.registry;
-        let mut s = registry.state(state)?.clone();
-        s.properties
-            .insert("honey_level".to_owned(), level.to_string());
-        registry.resolve(&s).ok()
-    }
-    /// The hive's honey level and front, from its block state.
-    pub(super) fn hive_state(&self, at: [i32; 3]) -> Option<(Option<i32>, [i32; 2])> {
-        let state = self.world.block(at[0], at[1], at[2]);
-        let name = &self.res.facts().get(state).name;
-        if !self
-            .res
-            .items()
-            .block_tags
-            .get("minecraft:beehives")
-            .is_some_and(|t| t.contains(&**name))
-        {
-            return None;
-        }
-        let props = &self.pack.assets.registry.state(state)?.properties;
-        let honey = props.get("honey_level").and_then(|v| v.parse().ok());
-        let facing = beehive::facing_step(props.get("facing").map(String::as_str));
-        Some((honey, facing))
     }
 }

@@ -40,11 +40,15 @@ impl MountState {
     }
 }
 impl Game<'_> {
+    fn mount_index(&self) -> Option<usize> {
+        let id = self.riding?;
+        self.mobs.iter().position(|m| m.id == id)
+    }
     /// `Pig` / `Strider.mobInteract`: saddle an adult, or ride a saddled one.
     fn interact_steerable(&mut self, index: usize, item: &str) -> bool {
-        let held = self.sim.inventory[self.sim.selected].clone();
-        let m = &mut self.sim.mobs[index];
-        if m.is_baby() || !m.alive() || Some(m.id) == self.sim.riding {
+        let held = self.inventory[self.selected].clone();
+        let m = &mut self.mobs[index];
+        if m.is_baby() || !m.alive() || Some(m.id) == self.riding {
             return false;
         }
         let at = m.center();
@@ -55,23 +59,17 @@ impl Game<'_> {
             } else {
                 "minecraft:entity.pig.saddle"
             };
-            self.front.audio.play(sound, Some(at), 0.5, 1.0);
+            self.audio.play(sound, Some(at), 0.5, 1.0);
             self.consume_held();
-            self.sim
-                .world
+            self.world
                 .modified
                 .insert((at[0].floor() as i32 >> 4, at[2].floor() as i32 >> 4));
             return true;
         }
-        if !m.extra.saddled
-            || self
-                .front
-                .keys
-                .contains(&winit::keyboard::KeyCode::ShiftLeft)
-        {
+        if !m.extra.saddled || self.keys.contains(&winit::keyboard::KeyCode::ShiftLeft) {
             return false;
         }
-        self.sim.riding = Some(m.id);
+        self.riding = Some(m.id);
         self.trigger_player("minecraft:started_riding");
         true
     }
@@ -85,22 +83,20 @@ impl Game<'_> {
         let Some(i) = self.mount_index() else {
             return false;
         };
-        if self.sim.mobs[i].species() != species || !equine::boost(&mut self.sim.mobs[i]) {
+        if self.mobs[i].species() != species || !equine::boost(&mut self.mobs[i]) {
             return false;
         }
-        if !self.sim.creative
-            && let Some(stack) = self.sim.inventory[self.sim.selected].as_mut()
+        if !self.creative
+            && let Some(stack) = self.inventory[self.selected].as_mut()
         {
             stack.damage += wear;
             let max = self
-                .sim
                 .res
                 .items()
                 .get(&stack.item)
                 .map_or(25, |i| i.max_damage);
             if stack.damage >= max {
-                self.sim.inventory[self.sim.selected] =
-                    Some(ItemStack::new("minecraft:fishing_rod", 1));
+                self.inventory[self.selected] = Some(ItemStack::new("minecraft:fishing_rod", 1));
             }
         }
         self.swing_arm();
@@ -146,14 +142,8 @@ impl Game<'_> {
         // AbstractHorse.mobInteract: shift + use opens a tamed adult's inventory.
         if !m.is_baby()
             && m.extra.tame
-            && (self
-                .front
-                .keys
-                .contains(&winit::keyboard::KeyCode::ShiftLeft)
-                || self
-                    .front
-                    .keys
-                    .contains(&winit::keyboard::KeyCode::ShiftRight))
+            && (self.keys.contains(&winit::keyboard::KeyCode::ShiftLeft)
+                || self.keys.contains(&winit::keyboard::KeyCode::ShiftRight))
         {
             self.open_mount_menu(index);
             return true;
@@ -190,22 +180,21 @@ impl Game<'_> {
         if let Some(sound) = sound {
             let pitch =
                 (self.world.random.next_float() - self.world.random.next_float()) * 0.2 + 1.0;
-            self.front.audio.play(sound, Some(at), 0.5, pitch);
+            self.audio.play(sound, Some(at), 0.5, pitch);
             self.consume_held();
-            self.sim
-                .world
+            self.world
                 .modified
                 .insert((at[0].floor() as i32 >> 4, at[2].floor() as i32 >> 4));
             return true;
         }
         // doPlayerRide
-        let m = &mut self.sim.mobs[index];
+        let m = &mut self.mobs[index];
         m.extra.flag = false;
         m.extra.counter = 0;
-        self.sim.yaw = m.yaw;
-        self.sim.riding = Some(m.id);
-        self.sim.mount.jump_ticks = 0;
-        self.sim.mount.jump_scale = 0.0;
+        self.yaw = m.yaw;
+        self.riding = Some(m.id);
+        self.mount.jump_ticks = 0;
+        self.mount.jump_scale = 0.0;
         self.trigger_player("minecraft:started_riding");
         true
     }
@@ -273,7 +262,7 @@ impl Game<'_> {
             _ => "minecraft:entity.horse.eat",
         };
         let pitch = (self.world.random.next_float() - self.world.random.next_float()) * 0.2 + 1.0;
-        self.front.audio.play(sound, Some(at), 1.0, pitch);
+        self.audio.play(sound, Some(at), 1.0, pitch);
         // Animal.setInLove: entity event 18.
         if loved {
             self.mob_event_particles(id, 18);
@@ -350,26 +339,75 @@ impl Game<'_> {
             if equine::is_equine(m.species()) {
                 let sound = "minecraft:entity.horse.jump";
                 let at = m.center();
-                self.front.audio.play(sound, Some(at), 0.4, 1.0);
+                self.audio.play(sound, Some(at), 0.4, 1.0);
             }
         }
-        let m = &mut self.sim.mobs[i];
+        let m = &mut self.mobs[i];
         let pending = m.rider.map_or(0.0, |r| r.jump);
         m.rider = Some(equine::Rider {
             strafe,
             forward,
-            yaw: self.sim.yaw,
-            pitch: self.sim.pitch,
+            yaw: self.yaw,
+            pitch: self.pitch,
             jump: if jump > 0.0 { jump } else { pending },
             steer,
-            sprint: keys.sprint
-                || self
-                    .front
-                    .keys
-                    .contains(&winit::keyboard::KeyCode::ControlLeft),
+            sprint: keys.sprint || self.keys.contains(&winit::keyboard::KeyCode::ControlLeft),
             jumping: keys.jump,
         });
         true
+    }
+    /// `positionRider`: the player sits on the mount after it moves.
+    pub(super) fn position_rider(&mut self) {
+        let Some(i) = self.mount_index() else {
+            return;
+        };
+        let m = &self.mobs[i];
+        let mut at = Vec3::new(m.position.x, m.position.y + seat(m.species()), m.position.z);
+        if horizon_client::mobs::camel::is_camel(m.species()) {
+            // Camel.getPassengerAttachmentPoint: the driver half a block
+            // forward, at the body anchor (lower while sitting).
+            let scale = if m.is_baby() { 0.6 } else { 1.0 };
+            let anchor = if horizon_client::mobs::camel::sitting(m) {
+                (2.375 - 1.43) * scale - if m.is_baby() { 0.09375 } else { 0.375 } + 0.2 * scale
+            } else {
+                2.375 * scale - if m.is_baby() { 0.09375 } else { 0.375 }
+            };
+            let yaw = m.yaw.to_radians();
+            at = Vec3::new(
+                m.position.x - f64::from(0.5 * scale * yaw.sin()),
+                m.position.y + f64::from(anchor) - 0.6,
+                m.position.z + f64::from(0.5 * scale * yaw.cos()),
+            );
+        }
+        if m.species() == Species::HappyGhast {
+            // The first passenger attachment (0, 4, 1.7) of the harnessed back.
+            let yaw = f64::from(m.yaw.to_radians());
+            at = Vec3::new(
+                m.position.x - 1.7 * yaw.sin(),
+                m.position.y + 4.0 - 0.6,
+                m.position.z + 1.7 * yaw.cos(),
+            );
+        }
+        if horizon_client::mobs::llama::is_llama(m.species()) {
+            // The passenger attachment (0, 1.37, -0.3), half of it for a baby.
+            let (y, z) = if m.is_baby() {
+                (0.81, -0.15)
+            } else {
+                (1.37, -0.3)
+            };
+            let yaw = f64::from(m.yaw.to_radians());
+            at = Vec3::new(
+                m.position.x - z * yaw.sin(),
+                m.position.y + y - 0.6,
+                m.position.z + z * yaw.cos(),
+            );
+        }
+        if let Some(p) = self.player.as_mut() {
+            self.previous_position = p.position;
+            p.position = at;
+            p.velocity = Vec3::ZERO;
+            p.fall_distance = 0.0;
+        }
     }
     /// `removePassenger` + `getDismountLocationForPassenger`: beside the mount.
     pub(super) fn dismount_mount(&mut self) {
@@ -454,6 +492,10 @@ impl Game<'_> {
         self.mount_index()
             .is_some_and(|i| self.mobs[i].extra.saddled && Self::jumps(self.mobs[i].species()))
     }
+    /// `willPrioritizeJumpInfo`: charging a jump or recharging.
+    pub(super) fn mount_jumping(&self) -> bool {
+        self.mount.jump_scale > 0.0 || self.mount.jump_ticks < 0
+    }
     /// `Hud.extractVehicleHealth`, and the jump bar when it is the
     /// contextual bar (`jump_bar`). Returns the mount's heart count
     /// (`getVehicleMaxHearts`).
@@ -468,7 +510,7 @@ impl Game<'_> {
             return 0;
         };
         let m = &self.mobs[i];
-        let atlas = &self.front.gui.atlas;
+        let atlas = &self.gui.atlas;
         let hearts = horizon_client::hud_layout::vehicle_max_hearts(m.attrs.max_health);
         let draws = horizon_client::hud_layout::vehicle_health(w, h, hearts, m.health);
         horizon_client::hud_layout::paint(batch, atlas, &draws);
@@ -485,68 +527,5 @@ impl Game<'_> {
             horizon_client::hud_layout::paint(batch, atlas, &draws);
         }
         hearts
-    }
-}
-impl crate::game::Sim<'_> {
-    fn mount_index(&self) -> Option<usize> {
-        let id = self.riding?;
-        self.mobs.iter().position(|m| m.id == id)
-    }
-    /// `positionRider`: the player sits on the mount after it moves.
-    pub(super) fn position_rider(&mut self) {
-        let Some(i) = self.mount_index() else {
-            return;
-        };
-        let m = &self.mobs[i];
-        let mut at = Vec3::new(m.position.x, m.position.y + seat(m.species()), m.position.z);
-        if horizon_client::mobs::camel::is_camel(m.species()) {
-            // Camel.getPassengerAttachmentPoint: the driver half a block
-            // forward, at the body anchor (lower while sitting).
-            let scale = if m.is_baby() { 0.6 } else { 1.0 };
-            let anchor = if horizon_client::mobs::camel::sitting(m) {
-                (2.375 - 1.43) * scale - if m.is_baby() { 0.09375 } else { 0.375 } + 0.2 * scale
-            } else {
-                2.375 * scale - if m.is_baby() { 0.09375 } else { 0.375 }
-            };
-            let yaw = m.yaw.to_radians();
-            at = Vec3::new(
-                m.position.x - f64::from(0.5 * scale * yaw.sin()),
-                m.position.y + f64::from(anchor) - 0.6,
-                m.position.z + f64::from(0.5 * scale * yaw.cos()),
-            );
-        }
-        if m.species() == Species::HappyGhast {
-            // The first passenger attachment (0, 4, 1.7) of the harnessed back.
-            let yaw = f64::from(m.yaw.to_radians());
-            at = Vec3::new(
-                m.position.x - 1.7 * yaw.sin(),
-                m.position.y + 4.0 - 0.6,
-                m.position.z + 1.7 * yaw.cos(),
-            );
-        }
-        if horizon_client::mobs::llama::is_llama(m.species()) {
-            // The passenger attachment (0, 1.37, -0.3), half of it for a baby.
-            let (y, z) = if m.is_baby() {
-                (0.81, -0.15)
-            } else {
-                (1.37, -0.3)
-            };
-            let yaw = f64::from(m.yaw.to_radians());
-            at = Vec3::new(
-                m.position.x - z * yaw.sin(),
-                m.position.y + y - 0.6,
-                m.position.z + z * yaw.cos(),
-            );
-        }
-        if let Some(p) = self.player.as_mut() {
-            self.previous_position = p.position;
-            p.position = at;
-            p.velocity = Vec3::ZERO;
-            p.fall_distance = 0.0;
-        }
-    }
-    /// `willPrioritizeJumpInfo`: charging a jump or recharging.
-    pub(super) fn mount_jumping(&self) -> bool {
-        self.mount.jump_scale > 0.0 || self.mount.jump_ticks < 0
     }
 }

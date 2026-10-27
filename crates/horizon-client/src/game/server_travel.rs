@@ -60,6 +60,12 @@ impl Trip {
 }
 
 impl Game<'_> {
+    /// Whether `conn` is between two levels: the server leaves its body
+    /// alone until it arrives.
+    pub(super) fn on_server_trip(&self, conn: u32) -> bool {
+        self.server_trips.iter().any(|t| t.conn == conn)
+    }
+
     /// Per server tick in each level, after the guests' own: the arrivals of
     /// the trips into this level, then `Entity.handlePortal` for each player
     /// in it (Nether portals count up their transition time, End portals
@@ -178,6 +184,23 @@ impl Game<'_> {
         self.start_server_trip(host, conn, plan.dim, Some(plan));
     }
 
+    /// A Nether portal block a player's box is in.
+    fn nether_portal_inside(&self, at: Vec3) -> Option<BlockPos> {
+        let w = WIDTH / 2.0 - 1.0e-5;
+        let lo = [at.x - w, at.y + 1.0e-5, at.z - w];
+        let hi = [at.x + w, at.y + HEIGHT - 1.0e-5, at.z + w];
+        for x in lo[0].floor() as i32..=hi[0].floor() as i32 {
+            for y in lo[1].floor() as i32..=hi[1].floor() as i32 {
+                for z in lo[2].floor() as i32..=hi[2].floor() as i32 {
+                    if &*self.block_name([x, y, z]) == "minecraft:nether_portal" {
+                        return Some(BlockPos::new(x, y, z));
+                    }
+                }
+            }
+        }
+        None
+    }
+
     /// The player moves to `target`'s level (opened if nobody was there)
     /// and is told it is there, at the approximate exit, while it loads. The
     /// level whose tick is running is put back in place afterwards.
@@ -245,6 +268,24 @@ impl Game<'_> {
         }
     }
 
+    /// A respawned player waits at its point outside the Overworld for the
+    /// level to load around it.
+    pub(super) fn respawn_trip(&mut self, conn: u32, config: RespawnConfig) {
+        let [x, y, z] = config.pos;
+        self.server_trips.push(Trip {
+            conn,
+            dim: config.dim,
+            target: Vec3::new(f64::from(x) + 0.5, f64::from(y), f64::from(z) + 0.5),
+            end: false,
+            plan: None,
+            gateway: None,
+            respawn: Some(config),
+            world_spawn: false,
+            finder: None,
+            placed: false,
+        });
+    }
+
     /// `findRespawnAndUseSpawnBlock` for the player in place, at its point
     /// in the level in place: where it stands up, facing the anchor (with
     /// the deplete sound) or the bed; else the point is forgotten
@@ -256,7 +297,7 @@ impl Game<'_> {
             Ok(Some((at, yaw))) => {
                 if !config.forced && anchor {
                     let [x, y, z] = config.pos.map(f64::from);
-                    self.front.audio.play(
+                    self.audio.play(
                         "minecraft:block.respawn_anchor.deplete",
                         Some([x, y, z]),
                         1.0,
@@ -271,6 +312,28 @@ impl Game<'_> {
                 None
             }
         }
+    }
+
+    /// TeleportTransition.createDefault and missingRespawnBlock: the player
+    /// waits at the world spawn for its chunks, then PlayerSpawnFinder puts
+    /// it on a free column within the respawn radius.
+    pub(super) fn world_spawn_trip(&mut self, conn: u32) {
+        let Some([x, y, z]) = self.level.world_spawn else {
+            return;
+        };
+        self.server_trips.retain(|t| !t.is(conn));
+        self.server_trips.push(Trip {
+            conn,
+            dim: Dim::Overworld,
+            target: Vec3::new(f64::from(x) + 0.5, f64::from(y), f64::from(z) + 0.5),
+            end: false,
+            plan: None,
+            gateway: None,
+            respawn: None,
+            world_spawn: true,
+            finder: None,
+            placed: false,
+        });
     }
 
     /// TeleportTransition.missingRespawnBlock: the world spawn, in the
@@ -288,6 +351,35 @@ impl Game<'_> {
         });
         self.run_level_teleports(host);
         self.world_spawn_trip(conn);
+    }
+
+    /// `TheEndGatewayBlockEntity.getPortalPosition` and the teleport within
+    /// the End (keeping the player's motion and look): straight to an exact
+    /// exit, else once the destination has loaded around the player, who
+    /// waits there (its exit is found among those blocks, or built).
+    fn start_gateway_trip(&mut self, host: &mut LanHost, conn: u32, gateway: [i32; 3]) {
+        let Some(i) = host.hub.guests.iter().position(|g| g.conn == conn) else {
+            return;
+        };
+        let (job, destination) = self.gateway_job(gateway);
+        let at = [destination.x, destination.y, destination.z];
+        // Relative.union(DELTA, ROTATION).
+        host.hub.teleport_keeping_motion(i, at);
+        if let GatewayJob::Known { exact: true, .. } = job {
+            return;
+        }
+        self.server_trips.push(Trip {
+            conn,
+            dim: self.dim,
+            target: destination,
+            end: false,
+            plan: None,
+            gateway: Some(job),
+            respawn: None,
+            world_spawn: false,
+            finder: None,
+            placed: false,
+        });
     }
 
     /// The trips into the level in place whose destination has loaded
@@ -433,95 +525,7 @@ impl Game<'_> {
             }
         }
     }
-}
-impl crate::game::Sim<'_> {
-    /// Whether `conn` is between two levels: the server leaves its body
-    /// alone until it arrives.
-    pub(super) fn on_server_trip(&self, conn: u32) -> bool {
-        self.server_trips.iter().any(|t| t.conn == conn)
-    }
-    /// A Nether portal block a player's box is in.
-    fn nether_portal_inside(&self, at: Vec3) -> Option<BlockPos> {
-        let w = WIDTH / 2.0 - 1.0e-5;
-        let lo = [at.x - w, at.y + 1.0e-5, at.z - w];
-        let hi = [at.x + w, at.y + HEIGHT - 1.0e-5, at.z + w];
-        for x in lo[0].floor() as i32..=hi[0].floor() as i32 {
-            for y in lo[1].floor() as i32..=hi[1].floor() as i32 {
-                for z in lo[2].floor() as i32..=hi[2].floor() as i32 {
-                    if &*self.block_name([x, y, z]) == "minecraft:nether_portal" {
-                        return Some(BlockPos::new(x, y, z));
-                    }
-                }
-            }
-        }
-        None
-    }
-    /// A respawned player waits at its point outside the Overworld for the
-    /// level to load around it.
-    pub(super) fn respawn_trip(&mut self, conn: u32, config: RespawnConfig) {
-        let [x, y, z] = config.pos;
-        self.server_trips.push(Trip {
-            conn,
-            dim: config.dim,
-            target: Vec3::new(f64::from(x) + 0.5, f64::from(y), f64::from(z) + 0.5),
-            end: false,
-            plan: None,
-            gateway: None,
-            respawn: Some(config),
-            world_spawn: false,
-            finder: None,
-            placed: false,
-        });
-    }
-    /// TeleportTransition.createDefault and missingRespawnBlock: the player
-    /// waits at the world spawn for its chunks, then PlayerSpawnFinder puts
-    /// it on a free column within the respawn radius.
-    pub(super) fn world_spawn_trip(&mut self, conn: u32) {
-        let Some([x, y, z]) = self.level.world_spawn else {
-            return;
-        };
-        self.server_trips.retain(|t| !t.is(conn));
-        self.server_trips.push(Trip {
-            conn,
-            dim: Dim::Overworld,
-            target: Vec3::new(f64::from(x) + 0.5, f64::from(y), f64::from(z) + 0.5),
-            end: false,
-            plan: None,
-            gateway: None,
-            respawn: None,
-            world_spawn: true,
-            finder: None,
-            placed: false,
-        });
-    }
-    /// `TheEndGatewayBlockEntity.getPortalPosition` and the teleport within
-    /// the End (keeping the player's motion and look): straight to an exact
-    /// exit, else once the destination has loaded around the player, who
-    /// waits there (its exit is found among those blocks, or built).
-    fn start_gateway_trip(&mut self, host: &mut LanHost, conn: u32, gateway: [i32; 3]) {
-        let Some(i) = host.hub.guests.iter().position(|g| g.conn == conn) else {
-            return;
-        };
-        let (job, destination) = self.gateway_job(gateway);
-        let at = [destination.x, destination.y, destination.z];
-        // Relative.union(DELTA, ROTATION).
-        host.hub.teleport_keeping_motion(i, at);
-        if let GatewayJob::Known { exact: true, .. } = job {
-            return;
-        }
-        self.server_trips.push(Trip {
-            conn,
-            dim: self.dim,
-            target: destination,
-            end: false,
-            plan: None,
-            gateway: Some(job),
-            respawn: None,
-            world_spawn: false,
-            finder: None,
-            placed: false,
-        });
-    }
+
     /// The hub's view of the server for packets sent outside its own tick.
     pub(super) fn server_ctx(&mut self) -> TickCtx<'_> {
         let spawn = self.spawn.map_or([0.5, 80.0, 0.5], |s| [s.x, s.y, s.z]);

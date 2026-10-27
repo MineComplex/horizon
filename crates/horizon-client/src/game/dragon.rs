@@ -566,6 +566,176 @@ fn wrap64(d: f64) -> f64 {
     if r >= 180.0 { r - 360.0 } else { r }
 }
 impl Game<'_> {
+    fn fight_path(&self) -> std::path::PathBuf {
+        horizon_client::save::dimension_dir(&self.world_root, "minecraft:the_end").join(FIGHT_FILE)
+    }
+    /// The saved fight, or `createDefault` with the gateways shuffled by the seed.
+    fn load_fight(&mut self) {
+        if self.fight.loaded {
+            return;
+        }
+        let tag = horizon_client::save::read_dat(&self.fight_path());
+        let data = tag.as_ref().and_then(|t| t.get("data"));
+        let flag = |k: &str, default: bool| match data.and_then(|d| d.get(k)) {
+            Some(Tag::Byte(v)) => *v != 0,
+            _ => default,
+        };
+        let mut fight = Fight {
+            loaded: true,
+            needs_scan: flag("needs_state_scanning", true),
+            killed: flag("dragon_killed", false),
+            previously_killed: flag("previously_killed", false),
+            crystals_placed: flag("horizon_crystals_placed", false),
+            gateways: match data.and_then(|d| d.get("gateways")) {
+                Some(Tag::IntArray(v)) => v.clone(),
+                Some(Tag::List(v)) => v
+                    .iter()
+                    .filter_map(|t| match t {
+                        Tag::Int(i) => Some(*i),
+                        _ => None,
+                    })
+                    .collect(),
+                _ => Vec::new(),
+            },
+            respawn: match data.and_then(|d| d.get("respawn_stage")) {
+                Some(Tag::String(name)) => {
+                    Respawn::from_name(&name.to_string().unwrap_or_default()).map(|r| {
+                        let time = match data.and_then(|d| d.get("respawn_time")) {
+                            Some(Tag::Int(t)) => *t,
+                            _ => 0,
+                        };
+                        (r, time)
+                    })
+                }
+                _ => None,
+            },
+            respawn_crystals: match data.and_then(|d| d.get("horizon_respawn_crystals")) {
+                Some(Tag::IntArray(v)) => v
+                    .as_chunks::<3>()
+                    .0
+                    .iter()
+                    .map(|b| {
+                        Vec3::new(
+                            f64::from(b[0]) + 0.5,
+                            f64::from(b[1]),
+                            f64::from(b[2]) + 0.5,
+                        )
+                    })
+                    .collect(),
+                _ => Vec::new(),
+            },
+            exit_portal: match data.and_then(|d| d.get("exit_portal_location")) {
+                Some(Tag::IntArray(v)) if v.len() == 3 => Some([v[0], v[1], v[2]]),
+                _ => None,
+            },
+            // The first tick scans for players.
+            player_scan: 21,
+            ..Default::default()
+        };
+        if fight.gateways.is_empty() {
+            // Util.shuffle(0..20, RandomSource.create(seed)).
+            let mut gateways: Vec<i32> = (0..20).collect();
+            let mut random = LegacyRandom::new(self.level.seed);
+            for i in (2..=gateways.len()).rev() {
+                let j = random.next_int_bound(i as i32).unwrap_or(0) as usize;
+                gateways.swap(i - 1, j);
+            }
+            fight.gateways = gateways;
+            fight.dirty = true;
+        }
+        // A world from before this fight existed: one with an active portal
+        // already won it.
+        if tag.is_none() && self.end_portal_active() {
+            fight.killed = true;
+            fight.previously_killed = true;
+            fight.crystals_placed = true;
+            fight.needs_scan = false;
+        }
+        self.fight = fight;
+    }
+    fn end_portal_active(&self) -> bool {
+        (0..256).any(|y| {
+            &*self.res.facts().get(self.world.block(0, y, 0)).name == "minecraft:bedrock"
+                && (-3..=3).any(|d| {
+                    &*self.res.facts().get(self.world.block(d, y, 0)).name == "minecraft:end_portal"
+                })
+        })
+    }
+    pub(super) fn save_fight(&mut self) {
+        if !self.fight.loaded || !self.fight.dirty {
+            return;
+        }
+
+        let f = &self.fight;
+        let b = |v: bool| Tag::Byte(i8::from(v));
+        let mut data = vec![
+            ("needs_state_scanning", b(f.needs_scan)),
+            ("dragon_killed", b(f.killed)),
+            ("previously_killed", b(f.previously_killed)),
+            ("respawn_time", Tag::Int(f.respawn.map_or(0, |r| r.1))),
+            ("gateways", Tag::IntArray(f.gateways.clone())),
+            ("horizon_crystals_placed", b(f.crystals_placed)),
+        ];
+        if let Some(p) = f.exit_portal {
+            data.push(("exit_portal_location", Tag::IntArray(p.to_vec())));
+        }
+        if let Some((stage, _)) = f.respawn {
+            data.push(("respawn_stage", Tag::String(stage.name().into())));
+            data.push((
+                "horizon_respawn_crystals",
+                Tag::IntArray(
+                    f.respawn_crystals
+                        .iter()
+                        .flat_map(|p| [p.x.floor() as i32, p.y.floor() as i32, p.z.floor() as i32])
+                        .collect(),
+                ),
+            ));
+        }
+        let tag = Tag::compound([
+            ("data", Tag::compound(data)),
+            ("DataVersion", Tag::Int(horizon_world::DATA_VERSION)),
+        ]);
+        if horizon_client::save::write_dat(&self.fight_path(), tag).is_ok() {
+            self.fight.dirty = false;
+        }
+    }
+    /// The island's centre chunks are lit (the arena is "loaded").
+    fn arena_loaded(&self) -> bool {
+        (-2..=1).all(|cz| (-2..=1).all(|cx| self.streaming.is_lit(cx, cz)))
+    }
+    /// The player acting now: the guest whose turn it is, else the host.
+    fn acting_player(&self) -> FightWho {
+        self.lan_acting.map_or(FightWho::Host, FightWho::Guest)
+    }
+    /// The players in the level the dragon sees (`level.players()`): the
+    /// window's own, then every guest in the level.
+    pub(super) fn fight_players(&self) -> Vec<FightPlayer> {
+        let mut out = Vec::new();
+        if let Some(p) = self.player.as_ref() {
+            out.push(FightPlayer {
+                who: FightWho::Host,
+                position: p.position,
+                bounds: p.bounds(),
+                alive: !p.health.dead_or_dying(),
+                creative: self.creative,
+                spectator: self.spectator(),
+            });
+        }
+        if let Some(h) = self.lan.as_ref() {
+            for g in h.hub.guests.iter().filter(|g| h.hub.here(g) && g.loaded) {
+                let [x, y, z] = g.position;
+                out.push(FightPlayer {
+                    who: FightWho::Guest(g.conn),
+                    position: Vec3::new(x, y, z),
+                    bounds: super::lan_mobs::guest_bounds(g),
+                    alive: !g.dead,
+                    creative: g.creative(),
+                    spectator: g.spectator(),
+                });
+            }
+        }
+        out
+    }
     /// Run `f` as the fight's player `who` (a guest's turn, its knockback
     /// sent to its client).
     pub(super) fn as_fight_player(&mut self, who: FightWho, f: impl FnOnce(&mut Self)) {
@@ -579,6 +749,21 @@ impl Game<'_> {
                 self.lan = Some(host);
             }
         }
+    }
+    /// `EnderDragonFight.validPlayer`: the players alive within 192 blocks of
+    /// (0, 128, 0), the host and the guests in the level alike.
+    fn fight_has_players(&self) -> bool {
+        let near =
+            |p: [f64; 3]| p[0].powi(2) + (p[1] - 128.0).powi(2) + p[2].powi(2) <= 192.0 * 192.0;
+        let host = self.player.as_ref().is_some_and(|p| {
+            !p.health.dead_or_dying() && near([p.position.x, p.position.y, p.position.z])
+        });
+        host || self.lan.as_ref().is_some_and(|h| {
+            h.hub
+                .guests
+                .iter()
+                .any(|g| h.hub.here(g) && g.loaded && !g.dead && near(g.position))
+        })
     }
     /// `EnderDragonFight.tick` and the fight's entities, while the End is
     /// ticked (in place for its player, or on a server with players in it).
@@ -629,19 +814,66 @@ impl Game<'_> {
         }
         // EnderDragon's constructor takes its id and its parts' from the
         // entity counter (a dragon loaded from the save gets them here too).
-        if let Some(d) = self.sim.dragon.as_mut()
+        if let Some(d) = self.dragon.as_mut()
             && d.id == 0
         {
-            d.id = self.sim.next_entity + 1;
-            self.sim.next_entity += 9;
+            d.id = self.next_entity + 1;
+            self.next_entity += 9;
         }
         // The spikes' crystals too (EndCrystal's constructor): an id whether
         // or not a client has tracked them yet, to be aimed at by it.
-        for c in self.sim.crystals.iter_mut().filter(|c| c.id == 0) {
-            self.sim.next_entity += 1;
-            c.id = self.sim.next_entity;
+        for c in self.crystals.iter_mut().filter(|c| c.id == 0) {
+            self.next_entity += 1;
+            c.id = self.next_entity;
         }
         self.tick_dragon();
+    }
+    /// EndSpikeFeature's crystals (with fire under them on the bedrock).
+    fn place_spike_crystals(&mut self) {
+        for spike in horizon_world::worldgen::end_spike::spikes_for_seed(self.level.seed) {
+            let at = Vec3::new(
+                f64::from(spike.center_x) + 0.5,
+                f64::from(spike.height + 1),
+                f64::from(spike.center_z) + 0.5,
+            );
+            if self
+                .crystals
+                .iter()
+                .any(|c| (c.position.x - at.x).abs() < 1.0 && (c.position.z - at.z).abs() < 1.0)
+            {
+                continue;
+            }
+            let time = self.world.random.next_int_bound(100_000).unwrap_or(0);
+            // EndCrystal's constructor takes an id from the entity counter.
+            self.next_entity += 1;
+            self.crystals.push(Crystal {
+                id: self.next_entity,
+                position: at,
+                show_bottom: true,
+                time,
+                beam: None,
+                invulnerable: false,
+            });
+            self.world
+                .modified
+                .insert((at.x.floor() as i32 >> 4, at.z.floor() as i32 >> 4));
+        }
+    }
+    /// `updateCrystalCount`: crystals on the spike tops.
+    fn count_crystals(&mut self) {
+        self.fight.crystal_scan = 0;
+        let spikes = horizon_world::worldgen::end_spike::spikes_for_seed(self.level.seed);
+        self.fight.alive_crystals = self
+            .crystals
+            .iter()
+            .filter(|c| {
+                spikes.iter().any(|s| {
+                    (c.position.x - f64::from(s.center_x) - 0.5).abs() <= f64::from(s.radius)
+                        && (c.position.z - f64::from(s.center_z) - 0.5).abs() <= f64::from(s.radius)
+                        && c.position.y >= f64::from(s.height)
+                })
+            })
+            .count() as i32;
     }
     /// `EndCrystal.tick` in every dimension: the time (the spin and bob),
     /// and fire at its block where there is a dragon fight (the End).
@@ -711,6 +943,41 @@ impl Game<'_> {
             }
         }
     }
+    /// Targets for projectiles: dragon parts and crystals.
+    pub(super) fn special_targets(&self) -> Vec<(u32, Aabb)> {
+        let mut out = Vec::new();
+        if let Some(d) = self.dragon.as_ref().filter(|d| d.alive()) {
+            for i in 0..8 {
+                out.push((SPECIAL + i as u32, d.part_box(i)));
+            }
+        }
+        for (i, c) in self.crystals.iter().enumerate() {
+            let p = c.position;
+            out.push((
+                CRYSTAL_IDS + i as u32,
+                Aabb::new(
+                    Vec3::new(p.x - 1.0, p.y, p.z - 1.0),
+                    Vec3::new(p.x + 1.0, p.y + 2.0, p.z + 1.0),
+                ),
+            ));
+        }
+        out
+    }
+    /// The box of the dragon part or end crystal guests know as entity `id`
+    /// (`EnderDragonPart`s follow the dragon's id).
+    pub(super) fn tracked_special_box(&self, id: i32) -> Option<Aabb> {
+        let id = u32::try_from(id).ok().filter(|&id| id != 0)?;
+        if let Some(d) = self.dragon.as_ref().filter(|d| d.alive() && d.id != 0)
+            && (d.id + 1..=d.id + 8).contains(&id)
+        {
+            return Some(d.part_box((id - d.id - 1) as usize));
+        }
+        let i = self.crystals.iter().position(|c| c.id == id)?;
+        self.special_targets()
+            .into_iter()
+            .find(|(s, _)| *s == CRYSTAL_IDS + i as u32)
+            .map(|(_, b)| b)
+    }
     /// Damage to a special id (from projectiles and melee): what the
     /// dragon part or crystal made of it. `arrow` for a direct arrow.
     pub(super) fn hit_special(
@@ -772,8 +1039,7 @@ impl Game<'_> {
             d.ambient_time = -AMBIENT_INTERVAL;
             let at = [d.position.x, d.position.y, d.position.z];
             let pitch = 0.8 + self.world.random.next_float() * 0.3;
-            self.front
-                .audio
+            self.audio
                 .play("minecraft:entity.ender_dragon.hurt", Some(at), 5.0, pitch);
         }
         hurt
@@ -819,6 +1085,36 @@ impl Game<'_> {
         self.score_player_killed(super::commands::Target::Mob(id));
         self.trigger_entity("minecraft:player_killed_entity", "entity", view);
     }
+    /// Player melee on the dragon's parts or a crystal under the crosshair.
+    /// The dragon part under the crosshair within reach: its id and distance.
+    pub(super) fn dragon_hit(&self) -> Option<(u32, f64)> {
+        let eye = self.eye_position()?;
+        let dir = super::view_vector(self.yaw, self.pitch);
+        let reach: f64 = if self.creative { 5.0 } else { 3.0 };
+        let mut best: Option<(u32, f64)> = None;
+        for (id, b) in self.special_targets() {
+            let (lo, hi) = (b.min_position(), b.max_position());
+            let (lo, hi) = ([lo.x, lo.y, lo.z], [hi.x, hi.y, hi.z]);
+            let (mut t0, mut t1) = (0.0f64, reach);
+            let mut hit = true;
+            for a in 0..3 {
+                if dir[a].abs() < 1e-9 {
+                    hit &= eye[a] >= lo[a] && eye[a] <= hi[a];
+                    continue;
+                }
+                let (mut ta, mut tb) = ((lo[a] - eye[a]) / dir[a], (hi[a] - eye[a]) / dir[a]);
+                if ta > tb {
+                    std::mem::swap(&mut ta, &mut tb);
+                }
+                t0 = t0.max(ta);
+                t1 = t1.min(tb);
+            }
+            if hit && t0 <= t1 && best.is_none_or(|b| t0 < b.1) {
+                best = Some((id, t0));
+            }
+        }
+        best
+    }
     pub(super) fn attack_dragon(&mut self) -> bool {
         let Some((id, d)) = self.dragon_hit() else {
             return false;
@@ -843,6 +1139,196 @@ impl Game<'_> {
         self.swing_arm();
         self.hit_special(id, amount, true, false);
         true
+    }
+    /// The 24 nodes (`findClosestNode` builds them on first use).
+    fn dragon_nodes(&mut self) -> [[i32; 3]; 24] {
+        if let Some(n) = self.dragon.as_ref().and_then(|d| d.nodes) {
+            return n;
+        }
+        let mut nodes = [[0; 3]; 24];
+        for (i, node) in nodes.iter_mut().enumerate() {
+            let (r, step, base, add) = if i < 12 {
+                (60.0f32, std::f32::consts::PI / 12.0, i, 5)
+            } else if i < 20 {
+                (40.0, std::f32::consts::PI / 8.0, i - 12, 15)
+            } else {
+                (20.0, std::f32::consts::PI / 4.0, i - 20, 5)
+            };
+            let a = 2.0 * (-std::f32::consts::PI + step * base as f32);
+            let (x, z) = ((r * a.cos()).floor() as i32, (r * a.sin()).floor() as i32);
+            let y = (self.motion_blocking_no_leaves(x, z) + add).max(73);
+            *node = [x, y, z];
+        }
+        if let Some(d) = self.dragon.as_mut() {
+            d.nodes = Some(nodes);
+        }
+        nodes
+    }
+    /// `getHeightmapPos(MOTION_BLOCKING_NO_LEAVES)`.
+    fn motion_blocking_no_leaves(&self, x: i32, z: i32) -> i32 {
+        (0..256)
+            .rev()
+            .find(|&y| {
+                let f = self.res.facts().get(self.world.block(x, y, z));
+                (f.full_collision
+                    || f.legacy_solid
+                    || f.fluid != horizon_client::blocks::Fluid::None)
+                    && !f.name.ends_with("_leaves")
+            })
+            .map_or(0, |y| y + 1)
+    }
+    fn podium_top(&self) -> Vec3 {
+        Vec3::new(0.5, f64::from(self.motion_blocking_no_leaves(0, 0)), 0.5)
+    }
+    fn closest_node(&mut self, x: f64, y: f64, z: f64) -> usize {
+        let nodes = self.dragon_nodes();
+        let start = if self.fight.alive_crystals == 0 {
+            12
+        } else {
+            0
+        };
+        let p = [x.floor() as i32, y.floor() as i32, z.floor() as i32];
+        let mut best = (10_000.0f32, 0);
+        for (i, n) in nodes.iter().enumerate().skip(start) {
+            let d = ((n[0] - p[0]).pow(2) + (n[1] - p[1]).pow(2) + (n[2] - p[2]).pow(2)) as f32;
+            if d < best.0 {
+                best = (d, i);
+            }
+        }
+        best.1
+    }
+    /// `findPath` (A* over the adjacency masks), optionally ending at `last`.
+    fn dragon_path(&mut self, from: usize, to: usize, last: Option<[i32; 3]>) -> Option<Path> {
+        let nodes = self.dragon_nodes();
+        let dist = |a: [i32; 3], b: [i32; 3]| {
+            (((a[0] - b[0]).pow(2) + (a[1] - b[1]).pow(2) + (a[2] - b[2]).pow(2)) as f32).sqrt()
+        };
+        let min = if self.fight.alive_crystals == 0 {
+            12
+        } else {
+            0
+        };
+        let mut g = [f32::MAX; 24];
+        let mut came = [usize::MAX; 24];
+        let mut closed = [false; 24];
+        let mut open = vec![from];
+        g[from] = 0.0;
+        let mut closest = from;
+        while !open.is_empty() {
+            let (k, &cur) = open
+                .iter()
+                .enumerate()
+                .min_by(|a, b| {
+                    (g[*a.1] + dist(nodes[*a.1], nodes[to]))
+                        .total_cmp(&(g[*b.1] + dist(nodes[*b.1], nodes[to])))
+                })
+                .expect("open set");
+            open.swap_remove(k);
+            if cur == to {
+                closest = to;
+                break;
+            }
+            if dist(nodes[cur], nodes[to]) < dist(nodes[closest], nodes[to]) {
+                closest = cur;
+            }
+            closed[cur] = true;
+            for i in min..24 {
+                if ADJACENCY[cur] & (1 << i) != 0 && !closed[i] {
+                    let tentative = g[cur] + dist(nodes[cur], nodes[i]);
+                    if tentative < g[i] {
+                        g[i] = tentative;
+                        came[i] = cur;
+                        if !open.contains(&i) {
+                            open.push(i);
+                        }
+                    }
+                }
+            }
+        }
+        if closest == from && from != to {
+            return None;
+        }
+        let mut list = vec![nodes[closest]];
+        let mut n = closest;
+        while came[n] != usize::MAX {
+            n = came[n];
+            list.insert(0, nodes[n]);
+        }
+        if let Some(l) = last {
+            list.push(l);
+        }
+        Some(Path {
+            nodes: list,
+            next: 0,
+        })
+    }
+    fn next_target(&mut self, path: &mut Option<PathBox>) -> Option<Vec3> {
+        let p = path.as_mut()?;
+        if p.0.done() {
+            return None;
+        }
+        let c = p.0.next_pos();
+        p.0.advance();
+        let d = self.dragon.as_mut()?;
+        let y = loop {
+            let y = f64::from(c[1]) + f64::from(d.random.next_float() * 20.0);
+            if y >= f64::from(c[1]) {
+                break y;
+            }
+        };
+        Some(Vec3::new(f64::from(c[0]), y, f64::from(c[2])))
+    }
+    /// The holding-pattern style path step: around the outer or inner ring.
+    fn ring_path(&mut self, clockwise: &mut bool) -> Option<Path> {
+        let d = self.dragon.as_mut()?;
+        let flip = d.random.next_int_bound(8).unwrap_or(1) == 0;
+        let current = {
+            let p = d.position;
+            self.closest_node(p.x, p.y, p.z)
+        };
+        let mut target = current as i32;
+        if flip {
+            *clockwise = !*clockwise;
+            target += 6;
+        }
+        target += if *clockwise { 1 } else { -1 };
+        if self.fight.alive_crystals > 0 {
+            target = target.rem_euclid(12);
+        } else {
+            target = ((target - 12) & 7) + 12;
+        }
+        let mut path = self.dragon_path(current, target as usize, None)?;
+        path.advance();
+        Some(path)
+    }
+    /// `DragonStrafePlayerPhase.setTarget`: a path to the player at `p`.
+    fn strafe_begin(&mut self, p: Vec3) {
+        let Some(d) = self.dragon.as_ref() else {
+            return;
+        };
+        let dp = d.position;
+        let current = self.closest_node(dp.x, dp.y, dp.z);
+        let target = self.closest_node(p.x, p.y, p.z);
+        let (fx, fz) = (p.x.floor() as i32, p.z.floor() as i32);
+        let sd = (f64::from(fx) - dp.x).hypot(f64::from(fz) - dp.z);
+        let ho = (0.4 + sd / 80.0 - 1.0).min(10.0);
+        let last = [fx, (p.y + ho).floor() as i32, fz];
+        let mut path = self.dragon_path(current, target, Some(last));
+        if let Some(path) = path.as_mut() {
+            path.advance();
+        }
+        let mut boxed = path.map(PathBox);
+        let target = self.next_target(&mut boxed);
+        if let Some(Dragon {
+            phase: Phase::Strafe {
+                path, target: t, ..
+            },
+            ..
+        }) = self.dragon.as_mut()
+        {
+            *path = boxed;
+            *t = target;
+        }
     }
     /// One phase server tick (`doServerTick`).
     fn tick_phase(&mut self) {
@@ -1130,7 +1616,7 @@ impl Game<'_> {
             Phase::Attacking { ticks } => {
                 if *ticks == 0 {
                     let pitch = 0.8 + self.world.random.next_float() * 0.3;
-                    self.front.audio.play(
+                    self.audio.play(
                         "minecraft:entity.ender_dragon.growl",
                         Some([pos.x, pos.y, pos.z]),
                         2.5,
@@ -1232,6 +1718,26 @@ impl Game<'_> {
             }
         }
     }
+    /// `getHeadLookVector`.
+    fn dragon_look(&self) -> [f64; 3] {
+        let Some(d) = self.dragon.as_ref() else {
+            return [0.0; 3];
+        };
+        let pitch = match d.phase {
+            Phase::Landing { .. } | Phase::Takeoff { .. } => {
+                let p = self.podium_top();
+                let dist = ((p.x - d.position.x).powi(2)
+                    + (p.y - d.position.y).powi(2)
+                    + (p.z - d.position.z).powi(2))
+                .sqrt() as f32
+                    / 4.0;
+                -6.0 / dist.max(1.0) * 1.5 * 5.0
+            }
+            _ if d.phase.sitting() => -45.0,
+            _ => 0.0,
+        };
+        super::view_vector(d.yaw, pitch).map(|v| v)
+    }
     /// `EnderDragon.aiStep` (and `tickDeath`) for the dragon.
     fn tick_dragon(&mut self) {
         let Some(d) = self.dragon.as_mut() else {
@@ -1260,7 +1766,7 @@ impl Game<'_> {
             // LivingEntity.getVoicePitch, from the dragon's own random.
             let r = &mut d.random;
             let pitch = (r.next_float() - r.next_float()) * 0.2 + 1.0;
-            self.front.audio.play(
+            self.audio.play(
                 "minecraft:entity.ender_dragon.ambient",
                 Some(at),
                 5.0,
@@ -1284,8 +1790,7 @@ impl Game<'_> {
         let at = [d.position.x, d.position.y, d.position.z];
         if flap_was <= -0.3 && flap_now >= -0.3 {
             let pitch = 0.8 + self.world.random.next_float() * 0.3;
-            self.front
-                .audio
+            self.audio
                 .play("minecraft:entity.ender_dragon.flap", Some(at), 5.0, pitch);
         }
         let d = self.dragon.as_mut().expect("dragon");
@@ -1294,8 +1799,7 @@ impl Game<'_> {
             if d.growl < 0 {
                 d.growl = 200 + d.random.next_int_bound(200).unwrap_or(0);
                 let pitch = 0.8 + self.world.random.next_float() * 0.3;
-                self.front
-                    .audio
+                self.audio
                     .play("minecraft:entity.ender_dragon.growl", Some(at), 2.5, pitch);
             }
         }
@@ -1381,6 +1885,56 @@ impl Game<'_> {
                     .modified
                     .insert((p.x.floor() as i32 >> 4, p.z.floor() as i32 >> 4));
             }
+        }
+    }
+    /// The part positions from the yaw and the flight history.
+    fn place_dragon_parts(&mut self) {
+        let Some(d) = self.dragon.as_mut() else {
+            return;
+        };
+        let tilt =
+            ((d.sample(5).0 - d.sample(10).0) * 10.0) as f32 * (std::f32::consts::PI / 180.0);
+        let (ct, st) = (tilt.cos(), tilt.sin());
+        let r1 = d.yaw.to_radians();
+        let (s1, c1) = (r1.sin(), r1.cos());
+        let p = d.position;
+        let set = |d: &mut Dragon, i: usize, x: f32, y: f64, z: f32| {
+            d.parts[i].0 = Vec3::new(p.x + f64::from(x), p.y + y, p.z + f64::from(z));
+        };
+        set(d, 2, s1 * 0.5, 0.0, -c1 * 0.5);
+        set(d, 6, c1 * 4.5, 2.0, s1 * 4.5);
+        set(d, 7, c1 * -4.5, 2.0, s1 * -4.5);
+        let r2 = d.yaw.to_radians() - d.yaw_accel * 0.01;
+        let (s2, c2) = (r2.sin(), r2.cos());
+        let y_off = if d.phase.sitting() {
+            -1.0
+        } else {
+            d.sample(5).0 - d.sample(0).0
+        } as f32;
+        set(
+            d,
+            0,
+            s2 * 6.5 * ct,
+            f64::from(y_off + st * 6.5),
+            -c2 * 6.5 * ct,
+        );
+        set(
+            d,
+            1,
+            s2 * 5.5 * ct,
+            f64::from(y_off + st * 5.5),
+            -c2 * 5.5 * ct,
+        );
+        let p1 = d.sample(5);
+        for i in 0..3 {
+            let p0 = d.sample(12 + i * 2);
+            let rot = d.yaw.to_radians() + wrap(p0.1 - p1.1).to_radians();
+            let (ss, cc) = (rot.sin(), rot.cos());
+            let dd = (i as f32 + 1.0) * 2.0;
+            let x = -(s1 * 1.5 + ss * dd) * ct;
+            let y = p0.0 - p1.0 - f64::from((dd + 1.5) * st) + 1.5;
+            let z = (c1 * 1.5 + cc * dd) * ct;
+            set(d, 3 + i, x, y, z);
         }
     }
     /// Wing knockback, head and neck damage, and breaking blocks in the way.
@@ -1578,7 +2132,7 @@ impl Game<'_> {
             .sqrt()
             .max(1.0e-6);
         let v = Vec3::new(dir.x / l, dir.y / l, dir.z / l);
-        self.front.audio.play(
+        self.audio.play(
             "minecraft:entity.ender_dragon.shoot",
             Some([at.x, at.y, at.z]),
             10.0,
@@ -1746,579 +2300,15 @@ impl Game<'_> {
     /// (or a server's packets) put on this client's overlay.
     pub(super) fn draw_boss_bars(&self, batch: &mut HudBatch) {
         let bars = self
-            .front
             .boss_overlay
             .bars(horizon_client::boss_overlay::now_millis());
         let draws = hud_overlays::boss_overlay(
             batch.width as i32,
             batch.height as i32,
             &bars,
-            &self.front.gui.atlas.font,
+            &self.gui.atlas.font,
         );
-        hud_layout::paint(batch, &self.front.gui.atlas, &draws);
-    }
-    /// `BossHealthOverlay.shouldPlayMusic`.
-    pub(super) fn boss_music(&self) -> bool {
-        self.front.boss_overlay.should_play_music()
-    }
-}
-impl crate::game::Sim<'_> {
-    fn fight_path(&self) -> std::path::PathBuf {
-        horizon_client::save::dimension_dir(&self.world_root, "minecraft:the_end").join(FIGHT_FILE)
-    }
-    /// The saved fight, or `createDefault` with the gateways shuffled by the seed.
-    fn load_fight(&mut self) {
-        if self.fight.loaded {
-            return;
-        }
-        let tag = horizon_client::save::read_dat(&self.fight_path());
-        let data = tag.as_ref().and_then(|t| t.get("data"));
-        let flag = |k: &str, default: bool| match data.and_then(|d| d.get(k)) {
-            Some(Tag::Byte(v)) => *v != 0,
-            _ => default,
-        };
-        let mut fight = Fight {
-            loaded: true,
-            needs_scan: flag("needs_state_scanning", true),
-            killed: flag("dragon_killed", false),
-            previously_killed: flag("previously_killed", false),
-            crystals_placed: flag("horizon_crystals_placed", false),
-            gateways: match data.and_then(|d| d.get("gateways")) {
-                Some(Tag::IntArray(v)) => v.clone(),
-                Some(Tag::List(v)) => v
-                    .iter()
-                    .filter_map(|t| match t {
-                        Tag::Int(i) => Some(*i),
-                        _ => None,
-                    })
-                    .collect(),
-                _ => Vec::new(),
-            },
-            respawn: match data.and_then(|d| d.get("respawn_stage")) {
-                Some(Tag::String(name)) => {
-                    Respawn::from_name(&name.to_string().unwrap_or_default()).map(|r| {
-                        let time = match data.and_then(|d| d.get("respawn_time")) {
-                            Some(Tag::Int(t)) => *t,
-                            _ => 0,
-                        };
-                        (r, time)
-                    })
-                }
-                _ => None,
-            },
-            respawn_crystals: match data.and_then(|d| d.get("horizon_respawn_crystals")) {
-                Some(Tag::IntArray(v)) => v
-                    .as_chunks::<3>()
-                    .0
-                    .iter()
-                    .map(|b| {
-                        Vec3::new(
-                            f64::from(b[0]) + 0.5,
-                            f64::from(b[1]),
-                            f64::from(b[2]) + 0.5,
-                        )
-                    })
-                    .collect(),
-                _ => Vec::new(),
-            },
-            exit_portal: match data.and_then(|d| d.get("exit_portal_location")) {
-                Some(Tag::IntArray(v)) if v.len() == 3 => Some([v[0], v[1], v[2]]),
-                _ => None,
-            },
-            // The first tick scans for players.
-            player_scan: 21,
-            ..Default::default()
-        };
-        if fight.gateways.is_empty() {
-            // Util.shuffle(0..20, RandomSource.create(seed)).
-            let mut gateways: Vec<i32> = (0..20).collect();
-            let mut random = LegacyRandom::new(self.level.seed);
-            for i in (2..=gateways.len()).rev() {
-                let j = random.next_int_bound(i as i32).unwrap_or(0) as usize;
-                gateways.swap(i - 1, j);
-            }
-            fight.gateways = gateways;
-            fight.dirty = true;
-        }
-        // A world from before this fight existed: one with an active portal
-        // already won it.
-        if tag.is_none() && self.end_portal_active() {
-            fight.killed = true;
-            fight.previously_killed = true;
-            fight.crystals_placed = true;
-            fight.needs_scan = false;
-        }
-        self.fight = fight;
-    }
-    fn end_portal_active(&self) -> bool {
-        (0..256).any(|y| {
-            &*self.res.facts().get(self.world.block(0, y, 0)).name == "minecraft:bedrock"
-                && (-3..=3).any(|d| {
-                    &*self.res.facts().get(self.world.block(d, y, 0)).name == "minecraft:end_portal"
-                })
-        })
-    }
-    pub(super) fn save_fight(&mut self) {
-        if !self.fight.loaded || !self.fight.dirty {
-            return;
-        }
-
-        let f = &self.fight;
-        let b = |v: bool| Tag::Byte(i8::from(v));
-        let mut data = vec![
-            ("needs_state_scanning", b(f.needs_scan)),
-            ("dragon_killed", b(f.killed)),
-            ("previously_killed", b(f.previously_killed)),
-            ("respawn_time", Tag::Int(f.respawn.map_or(0, |r| r.1))),
-            ("gateways", Tag::IntArray(f.gateways.clone())),
-            ("horizon_crystals_placed", b(f.crystals_placed)),
-        ];
-        if let Some(p) = f.exit_portal {
-            data.push(("exit_portal_location", Tag::IntArray(p.to_vec())));
-        }
-        if let Some((stage, _)) = f.respawn {
-            data.push(("respawn_stage", Tag::String(stage.name().into())));
-            data.push((
-                "horizon_respawn_crystals",
-                Tag::IntArray(
-                    f.respawn_crystals
-                        .iter()
-                        .flat_map(|p| [p.x.floor() as i32, p.y.floor() as i32, p.z.floor() as i32])
-                        .collect(),
-                ),
-            ));
-        }
-        let tag = Tag::compound([
-            ("data", Tag::compound(data)),
-            ("DataVersion", Tag::Int(horizon_world::DATA_VERSION)),
-        ]);
-        if horizon_client::save::write_dat(&self.fight_path(), tag).is_ok() {
-            self.fight.dirty = false;
-        }
-    }
-    /// The island's centre chunks are lit (the arena is "loaded").
-    fn arena_loaded(&self) -> bool {
-        (-2..=1).all(|cz| (-2..=1).all(|cx| self.streaming.is_lit(cx, cz)))
-    }
-    /// The player acting now: the guest whose turn it is, else the host.
-    fn acting_player(&self) -> FightWho {
-        self.lan_acting.map_or(FightWho::Host, FightWho::Guest)
-    }
-    /// The players in the level the dragon sees (`level.players()`): the
-    /// window's own, then every guest in the level.
-    pub(super) fn fight_players(&self) -> Vec<FightPlayer> {
-        let mut out = Vec::new();
-        if let Some(p) = self.player.as_ref() {
-            out.push(FightPlayer {
-                who: FightWho::Host,
-                position: p.position,
-                bounds: p.bounds(),
-                alive: !p.health.dead_or_dying(),
-                creative: self.creative,
-                spectator: self.spectator(),
-            });
-        }
-        if let Some(h) = self.lan.as_ref() {
-            for g in h.hub.guests.iter().filter(|g| h.hub.here(g) && g.loaded) {
-                let [x, y, z] = g.position;
-                out.push(FightPlayer {
-                    who: FightWho::Guest(g.conn),
-                    position: Vec3::new(x, y, z),
-                    bounds: super::lan_mobs::guest_bounds(g),
-                    alive: !g.dead,
-                    creative: g.creative(),
-                    spectator: g.spectator(),
-                });
-            }
-        }
-        out
-    }
-    /// `EnderDragonFight.validPlayer`: the players alive within 192 blocks of
-    /// (0, 128, 0), the host and the guests in the level alike.
-    fn fight_has_players(&self) -> bool {
-        let near =
-            |p: [f64; 3]| p[0].powi(2) + (p[1] - 128.0).powi(2) + p[2].powi(2) <= 192.0 * 192.0;
-        let host = self.player.as_ref().is_some_and(|p| {
-            !p.health.dead_or_dying() && near([p.position.x, p.position.y, p.position.z])
-        });
-        host || self.lan.as_ref().is_some_and(|h| {
-            h.hub
-                .guests
-                .iter()
-                .any(|g| h.hub.here(g) && g.loaded && !g.dead && near(g.position))
-        })
-    }
-    /// EndSpikeFeature's crystals (with fire under them on the bedrock).
-    fn place_spike_crystals(&mut self) {
-        for spike in horizon_world::worldgen::end_spike::spikes_for_seed(self.level.seed) {
-            let at = Vec3::new(
-                f64::from(spike.center_x) + 0.5,
-                f64::from(spike.height + 1),
-                f64::from(spike.center_z) + 0.5,
-            );
-            if self
-                .crystals
-                .iter()
-                .any(|c| (c.position.x - at.x).abs() < 1.0 && (c.position.z - at.z).abs() < 1.0)
-            {
-                continue;
-            }
-            let time = self.world.random.next_int_bound(100_000).unwrap_or(0);
-            // EndCrystal's constructor takes an id from the entity counter.
-            self.next_entity += 1;
-            self.crystals.push(Crystal {
-                id: self.next_entity,
-                position: at,
-                show_bottom: true,
-                time,
-                beam: None,
-                invulnerable: false,
-            });
-            self.world
-                .modified
-                .insert((at.x.floor() as i32 >> 4, at.z.floor() as i32 >> 4));
-        }
-    }
-    /// `updateCrystalCount`: crystals on the spike tops.
-    fn count_crystals(&mut self) {
-        self.fight.crystal_scan = 0;
-        let spikes = horizon_world::worldgen::end_spike::spikes_for_seed(self.level.seed);
-        self.fight.alive_crystals = self
-            .crystals
-            .iter()
-            .filter(|c| {
-                spikes.iter().any(|s| {
-                    (c.position.x - f64::from(s.center_x) - 0.5).abs() <= f64::from(s.radius)
-                        && (c.position.z - f64::from(s.center_z) - 0.5).abs() <= f64::from(s.radius)
-                        && c.position.y >= f64::from(s.height)
-                })
-            })
-            .count() as i32;
-    }
-    /// Targets for projectiles: dragon parts and crystals.
-    pub(super) fn special_targets(&self) -> Vec<(u32, Aabb)> {
-        let mut out = Vec::new();
-        if let Some(d) = self.dragon.as_ref().filter(|d| d.alive()) {
-            for i in 0..8 {
-                out.push((SPECIAL + i as u32, d.part_box(i)));
-            }
-        }
-        for (i, c) in self.crystals.iter().enumerate() {
-            let p = c.position;
-            out.push((
-                CRYSTAL_IDS + i as u32,
-                Aabb::new(
-                    Vec3::new(p.x - 1.0, p.y, p.z - 1.0),
-                    Vec3::new(p.x + 1.0, p.y + 2.0, p.z + 1.0),
-                ),
-            ));
-        }
-        out
-    }
-    /// The box of the dragon part or end crystal guests know as entity `id`
-    /// (`EnderDragonPart`s follow the dragon's id).
-    pub(super) fn tracked_special_box(&self, id: i32) -> Option<Aabb> {
-        let id = u32::try_from(id).ok().filter(|&id| id != 0)?;
-        if let Some(d) = self.dragon.as_ref().filter(|d| d.alive() && d.id != 0)
-            && (d.id + 1..=d.id + 8).contains(&id)
-        {
-            return Some(d.part_box((id - d.id - 1) as usize));
-        }
-        let i = self.crystals.iter().position(|c| c.id == id)?;
-        self.special_targets()
-            .into_iter()
-            .find(|(s, _)| *s == CRYSTAL_IDS + i as u32)
-            .map(|(_, b)| b)
-    }
-    /// Player melee on the dragon's parts or a crystal under the crosshair.
-    /// The dragon part under the crosshair within reach: its id and distance.
-    pub(super) fn dragon_hit(&self) -> Option<(u32, f64)> {
-        let eye = self.eye_position()?;
-        let dir = super::view_vector(self.yaw, self.pitch);
-        let reach: f64 = if self.creative { 5.0 } else { 3.0 };
-        let mut best: Option<(u32, f64)> = None;
-        for (id, b) in self.special_targets() {
-            let (lo, hi) = (b.min_position(), b.max_position());
-            let (lo, hi) = ([lo.x, lo.y, lo.z], [hi.x, hi.y, hi.z]);
-            let (mut t0, mut t1) = (0.0f64, reach);
-            let mut hit = true;
-            for a in 0..3 {
-                if dir[a].abs() < 1e-9 {
-                    hit &= eye[a] >= lo[a] && eye[a] <= hi[a];
-                    continue;
-                }
-                let (mut ta, mut tb) = ((lo[a] - eye[a]) / dir[a], (hi[a] - eye[a]) / dir[a]);
-                if ta > tb {
-                    std::mem::swap(&mut ta, &mut tb);
-                }
-                t0 = t0.max(ta);
-                t1 = t1.min(tb);
-            }
-            if hit && t0 <= t1 && best.is_none_or(|b| t0 < b.1) {
-                best = Some((id, t0));
-            }
-        }
-        best
-    }
-    /// The 24 nodes (`findClosestNode` builds them on first use).
-    fn dragon_nodes(&mut self) -> [[i32; 3]; 24] {
-        if let Some(n) = self.dragon.as_ref().and_then(|d| d.nodes) {
-            return n;
-        }
-        let mut nodes = [[0; 3]; 24];
-        for (i, node) in nodes.iter_mut().enumerate() {
-            let (r, step, base, add) = if i < 12 {
-                (60.0f32, std::f32::consts::PI / 12.0, i, 5)
-            } else if i < 20 {
-                (40.0, std::f32::consts::PI / 8.0, i - 12, 15)
-            } else {
-                (20.0, std::f32::consts::PI / 4.0, i - 20, 5)
-            };
-            let a = 2.0 * (-std::f32::consts::PI + step * base as f32);
-            let (x, z) = ((r * a.cos()).floor() as i32, (r * a.sin()).floor() as i32);
-            let y = (self.motion_blocking_no_leaves(x, z) + add).max(73);
-            *node = [x, y, z];
-        }
-        if let Some(d) = self.dragon.as_mut() {
-            d.nodes = Some(nodes);
-        }
-        nodes
-    }
-    /// `getHeightmapPos(MOTION_BLOCKING_NO_LEAVES)`.
-    fn motion_blocking_no_leaves(&self, x: i32, z: i32) -> i32 {
-        (0..256)
-            .rev()
-            .find(|&y| {
-                let f = self.res.facts().get(self.world.block(x, y, z));
-                (f.full_collision
-                    || f.legacy_solid
-                    || f.fluid != horizon_client::blocks::Fluid::None)
-                    && !f.name.ends_with("_leaves")
-            })
-            .map_or(0, |y| y + 1)
-    }
-    fn podium_top(&self) -> Vec3 {
-        Vec3::new(0.5, f64::from(self.motion_blocking_no_leaves(0, 0)), 0.5)
-    }
-    fn closest_node(&mut self, x: f64, y: f64, z: f64) -> usize {
-        let nodes = self.dragon_nodes();
-        let start = if self.fight.alive_crystals == 0 {
-            12
-        } else {
-            0
-        };
-        let p = [x.floor() as i32, y.floor() as i32, z.floor() as i32];
-        let mut best = (10_000.0f32, 0);
-        for (i, n) in nodes.iter().enumerate().skip(start) {
-            let d = ((n[0] - p[0]).pow(2) + (n[1] - p[1]).pow(2) + (n[2] - p[2]).pow(2)) as f32;
-            if d < best.0 {
-                best = (d, i);
-            }
-        }
-        best.1
-    }
-    /// `findPath` (A* over the adjacency masks), optionally ending at `last`.
-    fn dragon_path(&mut self, from: usize, to: usize, last: Option<[i32; 3]>) -> Option<Path> {
-        let nodes = self.dragon_nodes();
-        let dist = |a: [i32; 3], b: [i32; 3]| {
-            (((a[0] - b[0]).pow(2) + (a[1] - b[1]).pow(2) + (a[2] - b[2]).pow(2)) as f32).sqrt()
-        };
-        let min = if self.fight.alive_crystals == 0 {
-            12
-        } else {
-            0
-        };
-        let mut g = [f32::MAX; 24];
-        let mut came = [usize::MAX; 24];
-        let mut closed = [false; 24];
-        let mut open = vec![from];
-        g[from] = 0.0;
-        let mut closest = from;
-        while !open.is_empty() {
-            let (k, &cur) = open
-                .iter()
-                .enumerate()
-                .min_by(|a, b| {
-                    (g[*a.1] + dist(nodes[*a.1], nodes[to]))
-                        .total_cmp(&(g[*b.1] + dist(nodes[*b.1], nodes[to])))
-                })
-                .expect("open set");
-            open.swap_remove(k);
-            if cur == to {
-                closest = to;
-                break;
-            }
-            if dist(nodes[cur], nodes[to]) < dist(nodes[closest], nodes[to]) {
-                closest = cur;
-            }
-            closed[cur] = true;
-            for i in min..24 {
-                if ADJACENCY[cur] & (1 << i) != 0 && !closed[i] {
-                    let tentative = g[cur] + dist(nodes[cur], nodes[i]);
-                    if tentative < g[i] {
-                        g[i] = tentative;
-                        came[i] = cur;
-                        if !open.contains(&i) {
-                            open.push(i);
-                        }
-                    }
-                }
-            }
-        }
-        if closest == from && from != to {
-            return None;
-        }
-        let mut list = vec![nodes[closest]];
-        let mut n = closest;
-        while came[n] != usize::MAX {
-            n = came[n];
-            list.insert(0, nodes[n]);
-        }
-        if let Some(l) = last {
-            list.push(l);
-        }
-        Some(Path {
-            nodes: list,
-            next: 0,
-        })
-    }
-    fn next_target(&mut self, path: &mut Option<PathBox>) -> Option<Vec3> {
-        let p = path.as_mut()?;
-        if p.0.done() {
-            return None;
-        }
-        let c = p.0.next_pos();
-        p.0.advance();
-        let d = self.dragon.as_mut()?;
-        let y = loop {
-            let y = f64::from(c[1]) + f64::from(d.random.next_float() * 20.0);
-            if y >= f64::from(c[1]) {
-                break y;
-            }
-        };
-        Some(Vec3::new(f64::from(c[0]), y, f64::from(c[2])))
-    }
-    /// The holding-pattern style path step: around the outer or inner ring.
-    fn ring_path(&mut self, clockwise: &mut bool) -> Option<Path> {
-        let d = self.dragon.as_mut()?;
-        let flip = d.random.next_int_bound(8).unwrap_or(1) == 0;
-        let current = {
-            let p = d.position;
-            self.closest_node(p.x, p.y, p.z)
-        };
-        let mut target = current as i32;
-        if flip {
-            *clockwise = !*clockwise;
-            target += 6;
-        }
-        target += if *clockwise { 1 } else { -1 };
-        if self.fight.alive_crystals > 0 {
-            target = target.rem_euclid(12);
-        } else {
-            target = ((target - 12) & 7) + 12;
-        }
-        let mut path = self.dragon_path(current, target as usize, None)?;
-        path.advance();
-        Some(path)
-    }
-    /// `DragonStrafePlayerPhase.setTarget`: a path to the player at `p`.
-    fn strafe_begin(&mut self, p: Vec3) {
-        let Some(d) = self.dragon.as_ref() else {
-            return;
-        };
-        let dp = d.position;
-        let current = self.closest_node(dp.x, dp.y, dp.z);
-        let target = self.closest_node(p.x, p.y, p.z);
-        let (fx, fz) = (p.x.floor() as i32, p.z.floor() as i32);
-        let sd = (f64::from(fx) - dp.x).hypot(f64::from(fz) - dp.z);
-        let ho = (0.4 + sd / 80.0 - 1.0).min(10.0);
-        let last = [fx, (p.y + ho).floor() as i32, fz];
-        let mut path = self.dragon_path(current, target, Some(last));
-        if let Some(path) = path.as_mut() {
-            path.advance();
-        }
-        let mut boxed = path.map(PathBox);
-        let target = self.next_target(&mut boxed);
-        if let Some(Dragon {
-            phase: Phase::Strafe {
-                path, target: t, ..
-            },
-            ..
-        }) = self.dragon.as_mut()
-        {
-            *path = boxed;
-            *t = target;
-        }
-    }
-    /// `getHeadLookVector`.
-    fn dragon_look(&self) -> [f64; 3] {
-        let Some(d) = self.dragon.as_ref() else {
-            return [0.0; 3];
-        };
-        let pitch = match d.phase {
-            Phase::Landing { .. } | Phase::Takeoff { .. } => {
-                let p = self.podium_top();
-                let dist = ((p.x - d.position.x).powi(2)
-                    + (p.y - d.position.y).powi(2)
-                    + (p.z - d.position.z).powi(2))
-                .sqrt() as f32
-                    / 4.0;
-                -6.0 / dist.max(1.0) * 1.5 * 5.0
-            }
-            _ if d.phase.sitting() => -45.0,
-            _ => 0.0,
-        };
-        super::view_vector(d.yaw, pitch).map(|v| v)
-    }
-    /// The part positions from the yaw and the flight history.
-    fn place_dragon_parts(&mut self) {
-        let Some(d) = self.dragon.as_mut() else {
-            return;
-        };
-        let tilt =
-            ((d.sample(5).0 - d.sample(10).0) * 10.0) as f32 * (std::f32::consts::PI / 180.0);
-        let (ct, st) = (tilt.cos(), tilt.sin());
-        let r1 = d.yaw.to_radians();
-        let (s1, c1) = (r1.sin(), r1.cos());
-        let p = d.position;
-        let set = |d: &mut Dragon, i: usize, x: f32, y: f64, z: f32| {
-            d.parts[i].0 = Vec3::new(p.x + f64::from(x), p.y + y, p.z + f64::from(z));
-        };
-        set(d, 2, s1 * 0.5, 0.0, -c1 * 0.5);
-        set(d, 6, c1 * 4.5, 2.0, s1 * 4.5);
-        set(d, 7, c1 * -4.5, 2.0, s1 * -4.5);
-        let r2 = d.yaw.to_radians() - d.yaw_accel * 0.01;
-        let (s2, c2) = (r2.sin(), r2.cos());
-        let y_off = if d.phase.sitting() {
-            -1.0
-        } else {
-            d.sample(5).0 - d.sample(0).0
-        } as f32;
-        set(
-            d,
-            0,
-            s2 * 6.5 * ct,
-            f64::from(y_off + st * 6.5),
-            -c2 * 6.5 * ct,
-        );
-        set(
-            d,
-            1,
-            s2 * 5.5 * ct,
-            f64::from(y_off + st * 5.5),
-            -c2 * 5.5 * ct,
-        );
-        let p1 = d.sample(5);
-        for i in 0..3 {
-            let p0 = d.sample(12 + i * 2);
-            let rot = d.yaw.to_radians() + wrap(p0.1 - p1.1).to_radians();
-            let (ss, cc) = (rot.sin(), rot.cos());
-            let dd = (i as f32 + 1.0) * 2.0;
-            let x = -(s1 * 1.5 + ss * dd) * ct;
-            let y = p0.0 - p1.0 - f64::from((dd + 1.5) * st) + 1.5;
-            let z = (c1 * 1.5 + cc * dd) * ct;
-            set(d, 3 + i, x, y, z);
-        }
+        hud_layout::paint(batch, &self.gui.atlas, &draws);
     }
     /// The dragon fight's bar for a player at `at`
     /// (`EnderDragonFight.dragonEvent`, visible while the fight is not won
@@ -2336,6 +2326,10 @@ impl crate::game::Sim<'_> {
                 .as_ref()
                 .map_or(1.0, |d| (d.health / MAX_HEALTH).clamp(0.0, 1.0)),
         )
+    }
+    /// `BossHealthOverlay.shouldPlayMusic`.
+    pub(super) fn boss_music(&self) -> bool {
+        self.boss_overlay.should_play_music()
     }
 }
 pub(super) struct DragonFireball {
@@ -2422,8 +2416,7 @@ impl Game<'_> {
         };
         let a = alpha as f32;
         let sprite = |n: &str| {
-            self.front
-                .gui
+            self.gui
                 .atlas
                 .sprites
                 .get(n)
@@ -2594,7 +2587,7 @@ impl Game<'_> {
     }
     /// `submitRays`: the death rays from a fixed seed, fading in white to magenta.
     fn dragon_rays(&self, base: glam::Mat4, t: f32, out: &mut Vec<Vertex>) {
-        let white = self.front.gui.atlas.font.white();
+        let white = self.gui.atlas.font.white();
         let uv = [white.u0, white.v0];
         let over = if t > 0.8 {
             ((t - 0.8) / 0.2).min(1.0)
@@ -2652,7 +2645,6 @@ impl Game<'_> {
         out: &mut Vec<Vertex>,
     ) {
         let Some(s) = self
-            .front
             .gui
             .atlas
             .sprites
@@ -2717,7 +2709,6 @@ impl Game<'_> {
         out: &mut Vec<Vertex>,
     ) {
         let Some(s) = self
-            .front
             .gui
             .atlas
             .sprites
@@ -2756,8 +2747,6 @@ impl Game<'_> {
             }
         }
     }
-}
-impl crate::game::Sim<'_> {
     pub(super) fn fight_ready(&mut self) -> bool {
         self.load_fight();
         // spawnExitPortal runs from scanState and the dragon's death, both
@@ -2885,8 +2874,7 @@ impl Game<'_> {
         }
     }
 }
-impl Game<'_> {}
-impl crate::game::Sim<'_> {
+impl Game<'_> {
     /// The dragon as guests track it (`EnderDragon.getAddEntityPacket` and
     /// the synched data that differs from the defaults: its health, defined
     /// as 1, and `DATA_PHASE`, defined as hovering). Vanilla pairs it with no
@@ -2924,8 +2912,7 @@ impl crate::game::Sim<'_> {
         })
     }
 }
-impl Game<'_> {}
-impl crate::game::Sim<'_> {
+impl Game<'_> {
     /// The dragon and fight for `horizon-ctl status`.
     pub(super) fn dragon_status(&self) -> serde_json::Value {
         serde_json::json!({
@@ -2996,12 +2983,12 @@ impl Game<'_> {
         if self.entity_in(room) {
             return false;
         }
-        let time = self.sim.world.random.next_int_bound(100_000).unwrap_or(0);
+        let time = self.world.random.next_int_bound(100_000).unwrap_or(0);
         // EndCrystal's constructor takes an id from the entity counter, so
         // the crystal is an entity a command can name (`@e[type=end_crystal]`).
-        self.sim.next_entity += 1;
-        self.sim.crystals.push(Crystal {
-            id: self.sim.next_entity,
+        self.next_entity += 1;
+        self.crystals.push(Crystal {
+            id: self.next_entity,
             position: Vec3::new(x + 0.5, y, z + 0.5),
             show_bottom: false,
             time,
@@ -3024,6 +3011,41 @@ impl Game<'_> {
         if let Some(i) = self.crystals.iter().position(|c| c.id == id) {
             self.destroy_crystal(i, None, CrystalDamage::Explosion);
         }
+    }
+    /// `EnderDragon.kill` (`/kill`): `Entity.kill` removes the entity, it
+    /// does not hurt it (the dragon flies its death flight when its health
+    /// runs out).
+    pub(super) fn kill_dragon(&mut self, id: u32) {
+        if self.dragon.as_ref().is_some_and(|d| d.id == id) {
+            self.dragon = None;
+        }
+    }
+    /// Any entity touching `room` (`Level.getEntities(null, box)`).
+    fn entity_in(&self, room: Aabb) -> bool {
+        let touches = |lo: Vec3, hi: Vec3| {
+            let (a, b) = (room.min_position(), room.max_position());
+            lo.x < b.x && hi.x > a.x && lo.y < b.y && hi.y > a.y && lo.z < b.z && hi.z > a.z
+        };
+        // Level.getEntities: the host's player and every guest in the level.
+        let player = self
+            .fight_players()
+            .iter()
+            .any(|p| !p.spectator && touches(p.bounds.min_position(), p.bounds.max_position()));
+        player
+            || self.crystals.iter().any(|c| {
+                touches(
+                    Vec3::new(c.position.x - 1.0, c.position.y, c.position.z - 1.0),
+                    Vec3::new(c.position.x + 1.0, c.position.y + 2.0, c.position.z + 1.0),
+                )
+            })
+            || self.mobs.iter().any(|m| {
+                let w = f64::from(m.width()) / 2.0;
+                let h = f64::from(m.height());
+                touches(
+                    Vec3::new(m.position.x - w, m.position.y, m.position.z - w),
+                    Vec3::new(m.position.x + w, m.position.y + h, m.position.z + w),
+                )
+            })
     }
     /// `EnderDragonFight.tryRespawn`: a crystal on each side of the portal.
     fn try_respawn(&mut self) {
@@ -3081,15 +3103,34 @@ impl Game<'_> {
         self.fight.respawn_crystals = found;
         self.fight.dirty = true;
     }
+    fn block_name_at(&self, p: [i32; 3]) -> std::sync::Arc<str> {
+        self.res
+            .facts()
+            .get(self.world.block(p[0], p[1], p[2]))
+            .name
+            .clone()
+    }
+    fn respawn_beams(&mut self, target: Option<[i32; 3]>) {
+        let list = self.fight.respawn_crystals.clone();
+        for c in &mut self.crystals {
+            if list.iter().any(|p| p.distance_squared(c.position) < 0.01) {
+                c.beam = target;
+            }
+        }
+    }
     /// `LevelEvent 3001`: the dragon's growl over the island.
     fn respawn_growl(&mut self) {
         let pitch = 0.8 + self.world.random.next_float() * 0.3;
-        self.front.audio.play(
+        self.audio.play(
             "minecraft:entity.ender_dragon.growl",
             Some([0.5, 128.5, 0.5]),
             64.0,
             pitch,
         );
+    }
+    fn set_respawn(&mut self, stage: Option<Respawn>) {
+        self.fight.respawn = stage.map(|s| (s, 0));
+        self.fight.dirty = true;
     }
     /// `EnderDragonFight.tick` with a respawn in progress.
     fn tick_respawn(&mut self) {
@@ -3251,6 +3292,21 @@ impl Game<'_> {
             let _ = self.level_set(pos, id);
         }
     }
+    /// `resetSpikeCrystals`: spike crystals lose their beams and protection.
+    fn reset_spike_crystals(&mut self) {
+        let spikes = horizon_world::worldgen::end_spike::spikes_for_seed(self.level.seed);
+        for c in &mut self.crystals {
+            let on_spike = spikes.iter().any(|s| {
+                (c.position.x - f64::from(s.center_x) - 0.5).abs() <= f64::from(s.radius)
+                    && (c.position.z - f64::from(s.center_z) - 0.5).abs() <= f64::from(s.radius)
+                    && c.position.y >= f64::from(s.height)
+            });
+            if on_spike {
+                c.invulnerable = false;
+                c.beam = None;
+            }
+        }
+    }
     /// The END stage: the portal crystals blow up (no block damage) and a
     /// new dragon takes over.
     fn finish_respawn(&mut self) {
@@ -3287,77 +3343,6 @@ impl Game<'_> {
         self.reset_spike_crystals();
         let _ = self.activate_exit_portal();
         self.fight.dirty = true;
-    }
-}
-impl crate::game::Sim<'_> {
-    /// `EnderDragon.kill` (`/kill`): `Entity.kill` removes the entity, it
-    /// does not hurt it (the dragon flies its death flight when its health
-    /// runs out).
-    pub(super) fn kill_dragon(&mut self, id: u32) {
-        if self.dragon.as_ref().is_some_and(|d| d.id == id) {
-            self.dragon = None;
-        }
-    }
-    /// Any entity touching `room` (`Level.getEntities(null, box)`).
-    fn entity_in(&self, room: Aabb) -> bool {
-        let touches = |lo: Vec3, hi: Vec3| {
-            let (a, b) = (room.min_position(), room.max_position());
-            lo.x < b.x && hi.x > a.x && lo.y < b.y && hi.y > a.y && lo.z < b.z && hi.z > a.z
-        };
-        // Level.getEntities: the host's player and every guest in the level.
-        let player = self
-            .fight_players()
-            .iter()
-            .any(|p| !p.spectator && touches(p.bounds.min_position(), p.bounds.max_position()));
-        player
-            || self.crystals.iter().any(|c| {
-                touches(
-                    Vec3::new(c.position.x - 1.0, c.position.y, c.position.z - 1.0),
-                    Vec3::new(c.position.x + 1.0, c.position.y + 2.0, c.position.z + 1.0),
-                )
-            })
-            || self.mobs.iter().any(|m| {
-                let w = f64::from(m.width()) / 2.0;
-                let h = f64::from(m.height());
-                touches(
-                    Vec3::new(m.position.x - w, m.position.y, m.position.z - w),
-                    Vec3::new(m.position.x + w, m.position.y + h, m.position.z + w),
-                )
-            })
-    }
-    fn block_name_at(&self, p: [i32; 3]) -> std::sync::Arc<str> {
-        self.res
-            .facts()
-            .get(self.world.block(p[0], p[1], p[2]))
-            .name
-            .clone()
-    }
-    fn respawn_beams(&mut self, target: Option<[i32; 3]>) {
-        let list = self.fight.respawn_crystals.clone();
-        for c in &mut self.crystals {
-            if list.iter().any(|p| p.distance_squared(c.position) < 0.01) {
-                c.beam = target;
-            }
-        }
-    }
-    fn set_respawn(&mut self, stage: Option<Respawn>) {
-        self.fight.respawn = stage.map(|s| (s, 0));
-        self.fight.dirty = true;
-    }
-    /// `resetSpikeCrystals`: spike crystals lose their beams and protection.
-    fn reset_spike_crystals(&mut self) {
-        let spikes = horizon_world::worldgen::end_spike::spikes_for_seed(self.level.seed);
-        for c in &mut self.crystals {
-            let on_spike = spikes.iter().any(|s| {
-                (c.position.x - f64::from(s.center_x) - 0.5).abs() <= f64::from(s.radius)
-                    && (c.position.z - f64::from(s.center_z) - 0.5).abs() <= f64::from(s.radius)
-                    && c.position.y >= f64::from(s.height)
-            });
-            if on_spike {
-                c.invulnerable = false;
-                c.beam = None;
-            }
-        }
     }
     /// `EnderDragon.checkCrystals`' search: the nearest crystal whose box
     /// meets the dragon's box grown by 32.
@@ -3396,97 +3381,6 @@ impl crate::game::Sim<'_> {
 /// sends its moves, health and phase; the client flaps its wings, keeps
 /// its flight history and places its parts, so it can be drawn and hit.
 impl Game<'_> {
-    /// One client tick of the dragon. `lerp`: the step toward its last
-    /// sent position and yaw (LivingEntity's interpolation), and the
-    /// steps left including this one.
-    pub(super) fn tick_remote_dragon(&mut self, lerp: Option<([f64; 3], Option<f32>, u32)>) {
-        let Some(d) = self.dragon.as_mut() else {
-            return;
-        };
-        d.previous = d.position;
-        d.previous_yaw = d.yaw;
-        d.old_flap = d.flap;
-        d.ticks += 1;
-        d.hurt_time = (d.hurt_time - 1).max(0);
-        for part in &mut d.parts {
-            part.1 = part.0;
-        }
-        if let Some((target, yaw, steps)) = lerp {
-            let n = f64::from(steps.max(1));
-            d.position = Vec3::new(
-                d.position.x + (target[0] - d.position.x) / n,
-                d.position.y + (target[1] - d.position.y) / n,
-                d.position.z + (target[2] - d.position.z) / n,
-            );
-            if let Some(yaw) = yaw {
-                d.yaw += wrap(yaw - d.yaw) / steps.max(1) as f32;
-            }
-        }
-        if !d.alive() {
-            // EnderDragon.tickDeath on a client: it rises, and bursts
-            // from tick 180 to 200; the server removes it.
-            d.death_time += 1;
-            let (t, p) = (d.death_time, d.position);
-            if (180..=200).contains(&t) {
-                let r = &mut d.random;
-                let o = [
-                    f64::from((r.next_float() - 0.5) * 8.0),
-                    f64::from((r.next_float() - 0.5) * 4.0),
-                    f64::from((r.next_float() - 0.5) * 8.0),
-                ];
-                self.particles.add(
-                    &ParticleOptions::simple(ParticleType::ExplosionEmitter),
-                    [p.x + o[0], p.y + 2.0 + o[1], p.z + o[2]],
-                    [0.0; 3],
-                );
-            }
-            if let Some(d) = self.dragon.as_mut() {
-                d.position.y += 0.1;
-                for part in &mut d.parts {
-                    part.0.y += 0.1;
-                }
-            }
-            return;
-        }
-        // processFlappingMovement and onFlap: its wing beats, and their sound.
-        let flap_was = (d.old_flap * std::f32::consts::TAU).cos();
-        let v = d.velocity;
-        let mut flap_speed = 0.2 / ((v.x.hypot(v.z) as f32) * 10.0 + 1.0);
-        flap_speed *= 2f32.powf(v.y as f32);
-        d.flap += if d.phase.sitting() { 0.1 } else { flap_speed };
-        let flap_now = (d.flap * std::f32::consts::TAU).cos();
-        let at = [d.position.x, d.position.y, d.position.z];
-        if flap_was <= -0.3 && flap_now >= -0.3 {
-            let pitch = 0.8 + self.world.random.next_float() * 0.3;
-            self.front
-                .audio
-                .play("minecraft:entity.ender_dragon.flap", Some(at), 5.0, pitch);
-        }
-        let d = self.dragon.as_mut().expect("dragon");
-        if !d.phase.sitting() {
-            d.growl -= 1;
-            if d.growl < 0 {
-                d.growl = 200 + d.random.next_int_bound(200).unwrap_or(0);
-                let pitch = 0.8 + self.world.random.next_float() * 0.3;
-                self.front
-                    .audio
-                    .play("minecraft:entity.ender_dragon.growl", Some(at), 2.5, pitch);
-            }
-        }
-        // checkCrystals' search runs on a client too (the healing beam).
-        let d = self.dragon.as_mut().expect("dragon");
-        if d.random.next_int_bound(10).unwrap_or(1) == 0 {
-            let p = d.position;
-            let nearest = self.nearest_crystal_to(p);
-            self.dragon.as_mut().expect("dragon").nearest_crystal = nearest;
-        }
-        let d = self.dragon.as_mut().expect("dragon");
-        d.yaw = wrap(d.yaw);
-        d.record();
-        self.place_dragon_parts();
-    }
-}
-impl crate::game::Sim<'_> {
     /// `handleAddEntity` for `minecraft:ender_dragon`. Its constructor
     /// sets the full health and the hovering phase until the server's
     /// synched data says otherwise.
@@ -3550,6 +3444,93 @@ impl crate::game::Sim<'_> {
                 _ => {}
             }
         }
+    }
+    /// One client tick of the dragon. `lerp`: the step toward its last
+    /// sent position and yaw (LivingEntity's interpolation), and the
+    /// steps left including this one.
+    pub(super) fn tick_remote_dragon(&mut self, lerp: Option<([f64; 3], Option<f32>, u32)>) {
+        let Some(d) = self.dragon.as_mut() else {
+            return;
+        };
+        d.previous = d.position;
+        d.previous_yaw = d.yaw;
+        d.old_flap = d.flap;
+        d.ticks += 1;
+        d.hurt_time = (d.hurt_time - 1).max(0);
+        for part in &mut d.parts {
+            part.1 = part.0;
+        }
+        if let Some((target, yaw, steps)) = lerp {
+            let n = f64::from(steps.max(1));
+            d.position = Vec3::new(
+                d.position.x + (target[0] - d.position.x) / n,
+                d.position.y + (target[1] - d.position.y) / n,
+                d.position.z + (target[2] - d.position.z) / n,
+            );
+            if let Some(yaw) = yaw {
+                d.yaw += wrap(yaw - d.yaw) / steps.max(1) as f32;
+            }
+        }
+        if !d.alive() {
+            // EnderDragon.tickDeath on a client: it rises, and bursts
+            // from tick 180 to 200; the server removes it.
+            d.death_time += 1;
+            let (t, p) = (d.death_time, d.position);
+            if (180..=200).contains(&t) {
+                let r = &mut d.random;
+                let o = [
+                    f64::from((r.next_float() - 0.5) * 8.0),
+                    f64::from((r.next_float() - 0.5) * 4.0),
+                    f64::from((r.next_float() - 0.5) * 8.0),
+                ];
+                self.particles.add(
+                    &ParticleOptions::simple(ParticleType::ExplosionEmitter),
+                    [p.x + o[0], p.y + 2.0 + o[1], p.z + o[2]],
+                    [0.0; 3],
+                );
+            }
+            if let Some(d) = self.dragon.as_mut() {
+                d.position.y += 0.1;
+                for part in &mut d.parts {
+                    part.0.y += 0.1;
+                }
+            }
+            return;
+        }
+        // processFlappingMovement and onFlap: its wing beats, and their sound.
+        let flap_was = (d.old_flap * std::f32::consts::TAU).cos();
+        let v = d.velocity;
+        let mut flap_speed = 0.2 / ((v.x.hypot(v.z) as f32) * 10.0 + 1.0);
+        flap_speed *= 2f32.powf(v.y as f32);
+        d.flap += if d.phase.sitting() { 0.1 } else { flap_speed };
+        let flap_now = (d.flap * std::f32::consts::TAU).cos();
+        let at = [d.position.x, d.position.y, d.position.z];
+        if flap_was <= -0.3 && flap_now >= -0.3 {
+            let pitch = 0.8 + self.world.random.next_float() * 0.3;
+            self.audio
+                .play("minecraft:entity.ender_dragon.flap", Some(at), 5.0, pitch);
+        }
+        let d = self.dragon.as_mut().expect("dragon");
+        if !d.phase.sitting() {
+            d.growl -= 1;
+            if d.growl < 0 {
+                d.growl = 200 + d.random.next_int_bound(200).unwrap_or(0);
+                let pitch = 0.8 + self.world.random.next_float() * 0.3;
+                self.audio
+                    .play("minecraft:entity.ender_dragon.growl", Some(at), 2.5, pitch);
+            }
+        }
+        // checkCrystals' search runs on a client too (the healing beam).
+        let d = self.dragon.as_mut().expect("dragon");
+        if d.random.next_int_bound(10).unwrap_or(1) == 0 {
+            let p = d.position;
+            let nearest = self.nearest_crystal_to(p);
+            self.dragon.as_mut().expect("dragon").nearest_crystal = nearest;
+        }
+        let d = self.dragon.as_mut().expect("dragon");
+        d.yaw = wrap(d.yaw);
+        d.record();
+        self.place_dragon_parts();
     }
     /// The dragon's parts as a server's client attacks them: the server's
     /// ids for `EnderDragonPart`s follow the dragon's.

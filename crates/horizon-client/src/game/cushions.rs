@@ -105,8 +105,34 @@ impl horizon_client::cushion::World for PlacementWorld<'_, '_> {
 }
 
 impl Game<'_> {
+    /// The cushion under the crosshair, its distance and the hit point.
+    pub(super) fn cushion_hit(&self) -> Option<(usize, f64, [f64; 3])> {
+        let eye = self.eye_position()?;
+        let dir = view_vector(self.yaw, self.pitch);
+        let reach: f64 = if self.creative { 5.0 } else { 3.0 };
+        let mut best: Option<(usize, f64, [f64; 3])> = None;
+        for (i, c) in self.cushions.iter().enumerate() {
+            let Some(d) = super::ray_box(eye, dir, reach, aabb(c.bounds())) else {
+                continue;
+            };
+            if best.is_none_or(|b| d < b.1) {
+                best = Some((i, d, std::array::from_fn(|k| eye[k] + dir[k] * d)));
+            }
+        }
+        best
+    }
+
     pub(super) fn cushion_survives(&self, c: &Cushion) -> bool {
         horizon_client::cushion::survives(&PlacementWorld(self), aabb(c.bounds()))
+    }
+
+    /// `Cushion.destroyIfInFire`: a fire-tagged block inside the deflated box.
+    fn cushion_in_fire(&self, c: &Cushion) -> bool {
+        let bounds = aabb(c.bounds()).next_deflated();
+        blocks_in(bounds).any(|p| {
+            let facts = self.res.facts().get(self.world.block(p[0], p[1], p[2]));
+            self.res.items().block_in_tag("minecraft:fire", &facts.name)
+        })
     }
 
     /// `CushionItem.useOn`: on the top face only, spawning at the click's
@@ -199,11 +225,11 @@ impl Game<'_> {
             position.y.floor() as i32,
             position.z.floor() as i32,
         ];
-        self.sim.cushions.push(Cushion {
+        self.cushions.push(Cushion {
             id,
             position,
             pos: attached,
-            yaw: snap_yaw(self.sim.yaw),
+            yaw: snap_yaw(self.yaw),
             color,
             check_interval: 0,
         });
@@ -215,7 +241,7 @@ impl Game<'_> {
         if self.cushion_in_fire(&self.cushions[placed]) {
             self.break_cushion(placed, false);
         }
-        self.front.audio.play(
+        self.audio.play(
             "minecraft:entity.cushion.place",
             Some([position.x, position.y, position.z]),
             0.75,
@@ -242,7 +268,7 @@ impl Game<'_> {
             return false;
         }
         // isSecondaryUseActive.
-        if self.front.keys.contains(&KeyCode::ShiftLeft) {
+        if self.keys.contains(&KeyCode::ShiftLeft) {
             return false;
         }
         let id = self.cushions[i].id;
@@ -262,7 +288,7 @@ impl Game<'_> {
         }
         self.riding = Some(id);
         let p = self.cushions[i].position;
-        self.front.audio.play(
+        self.audio.play(
             "minecraft:entity.cushion.sit",
             Some([p.x, p.y, p.z]),
             1.0,
@@ -297,7 +323,7 @@ impl Game<'_> {
         if self.riding == Some(c.id) {
             self.riding = None;
         }
-        self.front.audio.play(
+        self.audio.play(
             "minecraft:entity.cushion.break",
             Some([p.x, p.y, p.z]),
             1.0,
@@ -327,7 +353,7 @@ impl Game<'_> {
         let particle_at = [p.x, p.y + 0.25 * (2.0 / 3.0), p.z];
         // Guest actions temporarily take self.lan; flush once the hub is back.
         // Queue before resolving a sprite: a dedicated server has no renderer.
-        if self.front.audio.capture.is_some() {
+        if self.audio.capture.is_some() {
             self.lan_cushion_breaks.push((state, particle_at));
         }
         let at = [p.x.floor() as i32, p.y.floor() as i32, p.z.floor() as i32];
@@ -381,16 +407,16 @@ impl Game<'_> {
         };
         if keys.shift {
             let at = c.dismount();
-            self.sim.riding = None;
-            if let Some(p) = self.sim.player.as_mut() {
-                self.sim.previous_position = p.position;
+            self.riding = None;
+            if let Some(p) = self.player.as_mut() {
+                self.previous_position = p.position;
                 p.position = at;
                 p.velocity = Vec3::ZERO;
                 p.fall_distance = 0.0;
             }
             // `Cushion.removePassenger`: the get-up sound for a rider that
             // left rather than one whose cushion was killed.
-            self.front.audio.play(
+            self.audio.play(
                 "minecraft:entity.cushion.get_up",
                 Some([c.position.x, c.position.y, c.position.z]),
                 1.0,
@@ -399,8 +425,8 @@ impl Game<'_> {
             return true;
         }
         let seat = c.seat();
-        if let Some(p) = self.sim.player.as_mut() {
-            self.sim.previous_position = p.position;
+        if let Some(p) = self.player.as_mut() {
+            self.previous_position = p.position;
             p.position = seat;
             p.velocity = Vec3::ZERO;
             p.fall_distance = 0.0;
@@ -418,7 +444,7 @@ impl Game<'_> {
         let Some(model) = self.cushion_model.as_ref() else {
             return;
         };
-        let sprites = &self.front.gui.atlas.sprites;
+        let sprites = &self.gui.atlas.sprites;
         for c in &self.cushions {
             let entity_start = out.len();
             let a = aabb(c.bounds());
@@ -461,31 +487,5 @@ impl Game<'_> {
             );
             self.cull_entity_vertices(out, entity_start);
         }
-    }
-}
-impl crate::game::Sim<'_> {
-    /// The cushion under the crosshair, its distance and the hit point.
-    pub(super) fn cushion_hit(&self) -> Option<(usize, f64, [f64; 3])> {
-        let eye = self.eye_position()?;
-        let dir = view_vector(self.yaw, self.pitch);
-        let reach: f64 = if self.creative { 5.0 } else { 3.0 };
-        let mut best: Option<(usize, f64, [f64; 3])> = None;
-        for (i, c) in self.cushions.iter().enumerate() {
-            let Some(d) = super::ray_box(eye, dir, reach, aabb(c.bounds())) else {
-                continue;
-            };
-            if best.is_none_or(|b| d < b.1) {
-                best = Some((i, d, std::array::from_fn(|k| eye[k] + dir[k] * d)));
-            }
-        }
-        best
-    }
-    /// `Cushion.destroyIfInFire`: a fire-tagged block inside the deflated box.
-    fn cushion_in_fire(&self, c: &Cushion) -> bool {
-        let bounds = aabb(c.bounds()).next_deflated();
-        blocks_in(bounds).any(|p| {
-            let facts = self.res.facts().get(self.world.block(p[0], p[1], p[2]));
-            self.res.items().block_in_tag("minecraft:fire", &facts.name)
-        })
     }
 }

@@ -174,7 +174,7 @@ impl Game<'_> {
                 continue;
             };
             let (Some(r), Some(part)) = (
-                self.front.gui.atlas.sprites.get(texture.as_str()),
+                self.gui.atlas.sprites.get(texture.as_str()),
                 assets.player.get(layer),
             ) else {
                 continue;
@@ -186,7 +186,7 @@ impl Game<'_> {
             // EquipmentLayerRenderer: the trim layer over the armour.
             if let Some(r) = stack
                 .and_then(|s| assets.trim_texture(&asset, kind, s))
-                .and_then(|t| self.front.gui.atlas.sprites.get(&t.sprite()))
+                .and_then(|t| self.gui.atlas.sprites.get(&t.sprite()))
             {
                 out.push((part, [r.u0, r.v0, r.u1, r.v1], 0xFFFF_FFFF));
             }
@@ -242,11 +242,11 @@ impl Game<'_> {
         for t in wanted {
             let name = t.sprite();
             // Entries the atlas no longer has (rebuilt by a resource reload) are free.
-            let sprites = &self.front.gui.atlas.sprites;
-            self.sim.trim_slots.retain(|(n, _)| sprites.contains_key(n));
-            if let Some(i) = self.sim.trim_slots.iter().position(|e| e.0 == name) {
-                let e = self.sim.trim_slots.remove(i);
-                self.sim.trim_slots.push(e);
+            let sprites = &self.gui.atlas.sprites;
+            self.trim_slots.retain(|(n, _)| sprites.contains_key(n));
+            if let Some(i) = self.trim_slots.iter().position(|e| e.0 == name) {
+                let e = self.trim_slots.remove(i);
+                self.trim_slots.push(e);
                 continue;
             }
             let Some((w, h, rgba)) = t.generate(&self.armor_stand_assets.root) else {
@@ -257,12 +257,11 @@ impl Game<'_> {
                 Some(free) => free,
                 None => {
                     let (old, slot) = self.trim_slots.remove(0);
-                    self.front.gui.atlas.sprites.remove(&old);
+                    self.gui.atlas.sprites.remove(&old);
                     slot
                 }
             };
             let Some(area) = self
-                .front
                 .gui
                 .atlas
                 .sprites
@@ -274,12 +273,9 @@ impl Game<'_> {
             if w > area.w || h > area.h {
                 continue;
             }
-            let (aw, ah) = (
-                self.front.gui.atlas.width as f32,
-                self.front.gui.atlas.height as f32,
-            );
+            let (aw, ah) = (self.gui.atlas.width as f32, self.gui.atlas.height as f32);
             let (x, y) = ((area.u0 * aw).round(), (area.v0 * ah).round());
-            self.front.map_patches.push(horizon_client::font::Patch {
+            self.map_patches.push(horizon_client::font::Patch {
                 x: x as u32,
                 y: y as u32,
                 width: w,
@@ -294,7 +290,7 @@ impl Game<'_> {
                 w,
                 h,
             };
-            self.front.gui.atlas.sprites.insert(name.clone(), rect);
+            self.gui.atlas.sprites.insert(name.clone(), rect);
             self.trim_slots.push((name, slot));
         }
     }
@@ -343,7 +339,7 @@ impl Game<'_> {
             return false;
         }
         self.next_entity += 1;
-        self.front.audio.play(
+        self.audio.play(
             "minecraft:entity.armor_stand.place",
             Some([foot.x, foot.y, foot.z]),
             0.75,
@@ -355,6 +351,54 @@ impl Game<'_> {
             self.consume_held();
         }
         true
+    }
+    /// The armor stand under the crosshair, its distance and the hit point.
+    pub(super) fn armor_stand_hit(&self) -> Option<(usize, f64, [f64; 3])> {
+        let eye = self.eye_position()?;
+        let dir = view_vector(self.yaw, self.pitch);
+        let reach: f64 = if self.creative { 5.0 } else { 3.0 };
+        let mut best: Option<(usize, f64, [f64; 3])> = None;
+        for (i, a) in self.armor_stands.iter().enumerate() {
+            if a.marker {
+                continue;
+            }
+            let b = a.bounds();
+            let (lo, hi) = (b.min_position(), b.max_position());
+            let (lo, hi) = ([lo.x, lo.y, lo.z], [hi.x, hi.y, hi.z]);
+            let (mut t0, mut t1) = (0.0f64, reach);
+            let mut hit = true;
+            for k in 0..3 {
+                if dir[k].abs() < 1e-9 {
+                    hit &= eye[k] >= lo[k] && eye[k] <= hi[k];
+                    continue;
+                }
+                let (mut ta, mut tb) = ((lo[k] - eye[k]) / dir[k], (hi[k] - eye[k]) / dir[k]);
+                if ta > tb {
+                    std::mem::swap(&mut ta, &mut tb);
+                }
+                t0 = t0.max(ta);
+                t1 = t1.min(tb);
+            }
+            if hit && t0 <= t1 && best.is_none_or(|b| t0 < b.1) {
+                best = Some((i, t0, std::array::from_fn(|k| eye[k] + dir[k] * t0)));
+            }
+        }
+        best
+    }
+    fn equipment_slot(&self, stack: &ItemStack) -> usize {
+        match self
+            .res
+            .items()
+            .get(&stack.item)
+            .and_then(|i| i.equip_slot.as_deref())
+        {
+            Some("feet") => 2,
+            Some("legs") => 3,
+            Some("chest") => 4,
+            Some("head") => 5,
+            Some("offhand") => 1,
+            _ => 0,
+        }
     }
     /// `ArmorStand.interactAt`.
     pub(super) fn interact_armor_stand(&mut self) -> bool {
@@ -452,23 +496,20 @@ impl Game<'_> {
         let at = [at.x, at.y, at.z];
         if self.creative {
             self.armor_stands.remove(i);
-            self.front
-                .audio
+            self.audio
                 .play("minecraft:entity.armor_stand.break", Some(at), 1.0, 1.0);
             return true;
         }
         if time - self.armor_stands[i].last_hit > 5 {
             // First hit: entity event 32, the wobble and the hit sound.
             self.armor_stands[i].last_hit = time;
-            self.front
-                .audio
+            self.audio
                 .play("minecraft:entity.armor_stand.hit", Some(at), 0.3, 1.0);
             return true;
         }
         // brokenByPlayer: the stand item, then brokenByAnything: the equipment.
         let a = self.armor_stands.remove(i);
-        self.front
-            .audio
+        self.audio
             .play("minecraft:entity.armor_stand.break", Some(at), 1.0, 1.0);
         let center = [at[0], at[1] + if a.small { 0.4875 } else { 0.9875 }, at[2]];
         let stand = ItemStack {
@@ -494,23 +535,19 @@ impl Game<'_> {
     }
     pub(super) fn tick_armor_stands(&mut self) {
         let mut scene = horizon_client::collisions::SceneCollisions {
-            world: &self.sim.world,
-            binding: self.sim.collision,
+            world: &self.world,
+            binding: self.collision,
             subject: None,
         };
         let mut dead = Vec::new();
         // ServerLevel.tick: only entities in entity-ticking chunks tick.
         let ticking = self.entity_ticking_area();
-        for (i, a) in self.sim.armor_stands.iter_mut().enumerate() {
+        for (i, a) in self.armor_stands.iter_mut().enumerate() {
             if !ticking(a.position.x.floor() as i32, a.position.z.floor() as i32) {
                 continue;
             }
             a.tick(&mut scene);
-            if !a.environment_tick(
-                &self.sim.world,
-                self.sim.res.facts(),
-                self.sim.pack.assets.registry,
-            ) {
+            if !a.environment_tick(&self.world, self.res.facts(), self.pack.assets.registry) {
                 dead.push(i);
             }
         }
@@ -521,8 +558,7 @@ impl Game<'_> {
             for stack in drops {
                 self.pop_resource(pos, stack);
             }
-            self.front
-                .audio
+            self.audio
                 .play("minecraft:entity.armor_stand.break", Some(at), 1.0, 1.0);
             self.world.modified.insert((pos[0] >> 4, pos[2] >> 4));
         }
@@ -535,7 +571,7 @@ impl Game<'_> {
         out: &mut Vec<Vertex>,
     ) {
         let assets = &self.armor_stand_assets;
-        let sprites = &self.front.gui.atlas.sprites;
+        let sprites = &self.gui.atlas.sprites;
         let uv_of = |name: &str| sprites.get(name).map(|r| [r.u0, r.v0, r.u1, r.v1]);
         let Some(wood) = uv_of("entity/armorstand/armorstand") else {
             return;
@@ -707,56 +743,6 @@ impl Game<'_> {
                 }
             }
             self.cull_entity_vertices(out, entity_start);
-        }
-    }
-}
-impl crate::game::Sim<'_> {
-    /// The armor stand under the crosshair, its distance and the hit point.
-    pub(super) fn armor_stand_hit(&self) -> Option<(usize, f64, [f64; 3])> {
-        let eye = self.eye_position()?;
-        let dir = view_vector(self.yaw, self.pitch);
-        let reach: f64 = if self.creative { 5.0 } else { 3.0 };
-        let mut best: Option<(usize, f64, [f64; 3])> = None;
-        for (i, a) in self.armor_stands.iter().enumerate() {
-            if a.marker {
-                continue;
-            }
-            let b = a.bounds();
-            let (lo, hi) = (b.min_position(), b.max_position());
-            let (lo, hi) = ([lo.x, lo.y, lo.z], [hi.x, hi.y, hi.z]);
-            let (mut t0, mut t1) = (0.0f64, reach);
-            let mut hit = true;
-            for k in 0..3 {
-                if dir[k].abs() < 1e-9 {
-                    hit &= eye[k] >= lo[k] && eye[k] <= hi[k];
-                    continue;
-                }
-                let (mut ta, mut tb) = ((lo[k] - eye[k]) / dir[k], (hi[k] - eye[k]) / dir[k]);
-                if ta > tb {
-                    std::mem::swap(&mut ta, &mut tb);
-                }
-                t0 = t0.max(ta);
-                t1 = t1.min(tb);
-            }
-            if hit && t0 <= t1 && best.is_none_or(|b| t0 < b.1) {
-                best = Some((i, t0, std::array::from_fn(|k| eye[k] + dir[k] * t0)));
-            }
-        }
-        best
-    }
-    fn equipment_slot(&self, stack: &ItemStack) -> usize {
-        match self
-            .res
-            .items()
-            .get(&stack.item)
-            .and_then(|i| i.equip_slot.as_deref())
-        {
-            Some("feet") => 2,
-            Some("legs") => 3,
-            Some("chest") => 4,
-            Some("head") => 5,
-            Some("offhand") => 1,
-            _ => 0,
         }
     }
 }
@@ -934,7 +920,7 @@ impl Game<'_> {
                 &profile,
                 false,
                 pose,
-                &self.front.gui.atlas.sprites,
+                &self.gui.atlas.sprites,
                 &self.item_host(),
                 &mut sink,
             );

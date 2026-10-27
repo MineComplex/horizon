@@ -34,10 +34,85 @@ impl Game<'_> {
             self.stabbed.retain(|(who, _), _| *who != actor);
             if let Some(p) = &self.player {
                 let at = [p.position.x, p.position.y, p.position.z];
-                self.front.audio.play(kinetic.sound, Some(at), 1.0, 1.0);
+                self.audio.play(kinetic.sound, Some(at), 1.0, 1.0);
             }
         }
         true
+    }
+
+    /// `ServerPlayer.getKnownMovement` of the acting player: what they moved
+    /// in the last tick. A guest's comes with their moves.
+    fn known_player_movement(&self) -> Vec3 {
+        if self.lan_acting.is_some() {
+            return self.known_movement;
+        }
+        self.player
+            .as_ref()
+            .map_or(Vec3::ZERO, |p| p.position.subtract(self.previous_position))
+    }
+
+    /// `Entity.getKnownSpeed` of the mob at `index`, per second: its root
+    /// vehicle's (`KineticWeapon.getMotion`).
+    fn mob_speed(&self, index: usize) -> Vec3 {
+        let mut mob = &self.mobs[index];
+        while let Some(vehicle) = mob
+            .extra
+            .mount
+            .and_then(|v| self.mobs.iter().find(|m| m.id == v))
+        {
+            mob = vehicle;
+        }
+        mob.position.subtract(mob.previous).scale(20.0)
+    }
+
+    /// `Level.clip` with COLLIDER shapes and no fluids: where the segment
+    /// first meets a block, if it does (tall grass lets a stab through).
+    fn clip_collider(&self, from: Vec3, to: Vec3) -> Option<Vec3> {
+        let mut scene = SceneCollisions {
+            world: &self.world,
+            binding: self.collision,
+            subject: None,
+        };
+        traverse_blocks(from, to, 512, |p: BlockPos| {
+            let state = self.world.block(p.x, p.y, p.z);
+            if self.res.facts().is_air(state) {
+                return None;
+            }
+            let shape = self
+                .collision
+                .collision_shape(&mut scene, state, [p.x, p.y, p.z])
+                .ok()?;
+            shape.clip(from, to, p).map(|hit| hit.location)
+        })
+        .ok()
+        .flatten()
+    }
+
+    /// `ProjectileUtil.getHitEntitiesAlong` for the mobs: those whose box the
+    /// segment `from`..`to` meets, or comes within the margin of with no
+    /// block between.
+    fn mobs_along(&self, from: Vec3, to: Vec3, margin: f64) -> Vec<usize> {
+        let grow = Vec3::new(margin, margin, margin);
+        let mut hits = Vec::new();
+        for (i, m) in self.mobs.iter().enumerate() {
+            // PiercingWeapon.canHitEntity: alive, and not the vehicle ridden.
+            if !m.alive() || m.removed || self.riding == Some(m.id) {
+                continue;
+            }
+            let bounds: Aabb = m.bounds();
+            let hit = bounds.contains(from)
+                || bounds.clip(from, to).is_some()
+                || (margin > 0.0
+                    && bounds.inflate(grow).clip(from, to).is_some_and(|outside| {
+                        let centre = bounds.center();
+                        let toward = self.clip_collider(outside, centre).unwrap_or(centre);
+                        bounds.clip(outside, toward).is_some()
+                    }));
+            if hit {
+                hits.push(i);
+            }
+        }
+        hits
     }
 
     /// `KineticWeapon.damageEntities`: one tick of the spear in use, `ticks`
@@ -103,7 +178,7 @@ impl Game<'_> {
         }
         if affected {
             // Level.broadcastEntityEvent(player, 2), felt by the player too.
-            if self.front.audio.capture.is_some() {
+            if self.audio.capture.is_some() {
                 self.lan_kinetic_hits.push(actor);
             }
             let who = actor.map_or(OWN, |conn| conn as i32);
@@ -190,10 +265,10 @@ impl Game<'_> {
             );
         }
         if hurt {
-            self.sim.last_hurt_by_player.insert(id, self.sim.lan_acting);
+            self.last_hurt_by_player.insert(id, self.lan_acting);
         }
-        if let Some(p) = self.sim.player.as_mut()
-            && !self.sim.creative
+        if let Some(p) = self.player.as_mut()
+            && !self.creative
         {
             p.cause_food_exhaustion(0.1);
         }
@@ -211,10 +286,16 @@ impl Game<'_> {
             .is_none_or(|&t| now - t > HIT_FEEDBACK_TICKS)
         {
             self.kinetic_feedback.insert(entity, now);
-            self.front
-                .audio
+            self.audio
                 .play_unshared(kinetic.hit_sound, Some(at), 1.0, 1.0);
         }
+    }
+
+    /// `getTicksSinceLastKineticHitFeedback` of this window's player.
+    pub(super) fn kinetic_hit_ticks(&self, partial: f32) -> f32 {
+        self.kinetic_feedback
+            .get(&OWN)
+            .map_or(0.0, |&t| (self.world.game_time - t) as f32 + partial)
     }
 
     /// `LivingEntity.handleEntityEvent(2)` on a server's client: the
@@ -245,84 +326,5 @@ impl Game<'_> {
         if let (Some(kinetic), Some(at)) = (item.as_deref().and_then(Kinetic::of), at) {
             self.kinetic_hit_feedback(if own { OWN } else { id }, &kinetic, [at.x, at.y, at.z]);
         }
-    }
-}
-impl crate::game::Sim<'_> {
-    /// `ServerPlayer.getKnownMovement` of the acting player: what they moved
-    /// in the last tick. A guest's comes with their moves.
-    fn known_player_movement(&self) -> Vec3 {
-        if self.lan_acting.is_some() {
-            return self.known_movement;
-        }
-        self.player
-            .as_ref()
-            .map_or(Vec3::ZERO, |p| p.position.subtract(self.previous_position))
-    }
-    /// `Entity.getKnownSpeed` of the mob at `index`, per second: its root
-    /// vehicle's (`KineticWeapon.getMotion`).
-    fn mob_speed(&self, index: usize) -> Vec3 {
-        let mut mob = &self.mobs[index];
-        while let Some(vehicle) = mob
-            .extra
-            .mount
-            .and_then(|v| self.mobs.iter().find(|m| m.id == v))
-        {
-            mob = vehicle;
-        }
-        mob.position.subtract(mob.previous).scale(20.0)
-    }
-    /// `Level.clip` with COLLIDER shapes and no fluids: where the segment
-    /// first meets a block, if it does (tall grass lets a stab through).
-    fn clip_collider(&self, from: Vec3, to: Vec3) -> Option<Vec3> {
-        let mut scene = SceneCollisions {
-            world: &self.world,
-            binding: self.collision,
-            subject: None,
-        };
-        traverse_blocks(from, to, 512, |p: BlockPos| {
-            let state = self.world.block(p.x, p.y, p.z);
-            if self.res.facts().is_air(state) {
-                return None;
-            }
-            let shape = self
-                .collision
-                .collision_shape(&mut scene, state, [p.x, p.y, p.z])
-                .ok()?;
-            shape.clip(from, to, p).map(|hit| hit.location)
-        })
-        .ok()
-        .flatten()
-    }
-    /// `ProjectileUtil.getHitEntitiesAlong` for the mobs: those whose box the
-    /// segment `from`..`to` meets, or comes within the margin of with no
-    /// block between.
-    fn mobs_along(&self, from: Vec3, to: Vec3, margin: f64) -> Vec<usize> {
-        let grow = Vec3::new(margin, margin, margin);
-        let mut hits = Vec::new();
-        for (i, m) in self.mobs.iter().enumerate() {
-            // PiercingWeapon.canHitEntity: alive, and not the vehicle ridden.
-            if !m.alive() || m.removed || self.riding == Some(m.id) {
-                continue;
-            }
-            let bounds: Aabb = m.bounds();
-            let hit = bounds.contains(from)
-                || bounds.clip(from, to).is_some()
-                || (margin > 0.0
-                    && bounds.inflate(grow).clip(from, to).is_some_and(|outside| {
-                        let centre = bounds.center();
-                        let toward = self.clip_collider(outside, centre).unwrap_or(centre);
-                        bounds.clip(outside, toward).is_some()
-                    }));
-            if hit {
-                hits.push(i);
-            }
-        }
-        hits
-    }
-    /// `getTicksSinceLastKineticHitFeedback` of this window's player.
-    pub(super) fn kinetic_hit_ticks(&self, partial: f32) -> f32 {
-        self.kinetic_feedback
-            .get(&OWN)
-            .map_or(0.0, |&t| (self.world.game_time - t) as f32 + partial)
     }
 }

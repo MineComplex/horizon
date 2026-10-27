@@ -67,7 +67,7 @@ impl Game<'_> {
             self.brush_dust(hit, slot == super::shield::OFFHAND_SLOT);
         }
         let at = hit.pos.map(|v| f64::from(v) + 0.5);
-        self.front.audio.play(sound, Some(at), 1.0, 1.0);
+        self.audio.play(sound, Some(at), 1.0, 1.0);
         if brushable && self.brush_block(hit.pos, hit.face) {
             self.damage_held(1);
         }
@@ -134,6 +134,26 @@ impl Game<'_> {
             self.set_dusted(pos, after);
         }
         false
+    }
+
+    /// `BrushableBlockEntity.unpackLootTable`: the table's roll becomes the
+    /// block entity's item.
+    fn unpack_brush_loot(&mut self, pos: [i32; 3]) {
+        let Some(mut tag) = spill::saved_entity(&self.world, pos) else {
+            return;
+        };
+        if tag.get("LootTable").is_none() {
+            return;
+        }
+        let loot = horizon_client::structure_blocks::loot_data(&self.options.resources);
+        decorated_pot::unpack_loot(
+            &mut tag,
+            loot.as_deref(),
+            &mut self.world.random,
+            &mut self.rand_sequences,
+            self.level.seed,
+        );
+        spill::put_saved_entity(&mut self.world, pos, tag);
     }
 
     /// `BrushableBlockEntity.brushingCompleted`: the item drops out of the
@@ -219,29 +239,8 @@ impl Game<'_> {
         if !sound.is_empty() {
             let at = pos.map(|v| f64::from(v) + 0.5);
             // Each client plays it from the event itself.
-            self.front.audio.play_unshared(sound, Some(at), 1.0, 1.0);
+            self.audio.play_unshared(sound, Some(at), 1.0, 1.0);
         }
         self.destroy_particles(pos, state);
-    }
-}
-impl crate::game::Sim<'_> {
-    /// `BrushableBlockEntity.unpackLootTable`: the table's roll becomes the
-    /// block entity's item.
-    fn unpack_brush_loot(&mut self, pos: [i32; 3]) {
-        let Some(mut tag) = spill::saved_entity(&self.world, pos) else {
-            return;
-        };
-        if tag.get("LootTable").is_none() {
-            return;
-        }
-        let loot = horizon_client::structure_blocks::loot_data(&self.options.resources);
-        decorated_pot::unpack_loot(
-            &mut tag,
-            loot.as_deref(),
-            &mut self.world.random,
-            &mut self.rand_sequences,
-            self.level.seed,
-        );
-        spill::put_saved_entity(&mut self.world, pos, tag);
     }
 }

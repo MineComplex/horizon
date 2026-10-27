@@ -32,50 +32,67 @@ fn attack_range_contains(range: &serde_json::Value, distance: f64, creative: boo
 impl Game<'_> {
     /// Opening a screen stops breaking before the next game tick (which may pause).
     pub(super) fn stop_mining(&mut self) {
-        let mut destroying = std::mem::take(&mut self.front.clicks.destroying);
+        let mut destroying = std::mem::take(&mut self.clicks.destroying);
         destroying.stop(&mut GameHands {
             game: self,
             error: None,
         });
-        self.front.clicks.destroying = destroying;
+        self.clicks.destroying = destroying;
         self.attack_clicks = 0;
         self.request_remote_mining_stop();
         self.mining = None;
+    }
+    /// `LivingEntity.swing` with `getModifiedSwingDuration`.
+    pub(super) fn swing_hand(&mut self, hand: Hand, animation: SwingAnimation) {
+        let effects = &self.potions.effects;
+        let dig_speed = effects
+            .amplifier("haste")
+            .max(effects.amplifier("conduit_power"));
+        let fatigue = effects.amplifier("mining_fatigue");
+        let duration = swing_duration(animation, dig_speed, fatigue);
+        if self.swing.start_if_able(hand, animation, duration) {
+            self.swings_started += 1;
+        }
     }
     /// `swing(hand)` for the hand that acts, with the default animation.
     pub(super) fn swing_arm(&mut self) {
         let hand = self.hand;
         self.swing_hand(hand, SwingAnimation::DEFAULT);
     }
+    /// `Player.resetAttackStrengthTicker`.
+    pub(super) fn reset_attack_strength(&mut self) {
+        self.attack_ticks = 0;
+        self.hand_strength.reset();
+    }
     /// The attack and use part of `Minecraft.tick` for the local player:
     /// attack clicks since the last tick and the held attack button.
     pub(super) fn tick_local_hand(&mut self) -> Result<()> {
         let attack_clicks = std::mem::take(&mut self.attack_clicks);
         if self.screen == Screen::Playing && self.title.is_none() && self.sleeping.is_none() {
-            let mut clicks = std::mem::take(&mut self.front.clicks);
+            let mut clicks = std::mem::take(&mut self.clicks);
             // keyAttack.isDown(); playing implies the grabbed mouse here
             // (scripts under --control hold buttons without grabbing it).
-            let down = self.front.left;
-            let ticks = self.front.clicks.destroying.ticks;
+            let down = self.left;
+            let ticks = self.clicks.destroying.ticks;
             let mut world = GameHands {
                 game: self,
                 error: None,
             };
             clicks.tick(&mut world, attack_clicks, 0, down, false);
             let error = world.error.take();
-            self.front.clicks = clicks;
+            self.clicks = clicks;
             if let Some(e) = error {
                 return Err(e);
             }
             // A tick of breaking: the hit sound every fourth tick and the
             // cracking particles.
-            let d = &self.front.clicks.destroying;
+            let d = &self.clicks.destroying;
             if d.active && d.ticks > ticks {
                 let (pos, first) = (d.pos, (d.ticks as u32 - 1).is_multiple_of(4));
                 let state = self.world.block(pos[0], pos[1], pos[2]);
                 if first {
                     let sounds = self.res.facts().get(state).sounds.clone();
-                    self.front.audio.play(
+                    self.audio.play(
                         &sounds.hit,
                         Some(pos.map(|v| f64::from(v) + 0.5)),
                         (sounds.volume + 1.0) / 8.0,
@@ -88,15 +105,50 @@ impl Game<'_> {
             }
         } else {
             // Minecraft.tick: a screen keeps the attack from starting.
-            self.front.clicks.miss_time = 10000;
+            self.clicks.miss_time = 10000;
         }
-        let d = &self.front.clicks.destroying;
+        let d = &self.clicks.destroying;
         self.mining = d.active.then_some(Mining {
             pos: d.pos,
             progress: d.progress,
             ticks: d.ticks as u32,
         });
         Ok(())
+    }
+    /// `BlockBehaviour.getDestroyProgress` with `Player.getDestroySpeed`.
+    pub(super) fn destroy_progress(&self, pos: [i32; 3]) -> f32 {
+        let state = self.world.block(pos[0], pos[1], pos[2]);
+        let facts = self.res.facts().get(state);
+        if facts.hardness == -1.0 {
+            return 0.0;
+        }
+        let held = self.held();
+        let mut speed = self.res.items().mining_speed(held, &facts.name);
+        speed = self.modify_destroy_speed(speed);
+        if let Some(eye) = self.eye_position()
+            && self
+                .res
+                .facts()
+                .get(self.world.block(
+                    eye[0].floor() as i32,
+                    eye[1].floor() as i32,
+                    eye[2].floor() as i32,
+                ))
+                .fluid
+                == horizon_client::blocks::Fluid::Water
+        {
+            speed *= self.submerged_mining_speed();
+        }
+        if self.player.as_ref().is_some_and(|p| !p.ground.on_ground) {
+            speed /= 5.0;
+        }
+        let harvest = !facts.requires_tool || self.res.items().correct_for_drops(held, &facts.name);
+        speed / facts.hardness / if harvest { 30.0 } else { 100.0 }
+    }
+    /// A key for the main-hand stack (`destroyingItem`): its item and components.
+    pub(super) fn main_hand_key(&self) -> String {
+        self.held()
+            .map_or(String::new(), |s| format!("{} {:?}", s.item, s.extra))
     }
     /// Whether an attack would hit an entity rather than the block behind
     /// it: the crosshair's `EntityHitResult`.
@@ -124,7 +176,7 @@ impl Game<'_> {
                 winit::keyboard::KeyCode::KeyD,
             ]
             .iter()
-            .any(|k| self.front.keys.contains(k))
+            .any(|k| self.keys.contains(k))
     }
     /// `MultiPlayerGameMode.startUseItem`'s bookkeeping around the game's
     /// use: nothing starts while a block is being broken or the hands are
@@ -132,7 +184,7 @@ impl Game<'_> {
     /// swung and spent (or, with infinite materials, kept) the item, or that
     /// started using it.
     pub(super) fn use_with_hand(&mut self) -> Result<()> {
-        if self.front.clicks.destroying.active || self.hands_busy() {
+        if self.clicks.destroying.active || self.hands_busy() {
             return Ok(());
         }
         let before = [self.stack_in(self.selected).cloned(), self.offhand.clone()];
@@ -151,7 +203,7 @@ impl Game<'_> {
             _ => false,
         };
         if (swung && spent) || (!using && self.using.is_some() && after.is_some()) {
-            self.front.heights.item_used(hand);
+            self.heights.item_used(hand);
         }
         Ok(())
     }
@@ -161,7 +213,7 @@ impl Game<'_> {
     pub(super) fn tick_hand(&mut self) {
         // LocalPlayer.applyInput (the camera is the player's own).
         if self.player.is_some() {
-            self.front.sway.tick(self.pitch, self.yaw);
+            self.sway.tick(self.pitch, self.yaw);
         }
         self.swing.tick();
         let main = self.inventory[self.selected].clone();
@@ -195,7 +247,7 @@ impl Game<'_> {
             changed[h] = !same;
         }
         let speed = self.main_hand_attack_speed();
-        let replace = self.front.heights.tick(
+        let replace = self.heights.tick(
             self.hands_busy(),
             self.hand_strength.swap_scale(1.0, speed),
             changed,
@@ -300,60 +352,6 @@ impl Game<'_> {
             }
             _ => name.ends_with("shulker_box"),
         }
-    }
-}
-impl crate::game::Sim<'_> {
-    /// `LivingEntity.swing` with `getModifiedSwingDuration`.
-    pub(super) fn swing_hand(&mut self, hand: Hand, animation: SwingAnimation) {
-        let effects = &self.potions.effects;
-        let dig_speed = effects
-            .amplifier("haste")
-            .max(effects.amplifier("conduit_power"));
-        let fatigue = effects.amplifier("mining_fatigue");
-        let duration = swing_duration(animation, dig_speed, fatigue);
-        if self.swing.start_if_able(hand, animation, duration) {
-            self.swings_started += 1;
-        }
-    }
-    /// `Player.resetAttackStrengthTicker`.
-    pub(super) fn reset_attack_strength(&mut self) {
-        self.attack_ticks = 0;
-        self.hand_strength.reset();
-    }
-    /// `BlockBehaviour.getDestroyProgress` with `Player.getDestroySpeed`.
-    pub(super) fn destroy_progress(&self, pos: [i32; 3]) -> f32 {
-        let state = self.world.block(pos[0], pos[1], pos[2]);
-        let facts = self.res.facts().get(state);
-        if facts.hardness == -1.0 {
-            return 0.0;
-        }
-        let held = self.held();
-        let mut speed = self.res.items().mining_speed(held, &facts.name);
-        speed = self.modify_destroy_speed(speed);
-        if let Some(eye) = self.eye_position()
-            && self
-                .res
-                .facts()
-                .get(self.world.block(
-                    eye[0].floor() as i32,
-                    eye[1].floor() as i32,
-                    eye[2].floor() as i32,
-                ))
-                .fluid
-                == horizon_client::blocks::Fluid::Water
-        {
-            speed *= self.submerged_mining_speed();
-        }
-        if self.player.as_ref().is_some_and(|p| !p.ground.on_ground) {
-            speed /= 5.0;
-        }
-        let harvest = !facts.requires_tool || self.res.items().correct_for_drops(held, &facts.name);
-        speed / facts.hardness / if harvest { 30.0 } else { 100.0 }
-    }
-    /// A key for the main-hand stack (`destroyingItem`): its item and components.
-    pub(super) fn main_hand_key(&self) -> String {
-        self.held()
-            .map_or(String::new(), |s| format!("{} {:?}", s.item, s.extra))
     }
     /// `Attributes.ATTACK_SPEED` with the main-hand item's modifier and the
     /// Haste and Mining Fatigue modifiers (`ADD_MULTIPLIED_TOTAL`), clamped to
@@ -542,7 +540,7 @@ impl HandWorld for GameHands<'_, '_> {
         UseResult::Pass
     }
     fn item_used(&mut self, hand: Hand) {
-        self.game.front.heights.item_used(hand);
+        self.game.heights.item_used(hand);
     }
     fn release_using(&mut self) {}
 }

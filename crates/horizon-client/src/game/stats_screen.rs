@@ -172,14 +172,67 @@ fn tabs(w: f32) -> (f32, f32) {
 const TAB_H: f32 = 24.0;
 const FOOTER: f32 = 33.0;
 impl Game<'_> {
+    pub(super) fn open_stats(&mut self) {
+        self.load_stats();
+        // StatsScreen.init: a server's client asks for its statistics.
+        if self.remote.is_some() {
+            self.send(horizon_protocol::packets::play::Serverbound::ClientCommand(
+                horizon_protocol::packets::play::ClientCommand { action: 1 },
+            ));
+        }
+        self.stats_ui = StatsUi::default();
+        self.screen = Screen::Stats;
+    }
     /// The list's scrollbar column (right of the 280 pixel list) and the
     /// pixels it scrolls.
     fn stats_bar(w: f32) -> f32 {
         ((w - 280.0) / 2.0).floor() + 280.0 + 6.0
     }
+    fn stats_content(&self) -> f32 {
+        let (row_h, rows) = self.stats_rows();
+        row_h * rows as f32 + 4.0
+    }
+    fn stats_rows(&self) -> (f32, usize) {
+        match self.stats_ui.tab {
+            0 => (14.0, CUSTOM.len()),
+            1 => (22.0, self.stat_items().len() + 1),
+            _ => (36.0, self.stat_mobs().len()),
+        }
+    }
+    /// Items (and block items) with any non-zero column.
+    fn stat_items(&self) -> Vec<String> {
+        let mut items: Vec<String> = Vec::new();
+        for (ty, _) in COLUMNS {
+            if let Some(m) = self.stats.values.get(&format!("minecraft:{ty}")) {
+                for (k, v) in m {
+                    if *v > 0 && k != "minecraft:air" && !items.contains(k) {
+                        items.push(k.clone());
+                    }
+                }
+            }
+        }
+        if let Some((col, order)) = self.stats_ui.sort {
+            let ty = COLUMNS[col].0;
+            items.sort_by_key(|i| self.stats.get(ty, i) * -order);
+        }
+        items
+    }
+    fn stat_mobs(&self) -> Vec<String> {
+        let mut mobs: Vec<String> = Vec::new();
+        for ty in ["killed", "killed_by"] {
+            if let Some(m) = self.stats.values.get(&format!("minecraft:{ty}")) {
+                for (k, v) in m {
+                    if *v > 0 && !mobs.contains(k) {
+                        mobs.push(k.clone());
+                    }
+                }
+            }
+        }
+        mobs
+    }
     pub(super) fn draw_stats(&mut self, batch: &mut HudBatch) {
         let (w, h) = (batch.width, batch.height);
-        let atlas = &self.front.gui.atlas;
+        let atlas = &self.gui.atlas;
         ui::menu_background(batch, atlas, 0.0, 0.0, w, h, true);
         let (top, bottom) = (TAB_H, h - FOOTER);
         ui::separators(batch, atlas, top, bottom, true);
@@ -191,7 +244,7 @@ impl Game<'_> {
         {
             let x = x0 + tw * i as f32;
             let selected = self.stats_ui.tab == i;
-            let hover = ui::hovered(self.front.cursor, x, 0.0, tw, TAB_H);
+            let hover = ui::hovered(self.cursor, x, 0.0, tw, TAB_H);
             let sprite = match (selected, hover) {
                 (true, true) => "gui/sprites/widget/tab_selected_highlighted",
                 (true, false) => "gui/sprites/widget/tab_selected",
@@ -217,9 +270,9 @@ impl Game<'_> {
         // The list.
         let (row_h, rows) = self.stats_rows();
         let content = row_h * rows as f32 + 4.0;
-        self.sim.stats_ui.scroll.clamp(top, bottom, content);
+        self.stats_ui.scroll.clamp(top, bottom, content);
         let left = ((w - 280.0) / 2.0).floor();
-        let scroll = self.sim.stats_ui.scroll.amount;
+        let scroll = self.stats_ui.scroll.amount;
         let row_y = |i: usize| top + 4.0 + i as f32 * row_h - scroll;
         let visible = |y: f32| y >= top && y + row_h <= bottom;
         match self.stats_ui.tab {
@@ -262,7 +315,7 @@ impl Game<'_> {
                 if visible(y) {
                     for (c, (_, sprite)) in COLUMNS.iter().enumerate() {
                         let x = left + 75.0 + 40.0 * c as f32 - 18.0;
-                        let hover = ui::hovered(self.front.cursor, x, y + 1.0, 18.0, 18.0);
+                        let hover = ui::hovered(self.cursor, x, y + 1.0, 18.0, 18.0);
                         let bg = if hover {
                             "gui/sprites/statistics/header"
                         } else {
@@ -270,7 +323,7 @@ impl Game<'_> {
                         };
                         batch.sprite(atlas, bg, x, y + 1.0);
                         batch.sprite(atlas, sprite, x, y + 1.0);
-                        if let Some((sc, order)) = self.sim.stats_ui.sort
+                        if let Some((sc, order)) = self.stats_ui.sort
                             && sc == c
                         {
                             let s = if order < 0 {
@@ -289,13 +342,13 @@ impl Game<'_> {
                     }
                     let stack = ItemStack::new(item, 1);
                     batch.sprite(
-                        &self.front.gui.atlas,
+                        &self.gui.atlas,
                         "gui/sprites/container/slot",
                         left + 1.0,
                         y + 1.0,
                     );
                     self.draw_item(batch, &stack, left + 2.0, y + 2.0);
-                    let atlas = &self.front.gui.atlas;
+                    let atlas = &self.gui.atlas;
                     let color = if (i + 1) % 2 == 0 {
                         u32::MAX
                     } else {
@@ -360,7 +413,7 @@ impl Game<'_> {
                 }
             }
         }
-        let atlas = &self.front.gui.atlas;
+        let atlas = &self.gui.atlas;
         ui::scrollbar(
             batch,
             atlas,
@@ -373,9 +426,9 @@ impl Game<'_> {
         self.draw_stats_footer(batch, w, h);
     }
     fn draw_stats_footer(&self, batch: &mut HudBatch, w: f32, h: f32) {
-        let atlas = &self.front.gui.atlas;
+        let atlas = &self.gui.atlas;
         let (bx, by) = ((w / 2.0 - 100.0).floor(), h - FOOTER + 6.0);
-        let hover = ui::hovered(self.front.cursor, bx, by, 200.0, 20.0);
+        let hover = ui::hovered(self.cursor, bx, by, 200.0, 20.0);
         ui::button(
             batch,
             atlas,
@@ -397,26 +450,24 @@ impl Game<'_> {
         let (w, h) = (b.width, b.height);
         let (x0, tw) = tabs(w);
         for i in 0..3 {
-            if ui::hovered(self.front.cursor, x0 + tw * i as f32, 0.0, tw, TAB_H)
+            if ui::hovered(self.cursor, x0 + tw * i as f32, 0.0, tw, TAB_H)
                 && self.stats_ui.tab != i
             {
                 self.stats_ui.tab = i;
                 self.stats_ui.scroll.amount = 0.0;
-                self.front
-                    .audio
+                self.audio
                     .play("minecraft:ui.button.click", None, 0.25, 1.0);
                 return;
             }
         }
         if ui::hovered(
-            self.front.cursor,
+            self.cursor,
             (w / 2.0 - 100.0).floor(),
             h - FOOTER + 6.0,
             200.0,
             20.0,
         ) {
-            self.front
-                .audio
+            self.audio
                 .play("minecraft:ui.button.click", None, 0.25, 1.0);
             self.screen = Screen::Paused;
             return;
@@ -426,15 +477,14 @@ impl Game<'_> {
             let y = TAB_H + 4.0 - self.stats_ui.scroll.amount;
             for c in 0..COLUMNS.len() {
                 let x = left + 75.0 + 40.0 * c as f32 - 18.0;
-                if ui::hovered(self.front.cursor, x, y + 1.0, 18.0, 18.0) {
+                if ui::hovered(self.cursor, x, y + 1.0, 18.0, 18.0) {
                     // sortByColumn: descending, ascending, off.
                     self.stats_ui.sort = match self.stats_ui.sort {
                         Some((sc, -1)) if sc == c => Some((c, 1)),
                         Some((sc, _)) if sc == c => None,
                         _ => Some((c, -1)),
                     };
-                    self.front
-                        .audio
+                    self.audio
                         .play("minecraft:ui.button.click", None, 0.25, 1.0);
                 }
             }
@@ -454,80 +504,20 @@ impl Game<'_> {
         let b = HudBatch::new(size);
         let (w, h) = (b.width, b.height);
         let content = self.stats_content();
-        self.sim.stats_ui.scroll.press(
-            self.front.cursor,
-            Self::stats_bar(w),
-            TAB_H,
-            h - FOOTER,
-            content,
-        )
+        self.stats_ui
+            .scroll
+            .press(self.cursor, Self::stats_bar(w), TAB_H, h - FOOTER, content)
     }
     /// The pointer moved while the scrollbar is held.
     pub(super) fn stats_drag(&mut self) {
-        if !self.sim.stats_ui.scroll.held() {
+        if !self.stats_ui.scroll.held() {
             return;
         }
         let h = self.gui_size().1;
         let content = self.stats_content();
-        self.sim
-            .stats_ui
+        self.stats_ui
             .scroll
-            .drag(self.front.cursor.1, TAB_H, h - FOOTER, content);
-    }
-}
-impl crate::game::Sim<'_> {
-    pub(super) fn open_stats(&mut self) {
-        self.load_stats();
-        // StatsScreen.init: a server's client asks for its statistics.
-        if self.remote.is_some() {
-            self.send(horizon_protocol::packets::play::Serverbound::ClientCommand(
-                horizon_protocol::packets::play::ClientCommand { action: 1 },
-            ));
-        }
-        self.stats_ui = StatsUi::default();
-        self.screen = Screen::Stats;
-    }
-    fn stats_content(&self) -> f32 {
-        let (row_h, rows) = self.stats_rows();
-        row_h * rows as f32 + 4.0
-    }
-    fn stats_rows(&self) -> (f32, usize) {
-        match self.stats_ui.tab {
-            0 => (14.0, CUSTOM.len()),
-            1 => (22.0, self.stat_items().len() + 1),
-            _ => (36.0, self.stat_mobs().len()),
-        }
-    }
-    /// Items (and block items) with any non-zero column.
-    fn stat_items(&self) -> Vec<String> {
-        let mut items: Vec<String> = Vec::new();
-        for (ty, _) in COLUMNS {
-            if let Some(m) = self.stats.values.get(&format!("minecraft:{ty}")) {
-                for (k, v) in m {
-                    if *v > 0 && k != "minecraft:air" && !items.contains(k) {
-                        items.push(k.clone());
-                    }
-                }
-            }
-        }
-        if let Some((col, order)) = self.stats_ui.sort {
-            let ty = COLUMNS[col].0;
-            items.sort_by_key(|i| self.stats.get(ty, i) * -order);
-        }
-        items
-    }
-    fn stat_mobs(&self) -> Vec<String> {
-        let mut mobs: Vec<String> = Vec::new();
-        for ty in ["killed", "killed_by"] {
-            if let Some(m) = self.stats.values.get(&format!("minecraft:{ty}")) {
-                for (k, v) in m {
-                    if *v > 0 && !mobs.contains(k) {
-                        mobs.push(k.clone());
-                    }
-                }
-            }
-        }
-        mobs
+            .drag(self.cursor.1, TAB_H, h - FOOTER, content);
     }
     /// The button came up: the scrollbar lets go.
     pub(super) fn stats_release(&mut self) {
