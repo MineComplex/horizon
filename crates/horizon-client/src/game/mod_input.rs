@@ -17,10 +17,13 @@ pub(super) struct ModUse {
 
 #[cfg(not(feature = "mods"))]
 impl Game<'_> {
+    pub(super) fn mod_key(&mut self, _key: KeyCode, _pressed: bool, _repeat: bool) {}
+}
+#[cfg(not(feature = "mods"))]
+impl crate::game::Sim<'_> {
     pub(super) fn mod_use(&mut self, _button: MouseButton, _pressed: bool) -> bool {
         false
     }
-    pub(super) fn mod_key(&mut self, _key: KeyCode, _pressed: bool, _repeat: bool) {}
     pub(super) fn mod_mouse_key(&mut self, _button: MouseButton, _pressed: bool) {}
     pub(super) fn mod_wheel(&mut self, _steps: f32) -> bool {
         false
@@ -63,6 +66,35 @@ pub(super) struct ModFarTerrain {
 
 #[cfg(feature = "mods")]
 impl Game<'_> {
+    /// A key went down or up: a mod's registered key while playing (no
+    /// screen) is its `key-down` / `key-up`. Vanilla's mapping on the same
+    /// key still runs.
+    pub(super) fn mod_key(&mut self, key: KeyCode, pressed: bool, repeat: bool) {
+        if repeat || !self.mods.mods.has_keys() {
+            return;
+        }
+        // Over an item on a container screen, the mods' keys are `browser`
+        // events (a recipe viewer's R and U).
+        if pressed
+            && self.screen == Screen::Inventory
+            && self.title.is_none()
+            && !self.mod_browser_typing()
+            && let Some(name) = horizon_client::keybinds::key_name(key)
+            && let Some(stack) = self.mod_browser_pointed()
+        {
+            self.mods.mods.browser_key(name, &stack);
+            return;
+        }
+        if pressed && (self.screen != Screen::Playing || self.title.is_some()) {
+            return;
+        }
+        if let Some(name) = horizon_client::keybinds::key_name(key) {
+            self.mods.mods.key(name, pressed);
+        }
+    }
+}
+#[cfg(feature = "mods")]
+impl crate::game::Sim<'_> {
     /// The main hand's stack as `input` shows it; none when it is empty.
     pub(super) fn mod_held(&self) -> Option<HeldItem> {
         let stack = self.inventory.get(self.selected)?.as_ref()?;
@@ -112,32 +144,6 @@ impl Game<'_> {
             .is_some_and(|h| h.id == u.item.id && h.slot == u.item.slot);
         if !still || self.screen != Screen::Playing {
             self.stop_mod_use();
-        }
-    }
-    /// A key went down or up: a mod's registered key while playing (no
-    /// screen) is its `key-down` / `key-up`. Vanilla's mapping on the same
-    /// key still runs.
-    pub(super) fn mod_key(&mut self, key: KeyCode, pressed: bool, repeat: bool) {
-        if repeat || !self.mods.mods.has_keys() {
-            return;
-        }
-        // Over an item on a container screen, the mods' keys are `browser`
-        // events (a recipe viewer's R and U).
-        if pressed
-            && self.screen == Screen::Inventory
-            && self.title.is_none()
-            && !self.mod_browser_typing()
-            && let Some(name) = horizon_client::keybinds::key_name(key)
-            && let Some(stack) = self.mod_browser_pointed()
-        {
-            self.mods.mods.browser_key(name, &stack);
-            return;
-        }
-        if pressed && (self.screen != Screen::Playing || self.title.is_some()) {
-            return;
-        }
-        if let Some(name) = horizon_client::keybinds::key_name(key) {
-            self.mods.mods.key(name, pressed);
         }
     }
     /// A mouse button while playing: a mod's key bound to it

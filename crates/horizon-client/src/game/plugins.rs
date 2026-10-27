@@ -113,7 +113,9 @@ impl Game<'_> {
 }
 
 #[cfg(not(feature = "mods"))]
-impl Game<'_> {
+impl Game<'_> {}
+#[cfg(not(feature = "mods"))]
+impl crate::game::Sim<'_> {
     pub(super) fn plugins_before_tick(&mut self) {}
     pub(super) fn plugins_after_tick(&mut self) {}
     pub(super) fn plugins_stop(&mut self) {}
@@ -1437,7 +1439,9 @@ mod run {
 
         /// `viewer`'s client forgets `target` and, unless hidden, learns it again.
         fn plugin_retrack(&mut self, viewer: u128, target: u128) {
-            let Some(h) = self.lan.as_mut() else { return };
+            let Some(h) = self.sim.lan.as_mut() else {
+                return;
+            };
             let Some(vi) = h.hub.guests.iter().position(|g| g.uuid == viewer) else {
                 return;
             };
@@ -1450,7 +1454,7 @@ mod run {
                 t.properties.clone(),
                 t.game_mode,
             );
-            let hidden = self.mods.plugin.hidden.contains(&(viewer, target));
+            let hidden = self.sim.mods.plugin.hidden.contains(&(viewer, target));
             let g = &mut h.hub.guests[vi];
             if hidden {
                 g.tracker.block(entity);

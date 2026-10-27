@@ -307,46 +307,6 @@ pub(super) fn mob_set_slot(m: &mut Mob, slot: Slot, stack: ItemStack) {
 }
 
 impl Game<'_> {
-    fn prop(&self, state: BlockStateId, key: &str) -> Option<String> {
-        self.pack
-            .assets
-            .registry
-            .state(state)?
-            .properties
-            .get(key)
-            .cloned()
-    }
-    /// The same block with other properties (`withProperty`).
-    pub(super) fn with_props(
-        &self,
-        state: BlockStateId,
-        props: &[(&str, &str)],
-    ) -> Option<BlockStateId> {
-        let mut s = self.pack.assets.registry.state(state)?.clone();
-        for (k, v) in props {
-            s.properties.insert((*k).to_owned(), (*v).to_owned());
-        }
-        self.pack.assets.registry.resolve(&s).ok()
-    }
-    fn block_at(&self, p: Pos) -> BlockStateId {
-        self.world.block(p.0, p.1, p.2)
-    }
-    fn dispenser_block_name(&self, p: Pos) -> std::sync::Arc<str> {
-        self.res.facts().get(self.block_at(p)).name.clone()
-    }
-    fn in_block_tag(&self, tag: &str, block: &str) -> bool {
-        self.res
-            .items()
-            .block_tags
-            .get(tag)
-            .is_some_and(|s| s.contains(block))
-    }
-    fn water_at(&self, p: Pos) -> bool {
-        matches!(
-            self.res.behaviours().fluid_kind(self.block_at(p)),
-            FluidKind::Water | FluidKind::FlowingWater
-        )
-    }
     fn center(p: Pos) -> [f64; 3] {
         [
             f64::from(p.0) + 0.5,
@@ -521,8 +481,9 @@ impl Game<'_> {
             return Some(remainder);
         }
         let mut rest = remainder;
-        if let Some(entity) = self.world.block_entities.get_mut(&pos) {
+        if let Some(entity) = self.sim.world.block_entities.get_mut(&pos) {
             let max = self
+                .sim
                 .res
                 .items()
                 .get(&rest.item)
@@ -554,22 +515,6 @@ impl Game<'_> {
             self.spawn_dispensed(pos, facing, rest, 6);
             self.dispenser_event(CLICK, pos, 0);
             self.dispenser_event(2000, pos, data_value(facing));
-        }
-        Some(stack)
-    }
-    /// `ItemStack.hurtAndBreak(amount)` without an entity.
-    fn hurt_and_break(&mut self, mut stack: ItemStack, amount: u32) -> Option<ItemStack> {
-        let max = self
-            .res
-            .items()
-            .get(&stack.item)
-            .map_or(0, |i| i.max_damage);
-        if max == 0 {
-            return Some(stack);
-        }
-        stack.damage += self.durability_loss(&stack, amount);
-        if stack.damage >= max {
-            return shrink(ItemStack { damage: 0, ..stack });
         }
         Some(stack)
     }
@@ -676,79 +621,6 @@ impl Game<'_> {
 
     // ---- entities ----
 
-    /// Entities whose box overlaps the block at `p`, in the order the level
-    /// added them (an entity section keeps insertion order; ids grow with it).
-    fn targets_at(&self, p: Pos) -> Vec<Target> {
-        let block = block_box(p);
-        let mut found: Vec<(u32, Target)> = self
-            .mobs
-            .iter()
-            .enumerate()
-            .filter(|(_, m)| !m.removed && overlaps(m.bounds(), block))
-            .map(|(i, m)| (m.id, Target::Mob(i)))
-            .collect();
-        found.extend(
-            self.armor_stands
-                .iter()
-                .enumerate()
-                .filter(|(_, s)| overlaps(s.bounds(), block))
-                .map(|(i, s)| (s.id, Target::Stand(i))),
-        );
-        found.sort_by_key(|(id, _)| *id);
-        let mut out: Vec<Target> = found.into_iter().map(|(_, t)| t).collect();
-        if let Some(v) = self.player_view()
-            && v.alive
-            && !self.spectator()
-            && overlaps(v.bounds, block)
-        {
-            out.push(Target::Player);
-        }
-        out
-    }
-    /// `EntityType.getYOffset(level, pos, false, box)`: the entity box set on
-    /// top of the block (`setPos(x + 0.5, y + 1, z + 0.5)`) falls one block
-    /// against the collision shapes overlapping that block alone.
-    fn drop_offset(&self, width: f64, height: f64, p: Pos) -> f64 {
-        use horizon_world::{
-            block_collision_scan::BlockCollisionScan, collision_context::CollisionContext,
-        };
-        let h = width / 2.0;
-        let (x, z) = (f64::from(p.0) + 0.5, f64::from(p.2) + 0.5);
-        let y = f64::from(p.1) + 1.0;
-        let entity = Aabb::new(
-            Vec3::new(x - h, y, z - h),
-            Vec3::new(x + h, y + height, z + h),
-        );
-        let cell = Aabb::new(
-            Vec3::new(f64::from(p.0), f64::from(p.1), f64::from(p.2)),
-            Vec3::new(
-                f64::from(p.0) + 1.0,
-                f64::from(p.1) + 1.0,
-                f64::from(p.2) + 1.0,
-            ),
-        );
-        let mut scene = SceneCollisions {
-            world: &self.world,
-            binding: self.collision,
-            subject: None,
-        };
-        let mut amount = -1.0;
-        // Level.getCollisions(null, aabb): CollisionContext.empty().
-        if let Ok(scan) = BlockCollisionScan::new(
-            &mut scene,
-            CollisionContext::empty(false),
-            cell,
-            false,
-            1_000_000,
-        ) {
-            for hit in scan.flatten() {
-                amount = hit
-                    .shape
-                    .collide(horizon_core::geometry::Axis::Y, entity, amount);
-            }
-        }
-        1.0 + amount
-    }
     /// `EntityType.spawn(.., pos, reason, tryMoveDown, false)` for a mob.
     pub(super) fn spawn_mob_at(&mut self, kind: &str, p: Pos, try_move_down: bool) -> Option<u32> {
         let name = if kind.contains(':') {
@@ -959,104 +831,8 @@ impl Game<'_> {
         (shrink(stack), event)
     }
 
-    /// `ProjectileItem.asProjectile` and `Projectile.spawnProjectileUsingShoot`:
-    /// one of `stack` fired from `at` along `dir`.
-    pub(super) fn shoot_projectile_item(
-        &mut self,
-        at: Vec3,
-        dir: [f64; 3],
-        stack: &ItemStack,
-        power: f32,
-        uncertainty: f32,
-    ) {
-        let item = stack.item.to_string();
-        let one = ItemStack {
-            count: 1,
-            ..stack.clone()
-        };
-        // Projectile.shoot spreads the shot with the projectile's own random.
-        let mut own = entity_random();
-        match item.as_str() {
-            "minecraft:experience_bottle"
-            | "minecraft:splash_potion"
-            | "minecraft:lingering_potion" => {
-                let mut shot = Projectile::new(ProjectileKind::Snowball, at, None);
-                shot.shoot(&mut own, dir, power, uncertainty);
-                self.launch_thrown(one, at, shot.velocity, None);
-            }
-            "minecraft:firework_rocket" => {
-                let mut shot = Projectile::new(ProjectileKind::Snowball, at, None);
-                shot.shoot(&mut own, dir, power, uncertainty);
-                self.launch_angled_rocket(at, shot.velocity, &one);
-            }
-            _ => {
-                let kind = match item.as_str() {
-                    "minecraft:arrow" => ProjectileKind::Arrow {
-                        base_damage: 2.0,
-                        critical: false,
-                        effect: None,
-                    },
-                    "minecraft:spectral_arrow" => ProjectileKind::Arrow {
-                        base_damage: 2.0,
-                        critical: false,
-                        effect: Some(("minecraft:glowing", 200)),
-                    },
-                    "minecraft:tipped_arrow" => ProjectileKind::Arrow {
-                        base_damage: 2.0,
-                        critical: false,
-                        effect: tipped_effect(stack),
-                    },
-                    "minecraft:fire_charge" | "minecraft:wind_charge" => {
-                        // asProjectile aims with the level's random first; the
-                        // shot along the facing then replaces that motion.
-                        let r = &mut self.world.random;
-                        let _ = (
-                            r.triangle(dir[0], 0.114_85),
-                            r.triangle(dir[1], 0.114_85),
-                            r.triangle(dir[2], 0.114_85),
-                        );
-                        if item == "minecraft:wind_charge" {
-                            ProjectileKind::WindCharge
-                        } else {
-                            ProjectileKind::SmallFireball
-                        }
-                    }
-                    "minecraft:egg" | "minecraft:blue_egg" | "minecraft:brown_egg" => {
-                        ProjectileKind::Egg
-                    }
-                    _ => ProjectileKind::Snowball,
-                };
-                let mut shot = Projectile::new(kind, at, None);
-                // ArrowItem/SpectralArrowItem.asProjectile: dispensed arrows
-                // may be picked up.
-                if let Some(a) = shot.arrow.as_mut() {
-                    a.set_item(&one);
-                    a.pickup = horizon_client::arrows::Pickup::Allowed;
-                }
-                shot.shoot(&mut own, dir, power, uncertainty);
-                self.add_projectile(shot);
-            }
-        }
-    }
-
     // ---- entities placed by items ----
 
-    fn dispense_armor_stand(&mut self, pos: Pos, facing: Direction, stack: ItemStack) -> Dispensed {
-        let front = offset(pos, facing);
-        let foot = Vec3::new(
-            f64::from(front.0) + 0.5,
-            f64::from(front.1),
-            f64::from(front.2) + 0.5,
-        );
-        // EntityType.create rolls a yaw from the level random before the stack config turns it.
-        let _ = self.world.random.next_float();
-        self.next_entity += 1;
-        let stand =
-            horizon_client::entities::ArmorStand::new(self.next_entity, foot, y_rot(facing));
-        self.world.modified.insert((front.0 >> 4, front.2 >> 4));
-        self.armor_stands.push(stand);
-        (shrink(stack), CLICK)
-    }
     /// A tame donkey, mule or llama in front without a chest gets it.
     fn dispense_chest(&mut self, pos: Pos, facing: Direction, stack: ItemStack) -> Dispensed {
         let front = offset(pos, facing);
@@ -1333,17 +1109,6 @@ impl Game<'_> {
         }
         Ok((Some(stack), event))
     }
-    /// `CampfireBlock.canLight || CandleBlock.canLight || CandleCakeBlock.canLight`.
-    pub(super) fn can_light(&self, state: BlockStateId, name: &str) -> bool {
-        let lit = self.prop(state, "lit");
-        let waterlogged = self.prop(state, "waterlogged");
-        let dry_unlit = lit.as_deref() == Some("false") && waterlogged.as_deref() == Some("false");
-        ((self.in_block_tag("minecraft:campfires", name)
-            || self.in_block_tag("minecraft:candles", name))
-            && dry_unlit)
-            || (self.in_block_tag("minecraft:candle_cakes", name)
-                && lit.as_deref() == Some("false"))
-    }
     fn dispense_bone_meal(
         &mut self,
         pos: Pos,
@@ -1472,31 +1237,6 @@ impl Game<'_> {
             Some(stack).filter(|s| s.count > 0),
             if equipped { CLICK } else { FAIL },
         ))
-    }
-    /// `WitherSkullBlock.getOrCreateWitherBase().find(level, pos)`: the soul
-    /// sand T below the row `head` is in.
-    fn can_build_wither(&self, head: Pos) -> bool {
-        let soul = |p: Pos| {
-            matches!(
-                &*self.dispenser_block_name(p),
-                "minecraft:soul_sand" | "minecraft:soul_soil"
-            )
-        };
-        let air = |p: Pos| self.res.facts().is_air(self.block_at(p));
-        for (ax, az) in [(1, 0), (0, 1)] {
-            for col in 0..3 {
-                let left = (head.0 - ax * col, head.1, head.2 - az * col);
-                let at = |c: i32, row: i32| (left.0 + ax * c, left.1 - row, left.2 + az * c);
-                if (0..3).all(|c| soul(at(c, 1)))
-                    && soul(at(1, 2))
-                    && air(at(0, 2))
-                    && air(at(2, 2))
-                {
-                    return true;
-                }
-            }
-        }
-        false
     }
     fn dispense_carved_pumpkin(
         &mut self,
@@ -1716,66 +1456,20 @@ impl Game<'_> {
         table: &str,
         held: Option<&ItemStack>,
     ) -> Vec<ItemStack> {
-        match self.res.items().loot_sequence(parent) {
+        match self.sim.res.items().loot_sequence(parent) {
             Some(sequence) => {
-                let random = self.rand_sequences.get(&sequence, self.level.seed);
-                self.res.items().loot_table_from(table, false, held, random)
+                let random = self.sim.rand_sequences.get(&sequence, self.sim.level.seed);
+                self.sim
+                    .res
+                    .items()
+                    .loot_table_from(table, false, held, random)
             }
             None => self
+                .sim
                 .res
                 .items()
-                .loot_table(table, false, held, &mut self.world.random),
+                .loot_table(table, false, held, &mut self.sim.world.random),
         }
-    }
-    /// `Entity.spawnAtLocation(level, stack, offset)`: an item at the entity's
-    /// feet plus the offset, moving as `new ItemEntity` makes it.
-    pub(super) fn spawn_at_location(
-        &mut self,
-        at: Vec3,
-        y_offset: f64,
-        stack: ItemStack,
-    ) -> [f64; 3] {
-        let v = new_item_motion();
-        self.spawn_item(stack, [at.x, at.y + y_offset, at.z], v, 10);
-        v
-    }
-    /// `Mob.convertTo(type, ConversionParams.single(this, false, false))`: a
-    /// new mob of `kind` in the same place (no spawn finalization, so no
-    /// random draws) keeps the name, flags, persistence and age; the old one
-    /// is discarded.
-    pub(super) fn convert_mob(&mut self, index: usize, kind: &str) -> Option<u32> {
-        let t = self.res.mob_types().get(kind).cloned()?;
-        let old = &self.mobs[index];
-        self.next_entity += 1;
-        let mut mob = Mob::new(self.next_entity, t, old.position, old.yaw);
-        mob.previous = old.previous;
-        mob.head_yaw = old.head_yaw;
-        mob.body_yaw = old.body_yaw;
-        mob.head_pitch = old.head_pitch;
-        mob.persistent = old.persistent;
-        mob.custom_name = old.custom_name.clone();
-        mob.custom_name_text = old.custom_name_text.clone();
-        mob.name_visible = old.name_visible;
-        mob.invisible = old.invisible;
-        mob.no_ai = old.no_ai;
-        mob.silent = old.silent;
-        mob.no_gravity = old.no_gravity;
-        mob.invulnerable_flag = old.invulnerable_flag;
-        mob.extra.age = if old.is_baby() { old.extra.age } else { 0 };
-        for slot in [
-            &mut mob.extra.main_hand,
-            &mut mob.extra.off_hand,
-            &mut mob.extra.head,
-            &mut mob.extra.chest,
-            &mut mob.extra.legs,
-            &mut mob.extra.feet,
-        ] {
-            *slot = None;
-        }
-        let id = mob.id;
-        self.mobs[index].removed = true;
-        self.mobs.push(mob);
-        Some(id)
     }
     /// `ShearsDispenseItemBehavior.tryShearEntity`: the first live, ready
     /// `Shearable` in the block is sheared.
@@ -2145,6 +1839,318 @@ impl Game<'_> {
             self.consume_with_remainder(pos, facing, stack, bottle),
             CLICK,
         ))
+    }
+}
+impl crate::game::Sim<'_> {
+    fn prop(&self, state: BlockStateId, key: &str) -> Option<String> {
+        self.pack
+            .assets
+            .registry
+            .state(state)?
+            .properties
+            .get(key)
+            .cloned()
+    }
+    /// The same block with other properties (`withProperty`).
+    pub(super) fn with_props(
+        &self,
+        state: BlockStateId,
+        props: &[(&str, &str)],
+    ) -> Option<BlockStateId> {
+        let mut s = self.pack.assets.registry.state(state)?.clone();
+        for (k, v) in props {
+            s.properties.insert((*k).to_owned(), (*v).to_owned());
+        }
+        self.pack.assets.registry.resolve(&s).ok()
+    }
+    fn block_at(&self, p: Pos) -> BlockStateId {
+        self.world.block(p.0, p.1, p.2)
+    }
+    fn dispenser_block_name(&self, p: Pos) -> std::sync::Arc<str> {
+        self.res.facts().get(self.block_at(p)).name.clone()
+    }
+    fn in_block_tag(&self, tag: &str, block: &str) -> bool {
+        self.res
+            .items()
+            .block_tags
+            .get(tag)
+            .is_some_and(|s| s.contains(block))
+    }
+    fn water_at(&self, p: Pos) -> bool {
+        matches!(
+            self.res.behaviours().fluid_kind(self.block_at(p)),
+            FluidKind::Water | FluidKind::FlowingWater
+        )
+    }
+    /// `ItemStack.hurtAndBreak(amount)` without an entity.
+    fn hurt_and_break(&mut self, mut stack: ItemStack, amount: u32) -> Option<ItemStack> {
+        let max = self
+            .res
+            .items()
+            .get(&stack.item)
+            .map_or(0, |i| i.max_damage);
+        if max == 0 {
+            return Some(stack);
+        }
+        stack.damage += self.durability_loss(&stack, amount);
+        if stack.damage >= max {
+            return shrink(ItemStack { damage: 0, ..stack });
+        }
+        Some(stack)
+    }
+    /// Entities whose box overlaps the block at `p`, in the order the level
+    /// added them (an entity section keeps insertion order; ids grow with it).
+    fn targets_at(&self, p: Pos) -> Vec<Target> {
+        let block = block_box(p);
+        let mut found: Vec<(u32, Target)> = self
+            .mobs
+            .iter()
+            .enumerate()
+            .filter(|(_, m)| !m.removed && overlaps(m.bounds(), block))
+            .map(|(i, m)| (m.id, Target::Mob(i)))
+            .collect();
+        found.extend(
+            self.armor_stands
+                .iter()
+                .enumerate()
+                .filter(|(_, s)| overlaps(s.bounds(), block))
+                .map(|(i, s)| (s.id, Target::Stand(i))),
+        );
+        found.sort_by_key(|(id, _)| *id);
+        let mut out: Vec<Target> = found.into_iter().map(|(_, t)| t).collect();
+        if let Some(v) = self.player_view()
+            && v.alive
+            && !self.spectator()
+            && overlaps(v.bounds, block)
+        {
+            out.push(Target::Player);
+        }
+        out
+    }
+    /// `EntityType.getYOffset(level, pos, false, box)`: the entity box set on
+    /// top of the block (`setPos(x + 0.5, y + 1, z + 0.5)`) falls one block
+    /// against the collision shapes overlapping that block alone.
+    fn drop_offset(&self, width: f64, height: f64, p: Pos) -> f64 {
+        use horizon_world::{
+            block_collision_scan::BlockCollisionScan, collision_context::CollisionContext,
+        };
+        let h = width / 2.0;
+        let (x, z) = (f64::from(p.0) + 0.5, f64::from(p.2) + 0.5);
+        let y = f64::from(p.1) + 1.0;
+        let entity = Aabb::new(
+            Vec3::new(x - h, y, z - h),
+            Vec3::new(x + h, y + height, z + h),
+        );
+        let cell = Aabb::new(
+            Vec3::new(f64::from(p.0), f64::from(p.1), f64::from(p.2)),
+            Vec3::new(
+                f64::from(p.0) + 1.0,
+                f64::from(p.1) + 1.0,
+                f64::from(p.2) + 1.0,
+            ),
+        );
+        let mut scene = SceneCollisions {
+            world: &self.world,
+            binding: self.collision,
+            subject: None,
+        };
+        let mut amount = -1.0;
+        // Level.getCollisions(null, aabb): CollisionContext.empty().
+        if let Ok(scan) = BlockCollisionScan::new(
+            &mut scene,
+            CollisionContext::empty(false),
+            cell,
+            false,
+            1_000_000,
+        ) {
+            for hit in scan.flatten() {
+                amount = hit
+                    .shape
+                    .collide(horizon_core::geometry::Axis::Y, entity, amount);
+            }
+        }
+        1.0 + amount
+    }
+    /// `ProjectileItem.asProjectile` and `Projectile.spawnProjectileUsingShoot`:
+    /// one of `stack` fired from `at` along `dir`.
+    pub(super) fn shoot_projectile_item(
+        &mut self,
+        at: Vec3,
+        dir: [f64; 3],
+        stack: &ItemStack,
+        power: f32,
+        uncertainty: f32,
+    ) {
+        let item = stack.item.to_string();
+        let one = ItemStack {
+            count: 1,
+            ..stack.clone()
+        };
+        // Projectile.shoot spreads the shot with the projectile's own random.
+        let mut own = entity_random();
+        match item.as_str() {
+            "minecraft:experience_bottle"
+            | "minecraft:splash_potion"
+            | "minecraft:lingering_potion" => {
+                let mut shot = Projectile::new(ProjectileKind::Snowball, at, None);
+                shot.shoot(&mut own, dir, power, uncertainty);
+                self.launch_thrown(one, at, shot.velocity, None);
+            }
+            "minecraft:firework_rocket" => {
+                let mut shot = Projectile::new(ProjectileKind::Snowball, at, None);
+                shot.shoot(&mut own, dir, power, uncertainty);
+                self.launch_angled_rocket(at, shot.velocity, &one);
+            }
+            _ => {
+                let kind = match item.as_str() {
+                    "minecraft:arrow" => ProjectileKind::Arrow {
+                        base_damage: 2.0,
+                        critical: false,
+                        effect: None,
+                    },
+                    "minecraft:spectral_arrow" => ProjectileKind::Arrow {
+                        base_damage: 2.0,
+                        critical: false,
+                        effect: Some(("minecraft:glowing", 200)),
+                    },
+                    "minecraft:tipped_arrow" => ProjectileKind::Arrow {
+                        base_damage: 2.0,
+                        critical: false,
+                        effect: tipped_effect(stack),
+                    },
+                    "minecraft:fire_charge" | "minecraft:wind_charge" => {
+                        // asProjectile aims with the level's random first; the
+                        // shot along the facing then replaces that motion.
+                        let r = &mut self.world.random;
+                        let _ = (
+                            r.triangle(dir[0], 0.114_85),
+                            r.triangle(dir[1], 0.114_85),
+                            r.triangle(dir[2], 0.114_85),
+                        );
+                        if item == "minecraft:wind_charge" {
+                            ProjectileKind::WindCharge
+                        } else {
+                            ProjectileKind::SmallFireball
+                        }
+                    }
+                    "minecraft:egg" | "minecraft:blue_egg" | "minecraft:brown_egg" => {
+                        ProjectileKind::Egg
+                    }
+                    _ => ProjectileKind::Snowball,
+                };
+                let mut shot = Projectile::new(kind, at, None);
+                // ArrowItem/SpectralArrowItem.asProjectile: dispensed arrows
+                // may be picked up.
+                if let Some(a) = shot.arrow.as_mut() {
+                    a.set_item(&one);
+                    a.pickup = horizon_client::arrows::Pickup::Allowed;
+                }
+                shot.shoot(&mut own, dir, power, uncertainty);
+                self.add_projectile(shot);
+            }
+        }
+    }
+    fn dispense_armor_stand(&mut self, pos: Pos, facing: Direction, stack: ItemStack) -> Dispensed {
+        let front = offset(pos, facing);
+        let foot = Vec3::new(
+            f64::from(front.0) + 0.5,
+            f64::from(front.1),
+            f64::from(front.2) + 0.5,
+        );
+        // EntityType.create rolls a yaw from the level random before the stack config turns it.
+        let _ = self.world.random.next_float();
+        self.next_entity += 1;
+        let stand =
+            horizon_client::entities::ArmorStand::new(self.next_entity, foot, y_rot(facing));
+        self.world.modified.insert((front.0 >> 4, front.2 >> 4));
+        self.armor_stands.push(stand);
+        (shrink(stack), CLICK)
+    }
+    /// `CampfireBlock.canLight || CandleBlock.canLight || CandleCakeBlock.canLight`.
+    pub(super) fn can_light(&self, state: BlockStateId, name: &str) -> bool {
+        let lit = self.prop(state, "lit");
+        let waterlogged = self.prop(state, "waterlogged");
+        let dry_unlit = lit.as_deref() == Some("false") && waterlogged.as_deref() == Some("false");
+        ((self.in_block_tag("minecraft:campfires", name)
+            || self.in_block_tag("minecraft:candles", name))
+            && dry_unlit)
+            || (self.in_block_tag("minecraft:candle_cakes", name)
+                && lit.as_deref() == Some("false"))
+    }
+    /// `WitherSkullBlock.getOrCreateWitherBase().find(level, pos)`: the soul
+    /// sand T below the row `head` is in.
+    fn can_build_wither(&self, head: Pos) -> bool {
+        let soul = |p: Pos| {
+            matches!(
+                &*self.dispenser_block_name(p),
+                "minecraft:soul_sand" | "minecraft:soul_soil"
+            )
+        };
+        let air = |p: Pos| self.res.facts().is_air(self.block_at(p));
+        for (ax, az) in [(1, 0), (0, 1)] {
+            for col in 0..3 {
+                let left = (head.0 - ax * col, head.1, head.2 - az * col);
+                let at = |c: i32, row: i32| (left.0 + ax * c, left.1 - row, left.2 + az * c);
+                if (0..3).all(|c| soul(at(c, 1)))
+                    && soul(at(1, 2))
+                    && air(at(0, 2))
+                    && air(at(2, 2))
+                {
+                    return true;
+                }
+            }
+        }
+        false
+    }
+    /// `Entity.spawnAtLocation(level, stack, offset)`: an item at the entity's
+    /// feet plus the offset, moving as `new ItemEntity` makes it.
+    pub(super) fn spawn_at_location(
+        &mut self,
+        at: Vec3,
+        y_offset: f64,
+        stack: ItemStack,
+    ) -> [f64; 3] {
+        let v = new_item_motion();
+        self.spawn_item(stack, [at.x, at.y + y_offset, at.z], v, 10);
+        v
+    }
+    /// `Mob.convertTo(type, ConversionParams.single(this, false, false))`: a
+    /// new mob of `kind` in the same place (no spawn finalization, so no
+    /// random draws) keeps the name, flags, persistence and age; the old one
+    /// is discarded.
+    pub(super) fn convert_mob(&mut self, index: usize, kind: &str) -> Option<u32> {
+        let t = self.res.mob_types().get(kind).cloned()?;
+        let old = &self.mobs[index];
+        self.next_entity += 1;
+        let mut mob = Mob::new(self.next_entity, t, old.position, old.yaw);
+        mob.previous = old.previous;
+        mob.head_yaw = old.head_yaw;
+        mob.body_yaw = old.body_yaw;
+        mob.head_pitch = old.head_pitch;
+        mob.persistent = old.persistent;
+        mob.custom_name = old.custom_name.clone();
+        mob.custom_name_text = old.custom_name_text.clone();
+        mob.name_visible = old.name_visible;
+        mob.invisible = old.invisible;
+        mob.no_ai = old.no_ai;
+        mob.silent = old.silent;
+        mob.no_gravity = old.no_gravity;
+        mob.invulnerable_flag = old.invulnerable_flag;
+        mob.extra.age = if old.is_baby() { old.extra.age } else { 0 };
+        for slot in [
+            &mut mob.extra.main_hand,
+            &mut mob.extra.off_hand,
+            &mut mob.extra.head,
+            &mut mob.extra.chest,
+            &mut mob.extra.legs,
+            &mut mob.extra.feet,
+        ] {
+            *slot = None;
+        }
+        let id = mob.id;
+        self.mobs[index].removed = true;
+        self.mobs.push(mob);
+        Some(id)
     }
 }
 /// A tipped arrow's lasting effect at an eighth of the potion's duration

@@ -18,12 +18,6 @@ use horizon_core::{
 use horizon_world::level::flags as level_flags;
 
 impl Game<'_> {
-    fn jukebox(&self, pos: [i32; 3]) -> Option<&Jukebox> {
-        match self.world.block_entities.get(&(pos[0], pos[1], pos[2])) {
-            Some(BlockEntity::Jukebox(j)) => Some(j),
-            _ => None,
-        }
-    }
     fn set_has_record(&mut self, pos: [i32; 3], has: bool) {
         let state = self.world.block(pos[0], pos[1], pos[2]);
         let registry = self.pack.assets.registry;
@@ -107,7 +101,7 @@ impl Game<'_> {
             return;
         };
         // LevelRenderer.playJukeboxSong: SimpleSoundInstance.forJukeboxSong.
-        let id = self.audio.play_jukebox_song(&s.sound, pos);
+        let id = self.front.audio.play_jukebox_song(&s.sound, pos);
         self.jukebox_sounds.insert((pos[0], pos[1], pos[2]), id);
         let description =
             horizon_client::component::to_text(&s.description, &mut |k| Text::literal(k));
@@ -121,7 +115,7 @@ impl Game<'_> {
     }
     fn stop_sound(&mut self, pos: [i32; 3]) {
         if let Some(id) = self.jukebox_sounds.remove(&(pos[0], pos[1], pos[2])) {
-            self.audio.stop_and_release(id);
+            self.front.audio.stop_and_release(id);
         }
     }
     /// Level event 1011: the song ends, here and for the guests.
@@ -130,20 +124,6 @@ impl Game<'_> {
         self.notify_record_playing(pos, false);
         if self.sounds.capture.is_some() {
             self.lan_songs.push((pos, None));
-        }
-    }
-    /// `LevelEventHandler.notifyNearbyEntities` (level events 1010 and 1011):
-    /// parrots within three blocks of the jukebox start or stop dancing.
-    pub(super) fn notify_record_playing(&mut self, pos: [i32; 3], playing: bool) {
-        let min = Vec3::new(f64::from(pos[0]), f64::from(pos[1]), f64::from(pos[2]));
-        let area = Aabb::new(min, min.add_vector(Vec3::new(1.0, 1.0, 1.0)))
-            .inflate(Vec3::new(3.0, 3.0, 3.0));
-        for m in self
-            .mobs
-            .iter_mut()
-            .filter(|m| m.species() == Species::Parrot && m.bounds().intersects(area))
-        {
-            m.extra.party_jukebox = playing.then_some(pos);
         }
     }
     /// `popOutTheItem`: the disc above the jukebox, and the song stops.
@@ -227,12 +207,34 @@ impl Game<'_> {
             .map(|(k, id)| (*k, *id))
             .collect();
         for (k, id) in sounds {
-            if !self.audio.engine.is_active(id)
+            if !self.front.audio.engine.is_active(id)
                 || !matches!(self.world.block_entities.get(&k), Some(BlockEntity::Jukebox(j)) if j.playing)
             {
-                self.audio.stop_and_release(id);
+                self.front.audio.stop_and_release(id);
                 self.jukebox_sounds.remove(&k);
             }
+        }
+    }
+}
+impl crate::game::Sim<'_> {
+    fn jukebox(&self, pos: [i32; 3]) -> Option<&Jukebox> {
+        match self.world.block_entities.get(&(pos[0], pos[1], pos[2])) {
+            Some(BlockEntity::Jukebox(j)) => Some(j),
+            _ => None,
+        }
+    }
+    /// `LevelEventHandler.notifyNearbyEntities` (level events 1010 and 1011):
+    /// parrots within three blocks of the jukebox start or stop dancing.
+    pub(super) fn notify_record_playing(&mut self, pos: [i32; 3], playing: bool) {
+        let min = Vec3::new(f64::from(pos[0]), f64::from(pos[1]), f64::from(pos[2]));
+        let area = Aabb::new(min, min.add_vector(Vec3::new(1.0, 1.0, 1.0)))
+            .inflate(Vec3::new(3.0, 3.0, 3.0));
+        for m in self
+            .mobs
+            .iter_mut()
+            .filter(|m| m.species() == Species::Parrot && m.bounds().intersects(area))
+        {
+            m.extra.party_jukebox = playing.then_some(pos);
         }
     }
 }

@@ -37,12 +37,14 @@ impl Game<'_> {
     pub(super) fn shader_pack_inputs(&mut self, camera: glam::DVec3, partial: f32) -> PackInputs {
         static DEV_PACK: std::sync::OnceLock<Option<String>> = std::sync::OnceLock::new();
         let dev = DEV_PACK.get_or_init(|| std::env::var("HORIZON_SHADER_PACK").ok());
-        let picked = dev.as_deref().unwrap_or(&self.settings.horizon.shader_pack);
-        if self.native_shaders.picked != picked {
+        let picked = dev
+            .as_deref()
+            .unwrap_or(&self.sim.settings.horizon.shader_pack);
+        if self.front.native_shaders.picked != picked {
             // Another pack, or none: drop what ran.
-            self.native_shaders = super::native_shaders::NativeShaders::picking(picked);
-            self.pack_ids = None;
-            if let Some(renderer) = &mut self.renderer {
+            self.front.native_shaders = super::native_shaders::NativeShaders::picking(picked);
+            self.front.pack_ids = None;
+            if let Some(renderer) = &mut self.front.renderer {
                 renderer.drop_shader_packs();
             }
         }
@@ -59,7 +61,7 @@ impl Game<'_> {
         if horizon_shader_api::package::is_pack(&path) {
             // One of Horizon's own packs (game/native_shaders.rs).
             self.tick_native_shader_pack(&path);
-        } else if let Some(renderer) = &mut self.renderer
+        } else if let Some(renderer) = &mut self.front.renderer
             && renderer.shader_pack_dimension() != Some(dimension)
         {
             let name = name.as_str();
@@ -79,7 +81,7 @@ impl Game<'_> {
                     let folder = dimension_folder(&pack, dimension);
                     let inputs = renderer.pack_inputs();
                     let mut post = load_post(&pack, &folder, &properties, &macros, &inputs);
-                    let biomes = self.res.biomes();
+                    let biomes = self.sim.res.biomes();
                     let names: Vec<&str> = biomes.list.iter().map(|b| b.name.as_str()).collect();
                     post.custom.set_biomes(&names);
                     let text = pack.read_text("block.properties").unwrap_or_default();
@@ -97,7 +99,7 @@ impl Game<'_> {
                         &Properties::parse(text.as_deref().unwrap_or_default(), &macros),
                         "item",
                     );
-                    self.pack_ids = Some(PackIds {
+                    self.front.pack_ids = Some(PackIds {
                         items: items.plain(),
                         missing_item: if text.is_some() { -1 } else { 0 },
                         // OQ-21: on unless the pack turns it off.
@@ -111,7 +113,7 @@ impl Game<'_> {
                         block_states: RefCell::default(),
                     });
                     let started_ids = std::time::Instant::now();
-                    let table = block_id_table(&self.pack, &ids);
+                    let table = block_id_table(&self.sim.pack, &ids);
                     log::info!(
                         "shader pack {name}: mc_Entity for {} of {} block sprites in {} ms",
                         table.chunks(2).filter(|p| p[0] != -1).count(),
@@ -133,7 +135,7 @@ impl Game<'_> {
                     }
                 }
                 Err(e) => {
-                    self.pack_ids = None;
+                    self.front.pack_ids = None;
                     log::warn!("shader pack {name}: {e}");
                     renderer.set_shader_pack(dimension, None, &[]);
                 }
@@ -177,16 +179,16 @@ impl Game<'_> {
 
     /// `heldItemId(2)` and `heldBlockLightValue(2)`: main hand, then off hand (5.2, 5.3).
     fn held_for_pack(&mut self) -> ([i32; 2], [i32; 2]) {
-        if self.pack_ids.is_none() {
+        if self.front.pack_ids.is_none() {
             return ([0; 2], [0; 2]);
         }
-        if self.luminance.is_none() {
-            self.luminance = Some(horizon_client::dynamic_light::Luminance::new(
+        if self.front.luminance.is_none() {
+            self.front.luminance = Some(horizon_client::dynamic_light::Luminance::new(
                 self.res.facts(),
                 self.pack.assets.registry,
             ));
         }
-        let (Some(ids), Some(lum)) = (&self.pack_ids, &self.luminance) else {
+        let (Some(ids), Some(lum)) = (&self.front.pack_ids, &self.front.luminance) else {
             return ([0; 2], [0; 2]);
         };
         let hands = [self.selected, super::shield::OFFHAND_SLOT].map(|slot| {
@@ -219,10 +221,10 @@ impl Game<'_> {
     }
 
     fn mark_entity_part(&self, start: usize, name: &str, translucent: bool) {
-        if let Some(ids) = &self.pack_ids {
+        if let Some(ids) = &self.front.pack_ids {
             let id = ids.entities.get(name).copied();
             self.push_span(start, "ENTITIES", id.unwrap_or(ids.missing_entity));
-            if let Some(last) = self.entity_spans.borrow_mut().last_mut() {
+            if let Some(last) = self.front.entity_spans.borrow_mut().last_mut() {
                 last.translucent = translucent;
             }
         }
@@ -230,7 +232,9 @@ impl Game<'_> {
 
     /// Starts a span for the block entity of block state `state`.
     pub(super) fn mark_block_entity(&self, start: usize, state: u32) {
-        let Some(ids) = &self.pack_ids else { return };
+        let Some(ids) = &self.front.pack_ids else {
+            return;
+        };
         let id = *ids
             .block_states
             .borrow_mut()
@@ -251,7 +255,7 @@ impl Game<'_> {
             .facts()
             .get(horizon_world::registry::BlockStateId(state))
             .emission;
-        if let Some(last) = self.entity_spans.borrow_mut().last_mut() {
+        if let Some(last) = self.front.entity_spans.borrow_mut().last_mut() {
             last.emissive = emission > 0;
         }
     }
@@ -260,8 +264,8 @@ impl Game<'_> {
     /// pack's shadow pass draws it.
     pub(super) fn mark_player(&self, start: usize, hidden: bool) {
         self.mark_entity(start, "minecraft:player");
-        if self.pack_ids.is_some()
-            && let Some(last) = self.entity_spans.borrow_mut().last_mut()
+        if self.front.pack_ids.is_some()
+            && let Some(last) = self.front.entity_spans.borrow_mut().last_mut()
         {
             last.player = true;
             last.hidden = hidden;
@@ -271,18 +275,18 @@ impl Game<'_> {
     /// Marks vertices `start..end` (one entity) as hidden from the camera, for an entity
     /// Horizon's culling would drop but a pack's shadow pass still draws (`EntitySpan::hide`).
     pub(super) fn hide_spans_from(&self, start: usize, end: usize) -> bool {
-        EntitySpan::hide(&mut self.entity_spans.borrow_mut(), start, end)
+        EntitySpan::hide(&mut self.front.entity_spans.borrow_mut(), start, end)
     }
 
     /// Starts a span of geometry that is not an entity (`PARTICLES`, `DESTROY`...).
     pub(super) fn mark_stage(&self, start: usize, stage: &str) {
-        if self.pack_ids.is_some() {
+        if self.front.pack_ids.is_some() {
             self.push_span(start, stage, 0);
         }
     }
 
     fn push_span(&self, start: usize, stage: &str, id: i32) {
-        let mut spans = self.entity_spans.borrow_mut();
+        let mut spans = self.front.entity_spans.borrow_mut();
         let span = EntitySpan {
             start: start as u32,
             stage: horizon_shaders::render_stage(stage),

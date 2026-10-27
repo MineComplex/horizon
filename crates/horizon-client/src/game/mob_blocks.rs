@@ -65,10 +65,6 @@ fn banner_matrix(head: glam::Mat4) -> glam::Mat4 {
 pub(super) const APPARITION_TICKS: i32 = 30;
 
 impl Game<'_> {
-    /// Count the elder guardian's apparition down.
-    pub(super) fn tick_apparition(&mut self) {
-        self.creatures.elder_apparition = (self.creatures.elder_apparition - 1).max(0);
-    }
     /// `ElderGuardianParticleGroup`: the ghostly elder guardian that swings
     /// up in front of the camera while the curse is laid, fading in and out.
     pub(super) fn elder_apparition_geometry(&self, alpha: f64, out: &mut Vec<Vertex>) {
@@ -79,7 +75,14 @@ impl Game<'_> {
         let Some(kind) = self.res.mob_types().get("minecraft:elder_guardian") else {
             return;
         };
-        let Some(r) = self.gui.atlas.sprites.get("entity/guardian_elder").copied() else {
+        let Some(r) = self
+            .front
+            .gui
+            .atlas
+            .sprites
+            .get("entity/guardian_elder")
+            .copied()
+        else {
             return;
         };
         let age = (APPARITION_TICKS - left) as f32 + alpha as f32;
@@ -148,7 +151,7 @@ impl Game<'_> {
             return;
         };
         let m = banner_matrix(head);
-        let atlas = &self.gui.atlas;
+        let atlas = &self.front.gui.atlas;
         let uv = |name: &str| atlas.sprites.get(name).map(|r| [r.u0, r.v0, r.u1, r.v1]);
         // BannerRenderer: the flag sways with a per-banner phase.
         let phase =
@@ -188,7 +191,7 @@ impl Game<'_> {
     ) {
         for (corners, shade, side) in FACES {
             let name = cube.sprites[usize::from(side)];
-            let Some(r) = self.gui.atlas.sprites.get(name).copied() else {
+            let Some(r) = self.front.gui.atlas.sprites.get(name).copied() else {
                 continue;
             };
             let tint = if side == 0 { cube.tint } else { 0xFF_FFFF };
@@ -402,5 +405,11 @@ impl Game<'_> {
                 self.submit_item_unlit(&state, t, light, out);
             }
         }
+    }
+}
+impl crate::game::Sim<'_> {
+    /// Count the elder guardian's apparition down.
+    pub(super) fn tick_apparition(&mut self) {
+        self.creatures.elder_apparition = (self.creatures.elder_apparition - 1).max(0);
     }
 }

@@ -45,48 +45,6 @@ fn inside(p: (f32, f32), x: f32, y: f32, w: f32, h: f32) -> bool {
     p.0 >= x && p.1 >= y && p.0 < x + w && p.1 < y + h
 }
 impl Game<'_> {
-    /// `LoomScreen.containerChanged`: the error flag, whether the pattern
-    /// buttons show (only when an input changed), and the scroller reset.
-    pub(super) fn loom_screen_changed(&mut self) {
-        let Some(s) = self.station.as_mut().filter(|s| s.kind == Kind::Loom) else {
-            return;
-        };
-        let inputs = [
-            s.inputs[0].clone(),
-            s.inputs[1].clone(),
-            s.inputs[2].clone(),
-        ];
-        let l = &mut s.loom;
-        l.has_max = inputs[0].as_ref().is_some_and(banner::has_max_layers);
-        if inputs != l.last_inputs {
-            l.display =
-                inputs[0].is_some() && inputs[1].is_some() && !l.has_max && !l.patterns.is_empty();
-        }
-        if l.start_row >= l.total_rows() {
-            l.start_row = 0;
-            l.scroll = 0.0;
-        }
-        l.last_inputs = inputs;
-    }
-    /// A sound the loom or stonecutter menu played: the result's once per
-    /// tick (`lastSoundTime`).
-    pub(super) fn station_sound(&mut self, sound: &str) {
-        let ticks = self.ticks;
-        let Some(s) = self.station.as_mut() else {
-            return;
-        };
-        if s.last_sound == ticks {
-            return;
-        }
-        s.last_sound = ticks;
-        let pos = s.pos;
-        let at = [
-            f64::from(pos[0]) + 0.5,
-            f64::from(pos[1]) + 0.5,
-            f64::from(pos[2]) + 0.5,
-        ];
-        self.sounds.play(sound, Some(at), 1.0, 1.0);
-    }
     /// `LoomScreen.mouseClicked` on a pattern button: `clickMenuButton`, and
     /// the select sound when the menu took it.
     fn loom_button(&mut self, index: usize) -> bool {
@@ -130,27 +88,10 @@ impl Game<'_> {
         }
         false
     }
-    /// The pattern buttons a controller can focus (GUI origin relative).
-    pub(super) fn loom_targets(&self) -> Vec<[f32; 4]> {
-        let Some(loom) = self.station.as_ref().map(|s| &s.loom).filter(|l| l.display) else {
-            return Vec::new();
-        };
-        (0..16)
-            .filter(|i| (i / 4 + loom.start_row) * 4 + i % 4 < loom.patterns.len())
-            .map(|i| {
-                let (row, column) = (i / 4, i % 4);
-                [
-                    60.0 + column as f32 * BUTTON,
-                    13.0 + row as f32 * BUTTON,
-                    BUTTON,
-                    BUTTON,
-                ]
-            })
-            .collect()
-    }
     /// `LoomScreen.mouseDragged` on the scroller.
     pub(super) fn loom_drag(&mut self) {
         let Some(size) = self
+            .front
             .renderer
             .as_ref()
             .map(|r| [r.config.width, r.config.height])
@@ -158,29 +99,13 @@ impl Game<'_> {
             return;
         };
         let (_, oy) = self.inventory_origin(&HudBatch::new(size));
-        let cursor_y = self.cursor.1;
+        let cursor_y = self.front.cursor.1;
         let Some(l) = self.station.as_mut().map(|s| &mut s.loom) else {
             return;
         };
         if l.scrolling && l.display && l.offscreen_rows() > 0 {
             let top = oy + 13.0;
             l.scroll = ((cursor_y - top - 7.5) / (56.0 - 15.0)).clamp(0.0, 1.0);
-            l.start_row = l.row_for(l.scroll);
-        }
-    }
-    pub(super) fn loom_release(&mut self) {
-        if let Some(s) = self.station.as_mut() {
-            s.loom.scrolling = false;
-        }
-    }
-    /// `LoomScreen.mouseScrolled`.
-    pub(super) fn loom_scroll(&mut self, d: f32) {
-        let Some(l) = self.station.as_mut().map(|s| &mut s.loom) else {
-            return;
-        };
-        let offscreen = l.offscreen_rows();
-        if l.display && offscreen > 0 {
-            l.scroll = (l.scroll - d / offscreen as f32).clamp(0.0, 1.0);
             l.start_row = l.row_for(l.scroll);
         }
     }
@@ -201,7 +126,7 @@ impl Game<'_> {
             .collect();
         horizon_client::item_render::gui::draw_banner_result(
             &self.pack.item_renderer,
-            &self.gui.atlas.sprites,
+            &self.front.gui.atlas.sprites,
             batch,
             x,
             y,
@@ -219,7 +144,7 @@ impl Game<'_> {
         draws: &[ScreenDraw],
         background: bool,
     ) -> Option<Vec<(horizon_client::text::Text, u32)>> {
-        let atlas = &self.gui.atlas;
+        let atlas = &self.front.gui.atlas;
         let mut tooltip = None;
         let mut sheet: Option<String> = None;
         for d in draws {
@@ -349,6 +274,84 @@ impl Game<'_> {
         };
         let draws = screen_layout::loom(&view, &self.res.stations().banners);
         self.paint_screen(batch, ox, oy, &draws, false)
+    }
+}
+impl crate::game::Sim<'_> {
+    /// `LoomScreen.containerChanged`: the error flag, whether the pattern
+    /// buttons show (only when an input changed), and the scroller reset.
+    pub(super) fn loom_screen_changed(&mut self) {
+        let Some(s) = self.station.as_mut().filter(|s| s.kind == Kind::Loom) else {
+            return;
+        };
+        let inputs = [
+            s.inputs[0].clone(),
+            s.inputs[1].clone(),
+            s.inputs[2].clone(),
+        ];
+        let l = &mut s.loom;
+        l.has_max = inputs[0].as_ref().is_some_and(banner::has_max_layers);
+        if inputs != l.last_inputs {
+            l.display =
+                inputs[0].is_some() && inputs[1].is_some() && !l.has_max && !l.patterns.is_empty();
+        }
+        if l.start_row >= l.total_rows() {
+            l.start_row = 0;
+            l.scroll = 0.0;
+        }
+        l.last_inputs = inputs;
+    }
+    /// A sound the loom or stonecutter menu played: the result's once per
+    /// tick (`lastSoundTime`).
+    pub(super) fn station_sound(&mut self, sound: &str) {
+        let ticks = self.ticks;
+        let Some(s) = self.station.as_mut() else {
+            return;
+        };
+        if s.last_sound == ticks {
+            return;
+        }
+        s.last_sound = ticks;
+        let pos = s.pos;
+        let at = [
+            f64::from(pos[0]) + 0.5,
+            f64::from(pos[1]) + 0.5,
+            f64::from(pos[2]) + 0.5,
+        ];
+        self.sounds.play(sound, Some(at), 1.0, 1.0);
+    }
+    /// The pattern buttons a controller can focus (GUI origin relative).
+    pub(super) fn loom_targets(&self) -> Vec<[f32; 4]> {
+        let Some(loom) = self.station.as_ref().map(|s| &s.loom).filter(|l| l.display) else {
+            return Vec::new();
+        };
+        (0..16)
+            .filter(|i| (i / 4 + loom.start_row) * 4 + i % 4 < loom.patterns.len())
+            .map(|i| {
+                let (row, column) = (i / 4, i % 4);
+                [
+                    60.0 + column as f32 * BUTTON,
+                    13.0 + row as f32 * BUTTON,
+                    BUTTON,
+                    BUTTON,
+                ]
+            })
+            .collect()
+    }
+    pub(super) fn loom_release(&mut self) {
+        if let Some(s) = self.station.as_mut() {
+            s.loom.scrolling = false;
+        }
+    }
+    /// `LoomScreen.mouseScrolled`.
+    pub(super) fn loom_scroll(&mut self, d: f32) {
+        let Some(l) = self.station.as_mut().map(|s| &mut s.loom) else {
+            return;
+        };
+        let offscreen = l.offscreen_rows();
+        if l.display && offscreen > 0 {
+            l.scroll = (l.scroll - d / offscreen as f32).clamp(0.0, 1.0);
+            l.start_row = l.row_for(l.scroll);
+        }
     }
 }
 

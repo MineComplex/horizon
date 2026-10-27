@@ -13,14 +13,6 @@ fn block_of(p: Vec3) -> [i32; 3] {
     [p.x.floor() as i32, p.y.floor() as i32, p.z.floor() as i32]
 }
 impl Game<'_> {
-    fn villager_index(&self, id: u32) -> Option<usize> {
-        self.mobs
-            .iter()
-            .position(|m| m.id == id && m.species() == Species::Villager)
-    }
-    fn item_max_stack(&self, item: &str) -> u32 {
-        self.res.items().get(item).map_or(64, |i| i.max_stack)
-    }
     /// `WorkAtComposter.useWorkstation`: at a composter the farmer makes
     /// bread, then composts seeds.
     pub(super) fn villager_work_at_composter(&mut self, id: u32, pos: [i32; 3]) {
@@ -33,33 +25,6 @@ impl Game<'_> {
         self.villager_make_bread(i);
         self.villager_compost_items(i, pos);
     }
-    /// `WorkAtComposter.makeBread`: up to three loaves from nine wheat while
-    /// the villager holds at most 36 bread; what does not fit drops.
-    fn villager_make_bread(&mut self, i: usize) {
-        let max_stack = self.item_max_stack("minecraft:bread");
-        let e = villager::ext_mut(&mut self.mobs[i]);
-        if e.count_item("minecraft:bread") > 36 {
-            return;
-        }
-        let loaves = (e.count_item("minecraft:wheat") / 3).min(3);
-        if loaves == 0 {
-            return;
-        }
-        e.remove_item("minecraft:wheat", loaves * 3);
-        let left = e.add_item(ItemStack::new("minecraft:bread", loaves), max_stack);
-        if let Some(rest) = left {
-            // spawnAtLocation(level, stack, 0.5F)
-            let p = self.mobs[i].position;
-            self.spawn_item(rest, [p.x, p.y + 0.5, p.z], [0.0, 0.2, 0.0], 10);
-        }
-    }
-    /// `BehaviorUtils.throwItem`: toss a stack from a villager's hand toward
-    /// a point.
-    fn villager_throw(&mut self, from: Vec3, eye: f64, to: Vec3, stack: ItemStack) {
-        let at = [from.x, eye - 0.3, from.z];
-        let d = Vec3::new(to.x - from.x, to.y - from.y, to.z - from.z).normalize();
-        self.spawn_item(stack, at, [d.x * 0.3, d.y * 0.3, d.z * 0.3], 10);
-    }
 
     /// `TradeWithVillager.tick` for one pair: gossip (at most once in 1200
     /// ticks for both), then surplus food and wanted wares tossed over.
@@ -67,9 +32,9 @@ impl Game<'_> {
         let (Some(ia), Some(ib)) = (self.villager_index(a), self.villager_index(b)) else {
             return;
         };
-        let now = self.world.game_time;
-        let items = self.res.items();
-        let meeting = villager::meet(&mut self.mobs, ia, ib, now, |item| {
+        let now = self.sim.world.game_time;
+        let items = self.sim.res.items();
+        let meeting = villager::meet(&mut self.sim.mobs, ia, ib, now, |item| {
             items.get(item).map_or(64, |i| i.max_stack)
         });
         for stack in meeting.thrown {
@@ -175,70 +140,6 @@ impl Game<'_> {
         // VillagerMakeLove.giveBirth: entity event 12 for the child.
         self.mob_event_particles(id, 12);
     }
-    /// `Level.broadcastEntityEvent` of an event whose `handleEntityEvent`
-    /// draws particles about the mob (villager 12, 13 and 14, taming 6 and 7,
-    /// love 18): the guests get the byte, and this game draws it as its own
-    /// client would.
-    pub(super) fn mob_event_particles(&mut self, id: u32, event: i8) {
-        let Some(m) = self.mobs.iter().find(|m| m.id == id) else {
-            return;
-        };
-        let at = [m.position.x, m.position.y, m.position.z];
-        self.lan_entity_event(id as i32, event, at);
-        self.entity_event_particles(id, event);
-    }
-    /// `handleEntityEvent(event)`'s particles about mob `id`
-    /// (`Villager`, `TamableAnimal`, `AbstractHorse`, `Animal`, `Allay`).
-    pub(super) fn entity_event_particles(&mut self, id: u32, event: i8) {
-        let Some(m) = self.mobs.iter().find(|m| m.id == id) else {
-            return;
-        };
-        if let Some((kind, burst)) =
-            horizon_client::particles::entity_event_burst(&m.kind.id, event as u8)
-        {
-            self.particles_around_mob(id, kind, burst);
-        }
-    }
-    /// `particles::around_self` about mob `id`.
-    pub(super) fn particles_around_mob(
-        &mut self,
-        id: u32,
-        kind: &'static str,
-        burst: horizon_client::particles::Burst,
-    ) {
-        let Some(m) = self.mobs.iter().find(|m| m.id == id) else {
-            return;
-        };
-        let feet = [m.position.x, m.position.y, m.position.z];
-        let size = [f64::from(m.width()), f64::from(m.height())];
-        self.particles_around(kind, feet, size, burst);
-    }
-    /// `particles::around_self` on the client: the particle engine's random
-    /// stands in for the client entity's, so no server draw moves.
-    pub(super) fn particles_around(
-        &mut self,
-        kind: &'static str,
-        feet: [f64; 3],
-        size: [f64; 2],
-        burst: horizon_client::particles::Burst,
-    ) {
-        let Some(ty) = horizon_client::particles::ParticleType::from_name(kind) else {
-            return;
-        };
-        let options = horizon_client::particles::ParticleOptions::simple(ty);
-        let mut spawned = Vec::new();
-        horizon_client::particles::around_self(
-            self.particles.random(),
-            feet,
-            size[0],
-            size[1],
-            burst,
-            |p, v| spawned.push((p, v)),
-        );
-        for (p, v) in spawned {
-            self.particles.add(&options, p, v);
-        }
-    }
 
     /// `Mob.aiStep` item pickup for villagers (`InventoryCarrier`): food,
     /// seeds and what their profession wants, from within a block.
@@ -303,40 +204,6 @@ impl Game<'_> {
         }
     }
 
-    /// `Villager.setLastHurtByMob` and `ServerLevel.onReputationEvent`: a hit
-    /// from the player counts against it with the villager that was hit.
-    pub(super) fn villager_reputation_tick(&mut self) {
-        let Some(uuid) = self.level.player_uuid else {
-            return;
-        };
-        let mut angry = Vec::new();
-        for m in &mut self.mobs {
-            if m.species() != Species::Villager
-                || m.ai.last_hurt_by != Some(horizon_client::mobs::Who::Player)
-            {
-                continue;
-            }
-            let time = m.ai.last_hurt_by_time;
-            let alive = m.alive();
-            let at = m.id;
-            let e = villager::ext_mut(m);
-            if e.hurt_seen != time {
-                e.hurt_seen = time;
-                e.gossips.add(
-                    uuid,
-                    GossipType::MinorNegative,
-                    gossip::REPUTATION_CHANGE_PER_EVENT,
-                );
-                if alive {
-                    angry.push(at);
-                }
-            }
-        }
-        // Villager.setLastHurtByMob: entity event 13.
-        for id in angry {
-            self.mob_event_particles(id, 13);
-        }
-    }
     /// `Villager.tellWitnessesThatIWasMurdered`: the villagers that saw a
     /// player kill one remember it as a major wrong.
     pub(super) fn villager_murdered(&mut self, victim: &Mob, by_player: bool) {
@@ -370,6 +237,141 @@ impl Game<'_> {
                 GossipType::MajorNegative,
                 gossip::REPUTATION_CHANGE_PER_EVENT,
             );
+        }
+    }
+}
+impl crate::game::Sim<'_> {
+    fn villager_index(&self, id: u32) -> Option<usize> {
+        self.mobs
+            .iter()
+            .position(|m| m.id == id && m.species() == Species::Villager)
+    }
+    fn item_max_stack(&self, item: &str) -> u32 {
+        self.res.items().get(item).map_or(64, |i| i.max_stack)
+    }
+    /// `WorkAtComposter.makeBread`: up to three loaves from nine wheat while
+    /// the villager holds at most 36 bread; what does not fit drops.
+    fn villager_make_bread(&mut self, i: usize) {
+        let max_stack = self.item_max_stack("minecraft:bread");
+        let e = villager::ext_mut(&mut self.mobs[i]);
+        if e.count_item("minecraft:bread") > 36 {
+            return;
+        }
+        let loaves = (e.count_item("minecraft:wheat") / 3).min(3);
+        if loaves == 0 {
+            return;
+        }
+        e.remove_item("minecraft:wheat", loaves * 3);
+        let left = e.add_item(ItemStack::new("minecraft:bread", loaves), max_stack);
+        if let Some(rest) = left {
+            // spawnAtLocation(level, stack, 0.5F)
+            let p = self.mobs[i].position;
+            self.spawn_item(rest, [p.x, p.y + 0.5, p.z], [0.0, 0.2, 0.0], 10);
+        }
+    }
+    /// `BehaviorUtils.throwItem`: toss a stack from a villager's hand toward
+    /// a point.
+    fn villager_throw(&mut self, from: Vec3, eye: f64, to: Vec3, stack: ItemStack) {
+        let at = [from.x, eye - 0.3, from.z];
+        let d = Vec3::new(to.x - from.x, to.y - from.y, to.z - from.z).normalize();
+        self.spawn_item(stack, at, [d.x * 0.3, d.y * 0.3, d.z * 0.3], 10);
+    }
+    /// `Level.broadcastEntityEvent` of an event whose `handleEntityEvent`
+    /// draws particles about the mob (villager 12, 13 and 14, taming 6 and 7,
+    /// love 18): the guests get the byte, and this game draws it as its own
+    /// client would.
+    pub(super) fn mob_event_particles(&mut self, id: u32, event: i8) {
+        let Some(m) = self.mobs.iter().find(|m| m.id == id) else {
+            return;
+        };
+        let at = [m.position.x, m.position.y, m.position.z];
+        self.lan_entity_event(id as i32, event, at);
+        self.entity_event_particles(id, event);
+    }
+    /// `handleEntityEvent(event)`'s particles about mob `id`
+    /// (`Villager`, `TamableAnimal`, `AbstractHorse`, `Animal`, `Allay`).
+    pub(super) fn entity_event_particles(&mut self, id: u32, event: i8) {
+        let Some(m) = self.mobs.iter().find(|m| m.id == id) else {
+            return;
+        };
+        if let Some((kind, burst)) =
+            horizon_client::particles::entity_event_burst(&m.kind.id, event as u8)
+        {
+            self.particles_around_mob(id, kind, burst);
+        }
+    }
+    /// `particles::around_self` about mob `id`.
+    pub(super) fn particles_around_mob(
+        &mut self,
+        id: u32,
+        kind: &'static str,
+        burst: horizon_client::particles::Burst,
+    ) {
+        let Some(m) = self.mobs.iter().find(|m| m.id == id) else {
+            return;
+        };
+        let feet = [m.position.x, m.position.y, m.position.z];
+        let size = [f64::from(m.width()), f64::from(m.height())];
+        self.particles_around(kind, feet, size, burst);
+    }
+    /// `particles::around_self` on the client: the particle engine's random
+    /// stands in for the client entity's, so no server draw moves.
+    pub(super) fn particles_around(
+        &mut self,
+        kind: &'static str,
+        feet: [f64; 3],
+        size: [f64; 2],
+        burst: horizon_client::particles::Burst,
+    ) {
+        let Some(ty) = horizon_client::particles::ParticleType::from_name(kind) else {
+            return;
+        };
+        let options = horizon_client::particles::ParticleOptions::simple(ty);
+        let mut spawned = Vec::new();
+        horizon_client::particles::around_self(
+            self.particles.random(),
+            feet,
+            size[0],
+            size[1],
+            burst,
+            |p, v| spawned.push((p, v)),
+        );
+        for (p, v) in spawned {
+            self.particles.add(&options, p, v);
+        }
+    }
+    /// `Villager.setLastHurtByMob` and `ServerLevel.onReputationEvent`: a hit
+    /// from the player counts against it with the villager that was hit.
+    pub(super) fn villager_reputation_tick(&mut self) {
+        let Some(uuid) = self.level.player_uuid else {
+            return;
+        };
+        let mut angry = Vec::new();
+        for m in &mut self.mobs {
+            if m.species() != Species::Villager
+                || m.ai.last_hurt_by != Some(horizon_client::mobs::Who::Player)
+            {
+                continue;
+            }
+            let time = m.ai.last_hurt_by_time;
+            let alive = m.alive();
+            let at = m.id;
+            let e = villager::ext_mut(m);
+            if e.hurt_seen != time {
+                e.hurt_seen = time;
+                e.gossips.add(
+                    uuid,
+                    GossipType::MinorNegative,
+                    gossip::REPUTATION_CHANGE_PER_EVENT,
+                );
+                if alive {
+                    angry.push(at);
+                }
+            }
+        }
+        // Villager.setLastHurtByMob: entity event 13.
+        for id in angry {
+            self.mob_event_particles(id, 13);
         }
     }
     /// `ReputationEventType.TRADE`: each trade earns a little trust.

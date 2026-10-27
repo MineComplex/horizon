@@ -197,7 +197,7 @@ impl Game<'_> {
     pub(super) fn item_host(&self) -> Host<'_> {
         Host {
             banners: &self.res.stations().banners,
-            sprites: &self.gui.atlas.sprites,
+            sprites: &self.front.gui.atlas.sprites,
             skins: &self.skin_downloads,
             profiles: &self.skin_profiles,
         }
@@ -211,12 +211,12 @@ impl Game<'_> {
             Dim::End => "minecraft:the_end",
         };
         let key = (
-            self.frames,
+            self.front.frames,
             self.world.game_time,
             self.world.day_time,
             dimension,
         );
-        let mut cached = self.item_level_cache.borrow_mut();
+        let mut cached = self.front.item_level_cache.borrow_mut();
         if let Some((at, level)) = cached.as_ref()
             && *at == key
         {
@@ -225,22 +225,6 @@ impl Game<'_> {
         let level = self.level_state_now(dimension);
         *cached = Some((key, level.clone()));
         level
-    }
-    fn level_state_now(&self, dimension: &'static str) -> LevelState {
-        let sky = self
-            .dim_environment()
-            .sample(self.world.day_time, None, None);
-        LevelState {
-            dimension: dimension.to_owned(),
-            game_time: self.world.game_time,
-            sun_angle: sky.sun_angle,
-            moon_phase: (self.world.day_time.div_euclid(24_000)).rem_euclid(8) as i32,
-            respawn: self.spawn.map(|s| GlobalPos {
-                dimension: "minecraft:overworld".to_owned(),
-                pos: [s.x.floor() as i32, s.y.floor() as i32, s.z.floor() as i32],
-            }),
-            runs_normally: true,
-        }
     }
     /// The local player as `ItemOwner`; `stack` is the stack drawn, to tell
     /// whether it is the one in use.
@@ -301,7 +285,7 @@ impl Game<'_> {
         item_render::gui::draw(
             &state,
             &self.pack.item_renderer,
-            &self.gui.atlas.sprites,
+            &self.front.gui.atlas.sprites,
             &self.item_host(),
             batch,
             x,
@@ -313,7 +297,8 @@ impl Game<'_> {
     }
     /// The `GLINT_TEXTURING` inputs the atlas and options provide.
     pub(super) fn glint(&self) -> Option<item_render::Glint> {
-        self.gui
+        self.front
+            .gui
             .atlas
             .sprites
             .get("misc/enchanted_glint_item")
@@ -324,14 +309,6 @@ impl Game<'_> {
                 millis: self.started.elapsed().as_secs_f32() * 1000.0,
                 scale: 0.5,
             })
-    }
-    /// The glint scroll phase shared by world items and armour
-    /// (`item_render::Glint::scroll_ticks`).
-    pub(super) fn glint_ticks(&self) -> f32 {
-        item_render::Glint::scroll_ticks(
-            self.started.elapsed().as_secs_f32() * 1000.0,
-            self.settings.file.double("glintSpeed") as f32,
-        )
     }
     /// Submit a resolved item under `pose` (camera-relative) at `light`
     /// (packed lightmap coordinates).
@@ -350,7 +327,7 @@ impl Game<'_> {
         };
         state.submit(
             &self.pack.item_renderer,
-            &self.gui.atlas.sprites,
+            &self.front.gui.atlas.sprites,
             &self.item_host(),
             pose,
             &mut sink,
@@ -372,7 +349,7 @@ impl Game<'_> {
         };
         state.submit(
             &self.pack.item_renderer,
-            &self.gui.atlas.sprites,
+            &self.front.gui.atlas.sprites,
             &self.item_host(),
             pose,
             &mut sink,
@@ -449,6 +426,32 @@ impl Game<'_> {
                 self.cull_entity_vertices(out, entity_start);
             }
         }
+    }
+}
+impl crate::game::Sim<'_> {
+    fn level_state_now(&self, dimension: &'static str) -> LevelState {
+        let sky = self
+            .dim_environment()
+            .sample(self.world.day_time, None, None);
+        LevelState {
+            dimension: dimension.to_owned(),
+            game_time: self.world.game_time,
+            sun_angle: sky.sun_angle,
+            moon_phase: (self.world.day_time.div_euclid(24_000)).rem_euclid(8) as i32,
+            respawn: self.spawn.map(|s| GlobalPos {
+                dimension: "minecraft:overworld".to_owned(),
+                pos: [s.x.floor() as i32, s.y.floor() as i32, s.z.floor() as i32],
+            }),
+            runs_normally: true,
+        }
+    }
+    /// The glint scroll phase shared by world items and armour
+    /// (`item_render::Glint::scroll_ticks`).
+    pub(super) fn glint_ticks(&self) -> f32 {
+        item_render::Glint::scroll_ticks(
+            self.started.elapsed().as_secs_f32() * 1000.0,
+            self.settings.file.double("glintSpeed") as f32,
+        )
     }
 }
 

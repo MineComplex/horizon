@@ -168,6 +168,104 @@ pub(super) fn player_json(world: &Path, dir: &str, uuid: [i32; 4]) -> PathBuf {
     world.join("players").join(dir).join(format!("{text}.json"))
 }
 impl Game<'_> {
+    /// `PhantomSpawner.tick`: tired players under an open night sky draw
+    /// phantoms. A custom spawner ticks only while `spawn_mobs` is on
+    /// (`ServerChunkCache.tickChunks`), and this one only spawns enemies
+    /// (`ServerLevel.isSpawningMonsters`: `spawn_monsters` too). Every
+    /// player of the level counts: the game's own and the hosted ones (a
+    /// server thread's players are all hosted).
+    pub(super) fn spawn_phantoms(&mut self) {
+        let rules = &self.world_data.rules;
+        if !rules.bool("spawn_mobs")
+            || !rules.bool("spawn_monsters")
+            || !rules.bool("spawn_phantoms")
+            || self.dim != Dim::Overworld
+        {
+            return;
+        }
+        self.stats.phantom_tick -= 1;
+        if self.stats.phantom_tick > 0 {
+            return;
+        }
+        let r = &mut self.world.random;
+        self.stats.phantom_tick += (60 + r.next_int_bound(60).unwrap_or(0)) * 20;
+        if self.sky_darken() < 5 {
+            return;
+        }
+        let rest = |s: &Stats| s.get("custom", "minecraft:time_since_rest");
+        // `level.players()`: (block position, time since rest) of each player
+        // who isn't a spectator.
+        let mut players = Vec::new();
+        if let Some(p) = self.player.as_ref()
+            && !self.spectator()
+        {
+            players.push((p.position, rest(&self.stats)));
+        }
+        if let Some(host) = self.lan.as_ref() {
+            let level = self.dim.id();
+            for g in host.hub.guests.iter().filter(|g| {
+                g.placed
+                    && g.dimension == level
+                    && g.game_mode != horizon_client::lan::guest::SPECTATOR
+            }) {
+                let since = host.play.get(&g.conn).map_or(0, |p| rest(&p.stats));
+                players.push((
+                    Vec3::new(g.position[0], g.position[1], g.position[2]),
+                    since,
+                ));
+            }
+        }
+        for (position, since) in players {
+            self.spawn_phantoms_near(position, since);
+        }
+    }
+    /// One player's turn of `PhantomSpawner.tick`.
+    fn spawn_phantoms_near(&mut self, position: Vec3, since_rest: i32) {
+        let pos = [
+            position.x.floor() as i32,
+            position.y.floor() as i32,
+            position.z.floor() as i32,
+        ];
+        if pos[1] < 63 || !self.can_see_sky(pos) {
+            return;
+        }
+        // `getCurrentDifficultyAt(playerPos).isHarderThan(random * 3)`.
+        let difficulty = self.local_difficulty([position.x, position.y, position.z]);
+        let r = &mut self.world.random;
+        if difficulty.effective <= r.next_float() * 3.0 {
+            return;
+        }
+        if r.next_int_bound(since_rest.max(1)).unwrap_or(0) < 72000 {
+            return;
+        }
+        // `playerPos.above(20 + nextInt(15)).east(-10 + nextInt(21)).south(...)`:
+        // the height is drawn first.
+        let up = 20 + r.next_int_bound(15).unwrap_or(0);
+        let east = -10 + r.next_int_bound(21).unwrap_or(10);
+        let south = -10 + r.next_int_bound(21).unwrap_or(10);
+        let at = [pos[0] + east, pos[1] + up, pos[2] + south];
+        if !self
+            .res
+            .facts()
+            .is_air(self.world.block(at[0], at[1], at[2]))
+        {
+            return;
+        }
+        let group = 1 + self.world.random.next_int_bound(3).unwrap_or(0);
+        for _ in 0..group {
+            let _ = self.spawn_mob(
+                "minecraft:phantom",
+                [
+                    f64::from(at[0]) + 0.5,
+                    f64::from(at[1]),
+                    f64::from(at[2]) + 0.5,
+                ],
+                false,
+            );
+        }
+    }
+}
+impl crate::game::Sim<'_> {
     fn stats_path(&self) -> Option<PathBuf> {
         Some(player_json(
             &self.world_root,
@@ -315,102 +413,6 @@ impl Game<'_> {
             // (creative flight, or a long jump), not only flying.
             None if horizontal > 25 => s.custom("fly_one_cm", horizontal),
             None => {}
-        }
-    }
-    /// `PhantomSpawner.tick`: tired players under an open night sky draw
-    /// phantoms. A custom spawner ticks only while `spawn_mobs` is on
-    /// (`ServerChunkCache.tickChunks`), and this one only spawns enemies
-    /// (`ServerLevel.isSpawningMonsters`: `spawn_monsters` too). Every
-    /// player of the level counts: the game's own and the hosted ones (a
-    /// server thread's players are all hosted).
-    pub(super) fn spawn_phantoms(&mut self) {
-        let rules = &self.world_data.rules;
-        if !rules.bool("spawn_mobs")
-            || !rules.bool("spawn_monsters")
-            || !rules.bool("spawn_phantoms")
-            || self.dim != Dim::Overworld
-        {
-            return;
-        }
-        self.stats.phantom_tick -= 1;
-        if self.stats.phantom_tick > 0 {
-            return;
-        }
-        let r = &mut self.world.random;
-        self.stats.phantom_tick += (60 + r.next_int_bound(60).unwrap_or(0)) * 20;
-        if self.sky_darken() < 5 {
-            return;
-        }
-        let rest = |s: &Stats| s.get("custom", "minecraft:time_since_rest");
-        // `level.players()`: (block position, time since rest) of each player
-        // who isn't a spectator.
-        let mut players = Vec::new();
-        if let Some(p) = self.player.as_ref()
-            && !self.spectator()
-        {
-            players.push((p.position, rest(&self.stats)));
-        }
-        if let Some(host) = self.lan.as_ref() {
-            let level = self.dim.id();
-            for g in host.hub.guests.iter().filter(|g| {
-                g.placed
-                    && g.dimension == level
-                    && g.game_mode != horizon_client::lan::guest::SPECTATOR
-            }) {
-                let since = host.play.get(&g.conn).map_or(0, |p| rest(&p.stats));
-                players.push((
-                    Vec3::new(g.position[0], g.position[1], g.position[2]),
-                    since,
-                ));
-            }
-        }
-        for (position, since) in players {
-            self.spawn_phantoms_near(position, since);
-        }
-    }
-    /// One player's turn of `PhantomSpawner.tick`.
-    fn spawn_phantoms_near(&mut self, position: Vec3, since_rest: i32) {
-        let pos = [
-            position.x.floor() as i32,
-            position.y.floor() as i32,
-            position.z.floor() as i32,
-        ];
-        if pos[1] < 63 || !self.can_see_sky(pos) {
-            return;
-        }
-        // `getCurrentDifficultyAt(playerPos).isHarderThan(random * 3)`.
-        let difficulty = self.local_difficulty([position.x, position.y, position.z]);
-        let r = &mut self.world.random;
-        if difficulty.effective <= r.next_float() * 3.0 {
-            return;
-        }
-        if r.next_int_bound(since_rest.max(1)).unwrap_or(0) < 72000 {
-            return;
-        }
-        // `playerPos.above(20 + nextInt(15)).east(-10 + nextInt(21)).south(...)`:
-        // the height is drawn first.
-        let up = 20 + r.next_int_bound(15).unwrap_or(0);
-        let east = -10 + r.next_int_bound(21).unwrap_or(10);
-        let south = -10 + r.next_int_bound(21).unwrap_or(10);
-        let at = [pos[0] + east, pos[1] + up, pos[2] + south];
-        if !self
-            .res
-            .facts()
-            .is_air(self.world.block(at[0], at[1], at[2]))
-        {
-            return;
-        }
-        let group = 1 + self.world.random.next_int_bound(3).unwrap_or(0);
-        for _ in 0..group {
-            let _ = self.spawn_mob(
-                "minecraft:phantom",
-                [
-                    f64::from(at[0]) + 0.5,
-                    f64::from(at[1]),
-                    f64::from(at[2]) + 0.5,
-                ],
-                false,
-            );
         }
     }
     fn can_see_sky(&self, pos: [i32; 3]) -> bool {
