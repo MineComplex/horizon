@@ -215,7 +215,7 @@ impl Game<'_> {
                             .iter()
                             .all(|(other, _)| e.compatible(other, &id));
                     if compatible {
-                        if let Some(s) = self.inventory[self.selected].as_mut() {
+                        if let Some(s) = self.sim.inventory[self.sim.selected].as_mut() {
                             s.enchant(&id, level.max(0) as u32);
                         }
                         tracker.track(t, true);

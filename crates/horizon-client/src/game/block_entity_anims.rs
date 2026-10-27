@@ -314,7 +314,7 @@ impl Game<'_> {
                         alive: p.alive,
                         raider: false,
                     });
-                    let mobs = &self.mobs;
+                    let mobs = &self.sim.mobs;
                     let entity = |h: u64| {
                         if h == PLAYER {
                             return player;
@@ -360,7 +360,12 @@ impl Game<'_> {
                             self.particles.add(&options, p, [0.0; 3]);
                         }
                         // makeRaidersGlow (the server's effect).
-                        for m in self.mobs.iter_mut().filter(|_| self.remote.is_none()) {
+                        for m in self
+                            .sim
+                            .mobs
+                            .iter_mut()
+                            .filter(|_| self.sim.remote.is_none())
+                        {
                             if glow.contains(&u64::from(m.id)) {
                                 m.add_effect("minecraft:glowing", 60, 0);
                             }
@@ -369,8 +374,8 @@ impl Game<'_> {
                 }
                 Ticker::Conduit => {
                     let target = self.conduit_target(pos);
-                    let world = &self.world;
-                    let facts = self.res.facts();
+                    let world = &self.sim.world;
+                    let facts = self.sim.res.facts();
                     let registry = self.pack.assets.registry;
                     let is_water = |p: [i32; 3]| {
                         facts.get(world.block(p[0], p[1], p[2])).fluid
@@ -389,7 +394,7 @@ impl Game<'_> {
                         is_water,
                         is_frame,
                         target,
-                        self.particles.random(),
+                        self.sim.particles.random(),
                     );
                     let nautilus = ParticleOptions::simple(ParticleType::Nautilus);
                     for (p, v) in particles {
@@ -404,7 +409,7 @@ impl Game<'_> {
                     let anims = &mut self.front.be_anims;
                     let server = anims.gateway_servers.entry(pos).or_insert(initial);
                     // A server sends its copy's block event instead.
-                    let triggered = self.remote.is_none() && server.portal_tick();
+                    let triggered = self.sim.remote.is_none() && server.portal_tick();
                     let client = anims.gateways.entry(pos).or_insert(initial);
                     if triggered {
                         client.trigger_event(1, 0);

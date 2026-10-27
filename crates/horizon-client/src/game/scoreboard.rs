@@ -74,8 +74,8 @@ impl Game<'_> {
         if !self.score.loaded || self.remote.is_some() {
             return;
         }
-        self.score.storage.save(&self.world_root);
-        self.score.stopwatches.save(&self.world_root);
+        self.sim.score.storage.save(&self.sim.world_root);
+        self.sim.score.stopwatches.save(&self.sim.world_root);
         if self.border != horizon_client::worldborder::WorldBorder::default() {
             let _ = save::write_dat(
                 &self.world_root.join("data/minecraft/world_border.dat"),
@@ -100,8 +100,8 @@ impl Game<'_> {
     }
     /// The names commands complete: objectives, teams and tracked holders.
     pub(super) fn sync_score_registries(&mut self) {
-        let board = &self.score.board;
-        let reg = &mut self.world_data.registries;
+        let board = &self.sim.score.board;
+        let reg = &mut self.sim.world_data.registries;
         reg.objectives = board.objectives.iter().map(|o| o.name.clone()).collect();
         // Trigger objectives: the locks `/trigger` and `scoreboard players enable` complete from.
         reg.trigger_scores.clear();
@@ -121,8 +121,8 @@ impl Game<'_> {
             .collect();
         reg.teams = board.teams.iter().map(|t| t.name.clone()).collect();
         reg.tracked = board.tracked();
-        reg.storages = self.score.storage.keys();
-        reg.stopwatches = self.score.stopwatches.ids();
+        reg.storages = self.sim.score.storage.keys();
+        reg.stopwatches = self.sim.score.stopwatches.ids();
     }
 
     // ---- score holders ---------------------------------------------------
@@ -372,8 +372,8 @@ impl Game<'_> {
                     .or_else(|_| p.attribute("armor"))
                     .unwrap_or(0.0)
                     .floor() as i32;
-                let rec = &mut self.score.recorded;
-                let board = &mut self.score.board;
+                let rec = &mut self.sim.score.recorded;
+                let board = &mut self.sim.score.board;
                 if rec.health_and_absorption != Some(health_and_absorption) {
                     rec.health_and_absorption = Some(health_and_absorption);
                     let value = health_and_absorption.ceil() as i32;
@@ -389,8 +389,12 @@ impl Game<'_> {
                     // The air supply is full unless the player is drowning.
                     (sb::CRITERIA_AIR, &mut rec.air, 300),
                     (sb::CRITERIA_ARMOR, &mut rec.armor, armor),
-                    (sb::CRITERIA_XP, &mut rec.xp, self.experience.total),
-                    (sb::CRITERIA_LEVEL, &mut rec.level, self.experience.level),
+                    (sb::CRITERIA_XP, &mut rec.xp, self.sim.experience.total),
+                    (
+                        sb::CRITERIA_LEVEL,
+                        &mut rec.level,
+                        self.sim.experience.level,
+                    ),
                 ] {
                     if *last != Some(value) {
                         *last = Some(value);
@@ -679,7 +683,7 @@ impl Game<'_> {
                 (players, true, upside_down)
             }
         };
-        let board = &self.score.board;
+        let board = &self.sim.score.board;
         let objective = board.display_objective(sb::SLOT_LIST);
         let shown = tab_list::visible(
             key,

@@ -131,7 +131,7 @@ impl Game<'_> {
                 if self.res.stations().enchantments.get(&e).is_none() {
                     return Err(format!("unknown enchantment {e}").into());
                 }
-                let held = self.inventory[self.selected]
+                let held = self.sim.inventory[self.sim.selected]
                     .as_mut()
                     .ok_or("no held item")?;
                 held.enchant(&e, level);

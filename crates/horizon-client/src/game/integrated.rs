@@ -596,7 +596,7 @@ impl Game<'_> {
     /// IntegratedServer.tickServer: the server follows the window's render
     /// and simulation distances when they change.
     fn follow_distances(&mut self, flags: &Flags) {
-        let Some(host) = self.lan.as_mut() else {
+        let Some(host) = self.sim.lan.as_mut() else {
             return;
         };
         let view = flags.render_distance.load(Ordering::Relaxed).max(2);
@@ -604,7 +604,7 @@ impl Game<'_> {
         if view != old {
             log::info!("Changing view distance to {view}, from {old}");
             host.hub.set_view_distance(view);
-            self.settings.render_distance = view;
+            self.sim.settings.render_distance = view;
         }
         let simulation = flags.simulation_distance.load(Ordering::Relaxed).max(2);
         let old = host.hub.config.simulation_distance;

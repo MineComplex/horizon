@@ -156,6 +156,7 @@ impl Game<'_> {
         let weapon = bow.clone();
         // AbstractArrow's constructor: `getPiercingCount` of the weapon.
         let pierce = self
+            .sim
             .res
             .stations()
             .enchantments
@@ -163,7 +164,7 @@ impl Game<'_> {
                 Some(&weapon),
                 "minecraft:projectile_piercing",
                 &EffectContext::default(),
-                &mut self.world.random,
+                &mut self.sim.world.random,
                 0.0,
             )
             .clamp(0.0, 127.0) as u8;

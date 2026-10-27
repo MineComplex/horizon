@@ -27,8 +27,9 @@ impl Game<'_> {
     }
     /// Event 2018: an enderman's portal trail.
     pub(super) fn enderman_teleport_particles(&mut self, pos: [i32; 3], data: i32) {
-        self.particles
-            .enderman_teleportation(pos, data, self.settings.particles);
+        self.sim
+            .particles
+            .enderman_teleportation(pos, data, self.sim.settings.particles);
     }
     /// `LevelEventHandler.levelEvent` 3002 to 3005, drawing from the client
     /// level's random.

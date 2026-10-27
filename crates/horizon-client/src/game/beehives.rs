@@ -353,10 +353,10 @@ impl Game<'_> {
                 .unwrap_or(0) as usize;
             self.mobs[i].ai.target = Some(Who::Player);
             // The player a mob sees is its guest binding, else the window's.
-            if let Some(host) = self.lan.as_mut() {
+            if let Some(host) = self.sim.lan.as_mut() {
                 match players[pick] {
-                    Some(conn) => host.mob_players.insert(self.mobs[i].id, conn),
-                    None => host.mob_players.remove(&self.mobs[i].id),
+                    Some(conn) => host.mob_players.insert(self.sim.mobs[i].id, conn),
+                    None => host.mob_players.remove(&self.sim.mobs[i].id),
                 };
             }
         }

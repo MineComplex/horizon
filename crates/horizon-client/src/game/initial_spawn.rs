@@ -105,7 +105,7 @@ impl Game<'_> {
     pub(super) fn find_world_spawn(&mut self) -> Result<Option<[i32; 3]>> {
         let ((ox, oz), height) = match self.spawn_origin {
             Some(origin) => origin,
-            None => *self.spawn_origin.insert(self.spawn_origin()?),
+            None => *self.sim.spawn_origin.insert(self.spawn_origin()?),
         };
         while let Some((dx, dz)) = self.spawn_spiral.current() {
             if self.spawn_spiral.tested() {

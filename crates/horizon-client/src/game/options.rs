@@ -18,10 +18,10 @@ pub(super) const CONTROL_HELP: &[&str] = &[
 
 impl Game<'_> {
     pub(super) fn save_title_options(&mut self) {
-        if let Some(title) = &self.title
+        if let Some(title) = &self.sim.title
             && title.last_server != self.settings.file.string("lastServer")
         {
-            self.settings.file.set(
+            self.sim.settings.file.set(
                 "lastServer",
                 horizon_client::options_file::V::Str(title.last_server.clone()),
             );
@@ -101,9 +101,9 @@ impl Game<'_> {
         self.front.keys.clear();
         self.screen = Screen::Options;
         self.options_from_title = from_title;
-        let ui = &mut self.ui.options;
-        ui.open_at(!from_title && self.title.is_none(), page);
-        let root = self.options.resources.clone();
+        let ui = &mut self.sim.ui.options;
+        ui.open_at(!from_title && self.sim.title.is_none(), page);
+        let root = self.sim.options.resources.clone();
         ui.languages = lang::available(&[&root]);
         self.refresh_pack_lists();
     }
@@ -135,7 +135,7 @@ impl Game<'_> {
         });
         let mut ui = std::mem::take(&mut self.ui.options);
         let events = ui.click(
-            &mut self.settings,
+            &mut self.sim.settings,
             &self.front.gui.atlas,
             self.front.cursor.0,
             self.front.cursor.1,
@@ -154,7 +154,7 @@ impl Game<'_> {
         });
         let mut ui = std::mem::take(&mut self.ui.options);
         let events = ui.click(
-            &mut self.settings,
+            &mut self.sim.settings,
             &self.front.gui.atlas,
             self.front.cursor.0,
             self.front.cursor.1,
@@ -168,7 +168,7 @@ impl Game<'_> {
     }
     pub(super) fn options_key(&mut self, key: KeyCode, text: Option<&str>) -> Result<()> {
         let mut ui = std::mem::take(&mut self.ui.options);
-        let events = ui.key(&mut self.settings, &self.front.gui.atlas, key, text);
+        let events = ui.key(&mut self.sim.settings, &self.front.gui.atlas, key, text);
         self.ui.options = ui;
         self.handle_option_events(events)
     }
@@ -177,22 +177,28 @@ impl Game<'_> {
         &mut self,
         shortcut: horizon_client::clipboard::EditShortcut,
     ) -> bool {
-        self.ui
+        self.sim
+            .ui
             .options
             .shortcut(&self.front.gui.atlas, shortcut, &mut self.front.clipboard)
     }
     pub(super) fn options_scroll(&mut self, amount: f32) {
         let size = self.gui_size();
-        self.ui
+        self.sim
+            .ui
             .options
-            .scroll_at(&self.settings, size, self.front.cursor, amount);
+            .scroll_at(&self.sim.settings, size, self.front.cursor, amount);
     }
     /// Mouse buttons pressed while a key is being bound.
     pub(super) fn options_waiting_for_key(&self) -> bool {
         self.ui.options.selected_key.is_some()
     }
     pub(super) fn options_bind_mouse(&mut self, button: MouseButton) -> Result<()> {
-        let events = self.ui.options.bind_mouse(&mut self.settings, button);
+        let events = self
+            .sim
+            .ui
+            .options
+            .bind_mouse(&mut self.sim.settings, button);
         self.handle_option_events(events)
     }
     pub(super) fn handle_option_events(&mut self, events: Vec<Event>) -> Result<()> {
@@ -262,12 +268,12 @@ impl Game<'_> {
         let root = self.options.resources.clone();
         lang::set(lang::Language::load(&[&root], code));
         self.refresh_remote_language();
-        self.ui.chat.rescale(&self.front.gui.atlas);
+        self.sim.ui.chat.rescale(&self.front.gui.atlas);
         self.creative_screen.forget_items();
     }
     /// Settings that Horizon applies beyond render distance, volume and GUI scale.
     pub(super) fn apply_ui_settings(&mut self) {
-        let s = &self.settings;
+        let s = &self.sim.settings;
         if let Some(r) = self.front.renderer.as_mut() {
             r.gamma = s.gamma;
             r.fullbright = s.extras.fullbright;
@@ -297,16 +303,16 @@ impl Game<'_> {
             let o = &self.ui.chat.options;
             o.width != chat.width || o.scale != chat.scale || o.line_spacing != chat.line_spacing
         };
-        self.ui.chat.options = chat;
+        self.sim.ui.chat.options = chat;
         if rescale {
-            self.ui.chat.rescale(&self.front.gui.atlas);
+            self.sim.ui.chat.rescale(&self.front.gui.atlas);
         }
         let font = &mut self.front.gui.atlas.font;
         if font.uniform != s.force_unicode || font.japanese != s.japanese_glyphs {
             font.uniform = s.force_unicode;
             font.japanese = s.japanese_glyphs;
             font.reset_cache();
-            self.ui.chat.rescale(&self.front.gui.atlas);
+            self.sim.ui.chat.rescale(&self.front.gui.atlas);
         }
     }
     /// `Window.updateFullscreenState`: a fullscreen change made by the window

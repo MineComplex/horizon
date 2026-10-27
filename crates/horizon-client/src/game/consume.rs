@@ -156,17 +156,17 @@ impl Game<'_> {
             return false;
         }
         let entities = self.player_entity_collisions();
-        let Some(player) = self.player.as_mut() else {
+        let Some(player) = self.sim.player.as_mut() else {
             return false;
         };
         let bounds = player.dimensions.bounds(at);
         let free = horizon_client::motion::MotionWorld {
             entities: &entities,
             player,
-            scene: &mut self.world,
-            assets: &self.pack.assets,
-            collision_binding: self.collision,
-            resources: self.motion,
+            scene: &mut self.sim.world,
+            assets: &self.sim.pack.assets,
+            collision_binding: self.sim.collision,
+            resources: self.sim.motion,
         }
         .no_player_collision(bounds)
         .unwrap_or(false);

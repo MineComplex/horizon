@@ -74,14 +74,14 @@ impl Game<'_> {
     }
     /// `Leashable.dropLeash` / `removeLeash`: the lead falls as an item.
     pub(super) fn break_leash(&mut self, id: u32, drop: bool, sound: bool) {
-        let Some(m) = self.mobs.iter_mut().find(|m| m.id == id) else {
+        let Some(m) = self.sim.mobs.iter_mut().find(|m| m.id == id) else {
             return;
         };
         if horizon_client::mobs::leash::remove(m).is_none() {
             return;
         }
         // Leashable.tickLeash gates a dying entity's lead drop on entity_drops.
-        let drop = drop && (m.alive() || self.world_data.rules.bool("entity_drops"));
+        let drop = drop && (m.alive() || self.sim.world_data.rules.bool("entity_drops"));
         let at = [m.position.x, m.position.y, m.position.z];
         if sound {
             self.lead_sound("break", at);

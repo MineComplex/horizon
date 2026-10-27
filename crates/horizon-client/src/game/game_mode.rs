@@ -51,12 +51,12 @@ impl Game<'_> {
                 p.flying = true;
                 p.spectator = true;
             }
-        } else if let Some(p) = self.player.as_mut() {
+        } else if let Some(p) = self.sim.player.as_mut() {
             p.spectator = false;
             if was_spectator {
                 p.flying_speed = 0.05;
             }
-            if !self.creative {
+            if !self.sim.creative {
                 p.flying = false;
             } else if was_spectator {
                 p.flying = true;

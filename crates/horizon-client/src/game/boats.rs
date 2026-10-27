@@ -611,8 +611,8 @@ impl Game<'_> {
         self.yaw += delta.clamp(-105.0, 105.0) - delta;
         self.boats[i] = b;
         let seat = self.player_boat_seat(i);
-        if let Some(p) = self.player.as_mut() {
-            self.previous_position = p.position;
+        if let Some(p) = self.sim.player.as_mut() {
+            self.sim.previous_position = p.position;
             p.position = seat;
             p.velocity = Vec3::ZERO;
             p.fall_distance = 0.0;
@@ -790,9 +790,9 @@ impl Game<'_> {
         }
         // ChestBoat.interact: sneaking (or a full seat) opens the chest.
         if self.boats[i].chest && (sneaking || self.riding.is_some() || !self.boat_has_room(i)) {
-            let b = &self.boats[i];
+            let b = &self.sim.boats[i];
             let key = (i32::MAX - 15, super::minecarts::CART_KEY_Y, b.id as i32);
-            self.world.block_entities.insert(
+            self.sim.world.block_entities.insert(
                 key,
                 horizon_client::containers::BlockEntity::Chest(b.items.clone()),
             );

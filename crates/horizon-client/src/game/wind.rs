@@ -59,9 +59,9 @@ impl Game<'_> {
         let start = Vec3::new(pos.x, eye[1], pos.z);
         let mut proj = Projectile::new(ProjectileKind::WindCharge, start, Some(Who::Player));
         proj.shoot_from_rotation(
-            &mut self.world.random,
-            self.pitch,
-            self.yaw,
+            &mut self.sim.world.random,
+            self.sim.pitch,
+            self.sim.yaw,
             0.0,
             1.5,
             1.0,
@@ -136,7 +136,7 @@ impl Game<'_> {
                     m.damage(1.0, source);
                 }
                 if p.owner == Some(Who::Player) {
-                    self.last_hurt_by_player.insert(id, self.lan_acting);
+                    self.sim.last_hurt_by_player.insert(id, self.sim.lan_acting);
                 }
             }
         }

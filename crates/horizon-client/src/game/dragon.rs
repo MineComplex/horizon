@@ -814,17 +814,17 @@ impl Game<'_> {
         }
         // EnderDragon's constructor takes its id and its parts' from the
         // entity counter (a dragon loaded from the save gets them here too).
-        if let Some(d) = self.dragon.as_mut()
+        if let Some(d) = self.sim.dragon.as_mut()
             && d.id == 0
         {
-            d.id = self.next_entity + 1;
+            d.id = self.sim.next_entity + 1;
             self.next_entity += 9;
         }
         // The spikes' crystals too (EndCrystal's constructor): an id whether
         // or not a client has tracked them yet, to be aimed at by it.
-        for c in self.crystals.iter_mut().filter(|c| c.id == 0) {
-            self.next_entity += 1;
-            c.id = self.next_entity;
+        for c in self.sim.crystals.iter_mut().filter(|c| c.id == 0) {
+            self.sim.next_entity += 1;
+            c.id = self.sim.next_entity;
         }
         self.tick_dragon();
     }
@@ -846,8 +846,8 @@ impl Game<'_> {
             let time = self.world.random.next_int_bound(100_000).unwrap_or(0);
             // EndCrystal's constructor takes an id from the entity counter.
             self.next_entity += 1;
-            self.crystals.push(Crystal {
-                id: self.next_entity,
+            self.sim.crystals.push(Crystal {
+                id: self.sim.next_entity,
                 position: at,
                 show_bottom: true,
                 time,
@@ -2997,8 +2997,8 @@ impl Game<'_> {
         // EndCrystal's constructor takes an id from the entity counter, so
         // the crystal is an entity a command can name (`@e[type=end_crystal]`).
         self.next_entity += 1;
-        self.crystals.push(Crystal {
-            id: self.next_entity,
+        self.sim.crystals.push(Crystal {
+            id: self.sim.next_entity,
             position: Vec3::new(x + 0.5, y, z + 0.5),
             show_bottom: false,
             time,

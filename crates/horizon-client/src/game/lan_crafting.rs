@@ -271,13 +271,13 @@ impl Game<'_> {
                 .filter(|&s| menu.slot(s) != before[s].as_ref())
                 .collect::<Vec<_>>()
         });
-        match self.world.block_entities.get_mut(&pos) {
+        match self.sim.world.block_entities.get_mut(&pos) {
             Some(BlockEntity::Furnace(f)) => {
                 for k in 0..3 {
                     f.items[k] = menu.slot(k).cloned();
                 }
                 // AbstractFurnaceBlockEntity.setItem: only a new input restarts cooking.
-                f.input_clicked(self.res.recipes(), items[0].clone());
+                f.input_clicked(self.sim.res.recipes(), items[0].clone());
             }
             // BrewingStandBlockEntity.serverTick notices a new ingredient itself.
             Some(BlockEntity::Brewing(b)) => {

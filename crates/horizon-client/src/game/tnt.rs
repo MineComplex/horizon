@@ -159,16 +159,16 @@ impl Game<'_> {
         // ServerLevel.tick: only entities in entity-ticking chunks tick.
         let ticking = self.entity_ticking_area();
         while i < count {
-            let t = &mut self.tnts[i];
+            let t = &mut self.sim.tnts[i];
             if !ticking(t.position.x.floor() as i32, t.position.z.floor() as i32) {
                 i += 1;
                 continue;
             }
             t.tick(
-                &self.world,
-                self.collision,
-                &self.pack.assets,
-                self.res.facts(),
+                &self.sim.world,
+                self.sim.collision,
+                &self.sim.pack.assets,
+                self.sim.res.facts(),
             )?;
             if t.fuse <= 0 {
                 let center = [

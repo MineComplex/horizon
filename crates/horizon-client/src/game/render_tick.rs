@@ -261,7 +261,7 @@ impl Game<'_> {
             update_rain_fog(
                 &mut self.front.fog,
                 rain,
-                self.world.light(b[0], b[1], b[2]) >> 4,
+                self.sim.world.light(b[0], b[1], b[2]) >> 4,
                 rains,
                 1.0,
             );
@@ -278,26 +278,27 @@ impl Game<'_> {
         let marker = marker_particle_target(self.mode, self.stack_in(self.selected));
         let marker_options = |state| {
             // BlockMarker: the particle sprite, untinted.
-            let sprite = Self::block_particle_sprite(&self.pack, state)?;
+            let sprite = Self::block_particle_sprite(&self.sim.pack, state)?;
             Some(ParticleOptions::block(
                 ParticleType::BlockMarker,
                 sprite,
                 0xFFFFFF,
             ))
         };
-        let world = &self.world;
-        let facts = self.res.facts();
-        let biomes = self.res.biomes();
+        let world = &self.sim.world;
+        let facts = self.sim.res.facts();
+        let biomes = self.sim.res.biomes();
         let raining = rain > 0.2;
         let raining_at = |p: [i32; 3]| {
             raining
                 && motion_blocking(world, facts, p[0], p[2], p[1] + 64) <= p[1]
                 && rains_at(world, biomes, p[0], p[1], p[2])
         };
-        let tables = &self.pack.context.tables;
+        let tables = &self.sim.pack.context.tables;
         let model_offset = |state, x, z| tables.offset(state, x, z);
         let gateway_particles = |state, p| {
-            self.res
+            self.sim
+                .res
                 .block_entity_render()
                 .gateway_faces(world, state, p)
                 .len()
@@ -323,7 +324,7 @@ impl Game<'_> {
                 e[1].floor() as i32,
                 e[2].floor() as i32,
             ];
-            animate_tick(self.res.animate(), &mut self.particles, &ctx, block);
+            animate_tick(self.sim.res.animate(), &mut self.sim.particles, &ctx, block);
             // The Horizon Weather option off means no rain visuals or sounds at all.
             if rain > 0.0 && self.settings.horizon.weather {
                 // ClientLevel.tickWeatherEffects: rain splashes within the weather
@@ -380,16 +381,17 @@ impl Game<'_> {
                         f64::from(below) + block_top.max(fluid_top),
                         f64::from(z) + bz,
                     ];
-                    self.particles
+                    self.sim
+                        .particles
                         .add(&ParticleOptions::simple(ty), p, [0.0; 3]);
                 }
                 // The last rain column of the tick makes the sound, more often the
                 // longer it has been quiet; indoors it is the quieter one.
                 if let Some(at) = rain_position {
                     let waited = self.rain_sound_time;
-                    self.rain_sound_time += 1;
+                    self.sim.rain_sound_time += 1;
                     if random.next_int_bound(3).unwrap_or(0) < waited {
-                        self.rain_sound_time = 0;
+                        self.sim.rain_sound_time = 0;
                         let roof =
                             motion_blocking(world, facts, block[0], block[2], MIN_Y + HEIGHT);
                         let (name, volume, pitch) = if at[1] > block[1] + 1 && roof > block[1] {
@@ -407,11 +409,11 @@ impl Game<'_> {
         }
         if let Some(r) = &self.front.renderer {
             campfire_particles(
-                self.res.animate(),
-                &mut self.particles,
+                self.sim.res.animate(),
+                &mut self.sim.particles,
                 &ctx,
                 r.block_entities(),
-                &|pos| match self.world.block_entities.get(&(pos[0], pos[1], pos[2])) {
+                &|pos| match self.sim.world.block_entities.get(&(pos[0], pos[1], pos[2])) {
                     Some(BlockEntity::Campfire(c)) => c.items.each_ref().map(Option::is_some),
                     _ => [false; 4],
                 },
@@ -426,7 +428,7 @@ impl Game<'_> {
                 .as_ref()
                 .map(|p| ([p.position.x, p.position.y, p.position.z], p.velocity.y)),
         };
-        self.particles.tick(&level);
+        self.sim.particles.tick(&level);
         self.tick_pickups();
         for (name, at, volume, pitch) in std::mem::take(&mut self.particles.sounds) {
             self.front.audio.play(name, Some(at), volume, pitch);

@@ -308,7 +308,7 @@ impl Game<'_> {
     /// Keep the player's model in step with the player (`LivingEntity.tick`
     /// body turning, `WalkAnimationState`, the swing and the pose).
     pub(super) fn tick_player_model(&mut self) {
-        let Some(p) = self.player.as_ref() else {
+        let Some(p) = self.sim.player.as_ref() else {
             self.player_model = None;
             return;
         };
@@ -316,7 +316,7 @@ impl Game<'_> {
             let Some(kind) = self.res.player_type().clone() else {
                 return;
             };
-            self.player_model = Some(Mob::new(0, kind, p.position, self.yaw));
+            self.sim.player_model = Some(Mob::new(0, kind, p.position, self.sim.yaw));
         }
         let crouching = p.pose == Pose::Crouching;
         let (position, flying) = (p.position, p.flying || p.fall_flying);
@@ -354,7 +354,7 @@ impl Game<'_> {
         let off = self.offhand.as_ref().map(|s| s.item.clone());
         let riding = self.riding.is_some();
         let hurt = p.health.hurt_animation_time;
-        let Some(m) = self.player_model.as_mut() else {
+        let Some(m) = self.sim.player_model.as_mut() else {
             return;
         };
         let at = Vec3::new(
@@ -408,7 +408,7 @@ impl Game<'_> {
         m.extra.fall_flying = fall_flying;
         m.extra.fall_fly_ticks = fly_ticks;
         m.extra.auto_spin_attack = spinning;
-        m.extra.main_hand_left = self.settings.main_hand_left;
+        m.extra.main_hand_left = self.sim.settings.main_hand_left;
         m.extra.using_item = using;
         m.extra.using_off_hand = using_off_hand;
         m.extra.blocking = blocking;

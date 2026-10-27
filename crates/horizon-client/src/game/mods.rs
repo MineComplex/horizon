@@ -320,8 +320,8 @@ impl Game<'_> {
         let on = |id: &str| enabled.contains(id) || dev_ids.iter().any(|d| d == id);
         let mods = Mods::load_for(self.mod_runs(), &paths, on, vanilla_command);
         self.mods.mods = mods;
-        let chosen = &self.settings.mods;
-        self.mods.mods.set_bindings(|id| chosen.keys_of(id));
+        let chosen = &self.sim.settings.mods;
+        self.sim.mods.mods.set_bindings(|id| chosen.keys_of(id));
         // Entries were replaced wholesale: a screen's owner index is stale.
         self.mods.screen = None;
         // Content mods may have changed the items: remade on the next read.
@@ -612,7 +612,7 @@ impl Game<'_> {
         self.tick_mod_use();
         let snapshot = self.mod_snapshot();
         self.mods.mods.set_snapshot(snapshot);
-        self.mods.mods.tick(self.ticks);
+        self.sim.mods.mods.tick(self.sim.ticks);
         self.show_mod_output();
     }
     /// Restarts the dev mods rebuilt since the last check, once a second.
@@ -627,8 +627,8 @@ impl Game<'_> {
         }
         self.mods.checked = Some(Instant::now());
         if self.mods.mods.reload_changed(vanilla_command) {
-            let chosen = &self.settings.mods;
-            self.mods.mods.set_bindings(|id| chosen.keys_of(id));
+            let chosen = &self.sim.settings.mods;
+            self.sim.mods.mods.set_bindings(|id| chosen.keys_of(id));
             self.list_mods();
             self.sync_mod_commands();
             if self.options.execution_role.is_client() {
@@ -753,8 +753,8 @@ impl Game<'_> {
         }
         // A mod may set or clear its settings page in any call, not only
         // while loading: its row's Settings button follows.
-        let rows = self.settings.mods.installed.iter_mut();
-        for (row, e) in rows.zip(self.mods.mods.entries()) {
+        let rows = self.sim.settings.mods.installed.iter_mut();
+        for (row, e) in rows.zip(self.sim.mods.mods.entries()) {
             row.has_settings = e.has_ui_settings();
         }
     }
@@ -763,12 +763,12 @@ impl Game<'_> {
     /// Written by this client, so the Chat option doesn't hide it.
     pub(super) fn add_mod_chat_line(&mut self, line: Text) {
         let focused = self.screen == Screen::Chat;
-        self.ui.chat.add(
+        self.sim.ui.chat.add(
             &self.front.gui.atlas,
             line,
             None,
             horizon_client::chat::ChatSource::Client,
-            self.ticks,
+            self.sim.ticks,
             focused,
         );
     }
@@ -964,7 +964,7 @@ impl Game<'_> {
     /// The mod's screen or settings page: its title over widgets stacked
     /// down the middle, a Done button, Esc to leave (vanilla's menus).
     pub(super) fn draw_mod_screen(&mut self, batch: &mut HudBatch) {
-        let Some(ms) = self.mods.screen.as_mut() else {
+        let Some(ms) = self.sim.mods.screen.as_mut() else {
             // The screen was dropped while it was up: back to the world,
             // mouse held again like any return to Playing.
             self.screen = Screen::Playing;
@@ -973,7 +973,7 @@ impl Game<'_> {
             }
             return;
         };
-        let Some((title, widgets)) = Self::mod_ui_view(&self.mods.mods, ms) else {
+        let Some((title, widgets)) = Self::mod_ui_view(&self.sim.mods.mods, ms) else {
             // The mod's surface is gone (it stopped or cleared it): leave
             // the screen like Done did, without `closed` — the mod ended it.
             self.close_mod_screen(false);
@@ -983,7 +983,7 @@ impl Game<'_> {
         // so `atlas` may not stay borrowed across it.
         let mut items: Vec<(String, f32, f32)> = Vec::new();
         let atlas = &self.front.gui.atlas;
-        let in_world = self.player.is_some();
+        let in_world = self.sim.player.is_some();
         ui::menu_background(batch, atlas, 0.0, 0.0, batch.width, batch.height, in_world);
         ui::centered_text(
             batch,
@@ -997,7 +997,7 @@ impl Game<'_> {
         let cx = (batch.width / 2.0).floor();
         let x = cx - MOD_UI_COLUMN / 2.0;
         // A settings page starts with the mod's keys, as Key Binds rows.
-        let keys = Self::mod_page_keys(&self.mods.mods, ms);
+        let keys = Self::mod_page_keys(&self.sim.mods.mods, ms);
         for (i, k) in keys.iter().enumerate() {
             let wy = MOD_UI_TOP + i as f32 * MOD_UI_KEY_ROW;
             let hover = ui::hovered(self.front.cursor, x, wy, MOD_UI_COLUMN, 20.0);
@@ -1052,7 +1052,7 @@ impl Game<'_> {
                     );
                 }
                 UiWidget::Item(i) => {
-                    if self.res.items().get(&i.item).is_some() {
+                    if self.sim.res.items().get(&i.item).is_some() {
                         items.push((i.item.clone(), x + 2.0, wy + 2.0));
                     } else {
                         batch.text(atlas, "?", x + 6.0, wy + 6.0, u32::MAX, true);
@@ -1166,7 +1166,7 @@ impl Game<'_> {
         let Some(ms) = self.mods.screen.as_ref() else {
             return;
         };
-        let Some((_, widgets)) = Self::mod_ui_view(&self.mods.mods, ms) else {
+        let Some((_, widgets)) = Self::mod_ui_view(&self.sim.mods.mods, ms) else {
             return;
         };
         let owner = ms.owner;
@@ -1197,7 +1197,7 @@ impl Game<'_> {
             {
                 self.front.audio.play_button_click();
                 let owner = self.mods.screen.as_ref().map_or(0, |ms| ms.owner);
-                self.mods.mods.ui_select(owner, b.id, 0);
+                self.sim.mods.mods.ui_select(owner, b.id, 0);
                 self.show_mod_output();
                 return;
             }
@@ -1223,15 +1223,15 @@ impl Game<'_> {
     pub(super) fn mod_screen_scroll(&mut self, delta: f32) {
         let (w, h) = self.gui_size();
         let cursor = self.front.cursor;
-        let Some(ms) = self.mods.screen.as_mut() else {
+        let Some(ms) = self.sim.mods.screen.as_mut() else {
             return;
         };
-        let Some((_, widgets)) = Self::mod_ui_view(&self.mods.mods, ms) else {
+        let Some((_, widgets)) = Self::mod_ui_view(&self.sim.mods.mods, ms) else {
             return;
         };
         let x = (w / 2.0).floor() - MOD_UI_COLUMN / 2.0;
         let top =
-            MOD_UI_TOP + Self::mod_page_keys(&self.mods.mods, ms).len() as f32 * MOD_UI_KEY_ROW;
+            MOD_UI_TOP + Self::mod_page_keys(&self.sim.mods.mods, ms).len() as f32 * MOD_UI_KEY_ROW;
         let layout = Self::mod_ui_layout(h, top, widgets);
         let mut list_i = 0usize;
         for (w, &(wy, wh)) in widgets.iter().zip(&layout) {

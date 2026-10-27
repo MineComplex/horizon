@@ -97,7 +97,7 @@ impl Game<'_> {
         reg.permission = permission;
         {
             let dir = |sub: &str| -> Vec<String> {
-                let root = self.options.resources.join("data/minecraft").join(sub);
+                let root = self.sim.options.resources.join("data/minecraft").join(sub);
                 let mut out = Vec::new();
                 let mut stack = vec![root.clone()];
                 while let Some(d) = stack.pop() {
@@ -121,9 +121,9 @@ impl Game<'_> {
                 out.sort();
                 out
             };
-            self.world_data.registries.recipes = dir("recipe");
-            self.world_data.registries.damage_types = dir("damage_type");
-            self.world_data.registries.loot_tables = dir("loot_table");
+            self.sim.world_data.registries.recipes = dir("recipe");
+            self.sim.world_data.registries.damage_types = dir("damage_type");
+            self.sim.world_data.registries.loot_tables = dir("loot_table");
             self.world_data.registries.templates = {
                 let root = self.options.resources.join("worldgen/structure/minecraft");
                 let mut out = Vec::new();
@@ -189,8 +189,9 @@ impl Game<'_> {
         .iter()
         .map(|a| format!("minecraft:{a}"))
         .collect();
-        let reg = &mut self.world_data.registries;
+        let reg = &mut self.sim.world_data.registries;
         let mut items: Vec<String> = self
+            .sim
             .res
             .items()
             .order
@@ -200,6 +201,7 @@ impl Game<'_> {
         items.sort();
         reg.items = items;
         reg.item_tags = self
+            .sim
             .res
             .items()
             .item_tags
@@ -208,6 +210,7 @@ impl Game<'_> {
             .collect();
         reg.item_tags.sort();
         reg.block_tags = self
+            .sim
             .res
             .items()
             .block_tags
@@ -215,7 +218,7 @@ impl Game<'_> {
             .map(|k| horizon_client::command::args::normalize(k))
             .collect();
         reg.block_tags.sort();
-        let registry = self.pack.assets.registry;
+        let registry = self.sim.pack.assets.registry;
         let mut blocks: BTreeMap<String, BTreeMap<String, Vec<String>>> = BTreeMap::new();
         for id in 0..registry.len() {
             let Some(state) = registry.state(horizon_world::registry::BlockStateId(id as u32))
@@ -235,6 +238,7 @@ impl Game<'_> {
             .map(|(k, v)| (k, v.into_iter().collect()))
             .collect();
         let mut summonable: Vec<String> = self
+            .sim
             .res
             .mob_types()
             .keys()
@@ -258,7 +262,7 @@ impl Game<'_> {
         summonable.sort();
         summonable.dedup();
         reg.summonable = summonable;
-        let root = self.options.resources.clone();
+        let root = self.sim.options.resources.clone();
         let mut types: Vec<String> = serde_json::from_slice::<serde_json::Value>(
             &std::fs::read(root.join("entity-types.json")).unwrap_or_default(),
         )
@@ -346,17 +350,18 @@ impl Game<'_> {
             }
         }
         // Vanilla's built-in registries (mob effects, components, dialogs...).
-        for dir in [&self.options.resources, &self.ui.vanilla_root] {
+        for dir in [&self.sim.options.resources, &self.sim.ui.vanilla_root] {
             if let Ok(bytes) = std::fs::read(dir.join("command-registries.json"))
                 && let Ok(v) = serde_json::from_slice::<serde_json::Value>(&bytes)
             {
-                self.world_data.registries.fill_from_export(&v);
+                self.sim.world_data.registries.fill_from_export(&v);
                 break;
             }
         }
-        let reg = &mut self.world_data.registries;
-        reg.timelines = self.world_data.timelines.keys().cloned().collect();
+        let reg = &mut self.sim.world_data.registries;
+        reg.timelines = self.sim.world_data.timelines.keys().cloned().collect();
         reg.time_markers = self
+            .sim
             .world_data
             .markers
             .iter()
@@ -492,12 +497,12 @@ impl Game<'_> {
         }
         let focused = self.screen == Screen::Chat;
         let heard = self.mods.running().then(|| text.plain());
-        self.ui.chat.add(
+        self.sim.ui.chat.add(
             &self.front.gui.atlas,
             text,
             indicator,
             source,
-            self.ticks,
+            self.sim.ticks,
             focused,
         );
         if let Some(line) = heard {
@@ -509,10 +514,10 @@ impl Game<'_> {
         if let Some(shortcut) = self.edit_shortcut(event) {
             let m = Measure(&self.front.gui.atlas.font);
             let c = Commands {
-                dispatcher: chat_tree(&self.remote, &self.mods),
-                registries: &self.world_data.registries,
+                dispatcher: chat_tree(&self.sim.remote, &self.sim.mods),
+                registries: &self.sim.world_data.registries,
             };
-            if let Some(screen) = self.ui.chat_screen.as_mut() {
+            if let Some(screen) = self.sim.ui.chat_screen.as_mut() {
                 screen.shortcut(&m, &c, shortcut, &mut self.front.clipboard);
             }
             return;
@@ -595,10 +600,10 @@ impl Game<'_> {
     ) {
         let m = Measure(&self.front.gui.atlas.font);
         let c = Commands {
-            dispatcher: chat_tree(&self.remote, &self.mods),
-            registries: &self.world_data.registries,
+            dispatcher: chat_tree(&self.sim.remote, &self.sim.mods),
+            registries: &self.sim.world_data.registries,
         };
-        if let Some(screen) = self.ui.chat_screen.as_mut() {
+        if let Some(screen) = self.sim.ui.chat_screen.as_mut() {
             screen.server_suggestions(&m, &c, id, range, list);
         }
     }
@@ -606,10 +611,10 @@ impl Game<'_> {
     pub(super) fn chat_type(&mut self, text: &str) {
         let m = Measure(&self.front.gui.atlas.font);
         let c = Commands {
-            dispatcher: chat_tree(&self.remote, &self.mods),
-            registries: &self.world_data.registries,
+            dispatcher: chat_tree(&self.sim.remote, &self.sim.mods),
+            registries: &self.sim.world_data.registries,
         };
-        if let Some(screen) = self.ui.chat_screen.as_mut() {
+        if let Some(screen) = self.sim.ui.chat_screen.as_mut() {
             screen.type_text(&m, &c, text);
         }
     }
@@ -644,12 +649,12 @@ impl Game<'_> {
             );
             let focused = self.screen == Screen::Chat;
             let heard = self.mods.running().then(|| line.plain());
-            self.ui.chat.add(
+            self.sim.ui.chat.add(
                 &self.front.gui.atlas,
                 line,
                 None,
                 ChatSource::Player,
-                self.ticks,
+                self.sim.ticks,
                 focused,
             );
             if let Some(line) = heard {
@@ -683,8 +688,8 @@ impl Game<'_> {
         });
         let m = Measure(&self.front.gui.atlas.font);
         let c = Commands {
-            dispatcher: chat_tree(&self.remote, &self.mods),
-            registries: &self.world_data.registries,
+            dispatcher: chat_tree(&self.sim.remote, &self.sim.mods),
+            registries: &self.sim.world_data.registries,
         };
         if self.ui.in_bed_chat && self.sleeping.is_some() {
             let width = self.front.renderer.as_ref().map_or(1280.0, |r| {
@@ -696,7 +701,7 @@ impl Game<'_> {
                 return;
             }
         }
-        if let Some(screen) = self.ui.chat_screen.as_mut() {
+        if let Some(screen) = self.sim.ui.chat_screen.as_mut() {
             if screen.click(&m, &c, cursor.0 as f64, cursor.1 as f64) {
                 return;
             }
@@ -718,7 +723,7 @@ impl Game<'_> {
             }
             Some(ClickEvent::OpenUrl(url)) => self.click_url(url),
             Some(ClickEvent::SuggestCommand(command)) => {
-                if let Some(screen) = self.ui.chat_screen.as_mut() {
+                if let Some(screen) = self.sim.ui.chat_screen.as_mut() {
                     screen.suggest_command(&m, &c, &command);
                 }
             }
@@ -826,7 +831,7 @@ impl Game<'_> {
             .map_or(0, |t| t.elapsed().as_millis() as u64);
         let draws = screen.draw(&m, mouse, blink, background);
         horizon_client::screen_draw::paint(batch, &self.front.gui.atlas, &draws);
-        self.ui.chat_screen = Some(screen);
+        self.sim.ui.chat_screen = Some(screen);
         if self.ui.in_bed_chat && self.sleeping.is_some() {
             let (x, y, w, h) = Self::leave_bed_button(batch.width, batch.height);
             let label = Text::literal(horizon_client::lang::get_or(
@@ -1063,12 +1068,12 @@ impl Game<'_> {
             Err(e) => Text::translate("screenshot.failure", &[Text::literal(e.clone())]),
         };
         let focused = self.screen == Screen::Chat;
-        self.ui.chat.add(
+        self.sim.ui.chat.add(
             &self.front.gui.atlas,
             message,
             None,
             ChatSource::Client,
-            self.ticks,
+            self.sim.ticks,
             focused,
         );
     }

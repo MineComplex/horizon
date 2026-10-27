@@ -270,7 +270,7 @@ impl Game<'_> {
         // The list.
         let (row_h, rows) = self.stats_rows();
         let content = row_h * rows as f32 + 4.0;
-        self.stats_ui.scroll.clamp(top, bottom, content);
+        self.sim.stats_ui.scroll.clamp(top, bottom, content);
         let left = ((w - 280.0) / 2.0).floor();
         let scroll = self.stats_ui.scroll.amount;
         let row_y = |i: usize| top + 4.0 + i as f32 * row_h - scroll;
@@ -507,7 +507,7 @@ impl Game<'_> {
         let b = HudBatch::new(size);
         let (w, h) = (b.width, b.height);
         let content = self.stats_content();
-        self.stats_ui.scroll.press(
+        self.sim.stats_ui.scroll.press(
             self.front.cursor,
             Self::stats_bar(w),
             TAB_H,
@@ -522,7 +522,8 @@ impl Game<'_> {
         }
         let h = self.gui_size().1;
         let content = self.stats_content();
-        self.stats_ui
+        self.sim
+            .stats_ui
             .scroll
             .drag(self.front.cursor.1, TAB_H, h - FOOTER, content);
     }

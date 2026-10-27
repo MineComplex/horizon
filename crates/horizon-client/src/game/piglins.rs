@@ -295,14 +295,14 @@ impl Game<'_> {
             self.piglin_keep(i, ItemStack::new(&item, 1));
             return;
         }
-        let m = &self.mobs[i];
+        let m = &self.sim.mobs[i];
         let from = [m.position.x, m.position.y + 1.3, m.position.z];
         let items = if !m.is_baby() {
-            self.res.items().loot_table(
+            self.sim.res.items().loot_table(
                 "minecraft:gameplay/piglin_bartering",
                 false,
                 None,
-                &mut self.world.random,
+                &mut self.sim.world.random,
             )
         } else {
             vec![ItemStack::new(&item, 1)]

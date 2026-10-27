@@ -32,10 +32,10 @@ impl Game<'_> {
             f64::from(pos[2]) + 0.5,
         ];
         if let Some(id) = self.spawn_mob("minecraft:sniffer", at, true)
-            && let Some(m) = self.mobs.iter_mut().find(|m| m.id == id)
+            && let Some(m) = self.sim.mobs.iter_mut().find(|m| m.id == id)
         {
             m.extra.age = sniffer::BABY_START_AGE;
-            let yaw = self.world.random.next_float() * 360.0 - 180.0;
+            let yaw = self.sim.world.random.next_float() * 360.0 - 180.0;
             m.yaw = yaw;
             m.body_yaw = yaw;
             m.head_yaw = yaw;
@@ -50,7 +50,7 @@ impl Game<'_> {
             return;
         };
         for i in 0..self.mobs.len() {
-            let m = &self.mobs[i];
+            let m = &self.sim.mobs[i];
             if m.species() != Species::Sniffer
                 || !m.alive()
                 || m.silent

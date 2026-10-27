@@ -1662,8 +1662,8 @@ impl Game<'_> {
         let sample = |min: i32, max: i32, r: &mut horizon_core::random::LegacyRandom| {
             min + r.next_int_bound(max - min + 1).unwrap_or(0)
         };
-        let w = &mut self.world.weather;
-        let r = &mut self.world.random;
+        let w = &mut self.sim.world.weather;
+        let r = &mut self.sim.world.random;
         let (key, clear, time, raining, thundering) = if ctx.has("clear") {
             (
                 "commands.weather.set.clear",
@@ -1834,8 +1834,8 @@ impl Game<'_> {
                 }
                 "experience_orb" => {
                     self.next_entity += 1;
-                    self.orbs.push(horizon_client::entities::ExperienceOrb {
-                        id: self.next_entity,
+                    self.sim.orbs.push(horizon_client::entities::ExperienceOrb {
+                        id: self.sim.next_entity,
                         position: Vec3::new(pos[0], pos[1], pos[2]),
                         previous: Vec3::new(pos[0], pos[1], pos[2]),
                         velocity: Vec3::new(0.0, 0.0, 0.0),
@@ -1855,11 +1855,11 @@ impl Game<'_> {
                     // EndCrystal's constructor takes an id from the entity
                     // counter, and the crystal is shown with its base.
                     self.next_entity += 1;
-                    self.crystals.push(super::dragon::Crystal {
-                        id: self.next_entity,
+                    self.sim.crystals.push(super::dragon::Crystal {
+                        id: self.sim.next_entity,
                         position: Vec3::new(pos[0], pos[1], pos[2]),
                         show_bottom: true,
-                        time: self.world.random.next_int_bound(100_000).unwrap_or(0),
+                        time: self.sim.world.random.next_int_bound(100_000).unwrap_or(0),
                         beam: None,
                         invulnerable: false,
                     });
@@ -2831,11 +2831,11 @@ impl Game<'_> {
             .map(|s| s.as_ref().is_some_and(|s| self.stack_matches(predicate, s)))
             .collect();
         let mut slots: Vec<&mut Option<ItemStack>> = Vec::new();
-        slots.extend(self.inventory.iter_mut());
-        slots.extend(self.armor.iter_mut().rev());
-        slots.push(&mut self.offhand);
-        slots.extend(self.craft_grid.iter_mut());
-        slots.push(&mut self.carried);
+        slots.extend(self.sim.inventory.iter_mut());
+        slots.extend(self.sim.armor.iter_mut().rev());
+        slots.push(&mut self.sim.offhand);
+        slots.extend(self.sim.craft_grid.iter_mut());
+        slots.push(&mut self.sim.carried);
         for (slot, matches) in slots.into_iter().zip(matching) {
             if !matches {
                 continue;
@@ -3102,12 +3102,12 @@ impl Game<'_> {
             capture.push(line.clone());
         }
         let focused = self.screen == Screen::Chat;
-        self.ui.chat.add(
+        self.sim.ui.chat.add(
             &self.front.gui.atlas,
             line,
             None,
             horizon_client::chat::ChatSource::Player,
-            self.ticks,
+            self.sim.ticks,
             focused,
         );
         Ok(1)

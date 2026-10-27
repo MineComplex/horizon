@@ -286,32 +286,37 @@ impl Game<'_> {
             .collect();
         self.knot_ids.retain(|p, _| knots.contains(p));
         for p in knots {
-            self.knot_ids.entry(p).or_insert_with(|| {
-                self.next_entity += 1;
-                self.next_entity
+            self.sim.knot_ids.entry(p).or_insert_with(|| {
+                self.sim.next_entity += 1;
+                self.sim.next_entity
             });
         }
-        let next = &mut self.next_entity;
+        let next = &mut self.sim.next_entity;
         let mut give = |id: &mut u32| {
             if *id == 0 {
                 *next += 1;
                 *id = *next;
             }
         };
-        self.tnts.iter_mut().for_each(|t| give(&mut t.id));
-        self.falling.iter_mut().for_each(|f| give(&mut f.id));
-        self.creatures
+        self.sim.tnts.iter_mut().for_each(|t| give(&mut t.id));
+        self.sim.falling.iter_mut().for_each(|f| give(&mut f.id));
+        self.sim
+            .creatures
             .projectiles
             .iter_mut()
             .for_each(|p| give(&mut p.id));
-        self.tridents.iter_mut().for_each(|t| give(&mut t.id));
-        self.rockets.iter_mut().for_each(|r| give(&mut r.id));
-        self.crystals.iter_mut().for_each(|c| give(&mut c.id));
-        self.bolts.iter_mut().for_each(|b| give(&mut b.id));
-        self.potions.thrown_ids().for_each(&mut give);
-        self.end.eye_ids().for_each(&mut give);
-        self.breath_clouds.iter_mut().for_each(|b| give(&mut b.id));
-        self.dragon_fireballs
+        self.sim.tridents.iter_mut().for_each(|t| give(&mut t.id));
+        self.sim.rockets.iter_mut().for_each(|r| give(&mut r.id));
+        self.sim.crystals.iter_mut().for_each(|c| give(&mut c.id));
+        self.sim.bolts.iter_mut().for_each(|b| give(&mut b.id));
+        self.sim.potions.thrown_ids().for_each(&mut give);
+        self.sim.end.eye_ids().for_each(&mut give);
+        self.sim
+            .breath_clouds
+            .iter_mut()
+            .for_each(|b| give(&mut b.id));
+        self.sim
+            .dragon_fireballs
             .iter_mut()
             .for_each(|b| give(&mut b.id));
     }

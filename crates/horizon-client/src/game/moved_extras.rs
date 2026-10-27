@@ -84,8 +84,14 @@ mod with_mods {
                             self.settings.mods.enabled.insert(m.id.to_owned());
                             // The install wrote the key to horizon-mods.txt;
                             // the settings save below must keep it.
-                            let keys = self.settings.mods.keys.entry(m.id.to_owned()).or_default();
-                            for (name, key) in m.keys(&self.settings.extras) {
+                            let keys = self
+                                .sim
+                                .settings
+                                .mods
+                                .keys
+                                .entry(m.id.to_owned())
+                                .or_default();
+                            for (name, key) in m.keys(&self.sim.settings.extras) {
                                 keys.entry(name.to_owned()).or_insert(key);
                             }
                             self.settings.mods.keys.retain(|_, k| !k.is_empty());

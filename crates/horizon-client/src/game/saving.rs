@@ -91,9 +91,10 @@ impl Game<'_> {
             return Err("a world save is already in progress".into());
         }
         if all {
-            self.world
+            self.sim
+                .world
                 .modified
-                .extend(self.world.chunks.keys().copied());
+                .extend(self.sim.world.chunks.keys().copied());
         }
         self.front.keys.clear();
         self.front.physical_keys.clear();
@@ -138,7 +139,7 @@ impl Game<'_> {
                     if save.started.elapsed() > Duration::from_secs(30) {
                         return Err("chunk generation did not finish before saving".into());
                     }
-                    if self.streaming.poll_save(&mut self.world) {
+                    if self.sim.streaming.poll_save(&mut self.sim.world) {
                         save.stage = Stage::Chunks(self.world.modified.iter().copied().collect());
                     }
                     Ok(false)
@@ -232,7 +233,7 @@ impl Game<'_> {
             return Ok(());
         };
         let mut hud = HudBatch::new([renderer.config.width, renderer.config.height]);
-        let progress = match self.pending_save.as_ref().map(|save| &save.stage) {
+        let progress = match self.sim.pending_save.as_ref().map(|save| &save.stage) {
             Some(Stage::Chunks(_)) => 0.25,
             Some(Stage::Entities(_)) => 0.5,
             Some(Stage::Writes) => 0.9,

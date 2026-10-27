@@ -262,7 +262,7 @@ impl Game<'_> {
         let Some(layout) = self.dialog_layout() else {
             return;
         };
-        let Some(open) = self.dialogs.open.as_mut() else {
+        let Some(open) = self.sim.dialogs.open.as_mut() else {
             return;
         };
         let atlas = &self.front.gui.atlas;
@@ -425,7 +425,7 @@ impl Game<'_> {
             self.dialogs.warning = true;
             return Ok(());
         }
-        let Some(open) = self.dialogs.open.as_mut() else {
+        let Some(open) = self.sim.dialogs.open.as_mut() else {
             return Ok(());
         };
         let [_, ay, _, ah] = layout.area;
@@ -524,7 +524,7 @@ impl Game<'_> {
         }
         let ctrl = self.front.modifiers.control_key() || self.front.modifiers.super_key();
         let shift = self.front.modifiers.shift_key();
-        let Some(open) = self.dialogs.open.as_mut() else {
+        let Some(open) = self.sim.dialogs.open.as_mut() else {
             return Ok(());
         };
         if escape {

@@ -165,7 +165,7 @@ impl Game<'_> {
             [self.yaw, self.pitch]
         };
         let scale = self.view_scale();
-        for display in self.text_displays.values_mut() {
+        for display in self.sim.text_displays.values_mut() {
             display.last_progress = display.progress(partial as f32);
             let d = display.shown.blend(&display.from, display.last_progress);
             let position = display.previous.lerp(display.position, partial);
@@ -204,7 +204,7 @@ impl Game<'_> {
                 glam::Mat4::from_translation(glam::Vec3::new(1.0 - width / 2.0, -height, 0.0));
             let mut batch = HudBatch::new([1, 1]);
             let bg = if d.flags & 4 != 0 {
-                self.settings.text_background(0.25)
+                self.sim.settings.text_background(0.25)
             } else {
                 d.background as u32
             };
@@ -240,7 +240,7 @@ impl Game<'_> {
                     d.flags & 1 != 0,
                 );
             }
-            let world_light = self.world.light(
+            let world_light = self.sim.world.light(
                 position.x.floor() as i32,
                 position.y.floor() as i32,
                 position.z.floor() as i32,

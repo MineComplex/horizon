@@ -43,7 +43,7 @@ impl Game<'_> {
     }
     /// Shortcuts on the title, world creation and server screens.
     pub(super) fn title_shortcut(&mut self, shortcut: EditShortcut) {
-        let Some(title) = self.title.as_mut() else {
+        let Some(title) = self.sim.title.as_mut() else {
             return;
         };
         if title.has_caret_field() {
@@ -66,7 +66,7 @@ impl Game<'_> {
     /// Typing or a backspace in a title-screen field. A field that still only
     /// appends replaces a Select All selection before the edit.
     pub(super) fn title_edit(&mut self, typed: Option<&str>, backspace: bool) {
-        let Some(title) = self.title.as_mut() else {
+        let Some(title) = self.sim.title.as_mut() else {
             return;
         };
         let cleared = !title.has_caret_field()
@@ -87,6 +87,7 @@ impl Game<'_> {
     /// Shortcuts in the creative inventory's search box (an `EditBox` of 50).
     pub(super) fn creative_search_shortcut(&mut self, shortcut: EditShortcut) {
         if self
+            .sim
             .creative_screen
             .search
             .shortcut(shortcut, &mut self.front.clipboard)

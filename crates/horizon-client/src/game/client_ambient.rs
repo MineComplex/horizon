@@ -17,8 +17,8 @@ impl Game<'_> {
             return;
         }
         let mut events = Vec::new();
-        let random = self.particles.level_random();
-        for m in self.mobs.iter_mut().filter(|m| !m.removed) {
+        let random = self.sim.particles.level_random();
+        for m in self.sim.mobs.iter_mut().filter(|m| !m.removed) {
             ambient::client_ai_step(m, &mut events);
             ambient::client_particles(m, random, &mut events);
         }
@@ -138,7 +138,7 @@ impl Game<'_> {
     /// list the server sent, and the mobs and guests of a game in the frame
     /// theirs.
     fn effect_swirls(&mut self) {
-        if let Some(p) = self.player.as_ref() {
+        if let Some(p) = self.sim.player.as_ref() {
             let effects = &self.potions.effects.list;
             let list: Vec<_> = effects
                 .iter()
@@ -152,7 +152,7 @@ impl Game<'_> {
                 f64::from(p.dimensions.height),
             );
             swirl(
-                &mut self.particles,
+                &mut self.sim.particles,
                 p.position,
                 size,
                 &list,
@@ -160,8 +160,8 @@ impl Game<'_> {
                 invisible,
             );
         }
-        let guests = self.lan.iter().flat_map(|host| host.models.values());
-        for m in self.mobs.iter().chain(guests) {
+        let guests = self.sim.lan.iter().flat_map(|host| host.models.values());
+        for m in self.sim.mobs.iter().chain(guests) {
             if !m.alive() {
                 continue;
             }
@@ -180,7 +180,7 @@ impl Game<'_> {
                     .filter_map(|e| effect_particle(e.0, false))
                     .collect();
                 swirl(
-                    &mut self.particles,
+                    &mut self.sim.particles,
                     m.position,
                     size,
                     &list,
@@ -191,7 +191,7 @@ impl Game<'_> {
                 let list = &m.extra.effect_particles;
                 let ambient = m.extra.effect_ambient;
                 swirl(
-                    &mut self.particles,
+                    &mut self.sim.particles,
                     m.position,
                     size,
                     list,

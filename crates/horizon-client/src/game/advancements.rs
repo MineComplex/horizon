@@ -511,18 +511,20 @@ impl Game<'_> {
             .rewards
             .recipes
             .iter()
-            .filter(|r| self.res.stations().recipe_index.contains(r))
+            .filter(|r| self.sim.res.stations().recipe_index.contains(r))
             .cloned()
             .collect();
         let (_, unlocked) = self
+            .sim
             .level
             .recipe_book
-            .add_recipes(&self.res.stations().recipe_index, &rewards);
+            .add_recipes(&self.sim.res.stations().recipe_index, &rewards);
         for table in &a.rewards.loot {
-            let items = self
-                .res
-                .items()
-                .loot_table(table, false, None, &mut self.world.random);
+            let items =
+                self.sim
+                    .res
+                    .items()
+                    .loot_table(table, false, None, &mut self.sim.world.random);
             for s in items {
                 if let Some(rest) = self.give(s)
                     && let Some(eye) = self.eye_position()

@@ -225,7 +225,7 @@ impl Game<'_> {
     }
     /// `CommandBlockEntity.scheduleTick`.
     fn schedule_command_block_tick(&mut self, pos: Pos) {
-        mark_condition_met(&mut self.world, self.pack.assets.registry, pos);
+        mark_condition_met(&mut self.sim.world, self.sim.pack.assets.registry, pos);
         self.schedule_command_block(pos);
     }
     fn update_output_signal(&mut self, pos: Pos) {
@@ -272,7 +272,7 @@ impl Game<'_> {
             return;
         };
         if mode == Mode::Auto {
-            mark_condition_met(&mut self.world, self.pack.assets.registry, key);
+            mark_condition_met(&mut self.sim.world, self.sim.pack.assets.registry, key);
         }
         match command_block::tick_action(mode, was_met, conditional(state)) {
             Some(true) => self.command_block_execute(key, state),
@@ -575,7 +575,7 @@ impl Game<'_> {
         let ctrl = self.front.keys.contains(&KeyCode::ControlLeft);
         let shift = self.front.keys.contains(&KeyCode::ShiftLeft);
         let shortcut = self.edit_shortcut(event);
-        let Some(s) = self.command_block_screen.as_mut() else {
+        let Some(s) = self.sim.command_block_screen.as_mut() else {
             return;
         };
         if let Some(shortcut) = shortcut {

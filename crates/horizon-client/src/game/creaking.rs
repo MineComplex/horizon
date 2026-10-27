@@ -326,7 +326,7 @@ impl Game<'_> {
                     .map(|f| &*f.name == "minecraft:creaking_heart")
                     .collect();
             }
-            let hearts = &self.creaking.hearts;
+            let hearts = &self.sim.creaking.hearts;
             let _ = heart;
             let is_heart = |id: u32| hearts.get(id as usize).copied().unwrap_or(false);
             for (si, section) in chunk.sections.iter().enumerate() {
@@ -346,14 +346,15 @@ impl Game<'_> {
                         horizon_client::chunk::MIN_Y + si as i32 * 16 + ly,
                         key.1 * 16 + lz,
                     );
-                    self.world
+                    self.sim
+                        .world
                         .block_entities
                         .get_or_insert_with(pos, || BlockEntity::CreakingHeart(Box::default()));
                 }
             }
         }
-        let chunks = &self.world.chunks;
-        self.creaking.scanned.retain(|k| chunks.contains_key(k));
+        let chunks = &self.sim.world.chunks;
+        self.sim.creaking.scanned.retain(|k| chunks.contains_key(k));
     }
 }
 

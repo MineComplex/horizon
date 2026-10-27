@@ -250,9 +250,9 @@ impl Game<'_> {
                 }
                 TrialEvent::TrialOmen(_) => self.bad_omen_to_trial_omen(),
                 TrialEvent::Discard(uuid) => {
-                    let id = self.persist.uuids.iter().find(|(_, u)| **u == uuid);
+                    let id = self.sim.persist.uuids.iter().find(|(_, u)| **u == uuid);
                     if let Some((id, _)) = id
-                        && let Some(m) = self.mobs.iter_mut().find(|m| m.id == *id)
+                        && let Some(m) = self.sim.mobs.iter_mut().find(|m| m.id == *id)
                     {
                         m.removed = true;
                     }

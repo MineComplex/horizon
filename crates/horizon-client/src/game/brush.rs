@@ -149,9 +149,9 @@ impl Game<'_> {
         decorated_pot::unpack_loot(
             &mut tag,
             loot.as_deref(),
-            &mut self.world.random,
-            &mut self.rand_sequences,
-            self.level.seed,
+            &mut self.sim.world.random,
+            &mut self.sim.rand_sequences,
+            self.sim.level.seed,
         );
         spill::put_saved_entity(&mut self.world, pos, tag);
     }

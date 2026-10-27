@@ -329,12 +329,12 @@ fn villager_data(m: &mut Mob, data: &[i32], builtin: &Builtin) {
 impl Game<'_> {
     /// SetEntityData for a mob of the server's.
     pub(super) fn remote_mob_data(&mut self, id: i32, values: &[(u8, i32, Value)]) {
-        let Some(r) = &self.remote else {
+        let Some(r) = &self.sim.remote else {
             return;
         };
-        if let Some(m) = self.mobs.iter_mut().find(|m| m.id == id as u32) {
+        if let Some(m) = self.sim.mobs.iter_mut().find(|m| m.id == id as u32) {
             apply(m, values, &r.builtin, r.entity_id);
-            apply_registry_data(m, values, &r.registries, self.world.game_time);
+            apply_registry_data(m, values, &r.registries, self.sim.world.game_time);
         }
     }
 }

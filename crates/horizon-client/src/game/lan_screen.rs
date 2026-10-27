@@ -805,7 +805,7 @@ impl Game<'_> {
     /// list follows it (AbstractSelectionList.mouseDragged).
     pub(super) fn world_options_drag(&mut self) {
         let h = self.gui_size().1;
-        if let Some(o) = self.world_options.as_mut()
+        if let Some(o) = self.sim.world_options.as_mut()
             && o.view == View::GameRules
             && let Some(rules) = o.rules.as_mut()
         {
@@ -964,7 +964,7 @@ impl Game<'_> {
             .keys
             .contains(&winit::keyboard::KeyCode::ControlLeft);
         let shortcut = self.edit_shortcut(event);
-        let Some(o) = self.world_options.as_mut() else {
+        let Some(o) = self.sim.world_options.as_mut() else {
             return;
         };
         if let Some(rules) = o.rules.as_mut().filter(|r| r.typing()) {

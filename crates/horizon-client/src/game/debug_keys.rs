@@ -653,15 +653,15 @@ impl Game<'_> {
                 true
             }
             DebugAction::FpsCharts => {
-                self.front.debug_charts.toggle_fps(&mut self.debug);
+                self.front.debug_charts.toggle_fps(&mut self.sim.debug);
                 true
             }
             DebugAction::NetworkCharts => {
-                self.front.debug_charts.toggle_network(&mut self.debug);
+                self.front.debug_charts.toggle_network(&mut self.sim.debug);
                 true
             }
             DebugAction::LightmapTexture => {
-                self.front.debug_charts.toggle_lightmap(&mut self.debug);
+                self.front.debug_charts.toggle_lightmap(&mut self.sim.debug);
                 true
             }
             // Screens and overlays Horizon does not draw yet (the debug

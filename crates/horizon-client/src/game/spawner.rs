@@ -86,8 +86,8 @@ impl Game<'_> {
         for &key in keys {
             self.client_tick_spawner(key);
         }
-        let entities = &self.world.block_entities;
-        self.spawners.displays.retain(|k, _| {
+        let entities = &self.sim.world.block_entities;
+        self.sim.spawners.displays.retain(|k, _| {
             matches!(
                 entities.get(k),
                 Some(BlockEntity::Spawner(_) | BlockEntity::TrialSpawner(_))
@@ -320,8 +320,8 @@ impl Game<'_> {
         };
         let display = self.update_spawner_display(key);
         let pos = [key.0, key.1, key.2];
-        let random = self.particles.level_random();
-        let Some(BlockEntity::Spawner(s)) = self.world.block_entities.get_mut(&key) else {
+        let random = self.sim.particles.level_random();
+        let Some(BlockEntity::Spawner(s)) = self.sim.world.block_entities.get_mut(&key) else {
             return;
         };
         if let Some(p) = s.client_tick(near, display, random, pos) {

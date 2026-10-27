@@ -361,16 +361,16 @@ impl Game<'_> {
             .as_ref()
             .map_or((Vec3::ZERO, true), |p| (p.velocity, p.ground.on_ground));
         projectile.shoot_from_rotation(
-            &mut self.world.random,
-            self.pitch,
-            self.yaw,
+            &mut self.sim.world.random,
+            self.sim.pitch,
+            self.sim.yaw,
             0.0,
             2.5,
             1.0,
             v,
             on_ground,
         );
-        self.tridents.push(ThrownTrident {
+        self.sim.tridents.push(ThrownTrident {
             id: 0,
             loyalty: thrown.enchantment_level("minecraft:loyalty"),
             stack: thrown,
@@ -384,9 +384,9 @@ impl Game<'_> {
             dealt_damage: false,
             no_physics: false,
             returning: 0,
-            creative_only: self.creative,
+            creative_only: self.sim.creative,
             owner: 0,
-            guest: self.lan_acting,
+            guest: self.sim.lan_acting,
         });
         self.player_projectile_shot();
         self.front
@@ -475,14 +475,14 @@ impl Game<'_> {
                         direct_attacker: Some("minecraft:trident"),
                         is_direct: true,
                         damage_type: Some("minecraft:trident"),
-                        items: Some(self.res.items()),
+                        items: Some(self.sim.res.items()),
                         ..Default::default()
                     };
-                    let damage = self.res.stations().enchantments.modify_value(
+                    let damage = self.sim.res.stations().enchantments.modify_value(
                         Some(&t.stack),
                         "minecraft:damage",
                         &ctx,
-                        &mut self.world.random,
+                        &mut self.sim.world.random,
                         8.0,
                     );
                     t.dealt_damage = true;

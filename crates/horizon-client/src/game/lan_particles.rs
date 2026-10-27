@@ -296,8 +296,8 @@ impl Game<'_> {
         }
         // A wind charge's burst throws none.
         if !p.block_particles.is_empty() {
-            let (world, facts) = (&self.world, self.res.facts());
-            self.particles.explosion_blocks(
+            let (world, facts) = (&self.sim.world, self.sim.res.facts());
+            self.sim.particles.explosion_blocks(
                 p.center,
                 p.radius,
                 p.block_count.max(0) as usize,

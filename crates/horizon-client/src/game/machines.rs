@@ -617,8 +617,8 @@ impl Game<'_> {
     }
     /// Drops the cooldowns of hoppers whose block entity is gone.
     pub(super) fn forget_gone_hoppers(&mut self) {
-        let entities = &self.world.block_entities;
-        self.hoppers.retain(|p, _| {
+        let entities = &self.sim.world.block_entities;
+        self.sim.hoppers.retain(|p, _| {
             matches!(entities.get(p), Some(BlockEntity::Chest(items)) if items.len() == HOPPER_SLOTS)
         });
     }
@@ -724,8 +724,8 @@ impl Game<'_> {
                 f64::from(pos.2) + 1.0,
             ],
         );
-        if let Some(columns) = self.item_columns.as_mut()
-            && !columns.may_reach(&self.dropped, pos.0, pos.2)
+        if let Some(columns) = self.sim.item_columns.as_mut()
+            && !columns.may_reach(&self.sim.dropped, pos.0, pos.2)
         {
             return false;
         }

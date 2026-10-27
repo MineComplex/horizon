@@ -368,9 +368,9 @@ impl Game<'_> {
         if let GatewayJob::Known { exact: true, .. } = job {
             return;
         }
-        self.server_trips.push(Trip {
+        self.sim.server_trips.push(Trip {
             conn,
-            dim: self.dim,
+            dim: self.sim.dim,
             target: destination,
             end: false,
             plan: None,
@@ -531,19 +531,19 @@ impl Game<'_> {
         let spawn = self.spawn.map_or([0.5, 80.0, 0.5], |s| [s.x, s.y, s.z]);
         let clock_rate = self.network_clock_rate();
         TickCtx {
-            world: &mut self.world,
+            world: &mut self.sim.world,
             host: None,
             entities: &[],
-            next_entity: &mut self.next_entity,
+            next_entity: &mut self.sim.next_entity,
             spawn,
-            difficulty: i32::from(self.world_data.difficulty),
-            difficulty_locked: self.level.difficulty_locked,
+            difficulty: i32::from(self.sim.world_data.difficulty),
+            difficulty_locked: self.sim.level.difficulty_locked,
             clock_rate,
-            tick_rate: self.clock.rate(),
-            tick_frozen: self.clock.frozen(),
-            tick_steps: self.clock.step_state(),
-            collision: Some(self.collision),
-            border: &self.border,
+            tick_rate: self.sim.clock.rate(),
+            tick_frozen: self.sim.clock.frozen(),
+            tick_steps: self.sim.clock.step_state(),
+            collision: Some(self.sim.collision),
+            border: &self.sim.border,
         }
     }
 }

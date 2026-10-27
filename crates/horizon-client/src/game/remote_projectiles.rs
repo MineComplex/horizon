@@ -421,12 +421,12 @@ impl Game<'_> {
         // updates (every 10 ticks), and a client discards it when the fuse
         // runs out; only the server explodes it.
         let (world, collision, assets, facts) = (
-            &self.world,
+            &self.sim.world,
             self.collision,
-            &self.pack.assets,
-            self.res.facts(),
+            &self.sim.pack.assets,
+            self.sim.res.facts(),
         );
-        self.tnts.retain_mut(|t| {
+        self.sim.tnts.retain_mut(|t| {
             // A fluid lookup that fails leaves it where its move put it.
             let _ = t.tick(world, collision, assets, facts);
             t.fuse > 0
@@ -495,9 +495,9 @@ impl Game<'_> {
             });
             if let Some(target) = r.attached_to {
                 if me == Some(target) {
-                    if let Some(p) = self.player.as_mut() {
+                    if let Some(p) = self.sim.player.as_mut() {
                         if p.fall_flying {
-                            let look = view_vector(self.yaw, self.pitch);
+                            let look = view_vector(self.sim.yaw, self.sim.pitch);
                             let m = p.velocity;
                             p.velocity = Vec3::new(
                                 m.x + look[0] * 0.1 + (look[0] * 1.5 - m.x) * 0.5,
@@ -537,17 +537,18 @@ impl Game<'_> {
         }
         self.step_remote_thrown();
         self.step_remote_hooks(&mut step);
-        self.end.step_remote_eyes();
+        self.sim.end.step_remote_eyes();
         self.tick_remote_clouds();
         // The dragon's fireballs fly on between the tracker's updates, with
         // their dragon_breath trail (`AbstractHurtingProjectile.getTrailParticle`).
         let trail = ParticleOptions::simple(ParticleType::DragonBreath);
-        for b in &mut self.dragon_fireballs {
+        for b in &mut self.sim.dragon_fireballs {
             let at = b.position;
             let water = self
+                .sim
                 .res
                 .facts()
-                .get(self.world.block(
+                .get(self.sim.world.block(
                     at.x.floor() as i32,
                     at.y.floor() as i32,
                     at.z.floor() as i32,
@@ -556,14 +557,22 @@ impl Game<'_> {
                 == horizon_client::blocks::Fluid::Water;
             b.remote_step(water);
             let p = b.position;
-            self.particles.add(&trail, [p.x, p.y + 0.5, p.z], [0.0; 3]);
+            self.sim
+                .particles
+                .add(&trail, [p.x, p.y + 0.5, p.z], [0.0; 3]);
         }
     }
 
     /// `AreaEffectCloud.clientTick` for each cloud a server tracks.
     fn tick_remote_clouds(&mut self) {
-        for c in &self.potions.clouds {
-            cloud_client_tick(&mut self.particles, c.at, c.radius, c.waiting, &c.particle);
+        for c in &self.sim.potions.clouds {
+            cloud_client_tick(
+                &mut self.sim.particles,
+                c.at,
+                c.radius,
+                c.waiting,
+                &c.particle,
+            );
         }
     }
 
