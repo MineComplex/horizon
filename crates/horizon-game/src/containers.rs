@@ -235,7 +235,7 @@ impl SkullSkin {
                 crate::skins::nbt_text(profile.get("name"))
                     .map(|name| horizon_protocol::crypto::offline_uuid(&name))
             })
-            .map_or("entity/player/slim/steve", crate::tab_list::default_skin);
+            .map_or("entity/player/slim/steve", crate::skins::default_skin);
         Self {
             download,
             dynamic,

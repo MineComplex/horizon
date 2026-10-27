@@ -64,9 +64,9 @@ fn hash(x: i32, z: i32) -> u32 {
 impl ChunkGenerator for TestTerrain {
     type Worker = ();
     fn worker(&self) {}
-    fn lod_surface(&self, _: &mut (), x: i32, z: i32) -> Option<crate::lod::Surface> {
+    fn lod_surface(&self, _: &mut (), x: i32, z: i32) -> Option<crate::lod_column::Surface> {
         let h = Self::height(x, z);
-        Some(crate::lod::Surface {
+        Some(crate::lod_column::Surface {
             height: h + 1,
             state: horizon_world::registry::BlockStateId(if h <= 63 {
                 self.sand

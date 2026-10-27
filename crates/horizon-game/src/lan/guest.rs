@@ -720,7 +720,9 @@ fn network_stack(
             stack.added.push((id::UNBREAKABLE, P::Unit));
         }
         if let Some(Tag::Byte(b)) = d.other("minecraft:enchantment_glint_override") {
-            stack.added.push((id::ENCHANTMENT_GLINT_OVERRIDE, P::Bool(*b != 0)));
+            stack
+                .added
+                .push((id::ENCHANTMENT_GLINT_OVERRIDE, P::Bool(*b != 0)));
         }
         if let Some(Tag::Int(v)) = d.other("minecraft:max_stack_size") {
             stack.added.push((id::MAX_STACK_SIZE, P::Int(*v)));
@@ -786,7 +788,9 @@ fn network_stack(
                     .collect(),
                 _ => Vec::new(),
             };
-            stack.added.push((id::TOOLTIP_DISPLAY, P::TooltipDisplay { hide, hidden }));
+            stack
+                .added
+                .push((id::TOOLTIP_DISPLAY, P::TooltipDisplay { hide, hidden }));
         }
     }
     // The component as loaded, so a translatable name stays one.

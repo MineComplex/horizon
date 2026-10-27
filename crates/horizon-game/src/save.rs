@@ -3402,7 +3402,7 @@ pub struct Persistent<G> {
     pub registry: Arc<crate::assets::Assets>,
     pub biomes: Arc<Biomes>,
 }
-type LodSurfaces = Arc<[crate::lod::Column; 256]>;
+type LodSurfaces = Arc<[crate::lod_column::Column; 256]>;
 struct SavedLodSampler<G: ChunkGenerator> {
     generator: Arc<Persistent<G>>,
     inner: Box<dyn crate::streaming::LodSampler>,
@@ -3458,7 +3458,7 @@ impl<G: ChunkGenerator> crate::streaming::LodSampler for SavedLodSampler<G> {
         }
         details
     }
-    fn grid(&mut self, x: i32, z: i32, stride: i32, side: usize) -> Vec<crate::lod::Column> {
+    fn grid(&mut self, x: i32, z: i32, stride: i32, side: usize) -> Vec<crate::lod_column::Column> {
         let mut columns = self.inner.grid(x, z, stride, side);
         if stride <= 16 {
             for (index, column) in columns.iter_mut().enumerate() {
@@ -3467,7 +3467,7 @@ impl<G: ChunkGenerator> crate::streaming::LodSampler for SavedLodSampler<G> {
                     z + (index / side) as i32 * stride,
                 );
                 if let Some(saved) = self.saved_columns((wx >> 4, wz >> 4)) {
-                    *column = crate::lod::Column::reduced(
+                    *column = crate::lod_column::Column::reduced(
                         &saved,
                         (wx & 15) as usize,
                         (wz & 15) as usize,
@@ -3478,17 +3478,17 @@ impl<G: ChunkGenerator> crate::streaming::LodSampler for SavedLodSampler<G> {
         }
         columns
     }
-    fn sample(&mut self, x: i32, z: i32) -> Option<crate::lod::Surface> {
+    fn sample(&mut self, x: i32, z: i32) -> Option<crate::lod_column::Surface> {
         self.column(x, z).surface
     }
-    fn column(&mut self, x: i32, z: i32) -> crate::lod::Column {
+    fn column(&mut self, x: i32, z: i32) -> crate::lod_column::Column {
         self.reduced_column(x, z, 1)
     }
-    fn reduced_column(&mut self, x: i32, z: i32, width: i32) -> crate::lod::Column {
+    fn reduced_column(&mut self, x: i32, z: i32, width: i32) -> crate::lod_column::Column {
         if width <= 16
             && let Some(columns) = self.saved_columns((x >> 4, z >> 4))
         {
-            return crate::lod::Column::reduced(
+            return crate::lod_column::Column::reduced(
                 &columns,
                 (x & 15) as usize,
                 (z & 15) as usize,
@@ -3594,8 +3594,8 @@ fn decode_lod_surfaces(
         })
         .collect();
     sections.sort_unstable_by_key(|(y, _)| std::cmp::Reverse(*y));
-    let mut columns: Box<[crate::lod::Column; 256]> =
-        Box::new(std::array::from_fn(|_| crate::lod::Column {
+    let mut columns: Box<[crate::lod_column::Column; 256]> =
+        Box::new(std::array::from_fn(|_| crate::lod_column::Column {
             surface: None,
             spans: Vec::new(),
         }));
@@ -3672,7 +3672,7 @@ fn decode_lod_surfaces(
                             if fluid {
                                 water[cell].get_or_insert((height, state));
                             } else {
-                                column.surface = Some(crate::lod::Surface {
+                                column.surface = Some(crate::lod_column::Surface {
                                     height,
                                     state,
                                     water: water[cell],
@@ -3690,7 +3690,7 @@ fn decode_lod_surfaces(
                         {
                             previous.min = min;
                         } else {
-                            column.spans.push(crate::lod::Span {
+                            column.spans.push(crate::lod_column::Span {
                                 min,
                                 max,
                                 state,
@@ -3769,7 +3769,12 @@ impl<G: ChunkGenerator> ChunkGenerator for Persistent<G> {
         chunk.entities = self.save.load_entities(x, z);
         Some(chunk)
     }
-    fn lod_surface(&self, worker: &mut G::Worker, x: i32, z: i32) -> Option<crate::lod::Surface> {
+    fn lod_surface(
+        &self,
+        worker: &mut G::Worker,
+        x: i32,
+        z: i32,
+    ) -> Option<crate::lod_column::Surface> {
         // Resident/visited summaries override this procedural fallback in the LOD cache.
         self.inner.lod_surface(worker, x, z)
     }
@@ -4233,7 +4238,7 @@ mod tests {
         );
         struct SavedOnly(Vec<crate::streaming::LodDetail>);
         impl crate::streaming::LodSampler for SavedOnly {
-            fn sample(&mut self, _: i32, _: i32) -> Option<crate::lod::Surface> {
+            fn sample(&mut self, _: i32, _: i32) -> Option<crate::lod_column::Surface> {
                 panic!("saved data must win")
             }
             fn request_detail(&mut self, chunks: &[(i32, i32)], _: [i32; 2]) {
@@ -4265,8 +4270,9 @@ mod tests {
         assert_eq!(details.len(), 1);
         assert_eq!(&details[0].1[..], &surfaces[..]);
         sampler.cache.clear();
-        let generated: LodSurfaces =
-            Arc::new(std::array::from_fn(|_| crate::lod::Column::default()));
+        let generated: LodSurfaces = Arc::new(std::array::from_fn(|_| {
+            crate::lod_column::Column::default()
+        }));
         sampler.inner = Box::new(SavedOnly(vec![
             ((-2, 3), generated.clone()),
             ((-9, 9), generated.clone()),
@@ -4285,7 +4291,7 @@ mod tests {
             for x in 0..8 {
                 assert_eq!(
                     grid[z * 16 + x],
-                    crate::lod::Column::reduced(&surfaces, x * 2, z * 2, 2),
+                    crate::lod_column::Column::reduced(&surfaces, x * 2, z * 2, 2),
                     "saved builds must override a batched direct grid"
                 );
             }

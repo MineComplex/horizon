@@ -1,5 +1,6 @@
 //! Stable entity material grouping with renderer-owned, reusable CPU scratch.
 use super::Vertex;
+pub use crate::overlay::{ENERGY_SWIRL_OVERLAY, TRANSLUCENT_PARTICLE_OVERLAY};
 
 /// Entity materials by a quad's overlay (`Vertex::layer`), in draw order:
 /// ordinary entities, breaking cracks (11), translucent breaking cracks (12),
@@ -11,14 +12,8 @@ use super::Vertex;
 const MATERIALS: usize = 8;
 /// The overlay of depth-only quads that hide water (`RenderTypes.waterMask`).
 pub const WATER_MASK_OVERLAY: u32 = 13;
-/// The overlay of energy swirl quads (`RenderTypes.energySwirl`: the charged creeper's and the
-/// powered wither's armour). The light bytes carry the sprite's origin and the colour bytes its
-/// size (`breaking::stage_light`), the UV the scrolled position in the sprite.
-pub const ENERGY_SWIRL_OVERLAY: u32 = 34;
 /// The overlay of entity shadow quads (`RenderTypes.entityShadow`).
 pub const SHADOW_OVERLAY: u32 = 14;
-/// The overlay of translucent-layer particles (`SingleQuadParticle.Layer.translucent`).
-pub const TRANSLUCENT_PARTICLE_OVERLAY: u32 = 15;
 /// The overlay of item quads with translucent pixels (`Sheets.translucentItemSheet`,
 /// `RenderPipelines.ITEM_TRANSLUCENT`); past the creeper swell range (16 to 31).
 pub const TRANSLUCENT_ITEM_OVERLAY: u32 = 32;

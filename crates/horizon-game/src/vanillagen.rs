@@ -102,8 +102,8 @@ fn add_default_block_entities(kinds: &[Option<&str>], out: &mut Chunk, raw: &mut
 }
 
 impl VanillaTerrain {
-    fn client_surface(&self, surface: SurfaceSample) -> crate::lod::Surface {
-        crate::lod::Surface {
+    fn client_surface(&self, surface: SurfaceSample) -> crate::lod_column::Surface {
+        crate::lod_column::Surface {
             height: surface.height,
             state: surface.state,
             water: surface.water,
@@ -436,7 +436,7 @@ impl ChunkGenerator for VanillaTerrain {
         worker: &mut GeneratorWorker,
         x: i32,
         z: i32,
-    ) -> Option<crate::lod::Surface> {
+    ) -> Option<crate::lod_column::Surface> {
         Some(self.client_surface(worker.surface_sample(x, z)?))
     }
     /// The structure starts a saved chunk references, as vanilla reads them

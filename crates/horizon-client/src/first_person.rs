@@ -7,6 +7,7 @@
 //! `continueDestroyBlock`, `stopDestroyBlock`).
 //!
 //! What those read and do in the world is behind [`HandWorld`].
+pub use crate::items::consumable_animation;
 
 /// The ranged item state read by the first-person hand renderer.
 #[derive(Clone, Copy, Debug)]
@@ -424,18 +425,6 @@ pub enum UseResult {
 impl UseResult {
     pub fn should_swing(self, before: u32, after: u32) -> bool {
         matches!(self, Self::Success { swing: true }) && before == after
-    }
-}
-pub fn consumable_animation(v: &serde_json::Value) -> horizon_world::consumable::UseAnimation {
-    use horizon_world::consumable::UseAnimation;
-    match v
-        .get("animation")
-        .and_then(serde_json::Value::as_str)
-        .unwrap_or("eat")
-    {
-        "eat" => UseAnimation::Eat,
-        "drink" => UseAnimation::Drink,
-        _ => UseAnimation::None,
     }
 }
 /// What the click handling reads and does in the world.

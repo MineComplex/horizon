@@ -185,7 +185,7 @@ def main():
     resources = lab.RESOURCES
     oracle = lab.ROOT / 'mods/horizon/src/test/java/dev/horizonlab/parity/VanillaTradingOracle.java'
     sources = [oracle, Path(__file__), lab.ROOT / 'crates/horizon-client/examples/probe/trading_fixture.rs',
-               lab.ROOT / 'crates/horizon-client/src/merchant.rs', lab.ROOT / 'crates/horizon-client/src/menu.rs']
+               lab.ROOT / 'crates/horizon-game/src/merchant.rs', lab.ROOT / 'crates/horizon-game/src/menu.rs']
     tested = base.source_hashes([s for s in sources if s.exists()])
     inputs = build / 'inputs.txt'
     cases = corpus(wanted(resources))

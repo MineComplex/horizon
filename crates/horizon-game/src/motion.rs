@@ -2535,6 +2535,12 @@ impl LivingMotionWorld for MotionWorld<'_, '_, '_> {
     }
 }
 
+/// `MouseHandler.onScroll` with the spectator menu closed. Only vertical whole
+/// wheel steps adjust `Abilities.flyingSpeed`; horizontal scrolling does not.
+pub fn spectator_flying_speed(speed: f32, vertical_steps: i32) -> f32 {
+    (speed + vertical_steps as f32 * 0.005).clamp(0.0, 0.2)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -2964,7 +2970,7 @@ mod tests {
             let start = Vec3::new(20.5, 12.0, 20.5);
             let mut player = PlayerMotion::new(&resources, start).unwrap();
             player.spectator = true;
-            player.flying_speed = crate::mouse::spectator_flying_speed(player.flying_speed, steps);
+            player.flying_speed = crate::motion::spectator_flying_speed(player.flying_speed, steps);
             MotionWorld {
                 entities: &[],
                 player: &mut player,

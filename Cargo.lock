@@ -1430,6 +1430,7 @@ dependencies = [
  "horizon-core",
  "horizon-dualsense",
  "horizon-friends",
+ "horizon-game",
  "horizon-hdr",
  "horizon-mods",
  "horizon-protocol",
@@ -1505,6 +1506,34 @@ dependencies = [
  "sha2",
  "socket2 0.5.10",
  "spake2",
+]
+
+[[package]]
+name = "horizon-game"
+version = "0.1.0"
+dependencies = [
+ "bytemuck",
+ "chrono",
+ "flate2",
+ "glam",
+ "horizon-assets",
+ "horizon-client-core",
+ "horizon-command",
+ "horizon-core",
+ "horizon-mods",
+ "horizon-protocol",
+ "horizon-server-files",
+ "horizon-threads",
+ "horizon-world",
+ "log",
+ "miniz_oxide 0.8.9",
+ "png",
+ "rustix 1.1.5",
+ "serde",
+ "serde_json",
+ "sha2",
+ "ureq",
+ "zip",
 ]
 
 [[package]]

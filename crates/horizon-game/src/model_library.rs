@@ -4,12 +4,12 @@ use horizon_assets::{model::CuboidModel, resolve::ModelLibrary};
 use std::{collections::BTreeMap, fs, path::Path, sync::Arc};
 
 #[derive(Default)]
-pub(crate) struct ParsedModels {
+pub struct ParsedModels {
     models: BTreeMap<String, Arc<CuboidModel>>,
 }
 impl ParsedModels {
     /// Every `models/**.json` of a namespace directory, by identifier.
-    pub(crate) fn load(root: &Path) -> Self {
+    pub fn load(root: &Path) -> Self {
         let Ok(namespaces) = fs::read_dir(root.join("assets")) else {
             return Self::default();
         };
@@ -112,7 +112,7 @@ impl ParsedModels {
         }
         Ok(ModelLibrary::from_shared(models)?)
     }
-    pub(crate) fn into_item_library(self) -> std::result::Result<Arc<ModelLibrary>, String> {
+    pub fn into_item_library(self) -> std::result::Result<Arc<ModelLibrary>, String> {
         ModelLibrary::with_shared_item_generator(self.models)
             .map(Arc::new)
             .map_err(|e| format!("item models: {e:?}"))

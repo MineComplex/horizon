@@ -1,0 +1,40 @@
+[package]
+name = "horizon-game"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+rust-version = "1.90"
+description = "The game without a window: rules and state shared by the Horizon client and the dedicated server"
+
+[dependencies]
+horizon-client-core = { path = "../horizon-client-core" }
+horizon-command = { path = "../horizon-command" }
+horizon-core = { path = "../horizon-core" }
+horizon-threads = { path = "../horizon-threads" }
+horizon-world = { path = "../horizon-world" }
+horizon-assets = { path = "../horizon-assets" }
+horizon-protocol = { path = "../horizon-protocol" }
+# server.properties, eula.txt and the user lists (`horizon_game::server`).
+horizon-server-files = { path = "../horizon-server-files" }
+# Content mods' blocks and items (`mod_content`); the code-mod runtime stays in horizon-client's `mods` feature.
+horizon-mods = { path = "../horizon-mods", default-features = false, features = ["index"] }
+# Section and mob meshes are built on the CPU here (plain vertex data, no GPU): `mesher`, `mobs::render`.
+bytemuck = { version = "1.24", features = ["derive"] }
+glam = "0.30"
+png = "0.18"
+sha2 = "0.10.9"
+# HTTPS to the Minecraft services (online-mode session checks, profiles).
+ureq = { version = "2", default-features = false, features = ["tls"] }
+chrono = { version = "0.4.42", default-features = false, features = ["clock", "std"] }
+flate2 = { version = "1.1.10", default-features = false, features = ["zlib-rs", "runtime_detection"] }
+log = "0.4"
+miniz_oxide = "0.8"
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1.0.151", features = ["raw_value"] }
+zip = { version = "2", default-features = false, features = ["deflate"] }
+
+[target.'cfg(unix)'.dependencies]
+rustix = { version = "1", default-features = false, features = ["std", "time"] }
+
+[lints]
+workspace = true

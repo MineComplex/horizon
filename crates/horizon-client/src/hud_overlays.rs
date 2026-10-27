@@ -6,6 +6,7 @@
 //! bar (`JumpableVehicleBar`), the scoreboard sidebar, item decorations
 //! (`GuiGraphicsExtractor.itemDecorations`), the camera overlays, the
 //! sleep overlay and the subtitles (`SubtitleOverlay`).
+pub use crate::worldborder::border_warning;
 use crate::{
     font::Font,
     hud_layout::{
@@ -800,25 +801,6 @@ pub fn vignette(w: i32, h: i32, brightness: f32, border_warning: f32) -> GuiDraw
         color_from_float(1.0, brightness, brightness, brightness)
     };
     screen_blit(w, h, "misc/vignette", Blend::Vignette, color)
-}
-
-/// The border warning strength of `extractVignette` for a camera
-/// `distance` from a border with `warning_blocks`, `warning_time`, its
-/// `lerp_speed` and how far its size still has to move.
-pub fn border_warning(
-    distance: f32,
-    warning_blocks: i32,
-    warning_time: i32,
-    lerp_speed: f64,
-    size_left: f64,
-) -> f32 {
-    let moving = (lerp_speed * f64::from(warning_time)).min(size_left.abs());
-    let warning_distance = f64::from(warning_blocks).max(moving);
-    if f64::from(distance) < warning_distance {
-        1.0 - (f64::from(distance) / warning_distance) as f32
-    } else {
-        0.0
-    }
 }
 
 /// `Hud.extractSpyglassOverlay`.

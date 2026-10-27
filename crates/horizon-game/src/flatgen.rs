@@ -6,7 +6,7 @@ use horizon_world::{nbt::Tag, registry::BlockRegistry};
 pub struct FlatTerrain {
     layers: Vec<u32>,
     biome: u16,
-    surface: Option<crate::lod::Surface>,
+    surface: Option<crate::lod_column::Surface>,
 }
 impl FlatTerrain {
     /// The overworld generator of `world_gen_settings` (`data.dimensions`), if it
@@ -56,7 +56,7 @@ impl FlatTerrain {
             if matches!(name, "minecraft:water" | "minecraft:lava") {
                 water.get_or_insert((height, state));
             } else {
-                surface = Some(crate::lod::Surface {
+                surface = Some(crate::lod_column::Surface {
                     height,
                     state,
                     water,
@@ -186,7 +186,7 @@ pub fn settings_from_json(
 impl ChunkGenerator for FlatTerrain {
     type Worker = ();
     fn worker(&self) {}
-    fn lod_surface(&self, _: &mut (), _: i32, _: i32) -> Option<crate::lod::Surface> {
+    fn lod_surface(&self, _: &mut (), _: i32, _: i32) -> Option<crate::lod_column::Surface> {
         self.surface
     }
     fn proto(&self, _: &mut (), cx: i32, cz: i32) -> crate::streaming::Proto {

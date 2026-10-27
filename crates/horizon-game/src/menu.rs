@@ -31,7 +31,7 @@ pub struct Env<'a> {
     pub enchantments: &'a crate::enchant::Enchantments,
     /// Item display names: the anvil compares the rename box with the
     /// input's hover name.
-    pub names: &'a crate::creative::Names,
+    pub names: &'a crate::creative_menu::Names,
     /// What a merchant menu needs for offers made while it is open (level-ups).
     pub trade: Option<&'a crate::merchant::TradeEnv<'a>>,
     /// The level's maps (`ContainerLevelAccess`): the cartography table reads
@@ -3043,7 +3043,7 @@ pub(crate) mod tests {
         let banners = Banners::load(&root);
         let station_recipes = crate::stations::StationRecipes::load(&root, &items);
         let enchantments = crate::enchant::Enchantments::default();
-        let names = crate::creative::Names::default();
+        let names = crate::creative_menu::Names::default();
         let env = Env {
             items: &items,
             recipes: &recipes,
@@ -3264,7 +3264,7 @@ pub(crate) mod tests {
         assert_eq!(potion.potion(), Some("minecraft:swiftness"));
         // The creative screen hands the stack over...
         let mut carried = None;
-        crate::creative::click_display(
+        crate::creative_menu::click_display(
             &mut carried,
             Some(&potion),
             |_: &ItemStack| 1,

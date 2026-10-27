@@ -1271,9 +1271,9 @@ fn render_visible(
             base,
             &layer_poses,
             [du, dv, 1.0 + du, 1.0 + dv],
-            crate::breaking::stage_light([u1 - u0, v1 - v0]),
-            crate::breaking::stage_light([u0, v0]),
-            crate::gfx::ENERGY_SWIRL_OVERLAY,
+            crate::mesher::stage_light([u1 - u0, v1 - v0]),
+            crate::mesher::stage_light([u0, v0]),
+            crate::overlay::ENERGY_SWIRL_OVERLAY,
             out,
         );
         // No lighting: the colour bytes carry the sprite's size (fs_energy_swirl).

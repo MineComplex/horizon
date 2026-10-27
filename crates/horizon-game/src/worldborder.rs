@@ -18,7 +18,7 @@ pub fn status_color(status: BorderStatus) -> u32 {
 }
 
 /// `Math.min(double, double)`, including the signed-zero rule.
-pub(crate) fn jmin(a: f64, b: f64) -> f64 {
+pub fn jmin(a: f64, b: f64) -> f64 {
     if a.is_nan() {
         a
     } else if a == 0.0 && b == 0.0 && b.is_sign_negative() {
@@ -30,7 +30,7 @@ pub(crate) fn jmin(a: f64, b: f64) -> f64 {
     }
 }
 /// `Math.max(double, double)`, including the signed-zero rule.
-pub(crate) fn jmax(a: f64, b: f64) -> f64 {
+pub fn jmax(a: f64, b: f64) -> f64 {
     if a.is_nan() {
         a
     } else if a == 0.0 && b == 0.0 && a.is_sign_negative() {
@@ -42,7 +42,7 @@ pub(crate) fn jmax(a: f64, b: f64) -> f64 {
     }
 }
 /// `Mth.clamp(double, double, double)`.
-pub(crate) fn jclamp(v: f64, lo: f64, hi: f64) -> f64 {
+pub fn jclamp(v: f64, lo: f64, hi: f64) -> f64 {
     if v < lo { lo } else { jmin(v, hi) }
 }
 
@@ -156,7 +156,7 @@ impl WorldBorder {
     /// `Hud.extractVignette`: how strongly the vignette turns red at
     /// (x, z), 0 when outside the warning distance.
     pub fn warning_strength(&self, x: f64, z: f64) -> f32 {
-        crate::hud_overlays::border_warning(
+        crate::worldborder::border_warning(
             self.distance(x, z) as f32,
             self.warning_distance,
             self.warning_time,
@@ -216,6 +216,25 @@ impl WorldBorder {
             b.lerp_between(size, to.clamp(1.0, MAX_SIZE), *t);
         }
         b
+    }
+}
+
+/// The border warning strength of `extractVignette` for a camera
+/// `distance` from a border with `warning_blocks`, `warning_time`, its
+/// `lerp_speed` and how far its size still has to move.
+pub fn border_warning(
+    distance: f32,
+    warning_blocks: i32,
+    warning_time: i32,
+    lerp_speed: f64,
+    size_left: f64,
+) -> f32 {
+    let moving = (lerp_speed * f64::from(warning_time)).min(size_left.abs());
+    let warning_distance = f64::from(warning_blocks).max(moving);
+    if f64::from(distance) < warning_distance {
+        1.0 - (f64::from(distance) / warning_distance) as f32
+    } else {
+        0.0
     }
 }
 

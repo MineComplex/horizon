@@ -48,7 +48,7 @@ pub trait ChunkGenerator: Send + Sync + 'static {
         _worker: &mut Self::Worker,
         _x: i32,
         _z: i32,
-    ) -> Option<crate::lod::Surface> {
+    ) -> Option<crate::lod_column::Surface> {
         None
     }
     /// A previously saved final chunk, bypassing generation.
@@ -87,7 +87,7 @@ pub trait ChunkGenerator: Send + Sync + 'static {
     /// neighbours' decoration is done, so it can't be generated again.
     fn save_finished(&self, _chunk: Chunk) {}
 }
-pub type LodDetail = ((i32, i32), Arc<[crate::lod::Column; 256]>);
+pub type LodDetail = ((i32, i32), Arc<[crate::lod_column::Column; 256]>);
 
 /// Independent, thread-owned far-terrain sampling state.
 pub trait LodSampler: Send {
@@ -99,14 +99,14 @@ pub trait LodSampler: Send {
     fn drain_details(&mut self) -> Vec<LodDetail> {
         Vec::new()
     }
-    fn sample(&mut self, x: i32, z: i32) -> Option<crate::lod::Surface>;
-    fn column(&mut self, x: i32, z: i32) -> crate::lod::Column {
-        crate::lod::Column::from_surface(self.sample(x, z))
+    fn sample(&mut self, x: i32, z: i32) -> Option<crate::lod_column::Surface>;
+    fn column(&mut self, x: i32, z: i32) -> crate::lod_column::Column {
+        crate::lod_column::Column::from_surface(self.sample(x, z))
     }
-    fn reduced_column(&mut self, x: i32, z: i32, _width: i32) -> crate::lod::Column {
+    fn reduced_column(&mut self, x: i32, z: i32, _width: i32) -> crate::lod_column::Column {
         self.column(x, z)
     }
-    fn grid(&mut self, x: i32, z: i32, stride: i32, side: usize) -> Vec<crate::lod::Column> {
+    fn grid(&mut self, x: i32, z: i32, stride: i32, side: usize) -> Vec<crate::lod_column::Column> {
         let mut columns = Vec::with_capacity(side * side);
         for dz in 0..side {
             for dx in 0..side {
@@ -128,7 +128,7 @@ struct GeneratorSampler<G: ChunkGenerator> {
     worker: G::Worker,
 }
 impl<G: ChunkGenerator> LodSampler for GeneratorSampler<G> {
-    fn sample(&mut self, x: i32, z: i32) -> Option<crate::lod::Surface> {
+    fn sample(&mut self, x: i32, z: i32) -> Option<crate::lod_column::Surface> {
         self.generator.lod_surface(&mut self.worker, x, z)
     }
 }
@@ -834,8 +834,8 @@ impl Streaming {
         world: &World,
         x: i32,
         z: i32,
-    ) -> Option<crate::level_loading::Status> {
-        use crate::level_loading::Status;
+    ) -> Option<crate::chunk_status::Status> {
+        use crate::chunk_status::Status;
         let key = (x, z);
         Some(if self.lit.contains(&key) {
             Status::Full

@@ -2,7 +2,7 @@
 use super::*;
 use crate::{
     fast_hash::{FxHashMap, FxHashSet},
-    lod::{Column, Span, Surface},
+    lod_column::{Column, Span, Surface},
     streaming::LodDetail,
 };
 use horizon_world::{

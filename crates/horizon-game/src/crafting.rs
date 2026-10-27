@@ -349,10 +349,10 @@ impl Special {
                         let mut made = result.create();
                         made.item = Arc::from(targets[i % targets.len()].as_str());
                         let name = dyes[i / targets.len()].trim_start_matches("minecraft:");
-                        let color = crate::block_entity_render::DYES
+                        let color = crate::banner::DYES
                             .iter()
                             .find(|(c, _)| name.strip_suffix("_dye") == Some(c))
-                            .map_or(crate::block_entity_render::DYES[0].1, |d| d.1);
+                            .map_or(crate::banner::DYES[0].1, |d| d.1);
                         made.data_mut().dyed_color = Some(color as i32);
                         made
                     })
@@ -1073,7 +1073,7 @@ pub(crate) fn apply_dyes(current: Option<i32>, dyes: &[usize]) -> i32 {
         add(c as u32);
     }
     for d in dyes {
-        add(crate::block_entity_render::DYES[*d].1);
+        add(crate::banner::DYES[*d].1);
     }
     let (red, green, blue) = (r / n, g / n, b / n);
     let average = intensity as f32 / n as f32;
@@ -1405,9 +1405,7 @@ impl Recipes {
                     id.clone(),
                     Facts {
                         dye: info.dye.as_deref().and_then(|d| {
-                            crate::block_entity_render::DYES
-                                .iter()
-                                .position(|(name, _)| *name == d)
+                            crate::banner::DYES.iter().position(|(name, _)| *name == d)
                         }),
                         max_damage: info.max_damage,
                         max_stack: info.max_stack,

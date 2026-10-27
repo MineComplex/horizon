@@ -2,9 +2,9 @@
 //! contents as built by the game's own display generators
 //! (`creative-inventory.json`), a 9x5 scrolling grid and the search tab.
 use crate::{Result, items::ItemStack, ui::EditBox};
+pub use horizon_game::creative_menu::{DisplayClick, Names, click_display};
 use serde_json::Value;
 use std::{
-    collections::HashMap,
     fs,
     path::Path,
     sync::{Arc, Mutex},
@@ -56,58 +56,6 @@ struct Shown {
     /// A display name, so a language change refills the search results.
     language: String,
     items: Arc<[ItemStack]>,
-}
-/// Display names from the pinned en_us language file.
-#[derive(Default)]
-pub struct Names {
-    map: HashMap<String, String>,
-}
-impl Names {
-    pub fn load(root: &Path) -> Self {
-        let read = |namespace: &str| {
-            fs::read(root.join(format!("assets/{namespace}/lang/en_us.json")))
-                .ok()
-                .and_then(|b| serde_json::from_slice::<HashMap<String, String>>(&b).ok())
-                .unwrap_or_default()
-        };
-        let mut map = read("minecraft");
-        // Content mods' names (docs/modpacks.md); none in a vanilla root.
-        for namespace in crate::mod_content::namespaces(root) {
-            map.extend(read(&namespace));
-        }
-        Self { map }
-    }
-    pub fn item(&self, id: &str) -> String {
-        let (namespace, path) = id.split_once(':').unwrap_or(("minecraft", id));
-        self.map
-            .get(&format!("item.{namespace}.{path}"))
-            .or_else(|| self.map.get(&format!("block.{namespace}.{path}")))
-            .cloned()
-            .unwrap_or_else(|| path.replace('_', " "))
-    }
-    /// An item's display name in the selected language: `item.*` then
-    /// `block.*`, then the pinned English map (`Names::item`).
-    pub fn display_item(&self, id: &str) -> String {
-        let (namespace, path) = id.split_once(':').unwrap_or(("minecraft", id));
-        if let Some(lang) = crate::lang::current() {
-            for prefix in ["item", "block"] {
-                if let Some(name) = lang.get(&format!("{prefix}.{namespace}.{path}")) {
-                    return name.to_owned();
-                }
-            }
-        }
-        self.item(id)
-    }
-    /// A translation key's text in the selected language, else the pinned
-    /// English map (`HoverName` and tooltip keys such as potion names).
-    pub fn display_get(&self, key: &str) -> Option<String> {
-        crate::lang::current()
-            .and_then(|lang| lang.get(key).map(str::to_owned))
-            .or_else(|| self.get(key).map(str::to_owned))
-    }
-    pub fn get(&self, key: &str) -> Option<&str> {
-        self.map.get(key).map(String::as_str)
-    }
 }
 
 /// `CreativeModeTabs`' key for an exported tab id (`itemGroup.*`); the
@@ -568,88 +516,10 @@ pub fn search_key_swaps(numeric: bool, hotbar_key: bool, hover: Hover, carrying:
     quick_swap && numeric && hotbar_key && !carrying && hover != Hover::Nothing
 }
 
-/// What a click on an item tab's display slot does besides changing the
-/// carried stack.
-#[derive(Clone, PartialEq, Debug)]
-pub enum DisplayClick {
-    Nothing,
-    /// SWAP: the hotbar slot gets a full stack of the item.
-    Hotbar(usize, ItemStack),
-    /// THROW: a copy of the item is dropped.
-    Drop(ItemStack),
-}
-
-/// `CreativeModeInventoryScreen.slotClicked` on a display slot
-/// (`slot.container == CONTAINER`): `shown` is the slot's item (None past
-/// the tab's end) and `max` gives an item's max stack size. The tab's items
-/// are never changed: clicks make copies.
-pub fn click_display(
-    carried: &mut Option<ItemStack>,
-    shown: Option<&ItemStack>,
-    max: impl Fn(&ItemStack) -> u32,
-    button: i32,
-    input: crate::menu::Input,
-) -> DisplayClick {
-    use crate::menu::Input;
-    let copy = |s: &ItemStack, count: u32| ItemStack { count, ..s.clone() };
-    let quick_key = input == Input::QuickMove;
-    match input {
-        Input::Swap => {
-            return match shown {
-                Some(s) => DisplayClick::Hotbar(button as usize, copy(s, max(s))),
-                None => DisplayClick::Nothing,
-            };
-        }
-        Input::Clone => {
-            if carried.is_none()
-                && let Some(s) = shown
-            {
-                *carried = Some(copy(s, max(s)));
-            }
-            return DisplayClick::Nothing;
-        }
-        Input::Throw => {
-            return match shown {
-                Some(s) => DisplayClick::Drop(copy(s, if button == 0 { 1 } else { max(s) })),
-                None => DisplayClick::Nothing,
-            };
-        }
-        _ => {}
-    }
-    match (carried.as_mut(), shown) {
-        (Some(c), Some(s)) if c.item == s.item && c.extra == s.extra && c.damage == s.damage => {
-            // isSameItemSameComponents: grow, fill or shrink what is carried.
-            if button == 0 {
-                if quick_key {
-                    c.count = max(c);
-                } else if c.count < max(c) {
-                    c.count += 1;
-                }
-            } else {
-                c.count -= 1;
-            }
-        }
-        (None, Some(s)) => {
-            *carried = Some(copy(s, if quick_key { max(s) } else { s.count }));
-        }
-        (Some(c), _) => {
-            if button == 0 {
-                *carried = None;
-            } else {
-                c.count -= 1;
-            }
-        }
-        (None, None) => {}
-    }
-    if carried.as_ref().is_some_and(|c| c.count == 0) {
-        *carried = None;
-    }
-    DisplayClick::Nothing
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::collections::HashMap;
 
     fn stack(item: &str, count: u32) -> ItemStack {
         ItemStack {

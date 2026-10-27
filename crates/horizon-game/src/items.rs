@@ -605,7 +605,7 @@ impl Items {
                     consumable: c.get("minecraft:consumable").map(|cons| {
                         horizon_world::consumable::Consumable {
                             seconds: cons["consume_seconds"].as_f64().map_or(1.6, |s| s as f32),
-                            animation: crate::first_person::consumable_animation(cons),
+                            animation: crate::items::consumable_animation(cons),
                             sound: cons["sound"]
                                 .as_str()
                                 .unwrap_or("minecraft:entity.generic.eat")
@@ -1751,6 +1751,19 @@ mod bucket_use_tests {
         }
         assert!(bucket_contents("minecraft:bucket").is_none());
         assert!(bucket_contents("minecraft:milk_bucket").is_none());
+    }
+}
+
+pub fn consumable_animation(v: &serde_json::Value) -> horizon_world::consumable::UseAnimation {
+    use horizon_world::consumable::UseAnimation;
+    match v
+        .get("animation")
+        .and_then(serde_json::Value::as_str)
+        .unwrap_or("eat")
+    {
+        "eat" => UseAnimation::Eat,
+        "drink" => UseAnimation::Drink,
+        _ => UseAnimation::None,
     }
 }
 

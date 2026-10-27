@@ -88,7 +88,7 @@ def main():
     harness.differential(
         'rust-container-screen-parity', 'VanillaContainerScreenOracle', 'container_screen_probe', make_cases, scope,
         sources=[lab.ROOT / 'crates/horizon-client/src/container_screen.rs',
-                 lab.ROOT / 'crates/horizon-client/src/menu.rs'])
+                 lab.ROOT / 'crates/horizon-game/src/menu.rs'])
 
 
 if __name__ == '__main__':

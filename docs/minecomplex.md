@@ -1,7 +1,7 @@
 # MineComplex fork
 
 Changes this fork carries on top of upstream Horizon, ported from the MineComplex Java client
-(`../Client`). Code: `crates/horizon-client/src/minecomplex.rs`.
+(`../Client`). Code: `crates/horizon-game/src/minecomplex.rs`.
 
 ## Login with the launcher's token
 

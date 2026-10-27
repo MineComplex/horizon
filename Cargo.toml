@@ -21,6 +21,7 @@ members = [
     "crates/horizon-friends",
     "crates/horizon-relay",
     "crates/horizon-proxy",
+    "crates/horizon-game",
     "crates/horizon-mod-sdk",
     "crates/horizon-mods",
     "crates/horizon-mods/tests/guest",

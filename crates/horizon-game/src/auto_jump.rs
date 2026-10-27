@@ -128,7 +128,7 @@ pub fn update_auto_jump<W: AutoJumpWorld>(
     if let Some(amplifier) = p.jump_boost {
         jump_height += (amplifier + 1) as f32 * 0.75;
     }
-    let look_ahead = crate::camera::java_max(current_speed * 7.0, 1.0 / inverted);
+    let look_ahead = crate::auto_jump::java_max(current_speed * 7.0, 1.0 / inverted);
     let seg_begin = move_begin;
     let seg_end = move_end.add_vector(move_dir.scale(f64::from(look_ahead)));
     let (width, height) = (p.width, p.height);
@@ -184,6 +184,19 @@ pub fn update_auto_jump<W: AutoJumpWorld>(
         }
     }
     Ok(false)
+}
+
+/// `Math.max(float, float)`.
+pub fn java_max(a: f32, b: f32) -> f32 {
+    if a.is_nan() || b.is_nan() {
+        f32::NAN
+    } else if a == 0.0 && b == 0.0 {
+        f32::from_bits(a.to_bits() & b.to_bits())
+    } else if a >= b {
+        a
+    } else {
+        b
+    }
 }
 
 #[cfg(test)]

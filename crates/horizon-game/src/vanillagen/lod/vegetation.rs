@@ -3,7 +3,7 @@
 //! completed native chunks replace them rather than changing gameplay worldgen.
 use crate::{
     fast_hash::FxHashMap,
-    lod::{Column, Span, Surface},
+    lod_column::{Column, Span, Surface},
 };
 use horizon_world::{
     registry::{BlockRegistry, BlockStateId},

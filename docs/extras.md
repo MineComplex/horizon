@@ -17,7 +17,7 @@ again restores vanilla's behaviour completely.
 | Reconnect policy and backoff | `crates/horizon-client/src/reconnect.rs` |
 | Game glue (input hooks, per-frame update) | `crates/horizon-client/src/game/extras.rs` |
 | Mouse Tweaks-style controls, sort buttons | `crates/horizon-client/src/game/tweaks.rs` |
-| Sort order and its clicks | `crates/horizon-client/src/inv_sort.rs` (pure, unit tested) |
+| Sort order and its clicks | `crates/horizon-game/src/inv_sort.rs` (pure, unit tested) |
 | The settings page | `options_ui.rs` (`Page::Extras`): **Options → Horizon Settings... → Extras...** |
 
 The settings are grouped by extra, under a header each, two buttons to a row as

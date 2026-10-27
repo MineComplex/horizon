@@ -12,6 +12,8 @@ horizon-assets = { path = "../horizon-assets" }
 horizon-client-core = { path = "../horizon-client-core" }
 horizon-command = { path = "../horizon-command" }
 horizon-core = { path = "../horizon-core" }
+# The game without a window (rules and state the server runs); re-exported under the old module paths.
+horizon-game = { path = "../horizon-game" }
 # The server thread ahead of the workers (MinecraftServer.spin's Thread.setPriority).
 horizon-threads = { path = "../horizon-threads" }
 horizon-hdr = { path = "../horizon-hdr" }

@@ -1,4 +1,5 @@
 //! BlockModelFeatureRenderer breaking quads and SheetedDecalTextureGenerator UVs.
+pub use crate::mesher::stage_light;
 use crate::{camera::joml, mesher::Vertex, models::catalog::BakedModel};
 use horizon_assets::model::Direction;
 use std::f32::consts::{FRAC_PI_2, PI};
@@ -21,14 +22,6 @@ pub fn decal_uv([x, y, z]: [f32; 3], direction: Direction) -> [f32; 2] {
     };
     let p = joml::Quat::rotation_yxz(0.0, angle_x, angle_z).transform(p);
     [-p[0], -p[1]]
-}
-
-/// The light bytes of a crack vertex: the pass is unlit, so they carry the origin of the
-/// vertex's destroy stage sprite (each crack in `LevelRenderer.destroyingBlocks` has its own
-/// stage; every stage sprite has the same size, `crumbling_sprite.zw`).
-pub fn stage_light([u0, v0]: [f32; 2]) -> u32 {
-    let q = |x: f32| (x.clamp(0.0, 1.0) * 65535.0).round() as u32;
-    q(u0) | (q(v0) << 16)
 }
 
 pub fn geometry(

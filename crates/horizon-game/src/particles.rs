@@ -8,7 +8,7 @@
 use crate::{
     blocks::{BlockFacts, Fluid},
     collisions::SceneCollisions,
-    hud::Rect,
+    image::Rect,
     mesher::Vertex,
     world::World,
 };
@@ -3815,7 +3815,7 @@ impl ParticleEngine {
                         pos: v.to_array(),
                         uv,
                         layer: if layer {
-                            crate::gfx::TRANSLUCENT_PARTICLE_OVERLAY
+                            crate::overlay::TRANSLUCENT_PARTICLE_OVERLAY
                         } else {
                             0
                         },
