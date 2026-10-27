@@ -171,6 +171,7 @@ pub use horizon_game::skins;
 pub mod sound_engine;
 pub mod sound_events;
 pub use horizon_game::spans;
+pub use horizon_game::spear;
 pub use horizon_game::sprint;
 pub mod sprites;
 pub use horizon_game::stations;

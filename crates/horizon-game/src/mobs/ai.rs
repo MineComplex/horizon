@@ -123,7 +123,7 @@ pub fn family(s: Species) -> Family {
         | S::Parched
         | S::WitherSkeleton
         | S::ZombifiedPiglin => Family::Undead,
-        S::Creeper | S::Spider | S::CaveSpider => Family::Hostile,
+        S::Creeper | S::Spider | S::CaveSpider | S::Silverfish => Family::Hostile,
         S::Squid
         | S::GlowSquid
         | S::Cod
@@ -182,9 +182,12 @@ pub fn register(m: &mut Mob) {
         Family::Undead => undead::register(m),
         Family::Hostile => hostile::register(m),
         Family::Aquatic => aquatic::register(m),
+        // Turtle.registerGoals has its own list, none of the generic goals.
+        Family::Generic if m.species() == Species::Turtle => super::turtle::register(m),
         Family::Generic if m.species() == Species::Armadillo => super::armadillo::register(m),
         Family::Generic if m.species() == Species::Frog => super::frog::register(m),
         Family::Generic if m.species() == Species::Fox => super::fox::register(m),
+        Family::Generic if m.species() == Species::Parrot => super::tame::register_parrot(m),
         Family::Generic => {
             generic(m);
             if m.species() == Species::Rabbit {
@@ -201,9 +204,6 @@ pub fn register(m: &mut Mob) {
                     outside: 0.1,
                     gravity: true,
                 };
-            }
-            if m.species() == Species::Turtle {
-                super::turtle::register(m);
             }
             if m.species() == Species::Goat {
                 super::goat::register(m);
@@ -793,6 +793,7 @@ fn play_ambient(m: &mut Mob, w: &MobWorld, events: &mut Vec<MobEvent>) {
                 "entity.wolf.pant"
             }
         }
+        Species::Parrot => super::parrot::ambient(m, w),
         Species::Cat if m.extra.tame && m.extra.in_love > 0 => "entity.cat.purr",
         Species::Cat if !m.extra.tame => "entity.cat.stray_ambient",
         Species::PolarBear if m.is_baby() => "entity.polar_bear.ambient_baby",
@@ -844,6 +845,9 @@ fn play_ambient(m: &mut Mob, w: &MobWorld, events: &mut Vec<MobEvent>) {
 }
 /// LivingEntity.aiStep (and Mob/AgeableMob/Animal additions).
 fn ai_step(m: &mut Mob, w: &MobWorld, level_random: &mut LegacyRandom, events: &mut Vec<MobEvent>) {
+    if m.species() == Species::Parrot {
+        super::parrot::ai_step(m, w, level_random, events);
+    }
     // Witch.aiStep runs before super.aiStep().
     if m.species() == Species::Witch {
         let far = m
@@ -905,8 +909,8 @@ fn ai_step(m: &mut Mob, w: &MobWorld, level_random: &mut LegacyRandom, events: &
     if m.kind.flags.climber {
         m.climbing = m.horizontal_collision;
     }
-    // AgeableMob.aiStep: a forced age-up's particles (positions drawn on the
-    // server too), then the age.
+    // AgeableMob.aiStep: a forced age-up's particles (`sendParticles`, so the
+    // players are sent them), then the age.
     if m.extra.forced_age_timer > 0 {
         if m.extra.forced_age_timer % 4 == 0 {
             let (w, h) = (f64::from(m.width()), f64::from(m.height()));
@@ -915,10 +919,12 @@ fn ai_step(m: &mut Mob, w: &MobWorld, level_random: &mut LegacyRandom, events: &
             let y = m.position.y + h * r.next_double() + 0.5;
             let z = m.position.z + w * (2.0 * r.next_double() - 1.0);
             // sendParticles(HAPPY_VILLAGER, x, y, z, 1, 0, 0, 0, 0): exactly there, at rest.
-            events.push(MobEvent::Particles {
+            events.push(MobEvent::LevelParticles {
                 kind: "happy_villager",
                 at: [x, y, z],
-                count: 0,
+                spread: [0.0; 3],
+                speed: 0.0,
+                count: 1,
             });
         }
         m.extra.forced_age_timer -= 1;
@@ -1544,6 +1550,9 @@ pub fn walk_target_value(m: &Mob, w: &MobWorld, p: [i32; 3]) -> f32 {
     if m.species() == Species::Strider {
         return super::strider::walk_target_value(m, w, p);
     }
+    if m.species() == Species::Turtle {
+        return super::turtle::walk_target_value(m, w, p, light());
+    }
     // Hoglin.getWalkTargetValue: nowhere near a repellent, crimson nylium best.
     if m.species() == Species::Hoglin {
         let near = m.extra.repellent.is_some_and(|r| {
@@ -1611,6 +1620,10 @@ pub fn accepts_damage(m: &mut Mob, source: &Damage, _amount: f32) -> bool {
         // Panda.hurtServer: up first, whatever the damage.
         Species::Panda => {
             super::panda::hurt(m);
+            true
+        }
+        Species::Silverfish => {
+            super::hostile::silverfish_hurt(m, source);
             true
         }
         Species::Enderman => super::enderman::on_damage(m, source),

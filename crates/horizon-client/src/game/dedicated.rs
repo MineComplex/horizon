@@ -698,6 +698,9 @@ impl Game<'_> {
         {
             self.mods.plugin.lists = Some(lists.clone());
         }
+        if let Some(host) = self.lan.as_mut() {
+            host.hub.spawn_protection = props.spawn_protection;
+        }
         log(
             "INFO",
             &format!(

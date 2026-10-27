@@ -188,6 +188,7 @@ mod tests {
                 extra: None,
             },
             thrower: None,
+            target: None,
             position: at,
             previous: at,
             velocity: Vec3::ZERO,

@@ -89,6 +89,7 @@ pub mod sculk;
 pub mod signs;
 pub mod skins;
 pub mod spans;
+pub mod spear;
 pub mod sprint;
 pub mod stations;
 pub mod stopwatches;

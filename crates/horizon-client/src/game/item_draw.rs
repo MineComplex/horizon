@@ -171,6 +171,9 @@ fn use_duration(components: &Components) -> i32 {
         let seconds = c["consume_seconds"].as_f64().unwrap_or(1.6);
         return (seconds * 20.0) as i32;
     }
+    if components.get("minecraft:kinetic_weapon").is_some() {
+        return 72_000;
+    }
     let item_model = components
         .get("minecraft:item_model")
         .and_then(Value::as_str)
@@ -250,6 +253,11 @@ impl Game<'_> {
         owner.main_arm_left = self.settings.main_hand_left;
         owner.is_local_player = true;
         owner.is_view_entity = true;
+        owner.last_death_location = self
+            .level
+            .last_death
+            .clone()
+            .map(|(dimension, pos)| GlobalPos { dimension, pos });
         if let (Some((slot, ticks)), Some(stack)) = (self.using, stack)
             && self.stack_in(slot) == Some(stack)
         {
