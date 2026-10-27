@@ -3611,7 +3611,8 @@ impl Game<'_> {
                     m.extra.sitting = true;
                 }
                 // TamableAnimal.spawnTamingParticles (entity event 7 or 6).
-                self.mob_event_particles(self.mobs[index].id, if tamed { 7 } else { 6 });
+                let mob_id = self.mobs[index].id;
+                self.mob_event_particles(mob_id, if tamed { 7 } else { 6 });
                 if tamed {
                     let view = self.mob_entity(&self.mobs[index]);
                     self.trigger_entity("minecraft:tame_animal", "entity", &view);
@@ -3696,7 +3697,8 @@ impl Game<'_> {
                 }
                 eat = eating_sound(m, &mut self.world.random);
                 // TamableAnimal.spawnTamingParticles (entity event 7 or 6).
-                self.mob_event_particles(self.mobs[index].id, if tamed { 7 } else { 6 });
+                let mob_id = self.mobs[index].id;
+                self.mob_event_particles(mob_id, if tamed { 7 } else { 6 });
                 if tamed {
                     let view = self.mob_entity(&self.mobs[index]);
                     self.trigger_entity("minecraft:tame_animal", "entity", &view);
@@ -3745,7 +3747,8 @@ impl Game<'_> {
                     m.extra.owner = Some(acting);
                 }
                 // TamableAnimal.spawnTamingParticles (entity event 7 or 6).
-                self.mob_event_particles(self.mobs[index].id, if tamed { 7 } else { 6 });
+                let mob_id = self.mobs[index].id;
+                self.mob_event_particles(mob_id, if tamed { 7 } else { 6 });
                 if tamed {
                     let view = self.mob_entity(&self.mobs[index]);
                     self.trigger_entity("minecraft:tame_animal", "entity", &view);
@@ -3808,7 +3811,8 @@ impl Game<'_> {
                         // Animal.setInLove: entity event 18 (a baby that
                         // only grew is not in love).
                         if self.mobs[index].extra.in_love > 0 {
-                            self.mob_event_particles(self.mobs[index].id, 18);
+                            let mob_id = self.mobs[index].id;
+                            self.mob_event_particles(mob_id, 18);
                         }
                     }
                     // Animal.mobInteract still consumes the client click when

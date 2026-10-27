@@ -86,7 +86,8 @@ impl Game<'_> {
                 }
                 let sound = nautilus::eat_sound(m);
                 // TamableAnimal.spawnTamingParticles (entity event 7 or 6).
-                self.mob_event_particles(self.mobs[index].id, if tamed { 7 } else { 6 });
+                let mob_id = self.mobs[index].id;
+                self.mob_event_particles(mob_id, if tamed { 7 } else { 6 });
                 self.nautilus_sound(index, sound);
                 if tamed {
                     let view = self.mob_entity(&self.mobs[index]);
@@ -141,7 +142,8 @@ impl Game<'_> {
             self.use_nautilus_food(item);
             self.nautilus_sound(index, sound);
             // Animal.setInLove: entity event 18.
-            self.mob_event_particles(self.mobs[index].id, 18);
+            let mob_id = self.mobs[index].id;
+            self.mob_event_particles(mob_id, 18);
             return true;
         }
         false

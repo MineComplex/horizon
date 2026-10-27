@@ -8753,25 +8753,13 @@ impl Game<'_> {
             self.stats
                 .custom("damage_dealt", (actual * 10.0).round() as i32);
             if crit {
-                self.critical_hit(
-                    self.lan_acting,
-                    self.mobs[index].id as i32,
-                    feet,
-                    width,
-                    height,
-                    false,
-                );
+                let (acting, target) = (self.lan_acting, self.mobs[index].id as i32);
+                self.critical_hit(acting, target, feet, width, height, false);
             }
             // Player.attackVisualEffects: magicCrit when the enchantments added damage.
             if magic {
-                self.critical_hit(
-                    self.lan_acting,
-                    self.mobs[index].id as i32,
-                    feet,
-                    width,
-                    height,
-                    true,
-                );
+                let (acting, target) = (self.lan_acting, self.mobs[index].id as i32);
+                self.critical_hit(acting, target, feet, width, height, true);
             }
             if actual > 2.0 {
                 let indicator = horizon_client::particles::ParticleOptions::simple(

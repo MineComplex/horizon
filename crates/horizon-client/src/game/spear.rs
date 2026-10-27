@@ -236,7 +236,8 @@ impl Game<'_> {
         );
         // attackVisualEffects: no attack sound, the enchantments' magic crit.
         if magic_boost > 0.0 {
-            self.critical_hit(self.lan_acting, id as i32, feet, width, height, true);
+            let acting = self.lan_acting;
+            self.critical_hit(acting, id as i32, feet, width, height, true);
         }
         self.combat.last_hurt_mob = Some((id, self.world.game_time));
         // itemAttackInteraction: hurtEnemy (statistic, wear), and the

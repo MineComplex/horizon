@@ -1174,7 +1174,8 @@ impl Game<'_> {
             .held()
             .is_some_and(|s| s.enchantment_level("minecraft:fire_aspect") > 0);
         self.vehicle_attack_sounds();
-        self.hurt_cart(i, damage, self.creative, burning);
+        let creative = self.creative;
+        self.hurt_cart(i, damage, creative, burning);
         self.swing_arm();
         true
     }
