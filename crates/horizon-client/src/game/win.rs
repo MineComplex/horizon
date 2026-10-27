@@ -77,13 +77,13 @@ impl Game<'_> {
             .is_some_and(|w| w.finish == Finish::Respawn)
     }
     pub(super) fn draw_win_screen(&mut self, batch: &mut HudBatch) {
-        let Some(win) = self.sim.win.as_mut() else {
+        let Some(win) = self.win.as_mut() else {
             return;
         };
         let now = Instant::now();
         // DeltaTracker.getGameTimeDeltaTicks: the frame's length in ticks.
-        let delta_ticks = now.duration_since(win.frame).as_secs_f32()
-            / self.sim.clock.tick_duration().as_secs_f32();
+        let delta_ticks =
+            now.duration_since(win.frame).as_secs_f32() / self.clock.tick_duration().as_secs_f32();
         win.frame = now;
         let sprite = |n: &str| {
             self.front
@@ -98,7 +98,7 @@ impl Game<'_> {
                 sprite("environment/end_sky"),
                 sprite("entity/end_portal/end_portal"),
             ],
-            game_time: (self.sim.world.game_time % 24000) as f32 / 24000.0,
+            game_time: (self.world.game_time % 24000) as f32 / 24000.0,
         };
         win.screen
             .draw(batch, &self.front.gui.atlas, delta_ticks, fill);

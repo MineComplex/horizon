@@ -1395,9 +1395,9 @@ impl Game<'_> {
     fn stop_dedicated(&mut self) -> Result<()> {
         log("INFO", "Stopping server");
         log("INFO", "Saving players");
-        if let Some(h) = self.sim.lan.as_mut() {
+        if let Some(h) = self.lan.as_mut() {
             for g in &h.hub.guests {
-                horizon_client::lan::playerdata::save(g, &self.sim.world_root);
+                horizon_client::lan::playerdata::save(g, &self.world_root);
             }
         }
         if let Some(h) = self.lan.as_ref() {

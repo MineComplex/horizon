@@ -434,7 +434,7 @@ impl Game<'_> {
         if signing {
             if let Some(BookScreen::Edit {
                 title, title_edit, ..
-            }) = self.sim.book.as_mut()
+            }) = self.book.as_mut()
             {
                 title_edit.shortcut(shortcut, &mut self.front.clipboard);
                 title.clone_from(&title_edit.value);
@@ -449,7 +449,7 @@ impl Game<'_> {
             )),
             _ => None,
         };
-        if let Some(BookScreen::Edit { page_edit, .. }) = self.sim.book.as_mut() {
+        if let Some(BookScreen::Edit { page_edit, .. }) = self.book.as_mut() {
             page_edit.shortcut(shortcut, &mut self.front.clipboard);
         }
         self.page_keep(before);
@@ -591,7 +591,7 @@ impl Game<'_> {
         let shift = self.has_shift_down();
         let Some(BookScreen::Edit {
             title, title_edit, ..
-        }) = self.sim.book.as_mut()
+        }) = self.book.as_mut()
         else {
             return;
         };
@@ -951,14 +951,14 @@ impl Game<'_> {
             lectern: Some(key),
             page,
             pages,
-        }) = self.sim.book.as_mut()
+        }) = self.book.as_mut()
         else {
             return;
         };
-        if self.sim.remote.is_some() {
+        if self.remote.is_some() {
             return;
         }
-        match self.sim.world.block_entities.get(key) {
+        match self.world.block_entities.get(key) {
             Some(BlockEntity::Lectern(l)) if l.book.is_some() => {
                 *page = (l.page.max(0) as usize).min(pages.len().saturating_sub(1));
             }

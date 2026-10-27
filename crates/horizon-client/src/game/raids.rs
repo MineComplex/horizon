@@ -310,16 +310,15 @@ impl Game<'_> {
     }
     /// Writes `raid_omen_position` into the player data being saved.
     fn save_raid_omen_position(&mut self) {
-        if !self.sim.raiding.omen_loaded {
+        if !self.raiding.omen_loaded {
             return;
         }
         let extra = self
-            .sim
             .level
             .player_extra
             .get_or_insert_with(|| horizon_world::nbt::Tag::Compound(Default::default()));
         if let horizon_world::nbt::Tag::Compound(map) = extra {
-            match self.sim.raiding.omen_position {
+            match self.raiding.omen_position {
                 Some(p) => {
                     map.insert(
                         "raid_omen_position".into(),
@@ -785,7 +784,7 @@ impl Game<'_> {
         let mut joins: Vec<(u32, i32, f32)> = Vec::new();
         let mut new_leaders: Vec<(i32, i32, u32)> = Vec::new();
         let homes = self.raid_homes();
-        for m in &mut self.sim.mobs {
+        for m in &mut self.mobs {
             let species = m.species();
             if !raider::is_raider(species) {
                 continue;
@@ -798,7 +797,7 @@ impl Game<'_> {
             let target_golem = matches!(m.ai.target, Some(horizon_client::mobs::Who::Mob(t)) if golems.contains(&t));
             let target_player = m.ai.target == Some(horizon_client::mobs::Who::Player);
             let (health, age, range) = (m.health, m.age, m.attrs.follow_range);
-            let raids = &mut self.sim.raiding.raids;
+            let raids = &mut self.raiding.raids;
             let s = m.extra.raider.get_or_insert_with(Box::default);
             s.rider = has_rider;
             s.in_village = in_village;
@@ -1051,9 +1050,9 @@ impl Game<'_> {
     /// `SetRaidStatus`, `ResetRaidStatus`, `ReactToBell` and raid packages
     /// read it).
     fn sync_villager_raids(&mut self, infos: &HashMap<i32, Vec<RaiderInfo>>) {
-        let raids = &self.sim.raiding.raids;
+        let raids = &self.raiding.raids;
         let mut ongoing = Vec::new();
-        for m in &mut self.sim.mobs {
+        for m in &mut self.mobs {
             if m.species() != Species::Villager {
                 continue;
             }
@@ -1128,15 +1127,14 @@ impl Game<'_> {
             }],
         ));
         let rocket = self.new_rocket(Vec3::new(at[0], at[1], at[2]), &stack, false);
-        self.sim.rockets.push(rocket);
+        self.rockets.push(rocket);
     }
     /// `BehaviorUtils.throwItem`: a hero's gift tossed toward the player.
     pub(super) fn throw_gift(&mut self, table: &str, from: [f64; 3], to: [f64; 3]) {
         let drops = self
-            .sim
             .res
             .items()
-            .loot_table(table, false, None, &mut self.sim.world.random);
+            .loot_table(table, false, None, &mut self.world.random);
         let d = Vec3::new(to[0] - from[0], to[1] - from[1], to[2] - from[2]).normalize();
         for stack in drops {
             self.spawn_item(stack, from, [d.x * 0.3, d.y * 0.3, d.z * 0.3], 10);

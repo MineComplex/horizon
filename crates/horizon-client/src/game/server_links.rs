@@ -143,7 +143,7 @@ impl Game<'_> {
         let (w, h) = (batch.width, batch.height);
         ui::menu_background(batch, atlas, 0.0, 0.0, w, h, true);
         let links = self.server_links().to_vec();
-        self.sim.links_ui.scroll = self
+        self.links_ui.scroll = self
             .links_ui
             .scroll
             .clamp(0.0, scroll_limit(h, links.len()));

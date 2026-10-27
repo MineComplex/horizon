@@ -388,10 +388,10 @@ impl Game<'_> {
         }
     }
     pub(super) fn station_slot_mut(&mut self, i: usize) -> &mut Option<ItemStack> {
-        match self.sim.station.as_mut() {
+        match self.station.as_mut() {
             Some(s) if i == RESULT => &mut s.result,
             Some(s) if i >= INPUT && i < INPUT + s.inputs.len() => &mut s.inputs[i - INPUT],
-            _ => &mut self.sim.scratch_slot,
+            _ => &mut self.scratch_slot,
         }
     }
     pub(super) fn count_bookshelves(&self, pos: [i32; 3]) -> i32 {
@@ -684,10 +684,7 @@ impl Game<'_> {
                     let _ = self.set_state_named(pos, "minecraft:damaged_anvil", &["facing"]);
                 }
                 _ => {
-                    let _ = self
-                        .sim
-                        .world
-                        .set(pos[0], pos[1], pos[2], self.sim.world.air);
+                    let _ = self.world.set(pos[0], pos[1], pos[2], self.world.air);
                     self.world.modified.insert((pos[0] >> 4, pos[2] >> 4));
                     self.level_event_at(1029, pos, 0);
                     return true;
@@ -786,9 +783,9 @@ impl Game<'_> {
         // Player.onEnchantmentPerformed
         self.give_levels(-(lapis_needed as i32));
         self.level.xp_seed = self.world.random.next_int();
-        if let Some(s) = self.sim.station.as_mut() {
+        if let Some(s) = self.station.as_mut() {
             s.inputs[0] = Some(enchanted);
-            if !self.sim.creative
+            if !self.creative
                 && let Some(l) = s.inputs[1].as_mut()
             {
                 l.count -= lapis_needed;
@@ -898,7 +895,7 @@ impl Game<'_> {
     }
     /// Recompute after slot changes; the anvil box follows its input item.
     fn station_after_input(&mut self) {
-        let Some(s) = self.sim.station.as_mut() else {
+        let Some(s) = self.station.as_mut() else {
             return;
         };
         if s.kind == Kind::Anvil && s.inputs[0] != s.anvil_last {
@@ -906,7 +903,7 @@ impl Game<'_> {
             s.anvil_last = s.inputs[0].clone();
             s.name = s.inputs[0]
                 .as_ref()
-                .map(|i| stations::hover_name(&|id| self.sim.pack.names.display_item(id), i))
+                .map(|i| stations::hover_name(&|id| self.pack.names.display_item(id), i))
                 .unwrap_or_default();
             let name = s.name.clone();
             s.rename.set_value(&name);
@@ -1007,7 +1004,7 @@ impl Game<'_> {
             self.recipe_shortcut(shortcut);
             return;
         }
-        let Some(s) = self.sim.station.as_mut() else {
+        let Some(s) = self.station.as_mut() else {
             return;
         };
         if s.rename.shortcut(shortcut, &mut self.front.clipboard) {
@@ -1031,7 +1028,7 @@ impl Game<'_> {
             return false;
         }
         let shift = self.has_shift_down();
-        let Some(s) = self.sim.station.as_mut() else {
+        let Some(s) = self.station.as_mut() else {
             return false;
         };
         s.rename.x = x;
@@ -1042,7 +1039,7 @@ impl Game<'_> {
     }
     /// AnvilScreen's name box, drawn after the station picture.
     fn draw_anvil_name(&mut self, batch: &mut HudBatch, ox: f32, oy: f32) {
-        let Some(s) = self.sim.station.as_mut() else {
+        let Some(s) = self.station.as_mut() else {
             return;
         };
         let edit = &mut s.rename;
@@ -2397,13 +2394,13 @@ impl Game<'_> {
         &mut self,
         pos: (i32, i32, i32),
     ) -> horizon_client::Result<()> {
-        let Some(BlockEntity::Brewing(b)) = self.sim.world.block_entities.get_mut(&pos) else {
+        let Some(BlockEntity::Brewing(b)) = self.world.block_entities.get_mut(&pos) else {
             return Ok(());
         };
         let out = b.tick(
-            &self.sim.res.stations().brewing,
-            self.sim.res.items(),
-            self.sim.res.providers(),
+            &self.res.stations().brewing,
+            self.res.items(),
+            self.res.providers(),
         );
         if out != brewing::BrewTick::default() {
             let (x, y, z) = pos;

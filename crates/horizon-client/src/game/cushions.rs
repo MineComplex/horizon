@@ -225,11 +225,11 @@ impl Game<'_> {
             position.y.floor() as i32,
             position.z.floor() as i32,
         ];
-        self.sim.cushions.push(Cushion {
+        self.cushions.push(Cushion {
             id,
             position,
             pos: attached,
-            yaw: snap_yaw(self.sim.yaw),
+            yaw: snap_yaw(self.yaw),
             color,
             check_interval: 0,
         });
@@ -408,8 +408,8 @@ impl Game<'_> {
         if keys.shift {
             let at = c.dismount();
             self.riding = None;
-            if let Some(p) = self.sim.player.as_mut() {
-                self.sim.previous_position = p.position;
+            if let Some(p) = self.player.as_mut() {
+                self.previous_position = p.position;
                 p.position = at;
                 p.velocity = Vec3::ZERO;
                 p.fall_distance = 0.0;
@@ -425,8 +425,8 @@ impl Game<'_> {
             return true;
         }
         let seat = c.seat();
-        if let Some(p) = self.sim.player.as_mut() {
-            self.sim.previous_position = p.position;
+        if let Some(p) = self.player.as_mut() {
+            self.previous_position = p.position;
             p.position = seat;
             p.velocity = Vec3::ZERO;
             p.fall_distance = 0.0;

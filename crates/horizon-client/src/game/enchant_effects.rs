@@ -49,20 +49,20 @@ impl Game<'_> {
     }
     /// `EnchantmentHelper.processDurabilityChange` (unbreaking) for `amount` points.
     pub(super) fn durability_loss(&mut self, stack: &ItemStack, amount: u32) -> u32 {
-        let e = &self.sim.res.stations().enchantments;
+        let e = &self.res.stations().enchantments;
         if !e.has_component(stack, "minecraft:item_damage") {
             return amount;
         }
         let ctx = EffectContext {
             tool: Some(&stack.item),
-            items: Some(self.sim.res.items()),
+            items: Some(self.res.items()),
             ..Default::default()
         };
         e.modify_value(
             Some(stack),
             "minecraft:item_damage",
             &ctx,
-            &mut self.sim.world.random,
+            &mut self.world.random,
             amount as f32,
         )
         .max(0.0) as u32
@@ -78,14 +78,14 @@ impl Game<'_> {
             direct_attacker: Some("minecraft:player"),
             is_direct: true,
             damage_type: Some("minecraft:player_attack"),
-            items: Some(self.sim.res.items()),
+            items: Some(self.res.items()),
             ..Default::default()
         };
-        self.sim.res.stations().enchantments.modify_value(
+        self.res.stations().enchantments.modify_value(
             Some(&held),
             "minecraft:damage",
             &ctx,
-            &mut self.sim.world.random,
+            &mut self.world.random,
             0.0,
         )
     }
@@ -109,14 +109,14 @@ impl Game<'_> {
                     attacker: Some("minecraft:player"),
                     direct_attacker: Some("minecraft:player"),
                     is_direct: true,
-                    items: Some(self.sim.res.items()),
+                    items: Some(self.res.items()),
                     ..Default::default()
                 };
-                self.sim.res.stations().enchantments.modify_value(
+                self.res.stations().enchantments.modify_value(
                     Some(&held),
                     "minecraft:knockback",
                     &ctx,
-                    &mut self.sim.world.random,
+                    &mut self.world.random,
                     0.0,
                 )
             }
@@ -154,7 +154,7 @@ impl Game<'_> {
             attacker: Some("minecraft:player"),
             direct_attacker: Some("minecraft:player"),
             is_direct: true,
-            items: Some(self.sim.res.items()),
+            items: Some(self.res.items()),
             ..Default::default()
         };
         // minecraft:post_attack effects of the attacker's weapon on the victim:
@@ -162,7 +162,7 @@ impl Game<'_> {
         let mut ignite = 0.0f32;
         let mut mob_effects = Vec::new();
         for (id, level) in held.enchantments() {
-            let Some(def) = self.sim.res.stations().enchantments.get(id) else {
+            let Some(def) = self.res.stations().enchantments.get(id) else {
                 continue;
             };
             for effect in def.effects["minecraft:post_attack"]
@@ -188,7 +188,7 @@ impl Game<'_> {
                         .enchantments
                         .condition(r, *level, &ctx, &mut random)
                 });
-                self.sim.world.random = random;
+                self.world.random = random;
                 if !ok {
                     continue;
                 }
@@ -256,13 +256,13 @@ impl Game<'_> {
             attacker: Some("minecraft:player"),
             direct_attacker: Some("minecraft:player"),
             is_direct: true,
-            items: Some(self.sim.res.items()),
+            items: Some(self.res.items()),
             direct_motion: Some(motion),
             ..Default::default()
         };
         let mut bursts = Vec::new();
         for (id, level) in held.enchantments() {
-            let Some(def) = self.sim.res.stations().enchantments.get(id) else {
+            let Some(def) = self.res.stations().enchantments.get(id) else {
                 continue;
             };
             for effect in def.effects["minecraft:post_attack"]
@@ -279,11 +279,11 @@ impl Game<'_> {
                     continue;
                 }
                 let ok = effect.get("requirements").is_none_or(|r| {
-                    self.sim.res.stations().enchantments.condition(
+                    self.res.stations().enchantments.condition(
                         r,
                         *level,
                         &ctx,
-                        &mut self.sim.world.random,
+                        &mut self.world.random,
                     )
                 });
                 if !ok {
@@ -311,8 +311,8 @@ impl Game<'_> {
             return;
         };
         for damage in self.thorns_damage() {
-            let m = &mut self.sim.mobs[index];
-            m.hurt(damage, None, &mut self.sim.world.random);
+            let m = &mut self.mobs[index];
+            m.hurt(damage, None, &mut self.world.random);
             let center = [m.position.x, m.position.y, m.position.z];
             self.front
                 .audio
@@ -351,13 +351,12 @@ impl Game<'_> {
             if !ok {
                 continue;
             }
-            hits.push(1.0 + self.sim.world.random.next_float() * 4.0);
+            hits.push(1.0 + self.world.random.next_float() * 4.0);
             // ChangeItemDamage -> ItemStack.hurtAndBreak: unbreaking applies.
             let loss = self.durability_loss(&stack, 2);
-            if let Some(s) = self.sim.armor[slot].as_mut() {
+            if let Some(s) = self.armor[slot].as_mut() {
                 s.damage += loss;
                 if self
-                    .sim
                     .res
                     .items()
                     .get(&s.item)
@@ -397,14 +396,14 @@ impl Game<'_> {
                 return amount;
             };
             let ctx = EffectContext {
-                items: Some(self.sim.res.items()),
+                items: Some(self.res.items()),
                 ..Default::default()
             };
-            let to_repair_xp = self.sim.res.stations().enchantments.modify_value(
+            let to_repair_xp = self.res.stations().enchantments.modify_value(
                 Some(&stack),
                 "minecraft:repair_with_xp",
                 &ctx,
-                &mut self.sim.world.random,
+                &mut self.world.random,
                 amount as f32,
             ) as u32;
             let repaired = to_repair_xp.min(stack.damage);
@@ -430,9 +429,9 @@ impl Game<'_> {
     }
     fn mend_slot_mut(&mut self, slot: MendSlot) -> &mut Option<ItemStack> {
         match slot {
-            MendSlot::Main => &mut self.sim.inventory[self.sim.selected],
-            MendSlot::Off => &mut self.sim.offhand,
-            MendSlot::Armor(i) => &mut self.sim.armor[i],
+            MendSlot::Main => &mut self.inventory[self.selected],
+            MendSlot::Off => &mut self.offhand,
+            MendSlot::Armor(i) => &mut self.armor[i],
         }
     }
     /// Bow enchantments at release: (extra base damage, infinity keeps the arrow).
@@ -442,23 +441,23 @@ impl Game<'_> {
         let Some(bow) = self.inventory[self.selected].clone() else {
             return (0.0, false);
         };
-        let e = &self.sim.res.stations().enchantments;
+        let e = &self.res.stations().enchantments;
         let ctx = EffectContext {
             direct_attacker: Some("minecraft:arrow"),
             attacker: Some("minecraft:player"),
-            items: Some(self.sim.res.items()),
+            items: Some(self.res.items()),
             ..Default::default()
         };
         let power = e.modify_value(
             Some(&bow),
             "minecraft:damage",
             &ctx,
-            &mut self.sim.world.random,
+            &mut self.world.random,
             0.0,
         );
         let ammo_ctx = EffectContext {
             tool: Some(ammo),
-            items: Some(self.sim.res.items()),
+            items: Some(self.res.items()),
             ..Default::default()
         };
         let infinity = e.has_component(&bow, "minecraft:ammo_use")
@@ -466,7 +465,7 @@ impl Game<'_> {
                 Some(&bow),
                 "minecraft:ammo_use",
                 &ammo_ctx,
-                &mut self.sim.world.random,
+                &mut self.world.random,
                 1.0,
             ) == 0.0;
         (f64::from(power), infinity)
@@ -477,12 +476,12 @@ impl Game<'_> {
         let bow = self.inventory[self.selected].clone()?;
         let ctx = EffectContext {
             this: Some("minecraft:arrow"),
-            items: Some(self.sim.res.items()),
+            items: Some(self.res.items()),
             ..Default::default()
         };
         let mut ignite: Option<f32> = None;
         for (id, level) in bow.enchantments() {
-            let Some(def) = self.sim.res.stations().enchantments.get(id) else {
+            let Some(def) = self.res.stations().enchantments.get(id) else {
                 continue;
             };
             for effect in def.effects["minecraft:projectile_spawned"]
@@ -494,11 +493,11 @@ impl Game<'_> {
                     continue;
                 }
                 let ok = effect.get("requirements").is_none_or(|r| {
-                    self.sim.res.stations().enchantments.condition(
+                    self.res.stations().enchantments.condition(
                         r,
                         *level,
                         &ctx,
-                        &mut self.sim.world.random,
+                        &mut self.world.random,
                     )
                 });
                 if ok {
@@ -526,11 +525,11 @@ impl Game<'_> {
     /// client leaves it to its server.
     pub(super) fn tick_soul_speed(&mut self) -> Option<([f64; 3], [f64; 3])> {
         const ID: &str = "minecraft:soul_speed";
-        let player = self.sim.player.as_mut()?;
+        let player = self.player.as_mut()?;
         if player.client_side {
             return None;
         }
-        let level = self.sim.armor[3]
+        let level = self.armor[3]
             .as_ref()
             .map_or(0, |s| s.enchantment_level(ID));
         let position = player.position;
@@ -548,12 +547,12 @@ impl Game<'_> {
         let mut active = was_active > 0 && !equipped;
         let mut wear = false;
         if level > 0 && (changed_block || landed || equipped) {
-            let riding = self.sim.riding.is_some();
+            let riding = self.riding.is_some();
             let wanted = !riding && !flying && (on_soul || (active && !on_ground));
             active = wanted;
             // `random_chance` is the first term of the wear's `all_of`: it
             // draws from the level random before the block is looked at.
-            let roll = self.sim.world.random.next_float() < 0.04;
+            let roll = self.world.random.next_float() < 0.04;
             wear = roll && on_ground && on_soul;
         }
         fx.applied_level = if active { level } else { 0 };
@@ -563,14 +562,14 @@ impl Game<'_> {
         // The attribute effects were applied to the player before: swap them.
         if was_active > 0 && (!active || equipped) {
             for (attribute, id, _, op) in
-                soul_speed_modifiers(&self.sim.res.stations().enchantments, was_active)
+                soul_speed_modifiers(&self.res.stations().enchantments, was_active)
             {
                 let _ = player.set_modifier(&attribute, &id, 0.0, &op, false);
             }
         }
         if active && (was_active == 0 || equipped) {
             for (attribute, id, amount, op) in
-                soul_speed_modifiers(&self.sim.res.stations().enchantments, level)
+                soul_speed_modifiers(&self.res.stations().enchantments, level)
             {
                 let _ = player.set_modifier(&attribute, &id, amount, &op, true);
             }
@@ -632,7 +631,7 @@ impl Game<'_> {
                     "minecraft:entity.item.break",
                     Some(eye),
                     0.8,
-                    0.8 + self.sim.world.random.next_float() * 0.4,
+                    0.8 + self.world.random.next_float() * 0.4,
                 );
             }
             self.apply_equipment();
@@ -649,10 +648,10 @@ impl Game<'_> {
                 wanted.push((attr, format!("{id}/{slot}"), amount, op));
             }
         }
-        let Some(p) = self.sim.player.as_mut() else {
+        let Some(p) = self.player.as_mut() else {
             return;
         };
-        for (attr, id, _, op) in std::mem::take(&mut self.sim.potions.enchant_modifiers) {
+        for (attr, id, _, op) in std::mem::take(&mut self.potions.enchant_modifiers) {
             let _ = p.set_modifier(&attr, &id, 0.0, &op, false);
         }
         for (attr, id, amount, op) in &wanted {

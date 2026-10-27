@@ -167,7 +167,7 @@ impl Game<'_> {
                         "minecraft:item.shield.break",
                         at,
                         0.8,
-                        0.8 + self.sim.world.random.next_float() * 0.4,
+                        0.8 + self.world.random.next_float() * 0.4,
                     );
                     return;
                 }

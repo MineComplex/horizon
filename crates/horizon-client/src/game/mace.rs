@@ -119,15 +119,15 @@ impl Game<'_> {
             direct_attacker: Some("minecraft:player"),
             is_direct: true,
             damage_type: Some("minecraft:mace_smash"),
-            items: Some(self.sim.res.items()),
+            items: Some(self.res.items()),
             ..Default::default()
         };
         // EnchantmentHelper.modifyFallBasedDamage(..., 0)
-        let per_block = self.sim.res.stations().enchantments.modify_value(
+        let per_block = self.res.stations().enchantments.modify_value(
             held.as_ref(),
             "minecraft:smash_damage_per_fallen_block",
             &ctx,
-            &mut self.sim.world.random,
+            &mut self.world.random,
             0.0,
         );
         (damage + f64::from(per_block) * fall) as f32
@@ -146,11 +146,11 @@ impl Game<'_> {
                 horizon_client::mobs::DamageKind::MaceSmash => "minecraft:mace_smash",
                 _ => "minecraft:player_attack",
             }),
-            items: Some(self.sim.res.items()),
+            items: Some(self.res.items()),
             ..Default::default()
         };
-        let enchantments = &self.sim.res.stations().enchantments;
-        let random = &mut self.sim.world.random;
+        let enchantments = &self.res.stations().enchantments;
+        let random = &mut self.world.random;
         // CombatRules.getDamageAfterAbsorb: EnchantmentHelper.modifyArmorEffectiveness.
         let mut breach = |fraction: f32| {
             enchantments.modify_value(
@@ -161,8 +161,8 @@ impl Game<'_> {
                 fraction,
             )
         };
-        let old_health = self.sim.mobs[index].health;
-        let hurt = self.sim.mobs[index].damage_with(amount, source, Some(&mut breach));
+        let old_health = self.mobs[index].health;
+        let hurt = self.mobs[index].damage_with(amount, source, Some(&mut breach));
         if hurt && self.mobs[index].health != old_health {
             self.mob_damage_event(self.mobs[index].id);
         }
@@ -199,10 +199,10 @@ impl Game<'_> {
             && !self.creative
         {
             let loss = self.durability_loss(&stack, per_attack);
-            if let Some(held) = self.sim.inventory[self.sim.selected].as_mut() {
+            if let Some(held) = self.inventory[self.selected].as_mut() {
                 held.damage += loss;
                 if held.damage >= max {
-                    self.sim.inventory[self.sim.selected] = None;
+                    self.inventory[self.selected] = None;
                 }
             }
         }

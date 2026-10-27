@@ -82,13 +82,13 @@ impl Game<'_> {
     /// many recipe book displays changed (a transmute recipe has one per
     /// material count).
     fn change_recipes(&mut self, give: bool, recipes: &[String]) -> i32 {
-        let index = &self.sim.res.stations().recipe_index;
+        let index = &self.res.stations().recipe_index;
         if give {
-            let (count, unlocked) = self.sim.level.recipe_book.add_recipes(index, recipes);
+            let (count, unlocked) = self.level.recipe_book.add_recipes(index, recipes);
             self.recipe_unlocked(&unlocked);
             return count as i32;
         }
-        let removed = self.sim.level.recipe_book.remove_recipes(index, recipes);
+        let removed = self.level.recipe_book.remove_recipes(index, recipes);
         let count = removed.len() as i32;
         // A network player's client drops them from its book.
         if self.lan_acting.is_some() && !removed.is_empty() {

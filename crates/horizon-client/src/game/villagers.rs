@@ -68,8 +68,8 @@ impl Game<'_> {
             return;
         };
         let now = self.world.game_time;
-        let items = self.sim.res.items();
-        let meeting = villager::meet(&mut self.sim.mobs, ia, ib, now, |item| {
+        let items = self.res.items();
+        let meeting = villager::meet(&mut self.mobs, ia, ib, now, |item| {
             items.get(item).map_or(64, |i| i.max_stack)
         });
         for stack in meeting.thrown {

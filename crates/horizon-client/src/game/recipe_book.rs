@@ -167,7 +167,7 @@ impl Game<'_> {
     }
     /// Ctrl+A/C/V/X in the search box.
     pub(super) fn recipe_shortcut(&mut self, shortcut: horizon_client::clipboard::EditShortcut) {
-        if let Some(search) = self.sim.recipe_ui.search.as_mut() {
+        if let Some(search) = self.recipe_ui.search.as_mut() {
             search.shortcut(shortcut, &mut self.front.clipboard);
         }
     }
@@ -309,9 +309,9 @@ impl Game<'_> {
         if self.remote.is_some() {
             return;
         }
-        let known = &self.sim.level.recipe_book.recipes;
-        let index = &self.sim.res.stations().recipe_index;
-        let ui = &mut self.sim.recipe_ui;
+        let known = &self.level.recipe_book.recipes;
+        let index = &self.res.stations().recipe_index;
+        let ui = &mut self.recipe_ui;
         match ui.client_known.as_ref() {
             Some(previous) if previous == known => return,
             Some(previous) => {
@@ -679,7 +679,7 @@ impl Game<'_> {
             return true;
         }
         // Search box.
-        if let Some(search) = self.sim.recipe_ui.search.as_mut() {
+        if let Some(search) = self.recipe_ui.search.as_mut() {
             search.x = xo + 25.0;
             search.y = yo + 13.0;
             let magnifier = inside(cursor, xo + 8.0, yo + 13.0, 17.0, 14.0);
@@ -958,7 +958,7 @@ impl Game<'_> {
         &mut self,
         p: horizon_protocol::packets::recipes::RecipeBookAdd,
     ) {
-        let ui = &mut self.sim.recipe_ui;
+        let ui = &mut self.recipe_ui;
         if p.replace {
             ui.client.clear();
         }
@@ -969,7 +969,7 @@ impl Game<'_> {
                 ui.client.highlight.insert(e.id);
             }
             if e.flags & 1 != 0
-                && let Some(id) = self.sim.res.stations().recipe_index.recipe_of_display(e.id)
+                && let Some(id) = self.res.stations().recipe_index.recipe_of_display(e.id)
                 && !toast.iter().any(|t| t == id)
             {
                 toast.push(id.to_owned());
@@ -1115,7 +1115,7 @@ impl Game<'_> {
         let (xo, yo) = self.book_origin(batch);
         let cursor = self.front.cursor;
         let atlas = &self.front.gui.atlas;
-        let search = match self.sim.recipe_ui.search.as_mut() {
+        let search = match self.recipe_ui.search.as_mut() {
             Some(edit) => {
                 // The box's place, for clicks and typing.
                 edit.x = xo + 25.0;

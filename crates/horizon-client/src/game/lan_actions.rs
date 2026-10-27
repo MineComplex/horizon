@@ -652,10 +652,9 @@ impl Game<'_> {
         let name = g.name.clone();
         self.potions.swap_player(&mut g.effects, &mut play.potions);
         if let Some(key) = host_ender {
-            self.sim
-                .world
+            self.world
                 .block_entities
-                .insert(key, BlockEntity::Chest(self.sim.ender_items.clone()));
+                .insert(key, BlockEntity::Chest(self.ender_items.clone()));
             self.ender_open = Some(key);
         }
         let new_xp = std::mem::replace(&mut self.experience, xp);
@@ -1295,16 +1294,14 @@ impl Game<'_> {
                 }
             }
             S::ContainerClick(p) => {
-                let rules = ItemRules(self.sim.res.items());
+                let rules = ItemRules(self.res.items());
                 let slots = host.hub.guests[gi]
                     .menu
                     .as_ref()
                     .filter(|m| m.window == p.container)
                     .map(|m| m.slots);
                 let before = slots.and_then(|s| s.read(&self.world, &host.hub.guests[gi]));
-                let drops = host
-                    .hub
-                    .container_click(conn, &p, &mut self.sim.world, &rules);
+                let drops = host.hub.container_click(conn, &p, &mut self.world, &rules);
                 // A click that changed the container's slots: BlockEntity.setChanged,
                 // so comparators read it again (a double chest's other half follows).
                 if let Some(Slots::Block(key) | Slots::Double(key, _)) = slots
@@ -1500,8 +1497,8 @@ impl Game<'_> {
             let stack = stack(g)?;
             let infinite = g.creative;
             horizon_client::pick_item::pick(
-                &mut g.sim.inventory[..36],
-                &mut g.sim.selected,
+                &mut g.inventory[..36],
+                &mut g.selected,
                 &stack,
                 infinite,
             );
@@ -2043,19 +2040,19 @@ impl Game<'_> {
         (g.xp_level, g.xp_progress, g.xp_total) = (xp.level, xp.progress, xp.total);
         let clock_rate = self.network_clock_rate();
         let ctx = TickCtx {
-            world: &mut self.sim.world,
+            world: &mut self.world,
             host: None,
             entities: &[],
-            next_entity: &mut self.sim.next_entity,
+            next_entity: &mut self.next_entity,
             spawn,
-            difficulty: i32::from(self.sim.world_data.difficulty),
-            difficulty_locked: self.sim.level.difficulty_locked,
+            difficulty: i32::from(self.world_data.difficulty),
+            difficulty_locked: self.level.difficulty_locked,
             clock_rate,
-            tick_rate: self.sim.clock.rate(),
-            tick_frozen: self.sim.clock.frozen(),
-            tick_steps: self.sim.clock.step_state(),
-            collision: Some(self.sim.collision),
-            border: &self.sim.border,
+            tick_rate: self.clock.rate(),
+            tick_frozen: self.clock.frozen(),
+            tick_steps: self.clock.step_state(),
+            collision: Some(self.collision),
+            border: &self.border,
         };
         host.hub.respawn(i, spawn, &ctx);
         // ServerGamePacketListenerImpl.handleClientCommand: a hardcore world's
@@ -2491,16 +2488,16 @@ impl Game<'_> {
             // Plugins hear of the damage the surroundings deal: it waits for them.
             #[cfg(feature = "mods")]
             let defer = game.plugins_listen(horizon_mods::plugin::EventKind::EntityDamage);
-            let Some(player) = game.sim.player.as_mut() else {
+            let Some(player) = game.player.as_mut() else {
                 return (Vec::new(), None);
             };
             let mut w = MotionWorld {
                 entities: &[],
                 player,
-                scene: &mut game.sim.world,
-                assets: &game.sim.pack.assets,
-                collision_binding: game.sim.collision,
-                resources: game.sim.motion,
+                scene: &mut game.world,
+                assets: &game.pack.assets,
+                collision_binding: game.collision,
+                resources: game.motion,
             };
             w.player.health.advance_clock();
             #[cfg(feature = "mods")]
@@ -2597,7 +2594,7 @@ impl Game<'_> {
             // Soul Speed's effects (LivingEntity.baseTick's location_changed
             // and tick effects); its particle goes to the players around.
             soul = game.tick_soul_speed();
-            let Some(player) = game.sim.player.as_mut() else {
+            let Some(player) = game.player.as_mut() else {
                 return (Vec::new(), None);
             };
             let _ = player.peaceful_regeneration(rules);
@@ -2611,10 +2608,10 @@ impl Game<'_> {
             let _ = MotionWorld {
                 entities: &[],
                 player,
-                scene: &mut game.sim.world,
-                assets: &game.sim.pack.assets,
-                collision_binding: game.sim.collision,
-                resources: game.sim.motion,
+                scene: &mut game.world,
+                assets: &game.pack.assets,
+                collision_binding: game.collision,
+                resources: game.motion,
             }
             .server_travel();
             // EntityDamageEvent for it.
@@ -3108,7 +3105,7 @@ impl Game<'_> {
             .as_ref()
             .map_or(&[][..], |log| log.get(logged..).unwrap_or(&[]))
             .to_vec();
-        let facts = self.sim.res.facts();
+        let facts = self.res.facts();
         // BlockItem.place: `playSound(player, ...)`, for the others only. The
         // placer's client plays it as its block appears.
         let placed: Vec<([f64; 3], String)> = changed
@@ -3137,7 +3134,7 @@ impl Game<'_> {
         }
         if changed.is_empty()
             || !changed.iter().all(|&(x, y, z)| {
-                super::remote::hand_operated(&facts.get(self.sim.world.block(x, y, z)).name)
+                super::remote::hand_operated(&facts.get(self.world.block(x, y, z)).name)
             })
         {
             return;

@@ -515,7 +515,7 @@ impl Game<'_> {
     pub(super) fn draw_pack_toasts(&mut self, batch: &mut HudBatch, hidden: bool) {
         let multiplier = f64::from(self.settings.notification_display_time);
         let mut used = self.toast_slots_used();
-        for notifier in &mut self.sim.server_packs.notifiers {
+        for notifier in &mut self.server_packs.notifiers {
             let Some(toast) = &mut notifier.toast else {
                 continue;
             };

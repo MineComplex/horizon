@@ -135,11 +135,11 @@ impl Game<'_> {
         // doPlayerRide; mounting drops a lead.
         let id = self.mobs[index].id;
         self.break_leash(id, true, false);
-        let m = &mut self.sim.mobs[index];
+        let m = &mut self.mobs[index];
         m.extra.flag = false;
         m.extra.counter = 0;
-        self.sim.yaw = m.yaw;
-        self.sim.riding = Some(m.id);
+        self.yaw = m.yaw;
+        self.riding = Some(m.id);
         self.mount.reset_jump();
         self.trigger_player("minecraft:started_riding");
         true

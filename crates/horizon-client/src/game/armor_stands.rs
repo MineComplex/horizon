@@ -243,7 +243,7 @@ impl Game<'_> {
             let name = t.sprite();
             // Entries the atlas no longer has (rebuilt by a resource reload) are free.
             let sprites = &self.front.gui.atlas.sprites;
-            self.sim.trim_slots.retain(|(n, _)| sprites.contains_key(n));
+            self.trim_slots.retain(|(n, _)| sprites.contains_key(n));
             if let Some(i) = self.trim_slots.iter().position(|e| e.0 == name) {
                 let e = self.trim_slots.remove(i);
                 self.trim_slots.push(e);
@@ -542,23 +542,19 @@ impl Game<'_> {
     }
     pub(super) fn tick_armor_stands(&mut self) {
         let mut scene = horizon_client::collisions::SceneCollisions {
-            world: &self.sim.world,
+            world: &self.world,
             binding: self.collision,
             subject: None,
         };
         let mut dead = Vec::new();
         // ServerLevel.tick: only entities in entity-ticking chunks tick.
         let ticking = self.entity_ticking_area();
-        for (i, a) in self.sim.armor_stands.iter_mut().enumerate() {
+        for (i, a) in self.armor_stands.iter_mut().enumerate() {
             if !ticking(a.position.x.floor() as i32, a.position.z.floor() as i32) {
                 continue;
             }
             a.tick(&mut scene);
-            if !a.environment_tick(
-                &self.sim.world,
-                self.sim.res.facts(),
-                self.sim.pack.assets.registry,
-            ) {
+            if !a.environment_tick(&self.world, self.res.facts(), self.pack.assets.registry) {
                 dead.push(i);
             }
         }

@@ -449,7 +449,7 @@ impl Game<'_> {
             .sign_edit
             .as_ref()
             .map(|e| (e.edit.value.clone(), e.edit.cursor, e.edit.highlight));
-        if let Some(edit) = self.sim.sign_edit.as_mut() {
+        if let Some(edit) = self.sign_edit.as_mut() {
             edit.edit.shortcut(shortcut, &mut self.front.clipboard);
             let clean = horizon_client::clipboard::strip_formatting(&edit.edit.value);
             if clean != edit.edit.value {
@@ -493,7 +493,7 @@ impl Game<'_> {
                 .unwrap_or_default();
             let lw = HudBatch::text_width(&self.front.gui.atlas, &value);
             let text_x = cx - (lw as i32 / 2) as f32;
-            if let Some(edit) = self.sim.sign_edit.as_mut() {
+            if let Some(edit) = self.sign_edit.as_mut() {
                 edit.edit.x = text_x;
                 edit.edit.y = ly;
                 edit.edit.width = max_width;

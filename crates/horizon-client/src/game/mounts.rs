@@ -47,8 +47,8 @@ impl Game<'_> {
     /// `Pig` / `Strider.mobInteract`: saddle an adult, or ride a saddled one.
     fn interact_steerable(&mut self, index: usize, item: &str) -> bool {
         let held = self.inventory[self.selected].clone();
-        let m = &mut self.sim.mobs[index];
-        if m.is_baby() || !m.alive() || Some(m.id) == self.sim.riding {
+        let m = &mut self.mobs[index];
+        if m.is_baby() || !m.alive() || Some(m.id) == self.riding {
             return false;
         }
         let at = m.center();
@@ -74,7 +74,7 @@ impl Game<'_> {
         {
             return false;
         }
-        self.sim.riding = Some(m.id);
+        self.riding = Some(m.id);
         self.trigger_player("minecraft:started_riding");
         true
     }
@@ -88,22 +88,20 @@ impl Game<'_> {
         let Some(i) = self.mount_index() else {
             return false;
         };
-        if self.sim.mobs[i].species() != species || !equine::boost(&mut self.sim.mobs[i]) {
+        if self.mobs[i].species() != species || !equine::boost(&mut self.mobs[i]) {
             return false;
         }
-        if !self.sim.creative
-            && let Some(stack) = self.sim.inventory[self.sim.selected].as_mut()
+        if !self.creative
+            && let Some(stack) = self.inventory[self.selected].as_mut()
         {
             stack.damage += wear;
             let max = self
-                .sim
                 .res
                 .items()
                 .get(&stack.item)
                 .map_or(25, |i| i.max_damage);
             if stack.damage >= max {
-                self.sim.inventory[self.sim.selected] =
-                    Some(ItemStack::new("minecraft:fishing_rod", 1));
+                self.inventory[self.selected] = Some(ItemStack::new("minecraft:fishing_rod", 1));
             }
         }
         self.swing_arm();
@@ -201,11 +199,11 @@ impl Game<'_> {
             return true;
         }
         // doPlayerRide
-        let m = &mut self.sim.mobs[index];
+        let m = &mut self.mobs[index];
         m.extra.flag = false;
         m.extra.counter = 0;
-        self.sim.yaw = m.yaw;
-        self.sim.riding = Some(m.id);
+        self.yaw = m.yaw;
+        self.riding = Some(m.id);
         self.mount.jump_ticks = 0;
         self.mount.jump_scale = 0.0;
         self.trigger_player("minecraft:started_riding");
@@ -355,13 +353,13 @@ impl Game<'_> {
                 self.front.audio.play(sound, Some(at), 0.4, 1.0);
             }
         }
-        let m = &mut self.sim.mobs[i];
+        let m = &mut self.mobs[i];
         let pending = m.rider.map_or(0.0, |r| r.jump);
         m.rider = Some(equine::Rider {
             strafe,
             forward,
-            yaw: self.sim.yaw,
-            pitch: self.sim.pitch,
+            yaw: self.yaw,
+            pitch: self.pitch,
             jump: if jump > 0.0 { jump } else { pending },
             steer,
             sprint: keys.sprint
@@ -419,8 +417,8 @@ impl Game<'_> {
                 m.position.z + z * yaw.cos(),
             );
         }
-        if let Some(p) = self.sim.player.as_mut() {
-            self.sim.previous_position = p.position;
+        if let Some(p) = self.player.as_mut() {
+            self.previous_position = p.position;
             p.position = at;
             p.velocity = Vec3::ZERO;
             p.fall_distance = 0.0;

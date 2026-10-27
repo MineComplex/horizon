@@ -1013,10 +1013,9 @@ impl Game<'_> {
                 }
             }
             _ => self
-                .sim
                 .res
                 .items()
-                .loot_table(table, false, None, &mut self.sim.world.random),
+                .loot_table(table, false, None, &mut self.world.random),
         };
         for d in stacks {
             self.spawn_item(d, at, [0.0, 0.2, 0.0], 10);
@@ -1191,7 +1190,7 @@ impl Game<'_> {
                     let mut killed = false;
                     let mut hurt = false;
                     let mut infested = false;
-                    if let Some(t) = self.sim.mobs.iter_mut().find(|m| m.id == target) {
+                    if let Some(t) = self.mobs.iter_mut().find(|m| m.id == target) {
                         let hit = t.damage(amount, source);
                         hurt = hit;
                         if hit {
@@ -1394,20 +1393,18 @@ impl Game<'_> {
                         self.destroy_particles(pos, old);
                     }
                     if drop {
-                        let drops = self.sim.res.items().block_drops_in(
+                        let drops = self.res.items().block_drops_in(
                             self.pack.assets.registry,
                             old,
                             None,
-                            &mut self.sim.world.random,
-                            Some((&mut self.sim.rand_sequences, self.sim.level.seed)),
+                            &mut self.world.random,
+                            Some((&mut self.rand_sequences, self.level.seed)),
                         );
                         for d in drops {
                             self.pop_resource(pos, d);
                         }
                     }
-                    self.sim
-                        .world
-                        .set(pos[0], pos[1], pos[2], self.sim.world.air)?;
+                    self.world.set(pos[0], pos[1], pos[2], self.world.air)?;
                 }
                 MobEvent::Particles { kind, at, count } => {
                     // Mob particle bursts (hearts, smoke, splashes) around a point.
@@ -1761,7 +1758,7 @@ impl Game<'_> {
             _ => p.kind.id.clone(),
         };
         if let Some(id) = self.spawn_mob(&kind, [p.position.x, p.position.y, p.position.z], true)
-            && let Some(child) = self.sim.mobs.iter_mut().find(|m| m.id == id)
+            && let Some(child) = self.mobs.iter_mut().find(|m| m.id == id)
         {
             child.extra.age = -24000;
             // A llama's baby was drawn in the parent's tick, with the
@@ -1772,7 +1769,7 @@ impl Game<'_> {
             }
             if horizon_client::mobs::equine::is_equine(p.species()) {
                 let other = q.clone().unwrap_or_else(|| p.clone());
-                let mut r = self.sim.world.random.clone();
+                let mut r = self.world.random.clone();
                 horizon_client::mobs::equine::inherit(child, &p, &other, &mut r);
                 if horizon_client::mobs::llama::is_llama(p.species()) {
                     horizon_client::mobs::llama::offspring(child, &p, &other, &mut r);
@@ -2002,11 +1999,11 @@ impl Game<'_> {
             return false;
         };
         let mut outcome = horizon_client::health::BlockOutcome::default();
-        if let Some(player) = self.sim.player.as_mut()
-            && let Some(id) = self.sim.motion.health.damage.id(damage_type)
+        if let Some(player) = self.player.as_mut()
+            && let Some(id) = self.motion.health.damage.id(damage_type)
             && let Ok(o) = player.hurt_caused_by(
-                &self.sim.motion.health,
-                self.sim.world.health_rules,
+                &self.motion.health,
+                self.world.health_rules,
                 id,
                 amount,
                 blocking,
@@ -2066,7 +2063,7 @@ impl Game<'_> {
     /// direction (`xd`, `zd`), less its knockback resistance, and up only from
     /// the ground.
     pub(super) fn knock_back_player(&mut self, power: f64, mut xd: f64, mut zd: f64) {
-        let Some(p) = self.sim.player.as_mut() else {
+        let Some(p) = self.player.as_mut() else {
             return;
         };
         let resistance = p.attribute("minecraft:knockback_resistance").unwrap_or(0.0);
@@ -2075,7 +2072,7 @@ impl Game<'_> {
             return;
         }
         while xd * xd + zd * zd < f64::from(1.0e-5_f32) {
-            let r = &mut self.sim.world.random;
+            let r = &mut self.world.random;
             xd = (r.next_double() - r.next_double()) * 0.01;
             zd = (r.next_double() - r.next_double()) * 0.01;
         }
@@ -2121,15 +2118,10 @@ impl Game<'_> {
         let Some(amount) = self.plugin_damage_acting(damage_type, amount, None) else {
             return;
         };
-        if let Some(player) = self.sim.player.as_mut()
-            && let Some(id) = self.sim.motion.health.damage.id(damage_type)
+        if let Some(player) = self.player.as_mut()
+            && let Some(id) = self.motion.health.damage.id(damage_type)
         {
-            let _ = player.hurt(
-                &self.sim.motion.health,
-                self.sim.world.health_rules,
-                id,
-                amount,
-            );
+            let _ = player.hurt(&self.motion.health, self.world.health_rules, id, amount);
         }
     }
     /// `Player.aiStep` touching arrows in its box grown by (1, 0.5, 1):
@@ -2430,14 +2422,14 @@ impl Game<'_> {
             attacker: (shot.owner == Some(Who::Player)).then_some("minecraft:player"),
             direct_attacker: Some("minecraft:trident"),
             damage_type: Some("minecraft:trident"),
-            items: Some(self.sim.res.items()),
+            items: Some(self.res.items()),
             ..Default::default()
         };
-        self.sim.res.stations().enchantments.modify_value(
+        self.res.stations().enchantments.modify_value(
             Some(&trident),
             "minecraft:damage",
             &ctx,
-            &mut self.sim.world.random,
+            &mut self.world.random,
             8.0,
         )
     }
@@ -2739,7 +2731,7 @@ impl Game<'_> {
                             .find(|m| m.id == id)
                             .is_some_and(|m| m.damage(amount, source));
                         if p.owner == Some(Who::Player) {
-                            self.sim.last_hurt_by_player.insert(id, self.sim.lan_acting);
+                            self.last_hurt_by_player.insert(id, self.lan_acting);
                             if hurt && let Some(m) = self.mobs.iter().find(|m| m.id == id) {
                                 // LivingEntity.hurtServer: PLAYER_HURT_ENTITY.
                                 let victim = self.mob_entity(m);
@@ -3037,7 +3029,7 @@ impl Game<'_> {
                     "minecraft:entity.splash_potion.break",
                     Some(atp),
                     1.0,
-                    self.sim.world.random.next_float() * 0.1 + 0.9,
+                    self.world.random.next_float() * 0.1 + 0.9,
                 );
             }
             (ProjectileKind::LlamaSpit, Hit::Entity { who, .. }) => match who {
@@ -3269,13 +3261,12 @@ impl Game<'_> {
             .get("minecraft:fishes")
             .is_some_and(|t| t.contains(&*item));
         let damageable = self
-            .sim
             .res
             .items()
             .get(&item)
             .is_some_and(|i| i.max_damage > 0);
         let acting = self.acting_player_uuid();
-        let m = &mut self.sim.mobs[index];
+        let m = &mut self.mobs[index];
         if !m.alive() {
             return Ok(false);
         }
@@ -3338,11 +3329,11 @@ impl Game<'_> {
             Species::Sheep if item == "minecraft:shears" && !m.extra.sheared && !m.is_baby() => {
                 m.extra.sheared = true;
                 let color = horizon_client::mobs::render::DYE_NAMES[m.extra.color as usize & 15];
-                let stacks = self.sim.res.items().loot_table(
+                let stacks = self.res.items().loot_table(
                     &format!("minecraft:shearing/sheep/{color}"),
                     false,
                     None,
-                    &mut self.sim.world.random,
+                    &mut self.world.random,
                 );
                 drops.extend(stacks.into_iter().map(|s| (s.item.to_string(), s.count)));
                 sound = Some("entity.sheep.shear");
@@ -3369,7 +3360,6 @@ impl Game<'_> {
             // a bone tames a wild one a third of the time.
             Species::Wolf if m.extra.tame && is_food && m.health < m.attrs.max_health => {
                 let heal = self
-                    .sim
                     .res
                     .items()
                     .get(&item)
@@ -3413,7 +3403,7 @@ impl Game<'_> {
                 m.ai.jumping = false;
                 m.nav_stop();
                 m.ai.target = None;
-                self.sim.world.modified.insert((
+                self.world.modified.insert((
                     m.position.x.floor() as i32 >> 4,
                     m.position.z.floor() as i32 >> 4,
                 ));
@@ -3439,8 +3429,8 @@ impl Game<'_> {
                     let view = self.mob_entity(&self.mobs[index]);
                     self.trigger_entity("minecraft:tame_animal", "entity", &view);
                 }
-                let m = &self.sim.mobs[index];
-                self.sim.world.modified.insert((
+                let m = &self.mobs[index];
+                self.world.modified.insert((
                     m.position.x.floor() as i32 >> 4,
                     m.position.z.floor() as i32 >> 4,
                 ));
@@ -3478,7 +3468,6 @@ impl Game<'_> {
                     && m.health < m.attrs.max_health =>
             {
                 let heal = self
-                    .sim
                     .res
                     .items()
                     .get(&item)
@@ -3487,7 +3476,7 @@ impl Game<'_> {
                 // TamableAnimal.feed.
                 m.health = (m.health + heal).min(m.attrs.max_health);
                 consume = true;
-                eat = eating_sound(m, &mut self.sim.world.random);
+                eat = eating_sound(m, &mut self.world.random);
             }
             Species::Cat
                 if m.extra.tame
@@ -3495,7 +3484,7 @@ impl Game<'_> {
                     && !(is_food && m.extra.age == 0 && m.extra.in_love <= 0) =>
             {
                 m.extra.sitting = !m.extra.sitting;
-                self.sim.world.modified.insert((
+                self.world.modified.insert((
                     m.position.x.floor() as i32 >> 4,
                     m.position.z.floor() as i32 >> 4,
                 ));
@@ -3509,15 +3498,15 @@ impl Game<'_> {
                     m.extra.owner = Some(acting);
                     m.extra.sitting = true;
                 }
-                eat = eating_sound(m, &mut self.sim.world.random);
+                eat = eating_sound(m, &mut self.world.random);
                 // TamableAnimal.spawnTamingParticles (entity event 7 or 6).
                 self.mob_event_particles(self.mobs[index].id, if tamed { 7 } else { 6 });
                 if tamed {
                     let view = self.mob_entity(&self.mobs[index]);
                     self.trigger_entity("minecraft:tame_animal", "entity", &view);
                 }
-                let m = &self.sim.mobs[index];
-                self.sim.world.modified.insert((
+                let m = &self.mobs[index];
+                self.world.modified.insert((
                     m.position.x.floor() as i32 >> 4,
                     m.position.z.floor() as i32 >> 4,
                 ));
@@ -3557,7 +3546,7 @@ impl Game<'_> {
                 let tamed = m.random.next_int_bound(10).unwrap_or(1) == 0;
                 if tamed {
                     m.extra.tame = true;
-                    m.extra.owner = self.sim.level.player_uuid.or(Some([0, 0, 0, 1]));
+                    m.extra.owner = self.level.player_uuid.or(Some([0, 0, 0, 1]));
                 }
                 // TamableAnimal.spawnTamingParticles (entity event 7 or 6).
                 self.mob_event_particles(self.mobs[index].id, if tamed { 7 } else { 6 });
@@ -3615,7 +3604,7 @@ impl Game<'_> {
             {
                 // Animal.mobInteract: breed adults, speed up babies, then
                 // playEatingSound (silent unless the species overrides it).
-                match feed_animal(m, &mut self.sim.world.random) {
+                match feed_animal(m, &mut self.world.random) {
                     Some(sound) => {
                         consume = true;
                         eat = sound;
@@ -3777,9 +3766,9 @@ impl Game<'_> {
         let start = Vec3::new(eye[0], eye[1] - 0.1, eye[2]);
         let mut proj = Projectile::new(kind.clone(), start, Some(Who::Player));
         proj.shoot_from_rotation(
-            &mut self.sim.world.random,
-            self.sim.pitch,
-            self.sim.yaw,
+            &mut self.world.random,
+            self.pitch,
+            self.yaw,
             0.0,
             1.5,
             1.0,

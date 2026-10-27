@@ -329,11 +329,11 @@ impl Game<'_> {
         }
     }
     pub(super) fn mount_slot_mut(&mut self, i: usize) -> &mut Option<ItemStack> {
-        match self.sim.mount_menu.open.as_mut() {
+        match self.mount_menu.open.as_mut() {
             Some(open) if i == SADDLE => &mut open.saddle,
             Some(open) if i == ARMOR => &mut open.armor,
             Some(open) if i >= CHEST && i - CHEST < CHEST_SIZE => &mut open.items[i - CHEST],
-            _ => &mut self.sim.scratch_slot,
+            _ => &mut self.scratch_slot,
         }
     }
     /// `ArmorSlot.mayPlace` and the stack limits of the mount's slots.

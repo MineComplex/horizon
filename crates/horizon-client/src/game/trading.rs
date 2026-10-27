@@ -150,7 +150,7 @@ impl Game<'_> {
         let Some(sequence) = self.res.stations().trades.sequence(set) else {
             return Vec::new();
         };
-        let mut random = self.sim.rand_sequences.lend(&sequence, self.sim.level.seed);
+        let mut random = self.rand_sequences.lend(&sequence, self.level.seed);
         let next_map = self.peek_map_id();
         let tag = |t: &str| self.structure_tag(t);
         let maps = GameMaps {
@@ -288,7 +288,7 @@ impl Game<'_> {
                 &session.profession,
                 level,
             ) {
-                let r = self.sim.rand_sequences.lend(&seq, self.sim.level.seed);
+                let r = self.rand_sequences.lend(&seq, self.level.seed);
                 session.sequences.insert(seq, r);
             }
         }

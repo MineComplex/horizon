@@ -167,8 +167,8 @@ impl Game<'_> {
                     .add_vector(Vec3::new(0.0, super::minecarts::SEAT, 0.0))
             })
         };
-        if let Some(p) = self.sim.player.as_mut() {
-            self.sim.previous_position = p.position;
+        if let Some(p) = self.player.as_mut() {
+            self.previous_position = p.position;
             if let Some(v) = seat {
                 p.position = v;
             }

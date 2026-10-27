@@ -207,7 +207,7 @@ impl Game<'_> {
                             && let Some(state) = self.state_from_nbt(&state)
                         {
                             let (no_gravity, drop_item) = entity_nbt::falling_block_flags(&tag);
-                            self.sim.falling.push(FallingBlock {
+                            self.falling.push(FallingBlock {
                                 id: 0,
                                 state,
                                 // DATA_START_POS is not persisted by vanilla.
@@ -222,7 +222,7 @@ impl Game<'_> {
                                 stuck: Vec3::ZERO,
                                 damage: horizon_client::falling_block::Damage::from_nbt(
                                     &tag,
-                                    self.sim.res.facts().get(state).name.ends_with("anvil"),
+                                    self.res.facts().get(state).name.ends_with("anvil"),
                                 ),
                                 saved: uuid.map(|u| Box::new((u, tag.clone()))),
                             });

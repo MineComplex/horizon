@@ -222,9 +222,9 @@ impl Game<'_> {
                     r.position = Vec3::new(g.position[0], g.position[1], g.position[2]);
                 }
             } else if r.attached {
-                if let Some(p) = self.sim.player.as_mut() {
+                if let Some(p) = self.player.as_mut() {
                     if p.fall_flying {
-                        let look = view_vector(self.sim.yaw, self.sim.pitch);
+                        let look = view_vector(self.yaw, self.pitch);
                         let m = p.velocity;
                         p.velocity = Vec3::new(
                             m.x + look[0] * 0.1 + (look[0] * 1.5 - m.x) * 0.5,
@@ -348,11 +348,10 @@ impl Game<'_> {
     /// FireworkRocketEntity.handleEntityEvent: use the synchronized item data.
     pub(super) fn remote_firework_explosion(&mut self, id: i32) {
         let camera = self.eye_position();
-        if let Some(r) = self.sim.rockets.iter().find(|r| r.id == id as u32) {
+        if let Some(r) = self.rockets.iter().find(|r| r.id == id as u32) {
             let at = [r.position.x, r.position.y, r.position.z];
             let v = [r.velocity.x, r.velocity.y, r.velocity.z];
-            self.sim
-                .particles
+            self.particles
                 .fireworks(at, v, r.explosions.clone(), camera.unwrap_or(at));
         }
     }
@@ -390,16 +389,11 @@ impl Game<'_> {
         let Some(amount) = self.plugin_damage_acting("minecraft:fireworks", amount, None) else {
             return;
         };
-        if let Some(p) = self.sim.player.as_mut()
+        if let Some(p) = self.player.as_mut()
             && !p.health.dead_or_dying()
-            && let Some(id) = self.sim.motion.health.damage.id("minecraft:fireworks")
+            && let Some(id) = self.motion.health.damage.id("minecraft:fireworks")
         {
-            let _ = p.hurt(
-                &self.sim.motion.health,
-                self.sim.world.health_rules,
-                id,
-                amount,
-            );
+            let _ = p.hurt(&self.motion.health, self.world.health_rules, id, amount);
         }
     }
     /// `FireworkEntityRenderer.submit`: the item (GROUND) facing the camera,

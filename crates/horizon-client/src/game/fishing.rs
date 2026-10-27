@@ -73,11 +73,11 @@ impl Game<'_> {
         if &*stack.item != "minecraft:fishing_rod" {
             return false;
         }
-        let Some(p) = self.sim.player.as_ref() else {
+        let Some(p) = self.player.as_ref() else {
             return false;
         };
         let at = [p.position.x, p.position.y, p.position.z];
-        let pitch = 0.4 / (self.sim.world.random.next_float() * 0.4 + 0.8);
+        let pitch = 0.4 / (self.world.random.next_float() * 0.4 + 0.8);
         if self.hook.is_some() {
             let damage = self.retrieve_hook(stack);
             self.damage_held(damage);
@@ -902,10 +902,9 @@ impl Game<'_> {
     /// (DATA_BITING), which `status` shows as a nibble.
     pub(super) fn remote_hook_data(&mut self, id: u32, values: &[(u8, i32, Value)]) {
         let Some(h) = self
-            .sim
             .hook
             .as_mut()
-            .filter(|h| h.id == id && self.sim.remote.is_some())
+            .filter(|h| h.id == id && self.remote.is_some())
         else {
             return;
         };

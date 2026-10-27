@@ -696,13 +696,13 @@ impl Game<'_> {
         }
         let text = content.plain();
         log::info!("[chat] {text}");
-        self.sim.ui.chat.add(
+        self.ui.chat.add(
             &self.front.gui.atlas,
             content,
             None,
             source,
-            self.sim.ticks,
-            self.sim.screen == Screen::Chat,
+            self.ticks,
+            self.screen == Screen::Chat,
         );
         if self.mods.running() {
             self.mods_chat(&text);
@@ -1111,7 +1111,7 @@ impl Game<'_> {
         }
         let mut freed = Vec::with_capacity(gone.len());
         for &(x, z) in &gone {
-            freed.extend(self.sim.streaming.forget(&mut self.sim.world, x, z));
+            freed.extend(self.streaming.forget(&mut self.world, x, z));
         }
         if let Some(renderer) = self.front.renderer.as_mut() {
             renderer.remove_columns(gone.iter().copied());
@@ -1361,9 +1361,8 @@ impl Game<'_> {
         on_ground: bool,
         far_snaps: bool,
     ) {
-        let mob = self.sim.mobs.iter_mut().find(|m| m.id == id as u32);
+        let mob = self.mobs.iter_mut().find(|m| m.id == id as u32);
         let tracked = self
-            .sim
             .remote
             .as_ref()
             .and_then(|r| r.entities.get(&id))
@@ -1377,7 +1376,7 @@ impl Game<'_> {
                     .map(|m| [m.position.x, m.position.y, m.position.z])
             })
             .unwrap_or([0.0; 3]);
-        if let Some(r) = self.sim.remote.as_mut() {
+        if let Some(r) = self.remote.as_mut() {
             if let Some(t) = r.entities.get_mut(&id) {
                 t.position = position;
             }
@@ -1424,7 +1423,6 @@ impl Game<'_> {
             // instead, they only moved when an update came, every 10 to 20
             // ticks.
             if let Some(p) = self
-                .sim
                 .creatures
                 .projectiles
                 .iter_mut()
@@ -1440,15 +1438,15 @@ impl Game<'_> {
                 return;
             }
             if path.is_some()
-                && (self.sim.potions.move_remote_thrown(
+                && (self.potions.move_remote_thrown(
                     id as u32,
                     Vec3::new(position[0], position[1], position[2]),
-                ) || self.sim.end.move_remote_eye(id as u32, position))
+                ) || self.end.move_remote_eye(id as u32, position))
             {
                 return;
             }
             // A thrown trident is an arrow: placed at once, flown on by its tick.
-            if let Some(t) = self.sim.tridents.iter_mut().find(|t| t.id == id as u32) {
+            if let Some(t) = self.tridents.iter_mut().find(|t| t.id == id as u32) {
                 if path.is_some() {
                     t.position = Vec3::new(position[0], position[1], position[2]);
                 }
@@ -1460,19 +1458,14 @@ impl Game<'_> {
             }
             // So does a firework rocket: its own tick flies it on.
             if path.is_some()
-                && let Some(f) = self.sim.rockets.iter_mut().find(|f| f.id == id as u32)
+                && let Some(f) = self.rockets.iter_mut().find(|f| f.id == id as u32)
             {
                 f.position = Vec3::new(position[0], position[1], position[2]);
                 return;
             }
             // A dragon fireball keeps Entity's NO_OP InterpolationHandler too:
             // the server's position replaces its own at once.
-            if let Some(b) = self
-                .sim
-                .dragon_fireballs
-                .iter_mut()
-                .find(|b| b.id == id as u32)
-            {
+            if let Some(b) = self.dragon_fireballs.iter_mut().find(|b| b.id == id as u32) {
                 if path.is_some() {
                     b.position = Vec3::new(position[0], position[1], position[2]);
                 }
@@ -1486,16 +1479,16 @@ impl Game<'_> {
             // at once, and their own tick moves them on between the server's
             // updates (`tick_remote_entities`, `tick_remote_projectiles`).
             let at = Vec3::new(position[0], position[1], position[2]);
-            if let Some(d) = self.sim.dropped.iter_mut().find(|d| d.id == id as u32) {
+            if let Some(d) = self.dropped.iter_mut().find(|d| d.id == id as u32) {
                 d.position = at;
                 d.on_ground = on_ground;
                 return;
             }
-            if let Some(f) = self.sim.falling.iter_mut().find(|f| f.id == id as u32) {
+            if let Some(f) = self.falling.iter_mut().find(|f| f.id == id as u32) {
                 f.position = at;
                 return;
             }
-            if let Some(t) = self.sim.tnts.iter_mut().find(|t| t.id == id as u32) {
+            if let Some(t) = self.tnts.iter_mut().find(|t| t.id == id as u32) {
                 t.position = at;
                 t.on_ground = on_ground;
                 return;
@@ -1773,7 +1766,7 @@ impl Game<'_> {
             C::LightUpdate(p) => self.remote_light_update(&p),
             C::ForgetLevelChunk(p) => {
                 let [x, z] = p.pos;
-                self.sim.streaming.forget(&mut self.sim.world, x, z);
+                self.streaming.forget(&mut self.world, x, z);
                 self.world
                     .block_entities
                     .retain(|k, _| (k.0 >> 4, k.2 >> 4) != (x, z));
@@ -1985,12 +1978,12 @@ impl Game<'_> {
             // the rope.
             C::SetEntityLink(p) => {
                 let me = self.remote.as_ref().map(|r| r.entity_id);
-                if let Some(m) = self.sim.mobs.iter_mut().find(|m| m.id == p.source as u32) {
+                if let Some(m) = self.mobs.iter_mut().find(|m| m.id == p.source as u32) {
                     use horizon_client::mobs::leash::Holder;
                     m.extra.leash = match p.dest {
                         0 => None,
                         d if Some(d) == me => Some(Holder::Player),
-                        d => match self.sim.remote_knots.get(&(d as u32)) {
+                        d => match self.remote_knots.get(&(d as u32)) {
                             Some(&block) => Some(Holder::Knot(block)),
                             // Not a known knot yet: kept by id until the knot
                             // arrives (game/remote_objects.rs).
@@ -3575,11 +3568,11 @@ impl Game<'_> {
         // The server sends no passenger's position: they sit where their
         // vehicles are now.
         self.position_riders();
-        let Some(player) = self.sim.player.as_mut() else {
+        let Some(player) = self.player.as_mut() else {
             return Ok(());
         };
         if !riding {
-            self.sim.previous_position = player.position;
+            self.previous_position = player.position;
         }
         let before = (
             player.ground.on_ground,
@@ -3593,13 +3586,13 @@ impl Game<'_> {
         if self.screen == Screen::Dead {
             self.ui.death_time = self.ui.death_time.saturating_add(1);
         }
-        let Some(player) = self.sim.player.as_mut() else {
+        let Some(player) = self.player.as_mut() else {
             return Ok(());
         };
         let was_gliding = player.fall_flying;
-        let dead = self.sim.screen == Screen::Dead;
+        let dead = self.screen == Screen::Dead;
         // LivingEntity.isImmobile: a sleeper lies still in the bed.
-        if let Some(head) = self.sim.sleeping {
+        if let Some(head) = self.sleeping {
             player.position = Vec3::new(
                 f64::from(head[0]) + 0.5,
                 f64::from(head[1]) + 0.5625,
@@ -3612,10 +3605,10 @@ impl Game<'_> {
             MotionWorld {
                 entities: &entity_collisions,
                 player,
-                scene: &mut self.sim.world,
-                assets: &self.sim.pack.assets,
-                collision_binding: self.sim.collision,
-                resources: self.sim.motion,
+                scene: &mut self.world,
+                assets: &self.pack.assets,
+                collision_binding: self.collision,
+                resources: self.motion,
             }
             .controlled_simulation_tick(keys)?;
         } else {
@@ -3631,8 +3624,8 @@ impl Game<'_> {
         // server (ServerboundPlayerCommandPacket START_FALL_FLYING).
         let started_gliding = player.fall_flying && !was_gliding;
         let events = std::mem::take(&mut player.events);
-        self.sim.previous_eye = self.sim.eye;
-        self.sim.eye += (player.dimensions.eye_height - self.sim.eye) * 0.5;
+        self.previous_eye = self.eye;
+        self.eye += (player.dimensions.eye_height - self.eye) * 0.5;
         let feet = [player.position.x, player.position.y, player.position.z];
         for event in events {
             match event {
@@ -3713,8 +3706,8 @@ impl Game<'_> {
     /// and is invulnerable as the server says (bits 2, 4 and 1).
     fn apply_remote_abilities(&mut self) {
         let (Some(player), Some(a)) = (
-            self.sim.player.as_mut(),
-            self.sim.remote.as_ref().and_then(|r| r.abilities.as_ref()),
+            self.player.as_mut(),
+            self.remote.as_ref().and_then(|r| r.abilities.as_ref()),
         ) else {
             return;
         };
@@ -3874,7 +3867,7 @@ impl Game<'_> {
             }
         }
         let game_time = self.world.game_time;
-        let Some(r) = self.sim.remote.as_mut() else {
+        let Some(r) = self.remote.as_mut() else {
             return;
         };
         let mut lerps = std::mem::take(&mut r.lerps);
@@ -3883,7 +3876,7 @@ impl Game<'_> {
         let players = &r.level_players;
         let mut using = Vec::new();
         let mut wither_heads = Vec::new();
-        for m in &mut self.sim.mobs {
+        for m in &mut self.mobs {
             let player = players.contains_key(&(m.id as i32));
             if !running && !player {
                 continue;
@@ -4007,7 +4000,7 @@ impl Game<'_> {
                 horizon_client::mobs::panda::client_tick(m, thundering);
             }
         }
-        for o in self.sim.orbs.iter_mut().filter(|_| running) {
+        for o in self.orbs.iter_mut().filter(|_| running) {
             o.previous = o.position;
             o.age += 1;
             if let Some(l) = lerps.get_mut(&(o.id as i32))
@@ -4025,15 +4018,9 @@ impl Game<'_> {
         // ItemEntity.tick runs on a client too: gravity, collisions and
         // friction move the item between the server's updates (every 20
         // ticks), and only the server removes it.
-        let (world, facts, collision) = (&self.sim.world, self.sim.res.facts(), self.sim.collision);
-        for d in self.sim.dropped.iter_mut().filter(|_| running) {
-            d.tick(
-                world,
-                facts,
-                collision,
-                false,
-                &self.sim.res.motion().fluids,
-            );
+        let (world, facts, collision) = (&self.world, self.res.facts(), self.collision);
+        for d in self.dropped.iter_mut().filter(|_| running) {
+            d.tick(world, facts, collision, false, &self.res.motion().fluids);
         }
         head_lerps.retain(|_, (_, steps)| *steps > 0);
         // WitherBoss.aiStep runs on a client too: smoke around each head.
@@ -4148,7 +4135,7 @@ impl Game<'_> {
         let (yaw, pitch, selected) = (self.yaw, self.pitch, self.selected);
         let riding = self.riding.is_some();
         let vehicle = self.remote_vehicle_packets();
-        let Some(r) = self.sim.remote.as_mut() else {
+        let Some(r) = self.remote.as_mut() else {
             return;
         };
         let mut out = Vec::new();
@@ -4187,10 +4174,10 @@ impl Game<'_> {
         }
         // Creative inventory edits are sent slot by slot (SetCreativeModeSlot).
         let mut creative_slots = Vec::new();
-        if self.sim.creative {
+        if self.creative {
             for i in 0..36 {
-                if self.sim.inventory[i] != r.synced[i] {
-                    r.synced[i] = self.sim.inventory[i].clone();
+                if self.inventory[i] != r.synced[i] {
+                    r.synced[i] = self.inventory[i].clone();
                     creative_slots.push(i);
                 }
             }
@@ -5001,11 +4988,11 @@ impl Game<'_> {
             return;
         }
         // MultiPlayerGameMode.tick syncs the carried slot before keybinds.
-        let carried_changed = self.sim.remote.as_mut().is_some_and(|r| {
-            if r.carried == Some(self.sim.selected) {
+        let carried_changed = self.remote.as_mut().is_some_and(|r| {
+            if r.carried == Some(self.selected) {
                 false
             } else {
-                r.carried = Some(self.sim.selected);
+                r.carried = Some(self.selected);
                 true
             }
         });
@@ -5213,11 +5200,8 @@ impl Game<'_> {
     /// MultiPlayerGameMode.dropItem (key.drop): predict the removal, then send
     /// the action; swing only if a nonempty stack was removed.
     fn remote_drop(&mut self, all: bool) {
-        let dropped = horizon_client::items::take_held_drop(
-            &mut self.sim.inventory[self.sim.selected],
-            all,
-            false,
-        );
+        let dropped =
+            horizon_client::items::take_held_drop(&mut self.inventory[self.selected], all, false);
         self.send(S::PlayerAction(play::PlayerAction {
             action: if all { 4 } else { 5 },
             pos: [0; 3],
@@ -5752,11 +5736,11 @@ impl Game<'_> {
     /// passed since its last tick, at its rate. A game time the server sets
     /// forward (its sync every second) moves the clock with it.
     fn remote_clock_tick(&mut self) {
-        let Some(r) = self.sim.remote.as_mut() else {
+        let Some(r) = self.remote.as_mut() else {
             return;
         };
-        let delta = self.sim.world.game_time - r.clock_game_time;
-        r.clock_game_time = self.sim.world.game_time;
+        let delta = self.world.game_time - r.clock_game_time;
+        r.clock_game_time = self.world.game_time;
         let partial = f64::from(r.clock_partial) + delta as f64 * f64::from(r.clock_rate);
         let full = partial.floor();
         r.clock_partial = (partial - full) as f32;

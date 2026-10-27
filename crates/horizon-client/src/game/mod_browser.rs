@@ -116,7 +116,7 @@ impl Game<'_> {
             return None;
         };
         if self.mods.browser.of != Some((owner, version)) {
-            let items = self.sim.res.items();
+            let items = self.res.items();
             let stacks = self
                 .mods
                 .mods
@@ -124,9 +124,9 @@ impl Game<'_> {
                 .map_or_else(Vec::new, |(_, _, list)| {
                     list.iter().map(|s| browser_stack(items, s)).collect()
                 });
-            self.sim.mods.browser.stacks = stacks;
+            self.mods.browser.stacks = stacks;
             // The same title again (the mod updating its buttons) keeps the page.
-            let old = self.sim.mods.browser.recipes.take();
+            let old = self.mods.browser.recipes.take();
             self.mods.browser.recipes = self
                 .mods
                 .mods
@@ -323,7 +323,7 @@ impl Game<'_> {
         let cursor = self.front.cursor;
         let shift = self.has_shift_down();
         let atlas = &self.front.gui.atlas;
-        let search = self.sim.mods.browser.search.get_or_insert_with(|| {
+        let search = self.mods.browser.search.get_or_insert_with(|| {
             let mut edit = EditBox::new(0.0, 0.0, 0.0, 0.0);
             edit.max_length = 50;
             edit
@@ -383,7 +383,7 @@ impl Game<'_> {
         let shortcut = self.edit_shortcut(event);
         let ctrl = self.has_control_down();
         let shift = self.has_shift_down();
-        let Some(search) = self.sim.mods.browser.search.as_mut() else {
+        let Some(search) = self.mods.browser.search.as_mut() else {
             return;
         };
         if let Some(shortcut) = shortcut {

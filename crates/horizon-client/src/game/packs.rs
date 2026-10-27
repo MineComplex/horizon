@@ -118,9 +118,9 @@ impl Game<'_> {
     /// (`PackSelectionScreen` makes its `PackSelectionModel` from them).
     pub(super) fn refresh_pack_lists(&mut self) {
         let infos = pack_infos(&self.vanilla_root());
-        let o = &mut self.sim.ui.options;
+        let o = &mut self.ui.options;
         o.pack_infos = infos;
-        o.pack_selection = self.sim.settings.resource_packs.clone();
+        o.pack_selection = self.settings.resource_packs.clone();
         o.pack_screen = None;
     }
     /// `Minecraft.reloadResourcePacks`: rebuild the overlay and reload every
@@ -221,7 +221,7 @@ impl Game<'_> {
         self.front.gui = gui;
         // The atlas's sprites moved: the particle engine re-reads every rect
         // and the packs' sprite sets, or every particle draws a stale region.
-        self.sim.particles.reload(
+        self.particles.reload(
             &root,
             &self.front.gui.atlas.sprites,
             &self.front.gui.atlas.translucent,
@@ -240,9 +240,7 @@ impl Game<'_> {
         self.refresh_remote_language();
         self.front.audio.reload(&root);
         self.clear_lod();
-        self.sim
-            .streaming
-            .reload_resources(&mut self.sim.world, context);
+        self.streaming.reload_resources(&mut self.world, context);
         self.front.pending_uploads.clear();
         // New GPU textures: a renderer built from the reloaded resources; the
         // sections are uploaded again as they are meshed.
@@ -250,7 +248,7 @@ impl Game<'_> {
             self.front.renderer = Some(renderer);
             self.apply_ui_settings();
         }
-        self.sim.ui.chat.rescale(&self.front.gui.atlas);
+        self.ui.chat.rescale(&self.front.gui.atlas);
         // The creative screen survives the reload; item names may not.
         self.creative_screen.forget_items();
         Ok(())

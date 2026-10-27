@@ -900,8 +900,8 @@ impl Game<'_> {
         let intent = [left * co - forward * s, forward * co + left * s];
         let mut c = self.carts[i].clone();
         let alive = self.tick_cart(&mut c, intent);
-        if let Some(p) = self.sim.player.as_mut() {
-            self.sim.previous_position = p.position;
+        if let Some(p) = self.player.as_mut() {
+            self.previous_position = p.position;
             p.position = Vec3::new(c.position.x, c.position.y + SEAT, c.position.z);
             p.velocity = Vec3::ZERO;
             p.fall_distance = 0.0;
@@ -1090,10 +1090,10 @@ impl Game<'_> {
                 let fuel = held
                     .as_ref()
                     .is_some_and(|s| matches!(&*s.item, "minecraft:coal" | "minecraft:charcoal"));
-                let c = &mut self.sim.carts[i];
+                let c = &mut self.carts[i];
                 if fuel && c.fuel + 3600 <= 32000 {
                     c.fuel += 3600;
-                    let p = self.sim.player.as_ref().map_or(c.position, |p| p.position);
+                    let p = self.player.as_ref().map_or(c.position, |p| p.position);
                     c.push = [c.position.x - p.x, c.position.z - p.z];
                     if !self.creative {
                         self.consume_held();

@@ -119,28 +119,27 @@ impl Game<'_> {
             .packs
             .iter()
             .map(|p| &p.id)
-            .filter(|id| !self.sim.fns.enabled.contains(id))
+            .filter(|id| !self.fns.enabled.contains(id))
             .collect();
-        let json = serde_json::json!({"enabled": self.sim.fns.enabled, "disabled": disabled});
+        let json = serde_json::json!({"enabled": self.fns.enabled, "disabled": disabled});
         let _ = std::fs::write(self.datapack_settings_path(), json.to_string());
     }
     pub(super) fn sync_function_registries(&mut self) {
-        let reg = &mut self.sim.world_data.registries;
-        reg.functions = self.sim.fns.store.functions.keys().cloned().collect();
-        reg.function_tags = self.sim.fns.store.function_tags.keys().cloned().collect();
-        reg.predicates = self.sim.fns.store.predicates.keys().cloned().collect();
-        reg.item_modifiers = self.sim.fns.store.item_modifiers.keys().cloned().collect();
-        reg.schedules = self.sim.fns.schedule.iter().map(|s| s.id.clone()).collect();
+        let reg = &mut self.world_data.registries;
+        reg.functions = self.fns.store.functions.keys().cloned().collect();
+        reg.function_tags = self.fns.store.function_tags.keys().cloned().collect();
+        reg.predicates = self.fns.store.predicates.keys().cloned().collect();
+        reg.item_modifiers = self.fns.store.item_modifiers.keys().cloned().collect();
+        reg.schedules = self.fns.schedule.iter().map(|s| s.id.clone()).collect();
         reg.datapacks_enabled = std::iter::once("vanilla".to_owned())
-            .chain(self.sim.fns.enabled.iter().cloned())
+            .chain(self.fns.enabled.iter().cloned())
             .collect();
         reg.datapacks_disabled = self
-            .sim
             .fns
             .packs
             .iter()
             .map(|p| p.id.clone())
-            .filter(|id| !self.sim.fns.enabled.contains(id))
+            .filter(|id| !self.fns.enabled.contains(id))
             .collect();
     }
 
@@ -164,10 +163,10 @@ impl Game<'_> {
             };
             let _ = cb;
             self.fns.next_seq += 1;
-            self.sim.fns.schedule.push(Scheduled {
+            self.fns.schedule.push(Scheduled {
                 id: id.to_string_lossy(),
                 time: *time,
-                seq: self.sim.fns.next_seq,
+                seq: self.fns.next_seq,
             });
         }
     }

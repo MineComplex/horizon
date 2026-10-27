@@ -74,7 +74,7 @@ impl Game<'_> {
 
     /// `AbstractContainerMenu.setData` from the server.
     pub(super) fn remote_station_data(&mut self, id: usize, value: i16) {
-        let Some(s) = self.sim.station.as_mut() else {
+        let Some(s) = self.station.as_mut() else {
             return;
         };
         match (s.kind, id) {
@@ -89,7 +89,7 @@ impl Game<'_> {
             (Kind::Enchanting, 0..3) => s.offers.costs[id] = i32::from(value),
             (Kind::Enchanting, 3) => self.level.xp_seed = i32::from(value),
             (Kind::Enchanting, 4..7) => {
-                let name = self.sim.remote.as_ref().and_then(|r| {
+                let name = self.remote.as_ref().and_then(|r| {
                     r.registries
                         .name("minecraft:enchantment", i32::from(value))
                         .map(std::sync::Arc::<str>::from)

@@ -1189,14 +1189,14 @@ impl Game<'_> {
                     continue;
                 };
                 // A plugin may have removed or killed it meanwhile.
-                let Some(m) = self.sim.mobs.iter_mut().find(|m| m.id == id) else {
+                let Some(m) = self.mobs.iter_mut().find(|m| m.id == id) else {
                     break;
                 };
                 if !m.alive() || m.removed {
                     break;
                 }
                 m.damage(amount, horizon_client::mobs::Damage::of(kind));
-                if !m.alive() && self.sim.died.insert(id) {
+                if !m.alive() && self.died.insert(id) {
                     dead.push(m.clone());
                 }
             }

@@ -123,7 +123,7 @@ impl Game<'_> {
         let eye_y = feet[1] + f64::from(p.dimensions.eye_height);
         let sounds = self.res.ambient().get(self.dim.id(), self.biome_at(feet));
         let underwater = self.eye_in_water(feet[0], eye_y, feet[2]);
-        let world = &self.sim.world;
+        let world = &self.world;
         let light = |b: [i32; 3]| {
             let l = world.light(b[0], b[1], b[2]);
             (l >> 4, l & 15)

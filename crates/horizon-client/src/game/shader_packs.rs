@@ -37,9 +37,7 @@ impl Game<'_> {
     pub(super) fn shader_pack_inputs(&mut self, camera: glam::DVec3, partial: f32) -> PackInputs {
         static DEV_PACK: std::sync::OnceLock<Option<String>> = std::sync::OnceLock::new();
         let dev = DEV_PACK.get_or_init(|| std::env::var("HORIZON_SHADER_PACK").ok());
-        let picked = dev
-            .as_deref()
-            .unwrap_or(&self.sim.settings.horizon.shader_pack);
+        let picked = dev.as_deref().unwrap_or(&self.settings.horizon.shader_pack);
         if self.front.native_shaders.picked != picked {
             // Another pack, or none: drop what ran.
             self.front.native_shaders = super::native_shaders::NativeShaders::picking(picked);
@@ -81,7 +79,7 @@ impl Game<'_> {
                     let folder = dimension_folder(&pack, dimension);
                     let inputs = renderer.pack_inputs();
                     let mut post = load_post(&pack, &folder, &properties, &macros, &inputs);
-                    let biomes = self.sim.res.biomes();
+                    let biomes = self.res.biomes();
                     let names: Vec<&str> = biomes.list.iter().map(|b| b.name.as_str()).collect();
                     post.custom.set_biomes(&names);
                     let text = pack.read_text("block.properties").unwrap_or_default();
@@ -113,7 +111,7 @@ impl Game<'_> {
                         block_states: RefCell::default(),
                     });
                     let started_ids = std::time::Instant::now();
-                    let table = block_id_table(&self.sim.pack, &ids);
+                    let table = block_id_table(&self.pack, &ids);
                     log::info!(
                         "shader pack {name}: mc_Entity for {} of {} block sprites in {} ms",
                         table.chunks(2).filter(|p| p[0] != -1).count(),

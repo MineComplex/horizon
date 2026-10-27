@@ -78,9 +78,9 @@ impl Game<'_> {
         unpack_loot(
             &mut tag,
             loot.as_deref(),
-            &mut self.sim.world.random,
-            &mut self.sim.rand_sequences,
-            self.sim.level.seed,
+            &mut self.world.random,
+            &mut self.rand_sequences,
+            self.level.seed,
         );
         Some(tag)
     }

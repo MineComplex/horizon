@@ -133,14 +133,10 @@ impl Game<'_> {
     /// `AbstractFurnaceBlockEntity.serverTick` of the furnace at `pos`, and
     /// its block's `lit` following it.
     fn tick_furnace(&mut self, pos: Pos) -> Result<()> {
-        let Some(BlockEntity::Furnace(f)) = self.sim.world.block_entities.get_mut(&pos) else {
+        let Some(BlockEntity::Furnace(f)) = self.world.block_entities.get_mut(&pos) else {
             return Ok(());
         };
-        let Some(lit) = f.tick(
-            self.sim.res.recipes(),
-            self.sim.res.items(),
-            self.sim.res.providers(),
-        ) else {
+        let Some(lit) = f.tick(self.res.recipes(), self.res.items(), self.res.providers()) else {
             return Ok(());
         };
         let state = self.world.block(pos.0, pos.1, pos.2);

@@ -441,7 +441,7 @@ impl Game<'_> {
     fn fixture_use(&mut self, pos: BlockPos, op: &Value) -> Result<Vec<String>> {
         let stack = parse_stack(op["item"].as_str().unwrap_or("-"))?;
         self.creative = op["creative"].as_bool().unwrap_or(false);
-        self.sim.inventory[self.sim.selected] = stack.clone();
+        self.inventory[self.selected] = stack.clone();
         let used_before = stack
             .as_ref()
             .map_or(0, |s| self.stats.get("used", &s.item));
@@ -528,7 +528,7 @@ impl Game<'_> {
             self.front.keys.insert(KeyCode::ShiftLeft);
         }
         self.using = None;
-        self.sim.inventory[self.sim.selected] = stack.clone();
+        self.inventory[self.selected] = stack.clone();
         self.offhand = parse_stack(op["offhand"].as_str().unwrap_or("-"))?;
         // The used statistic of each item held, once.
         let mut items: Vec<_> = [stack.as_ref(), self.offhand.as_ref()]
@@ -635,7 +635,7 @@ impl Game<'_> {
         }
         let feet = [player.position.x, player.position.y, player.position.z];
         self.player = Some(player);
-        self.sim.inventory[self.sim.selected] = stack.clone();
+        self.inventory[self.selected] = stack.clone();
         let used_before = stack
             .as_ref()
             .map_or(0, |s| self.stats.get("used", &s.item));
@@ -851,7 +851,7 @@ impl Game<'_> {
         self.yaw = 0.0;
         self.pitch = 90.0;
         self.front.keys.clear();
-        self.sim.inventory[self.sim.selected] = stack.clone();
+        self.inventory[self.selected] = stack.clone();
         self.offhand = None;
         let state = self.world.block(pos.x, pos.y, pos.z);
         let block = self.res.facts().get(state).name.clone();

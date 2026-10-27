@@ -953,7 +953,7 @@ impl Game<'_> {
         } else if self.screen == Screen::Options {
             let result = match text {
                 Some(t) => {
-                    self.sim.ui.options.type_text(&self.front.gui.atlas, t);
+                    self.ui.options.type_text(&self.front.gui.atlas, t);
                     Ok(())
                 }
                 None => self.options_key(key.expect("a key"), None),

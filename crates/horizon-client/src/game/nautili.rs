@@ -23,7 +23,7 @@ impl Game<'_> {
         if bucket && !self.creative {
             let water = ItemStack::new("minecraft:water_bucket", 1);
             if self.inventory[self.selected].is_none() {
-                self.sim.inventory[self.sim.selected] = Some(water);
+                self.inventory[self.selected] = Some(water);
             } else if let Some(rest) = self.give(water) {
                 let at = self.eye_position().unwrap_or([0.0; 3]);
                 self.spawn_item(rest, at, [0.0; 3], 40);
@@ -82,11 +82,11 @@ impl Game<'_> {
             if !tame && food {
                 // tryToTame: one time in three.
                 self.use_nautilus_food(item);
-                let m = &mut self.sim.mobs[index];
+                let m = &mut self.mobs[index];
                 let tamed = m.random.next_int_bound(3).unwrap_or(1) == 0;
                 if tamed {
                     m.extra.tame = true;
-                    m.extra.owner = self.sim.level.player_uuid.or(Some([0, 0, 0, 1]));
+                    m.extra.owner = self.level.player_uuid.or(Some([0, 0, 0, 1]));
                     m.persistent = true;
                     m.nav_stop();
                     m.ai.target = None;
@@ -113,9 +113,9 @@ impl Game<'_> {
             }
             // Equippable.equipOnInteract: a saddle or nautilus armour on a
             // tame adult.
-            let m = &mut self.sim.mobs[index];
+            let m = &mut self.mobs[index];
             if item == "minecraft:saddle" && tame && !m.extra.saddled {
-                let held = self.sim.inventory[self.sim.selected].clone();
+                let held = self.inventory[self.selected].clone();
                 m.set_saddle(held);
                 let sound = nautilus::saddle_sound(m);
                 self.nautilus_sound(index, sound);

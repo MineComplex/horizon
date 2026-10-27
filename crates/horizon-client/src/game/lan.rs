@@ -1171,14 +1171,14 @@ impl Game<'_> {
     }
     /// The integrated server's owner into the world's player, for `Level::write`.
     pub(super) fn store_owner(&mut self) {
-        let Some(host) = &self.sim.lan else {
+        let Some(host) = &self.lan else {
             return;
         };
         let Some(uuid) = host.owner.as_ref().map(|o| o.uuid) else {
             return;
         };
         if let Some(g) = host.hub.guests.iter().find(|g| g.uuid == uuid && g.placed) {
-            playerdata::store(g, &mut self.sim.level);
+            playerdata::store(g, &mut self.level);
             self.save_guest_records(host, g);
         }
     }
@@ -1350,9 +1350,9 @@ impl Game<'_> {
         let state = self.lan_host_state(&host);
         // An animal whose rider left the game (or the level) stops taking
         // its input.
-        for m in &mut self.sim.mobs {
+        for m in &mut self.mobs {
             if m.rider.is_some()
-                && self.sim.riding != Some(m.id)
+                && self.riding != Some(m.id)
                 && !host.hub.guests.iter().any(|g| g.vehicle == Some(m.id))
             {
                 m.rider = None;
@@ -1406,29 +1406,29 @@ impl Game<'_> {
             let events = {
                 let clock_rate = self.network_clock_rate();
                 let mut ctx = TickCtx {
-                    world: &mut self.sim.world,
+                    world: &mut self.world,
                     host: state.as_ref(),
                     entities,
-                    next_entity: &mut self.sim.next_entity,
+                    next_entity: &mut self.next_entity,
                     spawn,
-                    difficulty: i32::from(self.sim.world_data.difficulty),
-                    difficulty_locked: self.sim.level.difficulty_locked,
+                    difficulty: i32::from(self.world_data.difficulty),
+                    difficulty_locked: self.level.difficulty_locked,
                     clock_rate,
-                    tick_rate: self.sim.clock.rate(),
-                    tick_frozen: self.sim.clock.frozen(),
-                    tick_steps: self.sim.clock.step_state(),
-                    collision: Some(self.sim.collision),
-                    border: &self.sim.border,
+                    tick_rate: self.clock.rate(),
+                    tick_frozen: self.clock.frozen(),
+                    tick_steps: self.clock.step_state(),
+                    collision: Some(self.collision),
+                    border: &self.border,
                 };
                 host.hub.movement_checks = (
-                    self.sim.world_data.rules.bool("player_movement_check"),
-                    self.sim.world_data.rules.bool("elytra_movement_check"),
+                    self.world_data.rules.bool("player_movement_check"),
+                    self.world_data.rules.bool("elytra_movement_check"),
                 );
                 host.hub
-                    .set_immediate_respawn(self.sim.world_data.rules.bool("immediate_respawn"));
+                    .set_immediate_respawn(self.world_data.rules.bool("immediate_respawn"));
                 // A server with several levels runs a pass for each
                 // (`tick_server`): the network is read once, before the first.
-                let pass = self.sim.level_pass;
+                let pass = self.level_pass;
                 let mut events = if pass.first {
                     host.hub.poll(&mut ctx)
                 } else {
@@ -1666,19 +1666,19 @@ impl Game<'_> {
         };
         let clock_rate = self.network_clock_rate();
         let mut ctx = TickCtx {
-            world: &mut self.sim.world,
+            world: &mut self.world,
             host: state,
             entities,
-            next_entity: &mut self.sim.next_entity,
+            next_entity: &mut self.next_entity,
             spawn,
-            difficulty: i32::from(self.sim.world_data.difficulty),
-            difficulty_locked: self.sim.level.difficulty_locked,
+            difficulty: i32::from(self.world_data.difficulty),
+            difficulty_locked: self.level.difficulty_locked,
             clock_rate,
-            tick_rate: self.sim.clock.rate(),
-            tick_frozen: self.sim.clock.frozen(),
-            tick_steps: self.sim.clock.step_state(),
-            collision: Some(self.sim.collision),
-            border: &self.sim.border,
+            tick_rate: self.clock.rate(),
+            tick_frozen: self.clock.frozen(),
+            tick_steps: self.clock.step_state(),
+            collision: Some(self.collision),
+            border: &self.border,
         };
         host.hub.place_new_player(conn, &mut ctx);
         if elsewhere && let Err(e) = self.enter_level(Some(host), back) {

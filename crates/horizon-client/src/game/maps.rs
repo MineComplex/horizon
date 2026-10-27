@@ -500,15 +500,13 @@ impl Game<'_> {
         map.dirty = false;
     }
     fn next_map_id(&mut self) -> i32 {
-        let last = *self.sim.maps.last_id.get_or_insert_with(|| {
-            horizon_client::save::read_dat(
-                &self.sim.world_root.join("data/minecraft/maps/last_id.dat"),
-            )
-            .and_then(|t| match t.get("data")?.get("map")? {
-                Tag::Int(v) => Some(*v),
-                _ => None,
-            })
-            .unwrap_or(-1)
+        let last = *self.maps.last_id.get_or_insert_with(|| {
+            horizon_client::save::read_dat(&self.world_root.join("data/minecraft/maps/last_id.dat"))
+                .and_then(|t| match t.get("data")?.get("map")? {
+                    Tag::Int(v) => Some(*v),
+                    _ => None,
+                })
+                .unwrap_or(-1)
         });
         self.maps.last_id = Some(last + 1);
         last + 1
@@ -1003,7 +1001,7 @@ impl Game<'_> {
             return;
         };
         let nether = self.dim == super::Dim::Nether;
-        let Some(m) = self.sim.maps.data.get_mut(&id) else {
+        let Some(m) = self.maps.data.get_mut(&id) else {
             return;
         };
         if m.locked || m.dimension != dim {
@@ -1017,7 +1015,7 @@ impl Game<'_> {
         if nether {
             radius /= 2;
         }
-        let h = m.holder(self.sim.lan_acting.unwrap_or(HOST));
+        let h = m.holder(self.lan_acting.unwrap_or(HOST));
         h.step += 1;
         let step = h.step;
         let mut changes: Vec<(i32, i32, u8)> = Vec::new();
@@ -1145,10 +1143,9 @@ impl Game<'_> {
     }
     /// Writes changed maps and the id counter (`MapItemSavedData`, `MapIndex`).
     pub(super) fn save_maps(&mut self) {
-        for (id, m) in &mut self.sim.maps.data {
+        for (id, m) in &mut self.maps.data {
             if m.dirty {
                 let path = self
-                    .sim
                     .world_root
                     .join("data/minecraft/maps")
                     .join(format!("{id}.dat"));

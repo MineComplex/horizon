@@ -36,13 +36,13 @@ impl Game<'_> {
         if self.world.health_rules.difficulty != Difficulty::Hard {
             return;
         }
-        let zombie = &mut self.sim.mobs[index];
+        let zombie = &mut self.mobs[index];
         if f64::from(zombie.random.next_float()) >= zombie.attrs.spawn_reinforcements {
             return;
         }
         // ServerLevel.isSpawningMonsters.
-        if !self.sim.world_data.rules.bool("spawn_mobs")
-            || !self.sim.world_data.rules.bool("spawn_monsters")
+        if !self.world_data.rules.bool("spawn_mobs")
+            || !self.world_data.rules.bool("spawn_monsters")
         {
             return;
         }

@@ -108,9 +108,9 @@ impl Game<'_> {
                 }
                 let name = self.component_json(ctx, "name")?;
                 self.bosses.bars.add(&bar, name);
-                if let Some(b) = self.sim.bosses.bars.get_mut(&bar) {
+                if let Some(b) = self.bosses.bars.get_mut(&bar) {
                     // CustomBossEvents.create: Mth.createInsecureUUID(level.random).
-                    b.uuid = insecure_uuid(&mut self.sim.world.random);
+                    b.uuid = insecure_uuid(&mut self.world.random);
                 }
                 let shown = self
                     .bosses

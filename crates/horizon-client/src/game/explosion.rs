@@ -298,16 +298,16 @@ impl Game<'_> {
         let (creative, spectator) = (self.creative, self.spectator());
         let flying = self.player.as_ref().is_some_and(|p| p.flying);
         let mut outcome = horizon_client::health::BlockOutcome::default();
-        if let Some(p) = self.sim.player.as_mut()
-            && let Some(id) = self.sim.motion.health.damage.id(damage_type)
+        if let Some(p) = self.player.as_mut()
+            && let Some(id) = self.motion.health.damage.id(damage_type)
         {
             // Creative players are invulnerable to explosions.
             if !creative
                 && !spectator
                 && hurtable
                 && let Ok(o) = p.hurt_caused_by(
-                    &self.sim.motion.health,
-                    self.sim.world.health_rules,
+                    &self.motion.health,
+                    self.world.health_rules,
                     id,
                     amount,
                     blocking,
@@ -613,9 +613,8 @@ impl Game<'_> {
         // `ServerExplosion.isSmall` also covers an explosion that keeps blocks.
         let block_count = targets.len();
         let small = radius < 2.0 || interaction == BlockInteraction::Keep;
-        let (world, facts) = (&self.sim.world, self.sim.res.facts());
-        self.sim
-            .particles
+        let (world, facts) = (&self.world, self.res.facts());
+        self.particles
             .explosion(center, small, block_count, radius, &|b| {
                 facts.is_air(world.block(b[0], b[1], b[2]))
             });
@@ -672,13 +671,13 @@ impl Game<'_> {
             // tables' survives_explosion and explosion_decay draw from their
             // random sequence.
             let decay = (interaction == BlockInteraction::DestroyWithDecay).then_some(radius);
-            let drops = self.sim.res.items().block_drops_exploded(
+            let drops = self.res.items().block_drops_exploded(
                 self.pack.assets.registry,
                 state,
                 None,
                 &dynamic,
-                &mut self.sim.world.random,
-                Some((&mut self.sim.rand_sequences, self.sim.level.seed)),
+                &mut self.world.random,
+                Some((&mut self.rand_sequences, self.level.seed)),
                 decay,
                 false,
             );

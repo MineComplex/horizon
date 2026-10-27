@@ -692,8 +692,8 @@ impl Game<'_> {
     /// `Warden.VibrationUser`: accept a vibration for the warden at `index`.
     fn warden_listen(&mut self, index: usize, event: &'static str, pos: [f64; 3], ctx: &Context) {
         let now = self.world.game_time;
-        let (occludes, world) = (&self.sim.sculk.tables.occludes, &self.sim.world);
-        warden::listen(&mut self.sim.mobs[index], now, event, pos, ctx, |a, b| {
+        let (occludes, world) = (&self.sculk.tables.occludes, &self.world);
+        warden::listen(&mut self.mobs[index], now, event, pos, ctx, |a, b| {
             sculk::is_occluded(a, b, |p| {
                 let state = world.block(p.x, p.y, p.z);
                 occludes.get(state.0 as usize).copied().unwrap_or(false)
@@ -1688,7 +1688,7 @@ impl Game<'_> {
         } else {
             horizontal
         };
-        let Some(entry) = self.sim.sculk.steps.get_mut(&who) else {
+        let Some(entry) = self.sculk.steps.get_mut(&who) else {
             return;
         };
         entry.move_dist += travelled;
@@ -1697,7 +1697,7 @@ impl Game<'_> {
             let move_dist = entry.move_dist;
             if steps_on_block {
                 let warden = matches!(who, Who::Mob(id)
-                    if self.sim.mobs.iter().any(|m| m.id == id && m.species() == Species::Warden));
+                    if self.mobs.iter().any(|m| m.id == id && m.species() == Species::Warden));
                 entry.next_step = if warden {
                     // Warden.nextStep
                     move_dist + 0.55

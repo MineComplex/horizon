@@ -28,10 +28,9 @@ impl Game<'_> {
     }
     /// Opening an ender chest shows the player's ender inventory in its place.
     pub(super) fn open_ender_chest(&mut self, key: (i32, i32, i32)) {
-        self.sim
-            .world
+        self.world
             .block_entities
-            .insert(key, BlockEntity::Chest(self.sim.ender_items.clone()));
+            .insert(key, BlockEntity::Chest(self.ender_items.clone()));
         self.container = Some(key);
         self.ender_open = Some(key);
     }
@@ -312,14 +311,13 @@ impl Game<'_> {
             n -= size;
         }
         match target.and_then(|(pos, i)| {
-            self.sim
-                .world
+            self.world
                 .block_entities
                 .get_mut(&pos)
                 .and_then(|e| e.slots_mut().get_mut(i))
         }) {
             Some(slot) => slot,
-            None => &mut self.sim.scratch_slot,
+            None => &mut self.scratch_slot,
         }
     }
     pub(super) fn container_block_is_shulker(&self) -> bool {

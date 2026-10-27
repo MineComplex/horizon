@@ -47,7 +47,7 @@ impl Game<'_> {
     /// `EvokerFangs.handleEntityEvent`: only event 4 starts a client attack.
     pub(super) fn remote_fangs_event(&mut self, id: u32, event: i8) {
         if event == 4
-            && let Some(f) = self.sim.fangs.list.iter_mut().find(|f| f.id == id)
+            && let Some(f) = self.fangs.list.iter_mut().find(|f| f.id == id)
         {
             f.started = true;
             self.front.audio.play_unshared(

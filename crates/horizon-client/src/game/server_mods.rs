@@ -308,7 +308,7 @@ mod run {
                     }
                 }
             }
-            self.sim.mods.mods.server_tick(self.sim.ticks);
+            self.mods.mods.server_tick(self.ticks);
             self.return_world();
             self.mods.players = players;
             self.show_mod_output();
@@ -319,13 +319,13 @@ mod run {
         /// after vanilla's, whenever they change (or a hub opens).
         fn send_server_mod_commands(&mut self) {
             let key = self.mods.mods.generation();
-            let Some(host) = self.sim.lan.as_mut() else {
+            let Some(host) = self.lan.as_mut() else {
                 return;
             };
             if host.hub.mod_commands_key() == Some(key) {
                 return;
             }
-            let tree = command_tree(self.sim.mods.mods.server_commands());
+            let tree = command_tree(self.mods.mods.server_commands());
             host.hub.set_mod_commands(key, tree);
         }
 

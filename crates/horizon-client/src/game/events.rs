@@ -207,7 +207,7 @@ impl Game<'_> {
                 None => self.ui.chat.recent_lines(new_chat),
             };
             for event in diff(before, &now, &lines) {
-                self.sim.events.push(self.sim.ticks, event);
+                self.events.push(self.ticks, event);
             }
         }
         self.events.last = Some(now);
@@ -267,9 +267,9 @@ impl Game<'_> {
             }
             "wait-for" => {
                 let (condition, timeout, since) = parse_wait(&words[1..])?;
-                self.sim.events.waits.push(Wait {
+                self.events.waits.push(Wait {
                     condition,
-                    since: since.unwrap_or(self.sim.events.seq),
+                    since: since.unwrap_or(self.events.seq),
                     started: Instant::now(),
                     timeout,
                     reply: reply.clone(),

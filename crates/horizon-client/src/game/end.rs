@@ -459,7 +459,7 @@ impl Game<'_> {
         self.tick_crystals();
         self.tick_eyes();
         if self.dim == Dim::End {
-            self.sim.end.flash.tick(self.sim.world.game_time);
+            self.end.flash.tick(self.world.game_time);
             if let Some(n) = self.end.flash.sound_in.as_mut() {
                 *n = n.saturating_sub(1);
                 if *n == 0 {
@@ -1229,7 +1229,7 @@ impl Game<'_> {
             .unwrap()
             .as_ref()
             .and_then(|t| t.ring_positions("minecraft:strongholds"));
-        let (Some(rings), Some(p)) = (rings, self.sim.player.as_ref()) else {
+        let (Some(rings), Some(p)) = (rings, self.player.as_ref()) else {
             return;
         };
         let block = [
@@ -1268,8 +1268,8 @@ impl Game<'_> {
         } else {
             target
         };
-        let survive = self.sim.world.random.next_int_bound(5).unwrap_or(0) > 0;
-        self.sim.end.eyes.push(EyeOfEnder {
+        let survive = self.world.random.next_int_bound(5).unwrap_or(0) > 0;
+        self.end.eyes.push(EyeOfEnder {
             id: 0,
             position: start,
             previous: start,
@@ -1278,7 +1278,7 @@ impl Game<'_> {
             life: 0,
             survive,
         });
-        let r = self.sim.world.random.next_float();
+        let r = self.world.random.next_float();
         let pitch = 0.33 + r * (0.5 - 0.33);
         let at = [p.position.x, p.position.y, p.position.z];
         self.front

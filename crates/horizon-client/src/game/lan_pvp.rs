@@ -122,8 +122,8 @@ impl Game<'_> {
     /// `Player.attack`'s `causeFoodExhaustion(0.1F)`, charged to the attacker
     /// (the host, or a guest swapped in) only once the hit hurt the victim.
     pub(super) fn pvp_exhaustion(&mut self) {
-        if let Some(p) = self.sim.player.as_mut()
-            && !self.sim.creative
+        if let Some(p) = self.player.as_mut()
+            && !self.creative
         {
             p.cause_food_exhaustion(0.1);
         }

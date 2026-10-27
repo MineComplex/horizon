@@ -47,15 +47,14 @@ impl Game<'_> {
                 continue;
             }
             // Skeleton trap: effective difficulty / 100 (regional difficulty approximated).
-            let difficulty = f64::from(self.sim.world_data.difficulty) * 0.75;
+            let difficulty = f64::from(self.world_data.difficulty) * 0.75;
             let below = &self
-                .sim
                 .res
                 .facts()
-                .get(self.sim.world.block(pos[0], pos[1] - 1, pos[2]))
+                .get(self.world.block(pos[0], pos[1] - 1, pos[2]))
                 .name;
-            let trap = self.sim.world_data.rules.bool("spawn_mobs")
-                && self.sim.world.random.next_double() < difficulty * 0.01
+            let trap = self.world_data.rules.bool("spawn_mobs")
+                && self.world.random.next_double() < difficulty * 0.01
                 && !below.ends_with("lightning_rod");
             if trap {
                 let at = [f64::from(pos[0]), f64::from(pos[1]), f64::from(pos[2])];
@@ -368,7 +367,7 @@ impl Game<'_> {
         };
         let mut events = Vec::new();
         let peaceful = self.world_data.difficulty == 0;
-        for m in self.sim.mobs.iter_mut().filter(|m| m.alive()) {
+        for m in self.mobs.iter_mut().filter(|m| m.alive()) {
             if !inside([m.position.x, m.position.y, m.position.z]) {
                 continue;
             }

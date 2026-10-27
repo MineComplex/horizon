@@ -602,7 +602,7 @@ impl Game<'_> {
         };
         let creative = self.creative;
         let rules = self.world.health_rules;
-        let Some(p) = self.sim.player.as_mut() else {
+        let Some(p) = self.player.as_mut() else {
             return;
         };
         match action {
@@ -617,16 +617,16 @@ impl Game<'_> {
                 if creative {
                     return;
                 }
-                if let Some(id) = self.sim.motion.health.damage.id(source) {
-                    let _ = p.hurt(&self.sim.motion.health, rules, id, amount);
+                if let Some(id) = self.motion.health.damage.id(source) {
+                    let _ = p.hurt(&self.motion.health, rules, id, amount);
                 }
             }
             EffectAction::Poison => {
                 if !creative
                     && p.health.health() > 1.0
-                    && let Some(id) = self.sim.motion.health.damage.id("minecraft:magic")
+                    && let Some(id) = self.motion.health.damage.id("minecraft:magic")
                 {
-                    let _ = p.hurt(&self.sim.motion.health, rules, id, 1.0);
+                    let _ = p.hurt(&self.motion.health, rules, id, 1.0);
                 }
             }
             EffectAction::Exhaust(amount) => {
@@ -748,9 +748,9 @@ impl Game<'_> {
     pub(super) fn apply_effect_status(&mut self) {
         let modifiers = self.potions.effects.modifiers();
         if modifiers != self.potions.applied
-            && let Some(p) = self.sim.player.as_mut()
+            && let Some(p) = self.player.as_mut()
         {
-            for (attr, id, _, op) in &self.sim.potions.applied {
+            for (attr, id, _, op) in &self.potions.applied {
                 let _ = p.set_modifier(attr, id, 0.0, op, false);
             }
             for (attr, id, amount, op) in &modifiers {
@@ -758,8 +758,8 @@ impl Game<'_> {
             }
             self.potions.applied = modifiers;
         }
-        if let Some(p) = self.sim.player.as_mut()
-            && self.sim.potions.effects.amplifier("absorption").is_none()
+        if let Some(p) = self.player.as_mut()
+            && self.potions.effects.amplifier("absorption").is_none()
             && p.health.absorption() > 0.0
         {
             let _ = p.set_health(0.0, true);
@@ -972,18 +972,18 @@ impl Game<'_> {
                     return;
                 };
                 // Undead invert healing and harming.
-                let tags = &self.sim.res.stations().enchantments.entity_tags;
+                let tags = &self.res.stations().enchantments.entity_tags;
                 let inverted = tags
                     .get("minecraft:inverted_healing_and_harm")
                     .is_some_and(|t| t.contains(&self.mobs[i].kind.id));
                 for (id, duration, amp) in effects {
-                    let m = &mut self.sim.mobs[i];
+                    let m = &mut self.mobs[i];
                     match *id {
                         "instant_damage" | "instant_health" => {
                             let amount =
                                 |base: i32| (0.5 * f64::from(base << amp) + 0.5) as i32 as f32;
                             if (*id == "instant_damage") != inverted {
-                                m.hurt(amount(6), Some(at), &mut self.sim.world.random);
+                                m.hurt(amount(6), Some(at), &mut self.world.random);
                             } else {
                                 m.health = (m.health + amount(4)).min(m.kind.max_health);
                             }
@@ -1249,12 +1249,12 @@ impl Game<'_> {
                         continue;
                     }
                 };
-                let m = &mut self.sim.mobs[i];
+                let m = &mut self.mobs[i];
                 if harm {
                     m.hurt(
                         (intensity * f64::from(6 << amp) + 0.5) as i32 as f32,
                         Some([at.x, at.y, at.z]),
-                        &mut self.sim.world.random,
+                        &mut self.world.random,
                     );
                 } else {
                     m.health = (m.health + (intensity * f64::from(4 << amp) + 0.5) as i32 as f32)

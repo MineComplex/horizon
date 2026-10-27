@@ -530,9 +530,8 @@ impl Game<'_> {
             return Some(remainder);
         }
         let mut rest = remainder;
-        if let Some(entity) = self.sim.world.block_entities.get_mut(&pos) {
+        if let Some(entity) = self.world.block_entities.get_mut(&pos) {
             let max = self
-                .sim
                 .res
                 .items()
                 .get(&rest.item)
@@ -1728,19 +1727,15 @@ impl Game<'_> {
         table: &str,
         held: Option<&ItemStack>,
     ) -> Vec<ItemStack> {
-        match self.sim.res.items().loot_sequence(parent) {
+        match self.res.items().loot_sequence(parent) {
             Some(sequence) => {
-                let random = self.sim.rand_sequences.get(&sequence, self.sim.level.seed);
-                self.sim
-                    .res
-                    .items()
-                    .loot_table_from(table, false, held, random)
+                let random = self.rand_sequences.get(&sequence, self.level.seed);
+                self.res.items().loot_table_from(table, false, held, random)
             }
             None => self
-                .sim
                 .res
                 .items()
-                .loot_table(table, false, held, &mut self.sim.world.random),
+                .loot_table(table, false, held, &mut self.world.random),
         }
     }
     /// `Entity.spawnAtLocation(level, stack, offset)`: an item at the entity's
@@ -1761,9 +1756,9 @@ impl Game<'_> {
     /// is discarded.
     pub(super) fn convert_mob(&mut self, index: usize, kind: &str) -> Option<u32> {
         let t = self.res.mob_types().get(kind).cloned()?;
-        let old = &self.sim.mobs[index];
-        self.sim.next_entity += 1;
-        let mut mob = Mob::new(self.sim.next_entity, t, old.position, old.yaw);
+        let old = &self.mobs[index];
+        self.next_entity += 1;
+        let mut mob = Mob::new(self.next_entity, t, old.position, old.yaw);
         mob.previous = old.previous;
         mob.head_yaw = old.head_yaw;
         mob.body_yaw = old.body_yaw;

@@ -612,17 +612,17 @@ impl Game<'_> {
         self.load_portal_arrivals();
         let mut leaving: Vec<(u32, BlockPos)> = Vec::new();
         self.portals.before.clear();
-        for e in &self.sim.dropped {
-            self.sim.portals.before.insert(e.id, e.position);
+        for e in &self.dropped {
+            self.portals.before.insert(e.id, e.position);
         }
-        for m in &self.sim.mobs {
-            self.sim.portals.before.insert(m.id, m.position);
+        for m in &self.mobs {
+            self.portals.before.insert(m.id, m.position);
         }
-        for b in &self.sim.boats {
-            self.sim.portals.before.insert(b.id, b.position);
+        for b in &self.boats {
+            self.portals.before.insert(b.id, b.position);
         }
-        for c in &self.sim.carts {
-            self.sim.portals.before.insert(c.id, c.position);
+        for c in &self.carts {
+            self.portals.before.insert(c.id, c.position);
         }
         let ids: Vec<(u32, bool)> = self
             .dropped

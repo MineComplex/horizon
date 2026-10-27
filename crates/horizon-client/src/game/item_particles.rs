@@ -24,9 +24,9 @@ impl Game<'_> {
         let options = self.item_particle(stack);
         let mut spawned = Vec::new();
         particles::item_use_particles(
-            &mut self.sim.world.random,
-            self.sim.pitch,
-            self.sim.yaw,
+            &mut self.world.random,
+            self.pitch,
+            self.yaw,
             [p.x, p.y, p.z],
             eye_y,
             count,

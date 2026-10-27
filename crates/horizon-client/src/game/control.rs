@@ -74,7 +74,7 @@ impl Game<'_> {
             .map_or(self.front.debug_charts.smoothed_tick_ms, |s| {
                 s.smoothed_tick_ms()
             });
-        let Some(flight) = self.sim.flight.as_mut() else {
+        let Some(flight) = self.flight.as_mut() else {
             return;
         };
         flight.tick_ms.push(tick_ms);
@@ -84,8 +84,8 @@ impl Game<'_> {
         let d = [b.x - a.x, b.y - a.y, b.z - a.z];
         let at = Vec3::new(a.x + d[0] * t, a.y + d[1] * t, a.z + d[2] * t);
         // Minecraft yaw: 0 faces +Z, 90 faces -X.
-        self.sim.yaw = (-d[0]).atan2(d[2]).to_degrees() as f32;
-        self.sim.pitch = flight.pitch;
+        self.yaw = (-d[0]).atan2(d[2]).to_degrees() as f32;
+        self.pitch = flight.pitch;
         if let Some(player) = self.player.as_mut() {
             player.position = at;
             player.velocity = Vec3::new(0.0, 0.0, 0.0);
@@ -581,7 +581,7 @@ impl Game<'_> {
             }
             "screenshot" => {
                 let renderer = self.front.renderer.as_mut().ok_or("no renderer yet")?;
-                if self.sim.pending_screenshot.is_some() {
+                if self.pending_screenshot.is_some() {
                     return Err("a screenshot is already pending".into());
                 }
                 arg(1)?;
@@ -626,7 +626,7 @@ impl Game<'_> {
                 match self.screen {
                     Screen::Chat => self.chat_type(text),
                     Screen::CommandBlock => self.command_block_type(text),
-                    Screen::Options => self.sim.ui.options.type_text(&self.front.gui.atlas, text),
+                    Screen::Options => self.ui.options.type_text(&self.front.gui.atlas, text),
                     // The port, or the game rules' search and number boxes.
                     Screen::WorldOptions if text == "\\b" => self.world_options_text(None),
                     Screen::WorldOptions => self.world_options_text(Some(text)),

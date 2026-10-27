@@ -244,7 +244,7 @@ impl Game<'_> {
             p.position.y.floor() as i32,
             p.position.z.floor() as i32,
         ];
-        let eye_in_water = self.sim.res.facts().get(self.sim.world.block(
+        let eye_in_water = self.res.facts().get(self.world.block(
             feet[0],
             (p.position.y + f64::from(p.dimensions.eye_height)).floor() as i32,
             feet[2],
@@ -269,7 +269,7 @@ impl Game<'_> {
                 .map(|m| m.species())
                 .ok_or(())
         });
-        let s = &mut self.sim.stats;
+        let s = &mut self.stats;
         match riding {
             Some(Ok(sp)) => {
                 use horizon_client::mobs::Species;
@@ -289,9 +289,9 @@ impl Game<'_> {
                 }
             }
             Some(Err(())) => {
-                if self.sim.boats.iter().any(|b| Some(b.id) == self.sim.riding) {
+                if self.boats.iter().any(|b| Some(b.id) == self.riding) {
                     s.custom("boat_one_cm", total)
-                } else if self.sim.carts.iter().any(|c| Some(c.id) == self.sim.riding) {
+                } else if self.carts.iter().any(|c| Some(c.id) == self.riding) {
                     s.custom("minecart_one_cm", total)
                 }
             }

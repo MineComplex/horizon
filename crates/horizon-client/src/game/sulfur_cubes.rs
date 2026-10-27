@@ -186,9 +186,9 @@ impl Game<'_> {
             let touch = m
                 .bounds()
                 .inflate(horizon_core::geometry::Vec3::new(1.0, 0.0, 1.0));
-            let e = &self.sim.dropped[j];
+            let e = &self.dropped[j];
             let close = touch.contains(e.position);
-            self.sim.mobs[i].extra.point = Some([e.position.x, e.position.y, e.position.z]);
+            self.mobs[i].extra.point = Some([e.position.x, e.position.y, e.position.z]);
             if !griefing || !close {
                 continue;
             }
