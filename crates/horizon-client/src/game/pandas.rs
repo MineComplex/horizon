@@ -14,14 +14,6 @@ use horizon_client::{
 use horizon_core::geometry::Vec3;
 
 impl Game<'_> {
-    /// `Panda.canPickUpAndEat`'s tag.
-    fn panda_eats_from_ground(&self, item: &str) -> bool {
-        self.res
-            .items()
-            .item_tags
-            .get("minecraft:panda_eats_from_ground")
-            .is_some_and(|tag| tag.contains(item))
-    }
     /// A panda takes what lies at its feet when its mouth is free, and
     /// looks for food within 6 and 8 blocks for `PandaSitGoal`.
     pub(super) fn tick_pandas(&mut self) {
@@ -108,33 +100,6 @@ impl Game<'_> {
         }
         true
     }
-    /// `Panda.afterSneeze`: the grown pandas within 10 blocks of a cub jump.
-    pub(super) fn panda_sneezed(&mut self, id: u32) {
-        let Some(area) = self
-            .mobs
-            .iter()
-            .find(|m| m.id == id)
-            .map(|m| m.bounds().inflate(Vec3::new(10.0, 10.0, 10.0)))
-        else {
-            return;
-        };
-        for m in &mut self.mobs {
-            if m.species() == Species::Panda
-                && !m.is_baby()
-                && m.on_ground
-                && !m.fluids.in_water
-                && panda::can_perform_action(m, panda::scared(m))
-                && area.intersects(m.bounds())
-            {
-                // LivingEntity.jumpFromGround.
-                m.needs_sync = true;
-                let power = f64::from(m.jump_power());
-                if power > 1.0e-5 {
-                    m.velocity.y = power.max(m.velocity.y);
-                }
-            }
-        }
-    }
     /// What a window draws of its pandas: the crumbs of a bite
     /// (`addEatingParticles`) and the sneeze's particle.
     pub(super) fn panda_effects(&mut self) {
@@ -160,6 +125,43 @@ impl Game<'_> {
         let options = ParticleOptions::simple(ParticleType::Sneeze);
         for (at, velocity) in sneezes {
             self.particles.add(&options, at, velocity);
+        }
+    }
+}
+impl crate::game::Sim<'_> {
+    /// `Panda.canPickUpAndEat`'s tag.
+    fn panda_eats_from_ground(&self, item: &str) -> bool {
+        self.res
+            .items()
+            .item_tags
+            .get("minecraft:panda_eats_from_ground")
+            .is_some_and(|tag| tag.contains(item))
+    }
+    /// `Panda.afterSneeze`: the grown pandas within 10 blocks of a cub jump.
+    pub(super) fn panda_sneezed(&mut self, id: u32) {
+        let Some(area) = self
+            .mobs
+            .iter()
+            .find(|m| m.id == id)
+            .map(|m| m.bounds().inflate(Vec3::new(10.0, 10.0, 10.0)))
+        else {
+            return;
+        };
+        for m in &mut self.mobs {
+            if m.species() == Species::Panda
+                && !m.is_baby()
+                && m.on_ground
+                && !m.fluids.in_water
+                && panda::can_perform_action(m, panda::scared(m))
+                && area.intersects(m.bounds())
+            {
+                // LivingEntity.jumpFromGround.
+                m.needs_sync = true;
+                let power = f64::from(m.jump_power());
+                if power > 1.0e-5 {
+                    m.velocity.y = power.max(m.velocity.y);
+                }
+            }
         }
     }
 }

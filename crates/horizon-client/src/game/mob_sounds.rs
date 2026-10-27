@@ -49,7 +49,7 @@ impl Game<'_> {
             if is_bee && self.bee_sounds.get(&sound.id) != Some(&sound.angry) {
                 self.bee_sounds.insert(sound.id, sound.angry);
                 let instance = SoundInstance::bee(sound, sound.angry, SoundEngine::unseeded());
-                self.audio.play_instance(instance, false);
+                self.front.audio.play_instance(instance, false);
             }
         }
         mobs
@@ -59,12 +59,12 @@ impl Game<'_> {
     /// hum starts (one loop per guardian; the loops of its earlier beams are
     /// the same loop, as each one follows the guardian's charge).
     pub(super) fn start_guardian_sound(&mut self, id: u32) {
-        let Some(m) = self.mobs.iter().find(|m| {
+        let Some(m) = self.sim.mobs.iter().find(|m| {
             m.id == id && matches!(m.species(), Species::Guardian | Species::ElderGuardian)
         }) else {
             return;
         };
-        if !self.guardian_sounds.insert(id) {
+        if !self.sim.guardian_sounds.insert(id) {
             return;
         }
         let sound = MobSound {
@@ -77,6 +77,6 @@ impl Game<'_> {
             attack_scale: guardian::attack_scale(m),
         };
         let instance = SoundInstance::guardian_attack(&sound, SoundEngine::unseeded());
-        self.audio.play_instance(instance, false);
+        self.front.audio.play_instance(instance, false);
     }
 }

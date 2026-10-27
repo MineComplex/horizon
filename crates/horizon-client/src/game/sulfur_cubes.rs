@@ -76,24 +76,6 @@ impl Game<'_> {
         }
     }
 
-    fn sulfur_sound(&mut self, index: usize, sound: &str) {
-        let at = self.mobs[index].center();
-        self.sounds
-            .play(&format!("minecraft:{sound}"), Some(at), 1.0, 1.0);
-    }
-    /// Spit the swallowed block out on top (`EntityAttachment.PASSENGER`).
-    fn eject_sulfur_block(&mut self, index: usize) {
-        let m = &mut self.mobs[index];
-        let Some(item) = m.extra.head.take() else {
-            return;
-        };
-        let at = [
-            m.position.x,
-            m.position.y + f64::from(m.height()),
-            m.position.z,
-        ];
-        self.spawn_item(ItemStack::new(&item, 1), at, [0.0, 0.2, 0.0], 10);
-    }
     /// `SulfurCube.mobInteract`. Returns whether the click was used.
     pub(super) fn interact_sulfur_cube(&mut self, index: usize, item: &str) -> bool {
         let m = &self.mobs[index];
@@ -185,16 +167,16 @@ impl Game<'_> {
             let touch = m
                 .bounds()
                 .inflate(horizon_core::geometry::Vec3::new(1.0, 0.0, 1.0));
-            let e = &self.dropped[j];
+            let e = &self.sim.dropped[j];
             let close = touch.contains(e.position);
-            self.mobs[i].extra.point = Some([e.position.x, e.position.y, e.position.z]);
+            self.sim.mobs[i].extra.point = Some([e.position.x, e.position.y, e.position.z]);
             if !griefing || !close {
                 continue;
             }
             let item = e.stack.item.clone();
             let thrown_by_player = e
                 .thrower
-                .is_some_and(|uuid| Some(uuid) == self.level.player_uuid);
+                .is_some_and(|uuid| Some(uuid) == self.sim.level.player_uuid);
             let mut swallowed = e.stack.clone();
             swallowed.count = 1;
             let (taken_item, id) = (e.clone(), self.mobs[i].id);
@@ -244,6 +226,26 @@ impl Game<'_> {
                 c.head_yaw = yaw;
             }
         }
+    }
+}
+impl crate::game::Sim<'_> {
+    fn sulfur_sound(&mut self, index: usize, sound: &str) {
+        let at = self.mobs[index].center();
+        self.sounds
+            .play(&format!("minecraft:{sound}"), Some(at), 1.0, 1.0);
+    }
+    /// Spit the swallowed block out on top (`EntityAttachment.PASSENGER`).
+    fn eject_sulfur_block(&mut self, index: usize) {
+        let m = &mut self.mobs[index];
+        let Some(item) = m.extra.head.take() else {
+            return;
+        };
+        let at = [
+            m.position.x,
+            m.position.y + f64::from(m.height()),
+            m.position.z,
+        ];
+        self.spawn_item(ItemStack::new(&item, 1), at, [0.0, 0.2, 0.0], 10);
     }
 }
 

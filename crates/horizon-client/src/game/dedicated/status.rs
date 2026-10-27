@@ -57,7 +57,8 @@ impl Game<'_> {
             let _ = request.reply.send(reply.to_string());
         }
     }
-
+}
+impl crate::game::Sim<'_> {
     fn server_status(&self, state: &ServerState) -> Value {
         let millis = |nanos: u64| nanos as f64 / 1e6;
         let samples = self.clock.sorted_samples();

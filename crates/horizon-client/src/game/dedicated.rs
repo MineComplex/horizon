@@ -339,7 +339,8 @@ fn parse_identifier(text: &str) -> Option<String> {
     (valid(namespace, &[]) && valid(path, &['/'])).then(|| format!("{namespace}:{path}"))
 }
 
-impl Game<'_> {
+impl Game<'_> {}
+impl crate::game::Sim<'_> {
     /// DedicatedServerProperties.createDimensions for a world that doesn't
     /// exist yet: `level-type`'s preset, a flat world's `generator-settings`
     /// and `generate-structures`, written before the world opens so that
@@ -801,97 +802,6 @@ impl Game<'_> {
         Ok(())
     }
 
-    /// The chunks to keep loaded: the players' (lan_update_streaming), or
-    /// the spawn chunk while nobody is online.
-    pub(super) fn update_dedicated_streaming(&mut self) {
-        let center = self
-            .lan
-            .as_ref()
-            .and_then(|h| {
-                h.hub
-                    .guests
-                    .iter()
-                    .find(|g| h.hub.here(g))
-                    .map(|g| g.chunk())
-            })
-            .or_else(|| {
-                self.spawn
-                    .map(|s| ((s.x.floor() as i32) >> 4, (s.z.floor() as i32) >> 4))
-            });
-        if let Some(c) = center {
-            self.streaming.center = c;
-        }
-    }
-
-    /// ServerGamePacketListenerImpl.tick: players idle longer than the
-    /// timeout are kicked.
-    fn kick_idle(&mut self, minutes: i32) {
-        let Some(host) = self.lan.as_mut() else {
-            return;
-        };
-        let limit = u64::try_from(minutes).unwrap_or(0) * 1200;
-        let idle: Vec<u32> = host
-            .hub
-            .guests
-            .iter()
-            .filter(|g| host.hub.ticks.saturating_sub(g.last_action_tick) > limit)
-            .map(|g| g.conn)
-            .collect();
-        for conn in idle {
-            host.hub
-                .kick(conn, translatable("multiplayer.disconnect.idling", &[]));
-        }
-    }
-
-    /// Ops' permission levels for the hub (PlayerList.getProfilePermissions).
-    fn sync_ops(&mut self, lists: &Arc<Mutex<Lists>>) {
-        let Some(host) = self.lan.as_mut() else {
-            return;
-        };
-        host.hub.ops = lists
-            .lock()
-            .unwrap()
-            .ops
-            .entries()
-            .iter()
-            .map(|e| (e.user.id, e.level as u8))
-            .collect();
-        host.hub.resend_commands();
-    }
-
-    /// A player on the server, by name.
-    fn online_player(&self, name: &str) -> Option<NameAndId> {
-        let hub = &self.lan.as_ref()?.hub;
-        let g = hub
-            .guests
-            .iter()
-            .find(|g| g.name.eq_ignore_ascii_case(name))?;
-        Some(NameAndId {
-            id: g.uuid,
-            name: g.name.clone(),
-        })
-    }
-
-    /// GameProfileArgument for a name: the user cache, else the profile
-    /// service, else (offline) the offline player. None, told to the console:
-    /// no such player.
-    fn resolve(&self, name: &str) -> Option<NameAndId> {
-        let found = USER_CACHE.lock().unwrap().as_mut().and_then(|cache| {
-            cache.get_by_name(name, |lower| {
-                let found = profiles::find_by_name(&profiles::discovery_url(), lower);
-                if found.is_none() {
-                    log("WARN", &format!("Couldn't find profile with name: {lower}"));
-                }
-                found
-            })
-        });
-        if found.is_none() {
-            let unknown = Text::translate("argument.player.unknown", &[]);
-            log("INFO", &format!("System chat: {}", unknown.plain()));
-        }
-        found
-    }
-
     /// MinecraftServer.sendSystemMessage: what the console is told; while
     /// the console runs a command, the replies vanilla broadcasts go to the
     /// operators too.
@@ -1319,6 +1229,123 @@ impl Game<'_> {
         }
     }
 
+    fn stop_dedicated(&mut self) -> Result<()> {
+        log("INFO", "Stopping server");
+        log("INFO", "Saving players");
+        if let Some(h) = self.sim.lan.as_mut() {
+            for g in &h.hub.guests {
+                horizon_client::lan::playerdata::save(g, &self.sim.world_root);
+            }
+        }
+        if let Some(h) = self.sim.lan.as_ref() {
+            for g in &h.hub.guests {
+                self.save_guest_records(h, g);
+            }
+        }
+        if let Some(h) = self.lan.as_mut() {
+            let conns: Vec<u32> = h.hub.guests.iter().map(|g| g.conn).collect();
+            for conn in conns {
+                h.hub.kick(
+                    conn,
+                    translatable("multiplayer.disconnect.server_shutdown", &[]),
+                );
+            }
+        }
+        std::thread::sleep(Duration::from_millis(100));
+        log("INFO", "Saving worlds");
+        self.save_game()?;
+        self.log_saved_levels();
+        self.lan_close(false);
+        Ok(())
+    }
+}
+impl crate::game::Sim<'_> {
+    /// The chunks to keep loaded: the players' (lan_update_streaming), or
+    /// the spawn chunk while nobody is online.
+    pub(super) fn update_dedicated_streaming(&mut self) {
+        let center = self
+            .lan
+            .as_ref()
+            .and_then(|h| {
+                h.hub
+                    .guests
+                    .iter()
+                    .find(|g| h.hub.here(g))
+                    .map(|g| g.chunk())
+            })
+            .or_else(|| {
+                self.spawn
+                    .map(|s| ((s.x.floor() as i32) >> 4, (s.z.floor() as i32) >> 4))
+            });
+        if let Some(c) = center {
+            self.streaming.center = c;
+        }
+    }
+    /// ServerGamePacketListenerImpl.tick: players idle longer than the
+    /// timeout are kicked.
+    fn kick_idle(&mut self, minutes: i32) {
+        let Some(host) = self.lan.as_mut() else {
+            return;
+        };
+        let limit = u64::try_from(minutes).unwrap_or(0) * 1200;
+        let idle: Vec<u32> = host
+            .hub
+            .guests
+            .iter()
+            .filter(|g| host.hub.ticks.saturating_sub(g.last_action_tick) > limit)
+            .map(|g| g.conn)
+            .collect();
+        for conn in idle {
+            host.hub
+                .kick(conn, translatable("multiplayer.disconnect.idling", &[]));
+        }
+    }
+    /// Ops' permission levels for the hub (PlayerList.getProfilePermissions).
+    fn sync_ops(&mut self, lists: &Arc<Mutex<Lists>>) {
+        let Some(host) = self.lan.as_mut() else {
+            return;
+        };
+        host.hub.ops = lists
+            .lock()
+            .unwrap()
+            .ops
+            .entries()
+            .iter()
+            .map(|e| (e.user.id, e.level as u8))
+            .collect();
+        host.hub.resend_commands();
+    }
+    /// A player on the server, by name.
+    fn online_player(&self, name: &str) -> Option<NameAndId> {
+        let hub = &self.lan.as_ref()?.hub;
+        let g = hub
+            .guests
+            .iter()
+            .find(|g| g.name.eq_ignore_ascii_case(name))?;
+        Some(NameAndId {
+            id: g.uuid,
+            name: g.name.clone(),
+        })
+    }
+    /// GameProfileArgument for a name: the user cache, else the profile
+    /// service, else (offline) the offline player. None, told to the console:
+    /// no such player.
+    fn resolve(&self, name: &str) -> Option<NameAndId> {
+        let found = USER_CACHE.lock().unwrap().as_mut().and_then(|cache| {
+            cache.get_by_name(name, |lower| {
+                let found = profiles::find_by_name(&profiles::discovery_url(), lower);
+                if found.is_none() {
+                    log("WARN", &format!("Couldn't find profile with name: {lower}"));
+                }
+                found
+            })
+        });
+        if found.is_none() {
+            let unknown = Text::translate("argument.player.unknown", &[]);
+            log("INFO", &format!("System chat: {}", unknown.plain()));
+        }
+        found
+    }
     /// DedicatedServerSettings.update: change one key and store the file.
     fn store_property(&mut self, key: &str, value: String) {
         let path = PathBuf::from("server.properties");
@@ -1328,7 +1355,6 @@ impl Game<'_> {
             let _ = p.store(&path);
         }
     }
-
     /// MinecraftServer.kickUnlistedPlayers: with `enforce-whitelist` and the
     /// whitelist on, whoever is online and not on the whitelist file is
     /// disconnected (operators are not spared here).
@@ -1360,7 +1386,6 @@ impl Game<'_> {
             );
         }
     }
-
     fn kick_uuid(&mut self, uuid: u128, reason: Tag) {
         if let Some(h) = self.lan.as_mut() {
             let conns: Vec<u32> = h
@@ -1375,7 +1400,6 @@ impl Game<'_> {
             }
         }
     }
-
     /// MinecraftServer.stopServer: players saved and sent away, worlds saved.
     /// MinecraftServer.saveAllChunks, not silent: one line per level, in
     /// the server's level order.
@@ -1393,36 +1417,6 @@ impl Game<'_> {
                 ),
             );
         }
-    }
-
-    fn stop_dedicated(&mut self) -> Result<()> {
-        log("INFO", "Stopping server");
-        log("INFO", "Saving players");
-        if let Some(h) = self.lan.as_mut() {
-            for g in &h.hub.guests {
-                horizon_client::lan::playerdata::save(g, &self.world_root);
-            }
-        }
-        if let Some(h) = self.lan.as_ref() {
-            for g in &h.hub.guests {
-                self.save_guest_records(h, g);
-            }
-        }
-        if let Some(h) = self.lan.as_mut() {
-            let conns: Vec<u32> = h.hub.guests.iter().map(|g| g.conn).collect();
-            for conn in conns {
-                h.hub.kick(
-                    conn,
-                    translatable("multiplayer.disconnect.server_shutdown", &[]),
-                );
-            }
-        }
-        std::thread::sleep(Duration::from_millis(100));
-        log("INFO", "Saving worlds");
-        self.save_game()?;
-        self.log_saved_levels();
-        self.lan_close(false);
-        Ok(())
     }
 }
 

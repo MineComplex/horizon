@@ -57,40 +57,6 @@ fn block(p: [f64; 3]) -> [i32; 3] {
 }
 
 impl Game<'_> {
-    /// `OminousItemSpawner.create` added at `position`.
-    pub(super) fn add_ominous_item_spawner(
-        &mut self,
-        item: ItemStack,
-        position: [f64; 3],
-        delay: i32,
-    ) {
-        self.ominous_spawners.push(OminousItemSpawner {
-            item,
-            position,
-            spawn_item_after: i64::from(delay),
-            tick_count: 0,
-            uuid: horizon_client::save::random_uuid(),
-            raw: None,
-        });
-    }
-    /// A saved spawner, as `readAdditionalSaveData` leaves it: its tick
-    /// count starts again from 0.
-    pub(super) fn load_ominous_item_spawner(&mut self, tag: horizon_world::nbt::Tag) {
-        let Some((item, at, spawn_item_after)) =
-            horizon_client::entity_nbt::ominous_item_spawner_from_nbt(&tag)
-        else {
-            return;
-        };
-        self.ominous_spawners.push(OminousItemSpawner {
-            item,
-            position: [at.x, at.y, at.z],
-            spawn_item_after,
-            tick_count: 0,
-            uuid: horizon_client::entity_nbt::uuid(&tag)
-                .unwrap_or_else(horizon_client::save::random_uuid),
-            raw: Some(Box::new(tag)),
-        });
-    }
     /// Every item spawner's tick: `commonTick`'s count, `tickServer` (the
     /// warning sound, then the item) and `tickClient` (particles every 5
     /// game ticks).
@@ -139,22 +105,6 @@ impl Game<'_> {
         self.level_event_at(3021, at, 1);
         self.post_block_game_event("minecraft:entity_place", at, None, None);
     }
-    /// `OminousItemSpawner.addParticles`: one to three ominous spawning
-    /// particles from the spawner out to points around it.
-    fn ominous_spawner_particles(&mut self, at: [f64; 3]) {
-        let options = ParticleOptions::simple(ParticleType::OminousSpawning);
-        let r = self.particles.random();
-        let count = r.next_int_between_inclusive(1, 3).unwrap_or(1);
-        let mut flights = Vec::new();
-        for _ in 0..count {
-            let mut spread = || 0.4 * (r.next_gaussian() - r.next_gaussian());
-            let from = [at[0] + spread(), at[1] + spread(), at[2] + spread()];
-            flights.push([from[0] - at[0], from[1] - at[1], from[2] - at[2]]);
-        }
-        for v in flights {
-            self.particles.add(&options, at, v);
-        }
-    }
     /// `OminousItemSpawnerRenderer`: the item, full bright, growing over its
     /// first 50 ticks and turning.
     pub(super) fn ominous_item_spawner_geometry(
@@ -192,6 +142,58 @@ impl Game<'_> {
             ) {
                 self.submit_item_world(&state, copy, vertex_light(0xFF), out);
             }
+        }
+    }
+}
+impl crate::game::Sim<'_> {
+    /// `OminousItemSpawner.create` added at `position`.
+    pub(super) fn add_ominous_item_spawner(
+        &mut self,
+        item: ItemStack,
+        position: [f64; 3],
+        delay: i32,
+    ) {
+        self.ominous_spawners.push(OminousItemSpawner {
+            item,
+            position,
+            spawn_item_after: i64::from(delay),
+            tick_count: 0,
+            uuid: horizon_client::save::random_uuid(),
+            raw: None,
+        });
+    }
+    /// A saved spawner, as `readAdditionalSaveData` leaves it: its tick
+    /// count starts again from 0.
+    pub(super) fn load_ominous_item_spawner(&mut self, tag: horizon_world::nbt::Tag) {
+        let Some((item, at, spawn_item_after)) =
+            horizon_client::entity_nbt::ominous_item_spawner_from_nbt(&tag)
+        else {
+            return;
+        };
+        self.ominous_spawners.push(OminousItemSpawner {
+            item,
+            position: [at.x, at.y, at.z],
+            spawn_item_after,
+            tick_count: 0,
+            uuid: horizon_client::entity_nbt::uuid(&tag)
+                .unwrap_or_else(horizon_client::save::random_uuid),
+            raw: Some(Box::new(tag)),
+        });
+    }
+    /// `OminousItemSpawner.addParticles`: one to three ominous spawning
+    /// particles from the spawner out to points around it.
+    fn ominous_spawner_particles(&mut self, at: [f64; 3]) {
+        let options = ParticleOptions::simple(ParticleType::OminousSpawning);
+        let r = self.particles.random();
+        let count = r.next_int_between_inclusive(1, 3).unwrap_or(1);
+        let mut flights = Vec::new();
+        for _ in 0..count {
+            let mut spread = || 0.4 * (r.next_gaussian() - r.next_gaussian());
+            let from = [at[0] + spread(), at[1] + spread(), at[2] + spread()];
+            flights.push([from[0] - at[0], from[1] - at[1], from[2] - at[2]]);
+        }
+        for v in flights {
+            self.particles.add(&options, at, v);
         }
     }
 }

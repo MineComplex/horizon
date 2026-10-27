@@ -15,73 +15,12 @@ fn num(n: impl std::fmt::Display) -> Text {
 }
 
 impl Game<'_> {
-    fn state_transforms(&self) -> Option<&'static StateTransforms> {
-        static TRANSFORMS: OnceLock<Option<StateTransforms>> = OnceLock::new();
-        TRANSFORMS
-            .get_or_init(|| {
-                let json = std::fs::read_to_string(
-                    self.options
-                        .resources
-                        .join("worldgen/blocks/structure-blocks.json"),
-                )
-                .ok()?;
-                StateTransforms::from_json(&json, self.pack.assets.registry.len()).ok()
-            })
-            .as_ref()
-    }
-    /// A template by id: a structure block's save in the world, then the
-    /// vanilla templates.
-    fn load_template(&self, id: &str) -> Option<Arc<StructureTemplate>> {
-        let (ns, path) = id.split_once(':').unwrap_or(("minecraft", id));
-        let candidates = [
-            self.world_root
-                .join("generated")
-                .join(ns)
-                .join("structures")
-                .join(format!("{path}.nbt")),
-            self.options
-                .resources
-                .join("worldgen/structure")
-                .join(ns)
-                .join(format!("{path}.nbt")),
-        ];
-        let transforms = self.state_transforms()?;
-        for file in candidates {
-            let Ok(bytes) = std::fs::read(&file) else {
-                continue;
-            };
-            let Ok(raw) = Compression::Gzip.decode(&bytes, 1 << 28) else {
-                continue;
-            };
-            let Ok((named, _)) = nbt::read_named(&raw, Limits::templates()) else {
-                continue;
-            };
-            return Some(Arc::new(StructureTemplate::from_nbt(
-                &named.tag,
-                self.pack.assets.registry,
-                transforms,
-            )));
-        }
-        None
-    }
     /// `BlockPosArgument.getLoadedBlockPos(pos)`, or the source's block.
     fn place_pos(&self, ctx: &Context, name: &str) -> R<[i32; 3]> {
         if ctx.get(name).is_some() {
             return self.block_pos_arg(ctx, name);
         }
         Ok(self.source_position().map(|v| v.floor() as i32))
-    }
-    /// `PlaceCommand.checkLoaded`: every chunk of the inclusive range.
-    fn place_check_loaded(&self, min: [i32; 2], max: [i32; 2]) -> R<()> {
-        let dimension = self.command_source.map_or(self.dim, |s| s.dimension);
-        for cx in min[0]..=max[0] {
-            for cz in min[1]..=max[1] {
-                if dimension != self.dim || !self.world.chunks.contains_key(&(cx, cz)) {
-                    return Err(err("argument.pos.unloaded", &[]));
-                }
-            }
-        }
-        Ok(())
     }
     /// `PlaceCommand.placeFeature`, `placeJigsaw` and `placeStructure`.
     pub(super) fn cmd_place_generated(&mut self, id: &str, ctx: &Context) -> R<i32> {
@@ -278,5 +217,68 @@ impl Game<'_> {
             &[Text::literal(id), num(pos[0]), num(pos[1]), num(pos[2])],
         ));
         Ok(1)
+    }
+}
+impl crate::game::Sim<'_> {
+    fn state_transforms(&self) -> Option<&'static StateTransforms> {
+        static TRANSFORMS: OnceLock<Option<StateTransforms>> = OnceLock::new();
+        TRANSFORMS
+            .get_or_init(|| {
+                let json = std::fs::read_to_string(
+                    self.options
+                        .resources
+                        .join("worldgen/blocks/structure-blocks.json"),
+                )
+                .ok()?;
+                StateTransforms::from_json(&json, self.pack.assets.registry.len()).ok()
+            })
+            .as_ref()
+    }
+    /// A template by id: a structure block's save in the world, then the
+    /// vanilla templates.
+    fn load_template(&self, id: &str) -> Option<Arc<StructureTemplate>> {
+        let (ns, path) = id.split_once(':').unwrap_or(("minecraft", id));
+        let candidates = [
+            self.world_root
+                .join("generated")
+                .join(ns)
+                .join("structures")
+                .join(format!("{path}.nbt")),
+            self.options
+                .resources
+                .join("worldgen/structure")
+                .join(ns)
+                .join(format!("{path}.nbt")),
+        ];
+        let transforms = self.state_transforms()?;
+        for file in candidates {
+            let Ok(bytes) = std::fs::read(&file) else {
+                continue;
+            };
+            let Ok(raw) = Compression::Gzip.decode(&bytes, 1 << 28) else {
+                continue;
+            };
+            let Ok((named, _)) = nbt::read_named(&raw, Limits::templates()) else {
+                continue;
+            };
+            return Some(Arc::new(StructureTemplate::from_nbt(
+                &named.tag,
+                self.pack.assets.registry,
+                transforms,
+            )));
+        }
+        None
+    }
+    /// `PlaceCommand.checkLoaded`: every chunk of the inclusive range.
+    fn place_check_loaded(&self, min: [i32; 2], max: [i32; 2]) -> R<()> {
+        let dimension = self.command_source.map_or(self.dim, |s| s.dimension);
+        for cx in min[0]..=max[0] {
+            for cz in min[1]..=max[1] {
+                if dimension != self.dim || !self.world.chunks.contains_key(&(cx, cz)) {
+                    return Err(err("argument.pos.unloaded", &[]));
+                }
+            }
+        }
+        Ok(())
     }
 }
