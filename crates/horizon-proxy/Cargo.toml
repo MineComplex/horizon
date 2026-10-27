@@ -1,0 +1,36 @@
+[package]
+name = "horizon-proxy"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Horizon's proxy: MineComplex's Velocity fork in Rust (26.3 only, modern forwarding, launcher-token login, the Network plugin on Core)"
+
+[dependencies]
+horizon-protocol = { path = "../horizon-protocol" }
+horizon-world = { path = "../horizon-world" }
+# Modern forwarding's HMAC-SHA256 (both already in the lockfile).
+hmac = "0.12"
+sha2 = "0.10"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml = "1.1"
+# The event loop: every connection is a task (Velocity runs on Netty).
+tokio = { version = "1", features = ["rt-multi-thread", "net", "io-util", "io-std", "time", "sync", "macros"] }
+# Core, the network's gRPC service (the Network plugin's CoreClient).
+tonic = { version = "0.14", default-features = false, features = ["transport", "codegen"] }
+tonic-prost = "0.14"
+prost = "0.14"
+tokio-stream = "0.1"
+
+[build-dependencies]
+# Core's .proto files compiled without protoc.
+tonic-prost-build = { version = "0.14", default-features = false, features = ["transport"] }
+protox = "0.9"
+
+[[bin]]
+name = "horizon-proxy"
+path = "src/main.rs"
+
+[lints]
+workspace = true

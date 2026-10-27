@@ -1,0 +1,54 @@
+# The Network plugin of MineComplex (Network/Proxy): the proxy as a node of Core.
+# The same keys as its config.yml.
+
+[core]
+host = "127.0.0.1"
+port = 7500
+token = ""
+# Unique id of this proxy in Core; "proxy" when empty.
+node = ""
+
+[bungee]
+name = "MINECOMPLEX"
+max-players = 2025
+description = [
+    "&b&lMINECOMPLEX &f(1.16.5+)",
+    " ",
+    "&8▸ &fВК &7» #FFC218https://vk.com/minecomplex",
+    "&8▸ &fДискорд &7» &b#FFC218https://discord.minecomplex.net",
+    "&8▸ &fСайт &7» &b#FFC218minecomplex.net",
+    " ",
+]
+# Seconds between MOTDs.
+motd-delay = 3
+# [[bungee.motds]]
+# first = "..."
+# second = "..."
+
+[commands]
+# Seconds between two commands of a player.
+cooldown = 1
+cooldown-exclusions = []
+blocked = ["version", "plugins", "about", "icanhasbukkit", "pl", "ver", "credits", "me", "say"]
+
+[settings]
+# Seconds between two /lobby of a player.
+lobby-cooldown = 3.0
+# Players of one ip on this proxy.
+ip-connections-limit = 5
+
+[maintenance]
+kick-message = [
+    "<red>На сервере ведутся тех.  работы!",
+    "<red>Следите за новостями: https://discord.minecomplex.net",
+]
+
+[broadcast]
+# Seconds between two announcements.
+delay = 300
+# [[broadcast.messages]]
+# lines = ["..."]
+# center = false
+
+[fallback]
+ignore-reasons = ["заблокированы", "забанены", "кикнуты", "кикнут", "забанен", "заблокирован", "banned", "kicked", "ban", "отправляете"]

@@ -1,0 +1,106 @@
+syntax = "proto3";
+
+package minecomplex.core.v1;
+
+import "minecomplex/core/v1/common.proto";
+
+option java_package = "ru.minecomplex.core.protocol";
+option java_multiple_files = true;
+option java_outer_classname = "ReportsProto";
+
+// Reports and questions to the staff, they live in the core memory and expire.
+// New ones are sent to the "staff" topic.
+service ReportService {
+  rpc SendReport(ReportCreate) returns (ReportResult);
+  rpc GetReport(ReportRequest) returns (ReportResponse);
+  rpc ListReports(ReportListQuery) returns (ReportList);
+  // Returns false if the report was already closed by someone else
+  rpc CloseReport(ReportRequest) returns (BoolValue);
+
+  rpc AskQuestion(QuestionCreate) returns (QuestionResult);
+  rpc GetQuestion(PlayerRequest) returns (QuestionResponse);
+  rpc ListQuestions(Empty) returns (QuestionList);
+  rpc CloseQuestion(PlayerRequest) returns (BoolValue);
+}
+
+message ReportView {
+  string id = 1;
+  string issuer = 2;
+  string target = 3;
+  string server = 4;
+  string reason = 5;
+  int64 created_at = 6;
+}
+
+message ReportCreate {
+  string issuer = 1;
+  string target = 2;
+  string server = 3;
+  string reason = 4;
+  // Minimal time between reports of the issuer
+  int64 cooldown = 5;
+}
+
+enum ReportCode {
+  REPORT_CODE_UNSPECIFIED = 0;
+  REPORT_OK = 1;
+  REPORT_COOLDOWN = 2;
+  // The issuer already has an open report on the target
+  REPORT_DUPLICATE = 3;
+  REPORT_TARGET_OFFLINE = 4;
+  REPORT_TARGET_STAFF = 5;
+}
+
+message ReportResult {
+  ReportCode code = 1;
+  optional ReportView report = 2;
+}
+
+message ReportRequest {
+  string report = 1;
+}
+
+message ReportResponse {
+  optional ReportView report = 1;
+}
+
+message ReportListQuery {
+  optional string target = 1;
+  optional string issuer = 2;
+}
+
+message ReportList {
+  repeated ReportView reports = 1;
+}
+
+message QuestionView {
+  string player = 1;
+  string server = 2;
+  string message = 3;
+  int64 created_at = 4;
+}
+
+message QuestionCreate {
+  string player = 1;
+  string server = 2;
+  string message = 3;
+}
+
+enum QuestionCode {
+  QUESTION_CODE_UNSPECIFIED = 0;
+  QUESTION_OK = 1;
+  QUESTION_ALREADY_ASKED = 2;
+}
+
+message QuestionResult {
+  QuestionCode code = 1;
+  optional QuestionView question = 2;
+}
+
+message QuestionResponse {
+  optional QuestionView question = 1;
+}
+
+message QuestionList {
+  repeated QuestionView questions = 1;
+}

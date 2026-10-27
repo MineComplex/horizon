@@ -1,0 +1,133 @@
+syntax = "proto3";
+
+package minecomplex.core.v1;
+
+import "minecomplex/core/v1/common.proto";
+
+option java_package = "ru.minecomplex.core.protocol";
+option java_multiple_files = true;
+option java_outer_classname = "SocialsProto";
+
+// Requests confirmed through social networks: linking, login confirmation, password change, unlinking.
+// Bots answer requests with atomic calls, the core performs the action itself.
+// New requests for bots are sent to the "bots" topic.
+service SocialService {
+  rpc CreateRequest(SocialRequestCreate) returns (SocialRequestView);
+  rpc GetRequest(SocialRequestLookup) returns (SocialRequestResponse);
+  rpc FindRequests(SocialRequestQuery) returns (SocialRequestList);
+  // Deletes the request, returns true only for the call that has deleted it
+  rpc ClaimRequest(SocialRequestLookup) returns (BoolValue);
+
+  // Answer of the social network user to a request with buttons.
+  // Without request id the only pending request of the user is answered.
+  rpc Answer(SocialAnswer) returns (SocialAnswerResult);
+  // Links the account by the code the player has received on the server
+  rpc RedeemLinkCode(LinkCode) returns (SocialActionResult);
+  rpc UnlinkBySocial(SocialUser) returns (SocialActionResult);
+
+  // Discord roles of the account, sent to bots
+  rpc UpdateRoles(RolesUpdate) returns (Empty);
+  rpc RemoveRoles(PlayerRequest) returns (Empty);
+
+  rpc SetMemberCounts(MemberCounts) returns (Empty);
+  rpc GetMemberCounts(Empty) returns (MemberCounts);
+}
+
+message SocialRequestView {
+  string id = 1;
+  optional int64 user = 2;
+  int32 code = 3;
+  string player = 4;
+  optional string ip = 5;
+  // SocialType name
+  string type = 6;
+  // SocialAction name
+  string action = 7;
+  // Hidden for password changes
+  optional string payload = 8;
+  int64 expires_at = 9;
+}
+
+message SocialRequestCreate {
+  string player = 1;
+  // Empty to use the login confirmation network of the account
+  optional string type = 2;
+  string action = 3;
+  optional string ip = 4;
+  optional string payload = 5;
+  // Social user the request is sent to, empty to use the linked one
+  optional int64 user = 6;
+}
+
+message SocialRequestLookup {
+  string request = 1;
+}
+
+message SocialRequestResponse {
+  optional SocialRequestView request = 1;
+}
+
+message SocialRequestQuery {
+  optional int32 code = 1;
+  optional int64 user = 2;
+  optional string player = 3;
+  optional string type = 4;
+  optional string action = 5;
+  // Only requests which are not expired
+  bool pending_only = 6;
+}
+
+message SocialRequestList {
+  repeated SocialRequestView requests = 1;
+}
+
+message SocialAnswer {
+  optional string request = 1;
+  int64 user = 2;
+  string type = 3;
+  bool allow = 4;
+}
+
+enum SocialCode {
+  SOCIAL_CODE_UNSPECIFIED = 0;
+  SOCIAL_OK = 1;
+  SOCIAL_NOT_FOUND = 2;
+  SOCIAL_EXPIRED = 3;
+  // More than one request could be answered, the answer must carry the request id
+  SOCIAL_AMBIGUOUS = 4;
+  SOCIAL_NOT_LINKED = 5;
+  SOCIAL_ALREADY_LINKED = 6;
+  SOCIAL_ACCOUNT_NOT_FOUND = 7;
+}
+
+message SocialAnswerResult {
+  SocialCode code = 1;
+  optional SocialRequestView request = 2;
+  optional string account_name = 3;
+}
+
+message LinkCode {
+  int64 user = 1;
+  string type = 2;
+  int32 code = 3;
+}
+
+message SocialUser {
+  int64 user = 1;
+  string type = 2;
+}
+
+message SocialActionResult {
+  SocialCode code = 1;
+  optional string account_name = 2;
+}
+
+message RolesUpdate {
+  string player = 1;
+  repeated string groups = 2;
+}
+
+message MemberCounts {
+  // SocialType name -> members
+  map<string, int32> counts = 1;
+}

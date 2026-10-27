@@ -1,0 +1,59 @@
+syntax = "proto3";
+
+package minecomplex.core.v1;
+
+import "minecomplex/core/v1/common.proto";
+
+option java_package = "ru.minecomplex.core.protocol";
+option java_multiple_files = true;
+option java_outer_classname = "ServersProto";
+
+// Registry of game servers. A server sends ServerStatus through its session, the registry is sent to
+// the "servers" topic when it changes.
+service ServerService {
+  rpc List(ServerListQuery) returns (ServerList);
+  rpc Get(ServerRequest) returns (ServerResponse);
+}
+
+message ServerView {
+  string id = 1;
+  // ServerType name
+  string type = 2;
+  optional int32 number = 3;
+  // ServerState name, OFFLINE when the server session is closed
+  string state = 4;
+  int32 online = 5;
+  int32 max_players = 6;
+  repeated string description = 7;
+  repeated string whitelist = 8;
+  int64 last_update = 9;
+}
+
+// Sent by a game server through its session when anything changes and every few seconds
+message ServerStatus {
+  string type = 1;
+  optional int32 number = 2;
+  string state = 3;
+  int32 online = 4;
+  int32 max_players = 5;
+  repeated string description = 6;
+  repeated string whitelist = 7;
+}
+
+message ServerListQuery {
+  // Empty for all types
+  optional string type = 1;
+  bool active_only = 2;
+}
+
+message ServerList {
+  repeated ServerView servers = 1;
+}
+
+message ServerRequest {
+  string server = 1;
+}
+
+message ServerResponse {
+  optional ServerView server = 1;
+}

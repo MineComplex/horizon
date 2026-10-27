@@ -1,0 +1,43 @@
+syntax = "proto3";
+
+package minecomplex.core.v1;
+
+import "minecomplex/core/v1/common.proto";
+
+option java_package = "ru.minecomplex.core.protocol";
+option java_multiple_files = true;
+option java_outer_classname = "ActionsProto";
+
+// Log of player actions for the staff: joins, commands and others.
+service ActionService {
+  rpc Log(ActionLog) returns (Empty);
+  rpc List(ActionQuery) returns (ActionList);
+}
+
+message ActionView {
+  string id = 1;
+  optional string player = 2;
+  optional string ip = 3;
+  optional string server = 4;
+  optional string action = 5;
+  int64 timestamp = 6;
+}
+
+message ActionLog {
+  string player = 1;
+  optional string ip = 2;
+  string server = 3;
+  optional string action = 4;
+}
+
+message ActionQuery {
+  optional string player = 1;
+  optional string ip = 2;
+  optional string server = 3;
+  optional int64 since = 4;
+  Page page = 5;
+}
+
+message ActionList {
+  repeated ActionView actions = 1;
+}

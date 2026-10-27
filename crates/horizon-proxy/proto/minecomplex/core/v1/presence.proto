@@ -1,0 +1,51 @@
+syntax = "proto3";
+
+package minecomplex.core.v1;
+
+import "minecomplex/core/v1/accounts.proto";
+import "minecomplex/core/v1/common.proto";
+import "minecomplex/core/v1/users.proto";
+
+option java_package = "ru.minecomplex.core.protocol";
+option java_multiple_files = true;
+option java_outer_classname = "PresenceProto";
+
+// Called by proxies only. The core is the owner of the online state, a proxy reports what happens
+// with its connections. When a proxy session ends, the core removes its players itself.
+// Players are authenticated by the proxy with the launcher token, the game has no authorization.
+service PresenceService {
+  // Player is authenticated by the launcher, the core lets the account into the network.
+  rpc Join(JoinRequest) returns (JoinResponse);
+  // Player has connected to a game server.
+  rpc Switch(SwitchRequest) returns (Empty);
+  // Player has left the network.
+  rpc Leave(PlayerRequest) returns (Empty);
+}
+
+message JoinRequest {
+  // Account id
+  string player = 1;
+  string name = 2;
+  string ip = 3;
+  bool staff = 4;
+}
+
+enum JoinResult {
+  JOIN_RESULT_UNSPECIFIED = 0;
+  JOIN_OK = 1;
+  // The account is already in game through another connection
+  JOIN_ALREADY_ONLINE = 2;
+  // There is no account with this id, the player is not let in
+  JOIN_NO_ACCOUNT = 3;
+}
+
+message JoinResponse {
+  JoinResult result = 1;
+  optional AccountView account = 2;
+  optional PresenceView presence = 3;
+}
+
+message SwitchRequest {
+  string player = 1;
+  string server = 2;
+}

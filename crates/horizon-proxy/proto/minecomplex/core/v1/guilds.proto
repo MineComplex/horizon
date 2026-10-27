@@ -1,0 +1,155 @@
+syntax = "proto3";
+
+package minecomplex.core.v1;
+
+import "minecomplex/core/v1/common.proto";
+
+option java_package = "ru.minecomplex.core.protocol";
+option java_multiple_files = true;
+option java_outer_classname = "GuildsProto";
+
+// Guilds. Ranks, prices, limits and uniqueness are checked by the core, members get GuildView updates.
+service GuildService {
+  rpc Get(GuildQuery) returns (GuildResponse);
+  rpc List(GuildListQuery) returns (GuildList);
+
+  // Charges the creation price from the account of the player
+  rpc Create(GuildCreate) returns (GuildResult);
+  rpc Disband(PlayerRequest) returns (GuildResult);
+  rpc Invite(GuildTarget) returns (GuildResult);
+  rpc RevokeInvite(GuildTarget) returns (GuildResult);
+  // Accepts the invitation of the guild
+  rpc Join(GuildJoin) returns (GuildResult);
+  rpc Leave(PlayerRequest) returns (GuildResult);
+  rpc Kick(GuildTarget) returns (GuildResult);
+  rpc Promote(GuildTarget) returns (GuildResult);
+  rpc Demote(GuildTarget) returns (GuildResult);
+  rpc TransferLeader(GuildTarget) returns (GuildResult);
+  // Moves gems from the account of the player to the treasury
+  rpc Deposit(GuildDeposit) returns (GuildResult);
+  // Buys the next level of the upgrade from the treasury
+  rpc Upgrade(GuildUpgradeRequest) returns (GuildResult);
+  rpc SetTag(GuildText) returns (GuildResult);
+  rpc SetColor(GuildText) returns (GuildResult);
+  rpc SetDescription(GuildText) returns (GuildResult);
+}
+
+message GuildMemberView {
+  string player = 1;
+  // GuildRank name
+  string rank = 2;
+  int32 donated = 3;
+  int64 entered_at = 4;
+}
+
+message GuildTransactionView {
+  string player = 1;
+  string type = 2;
+  int32 amount = 3;
+  int64 timestamp = 4;
+}
+
+message GuildView {
+  string id = 1;
+  string name = 2;
+  optional string tag = 3;
+  optional string color = 4;
+  optional string description = 5;
+  int32 balance = 6;
+  int64 created_at = 7;
+  repeated GuildMemberView members = 8;
+  repeated string invitations = 9;
+  // GuildUpgrade id -> level
+  map<string, int32> upgrades = 10;
+  repeated GuildTransactionView transactions = 11;
+  int64 version = 12;
+}
+
+message GuildQuery {
+  oneof key {
+    string id = 1;
+    // Name or tag, case insensitive
+    string name = 2;
+    string player = 3;
+  }
+}
+
+message GuildResponse {
+  optional GuildView guild = 1;
+}
+
+message GuildListQuery {
+  Page page = 1;
+  // Part of the name or tag
+  string search = 2;
+}
+
+message GuildList {
+  repeated GuildView guilds = 1;
+  int64 total = 2;
+}
+
+enum GuildCode {
+  GUILD_CODE_UNSPECIFIED = 0;
+  GUILD_OK = 1;
+  GUILD_NOT_IN_GUILD = 2;
+  GUILD_ALREADY_IN_GUILD = 3;
+  GUILD_NO_PERMISSION = 4;
+  GUILD_NAME_TAKEN = 5;
+  GUILD_NOT_ENOUGH_GEMS = 6;
+  GUILD_NOT_ENOUGH_TREASURY = 7;
+  GUILD_NOT_INVITED = 8;
+  GUILD_ALREADY_INVITED = 9;
+  GUILD_ALREADY_MEMBER = 10;
+  GUILD_NOT_MEMBER = 11;
+  GUILD_FULL = 12;
+  GUILD_TARGET_BLOCKED = 13;
+  GUILD_INVITES_DISABLED = 14;
+  GUILD_LEADER_CANNOT_LEAVE = 15;
+  GUILD_UPGRADE_LOCKED = 16;
+  GUILD_UPGRADE_MAX = 17;
+  GUILD_ALREADY_SET = 18;
+  GUILD_INVALID = 19;
+  GUILD_NOT_FOUND = 20;
+  GUILD_SELF = 21;
+  GUILD_ALREADY_RANK = 22;
+}
+
+message GuildResult {
+  GuildCode code = 1;
+  optional GuildView guild = 2;
+}
+
+message GuildCreate {
+  string player = 1;
+  string name = 2;
+  string op_id = 3;
+}
+
+message GuildTarget {
+  string player = 1;
+  string target = 2;
+}
+
+message GuildJoin {
+  string player = 1;
+  // Guild id, name or tag
+  string guild = 2;
+}
+
+message GuildDeposit {
+  string player = 1;
+  int32 amount = 2;
+  string op_id = 3;
+}
+
+message GuildUpgradeRequest {
+  string player = 1;
+  string upgrade = 2;
+  string op_id = 3;
+}
+
+message GuildText {
+  string player = 1;
+  string value = 2;
+}

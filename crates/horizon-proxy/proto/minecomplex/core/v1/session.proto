@@ -1,0 +1,285 @@
+syntax = "proto3";
+
+package minecomplex.core.v1;
+
+import "minecomplex/core/v1/accounts.proto";
+import "minecomplex/core/v1/anticheat.proto";
+import "minecomplex/core/v1/common.proto";
+import "minecomplex/core/v1/guilds.proto";
+import "minecomplex/core/v1/maintenance.proto";
+import "minecomplex/core/v1/messaging.proto";
+import "minecomplex/core/v1/parties.proto";
+import "minecomplex/core/v1/permissions.proto";
+import "minecomplex/core/v1/presence.proto";
+import "minecomplex/core/v1/punishments.proto";
+import "minecomplex/core/v1/reports.proto";
+import "minecomplex/core/v1/servers.proto";
+import "minecomplex/core/v1/socials.proto";
+import "minecomplex/core/v1/statistics.proto";
+import "minecomplex/core/v1/store.proto";
+import "minecomplex/core/v1/users.proto";
+
+option java_package = "ru.minecomplex.core.protocol";
+option java_multiple_files = true;
+option java_outer_classname = "SessionProto";
+
+// One session per node. The session is the presence of the node: when it ends, the core cleans up
+// everything the node was responsible for. Unary calls carry the session id in the metadata.
+service SessionService {
+  rpc Connect(stream NodeMessage) returns (stream CoreMessage);
+  // Traffic of every node since the start of the core
+  rpc Traffic(Empty) returns (TrafficView);
+}
+
+enum NodeKind {
+  NODE_KIND_UNSPECIFIED = 0;
+  PROXY = 1;
+  SERVER = 2;
+  SERVICE = 3;
+}
+
+message NodeMessage {
+  oneof message {
+    // First message of the session
+    Hello hello = 1;
+    // State of a proxy after (re)connection, the core rebuilds the presence of its players
+    ProxyResync proxy_resync = 2;
+    // State of a server after (re)connection
+    ServerResync server_resync = 3;
+    ServerStatus server_status = 4;
+    TopicChange topics = 5;
+  }
+}
+
+message Hello {
+  string node_id = 1;
+  NodeKind kind = 2;
+  int32 protocol_version = 3;
+  // Name of the software for logs, e.g. "Network 1.21"
+  string software = 4;
+  // Topics of events to receive: "servers", "staff", "chat", "activity", "bots", "signals" and custom ones
+  repeated string topics = 5;
+}
+
+message TopicChange {
+  repeated string subscribe = 1;
+  repeated string unsubscribe = 2;
+}
+
+message ResyncPlayer {
+  JoinRequest join = 1;
+  string server = 2;
+}
+
+message ProxyResync {
+  repeated ResyncPlayer players = 1;
+}
+
+message ServerResync {
+  ServerStatus status = 1;
+  // Players loaded on the server, the node is subscribed to them again
+  repeated string players = 2;
+}
+
+message CoreMessage {
+  oneof message {
+    Welcome welcome = 1;
+    Event event = 2;
+    // The session is closed by the core, e.g. replaced by a new connection of the same node
+    Goodbye goodbye = 3;
+  }
+}
+
+message Welcome {
+  string session_id = 1;
+  int32 protocol_version = 2;
+  int64 time = 3;
+  // True if the core has no state of the node, the node has to send its resync
+  bool resync = 4;
+}
+
+message Goodbye {
+  string reason = 1;
+}
+
+message Event {
+  int64 time = 1;
+  oneof payload {
+    // Player data, sent to the proxy of the player and to the nodes which have loaded the player
+    AccountView account = 10;
+    ProfileView profile = 11;
+    PresenceView presence = 12;
+    PlayerPunishments punishments = 13;
+    StatisticsReset statistics_reset = 14;
+    OrderReady order_ready = 15;
+    FriendNotice friend = 16;
+    AuthNotice auth = 17;
+    StatisticsView statistics = 18;
+    // Last snapshot of an anticheat session saved by another server, sent to the servers which hold the session
+    AnticheatSessionView anticheat = 19;
+
+    // Sent to the nodes of the members
+    PartyView party = 20;
+    PartyRemoved party_removed = 21;
+    GuildView guild = 22;
+    GuildRemoved guild_removed = 23;
+
+    // Sent to the proxy of the player, or to all proxies for alerts
+    PlayerMessage message = 30;
+    AlertMessage alert = 31;
+    PlayerKick kick = 32;
+    PlayerConnect connect = 33;
+
+    // Topics
+    ServerList servers = 40;
+    ChatMessage chat = 41;
+    StaffLogMessage staff_log = 42;
+    ReportView report = 43;
+    QuestionView question = 44;
+    PlayerActivity activity = 45;
+    NetworkSignal signal = 46;
+    BotNotice bot = 47;
+    CustomEvent custom = 48;
+    CatalogChanged catalog = 49;
+    LeaderboardsRefreshed leaderboards = 50;
+    // Sent to all proxies
+    MaintenanceView maintenance = 51;
+    // "permissions" topic
+    PermissionGroupView permission_group = 52;
+    PermissionGroupRemoved permission_group_removed = 53;
+    // Sent like the other player data
+    PermissionUserView permission_user = 54;
+  }
+}
+
+message PlayerPunishments {
+  string player = 1;
+  repeated PunishmentView active = 2;
+  // The punishment which has caused the change
+  optional PunishmentView changed = 3;
+}
+
+message OrderReady {
+  OrderView order = 1;
+}
+
+message PartyRemoved {
+  string party = 1;
+  repeated string members = 2;
+}
+
+message GuildRemoved {
+  string guild = 1;
+  repeated string members = 2;
+}
+
+enum FriendNoticeType {
+  FRIEND_NOTICE_UNSPECIFIED = 0;
+  FRIEND_NOTICE_REQUEST = 1;
+  FRIEND_NOTICE_ACCEPTED = 2;
+  FRIEND_NOTICE_DENIED = 3;
+  FRIEND_NOTICE_REMOVED = 4;
+  FRIEND_NOTICE_ONLINE = 5;
+}
+
+message FriendNotice {
+  // Receiver of the notice
+  string player = 1;
+  string friend = 2;
+  string friend_name = 3;
+  FriendNoticeType type = 4;
+}
+
+enum AuthNoticeType {
+  AUTH_NOTICE_UNSPECIFIED = 0;
+  AUTH_PASSWORD_CHANGED = 1;
+  AUTH_SOCIAL_LINKED = 2;
+  AUTH_SOCIAL_UNLINKED = 3;
+}
+
+message AuthNotice {
+  string player = 1;
+  AuthNoticeType type = 2;
+  // Ip which has changed the password, other sessions are closed
+  optional string ip = 3;
+  optional string social = 4;
+  // Social network is used to confirm launcher logins
+  bool totp = 5;
+}
+
+enum ActivityType {
+  ACTIVITY_UNSPECIFIED = 0;
+  ACTIVITY_CONNECT = 1;
+  ACTIVITY_SWITCH = 2;
+  ACTIVITY_DISCONNECT = 3;
+}
+
+message PlayerActivity {
+  ActivityType type = 1;
+  string player = 2;
+  string name = 3;
+  optional string from = 4;
+  optional string to = 5;
+  bool staff = 6;
+}
+
+message DiscordRoles {
+  int64 user = 1;
+  string name = 2;
+  repeated string groups = 3;
+  // All roles of the network are removed
+  bool remove = 4;
+}
+
+message BotNotice {
+  oneof notice {
+    SocialRequestView request = 1;
+    DiscordRoles roles = 2;
+  }
+}
+
+message CatalogChanged {
+  int64 version = 1;
+}
+
+message LeaderboardsRefreshed {
+  int64 time = 1;
+}
+
+// Bytes of the messages between the nodes and the core, counted by the core since its start. Nodes are
+// kept after they disconnect. HTTP/2 headers and the framing of gRPC are not counted.
+message TrafficView {
+  // Start of the counting
+  int64 since = 1;
+  int64 time = 2;
+  repeated NodeTrafficView nodes = 3;
+}
+
+message NodeTrafficView {
+  string node = 1;
+  NodeKind kind = 2;
+  // The session of the node is open
+  bool connected = 3;
+  repeated TrafficEntry entries = 4;
+}
+
+enum TrafficType {
+  TRAFFIC_UNSPECIFIED = 0;
+  // Unary call, the name is its method: "UserService/Load"
+  TRAFFIC_CALL = 1;
+  // Event sent through the session, the name is its payload: "presence"
+  TRAFFIC_EVENT = 2;
+  // Other messages of the session: "hello", "server_status", "welcome"
+  TRAFFIC_SESSION = 3;
+}
+
+message TrafficEntry {
+  TrafficType type = 1;
+  string name = 2;
+  // Calls or messages
+  int64 count = 3;
+  // Bytes sent by the node to the core
+  int64 sent = 4;
+  // Bytes received by the node from the core
+  int64 received = 5;
+}

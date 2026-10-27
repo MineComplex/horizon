@@ -1,0 +1,200 @@
+syntax = "proto3";
+
+package minecomplex.core.v1;
+
+import "minecomplex/core/v1/common.proto";
+
+option java_package = "ru.minecomplex.core.protocol";
+option java_multiple_files = true;
+option java_outer_classname = "PermissionsProto";
+
+// Permissions of the network: groups and the nodes of groups and players. Nodes are checked by the nodes of the
+// network themselves, the core only stores them and sends the changes. Every change is written to the log and can be
+// undone.
+//
+// Groups go to the "permissions" topic, the nodes of a player go to its proxy and to the nodes which have loaded it.
+service PermissionService {
+  rpc ListGroups(Empty) returns (PermissionGroupList);
+  rpc GetUser(PlayerRequest) returns (PermissionUserView);
+  // Players who have the group themselves, not by inheritance
+  rpc ListMembers(PermissionGroupRequest) returns (PermissionMembers);
+
+  rpc CreateGroup(PermissionGroupCreate) returns (PermissionChangeResult);
+  rpc DeleteGroup(PermissionGroupDelete) returns (PermissionChangeResult);
+  rpc UpdateGroup(PermissionGroupUpdate) returns (PermissionChangeResult);
+
+  // Replaces the node with the same key and contexts
+  rpc AddNode(PermissionNodeChange) returns (PermissionChangeResult);
+  // Removes the node with the same key and contexts
+  rpc RemoveNode(PermissionNodeChange) returns (PermissionChangeResult);
+  // Removes the nodes which start with the prefix, every node if it is empty
+  rpc ClearNodes(PermissionNodeClear) returns (PermissionChangeResult);
+
+  rpc GetLog(PermissionLogQuery) returns (PermissionLog);
+  // Applies the reverse of the change of the entry, as it is written to the log
+  rpc Undo(PermissionUndo) returns (PermissionChangeResult);
+  // Undoes the changes of the query which are not undone yet, the newest first
+  rpc Rollback(PermissionRollback) returns (PermissionRollbackResult);
+}
+
+message PermissionNodeView {
+  // Permission, "group.<name>" for inheritance, "prefix.<priority>.<text>" and "suffix.<priority>.<text>"
+  string key = 1;
+  bool value = 2;
+  // Millis, 0 for a permanent node
+  int64 expiry = 3;
+  // The node applies only where every context has this value, e.g. "server" -> "PRISON"
+  map<string, string> contexts = 4;
+}
+
+message PermissionGroupView {
+  string name = 1;
+  optional string display_name = 2;
+  int32 weight = 3;
+  repeated PermissionNodeView nodes = 4;
+  int64 version = 5;
+}
+
+message PermissionGroupList {
+  repeated PermissionGroupView groups = 1;
+}
+
+message PermissionGroupRemoved {
+  string name = 1;
+}
+
+message PermissionUserView {
+  string player = 1;
+  repeated PermissionNodeView nodes = 2;
+  // 0 while the player has no nodes stored
+  int64 version = 3;
+}
+
+message PermissionMembers {
+  repeated string players = 1;
+}
+
+// Who makes a change, written to the log
+message PermissionActor {
+  // Player id, empty for the console and the system
+  string id = 1;
+  string name = 2;
+}
+
+message PermissionHolderRef {
+  oneof holder {
+    string player = 1;
+    string group = 2;
+  }
+}
+
+message PermissionGroupRequest {
+  string name = 1;
+}
+
+message PermissionGroupCreate {
+  PermissionActor actor = 1;
+  string name = 2;
+}
+
+message PermissionGroupDelete {
+  PermissionActor actor = 1;
+  string name = 2;
+}
+
+message PermissionGroupUpdate {
+  PermissionActor actor = 1;
+  string name = 2;
+  optional int32 weight = 3;
+  // Empty removes the display name
+  optional string display_name = 4;
+}
+
+message PermissionNodeChange {
+  PermissionActor actor = 1;
+  PermissionHolderRef holder = 2;
+  PermissionNodeView node = 3;
+}
+
+message PermissionNodeClear {
+  PermissionActor actor = 1;
+  PermissionHolderRef holder = 2;
+  string prefix = 3;
+}
+
+enum PermissionCode {
+  PERMISSION_CODE_UNSPECIFIED = 0;
+  PERMISSION_OK = 1;
+  // The group or the log entry does not exist
+  PERMISSION_NOT_FOUND = 2;
+  PERMISSION_ALREADY_EXISTS = 3;
+  // Nothing to change: the node is already the same or there is no such node
+  PERMISSION_NOT_CHANGED = 4;
+  PERMISSION_INVALID = 5;
+  // The entry is already undone, or its change can't be reversed any more
+  PERMISSION_CONFLICT = 6;
+}
+
+message PermissionChangeResult {
+  PermissionCode code = 1;
+  // Entry of the log written for the change
+  optional string entry = 2;
+  // The changed holder, the caller applies it at once. Absent for a deleted group
+  optional PermissionUserView user = 3;
+  optional PermissionGroupView group = 4;
+}
+
+enum PermissionAction {
+  PERMISSION_ACTION_UNSPECIFIED = 0;
+  PERMISSION_NODE_ADD = 1;
+  PERMISSION_NODE_REMOVE = 2;
+  PERMISSION_NODE_CLEAR = 3;
+  PERMISSION_GROUP_CREATE = 4;
+  PERMISSION_GROUP_DELETE = 5;
+  PERMISSION_GROUP_UPDATE = 6;
+}
+
+message PermissionLogEntry {
+  string id = 1;
+  int64 time = 2;
+  PermissionActor actor = 3;
+  PermissionHolderRef holder = 4;
+  PermissionAction action = 5;
+  // Human readable change, e.g. "+ group.vip (server=PRISON) на 30д"
+  string description = 6;
+  // Entry which has undone this one
+  optional string undone_by = 7;
+  // Entry undone by this one
+  optional string undo_of = 8;
+}
+
+message PermissionLogQuery {
+  optional PermissionHolderRef holder = 1;
+  // Changes made by this player, or by the console and the system for the name
+  optional PermissionActor actor = 2;
+  // Millis, only newer entries
+  int64 since = 3;
+  // Paging: only entries older than this entry
+  optional string before = 4;
+  int32 limit = 5;
+}
+
+message PermissionLog {
+  repeated PermissionLogEntry entries = 1;
+}
+
+message PermissionUndo {
+  PermissionActor actor = 1;
+  string entry = 2;
+}
+
+message PermissionRollback {
+  PermissionActor actor = 1;
+  PermissionLogQuery query = 2;
+}
+
+message PermissionRollbackResult {
+  int32 undone = 1;
+  // Entries which could not be undone
+  int32 failed = 2;
+}

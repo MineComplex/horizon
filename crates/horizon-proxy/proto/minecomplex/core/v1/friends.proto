@@ -1,0 +1,53 @@
+syntax = "proto3";
+
+package minecomplex.core.v1;
+
+import "minecomplex/core/v1/common.proto";
+import "minecomplex/core/v1/users.proto";
+
+option java_package = "ru.minecomplex.core.protocol";
+option java_multiple_files = true;
+option java_outer_classname = "FriendsProto";
+
+// Friendship changes of both players are applied by the core, the result code tells the caller what to show.
+service FriendService {
+  rpc SendRequest(PlayerTarget) returns (FriendResult);
+  rpc Accept(PlayerTarget) returns (FriendResult);
+  rpc Deny(PlayerTarget) returns (FriendResult);
+  rpc Remove(PlayerTarget) returns (FriendResult);
+
+  rpc ListFriends(PlayerRequest) returns (FriendList);
+  // Players who sent a request to this player
+  rpc ListIncoming(PlayerRequest) returns (FriendList);
+}
+
+enum FriendCode {
+  FRIEND_CODE_UNSPECIFIED = 0;
+  FRIEND_OK = 1;
+  // A request to a player who has already sent a request back makes them friends
+  FRIEND_ACCEPTED = 2;
+  FRIEND_ALREADY_FRIENDS = 3;
+  FRIEND_ALREADY_REQUESTED = 4;
+  FRIEND_NOT_REQUESTED = 5;
+  FRIEND_NOT_FRIENDS = 6;
+  FRIEND_BLOCKED = 7;
+  FRIEND_REQUESTS_DISABLED = 8;
+  FRIEND_TOO_MANY_REQUESTS = 9;
+  FRIEND_SELF = 10;
+  FRIEND_NOT_FOUND = 11;
+}
+
+message FriendResult {
+  FriendCode code = 1;
+}
+
+message FriendEntry {
+  string player = 1;
+  string name = 2;
+  int64 since = 3;
+  optional PresenceView presence = 4;
+}
+
+message FriendList {
+  repeated FriendEntry entries = 1;
+}

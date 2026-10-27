@@ -1,0 +1,288 @@
+syntax = "proto3";
+
+package minecomplex.core.v1;
+
+import "minecomplex/core/v1/accounts.proto";
+import "minecomplex/core/v1/common.proto";
+
+option java_package = "ru.minecomplex.core.protocol";
+option java_multiple_files = true;
+option java_outer_classname = "StoreProto";
+
+// Donate store: catalog, coupons, payment requests and orders.
+service StoreService {
+  rpc GetCatalog(CatalogQuery) returns (Catalog);
+  // Reloads the catalog from the database after manual changes, nodes get CatalogChanged
+  rpc ReloadCatalog(Empty) returns (Empty);
+
+  rpc GetCoupon(CouponRequest) returns (CouponResponse);
+  rpc ListActiveCoupons(Empty) returns (CouponList);
+
+  // Price of a purchase with a coupon and the fee of the payment system
+  rpc QuotePrice(PriceQuote) returns (PriceResult);
+  // Payment request created by the website before redirecting to the payment system
+  rpc CreateOrderRequest(OrderRequestCreate) returns (OrderRequestResult);
+  rpc GetOrderRequest(OrderRequestLookup) returns (OrderRequestResponse);
+  rpc DeleteOrderRequest(OrderRequestLookup) returns (Empty);
+  rpc CountPendingRequests(PendingRequestsQuery) returns (Count);
+  // Called when the payment is confirmed. Applied once per request, repeated calls return the same order.
+  rpc CompleteOrder(OrderComplete) returns (OrderResponse);
+
+  // Purchase for gems: checks the balance, deducts it and creates the order in one operation
+  rpc PurchaseWithGems(GemPurchase) returns (PurchaseResult);
+  // Returns true only for the call that has claimed the order
+  rpc ClaimOrder(OrderLookup) returns (BoolValue);
+
+  rpc GetOrder(OrderLookup) returns (OrderResponse);
+  rpc ListOrders(OrderQuery) returns (OrderList);
+  rpc ListUnclaimed(UnclaimedQuery) returns (OrderList);
+}
+
+message ProductView {
+  string id = 1;
+  // ProductType name
+  string type = 2;
+  // Currency name
+  string currency = 3;
+  string name = 4;
+  optional string sub_name = 5;
+  repeated string description = 6;
+  optional string image = 7;
+  // Item description for menus in JSON
+  optional string icon_json = 8;
+  optional int32 slot = 9;
+  double price = 10;
+  optional int32 discount = 11;
+  optional int32 start_amount = 12;
+  optional int32 min_amount = 13;
+  optional int32 max_amount = 14;
+  repeated string commands = 15;
+  repeated string offers = 16;
+  bool offer = 17;
+  // Stored class of the product: ProductImpl, CosmeticImpl, CosmeticPet or CosmeticTrails
+  string kind = 18;
+  // Cosmetics: CosmeticType name, permission given by the purchase and the chance in cases
+  optional string cosmetic = 19;
+  optional string permission = 20;
+  double chance = 21;
+  // Pets
+  optional string mob = 22;
+  optional string texture = 23;
+  // Trails
+  optional string particle = 24;
+}
+
+message CategoryView {
+  string id = 1;
+  // ServerType name
+  string server = 2;
+  string currency = 3;
+  string name = 4;
+  optional string image = 5;
+  optional string icon_json = 6;
+  optional int32 slot = 7;
+  repeated string products = 8;
+}
+
+message CouponView {
+  string id = 1;
+  optional string name = 2;
+  // CouponType name
+  string type = 3;
+  int32 discount = 4;
+  repeated string usages = 5;
+  repeated string products = 6;
+  optional string owner = 7;
+  optional int32 limit = 8;
+  optional int64 expires_at = 9;
+  int64 created_at = 10;
+}
+
+message CatalogQuery {
+  // Empty for all currencies
+  optional string currency = 1;
+}
+
+message Catalog {
+  repeated CategoryView categories = 1;
+  repeated ProductView products = 2;
+  int64 version = 3;
+}
+
+message CouponRequest {
+  string coupon = 1;
+}
+
+message CouponResponse {
+  optional CouponView coupon = 1;
+}
+
+message CouponList {
+  repeated CouponView coupons = 1;
+}
+
+message PriceQuote {
+  string product = 1;
+  optional string coupon = 2;
+  int32 amount = 3;
+  // PaymentSystem name
+  string system = 4;
+}
+
+message PriceResult {
+  double price = 1;
+}
+
+message CouponDataView {
+  string id = 1;
+  string type = 2;
+  int32 amount = 3;
+}
+
+message PaymentDataView {
+  string system = 1;
+  string payment_type = 2;
+  string id = 3;
+  double profit = 4;
+}
+
+message OrderView {
+  string id = 1;
+  string player = 2;
+  optional string email = 3;
+  optional string ip = 4;
+  string server = 5;
+  string category = 6;
+  string product = 7;
+  // ProductType name
+  string type = 8;
+  string currency = 9;
+  int32 amount = 10;
+  optional CouponDataView coupon = 11;
+  optional PaymentDataView payment = 12;
+  double final_price = 13;
+  double initial_price = 14;
+  bool claimed = 15;
+  optional int64 claimed_at = 16;
+  int64 created_at = 17;
+}
+
+message OrderRequestView {
+  string id = 1;
+  string player = 2;
+  optional string email = 3;
+  optional string ip = 4;
+  string server = 5;
+  string category = 6;
+  string product = 7;
+  string product_name = 8;
+  string product_type = 9;
+  int32 amount = 10;
+  optional string description = 11;
+  string system = 12;
+  string currency = 13;
+  int64 created_at = 14;
+  int64 expires_at = 15;
+  double initial_price = 16;
+  double total_price = 17;
+  optional string coupon = 18;
+}
+
+message OrderRequestCreate {
+  string player = 1;
+  optional string email = 2;
+  optional string ip = 3;
+  string system = 4;
+  string category = 5;
+  string product = 6;
+  optional string coupon = 7;
+  int32 amount = 8;
+}
+
+enum OrderRequestCode {
+  ORDER_REQUEST_CODE_UNSPECIFIED = 0;
+  ORDER_REQUEST_OK = 1;
+  ORDER_REQUEST_NOT_FOUND = 2;
+  ORDER_REQUEST_INVALID_AMOUNT = 3;
+  ORDER_REQUEST_INVALID_COUPON = 4;
+  ORDER_REQUEST_ACCOUNT_NOT_FOUND = 5;
+}
+
+message OrderRequestResult {
+  OrderRequestCode code = 1;
+  optional OrderRequestView request = 2;
+}
+
+message OrderRequestLookup {
+  string request = 1;
+}
+
+message OrderRequestResponse {
+  optional OrderRequestView request = 1;
+}
+
+message PendingRequestsQuery {
+  optional string coupon = 1;
+  optional string player = 2;
+}
+
+message OrderComplete {
+  string request = 1;
+  string payment_type = 2;
+  string payment_id = 3;
+  double profit = 4;
+}
+
+message OrderResponse {
+  optional OrderView order = 1;
+}
+
+message GemPurchase {
+  string player = 1;
+  optional string ip = 2;
+  string category = 3;
+  string product = 4;
+  int32 amount = 5;
+  string op_id = 6;
+}
+
+enum PurchaseCode {
+  PURCHASE_CODE_UNSPECIFIED = 0;
+  PURCHASE_OK = 1;
+  PURCHASE_NOT_ENOUGH = 2;
+  PURCHASE_NOT_FOUND = 3;
+  PURCHASE_INVALID_AMOUNT = 4;
+}
+
+message PurchaseResult {
+  PurchaseCode code = 1;
+  optional OrderView order = 2;
+  double balance = 3;
+  // Account after the purchase, the caller updates its mirror without waiting for the event
+  optional AccountView account = 4;
+}
+
+message OrderLookup {
+  string order = 1;
+}
+
+message OrderQuery {
+  optional string player = 1;
+  // Currency name
+  optional string currency = 2;
+  Page page = 3;
+  bool with_total = 4;
+}
+
+message OrderList {
+  repeated OrderView orders = 1;
+  int64 total = 2;
+}
+
+message UnclaimedQuery {
+  string player = 1;
+  // ServerType name, empty for all servers
+  optional string server = 2;
+  // ProductType name, empty for all types
+  optional string type = 3;
+}

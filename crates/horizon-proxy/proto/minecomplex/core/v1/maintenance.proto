@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package minecomplex.core.v1;
+
+import "minecomplex/core/v1/common.proto";
+
+option java_package = "ru.minecomplex.core.protocol";
+option java_multiple_files = true;
+option java_outer_classname = "MaintenanceProto";
+
+// Maintenance of the network: while it is enabled the proxies let in only the whitelisted addresses. It is one for
+// every proxy, a change is sent to all of them. Proxies and services change it.
+service MaintenanceService {
+  rpc Get(Empty) returns (MaintenanceView);
+  // Enabling kicks players who are not whitelisted on every proxy
+  rpc SetEnabled(MaintenanceToggle) returns (MaintenanceView);
+  rpc AddAddress(MaintenanceAddress) returns (MaintenanceView);
+  rpc RemoveAddress(MaintenanceAddress) returns (MaintenanceView);
+}
+
+message MaintenanceToggle {
+  bool enabled = 1;
+}
+
+message MaintenanceAddress {
+  string ip = 1;
+}
+
+message MaintenanceView {
+  bool enabled = 1;
+  // Addresses let in while maintenance is enabled
+  repeated string whitelist = 2;
+  // Grows with every change, an older view is ignored
+  int64 version = 3;
+}

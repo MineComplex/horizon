@@ -1,0 +1,138 @@
+syntax = "proto3";
+
+package minecomplex.core.v1;
+
+import "minecomplex/core/v1/common.proto";
+
+option java_package = "ru.minecomplex.core.protocol";
+option java_multiple_files = true;
+option java_outer_classname = "StatisticsProto";
+
+// Statistics of players. Servers collect increments locally and send them in batches,
+// a batch has op_id and is applied once.
+service StatisticsService {
+  rpc Get(PlayerRequest) returns (StatisticsView);
+  rpc Increase(StatisticsBatch) returns (Empty);
+  rpc Set(StatisticSet) returns (Empty);
+  // Resets statistics of a player, a server type or a range, nodes get StatisticsReset
+  rpc Reset(StatisticsReset) returns (Empty);
+}
+
+// Tops. Player tops are calculated by the core from statistics, external tops (clans, guilds)
+// are sent by their owners with Update.
+service LeaderboardService {
+  rpc GetTop(LeaderboardQuery) returns (LeaderboardPage);
+  rpc GetPosition(LeaderboardTarget) returns (LeaderboardPositionResponse);
+  rpc GetPositionAt(LeaderboardRank) returns (LeaderboardPositionResponse);
+  rpc Search(LeaderboardSearch) returns (LeaderboardPage);
+  rpc Update(LeaderboardUpdate) returns (Empty);
+  // Recalculates the player tops now
+  rpc Refresh(Empty) returns (Empty);
+}
+
+// Statistic id -> value for one range
+message RangeStatistics {
+  map<string, int32> values = 1;
+}
+
+// StatisticRange id -> statistics
+message ServerStatistics {
+  map<string, RangeStatistics> ranges = 1;
+}
+
+message StatisticsView {
+  string player = 1;
+  // Server type id -> statistics
+  map<string, ServerStatistics> servers = 2;
+  int64 version = 3;
+}
+
+message StatisticDelta {
+  string player = 1;
+  string statistic = 2;
+  // Server type id
+  string server = 3;
+  int32 amount = 4;
+}
+
+message StatisticsBatch {
+  string op_id = 1;
+  repeated StatisticDelta deltas = 2;
+}
+
+message StatisticSet {
+  string player = 1;
+  string statistic = 2;
+  string range = 3;
+  string server = 4;
+  int32 value = 5;
+}
+
+message StatisticsReset {
+  // Every filter is optional, empty filters reset everything of the other filters
+  optional string player = 1;
+  optional string server = 2;
+  optional string range = 3;
+  optional string statistic = 4;
+}
+
+message LeaderboardEntryView {
+  // Player id, clan or guild id
+  string id = 1;
+  string name = 2;
+  string display_name = 3;
+  map<string, int32> statistics = 4;
+}
+
+message LeaderboardPositionView {
+  // Starts from 1
+  int32 rank = 1;
+  double score = 2;
+  LeaderboardEntryView entry = 3;
+}
+
+message LeaderboardQuery {
+  string leaderboard = 1;
+  string statistic = 2;
+  string range = 3;
+  Page page = 4;
+}
+
+message LeaderboardPage {
+  repeated LeaderboardPositionView positions = 1;
+  int32 size = 2;
+}
+
+message LeaderboardTarget {
+  string leaderboard = 1;
+  string statistic = 2;
+  string range = 3;
+  // Name or id of the player, clan or guild
+  string target = 4;
+}
+
+message LeaderboardRank {
+  string leaderboard = 1;
+  string statistic = 2;
+  string range = 3;
+  // Starts from 0
+  int32 index = 4;
+}
+
+message LeaderboardPositionResponse {
+  optional LeaderboardPositionView position = 1;
+}
+
+message LeaderboardSearch {
+  string leaderboard = 1;
+  string statistic = 2;
+  string range = 3;
+  string query = 4;
+  int32 limit = 5;
+}
+
+message LeaderboardUpdate {
+  string leaderboard = 1;
+  string range = 2;
+  repeated LeaderboardEntryView entries = 3;
+}

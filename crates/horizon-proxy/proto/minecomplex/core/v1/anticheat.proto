@@ -1,0 +1,94 @@
+syntax = "proto3";
+
+package minecomplex.core.v1;
+
+import "minecomplex/core/v1/common.proto";
+
+option java_package = "ru.minecomplex.core.protocol";
+option java_multiple_files = true;
+option java_outer_classname = "AnticheatProto";
+
+// Anticheat sessions: violation levels of a player for the whole stay on the network, so they survive switching
+// servers. Sessions live in the core memory and end some time after the player leaves the network.
+//
+// A server which has loaded the session holds it until it saves its last snapshot, when the player leaves the server.
+// The last snapshot is sent to the other holders: during a switch the new server loads the session before the old one
+// saves its last snapshot, and applies what it has missed.
+//
+// History of flags is the same for every server, flags are removed after anticheat.history-retention-days.
+service AnticheatService {
+  // Session of the player, started if there is none. The server holds the session after it.
+  rpc Load(PlayerRequest) returns (AnticheatSessionView);
+  rpc Save(AnticheatSave) returns (Empty);
+  // Stores flags in the history, the server of the flags is the calling server
+  rpc Log(AnticheatFlags) returns (Empty);
+  // Flags of a player, newest first
+  rpc History(AnticheatHistoryQuery) returns (AnticheatHistory);
+}
+
+message AnticheatSessionView {
+  string player = 1;
+  // Same on every server of the session
+  string id = 2;
+  int64 started = 3;
+  // Server which has saved the snapshot, set by the core. Empty for a session which was just started
+  string server = 4;
+  // When the snapshot was taken, time of that server
+  int64 saved_at = 5;
+  // Grows with every save of the session, set by the core
+  int64 version = 6;
+  repeated AnticheatCheck checks = 7;
+  repeated AnticheatGroup groups = 8;
+}
+
+message AnticheatCheck {
+  string name = 1;
+  double vl = 2;
+  int64 last_violation = 3;
+}
+
+// Punishment group: its rolling violations and how many times each of its commands was executed
+message AnticheatGroup {
+  string name = 1;
+  // In time order
+  repeated AnticheatViolation violations = 2;
+  repeated int32 executed = 3;
+}
+
+message AnticheatViolation {
+  int64 time = 1;
+  string check = 2;
+}
+
+message AnticheatSave {
+  AnticheatSessionView session = 1;
+  // The player has left the server: the server releases the session and the snapshot is sent to the other holders
+  bool last = 2;
+}
+
+message AnticheatFlag {
+  string player = 1;
+  // Anticheat session of the flag, empty if it was not loaded yet
+  string session = 2;
+  // Set by the core
+  string server = 3;
+  string check = 4;
+  string verbose = 5;
+  int32 vl = 6;
+  int64 time = 7;
+}
+
+message AnticheatFlags {
+  repeated AnticheatFlag flags = 1;
+}
+
+message AnticheatHistoryQuery {
+  string player = 1;
+  Page page = 2;
+}
+
+message AnticheatHistory {
+  // Flags of the player in the history, not only on the page
+  int64 total = 1;
+  repeated AnticheatFlag flags = 2;
+}

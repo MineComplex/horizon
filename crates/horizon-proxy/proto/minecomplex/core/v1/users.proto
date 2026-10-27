@@ -1,0 +1,197 @@
+syntax = "proto3";
+
+package minecomplex.core.v1;
+
+import "minecomplex/core/v1/accounts.proto";
+import "minecomplex/core/v1/common.proto";
+import "minecomplex/core/v1/guilds.proto";
+import "minecomplex/core/v1/parties.proto";
+import "minecomplex/core/v1/permissions.proto";
+import "minecomplex/core/v1/punishments.proto";
+import "minecomplex/core/v1/statistics.proto";
+
+option java_package = "ru.minecomplex.core.protocol";
+option java_multiple_files = true;
+option java_outer_classname = "UsersProto";
+
+// Players: persistent profile and presence on the network.
+service UserService {
+  // Returns everything a server needs about the player and subscribes the calling node to player updates
+  // until Unload or the end of its session.
+  rpc Load(LoadRequest) returns (PlayerSnapshot);
+  rpc Unload(PlayerRequest) returns (Empty);
+
+  rpc GetUser(PlayerRequest) returns (UserResponse);
+  rpc GetUsers(PlayersRequest) returns (UserList);
+  // Ids by names and names by ids
+  rpc Resolve(ResolveRequest) returns (ResolveResponse);
+  rpc ListStaff(Empty) returns (StaffList);
+
+  rpc SetPreference(PreferenceChange) returns (ProfileView);
+  rpc SetDisplayName(DisplayNameChange) returns (ProfileView);
+  rpc SetCosmetic(CosmeticChange) returns (ProfileView);
+  rpc SetCrateFilter(CrateFilterChange) returns (ProfileView);
+  rpc Block(PlayerTarget) returns (ProfileView);
+  rpc Unblock(PlayerTarget) returns (ProfileView);
+
+  rpc SetStatus(StatusChange) returns (PresenceView);
+  // Remembers the last private message partner of both players
+  rpc SetLastReply(PlayerTarget) returns (Empty);
+}
+
+message IntList {
+  repeated int32 values = 1;
+}
+
+// Persistent data of a player
+message ProfileView {
+  string player = 1;
+  string name = 2;
+  // ServerType id -> display name with prefix
+  map<string, string> display_names = 3;
+  // Server type or server id -> Preference id -> index of the value in Preference values, 0 (default) is not stored
+  map<string, IntMap> preferences = 4;
+  repeated string blocked = 5;
+  // Friend id -> friends since
+  map<string, int64> friends = 6;
+  // Outgoing friend requests
+  repeated string friend_requests = 7;
+  // CosmeticType id -> cosmetic id
+  map<string, string> cosmetics = 8;
+  // Crate -> filtered reward ids
+  map<string, IntList> crate_filters = 9;
+  int64 last_seen = 10;
+  int64 version = 11;
+}
+
+// State of a player on the network, lives only in the core memory
+message PresenceView {
+  string player = 1;
+  string name = 2;
+  bool online = 3;
+  string proxy = 4;
+  // Game server id, empty while the player is on the proxy only
+  string server = 5;
+  optional string party = 6;
+  optional string guild = 7;
+  int64 afk_since = 8;
+  bool vanished = 9;
+  bool staff_mode = 10;
+  bool busy = 11;
+  optional string frozen_by = 12;
+  optional string last_reply = 13;
+  int64 last_reply_time = 14;
+  int64 last_report = 15;
+  optional string teleport_to = 16;
+  bool staff = 17;
+  int64 joined_at = 18;
+  int64 version = 19;
+}
+
+message UserView {
+  ProfileView profile = 1;
+  PresenceView presence = 2;
+}
+
+message UserResponse {
+  optional UserView user = 1;
+}
+
+message UserList {
+  repeated UserView users = 1;
+}
+
+message LoadRequest {
+  string player = 1;
+  bool with_statistics = 2;
+}
+
+message PlayerSnapshot {
+  bool found = 1;
+  AccountView account = 2;
+  ProfileView profile = 3;
+  PresenceView presence = 4;
+  optional PartyView party = 5;
+  optional GuildView guild = 6;
+  repeated PunishmentView active_punishments = 7;
+  optional StatisticsView statistics = 8;
+  PermissionUserView permissions = 9;
+}
+
+message ResolveRequest {
+  repeated string ids = 1;
+  repeated string names = 2;
+}
+
+message ResolveResponse {
+  repeated Identity identities = 1;
+}
+
+message StaffMember {
+  string player = 1;
+  string name = 2;
+  string group = 3;
+  int32 weight = 4;
+  optional PresenceView presence = 5;
+}
+
+message StaffList {
+  repeated StaffMember members = 1;
+}
+
+message PreferenceChange {
+  string player = 1;
+  // Server type or server id
+  string server = 2;
+  string preference = 3;
+  int32 value = 4;
+}
+
+message DisplayNameChange {
+  string player = 1;
+  // ServerType id or name. The global name replaces the names of every server, a server name replaces the global one
+  string server_type = 2;
+  // Empty removes the name of the server
+  string display_name = 3;
+  // Current nickname, updated together with the display name
+  string name = 4;
+}
+
+message CosmeticChange {
+  string player = 1;
+  string type = 2;
+  // Empty removes the active cosmetic
+  string cosmetic = 3;
+}
+
+message CrateFilterChange {
+  string player = 1;
+  string crate = 2;
+  int32 reward = 3;
+  bool filtered = 4;
+}
+
+message PlayerTarget {
+  string player = 1;
+  string target = 2;
+}
+
+message OptionalPlayer {
+  optional string player = 1;
+}
+
+message OptionalString {
+  optional string value = 1;
+}
+
+message StatusChange {
+  string player = 1;
+  oneof status {
+    bool afk = 2;
+    bool vanished = 3;
+    bool staff_mode = 4;
+    bool busy = 5;
+    OptionalPlayer frozen_by = 6;
+    OptionalString teleport_to = 7;
+  }
+}

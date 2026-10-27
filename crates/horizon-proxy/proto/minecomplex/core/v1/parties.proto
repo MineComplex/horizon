@@ -1,0 +1,111 @@
+syntax = "proto3";
+
+package minecomplex.core.v1;
+
+import "minecomplex/core/v1/common.proto";
+
+option java_package = "ru.minecomplex.core.protocol";
+option java_multiple_files = true;
+option java_outer_classname = "PartiesProto";
+
+// Parties live in the core memory. Every change is checked and applied by the core in one place,
+// the result code tells the caller what to show. Members get PartyView updates.
+service PartyService {
+  rpc Get(PartyRequest) returns (PartyResponse);
+  rpc GetByPlayer(PlayerRequest) returns (PartyResponse);
+
+  rpc Create(PlayerRequest) returns (PartyResult);
+  // Creates a party for the actor if there is none
+  rpc Invite(PartyTarget) returns (PartyResult);
+  rpc RevokeInvite(PartyTarget) returns (PartyResult);
+  // target is a member of the party to join
+  rpc Join(PartyJoin) returns (PartyResult);
+  rpc Leave(PlayerRequest) returns (PartyResult);
+  rpc Kick(PartyTarget) returns (PartyResult);
+  rpc SetLeader(PartyTarget) returns (PartyResult);
+  rpc Disband(PlayerRequest) returns (PartyResult);
+  rpc SetOpen(PartyOpen) returns (PartyResult);
+  // Empty password removes it
+  rpc SetPassword(PartyPassword) returns (PartyResult);
+  // Moves members to the server of the leader
+  rpc Warp(PartyWarp) returns (PartyResult);
+}
+
+message PartyView {
+  string id = 1;
+  string leader = 2;
+  repeated string members = 3;
+  repeated string invitations = 4;
+  bool open = 5;
+  bool has_password = 6;
+  // Visible to the leader only through PartyService
+  optional string password = 7;
+  int64 created_at = 8;
+  int64 version = 9;
+}
+
+message PartyRequest {
+  string party = 1;
+}
+
+message PartyResponse {
+  optional PartyView party = 1;
+}
+
+enum PartyCode {
+  PARTY_CODE_UNSPECIFIED = 0;
+  PARTY_OK = 1;
+  PARTY_NOT_IN_PARTY = 2;
+  PARTY_ALREADY_IN_PARTY = 3;
+  PARTY_NOT_LEADER = 4;
+  PARTY_NOT_MEMBER = 5;
+  PARTY_ALREADY_MEMBER = 6;
+  PARTY_ALREADY_INVITED = 7;
+  PARTY_NOT_INVITED = 8;
+  PARTY_WRONG_PASSWORD = 9;
+  PARTY_PASSWORD_REQUIRED = 10;
+  PARTY_FULL = 11;
+  PARTY_TARGET_OFFLINE = 12;
+  PARTY_TARGET_IN_PARTY = 13;
+  PARTY_TARGET_BLOCKED = 14;
+  PARTY_INVITES_DISABLED = 15;
+  PARTY_ALONE = 16;
+  PARTY_SELF = 17;
+  PARTY_COOLDOWN = 18;
+  PARTY_NOT_FOUND = 19;
+  // Party was disbanded because the last member left
+  PARTY_DISBANDED = 20;
+}
+
+message PartyResult {
+  PartyCode code = 1;
+  optional PartyView party = 2;
+  // Leader chosen after the previous leader left
+  optional string new_leader = 3;
+}
+
+message PartyTarget {
+  string player = 1;
+  string target = 2;
+}
+
+message PartyJoin {
+  string player = 1;
+  string target = 2;
+  optional string password = 3;
+}
+
+message PartyOpen {
+  string player = 1;
+  bool open = 2;
+}
+
+message PartyPassword {
+  string player = 1;
+  string password = 2;
+}
+
+message PartyWarp {
+  string player = 1;
+  string server = 2;
+}

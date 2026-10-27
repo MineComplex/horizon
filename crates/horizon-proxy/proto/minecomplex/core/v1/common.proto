@@ -1,0 +1,53 @@
+syntax = "proto3";
+
+package minecomplex.core.v1;
+
+option java_package = "ru.minecomplex.core.protocol";
+option java_multiple_files = true;
+option java_outer_classname = "CommonProto";
+
+// Conventions:
+// - UUIDs are strings in the canonical form.
+// - Enums of the domain (ServerType, Statistic, Preference, PunishmentType, SocialType and others) are passed as
+//   strings with Java enum names. The Java enums in API are the single source of truth.
+// - Time is unix milliseconds.
+// - op_id is a client generated UUID. A mutation repeated with the same op_id is applied once and returns
+//   the result of the first application.
+
+message Empty {
+}
+
+message Page {
+  int32 offset = 1;
+  int32 limit = 2;
+}
+
+message StringList {
+  repeated string values = 1;
+}
+
+message IntMap {
+  map<string, int32> values = 1;
+}
+
+// Player id and name, used wherever a player is shown by name.
+message Identity {
+  string id = 1;
+  string name = 2;
+}
+
+message Count {
+  int64 value = 1;
+}
+
+message BoolValue {
+  bool value = 1;
+}
+
+message PlayerRequest {
+  string player = 1;
+}
+
+message PlayersRequest {
+  repeated string players = 1;
+}

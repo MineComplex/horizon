@@ -1,0 +1,279 @@
+syntax = "proto3";
+
+package minecomplex.core.v1;
+
+import "minecomplex/core/v1/common.proto";
+
+option java_package = "ru.minecomplex.core.protocol";
+option java_multiple_files = true;
+option java_outer_classname = "AccountsProto";
+
+// Accounts: identity, password, socials, balance and keys.
+// Password hashes never leave the core, passwords are checked with VerifyPassword.
+service AccountService {
+  rpc GetAccount(AccountQuery) returns (AccountResponse);
+  rpc ListAccounts(AccountListQuery) returns (AccountList);
+
+  // Balance and keys. Every change has op_id and is applied once.
+  rpc AddBalance(BalanceChange) returns (BalanceResult);
+  // Deducts only if the balance is enough, in one atomic update.
+  rpc TryDeduct(BalanceChange) returns (BalanceResult);
+  rpc SetBalance(BalanceChange) returns (BalanceResult);
+  rpc AddKeys(KeysChange) returns (KeysResult);
+  rpc SetKeys(KeysChange) returns (KeysResult);
+
+  // Creates an account outside of the game (launcher, website). The name is unique ignoring case,
+  // the limit of accounts per registration ip is checked together with the creation.
+  rpc Register(AccountRegister) returns (AccountRegisterResult);
+
+  // Checks the password. Wrong attempts are not counted, nginx in front of Rest limits the requests of an address.
+  rpc VerifyPassword(PasswordCheck) returns (PasswordCheckResult);
+  // Changes the password without confirmation: login sessions end, connections from other ips are closed.
+  rpc ChangePassword(PasswordChange) returns (AccountResponse);
+  // Changes the password, or asks for confirmation through the linked social network first.
+  rpc RequestPasswordChange(PasswordChange) returns (PasswordChangeResponse);
+  // Sets a random password and returns it, login sessions end.
+  rpc ResetPassword(PlayerRequest) returns (PasswordReset);
+
+  // Login sessions of the launcher and the website. A session is a chain of single-use refresh tokens: every
+  // refresh gives the next one, and a token presented again ends the session (it was stolen). Access tokens are
+  // signed by Rest and carry the session id, Rest and the proxies check it with CheckLogin.
+  rpc StartLogin(LoginStart) returns (LoginResult);
+  rpc RefreshLogin(LoginRefresh) returns (LoginResult);
+  // The account while the session is active, nothing after it ended or expired.
+  rpc CheckLogin(LoginCheck) returns (AccountResponse);
+  // Ends the session of the refresh token (logout). Unknown tokens are ignored.
+  rpc EndLogin(LoginRefresh) returns (Empty);
+  // Ends every login session of the account, the next login requires the password.
+  rpc ResetSession(PlayerRequest) returns (Empty);
+
+  rpc LinkSocial(SocialChange) returns (AccountResponse);
+  rpc UnlinkSocial(SocialChange) returns (AccountResponse);
+  // Enables login confirmation through the social network, empty type disables it.
+  rpc SetTotp(SocialChange) returns (AccountResponse);
+
+  // Renames the account, the name is unique ignoring case.
+  rpc Rename(NameChange) returns (AccountResponse);
+  // The account owns the CDN reference; the PNG is stored in object storage.
+  rpc SetSkin(AccountSkinChange) returns (AccountResponse);
+
+}
+
+message AccountSessionView {
+  string ip = 1;
+  int64 timestamp = 2;
+}
+
+message AccountView {
+  string id = 1;
+  string name = 2;
+  double balance = 3;
+  map<string, int32> keys = 4;
+  // SocialType name -> user id in the social network
+  map<string, int64> socials = 5;
+  // SocialType used to confirm logins
+  optional string totp = 6;
+  bool has_password = 7;
+  optional AccountSessionView registered_session = 8;
+  optional AccountSessionView last_session = 9;
+  // Filled only when requested with with_history
+  repeated AccountSessionView history = 10;
+  // Was session_reset_at: login sessions are ended in the core now
+  reserved 11;
+  reserved "session_reset_at";
+  int64 version = 12;
+  optional AccountSkinView skin = 13;
+}
+
+message AccountSkinView {
+  string url = 1;
+  string sha256 = 2;
+}
+
+message AccountSkinChange {
+  string player = 1;
+  // Absent removes the custom skin.
+  optional AccountSkinView skin = 2;
+}
+
+message SocialKey {
+  string type = 1;
+  int64 user = 2;
+}
+
+message AccountQuery {
+  oneof key {
+    string id = 1;
+    string name = 2;
+    SocialKey social = 3;
+    string last_ip = 4;
+    string registered_ip = 5;
+  }
+  bool with_history = 6;
+}
+
+message AccountResponse {
+  optional AccountView account = 1;
+}
+
+message AccountListQuery {
+  oneof key {
+    string last_ip = 1;
+    StringList registered_ips = 2;
+    // Accounts registered or last seen on this ip
+    string alts_ip = 3;
+  }
+  bool with_history = 4;
+}
+
+message AccountList {
+  repeated AccountView accounts = 1;
+}
+
+message BalanceChange {
+  string player = 1;
+  double amount = 2;
+  string op_id = 3;
+  // Shown in logs
+  string reason = 4;
+}
+
+message BalanceResult {
+  // False if the account is not found or the balance is not enough
+  bool success = 1;
+  double balance = 2;
+  // Account after the change, the caller updates its mirror without waiting for the event
+  optional AccountView account = 3;
+}
+
+message KeysChange {
+  string player = 1;
+  string crate = 2;
+  int32 amount = 3;
+  string op_id = 4;
+  string reason = 5;
+}
+
+message KeysResult {
+  bool success = 1;
+  int32 keys = 2;
+  optional AccountView account = 3;
+}
+
+enum PasswordResult {
+  PASSWORD_RESULT_UNSPECIFIED = 0;
+  PASSWORD_OK = 1;
+  PASSWORD_WRONG = 2;
+  PASSWORD_NOT_SET = 3;
+  PASSWORD_ACCOUNT_NOT_FOUND = 4;
+}
+
+message AccountRegister {
+  // 3-16 latin letters, digits or _
+  string name = 1;
+  // 6-128 characters
+  string password = 2;
+  string ip = 3;
+  // Max accounts registered from the ip, 0 = no limit
+  int32 account_limit = 4;
+}
+
+enum AccountRegisterCode {
+  ACCOUNT_REGISTER_UNSPECIFIED = 0;
+  ACCOUNT_REGISTER_OK = 1;
+  ACCOUNT_REGISTER_NAME_TAKEN = 2;
+  ACCOUNT_REGISTER_TOO_MANY_ACCOUNTS = 3;
+}
+
+message AccountRegisterResult {
+  AccountRegisterCode code = 1;
+  optional AccountView account = 2;
+  // Names of the accounts of the ip when the limit is reached
+  repeated string existing_accounts = 3;
+}
+
+message PasswordCheck {
+  string player = 1;
+  string password = 2;
+}
+
+message PasswordCheckResult {
+  PasswordResult result = 1;
+}
+
+message PasswordChange {
+  string player = 1;
+  string password = 2;
+  // Ip of the player who changes the password, sessions on other ips are closed
+  string ip = 3;
+}
+
+message PasswordChangeResponse {
+  // True if confirmation was sent to the linked social network
+  bool confirmation = 1;
+  optional AccountView account = 2;
+}
+
+message PasswordReset {
+  string password = 1;
+}
+
+message SocialChange {
+  string player = 1;
+  string type = 2;
+  int64 user = 3;
+}
+
+message NameChange {
+  string player = 1;
+  string name = 2;
+}
+
+message LoginStart {
+  string player = 1;
+  // Shown to the player, up to 100 characters
+  string device = 2;
+  string ip = 3;
+}
+
+message LoginRefresh {
+  string refresh_token = 1;
+  string ip = 2;
+}
+
+message LoginCheck {
+  // Id of the session, the "sid" of the access token
+  string session = 1;
+  string player = 2;
+}
+
+enum LoginCode {
+  LOGIN_UNSPECIFIED = 0;
+  LOGIN_OK = 1;
+  // Unknown refresh token or account
+  LOGIN_UNKNOWN = 2;
+  LOGIN_EXPIRED = 3;
+  // The token was used before, the session is ended
+  LOGIN_REUSED = 4;
+  // Ended by logout, a password change or ResetSession
+  LOGIN_ENDED = 5;
+}
+
+message LoginView {
+  string id = 1;
+  string player = 2;
+  // When the password was entered, kept across refreshes
+  int64 authenticated_at = 3;
+  // The refresh token is accepted until then
+  int64 expires_at = 4;
+  string device = 5;
+  string ip = 6;
+}
+
+message LoginResult {
+  LoginCode code = 1;
+  // With LOGIN_OK only
+  optional LoginView session = 2;
+  string refresh_token = 3;
+  optional AccountView account = 4;
+}

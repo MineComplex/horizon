@@ -1,0 +1,119 @@
+syntax = "proto3";
+
+package minecomplex.core.v1;
+
+import "minecomplex/core/v1/common.proto";
+
+option java_package = "ru.minecomplex.core.protocol";
+option java_multiple_files = true;
+option java_outer_classname = "PunishmentsProto";
+
+// Bans, mutes, warns and kicks. Nodes of the target get PunishmentsChanged, so active punishments
+// of loaded players are checked without calls to the core.
+service PunishmentService {
+  rpc Create(PunishmentCreate) returns (PunishmentView);
+  rpc Cancel(PunishmentCancel) returns (PunishmentResponse);
+  // Deletes punishments issued by the issuer since the time, returns the amount
+  rpc Rollback(PunishmentBulk) returns (Count);
+  // Deletes punishments of the target since the time, returns the amount
+  rpc Remove(PunishmentBulk) returns (Count);
+  rpc Delete(PunishmentRequest) returns (Empty);
+
+  rpc Get(PunishmentRequest) returns (PunishmentResponse);
+  // First active punishment of the type by player id, name or ip
+  rpc GetActive(PunishmentTargetQuery) returns (PunishmentResponse);
+  rpc List(PunishmentQuery) returns (PunishmentList);
+}
+
+message PunishmentView {
+  string id = 1;
+  // PunishmentType name
+  string type = 2;
+  string server = 3;
+  optional string reason = 4;
+  optional string issuer = 5;
+  optional string issuer_ip = 6;
+  optional string target = 7;
+  // Name or ip of the target at the moment of the punishment
+  optional string target_data = 8;
+  optional string remover = 9;
+  optional string remover_ip = 10;
+  optional string removed_for = 11;
+  optional int64 removed_at = 12;
+  optional int64 expires_at = 13;
+  int64 created_at = 14;
+  // Punishment of the ip, not of the player
+  bool ip = 15;
+  bool silent = 16;
+}
+
+message PunishmentCreate {
+  optional string issuer = 1;
+  optional string issuer_ip = 2;
+  string target = 3;
+  // Name for a player punishment, ip for an ip punishment
+  string target_data = 4;
+  string type = 5;
+  string server = 6;
+  // Empty for a permanent punishment
+  optional int64 duration = 7;
+  optional string reason = 8;
+  bool silent = 9;
+  bool ip = 10;
+}
+
+message PunishmentCancel {
+  string punishment = 1;
+  optional string remover = 2;
+  optional string remover_ip = 3;
+  optional string reason = 4;
+}
+
+message PunishmentBulk {
+  // Issuer for Rollback
+  optional string issuer = 1;
+  // Target for Remove
+  optional string target = 5;
+  // Empty for all types
+  optional string type = 2;
+  // Created at or after this time, 0 for all
+  int64 since = 3;
+  // Only inactive punishments
+  bool inactive_only = 4;
+}
+
+message PunishmentRequest {
+  string punishment = 1;
+}
+
+message PunishmentResponse {
+  optional PunishmentView punishment = 1;
+}
+
+message PunishmentTargetQuery {
+  optional string target = 1;
+  optional string name = 2;
+  optional string ip = 3;
+  string type = 4;
+}
+
+message PunishmentQuery {
+  // Matches the player id, name or ip at the moment of the punishment
+  optional string target = 1;
+  optional string name = 2;
+  optional string ip = 3;
+  // Part of the target name or ip
+  optional string search = 4;
+  optional string issuer = 5;
+  optional string type = 6;
+  optional int64 since = 7;
+  bool active_only = 8;
+  Page page = 9;
+  // Count the total amount of matching punishments
+  bool with_total = 10;
+}
+
+message PunishmentList {
+  repeated PunishmentView punishments = 1;
+  int64 total = 2;
+}

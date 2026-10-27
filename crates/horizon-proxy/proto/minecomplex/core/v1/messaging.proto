@@ -1,0 +1,94 @@
+syntax = "proto3";
+
+package minecomplex.core.v1;
+
+import "minecomplex/core/v1/common.proto";
+
+option java_package = "ru.minecomplex.core.protocol";
+option java_multiple_files = true;
+option java_outer_classname = "MessagingProto";
+
+// Delivery to players and nodes. The core knows where every player is and sends the event only
+// to the node that has to act.
+service MessagingService {
+  // Text to players, delivered by their proxies
+  rpc SendMessage(PlayerMessage) returns (Empty);
+  // Text to all players of the network, delivered by proxies
+  rpc Alert(AlertMessage) returns (Empty);
+  rpc Kick(PlayerKick) returns (Empty);
+  // Moves the player to a server or to a lobby
+  rpc Connect(PlayerConnect) returns (Empty);
+  // Chat of a channel, delivered to game servers which filter receivers themselves
+  rpc Chat(ChatMessage) returns (Empty);
+  rpc StaffLog(StaffLogMessage) returns (Empty);
+  // Signal to proxies and servers: reload and others
+  rpc Signal(NetworkSignal) returns (Empty);
+  // Event of a plugin to the nodes subscribed to its topic
+  rpc Publish(CustomEvent) returns (Empty);
+}
+
+message PlayerMessage {
+  repeated string players = 1;
+  // Legacy text with color codes
+  string text = 2;
+}
+
+message AlertMessage {
+  string text = 1;
+}
+
+message PlayerKick {
+  string player = 1;
+  string reason = 2;
+}
+
+enum ConnectTarget {
+  CONNECT_TARGET_UNSPECIFIED = 0;
+  CONNECT_SERVER = 1;
+  CONNECT_LOBBY = 2;
+}
+
+message PlayerConnect {
+  string player = 1;
+  ConnectTarget target = 2;
+  // Server id for CONNECT_SERVER
+  optional string server = 3;
+  // Sent by the /lobby command of the player
+  bool command = 4;
+}
+
+// Channels: "staff", "vip", "lobby", "guild", "party", "private"
+message ChatMessage {
+  string channel = 1;
+  optional string sender = 2;
+  // Display name of the sender
+  string sender_name = 3;
+  string message = 4;
+  // Server display name of the sender
+  optional string server = 5;
+  // Guild or party id for their channels
+  optional string group = 6;
+  // Receiver of a private message
+  optional string receiver = 7;
+}
+
+message StaffLogMessage {
+  string player = 1;
+  string name = 2;
+  string server = 3;
+  string action = 4;
+  optional string hover = 5;
+}
+
+message NetworkSignal {
+  // "reload", "refresh_leaderboards", "fix_cache"
+  string type = 1;
+  map<string, string> values = 2;
+}
+
+message CustomEvent {
+  string topic = 1;
+  bytes payload = 2;
+  // Deliver only to nodes where these players are, empty for all subscribers of the topic
+  repeated string players = 3;
+}
