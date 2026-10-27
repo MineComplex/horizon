@@ -13,11 +13,15 @@ pub struct Vertex {
     pub color: u32,
     /// Smooth light, 16x fixed point: sky in bits 0..8, block in bits 8..16.
     pub light: u32,
-    /// RGBA8_SNORM face normal; w = -127 for two-sided lighting, 0 to keep baked/unlit colour.
+    /// RGBA8_SNORM face normal; w = -127 for two-sided lighting, 0 to keep baked/unlit colour,
+    /// [`CULL_BACK`] to keep it and also drop back-facing pixels.
     pub normal: [i8; 4],
     /// The `GLINT_TEXTURING` atlas UV for a foil item quad; zero elsewhere.
     pub glint_uv: [f32; 2],
 }
+/// `Vertex::normal` of a baked-colour quad of an `entitySolid` model: the render type culls
+/// back faces, which the entity pipelines here do not, so `entity.wgsl` discards them.
+pub const CULL_BACK: [i8; 4] = [0, 0, 0, 1];
 
 /// The light bytes of a crack vertex: the pass is unlit, so they carry the origin of the
 /// vertex's destroy stage sprite (each crack in `LevelRenderer.destroyingBlocks` has its own

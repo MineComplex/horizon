@@ -1277,6 +1277,14 @@ impl Game<'_> {
                         m.ai.target = Some(target);
                     }
                 }
+                MobEvent::HuntHoglin { mob, target, ticks } => {
+                    if let Some(m) = self.mobs.iter_mut().find(|m| m.id == mob) {
+                        m.extra.ints[0] = ticks;
+                        if m.ai.target.is_none() {
+                            m.ai.target = Some(Who::Mob(target));
+                        }
+                    }
+                }
                 MobEvent::Projectile(mut p) => {
                     self.next_entity += 1;
                     p.id = self.next_entity;
@@ -4267,6 +4275,7 @@ pub(super) fn damage_type(kind: horizon_client::mobs::DamageKind, player: bool) 
         K::Magic => "minecraft:magic",
         K::Sting => "minecraft:sting",
         K::Cactus => "minecraft:cactus",
+        K::SweetBerryBush => "minecraft:sweet_berry_bush",
         K::Generic => "minecraft:generic",
         K::InWall => "minecraft:in_wall",
         K::Thorns => "minecraft:thorns",

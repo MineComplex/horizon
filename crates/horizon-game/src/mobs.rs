@@ -530,6 +530,8 @@ pub enum DamageKind {
     Magic,
     Sting,
     Cactus,
+    /// `sweet_berry_bush`.
+    SweetBerryBush,
     Generic,
     InWall,
     Thorns,
@@ -592,6 +594,7 @@ impl Damage {
                 | DamageKind::DryOut
                 | DamageKind::Generic
                 | DamageKind::InWall
+                | DamageKind::SweetBerryBush
         )
     }
     /// DamageTypeTags.BYPASSES_ARMOR
@@ -628,6 +631,7 @@ impl Damage {
                 | DamageKind::DryOut
                 | DamageKind::Magic
                 | DamageKind::Cactus
+                | DamageKind::SweetBerryBush
                 | DamageKind::Generic
                 | DamageKind::InWall
                 | DamageKind::Freeze
@@ -862,6 +866,8 @@ pub struct Mob {
     pub previous_swell: i32,
     pub ambient_timer: i32,
     pub fall_distance: f64,
+    /// `Entity.stuckSpeedMultiplier`: the next move is scaled by it.
+    pub stuck_multiplier: Vec3,
     /// `Entity.pistonDeltas` and `pistonDeltasGameTime`: how far a moving
     /// block has pushed this mob this tick (0.51 at most on any axis).
     pub piston: horizon_world::piston_movement::PistonMovement,
@@ -1087,6 +1093,13 @@ pub enum MobEvent {
     SetTarget {
         mob: u32,
         target: Who,
+    },
+    /// `StartHuntingHoglin` for a nearby adult piglin: it takes the hoglin as
+    /// its anger target (when it has none) and starts its `HUNTED_RECENTLY` wait.
+    HuntHoglin {
+        mob: u32,
+        target: u32,
+        ticks: i32,
     },
     Projectile(crate::projectiles::Projectile),
     /// Spawn a new mob (breeding, slime splitting, chicken eggs...).
@@ -1369,6 +1382,8 @@ pub struct Seen {
     pub baby: bool,
     pub in_love: bool,
     pub tame: bool,
+    /// A tamed animal's owner (`getOwner`).
+    pub owner: Option<[i32; 4]>,
     pub hostile: bool,
     pub target: Option<Who>,
     pub health: f32,
@@ -1424,6 +1439,8 @@ pub struct Seen {
     pub knockback_resistance: f64,
     /// The active effects, without namespace (`slowness`, `poison`...).
     pub effects: Vec<&'static str>,
+    /// A piglin's `HUNTED_RECENTLY` memory.
+    pub hunted_recently: bool,
 }
 impl Seen {
     /// `LivingEntity.hasEffect`, by id without namespace.
@@ -1474,6 +1491,7 @@ impl Mob {
                 m.extra.in_love > 0
             },
             tame: m.extra.tame,
+            owner: m.extra.owner,
             hostile: m.hostile(),
             target: m.ai.target,
             health: m.health,
@@ -1517,6 +1535,7 @@ impl Mob {
                 .iter()
                 .map(|e| e.0.trim_start_matches("minecraft:"))
                 .collect(),
+            hunted_recently: m.species() == Species::Piglin && m.extra.ints[0] > 0,
         }
     }
     /// `EntityType.getCategory`'s name.
@@ -1801,6 +1820,7 @@ impl Mob {
             // Mob.ambientSoundTime starts at 0.
             ambient_timer: 0,
             fall_distance: 0.0,
+            stuck_multiplier: Vec3::ZERO,
             piston: Default::default(),
             persistent: false,
             random,
@@ -1874,13 +1894,17 @@ impl Mob {
         }
     }
     pub fn bounds(&self) -> Aabb {
+        self.bounds_at(self.position)
+    }
+    /// `Entity.makeBoundingBox(position)`.
+    pub fn bounds_at(&self, position: Vec3) -> Aabb {
         let w = f64::from(self.width()) / 2.0;
         Aabb::new(
-            Vec3::new(self.position.x - w, self.position.y, self.position.z - w),
+            Vec3::new(position.x - w, position.y, position.z - w),
             Vec3::new(
-                self.position.x + w,
-                self.position.y + f64::from(self.height()),
-                self.position.z + w,
+                position.x + w,
+                position.y + f64::from(self.height()),
+                position.z + w,
             ),
         )
     }

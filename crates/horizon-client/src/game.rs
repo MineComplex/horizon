@@ -18,6 +18,7 @@ mod boats;
 mod books;
 mod bossbars;
 mod breezes;
+mod brush;
 mod bundles;
 mod campfire;
 mod campfire_douse;
@@ -1494,6 +1495,9 @@ struct Game<'a> {
     spawn_spiral: horizon_client::world_spawn::ChunkSpiral,
     /// A new player's spawn search, while its candidates' chunks load.
     player_spawn: Option<horizon_client::world_spawn::PlayerSpawnFinder>,
+    /// Chunks a respawn search waits for this tick, kept loading beside the
+    /// player's own (taken by `update_world`).
+    spawn_wait: Vec<(i32, i32)>,
     mobs: Vec<Mob>,
     creatures: creatures::Creatures,
     sculk: sculk::SculkState,
@@ -1840,6 +1844,8 @@ struct Game<'a> {
     boss_overlay: horizon_client::boss_overlay::BossOverlay,
     exec: commands::execute::ExecState,
     rand_sequences: horizon_client::random_sequences::RandomSequences,
+    /// `BrushableBlockEntity`'s brush counts of the blocks being brushed.
+    brushing: brush::Brushing,
     border: horizon_client::worldborder::WorldBorder,
     /// `WorldBorderRenderer` and its render state.
     border_renderer: horizon_client::border_render::BorderRenderer,
@@ -3231,6 +3237,11 @@ impl Game<'_> {
                     let face = horizon_core::geometry::Direction::ALL[data.clamp(0, 5) as usize];
                     self.breaking_block_effects([pos.x, pos.y, pos.z], face.normal(), id == 2020);
                 }
+                LevelEvent::LevelEvent {
+                    id: 3008,
+                    pos,
+                    data,
+                } => self.brush_complete_event([pos.x, pos.y, pos.z], data),
                 LevelEvent::LevelEvent { id: 2004, pos, .. } => {
                     self.spawner_burst([pos.x, pos.y, pos.z])
                 }
@@ -3492,6 +3503,11 @@ impl Game<'_> {
                     kind: "command_block",
                     ..
                 } => self.command_block_tick(pos),
+                LevelEvent::BlockEvent {
+                    pos,
+                    kind: "brushable",
+                    ..
+                } => self.brushable_tick([pos.x, pos.y, pos.z]),
                 LevelEvent::BlockEvent {
                     pos, kind: "hatch", ..
                 } => {
@@ -4296,6 +4312,13 @@ impl Game<'_> {
         {
             return Ok(true);
         }
+        // BrushItem.useOn: brushing starts on the block aimed at (CONSUME).
+        if block_hit.is_some() && &*stack.item == "minecraft:brush" {
+            if self.using.is_none() {
+                self.using = Some((self.held_slot(), 0));
+            }
+            return Ok(true);
+        }
         if !on_block
             && (self.raise_shield(self.held_slot())
                 || self.use_fishing_rod(&stack)
@@ -4612,6 +4635,10 @@ impl Game<'_> {
             }
             return;
         }
+        if &*stack.item == "minecraft:brush" {
+            self.tick_brush(slot, ticks);
+            return;
+        }
         let Some(consumable) = info.consumable.as_ref() else {
             self.using = None;
             return;
@@ -4867,11 +4894,22 @@ impl Game<'_> {
             if !(-1..=1).all(|dz| (-1..=1).all(|dx| self.streaming.is_lit(cx + dx, cz + dz))) {
                 return Ok(());
             }
-            // WorldSpawn: the stored column, lifted onto its current surface.
-            let y = self
-                .land_column(s.x.floor() as i32, s.z.floor() as i32)
-                .map_or(s.y, f64::from);
-            Vec3::new(s.x, y.max(s.y), s.z)
+            let column = [s.x.floor() as i32, s.y.floor() as i32, s.z.floor() as i32];
+            if self.level.world_spawn == Some(column) {
+                // TeleportTransition.missingRespawnBlock: PlayerSpawnFinder
+                // around the world spawn, not its exact column; its candidates'
+                // chunks load first.
+                let Some(feet) = self.find_player_spawn(column)? else {
+                    return Ok(());
+                };
+                feet
+            } else {
+                // A spawnpoint: the stored column, lifted onto its current surface.
+                let y = self
+                    .land_column(column[0], column[2])
+                    .map_or(s.y, f64::from);
+                Vec3::new(s.x, y.max(s.y), s.z)
+            }
         };
         let mut player = PlayerMotion::new(self.motion, feet)?;
         player.yaw = self.yaw;
@@ -12200,8 +12238,14 @@ impl Game<'_> {
         self.streaming.loading =
             self.options.execution_role.is_client() && self.loading_reason().is_some();
         self.tick_pregen();
+        let areas = self.streaming.extra.len();
+        let waiting = std::mem::take(&mut self.spawn_wait);
+        self.streaming
+            .extra
+            .extend(waiting.into_iter().map(|chunk| (chunk, 0)));
         let (uploads, unloaded) =
             horizon_client::spans::time("streaming", || self.streaming.update(&mut self.world));
+        self.streaming.extra.truncate(areas);
         if let Some(lod) = &mut self.lod {
             self.lod_observe
                 .extend(uploads.iter().map(|(key, _)| (key.0, key.2)));
@@ -13555,6 +13599,7 @@ impl<'a> Game<'a> {
             spawn_origin: None,
             spawn_spiral: Default::default(),
             player_spawn: None,
+            spawn_wait: Vec::new(),
             mobs: Vec::new(),
             creatures: Default::default(),
             sculk: Default::default(),
@@ -13763,6 +13808,7 @@ impl<'a> Game<'a> {
             boss_overlay: Default::default(),
             exec: Default::default(),
             rand_sequences: Default::default(),
+            brushing: Default::default(),
             border: Default::default(),
             border_renderer: Default::default(),
             border_state: Default::default(),
@@ -14423,10 +14469,10 @@ fn build_renderer(
         previous,
         api,
     ))?;
-    renderer.hud.fire_animations = atlas
-        .fire_animations
+    renderer.hud.sprite_animations = atlas
+        .sprite_animations
         .iter()
-        .map(|(rect, animation)| (*rect, animation.clone(), usize::MAX))
+        .map(|(rect, animation)| (*rect, animation.clone(), (usize::MAX, 0, 0)))
         .collect();
     Ok(renderer)
 }
@@ -14483,10 +14529,10 @@ fn loading_renderer(
         api,
     ))?;
     if let Some(atlas) = atlas {
-        renderer.hud.fire_animations = atlas
-            .fire_animations
+        renderer.hud.sprite_animations = atlas
+            .sprite_animations
             .iter()
-            .map(|(rect, animation)| (*rect, animation.clone(), usize::MAX))
+            .map(|(rect, animation)| (*rect, animation.clone(), (usize::MAX, 0, 0)))
             .collect();
     }
     Ok(renderer)

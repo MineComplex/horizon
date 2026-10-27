@@ -3,7 +3,7 @@
 //! `ModelBlockRenderer`/`BlockModelLighter` (smooth light, ambient occlusion,
 //! cardinal shading, tint sources, block offsets; see `lighting`). Fluids
 //! follow `FluidRenderer` (see `fluid`).
-pub use horizon_game::vertex::{Vertex, stage_light};
+pub use horizon_game::vertex::{CULL_BACK, Vertex, stage_light};
 mod fluid;
 mod lighting;
 mod sides;
