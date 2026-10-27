@@ -300,7 +300,7 @@ CONTENT_ROOT_TESTS = "cargo test --locked -p horizon-client --features horizon-c
 def plan(args, base, changed, crates_of, libraries, dependencies):
     """The checks for these changed files, in the order they run."""
     rust = any(workspace_rust(path) for path in changed)
-    launcher = any(launcher_rust(path) for path in changed)
+    launcher = False  # this fork has no launcher/ (the MineComplex launcher lives elsewhere)
     # The Python tests also hold ROADMAP.md to roadmap/roadmap.toml (tests/test_roadmap.py).
     crates = touched_crates(changed, crates_of) if rust else []
     # An unrecognised Rust path must not silently skip validation.

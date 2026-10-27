@@ -204,7 +204,6 @@ impl Game<'_> {
                     Ok(true)
                 } else {
                     if save.close && self.title.is_none() {
-                        self.finish_perf();
                         self.finish_close_world()?;
                     }
                     self.clock.reset();

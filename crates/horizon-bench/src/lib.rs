@@ -1,7 +1,7 @@
 //! The benchmark report format, version 1 (docs/benchmark-report.md).
 //!
-//! One JSON file per run, the same for the game, the launcher and `tools/perf_bench.py`: the local log
-//! a player can attach, and, with consent, what the telemetry upload sends ([`Report::for_upload`]).
+//! One JSON file per run, the same for the game and `tools/perf_bench.py`: the local log a player can
+//! attach.
 //! It holds summaries and fixed-edge histogram counts, never raw frame streams.
 
 use std::collections::BTreeMap;
@@ -12,8 +12,9 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use serde::{Deserialize, Serialize};
 
 mod hardware;
+pub mod system;
 
-pub use hardware::{cpu_seconds, load_average, power_source, rss_bytes, Display, Gpu, Hardware};
+pub use hardware::{Display, Gpu, Hardware, cpu_seconds, load_average, power_source, rss_bytes};
 
 pub const FORMAT: &str = "horizon-benchmark-report";
 pub const VERSION: u32 = 1;

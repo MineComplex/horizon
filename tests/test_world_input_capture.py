@@ -90,13 +90,14 @@ struct Game {
     focused: bool, agent_pointer: bool, window: Option<Window>, mouse: Mouse,
     captured: bool, title: Option<()>, screen: Screen, remote: Option<Remote>,
     mining: bool, lan_acting: Option<u32>, renderer: Option<Renderer>, cursor: (f32, f32),
+    pointer_grab: Option<bool>,
 }
 impl Default for Game {
     fn default() -> Self {
         Self { focused: true, agent_pointer: false, window: Some(Window::default()),
             mouse: Mouse::default(), captured: false, title: None,
             screen: Screen::Playing, remote: None, mining: false, lan_acting: None,
-            renderer: None, cursor: (0.0, 0.0) }
+            renderer: None, cursor: (0.0, 0.0), pointer_grab: None }
     }
 }
 impl Game {
@@ -183,8 +184,17 @@ fn main() {
     assert!(game.window.as_ref().unwrap().visible.get());
 }
 '''
-        fixture = fixture.replace("METHODS", method(source, "capture") + "\n" +
-                                  method(source, "capture_loaded_world"))
+        # The game's half of `capture` queues the grab; the window applies it (`flush_to_window`):
+        # here at once, as the next window event or frame does.
+        request = method(source, "capture").replace("fn capture(", "fn request_capture(", 1)
+        fixture = fixture.replace("METHODS", request + "\n" + method(source, "grab_pointer") + "\n" +
+                                  method(source, "capture_loaded_world") + """
+    fn capture(&mut self, capture: bool) {
+        self.request_capture(capture);
+        if let Some(capture) = self.pointer_grab.take() {
+            self.grab_pointer(capture);
+        }
+    }""")
         with tempfile.TemporaryDirectory(prefix="horizon-input-") as folder:
             folder = Path(folder)
             rust = folder / "capture.rs"

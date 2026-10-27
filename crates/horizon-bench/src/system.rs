@@ -7,8 +7,6 @@
 use std::path::Path;
 use std::sync::OnceLock;
 
-use crate::payload::System;
-
 /// What `program args` prints, trimmed, when it succeeds and prints something. On Windows the
 /// program opens no console window: a GUI launcher or a game started without one would flash a
 /// terminal for every probe.
@@ -26,10 +24,7 @@ pub fn command_output(program: &str, args: &[&str]) -> Option<String> {
     (out.status.success() && !text.is_empty()).then_some(text)
 }
 
-fn read(path: &str) -> Option<String> {
-    std::fs::read_to_string(path).ok()
-}
-
+#[cfg(test)]
 /// The value after `key` in a `key: value` or `key=value` listing.
 fn field(text: &str, key: &str) -> Option<String> {
     text.lines().find_map(|l| {
@@ -38,55 +33,8 @@ fn field(text: &str, key: &str) -> Option<String> {
         Some(value.trim().trim_matches('"').to_owned())
     })
 }
-
-fn os_version() -> Option<String> {
-    if cfg!(target_os = "linux") {
-        read("/etc/os-release").and_then(|t| field(&t, "PRETTY_NAME"))
-    } else if cfg!(target_os = "macos") {
-        command_output("sw_vers", &["-productVersion"]).map(|v| format!("macOS {v}"))
-    } else if cfg!(windows) {
-        command_output("cmd", &["/C", "ver"])
-    } else {
-        None
-    }
-}
-
-fn cpu() -> Option<String> {
-    if cfg!(target_os = "linux") {
-        read("/proc/cpuinfo").and_then(|t| field(&t, "model name"))
-    } else if cfg!(target_os = "macos") {
-        command_output("sysctl", &["-n", "machdep.cpu.brand_string"])
-    } else {
-        std::env::var("PROCESSOR_IDENTIFIER").ok()
-    }
-}
-
-fn ram_bytes() -> Option<u64> {
-    if cfg!(target_os = "linux") {
-        let kib = read("/proc/meminfo").and_then(|t| field(&t, "MemTotal"))?;
-        kib.split_whitespace()
-            .next()?
-            .parse::<u64>()
-            .ok()
-            .map(|k| k * 1024)
-    } else if cfg!(target_os = "macos") {
-        command_output("sysctl", &["-n", "hw.memsize"])?
-            .parse()
-            .ok()
-    } else if cfg!(windows) {
-        command_output(
-            "powershell",
-            &[
-                "-NoProfile",
-                "-Command",
-                "(Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory",
-            ],
-        )?
-        .parse()
-        .ok()
-    } else {
-        None
-    }
+fn read(path: &str) -> Option<String> {
+    std::fs::read_to_string(path).ok()
 }
 
 /// Physical cores.
@@ -427,14 +375,14 @@ fn size_mb(text: &str) -> Option<u32> {
 }
 
 /// What doesn't change while the game runs, read once.
-struct Fixed {
-    cores: u16,
-    base: u32,
-    boost: u32,
-    form: &'static str,
+pub(crate) struct Fixed {
+    pub(crate) cores: u16,
+    pub(crate) base: u32,
+    pub(crate) boost: u32,
+    pub(crate) form: &'static str,
 }
 
-fn fixed() -> &'static Fixed {
+pub(crate) fn fixed() -> &'static Fixed {
     static FIXED: OnceLock<Fixed> = OnceLock::new();
     FIXED.get_or_init(|| {
         let (base, boost) = cpu_mhz();
@@ -445,39 +393,6 @@ fn fixed() -> &'static Fixed {
             form: form().unwrap_or(""),
         }
     })
-}
-
-impl System {
-    /// This machine, without the GPU and the screen. `home` is the game folder, for the kind of
-    /// drive it is on.
-    pub fn detect_in(home: Option<&Path>) -> Self {
-        const GIB: f64 = (1u64 << 30) as f64;
-        static STORAGE: OnceLock<&'static str> = OnceLock::new();
-        let fixed = fixed();
-        Self {
-            os: std::env::consts::OS.to_owned(),
-            os_version: os_version().unwrap_or_default(),
-            arch: std::env::consts::ARCH.to_owned(),
-            cpu: cpu().unwrap_or_default(),
-            threads: std::thread::available_parallelism().map_or(0, |n| n.get() as u16),
-            cores: fixed.cores,
-            cpu_base_mhz: fixed.base,
-            cpu_boost_mhz: fixed.boost,
-            ram_gb: ram_bytes().map_or(0, |b| (b as f64 / GIB).round() as u16),
-            storage: home
-                .map(|h| *STORAGE.get_or_init(|| storage(h).unwrap_or("")))
-                .unwrap_or("")
-                .to_owned(),
-            power: power().unwrap_or("").to_owned(),
-            form: fixed.form.to_owned(),
-            ..Self::default()
-        }
-    }
-
-    /// [`System::detect_in`] without the drive.
-    pub fn detect() -> Self {
-        Self::detect_in(None)
-    }
 }
 
 /// The GPU's maker from its name and the vendor ID wgpu reports (0: none, as on Metal).
@@ -581,30 +496,5 @@ mod tests {
             "intel"
         );
         assert_eq!(gpu_vendor("llvmpipe (LLVM 19)", 0x10005), "software");
-    }
-
-    /// `cargo test -p horizon-telemetry -- --ignored --nocapture what_this_machine_sends`
-    #[test]
-    #[ignore]
-    fn what_this_machine_sends() {
-        let home = std::env::current_dir().unwrap();
-        let mut system = System::detect_in(Some(&home));
-        system.vram_mb = vram_mb("nvidia").or_else(|| vram_mb("amd")).unwrap_or(0);
-        println!("{}", serde_json::to_string_pretty(&system).unwrap());
-    }
-
-    #[test]
-    fn this_machine_is_described() {
-        let system = System::detect();
-        assert_eq!(system.os, std::env::consts::OS);
-        assert!(system.threads > 0);
-        assert!(system.gpu.is_empty(), "the game fills the GPU in");
-        assert!(system.cores == 0 || system.cores <= system.threads);
-        assert!(["", "ac", "battery"].contains(&system.power.as_str()));
-        assert!(["", "laptop", "desktop"].contains(&system.form.as_str()));
-        let dir = std::env::temp_dir();
-        assert!(
-            ["", "nvme", "ssd", "hdd"].contains(&System::detect_in(Some(&dir)).storage.as_str())
-        );
     }
 }

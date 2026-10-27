@@ -1,7 +1,7 @@
 //! The machine a report was measured on. CPU, RAM and OS are detected here; the GPU and the display
 //! come from the program that rendered (the game knows its adapter, the launcher its window).
 
-use horizon_telemetry::system::command_output as output;
+use crate::system::command_output as output;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
@@ -84,13 +84,13 @@ impl Hardware {
     /// [`Hardware::detect`] with the kind of drive `game_dir` is on.
     pub fn detect_in(game_dir: &std::path::Path) -> Hardware {
         Hardware {
-            storage: horizon_telemetry::system::storage(game_dir).map(str::to_owned),
+            storage: crate::system::storage(game_dir).map(str::to_owned),
             ..Hardware::detect()
         }
     }
 }
 
-/// What the telemetry probes read (`horizon_telemetry::system`).
+/// What the system probes read (`crate::system`).
 struct Probes {
     cores: Option<u16>,
     base: Option<u32>,
@@ -99,13 +99,13 @@ struct Probes {
 }
 
 fn probes() -> Probes {
-    let s = horizon_telemetry::payload::System::detect();
+    let s = crate::system::fixed();
     let some = |n: u32| (n > 0).then_some(n);
     Probes {
         cores: (s.cores > 0).then_some(s.cores),
-        base: some(s.cpu_base_mhz),
-        boost: some(s.cpu_boost_mhz),
-        form: (!s.form.is_empty()).then_some(s.form),
+        base: some(s.base),
+        boost: some(s.boost),
+        form: (!s.form.is_empty()).then(|| s.form.to_owned()),
     }
 }
 
@@ -131,7 +131,7 @@ pub fn load_average() -> Option<f64> {
 
 /// `ac` or `battery`; `None` where it can't be read (and on machines without a battery on Linux).
 pub fn power_source() -> Option<&'static str> {
-    horizon_telemetry::system::power()
+    crate::system::power()
 }
 
 /// Resident memory of a process, in bytes (macOS, Linux).

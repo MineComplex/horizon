@@ -28,7 +28,7 @@ impl Registry {
 }
 struct Assets { registry: Registry }
 struct Pack { assets: Assets }
-struct Audio { capture: Option<()> }
+struct SoundOut { capture: Option<()> }
 mod horizon_client { pub mod particles {
     pub enum ParticleType { Block }
     pub struct ParticleOptions;
@@ -47,7 +47,7 @@ impl Particles {
     }
 }
 struct Game {
-    pack: Pack, audio: Audio, particles: Particles, headless: bool,
+    pack: Pack, sounds: SoundOut, particles: Particles, headless: bool,
     lan_cushion_breaks: Vec<(u32, [f64; 3])>,
 }
 impl Game {
@@ -62,7 +62,7 @@ fn main() {
         for serving in [true, false] {
             let mut game = Game {
                 pack: Pack { assets: Assets { registry: Registry } },
-                audio: Audio { capture: serving.then_some(()) },
+                sounds: SoundOut { capture: serving.then_some(()) },
                 particles: Particles::default(), headless, lan_cushion_breaks: vec![],
             };
             game.cushion_break_particles(&cushion);

@@ -22,6 +22,9 @@ import tempfile
 import threading
 import time
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import lab  # noqa: E402
+
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
@@ -400,11 +403,11 @@ def main():
     os.makedirs(os.path.join(folder, "plugins"))
     shutil.copy(o.plugin, os.path.join(folder, "plugins"))
     shutil.copy(o.event_log, os.path.join(folder, "plugins"))
-    env = dict(os.environ)
-    for k in ("HORIZON_HOME", "HORIZON_LAUNCHER_HOME", "XDG_DATA_HOME", "XDG_CONFIG_HOME"):
-        env[k] = tempfile.mkdtemp(prefix="horizon-plugins-" + k.lower() + "-", dir=home)
-    env["HORIZON_NO_AUDIO"] = "1"
-    env["HORIZON_LAUNCHER_NO_SELF_UPDATE"] = "1"
+    # Scratch folders inside `home` (removed with it), and lab.game_env's switches.
+    env = lab.game_env(**{
+        k: tempfile.mkdtemp(prefix="horizon-plugins-" + k.lower() + "-", dir=home)
+        for k in ("HORIZON_HOME", "HORIZON_LAUNCHER_HOME", "XDG_DATA_HOME", "XDG_CONFIG_HOME")
+    })
     c = Checks()
     server = Server(o.game, o.resources, folder, port, env)
     try:
