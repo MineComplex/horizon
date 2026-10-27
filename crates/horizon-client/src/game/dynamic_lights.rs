@@ -8,17 +8,16 @@ impl Game<'_> {
     /// Fills `dynamic_lights` for the frame: the player's and mobs' held items and fire, and
     /// glowing dropped items, the nearest [`dynamic_light::MAX`] of them.
     pub(super) fn gather_dynamic_lights(&mut self, camera: DVec3, alpha: f64) {
-        let mut out = std::mem::take(&mut self.front.dynamic_lights);
+        let mut out = std::mem::take(&mut self.dynamic_lights);
         out.clear();
         if !self.settings.extras.dynamic_lights {
-            self.front.dynamic_lights = out;
+            self.dynamic_lights = out;
             return;
         }
-        if self.front.luminance.is_none() {
-            self.front.luminance =
-                Some(Luminance::new(self.res.facts(), self.pack.assets.registry));
+        if self.luminance.is_none() {
+            self.luminance = Some(Luminance::new(self.res.facts(), self.pack.assets.registry));
         }
-        let lum = self.front.luminance.as_ref().expect("built above");
+        let lum = self.luminance.as_ref().expect("built above");
         let held = |item: Option<&str>| item.map_or(0, |i| lum.of(i));
         let mut sources = Vec::new();
         if let Some(p) = &self.player
@@ -63,6 +62,6 @@ impl Game<'_> {
             });
         }
         dynamic_light::select(&sources, camera, &mut out);
-        self.front.dynamic_lights = out;
+        self.dynamic_lights = out;
     }
 }

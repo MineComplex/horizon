@@ -42,10 +42,27 @@ impl Game<'_> {
         self.request_remote_mining_stop();
         self.mining = None;
     }
+    /// `LivingEntity.swing` with `getModifiedSwingDuration`.
+    pub(super) fn swing_hand(&mut self, hand: Hand, animation: SwingAnimation) {
+        let effects = &self.potions.effects;
+        let dig_speed = effects
+            .amplifier("haste")
+            .max(effects.amplifier("conduit_power"));
+        let fatigue = effects.amplifier("mining_fatigue");
+        let duration = swing_duration(animation, dig_speed, fatigue);
+        if self.swing.start_if_able(hand, animation, duration) {
+            self.swings_started += 1;
+        }
+    }
     /// `swing(hand)` for the hand that acts, with the default animation.
     pub(super) fn swing_arm(&mut self) {
         let hand = self.hand;
         self.swing_hand(hand, SwingAnimation::DEFAULT);
+    }
+    /// `Player.resetAttackStrengthTicker`.
+    pub(super) fn reset_attack_strength(&mut self) {
+        self.attack_ticks = 0;
+        self.hand_strength.reset();
     }
     /// The attack and use part of `Minecraft.tick` for the local player:
     /// attack clicks since the last tick and the held attack button.
@@ -97,105 +114,6 @@ impl Game<'_> {
             ticks: d.ticks as u32,
         });
         Ok(())
-    }
-    /// `MultiPlayerGameMode.startUseItem`'s bookkeeping around the game's
-    /// use: nothing starts while a block is being broken or the hands are
-    /// busy, and `LocalPlayer.itemUsed` drops the hand after a use that
-    /// swung and spent (or, with infinite materials, kept) the item, or that
-    /// started using it.
-    pub(super) fn use_with_hand(&mut self) -> Result<()> {
-        if self.clicks.destroying.active || self.hands_busy() {
-            return Ok(());
-        }
-        let before = [self.stack_in(self.selected).cloned(), self.offhand.clone()];
-        let swings = self.swings_started;
-        let using = self.using.is_some();
-        let Some(hand) = self.use_item()? else {
-            return Ok(());
-        };
-        let (before, after) = match hand {
-            Hand::Main => (&before[0], self.stack_in(self.selected).cloned()),
-            Hand::Off => (&before[1], self.offhand.clone()),
-        };
-        let swung = self.swings_started != swings;
-        let spent = match (before, &after) {
-            (Some(a), Some(b)) => a.count != b.count || a.item != b.item || self.creative,
-            _ => false,
-        };
-        if (swung && spent) || (!using && self.using.is_some() && after.is_some()) {
-            self.front.heights.item_used(hand);
-        }
-        Ok(())
-    }
-    /// `LocalPlayer.tick`: the swing (`LivingEntity.baseTick`), the attack
-    /// strength and item swap tickers (`Player.tick`), then
-    /// `FirstPersonHandsAndItems.tick`.
-    pub(super) fn tick_hand(&mut self) {
-        // LocalPlayer.applyInput (the camera is the player's own).
-        if self.player.is_some() {
-            self.front.sway.tick(self.pitch, self.yaw);
-        }
-        self.swing.tick();
-        let main = self.inventory[self.selected].clone();
-        // Player.tick: a different item resets the attack strength, and
-        // detectEquipmentUpdates gives the player its modifiers.
-        if self.hand_strength.tick(main.as_ref().map(|s| HeldStack {
-            item: s.item.to_string(),
-            rest: format!("{} {} {:?}", s.count, s.damage, s.extra),
-        })) {
-            self.attack_ticks = 0;
-        }
-        self.attack_item = main.as_ref().map(|s| s.item.clone());
-        let next = [(self.selected, main), (OFFHAND, self.offhand.clone())];
-        // shouldInstantlyReplaceVisibleItem: the same stack, or an equal one
-        // (matchesIgnoringComponents; every item plays the swap animation).
-        // A stack that stays in its slot with the same item is the same
-        // stack, whatever its count (vanilla shrinks and grows it in place).
-        let mut changed = [false; 2];
-        for h in 0..2 {
-            let same = match (&self.visible_hands[h], &next[h]) {
-                ((_, None), (_, None)) => true,
-                ((slot, Some(a)), (next_slot, Some(b))) => {
-                    a.item == b.item
-                        && (slot == next_slot || (a.count == b.count && a.extra == b.extra))
-                }
-                _ => false,
-            };
-            if same {
-                self.visible_hands[h] = next[h].clone();
-            }
-            changed[h] = !same;
-        }
-        let speed = self.main_hand_attack_speed();
-        let replace = self.front.heights.tick(
-            self.hands_busy(),
-            self.hand_strength.swap_scale(1.0, speed),
-            changed,
-        );
-        for h in 0..2 {
-            if replace[h] {
-                self.visible_hands[h] = next[h].clone();
-            }
-        }
-    }
-}
-impl crate::game::Sim<'_> {
-    /// `LivingEntity.swing` with `getModifiedSwingDuration`.
-    pub(super) fn swing_hand(&mut self, hand: Hand, animation: SwingAnimation) {
-        let effects = &self.potions.effects;
-        let dig_speed = effects
-            .amplifier("haste")
-            .max(effects.amplifier("conduit_power"));
-        let fatigue = effects.amplifier("mining_fatigue");
-        let duration = swing_duration(animation, dig_speed, fatigue);
-        if self.swing.start_if_able(hand, animation, duration) {
-            self.swings_started += 1;
-        }
-    }
-    /// `Player.resetAttackStrengthTicker`.
-    pub(super) fn reset_attack_strength(&mut self) {
-        self.attack_ticks = 0;
-        self.hand_strength.reset();
     }
     /// `BlockBehaviour.getDestroyProgress` with `Player.getDestroySpeed`.
     pub(super) fn destroy_progress(&self, pos: [i32; 3]) -> f32 {
@@ -259,6 +177,86 @@ impl crate::game::Sim<'_> {
             ]
             .iter()
             .any(|k| self.keys.contains(k))
+    }
+    /// `MultiPlayerGameMode.startUseItem`'s bookkeeping around the game's
+    /// use: nothing starts while a block is being broken or the hands are
+    /// busy, and `LocalPlayer.itemUsed` drops the hand after a use that
+    /// swung and spent (or, with infinite materials, kept) the item, or that
+    /// started using it.
+    pub(super) fn use_with_hand(&mut self) -> Result<()> {
+        if self.clicks.destroying.active || self.hands_busy() {
+            return Ok(());
+        }
+        let before = [self.stack_in(self.selected).cloned(), self.offhand.clone()];
+        let swings = self.swings_started;
+        let using = self.using.is_some();
+        let Some(hand) = self.use_item()? else {
+            return Ok(());
+        };
+        let (before, after) = match hand {
+            Hand::Main => (&before[0], self.stack_in(self.selected).cloned()),
+            Hand::Off => (&before[1], self.offhand.clone()),
+        };
+        let swung = self.swings_started != swings;
+        let spent = match (before, &after) {
+            (Some(a), Some(b)) => a.count != b.count || a.item != b.item || self.creative,
+            _ => false,
+        };
+        if (swung && spent) || (!using && self.using.is_some() && after.is_some()) {
+            self.heights.item_used(hand);
+        }
+        Ok(())
+    }
+    /// `LocalPlayer.tick`: the swing (`LivingEntity.baseTick`), the attack
+    /// strength and item swap tickers (`Player.tick`), then
+    /// `FirstPersonHandsAndItems.tick`.
+    pub(super) fn tick_hand(&mut self) {
+        // LocalPlayer.applyInput (the camera is the player's own).
+        if self.player.is_some() {
+            self.sway.tick(self.pitch, self.yaw);
+        }
+        self.swing.tick();
+        let main = self.inventory[self.selected].clone();
+        // Player.tick: a different item resets the attack strength, and
+        // detectEquipmentUpdates gives the player its modifiers.
+        if self.hand_strength.tick(main.as_ref().map(|s| HeldStack {
+            item: s.item.to_string(),
+            rest: format!("{} {} {:?}", s.count, s.damage, s.extra),
+        })) {
+            self.attack_ticks = 0;
+        }
+        self.attack_item = main.as_ref().map(|s| s.item.clone());
+        let next = [(self.selected, main), (OFFHAND, self.offhand.clone())];
+        // shouldInstantlyReplaceVisibleItem: the same stack, or an equal one
+        // (matchesIgnoringComponents; every item plays the swap animation).
+        // A stack that stays in its slot with the same item is the same
+        // stack, whatever its count (vanilla shrinks and grows it in place).
+        let mut changed = [false; 2];
+        for h in 0..2 {
+            let same = match (&self.visible_hands[h], &next[h]) {
+                ((_, None), (_, None)) => true,
+                ((slot, Some(a)), (next_slot, Some(b))) => {
+                    a.item == b.item
+                        && (slot == next_slot || (a.count == b.count && a.extra == b.extra))
+                }
+                _ => false,
+            };
+            if same {
+                self.visible_hands[h] = next[h].clone();
+            }
+            changed[h] = !same;
+        }
+        let speed = self.main_hand_attack_speed();
+        let replace = self.heights.tick(
+            self.hands_busy(),
+            self.hand_strength.swap_scale(1.0, speed),
+            changed,
+        );
+        for h in 0..2 {
+            if replace[h] {
+                self.visible_hands[h] = next[h].clone();
+            }
+        }
     }
     /// `Minecraft.crosshairPickEntity` when it is a `LivingEntity`: whether
     /// it is alive (the nearest entity under the crosshair, before any block).
@@ -542,7 +540,7 @@ impl HandWorld for GameHands<'_, '_> {
         UseResult::Pass
     }
     fn item_used(&mut self, hand: Hand) {
-        self.game.front.heights.item_used(hand);
+        self.game.heights.item_used(hand);
     }
     fn release_using(&mut self) {}
 }

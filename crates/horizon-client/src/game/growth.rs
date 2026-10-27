@@ -7,6 +7,11 @@ use horizon_world::worldgen::live::LiveFeatures;
 use std::sync::Arc;
 
 impl Game<'_> {
+    /// Load the configured/placed feature registry used by saplings, fungi
+    /// and bone meal (once per process; shares the generator's bundle).
+    pub(super) fn install_live_features(&self) {
+        install_live_features(&self.res, &self.pack, &self.options);
+    }
     /// `BoneMealItem.useOn` for the targeted block.
     pub(super) fn use_bone_meal(&mut self, stack: &ItemStack) -> Result<bool> {
         if &*stack.item != "minecraft:bone_meal" {
@@ -51,13 +56,6 @@ impl Game<'_> {
             self.consume_held();
         }
         Ok(used)
-    }
-}
-impl crate::game::Sim<'_> {
-    /// Load the configured/placed feature registry used by saplings, fungi
-    /// and bone meal (once per process; shares the generator's bundle).
-    pub(super) fn install_live_features(&self) {
-        install_live_features(&self.res, &self.pack, &self.options);
     }
 }
 

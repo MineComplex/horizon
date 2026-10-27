@@ -70,6 +70,58 @@ impl SpawnLevel for Columns<'_, '_> {
 }
 
 impl Game<'_> {
+    fn spawn_columns(&self) -> Columns<'_, '_> {
+        Columns {
+            world: &self.world,
+            properties: &self.pack.assets.properties,
+            binding: self.collision,
+        }
+    }
+    /// ChunkGenerator.getOrigin and getSpawnHeight of the overworld.
+    fn spawn_origin(&self) -> Result<((i32, i32), i32)> {
+        if let Some(flat) =
+            horizon_client::save::world_gen_settings(&self.world_root).and_then(|s| {
+                horizon_client::flatgen::FlatTerrain::from_settings(
+                    &s,
+                    self.pack.assets.registry,
+                    self.res.biomes(),
+                )
+            })
+        {
+            return Ok(((0, 0), flat.spawn_height()));
+        }
+        if self.options.test_terrain {
+            return Ok(((0, 0), 64));
+        }
+        let origin = match self.end.locator() {
+            Some(terrain) => terrain.origin()?,
+            None => horizon_core::position::ChunkPos::new(0, 0),
+        };
+        Ok(((origin.x, origin.z), 64))
+    }
+    /// MinecraftServer.setInitialSpawn: the first chunk of the spiral with a
+    /// valid respawn column gives the world spawn, else the origin chunk's
+    /// centre at the spawn height. None while a chunk to test is loading.
+    pub(super) fn find_world_spawn(&mut self) -> Result<Option<[i32; 3]>> {
+        let ((ox, oz), height) = match self.spawn_origin {
+            Some(origin) => origin,
+            None => *self.spawn_origin.insert(self.spawn_origin()?),
+        };
+        while let Some((dx, dz)) = self.spawn_spiral.current() {
+            if self.spawn_spiral.tested() {
+                let (cx, cz) = (ox + dx, oz + dz);
+                if !self.streaming.is_lit(cx, cz) {
+                    self.streaming.center = (cx, cz);
+                    return Ok(None);
+                }
+                if let Some(pos) = spawn_pos_in_chunk(&self.spawn_columns(), cx, cz) {
+                    return Ok(Some(pos));
+                }
+            }
+            self.spawn_spiral.advance();
+        }
+        Ok(Some([ox * 16 + 8, height, oz * 16 + 8]))
+    }
     /// MinecraftServer.setInitialSpawn's bonus chest: BonusChestFeature.place
     /// in the spawn chunk, a chest with the spawn bonus loot and a torch on
     /// each side that can hold one, on the first free column of a shuffled
@@ -143,60 +195,6 @@ impl Game<'_> {
             );
         });
         self.process_level_events()
-    }
-}
-impl crate::game::Sim<'_> {
-    fn spawn_columns(&self) -> Columns<'_, '_> {
-        Columns {
-            world: &self.world,
-            properties: &self.pack.assets.properties,
-            binding: self.collision,
-        }
-    }
-    /// ChunkGenerator.getOrigin and getSpawnHeight of the overworld.
-    fn spawn_origin(&self) -> Result<((i32, i32), i32)> {
-        if let Some(flat) =
-            horizon_client::save::world_gen_settings(&self.world_root).and_then(|s| {
-                horizon_client::flatgen::FlatTerrain::from_settings(
-                    &s,
-                    self.pack.assets.registry,
-                    self.res.biomes(),
-                )
-            })
-        {
-            return Ok(((0, 0), flat.spawn_height()));
-        }
-        if self.options.test_terrain {
-            return Ok(((0, 0), 64));
-        }
-        let origin = match self.end.locator() {
-            Some(terrain) => terrain.origin()?,
-            None => horizon_core::position::ChunkPos::new(0, 0),
-        };
-        Ok(((origin.x, origin.z), 64))
-    }
-    /// MinecraftServer.setInitialSpawn: the first chunk of the spiral with a
-    /// valid respawn column gives the world spawn, else the origin chunk's
-    /// centre at the spawn height. None while a chunk to test is loading.
-    pub(super) fn find_world_spawn(&mut self) -> Result<Option<[i32; 3]>> {
-        let ((ox, oz), height) = match self.spawn_origin {
-            Some(origin) => origin,
-            None => *self.spawn_origin.insert(self.spawn_origin()?),
-        };
-        while let Some((dx, dz)) = self.spawn_spiral.current() {
-            if self.spawn_spiral.tested() {
-                let (cx, cz) = (ox + dx, oz + dz);
-                if !self.streaming.is_lit(cx, cz) {
-                    self.streaming.center = (cx, cz);
-                    return Ok(None);
-                }
-                if let Some(pos) = spawn_pos_in_chunk(&self.spawn_columns(), cx, cz) {
-                    return Ok(Some(pos));
-                }
-            }
-            self.spawn_spiral.advance();
-        }
-        Ok(Some([ox * 16 + 8, height, oz * 16 + 8]))
     }
     /// The block at `pos` has no collision shape.
     fn collision_empty(&self, pos: [i32; 3]) -> bool {

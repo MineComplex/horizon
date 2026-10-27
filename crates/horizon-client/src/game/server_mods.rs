@@ -32,9 +32,7 @@ pub(super) enum ModEvent {
 }
 
 #[cfg(not(feature = "mods"))]
-impl Game<'_> {}
-#[cfg(not(feature = "mods"))]
-impl crate::game::Sim<'_> {
+impl Game<'_> {
     pub(super) fn tick_server_mods(&mut self) {}
     pub(super) fn mod_block_event(&mut self, _pos: [i32; 3], _state: BlockStateId, _placed: bool) {}
     pub(super) fn mod_player_chat(&mut self, _who: Who, _text: &str) {}
@@ -305,14 +303,14 @@ mod run {
                         if placed {
                             self.mods.mods.block_placed(&p, pos, &state);
                         } else {
-                            self.sim.mods.mods.block_broken(&p, pos, &state);
+                            self.mods.mods.block_broken(&p, pos, &state);
                         }
                     }
                 }
             }
-            self.sim.mods.mods.server_tick(self.sim.ticks);
+            self.mods.mods.server_tick(self.ticks);
             self.return_world();
-            self.sim.mods.players = players;
+            self.mods.players = players;
             self.show_mod_output();
             self.apply_mod_block_writes();
         }
@@ -320,14 +318,14 @@ mod run {
         /// Players' command trees list the running server mods' commands
         /// after vanilla's, whenever they change (or a hub opens).
         fn send_server_mod_commands(&mut self) {
-            let key = self.sim.mods.mods.generation();
-            let Some(host) = self.sim.lan.as_mut() else {
+            let key = self.mods.mods.generation();
+            let Some(host) = self.lan.as_mut() else {
                 return;
             };
             if host.hub.mod_commands_key() == Some(key) {
                 return;
             }
-            let tree = command_tree(self.sim.mods.mods.server_commands());
+            let tree = command_tree(self.mods.mods.server_commands());
             host.hub.set_mod_commands(key, tree);
         }
 

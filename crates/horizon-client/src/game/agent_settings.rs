@@ -7,8 +7,7 @@ use super::Game;
 use horizon_client::{Result, control};
 use std::path::PathBuf;
 
-impl Game<'_> {}
-impl crate::game::Sim<'_> {
+impl Game<'_> {
     /// The endpoint: the one the command line gave, else the default horizon-ctl looks for.
     fn agent_socket_path(&self) -> PathBuf {
         self.options
@@ -16,6 +15,7 @@ impl crate::game::Sim<'_> {
             .clone()
             .unwrap_or_else(control::default_path)
     }
+
     /// At startup: open the socket if the game was started for an agent or Agent Control is on.
     pub(super) fn start_agent_control(&mut self) -> Result<()> {
         self.agent_control_on = self.settings.extras.agent_control;
@@ -42,6 +42,7 @@ impl crate::game::Sim<'_> {
         }
         Ok(())
     }
+
     /// The setting's socket: a failure (another game holds the default endpoint) is logged and
     /// shown on the AI Agent page, not fatal.
     fn open_agent_socket(&mut self) {
@@ -54,6 +55,7 @@ impl crate::game::Sim<'_> {
             Err(e) => log::warn!("Horizon: control socket {}: {e}", path.display()),
         }
     }
+
     /// After a settings change: No AI closes the socket; Agent Control turned on or off opens or
     /// closes it.
     pub(super) fn sync_agent_control(&mut self) {
@@ -73,10 +75,12 @@ impl crate::game::Sim<'_> {
             self.open_agent_socket();
         }
     }
+
     /// An agent's command arrived.
     pub(super) fn agent_command_seen(&mut self) {
         self.agent_last = Some(std::time::Instant::now());
     }
+
     /// The AI Agent page's lines: the state, then where agents connect.
     pub(super) fn agent_status_lines(&self) -> Vec<String> {
         let server = self
@@ -111,6 +115,7 @@ impl crate::game::Sim<'_> {
         lines.push("Local only: agents on this computer, never the network.".into());
         lines
     }
+
     /// What Copy Connection Details puts on the clipboard: the socket, a horizon-ctl line to try,
     /// and an MCP client's config for this game.
     pub(super) fn agent_details(&self) -> String {
