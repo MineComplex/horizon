@@ -103,20 +103,6 @@ impl Game<'_> {
         Some(true)
     }
 
-    /// The bookshelf's six slots (made if the block has no block entity yet).
-    fn bookshelf_items(&mut self, pos: [i32; 3]) -> Option<&mut [Option<ItemStack>; 6]> {
-        let entity = self
-            .world
-            .block_entities
-            .get_or_insert_with((pos[0], pos[1], pos[2]), || {
-                BlockEntity::ChiseledBookshelf(Box::default())
-            });
-        match entity {
-            BlockEntity::ChiseledBookshelf(b) => Some(&mut b.items),
-            _ => None,
-        }
-    }
-
     /// `ChiseledBookShelfBlockEntity.updateState`: `slot` becomes the last
     /// one touched, the block state takes the slots' occupancy
     /// (`setBlockAndUpdate`) and `BLOCK_CHANGE` goes out.
@@ -173,6 +159,21 @@ impl Game<'_> {
         });
         if let Some(slot) = moved {
             self.chiseled_bookshelf_update_state([pos.0, pos.1, pos.2], slot);
+        }
+    }
+}
+impl crate::game::Sim<'_> {
+    /// The bookshelf's six slots (made if the block has no block entity yet).
+    fn bookshelf_items(&mut self, pos: [i32; 3]) -> Option<&mut [Option<ItemStack>; 6]> {
+        let entity = self
+            .world
+            .block_entities
+            .get_or_insert_with((pos[0], pos[1], pos[2]), || {
+                BlockEntity::ChiseledBookshelf(Box::default())
+            });
+        match entity {
+            BlockEntity::ChiseledBookshelf(b) => Some(&mut b.items),
+            _ => None,
         }
     }
 }

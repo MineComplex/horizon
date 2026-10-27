@@ -50,17 +50,6 @@ impl DebugHost for Host<'_, '_> {
 }
 
 impl Game<'_> {
-    fn open_screen(&self) -> OpenScreen {
-        if self.title.is_some() {
-            return OpenScreen::Other;
-        }
-        match self.screen {
-            Screen::GameModeSwitcher => OpenScreen::GameModeSwitcher,
-            Screen::Playing if self.book.is_none() && self.sign_edit.is_none() => OpenScreen::None,
-            Screen::Paused if !self.pause_menu => OpenScreen::PauseWithoutMenu,
-            _ => OpenScreen::Other,
-        }
-    }
     /// A physical key event (already in `physical_keys`) before the game's
     /// own handling. Returns true when it is used up (a debug combination,
     /// F3 itself, F3+Escape).
@@ -160,10 +149,6 @@ impl Game<'_> {
         } else {
             modifier_was_down
         }
-    }
-    /// `Util.getMillis` (positive: KeyboardHandler treats 0 as unset).
-    pub(super) fn debug_millis(&self) -> i64 {
-        self.started.elapsed().as_millis() as i64 + 1_000_000
     }
     /// `KeyboardHandler.tick`: the debug crash countdown.
     pub(super) fn tick_debug_keys(&mut self) -> Result<()> {
@@ -488,10 +473,6 @@ impl Game<'_> {
         draws.push(hud_layout::GuiDraw::Pop);
         hud_layout::paint(batch, atlas, &draws);
     }
-    /// `KeyMapping.getTranslatedKeyMessage`.
-    fn key_text(&self, mapping: &str) -> Text {
-        keybinds::display_name(self.settings.keys.get(mapping))
-    }
     /// `KeyboardHandler.decorateDebugComponent`: `[Debug]:` in bold, a space,
     /// the message, shown with `Minecraft.showDebugChat`.
     fn debug_decorated(&mut self, color: u32, message: Text) {
@@ -513,19 +494,6 @@ impl Game<'_> {
     }
     fn debug_translated(&mut self, key: &str) {
         self.debug_feedback(Text::translate(key, &[]));
-    }
-    /// `LocalPlayer.isReducedDebugInfo`: the server's rule or the option.
-    fn reduced_debug_info(&self) -> bool {
-        self.settings.reduced_debug_info || self.world_data.rules.bool("reduced_debug_info")
-    }
-    /// The default profile's `3d_crosshair` entry: on while the overlay is
-    /// open, unless debug info is reduced.
-    pub(super) fn debug_crosshair(&self) -> bool {
-        self.debug && !self.reduced_debug_info()
-    }
-    /// `Permissions.COMMANDS_GAMEMASTER` (`GameModeCommand.PERMISSION_CHECK`).
-    pub(super) fn gamemaster(&self) -> bool {
-        self.world_data.registries.permission >= 2
     }
     fn toggle_option(&mut self, key: &str) -> bool {
         let on = !self.settings.file.bool(key);
@@ -753,6 +721,40 @@ impl Game<'_> {
     fn set_clipboard(&mut self, text: &str) {
         use horizon_client::clipboard::Clipboard;
         self.front.clipboard.set(text);
+    }
+}
+impl crate::game::Sim<'_> {
+    fn open_screen(&self) -> OpenScreen {
+        if self.title.is_some() {
+            return OpenScreen::Other;
+        }
+        match self.screen {
+            Screen::GameModeSwitcher => OpenScreen::GameModeSwitcher,
+            Screen::Playing if self.book.is_none() && self.sign_edit.is_none() => OpenScreen::None,
+            Screen::Paused if !self.pause_menu => OpenScreen::PauseWithoutMenu,
+            _ => OpenScreen::Other,
+        }
+    }
+    /// `Util.getMillis` (positive: KeyboardHandler treats 0 as unset).
+    pub(super) fn debug_millis(&self) -> i64 {
+        self.started.elapsed().as_millis() as i64 + 1_000_000
+    }
+    /// `KeyMapping.getTranslatedKeyMessage`.
+    fn key_text(&self, mapping: &str) -> Text {
+        keybinds::display_name(self.settings.keys.get(mapping))
+    }
+    /// `LocalPlayer.isReducedDebugInfo`: the server's rule or the option.
+    fn reduced_debug_info(&self) -> bool {
+        self.settings.reduced_debug_info || self.world_data.rules.bool("reduced_debug_info")
+    }
+    /// The default profile's `3d_crosshair` entry: on while the overlay is
+    /// open, unless debug info is reduced.
+    pub(super) fn debug_crosshair(&self) -> bool {
+        self.debug && !self.reduced_debug_info()
+    }
+    /// `Permissions.COMMANDS_GAMEMASTER` (`GameModeCommand.PERMISSION_CHECK`).
+    pub(super) fn gamemaster(&self) -> bool {
+        self.world_data.registries.permission >= 2
     }
     /// The debug renderers' gizmos for a frame (`DebugRenderer.emitGizmos`).
     pub(super) fn debug_gizmos(&self, alpha: f32) -> Gizmos {

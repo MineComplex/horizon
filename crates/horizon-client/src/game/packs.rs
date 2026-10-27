@@ -107,22 +107,6 @@ pub(super) fn pack_infos(vanilla: &Path) -> Vec<PackInfo> {
     infos
 }
 impl Game<'_> {
-    pub(super) fn vanilla_root(&self) -> PathBuf {
-        if self.ui.vanilla_root.as_os_str().is_empty() {
-            self.options.resources.clone()
-        } else {
-            self.ui.vanilla_root.clone()
-        }
-    }
-    /// The packs the pack screen offers and the current selection
-    /// (`PackSelectionScreen` makes its `PackSelectionModel` from them).
-    pub(super) fn refresh_pack_lists(&mut self) {
-        let infos = pack_infos(&self.vanilla_root());
-        let o = &mut self.sim.ui.options;
-        o.pack_infos = infos;
-        o.pack_selection = self.sim.settings.resource_packs.clone();
-        o.pack_screen = None;
-    }
     /// `Minecraft.reloadResourcePacks`: rebuild the overlay and reload every
     /// client resource from it, as vanilla's reload listeners do: block
     /// models and sprites (every section is meshed again,
@@ -146,27 +130,6 @@ impl Game<'_> {
             }
             self.ui.options.resource_error = Some(e.to_string());
         }
-    }
-    /// The CPU half of the reload, safe on a worker (`PackReload` runs it):
-    /// `apply_staged_pack` finishes the GPU half and the swap.
-    pub(super) fn stage_selected_packs(&mut self) -> horizon_client::Result<StagedPack> {
-        let vanilla = self.vanilla_root();
-        if self.ui.vanilla_root.as_os_str().is_empty() {
-            self.ui.vanilla_root = vanilla.clone();
-        }
-        stage_pack(
-            &vanilla,
-            &self.settings.resource_packs,
-            &self.server_packs.active,
-            &self.settings.mods.enabled,
-            &self.options.dev_mods,
-            &self.pack.assets,
-            &self.res,
-            &self.pack.context,
-            self.settings.force_unicode,
-            self.settings.japanese_glyphs,
-            &super::Progress::new(),
-        )
     }
     /// The render-thread half: the renderer on the new pack's textures, then
     /// the swap (`ReloadInstance`'s application listeners).
@@ -260,6 +223,45 @@ impl Game<'_> {
     pub(super) fn reload_selected_packs(&mut self) -> horizon_client::Result<()> {
         let staged = self.stage_selected_packs()?;
         self.apply_staged_pack(staged)
+    }
+}
+impl crate::game::Sim<'_> {
+    pub(super) fn vanilla_root(&self) -> PathBuf {
+        if self.ui.vanilla_root.as_os_str().is_empty() {
+            self.options.resources.clone()
+        } else {
+            self.ui.vanilla_root.clone()
+        }
+    }
+    /// The packs the pack screen offers and the current selection
+    /// (`PackSelectionScreen` makes its `PackSelectionModel` from them).
+    pub(super) fn refresh_pack_lists(&mut self) {
+        let infos = pack_infos(&self.vanilla_root());
+        let o = &mut self.ui.options;
+        o.pack_infos = infos;
+        o.pack_selection = self.settings.resource_packs.clone();
+        o.pack_screen = None;
+    }
+    /// The CPU half of the reload, safe on a worker (`PackReload` runs it):
+    /// `apply_staged_pack` finishes the GPU half and the swap.
+    pub(super) fn stage_selected_packs(&mut self) -> horizon_client::Result<StagedPack> {
+        let vanilla = self.vanilla_root();
+        if self.ui.vanilla_root.as_os_str().is_empty() {
+            self.ui.vanilla_root = vanilla.clone();
+        }
+        stage_pack(
+            &vanilla,
+            &self.settings.resource_packs,
+            &self.server_packs.active,
+            &self.settings.mods.enabled,
+            &self.options.dev_mods,
+            &self.pack.assets,
+            &self.res,
+            &self.pack.context,
+            self.settings.force_unicode,
+            self.settings.japanese_glyphs,
+            &super::Progress::new(),
+        )
     }
 }
 

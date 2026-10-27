@@ -129,13 +129,6 @@ fn back_button(w: f32, h: f32) -> (f32, f32) {
 }
 
 impl Game<'_> {
-    /// `connection.serverLinks()`: the links the open server sent (empty for
-    /// a world without a connection or one that sent none).
-    pub(super) fn server_links(&self) -> &[ServerLink] {
-        self.remote
-            .as_ref()
-            .map_or(&[], |r| r.server_links.as_slice())
-    }
     /// DialogScreen over the pause menu: `menu.server_links.title`, the
     /// scrollable link buttons and `gui.back` in the footer.
     pub(super) fn draw_server_links(&mut self, batch: &mut HudBatch) {
@@ -251,19 +244,6 @@ impl Game<'_> {
         }
         Ok(())
     }
-    /// `Screen.clickUrlAction`: "Web Links" off ignores the click; "Prompt on
-    /// Links" asks with ConfirmLinkScreen, else the browser opens directly.
-    fn click_link(&mut self, url: &str) {
-        if !self.settings.chat_links {
-            return;
-        }
-        if self.settings.chat_links_prompt {
-            self.links_ui.confirm = Some(url.to_owned());
-            self.screen = Screen::ConfirmLink;
-        } else {
-            open_uri(url);
-        }
-    }
     /// `ScrollableLayout`'s mouse wheel over the links.
     pub(super) fn server_links_scroll(&mut self, delta: f32) {
         let (_, h) = self.gui_size();
@@ -373,6 +353,28 @@ impl Game<'_> {
             return Ok(());
         }
         Ok(())
+    }
+}
+impl crate::game::Sim<'_> {
+    /// `connection.serverLinks()`: the links the open server sent (empty for
+    /// a world without a connection or one that sent none).
+    pub(super) fn server_links(&self) -> &[ServerLink] {
+        self.remote
+            .as_ref()
+            .map_or(&[], |r| r.server_links.as_slice())
+    }
+    /// `Screen.clickUrlAction`: "Web Links" off ignores the click; "Prompt on
+    /// Links" asks with ConfirmLinkScreen, else the browser opens directly.
+    fn click_link(&mut self, url: &str) {
+        if !self.settings.chat_links {
+            return;
+        }
+        if self.settings.chat_links_prompt {
+            self.links_ui.confirm = Some(url.to_owned());
+            self.screen = Screen::ConfirmLink;
+        } else {
+            open_uri(url);
+        }
     }
 }
 

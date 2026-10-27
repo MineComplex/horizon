@@ -838,13 +838,6 @@ impl Game<'_> {
         self.save_game()
     }
 
-    fn require_world(&self) -> Result<()> {
-        if self.title.is_some() {
-            return Err("no world open; use: open WORLD [SEED] [creative]".into());
-        }
-        Ok(())
-    }
-
     fn control_key_down(&mut self, key: KeyCode) -> Result<()> {
         self.front.physical_keys.insert(key);
         if self.screen == Screen::Chat {
@@ -858,83 +851,6 @@ impl Game<'_> {
             self.key_pressed(key)?;
         }
         Ok(())
-    }
-
-    fn screen_name(&self) -> &'static str {
-        if self.screen == Screen::Win {
-            return "win";
-        }
-        if self.title.is_some() {
-            return "title";
-        }
-        match self.screen {
-            Screen::Playing => "playing",
-            Screen::GameModeSwitcher => "gamemode-switcher",
-            Screen::Paused => "paused",
-            Screen::Options => "options",
-            Screen::Inventory => "inventory",
-            Screen::Creative => "creative",
-            Screen::Dead => "dead",
-            Screen::Chat => "chat",
-            Screen::Stats => "stats",
-            Screen::Advancements => "advancements",
-            Screen::WorldOptions => "world-options",
-            Screen::Friends => "friends",
-            Screen::ServerLinks => "server-links",
-            Screen::ConfirmLink => "confirm-link",
-            Screen::DialogWarning => "dialog-warning",
-            Screen::CommandBlock => "command-block",
-            Screen::Win => "win",
-            Screen::Mod => "mod",
-        }
-    }
-
-    /// The hurts and melee attacks each player logged since the last call
-    /// (`PlayerMotion::hurt_log`, `attack_log`), taken out.
-    fn control_hurt_log(&mut self) -> Value {
-        fn drain(
-            name: &str,
-            hurt_log: &mut Vec<horizon_client::health::HurtRecord>,
-            attack_log: &mut Vec<horizon_client::health::AttackRecord>,
-        ) -> Value {
-            let hurts: Vec<Value> = hurt_log
-                .drain(..)
-                .map(|r| {
-                    json!({
-                        "t": r.game_time, "source": r.source, "amount": r.amount,
-                        "blocked": r.blocked, "taken": r.taken, "hurt": r.hurt,
-                        "armor": r.armor, "toughness": r.toughness, "health": r.health,
-                        "fire_ticks": r.fire_ticks, "knockback": r.knockback,
-                    })
-                })
-                .collect();
-            let attacks: Vec<Value> = attack_log
-                .drain(..)
-                .map(|r| {
-                    json!({
-                        "t": r.game_time, "target": r.target, "id": r.id, "killed": r.killed, "amount": r.amount,
-                        "scale": r.scale, "crit": r.crit, "landed": r.landed, "dealt": r.dealt,
-                    })
-                })
-                .collect();
-            json!({ "name": name, "hurts": hurts, "attacks": attacks })
-        }
-        let mut players = Vec::new();
-        if let Some(p) = self.player.as_mut() {
-            players.push(drain("host", &mut p.hurt_log, &mut p.attack_log));
-        }
-        if let Some(host) = self.lan.as_mut() {
-            for g in &mut host.hub.guests {
-                let name = g.name.clone();
-                if let Some(m) = g.motion.as_mut() {
-                    players.push(drain(&name, &mut m.hurt_log, &mut m.attack_log));
-                } else if let Some((mut hurts, mut attacks)) = g.logs_kept.take() {
-                    // Dead, not yet respawned: what its last body logged.
-                    players.push(drain(&name, &mut hurts, &mut attacks));
-                }
-            }
-        }
-        json!({ "ok": true, "players": players })
     }
 
     fn control_status(&self) -> Value {
@@ -1100,6 +1016,89 @@ impl Game<'_> {
         // The scoreboard sidebar the HUD shows.
         status["sidebar"] = self.sidebar_status();
         status
+    }
+}
+impl crate::game::Sim<'_> {
+    fn require_world(&self) -> Result<()> {
+        if self.title.is_some() {
+            return Err("no world open; use: open WORLD [SEED] [creative]".into());
+        }
+        Ok(())
+    }
+    fn screen_name(&self) -> &'static str {
+        if self.screen == Screen::Win {
+            return "win";
+        }
+        if self.title.is_some() {
+            return "title";
+        }
+        match self.screen {
+            Screen::Playing => "playing",
+            Screen::GameModeSwitcher => "gamemode-switcher",
+            Screen::Paused => "paused",
+            Screen::Options => "options",
+            Screen::Inventory => "inventory",
+            Screen::Creative => "creative",
+            Screen::Dead => "dead",
+            Screen::Chat => "chat",
+            Screen::Stats => "stats",
+            Screen::Advancements => "advancements",
+            Screen::WorldOptions => "world-options",
+            Screen::Friends => "friends",
+            Screen::ServerLinks => "server-links",
+            Screen::ConfirmLink => "confirm-link",
+            Screen::DialogWarning => "dialog-warning",
+            Screen::CommandBlock => "command-block",
+            Screen::Win => "win",
+            Screen::Mod => "mod",
+        }
+    }
+    /// The hurts and melee attacks each player logged since the last call
+    /// (`PlayerMotion::hurt_log`, `attack_log`), taken out.
+    fn control_hurt_log(&mut self) -> Value {
+        fn drain(
+            name: &str,
+            hurt_log: &mut Vec<horizon_client::health::HurtRecord>,
+            attack_log: &mut Vec<horizon_client::health::AttackRecord>,
+        ) -> Value {
+            let hurts: Vec<Value> = hurt_log
+                .drain(..)
+                .map(|r| {
+                    json!({
+                        "t": r.game_time, "source": r.source, "amount": r.amount,
+                        "blocked": r.blocked, "taken": r.taken, "hurt": r.hurt,
+                        "armor": r.armor, "toughness": r.toughness, "health": r.health,
+                        "fire_ticks": r.fire_ticks, "knockback": r.knockback,
+                    })
+                })
+                .collect();
+            let attacks: Vec<Value> = attack_log
+                .drain(..)
+                .map(|r| {
+                    json!({
+                        "t": r.game_time, "target": r.target, "id": r.id, "killed": r.killed, "amount": r.amount,
+                        "scale": r.scale, "crit": r.crit, "landed": r.landed, "dealt": r.dealt,
+                    })
+                })
+                .collect();
+            json!({ "name": name, "hurts": hurts, "attacks": attacks })
+        }
+        let mut players = Vec::new();
+        if let Some(p) = self.player.as_mut() {
+            players.push(drain("host", &mut p.hurt_log, &mut p.attack_log));
+        }
+        if let Some(host) = self.lan.as_mut() {
+            for g in &mut host.hub.guests {
+                let name = g.name.clone();
+                if let Some(m) = g.motion.as_mut() {
+                    players.push(drain(&name, &mut m.hurt_log, &mut m.attack_log));
+                } else if let Some((mut hurts, mut attacks)) = g.logs_kept.take() {
+                    // Dead, not yet respawned: what its last body logged.
+                    players.push(drain(&name, &mut hurts, &mut attacks));
+                }
+            }
+        }
+        json!({ "ok": true, "players": players })
     }
 }
 

@@ -217,25 +217,6 @@ pub(super) struct PackReload {
 }
 
 impl Game<'_> {
-    /// `ConnectScreen`: the server's setting decides what its packs do
-    /// (`configureForServerControl`); single player's own server takes them
-    /// all, quietly (`configureForLocalWorld`).
-    pub(super) fn server_packs_connect(&mut self, address: Option<&str>, user: (String, u128)) {
-        let state = &mut self.server_packs;
-        state.user = user;
-        state.prompt = None;
-        state.notifiers.clear();
-        let Some(address) = address else {
-            state.address = None;
-            state.packs.local_world();
-            return;
-        };
-        let file = multiplayer::servers_file(&saves());
-        let entry = servers::load(&file).into_iter().find(|s| s.ip == address);
-        let setting = entry.as_ref().and_then(|e| e.accept_textures);
-        state.address = entry.map(|e| e.ip);
-        state.packs.connect(Prompt::for_server(setting));
-    }
     /// `Minecraft.clearDownloadedResourcePacks`: every server pack goes at once.
     pub(super) fn server_packs_disconnect(&mut self) {
         self.server_packs.prompt = None;
@@ -270,26 +251,6 @@ impl Game<'_> {
         open.required = p.required;
         open.prompt = text;
         self.capture(false);
-    }
-    /// `handleResourcePackPop`: one pack, or all of them.
-    pub(super) fn handle_pack_pop(&mut self, id: Option<u128>) {
-        match id {
-            Some(id) => self.server_packs.packs.pop(id),
-            None => self.server_packs.packs.pop_all(),
-        }
-    }
-    /// The joined server's entry in the server list: its `acceptTextures`.
-    fn server_setting(&self) -> Option<bool> {
-        let address = self.server_packs.address.as_deref()?;
-        servers::load(&multiplayer::servers_file(&saves()))
-            .into_iter()
-            .find(|s| s.ip == address)?
-            .accept_textures
-    }
-    fn send_pack_status(&self, id: u128, status: i32) {
-        if let Some(r) = &self.remote {
-            r.session.send_pack_status(id, status);
-        }
     }
 
     /// The prompt's answer (`PackConfirmScreen`'s callback): the server's
@@ -360,43 +321,6 @@ impl Game<'_> {
         }
         for (id, status) in self.server_packs.packs.take_replies() {
             self.send_pack_status(id, status);
-        }
-    }
-    fn start_pack_downloads(&mut self, requests: Vec<horizon_client::server_packs::Request>) {
-        let state = &mut self.server_packs;
-        if state.queue.is_none() {
-            let dir = std::env::current_dir()
-                .unwrap_or_default()
-                .join("downloads");
-            match download::Queue::open(dir) {
-                Ok(queue) => state.queue = Some(queue),
-                Err(e) => {
-                    log::error!("Horizon: failed to open the download queue: {e}");
-                    // Every request failed, as the notifier would hear it.
-                    let (progress, events) = std::sync::mpsc::channel();
-                    for _ in &requests {
-                        let _ = progress.send(download::Progress::RequestStart);
-                        let _ = progress.send(download::Progress::RequestFinished(false));
-                    }
-                    state
-                        .notifiers
-                        .push(PackNotifier::new(events, requests.len()));
-                    let failed = requests.iter().map(|r| r.id).collect();
-                    state.packs.downloaded(horizon_client::server_packs::Batch {
-                        downloaded: Vec::new(),
-                        failed,
-                    });
-                    return;
-                }
-            }
-        }
-        let headers = download::headers(&state.user.0, state.user.1);
-        let (progress, events) = std::sync::mpsc::channel();
-        state
-            .notifiers
-            .push(PackNotifier::new(events, requests.len()));
-        if let Some(queue) = &state.queue {
-            queue.download(requests, headers, progress);
         }
     }
     /// `DownloadedPackSource.startReload`: the packs on top of the player's
@@ -556,6 +480,84 @@ impl Game<'_> {
                 self.answer_pack_prompt(yes)
             }
             None => Ok(()),
+        }
+    }
+}
+impl crate::game::Sim<'_> {
+    /// `ConnectScreen`: the server's setting decides what its packs do
+    /// (`configureForServerControl`); single player's own server takes them
+    /// all, quietly (`configureForLocalWorld`).
+    pub(super) fn server_packs_connect(&mut self, address: Option<&str>, user: (String, u128)) {
+        let state = &mut self.server_packs;
+        state.user = user;
+        state.prompt = None;
+        state.notifiers.clear();
+        let Some(address) = address else {
+            state.address = None;
+            state.packs.local_world();
+            return;
+        };
+        let file = multiplayer::servers_file(&saves());
+        let entry = servers::load(&file).into_iter().find(|s| s.ip == address);
+        let setting = entry.as_ref().and_then(|e| e.accept_textures);
+        state.address = entry.map(|e| e.ip);
+        state.packs.connect(Prompt::for_server(setting));
+    }
+    /// `handleResourcePackPop`: one pack, or all of them.
+    pub(super) fn handle_pack_pop(&mut self, id: Option<u128>) {
+        match id {
+            Some(id) => self.server_packs.packs.pop(id),
+            None => self.server_packs.packs.pop_all(),
+        }
+    }
+    /// The joined server's entry in the server list: its `acceptTextures`.
+    fn server_setting(&self) -> Option<bool> {
+        let address = self.server_packs.address.as_deref()?;
+        servers::load(&multiplayer::servers_file(&saves()))
+            .into_iter()
+            .find(|s| s.ip == address)?
+            .accept_textures
+    }
+    fn send_pack_status(&self, id: u128, status: i32) {
+        if let Some(r) = &self.remote {
+            r.session.send_pack_status(id, status);
+        }
+    }
+    fn start_pack_downloads(&mut self, requests: Vec<horizon_client::server_packs::Request>) {
+        let state = &mut self.server_packs;
+        if state.queue.is_none() {
+            let dir = std::env::current_dir()
+                .unwrap_or_default()
+                .join("downloads");
+            match download::Queue::open(dir) {
+                Ok(queue) => state.queue = Some(queue),
+                Err(e) => {
+                    log::error!("Horizon: failed to open the download queue: {e}");
+                    // Every request failed, as the notifier would hear it.
+                    let (progress, events) = std::sync::mpsc::channel();
+                    for _ in &requests {
+                        let _ = progress.send(download::Progress::RequestStart);
+                        let _ = progress.send(download::Progress::RequestFinished(false));
+                    }
+                    state
+                        .notifiers
+                        .push(PackNotifier::new(events, requests.len()));
+                    let failed = requests.iter().map(|r| r.id).collect();
+                    state.packs.downloaded(horizon_client::server_packs::Batch {
+                        downloaded: Vec::new(),
+                        failed,
+                    });
+                    return;
+                }
+            }
+        }
+        let headers = download::headers(&state.user.0, state.user.1);
+        let (progress, events) = std::sync::mpsc::channel();
+        state
+            .notifiers
+            .push(PackNotifier::new(events, requests.len()));
+        if let Some(queue) = &state.queue {
+            queue.download(requests, headers, progress);
         }
     }
 }

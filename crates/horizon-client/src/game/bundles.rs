@@ -17,14 +17,6 @@ pub(super) struct BundleMouse {
 }
 
 impl Game<'_> {
-    /// A slot a bundle can be selected in: the player's inventory, the off hand and a
-    /// container's own slots. A server only knows these in the inventory and chest-like menus.
-    fn bundle_slot(&mut self, slot: usize) -> bool {
-        (slot < 36 || slot == 504 || (300..500).contains(&slot))
-            && (self.remote.is_none() || self.remote_storage_open())
-            && (slot < 36 || slot == 504 || self.slots().contains(&slot))
-    }
-
     /// `BundleMouseActions.onMouseScrolled`: the wheel over a bundle moves the selection
     /// through the items its tooltip shows. True when the bundle took the wheel.
     pub(super) fn bundle_scroll(&mut self, x: f64, y: f64) -> bool {
@@ -99,5 +91,14 @@ impl Game<'_> {
         {
             self.unselect_bundle(left);
         }
+    }
+}
+impl crate::game::Sim<'_> {
+    /// A slot a bundle can be selected in: the player's inventory, the off hand and a
+    /// container's own slots. A server only knows these in the inventory and chest-like menus.
+    fn bundle_slot(&mut self, slot: usize) -> bool {
+        (slot < 36 || slot == 504 || (300..500).contains(&slot))
+            && (self.remote.is_none() || self.remote_storage_open())
+            && (slot < 36 || slot == 504 || self.slots().contains(&slot))
     }
 }

@@ -51,12 +51,6 @@ impl Game<'_> {
         });
         let _ = self.process_level_events();
     }
-    fn crafter_at(&self, pos: Pos) -> Option<&Crafter> {
-        match self.world.block_entities.get(&pos)? {
-            BlockEntity::Crafter(c) => Some(c),
-            _ => None,
-        }
-    }
     /// `CrafterBlockEntity.serverTick` of the crafter at `pos`, and the
     /// powered flag following the block state.
     pub(in crate::game) fn tick_crafter(&mut self, pos: Pos) {
@@ -205,9 +199,6 @@ impl Game<'_> {
         let c = self.crafter_at(key)?;
         self.res.recipes().craft(&c.items, 3)
     }
-    fn crafter_open(&self) -> bool {
-        matches!(self.container_kind(), Some(BlockEntity::Crafter(_)))
-    }
     /// `CrafterMenu` slot layout: the grid at (26, 17), the result at (134, 35).
     pub(in crate::game) fn crafter_slot_position(&self, i: usize) -> Option<(f32, f32)> {
         if !self.crafter_open() {
@@ -338,6 +329,17 @@ impl Game<'_> {
         self.front
             .audio
             .play("minecraft:ui.button.click", None, 0.4, pitch);
+    }
+}
+impl crate::game::Sim<'_> {
+    fn crafter_at(&self, pos: Pos) -> Option<&Crafter> {
+        match self.world.block_entities.get(&pos)? {
+            BlockEntity::Crafter(c) => Some(c),
+            _ => None,
+        }
+    }
+    fn crafter_open(&self) -> bool {
+        matches!(self.container_kind(), Some(BlockEntity::Crafter(_)))
     }
 }
 

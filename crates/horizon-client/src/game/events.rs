@@ -162,25 +162,6 @@ fn parse_wait(words: &[&str]) -> Result<(Condition, Duration, Option<u64>)> {
 }
 
 impl Game<'_> {
-    fn snapshot(&self) -> Snapshot {
-        let world = self.title.is_none().then(|| self.level.name.clone());
-        Snapshot {
-            screen: self.screen_label(),
-            dimension: self.dim.id().to_string(),
-            // A remote client counts the server's lines itself.
-            chat: self
-                .remote
-                .as_ref()
-                .map_or(self.ui.chat.received, |r| r.chat_received),
-            counts: if world.is_some() {
-                self.inventory_counts()
-            } else {
-                BTreeMap::new()
-            },
-            world,
-        }
-    }
-
     fn loaded(&self) -> bool {
         self.title.is_none()
             && self.player.is_some()
@@ -246,7 +227,26 @@ impl Game<'_> {
             let _ = wait.reply.send(reply.to_string());
         }
     }
-
+}
+impl crate::game::Sim<'_> {
+    fn snapshot(&self) -> Snapshot {
+        let world = self.title.is_none().then(|| self.level.name.clone());
+        Snapshot {
+            screen: self.screen_label(),
+            dimension: self.dim.id().to_string(),
+            // A remote client counts the server's lines itself.
+            chat: self
+                .remote
+                .as_ref()
+                .map_or(self.ui.chat.received, |r| r.chat_received),
+            counts: if world.is_some() {
+                self.inventory_counts()
+            } else {
+                BTreeMap::new()
+            },
+            world,
+        }
+    }
     /// `events` and `wait-for`; None for other commands, Some(None) when deferred.
     pub(super) fn events_command(
         &mut self,
@@ -267,9 +267,9 @@ impl Game<'_> {
             }
             "wait-for" => {
                 let (condition, timeout, since) = parse_wait(&words[1..])?;
-                self.sim.events.waits.push(Wait {
+                self.events.waits.push(Wait {
                     condition,
-                    since: since.unwrap_or(self.sim.events.seq),
+                    since: since.unwrap_or(self.events.seq),
                     started: Instant::now(),
                     timeout,
                     reply: reply.clone(),

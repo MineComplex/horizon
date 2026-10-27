@@ -98,66 +98,6 @@ pub(super) fn client_float() -> f32 {
 }
 
 impl Game<'_> {
-    /// `ServerExplosion.getSeenPercent` for an entity box.
-    pub(super) fn seen_percent(&self, center: [f64; 3], min: [f64; 3], max: [f64; 3]) -> f32 {
-        let xs = 1.0 / ((max[0] - min[0]) * 2.0 + 1.0);
-        let ys = 1.0 / ((max[1] - min[1]) * 2.0 + 1.0);
-        let zs = 1.0 / ((max[2] - min[2]) * 2.0 + 1.0);
-        let x_offset = (1.0 - (1.0 / xs).floor() * xs) / 2.0;
-        let z_offset = (1.0 - (1.0 / zs).floor() * zs) / 2.0;
-        if xs < 0.0 || ys < 0.0 || zs < 0.0 {
-            return 0.0;
-        }
-        // ClipContext(..., entity): the entity standing at the box's bottom.
-        let mut rays = ColliderRays {
-            scene: SceneCollisions {
-                world: &self.world,
-                binding: self.collision,
-                subject: None,
-            },
-            context: CollisionContext::for_entity(
-                CollisionEntity {
-                    identity: EntityIdentity(0),
-                    y: min[1],
-                    descending: false,
-                    main_hand: Some(CollisionItem::EMPTY),
-                },
-                false,
-            ),
-        };
-        let (mut hits, mut count) = (0, 0);
-        let mut xx = 0.0;
-        while xx <= 1.0 {
-            let mut yy = 0.0;
-            while yy <= 1.0 {
-                let mut zz = 0.0;
-                while zz <= 1.0 {
-                    let x = min[0] + (max[0] - min[0]) * xx;
-                    let y = min[1] + (max[1] - min[1]) * yy;
-                    let z = min[2] + (max[2] - min[2]) * zz;
-                    let from = Vec3::new(x + x_offset, y, z + z_offset);
-                    let to = Vec3::new(center[0], center[1], center[2]);
-                    let missed = clip_world(
-                        &mut rays,
-                        from,
-                        to,
-                        RayBlockMode::Collider,
-                        RayFluidMode::None,
-                        4096,
-                    )
-                    .is_ok_and(|r| r.miss);
-                    if missed {
-                        hits += 1;
-                    }
-                    count += 1;
-                    zz += zs;
-                }
-                yy += ys;
-            }
-            xx += xs;
-        }
-        hits as f32 / count as f32
-    }
     /// `ServerExplosion.calculateExplodedPositions`; `resists` overrides one
     /// block's resistance (`ExplosionDamageCalculator.getBlockExplosionResistance`).
     fn exploded_positions(
@@ -705,6 +645,68 @@ impl Game<'_> {
             self.add_primed_tnt(BlockPos::new(pos[0], pos[1], pos[2]), rot, fuse);
         }
         Ok(())
+    }
+}
+impl crate::game::Sim<'_> {
+    /// `ServerExplosion.getSeenPercent` for an entity box.
+    pub(super) fn seen_percent(&self, center: [f64; 3], min: [f64; 3], max: [f64; 3]) -> f32 {
+        let xs = 1.0 / ((max[0] - min[0]) * 2.0 + 1.0);
+        let ys = 1.0 / ((max[1] - min[1]) * 2.0 + 1.0);
+        let zs = 1.0 / ((max[2] - min[2]) * 2.0 + 1.0);
+        let x_offset = (1.0 - (1.0 / xs).floor() * xs) / 2.0;
+        let z_offset = (1.0 - (1.0 / zs).floor() * zs) / 2.0;
+        if xs < 0.0 || ys < 0.0 || zs < 0.0 {
+            return 0.0;
+        }
+        // ClipContext(..., entity): the entity standing at the box's bottom.
+        let mut rays = ColliderRays {
+            scene: SceneCollisions {
+                world: &self.world,
+                binding: self.collision,
+                subject: None,
+            },
+            context: CollisionContext::for_entity(
+                CollisionEntity {
+                    identity: EntityIdentity(0),
+                    y: min[1],
+                    descending: false,
+                    main_hand: Some(CollisionItem::EMPTY),
+                },
+                false,
+            ),
+        };
+        let (mut hits, mut count) = (0, 0);
+        let mut xx = 0.0;
+        while xx <= 1.0 {
+            let mut yy = 0.0;
+            while yy <= 1.0 {
+                let mut zz = 0.0;
+                while zz <= 1.0 {
+                    let x = min[0] + (max[0] - min[0]) * xx;
+                    let y = min[1] + (max[1] - min[1]) * yy;
+                    let z = min[2] + (max[2] - min[2]) * zz;
+                    let from = Vec3::new(x + x_offset, y, z + z_offset);
+                    let to = Vec3::new(center[0], center[1], center[2]);
+                    let missed = clip_world(
+                        &mut rays,
+                        from,
+                        to,
+                        RayBlockMode::Collider,
+                        RayFluidMode::None,
+                        4096,
+                    )
+                    .is_ok_and(|r| r.miss);
+                    if missed {
+                        hits += 1;
+                    }
+                    count += 1;
+                    zz += zs;
+                }
+                yy += ys;
+            }
+            xx += xs;
+        }
+        hits as f32 / count as f32
     }
 }
 

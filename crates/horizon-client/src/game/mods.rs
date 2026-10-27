@@ -330,59 +330,6 @@ impl Game<'_> {
         self.sync_mod_commands();
         self.show_mod_output();
     }
-    /// Which mods this game runs: a server the server mods, the window
-    /// client mods, and both when it simulates the world itself (in-frame).
-    fn mod_runs(&self) -> Runs {
-        match self.options.execution_role {
-            ExecutionRole::IntegratedServer | ExecutionRole::DedicatedServer => Runs::Server,
-            ExecutionRole::Client if self.options.server_thread => Runs::Client,
-            ExecutionRole::Client => Runs::Both,
-        }
-    }
-    /// The Mods page's rows, from what loaded.
-    fn list_mods(&mut self) {
-        self.mods.server = self.mods.mods.runs_server();
-        self.mods.world = self.mods.mods.wants_world();
-        let dev = &self.mods.dev;
-        self.settings.mods.installed = self
-            .mods
-            .mods
-            .entries()
-            .iter()
-            .map(|e| {
-                let file = e.path.file_name().unwrap_or_default().to_string_lossy();
-                let problem = match &e.status {
-                    Status::Failed(reason) => Some(format!("Stopped: {reason}")),
-                    _ => None,
-                };
-                let Some(m) = &e.manifest else {
-                    return Installed {
-                        id: String::new(),
-                        title: file.into_owned(),
-                        description: String::new(),
-                        problem,
-                        dev: false,
-                        has_settings: false,
-                    };
-                };
-                // What it may do first: the row cuts long descriptions.
-                let may: Vec<&str> = m.capabilities.iter().map(|c| c.describe()).collect();
-                let may = if may.is_empty() {
-                    "Asks for nothing.".to_owned()
-                } else {
-                    format!("May {}.", may.join(", "))
-                };
-                Installed {
-                    id: m.id.clone(),
-                    title: format!("{} {}", m.name, m.version),
-                    description: format!("{may} {}", m.description).trim().to_owned(),
-                    problem,
-                    dev: dev.contains(&e.path),
-                    has_settings: e.has_ui_settings(),
-                }
-            })
-            .collect();
-    }
     /// The chat's tree after the running mods changed.
     fn sync_mod_commands(&mut self) {
         // In-frame, the window runs server mods too: their names, free text
@@ -550,35 +497,6 @@ impl Game<'_> {
             t += 1.0;
         }
         None
-    }
-    /// A mod's `command.run-quiet` lines (vanilla's commands only, as
-    /// `command.run`): to a server that runs them quietly as one payload
-    /// (`horizon_protocol::quiet`), to any other as chat commands, or for this
-    /// window's own world next tick.
-    fn mod_quiet_commands(&mut self, mod_id: String, lines: Vec<String>) {
-        let lines: Vec<String> = lines
-            .into_iter()
-            .filter(|l| vanilla_command(l.split(' ').next().unwrap_or_default()))
-            .collect();
-        match self.remote.as_ref().map(|r| r.quiet_commands) {
-            Some(true) => {
-                for data in horizon_protocol::quiet::encode(&mod_id, &lines) {
-                    self.send(horizon_protocol::packets::play::Serverbound::CustomPayload(
-                        horizon_protocol::packets::configuration::CustomPayload {
-                            channel: horizon_protocol::quiet::CHANNEL.into(),
-                            data,
-                        },
-                    ));
-                }
-            }
-            // The server checks the player's permissions; its feedback shows.
-            Some(false) => {
-                for line in lines {
-                    self.send_chat(&format!("/{line}"));
-                }
-            }
-            None => self.mods.quiet.push((mod_id, lines)),
-        }
     }
     /// A quiet batch in this window's own world, as a server runs one
     /// (game/lan_quiet.rs): each line as the player typing it, no chat, a
@@ -1244,6 +1162,91 @@ impl Game<'_> {
                 return;
             }
             list_i += 1;
+        }
+    }
+}
+#[cfg(feature = "mods")]
+impl crate::game::Sim<'_> {
+    /// Which mods this game runs: a server the server mods, the window
+    /// client mods, and both when it simulates the world itself (in-frame).
+    fn mod_runs(&self) -> Runs {
+        match self.options.execution_role {
+            ExecutionRole::IntegratedServer | ExecutionRole::DedicatedServer => Runs::Server,
+            ExecutionRole::Client if self.options.server_thread => Runs::Client,
+            ExecutionRole::Client => Runs::Both,
+        }
+    }
+    /// The Mods page's rows, from what loaded.
+    fn list_mods(&mut self) {
+        self.mods.server = self.mods.mods.runs_server();
+        self.mods.world = self.mods.mods.wants_world();
+        let dev = &self.mods.dev;
+        self.settings.mods.installed = self
+            .mods
+            .mods
+            .entries()
+            .iter()
+            .map(|e| {
+                let file = e.path.file_name().unwrap_or_default().to_string_lossy();
+                let problem = match &e.status {
+                    Status::Failed(reason) => Some(format!("Stopped: {reason}")),
+                    _ => None,
+                };
+                let Some(m) = &e.manifest else {
+                    return Installed {
+                        id: String::new(),
+                        title: file.into_owned(),
+                        description: String::new(),
+                        problem,
+                        dev: false,
+                        has_settings: false,
+                    };
+                };
+                // What it may do first: the row cuts long descriptions.
+                let may: Vec<&str> = m.capabilities.iter().map(|c| c.describe()).collect();
+                let may = if may.is_empty() {
+                    "Asks for nothing.".to_owned()
+                } else {
+                    format!("May {}.", may.join(", "))
+                };
+                Installed {
+                    id: m.id.clone(),
+                    title: format!("{} {}", m.name, m.version),
+                    description: format!("{may} {}", m.description).trim().to_owned(),
+                    problem,
+                    dev: dev.contains(&e.path),
+                    has_settings: e.has_ui_settings(),
+                }
+            })
+            .collect();
+    }
+    /// A mod's `command.run-quiet` lines (vanilla's commands only, as
+    /// `command.run`): to a server that runs them quietly as one payload
+    /// (`horizon_protocol::quiet`), to any other as chat commands, or for this
+    /// window's own world next tick.
+    fn mod_quiet_commands(&mut self, mod_id: String, lines: Vec<String>) {
+        let lines: Vec<String> = lines
+            .into_iter()
+            .filter(|l| vanilla_command(l.split(' ').next().unwrap_or_default()))
+            .collect();
+        match self.remote.as_ref().map(|r| r.quiet_commands) {
+            Some(true) => {
+                for data in horizon_protocol::quiet::encode(&mod_id, &lines) {
+                    self.send(horizon_protocol::packets::play::Serverbound::CustomPayload(
+                        horizon_protocol::packets::configuration::CustomPayload {
+                            channel: horizon_protocol::quiet::CHANNEL.into(),
+                            data,
+                        },
+                    ));
+                }
+            }
+            // The server checks the player's permissions; its feedback shows.
+            Some(false) => {
+                for line in lines {
+                    self.send_chat(&format!("/{line}"));
+                }
+            }
+            None => self.mods.quiet.push((mod_id, lines)),
         }
     }
 }

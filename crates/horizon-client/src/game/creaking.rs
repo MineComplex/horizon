@@ -83,14 +83,6 @@ impl HeartHost for Host<'_> {
 }
 
 impl Game<'_> {
-    fn heart_state_name(&self, state: BlockStateId) -> String {
-        self.pack
-            .assets
-            .registry
-            .state(state)
-            .and_then(|s| s.properties.get("creaking_heart_state").cloned())
-            .unwrap_or_default()
-    }
     /// Runs `f` on the heart at `key` with the game's mobs and level random,
     /// then applies what the heart reported.
     fn with_heart(
@@ -288,12 +280,6 @@ impl Game<'_> {
             .put(key, BlockEntity::CreakingHeart(heart));
         Ok(())
     }
-    /// `ServerLevel.isSpawningMonsters`.
-    fn spawning_monsters(&self) -> bool {
-        self.world_data.difficulty != 0
-            && self.world_data.rules.bool("spawn_mobs")
-            && self.world_data.rules.bool("spawn_monsters")
-    }
     /// Hearts that came with generated or loaded chunks get their block
     /// entity (`newBlockEntity`) the first time their chunk is seen.
     pub(super) fn scan_for_hearts(&mut self) {
@@ -355,6 +341,22 @@ impl Game<'_> {
         }
         let chunks = &self.sim.world.chunks;
         self.sim.creaking.scanned.retain(|k| chunks.contains_key(k));
+    }
+}
+impl crate::game::Sim<'_> {
+    fn heart_state_name(&self, state: BlockStateId) -> String {
+        self.pack
+            .assets
+            .registry
+            .state(state)
+            .and_then(|s| s.properties.get("creaking_heart_state").cloned())
+            .unwrap_or_default()
+    }
+    /// `ServerLevel.isSpawningMonsters`.
+    fn spawning_monsters(&self) -> bool {
+        self.world_data.difficulty != 0
+            && self.world_data.rules.bool("spawn_mobs")
+            && self.world_data.rules.bool("spawn_monsters")
     }
 }
 

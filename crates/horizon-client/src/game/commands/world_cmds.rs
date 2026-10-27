@@ -30,10 +30,6 @@ fn java_double_text(v: f64) -> Text {
 impl Game<'_> {
     // ---- /recipe -----------------------------------------------------------
 
-    /// Every recipe id of the recipe manager (what `/recipe` resolves and suggests).
-    pub(super) fn learnable_recipes(&self) -> Vec<String> {
-        self.res.stations().recipe_index.ids().cloned().collect()
-    }
     pub(super) fn cmd_recipe(&mut self, id: &str, ctx: &Context) -> R<i32> {
         let targets = self.entities(ctx, "targets", true)?;
         let give = id == "recipe.give";
@@ -1204,47 +1200,6 @@ impl Game<'_> {
         Ok(1)
     }
 
-    /// Entity.getVehicle: the player's mount, or a mob's.
-    pub(super) fn ride_vehicle(&self, t: Target) -> Option<Target> {
-        let id = match t {
-            Target::Player => return self.riding.map(Target::Mob),
-            Target::Mob(id) => self.mobs.iter().find(|m| m.id == id)?.extra.mount?,
-            _ => return None,
-        };
-        Some(if self.boats.iter().any(|b| b.id == id) {
-            Target::Boat(id)
-        } else {
-            Target::Mob(id)
-        })
-    }
-    /// LivingEntity.stopRiding for a mob: off its vehicle
-    /// (Entity.removePassenger), then to where the vehicle lets it out
-    /// (LivingEntity.dismountVehicle).
-    fn dismount_mob(&mut self, rider: u32) {
-        let Some(i) = self.mobs.iter().position(|m| m.id == rider) else {
-            return;
-        };
-        let Some(v) = self.mobs[i].extra.mount.take() else {
-            return;
-        };
-        let (width, yaw) = (f64::from(self.mobs[i].width()), self.mobs[i].yaw);
-        let at = if let Some(b) = self.boats.iter().position(|b| b.id == v) {
-            self.boat_dismount_target(b, width, yaw)
-        } else if let Some(m) = self.mobs.iter_mut().find(|m| m.id == v) {
-            m.extra.rider = None;
-            // Entity.getDismountLocationForPassenger: on top of the vehicle.
-            let p = m.position;
-            horizon_core::geometry::Vec3::new(p.x, p.y + f64::from(m.height()), p.z)
-        } else {
-            self.mobs[i].position
-        };
-        let m = &mut self.mobs[i];
-        m.extra.passenger = false;
-        m.extra.boarding_cooldown = super::super::boat_passengers::BOARDING_COOLDOWN;
-        m.position = at;
-        m.previous = at;
-    }
-
     // ---- /spreadplayers -----------------------------------------------------------------------
 
     pub(super) fn cmd_spreadplayers(&mut self, ctx: &Context) -> R<i32> {
@@ -1450,6 +1405,52 @@ impl Game<'_> {
             ],
         ));
         Ok(points.len() as i32)
+    }
+}
+impl crate::game::Sim<'_> {
+    /// Every recipe id of the recipe manager (what `/recipe` resolves and suggests).
+    pub(super) fn learnable_recipes(&self) -> Vec<String> {
+        self.res.stations().recipe_index.ids().cloned().collect()
+    }
+    /// Entity.getVehicle: the player's mount, or a mob's.
+    pub(super) fn ride_vehicle(&self, t: Target) -> Option<Target> {
+        let id = match t {
+            Target::Player => return self.riding.map(Target::Mob),
+            Target::Mob(id) => self.mobs.iter().find(|m| m.id == id)?.extra.mount?,
+            _ => return None,
+        };
+        Some(if self.boats.iter().any(|b| b.id == id) {
+            Target::Boat(id)
+        } else {
+            Target::Mob(id)
+        })
+    }
+    /// LivingEntity.stopRiding for a mob: off its vehicle
+    /// (Entity.removePassenger), then to where the vehicle lets it out
+    /// (LivingEntity.dismountVehicle).
+    fn dismount_mob(&mut self, rider: u32) {
+        let Some(i) = self.mobs.iter().position(|m| m.id == rider) else {
+            return;
+        };
+        let Some(v) = self.mobs[i].extra.mount.take() else {
+            return;
+        };
+        let (width, yaw) = (f64::from(self.mobs[i].width()), self.mobs[i].yaw);
+        let at = if let Some(b) = self.boats.iter().position(|b| b.id == v) {
+            self.boat_dismount_target(b, width, yaw)
+        } else if let Some(m) = self.mobs.iter_mut().find(|m| m.id == v) {
+            m.extra.rider = None;
+            // Entity.getDismountLocationForPassenger: on top of the vehicle.
+            let p = m.position;
+            horizon_core::geometry::Vec3::new(p.x, p.y + f64::from(m.height()), p.z)
+        } else {
+            self.mobs[i].position
+        };
+        let m = &mut self.mobs[i];
+        m.extra.passenger = false;
+        m.extra.boarding_cooldown = super::super::boat_passengers::BOARDING_COOLDOWN;
+        m.position = at;
+        m.previous = at;
     }
     /// `SpreadPlayersCommand.Position.getSpawnY`.
     fn spread_spawn_y(&self, p: [f64; 2], max_y: i32) -> i32 {

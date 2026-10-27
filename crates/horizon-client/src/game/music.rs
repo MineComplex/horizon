@@ -80,6 +80,8 @@ impl Game<'_> {
         };
         (situation.music(), situation.volume())
     }
+}
+impl crate::game::Sim<'_> {
     /// `BiomeManager.getNoiseBiomeAtPosition`: the quart cell holding a position.
     fn biome_at(&self, p: [f64; 3]) -> &str {
         let (x, y, z) = (

@@ -184,19 +184,6 @@ struct Launch {
 }
 
 impl Game<'_> {
-    /// `Minecraft.hasSingleplayerServer`: a world of this window's own, run
-    /// in the frame or on its server thread.
-    pub(super) fn has_singleplayer_server(&self) -> bool {
-        self.remote.is_none() || self.integrated.is_some()
-    }
-    /// `IntegratedServer.isPublished`: the world is open to the network.
-    pub(super) fn is_published(&self) -> bool {
-        self.lan.is_some()
-            || self
-                .integrated
-                .as_ref()
-                .is_some_and(|s| s.published().is_some())
-    }
     /// `Minecraft.doWorldLoad`: start the server thread on the world, wait
     /// until it can be joined, then join it through memory.
     pub(super) fn open_integrated(
@@ -445,6 +432,21 @@ impl Game<'_> {
         Ok(())
     }
 }
+impl crate::game::Sim<'_> {
+    /// `Minecraft.hasSingleplayerServer`: a world of this window's own, run
+    /// in the frame or on its server thread.
+    pub(super) fn has_singleplayer_server(&self) -> bool {
+        self.remote.is_none() || self.integrated.is_some()
+    }
+    /// `IntegratedServer.isPublished`: the world is open to the network.
+    pub(super) fn is_published(&self) -> bool {
+        self.lan.is_some()
+            || self
+                .integrated
+                .as_ref()
+                .is_some_and(|s| s.published().is_some())
+    }
+}
 
 /// What the world options screen shows of an integrated server.
 #[derive(Clone, Copy, Debug)]
@@ -555,6 +557,8 @@ impl Game<'_> {
             self.apply_publish();
         }
     }
+}
+impl crate::game::Sim<'_> {
     /// `IntegratedServer.getPort` while published.
     pub(super) fn published_port(&self) -> Option<u16> {
         let s = self.serving.as_ref()?;
@@ -596,7 +600,7 @@ impl Game<'_> {
     /// IntegratedServer.tickServer: the server follows the window's render
     /// and simulation distances when they change.
     fn follow_distances(&mut self, flags: &Flags) {
-        let Some(host) = self.sim.lan.as_mut() else {
+        let Some(host) = self.lan.as_mut() else {
             return;
         };
         let view = flags.render_distance.load(Ordering::Relaxed).max(2);
@@ -604,7 +608,7 @@ impl Game<'_> {
         if view != old {
             log::info!("Changing view distance to {view}, from {old}");
             host.hub.set_view_distance(view);
-            self.sim.settings.render_distance = view;
+            self.settings.render_distance = view;
         }
         let simulation = flags.simulation_distance.load(Ordering::Relaxed).max(2);
         let old = host.hub.config.simulation_distance;
@@ -614,7 +618,6 @@ impl Game<'_> {
             self.settings.simulation_distance = simulation;
         }
     }
-
     fn apply_publish(&mut self) {
         if self.lan.is_none() {
             return;
@@ -738,7 +741,8 @@ pub(super) enum ComponentHarness {
     Sculk(String),
 }
 
-impl Game<'_> {
+impl Game<'_> {}
+impl crate::game::Sim<'_> {
     pub(super) fn run_component_harness(&self, fixture: ComponentHarness) -> Result<()> {
         let (res, pack, settings) = (self.res.clone(), self.pack.clone(), self.settings.clone());
         let mut options = self.options.clone();

@@ -84,22 +84,6 @@ fn average(a: u32, b: u32) -> u32 {
         .fold(0, |acc, &s| acc | ((ch(a, s) + ch(b, s)) / 2) << s)
 }
 impl Game<'_> {
-    /// The beam color of a `BeaconBeamBlock` (stained glass and panes, the beacon).
-    fn beam_color(&self, name: &str) -> Option<u32> {
-        if name == "minecraft:beacon" {
-            return Some(DYE[0]);
-        }
-        let n = name.strip_prefix("minecraft:")?;
-        let dye = n
-            .strip_suffix("_stained_glass")
-            .or_else(|| n.strip_suffix("_stained_glass_pane"))?;
-        DYE_NAMES.iter().position(|d| *d == dye).map(|i| DYE[i])
-    }
-    /// `getHeight(WORLD_SURFACE)`: above the highest non-air block.
-    pub(super) fn world_surface(&self, x: i32, z: i32) -> i32 {
-        self.world
-            .world_surface(x, z, |id| self.res.facts().is_air(id))
-    }
     /// `BeaconBlockEntity.tick` of the beacon at `key`.
     pub(super) fn tick_beacon_at(&mut self, key: (i32, i32, i32)) {
         let Some(BlockEntity::Beacon(mut b)) = self.world.block_entities.take(&key) else {
@@ -201,105 +185,10 @@ impl Game<'_> {
         ];
         self.front.audio.play(sound, Some(at), 1.0, 1.0);
     }
-    /// `updateBase`: complete layers of `beacon_base_blocks` below.
-    fn beacon_base(&self, x: i32, y: i32, z: i32) -> i32 {
-        let base = self
-            .res
-            .items()
-            .block_tags
-            .get("minecraft:beacon_base_blocks");
-        let mut levels = 0;
-        for step in 1..=4 {
-            let ly = y - step;
-            if ly < super::MIN_Y {
-                break;
-            }
-            let ok = (x - step..=x + step).all(|lx| {
-                (z - step..=z + step).all(|lz| {
-                    let name = &self.res.facts().get(self.world.block(lx, ly, lz)).name;
-                    base.is_some_and(|t| t.contains(&**name))
-                })
-            });
-            if !ok {
-                break;
-            }
-            levels = step;
-        }
-        levels
-    }
     /// `applyEffects`: the powers for players within `levels * 10 + 10` (any height above).
     /// `BeaconBlockEntity.applyEffects`: every player in range.
     fn beacon_effects(&mut self, p: [i32; 3], b: &Beacon) {
         self.for_each_player(|g| g.beacon_effects_on_player(p, b));
-    }
-    fn beacon_effects_on_player(&mut self, p: [i32; 3], b: &Beacon) {
-        let Some(primary) = b.primary.as_deref().and_then(effect_id) else {
-            return;
-        };
-        let range = f64::from(b.levels * 10 + 10);
-        let Some(pp) = self.player.as_ref().map(|p| p.position) else {
-            return;
-        };
-        let inside = pp.x >= f64::from(p[0]) - range
-            && pp.x <= f64::from(p[0] + 1) + range
-            && pp.z >= f64::from(p[2]) - range
-            && pp.z <= f64::from(p[2] + 1) + range
-            && pp.y >= f64::from(p[1]) - range;
-        if !inside {
-            return;
-        }
-        let secondary = b.secondary.as_deref().and_then(effect_id);
-        let amplifier = i32::from(b.levels >= 4 && secondary == Some(primary));
-        let duration = (9 + b.levels * 2) * 20;
-        let ambient = |id, amp| EffectInstance {
-            ambient: true,
-            ..EffectInstance::new(id, duration, amp)
-        };
-        self.potions.effects.add(ambient(primary, amplifier));
-        if let Some(s) = secondary.filter(|&s| b.levels >= 4 && s != primary) {
-            self.potions.effects.add(ambient(s, 0));
-        }
-    }
-    /// Opening the menu shows the beacon's current powers.
-    pub(super) fn beacon_opened(&mut self) {
-        let Some(s) = self.station.as_ref().filter(|s| s.kind == Kind::Beacon) else {
-            return;
-        };
-        let pos = s.pos;
-        let (p, sec) = match self.world.block_entities.get(&(pos[0], pos[1], pos[2])) {
-            Some(BlockEntity::Beacon(b)) => (b.primary.clone(), b.secondary.clone()),
-            _ => (None, None),
-        };
-        let index =
-            |e: Option<String>| e.and_then(|e| EFFECTS.iter().position(|(n, _)| e.ends_with(n)));
-        if let Some(s) = self.station.as_mut() {
-            s.beacon = [index(p), index(sec)];
-        }
-    }
-    fn beacon_levels(&self) -> i32 {
-        let Some(s) = self.station.as_ref() else {
-            return 0;
-        };
-        if let Some(levels) = s.beacon_levels {
-            return levels;
-        }
-        let pos = s.pos;
-        match self.world.block_entities.get(&(pos[0], pos[1], pos[2])) {
-            Some(BlockEntity::Beacon(b)) => b.levels,
-            _ => 0,
-        }
-    }
-    /// Clicks on the power, confirm and cancel buttons.
-    /// The effect, upgrade, confirm and cancel buttons a controller can
-    /// focus (GUI origin relative).
-    pub(super) fn beacon_targets(&self) -> Vec<[f32; 4]> {
-        let (ux, uy) = upgrade_button();
-        buttons()
-            .into_iter()
-            .map(|(_, x, y, _)| (x, y))
-            .chain([(ux, uy), (164.0, 107.0), (190.0, 107.0)])
-            .map(|(x, y)| [x + SHIFT, y, 22.0, 22.0])
-            .collect()
     }
     pub(super) fn beacon_click(&mut self, local: (f32, f32)) -> bool {
         let l = (local.0 - SHIFT, local.1);
@@ -592,5 +481,118 @@ impl Game<'_> {
                 out,
             );
         }
+    }
+}
+impl crate::game::Sim<'_> {
+    /// The beam color of a `BeaconBeamBlock` (stained glass and panes, the beacon).
+    fn beam_color(&self, name: &str) -> Option<u32> {
+        if name == "minecraft:beacon" {
+            return Some(DYE[0]);
+        }
+        let n = name.strip_prefix("minecraft:")?;
+        let dye = n
+            .strip_suffix("_stained_glass")
+            .or_else(|| n.strip_suffix("_stained_glass_pane"))?;
+        DYE_NAMES.iter().position(|d| *d == dye).map(|i| DYE[i])
+    }
+    /// `getHeight(WORLD_SURFACE)`: above the highest non-air block.
+    pub(super) fn world_surface(&self, x: i32, z: i32) -> i32 {
+        self.world
+            .world_surface(x, z, |id| self.res.facts().is_air(id))
+    }
+    /// `updateBase`: complete layers of `beacon_base_blocks` below.
+    fn beacon_base(&self, x: i32, y: i32, z: i32) -> i32 {
+        let base = self
+            .res
+            .items()
+            .block_tags
+            .get("minecraft:beacon_base_blocks");
+        let mut levels = 0;
+        for step in 1..=4 {
+            let ly = y - step;
+            if ly < super::MIN_Y {
+                break;
+            }
+            let ok = (x - step..=x + step).all(|lx| {
+                (z - step..=z + step).all(|lz| {
+                    let name = &self.res.facts().get(self.world.block(lx, ly, lz)).name;
+                    base.is_some_and(|t| t.contains(&**name))
+                })
+            });
+            if !ok {
+                break;
+            }
+            levels = step;
+        }
+        levels
+    }
+    fn beacon_effects_on_player(&mut self, p: [i32; 3], b: &Beacon) {
+        let Some(primary) = b.primary.as_deref().and_then(effect_id) else {
+            return;
+        };
+        let range = f64::from(b.levels * 10 + 10);
+        let Some(pp) = self.player.as_ref().map(|p| p.position) else {
+            return;
+        };
+        let inside = pp.x >= f64::from(p[0]) - range
+            && pp.x <= f64::from(p[0] + 1) + range
+            && pp.z >= f64::from(p[2]) - range
+            && pp.z <= f64::from(p[2] + 1) + range
+            && pp.y >= f64::from(p[1]) - range;
+        if !inside {
+            return;
+        }
+        let secondary = b.secondary.as_deref().and_then(effect_id);
+        let amplifier = i32::from(b.levels >= 4 && secondary == Some(primary));
+        let duration = (9 + b.levels * 2) * 20;
+        let ambient = |id, amp| EffectInstance {
+            ambient: true,
+            ..EffectInstance::new(id, duration, amp)
+        };
+        self.potions.effects.add(ambient(primary, amplifier));
+        if let Some(s) = secondary.filter(|&s| b.levels >= 4 && s != primary) {
+            self.potions.effects.add(ambient(s, 0));
+        }
+    }
+    /// Opening the menu shows the beacon's current powers.
+    pub(super) fn beacon_opened(&mut self) {
+        let Some(s) = self.station.as_ref().filter(|s| s.kind == Kind::Beacon) else {
+            return;
+        };
+        let pos = s.pos;
+        let (p, sec) = match self.world.block_entities.get(&(pos[0], pos[1], pos[2])) {
+            Some(BlockEntity::Beacon(b)) => (b.primary.clone(), b.secondary.clone()),
+            _ => (None, None),
+        };
+        let index =
+            |e: Option<String>| e.and_then(|e| EFFECTS.iter().position(|(n, _)| e.ends_with(n)));
+        if let Some(s) = self.station.as_mut() {
+            s.beacon = [index(p), index(sec)];
+        }
+    }
+    fn beacon_levels(&self) -> i32 {
+        let Some(s) = self.station.as_ref() else {
+            return 0;
+        };
+        if let Some(levels) = s.beacon_levels {
+            return levels;
+        }
+        let pos = s.pos;
+        match self.world.block_entities.get(&(pos[0], pos[1], pos[2])) {
+            Some(BlockEntity::Beacon(b)) => b.levels,
+            _ => 0,
+        }
+    }
+    /// Clicks on the power, confirm and cancel buttons.
+    /// The effect, upgrade, confirm and cancel buttons a controller can
+    /// focus (GUI origin relative).
+    pub(super) fn beacon_targets(&self) -> Vec<[f32; 4]> {
+        let (ux, uy) = upgrade_button();
+        buttons()
+            .into_iter()
+            .map(|(_, x, y, _)| (x, y))
+            .chain([(ux, uy), (164.0, 107.0), (190.0, 107.0)])
+            .map(|(x, y)| [x + SHIFT, y, 22.0, 22.0])
+            .collect()
     }
 }

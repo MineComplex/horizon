@@ -13,12 +13,6 @@ use horizon_core::{position::BlockPos, random::RandomSource};
 use horizon_world::level::flags as level_flags;
 
 impl Game<'_> {
-    fn jukebox(&self, pos: [i32; 3]) -> Option<&Jukebox> {
-        match self.world.block_entities.get(&(pos[0], pos[1], pos[2])) {
-            Some(BlockEntity::Jukebox(j)) => Some(j),
-            _ => None,
-        }
-    }
     fn set_has_record(&mut self, pos: [i32; 3], has: bool) {
         let state = self.world.block(pos[0], pos[1], pos[2]);
         let registry = self.pack.assets.registry;
@@ -202,6 +196,14 @@ impl Game<'_> {
                 self.front.audio.stop_and_release(id);
                 self.jukebox_sounds.remove(&k);
             }
+        }
+    }
+}
+impl crate::game::Sim<'_> {
+    fn jukebox(&self, pos: [i32; 3]) -> Option<&Jukebox> {
+        match self.world.block_entities.get(&(pos[0], pos[1], pos[2])) {
+            Some(BlockEntity::Jukebox(j)) => Some(j),
+            _ => None,
         }
     }
 }

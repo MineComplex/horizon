@@ -41,9 +41,6 @@ fn flame(ominous: bool) -> T {
 }
 
 impl Game<'_> {
-    fn particle(&mut self, ty: T, p: [f64; 3], v: [f64; 3]) {
-        self.particles.add(&ParticleOptions::simple(ty), p, v);
-    }
     fn local_sound(&mut self, name: &str, pos: [i32; 3], volume: f32, pitch: f32) {
         self.front.audio.play(
             &format!("minecraft:{name}"),
@@ -135,36 +132,6 @@ impl Game<'_> {
                 self.trial_spawn_particles(pos, spawn_flame);
             }
             _ => {}
-        }
-    }
-    /// `TrialSpawner.addSpawnParticles`.
-    fn trial_spawn_particles(&mut self, pos: [i32; 3], ty: T) {
-        for _ in 0..20 {
-            let random = self.particles.level_random();
-            let at = pos.map(|c| f64::from(c) + 0.5 + (random.next_double() - 0.5) * 2.0);
-            self.particle(T::Smoke, at, [0.0; 3]);
-            self.particle(ty, at, [0.0; 3]);
-        }
-    }
-    /// `TrialSpawner.addDetectPlayerParticles`.
-    fn detect_player_particles(&mut self, pos: [i32; 3], data: i32, ty: T) {
-        for _ in 0..30 + data.min(10) * 5 {
-            let random = self.particles.level_random();
-            let x = f64::from(2.0 * random.next_float() - 1.0) * 0.65;
-            let z = f64::from(2.0 * random.next_float() - 1.0) * 0.65;
-            let y = f64::from(pos[1]) + 0.1 + f64::from(random.next_float()) * 0.8;
-            let at = [f64::from(pos[0]) + 0.5 + x, y, f64::from(pos[2]) + 0.5 + z];
-            self.particle(ty, at, [0.0; 3]);
-        }
-    }
-    /// `TrialSpawner.addEjectItemParticles`.
-    fn eject_item_particles(&mut self, pos: [i32; 3]) {
-        for _ in 0..20 {
-            let random = self.particles.level_random();
-            let at = pos.map(|c| f64::from(c) + 0.4 + random.next_double() * 0.2);
-            let v = [0; 3].map(|_| random.next_gaussian() * 0.02);
-            self.particle(T::SmallFlame, at, [v[0], v[1], v[2] * 0.25]);
-            self.particle(T::Smoke, at, v);
         }
     }
     /// `TrialSpawner.tickClient`: the state's particles, the spin of the
@@ -316,6 +283,41 @@ impl Game<'_> {
         for _ in 0..count {
             let v = offset_random(direction, self.particles.level_random(), 1.0);
             self.particle(T::VaultConnection, keyhole, v);
+        }
+    }
+}
+impl crate::game::Sim<'_> {
+    fn particle(&mut self, ty: T, p: [f64; 3], v: [f64; 3]) {
+        self.particles.add(&ParticleOptions::simple(ty), p, v);
+    }
+    /// `TrialSpawner.addSpawnParticles`.
+    fn trial_spawn_particles(&mut self, pos: [i32; 3], ty: T) {
+        for _ in 0..20 {
+            let random = self.particles.level_random();
+            let at = pos.map(|c| f64::from(c) + 0.5 + (random.next_double() - 0.5) * 2.0);
+            self.particle(T::Smoke, at, [0.0; 3]);
+            self.particle(ty, at, [0.0; 3]);
+        }
+    }
+    /// `TrialSpawner.addDetectPlayerParticles`.
+    fn detect_player_particles(&mut self, pos: [i32; 3], data: i32, ty: T) {
+        for _ in 0..30 + data.min(10) * 5 {
+            let random = self.particles.level_random();
+            let x = f64::from(2.0 * random.next_float() - 1.0) * 0.65;
+            let z = f64::from(2.0 * random.next_float() - 1.0) * 0.65;
+            let y = f64::from(pos[1]) + 0.1 + f64::from(random.next_float()) * 0.8;
+            let at = [f64::from(pos[0]) + 0.5 + x, y, f64::from(pos[2]) + 0.5 + z];
+            self.particle(ty, at, [0.0; 3]);
+        }
+    }
+    /// `TrialSpawner.addEjectItemParticles`.
+    fn eject_item_particles(&mut self, pos: [i32; 3]) {
+        for _ in 0..20 {
+            let random = self.particles.level_random();
+            let at = pos.map(|c| f64::from(c) + 0.4 + random.next_double() * 0.2);
+            let v = [0; 3].map(|_| random.next_gaussian() * 0.02);
+            self.particle(T::SmallFlame, at, [v[0], v[1], v[2] * 0.25]);
+            self.particle(T::Smoke, at, v);
         }
     }
 }

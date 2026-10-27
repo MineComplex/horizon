@@ -164,18 +164,6 @@ impl Game<'_> {
         }
         edge
     }
-    /// One opener more (`open`) or less at `key`: the count before and after
-    /// (`ContainerOpenersCounter.incrementOpeners` / `decrementOpeners`).
-    fn count_opener(&mut self, key: (i32, i32, i32), open: bool) -> (i32, i32) {
-        let count = self.lid_openers.entry(key).or_default();
-        let before = *count;
-        *count = (before + if open { 1 } else { -1 }).max(0);
-        let after = *count;
-        if after == 0 {
-            self.lid_openers.remove(&key);
-        }
-        (before, after)
-    }
     /// `BellBlockEntity.updateEntities`: the living entities whose bounding
     /// box meets the bell's block box inflated by 48.
     fn bell_gather(&self, pos: [i32; 3]) -> Vec<u64> {
@@ -714,29 +702,6 @@ impl Game<'_> {
         }
         entered
     }
-    /// The End gateway at `pos` as its chunk was loaded: `Age` from the saved
-    /// block entity (`getUpdateTag`), or a new gateway.
-    fn gateway_loaded(&self, pos: [i32; 3]) -> EndGateway {
-        let age = self.saved_tag(pos).and_then(|t| number(t.get("Age")));
-        EndGateway {
-            age: age.unwrap_or(0),
-            teleport_cooldown: 0,
-        }
-    }
-    /// The block entity at `pos` Horizon keeps as loaded, if any.
-    fn saved_tag(&self, pos: [i32; 3]) -> Option<&Tag> {
-        self.world
-            .chunks
-            .get(&(pos[0] >> 4, pos[2] >> 4))
-            .and_then(|c| c.saved.as_deref())
-            .and_then(|saved| {
-                saved.block_entities.iter().find(|t| {
-                    [t.get("x"), t.get("y"), t.get("z")]
-                        .map(number)
-                        .eq(&pos.map(|v| Some(i64::from(v))))
-                })
-            })
-    }
     /// The renderer's view of the block entity at `pos`, with a decorated
     /// pot's saved `sherds` (back, left, right, front).
     pub(super) fn block_anim(&self, pos: [i32; 3], partial: f32) -> BlockAnim {
@@ -799,5 +764,42 @@ impl Game<'_> {
             }
         }
         Some(skin.fallback.to_owned())
+    }
+}
+impl crate::game::Sim<'_> {
+    /// One opener more (`open`) or less at `key`: the count before and after
+    /// (`ContainerOpenersCounter.incrementOpeners` / `decrementOpeners`).
+    fn count_opener(&mut self, key: (i32, i32, i32), open: bool) -> (i32, i32) {
+        let count = self.lid_openers.entry(key).or_default();
+        let before = *count;
+        *count = (before + if open { 1 } else { -1 }).max(0);
+        let after = *count;
+        if after == 0 {
+            self.lid_openers.remove(&key);
+        }
+        (before, after)
+    }
+    /// The End gateway at `pos` as its chunk was loaded: `Age` from the saved
+    /// block entity (`getUpdateTag`), or a new gateway.
+    fn gateway_loaded(&self, pos: [i32; 3]) -> EndGateway {
+        let age = self.saved_tag(pos).and_then(|t| number(t.get("Age")));
+        EndGateway {
+            age: age.unwrap_or(0),
+            teleport_cooldown: 0,
+        }
+    }
+    /// The block entity at `pos` Horizon keeps as loaded, if any.
+    fn saved_tag(&self, pos: [i32; 3]) -> Option<&Tag> {
+        self.world
+            .chunks
+            .get(&(pos[0] >> 4, pos[2] >> 4))
+            .and_then(|c| c.saved.as_deref())
+            .and_then(|saved| {
+                saved.block_entities.iter().find(|t| {
+                    [t.get("x"), t.get("y"), t.get("z")]
+                        .map(number)
+                        .eq(&pos.map(|v| Some(i64::from(v))))
+                })
+            })
     }
 }

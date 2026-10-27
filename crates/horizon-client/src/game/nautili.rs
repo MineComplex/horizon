@@ -9,13 +9,6 @@ use horizon_client::{
 use horizon_core::random::RandomSource;
 
 impl Game<'_> {
-    fn item_tagged(&self, tag: &str, item: &str) -> bool {
-        self.res
-            .items()
-            .item_tags
-            .get(tag)
-            .is_some_and(|t| t.contains(item))
-    }
     /// `AbstractNautilus.usePlayerItem`: bucketed fish leave a water bucket.
     fn use_nautilus_food(&mut self, item: &str) {
         let bucket = self.item_tagged("minecraft:nautilus_bucket_food", item);
@@ -152,5 +145,14 @@ impl Game<'_> {
             return true;
         }
         false
+    }
+}
+impl crate::game::Sim<'_> {
+    fn item_tagged(&self, tag: &str, item: &str) -> bool {
+        self.res
+            .items()
+            .item_tags
+            .get(tag)
+            .is_some_and(|t| t.contains(item))
     }
 }

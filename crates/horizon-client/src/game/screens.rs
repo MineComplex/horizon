@@ -120,10 +120,6 @@ fn death_buttons(w: f32, h: f32, hardcore: bool) -> [(f32, f32, &'static str, u8
     ]
 }
 impl Game<'_> {
-    /// Singleplayer also has a connection, backed by the integrated server.
-    pub(super) fn external_server(&self) -> bool {
-        self.remote.is_some() && self.integrated.is_none()
-    }
     pub(super) fn draw_pause_menu(&mut self, batch: &mut HudBatch) {
         let friends = self.friends_view().shown;
         let atlas = &self.front.gui.atlas;
@@ -402,6 +398,12 @@ impl Game<'_> {
             self.front.audio.play_button_click();
         }
         Ok(())
+    }
+}
+impl crate::game::Sim<'_> {
+    /// Singleplayer also has a connection, backed by the integrated server.
+    pub(super) fn external_server(&self) -> bool {
+        self.remote.is_some() && self.integrated.is_none()
     }
 }
 

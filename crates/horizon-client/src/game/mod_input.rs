@@ -63,15 +63,6 @@ pub(super) struct ModFarTerrain {
 
 #[cfg(feature = "mods")]
 impl Game<'_> {
-    /// The main hand's stack as `input` shows it; none when it is empty.
-    pub(super) fn mod_held(&self) -> Option<HeldItem> {
-        let stack = self.inventory.get(self.selected)?.as_ref()?;
-        Some(HeldItem {
-            id: stack.item.to_string(),
-            count: stack.count,
-            slot: self.selected as u32,
-        })
-    }
     /// The use button while playing: true when a mod claimed the held item,
     /// so the game does nothing else with it (no placing, eating, swing).
     pub(super) fn mod_use(&mut self, button: MouseButton, pressed: bool) -> bool {
@@ -90,29 +81,6 @@ impl Game<'_> {
             since: self.ticks,
         });
         true
-    }
-    /// Ends a claimed use: the button came up, the player switched slots,
-    /// or a screen opened. False when none was going.
-    pub(super) fn stop_mod_use(&mut self) -> bool {
-        let Some(u) = self.mods.using.take() else {
-            return false;
-        };
-        let ticks = self.ticks.saturating_sub(u.since).min(u64::from(u32::MAX)) as u32;
-        self.mods.mods.use_stop(&u.item, ticks);
-        true
-    }
-    /// Once a tick: a claimed use stops when its item leaves the hand or a
-    /// screen opens, as vanilla's `releaseUsingItem`.
-    pub(super) fn tick_mod_use(&mut self) {
-        let Some(u) = &self.mods.using else {
-            return;
-        };
-        let still = self
-            .mod_held()
-            .is_some_and(|h| h.id == u.item.id && h.slot == u.item.slot);
-        if !still || self.screen != Screen::Playing {
-            self.stop_mod_use();
-        }
     }
     /// A key went down or up: a mod's registered key while playing (no
     /// screen) is its `key-down` / `key-up`. Vanilla's mapping on the same
@@ -153,22 +121,6 @@ impl Game<'_> {
     pub(super) fn mod_wheel(&mut self, steps: f32) -> bool {
         self.mods.mods.wheel(steps)
     }
-    /// Playing, with nothing over the world: mods' keys and zoom apply.
-    fn mod_playing(&self) -> bool {
-        self.screen == Screen::Playing
-            && self.title.is_none()
-            && self.sign_edit.is_none()
-            && self.book.is_none()
-    }
-    /// Once a frame, before the mods run: a screen that opened lets their
-    /// held keys up.
-    pub(super) fn mod_input_frame(&mut self) {
-        let playing = self.mod_playing();
-        if self.mods.playing && !playing {
-            self.mods.mods.release_keys();
-        }
-        self.mods.playing = playing;
-    }
     /// The strongest zoom a mod asks for, while playing; the spyglass's
     /// own view wins.
     pub(super) fn mod_zoom(&self) -> Option<ModZoom> {
@@ -207,5 +159,56 @@ impl Game<'_> {
             distance: f.distance,
             reduced: f.reduced,
         })
+    }
+}
+#[cfg(feature = "mods")]
+impl crate::game::Sim<'_> {
+    /// The main hand's stack as `input` shows it; none when it is empty.
+    pub(super) fn mod_held(&self) -> Option<HeldItem> {
+        let stack = self.inventory.get(self.selected)?.as_ref()?;
+        Some(HeldItem {
+            id: stack.item.to_string(),
+            count: stack.count,
+            slot: self.selected as u32,
+        })
+    }
+    /// Ends a claimed use: the button came up, the player switched slots,
+    /// or a screen opened. False when none was going.
+    pub(super) fn stop_mod_use(&mut self) -> bool {
+        let Some(u) = self.mods.using.take() else {
+            return false;
+        };
+        let ticks = self.ticks.saturating_sub(u.since).min(u64::from(u32::MAX)) as u32;
+        self.mods.mods.use_stop(&u.item, ticks);
+        true
+    }
+    /// Once a tick: a claimed use stops when its item leaves the hand or a
+    /// screen opens, as vanilla's `releaseUsingItem`.
+    pub(super) fn tick_mod_use(&mut self) {
+        let Some(u) = &self.mods.using else {
+            return;
+        };
+        let still = self
+            .mod_held()
+            .is_some_and(|h| h.id == u.item.id && h.slot == u.item.slot);
+        if !still || self.screen != Screen::Playing {
+            self.stop_mod_use();
+        }
+    }
+    /// Playing, with nothing over the world: mods' keys and zoom apply.
+    fn mod_playing(&self) -> bool {
+        self.screen == Screen::Playing
+            && self.title.is_none()
+            && self.sign_edit.is_none()
+            && self.book.is_none()
+    }
+    /// Once a frame, before the mods run: a screen that opened lets their
+    /// held keys up.
+    pub(super) fn mod_input_frame(&mut self) {
+        let playing = self.mod_playing();
+        if self.mods.playing && !playing {
+            self.mods.mods.release_keys();
+        }
+        self.mods.playing = playing;
     }
 }

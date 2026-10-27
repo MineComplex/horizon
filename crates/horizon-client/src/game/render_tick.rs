@@ -47,17 +47,6 @@ fn rains_at(world: &World, biomes: &Biomes, x: i32, y: i32, z: i32) -> bool {
 }
 
 impl Game<'_> {
-    pub(super) fn forward(&self) -> [f64; 3] {
-        let (yaw, pitch) = (
-            f64::from(self.yaw).to_radians(),
-            f64::from(self.pitch).to_radians(),
-        );
-        [
-            -yaw.sin() * pitch.cos(),
-            -pitch.sin(),
-            yaw.cos() * pitch.cos(),
-        ]
-    }
     /// `FogRenderer.setupFog` for the frame's camera.
     pub(super) fn frame_fog(
         &self,
@@ -107,37 +96,6 @@ impl Game<'_> {
                 boss_world_fog: self.front.boss_overlay.should_create_world_fog(),
             },
         )
-    }
-    /// `ClientLevelData.isFlat`: on the server thread, the world-wide flag.
-    fn level_flat(&self) -> bool {
-        match self.remote.as_ref() {
-            Some(r) => r.flat,
-            None => self.world_flat,
-        }
-    }
-    /// `Level.getMinY`: the current dimension type's minimum y.
-    fn level_min_y(&self) -> i32 {
-        match self.remote.as_ref() {
-            Some(r) => r.dimension.min_y,
-            None => self.dim.min_y(),
-        }
-    }
-    /// `SkyRenderer.shouldRenderDarkDisc`: eye below the horizon and not under
-    /// water. `ClientLevelData.getHorizonHeight`: the bottom of a flat world,
-    /// otherwise y 63.
-    pub(super) fn dark_disc(&self, camera: glam::DVec3) -> bool {
-        let horizon = if self.level_flat() {
-            f64::from(self.level_min_y())
-        } else {
-            63.0
-        };
-        camera.y < horizon
-            && fog_type(
-                &self.world,
-                self.res.facts(),
-                [camera.x, camera.y, camera.z],
-                self.forward(),
-            ) != FogType::Water
     }
     /// `ScreenEffectRenderer` + `Hud` camera overlays for this frame.
     pub(super) fn screen_quads(&self, partial: f32, size: [u32; 2]) -> Vec<ScreenQuad> {
@@ -218,18 +176,6 @@ impl Game<'_> {
                 && self.player.as_ref().is_some_and(|p| p.fire_ticks > 0),
             gui_overlays: &gui_overlays,
         })
-    }
-    /// `Lightmap.getBrightness(getMaxLocalRawBrightness(eye))`.
-    fn eye_brightness(&self, eye: [f64; 3]) -> f32 {
-        let b = [
-            eye[0].floor() as i32,
-            eye[1].floor() as i32,
-            eye[2].floor() as i32,
-        ];
-        let packed = self.world.light(b[0], b[1], b[2]);
-        let sky = i32::from(packed >> 4) - self.sky_darken();
-        let raw = sky.max(i32::from(packed & 15)).clamp(0, 15) as u8;
-        lightmap_brightness(if self.dim == Dim::Nether { 0.1 } else { 0.0 }, raw)
     }
     pub(super) fn tick_particles(&mut self) {
         self.front.fog.tick_flicker();
@@ -433,5 +379,61 @@ impl Game<'_> {
         for (name, at, volume, pitch) in std::mem::take(&mut self.particles.sounds) {
             self.front.audio.play(name, Some(at), volume, pitch);
         }
+    }
+}
+impl crate::game::Sim<'_> {
+    pub(super) fn forward(&self) -> [f64; 3] {
+        let (yaw, pitch) = (
+            f64::from(self.yaw).to_radians(),
+            f64::from(self.pitch).to_radians(),
+        );
+        [
+            -yaw.sin() * pitch.cos(),
+            -pitch.sin(),
+            yaw.cos() * pitch.cos(),
+        ]
+    }
+    /// `ClientLevelData.isFlat`: on the server thread, the world-wide flag.
+    fn level_flat(&self) -> bool {
+        match self.remote.as_ref() {
+            Some(r) => r.flat,
+            None => self.world_flat,
+        }
+    }
+    /// `Level.getMinY`: the current dimension type's minimum y.
+    fn level_min_y(&self) -> i32 {
+        match self.remote.as_ref() {
+            Some(r) => r.dimension.min_y,
+            None => self.dim.min_y(),
+        }
+    }
+    /// `SkyRenderer.shouldRenderDarkDisc`: eye below the horizon and not under
+    /// water. `ClientLevelData.getHorizonHeight`: the bottom of a flat world,
+    /// otherwise y 63.
+    pub(super) fn dark_disc(&self, camera: glam::DVec3) -> bool {
+        let horizon = if self.level_flat() {
+            f64::from(self.level_min_y())
+        } else {
+            63.0
+        };
+        camera.y < horizon
+            && fog_type(
+                &self.world,
+                self.res.facts(),
+                [camera.x, camera.y, camera.z],
+                self.forward(),
+            ) != FogType::Water
+    }
+    /// `Lightmap.getBrightness(getMaxLocalRawBrightness(eye))`.
+    fn eye_brightness(&self, eye: [f64; 3]) -> f32 {
+        let b = [
+            eye[0].floor() as i32,
+            eye[1].floor() as i32,
+            eye[2].floor() as i32,
+        ];
+        let packed = self.world.light(b[0], b[1], b[2]);
+        let sky = i32::from(packed >> 4) - self.sky_darken();
+        let raw = sky.max(i32::from(packed & 15)).clamp(0, 15) as u8;
+        lightmap_brightness(if self.dim == Dim::Nether { 0.1 } else { 0.0 }, raw)
     }
 }

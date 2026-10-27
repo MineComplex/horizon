@@ -105,34 +105,8 @@ impl horizon_client::cushion::World for PlacementWorld<'_, '_> {
 }
 
 impl Game<'_> {
-    /// The cushion under the crosshair, its distance and the hit point.
-    pub(super) fn cushion_hit(&self) -> Option<(usize, f64, [f64; 3])> {
-        let eye = self.eye_position()?;
-        let dir = view_vector(self.yaw, self.pitch);
-        let reach: f64 = if self.creative { 5.0 } else { 3.0 };
-        let mut best: Option<(usize, f64, [f64; 3])> = None;
-        for (i, c) in self.cushions.iter().enumerate() {
-            let Some(d) = super::ray_box(eye, dir, reach, aabb(c.bounds())) else {
-                continue;
-            };
-            if best.is_none_or(|b| d < b.1) {
-                best = Some((i, d, std::array::from_fn(|k| eye[k] + dir[k] * d)));
-            }
-        }
-        best
-    }
-
     pub(super) fn cushion_survives(&self, c: &Cushion) -> bool {
         horizon_client::cushion::survives(&PlacementWorld(self), aabb(c.bounds()))
-    }
-
-    /// `Cushion.destroyIfInFire`: a fire-tagged block inside the deflated box.
-    fn cushion_in_fire(&self, c: &Cushion) -> bool {
-        let bounds = aabb(c.bounds()).next_deflated();
-        blocks_in(bounds).any(|p| {
-            let facts = self.res.facts().get(self.world.block(p[0], p[1], p[2]));
-            self.res.items().block_in_tag("minecraft:fire", &facts.name)
-        })
     }
 
     /// `CushionItem.useOn`: on the top face only, spawning at the click's
@@ -487,5 +461,31 @@ impl Game<'_> {
             );
             self.cull_entity_vertices(out, entity_start);
         }
+    }
+}
+impl crate::game::Sim<'_> {
+    /// The cushion under the crosshair, its distance and the hit point.
+    pub(super) fn cushion_hit(&self) -> Option<(usize, f64, [f64; 3])> {
+        let eye = self.eye_position()?;
+        let dir = view_vector(self.yaw, self.pitch);
+        let reach: f64 = if self.creative { 5.0 } else { 3.0 };
+        let mut best: Option<(usize, f64, [f64; 3])> = None;
+        for (i, c) in self.cushions.iter().enumerate() {
+            let Some(d) = super::ray_box(eye, dir, reach, aabb(c.bounds())) else {
+                continue;
+            };
+            if best.is_none_or(|b| d < b.1) {
+                best = Some((i, d, std::array::from_fn(|k| eye[k] + dir[k] * d)));
+            }
+        }
+        best
+    }
+    /// `Cushion.destroyIfInFire`: a fire-tagged block inside the deflated box.
+    fn cushion_in_fire(&self, c: &Cushion) -> bool {
+        let bounds = aabb(c.bounds()).next_deflated();
+        blocks_in(bounds).any(|p| {
+            let facts = self.res.facts().get(self.world.block(p[0], p[1], p[2]));
+            self.res.items().block_in_tag("minecraft:fire", &facts.name)
+        })
     }
 }

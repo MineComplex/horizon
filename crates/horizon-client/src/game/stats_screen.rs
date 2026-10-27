@@ -172,63 +172,10 @@ fn tabs(w: f32) -> (f32, f32) {
 const TAB_H: f32 = 24.0;
 const FOOTER: f32 = 33.0;
 impl Game<'_> {
-    pub(super) fn open_stats(&mut self) {
-        self.load_stats();
-        // StatsScreen.init: a server's client asks for its statistics.
-        if self.remote.is_some() {
-            self.send(horizon_protocol::packets::play::Serverbound::ClientCommand(
-                horizon_protocol::packets::play::ClientCommand { action: 1 },
-            ));
-        }
-        self.stats_ui = StatsUi::default();
-        self.screen = Screen::Stats;
-    }
     /// The list's scrollbar column (right of the 280 pixel list) and the
     /// pixels it scrolls.
     fn stats_bar(w: f32) -> f32 {
         ((w - 280.0) / 2.0).floor() + 280.0 + 6.0
-    }
-    fn stats_content(&self) -> f32 {
-        let (row_h, rows) = self.stats_rows();
-        row_h * rows as f32 + 4.0
-    }
-    fn stats_rows(&self) -> (f32, usize) {
-        match self.stats_ui.tab {
-            0 => (14.0, CUSTOM.len()),
-            1 => (22.0, self.stat_items().len() + 1),
-            _ => (36.0, self.stat_mobs().len()),
-        }
-    }
-    /// Items (and block items) with any non-zero column.
-    fn stat_items(&self) -> Vec<String> {
-        let mut items: Vec<String> = Vec::new();
-        for (ty, _) in COLUMNS {
-            if let Some(m) = self.stats.values.get(&format!("minecraft:{ty}")) {
-                for (k, v) in m {
-                    if *v > 0 && k != "minecraft:air" && !items.contains(k) {
-                        items.push(k.clone());
-                    }
-                }
-            }
-        }
-        if let Some((col, order)) = self.stats_ui.sort {
-            let ty = COLUMNS[col].0;
-            items.sort_by_key(|i| self.stats.get(ty, i) * -order);
-        }
-        items
-    }
-    fn stat_mobs(&self) -> Vec<String> {
-        let mut mobs: Vec<String> = Vec::new();
-        for ty in ["killed", "killed_by"] {
-            if let Some(m) = self.stats.values.get(&format!("minecraft:{ty}")) {
-                for (k, v) in m {
-                    if *v > 0 && !mobs.contains(k) {
-                        mobs.push(k.clone());
-                    }
-                }
-            }
-        }
-        mobs
     }
     pub(super) fn draw_stats(&mut self, batch: &mut HudBatch) {
         let (w, h) = (batch.width, batch.height);
@@ -526,6 +473,61 @@ impl Game<'_> {
             .stats_ui
             .scroll
             .drag(self.front.cursor.1, TAB_H, h - FOOTER, content);
+    }
+}
+impl crate::game::Sim<'_> {
+    pub(super) fn open_stats(&mut self) {
+        self.load_stats();
+        // StatsScreen.init: a server's client asks for its statistics.
+        if self.remote.is_some() {
+            self.send(horizon_protocol::packets::play::Serverbound::ClientCommand(
+                horizon_protocol::packets::play::ClientCommand { action: 1 },
+            ));
+        }
+        self.stats_ui = StatsUi::default();
+        self.screen = Screen::Stats;
+    }
+    fn stats_content(&self) -> f32 {
+        let (row_h, rows) = self.stats_rows();
+        row_h * rows as f32 + 4.0
+    }
+    fn stats_rows(&self) -> (f32, usize) {
+        match self.stats_ui.tab {
+            0 => (14.0, CUSTOM.len()),
+            1 => (22.0, self.stat_items().len() + 1),
+            _ => (36.0, self.stat_mobs().len()),
+        }
+    }
+    /// Items (and block items) with any non-zero column.
+    fn stat_items(&self) -> Vec<String> {
+        let mut items: Vec<String> = Vec::new();
+        for (ty, _) in COLUMNS {
+            if let Some(m) = self.stats.values.get(&format!("minecraft:{ty}")) {
+                for (k, v) in m {
+                    if *v > 0 && k != "minecraft:air" && !items.contains(k) {
+                        items.push(k.clone());
+                    }
+                }
+            }
+        }
+        if let Some((col, order)) = self.stats_ui.sort {
+            let ty = COLUMNS[col].0;
+            items.sort_by_key(|i| self.stats.get(ty, i) * -order);
+        }
+        items
+    }
+    fn stat_mobs(&self) -> Vec<String> {
+        let mut mobs: Vec<String> = Vec::new();
+        for ty in ["killed", "killed_by"] {
+            if let Some(m) = self.stats.values.get(&format!("minecraft:{ty}")) {
+                for (k, v) in m {
+                    if *v > 0 && !mobs.contains(k) {
+                        mobs.push(k.clone());
+                    }
+                }
+            }
+        }
+        mobs
     }
     /// The button came up: the scrollbar lets go.
     pub(super) fn stats_release(&mut self) {

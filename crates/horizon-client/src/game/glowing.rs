@@ -12,6 +12,21 @@ pub(super) fn team_color(team: Option<&sb::Team>) -> u32 {
 }
 
 impl Game<'_> {
+    /// Adds one glowing entity's geometry to the outline pass in `rgb`, the textures'
+    /// alpha kept (`OutlineBufferSource`'s team-coloured copy of each draw).
+    pub(super) fn mark_outline(&self, vertices: &[Vertex], rgb: u32) {
+        let color = horizon_client::mobs::render::abgr(rgb);
+        self.front
+            .glowing_vertices
+            .borrow_mut()
+            .extend(vertices.iter().map(|v| Vertex {
+                color,
+                normal: [0; 4],
+                ..*v
+            }));
+    }
+}
+impl crate::game::Sim<'_> {
     /// `Entity.isCurrentlyGlowing` of an entity that is not living (an item, a projectile):
     /// its `Glowing` tag, or shared flag 6 as a server sent it.
     pub(super) fn entity_glowing(&self, id: u32) -> bool {
@@ -21,7 +36,6 @@ impl Game<'_> {
                 .is_some_and(|b| b != 0)
         })
     }
-
     /// `Minecraft.shouldEntityAppearGlowing` of a mob or another player, with its outline
     /// colour (`getTeamColor`; another player's team goes by name).
     pub(super) fn mob_outline(&self, m: &Mob) -> Option<u32> {
@@ -36,19 +50,5 @@ impl Game<'_> {
             self.mob_team(m.id)
         };
         Some(team_color(team))
-    }
-
-    /// Adds one glowing entity's geometry to the outline pass in `rgb`, the textures'
-    /// alpha kept (`OutlineBufferSource`'s team-coloured copy of each draw).
-    pub(super) fn mark_outline(&self, vertices: &[Vertex], rgb: u32) {
-        let color = horizon_client::mobs::render::abgr(rgb);
-        self.front
-            .glowing_vertices
-            .borrow_mut()
-            .extend(vertices.iter().map(|v| Vertex {
-                color,
-                normal: [0; 4],
-                ..*v
-            }));
     }
 }

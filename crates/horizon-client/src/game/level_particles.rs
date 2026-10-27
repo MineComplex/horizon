@@ -12,6 +12,177 @@ use horizon_world::level::LevelEvent;
 use horizon_world::registry::BlockStateId;
 
 impl Game<'_> {
+    /// Event 2018: an enderman's portal trail.
+    pub(super) fn enderman_teleport_particles(&mut self, pos: [i32; 3], data: i32) {
+        self.sim
+            .particles
+            .enderman_teleportation(pos, data, self.sim.settings.particles);
+    }
+    /// `LevelEventHandler` 2006 (`DragonFireball.onHit`): 200 dragon breath
+    /// particles thrown outwards, then the explosion sound when `data` is 1.
+    pub(super) fn dragon_fireball_burst(&mut self, pos: BlockPos, data: i32) {
+        for _ in 0..200 {
+            let r = self.particles.level_random();
+            let dist = r.next_float() * 4.0;
+            let angle = r.next_float() * std::f32::consts::TAU;
+            let vx = f64::from(trig::cos(f64::from(angle)) * dist);
+            let vy = 0.01 + r.next_double() * 0.5;
+            let vz = f64::from(trig::sin(f64::from(angle)) * dist);
+            let options = ParticleOptions {
+                scale: dist,
+                ..ParticleOptions::simple(ParticleType::DragonBreath)
+            };
+            self.particles.add(
+                &options,
+                [
+                    f64::from(pos.x) + vx * 0.1,
+                    f64::from(pos.y) + 0.3,
+                    f64::from(pos.z) + vz * 0.1,
+                ],
+                [vx, vy, vz],
+            );
+        }
+        if data == 1 {
+            let at = [pos.x, pos.y, pos.z].map(|v| f64::from(v) + 0.5);
+            let pitch = self.world.random.next_float() * 0.1 + 0.9;
+            self.front.audio.play(
+                "minecraft:entity.dragon_fireball.explode",
+                Some(at),
+                1.0,
+                pitch,
+            );
+        }
+    }
+    /// `ServerLevel.globalLevelEvent`: heard by every player on the server
+    /// (an end portal opening, the dragon's death roar): here, and sent to
+    /// every guest whatever their dimension.
+    pub(super) fn global_level_event(&mut self, id: i32, pos: [i32; 3], data: i32) {
+        self.global_level_event_sound(id, pos);
+        if self.front.audio.capture.is_some() {
+            self.lan_global_events.push((id, pos, data));
+        }
+    }
+    /// `LevelEventHandler.globalLevelEvent`: the sound two blocks from the
+    /// camera towards the event, so it is heard from anywhere.
+    pub(super) fn global_level_event_sound(&mut self, id: i32, pos: [i32; 3]) {
+        let (sound, volume) = match id {
+            1023 => ("minecraft:entity.wither.spawn", 1.0),
+            1028 => ("minecraft:entity.ender_dragon.death", 5.0),
+            1038 => ("minecraft:block.end_portal.spawn", 1.0),
+            _ => return,
+        };
+        let at = self.eye_position().map(|eye| {
+            let d = [
+                f64::from(pos[0]) + 0.5 - eye[0],
+                f64::from(pos[1]) + 0.5 - eye[1],
+                f64::from(pos[2]) + 0.5 - eye[2],
+            ];
+            let length = (d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).sqrt();
+            if length < 1.0e-4 {
+                return eye;
+            }
+            [0, 1, 2].map(|k| eye[k] + d[k] / length * 2.0)
+        });
+        // Each guest plays it from the global packet.
+        self.front.audio.play_unshared(sound, at, volume, 1.0);
+    }
+    /// `ClientLevel.addBreakingBlockEffects`: the block's hit sound (only for
+    /// `play_sound`) and one crumb on the face being mined; nothing for air.
+    pub(super) fn breaking_block_effects(
+        &mut self,
+        pos: [i32; 3],
+        face: [i32; 3],
+        play_sound: bool,
+    ) {
+        let state = self.world.block(pos[0], pos[1], pos[2]);
+        if self.res.facts().is_air(state) {
+            return;
+        }
+        if play_sound {
+            let sounds = self.res.facts().get(state).sounds.clone();
+            // Each guest plays it from the level event itself.
+            self.front.audio.play_unshared(
+                &sounds.hit,
+                Some(pos.map(|v| f64::from(v) + 0.5)),
+                (sounds.volume + 1.0) / 8.0,
+                sounds.pitch * 0.5,
+            );
+        }
+        self.crack_particle(pos, face, state);
+    }
+    /// `LevelEventHandler.potionSplashParticles` (2002 with `Effect`, 2007
+    /// with `InstantEffect`): eight splash potion crumbs, and a hundred
+    /// spell particles in the potion's colour `data`, flung out in a disc.
+    pub(super) fn potion_splash_particles(&mut self, pos: BlockPos, data: i32, instant: bool) {
+        let ty = if instant {
+            ParticleType::InstantEffect
+        } else {
+            ParticleType::Effect
+        };
+        // Vec3.atBottomCenterOf.
+        let at = [
+            f64::from(pos.x) + 0.5,
+            f64::from(pos.y),
+            f64::from(pos.z) + 0.5,
+        ];
+        let crumb = self.item_particle(&ItemStack::new("minecraft:splash_potion", 1));
+        let r = self.particles.level_random();
+        let crumbs: Vec<[f64; 3]> = (0..8)
+            .map(|_| {
+                [
+                    r.next_gaussian() * 0.15,
+                    r.next_double() * 0.2,
+                    r.next_gaussian() * 0.15,
+                ]
+            })
+            .collect();
+        for v in crumbs {
+            self.particles.add(&crumb, at, v);
+        }
+        let channel = |shift: i32| ((data >> shift) & 0xFF) as f32 / 255.0;
+        let color = [channel(16), channel(8), channel(0)];
+        for _ in 0..100 {
+            let r = self.particles.level_random();
+            let dist = r.next_double() * 4.0;
+            let angle = r.next_double() * std::f64::consts::PI * 2.0;
+            let velocity = [
+                angle.cos() * dist,
+                0.01 + r.next_double() * 0.5,
+                angle.sin() * dist,
+            ];
+            let brightness = 0.75 + r.next_float() * 0.25;
+            let options = ParticleOptions {
+                color: [
+                    color[0] * brightness,
+                    color[1] * brightness,
+                    color[2] * brightness,
+                    1.0,
+                ],
+                scale: dist as f32,
+                ..ParticleOptions::simple(ty)
+            };
+            self.particles.add(
+                &options,
+                [
+                    at[0] + velocity[0] * 0.1,
+                    at[1] + 0.3,
+                    at[2] + velocity[2] * 0.1,
+                ],
+                velocity,
+            );
+        }
+    }
+    /// Queue and play level event `id` at `pos` (`Level.levelEvent`).
+    pub(super) fn level_event_at(&mut self, id: i32, pos: [i32; 3], data: i32) {
+        self.level_events.push(LevelEvent::LevelEvent {
+            id,
+            pos: BlockPos::new(pos[0], pos[1], pos[2]),
+            data,
+        });
+        let _ = self.process_level_events();
+    }
+}
+impl crate::game::Sim<'_> {
     pub(super) fn dragon_egg_particles(&mut self, pos: [i32; 3], data: i32) {
         self.particles.block_teleportation(pos, data, [16, 8, 16]);
     }
@@ -24,12 +195,6 @@ impl Game<'_> {
     pub(super) fn consume_teleport_particles(&mut self, pos: [i32; 3], data: i32) {
         self.particles
             .block_teleportation(pos, data, [127, 127, 127]);
-    }
-    /// Event 2018: an enderman's portal trail.
-    pub(super) fn enderman_teleport_particles(&mut self, pos: [i32; 3], data: i32) {
-        self.sim
-            .particles
-            .enderman_teleportation(pos, data, self.sim.settings.particles);
     }
     /// `LevelEventHandler.levelEvent` 3002 to 3005, drawing from the client
     /// level's random.
@@ -180,41 +345,6 @@ impl Game<'_> {
             self.particles.add(&options, [x, y, z], [0.0; 3]);
         }
     }
-    /// `LevelEventHandler` 2006 (`DragonFireball.onHit`): 200 dragon breath
-    /// particles thrown outwards, then the explosion sound when `data` is 1.
-    pub(super) fn dragon_fireball_burst(&mut self, pos: BlockPos, data: i32) {
-        for _ in 0..200 {
-            let r = self.particles.level_random();
-            let dist = r.next_float() * 4.0;
-            let angle = r.next_float() * std::f32::consts::TAU;
-            let vx = f64::from(trig::cos(f64::from(angle)) * dist);
-            let vy = 0.01 + r.next_double() * 0.5;
-            let vz = f64::from(trig::sin(f64::from(angle)) * dist);
-            let options = ParticleOptions {
-                scale: dist,
-                ..ParticleOptions::simple(ParticleType::DragonBreath)
-            };
-            self.particles.add(
-                &options,
-                [
-                    f64::from(pos.x) + vx * 0.1,
-                    f64::from(pos.y) + 0.3,
-                    f64::from(pos.z) + vz * 0.1,
-                ],
-                [vx, vy, vz],
-            );
-        }
-        if data == 1 {
-            let at = [pos.x, pos.y, pos.z].map(|v| f64::from(v) + 0.5);
-            let pitch = self.world.random.next_float() * 0.1 + 0.9;
-            self.front.audio.play(
-                "minecraft:entity.dragon_fireball.explode",
-                Some(at),
-                1.0,
-                pitch,
-            );
-        }
-    }
     /// `SpeleothemBlock.isStalactite`: a speleothem whose tip points down.
     fn is_stalactite(&self, state: BlockStateId) -> bool {
         self.res.facts().get(state).has_class("SpeleothemBlock")
@@ -287,133 +417,5 @@ impl Game<'_> {
             ],
             [0.0; 3],
         );
-    }
-    /// `ServerLevel.globalLevelEvent`: heard by every player on the server
-    /// (an end portal opening, the dragon's death roar): here, and sent to
-    /// every guest whatever their dimension.
-    pub(super) fn global_level_event(&mut self, id: i32, pos: [i32; 3], data: i32) {
-        self.global_level_event_sound(id, pos);
-        if self.front.audio.capture.is_some() {
-            self.lan_global_events.push((id, pos, data));
-        }
-    }
-    /// `LevelEventHandler.globalLevelEvent`: the sound two blocks from the
-    /// camera towards the event, so it is heard from anywhere.
-    pub(super) fn global_level_event_sound(&mut self, id: i32, pos: [i32; 3]) {
-        let (sound, volume) = match id {
-            1023 => ("minecraft:entity.wither.spawn", 1.0),
-            1028 => ("minecraft:entity.ender_dragon.death", 5.0),
-            1038 => ("minecraft:block.end_portal.spawn", 1.0),
-            _ => return,
-        };
-        let at = self.eye_position().map(|eye| {
-            let d = [
-                f64::from(pos[0]) + 0.5 - eye[0],
-                f64::from(pos[1]) + 0.5 - eye[1],
-                f64::from(pos[2]) + 0.5 - eye[2],
-            ];
-            let length = (d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).sqrt();
-            if length < 1.0e-4 {
-                return eye;
-            }
-            [0, 1, 2].map(|k| eye[k] + d[k] / length * 2.0)
-        });
-        // Each guest plays it from the global packet.
-        self.front.audio.play_unshared(sound, at, volume, 1.0);
-    }
-    /// `ClientLevel.addBreakingBlockEffects`: the block's hit sound (only for
-    /// `play_sound`) and one crumb on the face being mined; nothing for air.
-    pub(super) fn breaking_block_effects(
-        &mut self,
-        pos: [i32; 3],
-        face: [i32; 3],
-        play_sound: bool,
-    ) {
-        let state = self.world.block(pos[0], pos[1], pos[2]);
-        if self.res.facts().is_air(state) {
-            return;
-        }
-        if play_sound {
-            let sounds = self.res.facts().get(state).sounds.clone();
-            // Each guest plays it from the level event itself.
-            self.front.audio.play_unshared(
-                &sounds.hit,
-                Some(pos.map(|v| f64::from(v) + 0.5)),
-                (sounds.volume + 1.0) / 8.0,
-                sounds.pitch * 0.5,
-            );
-        }
-        self.crack_particle(pos, face, state);
-    }
-    /// `LevelEventHandler.potionSplashParticles` (2002 with `Effect`, 2007
-    /// with `InstantEffect`): eight splash potion crumbs, and a hundred
-    /// spell particles in the potion's colour `data`, flung out in a disc.
-    pub(super) fn potion_splash_particles(&mut self, pos: BlockPos, data: i32, instant: bool) {
-        let ty = if instant {
-            ParticleType::InstantEffect
-        } else {
-            ParticleType::Effect
-        };
-        // Vec3.atBottomCenterOf.
-        let at = [
-            f64::from(pos.x) + 0.5,
-            f64::from(pos.y),
-            f64::from(pos.z) + 0.5,
-        ];
-        let crumb = self.item_particle(&ItemStack::new("minecraft:splash_potion", 1));
-        let r = self.particles.level_random();
-        let crumbs: Vec<[f64; 3]> = (0..8)
-            .map(|_| {
-                [
-                    r.next_gaussian() * 0.15,
-                    r.next_double() * 0.2,
-                    r.next_gaussian() * 0.15,
-                ]
-            })
-            .collect();
-        for v in crumbs {
-            self.particles.add(&crumb, at, v);
-        }
-        let channel = |shift: i32| ((data >> shift) & 0xFF) as f32 / 255.0;
-        let color = [channel(16), channel(8), channel(0)];
-        for _ in 0..100 {
-            let r = self.particles.level_random();
-            let dist = r.next_double() * 4.0;
-            let angle = r.next_double() * std::f64::consts::PI * 2.0;
-            let velocity = [
-                angle.cos() * dist,
-                0.01 + r.next_double() * 0.5,
-                angle.sin() * dist,
-            ];
-            let brightness = 0.75 + r.next_float() * 0.25;
-            let options = ParticleOptions {
-                color: [
-                    color[0] * brightness,
-                    color[1] * brightness,
-                    color[2] * brightness,
-                    1.0,
-                ],
-                scale: dist as f32,
-                ..ParticleOptions::simple(ty)
-            };
-            self.particles.add(
-                &options,
-                [
-                    at[0] + velocity[0] * 0.1,
-                    at[1] + 0.3,
-                    at[2] + velocity[2] * 0.1,
-                ],
-                velocity,
-            );
-        }
-    }
-    /// Queue and play level event `id` at `pos` (`Level.levelEvent`).
-    pub(super) fn level_event_at(&mut self, id: i32, pos: [i32; 3], data: i32) {
-        self.level_events.push(LevelEvent::LevelEvent {
-            id,
-            pos: BlockPos::new(pos[0], pos[1], pos[2]),
-            data,
-        });
-        let _ = self.process_level_events();
     }
 }

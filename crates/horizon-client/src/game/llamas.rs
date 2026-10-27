@@ -144,6 +144,8 @@ impl Game<'_> {
         self.trigger_player("minecraft:started_riding");
         true
     }
+}
+impl crate::game::Sim<'_> {
     fn is_led_by_trader(&self, index: usize) -> bool {
         let m = &self.mobs[index];
         m.species() == horizon_client::mobs::Species::TraderLlama

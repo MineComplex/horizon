@@ -422,276 +422,6 @@ fn decoration_rotation(nether: bool, game_time: i64, y_rot: f64) -> u8 {
     }
 }
 impl Game<'_> {
-    fn dimension_id(&self) -> &'static str {
-        match self.dim {
-            super::Dim::Nether => "minecraft:the_nether",
-            super::Dim::End => "minecraft:the_end",
-            _ => "minecraft:overworld",
-        }
-    }
-    fn map_path(&self, name: &str) -> std::path::PathBuf {
-        self.world_root.join("data/minecraft/maps").join(name)
-    }
-    /// The map's data, loaded from `data/minecraft/maps/<id>.dat` on first use.
-    pub(super) fn map(&mut self, id: i32) -> Option<&mut MapData> {
-        if !self.maps.data.contains_key(&id) && !self.maps.missing.contains(&id) {
-            let loaded = horizon_client::save::read_dat(&self.map_path(&format!("{id}.dat")))
-                .and_then(|t| MapData::from_nbt(&t));
-            match loaded {
-                Some(m) => {
-                    self.maps.data.insert(id, m);
-                }
-                None => {
-                    self.maps.missing.insert(id);
-                }
-            }
-        }
-        self.maps.data.get_mut(&id)
-    }
-    /// `ClientboundMapItemDataPacket.handle`: the server's colours and
-    /// decorations for a map (one carried or framed on a server).
-    pub(super) fn remote_map_item_data(
-        &mut self,
-        p: &horizon_protocol::packets::play::MapItemData,
-    ) {
-        let decorations = p.decorations.as_ref().map(|list| {
-            let types = self
-                .remote
-                .as_ref()
-                .and_then(|r| r.builtin.get("minecraft:map_decoration_type"));
-            list.iter()
-                .filter_map(|d| {
-                    Some(Decoration {
-                        sprite: decoration_sprite(types?.name(d.kind)?)?,
-                        x: d.x,
-                        y: d.y,
-                        rot: (d.rot & 15) as u8,
-                        holder: None,
-                    })
-                })
-                .collect()
-        });
-        let dimension = self.dimension_id();
-        let map = self
-            .maps
-            .data
-            .entry(p.map_id)
-            .or_insert_with(|| MapData::fresh(0.0, 0.0, p.scale.max(0) as u8, dimension));
-        map.locked = p.locked;
-        if let Some(decorations) = decorations {
-            map.decorations = decorations;
-        }
-        let Some(patch) = &p.patch else {
-            map.dirty = false;
-            return;
-        };
-        for x in 0..patch.width {
-            for y in 0..patch.height {
-                let Some(&color) = patch.colors.get((x + y * patch.width) as usize) else {
-                    continue;
-                };
-                let (px, py) = (patch.start_x + x, patch.start_y + y);
-                if (0..128).contains(&px) && (0..128).contains(&py) {
-                    map.update_color(px, py, color);
-                }
-            }
-        }
-        // The server owns a remote map: only the texture has to change.
-        map.dirty = false;
-    }
-    fn next_map_id(&mut self) -> i32 {
-        let last = *self.sim.maps.last_id.get_or_insert_with(|| {
-            horizon_client::save::read_dat(
-                &self.sim.world_root.join("data/minecraft/maps/last_id.dat"),
-            )
-            .and_then(|t| match t.get("data")?.get("map")? {
-                Tag::Int(v) => Some(*v),
-                _ => None,
-            })
-            .unwrap_or(-1)
-        });
-        self.maps.last_id = Some(last + 1);
-        last + 1
-    }
-    /// The id the next new map gets, without taking it.
-    pub(super) fn peek_map_id(&mut self) -> i32 {
-        let id = self.next_map_id();
-        self.maps.last_id = Some(id - 1);
-        id
-    }
-    /// Maps made by exploration map trades: (id, target, zoom, decoration).
-    pub(super) fn register_exploration_maps(&mut self, made: Vec<(i32, [i32; 3], u8, String)>) {
-        let dimension = self.dimension_id().to_owned();
-        for (id, at, zoom, _) in made {
-            // MapItem.applyNewSavedData: tracking, unlimited tracking.
-            let mut data = MapData::fresh(f64::from(at[0]), f64::from(at[2]), zoom, &dimension);
-            data.unlimited = true;
-            self.maps.data.insert(id, data);
-            let last = self.maps.last_id.unwrap_or(-1).max(id);
-            self.maps.last_id = Some(last);
-            self.render_biome_preview(id);
-        }
-    }
-    /// `ExplorationMapFunction.run` for an item a generated chest still holds
-    /// unsearched (`structure_blocks::take_pending_map`): the nearest
-    /// structure of the tag around `origin`, a new map centred on it with its
-    /// biome preview and target decoration. False when nothing is found: the
-    /// loot table's `filtered` map_id check would have discarded the item.
-    pub(super) fn resolve_pending_map(&mut self, item: &mut ItemStack, origin: [f64; 3]) -> bool {
-        let Some(map) = horizon_client::structure_blocks::take_pending_map(item) else {
-            return true;
-        };
-        let names = self.structure_tag(&map.destination);
-        let from = origin.map(|v| v.floor() as i32);
-        let found = self
-            .end
-            .locator()
-            .filter(|_| !names.is_empty())
-            .and_then(|t| t.locate(&names, from, map.search_radius));
-        let Some((_, at)) = found else {
-            return false;
-        };
-        let mut data = MapData::fresh(
-            f64::from(at[0]),
-            f64::from(at[2]),
-            map.zoom,
-            self.dimension_id(),
-        );
-        data.unlimited = true;
-        let id = self.new_map_id(data);
-        self.render_biome_preview(id);
-        let d = item.data_mut();
-        d.map_id = Some(id);
-        d.other.retain(|(k, _)| k != "minecraft:map_decorations");
-        d.other.push((
-            "minecraft:map_decorations".into(),
-            target_decoration(&map.decoration, at),
-        ));
-        true
-    }
-    /// The unsearched exploration maps of a container being opened
-    /// (`RandomizableContainer.unpackLootTable` runs the function then).
-    pub(super) fn resolve_container_maps(&mut self, key: (i32, i32, i32), origin: [f64; 3]) {
-        use horizon_client::containers::BlockEntity;
-        let Some(BlockEntity::Chest(slots)) = self.world.block_entities.get(&key) else {
-            return;
-        };
-        let pending: Vec<usize> = slots
-            .iter()
-            .enumerate()
-            .filter(|(_, s)| {
-                s.as_ref()
-                    .is_some_and(horizon_client::structure_blocks::has_pending_map)
-            })
-            .map(|(i, _)| i)
-            .collect();
-        for i in pending {
-            let Some(BlockEntity::Chest(slots)) = self.world.block_entities.get_mut(&key) else {
-                return;
-            };
-            let Some(mut item) = slots[i].take() else {
-                continue;
-            };
-            let keep = self.resolve_pending_map(&mut item, origin);
-            if let Some(BlockEntity::Chest(slots)) = self.world.block_entities.get_mut(&key) {
-                slots[i] = keep.then_some(item);
-            }
-        }
-    }
-    /// `MapItem.renderBiomePreviewMap`: the map's biomes at sea level, water
-    /// outlines (`#water_on_map_outlines`) drawn in orange and brown.
-    pub(super) fn render_biome_preview(&mut self, id: i32) {
-        let Some(terrain) = self.end.locator() else {
-            return;
-        };
-        let dim = self.dimension_id();
-        let zoom = self.streaming.biome_zoom;
-        let watery_biomes: std::collections::HashSet<String> = self
-            .tag_entries("worldgen/biome", "minecraft:water_on_map_outlines")
-            .into_iter()
-            .collect();
-        let Some(m) = self.maps.data.get(&id) else {
-            return;
-        };
-        if m.dimension != dim {
-            return;
-        }
-        let scale = 1i32 << m.scale;
-        let start_x = m.center[0] / scale - 64;
-        let start_z = m.center[1] / scale - 64;
-        let sea_level = 63;
-        let quarts: Vec<[i32; 3]> = (0..128)
-            .flat_map(|row| {
-                (0..128).map(move |column| {
-                    zoom.quart_at_block(horizon_core::position::BlockPos::new(
-                        (start_x + column) * scale,
-                        sea_level,
-                        (start_z + row) * scale,
-                    ))
-                })
-            })
-            .collect();
-        let watery: Vec<bool> = terrain
-            .noise_biomes(&quarts)
-            .into_iter()
-            .map(|b| b.is_some_and(|b| watery_biomes.contains(&b)))
-            .collect();
-        let is_watery = |x: i32, z: i32| watery[(z * 128 + x) as usize];
-        // MapColor ids and MapColor.Brightness ids.
-        const ORANGE: u8 = 15;
-        const BROWN: u8 = 26;
-        const LOW: u8 = 0;
-        const NORMAL: u8 = 1;
-        const HIGH: u8 = 2;
-        const LOWEST: u8 = 3;
-        let Some(m) = self.maps.data.get_mut(&id) else {
-            return;
-        };
-        for mx in 1..127 {
-            for mz in 1..127 {
-                let mut water_count = 0;
-                for dx in -1..2 {
-                    for dz in -1..2 {
-                        if (dx != 0 || dz != 0) && is_watery(mx + dx, mz + dz) {
-                            water_count += 1;
-                        }
-                    }
-                }
-                let mut brightness = LOWEST;
-                let mut color = 0;
-                if is_watery(mx, mz) {
-                    color = ORANGE;
-                    if water_count > 7 && mz % 2 == 0 {
-                        let sin = horizon_core::geometry::trig::sin(f64::from(mz as f32 + 0.0));
-                        match (mx + (sin * 7.0) as i32) / 8 % 5 {
-                            0 | 4 => brightness = LOW,
-                            1 | 3 => brightness = NORMAL,
-                            2 => brightness = HIGH,
-                            _ => {}
-                        }
-                    } else if water_count > 7 {
-                        color = 0;
-                    } else if water_count > 5 {
-                        brightness = NORMAL;
-                    } else if water_count > 1 {
-                        brightness = LOW;
-                    }
-                } else if water_count > 0 {
-                    color = BROWN;
-                    brightness = if water_count > 3 { NORMAL } else { LOWEST };
-                }
-                if color != 0 {
-                    m.update_color(mx, mz, color << 2 | brightness);
-                }
-            }
-        }
-    }
-    /// Registers `data` under a free map id.
-    pub(super) fn new_map_id(&mut self, data: MapData) -> i32 {
-        let id = self.next_map_id();
-        self.maps.data.insert(id, data);
-        id
-    }
     /// `EmptyMapItem.use`: a new map centred around the player.
     pub(super) fn use_empty_map(&mut self, stack: &ItemStack) -> bool {
         if &*stack.item != "minecraft:map" {
@@ -808,338 +538,6 @@ impl Game<'_> {
                     "minecraft:lodestone_tracker",
                     Some(Tag::Compound(Default::default())),
                 );
-            }
-        }
-    }
-    fn give_or_drop_stack(&mut self, stack: ItemStack) {
-        if let Some(rest) = self.give(stack)
-            && let Some(eye) = self.eye_position()
-        {
-            self.spawn_item(rest, [eye[0], eye[1] - 0.3, eye[2]], [0.0, 0.1, 0.0], 40);
-        }
-    }
-    /// Held maps update; every carried map tracks the player marker.
-    pub(super) fn tick_maps(&mut self) {
-        let Some(p) = self.player.as_ref().map(|p| p.position) else {
-            return;
-        };
-        // A generated exploration map that reached the inventory unsearched
-        // (moved out of its chest by a hopper): searched from here.
-        for i in 0..self.inventory.len() {
-            if self.inventory[i]
-                .as_ref()
-                .is_some_and(horizon_client::structure_blocks::has_pending_map)
-                && let Some(mut item) = self.inventory[i].take()
-            {
-                let keep = self.resolve_pending_map(&mut item, [p.x, p.y, p.z]);
-                self.inventory[i] = keep.then_some(item);
-            }
-        }
-        let held: Vec<i32> = [Some(self.selected), Some(super::shield::OFFHAND_SLOT)]
-            .into_iter()
-            .flatten()
-            .filter_map(|i| self.stack_in(i).and_then(map_id))
-            .collect();
-        let carried: Vec<(i32, Vec<(&'static str, f64, f64, f32)>)> = self
-            .inventory
-            .iter()
-            .chain(std::iter::once(&self.offhand))
-            .flatten()
-            .filter_map(|s| Some((map_id(s)?, static_decorations(s))))
-            .collect();
-        let (yaw, dim) = (self.yaw, self.dimension_id());
-        let (nether, game_time) = (self.dim == super::Dim::Nether, self.world.game_time);
-        // The guest whose turn it is, else the host.
-        let me = self.lan_acting.unwrap_or(HOST);
-        for (id, targets) in carried {
-            let Some(m) = self.map(id) else { continue };
-            m.holder(me).carried = game_time;
-            m.drop_holders(game_time);
-            // tickCarriedBy: the player marker while tracking in this dimension.
-            let mut marker = None;
-            if m.tracking && m.dimension == dim {
-                let s = f64::from(1 << m.scale);
-                let dx = ((p.x - f64::from(m.center[0])) / s) as f32;
-                let dz = ((p.z - f64::from(m.center[1])) / s) as f32;
-                let inside = (-63.0..=63.0).contains(&dx) && (-63.0..=63.0).contains(&dz);
-                let clamp = |d: f32| {
-                    if d <= -63.0 {
-                        -128
-                    } else if d >= 63.0 {
-                        127
-                    } else {
-                        (d * 2.0 + 0.5) as i8
-                    }
-                };
-                // calculateRotation: the arrow spins in the Nether.
-                let rot = decoration_rotation(nether, game_time, f64::from(yaw));
-                let sprite = if inside {
-                    Some("map/decorations/player")
-                } else if dx.abs() < 320.0 && dz.abs() < 320.0 {
-                    Some("map/decorations/player_off_map")
-                } else if m.unlimited {
-                    Some("map/decorations/player_off_limits")
-                } else {
-                    None
-                };
-                marker = sprite.map(|sprite| Decoration {
-                    sprite,
-                    x: clamp(dx),
-                    y: clamp(dz),
-                    rot,
-                    holder: Some(me),
-                });
-            }
-            m.set_marker(me, marker);
-            // The item's MAP_DECORATIONS (an explorer map's target), added
-            // after the players as addDecoration would.
-            let s = (1 << m.scale) as f32;
-            let mut items: Vec<Decoration> = Vec::new();
-            for (sprite, x, z, rotation) in targets {
-                let dx = (x - f64::from(m.center[0])) as f32 / s;
-                let dz = (z - f64::from(m.center[1])) as f32 / s;
-                let inside = (-63.0..=63.0).contains(&dx) && (-63.0..=63.0).contains(&dz);
-                if !inside && !m.unlimited {
-                    continue;
-                }
-                let d = Decoration {
-                    sprite,
-                    x: clamp_map_coordinate(dx),
-                    y: clamp_map_coordinate(dz),
-                    rot: decoration_rotation(nether, game_time, f64::from(rotation)),
-                    holder: None,
-                };
-                if !items.contains(&d) {
-                    items.push(d);
-                }
-            }
-            if !m
-                .decorations
-                .iter()
-                .filter(|d| d.holder.is_none())
-                .eq(items.iter())
-            {
-                m.decorations.retain(|d| d.holder.is_some());
-                m.decorations.extend(items);
-                m.decorations_changed();
-            }
-        }
-        for id in held {
-            self.update_map(id);
-        }
-    }
-    /// The maps the player carries, for `status`: how many of their pixels
-    /// are drawn, and their decorations.
-    pub(super) fn maps_status(&self) -> Vec<serde_json::Value> {
-        self.inventory
-            .iter()
-            .chain(std::iter::once(&self.offhand))
-            .flatten()
-            .filter_map(map_id)
-            .filter_map(|id| {
-                let m = self.maps.data.get(&id)?;
-                Some(serde_json::json!({
-                    "id": id,
-                    "pixels": m.colors.iter().filter(|&&c| c != 0).count(),
-                    "decorations": m.decorations.iter().map(|d| d.sprite).collect::<Vec<_>>(),
-                }))
-            })
-            .collect()
-    }
-    /// `ServerPlayer.synchronizeSpecialItemUpdates` for each map the guest
-    /// carries, and every 10 ticks (`ServerEntity.sendChanges`) for each map
-    /// framed in the level: a `ClientboundMapItemDataPacket` when something
-    /// changed since the guest's last one.
-    pub(super) fn lan_map_updates(&mut self, host: &LanHost, conn: u32) {
-        let Some(g) = host.hub.guest(conn) else {
-            return;
-        };
-        let mut ids: Vec<i32> = g
-            .inventory
-            .iter()
-            .chain(std::iter::once(&g.offhand))
-            .flatten()
-            .filter_map(map_id)
-            .collect();
-        let now = self.world.game_time;
-        if now % 10 == 0 && host.hub.here(g) {
-            let framed: Vec<i32> = self
-                .item_frames
-                .iter()
-                .filter_map(|f| f.item.as_ref().and_then(map_id))
-                .collect();
-            for id in framed {
-                if let Some(m) = self.map(id) {
-                    m.holder(conn).framed = now;
-                    ids.push(id);
-                }
-            }
-        }
-        ids.sort_unstable();
-        ids.dedup();
-        let kind = |name: &str| {
-            host.hub.registry_id(
-                "minecraft:map_decoration_type",
-                &format!("minecraft:{name}"),
-            )
-        };
-        for id in ids {
-            if let Some(p) = self
-                .maps
-                .data
-                .get_mut(&id)
-                .and_then(|m| m.update_packet(id, conn, kind))
-            {
-                g.send(&horizon_protocol::packets::play::Clientbound::MapItemData(
-                    p,
-                ));
-            }
-        }
-    }
-    /// `MapItem.update` for the player holding map `id`.
-    fn update_map(&mut self, id: i32) {
-        let dim = self.dimension_id();
-        let Some(p) = self.player.as_ref().map(|p| p.position) else {
-            return;
-        };
-        let nether = self.dim == super::Dim::Nether;
-        let Some(m) = self.sim.maps.data.get_mut(&id) else {
-            return;
-        };
-        if m.locked || m.dimension != dim {
-            return;
-        }
-        let scale = 1i32 << m.scale;
-        let [cx, cz] = m.center;
-        let px = (p.x - f64::from(cx)).floor() as i32 / scale + 64;
-        let pz = (p.z - f64::from(cz)).floor() as i32 / scale + 64;
-        let mut radius = 128 / scale;
-        if nether {
-            radius /= 2;
-        }
-        let h = m.holder(self.sim.lan_acting.unwrap_or(HOST));
-        h.step += 1;
-        let step = h.step;
-        let mut changes: Vec<(i32, i32, u8)> = Vec::new();
-        let mut consecutive = false;
-        for img_x in px - radius + 1..px + radius {
-            if (img_x & 15) != (step & 15) && !consecutive {
-                continue;
-            }
-            consecutive = false;
-            let mut previous_height = 0.0f64;
-            for img_y in pz - radius - 1..pz + radius {
-                if !(0..128).contains(&img_x) || !(-1..128).contains(&img_y) {
-                    continue;
-                }
-                let d2 = (img_x - px).pow(2) + (img_y - pz).pow(2);
-                let dither_black = d2 > (radius - 2) * (radius - 2);
-                let min_x = (cx / scale + img_x - 64) * scale;
-                let min_z = (cz / scale + img_y - 64) * scale;
-                if !self.world.chunks.contains_key(&(min_x >> 4, min_z >> 4)) {
-                    continue;
-                }
-                let mut counts: Vec<(u8, u32)> = Vec::new();
-                let mut add = |c: u8, n: u32| match counts.iter_mut().find(|e| e.0 == c) {
-                    Some(e) => e.1 += n,
-                    None => counts.push((c, n)),
-                };
-                let mut water_depth = 0i32;
-                let mut height = 0.0f64;
-                if nether {
-                    let mut noise = min_x.wrapping_add(min_z.wrapping_mul(231_871));
-                    noise = noise
-                        .wrapping_mul(noise)
-                        .wrapping_mul(31_287_121)
-                        .wrapping_add(noise.wrapping_mul(11));
-                    // Dirt (10) or stone (11) noise under a ceiling.
-                    if noise >> 20 & 1 == 0 {
-                        add(10, 10);
-                    } else {
-                        add(11, 100);
-                    }
-                    height = 100.0;
-                } else {
-                    for dx in 0..scale {
-                        for dz in 0..scale {
-                            let (x, z) = (min_x + dx, min_z + dz);
-                            let mut y = self.world_surface(x, z);
-                            let min_y = super::MIN_Y;
-                            let mut color;
-                            if y <= min_y {
-                                color = 11;
-                            } else {
-                                loop {
-                                    y -= 1;
-                                    color =
-                                        self.res.facts().get(self.world.block(x, y, z)).map_color;
-                                    if color != 0 || y <= min_y {
-                                        break;
-                                    }
-                                }
-                                let f = self.res.facts().get(self.world.block(x, y, z));
-                                if y > min_y && f.fluid != Fluid::None {
-                                    let mut solid = y - 1;
-                                    loop {
-                                        let below =
-                                            self.res.facts().get(self.world.block(x, solid, z));
-                                        solid -= 1;
-                                        water_depth += 1;
-                                        if solid <= min_y || below.fluid == Fluid::None {
-                                            break;
-                                        }
-                                    }
-                                    // getCorrectStateForFluidBlock: the fluid unless sturdy on top.
-                                    if f.sturdy_full >> 1 & 1 == 0 {
-                                        color = if f.fluid == Fluid::Lava { 4 } else { 12 };
-                                    }
-                                }
-                            }
-                            height += f64::from(y) / f64::from(scale * scale);
-                            add(color, 1);
-                        }
-                    }
-                }
-                water_depth /= scale * scale;
-                // Multisets.copyHighestCountFirst: the most common, first seen on ties.
-                let best = counts
-                    .iter()
-                    .fold(None::<(u8, u32)>, |acc, &(c, n)| match acc {
-                        Some((_, bn)) if bn >= n => acc,
-                        _ => Some((c, n)),
-                    })
-                    .map_or(0, |e| e.0);
-                let parity = f64::from((img_x + img_y) & 1);
-                let brightness = if best == 12 {
-                    let diff = f64::from(water_depth) * 0.1 + parity * 0.2;
-                    if diff < 0.5 {
-                        2
-                    } else if diff > 0.9 {
-                        0
-                    } else {
-                        1
-                    }
-                } else {
-                    let diff = (height - previous_height) * 4.0 / f64::from(scale + 4)
-                        + (parity - 0.5) * 0.4;
-                    if diff > 0.6 {
-                        2
-                    } else if diff < -0.6 {
-                        0
-                    } else {
-                        1
-                    }
-                };
-                previous_height = height;
-                if img_y >= 0 && d2 < radius * radius && (!dither_black || (img_x + img_y) & 1 != 0)
-                {
-                    changes.push((img_x, img_y, best << 2 | brightness));
-                }
-            }
-            if let Some(m) = self.maps.data.get_mut(&id) {
-                for (x, y, c) in changes.drain(..) {
-                    consecutive |= m.update_color(x, y, c);
-                }
             }
         }
     }
@@ -1371,6 +769,608 @@ impl Game<'_> {
         }
         if has_data {
             self.map_vertices(id, false, m, light, out);
+        }
+    }
+}
+impl crate::game::Sim<'_> {
+    fn dimension_id(&self) -> &'static str {
+        match self.dim {
+            super::Dim::Nether => "minecraft:the_nether",
+            super::Dim::End => "minecraft:the_end",
+            _ => "minecraft:overworld",
+        }
+    }
+    fn map_path(&self, name: &str) -> std::path::PathBuf {
+        self.world_root.join("data/minecraft/maps").join(name)
+    }
+    /// The map's data, loaded from `data/minecraft/maps/<id>.dat` on first use.
+    pub(super) fn map(&mut self, id: i32) -> Option<&mut MapData> {
+        if !self.maps.data.contains_key(&id) && !self.maps.missing.contains(&id) {
+            let loaded = horizon_client::save::read_dat(&self.map_path(&format!("{id}.dat")))
+                .and_then(|t| MapData::from_nbt(&t));
+            match loaded {
+                Some(m) => {
+                    self.maps.data.insert(id, m);
+                }
+                None => {
+                    self.maps.missing.insert(id);
+                }
+            }
+        }
+        self.maps.data.get_mut(&id)
+    }
+    /// `ClientboundMapItemDataPacket.handle`: the server's colours and
+    /// decorations for a map (one carried or framed on a server).
+    pub(super) fn remote_map_item_data(
+        &mut self,
+        p: &horizon_protocol::packets::play::MapItemData,
+    ) {
+        let decorations = p.decorations.as_ref().map(|list| {
+            let types = self
+                .remote
+                .as_ref()
+                .and_then(|r| r.builtin.get("minecraft:map_decoration_type"));
+            list.iter()
+                .filter_map(|d| {
+                    Some(Decoration {
+                        sprite: decoration_sprite(types?.name(d.kind)?)?,
+                        x: d.x,
+                        y: d.y,
+                        rot: (d.rot & 15) as u8,
+                        holder: None,
+                    })
+                })
+                .collect()
+        });
+        let dimension = self.dimension_id();
+        let map = self
+            .maps
+            .data
+            .entry(p.map_id)
+            .or_insert_with(|| MapData::fresh(0.0, 0.0, p.scale.max(0) as u8, dimension));
+        map.locked = p.locked;
+        if let Some(decorations) = decorations {
+            map.decorations = decorations;
+        }
+        let Some(patch) = &p.patch else {
+            map.dirty = false;
+            return;
+        };
+        for x in 0..patch.width {
+            for y in 0..patch.height {
+                let Some(&color) = patch.colors.get((x + y * patch.width) as usize) else {
+                    continue;
+                };
+                let (px, py) = (patch.start_x + x, patch.start_y + y);
+                if (0..128).contains(&px) && (0..128).contains(&py) {
+                    map.update_color(px, py, color);
+                }
+            }
+        }
+        // The server owns a remote map: only the texture has to change.
+        map.dirty = false;
+    }
+    fn next_map_id(&mut self) -> i32 {
+        let last = *self.maps.last_id.get_or_insert_with(|| {
+            horizon_client::save::read_dat(&self.world_root.join("data/minecraft/maps/last_id.dat"))
+                .and_then(|t| match t.get("data")?.get("map")? {
+                    Tag::Int(v) => Some(*v),
+                    _ => None,
+                })
+                .unwrap_or(-1)
+        });
+        self.maps.last_id = Some(last + 1);
+        last + 1
+    }
+    /// The id the next new map gets, without taking it.
+    pub(super) fn peek_map_id(&mut self) -> i32 {
+        let id = self.next_map_id();
+        self.maps.last_id = Some(id - 1);
+        id
+    }
+    /// Maps made by exploration map trades: (id, target, zoom, decoration).
+    pub(super) fn register_exploration_maps(&mut self, made: Vec<(i32, [i32; 3], u8, String)>) {
+        let dimension = self.dimension_id().to_owned();
+        for (id, at, zoom, _) in made {
+            // MapItem.applyNewSavedData: tracking, unlimited tracking.
+            let mut data = MapData::fresh(f64::from(at[0]), f64::from(at[2]), zoom, &dimension);
+            data.unlimited = true;
+            self.maps.data.insert(id, data);
+            let last = self.maps.last_id.unwrap_or(-1).max(id);
+            self.maps.last_id = Some(last);
+            self.render_biome_preview(id);
+        }
+    }
+    /// `ExplorationMapFunction.run` for an item a generated chest still holds
+    /// unsearched (`structure_blocks::take_pending_map`): the nearest
+    /// structure of the tag around `origin`, a new map centred on it with its
+    /// biome preview and target decoration. False when nothing is found: the
+    /// loot table's `filtered` map_id check would have discarded the item.
+    pub(super) fn resolve_pending_map(&mut self, item: &mut ItemStack, origin: [f64; 3]) -> bool {
+        let Some(map) = horizon_client::structure_blocks::take_pending_map(item) else {
+            return true;
+        };
+        let names = self.structure_tag(&map.destination);
+        let from = origin.map(|v| v.floor() as i32);
+        let found = self
+            .end
+            .locator()
+            .filter(|_| !names.is_empty())
+            .and_then(|t| t.locate(&names, from, map.search_radius));
+        let Some((_, at)) = found else {
+            return false;
+        };
+        let mut data = MapData::fresh(
+            f64::from(at[0]),
+            f64::from(at[2]),
+            map.zoom,
+            self.dimension_id(),
+        );
+        data.unlimited = true;
+        let id = self.new_map_id(data);
+        self.render_biome_preview(id);
+        let d = item.data_mut();
+        d.map_id = Some(id);
+        d.other.retain(|(k, _)| k != "minecraft:map_decorations");
+        d.other.push((
+            "minecraft:map_decorations".into(),
+            target_decoration(&map.decoration, at),
+        ));
+        true
+    }
+    /// The unsearched exploration maps of a container being opened
+    /// (`RandomizableContainer.unpackLootTable` runs the function then).
+    pub(super) fn resolve_container_maps(&mut self, key: (i32, i32, i32), origin: [f64; 3]) {
+        use horizon_client::containers::BlockEntity;
+        let Some(BlockEntity::Chest(slots)) = self.world.block_entities.get(&key) else {
+            return;
+        };
+        let pending: Vec<usize> = slots
+            .iter()
+            .enumerate()
+            .filter(|(_, s)| {
+                s.as_ref()
+                    .is_some_and(horizon_client::structure_blocks::has_pending_map)
+            })
+            .map(|(i, _)| i)
+            .collect();
+        for i in pending {
+            let Some(BlockEntity::Chest(slots)) = self.world.block_entities.get_mut(&key) else {
+                return;
+            };
+            let Some(mut item) = slots[i].take() else {
+                continue;
+            };
+            let keep = self.resolve_pending_map(&mut item, origin);
+            if let Some(BlockEntity::Chest(slots)) = self.world.block_entities.get_mut(&key) {
+                slots[i] = keep.then_some(item);
+            }
+        }
+    }
+    /// `MapItem.renderBiomePreviewMap`: the map's biomes at sea level, water
+    /// outlines (`#water_on_map_outlines`) drawn in orange and brown.
+    pub(super) fn render_biome_preview(&mut self, id: i32) {
+        let Some(terrain) = self.end.locator() else {
+            return;
+        };
+        let dim = self.dimension_id();
+        let zoom = self.streaming.biome_zoom;
+        let watery_biomes: std::collections::HashSet<String> = self
+            .tag_entries("worldgen/biome", "minecraft:water_on_map_outlines")
+            .into_iter()
+            .collect();
+        let Some(m) = self.maps.data.get(&id) else {
+            return;
+        };
+        if m.dimension != dim {
+            return;
+        }
+        let scale = 1i32 << m.scale;
+        let start_x = m.center[0] / scale - 64;
+        let start_z = m.center[1] / scale - 64;
+        let sea_level = 63;
+        let quarts: Vec<[i32; 3]> = (0..128)
+            .flat_map(|row| {
+                (0..128).map(move |column| {
+                    zoom.quart_at_block(horizon_core::position::BlockPos::new(
+                        (start_x + column) * scale,
+                        sea_level,
+                        (start_z + row) * scale,
+                    ))
+                })
+            })
+            .collect();
+        let watery: Vec<bool> = terrain
+            .noise_biomes(&quarts)
+            .into_iter()
+            .map(|b| b.is_some_and(|b| watery_biomes.contains(&b)))
+            .collect();
+        let is_watery = |x: i32, z: i32| watery[(z * 128 + x) as usize];
+        // MapColor ids and MapColor.Brightness ids.
+        const ORANGE: u8 = 15;
+        const BROWN: u8 = 26;
+        const LOW: u8 = 0;
+        const NORMAL: u8 = 1;
+        const HIGH: u8 = 2;
+        const LOWEST: u8 = 3;
+        let Some(m) = self.maps.data.get_mut(&id) else {
+            return;
+        };
+        for mx in 1..127 {
+            for mz in 1..127 {
+                let mut water_count = 0;
+                for dx in -1..2 {
+                    for dz in -1..2 {
+                        if (dx != 0 || dz != 0) && is_watery(mx + dx, mz + dz) {
+                            water_count += 1;
+                        }
+                    }
+                }
+                let mut brightness = LOWEST;
+                let mut color = 0;
+                if is_watery(mx, mz) {
+                    color = ORANGE;
+                    if water_count > 7 && mz % 2 == 0 {
+                        let sin = horizon_core::geometry::trig::sin(f64::from(mz as f32 + 0.0));
+                        match (mx + (sin * 7.0) as i32) / 8 % 5 {
+                            0 | 4 => brightness = LOW,
+                            1 | 3 => brightness = NORMAL,
+                            2 => brightness = HIGH,
+                            _ => {}
+                        }
+                    } else if water_count > 7 {
+                        color = 0;
+                    } else if water_count > 5 {
+                        brightness = NORMAL;
+                    } else if water_count > 1 {
+                        brightness = LOW;
+                    }
+                } else if water_count > 0 {
+                    color = BROWN;
+                    brightness = if water_count > 3 { NORMAL } else { LOWEST };
+                }
+                if color != 0 {
+                    m.update_color(mx, mz, color << 2 | brightness);
+                }
+            }
+        }
+    }
+    /// Registers `data` under a free map id.
+    pub(super) fn new_map_id(&mut self, data: MapData) -> i32 {
+        let id = self.next_map_id();
+        self.maps.data.insert(id, data);
+        id
+    }
+    fn give_or_drop_stack(&mut self, stack: ItemStack) {
+        if let Some(rest) = self.give(stack)
+            && let Some(eye) = self.eye_position()
+        {
+            self.spawn_item(rest, [eye[0], eye[1] - 0.3, eye[2]], [0.0, 0.1, 0.0], 40);
+        }
+    }
+    /// Held maps update; every carried map tracks the player marker.
+    pub(super) fn tick_maps(&mut self) {
+        let Some(p) = self.player.as_ref().map(|p| p.position) else {
+            return;
+        };
+        // A generated exploration map that reached the inventory unsearched
+        // (moved out of its chest by a hopper): searched from here.
+        for i in 0..self.inventory.len() {
+            if self.inventory[i]
+                .as_ref()
+                .is_some_and(horizon_client::structure_blocks::has_pending_map)
+                && let Some(mut item) = self.inventory[i].take()
+            {
+                let keep = self.resolve_pending_map(&mut item, [p.x, p.y, p.z]);
+                self.inventory[i] = keep.then_some(item);
+            }
+        }
+        let held: Vec<i32> = [Some(self.selected), Some(super::shield::OFFHAND_SLOT)]
+            .into_iter()
+            .flatten()
+            .filter_map(|i| self.stack_in(i).and_then(map_id))
+            .collect();
+        let carried: Vec<(i32, Vec<(&'static str, f64, f64, f32)>)> = self
+            .inventory
+            .iter()
+            .chain(std::iter::once(&self.offhand))
+            .flatten()
+            .filter_map(|s| Some((map_id(s)?, static_decorations(s))))
+            .collect();
+        let (yaw, dim) = (self.yaw, self.dimension_id());
+        let (nether, game_time) = (self.dim == super::Dim::Nether, self.world.game_time);
+        // The guest whose turn it is, else the host.
+        let me = self.lan_acting.unwrap_or(HOST);
+        for (id, targets) in carried {
+            let Some(m) = self.map(id) else { continue };
+            m.holder(me).carried = game_time;
+            m.drop_holders(game_time);
+            // tickCarriedBy: the player marker while tracking in this dimension.
+            let mut marker = None;
+            if m.tracking && m.dimension == dim {
+                let s = f64::from(1 << m.scale);
+                let dx = ((p.x - f64::from(m.center[0])) / s) as f32;
+                let dz = ((p.z - f64::from(m.center[1])) / s) as f32;
+                let inside = (-63.0..=63.0).contains(&dx) && (-63.0..=63.0).contains(&dz);
+                let clamp = |d: f32| {
+                    if d <= -63.0 {
+                        -128
+                    } else if d >= 63.0 {
+                        127
+                    } else {
+                        (d * 2.0 + 0.5) as i8
+                    }
+                };
+                // calculateRotation: the arrow spins in the Nether.
+                let rot = decoration_rotation(nether, game_time, f64::from(yaw));
+                let sprite = if inside {
+                    Some("map/decorations/player")
+                } else if dx.abs() < 320.0 && dz.abs() < 320.0 {
+                    Some("map/decorations/player_off_map")
+                } else if m.unlimited {
+                    Some("map/decorations/player_off_limits")
+                } else {
+                    None
+                };
+                marker = sprite.map(|sprite| Decoration {
+                    sprite,
+                    x: clamp(dx),
+                    y: clamp(dz),
+                    rot,
+                    holder: Some(me),
+                });
+            }
+            m.set_marker(me, marker);
+            // The item's MAP_DECORATIONS (an explorer map's target), added
+            // after the players as addDecoration would.
+            let s = (1 << m.scale) as f32;
+            let mut items: Vec<Decoration> = Vec::new();
+            for (sprite, x, z, rotation) in targets {
+                let dx = (x - f64::from(m.center[0])) as f32 / s;
+                let dz = (z - f64::from(m.center[1])) as f32 / s;
+                let inside = (-63.0..=63.0).contains(&dx) && (-63.0..=63.0).contains(&dz);
+                if !inside && !m.unlimited {
+                    continue;
+                }
+                let d = Decoration {
+                    sprite,
+                    x: clamp_map_coordinate(dx),
+                    y: clamp_map_coordinate(dz),
+                    rot: decoration_rotation(nether, game_time, f64::from(rotation)),
+                    holder: None,
+                };
+                if !items.contains(&d) {
+                    items.push(d);
+                }
+            }
+            if !m
+                .decorations
+                .iter()
+                .filter(|d| d.holder.is_none())
+                .eq(items.iter())
+            {
+                m.decorations.retain(|d| d.holder.is_some());
+                m.decorations.extend(items);
+                m.decorations_changed();
+            }
+        }
+        for id in held {
+            self.update_map(id);
+        }
+    }
+    /// The maps the player carries, for `status`: how many of their pixels
+    /// are drawn, and their decorations.
+    pub(super) fn maps_status(&self) -> Vec<serde_json::Value> {
+        self.inventory
+            .iter()
+            .chain(std::iter::once(&self.offhand))
+            .flatten()
+            .filter_map(map_id)
+            .filter_map(|id| {
+                let m = self.maps.data.get(&id)?;
+                Some(serde_json::json!({
+                    "id": id,
+                    "pixels": m.colors.iter().filter(|&&c| c != 0).count(),
+                    "decorations": m.decorations.iter().map(|d| d.sprite).collect::<Vec<_>>(),
+                }))
+            })
+            .collect()
+    }
+    /// `ServerPlayer.synchronizeSpecialItemUpdates` for each map the guest
+    /// carries, and every 10 ticks (`ServerEntity.sendChanges`) for each map
+    /// framed in the level: a `ClientboundMapItemDataPacket` when something
+    /// changed since the guest's last one.
+    pub(super) fn lan_map_updates(&mut self, host: &LanHost, conn: u32) {
+        let Some(g) = host.hub.guest(conn) else {
+            return;
+        };
+        let mut ids: Vec<i32> = g
+            .inventory
+            .iter()
+            .chain(std::iter::once(&g.offhand))
+            .flatten()
+            .filter_map(map_id)
+            .collect();
+        let now = self.world.game_time;
+        if now % 10 == 0 && host.hub.here(g) {
+            let framed: Vec<i32> = self
+                .item_frames
+                .iter()
+                .filter_map(|f| f.item.as_ref().and_then(map_id))
+                .collect();
+            for id in framed {
+                if let Some(m) = self.map(id) {
+                    m.holder(conn).framed = now;
+                    ids.push(id);
+                }
+            }
+        }
+        ids.sort_unstable();
+        ids.dedup();
+        let kind = |name: &str| {
+            host.hub.registry_id(
+                "minecraft:map_decoration_type",
+                &format!("minecraft:{name}"),
+            )
+        };
+        for id in ids {
+            if let Some(p) = self
+                .maps
+                .data
+                .get_mut(&id)
+                .and_then(|m| m.update_packet(id, conn, kind))
+            {
+                g.send(&horizon_protocol::packets::play::Clientbound::MapItemData(
+                    p,
+                ));
+            }
+        }
+    }
+    /// `MapItem.update` for the player holding map `id`.
+    fn update_map(&mut self, id: i32) {
+        let dim = self.dimension_id();
+        let Some(p) = self.player.as_ref().map(|p| p.position) else {
+            return;
+        };
+        let nether = self.dim == super::Dim::Nether;
+        let Some(m) = self.maps.data.get_mut(&id) else {
+            return;
+        };
+        if m.locked || m.dimension != dim {
+            return;
+        }
+        let scale = 1i32 << m.scale;
+        let [cx, cz] = m.center;
+        let px = (p.x - f64::from(cx)).floor() as i32 / scale + 64;
+        let pz = (p.z - f64::from(cz)).floor() as i32 / scale + 64;
+        let mut radius = 128 / scale;
+        if nether {
+            radius /= 2;
+        }
+        let h = m.holder(self.lan_acting.unwrap_or(HOST));
+        h.step += 1;
+        let step = h.step;
+        let mut changes: Vec<(i32, i32, u8)> = Vec::new();
+        let mut consecutive = false;
+        for img_x in px - radius + 1..px + radius {
+            if (img_x & 15) != (step & 15) && !consecutive {
+                continue;
+            }
+            consecutive = false;
+            let mut previous_height = 0.0f64;
+            for img_y in pz - radius - 1..pz + radius {
+                if !(0..128).contains(&img_x) || !(-1..128).contains(&img_y) {
+                    continue;
+                }
+                let d2 = (img_x - px).pow(2) + (img_y - pz).pow(2);
+                let dither_black = d2 > (radius - 2) * (radius - 2);
+                let min_x = (cx / scale + img_x - 64) * scale;
+                let min_z = (cz / scale + img_y - 64) * scale;
+                if !self.world.chunks.contains_key(&(min_x >> 4, min_z >> 4)) {
+                    continue;
+                }
+                let mut counts: Vec<(u8, u32)> = Vec::new();
+                let mut add = |c: u8, n: u32| match counts.iter_mut().find(|e| e.0 == c) {
+                    Some(e) => e.1 += n,
+                    None => counts.push((c, n)),
+                };
+                let mut water_depth = 0i32;
+                let mut height = 0.0f64;
+                if nether {
+                    let mut noise = min_x.wrapping_add(min_z.wrapping_mul(231_871));
+                    noise = noise
+                        .wrapping_mul(noise)
+                        .wrapping_mul(31_287_121)
+                        .wrapping_add(noise.wrapping_mul(11));
+                    // Dirt (10) or stone (11) noise under a ceiling.
+                    if noise >> 20 & 1 == 0 {
+                        add(10, 10);
+                    } else {
+                        add(11, 100);
+                    }
+                    height = 100.0;
+                } else {
+                    for dx in 0..scale {
+                        for dz in 0..scale {
+                            let (x, z) = (min_x + dx, min_z + dz);
+                            let mut y = self.world_surface(x, z);
+                            let min_y = super::MIN_Y;
+                            let mut color;
+                            if y <= min_y {
+                                color = 11;
+                            } else {
+                                loop {
+                                    y -= 1;
+                                    color =
+                                        self.res.facts().get(self.world.block(x, y, z)).map_color;
+                                    if color != 0 || y <= min_y {
+                                        break;
+                                    }
+                                }
+                                let f = self.res.facts().get(self.world.block(x, y, z));
+                                if y > min_y && f.fluid != Fluid::None {
+                                    let mut solid = y - 1;
+                                    loop {
+                                        let below =
+                                            self.res.facts().get(self.world.block(x, solid, z));
+                                        solid -= 1;
+                                        water_depth += 1;
+                                        if solid <= min_y || below.fluid == Fluid::None {
+                                            break;
+                                        }
+                                    }
+                                    // getCorrectStateForFluidBlock: the fluid unless sturdy on top.
+                                    if f.sturdy_full >> 1 & 1 == 0 {
+                                        color = if f.fluid == Fluid::Lava { 4 } else { 12 };
+                                    }
+                                }
+                            }
+                            height += f64::from(y) / f64::from(scale * scale);
+                            add(color, 1);
+                        }
+                    }
+                }
+                water_depth /= scale * scale;
+                // Multisets.copyHighestCountFirst: the most common, first seen on ties.
+                let best = counts
+                    .iter()
+                    .fold(None::<(u8, u32)>, |acc, &(c, n)| match acc {
+                        Some((_, bn)) if bn >= n => acc,
+                        _ => Some((c, n)),
+                    })
+                    .map_or(0, |e| e.0);
+                let parity = f64::from((img_x + img_y) & 1);
+                let brightness = if best == 12 {
+                    let diff = f64::from(water_depth) * 0.1 + parity * 0.2;
+                    if diff < 0.5 {
+                        2
+                    } else if diff > 0.9 {
+                        0
+                    } else {
+                        1
+                    }
+                } else {
+                    let diff = (height - previous_height) * 4.0 / f64::from(scale + 4)
+                        + (parity - 0.5) * 0.4;
+                    if diff > 0.6 {
+                        2
+                    } else if diff < -0.6 {
+                        0
+                    } else {
+                        1
+                    }
+                };
+                previous_height = height;
+                if img_y >= 0 && d2 < radius * radius && (!dither_black || (img_x + img_y) & 1 != 0)
+                {
+                    changes.push((img_x, img_y, best << 2 | brightness));
+                }
+            }
+            if let Some(m) = self.maps.data.get_mut(&id) {
+                for (x, y, c) in changes.drain(..) {
+                    consecutive |= m.update_color(x, y, c);
+                }
+            }
         }
     }
 }

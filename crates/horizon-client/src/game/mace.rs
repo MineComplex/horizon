@@ -73,65 +73,6 @@ fn smash_push(center: Vec3, heavy: f64, at: Vec3, velocity: &mut Vec3, resistanc
 }
 
 impl Game<'_> {
-    fn holds_mace(&self) -> bool {
-        self.inventory[self.selected]
-            .as_ref()
-            .is_some_and(|s| &*s.item == "minecraft:mace")
-    }
-    /// `MaceItem.canSmashAttack` for the player: falling and not gliding.
-    fn can_smash_attack(&self) -> bool {
-        self.player
-            .as_ref()
-            .is_some_and(|p| p.fall_distance > FALL_THRESHOLD && !p.fall_flying)
-    }
-    /// A held mace about to smash (`MaceItem.getItemDamageSource`: the attack
-    /// is `mace_smash` damage).
-    pub(super) fn smash_attack(&self) -> bool {
-        self.holds_mace() && self.can_smash_attack()
-    }
-    /// The damage source of the player's hit from `from` with the held item.
-    pub(super) fn attack_source(&self, from: [f64; 3]) -> Damage {
-        if self.smash_attack() {
-            Damage::mace(from)
-        } else {
-            Damage::player(from)
-        }
-    }
-    /// `MaceItem.getAttackDamageBonus` against `victim`: 4 per block for the
-    /// first three blocks fallen, 2 for the next five, 1 after that, plus
-    /// `smash_damage_per_fallen_block` (Density) for every block.
-    pub(super) fn smash_damage_bonus(&mut self, victim: &str) -> f32 {
-        if !self.smash_attack() {
-            return 0.0;
-        }
-        let fall = self.player.as_ref().map_or(0.0, |p| p.fall_distance);
-        let damage = if fall <= 3.0 {
-            4.0 * fall
-        } else if fall <= 8.0 {
-            12.0 + 2.0 * (fall - 3.0)
-        } else {
-            22.0 + fall - 8.0
-        };
-        let held = self.inventory[self.selected].clone();
-        let ctx = EffectContext {
-            this: Some(victim),
-            attacker: Some("minecraft:player"),
-            direct_attacker: Some("minecraft:player"),
-            is_direct: true,
-            damage_type: Some("minecraft:mace_smash"),
-            items: Some(self.sim.res.items()),
-            ..Default::default()
-        };
-        // EnchantmentHelper.modifyFallBasedDamage(..., 0)
-        let per_block = self.sim.res.stations().enchantments.modify_value(
-            held.as_ref(),
-            "minecraft:smash_damage_per_fallen_block",
-            &ctx,
-            &mut self.sim.world.random,
-            0.0,
-        );
-        (damage + f64::from(per_block) * fall) as f32
-    }
     /// `LivingEntity.hurtServer` of the mob at `index` by the player's hit:
     /// the weapon's `armor_effectiveness` enchantments (Breach) thin its armor.
     pub(super) fn hurt_by_player(&mut self, index: usize, amount: f32, source: Damage) -> bool {
@@ -300,31 +241,6 @@ impl Game<'_> {
             self.smash_push_players(&push);
         }
     }
-    /// `MaceItem.knockback` on the player here (the host, or the guest swapped
-    /// in): not a spectator, an ally of the attacker (`isAlliedTo`: the same
-    /// team) or a creative player flying.
-    fn smash_push_player(&mut self, push: &SmashPush) {
-        if self.spectator()
-            || horizon_client::scoreboard::teams_allied(push.team.as_ref(), self.player_team())
-        {
-            return;
-        }
-        let creative = self.creative;
-        let Some(p) = self.player.as_mut() else {
-            return;
-        };
-        if creative && p.flying {
-            return;
-        }
-        let resistance = p.attribute("minecraft:knockback_resistance").unwrap_or(0.0);
-        smash_push(
-            push.center,
-            push.heavy,
-            p.position,
-            &mut p.velocity,
-            resistance,
-        );
-    }
     /// `ServerPlayer.checkFallDamage` after a smash on a grounded target:
     /// the landing block's particles, 50 for every block fallen (200 at most).
     pub(super) fn smash_landing_particles(
@@ -392,5 +308,91 @@ impl Game<'_> {
             self.particles.add(&options, [x, center[1], z], v);
             i += 1;
         }
+    }
+}
+impl crate::game::Sim<'_> {
+    fn holds_mace(&self) -> bool {
+        self.inventory[self.selected]
+            .as_ref()
+            .is_some_and(|s| &*s.item == "minecraft:mace")
+    }
+    /// `MaceItem.canSmashAttack` for the player: falling and not gliding.
+    fn can_smash_attack(&self) -> bool {
+        self.player
+            .as_ref()
+            .is_some_and(|p| p.fall_distance > FALL_THRESHOLD && !p.fall_flying)
+    }
+    /// A held mace about to smash (`MaceItem.getItemDamageSource`: the attack
+    /// is `mace_smash` damage).
+    pub(super) fn smash_attack(&self) -> bool {
+        self.holds_mace() && self.can_smash_attack()
+    }
+    /// The damage source of the player's hit from `from` with the held item.
+    pub(super) fn attack_source(&self, from: [f64; 3]) -> Damage {
+        if self.smash_attack() {
+            Damage::mace(from)
+        } else {
+            Damage::player(from)
+        }
+    }
+    /// `MaceItem.getAttackDamageBonus` against `victim`: 4 per block for the
+    /// first three blocks fallen, 2 for the next five, 1 after that, plus
+    /// `smash_damage_per_fallen_block` (Density) for every block.
+    pub(super) fn smash_damage_bonus(&mut self, victim: &str) -> f32 {
+        if !self.smash_attack() {
+            return 0.0;
+        }
+        let fall = self.player.as_ref().map_or(0.0, |p| p.fall_distance);
+        let damage = if fall <= 3.0 {
+            4.0 * fall
+        } else if fall <= 8.0 {
+            12.0 + 2.0 * (fall - 3.0)
+        } else {
+            22.0 + fall - 8.0
+        };
+        let held = self.inventory[self.selected].clone();
+        let ctx = EffectContext {
+            this: Some(victim),
+            attacker: Some("minecraft:player"),
+            direct_attacker: Some("minecraft:player"),
+            is_direct: true,
+            damage_type: Some("minecraft:mace_smash"),
+            items: Some(self.res.items()),
+            ..Default::default()
+        };
+        // EnchantmentHelper.modifyFallBasedDamage(..., 0)
+        let per_block = self.res.stations().enchantments.modify_value(
+            held.as_ref(),
+            "minecraft:smash_damage_per_fallen_block",
+            &ctx,
+            &mut self.world.random,
+            0.0,
+        );
+        (damage + f64::from(per_block) * fall) as f32
+    }
+    /// `MaceItem.knockback` on the player here (the host, or the guest swapped
+    /// in): not a spectator, an ally of the attacker (`isAlliedTo`: the same
+    /// team) or a creative player flying.
+    fn smash_push_player(&mut self, push: &SmashPush) {
+        if self.spectator()
+            || horizon_client::scoreboard::teams_allied(push.team.as_ref(), self.player_team())
+        {
+            return;
+        }
+        let creative = self.creative;
+        let Some(p) = self.player.as_mut() else {
+            return;
+        };
+        if creative && p.flying {
+            return;
+        }
+        let resistance = p.attribute("minecraft:knockback_resistance").unwrap_or(0.0);
+        smash_push(
+            push.center,
+            push.heavy,
+            p.position,
+            &mut p.velocity,
+            resistance,
+        );
     }
 }

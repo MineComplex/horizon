@@ -452,24 +452,6 @@ pub(super) fn shelf_signal(
 }
 
 impl Game<'_> {
-    fn containers(&self) -> Containers<'_> {
-        Containers {
-            world: &self.world,
-            behaviours: self.res.behaviours(),
-            items: self.res.items(),
-            registry: self.pack.assets.registry,
-            brewing: Some(&self.res.stations().brewing),
-            bone_meal: bone_meal(),
-        }
-    }
-    fn slot_mut_at(&mut self, view: &View, slot: usize) -> Option<&mut Option<ItemStack>> {
-        let (pos, i) = view.locate(slot)?;
-        self.world
-            .block_entities
-            .get_mut(&pos)?
-            .slots_mut()
-            .get_mut(i)
-    }
     /// `BlockEntity.setChanged` for every block entity of a container.
     fn view_changed(&mut self, view: &View) {
         // A composter's containers change its block state instead.
@@ -569,29 +551,6 @@ impl Game<'_> {
         }
         rest
     }
-    /// Remove one item from a slot (`removeItem(slot, 1)`).
-    fn take_one(&mut self, view: &View, slot: usize) -> Option<ItemStack> {
-        let target = self.slot_mut_at(view, slot)?;
-        let current = target.as_mut()?;
-        let one = ItemStack {
-            count: 1,
-            ..current.clone()
-        };
-        current.count -= 1;
-        if current.count == 0 {
-            *target = None;
-        }
-        Some(one)
-    }
-    /// Undo `take_one` after a failed move.
-    fn put_back(&mut self, view: &View, slot: usize, one: ItemStack) {
-        if let Some(target) = self.slot_mut_at(view, slot) {
-            match target {
-                Some(current) => current.count += one.count,
-                None => *target = Some(one),
-            }
-        }
-    }
     /// `HopperBlockEntity.pushItemsTick` of the hopper at `pos`, if its block
     /// is still a hopper (`BlockEntityType.isValid`).
     pub(super) fn tick_hopper(&mut self, pos: Pos) {
@@ -614,13 +573,6 @@ impl Game<'_> {
             state.cooldown = 0;
             self.hopper_try_move_items(pos);
         }
-    }
-    /// Drops the cooldowns of hoppers whose block entity is gone.
-    pub(super) fn forget_gone_hoppers(&mut self) {
-        let entities = &self.sim.world.block_entities;
-        self.sim.hoppers.retain(|p, _| {
-            matches!(entities.get(p), Some(BlockEntity::Chest(items)) if items.len() == HOPPER_SLOTS)
-        });
     }
     /// `HopperBlockEntity.tryMoveItems` with `suckInItems`.
     pub(super) fn hopper_try_move_items(&mut self, pos: Pos) {
@@ -790,47 +742,6 @@ impl Game<'_> {
         }
         false
     }
-    /// `HopperBlockEntity.getEntityContainer`: one of the alive container
-    /// entities (`EntitySelector.CONTAINER_ENTITY_SELECTOR`: chest and hopper
-    /// minecarts, chest boats) whose box meets the 1x1x1 box around `at`,
-    /// picked at random.
-    fn entity_container_at(&mut self, at: [f64; 3]) -> Option<u32> {
-        let meets = |b: horizon_core::geometry::Aabb| {
-            let (lo, hi) = (b.min_position(), b.max_position());
-            lo.x < at[0] + 0.5
-                && hi.x > at[0] - 0.5
-                && lo.y < at[1] + 0.5
-                && hi.y > at[1] - 0.5
-                && lo.z < at[2] + 0.5
-                && hi.z > at[2] - 0.5
-        };
-        let mut found: Vec<u32> = self
-            .carts
-            .iter()
-            .filter(|c| {
-                matches!(
-                    c.kind,
-                    super::minecarts::CartKind::Chest | super::minecarts::CartKind::Hopper
-                ) && meets(c.bounds())
-            })
-            .map(|c| c.id)
-            .collect();
-        found.extend(
-            self.boats
-                .iter()
-                .filter(|b| b.chest && meets(b.bounds()))
-                .map(|b| b.id),
-        );
-        if found.is_empty() {
-            return None;
-        }
-        let pick = self
-            .world
-            .random
-            .next_int_bound(found.len() as i32)
-            .unwrap_or(0);
-        found.get(pick as usize).copied()
-    }
     /// Runs `f` on a container entity's items as a container, under the
     /// placeholder key its menu uses (the open menu's copy when it is open),
     /// then hands the items back to the entity.
@@ -854,39 +765,6 @@ impl Game<'_> {
             b.items = items;
         }
         Some(result)
-    }
-    /// A vehicle's slots as a container under its placeholder `key`. When its
-    /// menu is open the placeholder is the live copy and stays as it is.
-    /// Returns the view and whether the menu was open.
-    fn lend_items(&mut self, key: Pos, items: &mut Vec<Option<ItemStack>>) -> (View, bool) {
-        let open = self.world.block_entities.contains_key(&key);
-        if !open {
-            let slots = BlockEntity::Chest(std::mem::take(items));
-            self.world.block_entities.insert(key, slots);
-        }
-        let size = self
-            .world
-            .block_entities
-            .get(&key)
-            .map_or(0, |e| e.slots().len());
-        let view = View {
-            parts: vec![(key, size)],
-            kind: Kind::Generic,
-        };
-        (view, open)
-    }
-    /// Gives `lend_items`' slots back to the vehicle, so its own items stay
-    /// the one source of truth: a menu copy that is still around (open, or
-    /// left by a guest's close) gets the changed items copied to `items`.
-    fn reclaim_items(&mut self, key: Pos, open: bool, items: &mut Vec<Option<ItemStack>>) {
-        let slots = if open {
-            self.world.block_entities.get(&key).cloned()
-        } else {
-            self.world.block_entities.remove(&key)
-        };
-        if let Some(BlockEntity::Chest(slots)) = slots {
-            *items = slots;
-        }
     }
     /// The item half of `HopperBlockEntity.suckInItems` (`getItemsAtAndAbove`):
     /// adds the item entities that meet the box, until one is taken whole.
@@ -1037,6 +915,130 @@ impl Game<'_> {
         Ok(())
     }
 }
+impl crate::game::Sim<'_> {
+    fn containers(&self) -> Containers<'_> {
+        Containers {
+            world: &self.world,
+            behaviours: self.res.behaviours(),
+            items: self.res.items(),
+            registry: self.pack.assets.registry,
+            brewing: Some(&self.res.stations().brewing),
+            bone_meal: bone_meal(),
+        }
+    }
+    fn slot_mut_at(&mut self, view: &View, slot: usize) -> Option<&mut Option<ItemStack>> {
+        let (pos, i) = view.locate(slot)?;
+        self.world
+            .block_entities
+            .get_mut(&pos)?
+            .slots_mut()
+            .get_mut(i)
+    }
+    /// Remove one item from a slot (`removeItem(slot, 1)`).
+    fn take_one(&mut self, view: &View, slot: usize) -> Option<ItemStack> {
+        let target = self.slot_mut_at(view, slot)?;
+        let current = target.as_mut()?;
+        let one = ItemStack {
+            count: 1,
+            ..current.clone()
+        };
+        current.count -= 1;
+        if current.count == 0 {
+            *target = None;
+        }
+        Some(one)
+    }
+    /// Undo `take_one` after a failed move.
+    fn put_back(&mut self, view: &View, slot: usize, one: ItemStack) {
+        if let Some(target) = self.slot_mut_at(view, slot) {
+            match target {
+                Some(current) => current.count += one.count,
+                None => *target = Some(one),
+            }
+        }
+    }
+    /// Drops the cooldowns of hoppers whose block entity is gone.
+    pub(super) fn forget_gone_hoppers(&mut self) {
+        let entities = &self.world.block_entities;
+        self.hoppers.retain(|p, _| {
+            matches!(entities.get(p), Some(BlockEntity::Chest(items)) if items.len() == HOPPER_SLOTS)
+        });
+    }
+    /// `HopperBlockEntity.getEntityContainer`: one of the alive container
+    /// entities (`EntitySelector.CONTAINER_ENTITY_SELECTOR`: chest and hopper
+    /// minecarts, chest boats) whose box meets the 1x1x1 box around `at`,
+    /// picked at random.
+    fn entity_container_at(&mut self, at: [f64; 3]) -> Option<u32> {
+        let meets = |b: horizon_core::geometry::Aabb| {
+            let (lo, hi) = (b.min_position(), b.max_position());
+            lo.x < at[0] + 0.5
+                && hi.x > at[0] - 0.5
+                && lo.y < at[1] + 0.5
+                && hi.y > at[1] - 0.5
+                && lo.z < at[2] + 0.5
+                && hi.z > at[2] - 0.5
+        };
+        let mut found: Vec<u32> = self
+            .carts
+            .iter()
+            .filter(|c| {
+                matches!(
+                    c.kind,
+                    super::minecarts::CartKind::Chest | super::minecarts::CartKind::Hopper
+                ) && meets(c.bounds())
+            })
+            .map(|c| c.id)
+            .collect();
+        found.extend(
+            self.boats
+                .iter()
+                .filter(|b| b.chest && meets(b.bounds()))
+                .map(|b| b.id),
+        );
+        if found.is_empty() {
+            return None;
+        }
+        let pick = self
+            .world
+            .random
+            .next_int_bound(found.len() as i32)
+            .unwrap_or(0);
+        found.get(pick as usize).copied()
+    }
+    /// A vehicle's slots as a container under its placeholder `key`. When its
+    /// menu is open the placeholder is the live copy and stays as it is.
+    /// Returns the view and whether the menu was open.
+    fn lend_items(&mut self, key: Pos, items: &mut Vec<Option<ItemStack>>) -> (View, bool) {
+        let open = self.world.block_entities.contains_key(&key);
+        if !open {
+            let slots = BlockEntity::Chest(std::mem::take(items));
+            self.world.block_entities.insert(key, slots);
+        }
+        let size = self
+            .world
+            .block_entities
+            .get(&key)
+            .map_or(0, |e| e.slots().len());
+        let view = View {
+            parts: vec![(key, size)],
+            kind: Kind::Generic,
+        };
+        (view, open)
+    }
+    /// Gives `lend_items`' slots back to the vehicle, so its own items stay
+    /// the one source of truth: a menu copy that is still around (open, or
+    /// left by a guest's close) gets the changed items copied to `items`.
+    fn reclaim_items(&mut self, key: Pos, open: bool, items: &mut Vec<Option<ItemStack>>) {
+        let slots = if open {
+            self.world.block_entities.get(&key).cloned()
+        } else {
+            self.world.block_entities.remove(&key)
+        };
+        if let Some(BlockEntity::Chest(slots)) = slots {
+            *items = slots;
+        }
+    }
+}
 
 // ---- hopper, dispenser and dropper screens ----
 
@@ -1049,68 +1051,6 @@ enum Screen {
 }
 
 impl Game<'_> {
-    fn machine_screen(&self) -> Option<Screen> {
-        let key = self.container?;
-        // A server's menu shows by its type, whatever block (or minecart) holds it.
-        if let Some(menu) = self.remote_menu_type() {
-            return match menu {
-                "minecraft:hopper" => Some(Screen::Hopper),
-                "minecraft:generic_3x3" => Some(Screen::Dispenser),
-                _ => None,
-            };
-        }
-        if key.1 == super::minecarts::CART_KEY_Y {
-            return (self.open_cart_kind() == Some(super::minecarts::CartKind::Hopper))
-                .then_some(Screen::Hopper);
-        }
-        let state = self.world.block(key.0, key.1, key.2);
-        match &*self.res.facts().get(state).name {
-            "minecraft:hopper" => Some(Screen::Hopper),
-            "minecraft:dispenser" => Some(Screen::Dispenser),
-            "minecraft:dropper" => Some(Screen::Dropper),
-            _ => None,
-        }
-    }
-    /// `imageHeight` of the open screen (HopperScreen is 133 tall).
-    pub(super) fn screen_height(&self) -> f32 {
-        if self
-            .station
-            .as_ref()
-            .is_some_and(|s| s.kind == super::stations::Kind::Beacon)
-        {
-            return super::beacon::HEIGHT;
-        }
-        if let Some(rows) = self.chest_rows() {
-            // ContainerScreen: 114 + 18 per row.
-            return 114.0 + rows as f32 * 18.0;
-        }
-        if self.container_block_is_shulker() {
-            return 167.0;
-        }
-        if self.machine_screen() == Some(Screen::Hopper) {
-            133.0
-        } else {
-            166.0
-        }
-    }
-    /// HopperMenu / DispenserMenu slot layouts; None for other screens.
-    pub(super) fn machine_slot_position(&self, i: usize) -> Option<(f32, f32)> {
-        let screen = self.machine_screen()?;
-        let inventory_y = if screen == Screen::Hopper { 51.0 } else { 84.0 };
-        Some(match i {
-            0..9 => (8.0 + i as f32 * 18.0, inventory_y + 58.0),
-            9..36 => (
-                8.0 + ((i - 9) % 9) as f32 * 18.0,
-                inventory_y + ((i - 9) / 9) as f32 * 18.0,
-            ),
-            300..500 if screen == Screen::Hopper => (44.0 + (i - 300) as f32 * 18.0, 20.0),
-            300..500 => (
-                62.0 + ((i - 300) % 3) as f32 * 18.0,
-                17.0 + ((i - 300) / 3) as f32 * 18.0,
-            ),
-            _ => return None,
-        })
-    }
     /// HopperScreen / DispenserScreen background and labels; false for other containers.
     pub(super) fn draw_machine_screen(
         &self,
@@ -1172,6 +1112,70 @@ impl Game<'_> {
         let inventory = self.translate("container.inventory", "Inventory");
         batch.text(atlas, &inventory, ox + 8.0, oy + height - 94.0, grey, false);
         true
+    }
+}
+impl crate::game::Sim<'_> {
+    fn machine_screen(&self) -> Option<Screen> {
+        let key = self.container?;
+        // A server's menu shows by its type, whatever block (or minecart) holds it.
+        if let Some(menu) = self.remote_menu_type() {
+            return match menu {
+                "minecraft:hopper" => Some(Screen::Hopper),
+                "minecraft:generic_3x3" => Some(Screen::Dispenser),
+                _ => None,
+            };
+        }
+        if key.1 == super::minecarts::CART_KEY_Y {
+            return (self.open_cart_kind() == Some(super::minecarts::CartKind::Hopper))
+                .then_some(Screen::Hopper);
+        }
+        let state = self.world.block(key.0, key.1, key.2);
+        match &*self.res.facts().get(state).name {
+            "minecraft:hopper" => Some(Screen::Hopper),
+            "minecraft:dispenser" => Some(Screen::Dispenser),
+            "minecraft:dropper" => Some(Screen::Dropper),
+            _ => None,
+        }
+    }
+    /// `imageHeight` of the open screen (HopperScreen is 133 tall).
+    pub(super) fn screen_height(&self) -> f32 {
+        if self
+            .station
+            .as_ref()
+            .is_some_and(|s| s.kind == super::stations::Kind::Beacon)
+        {
+            return super::beacon::HEIGHT;
+        }
+        if let Some(rows) = self.chest_rows() {
+            // ContainerScreen: 114 + 18 per row.
+            return 114.0 + rows as f32 * 18.0;
+        }
+        if self.container_block_is_shulker() {
+            return 167.0;
+        }
+        if self.machine_screen() == Some(Screen::Hopper) {
+            133.0
+        } else {
+            166.0
+        }
+    }
+    /// HopperMenu / DispenserMenu slot layouts; None for other screens.
+    pub(super) fn machine_slot_position(&self, i: usize) -> Option<(f32, f32)> {
+        let screen = self.machine_screen()?;
+        let inventory_y = if screen == Screen::Hopper { 51.0 } else { 84.0 };
+        Some(match i {
+            0..9 => (8.0 + i as f32 * 18.0, inventory_y + 58.0),
+            9..36 => (
+                8.0 + ((i - 9) % 9) as f32 * 18.0,
+                inventory_y + ((i - 9) / 9) as f32 * 18.0,
+            ),
+            300..500 if screen == Screen::Hopper => (44.0 + (i - 300) as f32 * 18.0, 20.0),
+            300..500 => (
+                62.0 + ((i - 300) % 3) as f32 * 18.0,
+                17.0 + ((i - 300) / 3) as f32 * 18.0,
+            ),
+            _ => return None,
+        })
     }
 }
 

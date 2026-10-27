@@ -31,39 +31,6 @@ fn num(n: impl std::fmt::Display) -> Text {
 }
 
 impl Game<'_> {
-    fn bossbar_path(&self) -> std::path::PathBuf {
-        self.world_root
-            .join("data/minecraft/custom_boss_events.dat")
-    }
-    pub(super) fn load_bossbars(&mut self) {
-        if self.bosses.loaded || self.remote.is_some() {
-            return;
-        }
-        self.bosses.loaded = true;
-        if let Some(root) = save::read_dat(&self.bossbar_path())
-            && let Some(data) = root.get("data")
-        {
-            self.bosses.bars = BossBars::unpack(data);
-        }
-        self.world_data.registries.bossbars = self.bosses.bars.ids();
-    }
-    pub(super) fn save_bossbars(&self) {
-        if !self.bosses.loaded || self.remote.is_some() {
-            return;
-        }
-        if self.bosses.bars.bars.is_empty() && !self.bossbar_path().exists() {
-            return;
-        }
-        if let Err(e) = save::write_dat(
-            &self.bossbar_path(),
-            Tag::compound([
-                ("data", self.bosses.bars.pack()),
-                ("DataVersion", Tag::Int(horizon_world::DATA_VERSION)),
-            ]),
-        ) {
-            log::warn!("boss bars were not written: {e}");
-        }
-    }
     pub(in crate::game) fn bossbar_exists(&self, id: &str) -> bool {
         self.bosses.bars.get(id).is_some()
     }
@@ -389,19 +356,6 @@ impl Game<'_> {
         }
         out
     }
-    fn player_target_uuid(&self, target: Target) -> Option<[i32; 4]> {
-        match target {
-            Target::Player => Some(self.acting_uuid()),
-            Target::Guest(conn) => self.lan.as_ref().and_then(|h| {
-                h.hub
-                    .guests
-                    .iter()
-                    .find(|g| g.conn == conn)
-                    .map(|g| horizon_client::lan::playerdata::uuid_ints(g.uuid))
-            }),
-            _ => None,
-        }
-    }
 
     // ---- ServerBossEvent delivery ------------------------------------------------
 
@@ -436,6 +390,60 @@ impl Game<'_> {
         };
         for (conn, packet) in &packets {
             host.hub.send_to(*conn, packet);
+        }
+    }
+    /// `ClientPacketListener.handleBossUpdate`.
+    pub(super) fn apply_boss_event(&mut self, packet: &play::BossEvent) {
+        self.front
+            .boss_overlay
+            .apply(packet, boss_overlay::now_millis());
+    }
+}
+impl crate::game::Sim<'_> {
+    fn bossbar_path(&self) -> std::path::PathBuf {
+        self.world_root
+            .join("data/minecraft/custom_boss_events.dat")
+    }
+    pub(super) fn load_bossbars(&mut self) {
+        if self.bosses.loaded || self.remote.is_some() {
+            return;
+        }
+        self.bosses.loaded = true;
+        if let Some(root) = save::read_dat(&self.bossbar_path())
+            && let Some(data) = root.get("data")
+        {
+            self.bosses.bars = BossBars::unpack(data);
+        }
+        self.world_data.registries.bossbars = self.bosses.bars.ids();
+    }
+    pub(super) fn save_bossbars(&self) {
+        if !self.bosses.loaded || self.remote.is_some() {
+            return;
+        }
+        if self.bosses.bars.bars.is_empty() && !self.bossbar_path().exists() {
+            return;
+        }
+        if let Err(e) = save::write_dat(
+            &self.bossbar_path(),
+            Tag::compound([
+                ("data", self.bosses.bars.pack()),
+                ("DataVersion", Tag::Int(horizon_world::DATA_VERSION)),
+            ]),
+        ) {
+            log::warn!("boss bars were not written: {e}");
+        }
+    }
+    fn player_target_uuid(&self, target: Target) -> Option<[i32; 4]> {
+        match target {
+            Target::Player => Some(self.acting_uuid()),
+            Target::Guest(conn) => self.lan.as_ref().and_then(|h| {
+                h.hub
+                    .guests
+                    .iter()
+                    .find(|g| g.conn == conn)
+                    .map(|g| horizon_client::lan::playerdata::uuid_ints(g.uuid))
+            }),
+            _ => None,
         }
     }
     fn boss_viewers(&self) -> Vec<Viewer> {
@@ -620,12 +628,6 @@ impl Game<'_> {
             sent.insert(id, offer);
         }
         out
-    }
-    /// `ClientPacketListener.handleBossUpdate`.
-    pub(super) fn apply_boss_event(&mut self, packet: &play::BossEvent) {
-        self.front
-            .boss_overlay
-            .apply(packet, boss_overlay::now_millis());
     }
 }
 

@@ -134,21 +134,6 @@ fn angle(d: f32) -> f32 {
 }
 
 impl Game<'_> {
-    pub(super) fn move_remote_text_display(
-        &mut self,
-        id: i32,
-        position: [f64; 3],
-        rotation: Option<(f32, f32)>,
-    ) {
-        if let Some(d) = self.text_displays.get_mut(&id) {
-            d.move_to(position, rotation);
-        }
-    }
-    pub(super) fn tick_text_displays(&mut self) {
-        for display in self.text_displays.values_mut() {
-            display.tick();
-        }
-    }
     pub(super) fn text_display_geometry(
         &mut self,
         camera: glam::DVec3,
@@ -276,6 +261,23 @@ impl Game<'_> {
             }
             self.front.text_display_vertices += batch.vertices.len() / 6 * 4;
             self.front.map_patches.extend(batch.patches);
+        }
+    }
+}
+impl crate::game::Sim<'_> {
+    pub(super) fn move_remote_text_display(
+        &mut self,
+        id: i32,
+        position: [f64; 3],
+        rotation: Option<(f32, f32)>,
+    ) {
+        if let Some(d) = self.text_displays.get_mut(&id) {
+            d.move_to(position, rotation);
+        }
+    }
+    pub(super) fn tick_text_displays(&mut self) {
+        for display in self.text_displays.values_mut() {
+            display.tick();
         }
     }
 }

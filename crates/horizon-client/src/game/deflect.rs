@@ -48,21 +48,6 @@ fn pick_box(p: &Projectile) -> Aabb {
 }
 
 impl Game<'_> {
-    /// The redirectable projectile under the crosshair within the attack
-    /// reach, and how far along the view it is.
-    pub(super) fn redirectable_hit(&self) -> Option<(usize, f64)> {
-        let eye = self.eye_position()?;
-        let dir = view_vector(self.yaw, self.pitch);
-        let reach: f64 = if self.creative { 5.0 } else { 3.0 };
-        self.creatures
-            .projectiles
-            .iter()
-            .enumerate()
-            .filter(|(_, p)| redirectable(p))
-            .filter_map(|(i, p)| ray_box(eye, dir, reach, pick_box(p)).map(|t| (i, t)))
-            .min_by(|a, b| a.1.total_cmp(&b.1))
-    }
-
     /// `Player.attack` on a redirectable projectile nearer than any mob or
     /// block in view: `AIM_DEFLECT` (its movement the unit view vector), the
     /// player its owner, its acceleration power back to 0.1
@@ -86,25 +71,6 @@ impl Game<'_> {
         }
         self.deflect(i);
         true
-    }
-
-    /// `Player.canInteractWithEntity(box, 3.0)` as the server checks an
-    /// attack packet: the projectile's box within the reach plus 3 of the eyes.
-    pub(super) fn within_interaction_range(&self, i: usize) -> bool {
-        let (Some(eye), Some(p)) = (self.eye_position(), self.creatures.projectiles.get(i)) else {
-            return false;
-        };
-        let b = pick_box(p);
-        let (lo, hi) = (b.min_position(), b.max_position());
-        let (lo, hi) = (
-            [lo.x + PICK_RADIUS, lo.y + PICK_RADIUS, lo.z + PICK_RADIUS],
-            [hi.x - PICK_RADIUS, hi.y - PICK_RADIUS, hi.z - PICK_RADIUS],
-        );
-        let d2: f64 = (0..3)
-            .map(|a| (eye[a] - eye[a].clamp(lo[a], hi[a])).powi(2))
-            .sum();
-        let range = if self.creative { 5.0 } else { 3.0 } + 3.0;
-        d2 < range * range
     }
 
     /// `Projectile.deflect(AIM_DEFLECT, player, player, true)`.
@@ -134,6 +100,40 @@ impl Game<'_> {
         self.front
             .audio
             .play("minecraft:entity.player.attack.nodamage", from, 1.0, 1.0);
+    }
+}
+impl crate::game::Sim<'_> {
+    /// The redirectable projectile under the crosshair within the attack
+    /// reach, and how far along the view it is.
+    pub(super) fn redirectable_hit(&self) -> Option<(usize, f64)> {
+        let eye = self.eye_position()?;
+        let dir = view_vector(self.yaw, self.pitch);
+        let reach: f64 = if self.creative { 5.0 } else { 3.0 };
+        self.creatures
+            .projectiles
+            .iter()
+            .enumerate()
+            .filter(|(_, p)| redirectable(p))
+            .filter_map(|(i, p)| ray_box(eye, dir, reach, pick_box(p)).map(|t| (i, t)))
+            .min_by(|a, b| a.1.total_cmp(&b.1))
+    }
+    /// `Player.canInteractWithEntity(box, 3.0)` as the server checks an
+    /// attack packet: the projectile's box within the reach plus 3 of the eyes.
+    pub(super) fn within_interaction_range(&self, i: usize) -> bool {
+        let (Some(eye), Some(p)) = (self.eye_position(), self.creatures.projectiles.get(i)) else {
+            return false;
+        };
+        let b = pick_box(p);
+        let (lo, hi) = (b.min_position(), b.max_position());
+        let (lo, hi) = (
+            [lo.x + PICK_RADIUS, lo.y + PICK_RADIUS, lo.z + PICK_RADIUS],
+            [hi.x - PICK_RADIUS, hi.y - PICK_RADIUS, hi.z - PICK_RADIUS],
+        );
+        let d2: f64 = (0..3)
+            .map(|a| (eye[a] - eye[a].clamp(lo[a], hi[a])).powi(2))
+            .sum();
+        let range = if self.creative { 5.0 } else { 3.0 } + 3.0;
+        d2 < range * range
     }
 }
 

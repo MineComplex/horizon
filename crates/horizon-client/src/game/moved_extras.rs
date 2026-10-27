@@ -5,7 +5,9 @@
 //! it fails (offline), the game tries again at the next start.
 
 #[cfg(not(feature = "mods"))]
-impl super::Game<'_> {
+impl super::Game<'_> {}
+#[cfg(not(feature = "mods"))]
+impl crate::game::Sim<'_> {
     pub(super) fn start_moved_extras(&mut self) {}
     pub(super) fn poll_moved_extras(&mut self) {}
 }

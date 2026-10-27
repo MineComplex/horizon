@@ -76,6 +76,18 @@ impl Game<'_> {
         }
         Ok(())
     }
+    /// `DaylightDetectorBlock.tickEntity` of the detector at `pos`.
+    fn tick_daylight_detector(&mut self, pos: Pos) {
+        // It updates every 20 game ticks (the behaviour checks this too).
+        if self.world.game_time % 20 != 0 {
+            return;
+        }
+        let at = BlockPos::new(pos.0, pos.1, pos.2);
+        self.with_level(|b, level, ticks| b.tick_daylight_detector(level, ticks, at));
+        let _ = self.process_level_events();
+    }
+}
+impl crate::game::Sim<'_> {
     /// `BlockState.getTicker` of every state, for the block entities ticked
     /// here. A creaking heart keeps its slot while uprooted (see
     /// `tick_creaking_heart`).
@@ -120,27 +132,13 @@ impl Game<'_> {
         let levels = self.tickets.levels();
         move |x, z| levels.block_ticking_at(x, z)
     }
-    /// `DaylightDetectorBlock.tickEntity` of the detector at `pos`.
-    fn tick_daylight_detector(&mut self, pos: Pos) {
-        // It updates every 20 game ticks (the behaviour checks this too).
-        if self.world.game_time % 20 != 0 {
-            return;
-        }
-        let at = BlockPos::new(pos.0, pos.1, pos.2);
-        self.with_level(|b, level, ticks| b.tick_daylight_detector(level, ticks, at));
-        let _ = self.process_level_events();
-    }
     /// `AbstractFurnaceBlockEntity.serverTick` of the furnace at `pos`, and
     /// its block's `lit` following it.
     fn tick_furnace(&mut self, pos: Pos) -> Result<()> {
-        let Some(BlockEntity::Furnace(f)) = self.sim.world.block_entities.get_mut(&pos) else {
+        let Some(BlockEntity::Furnace(f)) = self.world.block_entities.get_mut(&pos) else {
             return Ok(());
         };
-        let Some(lit) = f.tick(
-            self.sim.res.recipes(),
-            self.sim.res.items(),
-            self.sim.res.providers(),
-        ) else {
+        let Some(lit) = f.tick(self.res.recipes(), self.res.items(), self.res.providers()) else {
             return Ok(());
         };
         let state = self.world.block(pos.0, pos.1, pos.2);

@@ -125,13 +125,6 @@ impl Game<'_> {
         }
     }
 
-    /// The LAN server is closing: the code goes with it.
-    pub(super) fn friends_lan_closed(&mut self) {
-        if let Some(mut sharing) = self.friends.take() {
-            sharing.host.stop();
-        }
-    }
-
     /// New codes and sessions, once a tick and while the pause menu is drawn.
     pub(super) fn tick_friends(&mut self) {
         let Some(sharing) = self.friends.as_mut() else {
@@ -213,6 +206,51 @@ impl Game<'_> {
         }
     }
 
+    /// `horizon-ctl friends ...`.
+    pub(super) fn friends_control(&mut self, words: &[&str]) -> Result<Option<serde_json::Value>> {
+        use serde_json::json;
+        if words[0] != "friends" {
+            return Ok(None);
+        }
+        match words.get(1).copied() {
+            Some("host") => {
+                self.friends_start()?;
+                Ok(Some(json!({ "ok": true, "lan_port": self.lan_port() })))
+            }
+            Some("stop") => {
+                self.friends_stop();
+                Ok(Some(json!({ "ok": true })))
+            }
+            Some("status") => {
+                self.tick_friends();
+                let view = self.friends_view();
+                let state = self.friends.as_ref().map(|s| s.host.state());
+                Ok(Some(json!({
+                    "sharing": view.sharing,
+                    "code": view.code,
+                    "short": state.as_ref().and_then(|s| s.short.as_ref().map(ToString::to_string)),
+                    "summary": view.status,
+                    "reachable": view.reachable,
+                    "verdict": state.as_ref().and_then(|s| s.verdict.as_ref().map(|v| format!("{v:?}"))),
+                    "direct_port": state.as_ref().map(|s| s.port),
+                    "sessions": self.friends.as_ref().map_or(0, |s| s.host.sessions()),
+                    "direct": self.friends.as_ref().map_or(0, |s| s.paths.0),
+                    "relayed": self.friends.as_ref().map_or(0, |s| s.paths.1),
+                    "guests": view.guests,
+                    "lan_port": self.lan_port(),
+                })))
+            }
+            _ => Err("friends host|stop|status".into()),
+        }
+    }
+}
+impl crate::game::Sim<'_> {
+    /// The LAN server is closing: the code goes with it.
+    pub(super) fn friends_lan_closed(&mut self) {
+        if let Some(mut sharing) = self.friends.take() {
+            sharing.host.stop();
+        }
+    }
     /// What Play with Friends shows.
     pub(super) fn friends_view(&self) -> FriendsView {
         let guests = match &self.lan {
@@ -261,44 +299,6 @@ impl Game<'_> {
             copied: s
                 .copied
                 .is_some_and(|t| t.elapsed() < Duration::from_secs(2)),
-        }
-    }
-
-    /// `horizon-ctl friends ...`.
-    pub(super) fn friends_control(&mut self, words: &[&str]) -> Result<Option<serde_json::Value>> {
-        use serde_json::json;
-        if words[0] != "friends" {
-            return Ok(None);
-        }
-        match words.get(1).copied() {
-            Some("host") => {
-                self.friends_start()?;
-                Ok(Some(json!({ "ok": true, "lan_port": self.lan_port() })))
-            }
-            Some("stop") => {
-                self.friends_stop();
-                Ok(Some(json!({ "ok": true })))
-            }
-            Some("status") => {
-                self.tick_friends();
-                let view = self.friends_view();
-                let state = self.friends.as_ref().map(|s| s.host.state());
-                Ok(Some(json!({
-                    "sharing": view.sharing,
-                    "code": view.code,
-                    "short": state.as_ref().and_then(|s| s.short.as_ref().map(ToString::to_string)),
-                    "summary": view.status,
-                    "reachable": view.reachable,
-                    "verdict": state.as_ref().and_then(|s| s.verdict.as_ref().map(|v| format!("{v:?}"))),
-                    "direct_port": state.as_ref().map(|s| s.port),
-                    "sessions": self.friends.as_ref().map_or(0, |s| s.host.sessions()),
-                    "direct": self.friends.as_ref().map_or(0, |s| s.paths.0),
-                    "relayed": self.friends.as_ref().map_or(0, |s| s.paths.1),
-                    "guests": view.guests,
-                    "lan_port": self.lan_port(),
-                })))
-            }
-            _ => Err("friends host|stop|status".into()),
         }
     }
 }

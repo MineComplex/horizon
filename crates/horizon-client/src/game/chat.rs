@@ -73,15 +73,6 @@ impl UiState {
 }
 
 impl Game<'_> {
-    /// `PlayerList.isOp` for the single-player owner: the world's Allow Commands.
-    pub(super) fn allow_commands(&self) -> bool {
-        self.level.allow_commands == Some(true)
-    }
-    /// `IntegratedServer.setWorldAllowCommands`, then `updatePermissions`.
-    pub(super) fn set_allow_commands(&mut self, allow: bool) {
-        self.level.allow_commands = Some(allow);
-        self.world_data.registries.permission = owner_permission(allow);
-    }
     /// Commands the game issues itself (the server console, harnesses, the
     /// control socket) run at the owner's level whatever Allow Commands says.
     pub(super) fn as_console<T>(&mut self, f: impl FnOnce(&mut Self) -> T) -> T {
@@ -454,10 +445,6 @@ impl Game<'_> {
     fn leave_bed_button(width: f32, height: f32) -> (i32, i32, i32, i32) {
         (width as i32 / 2 - 100, height as i32 - 40, 200, 20)
     }
-    /// `Minecraft.computeChatAbilities` from the Chat option.
-    pub(super) fn chat_abilities(&self) -> ChatAbilities {
-        ChatAbilities::new(ChatVisibility::from_option(self.settings.chat_visibility))
-    }
     /// A chat message from the game (ChatComponent.addServerSystemMessage).
     pub(super) fn system_message(&mut self, text: Text) {
         if let Some(capture) = self.chat_capture.as_mut() {
@@ -731,18 +718,6 @@ impl Game<'_> {
             Some(ClickEvent::ChangePage(_)) | None => {}
         }
     }
-    /// `Screen.clickUrlAction`: nothing with Web Links off, else the link
-    /// opens, after the confirmation unless Prompt on Links is off.
-    pub(super) fn click_url(&mut self, url: String) {
-        if !self.settings.chat_links {
-            return;
-        }
-        if self.settings.file.bool("chatLinksPrompt") {
-            self.link_prompt = Some(url);
-        } else {
-            super::packs::open_uri(&url);
-        }
-    }
     /// `ConfirmLinkScreen` (untrusted): the link and its warning over the
     /// chat, answered yes to open it.
     fn link_prompt_layout(
@@ -774,14 +749,6 @@ impl Game<'_> {
         );
         self.link_prompt_layout(url, (w, h))
             .draw(batch, atlas, self.front.cursor, [&yes, &no]);
-    }
-    /// The prompt's answer: the link opens on yes; either way the chat is back.
-    pub(super) fn answer_link_prompt(&mut self, yes: bool) {
-        if let Some(url) = self.link_prompt.take()
-            && yes
-        {
-            super::packs::open_uri(&url);
-        }
     }
     pub(super) fn link_prompt_click(&mut self) {
         let Some(url) = &self.link_prompt else {
@@ -863,6 +830,146 @@ impl Game<'_> {
             self.draw_tooltip_lines(batch, &lines, self.front.cursor.0, self.front.cursor.1);
         }
     }
+    /// Load per-world command state when a world opens.
+    pub(super) fn load_world_state(&mut self) {
+        self.world_data.rules = GameRules::load(&self.world_root);
+        self.world_data.clock = WorldClock::default();
+        // PrimaryLevelData: the difficulty comes back from level.dat's difficulty_settings.
+        self.world_data.difficulty = horizon_client::title::DIFFICULTIES
+            .iter()
+            .position(|d| *d == self.level.difficulty)
+            .map_or(2, |i| i as u8);
+        if let Ok(bytes) = std::fs::read(self.world_root.join("data/minecraft/world_clocks.dat"))
+            && let Ok(raw) = horizon_world::compression::Compression::Gzip.decode(&bytes, 1 << 20)
+            && let Ok((root, _)) =
+                horizon_world::nbt::read_named(&raw, horizon_world::nbt::Limits::default())
+            && let Some(c) = root
+                .tag
+                .get("data")
+                .and_then(|d| d.get("minecraft:overworld"))
+        {
+            use horizon_world::nbt::Tag;
+            if let Some(Tag::Float(r)) = c.get("rate") {
+                self.world_data.clock.rate = f32::from_bits(*r);
+            }
+            if let Some(Tag::Float(p)) = c.get("partial_tick") {
+                self.world_data.clock.partial = f32::from_bits(*p);
+            }
+            if let Some(Tag::Byte(p)) = c.get("paused") {
+                self.world_data.clock.paused = *p != 0;
+            }
+        }
+        self.ui.chat.clear();
+        self.build_registries();
+        self.sync_rules();
+    }
+    /// Death message in chat (CombatTracker.getDeathMessage, as far as the
+    /// cause is known to the client).
+    pub(super) fn death_message(&mut self) {
+        let cause = self.ui.death_cause.take();
+        self.ui.died_at = Some(std::time::Instant::now());
+        self.ui.death_text = None;
+        if !self.world_data.rules.bool("show_death_messages") {
+            return;
+        }
+        let Some(p) = self.player.as_ref() else {
+            return;
+        };
+        let below_world = p.position.y < f64::from(horizon_client::chunk::MIN_Y - 64);
+        let name = self.player_display_text();
+        let message = match cause {
+            Some(key) => Text::translate(&key, &[name]),
+            None if below_world => Text::translate("death.attack.outOfWorld", &[name]),
+            None => self.combat_death_message(),
+        };
+        self.ui.death_text = Some(message.clone());
+        // ServerPlayer.die: a team that hides death messages keeps it out of
+        // the dying player's own chat (the death screen still shows it).
+        if horizon_client::scoreboard::own_death_message_shown(self.player_team()) {
+            self.system_message(message);
+        }
+    }
+    /// F2: ScreenShot.grab into `screenshots/` with vanilla's file name.
+    pub(super) fn take_screenshot(&mut self) {
+        let dir = std::env::current_dir()
+            .unwrap_or_default()
+            .join("screenshots");
+        if std::fs::create_dir_all(&dir).is_err() {
+            return;
+        }
+        let name = screenshot_name(&dir);
+        let Some(renderer) = self.front.renderer.as_mut() else {
+            return;
+        };
+        let path = dir.join(name);
+        renderer.screenshot = Some(path.clone());
+        self.ui.screenshot_message = Some(path);
+    }
+    /// After a frame: report a finished F2 screenshot in chat.
+    pub(super) fn finish_screenshot(&mut self, result: &std::result::Result<[u32; 2], String>) {
+        let Some(path) = self.ui.screenshot_message.take() else {
+            return;
+        };
+        let message = match result {
+            Ok(_) => {
+                let name = path.file_name().unwrap_or_default().to_string_lossy();
+                let link = Text::styled(
+                    name,
+                    Style {
+                        underlined: Some(true),
+                        click: Some(ClickEvent::OpenFile(path.to_string_lossy().into_owned())),
+                        ..Style::default()
+                    },
+                );
+                Text::translate("screenshot.success", &[link])
+            }
+            Err(e) => Text::translate("screenshot.failure", &[Text::literal(e.clone())]),
+        };
+        let focused = self.screen == Screen::Chat;
+        self.sim.ui.chat.add(
+            &self.front.gui.atlas,
+            message,
+            None,
+            ChatSource::Client,
+            self.sim.ticks,
+            focused,
+        );
+    }
+}
+impl crate::game::Sim<'_> {
+    /// `PlayerList.isOp` for the single-player owner: the world's Allow Commands.
+    pub(super) fn allow_commands(&self) -> bool {
+        self.level.allow_commands == Some(true)
+    }
+    /// `IntegratedServer.setWorldAllowCommands`, then `updatePermissions`.
+    pub(super) fn set_allow_commands(&mut self, allow: bool) {
+        self.level.allow_commands = Some(allow);
+        self.world_data.registries.permission = owner_permission(allow);
+    }
+    /// `Minecraft.computeChatAbilities` from the Chat option.
+    pub(super) fn chat_abilities(&self) -> ChatAbilities {
+        ChatAbilities::new(ChatVisibility::from_option(self.settings.chat_visibility))
+    }
+    /// `Screen.clickUrlAction`: nothing with Web Links off, else the link
+    /// opens, after the confirmation unless Prompt on Links is off.
+    pub(super) fn click_url(&mut self, url: String) {
+        if !self.settings.chat_links {
+            return;
+        }
+        if self.settings.file.bool("chatLinksPrompt") {
+            self.link_prompt = Some(url);
+        } else {
+            super::packs::open_uri(&url);
+        }
+    }
+    /// The prompt's answer: the link opens on yes; either way the chat is back.
+    pub(super) fn answer_link_prompt(&mut self, yes: bool) {
+        if let Some(url) = self.link_prompt.take()
+            && yes
+        {
+            super::packs::open_uri(&url);
+        }
+    }
     /// Advance the overworld clock (ServerClockManager.tick) when
     /// `advance_time` allows it.
     pub(super) fn advance_clock(&mut self) {
@@ -917,39 +1024,6 @@ impl Game<'_> {
             _ => Difficulty::Normal,
         };
     }
-    /// Load per-world command state when a world opens.
-    pub(super) fn load_world_state(&mut self) {
-        self.world_data.rules = GameRules::load(&self.world_root);
-        self.world_data.clock = WorldClock::default();
-        // PrimaryLevelData: the difficulty comes back from level.dat's difficulty_settings.
-        self.world_data.difficulty = horizon_client::title::DIFFICULTIES
-            .iter()
-            .position(|d| *d == self.level.difficulty)
-            .map_or(2, |i| i as u8);
-        if let Ok(bytes) = std::fs::read(self.world_root.join("data/minecraft/world_clocks.dat"))
-            && let Ok(raw) = horizon_world::compression::Compression::Gzip.decode(&bytes, 1 << 20)
-            && let Ok((root, _)) =
-                horizon_world::nbt::read_named(&raw, horizon_world::nbt::Limits::default())
-            && let Some(c) = root
-                .tag
-                .get("data")
-                .and_then(|d| d.get("minecraft:overworld"))
-        {
-            use horizon_world::nbt::Tag;
-            if let Some(Tag::Float(r)) = c.get("rate") {
-                self.world_data.clock.rate = f32::from_bits(*r);
-            }
-            if let Some(Tag::Float(p)) = c.get("partial_tick") {
-                self.world_data.clock.partial = f32::from_bits(*p);
-            }
-            if let Some(Tag::Byte(p)) = c.get("paused") {
-                self.world_data.clock.paused = *p != 0;
-            }
-        }
-        self.ui.chat.clear();
-        self.build_registries();
-        self.sync_rules();
-    }
     /// Save the clock beside level.dat (Level.write saves the game rules: a
     /// second writer of game_rules.dat could leave it with the rules loaded
     /// when the world opened).
@@ -1001,81 +1075,9 @@ impl Game<'_> {
             log::warn!("the world clocks were not written: {e}");
         }
     }
-    /// Death message in chat (CombatTracker.getDeathMessage, as far as the
-    /// cause is known to the client).
-    pub(super) fn death_message(&mut self) {
-        let cause = self.ui.death_cause.take();
-        self.ui.died_at = Some(std::time::Instant::now());
-        self.ui.death_text = None;
-        if !self.world_data.rules.bool("show_death_messages") {
-            return;
-        }
-        let Some(p) = self.player.as_ref() else {
-            return;
-        };
-        let below_world = p.position.y < f64::from(horizon_client::chunk::MIN_Y - 64);
-        let name = self.player_display_text();
-        let message = match cause {
-            Some(key) => Text::translate(&key, &[name]),
-            None if below_world => Text::translate("death.attack.outOfWorld", &[name]),
-            None => self.combat_death_message(),
-        };
-        self.ui.death_text = Some(message.clone());
-        // ServerPlayer.die: a team that hides death messages keeps it out of
-        // the dying player's own chat (the death screen still shows it).
-        if horizon_client::scoreboard::own_death_message_shown(self.player_team()) {
-            self.system_message(message);
-        }
-    }
     /// F1 hides the HUD (see `hud`); the screenshot key still works.
     pub(super) fn toggle_hide_gui(&mut self) {
         self.ui.hide_gui = !self.ui.hide_gui;
-    }
-    /// F2: ScreenShot.grab into `screenshots/` with vanilla's file name.
-    pub(super) fn take_screenshot(&mut self) {
-        let dir = std::env::current_dir()
-            .unwrap_or_default()
-            .join("screenshots");
-        if std::fs::create_dir_all(&dir).is_err() {
-            return;
-        }
-        let name = screenshot_name(&dir);
-        let Some(renderer) = self.front.renderer.as_mut() else {
-            return;
-        };
-        let path = dir.join(name);
-        renderer.screenshot = Some(path.clone());
-        self.ui.screenshot_message = Some(path);
-    }
-    /// After a frame: report a finished F2 screenshot in chat.
-    pub(super) fn finish_screenshot(&mut self, result: &std::result::Result<[u32; 2], String>) {
-        let Some(path) = self.ui.screenshot_message.take() else {
-            return;
-        };
-        let message = match result {
-            Ok(_) => {
-                let name = path.file_name().unwrap_or_default().to_string_lossy();
-                let link = Text::styled(
-                    name,
-                    Style {
-                        underlined: Some(true),
-                        click: Some(ClickEvent::OpenFile(path.to_string_lossy().into_owned())),
-                        ..Style::default()
-                    },
-                );
-                Text::translate("screenshot.success", &[link])
-            }
-            Err(e) => Text::translate("screenshot.failure", &[Text::literal(e.clone())]),
-        };
-        let focused = self.screen == Screen::Chat;
-        self.sim.ui.chat.add(
-            &self.front.gui.atlas,
-            message,
-            None,
-            ChatSource::Client,
-            self.sim.ticks,
-            focused,
-        );
     }
 }
 /// `yyyy-MM-dd_HH.mm.ss[_n].png` (Util.getFilenameFormattedDateTime, local time

@@ -32,7 +32,8 @@ impl Game<'_> {
         }
         best.map(|b| b.1)
     }
-
+}
+impl crate::game::Sim<'_> {
     /// `Entity.getPickResult` of the entity `id`: a mob's spawn egg, the item
     /// of a boat, minecart, armor stand, cushion, painting, item frame (the
     /// framed item when it holds one) or end crystal.
@@ -66,7 +67,6 @@ impl Game<'_> {
         };
         Some(ItemStack::new(&item, 1))
     }
-
     /// `Player.isWithinEntityInteractionRange(entity, 3.0)`: the entity's box
     /// within the interaction range plus 3 of the eyes.
     pub(super) fn within_entity_range(&self, id: i32) -> bool {

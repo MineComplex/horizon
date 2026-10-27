@@ -184,10 +184,6 @@ fn wrap(d: f32) -> f32 {
     }
 }
 impl Game<'_> {
-    /// `key.togglePerspective`.
-    pub(super) fn cycle_camera(&mut self) {
-        self.camera_type = self.camera_type.cycle();
-    }
     /// `Camera.update` (`alignWithEntity` and `getMaxZoom`): the
     /// interpolated eye, or a point up to the camera distance behind (or in
     /// front of) it, pulled in where visual shapes are in the way. Returns the
@@ -563,6 +559,12 @@ impl Game<'_> {
                 0.0625,
             );
         }
+    }
+}
+impl crate::game::Sim<'_> {
+    /// `key.togglePerspective`.
+    pub(super) fn cycle_camera(&mut self) {
+        self.camera_type = self.camera_type.cycle();
     }
 }
 

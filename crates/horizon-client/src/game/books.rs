@@ -162,38 +162,6 @@ impl Game<'_> {
         self.swing_arm();
         true
     }
-    /// The screen a book in hand opens: `BookEditScreen` for a book and
-    /// quill, `BookViewScreen` for a written book.
-    fn book_screen(&self, stack: &ItemStack) -> Option<BookScreen> {
-        Some(match &*stack.item {
-            "minecraft:writable_book" => {
-                let mut pages = stack
-                    .data()
-                    .map(|d| d.writable_pages.clone())
-                    .unwrap_or_default();
-                if pages.is_empty() {
-                    pages.push(String::new());
-                }
-                let mut page_edit = book_page_box();
-                page_edit.set_value(&pages[0]);
-                BookScreen::Edit {
-                    slot: self.held_slot(),
-                    pages,
-                    page: 0,
-                    signing: false,
-                    title: String::new(),
-                    title_edit: book_title_box(),
-                    page_edit,
-                }
-            }
-            "minecraft:written_book" => BookScreen::View {
-                pages: view_pages(stack.data()),
-                page: 0,
-                lectern: None,
-            },
-            _ => return None,
-        })
-    }
     /// `MultiPlayerGameMode.useItem`'s own use of a book and quill on a
     /// server's client: its editor opens here at once.
     pub(super) fn remote_use_book(&mut self, stack: &ItemStack) -> bool {
@@ -261,39 +229,6 @@ impl Game<'_> {
         }
         self.write_book(slot, pages, title);
         self.capture(true);
-    }
-    /// The book and quill at `slot` takes the pages, or with a title becomes
-    /// the written book its writer signed.
-    fn write_book(&mut self, slot: usize, pages: Vec<String>, title: Option<String>) {
-        let author = self
-            .lan_acting_name
-            .clone()
-            .unwrap_or_else(|| super::chat::PLAYER_NAME.to_owned());
-        let Some(stack) = self
-            .stack_in_mut(slot)
-            .as_mut()
-            .filter(|s| &*s.item == "minecraft:writable_book")
-        else {
-            return;
-        };
-        if let Some(title) = title {
-            let mut written = ItemStack::new("minecraft:written_book", 1);
-            written.data_mut().written = Some(WrittenBook {
-                title,
-                author,
-                generation: 0,
-                pages,
-                page_tags: Vec::new(),
-            });
-            *stack = written;
-        } else {
-            stack.data_mut().writable_pages = if pages.iter().all(String::is_empty) {
-                Vec::new()
-            } else {
-                pages
-            };
-            stack.tidy();
-        }
     }
     /// `ServerGamePacketListenerImpl.handleEditBook`: a guest's book in a
     /// hotbar slot or its off hand (`updateBookContents`, `signBook`).
@@ -390,16 +325,6 @@ impl Game<'_> {
         }
         title.clone_from(&title_edit.value);
         true
-    }
-    fn book_title_insert(&mut self, text: &str) {
-        let Some(BookScreen::Edit {
-            title, title_edit, ..
-        }) = self.book.as_mut()
-        else {
-            return;
-        };
-        title_edit.insert_text(text);
-        title.clone_from(&title_edit.value);
     }
     /// `BookEditScreen.keyPressed` on the page, apart from the line moves.
     fn book_page_key(&mut self, key: KeyCode) -> bool {
@@ -870,29 +795,6 @@ impl Game<'_> {
             lectern: Some(key),
         });
     }
-    /// `LecternScreen.bookChanged`: the menu's book slot.
-    pub(super) fn remote_lectern_book(&mut self, book: Option<ItemStack>) {
-        if let Some(BookScreen::View {
-            lectern: Some(_),
-            pages,
-            page,
-        }) = self.book.as_mut()
-        {
-            *pages = view_pages(book.as_ref().and_then(ItemStack::data));
-            *page = (*page).min(pages.len().saturating_sub(1));
-        }
-    }
-    /// `LecternScreen.pageChanged`: the menu's page data slot.
-    pub(super) fn remote_lectern_page(&mut self, value: i32) {
-        if let Some(BookScreen::View {
-            lectern: Some(_),
-            pages,
-            page,
-        }) = self.book.as_mut()
-        {
-            *page = (value.max(0) as usize).min(pages.len().saturating_sub(1));
-        }
-    }
     /// The server closed its lectern menu; false when none is open.
     pub(super) fn remote_lectern_closed(&mut self) -> bool {
         if !matches!(
@@ -1301,6 +1203,106 @@ impl Game<'_> {
                     );
                 }
             }
+        }
+    }
+}
+impl crate::game::Sim<'_> {
+    /// The screen a book in hand opens: `BookEditScreen` for a book and
+    /// quill, `BookViewScreen` for a written book.
+    fn book_screen(&self, stack: &ItemStack) -> Option<BookScreen> {
+        Some(match &*stack.item {
+            "minecraft:writable_book" => {
+                let mut pages = stack
+                    .data()
+                    .map(|d| d.writable_pages.clone())
+                    .unwrap_or_default();
+                if pages.is_empty() {
+                    pages.push(String::new());
+                }
+                let mut page_edit = book_page_box();
+                page_edit.set_value(&pages[0]);
+                BookScreen::Edit {
+                    slot: self.held_slot(),
+                    pages,
+                    page: 0,
+                    signing: false,
+                    title: String::new(),
+                    title_edit: book_title_box(),
+                    page_edit,
+                }
+            }
+            "minecraft:written_book" => BookScreen::View {
+                pages: view_pages(stack.data()),
+                page: 0,
+                lectern: None,
+            },
+            _ => return None,
+        })
+    }
+    /// The book and quill at `slot` takes the pages, or with a title becomes
+    /// the written book its writer signed.
+    fn write_book(&mut self, slot: usize, pages: Vec<String>, title: Option<String>) {
+        let author = self
+            .lan_acting_name
+            .clone()
+            .unwrap_or_else(|| super::chat::PLAYER_NAME.to_owned());
+        let Some(stack) = self
+            .stack_in_mut(slot)
+            .as_mut()
+            .filter(|s| &*s.item == "minecraft:writable_book")
+        else {
+            return;
+        };
+        if let Some(title) = title {
+            let mut written = ItemStack::new("minecraft:written_book", 1);
+            written.data_mut().written = Some(WrittenBook {
+                title,
+                author,
+                generation: 0,
+                pages,
+                page_tags: Vec::new(),
+            });
+            *stack = written;
+        } else {
+            stack.data_mut().writable_pages = if pages.iter().all(String::is_empty) {
+                Vec::new()
+            } else {
+                pages
+            };
+            stack.tidy();
+        }
+    }
+    fn book_title_insert(&mut self, text: &str) {
+        let Some(BookScreen::Edit {
+            title, title_edit, ..
+        }) = self.book.as_mut()
+        else {
+            return;
+        };
+        title_edit.insert_text(text);
+        title.clone_from(&title_edit.value);
+    }
+    /// `LecternScreen.bookChanged`: the menu's book slot.
+    pub(super) fn remote_lectern_book(&mut self, book: Option<ItemStack>) {
+        if let Some(BookScreen::View {
+            lectern: Some(_),
+            pages,
+            page,
+        }) = self.book.as_mut()
+        {
+            *pages = view_pages(book.as_ref().and_then(ItemStack::data));
+            *page = (*page).min(pages.len().saturating_sub(1));
+        }
+    }
+    /// `LecternScreen.pageChanged`: the menu's page data slot.
+    pub(super) fn remote_lectern_page(&mut self, value: i32) {
+        if let Some(BookScreen::View {
+            lectern: Some(_),
+            pages,
+            page,
+        }) = self.book.as_mut()
+        {
+            *page = (value.max(0) as usize).min(pages.len().saturating_sub(1));
         }
     }
 }

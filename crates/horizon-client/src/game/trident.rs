@@ -190,24 +190,6 @@ impl Game<'_> {
         let (at, top) = (p.position, p.bounds().max_position().y);
         water || self.in_rain(at, top)
     }
-    /// The living entities a spinning player can touch this tick, for
-    /// `LivingEntity.checkAutoSpinAttack` (none when not spinning).
-    pub(super) fn spin_targets(&self) -> Vec<(u32, Aabb)> {
-        let Some(p) = self
-            .player
-            .as_ref()
-            .filter(|p| p.auto_spin_attack_ticks > 0)
-        else {
-            return Vec::new();
-        };
-        // A spin moves a few blocks a tick at most.
-        let near = p.bounds().inflate(Vec3::new(16.0, 16.0, 16.0));
-        self.mobs
-            .iter()
-            .filter(|m| m.alive() && m.bounds().intersects(near))
-            .map(|m| (m.id, m.bounds()))
-            .collect()
-    }
     /// `Player.doAutoAttackOnTouch`: the touched entity takes `Player.attack`
     /// with the spin's damage; once the spin is over its damage is cleared.
     pub(super) fn end_spin_attack(&mut self, hit: Option<u32>) {
@@ -663,5 +645,25 @@ impl Game<'_> {
                 out,
             );
         }
+    }
+}
+impl crate::game::Sim<'_> {
+    /// The living entities a spinning player can touch this tick, for
+    /// `LivingEntity.checkAutoSpinAttack` (none when not spinning).
+    pub(super) fn spin_targets(&self) -> Vec<(u32, Aabb)> {
+        let Some(p) = self
+            .player
+            .as_ref()
+            .filter(|p| p.auto_spin_attack_ticks > 0)
+        else {
+            return Vec::new();
+        };
+        // A spin moves a few blocks a tick at most.
+        let near = p.bounds().inflate(Vec3::new(16.0, 16.0, 16.0));
+        self.mobs
+            .iter()
+            .filter(|m| m.alive() && m.bounds().intersects(near))
+            .map(|m| (m.id, m.bounds()))
+            .collect()
     }
 }

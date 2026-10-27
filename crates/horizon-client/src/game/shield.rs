@@ -15,103 +15,6 @@ use horizon_world::blocking_rules::{BlockingRules, DamageReduction, ItemDamageFu
 pub(super) const OFFHAND_SLOT: usize = 40;
 
 impl Game<'_> {
-    /// The stack in an inventory slot, the off hand at `OFFHAND_SLOT`.
-    pub(super) fn stack_in(&self, slot: usize) -> Option<&ItemStack> {
-        if slot == OFFHAND_SLOT {
-            self.offhand.as_ref()
-        } else {
-            self.inventory.get(slot)?.as_ref()
-        }
-    }
-    pub(super) fn stack_in_mut(&mut self, slot: usize) -> &mut Option<ItemStack> {
-        if slot == OFFHAND_SLOT {
-            &mut self.offhand
-        } else {
-            &mut self.inventory[slot]
-        }
-    }
-    pub(super) fn blocks_attacks(
-        &self,
-        stack: &ItemStack,
-    ) -> Option<&horizon_client::items::BlocksAttacks> {
-        self.res.items().get(&stack.item)?.blocks_attacks.as_ref()
-    }
-    /// `ShieldItem.use` (ItemUtils.startUsingInstantly) for the hand at `slot`;
-    /// false when that hand holds no blocking item or it is on cooldown.
-    pub(super) fn raise_shield(&mut self, slot: usize) -> bool {
-        let Some(stack) = self.stack_in(slot) else {
-            return false;
-        };
-        if self.blocks_attacks(stack).is_none() {
-            return false;
-        }
-        if self.shield_cooldown == 0 && self.using.is_none() {
-            self.using = Some((slot, 0));
-        }
-        true
-    }
-    /// `LivingEntity.getItemBlockingWith` and the inputs of `applyItemBlocking`
-    /// for an attack from `from` (`DamageSource.getSourcePosition`).
-    pub(super) fn player_blocking(
-        &self,
-        from: Option<[f64; 3]>,
-        damage_type: &str,
-        pierce: bool,
-    ) -> Option<Blocking> {
-        let (slot, ticks) = self.using?;
-        let component = self.blocks_attacks(self.stack_in(slot)?)?;
-        // BlocksAttacks.blockDelayTicks: Math.round(seconds * 20).
-        if (ticks as i32) < (component.delay_seconds * 20.0).round() as i32 {
-            return None;
-        }
-        let tags = &self.res.stations().enchantments.damage_tags;
-        let matches = |spec: &str| match spec.strip_prefix('#') {
-            Some(tag) => tags.get(tag).is_some_and(|t| t.contains(damage_type)),
-            None => spec == damage_type,
-        };
-        let p = self.player.as_ref()?;
-        let angle = match from {
-            Some(src) => {
-                // calculateViewVector(0, yHeadRot) against the flattened direction.
-                let yaw = (-self.yaw).to_radians();
-                let view = [yaw.sin() as f64, yaw.cos() as f64];
-                let (dx, dz) = (src[0] - p.position.x, src[2] - p.position.z);
-                let len = (dx * dx + dz * dz).sqrt();
-                let to = if len < 1.0e-4 {
-                    [0.0, 0.0]
-                } else {
-                    [dx / len, dz / len]
-                };
-                (to[0] * view[0] + to[1] * view[1]).acos()
-            }
-            None => f64::from(std::f32::consts::PI),
-        };
-        let (threshold, base, factor) = component.item_damage;
-        Some(Blocking {
-            rules: BlockingRules {
-                delay_seconds: component.delay_seconds,
-                disable_scale: component.disable_scale,
-                reductions: component
-                    .reductions
-                    .iter()
-                    .map(|r| DamageReduction {
-                        horizontal_angle: r.horizontal_angle,
-                        types: r.types.as_ref().map(|t| t.iter().any(|s| matches(s))),
-                        base: r.base,
-                        factor: r.factor,
-                    })
-                    .collect(),
-                item_damage: ItemDamageFunction {
-                    threshold,
-                    base,
-                    factor,
-                },
-            },
-            bypassed: component.bypassed_by.as_deref().is_some_and(matches),
-            pierce,
-            angle,
-        })
-    }
     /// After a hurt with the shield raised: `hurtBlockingItem`, `onBlocked`
     /// and, for melee from a mob, `blockUsingItem`.
     pub(super) fn after_block(
@@ -272,5 +175,104 @@ impl Game<'_> {
                 self.front.audio.play(sound, at, 0.8, pitch);
             }
         }
+    }
+}
+impl crate::game::Sim<'_> {
+    /// The stack in an inventory slot, the off hand at `OFFHAND_SLOT`.
+    pub(super) fn stack_in(&self, slot: usize) -> Option<&ItemStack> {
+        if slot == OFFHAND_SLOT {
+            self.offhand.as_ref()
+        } else {
+            self.inventory.get(slot)?.as_ref()
+        }
+    }
+    pub(super) fn stack_in_mut(&mut self, slot: usize) -> &mut Option<ItemStack> {
+        if slot == OFFHAND_SLOT {
+            &mut self.offhand
+        } else {
+            &mut self.inventory[slot]
+        }
+    }
+    pub(super) fn blocks_attacks(
+        &self,
+        stack: &ItemStack,
+    ) -> Option<&horizon_client::items::BlocksAttacks> {
+        self.res.items().get(&stack.item)?.blocks_attacks.as_ref()
+    }
+    /// `ShieldItem.use` (ItemUtils.startUsingInstantly) for the hand at `slot`;
+    /// false when that hand holds no blocking item or it is on cooldown.
+    pub(super) fn raise_shield(&mut self, slot: usize) -> bool {
+        let Some(stack) = self.stack_in(slot) else {
+            return false;
+        };
+        if self.blocks_attacks(stack).is_none() {
+            return false;
+        }
+        if self.shield_cooldown == 0 && self.using.is_none() {
+            self.using = Some((slot, 0));
+        }
+        true
+    }
+    /// `LivingEntity.getItemBlockingWith` and the inputs of `applyItemBlocking`
+    /// for an attack from `from` (`DamageSource.getSourcePosition`).
+    pub(super) fn player_blocking(
+        &self,
+        from: Option<[f64; 3]>,
+        damage_type: &str,
+        pierce: bool,
+    ) -> Option<Blocking> {
+        let (slot, ticks) = self.using?;
+        let component = self.blocks_attacks(self.stack_in(slot)?)?;
+        // BlocksAttacks.blockDelayTicks: Math.round(seconds * 20).
+        if (ticks as i32) < (component.delay_seconds * 20.0).round() as i32 {
+            return None;
+        }
+        let tags = &self.res.stations().enchantments.damage_tags;
+        let matches = |spec: &str| match spec.strip_prefix('#') {
+            Some(tag) => tags.get(tag).is_some_and(|t| t.contains(damage_type)),
+            None => spec == damage_type,
+        };
+        let p = self.player.as_ref()?;
+        let angle = match from {
+            Some(src) => {
+                // calculateViewVector(0, yHeadRot) against the flattened direction.
+                let yaw = (-self.yaw).to_radians();
+                let view = [yaw.sin() as f64, yaw.cos() as f64];
+                let (dx, dz) = (src[0] - p.position.x, src[2] - p.position.z);
+                let len = (dx * dx + dz * dz).sqrt();
+                let to = if len < 1.0e-4 {
+                    [0.0, 0.0]
+                } else {
+                    [dx / len, dz / len]
+                };
+                (to[0] * view[0] + to[1] * view[1]).acos()
+            }
+            None => f64::from(std::f32::consts::PI),
+        };
+        let (threshold, base, factor) = component.item_damage;
+        Some(Blocking {
+            rules: BlockingRules {
+                delay_seconds: component.delay_seconds,
+                disable_scale: component.disable_scale,
+                reductions: component
+                    .reductions
+                    .iter()
+                    .map(|r| DamageReduction {
+                        horizontal_angle: r.horizontal_angle,
+                        types: r.types.as_ref().map(|t| t.iter().any(|s| matches(s))),
+                        base: r.base,
+                        factor: r.factor,
+                    })
+                    .collect(),
+                item_damage: ItemDamageFunction {
+                    threshold,
+                    base,
+                    factor,
+                },
+            },
+            bypassed: component.bypassed_by.as_deref().is_some_and(matches),
+            pierce,
+            angle,
+        })
     }
 }

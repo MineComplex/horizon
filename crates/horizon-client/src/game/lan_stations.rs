@@ -165,49 +165,6 @@ impl Game<'_> {
         self.lan_send_lectern(host, conn, true);
     }
 
-    /// The lectern's book and page for the client: everything (`all`), or
-    /// what changed since it was last sent.
-    fn lan_send_lectern(&mut self, host: &mut LanHost, conn: u32, all: bool) {
-        let Some(gl) = host.play.get_mut(&conn).and_then(|p| p.lectern.as_mut()) else {
-            return;
-        };
-        let (book, page) = match self.world.block_entities.get(&gl.key) {
-            Some(BlockEntity::Lectern(l)) => (l.book.clone(), l.page),
-            _ => (None, 0),
-        };
-        let now = Some((book.clone(), page));
-        if !all && gl.sent == now {
-            return;
-        }
-        let page_changed = gl.sent.as_ref().is_none_or(|(_, p)| *p != page);
-        gl.sent = now;
-        gl.state = (gl.state + 1) & 0x7FFF;
-        let (window, state) = (gl.window, gl.state);
-        let carried = host
-            .hub
-            .guests
-            .iter()
-            .find(|g| g.conn == conn)
-            .and_then(|g| g.carried.clone());
-        let content = C::ContainerSetContent(play::ContainerSetContent {
-            container: window,
-            state,
-            items: vec![host.hub.stack(&book)],
-            carried: host.hub.stack(&carried),
-        });
-        host.hub.send_to(conn, &content);
-        if all || page_changed {
-            host.hub.send_to(
-                conn,
-                &C::ContainerSetData(play::ContainerSetData {
-                    container: window,
-                    id: 0,
-                    value: page as i16,
-                }),
-            );
-        }
-    }
-
     /// Runs `op` on the guest's lectern menu (window `window`) with their
     /// inventory, the block entity takes the book and page back, and the
     /// client gets what changed. False when no such window is open.
@@ -273,29 +230,6 @@ impl Game<'_> {
             // A broken anvil closes the menu on the next stillValid check.
             self.anvil_used(gs.pos, creative);
         }
-    }
-
-    /// `EnchantmentMenu.slotsChanged` with a level: the costs and clues for
-    /// the guest's seed and the bookshelves around the table.
-    fn lan_enchant_offers(&mut self, host: &LanHost, gi: usize, gs: &mut GuestStation) {
-        let seed = host.hub.guests[gi].xp_seed;
-        let bookcases = self.count_bookshelves(gs.pos);
-        let offers = horizon_client::stations::enchant_offers(
-            &self.res.stations().enchantments,
-            self.res.items(),
-            seed,
-            bookcases,
-            gs.menu.slot(0),
-        );
-        for i in 0..3 {
-            gs.menu.data[i] = offers.costs[i];
-            let clue = offers.clues[i].as_ref();
-            gs.menu.data[4 + i] = clue
-                .and_then(|(e, _)| host.hub.registry_id("minecraft:enchantment", e))
-                .unwrap_or(-1);
-            gs.menu.data[7 + i] = clue.map_or(-1, |(_, l)| *l as i32);
-        }
-        gs.menu.data[3] = seed;
     }
 
     /// `EnchantmentMenu.clickMenuButton`'s `access.execute`: the item gets
@@ -408,46 +342,6 @@ impl Game<'_> {
         });
     }
 
-    /// The whole station menu and its changed data slots for the client
-    /// (`sendAllDataToRemote` / `broadcastChanges`).
-    fn lan_send_station(&mut self, host: &mut LanHost, conn: u32) {
-        let Some(gi) = host.hub.guests.iter().position(|g| g.conn == conn) else {
-            return;
-        };
-        let Some(gs) = host.play.get_mut(&conn).and_then(|p| p.station.as_mut()) else {
-            return;
-        };
-        gs.state = (gs.state + 1) & 0x7FFF;
-        let own = gs.menu.slot_count() - 36;
-        let mut items: Vec<Option<ItemStack>> =
-            (0..own).map(|s| gs.menu.slot(s).cloned()).collect();
-        let g = &host.hub.guests[gi];
-        items.extend((9..36).chain(0..9).map(|i| g.inventory[i].clone()));
-        let carried = g.carried.clone();
-        let packet = C::ContainerSetContent(play::ContainerSetContent {
-            container: gs.window,
-            state: gs.state,
-            items: items.iter().map(|s| host.hub.stack(s)).collect(),
-            carried: host.hub.stack(&carried),
-        });
-        gs.sent_data.resize(gs.menu.data.len(), i32::MIN);
-        let mut data = Vec::new();
-        for (k, &v) in gs.menu.data.iter().enumerate() {
-            if gs.sent_data[k] != v {
-                gs.sent_data[k] = v;
-                data.push(C::ContainerSetData(play::ContainerSetData {
-                    container: gs.window,
-                    id: k as i16,
-                    value: v as i16,
-                }));
-            }
-        }
-        host.hub.send_to(conn, &packet);
-        for packet in data {
-            host.hub.send_to(conn, &packet);
-        }
-    }
-
     /// `AbstractContainerMenu.removed` of the guest's station (`window`;
     /// None closes it whichever it is): the carried stack and the inputs go
     /// back to the inventory, what doesn't fit is dropped. False when no such
@@ -500,21 +394,6 @@ impl Game<'_> {
             self.lan_place_back(host, gi, back);
         }
         true
-    }
-
-    /// `BeaconBlockEntity.dataAccess`: the pyramid's levels and the powers
-    /// (`BeaconMenu.encodeEffect`: the `mob_effect` id + 1, 0 for none).
-    fn beacon_data(&self, host: &LanHost, pos: [i32; 3]) -> [i32; 3] {
-        let Some(BlockEntity::Beacon(b)) = self.world.block_entities.get(&(pos[0], pos[1], pos[2]))
-        else {
-            return [0; 3];
-        };
-        let encode = |e: &Option<String>| {
-            e.as_deref()
-                .and_then(|n| host.hub.registry_id("minecraft:mob_effect", n))
-                .map_or(0, |id| id + 1)
-        };
-        [b.levels, encode(&b.primary), encode(&b.secondary)]
     }
 
     /// `ServerGamePacketListenerImpl.handleSetBeaconPacket`: the guest's
@@ -613,6 +492,125 @@ impl Game<'_> {
                 }
             }
         }
+    }
+}
+impl crate::game::Sim<'_> {
+    /// The lectern's book and page for the client: everything (`all`), or
+    /// what changed since it was last sent.
+    fn lan_send_lectern(&mut self, host: &mut LanHost, conn: u32, all: bool) {
+        let Some(gl) = host.play.get_mut(&conn).and_then(|p| p.lectern.as_mut()) else {
+            return;
+        };
+        let (book, page) = match self.world.block_entities.get(&gl.key) {
+            Some(BlockEntity::Lectern(l)) => (l.book.clone(), l.page),
+            _ => (None, 0),
+        };
+        let now = Some((book.clone(), page));
+        if !all && gl.sent == now {
+            return;
+        }
+        let page_changed = gl.sent.as_ref().is_none_or(|(_, p)| *p != page);
+        gl.sent = now;
+        gl.state = (gl.state + 1) & 0x7FFF;
+        let (window, state) = (gl.window, gl.state);
+        let carried = host
+            .hub
+            .guests
+            .iter()
+            .find(|g| g.conn == conn)
+            .and_then(|g| g.carried.clone());
+        let content = C::ContainerSetContent(play::ContainerSetContent {
+            container: window,
+            state,
+            items: vec![host.hub.stack(&book)],
+            carried: host.hub.stack(&carried),
+        });
+        host.hub.send_to(conn, &content);
+        if all || page_changed {
+            host.hub.send_to(
+                conn,
+                &C::ContainerSetData(play::ContainerSetData {
+                    container: window,
+                    id: 0,
+                    value: page as i16,
+                }),
+            );
+        }
+    }
+    /// `EnchantmentMenu.slotsChanged` with a level: the costs and clues for
+    /// the guest's seed and the bookshelves around the table.
+    fn lan_enchant_offers(&mut self, host: &LanHost, gi: usize, gs: &mut GuestStation) {
+        let seed = host.hub.guests[gi].xp_seed;
+        let bookcases = self.count_bookshelves(gs.pos);
+        let offers = horizon_client::stations::enchant_offers(
+            &self.res.stations().enchantments,
+            self.res.items(),
+            seed,
+            bookcases,
+            gs.menu.slot(0),
+        );
+        for i in 0..3 {
+            gs.menu.data[i] = offers.costs[i];
+            let clue = offers.clues[i].as_ref();
+            gs.menu.data[4 + i] = clue
+                .and_then(|(e, _)| host.hub.registry_id("minecraft:enchantment", e))
+                .unwrap_or(-1);
+            gs.menu.data[7 + i] = clue.map_or(-1, |(_, l)| *l as i32);
+        }
+        gs.menu.data[3] = seed;
+    }
+    /// The whole station menu and its changed data slots for the client
+    /// (`sendAllDataToRemote` / `broadcastChanges`).
+    fn lan_send_station(&mut self, host: &mut LanHost, conn: u32) {
+        let Some(gi) = host.hub.guests.iter().position(|g| g.conn == conn) else {
+            return;
+        };
+        let Some(gs) = host.play.get_mut(&conn).and_then(|p| p.station.as_mut()) else {
+            return;
+        };
+        gs.state = (gs.state + 1) & 0x7FFF;
+        let own = gs.menu.slot_count() - 36;
+        let mut items: Vec<Option<ItemStack>> =
+            (0..own).map(|s| gs.menu.slot(s).cloned()).collect();
+        let g = &host.hub.guests[gi];
+        items.extend((9..36).chain(0..9).map(|i| g.inventory[i].clone()));
+        let carried = g.carried.clone();
+        let packet = C::ContainerSetContent(play::ContainerSetContent {
+            container: gs.window,
+            state: gs.state,
+            items: items.iter().map(|s| host.hub.stack(s)).collect(),
+            carried: host.hub.stack(&carried),
+        });
+        gs.sent_data.resize(gs.menu.data.len(), i32::MIN);
+        let mut data = Vec::new();
+        for (k, &v) in gs.menu.data.iter().enumerate() {
+            if gs.sent_data[k] != v {
+                gs.sent_data[k] = v;
+                data.push(C::ContainerSetData(play::ContainerSetData {
+                    container: gs.window,
+                    id: k as i16,
+                    value: v as i16,
+                }));
+            }
+        }
+        host.hub.send_to(conn, &packet);
+        for packet in data {
+            host.hub.send_to(conn, &packet);
+        }
+    }
+    /// `BeaconBlockEntity.dataAccess`: the pyramid's levels and the powers
+    /// (`BeaconMenu.encodeEffect`: the `mob_effect` id + 1, 0 for none).
+    fn beacon_data(&self, host: &LanHost, pos: [i32; 3]) -> [i32; 3] {
+        let Some(BlockEntity::Beacon(b)) = self.world.block_entities.get(&(pos[0], pos[1], pos[2]))
+        else {
+            return [0; 3];
+        };
+        let encode = |e: &Option<String>| {
+            e.as_deref()
+                .and_then(|n| host.hub.registry_id("minecraft:mob_effect", n))
+                .map_or(0, |id| id + 1)
+        };
+        [b.levels, encode(&b.primary), encode(&b.secondary)]
     }
 }
 

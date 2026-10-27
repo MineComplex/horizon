@@ -253,26 +253,6 @@ impl Game<'_> {
             ("insertion".into(), name.into()),
         ])
     }
-    fn source_position(&self) -> [f64; 3] {
-        if let Some(s) = &self.command_source {
-            return s.pos;
-        }
-        match &self.player {
-            Some(p) => [p.position.x, p.position.y, p.position.z],
-            None => self.server_position(),
-        }
-    }
-    /// MinecraftServer.createCommandSourceStack's position: the corner of
-    /// the respawn block (`Vec3.atLowerCornerOf`).
-    pub(super) fn server_position(&self) -> [f64; 3] {
-        self.spawn.map_or([0.0, 64.0, 0.0], |s| {
-            [s.x.floor(), s.y.floor(), s.z.floor()]
-        })
-    }
-    fn source_rotation(&self) -> [f32; 2] {
-        self.command_source
-            .map_or([self.yaw, self.pitch], |s| s.rot)
-    }
     /// LocalCoordinates use the anchored position; world coordinates the position.
     pub(super) fn resolve_coords(&self, c: &Coordinates) -> [f64; 3] {
         let origin = match (c, &self.command_source) {
@@ -280,12 +260,6 @@ impl Game<'_> {
             _ => self.source_position(),
         };
         c.position(origin, self.source_rotation())
-    }
-    pub(super) fn coords(&self, ctx: &Context, name: &str) -> Option<Coordinates> {
-        match ctx.get(name) {
-            Some(Arg::Coords(c)) => Some(c.clone()),
-            _ => None,
-        }
     }
     pub(super) fn position_arg(&self, ctx: &Context, name: &str) -> Option<[f64; 3]> {
         self.coords(ctx, name).map(|c| self.resolve_coords(&c))
@@ -403,57 +377,6 @@ impl Game<'_> {
                 .filter(|d| d.id == id)
                 .map(|d| [d.position.x, d.position.y, d.position.z]),
         }
-    }
-    pub(super) fn target_type(&self, t: Target) -> String {
-        match t {
-            Target::Player | Target::Guest(_) => "minecraft:player".into(),
-            Target::Mob(id) => self
-                .mobs
-                .iter()
-                .find(|m| m.id == id)
-                .map_or_else(String::new, |m| {
-                    horizon_client::command::args::normalize(&m.kind.id)
-                }),
-            Target::Item(_) => "minecraft:item".into(),
-            Target::Orb(_) => "minecraft:experience_orb".into(),
-            Target::Projectile(id) => self
-                .creatures
-                .projectiles
-                .iter()
-                .find(|p| p.id == id)
-                .map_or_else(String::new, |p| p.kind.id().into()),
-            Target::Stand(_) => "minecraft:armor_stand".into(),
-            Target::Frame(id) => {
-                if self.item_frames.iter().any(|f| f.id == id && f.glow) {
-                    "minecraft:glow_item_frame".into()
-                } else {
-                    "minecraft:item_frame".into()
-                }
-            }
-            Target::Painting(_) => "minecraft:painting".into(),
-            Target::Boat(id) => self
-                .boats
-                .iter()
-                .find(|b| b.id == id)
-                .map_or_else(|| "minecraft:oak_boat".into(), |b| b.entity_type()),
-            Target::Cart(id) => self
-                .carts
-                .iter()
-                .find(|c| c.id == id)
-                .map_or_else(|| "minecraft:minecart".into(), |c| c.kind.id().into()),
-            Target::Other(id) => self
-                .others
-                .iter()
-                .find(|o| o.id == id)
-                .map_or_else(String::new, |o| o.kind.clone()),
-            Target::Crystal(_) => "minecraft:end_crystal".into(),
-            Target::Dragon(_) => "minecraft:ender_dragon".into(),
-        }
-    }
-    /// The name of the player the game acts for: a guest's own while their
-    /// command or action runs (`Player.getName`).
-    pub(super) fn acting_player_name(&self) -> &str {
-        self.lan_acting_name.as_deref().unwrap_or(PLAYER_NAME)
     }
     /// Entity.getDisplayName.
     pub(super) fn target_name(&self, t: Target) -> Text {
@@ -671,73 +594,6 @@ impl Game<'_> {
             })
             .collect()
     }
-    /// The entities of the level in place a selector can find.
-    fn level_candidates(&self) -> Vec<Target> {
-        use horizon_client::projectiles::ProjectileKind as K;
-        let mut candidates = Vec::new();
-        candidates.extend(
-            self.mobs
-                .iter()
-                .filter(|m| m.death_time == 0)
-                .map(|m| Target::Mob(m.id)),
-        );
-        candidates.extend(self.dropped.iter().map(|i| Target::Item(i.id)));
-        candidates.extend(self.orbs.iter().map(|o| Target::Orb(o.id)));
-        candidates.extend(
-            self.creatures
-                .projectiles
-                .iter()
-                // The kinds /data can write (entity_nbt).
-                .filter(|p| {
-                    p.is_arrow() || matches!(p.kind, K::LargeFireball { .. } | K::SmallFireball)
-                })
-                .map(|p| Target::Projectile(p.id)),
-        );
-        candidates.extend(self.armor_stands.iter().map(|a| Target::Stand(a.id)));
-        candidates.extend(self.item_frames.iter().map(|f| Target::Frame(f.id)));
-        candidates.extend(self.paintings.iter().map(|p| Target::Painting(p.id)));
-        candidates.extend(self.boats.iter().map(|b| Target::Boat(b.id)));
-        candidates.extend(self.carts.iter().map(|c| Target::Cart(c.id)));
-        candidates.extend(self.others.iter().map(|o| Target::Other(o.id)));
-        // The End crystals and the dragon (EndCrystal and EnderDragon
-        // are entities of their own).
-        candidates.extend(self.crystals.iter().map(|c| Target::Crystal(c.id)));
-        if let Some(d) = &self.dragon {
-            candidates.push(Target::Dragon(d.id));
-        }
-        candidates
-    }
-    /// The loaded levels, in the order the server holds them: the
-    /// overworld, the nether, the end (MinecraftServer.getAllLevels).
-    fn loaded_dims(&self) -> Vec<Dim> {
-        let mut dims = vec![self.dim];
-        dims.extend(self.levels.parked_dims());
-        dims.sort_by_key(|d| match d {
-            Dim::Overworld => 0,
-            Dim::Nether => 1,
-            Dim::End => 2,
-        });
-        dims
-    }
-    /// Whether the level in place holds the entity a target names.
-    fn level_holds(&self, t: Target) -> bool {
-        match t {
-            // A player is in no level of its own.
-            Target::Player | Target::Guest(_) => true,
-            Target::Mob(id) => self.mobs.iter().any(|m| m.id == id),
-            Target::Item(id) => self.dropped.iter().any(|i| i.id == id),
-            Target::Orb(id) => self.orbs.iter().any(|o| o.id == id),
-            Target::Projectile(id) => self.creatures.projectiles.iter().any(|p| p.id == id),
-            Target::Stand(id) => self.armor_stands.iter().any(|a| a.id == id),
-            Target::Frame(id) => self.item_frames.iter().any(|f| f.id == id),
-            Target::Painting(id) => self.paintings.iter().any(|p| p.id == id),
-            Target::Boat(id) => self.boats.iter().any(|b| b.id == id),
-            Target::Cart(id) => self.carts.iter().any(|c| c.id == id),
-            Target::Other(id) => self.others.iter().any(|o| o.id == id),
-            Target::Crystal(id) => self.crystals.iter().any(|c| c.id == id),
-            Target::Dragon(id) => self.dragon.as_ref().is_some_and(|d| d.id == id),
-        }
-    }
     /// Run `f` with the level that holds the entity a target names in place
     /// (the entity ids are unique across the loaded levels) and put the
     /// level back afterwards. `f` does not run when no level holds the
@@ -764,19 +620,6 @@ impl Game<'_> {
             }
         }
         None
-    }
-    fn entity_tag_matches(&self, tag: &str, ty: &str) -> bool {
-        let path = self.options.resources.join(format!(
-            "data/minecraft/tags/entity_type/{}.json",
-            tag.trim_start_matches("minecraft:")
-        ));
-        serde_json::from_slice::<serde_json::Value>(&std::fs::read(path).unwrap_or_default())
-            .ok()
-            .is_some_and(|v| {
-                v["values"]
-                    .as_array()
-                    .is_some_and(|a| a.iter().any(|e| e.as_str() == Some(ty)))
-            })
     }
     /// EntityArgument.getEntities / getPlayers / getEntity / getPlayer.
     pub(super) fn entities(&mut self, ctx: &Context, name: &str, players: bool) -> R<Vec<Target>> {
@@ -1031,109 +874,6 @@ impl Game<'_> {
             }
         }
         Ok(count)
-    }
-    /// ItemStack.getDisplayName of one `item` with no components.
-    pub(super) fn item_display_name(&self, item: &str) -> Text {
-        self.stack_display_name(&ItemStack {
-            item: item.into(),
-            count: 1,
-            damage: 0,
-            extra: None,
-        })
-    }
-    /// `ItemStack.getDisplayName`: the hover name (custom name in italics,
-    /// a written book's title, a potion's effect name, else the item's
-    /// translated name) in brackets, in the rarity colour and showing the
-    /// stack on hover unless it is empty.
-    pub(super) fn stack_display_name(&self, s: &ItemStack) -> Text {
-        let item = &*s.item;
-        let empty = item == "minecraft:air" || s.count == 0;
-        let custom = s.custom_name();
-        let hover = if let Some(c) = custom {
-            Text::literal(c)
-        } else if let Some(title) = s
-            .data()
-            .and_then(|d| d.written.as_ref())
-            .map(|w| w.title.clone())
-            .filter(|t| !t.trim().is_empty())
-        {
-            Text::literal(title)
-        } else if matches!(
-            item,
-            "minecraft:potion"
-                | "minecraft:splash_potion"
-                | "minecraft:lingering_potion"
-                | "minecraft:tipped_arrow"
-        ) && s.potion().is_some()
-        {
-            Text::translate(
-                &horizon_client::brewing::potion_name_key(item, s.potion()),
-                &[],
-            )
-        } else {
-            // Item.getDescriptionId: a block item's is the block's.
-            let (namespace, path) = item.split_once(':').unwrap_or(("minecraft", item));
-            let key = format!("item.{namespace}.{path}");
-            let key = if self.pack.names.get(&key).is_some() {
-                key
-            } else {
-                format!("block.{namespace}.{path}")
-            };
-            Text::translate(&key, &[])
-        };
-        // Component.empty().append(getHoverName()), italic for a custom name.
-        let mut name = Text::empty().append(hover);
-        if custom.is_some() {
-            name = name.italic();
-        }
-        let wrapped = Text::translate("chat.square_brackets", &[name]);
-        if empty {
-            return wrapped;
-        }
-        let mut rarity = self.item_rarity(item);
-        if !s.enchantments().is_empty() {
-            rarity = match rarity.as_str() {
-                "rare" => "epic".into(),
-                "epic" => rarity,
-                _ => "rare".into(),
-            };
-        }
-        let color = match rarity.as_str() {
-            "uncommon" => text::YELLOW,
-            "rare" => text::AQUA,
-            "epic" => text::LIGHT_PURPLE,
-            _ => text::WHITE,
-        };
-        // HoverEvent.ShowItem: the count only when it is not one.
-        let mut shown = serde_json::json!({"action": "show_item", "id": item});
-        if s.count != 1 {
-            shown["count"] = s.count.into();
-        }
-        wrapped
-            .with_color(color)
-            .with_component_fields(vec![("hover_event".into(), shown)])
-    }
-    pub(super) fn item_rarity(&self, item: &str) -> String {
-        static RARITY: std::sync::OnceLock<std::collections::HashMap<String, String>> =
-            std::sync::OnceLock::new();
-        let map = RARITY.get_or_init(|| {
-            let v: serde_json::Value = serde_json::from_slice(
-                &std::fs::read(self.options.resources.join("items.json")).unwrap_or_default(),
-            )
-            .unwrap_or_default();
-            v.as_object()
-                .map(|o| {
-                    o.iter()
-                        .filter_map(|(k, c)| {
-                            c["minecraft:rarity"]
-                                .as_str()
-                                .map(|r| (k.clone(), r.to_owned()))
-                        })
-                        .collect()
-                })
-                .unwrap_or_default()
-        });
-        map.get(item).cloned().unwrap_or_else(|| "common".into())
     }
     fn cmd_give(&mut self, ctx: &Context) -> R<i32> {
         let Some(Arg::Item(ItemInput { id, components, .. })) = ctx.get("item").cloned() else {
@@ -1895,50 +1635,6 @@ impl Game<'_> {
         self.feedback(Text::translate("commands.summon.success", &[name]));
         Ok(1)
     }
-    /// What changes when an entity spawns, kinds that take their id only
-    /// when first tracked (primed TNT, falling blocks, projectiles)
-    /// included: a summon compares it before and after.
-    fn spawned_mark(&self) -> (u32, usize) {
-        (
-            self.next_entity,
-            self.tnts.len() + self.falling.len() + self.creatures.projectiles.len(),
-        )
-    }
-    /// BlockStateArgument -> registry state.
-    pub(super) fn block_state(&self, b: &BlockInput) -> R<BlockStateId> {
-        let state = horizon_world::chunk::BlockState {
-            name: b.id.clone(),
-            properties: b.properties.iter().cloned().collect(),
-        };
-        self.pack
-            .assets
-            .registry
-            .resolve(&state)
-            .map_err(|_| err("argument.block.id.invalid", &[&b.id]))
-    }
-    /// BlockPredicateArgument test.
-    fn block_matches(&self, b: &BlockInput, state: BlockStateId) -> bool {
-        let Some(s) = self.pack.assets.registry.state(state) else {
-            return false;
-        };
-        let name_ok = if b.tag {
-            let tag = b.id.trim_start_matches("minecraft:");
-            self.res
-                .items()
-                .block_tags
-                .get(tag)
-                .or_else(|| self.res.items().block_tags.get(&b.id))
-                .is_some_and(|set| {
-                    set.contains(&s.name) || set.contains(s.name.trim_start_matches("minecraft:"))
-                })
-        } else {
-            s.name == b.id
-        };
-        name_ok
-            && b.properties
-                .iter()
-                .all(|(k, v)| s.properties.get(k) == Some(v))
-    }
     /// Place a state like BlockInput.place: false when nothing changed.
     pub(super) fn place_state(
         &mut self,
@@ -2057,79 +1753,6 @@ impl Game<'_> {
         self.world.block_entities.insert(key, new);
         self.world.modified.insert((pos[0] >> 4, pos[2] >> 4));
         true
-    }
-    /// RandomizableContainer.tryLoadLootTable for a tag a command gives a
-    /// container (`setblock`, `data`): an empty container with a `LootTable`
-    /// is rolled now, as a loaded chunk's are (`save::roll_loaded_loot`), and
-    /// the roll is kept with its chunk, so that the container saves, and
-    /// `data get` shows, its table and seed until its items change. A tag
-    /// without one drops what the container had. True when it had a table.
-    pub(super) fn take_loot_table(
-        &mut self,
-        key: (i32, i32, i32),
-        tag: &horizon_world::nbt::Tag,
-        entity: &mut horizon_client::containers::BlockEntity,
-    ) -> bool {
-        use horizon_client::{containers::BlockEntity, save, structure_blocks};
-        let table = save::text(tag.get("LootTable"));
-        let rolled = match (table, entity) {
-            (Some(table), BlockEntity::Chest(slots)) if slots.iter().all(Option::is_none) => {
-                let loot = structure_blocks::loot_data(&self.options.resources);
-                let at = Vec3::new(f64::from(key.0), f64::from(key.1), f64::from(key.2));
-                let biome = self.biome_name_at(at).unwrap_or_default();
-                Some(structure_blocks::roll_container(
-                    slots,
-                    loot.as_deref(),
-                    table,
-                    structure_blocks::loot_seed(tag),
-                    key,
-                    &biome,
-                ))
-            }
-            _ => None,
-        };
-        let Some(chunk) = self.world.chunks.get_mut(&(key.0 >> 4, key.2 >> 4)) else {
-            return false;
-        };
-        let held = |c: &horizon_client::chunk::Chunk| {
-            c.saved
-                .as_ref()
-                .is_some_and(|s| s.rolled_loot.iter().any(|r| r.pos == key))
-        };
-        if rolled.is_none() && !held(chunk) {
-            return false;
-        }
-        let chunk = std::sync::Arc::make_mut(chunk);
-        let mut extras = chunk
-            .saved
-            .take()
-            .map(std::sync::Arc::unwrap_or_clone)
-            .unwrap_or_default();
-        extras.rolled_loot.retain(|r| r.pos != key);
-        let taken = rolled.is_some();
-        extras.rolled_loot.extend(rolled);
-        chunk.saved = Some(std::sync::Arc::new(extras));
-        taken
-    }
-    /// The loot table and seed a container still holding its roll saves
-    /// (`RolledLoot::restore`), in place of its items.
-    pub(super) fn restore_loot_table(
-        &self,
-        key: (i32, i32, i32),
-        tag: &mut horizon_world::nbt::Tag,
-    ) {
-        let horizon_world::nbt::Tag::Compound(map) = tag else {
-            return;
-        };
-        let rolled = self
-            .world
-            .chunks
-            .get(&(key.0 >> 4, key.2 >> 4))
-            .and_then(|c| c.saved.as_ref())
-            .and_then(|s| s.rolled_loot.iter().find(|r| r.pos == key));
-        if let Some(r) = rolled {
-            r.restore(map);
-        }
     }
     fn cmd_fill(&mut self, ctx: &Context) -> R<i32> {
         let a = self.block_pos_arg(ctx, "from")?;
@@ -2286,28 +1909,6 @@ impl Game<'_> {
         }
         self.feedback(Text::tr("commands.clone.success", &[&count]));
         Ok(count)
-    }
-    /// Player.giveExperiencePoints including negative amounts.
-    fn give_points(&mut self, amount: i32) {
-        let e = &mut self.experience;
-        e.progress += amount as f32 / horizon_client::entities::Experience::needed(e.level) as f32;
-        e.total = e.total.saturating_add(amount).clamp(0, i32::MAX);
-        while e.progress < 0.0 {
-            let f = e.progress * horizon_client::entities::Experience::needed(e.level) as f32;
-            if e.level > 0 {
-                e.level -= 1;
-                e.progress = 1.0 + f / horizon_client::entities::Experience::needed(e.level) as f32;
-            } else {
-                e.level = 0;
-                e.progress = 0.0;
-            }
-        }
-        while e.progress >= 1.0 {
-            e.progress =
-                (e.progress - 1.0) * horizon_client::entities::Experience::needed(e.level) as f32;
-            e.level += 1;
-            e.progress /= horizon_client::entities::Experience::needed(e.level) as f32;
-        }
     }
     /// AdvancementCommands.perform / performCriterion.
     fn cmd_advancement(&mut self, ctx: &Context) -> R<i32> {
@@ -2469,29 +2070,6 @@ impl Game<'_> {
             &[Text::literal(amount.to_string()), who],
         ));
         Ok(changed.len() as i32)
-    }
-    /// ExperienceCommand's add and set on the player in place: false when
-    /// the points to set do not fit the level.
-    fn change_experience(&mut self, add: bool, levels: bool, amount: i32) -> bool {
-        if add {
-            if levels {
-                self.experience.level = (self.experience.level + amount).max(0);
-                if self.experience.level == 0 && amount < 0 {
-                    self.experience.progress = 0.0;
-                }
-            } else {
-                self.give_points(amount);
-            }
-        } else if levels {
-            self.experience.level = amount;
-        } else {
-            let needed = horizon_client::entities::Experience::needed(self.experience.level);
-            if amount > needed - 1 {
-                return false;
-            }
-            self.experience.progress = amount as f32 / needed as f32;
-        }
-        true
     }
     fn cmd_gamerule(&mut self, ctx: &Context) -> R<i32> {
         let Some(name) = ctx.literals.get(1).cloned() else {
@@ -2658,107 +2236,6 @@ impl Game<'_> {
         self.feedback(Text::translate("commands.setworldspawn.success", &args));
         Ok(1)
     }
-    fn item_matches(&self, predicate: &ItemInput, item: &str) -> bool {
-        if predicate.any {
-            return true;
-        }
-        if predicate.tag {
-            let tag = predicate.id.trim_start_matches("minecraft:");
-            return self
-                .res
-                .items()
-                .item_tags
-                .get(tag)
-                .or_else(|| self.res.items().item_tags.get(&predicate.id))
-                .is_some_and(|s| {
-                    s.contains(item) || s.contains(item.trim_start_matches("minecraft:"))
-                });
-        }
-        predicate.id == item
-    }
-    /// `ItemPredicateArgument`: the item test and its `[...]` component
-    /// tests (presence, `=` equality, `!` negation, `|` alternatives).
-    pub(super) fn stack_matches(&self, predicate: &ItemInput, stack: &ItemStack) -> bool {
-        if !self.item_matches(predicate, &stack.item) {
-            return false;
-        }
-        let Some(tests) = predicate.components.as_deref() else {
-            return true;
-        };
-        let inner = tests
-            .trim()
-            .strip_prefix('[')
-            .and_then(|t| t.strip_suffix(']'))
-            .unwrap_or("");
-        let components = match horizon_client::item_data::encode_components(stack) {
-            Some(horizon_world::nbt::Tag::Compound(c)) => c,
-            _ => Default::default(),
-        };
-        let test = |term: &str| -> bool {
-            let term = term.trim();
-            let (negated, term) = match term.strip_prefix('!') {
-                Some(t) => (true, t.trim()),
-                None => (false, term),
-            };
-            let split = term.find(['=', '~']).unwrap_or(term.len());
-            let id = term[..split].trim();
-            let id = if id.contains(':') {
-                id.to_owned()
-            } else {
-                format!("minecraft:{id}")
-            };
-            let present = components.get(&id.as_str().into());
-            let result = match term[split..].chars().next() {
-                Some('=') => {
-                    let value = horizon_world::nbt::parse_snbt(term[split + 1..].trim())
-                        .ok()
-                        .map(|(t, _)| t);
-                    match (present, value) {
-                        (Some(have), Some(want)) => {
-                            horizon_client::nbt_path::compare_nbt(&want, Some(have))
-                                && horizon_client::nbt_path::compare_nbt(have, Some(&want))
-                        }
-                        _ => false,
-                    }
-                }
-                Some('~') => {
-                    // Sub-predicates: `count` and component predicates.
-                    let value = horizon_world::nbt::parse_snbt(term[split + 1..].trim())
-                        .ok()
-                        .map(|(t, _)| t);
-                    match (id.as_str(), value) {
-                        ("minecraft:count", Some(v)) => {
-                            let n = i64::from(stack.count);
-                            match &v {
-                                horizon_world::nbt::Tag::Compound(_) => {
-                                    let get = |k: &str| match v.get(k) {
-                                        Some(horizon_world::nbt::Tag::Int(i)) => {
-                                            Some(i64::from(*i))
-                                        }
-                                        _ => None,
-                                    };
-                                    get("min").is_none_or(|m| n >= m)
-                                        && get("max").is_none_or(|m| n <= m)
-                                }
-                                horizon_world::nbt::Tag::Int(i) => n == i64::from(*i),
-                                _ => false,
-                            }
-                        }
-                        (_, Some(v)) => present.is_some_and(|have| {
-                            horizon_client::nbt_path::compare_nbt(&v, Some(have))
-                        }),
-                        _ => false,
-                    }
-                }
-                _ => present.is_some(),
-            };
-            result != negated
-        };
-        split_top_level(inner, ',')
-            .iter()
-            .filter(|t| !t.trim().is_empty())
-            .all(|term| split_top_level(term, '|').iter().any(|alt| test(alt)))
-    }
     fn cmd_clear(&mut self, ctx: &Context) -> R<i32> {
         let targets = if ctx.get("targets").is_some() {
             self.entities(ctx, "targets", true)?
@@ -2859,11 +2336,6 @@ impl Game<'_> {
             }
         }
         removed
-    }
-    /// `PoiTypes`: the point of interest type of a block state.
-    fn poi_type(&self, state: horizon_world::registry::BlockStateId) -> Option<&'static str> {
-        let s = self.pack.assets.registry.state(state)?;
-        horizon_client::save::poi_type(s).map(|(kind, _)| kind)
     }
     /// `LocateCommand.locatePoi`: `PoiManager.findClosestWithType` within
     /// 256 blocks of the source, over the loaded chunks.
@@ -3030,41 +2502,6 @@ impl Game<'_> {
         ));
         Ok(distance)
     }
-    /// The structures of a `worldgen/structure` tag, nested tags expanded.
-    pub(super) fn structure_tag(&self, tag: &str) -> Vec<String> {
-        self.tag_entries("worldgen/structure", tag)
-    }
-    /// The entries of a data pack tag of `registry`, nested tags expanded.
-    pub(super) fn tag_entries(&self, registry: &str, tag: &str) -> Vec<String> {
-        let mut out = Vec::new();
-        let mut pending = vec![tag.to_owned()];
-        let mut seen = std::collections::HashSet::new();
-        while let Some(t) = pending.pop() {
-            if !seen.insert(t.clone()) {
-                continue;
-            }
-            let (ns, path) = t.split_once(':').unwrap_or(("minecraft", &t));
-            let file = self
-                .options
-                .resources
-                .join(format!("data/{ns}/tags/{registry}/{path}.json"));
-            let Ok(v) = std::fs::read(file)
-                .map_err(|_| ())
-                .and_then(|b| serde_json::from_slice::<serde_json::Value>(&b).map_err(|_| ()))
-            else {
-                continue;
-            };
-            for e in v["values"].as_array().into_iter().flatten() {
-                let id = e.as_str().or_else(|| e["id"].as_str()).unwrap_or_default();
-                match id.strip_prefix('#') {
-                    Some(nested) => pending.push(nested.to_owned()),
-                    None if !id.is_empty() => out.push(id.to_owned()),
-                    None => {}
-                }
-            }
-        }
-        out
-    }
     fn cmd_say(&mut self, id: &str, ctx: &Context) -> R<i32> {
         let raw = match ctx.get(if id == "me" { "action" } else { "message" }) {
             Some(Arg::Str(s)) => s.clone(),
@@ -3142,6 +2579,571 @@ impl Game<'_> {
             }
         }
         out.push(rest);
+        out
+    }
+}
+impl crate::game::Sim<'_> {
+    fn source_position(&self) -> [f64; 3] {
+        if let Some(s) = &self.command_source {
+            return s.pos;
+        }
+        match &self.player {
+            Some(p) => [p.position.x, p.position.y, p.position.z],
+            None => self.server_position(),
+        }
+    }
+    /// MinecraftServer.createCommandSourceStack's position: the corner of
+    /// the respawn block (`Vec3.atLowerCornerOf`).
+    pub(super) fn server_position(&self) -> [f64; 3] {
+        self.spawn.map_or([0.0, 64.0, 0.0], |s| {
+            [s.x.floor(), s.y.floor(), s.z.floor()]
+        })
+    }
+    fn source_rotation(&self) -> [f32; 2] {
+        self.command_source
+            .map_or([self.yaw, self.pitch], |s| s.rot)
+    }
+    pub(super) fn coords(&self, ctx: &Context, name: &str) -> Option<Coordinates> {
+        match ctx.get(name) {
+            Some(Arg::Coords(c)) => Some(c.clone()),
+            _ => None,
+        }
+    }
+    pub(super) fn target_type(&self, t: Target) -> String {
+        match t {
+            Target::Player | Target::Guest(_) => "minecraft:player".into(),
+            Target::Mob(id) => self
+                .mobs
+                .iter()
+                .find(|m| m.id == id)
+                .map_or_else(String::new, |m| {
+                    horizon_client::command::args::normalize(&m.kind.id)
+                }),
+            Target::Item(_) => "minecraft:item".into(),
+            Target::Orb(_) => "minecraft:experience_orb".into(),
+            Target::Projectile(id) => self
+                .creatures
+                .projectiles
+                .iter()
+                .find(|p| p.id == id)
+                .map_or_else(String::new, |p| p.kind.id().into()),
+            Target::Stand(_) => "minecraft:armor_stand".into(),
+            Target::Frame(id) => {
+                if self.item_frames.iter().any(|f| f.id == id && f.glow) {
+                    "minecraft:glow_item_frame".into()
+                } else {
+                    "minecraft:item_frame".into()
+                }
+            }
+            Target::Painting(_) => "minecraft:painting".into(),
+            Target::Boat(id) => self
+                .boats
+                .iter()
+                .find(|b| b.id == id)
+                .map_or_else(|| "minecraft:oak_boat".into(), |b| b.entity_type()),
+            Target::Cart(id) => self
+                .carts
+                .iter()
+                .find(|c| c.id == id)
+                .map_or_else(|| "minecraft:minecart".into(), |c| c.kind.id().into()),
+            Target::Other(id) => self
+                .others
+                .iter()
+                .find(|o| o.id == id)
+                .map_or_else(String::new, |o| o.kind.clone()),
+            Target::Crystal(_) => "minecraft:end_crystal".into(),
+            Target::Dragon(_) => "minecraft:ender_dragon".into(),
+        }
+    }
+    /// The name of the player the game acts for: a guest's own while their
+    /// command or action runs (`Player.getName`).
+    pub(super) fn acting_player_name(&self) -> &str {
+        self.lan_acting_name.as_deref().unwrap_or(PLAYER_NAME)
+    }
+    /// The entities of the level in place a selector can find.
+    fn level_candidates(&self) -> Vec<Target> {
+        use horizon_client::projectiles::ProjectileKind as K;
+        let mut candidates = Vec::new();
+        candidates.extend(
+            self.mobs
+                .iter()
+                .filter(|m| m.death_time == 0)
+                .map(|m| Target::Mob(m.id)),
+        );
+        candidates.extend(self.dropped.iter().map(|i| Target::Item(i.id)));
+        candidates.extend(self.orbs.iter().map(|o| Target::Orb(o.id)));
+        candidates.extend(
+            self.creatures
+                .projectiles
+                .iter()
+                // The kinds /data can write (entity_nbt).
+                .filter(|p| {
+                    p.is_arrow() || matches!(p.kind, K::LargeFireball { .. } | K::SmallFireball)
+                })
+                .map(|p| Target::Projectile(p.id)),
+        );
+        candidates.extend(self.armor_stands.iter().map(|a| Target::Stand(a.id)));
+        candidates.extend(self.item_frames.iter().map(|f| Target::Frame(f.id)));
+        candidates.extend(self.paintings.iter().map(|p| Target::Painting(p.id)));
+        candidates.extend(self.boats.iter().map(|b| Target::Boat(b.id)));
+        candidates.extend(self.carts.iter().map(|c| Target::Cart(c.id)));
+        candidates.extend(self.others.iter().map(|o| Target::Other(o.id)));
+        // The End crystals and the dragon (EndCrystal and EnderDragon
+        // are entities of their own).
+        candidates.extend(self.crystals.iter().map(|c| Target::Crystal(c.id)));
+        if let Some(d) = &self.dragon {
+            candidates.push(Target::Dragon(d.id));
+        }
+        candidates
+    }
+    /// The loaded levels, in the order the server holds them: the
+    /// overworld, the nether, the end (MinecraftServer.getAllLevels).
+    fn loaded_dims(&self) -> Vec<Dim> {
+        let mut dims = vec![self.dim];
+        dims.extend(self.levels.parked_dims());
+        dims.sort_by_key(|d| match d {
+            Dim::Overworld => 0,
+            Dim::Nether => 1,
+            Dim::End => 2,
+        });
+        dims
+    }
+    /// Whether the level in place holds the entity a target names.
+    fn level_holds(&self, t: Target) -> bool {
+        match t {
+            // A player is in no level of its own.
+            Target::Player | Target::Guest(_) => true,
+            Target::Mob(id) => self.mobs.iter().any(|m| m.id == id),
+            Target::Item(id) => self.dropped.iter().any(|i| i.id == id),
+            Target::Orb(id) => self.orbs.iter().any(|o| o.id == id),
+            Target::Projectile(id) => self.creatures.projectiles.iter().any(|p| p.id == id),
+            Target::Stand(id) => self.armor_stands.iter().any(|a| a.id == id),
+            Target::Frame(id) => self.item_frames.iter().any(|f| f.id == id),
+            Target::Painting(id) => self.paintings.iter().any(|p| p.id == id),
+            Target::Boat(id) => self.boats.iter().any(|b| b.id == id),
+            Target::Cart(id) => self.carts.iter().any(|c| c.id == id),
+            Target::Other(id) => self.others.iter().any(|o| o.id == id),
+            Target::Crystal(id) => self.crystals.iter().any(|c| c.id == id),
+            Target::Dragon(id) => self.dragon.as_ref().is_some_and(|d| d.id == id),
+        }
+    }
+    fn entity_tag_matches(&self, tag: &str, ty: &str) -> bool {
+        let path = self.options.resources.join(format!(
+            "data/minecraft/tags/entity_type/{}.json",
+            tag.trim_start_matches("minecraft:")
+        ));
+        serde_json::from_slice::<serde_json::Value>(&std::fs::read(path).unwrap_or_default())
+            .ok()
+            .is_some_and(|v| {
+                v["values"]
+                    .as_array()
+                    .is_some_and(|a| a.iter().any(|e| e.as_str() == Some(ty)))
+            })
+    }
+    /// ItemStack.getDisplayName of one `item` with no components.
+    pub(super) fn item_display_name(&self, item: &str) -> Text {
+        self.stack_display_name(&ItemStack {
+            item: item.into(),
+            count: 1,
+            damage: 0,
+            extra: None,
+        })
+    }
+    /// `ItemStack.getDisplayName`: the hover name (custom name in italics,
+    /// a written book's title, a potion's effect name, else the item's
+    /// translated name) in brackets, in the rarity colour and showing the
+    /// stack on hover unless it is empty.
+    pub(super) fn stack_display_name(&self, s: &ItemStack) -> Text {
+        let item = &*s.item;
+        let empty = item == "minecraft:air" || s.count == 0;
+        let custom = s.custom_name();
+        let hover = if let Some(c) = custom {
+            Text::literal(c)
+        } else if let Some(title) = s
+            .data()
+            .and_then(|d| d.written.as_ref())
+            .map(|w| w.title.clone())
+            .filter(|t| !t.trim().is_empty())
+        {
+            Text::literal(title)
+        } else if matches!(
+            item,
+            "minecraft:potion"
+                | "minecraft:splash_potion"
+                | "minecraft:lingering_potion"
+                | "minecraft:tipped_arrow"
+        ) && s.potion().is_some()
+        {
+            Text::translate(
+                &horizon_client::brewing::potion_name_key(item, s.potion()),
+                &[],
+            )
+        } else {
+            // Item.getDescriptionId: a block item's is the block's.
+            let (namespace, path) = item.split_once(':').unwrap_or(("minecraft", item));
+            let key = format!("item.{namespace}.{path}");
+            let key = if self.pack.names.get(&key).is_some() {
+                key
+            } else {
+                format!("block.{namespace}.{path}")
+            };
+            Text::translate(&key, &[])
+        };
+        // Component.empty().append(getHoverName()), italic for a custom name.
+        let mut name = Text::empty().append(hover);
+        if custom.is_some() {
+            name = name.italic();
+        }
+        let wrapped = Text::translate("chat.square_brackets", &[name]);
+        if empty {
+            return wrapped;
+        }
+        let mut rarity = self.item_rarity(item);
+        if !s.enchantments().is_empty() {
+            rarity = match rarity.as_str() {
+                "rare" => "epic".into(),
+                "epic" => rarity,
+                _ => "rare".into(),
+            };
+        }
+        let color = match rarity.as_str() {
+            "uncommon" => text::YELLOW,
+            "rare" => text::AQUA,
+            "epic" => text::LIGHT_PURPLE,
+            _ => text::WHITE,
+        };
+        // HoverEvent.ShowItem: the count only when it is not one.
+        let mut shown = serde_json::json!({"action": "show_item", "id": item});
+        if s.count != 1 {
+            shown["count"] = s.count.into();
+        }
+        wrapped
+            .with_color(color)
+            .with_component_fields(vec![("hover_event".into(), shown)])
+    }
+    pub(super) fn item_rarity(&self, item: &str) -> String {
+        static RARITY: std::sync::OnceLock<std::collections::HashMap<String, String>> =
+            std::sync::OnceLock::new();
+        let map = RARITY.get_or_init(|| {
+            let v: serde_json::Value = serde_json::from_slice(
+                &std::fs::read(self.options.resources.join("items.json")).unwrap_or_default(),
+            )
+            .unwrap_or_default();
+            v.as_object()
+                .map(|o| {
+                    o.iter()
+                        .filter_map(|(k, c)| {
+                            c["minecraft:rarity"]
+                                .as_str()
+                                .map(|r| (k.clone(), r.to_owned()))
+                        })
+                        .collect()
+                })
+                .unwrap_or_default()
+        });
+        map.get(item).cloned().unwrap_or_else(|| "common".into())
+    }
+    /// What changes when an entity spawns, kinds that take their id only
+    /// when first tracked (primed TNT, falling blocks, projectiles)
+    /// included: a summon compares it before and after.
+    fn spawned_mark(&self) -> (u32, usize) {
+        (
+            self.next_entity,
+            self.tnts.len() + self.falling.len() + self.creatures.projectiles.len(),
+        )
+    }
+    /// BlockStateArgument -> registry state.
+    pub(super) fn block_state(&self, b: &BlockInput) -> R<BlockStateId> {
+        let state = horizon_world::chunk::BlockState {
+            name: b.id.clone(),
+            properties: b.properties.iter().cloned().collect(),
+        };
+        self.pack
+            .assets
+            .registry
+            .resolve(&state)
+            .map_err(|_| err("argument.block.id.invalid", &[&b.id]))
+    }
+    /// BlockPredicateArgument test.
+    fn block_matches(&self, b: &BlockInput, state: BlockStateId) -> bool {
+        let Some(s) = self.pack.assets.registry.state(state) else {
+            return false;
+        };
+        let name_ok = if b.tag {
+            let tag = b.id.trim_start_matches("minecraft:");
+            self.res
+                .items()
+                .block_tags
+                .get(tag)
+                .or_else(|| self.res.items().block_tags.get(&b.id))
+                .is_some_and(|set| {
+                    set.contains(&s.name) || set.contains(s.name.trim_start_matches("minecraft:"))
+                })
+        } else {
+            s.name == b.id
+        };
+        name_ok
+            && b.properties
+                .iter()
+                .all(|(k, v)| s.properties.get(k) == Some(v))
+    }
+    /// RandomizableContainer.tryLoadLootTable for a tag a command gives a
+    /// container (`setblock`, `data`): an empty container with a `LootTable`
+    /// is rolled now, as a loaded chunk's are (`save::roll_loaded_loot`), and
+    /// the roll is kept with its chunk, so that the container saves, and
+    /// `data get` shows, its table and seed until its items change. A tag
+    /// without one drops what the container had. True when it had a table.
+    pub(super) fn take_loot_table(
+        &mut self,
+        key: (i32, i32, i32),
+        tag: &horizon_world::nbt::Tag,
+        entity: &mut horizon_client::containers::BlockEntity,
+    ) -> bool {
+        use horizon_client::{containers::BlockEntity, save, structure_blocks};
+        let table = save::text(tag.get("LootTable"));
+        let rolled = match (table, entity) {
+            (Some(table), BlockEntity::Chest(slots)) if slots.iter().all(Option::is_none) => {
+                let loot = structure_blocks::loot_data(&self.options.resources);
+                let at = Vec3::new(f64::from(key.0), f64::from(key.1), f64::from(key.2));
+                let biome = self.biome_name_at(at).unwrap_or_default();
+                Some(structure_blocks::roll_container(
+                    slots,
+                    loot.as_deref(),
+                    table,
+                    structure_blocks::loot_seed(tag),
+                    key,
+                    &biome,
+                ))
+            }
+            _ => None,
+        };
+        let Some(chunk) = self.world.chunks.get_mut(&(key.0 >> 4, key.2 >> 4)) else {
+            return false;
+        };
+        let held = |c: &horizon_client::chunk::Chunk| {
+            c.saved
+                .as_ref()
+                .is_some_and(|s| s.rolled_loot.iter().any(|r| r.pos == key))
+        };
+        if rolled.is_none() && !held(chunk) {
+            return false;
+        }
+        let chunk = std::sync::Arc::make_mut(chunk);
+        let mut extras = chunk
+            .saved
+            .take()
+            .map(std::sync::Arc::unwrap_or_clone)
+            .unwrap_or_default();
+        extras.rolled_loot.retain(|r| r.pos != key);
+        let taken = rolled.is_some();
+        extras.rolled_loot.extend(rolled);
+        chunk.saved = Some(std::sync::Arc::new(extras));
+        taken
+    }
+    /// The loot table and seed a container still holding its roll saves
+    /// (`RolledLoot::restore`), in place of its items.
+    pub(super) fn restore_loot_table(
+        &self,
+        key: (i32, i32, i32),
+        tag: &mut horizon_world::nbt::Tag,
+    ) {
+        let horizon_world::nbt::Tag::Compound(map) = tag else {
+            return;
+        };
+        let rolled = self
+            .world
+            .chunks
+            .get(&(key.0 >> 4, key.2 >> 4))
+            .and_then(|c| c.saved.as_ref())
+            .and_then(|s| s.rolled_loot.iter().find(|r| r.pos == key));
+        if let Some(r) = rolled {
+            r.restore(map);
+        }
+    }
+    /// Player.giveExperiencePoints including negative amounts.
+    fn give_points(&mut self, amount: i32) {
+        let e = &mut self.experience;
+        e.progress += amount as f32 / horizon_client::entities::Experience::needed(e.level) as f32;
+        e.total = e.total.saturating_add(amount).clamp(0, i32::MAX);
+        while e.progress < 0.0 {
+            let f = e.progress * horizon_client::entities::Experience::needed(e.level) as f32;
+            if e.level > 0 {
+                e.level -= 1;
+                e.progress = 1.0 + f / horizon_client::entities::Experience::needed(e.level) as f32;
+            } else {
+                e.level = 0;
+                e.progress = 0.0;
+            }
+        }
+        while e.progress >= 1.0 {
+            e.progress =
+                (e.progress - 1.0) * horizon_client::entities::Experience::needed(e.level) as f32;
+            e.level += 1;
+            e.progress /= horizon_client::entities::Experience::needed(e.level) as f32;
+        }
+    }
+    /// ExperienceCommand's add and set on the player in place: false when
+    /// the points to set do not fit the level.
+    fn change_experience(&mut self, add: bool, levels: bool, amount: i32) -> bool {
+        if add {
+            if levels {
+                self.experience.level = (self.experience.level + amount).max(0);
+                if self.experience.level == 0 && amount < 0 {
+                    self.experience.progress = 0.0;
+                }
+            } else {
+                self.give_points(amount);
+            }
+        } else if levels {
+            self.experience.level = amount;
+        } else {
+            let needed = horizon_client::entities::Experience::needed(self.experience.level);
+            if amount > needed - 1 {
+                return false;
+            }
+            self.experience.progress = amount as f32 / needed as f32;
+        }
+        true
+    }
+    fn item_matches(&self, predicate: &ItemInput, item: &str) -> bool {
+        if predicate.any {
+            return true;
+        }
+        if predicate.tag {
+            let tag = predicate.id.trim_start_matches("minecraft:");
+            return self
+                .res
+                .items()
+                .item_tags
+                .get(tag)
+                .or_else(|| self.res.items().item_tags.get(&predicate.id))
+                .is_some_and(|s| {
+                    s.contains(item) || s.contains(item.trim_start_matches("minecraft:"))
+                });
+        }
+        predicate.id == item
+    }
+    /// `ItemPredicateArgument`: the item test and its `[...]` component
+    /// tests (presence, `=` equality, `!` negation, `|` alternatives).
+    pub(super) fn stack_matches(&self, predicate: &ItemInput, stack: &ItemStack) -> bool {
+        if !self.item_matches(predicate, &stack.item) {
+            return false;
+        }
+        let Some(tests) = predicate.components.as_deref() else {
+            return true;
+        };
+        let inner = tests
+            .trim()
+            .strip_prefix('[')
+            .and_then(|t| t.strip_suffix(']'))
+            .unwrap_or("");
+        let components = match horizon_client::item_data::encode_components(stack) {
+            Some(horizon_world::nbt::Tag::Compound(c)) => c,
+            _ => Default::default(),
+        };
+        let test = |term: &str| -> bool {
+            let term = term.trim();
+            let (negated, term) = match term.strip_prefix('!') {
+                Some(t) => (true, t.trim()),
+                None => (false, term),
+            };
+            let split = term.find(['=', '~']).unwrap_or(term.len());
+            let id = term[..split].trim();
+            let id = if id.contains(':') {
+                id.to_owned()
+            } else {
+                format!("minecraft:{id}")
+            };
+            let present = components.get(&id.as_str().into());
+            let result = match term[split..].chars().next() {
+                Some('=') => {
+                    let value = horizon_world::nbt::parse_snbt(term[split + 1..].trim())
+                        .ok()
+                        .map(|(t, _)| t);
+                    match (present, value) {
+                        (Some(have), Some(want)) => {
+                            horizon_client::nbt_path::compare_nbt(&want, Some(have))
+                                && horizon_client::nbt_path::compare_nbt(have, Some(&want))
+                        }
+                        _ => false,
+                    }
+                }
+                Some('~') => {
+                    // Sub-predicates: `count` and component predicates.
+                    let value = horizon_world::nbt::parse_snbt(term[split + 1..].trim())
+                        .ok()
+                        .map(|(t, _)| t);
+                    match (id.as_str(), value) {
+                        ("minecraft:count", Some(v)) => {
+                            let n = i64::from(stack.count);
+                            match &v {
+                                horizon_world::nbt::Tag::Compound(_) => {
+                                    let get = |k: &str| match v.get(k) {
+                                        Some(horizon_world::nbt::Tag::Int(i)) => {
+                                            Some(i64::from(*i))
+                                        }
+                                        _ => None,
+                                    };
+                                    get("min").is_none_or(|m| n >= m)
+                                        && get("max").is_none_or(|m| n <= m)
+                                }
+                                horizon_world::nbt::Tag::Int(i) => n == i64::from(*i),
+                                _ => false,
+                            }
+                        }
+                        (_, Some(v)) => present.is_some_and(|have| {
+                            horizon_client::nbt_path::compare_nbt(&v, Some(have))
+                        }),
+                        _ => false,
+                    }
+                }
+                _ => present.is_some(),
+            };
+            result != negated
+        };
+        split_top_level(inner, ',')
+            .iter()
+            .filter(|t| !t.trim().is_empty())
+            .all(|term| split_top_level(term, '|').iter().any(|alt| test(alt)))
+    }
+    /// `PoiTypes`: the point of interest type of a block state.
+    fn poi_type(&self, state: horizon_world::registry::BlockStateId) -> Option<&'static str> {
+        let s = self.pack.assets.registry.state(state)?;
+        horizon_client::save::poi_type(s).map(|(kind, _)| kind)
+    }
+    /// The structures of a `worldgen/structure` tag, nested tags expanded.
+    pub(super) fn structure_tag(&self, tag: &str) -> Vec<String> {
+        self.tag_entries("worldgen/structure", tag)
+    }
+    /// The entries of a data pack tag of `registry`, nested tags expanded.
+    pub(super) fn tag_entries(&self, registry: &str, tag: &str) -> Vec<String> {
+        let mut out = Vec::new();
+        let mut pending = vec![tag.to_owned()];
+        let mut seen = std::collections::HashSet::new();
+        while let Some(t) = pending.pop() {
+            if !seen.insert(t.clone()) {
+                continue;
+            }
+            let (ns, path) = t.split_once(':').unwrap_or(("minecraft", &t));
+            let file = self
+                .options
+                .resources
+                .join(format!("data/{ns}/tags/{registry}/{path}.json"));
+            let Ok(v) = std::fs::read(file)
+                .map_err(|_| ())
+                .and_then(|b| serde_json::from_slice::<serde_json::Value>(&b).map_err(|_| ()))
+            else {
+                continue;
+            };
+            for e in v["values"].as_array().into_iter().flatten() {
+                let id = e.as_str().or_else(|| e["id"].as_str()).unwrap_or_default();
+                match id.strip_prefix('#') {
+                    Some(nested) => pending.push(nested.to_owned()),
+                    None if !id.is_empty() => out.push(id.to_owned()),
+                    None => {}
+                }
+            }
+        }
         out
     }
 }

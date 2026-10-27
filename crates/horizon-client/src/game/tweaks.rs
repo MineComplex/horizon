@@ -52,21 +52,6 @@ struct Drag {
 }
 
 impl Game<'_> {
-    /// The open screen is one the tweaks run in, with the extra on.
-    pub(super) fn tweaks_on(&self) -> bool {
-        if !self.settings.extras.mouse_tweaks
-            || self.screen != Screen::Inventory
-            || self.station.is_some()
-            || self.mount_active()
-        {
-            return false;
-        }
-        if self.remote.is_some() {
-            self.remote_storage_open()
-        } else {
-            matches!(self.container_kind(), None | Some(BlockEntity::Chest(_)))
-        }
-    }
     /// One ordinary click on a game slot. False when nothing took it.
     pub(super) fn tweak_click(&mut self, slot: usize, button: i32, input: Input) -> bool {
         if self.remote.is_some() {
@@ -183,10 +168,6 @@ impl Game<'_> {
         self.tweaks.drag = Some(drag);
         owned
     }
-    /// The button went up: the drag ends.
-    pub(super) fn tweak_release(&mut self) {
-        self.tweaks.drag = None;
-    }
     /// The wheel over an inventory screen: true when the tweaks used it.
     pub(super) fn tweak_scroll(&mut self, delta: f32, slot: Option<usize>) -> bool {
         if !self.settings.extras.mouse_tweaks_wheel || !self.tweaks_on() || self.carried.is_some() {
@@ -207,24 +188,6 @@ impl Game<'_> {
             }
         }
         true
-    }
-    /// The slots across from `slot`, in quick-move order: a container's
-    /// go to the inventory (hotbar first, from the right), the inventory's
-    /// to the container; without one, hotbar and main inventory trade.
-    fn other_side(&self, slot: usize) -> Vec<usize> {
-        let container: Vec<usize> = self
-            .slots()
-            .into_iter()
-            .filter(|s| (300..500).contains(s))
-            .collect();
-        let player = || (0..9).rev().chain((9..36).rev());
-        match slot {
-            300..500 => player().collect(),
-            0..36 if !container.is_empty() => container,
-            0..9 => (9..36).collect(),
-            9..36 => (0..9).collect(),
-            _ => Vec::new(),
-        }
     }
     /// Wheel down: one item of `slot` to the other side, where a stack of
     /// it has room, else to the first empty slot (`moveItemStackTo`).
@@ -279,46 +242,47 @@ impl Game<'_> {
         }
     }
 }
-
-impl Game<'_> {
-    /// The sort buttons of the open screen, with the extra on: their
-    /// corner (from the screen's) and the slots each sorts. The container's
-    /// (chest-like ones only) sits by its title, the main inventory's by
-    /// the "Inventory" label's line.
-    fn sort_buttons(&self) -> Vec<((f32, f32), Vec<usize>)> {
-        if !self.settings.extras.sort
+impl crate::game::Sim<'_> {
+    /// The open screen is one the tweaks run in, with the extra on.
+    pub(super) fn tweaks_on(&self) -> bool {
+        if !self.settings.extras.mouse_tweaks
             || self.screen != Screen::Inventory
             || self.station.is_some()
             || self.mount_active()
         {
-            return Vec::new();
+            return false;
         }
-        let chest_like = if self.remote.is_some() {
-            if !self.remote_storage_open() {
-                return Vec::new();
-            }
-            true
+        if self.remote.is_some() {
+            self.remote_storage_open()
         } else {
-            match self.container_kind() {
-                None => false,
-                Some(BlockEntity::Chest(_)) => {
-                    self.chest_rows().is_some() || self.container_block_is_shulker()
-                }
-                Some(_) => return Vec::new(),
-            }
-        };
-        let mut buttons = Vec::new();
+            matches!(self.container_kind(), None | Some(BlockEntity::Chest(_)))
+        }
+    }
+    /// The button went up: the drag ends.
+    pub(super) fn tweak_release(&mut self) {
+        self.tweaks.drag = None;
+    }
+    /// The slots across from `slot`, in quick-move order: a container's
+    /// go to the inventory (hotbar first, from the right), the inventory's
+    /// to the container; without one, hotbar and main inventory trade.
+    fn other_side(&self, slot: usize) -> Vec<usize> {
         let container: Vec<usize> = self
             .slots()
             .into_iter()
             .filter(|s| (300..500).contains(s))
             .collect();
-        if chest_like && !container.is_empty() {
-            buttons.push(((160.0, 5.0), container));
+        let player = || (0..9).rev().chain((9..36).rev());
+        match slot {
+            300..500 => player().collect(),
+            0..36 if !container.is_empty() => container,
+            0..9 => (9..36).collect(),
+            9..36 => (0..9).collect(),
+            _ => Vec::new(),
         }
-        buttons.push(((160.0, self.screen_height() - 95.0), (9..36).collect()));
-        buttons
     }
+}
+
+impl Game<'_> {
     /// The sort buttons: a bordered square with three bars, lighter under
     /// the cursor.
     pub(super) fn draw_sort_buttons(&self, batch: &mut HudBatch, ox: f32, oy: f32) {
@@ -409,5 +373,45 @@ impl Game<'_> {
         for i in clicks {
             self.tweak_click(slots[i], 0, Input::Pickup);
         }
+    }
+}
+impl crate::game::Sim<'_> {
+    /// The sort buttons of the open screen, with the extra on: their
+    /// corner (from the screen's) and the slots each sorts. The container's
+    /// (chest-like ones only) sits by its title, the main inventory's by
+    /// the "Inventory" label's line.
+    fn sort_buttons(&self) -> Vec<((f32, f32), Vec<usize>)> {
+        if !self.settings.extras.sort
+            || self.screen != Screen::Inventory
+            || self.station.is_some()
+            || self.mount_active()
+        {
+            return Vec::new();
+        }
+        let chest_like = if self.remote.is_some() {
+            if !self.remote_storage_open() {
+                return Vec::new();
+            }
+            true
+        } else {
+            match self.container_kind() {
+                None => false,
+                Some(BlockEntity::Chest(_)) => {
+                    self.chest_rows().is_some() || self.container_block_is_shulker()
+                }
+                Some(_) => return Vec::new(),
+            }
+        };
+        let mut buttons = Vec::new();
+        let container: Vec<usize> = self
+            .slots()
+            .into_iter()
+            .filter(|s| (300..500).contains(s))
+            .collect();
+        if chest_like && !container.is_empty() {
+            buttons.push(((160.0, 5.0), container));
+        }
+        buttons.push(((160.0, self.screen_height() - 95.0), (9..36).collect()));
+        buttons
     }
 }

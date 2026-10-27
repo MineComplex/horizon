@@ -189,20 +189,6 @@ impl Game<'_> {
             1.0,
         );
     }
-    /// `Mob.dropPreservedEquipment`: the guaranteed drops in `EquipmentSlot`
-    /// order, the carried stack (main hand) then the antenna flower (saddle),
-    /// each `spawnAtLocation` at the golem's feet.
-    pub(super) fn golem_drop_equipment(&mut self, m: &mut Mob) {
-        let at = m.position;
-        if let Some(stack) = held(m).cloned() {
-            set_held(m, None);
-            self.spawn_at_location(at, 0.0, stack);
-        }
-        if let Some(antenna) = m.saddle_item() {
-            m.set_saddle(None);
-            self.spawn_at_location(at, 0.0, antenna);
-        }
-    }
     // ---- interactions -----------------------------------------------------
     /// `WeatheringCopperGolemStatueBlock.useItemOn`: an axe on an unoxidized
     /// statue turns it back into a golem (`CopperGolemStatueBlockEntity.removeStatue`),
@@ -350,6 +336,22 @@ impl Game<'_> {
             return true;
         }
         false
+    }
+}
+impl crate::game::Sim<'_> {
+    /// `Mob.dropPreservedEquipment`: the guaranteed drops in `EquipmentSlot`
+    /// order, the carried stack (main hand) then the antenna flower (saddle),
+    /// each `spawnAtLocation` at the golem's feet.
+    pub(super) fn golem_drop_equipment(&mut self, m: &mut Mob) {
+        let at = m.position;
+        if let Some(stack) = held(m).cloned() {
+            set_held(m, None);
+            self.spawn_at_location(at, 0.0, stack);
+        }
+        if let Some(antenna) = m.saddle_item() {
+            m.set_saddle(None);
+            self.spawn_at_location(at, 0.0, antenna);
+        }
     }
     /// `readyForShearing`: the antenna holds a flower shears take.
     pub(super) fn golem_shearable(&self, index: usize) -> bool {

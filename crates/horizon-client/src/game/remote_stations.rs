@@ -72,9 +72,23 @@ impl Game<'_> {
         self.remote_anvil_rename();
     }
 
+    /// `MultiPlayerGameMode.handleInventoryButtonClick`: the screen already
+    /// ran `clickMenuButton` on its own menu.
+    pub(super) fn remote_station_button(&self, button: i32) {
+        if let Some((container, _)) = self.remote.as_ref().and_then(|r| r.menu.as_ref())
+            && self.remote_station_open(*container)
+        {
+            self.send(S::ContainerButtonClick(play::ContainerButtonClick {
+                container: *container,
+                button,
+            }));
+        }
+    }
+}
+impl crate::game::Sim<'_> {
     /// `AbstractContainerMenu.setData` from the server.
     pub(super) fn remote_station_data(&mut self, id: usize, value: i16) {
-        let Some(s) = self.sim.station.as_mut() else {
+        let Some(s) = self.station.as_mut() else {
             return;
         };
         match (s.kind, id) {
@@ -89,7 +103,7 @@ impl Game<'_> {
             (Kind::Enchanting, 0..3) => s.offers.costs[id] = i32::from(value),
             (Kind::Enchanting, 3) => self.level.xp_seed = i32::from(value),
             (Kind::Enchanting, 4..7) => {
-                let name = self.sim.remote.as_ref().and_then(|r| {
+                let name = self.remote.as_ref().and_then(|r| {
                     r.registries
                         .name("minecraft:enchantment", i32::from(value))
                         .map(std::sync::Arc::<str>::from)
@@ -116,7 +130,6 @@ impl Game<'_> {
             _ => {}
         }
     }
-
     /// `AnvilScreen.onNameChanged` on a server: the rename box's text (blank
     /// when it is the input's own name) goes to the server when the menu's
     /// `setItemName` takes it.
@@ -139,18 +152,5 @@ impl Game<'_> {
             s.anvil_sent = Some(name.clone());
         }
         self.send(S::RenameItem(play::RenameItem { name }));
-    }
-
-    /// `MultiPlayerGameMode.handleInventoryButtonClick`: the screen already
-    /// ran `clickMenuButton` on its own menu.
-    pub(super) fn remote_station_button(&self, button: i32) {
-        if let Some((container, _)) = self.remote.as_ref().and_then(|r| r.menu.as_ref())
-            && self.remote_station_open(*container)
-        {
-            self.send(S::ContainerButtonClick(play::ContainerButtonClick {
-                container: *container,
-                button,
-            }));
-        }
     }
 }
