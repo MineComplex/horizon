@@ -1305,11 +1305,15 @@ impl Game<'_> {
         }
         out.extend(self.mobs.iter().map(|m| Target::Mob(m.id)));
         out.extend(self.dropped.iter().map(|i| Target::Item(i.id)));
-        out.extend((0..self.orbs.len()).map(Target::Orb));
-        out.extend((0..self.creatures.projectiles.len()).map(Target::Projectile));
+        out.extend(self.orbs.iter().map(|o| Target::Orb(o.id)));
+        out.extend(self.creatures.projectiles.iter().map(|p| Target::Projectile(p.id)));
         out.extend(self.armor_stands.iter().map(|a| Target::Stand(a.id)));
         out.extend(self.item_frames.iter().map(|f| Target::Frame(f.id)));
         out.extend(self.paintings.iter().map(|p| Target::Painting(p.id)));
+        out.extend(self.crystals.iter().map(|c| Target::Crystal(c.id)));
+        if let Some(d) = &self.dragon {
+            out.push(Target::Dragon(d.id));
+        }
         out.extend(self.boats.iter().map(|b| Target::Boat(b.id)));
         out.extend(self.carts.iter().map(|c| Target::Cart(c.id)));
         out.extend(self.others.iter().map(|o| Target::Other(o.id)));
@@ -1330,9 +1334,11 @@ impl Game<'_> {
             | Target::Painting(id)
             | Target::Boat(id)
             | Target::Cart(id)
-            | Target::Other(id) => id as i32,
-            Target::Orb(i) => self.orbs.get(i)?.id as i32,
-            Target::Projectile(i) => self.creatures.projectiles.get(i)?.id as i32,
+            | Target::Other(id)
+            | Target::Crystal(id)
+            | Target::Dragon(id) => id as i32,
+            Target::Orb(id) => id as i32,
+            Target::Projectile(id) => id as i32,
         })
     }
     /// The target with a network id, in the level in place.

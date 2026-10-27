@@ -1385,22 +1385,20 @@ mod run {
             match t {
                 Target::Mob(id) => self.mobs.retain(|m| m.id != id),
                 Target::Item(id) => self.dropped.retain(|i| i.id != id),
-                Target::Orb(i) => {
-                    if i < self.orbs.len() {
-                        self.orbs.remove(i);
-                    }
-                }
-                Target::Projectile(i) => {
-                    if i < self.creatures.projectiles.len() {
-                        self.creatures.projectiles.remove(i);
-                    }
-                }
+                Target::Orb(id) => self.orbs.retain(|o| o.id != id),
+                Target::Projectile(id) => self.creatures.projectiles.retain(|p| p.id != id),
                 Target::Stand(id) => self.armor_stands.retain(|a| a.id != id),
                 Target::Frame(id) => self.item_frames.retain(|f| f.id != id),
                 Target::Painting(id) => self.paintings.retain(|p| p.id != id),
                 Target::Boat(id) => self.boats.retain(|b| b.id != id),
                 Target::Cart(id) => self.carts.retain(|c| c.id != id),
                 Target::Other(id) => self.others.retain(|o| o.id != id),
+                Target::Crystal(id) => self.crystals.retain(|c| c.id != id),
+                Target::Dragon(id) => {
+                    if self.dragon.as_ref().is_some_and(|d| d.id == id) {
+                        self.dragon = None;
+                    }
+                }
                 Target::Player | Target::Guest(_) => {}
             }
         }
