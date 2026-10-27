@@ -951,11 +951,6 @@ impl Game<'_> {
             }
         } else if self.title.is_some() {
             match key {
-                Some(KeyCode::Enter) => {
-                    if let Some(t) = self.title.as_mut() {
-                        t.confirm_edit();
-                    }
-                }
                 Some(KeyCode::Backspace) => self.title_edit(None, true),
                 _ => self.title_edit(text, false),
             }

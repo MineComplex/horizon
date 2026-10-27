@@ -277,66 +277,9 @@ impl Drop for Session {
     }
 }
 
-/// An address of the form `friend:K7QM-3XPD` joins a friend's world through
-/// its invite code (horizon-friends): the session goes through a tunnel the
-/// client reaches on a loopback port, so everything after is a plain join.
-pub const FRIEND: &str = horizon_friends::ADDRESS_PREFIX;
-
-/// An address as players and logs see it: a friend's invite code stays
-/// out of it (its secret is in there).
+/// An address as players and logs see it.
 pub fn shown_address(address: &str) -> String {
-    match address.strip_prefix(FRIEND) {
-        Some(code) => match horizon_friends::invite::parse(code) {
-            Some(horizon_friends::invite::Parsed::Short(c)) => {
-                format!("Friend's world ({}-****)", c.nameplate)
-            }
-            _ => "Friend's world".to_owned(),
-        },
-        None => address.to_owned(),
-    }
-}
-
-/// The relay the player set (`friendsRelay` in horizon.txt, beside
-/// options.txt), else `HORIZON_RELAY_URL`. None by default.
-pub fn friends_relay_setting() -> Option<String> {
-    let dir = std::env::current_dir().ok()?;
-    crate::ui_theme::preference(&dir, "friendsRelay")
-        .filter(|r| !r.is_empty())
-        .or_else(horizon_friends::relay_url)
-}
-/// Remember the relay typed on Join a friend (empty forgets it).
-pub fn save_friends_relay(relay: &str) {
-    if let Ok(dir) = std::env::current_dir() {
-        crate::ui_theme::set_preference(&dir, "friendsRelay", (!relay.is_empty()).then_some(relay));
-    }
-}
-
-/// Reach the friend's world from the code (directly, or through a relay)
-/// and open the tunnel: the loopback address to connect to.
-fn join_friend(code: &str, send: &Sender<Event>) -> Result<(String, u16), String> {
-    use horizon_friends::{
-        PathMode,
-        guest::{self, GuestConfig},
-    };
-    status(send, "Finding your friend's world...");
-    let tunnel = guest::join(&GuestConfig {
-        code: code.to_owned(),
-        relay: friends_relay_setting(),
-        protocol: PROTOCOL_VERSION,
-        game: horizon_protocol::GAME_VERSION.to_owned(),
-        path: PathMode::from_env(),
-    })
-    .map_err(|e| e.to_string())?;
-    status(
-        send,
-        if tunnel.direct {
-            "Connected straight to your friend..."
-        } else {
-            "Connected to your friend through the relay..."
-        },
-    );
-    let (port, _) = tunnel.serve_loopback().map_err(|e| e.to_string())?;
-    Ok(("127.0.0.1".to_owned(), port))
+    address.to_owned()
 }
 
 fn status(send: &Sender<Event>, text: &str) {
@@ -370,23 +313,12 @@ fn run(
     let (host, port, mut c) = if let Some(pipe) = local {
         (address.to_owned(), 0, Connection::local(pipe))
     } else {
-        let (host, port) = match address.strip_prefix(FRIEND) {
-            Some(code) => join_friend(code, send)?,
-            None => {
-                let Some(target) = parse_address(address) else {
-                    return Ok(format!("Invalid server address: {address}"));
-                };
-                status(send, "Connecting to the server...");
-                target
-            }
+        let Some((host, port)) = parse_address(address) else {
+            return Ok(format!("Invalid server address: {address}"));
         };
-        let c = if address.starts_with(FRIEND) {
-            // The friends relay supplies a concrete endpoint, not a Minecraft hostname.
-            Connection::connect(&host, port, Duration::from_secs(10))
-        } else {
-            Connection::connect_server(&host, port, Duration::from_secs(10))
-        }
-        .map_err(|e| e.to_string())?;
+        status(send, "Connecting to the server...");
+        let c = Connection::connect_server(&host, port, Duration::from_secs(10))
+            .map_err(|e| e.to_string())?;
         (host, port, c)
     };
     *shared_counters.lock().unwrap() = Some(c.reader.counters.clone());

@@ -58,9 +58,7 @@ impl Game<'_> {
                 shortcut,
                 max,
             );
-            if changed {
-                title.search_changed();
-            }
+            let _ = changed;
         }
     }
     /// Typing or a backspace in a title-screen field. A field that still only
@@ -73,9 +71,6 @@ impl Game<'_> {
             && title
                 .focused_field()
                 .is_some_and(|(id, value, _)| self.text_selection.take(id, value));
-        if cleared {
-            title.search_changed();
-        }
         if backspace {
             if !cleared {
                 title.backspace();

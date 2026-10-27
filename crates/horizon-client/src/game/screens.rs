@@ -19,7 +19,6 @@ impl Screen {
             | Self::Stats
             | Self::Advancements
             | Self::WorldOptions
-            | Self::Friends
             | Self::ServerLinks
             | Self::ConfirmLink
             | Self::DialogWarning
@@ -64,15 +63,9 @@ fn pause_buttons(
         v.push((x0 + 4.0, y0 + 122.0, 204.0, "menu.server_links", 11, true));
     }
     v.extend([
-        (x0 + 4.0, y0 + 122.0 + down, 98.0, "menu.options", 1, true),
-        (
-            x0 + 110.0,
-            y0 + 122.0 + down,
-            98.0,
-            "options.worldOptions.button",
-            9,
-            true,
-        ),
+        // No world options, Open to LAN or reporting: the game only joins servers, and their
+        // accounts are the launcher's.
+        (x0 + 4.0, y0 + 122.0 + down, 204.0, "menu.options", 1, true),
         (
             x0 + 4.0,
             y0 + 146.0 + down,
@@ -89,20 +82,6 @@ fn pause_buttons(
     v
 }
 
-/// The icon row: report bugs, feedback, friends, player reporting.
-/// `FRIENDS_ICON` (vanilla's `CommonButtons.friends`) opens Horizon's
-/// Play with Friends; the others stay inactive.
-const FRIENDS_ICON: usize = 2;
-fn pause_icons(w: f32, h: f32, links: bool) -> [(f32, f32, &'static str); 4] {
-    let x0 = ((w - 212.0) * 0.5).floor() + 60.0;
-    let y = ((h - 166.0 - if links { 24.0 } else { 0.0 }) * 0.25).floor() + 98.0;
-    [
-        (x0, y, "gui/sprites/pause_menu/bug"),
-        (x0 + 24.0, y, "gui/sprites/pause_menu/social_interactions"),
-        (x0 + 48.0, y, "gui/sprites/friends/friends"),
-        (x0 + 72.0, y, "gui/sprites/pause_menu/player_reporting"),
-    ]
-}
 /// DeathScreen.init: a hardcore player can only spectate.
 /// `DeathScreen.TitleConfirmScreen`: its title and the yes and no labels.
 fn death_confirm_texts() -> (Text, [Text; 2]) {
@@ -134,7 +113,6 @@ impl Game<'_> {
         self.remote.is_some() && self.integrated.is_none()
     }
     pub(super) fn draw_pause_menu(&mut self, batch: &mut HudBatch) {
-        let friends = self.friends_view().shown;
         let atlas = &self.gui.atlas;
         let (w, h) = (batch.width, batch.height);
         ui::menu_background(batch, atlas, 0.0, 0.0, w, h, true);
@@ -168,37 +146,6 @@ impl Game<'_> {
                 tooltip = Some(Text::translate("menu.custom_options.tooltip", &[]));
             }
         }
-        for (i, (x, y, sprite)) in pause_icons(w, h, links).into_iter().enumerate() {
-            let active = i == FRIENDS_ICON && friends;
-            let hover = ui::hovered(self.cursor, x, y, 20.0, 20.0);
-            // The icon has no label: name it for controller focus and the
-            // control socket's widget tree.
-            if i == FRIENDS_ICON {
-                horizon_client::widgets::record(
-                    horizon_client::friends_screen::TITLE,
-                    [x, y, 20.0, 20.0],
-                    active,
-                );
-            }
-            ui::button(
-                batch,
-                atlas,
-                x,
-                y,
-                20.0,
-                20.0,
-                &Text::empty(),
-                active,
-                active && hover,
-            );
-            // SpriteIconButton.CenteredIcon: the 15x15 sprite at
-            // x + width / 2 - 15 / 2 in integer pixels, untinted even
-            // when the button is inactive.
-            batch.sprite_scaled(atlas, sprite, x + 3.0, y + 3.0, 15.0, 15.0, u32::MAX);
-            if i == FRIENDS_ICON && hover {
-                tooltip = Some(Text::literal(horizon_client::friends_screen::TITLE));
-            }
-        }
         // SpriteIconButton.withTootip: the label as a tooltip.
         if let Some(tip) = tooltip {
             let lines: Vec<Text> = atlas
@@ -220,16 +167,10 @@ impl Game<'_> {
             (b.width, b.height)
         };
         let links = !self.server_links().is_empty();
-        let friends = pause_icons(w, h, links)[FRIENDS_ICON];
         let hit = pause_buttons(w, h, self.external_server(), links)
             .into_iter()
             .find(|b| b.5 && ui::hovered(self.cursor, b.0, b.1, b.2, 20.0))
-            .map(|b| b.4)
-            .or_else(|| {
-                (self.friends_view().shown
-                    && ui::hovered(self.cursor, friends.0, friends.1, 20.0, 20.0))
-                .then_some(10)
-            });
+            .map(|b| b.4);
         match hit {
             Some(0) => {
                 self.screen = Screen::Playing;
@@ -238,8 +179,6 @@ impl Game<'_> {
             Some(1) => self.open_options(false),
             Some(3) => self.open_stats(),
             Some(4) => self.open_advancements(true),
-            Some(9) => self.open_world_options(),
-            Some(10) => self.screen = Screen::Friends,
             // DialogConnectionAccess.openDialog(Dialogs.SERVER_LINKS).
             Some(11) => {
                 self.links_ui.scroll = 0.0;
@@ -466,7 +405,7 @@ impl Game<'_> {
 
 #[cfg(test)]
 mod tests {
-    use super::{Screen, pause_buttons, pause_icons};
+    use super::{Screen, pause_buttons};
 
     #[test]
     fn menu_blur_matches_vanilla_screen_backgrounds() {
@@ -497,13 +436,15 @@ mod tests {
     }
 
     #[test]
-    fn pause_menu_uses_disconnect_for_servers_and_keeps_world_options() {
+    fn pause_menu_uses_disconnect_for_servers_and_has_no_world_options() {
         for (remote, label) in [(false, "menu.returnToMenu"), (true, "menu.disconnect")] {
             let buttons = pause_buttons(427.0, 240.0, remote, false);
             let quit = buttons.iter().find(|b| b.4 == 2).unwrap();
             assert_eq!(quit.3, label);
             assert!(quit.5);
-            assert!(buttons.iter().any(|b| b.4 == 9 && b.5));
+            assert!(!buttons.iter().any(|b| b.4 == 9));
+            let options = buttons.iter().find(|b| b.4 == 1).unwrap();
+            assert_eq!(options.2, 204.0);
         }
     }
 
@@ -515,13 +456,9 @@ mod tests {
         assert_eq!(links.2, 204.0);
         assert_eq!(links.3, "menu.server_links");
         assert!(links.5);
-        // The icon row sits above it; Options and Disconnect move down 24.
-        let icons = pause_icons(427.0, 240.0, true);
-        let y0_icons = ((240.0f32 - 190.0) * 0.25).floor() + 98.0;
-        assert_eq!(icons[0].1, y0_icons);
-        assert!(links.1 > icons[0].1);
+        // Options and Disconnect move down 24.
         for b in &with {
-            if b.4 == 1 || b.4 == 9 || b.4 == 2 {
+            if b.4 == 1 || b.4 == 2 {
                 let same = without.iter().find(|o| o.4 == b.4).unwrap();
                 assert_eq!(b.1, same.1 + 24.0 - 6.0, "{}", b.3);
             }

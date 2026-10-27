@@ -17,8 +17,6 @@ use std::{
 const SERVER_NAME: crate::clipboard::FieldId = ("server.name", 0);
 const SERVER_ADDRESS: crate::clipboard::FieldId = ("server.address", 0);
 const SERVER_DIRECT: crate::clipboard::FieldId = ("server.direct", 0);
-const FRIEND_CODE: crate::clipboard::FieldId = ("friend.code", 0);
-const FRIEND_RELAY: crate::clipboard::FieldId = ("friend.relay", 0);
 
 /// The result of pinging one address.
 #[derive(Clone, Debug)]
@@ -86,14 +84,6 @@ pub enum Screen {
         list: Box<Screen>,
         name: String,
         lines: std::cell::Cell<usize>,
-    },
-    /// Join a friend's world with its invite code (Horizon's own, behind the
-    /// title screen's Friends button).
-    Friend {
-        code: String,
-        /// The relay for short codes (optional; saved on Join).
-        relay: String,
-        focus: u8,
     },
     Disconnected {
         reason: String,
@@ -551,24 +541,6 @@ impl Screen {
                     53,
                 ),
             ],
-            Self::Friend { code, .. } => vec![
-                b(
-                    w / 2.0 - 100.0,
-                    h / 4.0 + 96.0 + 18.0,
-                    200.0,
-                    "Join",
-                    horizon_friends::invite::parse(code).is_some(),
-                    56,
-                ),
-                b(
-                    w / 2.0 - 100.0,
-                    h / 4.0 + 120.0 + 18.0,
-                    200.0,
-                    &crate::lang::get_or("gui.cancel", "Cancel"),
-                    true,
-                    57,
-                ),
-            ],
             Self::Disconnected { retry, .. } => {
                 let mut v = vec![b(
                     w / 2.0 - 100.0,
@@ -634,7 +606,7 @@ impl Screen {
         cursor: (f32, f32),
     ) {
         let (w, h) = (batch.width, batch.height);
-        let max = self.max_length();
+        let max = 128;
         crate::ui::menu_background(batch, atlas, 0.0, 0.0, w, h, false);
         let centered = |batch: &mut HudBatch, text: &str, y: f32, color: u32| {
             let tw = HudBatch::text_width(atlas, text);
@@ -957,33 +929,6 @@ impl Screen {
                     centered(batch, &line.plain(), top + 17.0 + i as f32 * 9.0, u32::MAX);
                 }
             }
-            Self::Friend { code, relay, focus } => {
-                centered(batch, "Join a Friend", 20.0, u32::MAX);
-                Self::field(
-                    atlas,
-                    batch,
-                    caret,
-                    focused_at,
-                    "Invite Code",
-                    code,
-                    FRIEND_CODE,
-                    max,
-                    (53.0, 64.0),
-                    *focus == 0,
-                );
-                Self::field(
-                    atlas,
-                    batch,
-                    caret,
-                    focused_at,
-                    "Relay (optional)",
-                    relay,
-                    FRIEND_RELAY,
-                    max,
-                    (94.0, 105.0),
-                    *focus == 1,
-                );
-            }
             Self::Disconnected { reason, retry } => {
                 centered(
                     batch,
@@ -1029,7 +974,6 @@ impl Screen {
                     address: String::new(),
                 }
             }
-            (Self::List { .. }, Some(47)) => *self = Self::friend(),
             (Self::List { .. }, Some(42)) => {
                 *self = Self::Edit {
                     index: None,
@@ -1200,32 +1144,15 @@ impl Screen {
                 *self = Self::list(saves);
             }
             (
-                Self::Edit { .. }
-                | Self::Direct { .. }
-                | Self::Friend { .. }
-                | Self::Disconnected { .. },
+                Self::Edit { .. } | Self::Direct { .. } | Self::Disconnected { .. },
                 Some(51 | 53 | 54 | 57),
             ) => *self = Self::list(saves),
             (Self::Disconnected { retry, .. }, Some(55)) => *retry = None,
             (Self::Direct { address }, Some(52)) => {
                 return Outcome::Connect(direct_address(address));
             }
-            (Self::Friend { code, relay, .. }, Some(56)) => {
-                if horizon_friends::invite::parse(code).is_some() {
-                    crate::net::save_friends_relay(relay.trim());
-                    let code: String = code.chars().filter(|c| !c.is_whitespace()).collect();
-                    return Outcome::Connect(format!("{}{code}", crate::net::FRIEND));
-                }
-            }
-            (Self::Edit { .. } | Self::Friend { .. }, None) => {
-                let boxes = if matches!(self, Self::Edit { .. }) {
-                    [66.0, 106.0]
-                } else {
-                    [64.0, 105.0]
-                };
-                let (Self::Edit { focus, .. } | Self::Friend { focus, .. }) = self else {
-                    unreachable!()
-                };
+            (Self::Edit { focus, .. }, None) => {
+                let boxes = [66.0, 106.0];
                 for (i, fy) in [(0u8, boxes[0]), (1, boxes[1])] {
                     if y >= fy && y < fy + 20.0 && (x - w / 2.0).abs() < 100.0 {
                         *focus = i;
@@ -1276,14 +1203,12 @@ impl Screen {
         }
     }
     /// The focused box, in GUI pixels: name at 66, address at 106
-    /// (`ManageServerScreen`), direct address at 116, friend fields at 64 and 105.
+    /// (`ManageServerScreen`), direct address at 116.
     pub fn focused_box(&self, (w, _h): (f32, f32)) -> Option<[f32; 4]> {
         let y = match self {
             Self::Edit { focus: 0, .. } => 66.0,
             Self::Edit { .. } => 106.0,
             Self::Direct { .. } => 116.0,
-            Self::Friend { focus: 0, .. } => 64.0,
-            Self::Friend { .. } => 105.0,
             _ => return None,
         };
         Some([(w / 2.0).floor() - 100.0, y, 200.0, 20.0])
@@ -1297,18 +1222,7 @@ impl Screen {
                 ..
             } => Some(if *focus == 0 { name } else { address }),
             Self::Direct { address } => Some(address),
-            Self::Friend {
-                code, relay, focus, ..
-            } => Some(if *focus == 0 { code } else { relay }),
             _ => None,
-        }
-    }
-    /// Join a friend, with the relay the player set before.
-    pub fn friend() -> Self {
-        Self::Friend {
-            code: String::new(),
-            relay: crate::net::friends_relay_setting().unwrap_or_default(),
-            focus: 0,
         }
     }
     /// Auto-reconnect's attempt, once its countdown is over.
@@ -1327,23 +1241,12 @@ impl Screen {
             Self::Edit { focus: 0, .. } => SERVER_NAME,
             Self::Edit { .. } => SERVER_ADDRESS,
             Self::Direct { .. } => SERVER_DIRECT,
-            Self::Friend { focus: 0, .. } => FRIEND_CODE,
-            Self::Friend { .. } => FRIEND_RELAY,
             _ => return None,
         };
-        let max = self.max_length();
-        self.focused_field().map(|f| (id, f, max))
-    }
-    /// Invite codes with IPv6 and a relay run past a server address's 128.
-    fn max_length(&self) -> usize {
-        if matches!(self, Self::Friend { .. }) {
-            256
-        } else {
-            128
-        }
+        self.focused_field().map(|f| (id, f, 128))
     }
     pub fn tab(&mut self) {
-        if let Self::Edit { focus, .. } | Self::Friend { focus, .. } = self {
+        if let Self::Edit { focus, .. } = self {
             *focus = (*focus + 1) % 2;
         }
     }
@@ -1370,18 +1273,9 @@ impl Screen {
     }
 }
 
-/// Direct Connection's address; a full invite code pasted there joins the
-/// friend (a short relay code could be a host name, so it needs Join a Friend).
+/// Direct Connection's address, trimmed.
 fn direct_address(address: &str) -> String {
-    let code: String = address.chars().filter(|c| !c.is_whitespace()).collect();
-    if matches!(
-        horizon_friends::invite::parse(&code),
-        Some(horizon_friends::invite::Parsed::Long(_))
-    ) {
-        format!("{}{code}", crate::net::FRIEND)
-    } else {
-        address.trim().to_owned()
-    }
+    address.trim().to_owned()
 }
 /// Greedy word wrap to a pixel width.
 pub fn wrap(text: &str, width: f32, atlas: &HudAtlas) -> Vec<String> {
@@ -1411,18 +1305,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn direct_connection_joins_a_pasted_invite_and_keeps_host_names() {
-        let invite = horizon_friends::invite::Invite {
-            secret: *b"0123456789",
-            port: 25580,
-            endpoints: vec!["192.168.1.20:25580".parse().unwrap()],
-            relay: None,
-        }
-        .encode();
-        assert_eq!(
-            direct_address(&format!(" {invite} ")),
-            format!("{}{invite}", crate::net::FRIEND)
-        );
+    fn direct_connection_keeps_host_names() {
         for host in ["localhost", "example.org:25566", "abcdefgh", "[::1]:25568"] {
             assert_eq!(direct_address(host), host);
         }

@@ -184,9 +184,6 @@ impl Game<'_> {
         if let Some(value) = self.lan_control(&words)? {
             return Ok(Some(value));
         }
-        if let Some(value) = self.friends_control(&words)? {
-            return Ok(Some(value));
-        }
         match self.agent_command(&words, line, reply, event_loop)? {
             super::agent::Handled::Reply(value) => return Ok(Some(value)),
             super::agent::Handled::Deferred => return Ok(None),
@@ -198,7 +195,6 @@ impl Game<'_> {
                 .chain(super::station_control::HELP)
                 .chain(super::blockctl::HELP)
                 .chain(super::lan::HELP)
-                .chain(super::friends::HELP)
                 .chain(super::render_control::HELP)
                 .chain(super::sculk::HELP)
                 .chain(super::agent::HELP)
@@ -878,7 +874,6 @@ impl Game<'_> {
             Screen::Stats => "stats",
             Screen::Advancements => "advancements",
             Screen::WorldOptions => "world-options",
-            Screen::Friends => "friends",
             Screen::ServerLinks => "server-links",
             Screen::ConfirmLink => "confirm-link",
             Screen::DialogWarning => "dialog-warning",

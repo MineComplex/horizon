@@ -418,7 +418,6 @@ impl Game<'_> {
             Screen::Stats => "stats",
             Screen::Advancements => "advancements",
             Screen::WorldOptions => "world-options",
-            Screen::Friends => "friends",
             Screen::ServerLinks => "server-links",
             Screen::ConfirmLink => "confirm-link",
             Screen::DialogWarning => "dialog-warning",
@@ -532,73 +531,10 @@ impl Game<'_> {
         let Some(title) = &self.title else {
             return Value::Null;
         };
-        let worlds = || {
-            title
-                .recent_worlds()
-                .iter()
-                .map(|w| json!({ "folder": w.folder, "name": w.name, "creative": w.creative }))
-                .collect::<Vec<_>>()
-        };
         match &title.mode {
-            Mode::Main => json!({ "mode": "main", "worlds": worlds() }),
-            Mode::Select {
-                worlds: list,
-                selected,
-            } => json!({
-                "mode": "select-world",
-                "worlds": list.iter().map(|w| json!({ "folder": w.folder, "name": w.name, "creative": w.creative })).collect::<Vec<_>>(),
-                "selected": selected,
-            }),
-            Mode::Create {
-                name,
-                seed,
-                creative,
-                focus,
-                options,
-            } => json!({
-                "mode": "create-world",
-                "tab": (["game", "world", "more"][options.tab.min(2)]),
-                "fields": { "name": name, "seed": seed },
-                "focus": match focus { 0 => "name", 1 => "seed", _ => "none" },
-                "creative": creative,
-                "hardcore": options.hardcore,
-                "difficulty": horizon_client::title::DIFFICULTIES[options.difficulty()],
-                "allow_commands": options.commands(*creative),
-                "superflat": options.flat,
-                "generate_structures": options.structures,
-                "bonus_chest": options.bonus_chest(),
-            }),
-            Mode::CreateFlat {
-                name,
-                seed,
-                options,
-                flat,
-                ..
-            } => json!({
-                "mode": "customize-flat",
-                "fields": { "name": name, "seed": seed },
-                "superflat": options.flat,
-                "biome": flat.settings().biome,
-                "layers": flat.settings().layers.iter().map(|layer| json!({
-                    "block": layer.block,
-                    "height": layer.height,
-                })).collect::<Vec<_>>(),
-            }),
-            Mode::Edit {
-                world,
-                name,
-                focused,
-            } => {
-                json!({ "mode": "edit-world", "folder": world.folder, "fields": { "name": name }, "focus": if *focused { "name" } else { "none" } })
-            }
-            Mode::Backup { world, .. } => {
-                json!({ "mode": "creating-backup", "folder": world.folder })
-            }
-            Mode::Delete { world } => {
-                json!({ "mode": "delete-world", "folder": world.folder, "name": world.name })
-            }
+            Mode::Main => json!({ "mode": "main" }),
             Mode::Error { message, .. } => {
-                json!({ "mode": "world-operation-error", "message": message })
+                json!({ "mode": "error", "message": message })
             }
             Mode::Multiplayer(horizon_client::multiplayer::Screen::Disconnected {
                 reason, ..
@@ -1570,36 +1506,8 @@ impl Game<'_> {
                     }
                 }
                 let title = self.title.as_mut().ok_or("no title screen")?;
-                if let Some(field) = &field {
-                    match &mut title.mode {
-                        horizon_client::title::Mode::Create { focus, options, .. } => {
-                            // Each box is on its own tab.
-                            *focus = match field.as_str() {
-                                "name" => {
-                                    options.tab = 0;
-                                    0
-                                }
-                                "seed" => {
-                                    options.tab = 1;
-                                    1
-                                }
-                                other => {
-                                    return Err(format!(
-                                        "the create-world fields are name and seed, not {other}"
-                                    )
-                                    .into());
-                                }
-                            }
-                        }
-                        horizon_client::title::Mode::Edit { focused, .. } if field == "name" => {
-                            *focused = true
-                        }
-                        _ => {
-                            return Err(
-                                "--field works on the create-world or edit-world screen".into()
-                            );
-                        }
-                    }
+                if field.is_some() {
+                    return Err("--field: the title screen has no named fields".into());
                 }
                 if replace {
                     for _ in 0..64 {

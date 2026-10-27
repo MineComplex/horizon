@@ -446,21 +446,6 @@ impl Game<'_> {
     }
 }
 
-/// What the world options screen shows of an integrated server.
-#[derive(Clone, Copy, Debug)]
-pub(super) struct ServerOptions {
-    pub default_mode: i32,
-    /// The owner's own game mode.
-    pub personal_mode: i32,
-    pub cheats: bool,
-    pub difficulty: u8,
-    pub hardcore: bool,
-    pub difficulty_locked: bool,
-    pub port: Option<u16>,
-    pub guest_commands: bool,
-    pub force: bool,
-}
-
 /// The server thread's side.
 impl Game<'_> {
     /// Whether this game is an integrated server's.
@@ -660,26 +645,6 @@ impl Game<'_> {
                     );
                 }
             }
-        }
-    }
-    /// The world options screen's state, read on the server.
-    pub(super) fn server_options(&self) -> ServerOptions {
-        let owner = self.serving.as_ref().map(|s| s.owner);
-        let host = self.lan.as_ref();
-        let personal_mode = host
-            .and_then(|h| h.hub.guests.iter().find(|g| Some(g.uuid) == owner))
-            .map_or(self.level.mode(), |g| g.game_mode);
-        let published = self.published_port();
-        ServerOptions {
-            default_mode: self.level.mode(),
-            personal_mode,
-            cheats: self.allow_commands(),
-            difficulty: self.world_data.difficulty,
-            hardcore: self.level.hardcore,
-            difficulty_locked: self.level.difficulty_locked,
-            port: published,
-            guest_commands: published.is_some() && host.is_some_and(|h| h.settings.guest_commands),
-            force: published.is_none() || host.is_some_and(|h| h.settings.force_game_mode),
         }
     }
     /// `IntegratedServer.setPersonalGameType`: the owner's game mode.

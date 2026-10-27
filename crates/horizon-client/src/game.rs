@@ -64,7 +64,6 @@ mod fireworks;
 mod fishing;
 mod fov;
 mod frames;
-mod friends;
 mod functions;
 mod game_mode;
 mod gamemode_switcher;
@@ -545,9 +544,6 @@ enum Screen {
     Advancements,
     /// WorldOptionsScreen (game/lan_screen.rs).
     WorldOptions,
-    /// Play with Friends, from the pause menu's Friends button
-    /// (`friends_screen`, game/friends.rs).
-    Friends,
     /// CommandBlockEditScreen (game/command_blocks.rs).
     CommandBlock,
     /// ServerLinksDialogScreen: a server's links (game/server_links.rs).
@@ -1860,8 +1856,6 @@ struct Game<'a> {
     integrated: Option<integrated::Integrated>,
     /// This game is that server thread's (game/integrated.rs).
     serving: Option<integrated::Serving>,
-    /// The open world is shared behind an invite code (game/friends.rs).
-    friends: Option<friends::Sharing>,
     world_options: Option<lan_screen::WorldOptions>,
     /// Chat Settings opened from RestrictionsScreen: Done returns to World Options.
     options_to_world_options: bool,
@@ -5619,7 +5613,6 @@ impl Game<'_> {
             });
         }
         horizon_client::spans::time("tick_lan", || self.tick_lan(false));
-        self.tick_friends();
         horizon_client::spans::time("tick_hand", || self.tick_hand());
         horizon_client::spans::time("tick_sleep", || self.tick_sleep());
         self.announce_sleep_status();
@@ -5777,7 +5770,6 @@ impl Game<'_> {
                     | Screen::Stats
                     | Screen::Advancements
                     | Screen::WorldOptions
-                    | Screen::Friends
                     | Screen::ServerLinks
                     | Screen::ConfirmLink
                     | Screen::DialogWarning
@@ -6048,12 +6040,6 @@ impl Game<'_> {
             self.draw_options(&mut batch);
             return batch;
         }
-        if let Some(title) = &mut self.title {
-            title.poll_backup();
-            if let Some(sound) = title.update_toast(self.settings.notification_display_time) {
-                self.sounds.play(sound, None, 1.0, 1.0);
-            }
-        }
         if let Some(title) = &self.title {
             title.draw(
                 &self.gui.atlas,
@@ -6299,7 +6285,6 @@ impl Game<'_> {
             Screen::Stats => self.draw_stats(&mut batch),
             Screen::Advancements => self.draw_advancements(&mut batch),
             Screen::WorldOptions => self.draw_world_options(&mut batch),
-            Screen::Friends => self.draw_friends_screen(&mut batch),
             Screen::ServerLinks => self.draw_server_links(&mut batch),
             Screen::ConfirmLink => self.draw_confirm_link(&mut batch),
             Screen::DialogWarning => self.draw_dialog_warning(&mut batch),
@@ -12207,7 +12192,7 @@ impl Game<'_> {
                 }
                 Screen::GameModeSwitcher => self.close_gamemode_switcher(false),
                 Screen::Dead => {}
-                Screen::Stats | Screen::Friends => self.screen = Screen::Paused,
+                Screen::Stats => self.screen = Screen::Paused,
                 Screen::ServerLinks => self.screen = Screen::Paused,
                 // ConfirmScreen.keyPressed: Escape answers no; both return to
                 // the Server Links screen they came from.
@@ -13026,8 +13011,7 @@ impl ApplicationHandler for Game<'_> {
                     let (action, sound) = self.title.as_mut().map_or((Action::None, false), |t| {
                         let clicked = t.click(self.cursor.0, self.cursor.1, (b.width, b.height));
                         t.press_field(atlas, self.cursor, (b.width, b.height), shift);
-                        let rules = t.press_rules(atlas, self.cursor, (b.width, b.height));
-                        (clicked.0, clicked.1 || rules)
+                        clicked
                     });
                     self.save_title_options();
                     if sound {
@@ -13040,18 +13024,6 @@ impl ApplicationHandler for Game<'_> {
                             .open_options_at(true, horizon_client::options_ui::Page::Accessibility),
                         Action::Language => {
                             self.open_options_at(true, horizon_client::options_ui::Page::Language)
-                        }
-                        Action::Play { folder } => {
-                            self.open_world(&folder, None, None, false, None)?
-                        }
-                        Action::Create {
-                            folder,
-                            name,
-                            seed,
-                            creative,
-                            options,
-                        } => {
-                            self.open_world(&folder, Some(&name), seed, creative, Some(&options))?
                         }
                         Action::Connect { address } => {
                             self.connect_server(&address, &self.options.player_name())?
@@ -13176,9 +13148,6 @@ impl ApplicationHandler for Game<'_> {
                         }
                         Screen::WorldOptions if button == MouseButton::Left => {
                             self.world_options_release()
-                        }
-                        Screen::Friends if pressed && button == MouseButton::Left => {
-                            self.friends_screen_click()
                         }
                         Screen::CommandBlock if pressed && button == MouseButton::Left => {
                             self.command_block_click()
@@ -13352,11 +13321,6 @@ impl ApplicationHandler for Game<'_> {
                             return Ok(());
                         }
                         match event.physical_key {
-                            PhysicalKey::Code(KeyCode::Enter | KeyCode::NumpadEnter) => {
-                                if let Some(t) = self.title.as_mut() {
-                                    t.confirm_edit();
-                                }
-                            }
                             PhysicalKey::Code(
                                 key @ (KeyCode::Backspace
                                 | KeyCode::Delete
@@ -14053,7 +14017,6 @@ impl<'a> Game<'a> {
             world_options: None,
             options_to_world_options: false,
             command_block_screen: None,
-            friends: None,
             debug_keys: Default::default(),
             debug_charts: Default::default(),
             show_hitboxes: false,

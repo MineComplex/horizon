@@ -23,21 +23,6 @@ pub fn preference(dir: &Path, key: &str) -> Option<String> {
         (k.trim() == key).then(|| v.trim().to_owned())
     })
 }
-/// Set (or with None remove) one preference, keeping the others.
-pub(crate) fn set_preference(dir: &Path, key: &str, value: Option<&str>) {
-    let text = std::fs::read_to_string(dir.join("horizon.txt")).unwrap_or_default();
-    let mut lines: Vec<String> = text
-        .lines()
-        .filter(|l| l.split_once(':').is_none_or(|(k, _)| k.trim() != key))
-        .map(str::to_owned)
-        .collect();
-    if let Some(v) = value {
-        lines.push(format!("{key}:{v}"));
-    }
-    let mut out = lines.join("\n");
-    out.push('\n');
-    let _ = std::fs::write(dir.join("horizon.txt"), out);
-}
 
 /// The dark palette (`horizon_theme::DARK`) in the HUD's colour encoding, plus the
 /// translucent plates the overlays draw over the game.

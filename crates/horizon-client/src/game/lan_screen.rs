@@ -5,7 +5,7 @@
 //! forcing the game mode. Its difficulty lock asks first (PopupScreen), and
 //! Restrictions opens RestrictionsScreen.
 //! Parity reference: https://mcsrc.dev/2/26.3/net/minecraft/client/gui/screens/WorldOptionsScreen
-use super::{Game, Screen, integrated::ServerOptions, lan::LanSettings};
+use super::{Game, Screen, lan::LanSettings};
 use horizon_client::{
     font::Font,
     game_rules_screen::{Exit, RulesScreen},
@@ -473,55 +473,6 @@ impl Game<'_> {
             rules.set_string(&entry.name, &entry.value);
         }
         o.rules = Some(RulesScreen::new(&rules));
-    }
-    pub(super) fn open_world_options(&mut self) {
-        let hint = horizon_client::lan::available_port();
-        let mut port = EditBox::new(0.0, 0.0, 150.0, 20.0);
-        port.max_length = 5;
-        // The world is the server thread's when there is one.
-        let state = match &self.integrated {
-            Some(server) => match server.call(|g| g.server_options()) {
-                Some(state) => state,
-                None => return,
-            },
-            None => self.local_server_options(),
-        };
-        if let Some(p) = state.port {
-            port.set_value(&p.to_string());
-        }
-        let mut options = WorldOptions {
-            remote: self.external_server(),
-            gamemaster: self.world_data.registries.permission >= 2,
-            default_mode: state.default_mode,
-            personal_mode: state.personal_mode,
-            cheats: state.cheats,
-            difficulty: state.difficulty,
-            lan: state.port.is_some(),
-            port,
-            hint,
-            guest_commands: state.guest_commands,
-            force: state.force,
-            hardcore: state.hardcore,
-            difficulty_locked: state.difficulty_locked,
-            locked: state.difficulty_locked || state.hardcore,
-            scroll: 0.0,
-            view: View::Options,
-            rules: None,
-            initial: Snapshot {
-                default_mode: 0,
-                personal_mode: 0,
-                cheats: false,
-                difficulty: 0,
-                locked: false,
-                lan: false,
-                port: 0,
-                guest_commands: false,
-                force: false,
-            },
-        };
-        options.initial = options.snapshot();
-        self.world_options = Some(options);
-        self.screen = Screen::WorldOptions;
     }
 
     pub(super) fn close_world_options(&mut self) {
@@ -1024,24 +975,6 @@ impl Game<'_> {
                 o.port
                     .key(winit::keyboard::KeyCode::Backspace, false, false);
             }
-        }
-    }
-
-    /// The world options of a world run in the frame.
-    fn local_server_options(&self) -> ServerOptions {
-        let (guest_commands, force) = self.lan.as_ref().map_or((false, true), |h| {
-            (h.settings.guest_commands, h.settings.force_game_mode)
-        });
-        ServerOptions {
-            default_mode: self.level.mode(),
-            personal_mode: self.mode_id(),
-            cheats: self.allow_commands(),
-            difficulty: self.world_data.difficulty,
-            hardcore: self.level.hardcore,
-            difficulty_locked: self.level.difficulty_locked,
-            port: self.lan_port(),
-            guest_commands,
-            force,
         }
     }
 

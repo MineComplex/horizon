@@ -103,26 +103,6 @@ impl StartupMenu {
 
     fn queue_entry(&mut self, action: Action, player_name: String) {
         let entry = match action {
-            Action::Play { folder } => PendingWorldEntry::Local {
-                folder,
-                name: None,
-                seed: None,
-                creative: false,
-                create: None,
-            },
-            Action::Create {
-                folder,
-                name,
-                seed,
-                creative,
-                options,
-            } => PendingWorldEntry::Local {
-                folder,
-                name: Some(name),
-                seed,
-                creative,
-                create: Some(Box::new(options)),
-            },
             Action::Connect { address } => PendingWorldEntry::Server {
                 address,
                 name: player_name,
@@ -161,14 +141,12 @@ impl StartupMenu {
                         clipboard::append_limited(v, t, max)
                     })
             {
-                title.search_changed();
             }
             return;
         }
         match event.physical_key {
             PhysicalKey::Code(KeyCode::Escape) => title.escape(),
             PhysicalKey::Code(KeyCode::Tab) => title.tab(),
-            PhysicalKey::Code(KeyCode::Enter | KeyCode::NumpadEnter) => title.confirm_edit(),
             PhysicalKey::Code(
                 key @ (KeyCode::Backspace
                 | KeyCode::Delete
@@ -188,9 +166,6 @@ impl StartupMenu {
                     && title
                         .focused_field()
                         .is_some_and(|(id, value, _)| self.selection.take(id, value));
-                if cleared {
-                    title.search_changed();
-                }
                 if event.physical_key == PhysicalKey::Code(KeyCode::Backspace) {
                     if !cleared {
                         title.backspace();
@@ -546,11 +521,6 @@ impl Loading {
                             (batch.width, batch.height),
                             self.menu.modifiers.shift_key(),
                         );
-                        title.press_rules(
-                            &gui.atlas,
-                            self.menu.cursor,
-                            (batch.width, batch.height),
-                        );
                         self.menu_action(event_loop, action);
                     }
                 }
@@ -632,8 +602,6 @@ impl Loading {
                 .options
                 .draw(&self.settings, batch, &gui.atlas, self.menu.cursor);
         } else if let Some(title) = &mut self.menu.title {
-            title.poll_backup();
-            let _ = title.update_toast(self.settings.notification_display_time);
             title.draw(
                 &gui.atlas,
                 batch,
@@ -738,24 +706,28 @@ mod tests {
         assert!(loading.gui.is_some());
         assert!(loading.loaded.is_none());
         assert!(!worker.is_finished());
-        // Navigate and enter a world name without a registry, biomes, pack
+        // Navigate and enter a server address without a registry, biomes, pack
         // tables or a Game. Replacing fallback artwork preserves this state.
         let title = loading.menu.title.as_mut().unwrap();
-        title.mode = horizon_client::title::Mode::Create {
-            name: String::new(),
-            seed: "42".into(),
-            creative: true,
-            focus: 0,
-            options: Default::default(),
-        };
-        title.type_text("My world");
+        title.mode =
+            horizon_client::title::Mode::Multiplayer(horizon_client::multiplayer::Screen::Direct {
+                address: String::new(),
+            });
+        title.type_text("play.example.org");
         loading.set_ui(gui(&root), root);
-        let action = loading.menu.title.as_ref().unwrap().create_action();
+        let horizon_client::title::Mode::Multiplayer(horizon_client::multiplayer::Screen::Direct {
+            address,
+        }) = &loading.menu.title.as_ref().unwrap().mode
+        else {
+            panic!("the direct connection screen stays open");
+        };
+        let action = Action::Connect {
+            address: address.clone(),
+        };
         loading.menu.queue_entry(action, "Player".into());
         assert!(
-            matches!(&loading.menu.pending, Some(PendingWorldEntry::Local {
-            name: Some(name), seed: Some(42), creative: true, create: Some(_), ..
-        }) if name == "My world")
+            matches!(&loading.menu.pending, Some(PendingWorldEntry::Server { address, .. })
+                if address == "play.example.org")
         );
         let mut batch = HudBatch::new([1280, 720]);
         loading.draw_menu(&mut batch);
