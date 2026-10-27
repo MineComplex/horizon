@@ -245,7 +245,7 @@ fn scroll(c: &Value, out: &mut impl Write) -> Result<()> {
             handler.on_scroll(db(&op[0]), db(&op[1]), b(&c["discrete"]), sensitivity)
         {
             if spectator {
-                speed = horizon_client::mouse::spectator_flying_speed(speed, y);
+                speed = horizon_client::motion::spectator_flying_speed(speed, y);
             } else {
                 slot = horizon_client::mouse::ScrollWheelHandler::next_selection(
                     f64::from(wheel),

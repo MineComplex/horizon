@@ -12880,10 +12880,11 @@ impl ApplicationHandler for Game<'_> {
                             self.spectator_scroll(-wheel);
                         } else if self.spectator() {
                             if let Some(player) = &mut self.player {
-                                player.flying_speed = horizon_client::mouse::spectator_flying_speed(
-                                    player.flying_speed,
-                                    vertical_steps,
-                                );
+                                player.flying_speed =
+                                    horizon_client::motion::spectator_flying_speed(
+                                        player.flying_speed,
+                                        vertical_steps,
+                                    );
                             }
                         } else {
                             self.selected =

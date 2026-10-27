@@ -198,6 +198,7 @@ def main():
                lab.ROOT / 'crates/horizon-game/src/mobs/trial_spawner.rs',
                lab.ROOT / 'crates/horizon-game/src/mobs/spawner.rs',
                lab.ROOT / 'crates/horizon-game/src/chunk/block_entity.rs',
+               lab.ROOT / 'crates/horizon-client-core/src/identifier.rs',
                lab.ROOT / 'crates/horizon-game/src/mobs/spawn_selection.rs',
                lab.ROOT / 'crates/horizon-game/src/mobs/spawn_rules.rs']
     tested = base.source_hashes(sources)

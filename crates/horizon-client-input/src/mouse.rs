@@ -1,7 +1,6 @@
 //! Mouse look and scrolling of 26.3: `MouseHandler` (accumulated movement,
 //! sensitivity curve, cinematic smoothing, inversion), `SmoothDouble`,
 //! `ScrollWheelHandler` and `Entity.turn`.
-pub use crate::motion::spectator_flying_speed;
 
 /// `SmoothDouble`.
 #[derive(Clone, Debug, Default)]
