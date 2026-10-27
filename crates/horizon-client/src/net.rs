@@ -68,6 +68,9 @@ pub enum Event {
         host: String,
         port: i32,
     },
+    /// `ClientboundServerLinksPacket`: the links the pause menu's "Server
+    /// Links..." lists (ClientCommonPacketListenerImpl.handleServerLinks).
+    ServerLinks(Vec<cfg::ServerLink>),
     /// The connection ended. `from_server`: the server gave the reason (or
     /// the connection was refused for good), rather than the connection
     /// failing (auto-reconnect retries only failures and shutdowns).
@@ -577,6 +580,9 @@ fn receive_play(
             play::Clientbound::StoreCookie(p) => {
                 cookies.lock().unwrap().insert(p.key, p.payload);
             }
+            play::Clientbound::ServerLinks(p) => {
+                let _ = send.send(Event::ServerLinks(p.links));
+            }
             // ClientCommonPacketListenerImpl.handleTransfer: the connection
             // ends and the game connects to the other address.
             play::Clientbound::Transfer(p) => {
@@ -655,6 +661,9 @@ fn configure(
             }
             cfg::Clientbound::StoreCookie(p) => {
                 cookies.lock().unwrap().insert(p.key, p.payload);
+            }
+            cfg::Clientbound::ServerLinks(p) => {
+                let _ = send.send(Event::ServerLinks(p.links));
             }
             cfg::Clientbound::Transfer(p) => {
                 let _ = send.send(Event::Transfer {

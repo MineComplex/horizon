@@ -93,6 +93,25 @@ enum AccountCmd {
     Offline { name: Option<String> },
     /// Forget one of your offline names
     ForgetOffline { name: String },
+    /// Show or set an offline name's skin and cape: a 64x64 (or 64x32) skin PNG, a 64x32 cape
+    /// PNG, the model. Kept by the launcher and given to the game when that name plays
+    Skin {
+        name: String,
+        /// The skin's PNG
+        file: Option<PathBuf>,
+        /// classic or slim arms
+        #[arg(long)]
+        model: Option<String>,
+        /// The cape's PNG
+        #[arg(long)]
+        cape: Option<PathBuf>,
+        /// Back to the default skin
+        #[arg(long)]
+        no_skin: bool,
+        /// Take the cape off
+        #[arg(long)]
+        no_cape: bool,
+    },
 }
 
 #[derive(Subcommand)]
@@ -584,7 +603,10 @@ enum Cmd {
     /// Show the launcher's settings, or set one (the Settings page): selected-version TAG,
     /// minecraft-dir PATH, server-dir PATH ("default" resets a folder), install-new-versions
     /// on|off, opening-animation on|off, proxy http://host:port ("default" removes it),
-    /// while-playing stay|minimize|hide (what the window does while the game runs)
+    /// while-playing stay|minimize|hide (what the window does while the game runs), language
+    /// system|en|fr|ru (the window's language; system follows the computer's), accent
+    /// violet|blue|teal|green|amber|red|pink, background PATH (a picture behind Home; "default"
+    /// shows Horizon's landscape)
     Settings {
         #[arg(value_parser = SETTING_KEYS)]
         key: Option<String>,
@@ -721,7 +743,7 @@ pub fn command() -> clap::Command {
 pub const AI_COMMANDS: [&str; 2] = ["mcp", "agent-config"];
 
 /// The keys `settings` sets.
-const SETTING_KEYS: [&str; 7] = [
+const SETTING_KEYS: [&str; 10] = [
     "selected-version",
     "minecraft-dir",
     "server-dir",
@@ -729,6 +751,9 @@ const SETTING_KEYS: [&str; 7] = [
     "opening-animation",
     "proxy",
     "while-playing",
+    "language",
+    "accent",
+    "background",
 ];
 
 fn on_off(value: &str) -> Result<bool, String> {
@@ -750,6 +775,32 @@ fn set_setting(s: &mut backend::Settings, key: &str, value: &str) -> Result<(), 
         "while-playing" => {
             s.while_playing = backend::WhilePlaying::parse(value)
                 .ok_or_else(|| format!("{value}: say stay, minimize or hide"))?
+        }
+        "accent" => {
+            use horizon_launcher::themes::Accent;
+            s.accent = Accent::parse(value).ok_or_else(|| {
+                let names: Vec<_> = Accent::ALL.iter().map(|a| a.name()).collect();
+                format!("{value}: say {}", names.join(", "))
+            })?
+        }
+        "background" => {
+            s.background = match value.trim() {
+                "default" | "" => None,
+                file => Some(horizon_launcher::themes::keep_background(
+                    &backend::data_dir(),
+                    std::path::Path::new(file),
+                )?),
+            }
+        }
+        "language" => {
+            use horizon_launcher::i18n::Language;
+            s.language = match value.trim() {
+                "system" | "default" => None,
+                code => Some(
+                    Language::parse(code)
+                        .ok_or_else(|| format!("{value}: say system, en, fr or ru"))?,
+                ),
+            }
         }
         "proxy" => {
             if value == "default" || value.is_empty() {
@@ -777,6 +828,9 @@ fn settings_json(s: &backend::Settings) -> serde_json::Value {
         "proxy": s.proxy,
         "desktop_entry": s.desktop_entry.unwrap_or(true),
         "while_playing": s.while_playing.name(),
+        "language": s.language.map_or("system", |l| l.code()),
+        "accent": s.accent.name(),
+        "background": horizon_launcher::themes::background(&backend::data_dir(), s.background.as_deref()),
         "no_ai": backend::no_ai(),
     })
 }
@@ -963,9 +1017,11 @@ fn execute(command: Cmd, as_json: bool) -> Result<(), String> {
             }
             cmd.args(arg);
             let started = std::time::Instant::now();
-            if let Some(name) = Accounts::load().name_arg() {
+            let accounts = Accounts::load();
+            if let Some(name) = accounts.name_arg() {
                 cmd.arg("--name").arg(name);
             }
+            cmd.envs(accounts.look_env());
             let played = attached(horizon_launcher::launch::wrap(cmd, &instance.launch));
             if let Err(e) = instances::record_play(&instance.id, started.elapsed()) {
                 eprintln!("Play time not saved: {e}");
@@ -1330,6 +1386,61 @@ fn account_command(action: AccountCmd, as_json: bool) -> Result<(), String> {
             match accounts.name_arg() {
                 Some(n) => println!("The game plays offline as {n}."),
                 None => println!("The game plays offline, as the name it made up."),
+            }
+        }
+        AccountCmd::Skin {
+            name,
+            file,
+            model,
+            cape,
+            no_skin,
+            no_cape,
+        } => {
+            use horizon_launcher::skins::{self, Model};
+            let name = accounts
+                .offline
+                .iter()
+                .find(|n| n.eq_ignore_ascii_case(&name))
+                .cloned()
+                .ok_or_else(|| {
+                    format!("No offline name {name}: add it with `account offline {name}`.")
+                })?;
+            let model = match model.as_deref() {
+                None => None,
+                Some("classic") => Some(Model::Classic),
+                Some("slim") => Some(Model::Slim),
+                Some(m) => return Err(format!("{m}: say classic or slim")),
+            };
+            let mut look = accounts.look(&name);
+            if let Some(file) = &file {
+                skins::keep(&skins::dir(), &name, file, false)?;
+                look.skin = true;
+            }
+            if let Some(file) = &cape {
+                skins::keep(&skins::dir(), &name, file, true)?;
+                look.cape = true;
+            }
+            if let Some(m) = model {
+                look.model = m;
+            }
+            look.skin &= !no_skin;
+            look.cape &= !no_cape;
+            accounts
+                .looks
+                .insert(name.to_ascii_lowercase(), look.clone());
+            accounts.save()?;
+            if as_json {
+                json(serde_json::json!({
+                    "name": name, "skin": look.skin, "cape": look.cape, "model": look.model.name(),
+                }));
+            } else {
+                let say = |on: bool, what: &str| if on { what.to_string() } else { "none".into() };
+                println!(
+                    "{name}: skin {} ({} arms), cape {}",
+                    say(look.skin, "kept"),
+                    look.model.name(),
+                    say(look.cape, "kept")
+                );
             }
         }
         AccountCmd::ForgetOffline { name } => {
