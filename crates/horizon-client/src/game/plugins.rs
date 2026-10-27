@@ -240,6 +240,8 @@ mod run {
         /// Putting back blocks a plugin's cancelled block event changed: the
         /// level reports no changes meanwhile.
         pub reverting: bool,
+        /// The bed each guest lies in, as last seen (`PlayerBedLeaveEvent`).
+        pub beds: BTreeMap<u32, [i32; 3]>,
         pub started: bool,
         pub stop: bool,
         /// Players whose join the plugins already heard, by connection.
@@ -861,6 +863,36 @@ mod run {
                 })
                 .collect();
             let live: BTreeSet<u32> = guests.iter().map(|g| g.0).collect();
+            // PlayerBedLeaveEvent for the guests out of the bed they were in.
+            let beds: BTreeMap<u32, [i32; 3]> = h
+                .hub
+                .guests
+                .iter()
+                .filter_map(|g| g.bed.map(|b| (g.conn, b)))
+                .collect();
+            let left: Vec<(u32, [i32; 3])> = self
+                .mods
+                .plugin
+                .beds
+                .iter()
+                .filter(|(c, _)| !beds.contains_key(c))
+                .map(|(&c, &b)| (c, b))
+                .collect();
+            self.mods.plugin.beds = beds;
+            if self.plugins_listen(EventKind::PlayerBedLeave) {
+                for (conn, bed) in left {
+                    if let Some(player) = self.plugin_player(None, conn) {
+                        let bed = self.plugin_block(&player.location.world.clone(), bed);
+                        self.plugin_fire(
+                            None,
+                            Event::PlayerBedLeave(plugin::events::PlayerBedLeaveEvent {
+                                player,
+                                bed,
+                            }),
+                        );
+                    }
+                }
+            }
             self.mods.plugin.moved_from.retain(|c, _| live.contains(c));
             self.mods.plugin.toggles.retain(|c, _| live.contains(c));
             for (conn, uuid, now, toggles) in guests {

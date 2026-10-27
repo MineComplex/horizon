@@ -425,6 +425,11 @@ impl Game<'_> {
 
     /// The guest opened a crafting table (`CraftingTableBlock.getMenuProvider`).
     pub(super) fn lan_open_crafting(&mut self, host: &mut LanHost, conn: u32, pos: [i32; 3]) {
+        // InventoryOpenEvent: cancelled, the table opens nothing.
+        #[cfg(feature = "mods")]
+        if !self.plugin_inventory_open(host, conn, "minecraft:crafting", 0) {
+            return;
+        }
         self.lan_crafting_closed(host, conn, None);
         self.lan_station_closed(host, conn, None);
         // The container it replaces loses its opener.

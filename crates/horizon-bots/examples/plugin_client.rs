@@ -477,6 +477,20 @@ fn main() {
                     .encode(),
                 );
             }
+            // USE_ITEM with the main hand, looking at `yaw pitch`: eat, drink,
+            // throw, a bucket.
+            "use-item" => {
+                let seq = sequence.fetch_add(1, Ordering::Relaxed);
+                send(
+                    play::Serverbound::UseItem(play::UseItem {
+                        hand: 0,
+                        sequence: seq,
+                        yaw: num(0) as f32,
+                        pitch: num(1) as f32,
+                    })
+                    .encode(),
+                );
+            }
             "move" => {
                 *position.lock().unwrap() = [num(0), num(1), num(2)];
                 send(
@@ -526,9 +540,9 @@ fn main() {
                 );
             }
             // PERFORM_RESPAWN.
-            "respawn" => send(
-                play::Serverbound::ClientCommand(play::ClientCommand { action: 0 }).encode(),
-            ),
+            "respawn" => {
+                send(play::Serverbound::ClientCommand(play::ClientCommand { action: 0 }).encode())
+            }
             other => println!("ERROR unknown step {other}"),
         }
     }

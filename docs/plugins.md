@@ -148,6 +148,13 @@ changes are ignored.
 | `entity-explode` | an explosion, before it hurts and breaks | `blocks` (remove some to spare them), `cancelled` |
 | `inventory-click` | a click in any menu, before the server applies it | `cancelled` (every slot stays; the client is corrected) |
 | `inventory-close` | a menu was closed | |
+| `inventory-open` | a player is about to open a menu: a container, a workstation, a crafting table, a villager's trades (`size` 0 for those the game runs) | `cancelled` (nothing opens) |
+| `player-pickup-item` | a player is about to pick up a dropped item | `cancelled` (it stays on the ground) |
+| `player-item-consume` | a player finished eating or drinking | `cancelled` (nothing is eaten, the item stays) |
+| `player-teleport` | a player is about to be teleported in their world by a command or a chorus fruit (`cause`) | `to`, `cancelled` |
+| `player-bed-enter` | a player uses a bed, before it sets the respawn point | `cancelled` (the bed does nothing) |
+| `player-bed-leave` | a player got out of bed | |
+| `player-bucket-fill`, `player-bucket-empty` | a player is about to fill a bucket from a fluid or empty it | `cancelled` (the block and the bucket stay) |
 | `plugin-state` | a plugin was enabled or disabled | |
 | `plugin-call` | another plugin's `send-to-plugin` | |
 

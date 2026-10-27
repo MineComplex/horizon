@@ -69,6 +69,11 @@ impl Game<'_> {
         let Some((menu_type, kind, _)) = menu_of(station.kind) else {
             return false;
         };
+        // InventoryOpenEvent: cancelled, the use opens nothing.
+        #[cfg(feature = "mods")]
+        if !self.plugin_inventory_open(host, conn, menu_type, 0) {
+            return true;
+        }
         self.lan_station_closed(host, conn, None);
         self.lan_crafting_closed(host, conn, None);
         // The container it replaces loses its opener.

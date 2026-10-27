@@ -50,7 +50,7 @@ fn click_mode(input: i32) -> ev::ClickMode {
 }
 
 impl Game<'_> {
-    fn plugin_block(&self, world: &str, pos: [i32; 3]) -> types::Block {
+    pub(super) fn plugin_block(&self, world: &str, pos: [i32; 3]) -> types::Block {
         let state = if world == self.dim.id() {
             self.state_string(self.world.block(pos[0], pos[1], pos[2]))
         } else {
@@ -862,6 +862,201 @@ impl Game<'_> {
             }
         }
         vetoes
+    }
+
+    /// The inventory of the player whose turn it is goes to their client
+    /// again (a cancelled action it predicted).
+    fn plugin_resync_acting(&mut self) {
+        if let Some(conn) = self.lan_acting {
+            self.mods.plugin.resync.insert(conn);
+        }
+    }
+
+    /// A guest is about to pick up the dropped `item`: `PlayerPickupItemEvent`.
+    /// False when a plugin cancelled it.
+    pub(super) fn plugin_pickup(
+        &mut self,
+        host: &mut LanHost,
+        conn: u32,
+        item: &horizon_client::entities::ItemEntity,
+    ) -> bool {
+        if !self.plugins_listen(EventKind::PlayerPickupItem) {
+            return true;
+        }
+        let Some(player) = self.plugin_player(Some(host), conn) else {
+            return true;
+        };
+        let entity = types::EntityRef {
+            id: item.id as i32,
+            kind: "minecraft:item".into(),
+            player: None,
+        };
+        !plugin::is_cancelled(&self.plugin_fire(
+            Some(host),
+            Event::PlayerPickupItem(ev::PlayerPickupItemEvent {
+                player,
+                item: stack_out(&item.stack),
+                entity,
+                cancelled: false,
+            }),
+        ))
+    }
+
+    /// The player whose turn it is finished eating or drinking `stack`:
+    /// `PlayerItemConsumeEvent`. False when a plugin cancelled it.
+    pub(super) fn plugin_consume(&mut self, stack: &horizon_client::items::ItemStack) -> bool {
+        if !self.plugins_listen(EventKind::PlayerItemConsume) {
+            return true;
+        }
+        let Some(player) = self.plugin_acting_player() else {
+            return true;
+        };
+        let back = self.plugin_fire(
+            None,
+            Event::PlayerItemConsume(ev::PlayerItemConsumeEvent {
+                player,
+                item: stack_out(stack),
+                cancelled: false,
+            }),
+        );
+        if plugin::is_cancelled(&back) {
+            self.plugin_resync_acting();
+            return false;
+        }
+        true
+    }
+
+    /// The player whose turn it is is about to be teleported to `to` in
+    /// their level: `PlayerTeleportEvent`. Where to put them (a plugin may
+    /// change it), or None when cancelled.
+    pub(super) fn plugin_teleport(
+        &mut self,
+        to: horizon_core::geometry::Vec3,
+        rotation: Option<[f32; 2]>,
+        cause: &str,
+    ) -> Option<(horizon_core::geometry::Vec3, Option<[f32; 2]>)> {
+        if !self.plugins_listen(EventKind::PlayerTeleport) {
+            return Some((to, rotation));
+        }
+        let Some(player) = self.plugin_acting_player() else {
+            return Some((to, rotation));
+        };
+        let from = player.location.clone();
+        let [yaw, pitch] = rotation.unwrap_or([from.yaw, from.pitch]);
+        let target = types::Location {
+            world: from.world.clone(),
+            x: to.x,
+            y: to.y,
+            z: to.z,
+            yaw,
+            pitch,
+        };
+        let back = self.plugin_fire(
+            None,
+            Event::PlayerTeleport(ev::PlayerTeleportEvent {
+                player,
+                from,
+                to: target.clone(),
+                cause: cause.into(),
+                cancelled: false,
+            }),
+        );
+        match back {
+            Event::PlayerTeleport(e) if e.cancelled => None,
+            Event::PlayerTeleport(e) if e.to != target => Some((
+                horizon_core::geometry::Vec3::new(e.to.x, e.to.y, e.to.z),
+                Some([e.to.yaw, e.to.pitch]),
+            )),
+            _ => Some((to, rotation)),
+        }
+    }
+
+    /// The player whose turn it is is about to lie down in the bed at
+    /// `head`: `PlayerBedEnterEvent`. False when a plugin cancelled it.
+    pub(super) fn plugin_bed_enter(&mut self, head: [i32; 3]) -> bool {
+        if !self.plugins_listen(EventKind::PlayerBedEnter) {
+            return true;
+        }
+        let Some(player) = self.plugin_acting_player() else {
+            return true;
+        };
+        let bed = self.plugin_block(self.dim.id(), head);
+        !plugin::is_cancelled(&self.plugin_fire(
+            None,
+            Event::PlayerBedEnter(ev::PlayerBedEnterEvent {
+                player,
+                bed,
+                cancelled: false,
+            }),
+        ))
+    }
+
+    /// A guest is about to open a menu of type `kind` with `size` slots of
+    /// its own: `InventoryOpenEvent`. False when a plugin cancelled it.
+    pub(super) fn plugin_inventory_open(
+        &mut self,
+        host: &mut LanHost,
+        conn: u32,
+        kind: &str,
+        size: u32,
+    ) -> bool {
+        if !self.plugins_listen(EventKind::InventoryOpen) {
+            return true;
+        }
+        let Some(player) = self.plugin_player(Some(host), conn) else {
+            return true;
+        };
+        !plugin::is_cancelled(&self.plugin_fire(
+            Some(host),
+            Event::InventoryOpen(ev::InventoryOpenEvent {
+                player,
+                view: ev::InventoryView {
+                    kind: kind.into(),
+                    plugin_inventory: None,
+                    size,
+                },
+                cancelled: false,
+            }),
+        ))
+    }
+
+    /// The player whose turn it is is about to fill the held bucket from
+    /// the fluid at `pos` (`fill`) or empty it into `pos`:
+    /// `PlayerBucketFillEvent` / `PlayerBucketEmptyEvent`. False when a
+    /// plugin cancelled it (the block and the bucket go to the client again).
+    pub(super) fn plugin_bucket(&mut self, fill: bool, pos: [i32; 3]) -> bool {
+        let kind = if fill {
+            EventKind::PlayerBucketFill
+        } else {
+            EventKind::PlayerBucketEmpty
+        };
+        if !self.plugins_listen(kind) {
+            return true;
+        }
+        let Some(player) = self.plugin_acting_player() else {
+            return true;
+        };
+        let Some(bucket) = player.held.clone() else {
+            return true;
+        };
+        let world = self.dim.id().to_owned();
+        let e = ev::PlayerBucketEvent {
+            player,
+            block: self.plugin_block(&world, pos),
+            bucket,
+            cancelled: false,
+        };
+        let event = if fill {
+            Event::PlayerBucketFill(e)
+        } else {
+            Event::PlayerBucketEmpty(e)
+        };
+        if plugin::is_cancelled(&self.plugin_fire(None, event)) {
+            self.mods.plugin.resend_blocks.push((world, pos));
+            self.plugin_resync_acting();
+            return false;
+        }
+        true
     }
 
     /// A change the level held back for the plugins: `LeavesDecayEvent`,

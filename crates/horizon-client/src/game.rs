@@ -9703,6 +9703,11 @@ impl Game<'_> {
                 _ => "minecraft:item.bucket.fill_lava",
             };
             let pos = BlockPos::new(hit.pos[0], hit.pos[1], hit.pos[2]);
+            // PlayerBucketFillEvent.
+            #[cfg(feature = "mods")]
+            if !self.plugin_bucket(true, hit.pos) {
+                return Ok(UseResult::Fail);
+            }
             let Some(filled) =
                 self.with_level(|b, level, ticks| b.bucket_pickup(level, ticks, pos))
             else {
@@ -9752,6 +9757,11 @@ impl Game<'_> {
                 ]
             };
             let pos = BlockPos::new(target[0], target[1], target[2]);
+            // PlayerBucketEmptyEvent.
+            #[cfg(feature = "mods")]
+            if !self.plugin_bucket(false, target) {
+                return Ok(UseResult::Fail);
+            }
             let emptied = self
                 .with_level(|b, level, ticks| b.bucket_empty(level, ticks, pos, content, sound));
             self.process_level_events()?;
@@ -10593,7 +10603,7 @@ impl Game<'_> {
     /// and (outside creative) no monsters within 8 blocks; the bed becomes the
     /// respawn point either way.
     fn try_sleep(&mut self, pos: [i32; 3]) {
-        let Some(p) = self.player.as_ref() else {
+        let Some((position, yaw)) = self.player.as_ref().map(|p| (p.position, p.yaw)) else {
             return;
         };
         let time = self.world.day_time.rem_euclid(24000);
@@ -10616,9 +10626,9 @@ impl Game<'_> {
         // ServerPlayer.bedInRange / isReachableBedBlock: within 3 blocks
         // sideways and 2 vertically of the head or the foot.
         let reachable = |bed: [i32; 3]| {
-            (p.position.x - f64::from(bed[0]) - 0.5).abs() <= 3.0
-                && (p.position.y - f64::from(bed[1])).abs() <= 2.0
-                && (p.position.z - f64::from(bed[2]) - 0.5).abs() <= 3.0
+            (position.x - f64::from(bed[0]) - 0.5).abs() <= 3.0
+                && (position.y - f64::from(bed[1])).abs() <= 2.0
+                && (position.z - f64::from(bed[2]) - 0.5).abs() <= 3.0
         };
         if !reachable(head) && !reachable(foot) {
             self.message = Some((
@@ -10640,6 +10650,11 @@ impl Game<'_> {
             self.message = Some(("This bed is obstructed".into(), Instant::now()));
             return;
         }
+        // PlayerBedEnterEvent: cancelled, the bed does nothing.
+        #[cfg(feature = "mods")]
+        if !self.plugin_bed_enter(head) {
+            return;
+        }
         // In reach (bedInRange), day or night: setRespawnPosition(
         // RespawnConfig(the head, the player's yaw), not forced). It replaces
         // an anchor or a spawnpoint; respawning checks the bed is still there
@@ -10647,7 +10662,7 @@ impl Game<'_> {
         // Straw beds never set it (`straw_bed_rule`).
         if self.bed_sets_spawn(state) {
             self.respawn_config = Some(respawn_anchor::RespawnConfig::wrapped(
-                self.dim, head, p.yaw, false,
+                self.dim, head, yaw, false,
             ));
             // The fallback becomes the world spawn: a guest's is none of its
             // own, so it follows `setworldspawn`.
@@ -10674,9 +10689,9 @@ impl Game<'_> {
             && self.mobs.iter().any(|m| {
                 m.hostile()
                     && m.alive()
-                    && (m.position.x - p.position.x).abs() < 8.0
-                    && (m.position.y - p.position.y).abs() < 5.0
-                    && (m.position.z - p.position.z).abs() < 8.0
+                    && (m.position.x - position.x).abs() < 8.0
+                    && (m.position.y - position.y).abs() < 5.0
+                    && (m.position.z - position.z).abs() < 8.0
             });
         if monsters {
             self.message = Some((

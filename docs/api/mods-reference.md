@@ -1400,6 +1400,79 @@ A plugin was enabled or disabled (its id).
 | `channel` | `string` |  |
 | `data` | `list<u8>` |  |
 
+### record `player-pickup-item-event`
+
+A player is about to pick up a dropped `item` (the stack on the ground, the entity `entity`). Cancelling leaves it there.
+
+| Field | Type | |
+| --- | --- | --- |
+| `player` | `player` |  |
+| `item` | `item-stack` |  |
+| `entity` | `entity-ref` |  |
+| `cancelled` | `bool` |  |
+
+### record `player-item-consume-event`
+
+A player finished eating or drinking `item`. Cancelling keeps it: nothing is eaten.
+
+| Field | Type | |
+| --- | --- | --- |
+| `player` | `player` |  |
+| `item` | `item-stack` |  |
+| `cancelled` | `bool` |  |
+
+### record `player-teleport-event`
+
+A player is about to be teleported in their world (`cause`: `command`, `chorus-fruit`). Change `to` to send them elsewhere in it; cancelling keeps them where they are.
+
+| Field | Type | |
+| --- | --- | --- |
+| `player` | `player` |  |
+| `from` | `location` |  |
+| `to` | `location` |  |
+| `cause` | `string` |  |
+| `cancelled` | `bool` |  |
+
+### record `player-bed-enter-event`
+
+A player uses the bed at `bed`, before it sets their respawn point and they lie down (if it is night and no monster is near). Cancelling: the bed does nothing.
+
+| Field | Type | |
+| --- | --- | --- |
+| `player` | `player` |  |
+| `bed` | `block` |  |
+| `cancelled` | `bool` |  |
+
+### record `player-bed-leave-event`
+
+A player got out of the bed at `bed`.
+
+| Field | Type | |
+| --- | --- | --- |
+| `player` | `player` |  |
+| `bed` | `block` |  |
+
+### record `inventory-open-event`
+
+A player is about to open a menu: a container, a workstation, a crafting table or a villager's trades (`size` is 0 for those the game runs). Cancelling keeps it closed.
+
+| Field | Type | |
+| --- | --- | --- |
+| `player` | `player` |  |
+| `view` | `inventory-view` |  |
+| `cancelled` | `bool` |  |
+
+### record `player-bucket-event`
+
+A player is about to fill a bucket from the fluid at `block` (`player-bucket-fill`) or empty it into `block` (`player-bucket-empty`); `bucket` is the bucket in hand. Cancelling leaves the block and the bucket as they were.
+
+| Field | Type | |
+| --- | --- | --- |
+| `player` | `player` |  |
+| `block` | `block` |  |
+| `bucket` | `item-stack` |  |
+| `cancelled` | `bool` |  |
+
 ### variant `event`
 
 Every event. A listener receives each kind it registered for.
@@ -1448,6 +1521,14 @@ Every event. A listener receives each kind it registered for.
 | `server-command` | `server-command-event` |  |
 | `plugin-state` | `plugin-state-event` |  |
 | `plugin-call` | `plugin-call-event` |  |
+| `player-pickup-item` | `player-pickup-item-event` |  |
+| `player-item-consume` | `player-item-consume-event` |  |
+| `player-teleport` | `player-teleport-event` |  |
+| `player-bed-enter` | `player-bed-enter-event` |  |
+| `player-bed-leave` | `player-bed-leave-event` |  |
+| `inventory-open` | `inventory-open-event` |  |
+| `player-bucket-fill` | `player-bucket-event` |  |
+| `player-bucket-empty` | `player-bucket-event` |  |
 
 ### enum `event-kind`
 
@@ -1497,6 +1578,14 @@ The kinds of `event`, for `plugin-listeners.listen`.
 | `server-command` |  |
 | `plugin-state` |  |
 | `plugin-call` |  |
+| `player-pickup-item` |  |
+| `player-item-consume` |  |
+| `player-teleport` |  |
+| `player-bed-enter` |  |
+| `player-bed-leave` |  |
+| `inventory-open` |  |
+| `player-bucket-fill` |  |
+| `player-bucket-empty` |  |
 
 
 ## `plugin-listeners`

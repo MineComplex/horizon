@@ -884,6 +884,11 @@ impl Game<'_> {
         else {
             return false;
         };
+        // InventoryOpenEvent: cancelled, the use opens nothing.
+        #[cfg(feature = "mods")]
+        if !self.plugin_inventory_open(host, conn, menu, items.len() as u32) {
+            return true;
+        }
         // ServerPlayer.openMenu closes the menu that was open.
         self.guest_container_closed(host, conn);
         self.lan_station_closed(host, conn, None);
@@ -2895,6 +2900,14 @@ impl Game<'_> {
             .collect();
         let mut taken = Vec::new();
         for i in near.into_iter().rev() {
+            // PlayerPickupItemEvent: a cancelled item stays on the ground.
+            #[cfg(feature = "mods")]
+            {
+                let item = self.dropped[i].clone();
+                if !self.plugin_pickup(host, conn, &item) {
+                    continue;
+                }
+            }
             let (stack, item_id) = (self.dropped[i].stack.clone(), self.dropped[i].id);
             let before = stack.count;
             let rest = self.as_guest(host, conn, |g| g.give(stack)).flatten();

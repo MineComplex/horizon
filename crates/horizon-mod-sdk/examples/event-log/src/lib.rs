@@ -5,7 +5,7 @@
 use horizon_mod_sdk::plugin::*;
 use std::collections::BTreeSet;
 
-const KINDS: [(&str, EventKind); 42] = [
+const KINDS: [(&str, EventKind); 50] = [
     ("player-join", EventKind::PlayerJoin),
     ("player-quit", EventKind::PlayerQuit),
     ("player-login", EventKind::PlayerLogin),
@@ -39,6 +39,14 @@ const KINDS: [(&str, EventKind); 42] = [
     ("block-fertilize", EventKind::BlockFertilize),
     ("leaves-decay", EventKind::LeavesDecay),
     ("block-burn", EventKind::BlockBurn),
+    ("player-pickup-item", EventKind::PlayerPickupItem),
+    ("player-item-consume", EventKind::PlayerItemConsume),
+    ("player-teleport", EventKind::PlayerTeleport),
+    ("player-bed-enter", EventKind::PlayerBedEnter),
+    ("player-bed-leave", EventKind::PlayerBedLeave),
+    ("inventory-open", EventKind::InventoryOpen),
+    ("player-bucket-fill", EventKind::PlayerBucketFill),
+    ("player-bucket-empty", EventKind::PlayerBucketEmpty),
     ("entity-damage", EventKind::EntityDamage),
     ("entity-death", EventKind::EntityDeath),
     ("entity-spawn", EventKind::EntitySpawn),
@@ -229,6 +237,41 @@ fn describe(e: &Event) -> (&'static str, String) {
         Event::InventoryClick(e) => (
             "inventory-click",
             format!("{} {} slot {}", e.player.name, e.view.kind, e.slot),
+        ),
+        Event::PlayerPickupItem(e) => (
+            "player-pickup-item",
+            format!("{} {} x{}", e.player.name, e.item.id, e.item.count),
+        ),
+        Event::PlayerItemConsume(e) => (
+            "player-item-consume",
+            format!("{} {}", e.player.name, e.item.id),
+        ),
+        Event::PlayerTeleport(e) => (
+            "player-teleport",
+            format!(
+                "{} {} {:.1} {:.1} {:.1}",
+                e.player.name, e.cause, e.to.x, e.to.y, e.to.z
+            ),
+        ),
+        Event::PlayerBedEnter(e) => (
+            "player-bed-enter",
+            format!("{} {}", e.player.name, pos(&e.bed.pos)),
+        ),
+        Event::PlayerBedLeave(e) => (
+            "player-bed-leave",
+            format!("{} {}", e.player.name, pos(&e.bed.pos)),
+        ),
+        Event::InventoryOpen(e) => (
+            "inventory-open",
+            format!("{} {} {}", e.player.name, e.view.kind, e.view.size),
+        ),
+        Event::PlayerBucketFill(e) => (
+            "player-bucket-fill",
+            format!("{} {} {}", e.player.name, e.block.state, pos(&e.block.pos)),
+        ),
+        Event::PlayerBucketEmpty(e) => (
+            "player-bucket-empty",
+            format!("{} {} {}", e.player.name, e.bucket.id, pos(&e.block.pos)),
         ),
         Event::InventoryClose(e) => (
             "inventory-close",

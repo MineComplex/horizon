@@ -53,6 +53,12 @@ impl Game<'_> {
             state.session.reputation = self.villager_reputation_of(id, uuid);
             state.session.update_special_prices();
         }
+        // InventoryOpenEvent: cancelled, no trades.
+        #[cfg(feature = "mods")]
+        if !self.plugin_inventory_open(host, conn, "minecraft:merchant", 0) {
+            self.merchant_closed(&mut state);
+            return;
+        }
         let title = self.merchant_display_name(&state);
         // The container or workstation the trading screen replaces is closed.
         self.guest_container_closed(host, conn);

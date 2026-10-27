@@ -1234,6 +1234,11 @@ impl Game<'_> {
                 self.for_player(t, |g| g.teleport_to(Target::Player, pos, rotation));
             }
             Target::Player => {
+                // PlayerTeleportEvent: a plugin may cancel it or send them elsewhere.
+                #[cfg(feature = "mods")]
+                let Some((v, rotation)) = self.plugin_teleport(v, rotation, "command") else {
+                    return;
+                };
                 // ServerPlayer.teleport: removeVehicle before placing the player.
                 self.stop_riding();
                 // A server's player teleported within their level is placed

@@ -126,6 +126,57 @@ def after(lines, step):
     return out
 
 
+def player_events(o, c, server, port):
+    """A player eats, picks up, sleeps and wakes, opens a chest, empties a
+    bucket and is teleported: the events for each."""
+    out = []
+    steps = [
+        "wait 3000",
+        "use-item",
+        "wait 2500",
+        "use ~1 ~ ~ 1",
+        "wait 2500",
+        "use ~-1 ~ ~ 1",
+        "wait 1000",
+        "slot 1",
+        "use-item 0 90",
+        "wait 2000",
+    ]
+    run = threading.Thread(target=lambda: out.extend(client(o.client, port, "Walker", steps, timeout=60)))
+    run.start()
+    server.wait_for(r"EVENT player-join Walker", timeout=30)
+    for line in (
+        "difficulty peaceful",
+        "time set midnight",
+        "give Walker minecraft:golden_apple 1",
+        "give Walker minecraft:water_bucket 1",
+        "execute at Walker run setblock ~1 ~ ~ minecraft:red_bed[part=foot,facing=east]",
+        "execute at Walker run setblock ~2 ~ ~ minecraft:red_bed[part=head,facing=east]",
+        "execute at Walker run setblock ~-1 ~ ~ minecraft:chest",
+        'execute at Walker run summon minecraft:item ~ ~ ~ {Item:{id:"minecraft:stick",count:1},PickupDelay:0s}',
+    ):
+        server.console(line)
+    time.sleep(7.0)
+    # Out of bed: it is gone.
+    server.console("execute at Walker run fill ~1 ~ ~ ~2 ~ ~ minecraft:air")
+    time.sleep(3.0)
+    server.console("tp Walker 3 70 3")
+    run.join()
+    server.console("time set day")
+    log = "\n".join(server.lines)
+
+    def saw(what, pattern):
+        c.check(f"the server fires {what}", re.search(pattern, log) is not None, pattern)
+
+    saw("player-pickup-item", r"EVENT player-pickup-item Walker minecraft:stick x1")
+    saw("player-item-consume", r"EVENT player-item-consume Walker minecraft:golden_apple")
+    saw("player-bed-enter", r"EVENT player-bed-enter Walker [-\d ]+")
+    saw("player-bed-leave", r"EVENT player-bed-leave Walker [-\d ]+")
+    saw("inventory-open for a chest", r"EVENT inventory-open Walker minecraft:generic_9x3 27")
+    saw("player-bucket-empty", r"EVENT player-bucket-empty Walker minecraft:water_bucket [-\d ]+")
+    saw("player-teleport for /tp", r"EVENT player-teleport Walker command 3\.5 70\.0 3\.5")
+
+
 def block_events(o, c, server, port):
     """Pistons, fluids and growth fire their block events while a player
     keeps the spawn's chunks ticking; a cancelled piston stays put."""
@@ -537,6 +588,7 @@ def main():
         c.check("the server logged Alex", True, line)
         events(o, c, server, port)
         block_events(o, c, server, port)
+        player_events(o, c, server, port)
         server.console("stop")
         server.wait_for(r"Disabling Essentials", timeout=60)
         c.check("the plugin is disabled when the server stops", True)
