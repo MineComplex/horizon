@@ -9,8 +9,7 @@ use horizon_core::geometry::Vec3;
 use horizon_protocol::entity_data::Value;
 use std::sync::Arc;
 
-impl Game<'_> {}
-impl crate::game::Sim<'_> {
+impl Game<'_> {
     /// `handleAddEntity` for an object type; false when `kind` isn't one.
     /// Hanging entities come at their block, with their direction as the
     /// spawn data (`Direction.from3DDataValue`).
@@ -110,12 +109,14 @@ impl crate::game::Sim<'_> {
         }
         true
     }
+
     /// A `painting_variant` by its network id, from the server's registry.
     fn remote_painting_variant(&self, id: i32) -> Option<super::paintings::Variant> {
         let r = self.remote.as_ref()?;
         let name = r.registries.name("minecraft:painting_variant", id)?;
         self.painting_variants.get(name).cloned()
     }
+
     /// `handleSetEntityData` for an object: what changes how it looks.
     pub(super) fn remote_object_data(&mut self, id: i32, values: &[(u8, i32, Value)]) {
         if let Some(display) = self.text_displays.get_mut(&id) {
@@ -201,6 +202,7 @@ impl crate::game::Sim<'_> {
             }
         }
     }
+
     /// `handleSetEquipment` for an armor stand (EquipmentSlot ordinals 0 to
     /// 5: main hand, off hand, feet, legs, chest, head, its storage order).
     pub(super) fn remote_object_equipment(
@@ -223,6 +225,7 @@ impl crate::game::Sim<'_> {
             }
         }
     }
+
     /// A move's rotation and ground state for an object.
     pub(super) fn turn_remote_object(&mut self, id: i32, yaw: Option<f32>, on_ground: bool) {
         let id = id as u32;
@@ -247,6 +250,7 @@ impl crate::game::Sim<'_> {
             a.on_ground = on_ground;
         }
     }
+
     /// One tick of interpolation: `step` moves a position a step toward
     /// the entity's last sent one, if it has a move in progress.
     pub(super) fn tick_remote_objects(&mut self, mut step: impl FnMut(u32, Vec3) -> Vec3) {
@@ -269,6 +273,7 @@ impl crate::game::Sim<'_> {
             a.position = step(a.id, a.position);
         }
     }
+
     /// The boats, minecarts, armor stands, item frames and paintings in the
     /// level (a server's client: the ones it was sent), for `status`.
     pub(super) fn objects_status(&self) -> Vec<serde_json::Value> {
@@ -310,6 +315,7 @@ impl crate::game::Sim<'_> {
         }
         out
     }
+
     /// Every object a server sent (a new connection, level or dimension).
     pub(super) fn clear_remote_objects(&mut self) {
         self.text_displays.clear();
@@ -321,6 +327,7 @@ impl crate::game::Sim<'_> {
         self.item_frames.clear();
         self.paintings.clear();
     }
+
     pub(super) fn remove_remote_object(&mut self, id: u32) {
         self.text_displays.remove(&(id as i32));
         self.remote_knots.remove(&id);

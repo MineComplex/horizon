@@ -12,103 +12,6 @@ use horizon_world::level::LevelEvent;
 use horizon_world::registry::BlockStateId;
 
 impl Game<'_> {
-    /// `ClientLevel.addBreakingBlockEffects`: the block's hit sound (only for
-    /// `play_sound`) and one crumb on the face being mined; nothing for air.
-    pub(super) fn breaking_block_effects(
-        &mut self,
-        pos: [i32; 3],
-        face: [i32; 3],
-        play_sound: bool,
-    ) {
-        let state = self.world.block(pos[0], pos[1], pos[2]);
-        if self.res.facts().is_air(state) {
-            return;
-        }
-        if play_sound {
-            let sounds = self.res.facts().get(state).sounds.clone();
-            // Each guest plays it from the level event itself.
-            self.sounds.play_unshared(
-                &sounds.hit,
-                Some(pos.map(|v| f64::from(v) + 0.5)),
-                (sounds.volume + 1.0) / 8.0,
-                sounds.pitch * 0.5,
-            );
-        }
-        self.crack_particle(pos, face, state);
-    }
-    /// `LevelEventHandler.potionSplashParticles` (2002 with `Effect`, 2007
-    /// with `InstantEffect`): eight splash potion crumbs, and a hundred
-    /// spell particles in the potion's colour `data`, flung out in a disc.
-    pub(super) fn potion_splash_particles(&mut self, pos: BlockPos, data: i32, instant: bool) {
-        let ty = if instant {
-            ParticleType::InstantEffect
-        } else {
-            ParticleType::Effect
-        };
-        // Vec3.atBottomCenterOf.
-        let at = [
-            f64::from(pos.x) + 0.5,
-            f64::from(pos.y),
-            f64::from(pos.z) + 0.5,
-        ];
-        let crumb = self.item_particle(&ItemStack::new("minecraft:splash_potion", 1));
-        let r = self.particles.level_random();
-        let crumbs: Vec<[f64; 3]> = (0..8)
-            .map(|_| {
-                [
-                    r.next_gaussian() * 0.15,
-                    r.next_double() * 0.2,
-                    r.next_gaussian() * 0.15,
-                ]
-            })
-            .collect();
-        for v in crumbs {
-            self.particles.add(&crumb, at, v);
-        }
-        let channel = |shift: i32| ((data >> shift) & 0xFF) as f32 / 255.0;
-        let color = [channel(16), channel(8), channel(0)];
-        for _ in 0..100 {
-            let r = self.particles.level_random();
-            let dist = r.next_double() * 4.0;
-            let angle = r.next_double() * std::f64::consts::PI * 2.0;
-            let velocity = [
-                angle.cos() * dist,
-                0.01 + r.next_double() * 0.5,
-                angle.sin() * dist,
-            ];
-            let brightness = 0.75 + r.next_float() * 0.25;
-            let options = ParticleOptions {
-                color: [
-                    color[0] * brightness,
-                    color[1] * brightness,
-                    color[2] * brightness,
-                    1.0,
-                ],
-                scale: dist as f32,
-                ..ParticleOptions::simple(ty)
-            };
-            self.particles.add(
-                &options,
-                [
-                    at[0] + velocity[0] * 0.1,
-                    at[1] + 0.3,
-                    at[2] + velocity[2] * 0.1,
-                ],
-                velocity,
-            );
-        }
-    }
-    /// Queue and play level event `id` at `pos` (`Level.levelEvent`).
-    pub(super) fn level_event_at(&mut self, id: i32, pos: [i32; 3], data: i32) {
-        self.level_events.push(LevelEvent::LevelEvent {
-            id,
-            pos: BlockPos::new(pos[0], pos[1], pos[2]),
-            data,
-        });
-        let _ = self.process_level_events();
-    }
-}
-impl crate::game::Sim<'_> {
     pub(super) fn dragon_egg_particles(&mut self, pos: [i32; 3], data: i32) {
         self.particles.block_teleportation(pos, data, [16, 8, 16]);
     }
@@ -416,5 +319,100 @@ impl crate::game::Sim<'_> {
         });
         // Each guest plays it from the global packet.
         self.sounds.play_unshared(sound, at, volume, 1.0);
+    }
+    /// `ClientLevel.addBreakingBlockEffects`: the block's hit sound (only for
+    /// `play_sound`) and one crumb on the face being mined; nothing for air.
+    pub(super) fn breaking_block_effects(
+        &mut self,
+        pos: [i32; 3],
+        face: [i32; 3],
+        play_sound: bool,
+    ) {
+        let state = self.world.block(pos[0], pos[1], pos[2]);
+        if self.res.facts().is_air(state) {
+            return;
+        }
+        if play_sound {
+            let sounds = self.res.facts().get(state).sounds.clone();
+            // Each guest plays it from the level event itself.
+            self.sounds.play_unshared(
+                &sounds.hit,
+                Some(pos.map(|v| f64::from(v) + 0.5)),
+                (sounds.volume + 1.0) / 8.0,
+                sounds.pitch * 0.5,
+            );
+        }
+        self.crack_particle(pos, face, state);
+    }
+    /// `LevelEventHandler.potionSplashParticles` (2002 with `Effect`, 2007
+    /// with `InstantEffect`): eight splash potion crumbs, and a hundred
+    /// spell particles in the potion's colour `data`, flung out in a disc.
+    pub(super) fn potion_splash_particles(&mut self, pos: BlockPos, data: i32, instant: bool) {
+        let ty = if instant {
+            ParticleType::InstantEffect
+        } else {
+            ParticleType::Effect
+        };
+        // Vec3.atBottomCenterOf.
+        let at = [
+            f64::from(pos.x) + 0.5,
+            f64::from(pos.y),
+            f64::from(pos.z) + 0.5,
+        ];
+        let crumb = self.item_particle(&ItemStack::new("minecraft:splash_potion", 1));
+        let r = self.particles.level_random();
+        let crumbs: Vec<[f64; 3]> = (0..8)
+            .map(|_| {
+                [
+                    r.next_gaussian() * 0.15,
+                    r.next_double() * 0.2,
+                    r.next_gaussian() * 0.15,
+                ]
+            })
+            .collect();
+        for v in crumbs {
+            self.particles.add(&crumb, at, v);
+        }
+        let channel = |shift: i32| ((data >> shift) & 0xFF) as f32 / 255.0;
+        let color = [channel(16), channel(8), channel(0)];
+        for _ in 0..100 {
+            let r = self.particles.level_random();
+            let dist = r.next_double() * 4.0;
+            let angle = r.next_double() * std::f64::consts::PI * 2.0;
+            let velocity = [
+                angle.cos() * dist,
+                0.01 + r.next_double() * 0.5,
+                angle.sin() * dist,
+            ];
+            let brightness = 0.75 + r.next_float() * 0.25;
+            let options = ParticleOptions {
+                color: [
+                    color[0] * brightness,
+                    color[1] * brightness,
+                    color[2] * brightness,
+                    1.0,
+                ],
+                scale: dist as f32,
+                ..ParticleOptions::simple(ty)
+            };
+            self.particles.add(
+                &options,
+                [
+                    at[0] + velocity[0] * 0.1,
+                    at[1] + 0.3,
+                    at[2] + velocity[2] * 0.1,
+                ],
+                velocity,
+            );
+        }
+    }
+    /// Queue and play level event `id` at `pos` (`Level.levelEvent`).
+    pub(super) fn level_event_at(&mut self, id: i32, pos: [i32; 3], data: i32) {
+        self.level_events.push(LevelEvent::LevelEvent {
+            id,
+            pos: BlockPos::new(pos[0], pos[1], pos[2]),
+            data,
+        });
+        let _ = self.process_level_events();
     }
 }

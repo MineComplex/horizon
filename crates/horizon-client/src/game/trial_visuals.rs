@@ -41,6 +41,17 @@ fn flame(ominous: bool) -> T {
 }
 
 impl Game<'_> {
+    fn particle(&mut self, ty: T, p: [f64; 3], v: [f64; 3]) {
+        self.particles.add(&ParticleOptions::simple(ty), p, v);
+    }
+    fn local_sound(&mut self, name: &str, pos: [i32; 3], volume: f32, pitch: f32) {
+        self.sounds.play(
+            &format!("minecraft:{name}"),
+            Some(center(pos)),
+            volume,
+            pitch,
+        );
+    }
     /// `LevelEventHandler.levelEvent` 3011 to 3021.
     pub(super) fn trial_level_event(&mut self, id: i32, pos: [i32; 3], data: i32) {
         // TrialSpawner.FlameParticle.decode.
@@ -125,19 +136,6 @@ impl Game<'_> {
             }
             _ => {}
         }
-    }
-}
-impl crate::game::Sim<'_> {
-    fn particle(&mut self, ty: T, p: [f64; 3], v: [f64; 3]) {
-        self.particles.add(&ParticleOptions::simple(ty), p, v);
-    }
-    fn local_sound(&mut self, name: &str, pos: [i32; 3], volume: f32, pitch: f32) {
-        self.sounds.play(
-            &format!("minecraft:{name}"),
-            Some(center(pos)),
-            volume,
-            pitch,
-        );
     }
     /// `TrialSpawner.addSpawnParticles`.
     fn trial_spawn_particles(&mut self, pos: [i32; 3], ty: T) {

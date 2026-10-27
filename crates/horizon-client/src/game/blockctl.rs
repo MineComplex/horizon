@@ -32,6 +32,20 @@ fn parse_state(text: &str) -> Result<BlockState> {
 }
 
 impl Game<'_> {
+    fn state_text(&self, state: BlockStateId) -> String {
+        let Some(s) = self.pack.assets.registry.state(state) else {
+            return "?".into();
+        };
+        if s.properties.is_empty() {
+            return s.name.clone();
+        }
+        let props: Vec<String> = s
+            .properties
+            .iter()
+            .map(|(k, v)| format!("{k}={v}"))
+            .collect();
+        format!("{}[{}]", s.name, props.join(","))
+    }
     fn put_block(&mut self, pos: [i32; 3], state: BlockStateId) -> Result<()> {
         let name = self.res.facts().get(state).name.clone();
         self.world.block_entities.remove(&(pos[0], pos[1], pos[2]));
@@ -158,21 +172,5 @@ impl Game<'_> {
             }
             _ => Ok(None),
         }
-    }
-}
-impl crate::game::Sim<'_> {
-    fn state_text(&self, state: BlockStateId) -> String {
-        let Some(s) = self.pack.assets.registry.state(state) else {
-            return "?".into();
-        };
-        if s.properties.is_empty() {
-            return s.name.clone();
-        }
-        let props: Vec<String> = s
-            .properties
-            .iter()
-            .map(|(k, v)| format!("{k}={v}"))
-            .collect();
-        format!("{}[{}]", s.name, props.join(","))
     }
 }

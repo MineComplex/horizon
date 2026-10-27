@@ -23,13 +23,10 @@ impl Game<'_> {
     pub(super) fn mod_browser_press(&mut self, _right: bool) -> bool {
         false
     }
-    pub(super) fn mod_browser_key(&mut self, _event: &winit::event::KeyEvent) {}
-}
-#[cfg(not(feature = "mods"))]
-impl crate::game::Sim<'_> {
     pub(super) fn mod_browser_typing(&self) -> bool {
         false
     }
+    pub(super) fn mod_browser_key(&mut self, _event: &winit::event::KeyEvent) {}
     pub(super) fn mod_browser_text(&mut self, _text: Option<&str>, _backspace: bool) {}
     pub(super) fn mod_browser_closed(&mut self) {}
 }
@@ -104,7 +101,7 @@ pub(super) fn inside(p: (f32, f32), [x, y, w, h]: [f32; 4]) -> bool {
 #[cfg(feature = "mods")]
 impl Game<'_> {
     fn browser_batch(&self) -> Option<HudBatch> {
-        let r = self.front.renderer.as_ref()?;
+        let r = self.renderer.as_ref()?;
         Some(HudBatch::new([r.config.width, r.config.height]))
     }
     /// The mod showing a panel, with its items made into stacks once per
@@ -113,32 +110,29 @@ impl Game<'_> {
         if self.screen != Screen::Inventory || self.title.is_some() {
             return None;
         }
-        let Some((owner, version)) = self.sim.mods.mods.browser_items().map(|(o, v, _)| (o, v))
-        else {
-            self.sim.mods.browser.of = None;
-            self.sim.mods.browser.stacks.clear();
+        let Some((owner, version)) = self.mods.mods.browser_items().map(|(o, v, _)| (o, v)) else {
+            self.mods.browser.of = None;
+            self.mods.browser.stacks.clear();
             return None;
         };
-        if self.sim.mods.browser.of != Some((owner, version)) {
-            let items = self.sim.res.items();
+        if self.mods.browser.of != Some((owner, version)) {
+            let items = self.res.items();
             let stacks = self
-                .sim
                 .mods
                 .mods
                 .browser_items()
                 .map_or_else(Vec::new, |(_, _, list)| {
                     list.iter().map(|s| browser_stack(items, s)).collect()
                 });
-            self.sim.mods.browser.stacks = stacks;
+            self.mods.browser.stacks = stacks;
             // The same title again (the mod updating its buttons) keeps the page.
-            let old = self.sim.mods.browser.recipes.take();
-            self.sim.mods.browser.recipes = self
-                .sim
+            let old = self.mods.browser.recipes.take();
+            self.mods.browser.recipes = self
                 .mods
                 .mods
                 .browser_recipes(owner)
                 .map(|shown| super::mod_browser_recipes::Pages::new(items, shown, old));
-            self.sim.mods.browser.of = Some((owner, version));
+            self.mods.browser.of = Some((owner, version));
         }
         Some(owner)
     }
@@ -166,6 +160,14 @@ impl Game<'_> {
             search,
         })
     }
+    fn browser_pages(&self, layout: &Layout) -> usize {
+        self.mods
+            .browser
+            .stacks
+            .len()
+            .div_ceil(layout.per_page())
+            .max(1)
+    }
     /// The stack under the pointer on the panel, an item's or a recipe's,
     /// as the mod sent it and as a stack.
     fn browser_pointed_stack(&self, layout: &Layout) -> Option<(BrowserStack, ItemStack)> {
@@ -188,12 +190,22 @@ impl Game<'_> {
         let first = self.mods.browser.page * layout.per_page();
         (0..layout.per_page()).find_map(|n| {
             let (x, y) = layout.slot(n);
-            if !inside(self.front.cursor, [x, y, SLOT, SLOT]) {
+            if !inside(self.cursor, [x, y, SLOT, SLOT]) {
                 return None;
             }
             let stack = self.mods.browser.stacks.get(first + n)?.clone()?;
             Some((first + n, stack))
         })
+    }
+    fn browser_search(&mut self, layout: &Layout) -> &mut EditBox {
+        let search = self.mods.browser.search.get_or_insert_with(|| {
+            let mut edit = EditBox::new(0.0, 0.0, 0.0, 0.0);
+            edit.max_length = 50;
+            edit.focused = false;
+            edit
+        });
+        [search.x, search.y, search.width, search.height] = layout.search;
+        search
     }
 
     /// The items' page arrows and grid.
@@ -201,14 +213,14 @@ impl Game<'_> {
         let pages = self.browser_pages(layout);
         self.mods.browser.page = self.mods.browser.page.min(pages - 1);
         let page = self.mods.browser.page;
-        let cursor = self.front.cursor;
+        let cursor = self.cursor;
         if pages > 1 {
             let labels = [
                 self.translate("gui.recipebook.previous_page", "Previous Page"),
                 self.translate("gui.recipebook.next_page", "Next Page"),
             ];
             let shown = [page > 0, page + 1 < pages];
-            let atlas = &self.front.gui.atlas;
+            let atlas = &self.gui.atlas;
             for (((x, y), name), (label, shown)) in layout
                 .arrows()
                 .into_iter()
@@ -246,7 +258,7 @@ impl Game<'_> {
             let rect = [x + 1.0, y + 1.0, 16.0, 16.0];
             if inside(cursor, [x, y, SLOT, SLOT]) {
                 batch.fill(
-                    &self.front.gui.atlas,
+                    &self.gui.atlas,
                     x + 1.0,
                     y + 1.0,
                     16.0,
@@ -272,7 +284,7 @@ impl Game<'_> {
         let Some(layout) = self.browser_layout(batch) else {
             return;
         };
-        let cursor = self.front.cursor;
+        let cursor = self.cursor;
         if self.mods.browser.recipes.is_some() {
             self.draw_browser_recipes(batch, &layout);
         } else {
@@ -283,7 +295,7 @@ impl Game<'_> {
         // The hint shows in an empty box without focus, as the recipe book's.
         search.suggestion = (search.value.is_empty() && !search.focused).then_some(hint);
         let mut search = search.clone();
-        search.draw(batch, &self.front.gui.atlas, None);
+        search.draw(batch, &self.gui.atlas, None);
         self.mods.browser.search = Some(search);
         if self.carried.is_some() {
             self.draw_carried(batch);
@@ -308,10 +320,10 @@ impl Game<'_> {
         let Some(layout) = self.browser_layout(&batch) else {
             return false;
         };
-        let cursor = self.front.cursor;
+        let cursor = self.cursor;
         let shift = self.has_shift_down();
-        let atlas = &self.front.gui.atlas;
-        let search = self.sim.mods.browser.search.get_or_insert_with(|| {
+        let atlas = &self.gui.atlas;
+        let search = self.mods.browser.search.get_or_insert_with(|| {
             let mut edit = EditBox::new(0.0, 0.0, 0.0, 0.0);
             edit.max_length = 50;
             edit
@@ -358,17 +370,23 @@ impl Game<'_> {
         inside(cursor, layout.area)
     }
 
+    /// Whether keys go to the panel's search box.
+    pub(super) fn mod_browser_typing(&self) -> bool {
+        self.screen == Screen::Inventory
+            && self.mods.browser.of.is_some()
+            && self.mods.browser.search.as_ref().is_some_and(|s| s.focused)
+    }
     /// A key press while the search box has focus.
     pub(super) fn mod_browser_key(&mut self, event: &winit::event::KeyEvent) {
         use winit::keyboard::PhysicalKey;
         let shortcut = self.edit_shortcut(event);
         let ctrl = self.has_control_down();
         let shift = self.has_shift_down();
-        let Some(search) = self.sim.mods.browser.search.as_mut() else {
+        let Some(search) = self.mods.browser.search.as_mut() else {
             return;
         };
         if let Some(shortcut) = shortcut {
-            search.shortcut(shortcut, &mut self.front.clipboard);
+            search.shortcut(shortcut, &mut self.clipboard);
         } else {
             let handled = match event.physical_key {
                 PhysicalKey::Code(code) => search.key(code, ctrl, shift),
@@ -384,56 +402,6 @@ impl Game<'_> {
         }
         search.reset_blink();
         self.browser_searched();
-    }
-    /// The item under the pointer on a container screen, for the mods' keys
-    /// (`browser`'s `key` event): the panel's, else a slot's.
-    pub(super) fn mod_browser_pointed(&mut self) -> Option<BrowserStack> {
-        let batch = self.browser_batch()?;
-        let stack = match self
-            .browser_sync()
-            .and_then(|_| self.browser_layout(&batch))
-        {
-            // The panel's stacks as the mod sent them.
-            Some(layout) if inside(self.front.cursor, layout.area) => {
-                return Some(self.browser_pointed_stack(&layout)?.0);
-            }
-            _ => {
-                let slot = self.slot_at(&batch, self.front.cursor.0, self.front.cursor.1)?;
-                self.slot_view(slot)?
-            }
-        };
-        Some(BrowserStack {
-            item: stack.item.to_string(),
-            count: stack.count,
-            components: super::mod_recipes::components(&stack),
-        })
-    }
-}
-#[cfg(feature = "mods")]
-impl crate::game::Sim<'_> {
-    fn browser_pages(&self, layout: &Layout) -> usize {
-        self.mods
-            .browser
-            .stacks
-            .len()
-            .div_ceil(layout.per_page())
-            .max(1)
-    }
-    fn browser_search(&mut self, layout: &Layout) -> &mut EditBox {
-        let search = self.mods.browser.search.get_or_insert_with(|| {
-            let mut edit = EditBox::new(0.0, 0.0, 0.0, 0.0);
-            edit.max_length = 50;
-            edit.focused = false;
-            edit
-        });
-        [search.x, search.y, search.width, search.height] = layout.search;
-        search
-    }
-    /// Whether keys go to the panel's search box.
-    pub(super) fn mod_browser_typing(&self) -> bool {
-        self.screen == Screen::Inventory
-            && self.mods.browser.of.is_some()
-            && self.mods.browser.search.as_ref().is_some_and(|s| s.focused)
     }
     /// Text typed (or one backspace) into the search box (`horizon-ctl type`).
     pub(super) fn mod_browser_text(&mut self, text: Option<&str>, backspace: bool) {
@@ -467,6 +435,29 @@ impl crate::game::Sim<'_> {
         if let Some(search) = self.mods.browser.search.as_mut() {
             search.focused = false;
         }
+    }
+    /// The item under the pointer on a container screen, for the mods' keys
+    /// (`browser`'s `key` event): the panel's, else a slot's.
+    pub(super) fn mod_browser_pointed(&mut self) -> Option<BrowserStack> {
+        let batch = self.browser_batch()?;
+        let stack = match self
+            .browser_sync()
+            .and_then(|_| self.browser_layout(&batch))
+        {
+            // The panel's stacks as the mod sent them.
+            Some(layout) if inside(self.cursor, layout.area) => {
+                return Some(self.browser_pointed_stack(&layout)?.0);
+            }
+            _ => {
+                let slot = self.slot_at(&batch, self.cursor.0, self.cursor.1)?;
+                self.slot_view(slot)?
+            }
+        };
+        Some(BrowserStack {
+            item: stack.item.to_string(),
+            count: stack.count,
+            components: super::mod_recipes::components(&stack),
+        })
     }
 }
 
