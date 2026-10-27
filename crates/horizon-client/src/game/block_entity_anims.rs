@@ -28,51 +28,6 @@ use horizon_world::nbt::Tag;
 const PLAYER: u64 = u64::MAX;
 
 impl Game<'_> {
-    /// `BlockEntity.triggerEvent(a, b)` on the client copy of the block entity at `pos`.
-    pub(super) fn block_entity_event(&mut self, pos: [i32; 3], a: i32, b: i32) {
-        let state = self.world.block(pos[0], pos[1], pos[2]).0;
-        let time = self.world.game_time;
-        match self.be_anims.ticker(state) {
-            Some(Ticker::Lid) => {
-                self.be_anims
-                    .chests
-                    .entry(pos)
-                    .or_default()
-                    .trigger_event(a, b);
-            }
-            Some(Ticker::Shulker { .. }) => {
-                self.be_anims
-                    .shulkers
-                    .entry(pos)
-                    .or_default()
-                    .trigger_event(a, b);
-            }
-            Some(Ticker::Bell) => {
-                let gathered = self.bell_gather(pos);
-                self.be_anims
-                    .bells
-                    .entry(pos)
-                    .or_default()
-                    .trigger_event(a, b, time, || gathered);
-            }
-            Some(Ticker::Gateway) => {
-                let initial = self.gateway_loaded(pos);
-                self.be_anims
-                    .gateways
-                    .entry(pos)
-                    .or_insert(initial)
-                    .trigger_event(a, b);
-            }
-            Some(Ticker::Pot) => {
-                self.be_anims
-                    .pots
-                    .entry(pos)
-                    .or_default()
-                    .trigger_event(a, b, time);
-            }
-            _ => {}
-        }
-    }
     /// A player opened (`open`) or closed the container at `key`: the opener
     /// count block event (`ContainerOpenersCounter` / `ShulkerBoxBlockEntity`
     /// `startOpen`/`stopOpen`) for chests, ender chests and shulker boxes,
@@ -159,73 +114,6 @@ impl Game<'_> {
         }
         edge
     }
-    /// One opener more (`open`) or less at `key`: the count before and after
-    /// (`ContainerOpenersCounter.incrementOpeners` / `decrementOpeners`).
-    fn count_opener(&mut self, key: (i32, i32, i32), open: bool) -> (i32, i32) {
-        let count = self.lid_openers.entry(key).or_default();
-        let before = *count;
-        *count = (before + if open { 1 } else { -1 }).max(0);
-        let after = *count;
-        if after == 0 {
-            self.lid_openers.remove(&key);
-        }
-        (before, after)
-    }
-    /// `BellBlockEntity.updateEntities`: the living entities whose bounding
-    /// box meets the bell's block box inflated by 48.
-    fn bell_gather(&self, pos: [i32; 3]) -> Vec<u64> {
-        let area = Aabb::new(
-            Vec3::new(
-                f64::from(pos[0]) - 48.0,
-                f64::from(pos[1]) - 48.0,
-                f64::from(pos[2]) - 48.0,
-            ),
-            Vec3::new(
-                f64::from(pos[0]) + 49.0,
-                f64::from(pos[1]) + 49.0,
-                f64::from(pos[2]) + 49.0,
-            ),
-        );
-        let mut out = Vec::new();
-        if self
-            .player_view()
-            .is_some_and(|p| p.bounds.intersects(area))
-        {
-            out.push(PLAYER);
-        }
-        for m in &self.mobs {
-            if !m.removed && m.bounds().intersects(area) {
-                out.push(u64::from(m.id));
-            }
-        }
-        out
-    }
-    /// `ShulkerBoxBlock.canOpen`: a closed box opens only when its lid has
-    /// room to rise (`level.noCollision` of the half-open lid box).
-    pub(super) fn shulker_can_open(&self, pos: [i32; 3]) -> bool {
-        let state = self.world.block(pos[0], pos[1], pos[2]).0;
-        let Some(Ticker::Shulker { facing }) = self.be_anims.ticker(state) else {
-            return true;
-        };
-        let closed = self
-            .be_anims
-            .shulkers
-            .get(&pos)
-            .is_none_or(|s| s.status == ShulkerStatus::Closed);
-        if !closed {
-            return true;
-        }
-        let b = Shulker::lid_box(pos, facing);
-        let mut scene = SceneCollisions {
-            world: &self.world,
-            binding: self.collision,
-            subject: None,
-        };
-        no_collision_empty(
-            &mut scene,
-            Aabb::new(Vec3::new(b[0], b[1], b[2]), Vec3::new(b[3], b[4], b[5])),
-        )
-    }
     /// The client tickers of the loaded animated block entities, once per
     /// client tick (`ClientLevel.tickBlockEntities`).
     pub(super) fn tick_block_entity_anims(&mut self) {
@@ -234,7 +122,7 @@ impl Game<'_> {
         if self.remote.is_none() {
             self.tick_conduit_servers();
         }
-        let Some(r) = &self.renderer else {
+        let Some(r) = &self.front.renderer else {
             if self.remote.is_none() {
                 self.tick_gateway_servers();
             }
@@ -302,7 +190,7 @@ impl Game<'_> {
                         alive: p.alive,
                         raider: false,
                     });
-                    let mobs = &self.mobs;
+                    let mobs = &self.sim.mobs;
                     let entity = |h: u64| {
                         if h == PLAYER {
                             return player;
@@ -315,6 +203,7 @@ impl Game<'_> {
                         })
                     };
                     let tick = self
+                        .sim
                         .be_anims
                         .bells
                         .entry(pos)
@@ -340,10 +229,15 @@ impl Game<'_> {
                                 color: [channel(16), channel(8), channel(0), channel(24)],
                                 ..ParticleOptions::simple(ParticleType::EntityEffect)
                             };
-                            self.particles.add(&options, p, [0.0; 3]);
+                            self.sim.particles.add(&options, p, [0.0; 3]);
                         }
                         // makeRaidersGlow (the server's effect).
-                        for m in self.mobs.iter_mut().filter(|_| self.remote.is_none()) {
+                        for m in self
+                            .sim
+                            .mobs
+                            .iter_mut()
+                            .filter(|_| self.sim.remote.is_none())
+                        {
                             if glow.contains(&u64::from(m.id)) {
                                 m.add_effect("minecraft:glowing", 60, 0);
                             }
@@ -352,9 +246,9 @@ impl Game<'_> {
                 }
                 Ticker::Conduit => {
                     let target = self.conduit_target(pos);
-                    let world = &self.world;
-                    let facts = self.res.facts();
-                    let registry = self.pack.assets.registry;
+                    let world = &self.sim.world;
+                    let facts = self.sim.res.facts();
+                    let registry = self.sim.pack.assets.registry;
                     let is_water = |p: [i32; 3]| {
                         facts.get(world.block(p[0], p[1], p[2])).fluid
                             == horizon_client::blocks::Fluid::Water
@@ -365,14 +259,14 @@ impl Game<'_> {
                             .is_some_and(|s| frames.contains(&s.name))
                     };
                     let time = world.game_time;
-                    let anims = &mut self.be_anims;
+                    let anims = &mut self.sim.be_anims;
                     let particles = anims.conduits.entry(pos).or_default().client_tick(
                         pos,
                         time,
                         is_water,
                         is_frame,
                         target,
-                        self.particles.random(),
+                        self.sim.particles.random(),
                     );
                     let nautilus = ParticleOptions::simple(ParticleType::Nautilus);
                     for (p, v) in particles {
@@ -384,10 +278,10 @@ impl Game<'_> {
                     // The server copy's portalTick runs first; its block event
                     // reaches the client copy before the client ticks it.
                     let initial = self.gateway_loaded(pos);
-                    let anims = &mut self.be_anims;
+                    let anims = &mut self.sim.be_anims;
                     let server = anims.gateway_servers.entry(pos).or_insert(initial);
                     // A server sends its copy's block event instead.
-                    let triggered = self.remote.is_none() && server.portal_tick();
+                    let triggered = self.sim.remote.is_none() && server.portal_tick();
                     let client = anims.gateways.entry(pos).or_insert(initial);
                     if triggered {
                         client.trigger_event(1, 0);
@@ -410,38 +304,6 @@ impl Game<'_> {
         positions.sort_unstable();
         for pos in positions {
             self.tick_conduit_server(pos);
-        }
-    }
-    /// Sets `be_anims.conduit_servers` to the conduits in the
-    /// chunks that tick blocks, keeping the state of those already known.
-    fn find_conduits(&mut self) {
-        let levels = self.tickets.levels();
-        let kinds = &self.be_anims.kinds;
-        let is_conduit = |id: u32| matches!(kinds.get(id as usize), Some(Some(Ticker::Conduit)));
-        let mut found = Vec::new();
-        for (&(cx, cz), chunk) in &self.world.chunks {
-            if !levels.block_ticking_at(cx * 16, cz * 16) {
-                continue;
-            }
-            for (si, section) in chunk.sections.iter().enumerate() {
-                if !section.blocks.maybe_has(is_conduit) {
-                    continue;
-                }
-                for i in 0..4096 {
-                    if is_conduit(section.get(i)) {
-                        found.push([
-                            cx * 16 + (i & 15) as i32,
-                            horizon_client::chunk::MIN_Y + si as i32 * 16 + (i >> 8) as i32,
-                            cz * 16 + ((i >> 4) & 15) as i32,
-                        ]);
-                    }
-                }
-            }
-        }
-        let mut old = std::mem::take(&mut self.be_anims.conduit_servers);
-        for pos in found {
-            let known = old.remove(&pos).unwrap_or_default();
-            self.be_anims.conduit_servers.insert(pos, known);
         }
     }
     /// `ConduitBlockEntity.serverTick` of the conduit at `pos`, in a chunk
@@ -629,6 +491,214 @@ impl Game<'_> {
             .unwrap_or(0);
         Some(candidates[pick as usize])
     }
+    /// The renderer's view of the block entity at `pos`, with a decorated
+    /// pot's saved `sherds` (back, left, right, front).
+    pub(super) fn block_anim(&self, pos: [i32; 3], partial: f32) -> BlockAnim {
+        let state = self.world.block(pos[0], pos[1], pos[2]);
+        let sherds = if &*self.res.facts().get(state).name == "minecraft:decorated_pot" {
+            let sherds = self.saved_tag(pos).and_then(|t| t.get("sherds"));
+            ["back", "left", "right", "front"].map(|side| match sherds.and_then(|s| s.get(side)) {
+                // An item id, or the item stack the processed templates hold.
+                Some(Tag::String(id)) => Some(id.to_string_lossy()),
+                Some(stack) => {
+                    horizon_client::save::item_from_nbt(stack).map(|s| s.item.to_string())
+                }
+                None => None,
+            })
+        } else {
+            Default::default()
+        };
+        self.be_anims
+            .block_anim(pos, self.world.game_time, partial, sherds)
+    }
+    /// `ChestLidController.getOpenness(partial)` at `pos`.
+    pub(super) fn chest_lid(&self, pos: [i32; 3], partial: f32) -> f32 {
+        self.be_anims.lid(pos, partial)
+    }
+    /// `SkullBlockRenderer.getPlayerSkin`: the skin sprite of the profile of
+    /// the player head at `pos`. The skin download is started here; while it
+    /// is in flight (or when it cannot be got) the profile's default skin
+    /// stands in. A head with no profile answers None: `SKIN_BY_TYPE`.
+    pub(super) fn skull_skin_at(&self, pos: [i32; 3]) -> Option<String> {
+        let Some(BlockEntity::Skull(skull)) =
+            self.world.block_entities.get(&(pos[0], pos[1], pos[2]))
+        else {
+            return None;
+        };
+        let skin = skull.skin.as_ref()?;
+        // The texture a packed or resolved `textures` property fetches: the
+        // download of a static profile, or the one the services answer for a
+        // `Dynamic` (name- or id-only) profile.
+        let download = skin.download.clone().or_else(|| {
+            let key = skin.dynamic.as_ref()?;
+            let skins::Resolve::Done(Some(profile)) = self.skin_profiles.borrow_mut().state(key)
+            else {
+                return None;
+            };
+            let (value, signature) = profile.textures()?;
+            let url = skins::unpack(&value, signature, &skins::TEXTURE_URIS).skin?;
+            let location = skins::skin_location(&skins::texture_hash(&url)?);
+            Some((url, location))
+        });
+        if let Some((url, location)) = download {
+            let mut downloads = self.skin_downloads.borrow_mut();
+            if self.front.gui.atlas.sprites.contains_key(&location) {
+                let _ = downloads.state(skins::Kind::Skin, &url);
+                return Some(location);
+            }
+            // Its slot was evicted: offer the image again.
+            if downloads.state(skins::Kind::Skin, &url) == skins::Download::Ready {
+                downloads.again(&location);
+            }
+        }
+        Some(skin.fallback.to_owned())
+    }
+}
+impl crate::game::Sim<'_> {
+    /// `BlockEntity.triggerEvent(a, b)` on the client copy of the block entity at `pos`.
+    pub(super) fn block_entity_event(&mut self, pos: [i32; 3], a: i32, b: i32) {
+        let state = self.world.block(pos[0], pos[1], pos[2]).0;
+        let time = self.world.game_time;
+        match self.be_anims.ticker(state) {
+            Some(Ticker::Lid) => {
+                self.be_anims
+                    .chests
+                    .entry(pos)
+                    .or_default()
+                    .trigger_event(a, b);
+            }
+            Some(Ticker::Shulker { .. }) => {
+                self.be_anims
+                    .shulkers
+                    .entry(pos)
+                    .or_default()
+                    .trigger_event(a, b);
+            }
+            Some(Ticker::Bell) => {
+                let gathered = self.bell_gather(pos);
+                self.be_anims
+                    .bells
+                    .entry(pos)
+                    .or_default()
+                    .trigger_event(a, b, time, || gathered);
+            }
+            Some(Ticker::Gateway) => {
+                let initial = self.gateway_loaded(pos);
+                self.be_anims
+                    .gateways
+                    .entry(pos)
+                    .or_insert(initial)
+                    .trigger_event(a, b);
+            }
+            Some(Ticker::Pot) => {
+                self.be_anims
+                    .pots
+                    .entry(pos)
+                    .or_default()
+                    .trigger_event(a, b, time);
+            }
+            _ => {}
+        }
+    }
+    /// One opener more (`open`) or less at `key`: the count before and after
+    /// (`ContainerOpenersCounter.incrementOpeners` / `decrementOpeners`).
+    fn count_opener(&mut self, key: (i32, i32, i32), open: bool) -> (i32, i32) {
+        let count = self.lid_openers.entry(key).or_default();
+        let before = *count;
+        *count = (before + if open { 1 } else { -1 }).max(0);
+        let after = *count;
+        if after == 0 {
+            self.lid_openers.remove(&key);
+        }
+        (before, after)
+    }
+    /// `BellBlockEntity.updateEntities`: the living entities whose bounding
+    /// box meets the bell's block box inflated by 48.
+    fn bell_gather(&self, pos: [i32; 3]) -> Vec<u64> {
+        let area = Aabb::new(
+            Vec3::new(
+                f64::from(pos[0]) - 48.0,
+                f64::from(pos[1]) - 48.0,
+                f64::from(pos[2]) - 48.0,
+            ),
+            Vec3::new(
+                f64::from(pos[0]) + 49.0,
+                f64::from(pos[1]) + 49.0,
+                f64::from(pos[2]) + 49.0,
+            ),
+        );
+        let mut out = Vec::new();
+        if self
+            .player_view()
+            .is_some_and(|p| p.bounds.intersects(area))
+        {
+            out.push(PLAYER);
+        }
+        for m in &self.mobs {
+            if !m.removed && m.bounds().intersects(area) {
+                out.push(u64::from(m.id));
+            }
+        }
+        out
+    }
+    /// `ShulkerBoxBlock.canOpen`: a closed box opens only when its lid has
+    /// room to rise (`level.noCollision` of the half-open lid box).
+    pub(super) fn shulker_can_open(&self, pos: [i32; 3]) -> bool {
+        let state = self.world.block(pos[0], pos[1], pos[2]).0;
+        let Some(Ticker::Shulker { facing }) = self.be_anims.ticker(state) else {
+            return true;
+        };
+        let closed = self
+            .be_anims
+            .shulkers
+            .get(&pos)
+            .is_none_or(|s| s.status == ShulkerStatus::Closed);
+        if !closed {
+            return true;
+        }
+        let b = Shulker::lid_box(pos, facing);
+        let mut scene = SceneCollisions {
+            world: &self.world,
+            binding: self.collision,
+            subject: None,
+        };
+        no_collision_empty(
+            &mut scene,
+            Aabb::new(Vec3::new(b[0], b[1], b[2]), Vec3::new(b[3], b[4], b[5])),
+        )
+    }
+    /// Sets `be_anims.conduit_servers` to the conduits in the
+    /// chunks that tick blocks, keeping the state of those already known.
+    fn find_conduits(&mut self) {
+        let levels = self.tickets.levels();
+        let kinds = &self.be_anims.kinds;
+        let is_conduit = |id: u32| matches!(kinds.get(id as usize), Some(Some(Ticker::Conduit)));
+        let mut found = Vec::new();
+        for (&(cx, cz), chunk) in &self.world.chunks {
+            if !levels.block_ticking_at(cx * 16, cz * 16) {
+                continue;
+            }
+            for (si, section) in chunk.sections.iter().enumerate() {
+                if !section.blocks.maybe_has(is_conduit) {
+                    continue;
+                }
+                for i in 0..4096 {
+                    if is_conduit(section.get(i)) {
+                        found.push([
+                            cx * 16 + (i & 15) as i32,
+                            horizon_client::chunk::MIN_Y + si as i32 * 16 + (i >> 8) as i32,
+                            cz * 16 + ((i >> 4) & 15) as i32,
+                        ]);
+                    }
+                }
+            }
+        }
+        let mut old = std::mem::take(&mut self.be_anims.conduit_servers);
+        for pos in found {
+            let known = old.remove(&pos).unwrap_or_default();
+            self.be_anims.conduit_servers.insert(pos, known);
+        }
+    }
     /// The conduit's `destroyTarget` as the client draws it.
     fn conduit_target(&self, pos: [i32; 3]) -> Option<ConduitTarget> {
         let id = self.be_anims.conduit_servers.get(&pos)?.target?;
@@ -702,67 +772,5 @@ impl Game<'_> {
                         .eq(&pos.map(|v| Some(i64::from(v))))
                 })
             })
-    }
-    /// The renderer's view of the block entity at `pos`, with a decorated
-    /// pot's saved `sherds` (back, left, right, front).
-    pub(super) fn block_anim(&self, pos: [i32; 3], partial: f32) -> BlockAnim {
-        let state = self.world.block(pos[0], pos[1], pos[2]);
-        let sherds = if &*self.res.facts().get(state).name == "minecraft:decorated_pot" {
-            let sherds = self.saved_tag(pos).and_then(|t| t.get("sherds"));
-            ["back", "left", "right", "front"].map(|side| match sherds.and_then(|s| s.get(side)) {
-                // An item id, or the item stack the processed templates hold.
-                Some(Tag::String(id)) => Some(id.to_string_lossy()),
-                Some(stack) => {
-                    horizon_client::save::item_from_nbt(stack).map(|s| s.item.to_string())
-                }
-                None => None,
-            })
-        } else {
-            Default::default()
-        };
-        self.be_anims
-            .block_anim(pos, self.world.game_time, partial, sherds)
-    }
-    /// `ChestLidController.getOpenness(partial)` at `pos`.
-    pub(super) fn chest_lid(&self, pos: [i32; 3], partial: f32) -> f32 {
-        self.be_anims.lid(pos, partial)
-    }
-    /// `SkullBlockRenderer.getPlayerSkin`: the skin sprite of the profile of
-    /// the player head at `pos`. The skin download is started here; while it
-    /// is in flight (or when it cannot be got) the profile's default skin
-    /// stands in. A head with no profile answers None: `SKIN_BY_TYPE`.
-    pub(super) fn skull_skin_at(&self, pos: [i32; 3]) -> Option<String> {
-        let Some(BlockEntity::Skull(skull)) =
-            self.world.block_entities.get(&(pos[0], pos[1], pos[2]))
-        else {
-            return None;
-        };
-        let skin = skull.skin.as_ref()?;
-        // The texture a packed or resolved `textures` property fetches: the
-        // download of a static profile, or the one the services answer for a
-        // `Dynamic` (name- or id-only) profile.
-        let download = skin.download.clone().or_else(|| {
-            let key = skin.dynamic.as_ref()?;
-            let skins::Resolve::Done(Some(profile)) = self.skin_profiles.borrow_mut().state(key)
-            else {
-                return None;
-            };
-            let (value, signature) = profile.textures()?;
-            let url = skins::unpack(&value, signature, &skins::TEXTURE_URIS).skin?;
-            let location = skins::skin_location(&skins::texture_hash(&url)?);
-            Some((url, location))
-        });
-        if let Some((url, location)) = download {
-            let mut downloads = self.skin_downloads.borrow_mut();
-            if self.gui.atlas.sprites.contains_key(&location) {
-                let _ = downloads.state(skins::Kind::Skin, &url);
-                return Some(location);
-            }
-            // Its slot was evicted: offer the image again.
-            if downloads.state(skins::Kind::Skin, &url) == skins::Download::Ready {
-                downloads.again(&location);
-            }
-        }
-        Some(skin.fallback.to_owned())
     }
 }

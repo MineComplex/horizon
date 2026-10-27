@@ -294,9 +294,6 @@ impl Game<'_> {
             },
         }
     }
-    fn stack_name(&self, s: &ItemStack) -> Text {
-        self.stack_display_name(s)
-    }
     fn item_from_input(&self, ctx: &Context) -> R<Option<ItemStack>> {
         let Some(Arg::Item(ItemInput { id, components, .. })) = ctx.get("item").cloned() else {
             return Ok(None);
@@ -593,38 +590,6 @@ impl Game<'_> {
             _ => stack,
         }
     }
-    /// `ItemStack.getMaxStackSize`: the max_stack_size component, else the
-    /// item's.
-    pub(super) fn stack_max_size(&self, s: &ItemStack) -> u32 {
-        if let Some(Tag::Int(n)) = s.data().and_then(|d| d.other("minecraft:max_stack_size")) {
-            return (*n).clamp(1, 99) as u32;
-        }
-        self.res.items().get(&s.item).map_or(64, |i| i.max_stack)
-    }
-    /// `ResourceOrIdArgument.getItemModifier`: an inline modifier (SNBT) or
-    /// a registered one.
-    pub(super) fn item_modifier_arg(&mut self, ctx: &Context, name: &str) -> R<serde_json::Value> {
-        let raw = match ctx.get(name) {
-            Some(Arg::Resource(s) | Arg::Str(s)) => s.clone(),
-            _ => return Err(err("command.failed", &[])),
-        };
-        if raw.starts_with('{') || raw.starts_with('[') {
-            let (tag, _) = horizon_world::nbt::parse_snbt(&raw)
-                .map_err(|e| err("argument.nbt.invalid", &[&e]))?;
-            return Ok(horizon_client::scoreboard::tag_to_json(&tag));
-        }
-        let id = if raw.contains(':') {
-            raw
-        } else {
-            format!("minecraft:{raw}")
-        };
-        self.fns
-            .store
-            .item_modifiers
-            .get(&id)
-            .cloned()
-            .ok_or_else(|| err("argument.item_modifier.unknown", &[&id]))
-    }
     /// `/item modify (entity|block) <target> <slot> <modifier>`.
     pub(super) fn cmd_item_modify(&mut self, ctx: &Context) -> R<i32> {
         self.ensure_datapacks();
@@ -913,6 +878,43 @@ impl Game<'_> {
             }
         }
         Ok((count > 0, count))
+    }
+}
+impl crate::game::Sim<'_> {
+    fn stack_name(&self, s: &ItemStack) -> Text {
+        self.stack_display_name(s)
+    }
+    /// `ItemStack.getMaxStackSize`: the max_stack_size component, else the
+    /// item's.
+    pub(super) fn stack_max_size(&self, s: &ItemStack) -> u32 {
+        if let Some(Tag::Int(n)) = s.data().and_then(|d| d.other("minecraft:max_stack_size")) {
+            return (*n).clamp(1, 99) as u32;
+        }
+        self.res.items().get(&s.item).map_or(64, |i| i.max_stack)
+    }
+    /// `ResourceOrIdArgument.getItemModifier`: an inline modifier (SNBT) or
+    /// a registered one.
+    pub(super) fn item_modifier_arg(&mut self, ctx: &Context, name: &str) -> R<serde_json::Value> {
+        let raw = match ctx.get(name) {
+            Some(Arg::Resource(s) | Arg::Str(s)) => s.clone(),
+            _ => return Err(err("command.failed", &[])),
+        };
+        if raw.starts_with('{') || raw.starts_with('[') {
+            let (tag, _) = horizon_world::nbt::parse_snbt(&raw)
+                .map_err(|e| err("argument.nbt.invalid", &[&e]))?;
+            return Ok(horizon_client::scoreboard::tag_to_json(&tag));
+        }
+        let id = if raw.contains(':') {
+            raw
+        } else {
+            format!("minecraft:{raw}")
+        };
+        self.fns
+            .store
+            .item_modifiers
+            .get(&id)
+            .cloned()
+            .ok_or_else(|| err("argument.item_modifier.unknown", &[&id]))
     }
 }
 

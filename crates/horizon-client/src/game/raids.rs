@@ -222,51 +222,6 @@ fn block_of(p: Vec3) -> [i32; 3] {
 }
 
 impl Game<'_> {
-    /// `Heightmap.Types.WORLD_SURFACE`: the first free block above the
-    /// highest non-air one.
-    pub(super) fn surface_height(&self, x: i32, z: i32) -> i32 {
-        let top = if self.dim == Dim::Nether { 127 } else { 319 };
-        (horizon_client::chunk::MIN_Y..=top)
-            .rev()
-            .find(|&y| !self.res.facts().is_air(self.world.block(x, y, z)))
-            .map_or(horizon_client::chunk::MIN_Y, |y| y + 1)
-    }
-    /// Every claimed village point of interest (job sites, beds, bells).
-    fn village_pois(&self) -> Vec<[i32; 3]> {
-        let mut out: Vec<[i32; 3]> = Vec::new();
-        for m in &self.mobs {
-            if m.species() != Species::Villager || !m.alive() {
-                continue;
-            }
-            for p in [m.extra.home, m.extra.bed, m.extra.meeting]
-                .into_iter()
-                .flatten()
-            {
-                if !out.contains(&p) {
-                    out.push(p);
-                }
-            }
-        }
-        out
-    }
-    pub(super) fn difficulty_id(&self) -> i32 {
-        use horizon_world::food::Difficulty;
-        match self.world.health_rules.difficulty {
-            Difficulty::Peaceful => 0,
-            Difficulty::Easy => 1,
-            Difficulty::Normal => 2,
-            Difficulty::Hard => 3,
-        }
-    }
-    fn player_block(&self) -> Option<[i32; 3]> {
-        self.player.as_ref().map(|p| block_of(p.position))
-    }
-    /// `dimensions/<dimension>/data/minecraft/raids.dat`: each dimension
-    /// keeps its own raids.
-    fn raids_path(&self, dim: Dim) -> std::path::PathBuf {
-        horizon_client::save::dimension_dir(&self.world_root, dim.id())
-            .join("data/minecraft/raids.dat")
-    }
     /// The raids of the player's dimension (the previous one saved first).
     fn load_raids(&mut self) {
         if self.raiding.loaded == Some(self.dim) {
@@ -306,33 +261,18 @@ impl Game<'_> {
         }
         self.save_raid_omen_position();
     }
-    /// `ServerPlayer.raidOmenPosition` from the player data.
-    fn load_raid_omen_position(&mut self) {
-        if self.raiding.omen_loaded {
-            return;
-        }
-        self.raiding.omen_loaded = true;
-        self.raiding.omen_position = match self
-            .level
-            .player_extra
-            .as_ref()
-            .and_then(|p| p.get("raid_omen_position"))
-        {
-            Some(horizon_world::nbt::Tag::IntArray(v)) if v.len() == 3 => Some([v[0], v[1], v[2]]),
-            _ => None,
-        };
-    }
     /// Writes `raid_omen_position` into the player data being saved.
     fn save_raid_omen_position(&mut self) {
-        if !self.raiding.omen_loaded {
+        if !self.sim.raiding.omen_loaded {
             return;
         }
         let extra = self
+            .sim
             .level
             .player_extra
             .get_or_insert_with(|| horizon_world::nbt::Tag::Compound(Default::default()));
         if let horizon_world::nbt::Tag::Compound(map) = extra {
-            match self.raiding.omen_position {
+            match self.sim.raiding.omen_position {
                 Some(p) => {
                     map.insert(
                         "raid_omen_position".into(),
@@ -344,32 +284,6 @@ impl Game<'_> {
                 }
             }
         }
-    }
-    fn gameplay_attributes(&mut self) -> std::sync::Arc<GameplayAttributes> {
-        if self.raiding.attributes.is_none() {
-            self.raiding.attributes = Some(std::sync::Arc::new(GameplayAttributes::load(
-                &self.options.resources,
-            )));
-        }
-        self.raiding.attributes.clone().unwrap_or_default()
-    }
-    /// A boolean gameplay attribute at a position (dimension, biome, then
-    /// the timelines at the overworld clock).
-    fn gameplay_attribute(&mut self, key: &str, at: [i32; 3]) -> bool {
-        let attributes = self.gameplay_attributes();
-        let biome = self
-            .world
-            .chunks
-            .get(&(at[0] >> 4, at[2] >> 4))
-            .map(|c| {
-                self.res
-                    .biomes()
-                    .get(c.biome(at[0], at[1], at[2]))
-                    .name
-                    .clone()
-            })
-            .unwrap_or_default();
-        attributes.value(key, self.dim.id(), &biome, self.world.day_time)
     }
 
     /// `BadOmenMobEffect` and `RaidOmenMobEffect.applyEffectTick` for the
@@ -409,12 +323,6 @@ impl Game<'_> {
             _ => OmenTick::Continue,
         }
     }
-    /// The Raid Omen sound when the effect is first added.
-    pub(super) fn raid_omen_added(&mut self) {
-        let eye = self.eye_position().unwrap_or_default();
-        self.sounds
-            .play("minecraft:event.mob_effect.raid_omen", Some(eye), 1.0, 1.0);
-    }
     /// `Raids.createOrExtendRaid`: not for spectators, with the `raids` rule
     /// and where raids may start; the raid centres on the occupied village
     /// points of interest within 64 blocks.
@@ -439,13 +347,6 @@ impl Game<'_> {
         }
         Some(id)
     }
-    /// `ServerLevel.getRaidAt`.
-    pub(super) fn raiding_nearby(&self, at: [i32; 3]) -> Option<i32> {
-        self.raiding.raids.nearby(at).map(|(id, _)| id)
-    }
-    pub(super) fn raid_started(&self, id: i32) -> bool {
-        self.raiding.raids.get(id).is_some_and(|r| r.started)
-    }
     /// `/raid start`: a raid in the local village at the given omen level.
     pub(super) fn raid_command_create(&mut self, at: [i32; 3], omen_level: i32) -> bool {
         self.load_raids();
@@ -458,133 +359,7 @@ impl Game<'_> {
         self.raiding.raids.dirty = true;
         true
     }
-    pub(super) fn raid_command_stop(&mut self, id: i32) {
-        if let Some(r) = self.raiding.raids.get_mut(id) {
-            r.stop();
-        }
-    }
-    pub(super) fn raid_set_omen(&mut self, id: i32, level: i32) -> i32 {
-        let Some(r) = self.raiding.raids.get_mut(id) else {
-            return 0;
-        };
-        std::mem::replace(&mut r.omen_level, level)
-    }
-    pub(super) fn raid_glow(&mut self, id: i32) {
-        for m in &mut self.mobs {
-            if raider::state(m).is_some_and(|s| s.raid_id == Some(id)) {
-                m.add_effect("glowing", 1000, 1);
-            }
-        }
-    }
-    /// The `/raid check` summary line.
-    pub(super) fn raid_status_text(&self, id: i32) -> String {
-        let Some(r) = self.raiding.raids.get(id) else {
-            return String::new();
-        };
-        let members: Vec<&Mob> = self.raid_members(id).collect();
-        let health: f32 = members.iter().fold(0.0, |a, m| a + m.health);
-        format!(
-            "Num groups spawned: {} Raid omen level: {} Num mobs: {} Raid health: {} / {}",
-            r.groups_spawned,
-            r.omen_level,
-            members.len(),
-            health,
-            r.total_health
-        )
-    }
-    /// A raid's members (`groupRaiderMap`): the living raiders it counts.
-    fn raid_members(&self, id: i32) -> impl Iterator<Item = &Mob> {
-        self.mobs.iter().filter(move |m| {
-            m.alive() && !m.removed && raider::state(m).is_some_and(|s| s.raid_id == Some(id))
-        })
-    }
-    /// `getHealthOfLivingRaiders`, leaving out one raider.
-    fn raid_living_health(&self, id: i32, except: Option<u32>) -> f32 {
-        self.raid_members(id)
-            .filter(|m| Some(m.id) != except)
-            .fold(0.0, |a, m| a + m.health)
-    }
-    /// The bar update the last hurt raider of a raid asked for
-    /// (`Raider.hurtServer` runs `updateBossbar` before the damage).
-    fn flush_raid_bar(&mut self, id: i32) {
-        let seen = self.raiding.bar_hurts.get(&id).copied().unwrap_or(0);
-        let last = self
-            .raid_members(id)
-            .filter_map(|m| raider::state(m).map(|s| (s.hurt_seq, m.id, s.pre_hurt_health)))
-            .filter(|h| h.0 > seen)
-            .max_by_key(|h| h.0);
-        let Some((seq, mob, before)) = last else {
-            return;
-        };
-        let living = self.raid_living_health(id, Some(mob)) + before;
-        if let Some(r) = self.raiding.raids.get_mut(id) {
-            r.update_bossbar(living);
-        }
-        self.raiding.bar_hurts.insert(id, seq);
-    }
 
-    /// The members of every raid, for `Raids.tick`.
-    fn raider_infos(&self) -> HashMap<i32, Vec<RaiderInfo>> {
-        let mut out: HashMap<i32, Vec<RaiderInfo>> = HashMap::new();
-        for m in &self.mobs {
-            if !m.alive() || m.removed {
-                continue;
-            }
-            let Some(s) = raider::state(m) else { continue };
-            let Some(id) = s.raid_id else { continue };
-            let position = block_of(m.position);
-            out.entry(id).or_default().push(RaiderInfo {
-                id: m.id,
-                wave: s.wave,
-                health: m.health,
-                position,
-                tick_count: m.age as i32,
-                no_action_time: m.ai.no_action_time,
-                ticks_outside: s.ticks_outside_raid,
-                removed: false,
-                other_dimension: false,
-                in_level: true,
-                patrol_leader: s.patrol_leader,
-            });
-        }
-        out
-    }
-    /// Raiders loaded with a `RaidId` join their raid
-    /// (`readAdditionalSaveData`: `addWaveMob` without counting health, and
-    /// the wave's leader).
-    fn register_loaded_raiders(&mut self) {
-        let pending: Vec<(u32, i32, i32, f32, bool)> = self
-            .mobs
-            .iter()
-            .filter(|m| m.alive() && !m.removed)
-            .filter_map(|m| {
-                let s = raider::state(m)?;
-                (!s.registered).then_some(())?;
-                Some((m.id, s.raid_id?, s.wave, m.health, s.patrol_leader))
-            })
-            .collect();
-        for (mob, id, wave, health, leader) in pending {
-            let living = self.raid_living_health(id, None);
-            let known = match self.raiding.raids.get_mut(id) {
-                Some(r) => {
-                    r.add_wave_mob(health, false, living);
-                    if leader {
-                        r.set_leader(wave, mob);
-                    }
-                    self.raiding.raids.dirty = true;
-                    true
-                }
-                None => false,
-            };
-            if let Some(m) = self.mobs.iter_mut().find(|m| m.id == mob) {
-                let s = raider::state_mut(m);
-                s.registered = true;
-                if !known {
-                    s.raid_id = None;
-                }
-            }
-        }
-    }
     /// `ServerLevel.tick` for the raids and their raiders.
     pub(super) fn tick_raids(&mut self) {
         if self.remote.is_some() {
@@ -796,7 +571,7 @@ impl Game<'_> {
         let mut joins: Vec<(u32, i32, f32)> = Vec::new();
         let mut new_leaders: Vec<(i32, i32, u32)> = Vec::new();
         let homes = self.raid_homes();
-        for m in &mut self.mobs {
+        for m in &mut self.sim.mobs {
             let species = m.species();
             if !raider::is_raider(species) {
                 continue;
@@ -809,7 +584,7 @@ impl Game<'_> {
             let target_golem = matches!(m.ai.target, Some(horizon_client::mobs::Who::Mob(t)) if golems.contains(&t));
             let target_player = m.ai.target == Some(horizon_client::mobs::Who::Player);
             let (health, range) = (m.health, m.attrs.follow_range);
-            let raids = &mut self.raiding.raids;
+            let raids = &mut self.sim.raiding.raids;
             let s = m.extra.raider.get_or_insert_with(Box::default);
             s.rider = has_rider;
             s.in_village = in_village;
@@ -912,7 +687,7 @@ impl Game<'_> {
             }
         }
         for (i, mob) in collectors {
-            let item = self.dropped[i].clone();
+            let item = self.sim.dropped[i].clone();
             self.add_pickup(
                 super::pickups::Taken::Item(Box::new(item)),
                 super::pickups::Collector::Mob(mob),
@@ -946,6 +721,247 @@ impl Game<'_> {
         }
         for (mob, id, health) in joins {
             self.join_raid(mob, id, health);
+        }
+    }
+
+    /// `BehaviorUtils.throwItem`: a hero's gift tossed toward the player.
+    pub(super) fn throw_gift(&mut self, table: &str, from: [f64; 3], to: [f64; 3]) {
+        let drops = self
+            .sim
+            .res
+            .items()
+            .loot_table(table, false, None, &mut self.sim.world.random);
+        let d = Vec3::new(to[0] - from[0], to[1] - from[1], to[2] - from[2]).normalize();
+        for stack in drops {
+            self.spawn_item(stack, from, [d.x * 0.3, d.y * 0.3, d.z * 0.3], 10);
+        }
+    }
+}
+impl crate::game::Sim<'_> {
+    /// `Heightmap.Types.WORLD_SURFACE`: the first free block above the
+    /// highest non-air one.
+    pub(super) fn surface_height(&self, x: i32, z: i32) -> i32 {
+        let top = if self.dim == Dim::Nether { 127 } else { 319 };
+        (horizon_client::chunk::MIN_Y..=top)
+            .rev()
+            .find(|&y| !self.res.facts().is_air(self.world.block(x, y, z)))
+            .map_or(horizon_client::chunk::MIN_Y, |y| y + 1)
+    }
+    /// Every claimed village point of interest (job sites, beds, bells).
+    fn village_pois(&self) -> Vec<[i32; 3]> {
+        let mut out: Vec<[i32; 3]> = Vec::new();
+        for m in &self.mobs {
+            if m.species() != Species::Villager || !m.alive() {
+                continue;
+            }
+            for p in [m.extra.home, m.extra.bed, m.extra.meeting]
+                .into_iter()
+                .flatten()
+            {
+                if !out.contains(&p) {
+                    out.push(p);
+                }
+            }
+        }
+        out
+    }
+    pub(super) fn difficulty_id(&self) -> i32 {
+        use horizon_world::food::Difficulty;
+        match self.world.health_rules.difficulty {
+            Difficulty::Peaceful => 0,
+            Difficulty::Easy => 1,
+            Difficulty::Normal => 2,
+            Difficulty::Hard => 3,
+        }
+    }
+    fn player_block(&self) -> Option<[i32; 3]> {
+        self.player.as_ref().map(|p| block_of(p.position))
+    }
+    /// `dimensions/<dimension>/data/minecraft/raids.dat`: each dimension
+    /// keeps its own raids.
+    fn raids_path(&self, dim: Dim) -> std::path::PathBuf {
+        horizon_client::save::dimension_dir(&self.world_root, dim.id())
+            .join("data/minecraft/raids.dat")
+    }
+    /// `ServerPlayer.raidOmenPosition` from the player data.
+    fn load_raid_omen_position(&mut self) {
+        if self.raiding.omen_loaded {
+            return;
+        }
+        self.raiding.omen_loaded = true;
+        self.raiding.omen_position = match self
+            .level
+            .player_extra
+            .as_ref()
+            .and_then(|p| p.get("raid_omen_position"))
+        {
+            Some(horizon_world::nbt::Tag::IntArray(v)) if v.len() == 3 => Some([v[0], v[1], v[2]]),
+            _ => None,
+        };
+    }
+    fn gameplay_attributes(&mut self) -> std::sync::Arc<GameplayAttributes> {
+        if self.raiding.attributes.is_none() {
+            self.raiding.attributes = Some(std::sync::Arc::new(GameplayAttributes::load(
+                &self.options.resources,
+            )));
+        }
+        self.raiding.attributes.clone().unwrap_or_default()
+    }
+    /// A boolean gameplay attribute at a position (dimension, biome, then
+    /// the timelines at the overworld clock).
+    fn gameplay_attribute(&mut self, key: &str, at: [i32; 3]) -> bool {
+        let attributes = self.gameplay_attributes();
+        let biome = self
+            .world
+            .chunks
+            .get(&(at[0] >> 4, at[2] >> 4))
+            .map(|c| {
+                self.res
+                    .biomes()
+                    .get(c.biome(at[0], at[1], at[2]))
+                    .name
+                    .clone()
+            })
+            .unwrap_or_default();
+        attributes.value(key, self.dim.id(), &biome, self.world.day_time)
+    }
+    /// The Raid Omen sound when the effect is first added.
+    pub(super) fn raid_omen_added(&mut self) {
+        let eye = self.eye_position().unwrap_or_default();
+        self.sounds
+            .play("minecraft:event.mob_effect.raid_omen", Some(eye), 1.0, 1.0);
+    }
+    /// `ServerLevel.getRaidAt`.
+    pub(super) fn raiding_nearby(&self, at: [i32; 3]) -> Option<i32> {
+        self.raiding.raids.nearby(at).map(|(id, _)| id)
+    }
+    pub(super) fn raid_started(&self, id: i32) -> bool {
+        self.raiding.raids.get(id).is_some_and(|r| r.started)
+    }
+    pub(super) fn raid_command_stop(&mut self, id: i32) {
+        if let Some(r) = self.raiding.raids.get_mut(id) {
+            r.stop();
+        }
+    }
+    pub(super) fn raid_set_omen(&mut self, id: i32, level: i32) -> i32 {
+        let Some(r) = self.raiding.raids.get_mut(id) else {
+            return 0;
+        };
+        std::mem::replace(&mut r.omen_level, level)
+    }
+    pub(super) fn raid_glow(&mut self, id: i32) {
+        for m in &mut self.mobs {
+            if raider::state(m).is_some_and(|s| s.raid_id == Some(id)) {
+                m.add_effect("glowing", 1000, 1);
+            }
+        }
+    }
+    /// The `/raid check` summary line.
+    pub(super) fn raid_status_text(&self, id: i32) -> String {
+        let Some(r) = self.raiding.raids.get(id) else {
+            return String::new();
+        };
+        let members: Vec<&Mob> = self.raid_members(id).collect();
+        let health: f32 = members.iter().fold(0.0, |a, m| a + m.health);
+        format!(
+            "Num groups spawned: {} Raid omen level: {} Num mobs: {} Raid health: {} / {}",
+            r.groups_spawned,
+            r.omen_level,
+            members.len(),
+            health,
+            r.total_health
+        )
+    }
+    /// A raid's members (`groupRaiderMap`): the living raiders it counts.
+    fn raid_members(&self, id: i32) -> impl Iterator<Item = &Mob> {
+        self.mobs.iter().filter(move |m| {
+            m.alive() && !m.removed && raider::state(m).is_some_and(|s| s.raid_id == Some(id))
+        })
+    }
+    /// `getHealthOfLivingRaiders`, leaving out one raider.
+    fn raid_living_health(&self, id: i32, except: Option<u32>) -> f32 {
+        self.raid_members(id)
+            .filter(|m| Some(m.id) != except)
+            .fold(0.0, |a, m| a + m.health)
+    }
+    /// The bar update the last hurt raider of a raid asked for
+    /// (`Raider.hurtServer` runs `updateBossbar` before the damage).
+    fn flush_raid_bar(&mut self, id: i32) {
+        let seen = self.raiding.bar_hurts.get(&id).copied().unwrap_or(0);
+        let last = self
+            .raid_members(id)
+            .filter_map(|m| raider::state(m).map(|s| (s.hurt_seq, m.id, s.pre_hurt_health)))
+            .filter(|h| h.0 > seen)
+            .max_by_key(|h| h.0);
+        let Some((seq, mob, before)) = last else {
+            return;
+        };
+        let living = self.raid_living_health(id, Some(mob)) + before;
+        if let Some(r) = self.raiding.raids.get_mut(id) {
+            r.update_bossbar(living);
+        }
+        self.raiding.bar_hurts.insert(id, seq);
+    }
+    /// The members of every raid, for `Raids.tick`.
+    fn raider_infos(&self) -> HashMap<i32, Vec<RaiderInfo>> {
+        let mut out: HashMap<i32, Vec<RaiderInfo>> = HashMap::new();
+        for m in &self.mobs {
+            if !m.alive() || m.removed {
+                continue;
+            }
+            let Some(s) = raider::state(m) else { continue };
+            let Some(id) = s.raid_id else { continue };
+            let position = block_of(m.position);
+            out.entry(id).or_default().push(RaiderInfo {
+                id: m.id,
+                wave: s.wave,
+                health: m.health,
+                position,
+                tick_count: m.age as i32,
+                no_action_time: m.ai.no_action_time,
+                ticks_outside: s.ticks_outside_raid,
+                removed: false,
+                other_dimension: false,
+                in_level: true,
+                patrol_leader: s.patrol_leader,
+            });
+        }
+        out
+    }
+    /// Raiders loaded with a `RaidId` join their raid
+    /// (`readAdditionalSaveData`: `addWaveMob` without counting health, and
+    /// the wave's leader).
+    fn register_loaded_raiders(&mut self) {
+        let pending: Vec<(u32, i32, i32, f32, bool)> = self
+            .mobs
+            .iter()
+            .filter(|m| m.alive() && !m.removed)
+            .filter_map(|m| {
+                let s = raider::state(m)?;
+                (!s.registered).then_some(())?;
+                Some((m.id, s.raid_id?, s.wave, m.health, s.patrol_leader))
+            })
+            .collect();
+        for (mob, id, wave, health, leader) in pending {
+            let living = self.raid_living_health(id, None);
+            let known = match self.raiding.raids.get_mut(id) {
+                Some(r) => {
+                    r.add_wave_mob(health, false, living);
+                    if leader {
+                        r.set_leader(wave, mob);
+                    }
+                    self.raiding.raids.dirty = true;
+                    true
+                }
+                None => false,
+            };
+            if let Some(m) = self.mobs.iter_mut().find(|m| m.id == mob) {
+                let s = raider::state_mut(m);
+                s.registered = true;
+                if !known {
+                    s.raid_id = None;
+                }
+            }
         }
     }
     /// `Raid.joinRaid` for a raider already in the world: it counts toward
@@ -1055,7 +1071,6 @@ impl Game<'_> {
             raider::state_mut(dead).raid_id = None;
         }
     }
-
     /// What `getRaidAt` tells each villager where it stands (its brain's
     /// `SetRaidStatus`, `ResetRaidStatus`, `ReactToBell` and raid packages
     /// read it).
@@ -1109,7 +1124,6 @@ impl Game<'_> {
         self.lan_entity_event(id as i32, 42, at);
         self.particles_around_mob(id, "splash", horizon_client::particles::Burst::VILLAGER);
     }
-
     /// The raid bar a living player at `at` is in (`Raid.getPlayers`): red,
     /// notched in tens. The name is the translate component the client draws.
     pub(super) fn raid_boss_at(&self, at: [f64; 3], alive: bool) -> Option<(i32, Tag, f32)> {
@@ -1139,37 +1153,9 @@ impl Game<'_> {
         let rocket = self.new_rocket(Vec3::new(at[0], at[1], at[2]), &stack, false);
         self.rockets.push(rocket);
     }
-    /// `BehaviorUtils.throwItem`: a hero's gift tossed toward the player.
-    pub(super) fn throw_gift(&mut self, table: &str, from: [f64; 3], to: [f64; 3]) {
-        let drops = self
-            .res
-            .items()
-            .loot_table(table, false, None, &mut self.world.random);
-        let d = Vec3::new(to[0] - from[0], to[1] - from[1], to[2] - from[2]).normalize();
-        for stack in drops {
-            self.spawn_item(stack, from, [d.x * 0.3, d.y * 0.3, d.z * 0.3], 10);
-        }
-    }
 }
 
 impl Game<'_> {
-    /// Sections holding a claimed village point of interest (a job site,
-    /// bed or bell a villager has taken): `PoiManager.isVillageCenter`.
-    pub(super) fn village_centers(&self) -> HashSet<(i32, i32, i32)> {
-        let mut out = HashSet::new();
-        for m in &self.mobs {
-            if m.species() != Species::Villager || !m.alive() {
-                continue;
-            }
-            for p in [m.extra.home, m.extra.bed, m.extra.meeting]
-                .into_iter()
-                .flatten()
-            {
-                out.insert(section(p));
-            }
-        }
-        out
-    }
     /// `PatrolSpawner.tick` (`horizon_client::patrol`) on the game level:
     /// the pillagers it accepts are created after the pass, finalized for a
     /// patrol.
@@ -1368,6 +1354,25 @@ impl Game<'_> {
         }
         self.world.random = random;
         found
+    }
+}
+impl crate::game::Sim<'_> {
+    /// Sections holding a claimed village point of interest (a job site,
+    /// bed or bell a villager has taken): `PoiManager.isVillageCenter`.
+    pub(super) fn village_centers(&self) -> HashSet<(i32, i32, i32)> {
+        let mut out = HashSet::new();
+        for m in &self.mobs {
+            if m.species() != Species::Villager || !m.alive() {
+                continue;
+            }
+            for p in [m.extra.home, m.extra.bed, m.extra.meeting]
+                .into_iter()
+                .flatten()
+            {
+                out.insert(section(p));
+            }
+        }
+        out
     }
     /// A raider's ominous banner (drop chance 2.0: always dropped) and a
     /// patrol captain's ominous bottle (`entities/pillager`).

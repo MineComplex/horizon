@@ -9,20 +9,6 @@ use horizon_client::{
 use horizon_core::{geometry::Vec3, random::RandomSource};
 
 impl Game<'_> {
-    /// The egg item at the parent (`Sniffer.spawnChildFromBreeding`; the
-    /// brain already played the plop and dropped the experience).
-    pub(super) fn lay_sniffer_egg(&mut self, parent: &Mob) {
-        let at = [parent.position.x, parent.position.y, parent.position.z];
-        // new ItemEntity(level, x, y, z, stack): a little random push.
-        let vx = self.world.random.next_double() * 0.2 - 0.1;
-        let vz = self.world.random.next_double() * 0.2 - 0.1;
-        self.spawn_item(
-            ItemStack::new("minecraft:sniffer_egg", 1),
-            at,
-            [vx, 0.2, vz],
-            10,
-        );
-    }
     /// A snifflet where the egg was.
     pub(super) fn hatch_sniffer(&mut self, pos: [i32; 3]) {
         let at = [
@@ -31,10 +17,10 @@ impl Game<'_> {
             f64::from(pos[2]) + 0.5,
         ];
         if let Some(id) = self.spawn_mob("minecraft:sniffer", at, true)
-            && let Some(m) = self.mobs.iter_mut().find(|m| m.id == id)
+            && let Some(m) = self.sim.mobs.iter_mut().find(|m| m.id == id)
         {
             m.extra.age = sniffer::BABY_START_AGE;
-            let yaw = self.world.random.next_float() * 360.0 - 180.0;
+            let yaw = self.sim.world.random.next_float() * 360.0 - 180.0;
             m.yaw = yaw;
             m.body_yaw = yaw;
             m.head_yaw = yaw;
@@ -51,8 +37,8 @@ impl Game<'_> {
         if players.is_empty() {
             return;
         }
-        for i in 0..self.mobs.len() {
-            let m = &self.mobs[i];
+        for i in 0..self.sim.mobs.len() {
+            let m = &self.sim.mobs[i];
             if m.species() != Species::Sniffer
                 || !m.alive()
                 || m.silent
@@ -75,14 +61,15 @@ impl Game<'_> {
                 continue;
             };
             if ms == 0 {
-                self.sounds
+                self.sim
+                    .sounds
                     .play("minecraft:entity.sniffer.digging", Some(at), 1.0, 1.0);
             }
             if ms <= 1700 || ms >= 6000 {
                 continue;
             }
             let head = sniffer::head_block(m);
-            let below = self.world.block(head[0], head[1] - 1, head[2]);
+            let below = self.sim.world.block(head[0], head[1] - 1, head[2]);
             if self
                 .particle_sprite(below, [head[0], head[1] - 1, head[2]])
                 .is_none()
@@ -102,5 +89,21 @@ impl Game<'_> {
                 self.sounds.play(&hit, Some(at), 0.5, 0.5);
             }
         }
+    }
+}
+impl crate::game::Sim<'_> {
+    /// The egg item at the parent (`Sniffer.spawnChildFromBreeding`; the
+    /// brain already played the plop and dropped the experience).
+    pub(super) fn lay_sniffer_egg(&mut self, parent: &Mob) {
+        let at = [parent.position.x, parent.position.y, parent.position.z];
+        // new ItemEntity(level, x, y, z, stack): a little random push.
+        let vx = self.world.random.next_double() * 0.2 - 0.1;
+        let vz = self.world.random.next_double() * 0.2 - 0.1;
+        self.spawn_item(
+            ItemStack::new("minecraft:sniffer_egg", 1),
+            at,
+            [vx, 0.2, vz],
+            10,
+        );
     }
 }

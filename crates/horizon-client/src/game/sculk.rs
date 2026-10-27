@@ -202,33 +202,6 @@ impl Game<'_> {
             _ => Ok(self.sculk_status()),
         }
     }
-    /// The `sculk` control command's listing.
-    pub(super) fn sculk_status(&self) -> serde_json::Value {
-        let listeners: Vec<serde_json::Value> = self
-            .sculk
-            .index
-            .iter()
-            .filter_map(|key| match self.world.block_entities.get(key) {
-                Some(BlockEntity::Sculk(e)) => Some(serde_json::json!({
-                    "pos": [key.0, key.1, key.2],
-                    "kind": e.id(),
-                    "current": e.vibration.current.map(|i| i.event),
-                    "travel": e.vibration.travel,
-                    "last_frequency": e.last_frequency,
-                    "warning_level": e.warning_level,
-                    "cursors": e.spreader.cursors.len(),
-                })),
-                _ => None,
-            })
-            .collect();
-        serde_json::json!({
-            "listeners": listeners,
-            "warning_level": self.sculk.tracker.warning_level,
-            "cooldown": self.sculk.tracker.cooldown_ticks,
-            "darkness": self.sculk.darkness.1,
-            "chunks_known": self.sculk.known.len(),
-        })
-    }
     /// `WardenSpawnTrackerCommand`: clear the player's tracker or set its
     /// warning level.
     pub(super) fn cmd_warden_spawn_tracker(&mut self, level: Option<i32>) {
@@ -250,96 +223,9 @@ impl Game<'_> {
             ));
         }
     }
-    /// `ServerPlayer`'s `warden_spawn_tracker` from the player data.
-    fn load_warden_tracker(&mut self) {
-        if self.sculk.tracker_loaded {
-            return;
-        }
-        self.sculk.tracker_loaded = true;
-        if let Some(tag) = self
-            .level
-            .player_extra
-            .as_ref()
-            .and_then(|p| p.get("warden_spawn_tracker"))
-        {
-            self.sculk.tracker = WardenSpawnTracker::from_nbt(tag);
-        }
-    }
-    /// Write the tracker into the player data being saved.
-    pub(super) fn save_warden_tracker(&mut self) {
-        if !self.sculk.tracker_loaded {
-            return;
-        }
-        let tag = self.sculk.tracker.to_nbt();
-        let extra = self
-            .level
-            .player_extra
-            .get_or_insert_with(|| horizon_world::nbt::Tag::Compound(Default::default()));
-        if let horizon_world::nbt::Tag::Compound(map) = extra {
-            map.insert("warden_spawn_tracker".into(), tag);
-        }
-    }
-    /// Who is causing the block changes being processed.
-    pub(super) fn sculk_actor(&self) -> Option<Who> {
-        self.sculk.actor
-    }
 
     // ---- setup and the block entity index ----
 
-    pub(super) fn sculk_prepare(&mut self) {
-        if self.sculk.tables.built {
-            return;
-        }
-        let registry = self.pack.assets.registry;
-        let n = registry.len();
-        let tag = |name: &str| {
-            self.res
-                .items()
-                .block_tags
-                .get(name)
-                .cloned()
-                .unwrap_or_default()
-        };
-        let (wool, dampening, resonators) = (
-            tag("minecraft:occludes_vibration_signals"),
-            tag("minecraft:dampens_vibrations"),
-            tag("minecraft:vibration_resonators"),
-        );
-        let mut t = Tables {
-            built: true,
-            kinds: vec![0; n],
-            occludes: vec![false; n],
-            dampens: vec![false; n],
-            resonator: vec![false; n],
-        };
-        for i in 0..n {
-            let facts = self.res.facts().get(BlockStateId(i as u32));
-            let name: &str = &facts.name;
-            t.kinds[i] = match name {
-                "minecraft:sculk_sensor" => KIND_SENSOR,
-                "minecraft:calibrated_sculk_sensor" => KIND_CALIBRATED,
-                "minecraft:sculk_shrieker" => KIND_SHRIEKER,
-                "minecraft:sculk_catalyst" => KIND_CATALYST,
-                _ => 0,
-            };
-            t.occludes[i] = wool.contains(name);
-            t.dampens[i] = dampening.contains(name);
-            t.resonator[i] = resonators.contains(name);
-        }
-        self.world.watched = t.kinds.iter().map(|k| *k != 0).collect();
-        self.sculk.tables = t;
-    }
-    fn kind_of_state(&self, state: u32) -> u8 {
-        self.sculk
-            .tables
-            .kinds
-            .get(state as usize)
-            .copied()
-            .unwrap_or(0)
-    }
-    fn state_is(&self, table: &[bool], state: BlockStateId) -> bool {
-        table.get(state.0 as usize).copied().unwrap_or(false)
-    }
     fn entity_for_kind(kind: u8) -> Option<SculkEntity> {
         Some(SculkEntity::new(match kind {
             KIND_SENSOR => SculkKind::Sensor,
@@ -446,63 +332,8 @@ impl Game<'_> {
             self.sculk.index.insert(pos);
         }
     }
-    fn sculk_entity(&mut self, key: (i32, i32, i32)) -> Option<&mut SculkEntity> {
-        match self.world.block_entities.get_mut(&key) {
-            Some(BlockEntity::Sculk(e)) => Some(e),
-            _ => None,
-        }
-    }
 
     // ---- contexts ----
-
-    fn state_dampens(&self, state: Option<BlockStateId>) -> bool {
-        state.is_some_and(|s| self.state_is(&self.sculk.tables.dampens, s))
-    }
-    /// `GameEvent.Context.of(player, state)`.
-    pub(super) fn player_context(&self, state: Option<BlockStateId>) -> Context {
-        let (dead, creative) = self
-            .player
-            .as_ref()
-            .map_or((true, true), |p| (p.health.dead_or_dying(), self.creative));
-        Context {
-            source: Some(Who::Player),
-            owner: None,
-            dampening_state: self.state_dampens(state),
-            spectator: self.spectator(),
-            stepping_carefully: self.keys.contains(&KeyCode::ShiftLeft),
-            dampens: false,
-            targetable: !dead && !creative && !self.spectator(),
-            living: true,
-            player: true,
-        }
-    }
-    /// `GameEvent.Context.of(mob, state)`.
-    pub(super) fn mob_context(&self, id: u32, state: Option<BlockStateId>) -> Context {
-        self.context_of_mob(self.mobs.iter().find(|m| m.id == id), id, state)
-    }
-    fn context_of_mob(&self, mob: Option<&Mob>, id: u32, state: Option<BlockStateId>) -> Context {
-        Context {
-            source: Some(Who::Mob(id)),
-            owner: None,
-            dampening_state: self.state_dampens(state),
-            spectator: false,
-            stepping_carefully: false,
-            dampens: mob.is_some_and(|m| m.species() == Species::Warden),
-            targetable: mob.is_some_and(|m| m.alive() && m.species() != Species::Warden),
-            living: true,
-            player: mob.is_some_and(|m| m.rider.is_some()),
-        }
-    }
-    pub(super) fn who_context(&self, who: Option<Who>, state: Option<BlockStateId>) -> Context {
-        match who {
-            Some(Who::Player) => self.player_context(state),
-            Some(Who::Mob(id)) => self.mob_context(id, state),
-            None => Context {
-                dampening_state: self.state_dampens(state),
-                ..Context::default()
-            },
-        }
-    }
 
     // ---- posting ----
 
@@ -590,11 +421,6 @@ impl Game<'_> {
         self.post_block_game_event(event, [pos.x, pos.y, pos.z], who, state);
     }
 
-    fn occluded(&self, origin: [f64; 3], dest: [f64; 3]) -> bool {
-        sculk::is_occluded(origin, dest, |p| {
-            self.state_is(&self.sculk.tables.occludes, self.world.block(p.x, p.y, p.z))
-        })
-    }
     /// `VibrationSystem.Listener.handleGameEvent` for a sculk block.
     fn sculk_listen(
         &mut self,
@@ -676,29 +502,6 @@ impl Game<'_> {
             value = b.calibrated_back_signal(level, ticks, pos);
         });
         value
-    }
-    fn shrieker_shrieking(&self, state: BlockStateId) -> bool {
-        self.state_property(state, "shrieking") == Some("true")
-    }
-    fn state_property(&self, state: BlockStateId, key: &str) -> Option<&str> {
-        self.pack
-            .assets
-            .registry
-            .state(state)
-            .and_then(|s| s.properties.get(key))
-            .map(String::as_str)
-    }
-
-    /// `Warden.VibrationUser`: accept a vibration for the warden at `index`.
-    fn warden_listen(&mut self, index: usize, event: &'static str, pos: [f64; 3], ctx: &Context) {
-        let now = self.world.game_time;
-        let (occludes, world) = (&self.sculk.tables.occludes, &self.world);
-        warden::listen(&mut self.mobs[index], now, event, pos, ctx, |a, b| {
-            sculk::is_occluded(a, b, |p| {
-                let state = world.block(p.x, p.y, p.z);
-                occludes.get(state.0 as usize).copied().unwrap_or(false)
-            })
-        });
     }
 
     // ---- ticking ----
@@ -832,9 +635,6 @@ impl Game<'_> {
         }
         Ok(())
     }
-    fn rides_player(&self, who: Option<Who>) -> bool {
-        matches!(who, Some(Who::Mob(id)) if self.mobs.iter().any(|m| m.id == id && m.rider.is_some()))
-    }
     /// `SculkSensorBlock.activate`.
     fn activate_sensor(
         &mut self,
@@ -951,12 +751,6 @@ impl Game<'_> {
 
     // ---- shriekers ----
 
-    fn can_respond(&self, state: BlockStateId) -> bool {
-        use horizon_world::food::Difficulty;
-        self.state_property(state, "can_summon") == Some("true")
-            && self.world.health_rules.difficulty != Difficulty::Peaceful
-            && self.world_data.rules.bool("spawn_wardens")
-    }
     /// `SculkShriekerBlockEntity.tryShriek`.
     fn try_shriek(&mut self, key: (i32, i32, i32), by_player: bool) -> Result<()> {
         if !by_player {
@@ -973,30 +767,6 @@ impl Game<'_> {
             self.shriek(key)?;
         }
         Ok(())
-    }
-    /// `WardenSpawnTracker.tryWarn` for the one player.
-    fn try_to_warn(&mut self, key: (i32, i32, i32)) -> bool {
-        let c = center(key);
-        let warden_nearby = self.mobs.iter().any(|m| {
-            m.species() == Species::Warden
-                && m.alive()
-                && (m.position.x - c[0]).abs() < 24.0
-                && (m.position.y + f64::from(m.height()) / 2.0 - c[1]).abs() < 24.0
-                && (m.position.z - c[2]).abs() < 24.0
-        });
-        // The only player is the one who set it off.
-        let mut trackers = [self.sculk.tracker];
-        let level = WardenSpawnTracker::try_warn(&mut trackers, warden_nearby);
-        self.sculk.tracker = trackers[0];
-        match level {
-            Some(level) => {
-                if let Some(e) = self.sculk_entity(key) {
-                    e.warning_level = level;
-                }
-                true
-            }
-            None => false,
-        }
     }
     /// `SculkShriekerBlockEntity.shriek`.
     fn shriek(&mut self, key: (i32, i32, i32)) -> Result<()> {
@@ -1027,23 +797,6 @@ impl Game<'_> {
         let key = (pos.x, pos.y, pos.z);
         let warning = self.sculk_entity(key).map_or(0, |e| e.warning_level);
         self.shrieker_respond(key, state, warning);
-    }
-    fn warden_reply_sound(&mut self, key: (i32, i32, i32), warning: i32) {
-        let sound = match warning {
-            1 => "minecraft:entity.warden.nearby_close",
-            2 => "minecraft:entity.warden.nearby_closer",
-            3 => "minecraft:entity.warden.nearby_closest",
-            4 => "minecraft:entity.warden.listening_angry",
-            _ => return,
-        };
-        let r = &mut self.world.random;
-        let mut offset = |v: i32| v + r.next_int_bound(21).unwrap_or(0) - 10;
-        let at = [
-            f64::from(offset(key.0)),
-            f64::from(offset(key.1)),
-            f64::from(offset(key.2)),
-        ];
-        self.sounds.play(sound, Some(at), 5.0, 1.0);
     }
     /// `SpawnUtil.trySpawnMob(WARDEN, TRIGGERED, level, pos, 20, 5, 6,
     /// ON_TOP_OF_COLLIDER, false)`: every candidate spot creates a warden
@@ -1095,24 +848,6 @@ impl Game<'_> {
         }
         false
     }
-    /// `SpawnUtil.moveToPossibleSpawnPosition` with `ON_TOP_OF_COLLIDER`.
-    fn spawn_position(&self, x: i32, y: i32, z: i32, range: i32) -> Option<(i32, i32, i32)> {
-        use horizon_client::mobs::data;
-        let flags = |b: BlockStateId| self.res.mob_data().state(b);
-        let mut search = y;
-        let mut above = self.world.block(x, search, z);
-        for _ in (-range..=range).rev() {
-            search -= 1;
-            let current = self.world.block(x, search, z);
-            let empty_above = flags(above).top == 0.0;
-            let full_top = flags(current).flags & data::STURDY_TOP != 0;
-            if empty_above && full_top {
-                return Some((x, search + 1, z));
-            }
-            above = current;
-        }
-        None
-    }
     /// `Warden.checkSpawnObstruction`: no liquid in its box, no living entity
     /// in the way (`isUnobstructed`), and no block collision.
     fn warden_fits(&self, mob: &Mob) -> bool {
@@ -1148,46 +883,6 @@ impl Game<'_> {
 
     // ---- darkness ----
 
-    /// `MobEffectInstance.BlendState.tick` for the darkness effect: it fades
-    /// in and out over 22 ticks.
-    fn tick_darkness_blend(&mut self) {
-        const BLEND: f32 = 22.0;
-        let (_, current) = self.sculk.darkness;
-        let next = match self.potions.effects.get("darkness") {
-            Some(e) => {
-                let target = if e.duration == -1 || e.duration > BLEND as i32 {
-                    1.0
-                } else {
-                    0.0
-                };
-                current + (target - current).clamp(-1.0 / BLEND, 1.0 / BLEND)
-            }
-            None => 0.0,
-        };
-        self.sculk.darkness = (current, next);
-    }
-    /// The darkness effect's blend factor at the partial tick.
-    fn darkness_blend(&self, partial: f32) -> f32 {
-        let (previous, current) = self.sculk.darkness;
-        previous + (current - previous) * partial
-    }
-    /// The fog's view of the darkness effect, while it is on.
-    pub(super) fn darkness_fog(&self) -> Option<f32> {
-        self.potions
-            .effects
-            .get("darkness")
-            .map(|_| self.darkness_blend(self.clock.fraction() as f32))
-    }
-    /// `LightmapRenderStateExtractor`: (brightness taken off the gamma
-    /// option, the pulsing light scale).
-    pub(super) fn darkness_lighting(&self, partial: f32) -> (f32, f32) {
-        let scale = self.settings.file.double("darknessEffectScale") as f32;
-        let modifier = self.darkness_blend(partial) * scale;
-        let pulse =
-            ((self.ticks as f32 - partial) * std::f32::consts::PI * 0.025).cos() * 0.45 * modifier;
-        (modifier, pulse.max(0.0) * scale)
-    }
-
     /// `LightmapRenderStateExtractor`: the night vision effect's intensity
     /// (`GameRenderer.nightVisionScale`), or conduit power's water vision.
     pub(super) fn night_vision_intensity(&self, partial: f32) -> f32 {
@@ -1206,7 +901,7 @@ impl Game<'_> {
             let in_water =
                 horizon_client::fog::fog_type(&self.world, self.res.facts(), eye, self.forward())
                     == FogType::Water;
-            return self.fog.water_vision(in_water);
+            return self.front.fog.water_vision(in_water);
         }
         0.0
     }
@@ -1214,31 +909,6 @@ impl Game<'_> {
     /// `Warden.applyDarknessAround` / `MobEffectUtil.addEffectToPlayersAround`.
     pub(super) fn apply_darkness(&mut self, at: [f64; 3], radius: f64) {
         self.for_each_player(|g| g.darkness_on_player(at, radius));
-    }
-    fn darkness_on_player(&mut self, at: [f64; 3], radius: f64) {
-        if self.creative || self.spectator() {
-            return;
-        }
-        let Some(p) = self.player.as_ref() else {
-            return;
-        };
-        let d = [
-            p.position.x - at[0],
-            p.position.y - at[1],
-            p.position.z - at[2],
-        ];
-        if d[0] * d[0] + d[1] * d[1] + d[2] * d[2] >= radius * radius {
-            return;
-        }
-        if let Some(active) = self.potions.effects.get("darkness")
-            && active.duration > warden::DARKNESS_REAPPLY - 1
-        {
-            return;
-        }
-        let mut effect =
-            horizon_client::effects::EffectInstance::new("darkness", warden::DARKNESS_DURATION, 0);
-        effect.visible = false;
-        self.potions.effects.add(effect);
     }
 
     // ---- catalysts ----
@@ -1310,145 +980,6 @@ impl Game<'_> {
 
     // ---- particles ----
 
-    /// `LevelEvent` 3006: charge cursors moving over sculk, or popping.
-    pub(super) fn sculk_charge_event(&mut self, pos: BlockPos, data: i32) {
-        let c = center((pos.x, pos.y, pos.z));
-        let count = data >> 6;
-        if count > 0 {
-            // Client-side (LevelEventHandler / particles): the client random.
-            let r = self.particles.random();
-            if r.next_float() < 0.3 + count as f32 * 0.1 {
-                let volume = 0.15 + 0.02 * (count * count) as f32 * r.next_float();
-                let pitch = 0.4 + 0.3 * count as f32 * r.next_float();
-                self.sounds
-                    .play("minecraft:block.sculk.charge", Some(c), volume, pitch);
-            }
-            let face_data = data & 63;
-            let faces: Vec<(Direction, f32, f64)> = if face_data == 0 {
-                Direction::ALL
-                    .into_iter()
-                    .map(|d| {
-                        let roll = if d == Direction::Down {
-                            std::f32::consts::PI
-                        } else {
-                            0.0
-                        };
-                        let factor = if matches!(d, Direction::Up | Direction::Down) {
-                            0.65
-                        } else {
-                            0.57
-                        };
-                        (d, roll, factor)
-                    })
-                    .collect()
-            } else {
-                horizon_world::level::sculk::unpack_faces(face_data)
-                    .into_iter()
-                    .map(|d| {
-                        let roll = if d == Direction::Up {
-                            std::f32::consts::PI
-                        } else {
-                            0.0
-                        };
-                        (d, roll, 0.35)
-                    })
-                    .collect()
-            };
-            for (direction, roll, factor) in faces {
-                let repetitions = self
-                    .particles
-                    .random()
-                    .next_int_bound(count + 1)
-                    .unwrap_or(0);
-                for _ in 0..repetitions {
-                    self.spawn_particle_on_face(pos, direction, roll, factor);
-                }
-            }
-        } else {
-            self.sounds
-                .play("minecraft:block.sculk.charge", Some(c), 1.0, 1.0);
-            let solid = self
-                .res
-                .facts()
-                .get(self.world.block(pos.x, pos.y, pos.z))
-                .full_collision;
-            let (particles, spread) = if solid { (40, 0.45f32) } else { (20, 0.25f32) };
-            let options = ParticleOptions::simple(ParticleType::SculkChargePop);
-            for _ in 0..particles {
-                // Client-side (LevelEventHandler / particles): the client random.
-                let r = self.particles.random();
-                let v = [
-                    2.0 * r.next_float() - 1.0,
-                    2.0 * r.next_float() - 1.0,
-                    2.0 * r.next_float() - 1.0,
-                ];
-                let at = [
-                    c[0] + f64::from(v[0] * spread),
-                    c[1] + f64::from(v[1] * spread),
-                    c[2] + f64::from(v[2] * spread),
-                ];
-                let speed = [
-                    f64::from(v[0] * 0.07),
-                    f64::from(v[1] * 0.07),
-                    f64::from(v[2] * 0.07),
-                ];
-                self.particles.add(&options, at, speed);
-            }
-        }
-    }
-    /// `ParticleUtils.spawnParticleOnFace` for a sculk charge.
-    fn spawn_particle_on_face(&mut self, pos: BlockPos, face: Direction, roll: f32, factor: f64) {
-        let c = center((pos.x, pos.y, pos.z));
-        let step = face.normal();
-        // Client-side (LevelEventHandler / particles): the client random.
-        let r = self.particles.random();
-        let mut jitter = || r.next_double() - 0.5;
-        let mut at = [0.0; 3];
-        for i in 0..3 {
-            at[i] = c[i]
-                + if step[i] == 0 {
-                    jitter()
-                } else {
-                    f64::from(step[i]) * factor
-                };
-        }
-        let mut speed = [0.0; 3];
-        for i in 0..3 {
-            let s = (r.next_double() * 2.0 - 1.0) * f64::from(0.005f32);
-            speed[i] = if step[i] == 0 { s } else { 0.0 };
-        }
-        self.particles
-            .add(&ParticleOptions::sculk_charge(roll), at, speed);
-    }
-    /// `LevelEvent` 3007: ten shrieks rising from the shrieker, and the shriek.
-    pub(super) fn shriek_event(&mut self, pos: BlockPos) {
-        let top = f64::from(pos.y) + 0.5;
-        for i in 0..10 {
-            self.particles.add(
-                &ParticleOptions::shriek(i * 5),
-                [f64::from(pos.x) + 0.5, top, f64::from(pos.z) + 0.5],
-                [0.0; 3],
-            );
-        }
-        let state = self.world.block(pos.x, pos.y, pos.z);
-        if self.state_property(state, "waterlogged") != Some("true") {
-            let pitch = 0.6 + self.particles.random().next_float() * 0.4;
-            self.sounds.play(
-                "minecraft:block.sculk_shrieker.shriek",
-                Some([f64::from(pos.x) + 0.5, top, f64::from(pos.z) + 0.5]),
-                2.0,
-                pitch,
-            );
-        }
-    }
-
-    fn vibration_particle(&mut self, from: [f64; 3], to: [f64; 3], ticks: i32) {
-        self.particles.vibration(from, to, ticks);
-    }
-    /// A vibration travelling to a warden (`MobEvent::Vibration`).
-    pub(super) fn mob_vibration_particle(&mut self, from: [f64; 3], to: [f64; 3], ticks: i32) {
-        self.vibration_particle(from, to, ticks);
-    }
     /// `Warden.clientDiggingParticles`: thirty crumbs of the block underfoot.
     pub(super) fn warden_dig_particles(&mut self, at: [f64; 3]) {
         let below = (
@@ -1615,15 +1146,6 @@ impl Game<'_> {
             Who::Mob(id) => alive.contains(id),
         });
     }
-    fn in_water_at(&self, at: [f64; 3]) -> bool {
-        let (x, y, z) = (
-            at[0].floor() as i32,
-            at[1].floor() as i32,
-            at[2].floor() as i32,
-        );
-        self.res.facts().get(self.world.block(x, y, z)).fluid
-            == horizon_client::blocks::Fluid::Water
-    }
     /// `Entity.move`'s emission: footsteps, swimming, landing and splashes.
     fn entity_motion_events(
         &mut self,
@@ -1675,13 +1197,13 @@ impl Game<'_> {
             .items()
             .block_tags
             .get("minecraft:climbable")
-            .is_some_and(|t| t.contains(&*self.res.facts().get(state).name));
+            .is_some_and(|t| t.contains(&*self.sim.res.facts().get(state).name));
         let travelled = if climbable {
             ((dx * dx + dy * dy + dz * dz).sqrt() * f64::from(0.6f32)) as f32
         } else {
             horizontal
         };
-        let Some(entry) = self.sculk.steps.get_mut(&who) else {
+        let Some(entry) = self.sim.sculk.steps.get_mut(&who) else {
             return;
         };
         entry.move_dist += travelled;
@@ -1690,7 +1212,7 @@ impl Game<'_> {
             let move_dist = entry.move_dist;
             if steps_on_block {
                 let warden = matches!(who, Who::Mob(id)
-                    if self.mobs.iter().any(|m| m.id == id && m.species() == Species::Warden));
+                    if self.sim.mobs.iter().any(|m| m.id == id && m.species() == Species::Warden));
                 entry.next_step = if warden {
                     // Warden.nextStep
                     move_dist + 0.55
@@ -1714,6 +1236,482 @@ impl Game<'_> {
             [m.position.x, m.position.y, m.position.z],
             ctx,
         );
+    }
+}
+impl crate::game::Sim<'_> {
+    /// The `sculk` control command's listing.
+    pub(super) fn sculk_status(&self) -> serde_json::Value {
+        let listeners: Vec<serde_json::Value> = self
+            .sculk
+            .index
+            .iter()
+            .filter_map(|key| match self.world.block_entities.get(key) {
+                Some(BlockEntity::Sculk(e)) => Some(serde_json::json!({
+                    "pos": [key.0, key.1, key.2],
+                    "kind": e.id(),
+                    "current": e.vibration.current.map(|i| i.event),
+                    "travel": e.vibration.travel,
+                    "last_frequency": e.last_frequency,
+                    "warning_level": e.warning_level,
+                    "cursors": e.spreader.cursors.len(),
+                })),
+                _ => None,
+            })
+            .collect();
+        serde_json::json!({
+            "listeners": listeners,
+            "warning_level": self.sculk.tracker.warning_level,
+            "cooldown": self.sculk.tracker.cooldown_ticks,
+            "darkness": self.sculk.darkness.1,
+            "chunks_known": self.sculk.known.len(),
+        })
+    }
+    /// `ServerPlayer`'s `warden_spawn_tracker` from the player data.
+    fn load_warden_tracker(&mut self) {
+        if self.sculk.tracker_loaded {
+            return;
+        }
+        self.sculk.tracker_loaded = true;
+        if let Some(tag) = self
+            .level
+            .player_extra
+            .as_ref()
+            .and_then(|p| p.get("warden_spawn_tracker"))
+        {
+            self.sculk.tracker = WardenSpawnTracker::from_nbt(tag);
+        }
+    }
+    /// Write the tracker into the player data being saved.
+    pub(super) fn save_warden_tracker(&mut self) {
+        if !self.sculk.tracker_loaded {
+            return;
+        }
+        let tag = self.sculk.tracker.to_nbt();
+        let extra = self
+            .level
+            .player_extra
+            .get_or_insert_with(|| horizon_world::nbt::Tag::Compound(Default::default()));
+        if let horizon_world::nbt::Tag::Compound(map) = extra {
+            map.insert("warden_spawn_tracker".into(), tag);
+        }
+    }
+    /// Who is causing the block changes being processed.
+    pub(super) fn sculk_actor(&self) -> Option<Who> {
+        self.sculk.actor
+    }
+    pub(super) fn sculk_prepare(&mut self) {
+        if self.sculk.tables.built {
+            return;
+        }
+        let registry = self.pack.assets.registry;
+        let n = registry.len();
+        let tag = |name: &str| {
+            self.res
+                .items()
+                .block_tags
+                .get(name)
+                .cloned()
+                .unwrap_or_default()
+        };
+        let (wool, dampening, resonators) = (
+            tag("minecraft:occludes_vibration_signals"),
+            tag("minecraft:dampens_vibrations"),
+            tag("minecraft:vibration_resonators"),
+        );
+        let mut t = Tables {
+            built: true,
+            kinds: vec![0; n],
+            occludes: vec![false; n],
+            dampens: vec![false; n],
+            resonator: vec![false; n],
+        };
+        for i in 0..n {
+            let facts = self.res.facts().get(BlockStateId(i as u32));
+            let name: &str = &facts.name;
+            t.kinds[i] = match name {
+                "minecraft:sculk_sensor" => KIND_SENSOR,
+                "minecraft:calibrated_sculk_sensor" => KIND_CALIBRATED,
+                "minecraft:sculk_shrieker" => KIND_SHRIEKER,
+                "minecraft:sculk_catalyst" => KIND_CATALYST,
+                _ => 0,
+            };
+            t.occludes[i] = wool.contains(name);
+            t.dampens[i] = dampening.contains(name);
+            t.resonator[i] = resonators.contains(name);
+        }
+        self.world.watched = t.kinds.iter().map(|k| *k != 0).collect();
+        self.sculk.tables = t;
+    }
+    fn kind_of_state(&self, state: u32) -> u8 {
+        self.sculk
+            .tables
+            .kinds
+            .get(state as usize)
+            .copied()
+            .unwrap_or(0)
+    }
+    fn state_is(&self, table: &[bool], state: BlockStateId) -> bool {
+        table.get(state.0 as usize).copied().unwrap_or(false)
+    }
+    fn sculk_entity(&mut self, key: (i32, i32, i32)) -> Option<&mut SculkEntity> {
+        match self.world.block_entities.get_mut(&key) {
+            Some(BlockEntity::Sculk(e)) => Some(e),
+            _ => None,
+        }
+    }
+    fn state_dampens(&self, state: Option<BlockStateId>) -> bool {
+        state.is_some_and(|s| self.state_is(&self.sculk.tables.dampens, s))
+    }
+    /// `GameEvent.Context.of(player, state)`.
+    pub(super) fn player_context(&self, state: Option<BlockStateId>) -> Context {
+        let (dead, creative) = self
+            .player
+            .as_ref()
+            .map_or((true, true), |p| (p.health.dead_or_dying(), self.creative));
+        Context {
+            source: Some(Who::Player),
+            owner: None,
+            dampening_state: self.state_dampens(state),
+            spectator: self.spectator(),
+            stepping_carefully: self.keys.contains(&KeyCode::ShiftLeft),
+            dampens: false,
+            targetable: !dead && !creative && !self.spectator(),
+            living: true,
+            player: true,
+        }
+    }
+    /// `GameEvent.Context.of(mob, state)`.
+    pub(super) fn mob_context(&self, id: u32, state: Option<BlockStateId>) -> Context {
+        self.context_of_mob(self.mobs.iter().find(|m| m.id == id), id, state)
+    }
+    fn context_of_mob(&self, mob: Option<&Mob>, id: u32, state: Option<BlockStateId>) -> Context {
+        Context {
+            source: Some(Who::Mob(id)),
+            owner: None,
+            dampening_state: self.state_dampens(state),
+            spectator: false,
+            stepping_carefully: false,
+            dampens: mob.is_some_and(|m| m.species() == Species::Warden),
+            targetable: mob.is_some_and(|m| m.alive() && m.species() != Species::Warden),
+            living: true,
+            player: mob.is_some_and(|m| m.rider.is_some()),
+        }
+    }
+    pub(super) fn who_context(&self, who: Option<Who>, state: Option<BlockStateId>) -> Context {
+        match who {
+            Some(Who::Player) => self.player_context(state),
+            Some(Who::Mob(id)) => self.mob_context(id, state),
+            None => Context {
+                dampening_state: self.state_dampens(state),
+                ..Context::default()
+            },
+        }
+    }
+    fn occluded(&self, origin: [f64; 3], dest: [f64; 3]) -> bool {
+        sculk::is_occluded(origin, dest, |p| {
+            self.state_is(&self.sculk.tables.occludes, self.world.block(p.x, p.y, p.z))
+        })
+    }
+    fn shrieker_shrieking(&self, state: BlockStateId) -> bool {
+        self.state_property(state, "shrieking") == Some("true")
+    }
+    fn state_property(&self, state: BlockStateId, key: &str) -> Option<&str> {
+        self.pack
+            .assets
+            .registry
+            .state(state)
+            .and_then(|s| s.properties.get(key))
+            .map(String::as_str)
+    }
+    /// `Warden.VibrationUser`: accept a vibration for the warden at `index`.
+    fn warden_listen(&mut self, index: usize, event: &'static str, pos: [f64; 3], ctx: &Context) {
+        let now = self.world.game_time;
+        let (occludes, world) = (&self.sculk.tables.occludes, &self.world);
+        warden::listen(&mut self.mobs[index], now, event, pos, ctx, |a, b| {
+            sculk::is_occluded(a, b, |p| {
+                let state = world.block(p.x, p.y, p.z);
+                occludes.get(state.0 as usize).copied().unwrap_or(false)
+            })
+        });
+    }
+    fn rides_player(&self, who: Option<Who>) -> bool {
+        matches!(who, Some(Who::Mob(id)) if self.mobs.iter().any(|m| m.id == id && m.rider.is_some()))
+    }
+    fn can_respond(&self, state: BlockStateId) -> bool {
+        use horizon_world::food::Difficulty;
+        self.state_property(state, "can_summon") == Some("true")
+            && self.world.health_rules.difficulty != Difficulty::Peaceful
+            && self.world_data.rules.bool("spawn_wardens")
+    }
+    /// `WardenSpawnTracker.tryWarn` for the one player.
+    fn try_to_warn(&mut self, key: (i32, i32, i32)) -> bool {
+        let c = center(key);
+        let warden_nearby = self.mobs.iter().any(|m| {
+            m.species() == Species::Warden
+                && m.alive()
+                && (m.position.x - c[0]).abs() < 24.0
+                && (m.position.y + f64::from(m.height()) / 2.0 - c[1]).abs() < 24.0
+                && (m.position.z - c[2]).abs() < 24.0
+        });
+        // The only player is the one who set it off.
+        let mut trackers = [self.sculk.tracker];
+        let level = WardenSpawnTracker::try_warn(&mut trackers, warden_nearby);
+        self.sculk.tracker = trackers[0];
+        match level {
+            Some(level) => {
+                if let Some(e) = self.sculk_entity(key) {
+                    e.warning_level = level;
+                }
+                true
+            }
+            None => false,
+        }
+    }
+    fn warden_reply_sound(&mut self, key: (i32, i32, i32), warning: i32) {
+        let sound = match warning {
+            1 => "minecraft:entity.warden.nearby_close",
+            2 => "minecraft:entity.warden.nearby_closer",
+            3 => "minecraft:entity.warden.nearby_closest",
+            4 => "minecraft:entity.warden.listening_angry",
+            _ => return,
+        };
+        let r = &mut self.world.random;
+        let mut offset = |v: i32| v + r.next_int_bound(21).unwrap_or(0) - 10;
+        let at = [
+            f64::from(offset(key.0)),
+            f64::from(offset(key.1)),
+            f64::from(offset(key.2)),
+        ];
+        self.sounds.play(sound, Some(at), 5.0, 1.0);
+    }
+    /// `SpawnUtil.moveToPossibleSpawnPosition` with `ON_TOP_OF_COLLIDER`.
+    fn spawn_position(&self, x: i32, y: i32, z: i32, range: i32) -> Option<(i32, i32, i32)> {
+        use horizon_client::mobs::data;
+        let flags = |b: BlockStateId| self.res.mob_data().state(b);
+        let mut search = y;
+        let mut above = self.world.block(x, search, z);
+        for _ in (-range..=range).rev() {
+            search -= 1;
+            let current = self.world.block(x, search, z);
+            let empty_above = flags(above).top == 0.0;
+            let full_top = flags(current).flags & data::STURDY_TOP != 0;
+            if empty_above && full_top {
+                return Some((x, search + 1, z));
+            }
+            above = current;
+        }
+        None
+    }
+    /// `MobEffectInstance.BlendState.tick` for the darkness effect: it fades
+    /// in and out over 22 ticks.
+    fn tick_darkness_blend(&mut self) {
+        const BLEND: f32 = 22.0;
+        let (_, current) = self.sculk.darkness;
+        let next = match self.potions.effects.get("darkness") {
+            Some(e) => {
+                let target = if e.duration == -1 || e.duration > BLEND as i32 {
+                    1.0
+                } else {
+                    0.0
+                };
+                current + (target - current).clamp(-1.0 / BLEND, 1.0 / BLEND)
+            }
+            None => 0.0,
+        };
+        self.sculk.darkness = (current, next);
+    }
+    /// The darkness effect's blend factor at the partial tick.
+    fn darkness_blend(&self, partial: f32) -> f32 {
+        let (previous, current) = self.sculk.darkness;
+        previous + (current - previous) * partial
+    }
+    /// The fog's view of the darkness effect, while it is on.
+    pub(super) fn darkness_fog(&self) -> Option<f32> {
+        self.potions
+            .effects
+            .get("darkness")
+            .map(|_| self.darkness_blend(self.clock.fraction() as f32))
+    }
+    /// `LightmapRenderStateExtractor`: (brightness taken off the gamma
+    /// option, the pulsing light scale).
+    pub(super) fn darkness_lighting(&self, partial: f32) -> (f32, f32) {
+        let scale = self.settings.file.double("darknessEffectScale") as f32;
+        let modifier = self.darkness_blend(partial) * scale;
+        let pulse =
+            ((self.ticks as f32 - partial) * std::f32::consts::PI * 0.025).cos() * 0.45 * modifier;
+        (modifier, pulse.max(0.0) * scale)
+    }
+    fn darkness_on_player(&mut self, at: [f64; 3], radius: f64) {
+        if self.creative || self.spectator() {
+            return;
+        }
+        let Some(p) = self.player.as_ref() else {
+            return;
+        };
+        let d = [
+            p.position.x - at[0],
+            p.position.y - at[1],
+            p.position.z - at[2],
+        ];
+        if d[0] * d[0] + d[1] * d[1] + d[2] * d[2] >= radius * radius {
+            return;
+        }
+        if let Some(active) = self.potions.effects.get("darkness")
+            && active.duration > warden::DARKNESS_REAPPLY - 1
+        {
+            return;
+        }
+        let mut effect =
+            horizon_client::effects::EffectInstance::new("darkness", warden::DARKNESS_DURATION, 0);
+        effect.visible = false;
+        self.potions.effects.add(effect);
+    }
+    /// `LevelEvent` 3006: charge cursors moving over sculk, or popping.
+    pub(super) fn sculk_charge_event(&mut self, pos: BlockPos, data: i32) {
+        let c = center((pos.x, pos.y, pos.z));
+        let count = data >> 6;
+        if count > 0 {
+            // Client-side (LevelEventHandler / particles): the client random.
+            let r = self.particles.random();
+            if r.next_float() < 0.3 + count as f32 * 0.1 {
+                let volume = 0.15 + 0.02 * (count * count) as f32 * r.next_float();
+                let pitch = 0.4 + 0.3 * count as f32 * r.next_float();
+                self.sounds
+                    .play("minecraft:block.sculk.charge", Some(c), volume, pitch);
+            }
+            let face_data = data & 63;
+            let faces: Vec<(Direction, f32, f64)> = if face_data == 0 {
+                Direction::ALL
+                    .into_iter()
+                    .map(|d| {
+                        let roll = if d == Direction::Down {
+                            std::f32::consts::PI
+                        } else {
+                            0.0
+                        };
+                        let factor = if matches!(d, Direction::Up | Direction::Down) {
+                            0.65
+                        } else {
+                            0.57
+                        };
+                        (d, roll, factor)
+                    })
+                    .collect()
+            } else {
+                horizon_world::level::sculk::unpack_faces(face_data)
+                    .into_iter()
+                    .map(|d| {
+                        let roll = if d == Direction::Up {
+                            std::f32::consts::PI
+                        } else {
+                            0.0
+                        };
+                        (d, roll, 0.35)
+                    })
+                    .collect()
+            };
+            for (direction, roll, factor) in faces {
+                let repetitions = self
+                    .particles
+                    .random()
+                    .next_int_bound(count + 1)
+                    .unwrap_or(0);
+                for _ in 0..repetitions {
+                    self.spawn_particle_on_face(pos, direction, roll, factor);
+                }
+            }
+        } else {
+            self.sounds
+                .play("minecraft:block.sculk.charge", Some(c), 1.0, 1.0);
+            let solid = self
+                .res
+                .facts()
+                .get(self.world.block(pos.x, pos.y, pos.z))
+                .full_collision;
+            let (particles, spread) = if solid { (40, 0.45f32) } else { (20, 0.25f32) };
+            let options = ParticleOptions::simple(ParticleType::SculkChargePop);
+            for _ in 0..particles {
+                // Client-side (LevelEventHandler / particles): the client random.
+                let r = self.particles.random();
+                let v = [
+                    2.0 * r.next_float() - 1.0,
+                    2.0 * r.next_float() - 1.0,
+                    2.0 * r.next_float() - 1.0,
+                ];
+                let at = [
+                    c[0] + f64::from(v[0] * spread),
+                    c[1] + f64::from(v[1] * spread),
+                    c[2] + f64::from(v[2] * spread),
+                ];
+                let speed = [
+                    f64::from(v[0] * 0.07),
+                    f64::from(v[1] * 0.07),
+                    f64::from(v[2] * 0.07),
+                ];
+                self.particles.add(&options, at, speed);
+            }
+        }
+    }
+    /// `ParticleUtils.spawnParticleOnFace` for a sculk charge.
+    fn spawn_particle_on_face(&mut self, pos: BlockPos, face: Direction, roll: f32, factor: f64) {
+        let c = center((pos.x, pos.y, pos.z));
+        let step = face.normal();
+        // Client-side (LevelEventHandler / particles): the client random.
+        let r = self.particles.random();
+        let mut jitter = || r.next_double() - 0.5;
+        let mut at = [0.0; 3];
+        for i in 0..3 {
+            at[i] = c[i]
+                + if step[i] == 0 {
+                    jitter()
+                } else {
+                    f64::from(step[i]) * factor
+                };
+        }
+        let mut speed = [0.0; 3];
+        for i in 0..3 {
+            let s = (r.next_double() * 2.0 - 1.0) * f64::from(0.005f32);
+            speed[i] = if step[i] == 0 { s } else { 0.0 };
+        }
+        self.particles
+            .add(&ParticleOptions::sculk_charge(roll), at, speed);
+    }
+    /// `LevelEvent` 3007: ten shrieks rising from the shrieker, and the shriek.
+    pub(super) fn shriek_event(&mut self, pos: BlockPos) {
+        let top = f64::from(pos.y) + 0.5;
+        for i in 0..10 {
+            self.particles.add(
+                &ParticleOptions::shriek(i * 5),
+                [f64::from(pos.x) + 0.5, top, f64::from(pos.z) + 0.5],
+                [0.0; 3],
+            );
+        }
+        let state = self.world.block(pos.x, pos.y, pos.z);
+        if self.state_property(state, "waterlogged") != Some("true") {
+            let pitch = 0.6 + self.particles.random().next_float() * 0.4;
+            self.sounds.play(
+                "minecraft:block.sculk_shrieker.shriek",
+                Some([f64::from(pos.x) + 0.5, top, f64::from(pos.z) + 0.5]),
+                2.0,
+                pitch,
+            );
+        }
+    }
+    fn vibration_particle(&mut self, from: [f64; 3], to: [f64; 3], ticks: i32) {
+        self.particles.vibration(from, to, ticks);
+    }
+    /// A vibration travelling to a warden (`MobEvent::Vibration`).
+    pub(super) fn mob_vibration_particle(&mut self, from: [f64; 3], to: [f64; 3], ticks: i32) {
+        self.vibration_particle(from, to, ticks);
+    }
+    fn in_water_at(&self, at: [f64; 3]) -> bool {
+        let (x, y, z) = (
+            at[0].floor() as i32,
+            at[1].floor() as i32,
+            at[2].floor() as i32,
+        );
+        self.res.facts().get(self.world.block(x, y, z)).fluid
+            == horizon_client::blocks::Fluid::Water
     }
 }
 

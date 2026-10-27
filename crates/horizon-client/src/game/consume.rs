@@ -23,13 +23,6 @@ type ItemConsumable = Consumable<String, ConsumeEffect>;
 pub(super) const USE_ITEM_COMPLETE_EVENT: i8 = 9;
 
 impl Game<'_> {
-    /// `ServerPlayer.completeUsingItem`: the player's own client is told
-    /// first, and completes the use itself (eating the food there too).
-    pub(super) fn send_use_item_complete(&mut self) {
-        if self.lan_acting.is_some() {
-            self.guest_entity_events.push(USE_ITEM_COMPLETE_EVENT);
-        }
-    }
     /// `Consumable.emitParticlesAndSounds(user.getRandom(), user, stack, count)`.
     pub(super) fn emit_consume(
         &mut self,
@@ -68,8 +61,9 @@ impl Game<'_> {
                 food.saturation = (food.saturation + saturation).clamp(0.0, food.food as f32);
             }
             // Mth.randomBetween(random, 0.9, 1.0)
-            let pitch = self.world.random.next_float() * (1.0f32 - 0.9f32) + 0.9;
-            self.sounds
+            let pitch = self.sim.world.random.next_float() * (1.0f32 - 0.9f32) + 0.9;
+            self.sim
+                .sounds
                 .play("minecraft:entity.player.burp", self.feet(), 0.5, pitch);
         }
         // SuspiciousStewEffects.onConsume, a ConsumableListener: each entry is
@@ -106,11 +100,6 @@ impl Game<'_> {
                 self.player_drop(rest);
             }
         }
-    }
-    fn feet(&self) -> Option<[f64; 3]> {
-        self.player
-            .as_ref()
-            .map(|p| [p.position.x, p.position.y, p.position.z])
     }
     /// `TeleportRandomlyConsumeEffect.apply` for the local player.
     pub(super) fn teleport_randomly(&mut self, teleport: &TeleportConsume) {
@@ -155,17 +144,17 @@ impl Game<'_> {
             return false;
         }
         let entities = self.player_entity_collisions();
-        let Some(player) = self.player.as_mut() else {
+        let Some(player) = self.sim.player.as_mut() else {
             return false;
         };
         let bounds = player.dimensions.bounds(at);
         let free = horizon_client::motion::MotionWorld {
             entities: &entities,
             player,
-            scene: &mut self.world,
-            assets: &self.pack.assets,
-            collision_binding: self.collision,
-            resources: self.motion,
+            scene: &mut self.sim.world,
+            assets: &self.sim.pack.assets,
+            collision_binding: self.sim.collision,
+            resources: self.sim.motion,
         }
         .no_player_collision(bounds)
         .unwrap_or(false);
@@ -197,6 +186,33 @@ impl Game<'_> {
         self.portal_particles();
         true
     }
+    /// `LivingEntity.stopRiding`.
+    pub(super) fn stop_riding(&mut self) {
+        let Some(id) = self.riding else {
+            return;
+        };
+        if let Some(i) = self.boats.iter().position(|b| b.id == id) {
+            self.dismount(i);
+        } else if let Some(i) = self.carts.iter().position(|c| c.id == id) {
+            self.dismount_cart(i);
+        } else {
+            self.dismount_mount();
+        }
+    }
+}
+impl crate::game::Sim<'_> {
+    /// `ServerPlayer.completeUsingItem`: the player's own client is told
+    /// first, and completes the use itself (eating the food there too).
+    pub(super) fn send_use_item_complete(&mut self) {
+        if self.lan_acting.is_some() {
+            self.guest_entity_events.push(USE_ITEM_COMPLETE_EVENT);
+        }
+    }
+    fn feet(&self) -> Option<[f64; 3]> {
+        self.player
+            .as_ref()
+            .map(|p| [p.position.x, p.position.y, p.position.z])
+    }
     fn state_in_tag(&self, tag: &str, state: horizon_world::registry::BlockStateId) -> bool {
         let name = &self.res.facts().get(state).name;
         self.res
@@ -226,19 +242,6 @@ impl Game<'_> {
             let y = from.y + d * (to.y - from.y) + r.next_double() * height;
             let z = from.z + d * (to.z - from.z) + (r.next_double() - 0.5) * width * 2.0;
             self.particles.add(&options, [x, y, z], v);
-        }
-    }
-    /// `LivingEntity.stopRiding`.
-    pub(super) fn stop_riding(&mut self) {
-        let Some(id) = self.riding else {
-            return;
-        };
-        if let Some(i) = self.boats.iter().position(|b| b.id == id) {
-            self.dismount(i);
-        } else if let Some(i) = self.carts.iter().position(|c| c.id == id) {
-            self.dismount_cart(i);
-        } else {
-            self.dismount_mount();
         }
     }
 }

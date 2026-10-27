@@ -15,6 +15,124 @@ use horizon_world::blocking_rules::{BlockingRules, DamageReduction, ItemDamageFu
 pub(super) const OFFHAND_SLOT: usize = 40;
 
 impl Game<'_> {
+    /// After a hurt with the shield raised: `hurtBlockingItem`, `onBlocked`
+    /// and, for melee from a mob, `blockUsingItem`.
+    pub(super) fn after_block(
+        &mut self,
+        outcome: BlockOutcome,
+        damage: f32,
+        attacker: Option<u32>,
+        projectile: bool,
+    ) {
+        let Some((slot, _)) = self.using else { return };
+        let Some(stack) = self.stack_in(slot).cloned() else {
+            return;
+        };
+        let Some(component) = self.blocks_attacks(&stack).cloned() else {
+            return;
+        };
+        let at = self
+            .player
+            .as_ref()
+            .map(|p| [p.position.x, p.position.y, p.position.z]);
+        if outcome.sound
+            && let Some(sound) = &component.block_sound
+        {
+            let pitch = 0.8 + self.world.random.next_float() * 0.4;
+            self.sounds.play(sound, at, 1.0, pitch);
+        }
+        if outcome.blocked <= 0.0 {
+            return;
+        }
+        // ItemDamageFunction.apply, then hurtAndBreak.
+        let (threshold, base, factor) = component.item_damage;
+        let item_damage = if outcome.blocked < threshold {
+            0
+        } else {
+            (base + factor * outcome.blocked).floor() as i32
+        };
+        if item_damage > 0 && !self.creative {
+            let loss = self.durability_loss(&stack, item_damage as u32);
+            let max = self
+                .res
+                .items()
+                .get(&stack.item)
+                .map_or(0, |i| i.max_damage);
+            let cell = self.stack_in_mut(slot);
+            if let Some(s) = cell.as_mut()
+                && max > 0
+            {
+                s.damage += loss;
+                if s.damage >= max {
+                    *cell = None;
+                    self.sim.using = None;
+                    self.sim.sounds.play(
+                        "minecraft:item.shield.break",
+                        at,
+                        0.8,
+                        0.8 + self.sim.world.random.next_float() * 0.4,
+                    );
+                    return;
+                }
+            }
+        }
+        if projectile {
+            return;
+        }
+        let Some(id) = attacker else {
+            // Another player's melee hit has no mob behind it.
+            if let Some((from, disable)) = self.combat.player_attacker {
+                let fully = outcome.blocked >= damage;
+                self.blocked_by_attacker(&component, [from[0], from[2]], fully, disable, at);
+            }
+            return;
+        };
+        let fully = outcome.blocked >= damage;
+        let Some(m) = self.mobs.iter().find(|m| m.id == id) else {
+            return;
+        };
+        let (mx, mz) = (m.position.x, m.position.z);
+        // LivingEntity.getSecondsToDisableBlocking: the held weapon's value;
+        // Warden overrides it with a flat 5 seconds.
+        let disable = if m.species() == horizon_client::mobs::Species::Warden {
+            5.0
+        } else {
+            m.extra
+                .main_hand
+                .as_deref()
+                .and_then(|item| self.res.items().get(item))
+                .map_or(0.0, |i| i.disable_blocking_seconds)
+        };
+        // Ravager.blockedByItem: stunned half the time (the defender pushed
+        // apart), else the defender flung away; no roar in progress.
+        if m.species() == horizon_client::mobs::Species::Ravager {
+            let mut events = Vec::new();
+            let roaring = m.extra.anim_ticks != 0;
+            let stunned = self
+                .mobs
+                .iter_mut()
+                .find(|m| m.id == id)
+                .is_some_and(|m| horizon_client::mobs::ravager::blocked(m, &mut events));
+            if !roaring && let Some(p) = self.player.as_mut() {
+                let (xd, zd) = (p.position.x - mx, p.position.z - mz);
+                let push = if stunned {
+                    // Entity.push(entity): apart by 0.05 per block of overlap.
+                    let d = (xd * xd + zd * zd).sqrt().max(0.01);
+                    let k = (1.0 / d).min(1.0) * 0.05;
+                    horizon_core::geometry::Vec3::new(xd / d * k, 0.0, zd / d * k)
+                } else {
+                    let dd = (xd * xd + zd * zd).max(0.001);
+                    horizon_core::geometry::Vec3::new(xd / dd * 4.0, 0.2, zd / dd * 4.0)
+                };
+                p.velocity = p.velocity.add_vector(push);
+            }
+            let _ = self.handle_mob_events(events);
+            return;
+        }
+        self.blocked_by_attacker(&component, [mx, mz], fully, disable, at);
+    }
+}
+impl crate::game::Sim<'_> {
     /// The stack in an inventory slot, the off hand at `OFFHAND_SLOT`.
     pub(super) fn stack_in(&self, slot: usize) -> Option<&ItemStack> {
         if slot == OFFHAND_SLOT {
@@ -112,123 +230,6 @@ impl Game<'_> {
             angle,
         })
     }
-    /// After a hurt with the shield raised: `hurtBlockingItem`, `onBlocked`
-    /// and, for melee from a mob, `blockUsingItem`.
-    pub(super) fn after_block(
-        &mut self,
-        outcome: BlockOutcome,
-        damage: f32,
-        attacker: Option<u32>,
-        projectile: bool,
-    ) {
-        let Some((slot, _)) = self.using else { return };
-        let Some(stack) = self.stack_in(slot).cloned() else {
-            return;
-        };
-        let Some(component) = self.blocks_attacks(&stack).cloned() else {
-            return;
-        };
-        let at = self
-            .player
-            .as_ref()
-            .map(|p| [p.position.x, p.position.y, p.position.z]);
-        if outcome.sound
-            && let Some(sound) = &component.block_sound
-        {
-            let pitch = 0.8 + self.world.random.next_float() * 0.4;
-            self.sounds.play(sound, at, 1.0, pitch);
-        }
-        if outcome.blocked <= 0.0 {
-            return;
-        }
-        // ItemDamageFunction.apply, then hurtAndBreak.
-        let (threshold, base, factor) = component.item_damage;
-        let item_damage = if outcome.blocked < threshold {
-            0
-        } else {
-            (base + factor * outcome.blocked).floor() as i32
-        };
-        if item_damage > 0 && !self.creative {
-            let loss = self.durability_loss(&stack, item_damage as u32);
-            let max = self
-                .res
-                .items()
-                .get(&stack.item)
-                .map_or(0, |i| i.max_damage);
-            let cell = self.stack_in_mut(slot);
-            if let Some(s) = cell.as_mut()
-                && max > 0
-            {
-                s.damage += loss;
-                if s.damage >= max {
-                    *cell = None;
-                    self.using = None;
-                    self.sounds.play(
-                        "minecraft:item.shield.break",
-                        at,
-                        0.8,
-                        0.8 + self.world.random.next_float() * 0.4,
-                    );
-                    return;
-                }
-            }
-        }
-        if projectile {
-            return;
-        }
-        let Some(id) = attacker else {
-            // Another player's melee hit has no mob behind it.
-            if let Some((from, disable)) = self.combat.player_attacker {
-                let fully = outcome.blocked >= damage;
-                self.blocked_by_attacker(&component, [from[0], from[2]], fully, disable, at);
-            }
-            return;
-        };
-        let fully = outcome.blocked >= damage;
-        let Some(m) = self.mobs.iter().find(|m| m.id == id) else {
-            return;
-        };
-        let (mx, mz) = (m.position.x, m.position.z);
-        // LivingEntity.getSecondsToDisableBlocking: the held weapon's value;
-        // Warden overrides it with a flat 5 seconds.
-        let disable = if m.species() == horizon_client::mobs::Species::Warden {
-            5.0
-        } else {
-            m.extra
-                .main_hand
-                .as_deref()
-                .and_then(|item| self.res.items().get(item))
-                .map_or(0.0, |i| i.disable_blocking_seconds)
-        };
-        // Ravager.blockedByItem: stunned half the time (the defender pushed
-        // apart), else the defender flung away; no roar in progress.
-        if m.species() == horizon_client::mobs::Species::Ravager {
-            let mut events = Vec::new();
-            let roaring = m.extra.anim_ticks != 0;
-            let stunned = self
-                .mobs
-                .iter_mut()
-                .find(|m| m.id == id)
-                .is_some_and(|m| horizon_client::mobs::ravager::blocked(m, &mut events));
-            if !roaring && let Some(p) = self.player.as_mut() {
-                let (xd, zd) = (p.position.x - mx, p.position.z - mz);
-                let push = if stunned {
-                    // Entity.push(entity): apart by 0.05 per block of overlap.
-                    let d = (xd * xd + zd * zd).sqrt().max(0.01);
-                    let k = (1.0 / d).min(1.0) * 0.05;
-                    horizon_core::geometry::Vec3::new(xd / d * k, 0.0, zd / d * k)
-                } else {
-                    let dd = (xd * xd + zd * zd).max(0.001);
-                    horizon_core::geometry::Vec3::new(xd / dd * 4.0, 0.2, zd / dd * 4.0)
-                };
-                p.velocity = p.velocity.add_vector(push);
-            }
-            let _ = self.handle_mob_events(events);
-            return;
-        }
-        self.blocked_by_attacker(&component, [mx, mz], fully, disable, at);
-    }
-
     /// What a blocked melee hit does to the defender once the shield took
     /// it: `LivingEntity.blockedByItem` knocks them back unless fully
     /// blocked, then `Player.blockUsingItem` disables the shield.
