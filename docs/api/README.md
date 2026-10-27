@@ -10,7 +10,6 @@ section has one page per surface, plus the rules every surface follows:
 | [Mods](mods.md) | mod authors | WIT `horizon:mods@0.1.0`, manifest `api` 0.1 (code) and 0.2 (content) | preview | [mods-reference.md](mods-reference.md) (generated) |
 | [Shaders](shaders.md) | shader authors | none yet: packs were removed on 2026-10-24 | planned | none |
 | [Agent control](agent-control.md) | agents, scripts, tests | `horizon-ctl`, its MCP server, the game's control socket | preview | [horizon-ctl-commands.md](../horizon-ctl-commands.md) (generated) |
-| [Servers](server.md) | hosts, panels, bots | `horizon-server` commands, `server.toml`, control API `/api/v1` | stable | [server-reference.md](server-reference.md) (generated) |
 | [Data formats](data-formats.md) | tools that read Horizon's files | benchmark reports, telemetry, settings files, signed checksums | stable or preview, per format | on that page |
 
 ## How these APIs are designed
@@ -37,7 +36,6 @@ A reference page is written by code from the source it describes, and a test fai
 | Page | Generated from | Update it with |
 | --- | --- | --- |
 | [mods-reference.md](mods-reference.md) | `crates/horizon-mod-sdk/wit/horizon.wit`, the manifest's capabilities | `HORIZON_WRITE_DOCS=1 cargo test -p horizon-mods --features pack --test api_reference` |
-| [server-reference.md](server-reference.md) | `horizon-server`'s help, `config::TEMPLATE`, `api::ROUTES` | `HORIZON_WRITE_DOCS=1 cargo test -p horizon-server reference` |
 | [horizon-ctl-commands.md](../horizon-ctl-commands.md) | the command table in `crates/horizon-client/src/bin/horizon-ctl/commands.rs` | `horizon-ctl help --markdown > docs/horizon-ctl-commands.md` |
 
 So a pull request that changes an API also changes its reference, and the reviewer sees the API's diff in the

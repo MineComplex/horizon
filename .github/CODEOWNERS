@@ -7,8 +7,6 @@
 /tools/ci/                               @ludovic111
 /tools/release_train.py                  @ludovic111
 /crates/horizon-release-sign/            @ludovic111
-/crates/horizon-server/src/update.rs     @ludovic111
-/crates/horizon-server/Cargo.toml        @ludovic111
 /launcher/src/signed.rs                  @ludovic111
 /launcher/src/backend.rs                 @ludovic111
 /launcher/links.json                     @ludovic111

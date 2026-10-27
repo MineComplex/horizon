@@ -1553,25 +1553,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "horizon-server"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "horizon-bench",
- "horizon-release-sign",
- "horizon-server-files",
- "libc",
- "serde",
- "serde_json",
- "sha2",
- "toml",
- "toml_edit",
- "ureq",
- "windows-sys 0.61.2",
- "zip",
-]
-
-[[package]]
 name = "horizon-server-files"
 version = "0.1.0"
 dependencies = [
@@ -3969,7 +3950,6 @@ dependencies = [
  "indexmap",
  "toml_datetime",
  "toml_parser",
- "toml_writer",
  "winnow",
 ]
 

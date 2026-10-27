@@ -24,8 +24,9 @@ count: chunks sent and new chunks generated a second, against the busiest server
 than 10 % apart isn't a fair comparison of its tick times.
 
 The vanilla side runs the pinned server jar from tools/lab.py prepare (your own copy). It needs Java 25. The
-Horizon side runs target/release/horizon-server with the engine beside it; build both first:
-    cargo build --release -p horizon-client --bin horizon-client -p horizon-server -p horizon-bots
+Horizon side runs target/release/horizon-client as the dedicated server (`--dedicated --nogui`, the way a
+server runs: console on stdin, logs/latest.log); build it and the bots first:
+    cargo build --release -p horizon-client --bin horizon-client -p horizon-bots
 
 Two more Java servers, both dev-only downloads into .local/server-bench/jars (never committed or shipped):
 - `paper`: Paper's newest build for the pinned version, from PaperMC's download API, checked against the
@@ -62,7 +63,7 @@ except ImportError:
 
 ROOT = lab.ROOT
 EXE = '.exe' if os.name == 'nt' else ''
-# Where horizon-server and horizon-bots are (the engine is found beside horizon-server or on the PATH).
+# Where horizon-client (the server engine) and horizon-bots are.
 BIN = Path(os.environ.get('HORIZON_BENCH_BIN', ROOT / 'target/release'))
 
 PROPERTIES = {
@@ -254,13 +255,8 @@ def server_command(kind, directory, args):
         classpath = os.pathsep.join(map(str, [jars['server'], *libraries, *runtime.fabric_libraries()]))
         return [*java, '-Dfabric.log.disableAnsi=true', '-cp', classpath,
                 'net.fabricmc.loader.impl.launch.knot.KnotServer', 'nogui']
-    server = BIN / f'horizon-server{EXE}'
-    subprocess.run([server, '--dir', directory, 'import', directory / 'server.properties'], check=True,
-                   capture_output=True)
-    toml = directory / 'server.toml'
-    # The same settings, without the web panel.
-    toml.write_text(re.sub(r'(?m)^bind = "127\.0\.0\.1:8130"', 'bind = ""', toml.read_text()))
-    return [server, '--dir', directory, 'run']
+    # The server reads server.properties from its folder (the process's working directory).
+    return [BIN / f'horizon-client{EXE}', '--resources', lab.LOCAL / 'horizon-client/26.3', '--dedicated', '--nogui']
 
 
 def bots_command(args):
