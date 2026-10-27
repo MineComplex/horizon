@@ -1,0 +1,26 @@
+# Join and quit messages from the config, the chat format, the title,
+# the welcome bar and the sidebar.
+[[step]]
+join = ["Steve"]
+expect.announcements = ["+ Steve"]
+expect.titles = ["Steve: Welcome / Steve"]
+expect.bars = ["Welcome to Horizon: Steve"]
+expect.player = { name = "Steve", x = 0.5, y = 64.0, z = 0.5 }
+
+[[step]]
+ticks = 20
+expect.sidebar = { player = "Steve", title = "Horizon", lines = ["Player: Steve", "Online: 1", "", "/menu for help"] }
+
+[[step]]
+chat = "hello there"
+expect.chat = ["Steve: hello there"]
+
+[[step]]
+# The welcome bar goes after five seconds.
+ticks = 100
+expect.bars = ["Welcome to Horizon: "]
+
+[[step]]
+join = ["Alex"]
+leave = ["Steve"]
+expect.announcements = ["+ Alex", "- Steve"]

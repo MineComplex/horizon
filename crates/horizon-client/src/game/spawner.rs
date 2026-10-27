@@ -124,10 +124,14 @@ impl Game<'_> {
                     self.next_entity += 1;
                     mob.id = self.next_entity;
                     let id = mob.id;
-                    self.mobs.push(mob);
-                    self.enchant_spawn_equipment(id);
-                    self.spawn_jockeys(id, true);
-                    Some(id)
+                    if self.plugin_allows_spawn(&mob, "spawner") {
+                        self.mobs.push(mob);
+                        self.enchant_spawn_equipment(id);
+                        self.spawn_jockeys(id, true);
+                        Some(id)
+                    } else {
+                        None
+                    }
                 }
                 Planned::Loaded(tag) => self.load_mob(tag, None),
             };

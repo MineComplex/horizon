@@ -6,7 +6,7 @@
 //! Online-mode servers need the Microsoft account the launcher signed in
 //! (crate::auth): the login joins the server through the session service and
 //! encrypts the connection (ClientHandshakePacketListenerImpl.handleHello).
-use crate::auth::AuthSession;
+use crate::auth::{AuthSession, Issuer};
 use horizon_protocol::{
     PROTOCOL_VERSION,
     connection::{ConnReader, ConnWriter, Connection, Counters},
@@ -412,6 +412,7 @@ fn run(
         .encode(),
     )
     .map_err(e)?;
+    let mut encrypted = false;
     let profile = loop {
         let (id, payload) = c.recv().map_err(e)?;
         match login::Clientbound::decode(id, &payload).map_err(e)? {
@@ -432,8 +433,15 @@ fn run(
                 let key = RsaPublicKey::from_der(&hello.public_key)
                     .map_err(|err| format!("Protocol error: {err}"))?;
                 let secret = generate_secret().map_err(e)?;
-                if hello.should_authenticate {
-                    let account = auth.ok_or_else(|| NOT_SIGNED_IN.to_owned())?;
+                let account = match auth {
+                    _ if !hello.should_authenticate => None,
+                    None => return Err(NOT_SIGNED_IN.to_owned()),
+                    // MineComplex: no session service, the proxy asks for the
+                    // launcher's token below and checks it itself.
+                    Some(a) if a.issuer == Issuer::MineComplex => None,
+                    Some(a) => Some(a),
+                };
+                if let Some(account) = account {
                     let hash = server_hash(&hello.server_id, &secret, &hello.public_key);
                     if let Err(err) = crate::auth::join_server(account, &hash) {
                         let reason = match err.reason() {
@@ -456,12 +464,16 @@ fn run(
                 )
                 .map_err(e)?;
                 c.enable_encryption(&secret);
+                encrypted = true;
             }
             login::Clientbound::CustomQuery(q) => {
+                // The launcher's token, only on the proxy's request over the
+                // encrypted connection.
+                let payload = auth.and_then(|a| a.minecomplex_answer(&q.channel, encrypted));
                 c.send(
                     &login::Serverbound::CustomQueryAnswer(login::CustomQueryAnswer {
                         transaction: q.transaction,
-                        payload: None,
+                        payload,
                     })
                     .encode(),
                 )

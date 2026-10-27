@@ -60,6 +60,27 @@ static SETUP: OnceLock<Mutex<Option<Setup>>> = OnceLock::new();
 /// usercache.json (Services.nameToIdCache): used by the server thread only.
 static USER_CACHE: Mutex<Option<UserCache>> = Mutex::new(None);
 
+/// The name the user cache holds for a UUID (plugins' offline players).
+#[cfg_attr(not(feature = "mods"), allow(dead_code))]
+pub(super) fn cached_name(id: u128) -> Option<String> {
+    USER_CACHE
+        .lock()
+        .ok()?
+        .as_ref()?
+        .get_by_id(id)
+        .map(|u| u.name)
+}
+/// The UUID and name the user cache holds for a name.
+#[cfg_attr(not(feature = "mods"), allow(dead_code))]
+pub(super) fn cached_player(name: &str) -> Option<(u128, String)> {
+    USER_CACHE
+        .lock()
+        .ok()?
+        .as_ref()?
+        .find_by_name(name)
+        .map(|u| (u.id, u.name))
+}
+
 /// PlayerList.placeNewPlayer: a player who joined is cached (and the file saved).
 pub(super) fn player_joined(id: u128, name: &str) {
     if let Some(cache) = USER_CACHE.lock().unwrap().as_mut() {
@@ -644,6 +665,10 @@ impl Game<'_> {
             return Ok(());
         }
         self.sync_ops(&lists);
+        #[cfg(feature = "mods")]
+        {
+            self.mods.plugin.lists = Some(lists.clone());
+        }
         log(
             "INFO",
             &format!(
@@ -700,7 +725,18 @@ impl Game<'_> {
                 self.ticks = self.ticks.max(1);
             }
             // MinecraftServer.tickServer: while paused only the connections run.
+            self.plugins_before_tick();
             self.tick_server_timed(paused)?;
+            self.plugins_after_tick();
+            #[cfg(feature = "mods")]
+            {
+                for line in std::mem::take(&mut self.mods.plugin.actions_console) {
+                    self.console_line(&mut state, &line);
+                }
+                if self.mods.plugin.stop {
+                    state.stop = true;
+                }
+            }
             if idle_timeout > 0 {
                 self.kick_idle(idle_timeout);
             }
@@ -709,6 +745,7 @@ impl Game<'_> {
             state.ticked(Instant::now());
             self.wait_for_next_server_tick(&mut next, paused);
         }
+        self.plugins_stop();
         self.stop_dedicated()
     }
 
@@ -835,6 +872,13 @@ impl Game<'_> {
 
     /// One console line, then the operators' share of its feedback.
     fn console_line(&mut self, state: &mut ServerState, line: &str) {
+        #[cfg(feature = "mods")]
+        let line = match self.plugin_console_line(line) {
+            Some(l) => l,
+            None => return,
+        };
+        #[cfg(feature = "mods")]
+        let line = line.as_str();
         self.console_broadcast = Some(state.broadcast_console);
         self.console_command(state, line);
         self.console_broadcast = None;

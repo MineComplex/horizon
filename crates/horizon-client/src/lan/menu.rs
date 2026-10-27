@@ -40,6 +40,71 @@ pub struct Menu {
 /// The y of the key a chest minecart's or chest boat's items are kept under
 /// while a menu shows them.
 pub const VEHICLE_KEY_Y: i32 = -100_000;
+/// The y of the position a plugin inventory's menu names (no block is there).
+pub const PLUGIN_KEY_Y: i32 = -200_000;
+
+/// An inventory a plugin owns (`plugin-inventories`, docs/plugins.md): its
+/// slots, the title its menu opens with, and the plugin's id.
+#[derive(Clone, Debug)]
+pub struct PluginInventory {
+    pub items: Vec<Option<ItemStack>>,
+    /// Plugin text (`§` codes or JSON).
+    pub title: String,
+    pub owner: String,
+    /// A 3 x 3 dropper rather than a one-row chest of 9.
+    pub dropper: bool,
+}
+
+/// Every plugin inventory, by id: one server per process runs plugins.
+static PLUGIN_INVENTORIES: std::sync::Mutex<std::collections::BTreeMap<u32, PluginInventory>> =
+    std::sync::Mutex::new(std::collections::BTreeMap::new());
+static NEXT_PLUGIN_INVENTORY: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(1);
+
+/// A new plugin inventory of `size` empty slots: its id.
+pub fn create_plugin_inventory(size: usize, title: String, owner: String, dropper: bool) -> u32 {
+    let id = NEXT_PLUGIN_INVENTORY.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    if let Ok(mut all) = PLUGIN_INVENTORIES.lock() {
+        all.insert(
+            id,
+            PluginInventory {
+                items: vec![None; size],
+                title,
+                owner,
+                dropper,
+            },
+        );
+    }
+    id
+}
+/// A copy of a plugin inventory.
+pub fn plugin_inventory(id: u32) -> Option<PluginInventory> {
+    PLUGIN_INVENTORIES.lock().ok()?.get(&id).cloned()
+}
+/// Changes a plugin inventory in place; false when there is none.
+pub fn with_plugin_inventory(id: u32, f: impl FnOnce(&mut PluginInventory)) -> bool {
+    let Ok(mut all) = PLUGIN_INVENTORIES.lock() else {
+        return false;
+    };
+    match all.get_mut(&id) {
+        Some(p) => {
+            f(p);
+            true
+        }
+        None => false,
+    }
+}
+/// Forgets a plugin inventory (its viewers' menus close as it is no longer valid).
+pub fn destroy_plugin_inventory(id: u32) {
+    if let Ok(mut all) = PLUGIN_INVENTORIES.lock() {
+        all.remove(&id);
+    }
+}
+/// Forgets every inventory of a plugin (it was disabled), or all of them.
+pub fn destroy_plugin_inventories(owner: Option<&str>) {
+    if let Ok(mut all) = PLUGIN_INVENTORIES.lock() {
+        all.retain(|_, p| owner.is_some_and(|o| p.owner != o));
+    }
+}
 
 /// Where the slots of a container menu live.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -51,6 +116,8 @@ pub enum Slots {
     Double((i32, i32, i32), (i32, i32, i32)),
     /// The player's own ender chest inventory (`PlayerEnderChestContainer`).
     Ender,
+    /// A plugin's inventory (`plugin-inventories`).
+    Plugin(u32),
 }
 
 impl Slots {
@@ -58,12 +125,17 @@ impl Slots {
         match self {
             Slots::Block(k) => vec![k],
             Slots::Double(a, b) => vec![a, b],
-            Slots::Ender => Vec::new(),
+            Slots::Ender | Slots::Plugin(_) => Vec::new(),
         }
     }
     /// Whether the block entities behind the slots are still there
     /// (`Container.stillValid`).
     pub fn valid(self, world: &World) -> bool {
+        if let Slots::Plugin(id) = self {
+            return PLUGIN_INVENTORIES
+                .lock()
+                .is_ok_and(|all| all.contains_key(&id));
+        }
         self.halves()
             .iter()
             .all(|k| world.block_entities.contains_key(k))
@@ -72,6 +144,9 @@ impl Slots {
     /// and the guest is within reach of each (`stillValidBlockEntity`). The
     /// ender chest's block is `at` (`PlayerEnderChestContainer.activeChest`).
     pub fn still_valid(self, world: &World, guest: &Guest, at: Option<(i32, i32, i32)>) -> bool {
+        if let Slots::Plugin(_) = self {
+            return self.valid(world);
+        }
         let blocks = match self {
             Slots::Ender => at.into_iter().collect(),
             _ => self.halves(),
@@ -85,6 +160,16 @@ impl Slots {
     }
     /// Container slot `n`.
     pub fn get(self, world: &World, guest: &Guest, mut n: usize) -> Option<ItemStack> {
+        if let Slots::Plugin(id) = self {
+            return PLUGIN_INVENTORIES
+                .lock()
+                .ok()?
+                .get(&id)?
+                .items
+                .get(n)
+                .cloned()
+                .flatten();
+        }
         if self == Slots::Ender {
             return guest.ender_items.get(n).cloned().flatten();
         }
@@ -99,6 +184,13 @@ impl Slots {
     }
     /// Every container slot, in menu order.
     pub fn read(self, world: &World, guest: &Guest) -> Option<Vec<Option<ItemStack>>> {
+        if let Slots::Plugin(id) = self {
+            return PLUGIN_INVENTORIES
+                .lock()
+                .ok()?
+                .get(&id)
+                .map(|p| p.items.clone());
+        }
         if self == Slots::Ender {
             return Some(guest.ender_items.clone());
         }
@@ -110,6 +202,14 @@ impl Slots {
     }
     /// Store what `read` gave, changed.
     pub fn write(self, world: &mut World, guest: &mut Guest, items: Vec<Option<ItemStack>>) {
+        if let Slots::Plugin(id) = self {
+            with_plugin_inventory(id, |p| {
+                for (k, slot) in p.items.iter_mut().enumerate() {
+                    *slot = items.get(k).cloned().flatten();
+                }
+            });
+            return;
+        }
         if self == Slots::Ender {
             guest.ender_items = items;
             return;

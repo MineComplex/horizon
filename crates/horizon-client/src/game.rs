@@ -133,6 +133,11 @@ mod perspective;
 mod pickups;
 mod piglins;
 mod player_equip;
+#[cfg(feature = "mods")]
+mod plugin_events;
+#[cfg(feature = "mods")]
+mod plugin_host;
+mod plugins;
 mod postprocess;
 mod potions;
 mod powder_snow;
@@ -370,6 +375,8 @@ impl Options {
             execution_role: execution_role::ExecutionRole::Client,
         };
         let mut session_file = std::env::var("HORIZON_SESSION_FILE").ok();
+        // The MineComplex launcher's identity, passed as vanilla's arguments.
+        let (mut launcher_uuid, mut launcher_token) = (None::<String>, None::<String>);
         let mut args = std::env::args().skip(1);
         while let Some(arg) = args.next() {
             match arg.as_str() {
@@ -441,7 +448,10 @@ impl Options {
                             o.benchmark = Some(value);
                         }
                         "--server" => o.server = Some(value),
-                        "--name" => o.player_name = Some(value),
+                        "--name" | "--username" => o.player_name = Some(value),
+                        "--uuid" => launcher_uuid = Some(value),
+                        "--accessToken" => launcher_token = Some(value),
+                        "--quickPlayMultiplayer" => o.server = Some(value),
                         "--session-file" => session_file = Some(value),
                         "--control-socket" => o.control = Some(value.into()),
                         "--time" => o.time = Some(value.parse()?),
@@ -471,6 +481,25 @@ impl Options {
                     horizon_client::auth::set_current(session);
                 }
                 Err(e) => eprintln!("Horizon: not signed in: {e}"),
+            }
+        }
+        // The MineComplex launcher: its access token in MINECOMPLEX_GAME_TOKEN
+        // or --accessToken, checked by the proxy on login.
+        let token = horizon_client::minecomplex::game_token(launcher_token.as_deref());
+        if let (None, Some(token)) = (horizon_client::auth::current(), token) {
+            let name = o.player_name.as_deref().unwrap_or_default();
+            let uuid = launcher_uuid
+                .as_deref()
+                .and_then(horizon_client::auth::parse_uuid);
+            match uuid {
+                Some(uuid) if horizon_client::minecomplex::is_player_name(name) => {
+                    horizon_client::auth::set_current(
+                        horizon_client::auth::AuthSession::minecomplex(name, uuid, &token),
+                    );
+                }
+                _ => eprintln!(
+                    "Horizon: not signed in: the launcher passed no valid --username and --uuid"
+                ),
             }
         }
         Ok(Some(o))
@@ -3501,6 +3530,11 @@ impl Game<'_> {
         {
             return Ok(());
         }
+        // BlockBreakEvent: a plugin may keep the block.
+        #[cfg(feature = "mods")]
+        if !self.plugin_block_break(pos) {
+            return Ok(());
+        }
         self.pad_rumble(horizon_client::gamepad::Rumble::BlockBroken);
         // ServerPlayerGameMode.destroyBlock.
         let state = self.world.block(pos[0], pos[1], pos[2]);
@@ -3547,6 +3581,8 @@ impl Game<'_> {
                     .res
                     .items()
                     .correct_for_drops(held.as_ref(), &facts.name);
+            #[cfg(feature = "mods")]
+            let harvest = harvest && !std::mem::take(&mut self.mods.plugin.no_drops);
             if harvest {
                 // Block.playerDestroy: the mined statistic, the exhaustion and the drops.
                 self.stats.add("mined", &facts.name, 1);
@@ -3876,7 +3912,30 @@ impl Game<'_> {
             item: stack.item.to_string(),
             can_use_game_master_blocks: self.can_use_game_master_blocks(),
         };
+        // What the placement may replace, for BlockPlaceEvent's undo.
+        #[cfg(feature = "mods")]
+        let before = {
+            let c = hit.pos;
+            let o = hit.face;
+            let next = [c[0] + o[0], c[1] + o[1], c[2] + o[2]];
+            [
+                (c, self.world.block(c[0], c[1], c[2])),
+                (next, self.world.block(next[0], next[1], next[2])),
+            ]
+        };
         let outcome = self.with_level(|b, level, ticks| b.place_block(level, ticks, &ctx));
+        #[cfg(feature = "mods")]
+        if let PlaceOutcome::Placed { pos, .. } = &outcome {
+            let target = [pos.x, pos.y, pos.z];
+            let replaced = before
+                .iter()
+                .find(|(p, _)| *p == target)
+                .map_or(self.world.air, |(_, s)| *s);
+            let item = Self::plugin_stack(Some(&stack));
+            if !self.plugin_block_place(target, replaced, item) {
+                return Ok(true);
+            }
+        }
         let PlaceOutcome::Placed { pos, state } = outcome else {
             self.process_level_events()?;
             // BlockItem.useOn: a consumable that could not be placed is used,
@@ -7687,6 +7746,11 @@ impl Game<'_> {
         }
         // Enchantment damage (sharpness, smite, bane) scaled by the attack strength.
         amount += self.enchant_damage_bonus(target_kind) * scale;
+        // A plugin's EntityDamageEvent changed the hit under way.
+        #[cfg(feature = "mods")]
+        if let Some(changed) = self.mods.plugin.damage_override.take() {
+            amount = changed;
+        }
         (amount, scale, crit)
     }
     /// `Player.getAttackStrengthScale(0.5)`.

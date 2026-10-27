@@ -1,4 +1,5 @@
 //! Loading and calling mods with wasmtime's component model.
+pub mod plugin;
 use crate::manifest::{Manifest, Package, Side};
 use server_bindings::{
     HorizonServerMod,
@@ -322,24 +323,34 @@ struct Running {
 enum Hooks {
     Client(HorizonMod, Registration),
     Server(HorizonServerMod, ServerRegistration),
+    /// A plugin: its commands, listeners and tasks are in its store.
+    Plugin(Box<plugin::HorizonPlugin>),
 }
 impl Hooks {
     fn client(&self) -> Option<&Registration> {
         match self {
             Hooks::Client(_, r) => Some(r),
-            Hooks::Server(..) => None,
+            _ => None,
         }
     }
     fn server(&self) -> Option<&ServerRegistration> {
         match self {
             Hooks::Server(_, r) => Some(r),
-            Hooks::Client(..) => None,
+            _ => None,
         }
     }
+    fn plugin(&self) -> Option<&plugin::HorizonPlugin> {
+        match self {
+            Hooks::Plugin(p) => Some(p),
+            _ => None,
+        }
+    }
+    /// A mod's commands; a plugin's are its own ([`Mods::plugin_commands`]).
     fn commands(&self) -> &[String] {
         match self {
             Hooks::Client(_, r) => &r.commands,
             Hooks::Server(_, r) => &r.commands,
+            Hooks::Plugin(_) => &[],
         }
     }
 }
@@ -423,6 +434,8 @@ struct State {
     storage_budget: u64,
     limits: StoreLimits,
     world: WorldSlot,
+    /// A plugin's own state (API 0.4); none for a mod.
+    plugin: Option<Box<plugin::PluginState>>,
 }
 
 /// The installed mods and the engine running them. `Mods::default()` is
@@ -434,6 +447,7 @@ pub struct Mods {
     snapshot: Arc<Snapshot>,
     out: Vec<Output>,
     world: WorldSlot,
+    plugins: plugin::Runtime,
 }
 
 impl Mods {
@@ -537,6 +551,7 @@ impl Mods {
                 .map_err(|e| e.to_string())?;
             RecipesHost::add_to_linker::<State, HasSelf<State>>(&mut linker, |s| s)
                 .map_err(|e| e.to_string())?;
+            plugin::add_to_linker(&mut linker).map_err(|e| e.to_string())?;
             self.engine = Some((engine, linker));
         }
         Ok(self.engine.as_ref().expect("made above"))
@@ -575,6 +590,8 @@ impl Mods {
             .collect();
         let snapshot = self.snapshot.clone();
         let world = self.world.clone();
+        let is_plugin = m.is_plugin();
+        let plugin_state = is_plugin.then(|| plugin::new_state(self, path, m));
         let (engine, linker) = self.engine()?;
         let component =
             Component::new(engine, wasm).map_err(|e| format!("not a component: {e}"))?;
@@ -611,10 +628,11 @@ impl Mods {
             data_dir,
             storage_budget: STORAGE_WRITE_BUDGET,
             limits: StoreLimitsBuilder::new()
-                .memory_size(MEMORY)
+                .memory_size(if is_plugin { plugin::MEMORY } else { MEMORY })
                 .instances(16)
                 .build(),
             world,
+            plugin: plugin_state,
         };
         let mut store = Store::new(engine, state);
         store.limiter(|s| &mut s.limits);
@@ -622,7 +640,12 @@ impl Mods {
         let instance = linker
             .instantiate(&mut store, &component)
             .map_err(|e| reason(&e))?;
-        let (mut hooks, ui) = if server {
+        let (mut hooks, ui) = if is_plugin {
+            (
+                plugin::instantiate(&mut store, &instance).map_err(|e| reason(&e))?,
+                None,
+            )
+        } else if server {
             let exports = HorizonServerMod::new(&mut store, &instance).map_err(|e| reason(&e))?;
             let r = exports
                 .horizon_mods_server_events()
@@ -640,9 +663,11 @@ impl Mods {
                 .map_err(|e| reason(&e))??;
             (Hooks::Client(exports, r), ui)
         };
+        let mut none = Vec::new();
         let commands = match &mut hooks {
             Hooks::Client(_, r) => &mut r.commands,
             Hooks::Server(_, r) => &mut r.commands,
+            Hooks::Plugin(_) => &mut none,
         };
         commands.retain(|c| {
             let free = !reserved(c) && !taken.contains(c);
@@ -708,7 +733,7 @@ impl Mods {
             |h| h.client().is_some_and(&wants),
             |run| match &run.hooks {
                 Hooks::Client(m, _) => f(m.horizon_mods_events(), &mut run.store),
-                Hooks::Server(..) => Ok(()),
+                _ => Ok(()),
             },
         );
     }
@@ -724,7 +749,7 @@ impl Mods {
             |h| h.server().is_some_and(&wants),
             |run| match &run.hooks {
                 Hooks::Server(m, _) => f(m.horizon_mods_server_events(), &mut run.store),
-                Hooks::Client(..) => Ok(()),
+                _ => Ok(()),
             },
         );
     }
@@ -807,7 +832,7 @@ impl Mods {
             Hooks::Client(m, _) => m
                 .horizon_mods_events()
                 .call_command(&mut run.store, name, args),
-            Hooks::Server(..) => Ok(Ok(None)),
+            _ => Ok(Ok(None)),
         });
         match result {
             Some(Ok(Some(text))) => self.out.push(Output::Feedback { text, error: false }),
@@ -885,7 +910,7 @@ impl Mods {
                 m.horizon_mods_server_events()
                     .call_command(&mut run.store, player, name, args)
             }
-            Hooks::Client(..) => Ok(Ok(None)),
+            _ => Ok(Ok(None)),
         });
         let reply = |text, error| Output::Reply {
             player: player.id.clone(),
@@ -1226,11 +1251,16 @@ impl Mods {
             });
             let entry = &mut self.entries[i];
             let id = entry.manifest.as_ref().map_or("?", |m| m.id.as_str());
+            let plugin = entry.manifest.as_ref().is_some_and(|m| m.is_plugin());
+            let id = id.to_owned();
             match started {
                 Ok(run) => {
                     log::info!("Horizon: mod {id} reloaded");
                     entry.run = run;
                     entry.status = Status::Running;
+                    if plugin {
+                        self.plugin_restarted(i, &id);
+                    }
                 }
                 Err(e) => {
                     log::warn!("Horizon: mod {id} did not reload: {e}");

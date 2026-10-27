@@ -1,0 +1,9 @@
+# Essentials' settings (& codes are colours).
+join-message: "&a+ &f{player}"
+quit-message: "&c- &f{player}"
+chat-format: "&7{name}&8: &f{message}"
+# Blocks around the spawn only players with essentials.build may change.
+protection-radius: 16
+# Ticks between the automatic announcements (0: none).
+announce-every: 1200
+announcement: "&6Need help? Type &e/menu"

@@ -284,6 +284,15 @@ impl Game<'_> {
         let hurtable = exploding.is_none_or(|id| {
             horizon_client::scoreboard::teams_allow_damage(self.mob_team(id), self.player_team())
         });
+        #[cfg(feature = "mods")]
+        let (amount, hurtable) = if hurtable && !self.creative {
+            match self.plugin_damage_acting(damage_type, amount, exploding.map(|id| id as i32)) {
+                Some(a) => (a, true),
+                None => (amount, false),
+            }
+        } else {
+            (amount, hurtable)
+        };
         let blocking = self.player_blocking(Some(center), damage_type, false);
         let raised = blocking.is_some();
         let (creative, spectator) = (self.creative, self.spectator());
@@ -532,6 +541,11 @@ impl Game<'_> {
         let ctx = horizon_client::sculk::Context::default();
         self.post_game_event("minecraft:explode", center, ctx);
         let mut targets = self.exploded_positions(center, radius, resists);
+        // EntityExplodeEvent: plugins may cancel it or spare blocks.
+        #[cfg(feature = "mods")]
+        if !self.plugin_explosion(center, &mut targets) {
+            return Ok(());
+        }
         self.explosion_hurt_entities(center, radius, damage_type);
         if interaction != BlockInteraction::Keep {
             // Util.shuffle(list, level.random)

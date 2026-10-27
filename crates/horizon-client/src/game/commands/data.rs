@@ -133,7 +133,7 @@ impl Game<'_> {
     }
     /// `Entity.load` of new data (`EntityDataAccessor.setData`): the entity is
     /// rebuilt from its compound, keeping its id and UUID.
-    fn apply_entity_nbt(&mut self, t: Target, mut tag: Tag) -> R<()> {
+    pub(in crate::game) fn apply_entity_nbt(&mut self, t: Target, mut tag: Tag) -> R<()> {
         let stale = || err("commands.data.merge.failed", &[]);
         match t {
             Target::Player => return Err(err("commands.data.entity.invalid", &[])),
@@ -207,7 +207,7 @@ impl Game<'_> {
             _ => None,
         }
     }
-    fn set_entity_tags(&mut self, t: Target, tags: &[String]) {
+    pub(in crate::game) fn set_entity_tags(&mut self, t: Target, tags: &[String]) {
         if let Some(raw) = self.raw_mut(t) {
             let list = tags
                 .iter()

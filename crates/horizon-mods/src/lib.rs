@@ -12,6 +12,8 @@ pub mod index;
 pub mod manifest;
 pub mod modpack;
 #[cfg(feature = "runtime")]
+pub mod plugin_test;
+#[cfg(feature = "runtime")]
 mod runtime;
 #[cfg(feature = "runtime")]
 pub mod testing;

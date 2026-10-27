@@ -570,6 +570,8 @@ impl ServerEntity {
 #[derive(Default)]
 pub struct Tracker {
     seen: crate::fast_hash::FxHashSet<i32>,
+    /// Entities this client must not see (a plugin hid a player from it).
+    blocked: crate::fast_hash::FxHashSet<i32>,
 }
 
 impl Tracker {
@@ -581,6 +583,14 @@ impl Tracker {
     }
     pub fn clear(&mut self) {
         self.seen.clear();
+    }
+    /// Never pair `id` with this client (until [`Tracker::unblock`]).
+    pub fn block(&mut self, id: i32) {
+        self.blocked.insert(id);
+        self.seen.remove(&id);
+    }
+    pub fn unblock(&mut self, id: i32) {
+        self.blocked.remove(&id);
     }
     /// Stop tracking `id` without a packet: the caller removes it from the
     /// client, and the next tick pairs it again if it is still in range.
@@ -855,6 +865,7 @@ impl Entities {
                     }
                     v.out.extend(self.bodies.iter().cloned());
                 } else if f & SEES != 0
+                    && !v.tracker.blocked.contains(&e.id)
                     && let Some(kind) = s.kind
                 {
                     let bodies = pairing.get_or_insert_with(|| {

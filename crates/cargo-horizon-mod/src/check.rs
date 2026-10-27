@@ -190,7 +190,47 @@ fn trial_run(path: &Path, report: &mut Report) -> Result<(), String> {
     result
 }
 
+/// A plugin's trial run on a fake server: a player joins, chats, types
+/// each of its commands (and the console too), 40 ticks pass, the player
+/// leaves and the server stops.
+fn play_plugin(path: &Path, report: &mut Report) -> Result<(), String> {
+    use horizon_mods::plugin_test::TestServer;
+    let mut t = TestServer::load(&[path.to_path_buf()])?;
+    report.commands = t
+        .mods
+        .plugin_commands()
+        .iter()
+        .map(|c| c.name.clone())
+        .collect();
+    t.join("Steve")?;
+    t.chat("Steve", "hello")?;
+    for name in report.commands.clone() {
+        t.command("Steve", &name)?;
+        t.console(&name)?;
+    }
+    t.ticks(TICKS)?;
+    t.leave("Steve")?;
+    t.stop();
+    let s = &t.server;
+    report
+        .output
+        .extend(s.told.iter().map(|l| format!("tell: {l}")));
+    report
+        .output
+        .extend(s.console.iter().map(|l| format!("console: {l}")));
+    report
+        .output
+        .extend(s.dispatched.iter().map(|l| format!("dispatched: /{l}")));
+    match t.stopped() {
+        Some(reason) => Err(format!("it stopped: {reason}")),
+        None => Ok(()),
+    }
+}
+
 fn play(path: &Path, report: &mut Report) -> Result<(), String> {
+    if Package::read(path).is_ok_and(|p| p.manifest.is_plugin()) {
+        return play_plugin(path, report);
+    }
     let mut mods = Mods::load(&[path.to_path_buf()], |_| true, |_| false);
     let failed = |mods: &Mods| match &mods.entries()[0].status {
         Status::Failed(reason) => Some(reason.clone()),

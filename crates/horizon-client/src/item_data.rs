@@ -18,6 +18,10 @@ pub struct StackData {
     pub repair_cost: u32,
     /// `minecraft:custom_name` as plain text.
     pub custom_name: Option<String>,
+    /// The `custom_name` component as loaded when it is styled (colours, a
+    /// translation): written back, and sent to clients, while its plain text
+    /// is still `custom_name` (a rename replaces it).
+    pub custom_name_rich: Option<Tag>,
     /// `minecraft:potion_contents.potion`.
     pub potion: Option<Arc<str>>,
     /// `minecraft:trim`: (material, pattern).
@@ -200,6 +204,14 @@ impl ItemStack {
     }
     pub fn repair_cost(&self) -> u32 {
         self.data().map_or(0, |d| d.repair_cost)
+    }
+    /// The styled `custom_name` component, when it still names the stack.
+    pub fn custom_name_rich(&self) -> Option<&Tag> {
+        let d = self.data()?;
+        let name = d.custom_name.as_deref()?;
+        d.custom_name_rich
+            .as_ref()
+            .filter(|t| read_text(t).as_deref() == Some(name))
     }
     pub fn custom_name(&self) -> Option<&str> {
         self.data().and_then(|d| d.custom_name.as_deref())
@@ -479,7 +491,12 @@ pub fn components_tag(damage: u32, data: Option<&StackData>) -> Option<Tag> {
             entries.push(("minecraft:repair_cost", Tag::Int(d.repair_cost as i32)));
         }
         if let Some(name) = &d.custom_name {
-            entries.push(("minecraft:custom_name", Tag::String(name.as_str().into())));
+            let tag = d
+                .custom_name_rich
+                .clone()
+                .filter(|t| read_text(t).as_deref() == Some(name.as_str()))
+                .unwrap_or_else(|| Tag::String(name.as_str().into()));
+            entries.push(("minecraft:custom_name", tag));
         }
         if let Some(potion) = &d.potion {
             entries.push((
@@ -683,6 +700,10 @@ pub fn decode_components(components: Option<&Tag>) -> (u32, Option<Box<StackData
             .unwrap_or(0)
             .max(0) as u32,
         custom_name: c.get("minecraft:custom_name").and_then(read_text),
+        custom_name_rich: c
+            .get("minecraft:custom_name")
+            .filter(|t| !matches!(t, Tag::String(_)))
+            .cloned(),
         potion,
         map_id: c.get("minecraft:map_id").and_then(int).map(|v| v as i32),
         banner_patterns: crate::banner::layers_from_nbt(c.get("minecraft:banner_patterns")),
@@ -840,6 +861,33 @@ pub fn command_components(text: &str) -> Result<Tag, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_styled_custom_name_survives_until_a_rename() {
+        let name = Tag::compound([
+            ("text", Tag::String("Blade".into())),
+            ("color", Tag::String("red".into())),
+        ]);
+        let components = Tag::compound([("minecraft:custom_name", name.clone())]);
+        let (damage, extra) = decode_components(Some(&components));
+        let mut stack = ItemStack {
+            damage,
+            extra,
+            ..ItemStack::new("minecraft:diamond_sword", 1)
+        };
+        assert_eq!(stack.custom_name(), Some("Blade"));
+        assert_eq!(stack.custom_name_rich(), Some(&name));
+        let tag = encode_components(&stack).expect("components");
+        assert_eq!(tag.get("minecraft:custom_name"), Some(&name));
+        // An anvil's rename: plain text again.
+        stack.data_mut().custom_name = Some("Other".into());
+        assert_eq!(stack.custom_name_rich(), None);
+        let tag = encode_components(&stack).expect("components");
+        assert_eq!(
+            tag.get("minecraft:custom_name"),
+            Some(&Tag::String("Other".into()))
+        );
+    }
 
     #[test]
     fn components_round_trip() {

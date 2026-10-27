@@ -928,6 +928,12 @@ impl Game<'_> {
 
     /// A packet from a guest that the hub does not handle itself.
     pub(super) fn lan_guest_packet(&mut self, host: &mut LanHost, conn: u32, packet: S) {
+        #[cfg(feature = "mods")]
+        let mut packet = packet;
+        #[cfg(feature = "mods")]
+        if self.plugin_packet(host, conn, &mut packet) {
+            return;
+        }
         let Some(gi) = host.hub.guests.iter().position(|g| g.conn == conn) else {
             return;
         };
@@ -1358,7 +1364,11 @@ impl Game<'_> {
             {
                 host.play.entry(conn).or_default().respawn_requested = true;
             }
-            S::ClientCommand(c) if c.action == 0 => self.guest_respawn(host, conn),
+            S::ClientCommand(c) if c.action == 0 => {
+                self.guest_respawn(host, conn);
+                #[cfg(feature = "mods")]
+                self.plugin_respawned(host, conn);
+            }
             // ServerStatsCounter.sendStats.
             S::ClientCommand(c) if c.action == 1 => {
                 let stats = host
@@ -1516,7 +1526,21 @@ impl Game<'_> {
             return;
         }
         if let Some(victim) = Self::pvp_victim(host, conn, id) {
-            if let Some(Some(strike)) = self.as_guest(host, conn, |g| g.pvp_strike())
+            #[allow(unused_mut)]
+            if let Some(Some(mut strike)) = self.as_guest(host, conn, |g| g.pvp_strike())
+                && {
+                    #[cfg(feature = "mods")]
+                    let go = match self.plugin_attack(host, conn, id, strike.amount()) {
+                        Some(amount) => {
+                            strike.set_amount(amount);
+                            true
+                        }
+                        None => false,
+                    };
+                    #[cfg(not(feature = "mods"))]
+                    let go = true;
+                    go
+                }
                 && self.pvp_land(host, victim, &strike)
                 && strike.stops_sprint()
             {
@@ -1544,6 +1568,28 @@ impl Game<'_> {
         if self.look_at_entity(host, gi, id, None).is_none() {
             return;
         }
+        // EntityDamageByEntityEvent for the hit about to land.
+        #[cfg(feature = "mods")]
+        if self.plugins_listen(horizon_mods::plugin::EventKind::EntityDamage) {
+            let kind = self
+                .plugin_target(id)
+                .map(|t| self.target_type(t))
+                .unwrap_or_default();
+            let estimate = self
+                .as_guest(host, conn, |g| g.melee_damage(&kind).0)
+                .unwrap_or(1.0);
+            match self.plugin_attack(host, conn, id, estimate) {
+                None => {
+                    host.hub.guests[gi].yaw = old_yaw;
+                    host.hub.guests[gi].pitch = old_pitch;
+                    return;
+                }
+                Some(amount) if amount != estimate => {
+                    self.mods.plugin.damage_override = Some(amount);
+                }
+                Some(_) => {}
+            }
+        }
         self.as_guest(host, conn, |g| {
             g.attack();
         });
@@ -1565,6 +1611,21 @@ impl Game<'_> {
         command: &str,
         signed: Option<Vec<(String, horizon_client::lan::hub::chat::ChatMessage)>>,
     ) {
+        // Plugins first: PlayerCommandEvent, `/plugins` and their commands.
+        #[cfg(feature = "mods")]
+        let changed;
+        #[cfg(feature = "mods")]
+        let (command, signed) = {
+            let Some(line) =
+                self.plugin_player_command(host, conn, command.trim_start_matches('/'))
+            else {
+                return;
+            };
+            changed = line;
+            // A command a plugin rewrote no longer matches its signatures.
+            let same = changed == command.trim_start_matches('/');
+            (changed.as_str(), if same { signed } else { None })
+        };
         if self.guest_message_command(host, conn, command, signed.as_ref()) {
             return;
         }
@@ -1723,6 +1784,28 @@ impl Game<'_> {
         };
         let skip = usize::from(text.starts_with('/'));
         let command = &text[skip..];
+        #[cfg(feature = "mods")]
+        if let Some((start, words)) = self.plugin_suggestions(host, conn, command) {
+            let utf16 =
+                |byte: usize| command[..byte.min(command.len())].encode_utf16().count() as i32;
+            let mut w = horizon_protocol::buf::Writer::new();
+            w.varint(id);
+            w.varint(utf16(start) + skip as i32);
+            w.varint(utf16(command.len()) - utf16(start));
+            w.varint(words.len() as i32);
+            for word in &words {
+                w.string(word);
+                w.bool(false);
+            }
+            host.hub.send_to(
+                conn,
+                &C::Unknown(
+                    horizon_protocol::ids::play::clientbound::COMMAND_SUGGESTIONS,
+                    w.data,
+                ),
+            );
+            return;
+        }
         let d = vanilla::game_dispatcher();
         let level = std::mem::replace(&mut self.ui.registries.permission, permission);
         let parse = d.parse(command, &self.ui.registries);
@@ -2010,7 +2093,7 @@ impl Game<'_> {
         if g.health <= 0.0 && !g.dead {
             g.dead = true;
             g.last_death = Some(g.position.map(|v| v.floor() as i32));
-            let (id, at) = (g.entity_id, g.position);
+            let at = g.position;
             let reward = Experience {
                 level: g.xp_level,
                 progress: g.xp_progress,
@@ -2025,7 +2108,60 @@ impl Game<'_> {
             // ServerPlayer.die: with showDeathMessages, the message goes to
             // the dying player's death screen and to everyone the team lets
             // see it; without it, the death screen gets an empty one.
-            let message = if self.ui.rules.bool("show_death_messages") {
+            let shown = self.ui.rules.bool("show_death_messages");
+            let mut keep_inventory = false;
+            #[cfg(feature = "mods")]
+            let mut plugin_message: Option<Option<String>> = None;
+            #[cfg(feature = "mods")]
+            if self.plugins_listen(horizon_mods::plugin::EventKind::PlayerDeath) {
+                let me = self.player_text(&name, uuid);
+                let text = match cause.clone() {
+                    Some(key) => horizon_client::text::Text::translate(&key, &[me]),
+                    None if at[1] < f64::from(horizon_client::chunk::MIN_Y - 64) => {
+                        horizon_client::text::Text::translate("death.attack.outOfWorld", &[me])
+                    }
+                    None => self.guest_death_message(conn, me),
+                };
+                let rule = self.ui.rules.bool("keep_inventory");
+                if let Some((message, keep_inv, keep_level)) =
+                    self.plugin_player_death(host, conn, shown.then(|| text.component()), rule)
+                {
+                    if shown.then(|| text.component().to_string()) != message {
+                        plugin_message = Some(message);
+                    }
+                    keep_inventory = keep_inv && !rule;
+                    if keep_level {
+                        let g = &host.hub.guests[gi];
+                        self.mods
+                            .plugin
+                            .kept_levels
+                            .insert(conn, (g.xp_level, g.xp_progress, g.xp_total));
+                    }
+                }
+            }
+            let _ = &mut keep_inventory;
+            let g = &host.hub.guests[gi];
+            let (id, at) = (g.entity_id, g.position);
+            #[cfg(feature = "mods")]
+            let custom = plugin_message.clone();
+            #[cfg(not(feature = "mods"))]
+            let custom: Option<Option<String>> = None;
+            let message = if let Some(custom) = custom {
+                match custom {
+                    Some(text) => {
+                        let tag = super::plugins::plugin_text_tag(&text);
+                        host.hub.system_message(tag.clone());
+                        if self.options.dedicated.is_some() {
+                            super::dedicated::log(
+                                "INFO",
+                                &format!("System chat: {}", super::plugins::strip_codes(&text)),
+                            );
+                        }
+                        tag
+                    }
+                    None => literal(""),
+                }
+            } else if shown {
                 let me = self.player_text(&name, uuid);
                 let text = match cause {
                     Some(key) => horizon_client::text::Text::translate(&key, &[me]),
@@ -2054,10 +2190,26 @@ impl Game<'_> {
             );
             // LivingEntity.die: the death animation, the dying player included.
             host.hub.entity_event(id, 3, at);
-            if let Some(eyes) = drops {
+            if let Some(eyes) = drops.filter(|_| !keep_inventory) {
                 self.as_guest(host, conn, |game| game.drop_inventory(eyes));
             }
-            self.spawn_orbs(at, reward);
+            #[cfg(feature = "mods")]
+            let kept_level = self.mods.plugin.kept_levels.contains_key(&conn);
+            #[cfg(not(feature = "mods"))]
+            let kept_level = false;
+            if !kept_level {
+                self.spawn_orbs(at, reward);
+            }
+            #[cfg(feature = "mods")]
+            self.plugin_entity_died(
+                horizon_mods::plugin::types::EntityRef {
+                    id,
+                    kind: "minecraft:player".into(),
+                    player: Some(super::plugins::uuid_str(uuid)),
+                },
+                at,
+                0,
+            );
         }
     }
 

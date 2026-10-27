@@ -74,6 +74,10 @@ pub fn base64_decode(text: &str) -> Option<Vec<u8>> {
 /// `unpackTextures(property)`: the textures of a `textures` property's
 /// base64 JSON payload.
 pub fn unpack(value: &str, signature: Signature, valid_uris: &[&str]) -> Textures {
+    // Website skins from the MineComplex CDN are unsigned but trusted.
+    if let Some(textures) = crate::minecomplex::unpack_cdn(value) {
+        return textures;
+    }
     let empty = Textures::default();
     let Some(json) = base64_decode(value)
         .map(|b| String::from_utf8_lossy(&b).into_owned())

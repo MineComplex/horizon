@@ -130,6 +130,8 @@ python3 tools/agent_control_e2e.py         # horizon-ctl / MCP end to end
 | Resource packs | L: `packs.rs` + `packs/`, `pack_screen.rs`, `atlas_sources.rs`, `sprites.rs`, `mipmap.rs`, `model_library.rs`, `font.rs`, `lang.rs`; crate `horizon-assets`; G: `packs.rs` |
 | Agent control | L: `control.rs` (socket), `bin/horizon-ctl/`; G: `control.rs`, `agent.rs`, `events.rs`, `ui_control.rs` ([docs/agent-control.md](docs/agent-control.md)) |
 | Mods | crate `horizon-mods`; G: `mods.rs`; L: `mod_content.rs`, `mod_list.rs` |
+| Plugins (Bukkit-style, [docs/plugins.md](docs/plugins.md)) | `horizon-mods/src/runtime/plugin.rs` (listeners, commands, permissions, tasks), `plugin_test.rs` (test server); G: `plugins.rs` (state, actions, lifecycle), `plugin_host.rs` (the API on the game), `plugin_events.rs` (where events fire); SDK `horizon_mod_sdk::plugin` |
+| Plugins (Bukkit-style, [docs/plugins.md](docs/plugins.md)) | `horizon-mods/src/runtime/plugin.rs` (listeners, commands, permissions, tasks), `plugin_test.rs` (test server); G: `plugins.rs` (state, actions, lifecycle), `plugin_host.rs` (the API on the game), `plugin_events.rs` (where events fire); SDK `horizon_mod_sdk::plugin` |
 | Horizon extras, settings | L: `extras.rs`, `graphics.rs`, `settings.rs`, `minimap.rs`; G: `extras.rs`, `tweaks.rs`, `options.rs` |
 
 ## How `Game` is organised

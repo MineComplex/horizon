@@ -192,6 +192,17 @@ impl UserCache {
 
     /// The file's text: the 1000 most recently used entries, most recent
     /// first, as Gson writes them (compact, HTML-safe).
+    /// The player cached under a UUID (without touching its access time).
+    pub fn get_by_id(&self, id: u128) -> Option<NameAndId> {
+        self.by_uuid.get(&id).map(|&i| self.infos[i].user.clone())
+    }
+    /// The player cached under a name, any case (without asking the
+    /// profile service).
+    pub fn find_by_name(&self, name: &str) -> Option<NameAndId> {
+        self.by_name
+            .get(&name.to_lowercase())
+            .map(|&i| self.infos[i].user.clone())
+    }
     pub fn to_json(&self) -> String {
         let mut entries: Vec<&Info> = self.by_uuid.values().map(|&i| &self.infos[i]).collect();
         entries.sort_by_key(|info| std::cmp::Reverse(info.last_access));

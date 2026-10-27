@@ -14,11 +14,22 @@ pub const DEFAULT_DISCOVERY: &str = "https://discovery.minecraftservices.com/min
 /// A session file older than this is refused: it can't be replayed later.
 const MAX_SESSION_FILE_AGE: Duration = Duration::from_secs(120);
 
+/// Who issued an account's access token.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Issuer {
+    /// Microsoft: online-mode servers are joined through the session service.
+    Microsoft,
+    /// The MineComplex launcher: the proxy asks for the token itself
+    /// (crate::minecomplex), there is no session service.
+    MineComplex,
+}
+
 /// A signed-in account (vanilla's User with type msa).
 pub struct AuthSession {
     pub name: String,
     pub uuid: u128,
     pub xuid: Option<String>,
+    pub issuer: Issuer,
     access_token: String,
 }
 impl std::fmt::Debug for AuthSession {
@@ -26,6 +37,7 @@ impl std::fmt::Debug for AuthSession {
         f.debug_struct("AuthSession")
             .field("name", &self.name)
             .field("uuid", &horizon_protocol::crypto::uuid_string(self.uuid))
+            .field("issuer", &self.issuer)
             .field("access_token", &"<hidden>")
             .finish()
     }
@@ -46,8 +58,21 @@ impl AuthSession {
             name: name.to_owned(),
             uuid,
             xuid: None,
+            issuer: Issuer::Microsoft,
             access_token: access_token.to_owned(),
         }
+    }
+    /// The MineComplex launcher's identity and access token.
+    pub fn minecomplex(name: &str, uuid: u128, access_token: &str) -> Self {
+        Self {
+            issuer: Issuer::MineComplex,
+            ..Self::new(name, uuid, access_token)
+        }
+    }
+    /// The answer to the proxy's token request (crate::minecomplex::token_answer).
+    pub fn minecomplex_answer(&self, channel: &str, encrypted: bool) -> Option<Vec<u8>> {
+        let token = (self.issuer == Issuer::MineComplex).then_some(self.access_token.as_str());
+        crate::minecomplex::token_answer(channel, encrypted, token)
     }
     /// The session file's JSON: {"name", "uuid", "access_token", "user_type": "msa", "xuid"}.
     pub fn parse(text: &str) -> Result<Self, String> {
@@ -71,6 +96,7 @@ impl AuthSession {
             name: name.to_owned(),
             uuid,
             xuid: field("xuid").map(str::to_owned),
+            issuer: Issuer::Microsoft,
             access_token: access_token.to_owned(),
         })
     }

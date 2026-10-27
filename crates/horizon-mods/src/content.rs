@@ -47,6 +47,34 @@ pub fn check_path(name: &str) -> Result<(), String> {
     Ok(())
 }
 
+/// A file a plugin ships in `defaults/` (its default config, written to its
+/// data folder on request): `defaults/` and `/`-separated
+/// `[A-Za-z0-9_.-]` segments.
+pub fn check_defaults_path(name: &str) -> Result<(), String> {
+    let bad = || format!("{name:?} is not a plain defaults/ path");
+    let mut parts = name.split('/');
+    if parts.next() != Some("defaults") {
+        return Err(bad());
+    }
+    let mut count = 0;
+    for part in parts {
+        count += 1;
+        let ok = !part.is_empty()
+            && part != "."
+            && part != ".."
+            && part
+                .bytes()
+                .all(|b| b.is_ascii_alphanumeric() || b"_.-".contains(&b));
+        if !ok {
+            return Err(bad());
+        }
+    }
+    if count == 0 {
+        return Err(bad());
+    }
+    Ok(())
+}
+
 /// A vanilla identifier, `minecraft:path`.
 fn vanilla_id(id: &str) -> bool {
     id.strip_prefix("minecraft:").is_some_and(|path| {

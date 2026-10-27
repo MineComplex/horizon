@@ -17,9 +17,13 @@ pub const API: &str = "0.1";
 /// `assets/` and `data/` in the `.hmod`, with blocks and items declared in
 /// `data/<id>/horizon/` (docs/modpacks.md). Code still links API 0.1.
 /// 0.3 is a server mod (experimental): the `horizon-server-mod` world.
-pub const APIS: [&str; 3] = [API, "0.2", SERVER_API];
+/// 0.4 is a plugin: the `horizon-plugin` world (docs/plugins.md).
+pub const APIS: [&str; 4] = [API, "0.2", SERVER_API, PLUGIN_API];
 /// The line of server mods, experimental: `side = "server"`.
 pub const SERVER_API: &str = "0.3";
+/// The line of plugins, Bukkit-style server code: `side = "server"` and
+/// capability `plugin` (docs/plugins.md).
+pub const PLUGIN_API: &str = "0.4";
 /// Namespaces no mod may claim: vanilla's, the convention tags' (mods add
 /// to those, docs/mods.md) and the game's own.
 const RESERVED_NAMESPACES: [&str; 3] = ["minecraft", "c", "horizon"];
@@ -58,6 +62,111 @@ pub struct Manifest {
     /// accepted here, so the manifest keeps loading once it is promoted.
     #[serde(default)]
     pub experimental: Vec<Capability>,
+    /// Plugins (API 0.4): the plugins this one needs, enabled before it; it
+    /// stays off without them (plugin.yml's `depend`).
+    #[serde(default)]
+    pub depend: Vec<String>,
+    /// Plugins enabled before this one when they are installed (`softdepend`).
+    #[serde(default)]
+    pub softdepend: Vec<String>,
+    /// Plugins enabled after this one when they are installed (`loadbefore`).
+    #[serde(default)]
+    pub loadbefore: Vec<String>,
+    /// Plugins: the commands it owns, by name (`commands`).
+    #[serde(default)]
+    pub commands: std::collections::BTreeMap<String, CommandSpec>,
+    /// Plugins: the permission nodes it declares (`permissions`).
+    #[serde(default)]
+    pub permissions: std::collections::BTreeMap<String, PermissionSpec>,
+    /// Plugins: shown in `/plugins` and its log lines instead of `name`.
+    #[serde(default)]
+    pub prefix: Option<String>,
+    #[serde(default)]
+    pub website: Option<String>,
+}
+
+/// A command a plugin's manifest declares (`[commands.<name>]`).
+#[derive(Clone, Debug, Default, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields, rename_all = "kebab-case")]
+pub struct CommandSpec {
+    #[serde(default)]
+    pub description: String,
+    /// Shown when the plugin's handler returns false; `<command>` is the
+    /// label the sender typed.
+    #[serde(default)]
+    pub usage: String,
+    #[serde(default)]
+    pub aliases: Vec<String>,
+    /// The node a sender needs to run it.
+    #[serde(default)]
+    pub permission: Option<String>,
+    /// What a sender without the permission reads (text).
+    #[serde(default)]
+    pub permission_message: Option<String>,
+}
+
+/// A permission node a plugin's manifest declares (`[permissions."a.b"]`).
+#[derive(Clone, Debug, Default, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct PermissionSpec {
+    #[serde(default)]
+    pub description: String,
+    /// Who has it when no plugin set it: `true`, `false`, `op` (the
+    /// default) or `not-op`.
+    #[serde(default)]
+    pub default: PermissionDefault,
+    /// Nodes it sets with it: `{ "a.b.c" = true }`.
+    #[serde(default)]
+    pub children: std::collections::BTreeMap<String, bool>,
+}
+
+/// Who has a permission node by default.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum PermissionDefault {
+    True,
+    False,
+    #[default]
+    Op,
+    NotOp,
+}
+impl PermissionDefault {
+    /// Bukkit's spellings: `true`, `false`, `op`, `not op`, `not-op`, `notop`
+    /// (any case), or a TOML boolean.
+    pub fn parse(text: &str) -> Option<Self> {
+        match text.to_ascii_lowercase().replace([' ', '_'], "-").as_str() {
+            "true" | "always" => Some(Self::True),
+            "false" | "never" => Some(Self::False),
+            "op" | "isop" | "operator" => Some(Self::Op),
+            "not-op" | "notop" | "!op" | "non-op" => Some(Self::NotOp),
+            _ => None,
+        }
+    }
+    /// Whether a player who is (or isn't) an operator has it.
+    pub fn grants(self, op: bool) -> bool {
+        match self {
+            Self::True => true,
+            Self::False => false,
+            Self::Op => op,
+            Self::NotOp => !op,
+        }
+    }
+}
+impl<'de> Deserialize<'de> for PermissionDefault {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        #[derive(Deserialize)]
+        #[serde(untagged)]
+        enum Raw {
+            Bool(bool),
+            Text(String),
+        }
+        match Raw::deserialize(d)? {
+            Raw::Bool(true) => Ok(Self::True),
+            Raw::Bool(false) => Ok(Self::False),
+            Raw::Text(t) => Self::parse(&t).ok_or_else(|| {
+                serde::de::Error::custom(format!("default {t:?} is not true, false, op or not-op"))
+            }),
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, Default, Deserialize, Serialize, PartialEq)]
@@ -66,7 +175,8 @@ pub enum Side {
     /// Runs in the player's game only (HUD, keys, chat commands).
     #[default]
     Client,
-    /// Runs where the world is simulated (rules, blocks): `api = "0.3"`.
+    /// Runs where the world is simulated (rules, blocks): `api = "0.3"`,
+    /// or a plugin with `api = "0.4"`.
     Server,
     /// Both, and the server tells clients which version it expects.
     Both,
@@ -103,9 +213,12 @@ pub enum Capability {
     /// The recipes and items the game knows, for recipe viewers
     /// (interface `recipes`).
     Recipes,
+    /// A plugin's reach over the whole server (every `plugin-*` interface):
+    /// players, worlds, entities, items, inventories, permissions, events.
+    Plugin,
 }
 impl Capability {
-    pub const ALL: [Capability; 12] = [
+    pub const ALL: [Capability; 13] = [
         Capability::GameRead,
         Capability::Chat,
         Capability::Hud,
@@ -118,12 +231,13 @@ impl Capability {
         Capability::Players,
         Capability::World,
         Capability::Recipes,
+        Capability::Plugin,
     ];
     /// Whether a server mod may have it: the others act on a local player.
     pub fn on_server(self) -> bool {
         matches!(
             self,
-            Capability::Storage | Capability::Players | Capability::World
+            Capability::Storage | Capability::Players | Capability::World | Capability::Plugin
         )
     }
     /// The WIT interface it grants, in `horizon:mods`.
@@ -141,6 +255,7 @@ impl Capability {
             Capability::Players => "players",
             Capability::World => "world",
             Capability::Recipes => "recipes",
+            Capability::Plugin => "plugin-server",
         }
     }
     /// May change in any release: a mod uses it only with
@@ -170,6 +285,9 @@ impl Capability {
             Capability::Recipes => {
                 "read the game's recipes and items and which recipes you know, place recipes in your crafting grid and, in creative mode, give you items"
             }
+            Capability::Plugin => {
+                "run as a server plugin: see and change players, worlds, entities, items and permissions, and hear and cancel what happens on the server"
+            }
         }
     }
     /// The capability a component import needs, `Ok(None)` for one every
@@ -187,6 +305,10 @@ impl Capability {
         // A recipe viewer's panel is part of capability `ui`.
         if interface == "browser" {
             return Ok(Some(Capability::Ui));
+        }
+        // Every plugin interface is capability `plugin`.
+        if interface == "plugin" || interface.starts_with("plugin-") {
+            return Ok(Some(Capability::Plugin));
         }
         Capability::ALL
             .into_iter()
@@ -211,6 +333,7 @@ impl fmt::Display for Capability {
             Capability::Players => "players",
             Capability::World => "world",
             Capability::Recipes => "recipes",
+            Capability::Plugin => "plugin",
         };
         f.write_str(name)
     }
@@ -242,10 +365,41 @@ impl Manifest {
             ));
         }
         let server = m.side == Side::Server;
-        if server != (m.api == SERVER_API) {
+        let plugin = m.api == PLUGIN_API;
+        if server != (m.api == SERVER_API || plugin) {
             return Err(format!(
                 "{MANIFEST}: a server mod is side = \"server\" with api = \"{SERVER_API}\", and only it"
             ));
+        }
+        if plugin != m.capabilities.contains(&Capability::Plugin) {
+            return Err(format!(
+                "{MANIFEST}: a plugin is api = \"{PLUGIN_API}\" with capability plugin, and only it"
+            ));
+        }
+        let plugin_fields = !m.depend.is_empty()
+            || !m.softdepend.is_empty()
+            || !m.loadbefore.is_empty()
+            || !m.commands.is_empty()
+            || !m.permissions.is_empty()
+            || m.prefix.is_some();
+        if plugin_fields && !plugin {
+            return Err(format!(
+                "{MANIFEST}: depend, softdepend, loadbefore, commands, permissions and prefix are for plugins (api = \"{PLUGIN_API}\")"
+            ));
+        }
+        for (name, spec) in &m.commands {
+            for c in std::iter::once(name).chain(&spec.aliases) {
+                if !command_name_ok(c) {
+                    return Err(format!("{MANIFEST}: command {c:?} is not a command name"));
+                }
+            }
+        }
+        for dep in m.depend.iter().chain(&m.softdepend).chain(&m.loadbefore) {
+            if *dep == m.id {
+                return Err(format!(
+                    "{MANIFEST}: the plugin names itself in depend, softdepend or loadbefore"
+                ));
+            }
         }
         if let Some(c) = m
             .capabilities
@@ -292,6 +446,14 @@ impl Manifest {
         }
         Ok(m)
     }
+    /// A plugin (API 0.4).
+    pub fn is_plugin(&self) -> bool {
+        self.api == PLUGIN_API
+    }
+    /// The name to show for the plugin: its `prefix`, else its `name`.
+    pub fn display_name(&self) -> &str {
+        self.prefix.as_deref().unwrap_or(&self.name)
+    }
     /// The namespaces the mod's content owns: its id, then `namespaces`.
     pub fn owned_namespaces(&self) -> impl Iterator<Item = &str> {
         std::iter::once(self.id.as_str()).chain(self.namespaces.iter().map(String::as_str))
@@ -310,6 +472,14 @@ impl Manifest {
         }
         Ok(())
     }
+}
+
+/// A command name or alias: no spaces, slashes or colons, 1 to 64 characters.
+pub fn command_name_ok(name: &str) -> bool {
+    (1..=64).contains(&name.len())
+        && name
+            .chars()
+            .all(|c| !c.is_whitespace() && !c.is_control() && c != '/' && c != ':')
 }
 
 /// A mod as found on disk: its manifest and component bytes.
@@ -372,7 +542,7 @@ impl Package {
         files: &[(&str, &[u8])],
     ) -> Result<Vec<u8>, String> {
         use std::io::Write;
-        Manifest::parse(manifest_text)?;
+        let manifest = Manifest::parse(manifest_text)?;
         let mut zip = zip::ZipWriter::new(std::io::Cursor::new(Vec::new()));
         let options = zip::write::SimpleFileOptions::default();
         let err = |e: zip::result::ZipError| e.to_string();
@@ -385,7 +555,11 @@ impl Package {
             put(WASM, wasm)?;
         }
         for (name, bytes) in files {
-            crate::content::check_path(name)?;
+            if manifest.is_plugin() && name.starts_with("defaults/") {
+                crate::content::check_defaults_path(name)?;
+            } else {
+                crate::content::check_path(name)?;
+            }
             put(name, bytes)?;
         }
         Ok(zip.finish().map_err(err)?.into_inner())
@@ -485,8 +659,8 @@ capabilities = ["game-read", "hud"]
     fn refuses_bad_ids_and_apis() {
         let bad_id = EXAMPLE.replace("coords_hud", "Coords HUD");
         assert!(Manifest::parse(&bad_id).unwrap_err().contains("is not"));
-        let bad_api = EXAMPLE.replace("api = \"0.1\"", "api = \"0.4\"");
-        assert!(Manifest::parse(&bad_api).unwrap_err().contains("API 0.4"));
+        let bad_api = EXAMPLE.replace("api = \"0.1\"", "api = \"0.9\"");
+        assert!(Manifest::parse(&bad_api).unwrap_err().contains("API 0.9"));
         let unknown = format!("{EXAMPLE}network = true\n");
         assert!(Manifest::parse(&unknown).is_err());
     }
@@ -509,6 +683,75 @@ capabilities = ["game-read", "hud"]
         assert!(e.contains("capability hud is for client mods"), "{e}");
         let e = server("0.1", "client", "\"players\"").unwrap_err();
         assert!(e.contains("capability players is for server mods"), "{e}");
+    }
+
+    #[test]
+    fn plugins_are_api_0_4_with_capability_plugin() {
+        let text = r#"
+id = "essentials"
+name = "Essentials"
+version = "1.0"
+api = "0.4"
+side = "server"
+capabilities = ["plugin", "storage"]
+depend = ["vault"]
+softdepend = ["luckperms"]
+
+[commands.spawn]
+description = "Teleports you to spawn"
+usage = "/<command> [player]"
+aliases = ["s"]
+permission = "essentials.spawn"
+permission-message = "&cYou may not."
+
+[permissions."essentials.spawn"]
+default = true
+
+[permissions."essentials.spawn.others"]
+default = "op"
+children = { "essentials.spawn" = true }
+"#;
+        let m = Manifest::parse(text).unwrap();
+        assert!(m.is_plugin());
+        assert_eq!(m.commands["spawn"].aliases, ["s"]);
+        assert_eq!(
+            m.permissions["essentials.spawn"].default,
+            PermissionDefault::True
+        );
+        assert!(m.permissions["essentials.spawn.others"].children["essentials.spawn"]);
+        let imports = [
+            "horizon:mods/plugin-players@0.1.0",
+            "horizon:mods/plugin-types@0.1.0",
+            "horizon:mods/storage@0.1.0",
+        ];
+        assert_eq!(m.check_imports(imports), Ok(()));
+        // Capability `plugin` is a plugin's, and a plugin has it.
+        let no_cap = text.replace("\"plugin\", ", "");
+        assert!(
+            Manifest::parse(&no_cap)
+                .unwrap_err()
+                .contains("capability plugin")
+        );
+        let mod_with = "id = \"w\"\nname = \"W\"\nversion = \"1\"\napi = \"0.3\"\nside = \"server\"\ncapabilities = [\"plugin\"]\n";
+        assert!(
+            Manifest::parse(mod_with)
+                .unwrap_err()
+                .contains("capability plugin")
+        );
+        let mod_cmds = format!("{EXAMPLE}depend = [\"x\"]\n");
+        assert!(
+            Manifest::parse(&mod_cmds)
+                .unwrap_err()
+                .contains("are for plugins")
+        );
+        let bad_default = text.replace("default = true", "default = \"sometimes\"");
+        assert!(Manifest::parse(&bad_default).is_err());
+        assert_eq!(
+            PermissionDefault::parse("not op"),
+            Some(PermissionDefault::NotOp)
+        );
+        assert!(PermissionDefault::NotOp.grants(false));
+        assert!(!PermissionDefault::Op.grants(false));
     }
 
     #[test]

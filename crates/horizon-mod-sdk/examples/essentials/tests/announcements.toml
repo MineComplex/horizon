@@ -1,0 +1,10 @@
+# The announcement every 1200 ticks.
+[[step]]
+join = ["Steve"]
+ticks = 1199
+expect.told = []
+
+[[step]]
+ticks = 1
+expect.told = ["Steve: Need help? Type /menu"]
+expect.console = ["Need help? Type /menu"]

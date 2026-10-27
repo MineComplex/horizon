@@ -212,6 +212,13 @@ impl Hub {
                 message.content
             )));
         }
+        if self.intercept_chat {
+            events.push(HostEvent::ChatPending {
+                conn: self.guests[i].conn,
+                message: Box::new(message),
+            });
+            return;
+        }
         let bound = play::ChatTypeBound {
             chat_type: self.chat_type,
             name: self.player_display_name(uuid, &name),
@@ -223,6 +230,28 @@ impl Hub {
             sender: uuid,
             text: message.content,
         });
+    }
+
+    /// A held chat message ([`HostEvent::ChatPending`]) sent on as vanilla
+    /// would have sent it, signed when it was.
+    pub fn relay_chat(&mut self, message: ChatMessage) -> Vec<HostEvent> {
+        let mut events = Vec::new();
+        let Some(g) = self.guests.iter().find(|g| g.uuid == message.sender) else {
+            return events;
+        };
+        let (uuid, name) = (g.uuid, g.name.clone());
+        let bound = play::ChatTypeBound {
+            chat_type: self.chat_type,
+            name: self.player_display_name(uuid, &name),
+            target: None,
+        };
+        let line = format!("<{name}> {}", message.content);
+        self.broadcast_chat(&message, &bound, line, &mut events);
+        events.push(HostEvent::PlayerChat {
+            sender: uuid,
+            text: message.content,
+        });
+        events
     }
 
     /// handleChatSessionUpdate: a new profile key, validated against the

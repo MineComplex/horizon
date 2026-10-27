@@ -1,7 +1,7 @@
 <!-- Generated from crates/horizon-mod-sdk/wit/horizon.wit and the manifest's capabilities by crates/horizon-mods/tests/api_reference.rs; a test fails when this file is out of date. Update it with: HORIZON_WRITE_DOCS=1 cargo test -p horizon-mods --features pack --test api_reference -->
 # Mod API reference
 
-The contract between Horizon and its mods: the WIT package `horizon:mods@0.1.0`, every interface, type, function and hook in it, and the capabilities a manifest may list. The guide is [mods.md](../mods.md); stability and versions: [stability.md](stability.md). Manifest `api` lines this game serves: `0.1`, `0.2`, `0.3`.
+The contract between Horizon and its mods: the WIT package `horizon:mods@0.1.0`, every interface, type, function and hook in it, and the capabilities a manifest may list. The guide is [mods.md](../mods.md); stability and versions: [stability.md](stability.md). Manifest `api` lines this game serves: `0.1`, `0.2`, `0.3`, `0.4`.
 
 ## Capabilities
 
@@ -19,6 +19,7 @@ The contract between Horizon and its mods: the WIT package `horizon:mods@0.1.0`,
 | `players` | [`players`](#players) | see who is on the server and message them |
 | `world` | [`world`](#world) | read and change the world's blocks |
 | `recipes` | [`recipes`](#recipes) | read the game's recipes and items and which recipes you know, place recipes in your crafting grid and, in creative mode, give you items |
+| `plugin` | [`plugin-server`](#plugin-server) | run as a server plugin: see and change players, worlds, entities, items and permissions, and hear and cancel what happens on the server |
 
 ## World `horizon-mod`
 
@@ -61,6 +62,13 @@ The game's side of capability `recipes` (imports only).
 
 - Imports (what the game offers): `recipes`, `browser`
 - Exports (what the mod provides): 
+
+## World `horizon-plugin`
+
+A plugin (manifest `side = "server"`, `api = "0.4"`, capability `plugin`).
+
+- Imports (what the game offers): `log`, `storage`, `plugin-server`, `plugin-types`, `plugin-players`, `plugin-worlds`, `plugin-entities`, `plugin-items`, `plugin-inventories`, `plugin-scheduler`, `plugin-permissions`, `plugin-scoreboards`, `plugin-bossbars`, `plugin-messaging`, `plugin-files`, `plugin-event-types`, `plugin-listeners`, `plugin-commands`
+- Exports (what the mod provides): `plugin`
 
 ## `log`
 
@@ -717,3 +725,1254 @@ What the server calls in a server mod (manifest `api = "0.3"`, experimental). On
 | `command` | `func(player: player, name: string, args: string) -> result<option<string>, string>` | `/name args` typed by `player`: ok(some(text)) is their feedback, err(text) their error in red. |
 | `block-broken` | `func(player: player, pos: block-pos, state: string)` | A player broke the block at `pos` in their dimension: `state` is what was there, as `minecraft:oak_log[axis=y]`. |
 | `block-placed` | `func(player: player, pos: block-pos, state: string)` | A player placed `state` at `pos` in their dimension. |
+
+## `plugin-types`
+
+Access: not granted by any capability.
+
+--------------------------------------------------------------------------- Plugins (manifest `side = "server"`, `api = "0.4"`, capability `plugin`): Bukkit-style server plugins (docs/plugins.md). A plugin runs where the world is simulated, as a server mod does, and reaches the whole server: events it may cancel and change at the moment they happen, commands with aliases, permissions and completion, a scheduler, permissions, players, worlds, entities, items, inventories it owns, scoreboards, boss bars, plugin messaging and a data folder. Text: every argument documented as text takes either a plain string with legacy colour codes (`§a`, or `&a` when the string holds no `§`), or a JSON text component when it starts with `{`, `[` or `"`. --------------------------------------------------------------------------- The records plugins and the server share.
+
+### record `location`
+
+A point in a world, looking somewhere.
+
+| Field | Type | |
+| --- | --- | --- |
+| `world` | `string` | `minecraft:overworld`, `minecraft:the_nether`, `minecraft:the_end`. |
+| `x` | `f64` |  |
+| `y` | `f64` |  |
+| `z` | `f64` |  |
+| `yaw` | `f32` | Degrees, as F3 shows them. |
+| `pitch` | `f32` |  |
+
+### record `vec3`
+
+| Field | Type | |
+| --- | --- | --- |
+| `x` | `f64` |  |
+| `y` | `f64` |  |
+| `z` | `f64` |  |
+
+### record `block-pos`
+
+| Field | Type | |
+| --- | --- | --- |
+| `x` | `s32` |  |
+| `y` | `s32` |  |
+| `z` | `s32` |  |
+
+### record `block`
+
+A block where it is: its world, position and state (`minecraft:oak_log[axis=y]`).
+
+| Field | Type | |
+| --- | --- | --- |
+| `world` | `string` |  |
+| `pos` | `block-pos` |  |
+| `state` | `string` |  |
+
+### enum `game-mode`
+
+| Case | |
+| --- | --- |
+| `survival` |  |
+| `creative` |  |
+| `adventure` |  |
+| `spectator` |  |
+
+### enum `hand`
+
+| Case | |
+| --- | --- |
+| `main` |  |
+| `off` |  |
+
+### record `item-stack`
+
+An item stack: the item (`minecraft:diamond_sword`), a count and the components it has beyond the item's own, as an SNBT compound (`{"minecraft:enchantments":{"minecraft:sharpness":5}}`), or "".
+
+| Field | Type | |
+| --- | --- | --- |
+| `id` | `string` |  |
+| `count` | `u32` |  |
+| `components` | `string` |  |
+
+### record `player`
+
+A player as the server sees them when the call is made.
+
+| Field | Type | |
+| --- | --- | --- |
+| `id` | `string` | The UUID, `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`. |
+| `name` | `string` |  |
+| `display-name` | `string` | The name chat shows (`plugin-players.set-display-name`), as text. |
+| `entity-id` | `s32` | The id of the player's entity, as `plugin-entities` names it. |
+| `location` | `location` |  |
+| `game-mode` | `game-mode` |  |
+| `health` | `f32` |  |
+| `max-health` | `f32` |  |
+| `food` | `u32` |  |
+| `saturation` | `f32` |  |
+| `level` | `u32` | Experience level, progress to the next (0 to 1) and total points. |
+| `exp` | `f32` |  |
+| `total-exp` | `u32` |  |
+| `op` | `bool` | An operator (permission level above 0), and the level (0 to 4). |
+| `permission-level` | `u32` |  |
+| `address` | `string` | `127.0.0.1:52344`. |
+| `ping` | `u32` | Milliseconds, as the player list shows them. |
+| `locale` | `string` | `en_us`. |
+| `client-brand` | `string` |  |
+| `view-distance` | `u32` |  |
+| `flying` | `bool` |  |
+| `allow-flight` | `bool` |  |
+| `sneaking` | `bool` |  |
+| `sprinting` | `bool` |  |
+| `gliding` | `bool` |  |
+| `sleeping` | `bool` |  |
+| `on-ground` | `bool` |  |
+| `dead` | `bool` |  |
+| `selected-slot` | `u32` | The hotbar slot in hand, 0 to 8. |
+| `held` | `option<item-stack>` | The stack in the main hand. |
+
+### record `entity-ref`
+
+An entity events name: its id, its type (`minecraft:zombie`) and, for a player, the player's UUID.
+
+| Field | Type | |
+| --- | --- | --- |
+| `id` | `s32` |  |
+| `kind` | `string` |  |
+| `player` | `option<string>` |  |
+
+### variant `sender`
+
+Who ran a command: the server's console, or a player.
+
+| Case | Payload | |
+| --- | --- | --- |
+| `console` |  |  |
+| `player` | `player` |  |
+
+
+## `plugin-event-types`
+
+Access: not granted by any capability.
+
+Events: what plugins hear, and how they register for it.
+
+### type `location`
+
+`type location = location`
+
+### type `block`
+
+`type block = block`
+
+### type `block-pos`
+
+`type block-pos = block-pos`
+
+### type `item-stack`
+
+`type item-stack = item-stack`
+
+### type `player`
+
+`type player = player`
+
+### type `entity-ref`
+
+`type entity-ref = entity-ref`
+
+### type `game-mode`
+
+`type game-mode = game-mode`
+
+### type `hand`
+
+`type hand = hand`
+
+### enum `priority`
+
+When a listener runs: lowest first, monitor last. A monitor listener sees the outcome and may change nothing.
+
+| Case | |
+| --- | --- |
+| `lowest` |  |
+| `low` |  |
+| `normal` |  |
+| `high` |  |
+| `highest` |  |
+| `monitor` |  |
+
+### record `player-join-event`
+
+A player joined. `message` is the join message every player reads (none: no message).
+
+| Field | Type | |
+| --- | --- | --- |
+| `player` | `player` |  |
+| `message` | `option<string>` |  |
+| `first-join` | `bool` | The player has never been on this server before. |
+
+### record `player-quit-event`
+
+A player left. `message` is the quit message (none: no message).
+
+| Field | Type | |
+| --- | --- | --- |
+| `player` | `player` |  |
+| `message` | `option<string>` |  |
+| `reason` | `string` |  |
+
+### record `player-login-event`
+
+A player is logging in: clear `allowed` to turn them away with `kick-message`.
+
+| Field | Type | |
+| --- | --- | --- |
+| `player` | `player` |  |
+| `allowed` | `bool` |  |
+| `kick-message` | `string` |  |
+
+### record `player-chat-event`
+
+A chat message. `format` places the sender's display name at `{name}` and the message at `{message}` (text); only the players in `recipients` (UUIDs) receive it. Unchanged, the message goes as vanilla sends it, signed when it was.
+
+| Field | Type | |
+| --- | --- | --- |
+| `player` | `player` |  |
+| `message` | `string` |  |
+| `format` | `string` |  |
+| `recipients` | `list<string>` |  |
+| `cancelled` | `bool` |  |
+
+### record `player-command-event`
+
+A command a player typed (`line` without its slash), before anything runs it. Change `line` to run another.
+
+| Field | Type | |
+| --- | --- | --- |
+| `player` | `player` |  |
+| `line` | `string` |  |
+| `cancelled` | `bool` |  |
+
+### record `player-move-event`
+
+A player moved during the last tick. Change `to` to put them elsewhere; cancelling puts them back at `from`.
+
+| Field | Type | |
+| --- | --- | --- |
+| `player` | `player` |  |
+| `from` | `location` |  |
+| `to` | `location` |  |
+| `cancelled` | `bool` |  |
+
+### enum `interact-action`
+
+| Case | |
+| --- | --- |
+| `left-click-block` |  |
+| `right-click-block` |  |
+| `left-click-air` |  |
+| `right-click-air` |  |
+| `physical` | Treading on a pressure plate or farmland. |
+
+### record `player-interact-event`
+
+A player clicked a block or the air. Cancelling stops what the click would do: no use, no placing, no breaking start.
+
+| Field | Type | |
+| --- | --- | --- |
+| `player` | `player` |  |
+| `action` | `interact-action` |  |
+| `hand` | `hand` |  |
+| `item` | `option<item-stack>` |  |
+| `block` | `option<block>` |  |
+| `face` | `string` | `up`, `down`, `north`, `south`, `west`, `east`; "" for the air. |
+| `cancelled` | `bool` |  |
+
+### record `player-interact-entity-event`
+
+A player used an entity (right click).
+
+| Field | Type | |
+| --- | --- | --- |
+| `player` | `player` |  |
+| `entity` | `entity-ref` |  |
+| `hand` | `hand` |  |
+| `cancelled` | `bool` |  |
+
+### record `player-toggle-sneak-event`
+
+| Field | Type | |
+| --- | --- | --- |
+| `player` | `player` |  |
+| `sneaking` | `bool` |  |
+| `cancelled` | `bool` |  |
+
+### record `player-toggle-sprint-event`
+
+| Field | Type | |
+| --- | --- | --- |
+| `player` | `player` |  |
+| `sprinting` | `bool` |  |
+| `cancelled` | `bool` |  |
+
+### record `player-toggle-flight-event`
+
+A player started or stopped flying. Cancelling keeps them as they were.
+
+| Field | Type | |
+| --- | --- | --- |
+| `player` | `player` |  |
+| `flying` | `bool` |  |
+| `cancelled` | `bool` |  |
+
+### record `player-item-held-event`
+
+A player picked another hotbar slot.
+
+| Field | Type | |
+| --- | --- | --- |
+| `player` | `player` |  |
+| `previous` | `u32` |  |
+| `current` | `u32` |  |
+| `cancelled` | `bool` |  |
+
+### record `player-drop-item-event`
+
+A player threw an item out (Q, or out of a screen).
+
+| Field | Type | |
+| --- | --- | --- |
+| `player` | `player` |  |
+| `item` | `item-stack` |  |
+| `cancelled` | `bool` |  |
+
+### record `player-swap-hands-event`
+
+A player swapped the stacks of their hands (F).
+
+| Field | Type | |
+| --- | --- | --- |
+| `player` | `player` |  |
+| `main` | `option<item-stack>` |  |
+| `off` | `option<item-stack>` |  |
+| `cancelled` | `bool` |  |
+
+### record `player-respawn-event`
+
+A player respawns; change `location` to respawn elsewhere.
+
+| Field | Type | |
+| --- | --- | --- |
+| `player` | `player` |  |
+| `location` | `location` |  |
+
+### record `player-death-event`
+
+A player died. `message` is the death message (text; none: no message); `keep-inventory` and `keep-level` keep what they say.
+
+| Field | Type | |
+| --- | --- | --- |
+| `player` | `player` |  |
+| `message` | `option<string>` |  |
+| `keep-inventory` | `bool` |  |
+| `keep-level` | `bool` |  |
+| `drops` | `list<item-stack>` |  |
+
+### record `player-game-mode-change-event`
+
+A player's game mode is about to change.
+
+| Field | Type | |
+| --- | --- | --- |
+| `player` | `player` |  |
+| `mode` | `game-mode` |  |
+| `cancelled` | `bool` |  |
+
+### record `player-changed-world-event`
+
+A player went to another world; `player` is already there.
+
+| Field | Type | |
+| --- | --- | --- |
+| `player` | `player` |  |
+| `from` | `string` |  |
+
+### record `sign-change-event`
+
+A player finished editing a sign: change `lines` (text) to write others.
+
+| Field | Type | |
+| --- | --- | --- |
+| `player` | `player` |  |
+| `block` | `block` |  |
+| `lines` | `list<string>` |  |
+| `front` | `bool` |  |
+| `cancelled` | `bool` |  |
+
+### record `plugin-message-event`
+
+A custom payload the player's client sent on a channel the plugin registered (`plugin-messaging.register-incoming`).
+
+| Field | Type | |
+| --- | --- | --- |
+| `player` | `player` |  |
+| `channel` | `string` |  |
+| `data` | `list<u8>` |  |
+
+### record `player-resource-pack-event`
+
+The player's client answered a resource pack request: `accepted`, `declined`, `downloaded`, `loaded`, `failed` ...
+
+| Field | Type | |
+| --- | --- | --- |
+| `player` | `player` |  |
+| `status` | `string` |  |
+
+### record `block-break-event`
+
+A player broke a block. `drop-items` and `exp` say what it drops.
+
+| Field | Type | |
+| --- | --- | --- |
+| `player` | `player` |  |
+| `block` | `block` |  |
+| `drop-items` | `bool` |  |
+| `exp` | `u32` |  |
+| `cancelled` | `bool` |  |
+
+### record `block-place-event`
+
+A player placed a block: `block` is the new one, `replaced` the state that was there.
+
+| Field | Type | |
+| --- | --- | --- |
+| `player` | `player` |  |
+| `block` | `block` |  |
+| `replaced` | `string` |  |
+| `item` | `option<item-stack>` |  |
+| `hand` | `hand` |  |
+| `cancelled` | `bool` |  |
+
+### record `entity-damage-event`
+
+An entity is about to be hurt by `cause` (a damage type, `minecraft:fall`); `damage` is the amount before armour.
+
+| Field | Type | |
+| --- | --- | --- |
+| `entity` | `entity-ref` |  |
+| `cause` | `string` |  |
+| `damage` | `f32` |  |
+| `damager` | `option<entity-ref>` |  |
+| `cancelled` | `bool` |  |
+
+### record `entity-death-event`
+
+An entity died (players too, after their own death event).
+
+| Field | Type | |
+| --- | --- | --- |
+| `entity` | `entity-ref` |  |
+| `location` | `location` |  |
+| `drops` | `list<item-stack>` |  |
+| `exp` | `u32` |  |
+
+### record `entity-spawn-event`
+
+An entity is about to come into a world: `reason` is `natural`, `spawner`, `command`, `breeding`, `egg`, `plugin`, `default` ...
+
+| Field | Type | |
+| --- | --- | --- |
+| `entity` | `entity-ref` |  |
+| `location` | `location` |  |
+| `reason` | `string` |  |
+| `cancelled` | `bool` |  |
+
+### record `entity-explode-event`
+
+Something explodes: `blocks` are those it would destroy (remove some to spare them).
+
+| Field | Type | |
+| --- | --- | --- |
+| `entity` | `option<entity-ref>` |  |
+| `location` | `location` |  |
+| `blocks` | `list<block-pos>` |  |
+| `cancelled` | `bool` |  |
+
+### record `inventory-view`
+
+The menu a player has open, as inventory events name it.
+
+| Field | Type | |
+| --- | --- | --- |
+| `kind` | `string` | The menu type, `minecraft:generic_9x3`; `minecraft:inventory` for the player's own. |
+| `plugin-inventory` | `option<u32>` | The plugin inventory (`plugin-inventories`) it shows, if any. |
+| `size` | `u32` | Slots of the container itself, before the player's 36. |
+
+### enum `click-mode`
+
+| Case | |
+| --- | --- |
+| `pickup` |  |
+| `quick-move` |  |
+| `swap` |  |
+| `clone` |  |
+| `throw` |  |
+| `quick-craft` |  |
+| `pickup-all` |  |
+
+### record `inventory-click-event`
+
+A click in a menu, before the server applies it. Cancelling leaves every slot as it was (the player's client is corrected).
+
+| Field | Type | |
+| --- | --- | --- |
+| `player` | `player` |  |
+| `view` | `inventory-view` |  |
+| `slot` | `s32` | The slot clicked in the menu's numbering (container first, then the player's inventory); -999 outside the window. |
+| `button` | `u32` |  |
+| `mode` | `click-mode` |  |
+| `current` | `option<item-stack>` |  |
+| `cursor` | `option<item-stack>` |  |
+| `cancelled` | `bool` |  |
+
+### record `inventory-close-event`
+
+A player closed a menu.
+
+| Field | Type | |
+| --- | --- | --- |
+| `player` | `player` |  |
+| `view` | `inventory-view` |  |
+
+### record `server-command-event`
+
+A command typed in the server's console (`line` without a slash).
+
+| Field | Type | |
+| --- | --- | --- |
+| `line` | `string` |  |
+| `cancelled` | `bool` |  |
+
+### record `plugin-state-event`
+
+A plugin was enabled or disabled (its id).
+
+| Field | Type | |
+| --- | --- | --- |
+| `plugin` | `string` |  |
+| `enabled` | `bool` |  |
+
+### record `plugin-call-event`
+
+`plugin-server.send-to-plugin` from another plugin.
+
+| Field | Type | |
+| --- | --- | --- |
+| `from` | `string` |  |
+| `channel` | `string` |  |
+| `data` | `list<u8>` |  |
+
+### variant `event`
+
+Every event. A listener receives each kind it registered for.
+
+| Case | Payload | |
+| --- | --- | --- |
+| `player-join` | `player-join-event` |  |
+| `player-quit` | `player-quit-event` |  |
+| `player-login` | `player-login-event` |  |
+| `player-chat` | `player-chat-event` |  |
+| `player-command` | `player-command-event` |  |
+| `player-move` | `player-move-event` |  |
+| `player-interact` | `player-interact-event` |  |
+| `player-interact-entity` | `player-interact-entity-event` |  |
+| `player-toggle-sneak` | `player-toggle-sneak-event` |  |
+| `player-toggle-sprint` | `player-toggle-sprint-event` |  |
+| `player-toggle-flight` | `player-toggle-flight-event` |  |
+| `player-item-held` | `player-item-held-event` |  |
+| `player-drop-item` | `player-drop-item-event` |  |
+| `player-swap-hands` | `player-swap-hands-event` |  |
+| `player-respawn` | `player-respawn-event` |  |
+| `player-death` | `player-death-event` |  |
+| `player-game-mode-change` | `player-game-mode-change-event` |  |
+| `player-changed-world` | `player-changed-world-event` |  |
+| `sign-change` | `sign-change-event` |  |
+| `plugin-message` | `plugin-message-event` |  |
+| `player-resource-pack` | `player-resource-pack-event` |  |
+| `block-break` | `block-break-event` |  |
+| `block-place` | `block-place-event` |  |
+| `entity-damage` | `entity-damage-event` |  |
+| `entity-death` | `entity-death-event` |  |
+| `entity-spawn` | `entity-spawn-event` |  |
+| `entity-explode` | `entity-explode-event` |  |
+| `inventory-click` | `inventory-click-event` |  |
+| `inventory-close` | `inventory-close-event` |  |
+| `server-command` | `server-command-event` |  |
+| `plugin-state` | `plugin-state-event` |  |
+| `plugin-call` | `plugin-call-event` |  |
+
+### enum `event-kind`
+
+The kinds of `event`, for `plugin-listeners.listen`.
+
+| Case | |
+| --- | --- |
+| `player-join` |  |
+| `player-quit` |  |
+| `player-login` |  |
+| `player-chat` |  |
+| `player-command` |  |
+| `player-move` |  |
+| `player-interact` |  |
+| `player-interact-entity` |  |
+| `player-toggle-sneak` |  |
+| `player-toggle-sprint` |  |
+| `player-toggle-flight` |  |
+| `player-item-held` |  |
+| `player-drop-item` |  |
+| `player-swap-hands` |  |
+| `player-respawn` |  |
+| `player-death` |  |
+| `player-game-mode-change` |  |
+| `player-changed-world` |  |
+| `sign-change` |  |
+| `plugin-message` |  |
+| `player-resource-pack` |  |
+| `block-break` |  |
+| `block-place` |  |
+| `entity-damage` |  |
+| `entity-death` |  |
+| `entity-spawn` |  |
+| `entity-explode` |  |
+| `inventory-click` |  |
+| `inventory-close` |  |
+| `server-command` |  |
+| `plugin-state` |  |
+| `plugin-call` |  |
+
+
+## `plugin-listeners`
+
+Access: not granted by any capability.
+
+Registering for events.
+
+### type `event-kind`
+
+`type event-kind = event-kind`
+
+### type `priority`
+
+`type priority = priority`
+
+| Function | Signature | What it does |
+| --- | --- | --- |
+| `listen` | `func(kind: event-kind, priority: priority, ignore-cancelled: bool)` | Hear every event of `kind` at `priority` (once per kind and priority); with `ignore-cancelled`, not those already cancelled. |
+| `unlisten` | `func(kind: event-kind)` | Stop hearing `kind` at every priority. |
+
+## `plugin-commands`
+
+Access: not granted by any capability.
+
+Commands the plugin owns beyond those its manifest lists.
+
+### record `command-spec`
+
+| Field | Type | |
+| --- | --- | --- |
+| `name` | `string` |  |
+| `description` | `string` |  |
+| `usage` | `string` | Shown when the command returns false; `<command>` is the label used. |
+| `aliases` | `list<string>` |  |
+| `permission` | `option<string>` | Needed to run it; none: anyone may. |
+| `permission-message` | `option<string>` | Shown to a sender without the permission (text). |
+
+| Function | Signature | What it does |
+| --- | --- | --- |
+| `register` | `func(spec: command-spec) -> result<_, string>` | Adds a command (vanilla's names and other plugins' are refused). |
+| `unregister` | `func(name: string)` | Removes a command `register` added. |
+
+## `plugin-server`
+
+Access: capability `plugin`.
+
+The server as a whole.
+
+### record `server-info`
+
+| Field | Type | |
+| --- | --- | --- |
+| `name` | `string` |  |
+| `version` | `string` | The game version, `26.3`, and the protocol number. |
+| `protocol` | `u32` |  |
+| `motd` | `string` |  |
+| `max-players` | `u32` |  |
+| `online-mode` | `bool` |  |
+| `port` | `u32` |  |
+| `view-distance` | `u32` |  |
+| `simulation-distance` | `u32` |  |
+| `hardcore` | `bool` |  |
+| `dedicated` | `bool` | A dedicated server (not a world opened to LAN). |
+| `tick` | `u64` | Server ticks since it started. |
+
+### record `plugin-info`
+
+| Field | Type | |
+| --- | --- | --- |
+| `id` | `string` |  |
+| `name` | `string` |  |
+| `version` | `string` |  |
+| `enabled` | `bool` |  |
+| `authors` | `list<string>` |  |
+| `description` | `string` |  |
+| `depend` | `list<string>` |  |
+
+### record `offline-player`
+
+A player who has played here: online now, or in the user cache.
+
+| Field | Type | |
+| --- | --- | --- |
+| `id` | `string` |  |
+| `name` | `string` |  |
+| `online` | `bool` |  |
+
+| Function | Signature | What it does |
+| --- | --- | --- |
+| `info` | `func() -> server-info` | The server's settings and version. |
+| `tps` | `func() -> tuple<f64, f64, f64>` | Ticks per second over the last 1, 5 and 15 minutes. |
+| `mspt` | `func() -> f64` | The mean time of a tick in milliseconds, over the last 100 ticks. |
+| `now-millis` | `func() -> s64` | Milliseconds since the Unix epoch (the sandbox has no clock). |
+| `random` | `func() -> u64` | 64 random bits from the server (the sandbox has no entropy). |
+| `broadcast` | `func(message: string, permission: option<string>) -> u32` | A message (text) to every player, or with `permission` to those who have it, and to the console: how many players got it. |
+| `console` | `func(message: string)` | A line in the console's log as it is, at info level. |
+| `dispatch-command` | `func(line: string)` | Runs a command as the console (no slash) once this call returns. |
+| `shutdown` | `func()` | Stops the server after this tick. |
+| `set-motd` | `func(motd: string)` | The status list's message of the day (text) and player limit. |
+| `set-max-players` | `func(max: u32)` | The player limit, from now on. |
+| `plugins` | `func() -> list<plugin-info>` | The installed plugins, in load order. |
+| `plugin-enabled` | `func(id: string) -> bool` | Whether plugin `id` runs. |
+| `send-to-plugin` | `func(target: string, channel: string, data: list<u8>) -> bool` | Sends `data` to plugin `target`, which hears a `plugin-call` event once this call returns. False when no such plugin runs. |
+| `find-player` | `func(name-or-id: string) -> option<offline-player>` | A player by name (any case) or UUID: online, or known to the user cache. |
+| `whitelist-enabled` | `func() -> bool` | Whether only whitelisted players may join. |
+| `set-whitelist-enabled` | `func(on: bool)` | Turns the whitelist on or off, as `/whitelist on\|off`. |
+| `whitelist` | `func() -> list<string>` | The whitelisted players' names. |
+| `set-whitelisted` | `func(name: string, on: bool)` | Adds a player to the whitelist or removes them. |
+| `operators` | `func() -> list<string>` | The operators' names. |
+| `banned-players` | `func() -> list<string>` | The banned players' names. |
+| `ban` | `func(name: string, reason: option<string>)` | Bans a player, as `/ban` (an online one is kicked). |
+| `pardon` | `func(name: string)` | Lifts a player's ban, as `/pardon`. |
+| `ban-ip` | `func(address: string, reason: option<string>)` | Bans an address, as `/ban-ip`. |
+| `pardon-ip` | `func(address: string)` | Lifts an address's ban, as `/pardon-ip`. |
+
+## `plugin-players`
+
+Access: not granted by any capability.
+
+Players online.
+
+### type `location`
+
+`type location = location`
+
+### type `vec3`
+
+`type vec3 = vec3`
+
+### type `game-mode`
+
+`type game-mode = game-mode`
+
+### type `item-stack`
+
+`type item-stack = item-stack`
+
+### type `block-pos`
+
+`type block-pos = block-pos`
+
+### type `player`
+
+`type player = player`
+
+### record `effect`
+
+| Field | Type | |
+| --- | --- | --- |
+| `kind` | `string` | `minecraft:speed`. |
+| `duration` | `s32` | Ticks; -1 forever. |
+| `amplifier` | `u32` |  |
+| `ambient` | `bool` |  |
+| `particles` | `bool` |  |
+| `icon` | `bool` |  |
+
+| Function | Signature | What it does |
+| --- | --- | --- |
+| `online` | `func() -> list<player>` | Every player online, in join order. |
+| `get` | `func(id: string) -> option<player>` | The player with this UUID, when online. |
+| `by-name` | `func(name: string) -> option<player>` | Any case. |
+| `send-message` | `func(id: string, message: string)` | A system message (text). |
+| `send-action-bar` | `func(id: string, message: string)` | A message (text) over the hotbar. |
+| `send-title` | `func(id: string, title: string, subtitle: string, fade-in: u32, stay: u32, fade-out: u32)` | Ticks for the fades and the stay. |
+| `clear-title` | `func(id: string)` | Removes the title the player sees. |
+| `set-tab-list` | `func(id: string, header: string, footer: string)` | The player list's header and footer (text) for this player. |
+| `set-list-name` | `func(id: string, name: option<string>)` | The player's name in every player's list (text; none: the name). |
+| `set-display-name` | `func(id: string, name: option<string>)` | The name chat uses for the player (text; none: the name). |
+| `play-sound` | `func(id: string, sound: string, category: string, volume: f32, pitch: f32, at: option<location>)` | `minecraft:entity.experience_orb.pickup` in `category` (`master`, `players`, ...), at `at` or at the player. |
+| `stop-sound` | `func(id: string, sound: option<string>)` | Stops `sound` (none: every sound) for the player. |
+| `spawn-particle` | `func(id: string, particle: string, at: location, count: u32, offset: vec3, speed: f32)` | Particles only this player sees (`minecraft:flame`). |
+| `send-block-change` | `func(id: string, pos: block-pos, state: string)` | Shows this player a block that isn't there (until the chunk changes). |
+| `kick` | `func(id: string, reason: string) -> bool` | Disconnects the player with `reason` (text). |
+| `transfer` | `func(id: string, host: string, port: u32)` | Sends the player to another server (`ClientboundTransferPacket`). |
+| `send-resource-pack` | `func(id: string, url: string, hash: string, required: bool, prompt: option<string>)` | Asks the player's client to load a resource pack (`hash`: SHA-1 in hex, or ""). |
+| `teleport` | `func(id: string, to: location) -> bool` | Moves the player, to another world too; false when they aren't online. |
+| `set-game-mode` | `func(id: string, mode: game-mode)` | Changes the player's game mode. |
+| `set-health` | `func(id: string, health: f32)` | Sets the player's health (0 kills them). |
+| `set-max-health` | `func(id: string, health: f64)` | Sets the player's max health attribute. |
+| `set-food` | `func(id: string, food: u32)` | Sets the hunger bar, 0 to 20. |
+| `set-saturation` | `func(id: string, saturation: f32)` | Sets the food saturation. |
+| `set-level` | `func(id: string, level: u32)` | Sets the experience level. |
+| `set-exp` | `func(id: string, progress: f32)` | Sets the progress to the next level, 0 to 1. |
+| `give-exp` | `func(id: string, points: s32)` | Adds (or with a negative value takes) experience points. |
+| `set-allow-flight` | `func(id: string, allow: bool)` | Lets the player fly, as creative mode does, or stops it. |
+| `set-flying` | `func(id: string, flying: bool)` | Starts or stops the player's flight (it needs `allow-flight`). |
+| `set-walk-speed` | `func(id: string, speed: f32)` | 0.1 is vanilla's walking speed (the movement speed attribute). |
+| `set-fly-speed` | `func(id: string, speed: f32)` | 0.05 is vanilla's. |
+| `set-op` | `func(id: string, op: bool)` | Makes the player an operator (level 4) or takes it away. |
+| `set-velocity` | `func(id: string, velocity: vec3)` | Pushes the player: blocks per tick. |
+| `damage` | `func(id: string, amount: f32, cause: option<string>)` | Hurts the player by `amount`, of damage type `cause` (none: generic). |
+| `kill` | `func(id: string)` | Kills the player, as `/kill`. |
+| `set-fire-ticks` | `func(id: string, ticks: u32)` | Sets the player on fire for that many ticks (0 puts it out). |
+| `effects` | `func(id: string) -> list<effect>` | The player's status effects. |
+| `add-effect` | `func(id: string, effect: effect)` | Gives the player a status effect, as `/effect give`. |
+| `remove-effect` | `func(id: string, kind: string)` | Removes one status effect. |
+| `clear-effects` | `func(id: string)` | Removes every status effect. |
+| `hide-player` | `func(viewer: string, target: string)` | Hides `target` from `viewer` (the list and the world) until shown. |
+| `show-player` | `func(viewer: string, target: string)` | Shows `target` to `viewer` again. |
+| `can-see` | `func(viewer: string, target: string) -> bool` | Whether `viewer` sees `target` (no plugin hid them). |
+| `perform-command` | `func(id: string, line: string)` | Runs a command as the player, with their permissions (no slash). |
+| `chat` | `func(id: string, message: string)` | Sends a chat message as the player. |
+| `set-respawn-location` | `func(id: string, at: option<location>)` | Where the player respawns; none: the world spawn. |
+| `inventory` | `func(id: string) -> list<option<item-stack>>` | Slots 0 to 35 (0 to 8 the hotbar), 36 to 39 the armour (feet, legs, chest, head), 40 the off hand. |
+| `get-slot` | `func(id: string, slot: u32) -> option<item-stack>` | One slot of the player's inventory, numbered as `inventory` does. |
+| `set-slot` | `func(id: string, slot: u32, item: option<item-stack>)` | Replaces one slot of the player's inventory. |
+| `give` | `func(id: string, items: list<item-stack>) -> list<item-stack>` | Adds stacks as picking them up does; what doesn't fit comes back. |
+| `remove-item` | `func(id: string, item: string, count: u32) -> u32` | Removes up to `count` of item `item` (any components); how many went. |
+| `clear-inventory` | `func(id: string)` | Empties the inventory, the armour and the off hand. |
+| `ender-chest` | `func(id: string) -> list<option<item-stack>>` | The player's ender chest, 27 slots. |
+| `set-ender-slot` | `func(id: string, slot: u32, item: option<item-stack>)` | Replaces one slot of the player's ender chest. |
+| `set-held-slot` | `func(id: string, slot: u32)` | Selects a hotbar slot, 0 to 8. |
+| `cursor` | `func(id: string) -> option<item-stack>` | The stack on the pointer in an open menu. |
+| `set-cursor` | `func(id: string, item: option<item-stack>)` | Replaces the stack on the pointer. |
+| `close-inventory` | `func(id: string)` | Closes the open menu. |
+| `update-inventory` | `func(id: string)` | Sends the whole inventory to the player's client again. |
+
+## `plugin-worlds`
+
+Access: not granted by any capability.
+
+Worlds (dimensions) and their blocks.
+
+### type `location`
+
+`type location = location`
+
+### type `block-pos`
+
+`type block-pos = block-pos`
+
+### type `vec3`
+
+`type vec3 = vec3`
+
+### type `item-stack`
+
+`type item-stack = item-stack`
+
+### enum `environment`
+
+| Case | |
+| --- | --- |
+| `normal` |  |
+| `nether` |  |
+| `the-end` |  |
+
+### record `world-info`
+
+| Field | Type | |
+| --- | --- | --- |
+| `name` | `string` | `minecraft:overworld`. |
+| `environment` | `environment` |  |
+| `seed` | `s64` |  |
+| `time` | `u64` | Time of day, 0 to 23999, and ticks since the world began. |
+| `full-time` | `u64` |  |
+| `storm` | `bool` |  |
+| `thundering` | `bool` |  |
+| `spawn` | `location` |  |
+| `difficulty` | `string` | `peaceful`, `easy`, `normal`, `hard`. |
+| `min-y` | `s32` |  |
+| `max-y` | `s32` |  |
+| `players` | `u32` |  |
+| `loaded-chunks` | `u32` |  |
+
+### record `block-change`
+
+| Field | Type | |
+| --- | --- | --- |
+| `pos` | `block-pos` |  |
+| `state` | `string` |  |
+
+### record `world-border`
+
+| Field | Type | |
+| --- | --- | --- |
+| `center-x` | `f64` |  |
+| `center-z` | `f64` |  |
+| `size` | `f64` |  |
+| `damage-per-block` | `f64` |  |
+| `warning-blocks` | `u32` |  |
+
+| Function | Signature | What it does |
+| --- | --- | --- |
+| `worlds` | `func() -> list<world-info>` | Every world the server has. |
+| `get` | `func(world: string) -> option<world-info>` | One world, by name. |
+| `get-block` | `func(world: string, pos: block-pos) -> option<string>` | The state at a position (`minecraft:oak_log[axis=y]`); none where no chunk is loaded. |
+| `get-biome` | `func(world: string, pos: block-pos) -> option<string>` | The biome at a position (`minecraft:plains`); none where no chunk is loaded. |
+| `highest-block-y` | `func(world: string, x: s32, z: s32) -> option<s32>` | The y of the highest block that isn't air at x z, in a loaded chunk. |
+| `get-block-data` | `func(world: string, pos: block-pos) -> option<string>` | The block entity there (a chest's items, a sign's text), as SNBT. |
+| `merge-block-data` | `func(world: string, pos: block-pos, snbt: string)` | Merges SNBT into the block entity there, as `/data merge block`. |
+| `set-blocks` | `func(world: string, changes: list<block-change>) -> result<_, string>` | Sets blocks as `/setblock` does (neighbours, light, every client), once this call returns. Every state is checked now. At most 32768. |
+| `is-chunk-loaded` | `func(world: string, x: s32, z: s32) -> bool` | Whether chunk x z (block coordinates / 16) is loaded. |
+| `loaded-chunks` | `func(world: string) -> list<tuple<s32, s32>>` | The chunks loaded in a world. |
+| `set-chunk-forced` | `func(world: string, x: s32, z: s32, forced: bool)` | Keeps a chunk loaded (and ticking) until released, as `/forceload`. |
+| `set-time` | `func(world: string, time: u64)` | Sets the time of day (0 to 23999 is the first day). |
+| `set-storm` | `func(world: string, storm: bool, duration: u32)` | `duration` ticks; 0 picks one as vanilla does. |
+| `set-thundering` | `func(world: string, thundering: bool)` | Starts or stops a thunderstorm. |
+| `set-spawn` | `func(at: location)` | Moves the world spawn. |
+| `set-difficulty` | `func(difficulty: string)` | `peaceful`, `easy`, `normal` or `hard`. |
+| `game-rule` | `func(rule: string) -> option<string>` | A game rule's value (`keep_inventory` -> `false`). |
+| `set-game-rule` | `func(rule: string, value: string)` | Sets a game rule, as `/gamerule`. |
+| `strike-lightning` | `func(at: location, effect-only: bool)` | A lightning bolt; with `effect-only` it sets nothing on fire and hurts no one. |
+| `explode` | `func(at: location, power: f32, fire: bool, break-blocks: bool)` | An explosion of `power` (TNT is 4). |
+| `drop-item` | `func(at: location, item: item-stack, naturally: bool)` | Drops an item entity; `naturally` scatters it as a broken block does. |
+| `play-sound` | `func(at: location, sound: string, category: string, volume: f32, pitch: f32)` | A sound every player near `at` hears. |
+| `spawn-particle` | `func(at: location, particle: string, count: u32, offset: vec3, speed: f32, force: bool)` | Particles players near `at` see (`force`: up to 512 blocks away). |
+| `border` | `func(world: string) -> world-border` | The world border. |
+| `set-border` | `func(world: string, center-x: f64, center-z: f64, size: f64, seconds: u32)` | Moves the border to `size` over `seconds` (0: at once). |
+| `save` | `func()` | Saves every world. |
+
+## `plugin-entities`
+
+Access: not granted by any capability.
+
+Entities.
+
+### type `location`
+
+`type location = location`
+
+### type `vec3`
+
+`type vec3 = vec3`
+
+### type `item-stack`
+
+`type item-stack = item-stack`
+
+### record `entity`
+
+| Field | Type | |
+| --- | --- | --- |
+| `id` | `s32` |  |
+| `uuid` | `string` |  |
+| `kind` | `string` | `minecraft:zombie`. |
+| `location` | `location` |  |
+| `velocity` | `vec3` |  |
+| `custom-name` | `option<string>` | Text, as the name tag shows it. |
+| `health` | `option<f32>` | Living entities only. |
+| `max-health` | `option<f32>` |  |
+| `dead` | `bool` |  |
+| `on-ground` | `bool` |  |
+| `tags` | `list<string>` | Scoreboard tags (`/tag`). |
+| `player` | `option<string>` | A player's UUID. |
+
+| Function | Signature | What it does |
+| --- | --- | --- |
+| `get` | `func(id: s32) -> option<entity>` | An entity by id, when it is in a loaded chunk. |
+| `by-uuid` | `func(uuid: string) -> option<entity>` | An entity by UUID. |
+| `in-world` | `func(world: string) -> list<entity>` | Every entity in a world. |
+| `nearby` | `func(at: location, radius: f64) -> list<entity>` | Entities within `radius` blocks of `at`. |
+| `by-tag` | `func(tag: string) -> list<entity>` | Entities with a scoreboard tag. |
+| `spawn` | `func(at: location, kind: string, nbt: string) -> string` | Summons `kind` with SNBT `nbt` ("" for none) once this call returns; the entity carries the tag returned, for `by-tag`. |
+| `teleport` | `func(id: s32, to: location) -> bool` | Moves an entity; false when there is none with that id. |
+| `remove` | `func(id: s32)` | Removes an entity from the world (players are kicked out of it, not removed). |
+| `set-velocity` | `func(id: s32, velocity: vec3)` | Pushes an entity: blocks per tick. |
+| `set-custom-name` | `func(id: s32, name: option<string>, visible: bool)` | Names an entity (text; none: no name), shown over it when `visible`. |
+| `set-glowing` | `func(id: s32, glowing: bool)` | The glowing outline. |
+| `set-invulnerable` | `func(id: s32, invulnerable: bool)` | Whether nothing but the void and `/kill` hurts it. |
+| `set-silent` | `func(id: s32, silent: bool)` | Whether it makes sounds. |
+| `set-gravity` | `func(id: s32, gravity: bool)` | Whether it falls. |
+| `set-ai` | `func(id: s32, ai: bool)` | Mobs: whether their AI runs (`NoAI`). |
+| `damage` | `func(id: s32, amount: f32, cause: option<string>)` | Hurts an entity by `amount`, of damage type `cause` (none: generic). |
+| `set-health` | `func(id: s32, health: f32)` | A living entity's health. |
+| `add-tag` | `func(id: s32, tag: string)` | Adds a scoreboard tag. |
+| `remove-tag` | `func(id: s32, tag: string)` | Removes a scoreboard tag. |
+| `add-passenger` | `func(vehicle: s32, passenger: s32)` | Makes `passenger` ride `vehicle`. |
+| `eject` | `func(id: s32)` | Gets every passenger off. |
+| `get-nbt` | `func(id: s32) -> option<string>` | The entity's NBT as `/data get entity` writes it. |
+| `merge-nbt` | `func(id: s32, snbt: string)` | Merges SNBT into the entity, as `/data merge entity`. |
+
+## `plugin-items`
+
+Access: not granted by any capability.
+
+Items.
+
+### type `item-stack`
+
+`type item-stack = item-stack`
+
+### record `enchantment`
+
+| Field | Type | |
+| --- | --- | --- |
+| `id` | `string` | `minecraft:sharpness`. |
+| `level` | `u32` |  |
+
+### record `item-meta`
+
+An item stack's common components, read or written in one piece.
+
+| Field | Type | |
+| --- | --- | --- |
+| `display-name` | `option<string>` | `minecraft:custom_name` (text, italic unless it says otherwise). |
+| `item-name` | `option<string>` | `minecraft:item_name` (text, not italic). |
+| `lore` | `list<string>` | `minecraft:lore`, a line each (text). |
+| `enchantments` | `list<enchantment>` |  |
+| `damage` | `u32` |  |
+| `max-damage` | `option<u32>` |  |
+| `unbreakable` | `bool` |  |
+| `custom-model-data` | `option<f32>` | `minecraft:custom_model_data`'s first float. |
+| `max-stack-size` | `option<u32>` |  |
+| `glint` | `option<bool>` | `minecraft:enchantment_glint_override`. |
+| `hide-tooltip` | `bool` |  |
+
+| Function | Signature | What it does |
+| --- | --- | --- |
+| `parse` | `func(text: string, count: u32) -> result<item-stack, string>` | An item as `/give` reads it: `diamond_sword[enchantments={sharpness:5}]`. |
+| `meta` | `func(stack: item-stack) -> item-meta` | The stack's common components. |
+| `with-meta` | `func(stack: item-stack, meta: item-meta) -> item-stack` | The stack with these components (the others kept). |
+| `get-tag` | `func(stack: item-stack, key: string) -> option<string>` | A plugin's own value on a stack (`minecraft:custom_data`, under the plugin's id): Bukkit's persistent data. |
+| `set-tag` | `func(stack: item-stack, key: string, value: option<string>) -> item-stack` | The stack with the plugin's value under `key` set (none: removed). |
+| `similar` | `func(a: item-stack, b: item-stack) -> bool` | The same item with the same components (counts aside). |
+| `max-stack` | `func(id: string) -> u32` | How many of an item a stack holds (64, 16 or 1). |
+| `display-name` | `func(stack: item-stack) -> string` | The name the stack shows (plain text, English). |
+| `registry` | `func(name: string) -> list<string>` | The ids of a registry: `item`, `block`, `entity_type`, `mob_effect`, `enchantment`, `biome`, `sound_event`, `particle_type`. |
+
+## `plugin-inventories`
+
+Access: not granted by any capability.
+
+Inventories a plugin owns: chest-like menus it fills and opens.
+
+### type `item-stack`
+
+`type item-stack = item-stack`
+
+### enum `inventory-kind`
+
+| Case | |
+| --- | --- |
+| `chest` | 9 × rows (1 to 6): `minecraft:generic_9xN`. |
+| `hopper` | 5 slots. |
+| `dropper` | 3 × 3. |
+
+| Function | Signature | What it does |
+| --- | --- | --- |
+| `create` | `func(kind: inventory-kind, rows: u32, title: string) -> u32` | A new inventory: `rows` counts for a chest only. Its id is the server's (every plugin's inventories share the numbering). |
+| `size` | `func(inventory: u32) -> u32` | How many slots it has. |
+| `get` | `func(inventory: u32, slot: u32) -> option<item-stack>` | One slot. |
+| `set` | `func(inventory: u32, slot: u32, item: option<item-stack>)` | Replaces one slot; viewers see it at once. |
+| `contents` | `func(inventory: u32) -> list<option<item-stack>>` | Every slot, in order. |
+| `set-contents` | `func(inventory: u32, items: list<option<item-stack>>)` | Replaces every slot (missing ones become empty). |
+| `add` | `func(inventory: u32, items: list<item-stack>) -> list<item-stack>` | Adds stacks as a chest takes them; what doesn't fit comes back. |
+| `clear` | `func(inventory: u32)` | Empties every slot. |
+| `set-title` | `func(inventory: u32, title: string)` | The title for the next time it opens (text). |
+| `open` | `func(player: string, inventory: u32) -> bool` | Opens it for a player (closing what they had open). |
+| `viewers` | `func(inventory: u32) -> list<string>` | The players looking at it. |
+| `open-inventory` | `func(player: string) -> option<u32>` | The plugin inventory a player has open. |
+| `destroy` | `func(inventory: u32)` | Closes it for its viewers and forgets it. |
+
+## `plugin-scheduler`
+
+Access: not granted by any capability.
+
+The task scheduler: `plugin.on-task` runs at the ticks asked for.
+
+| Function | Signature | What it does |
+| --- | --- | --- |
+| `run-later` | `func(delay: u64, period: option<u64>) -> u32` | Runs task `on-task(id)` after `delay` ticks (0: at the end of this tick), then every `period` ticks when given (at least 1). |
+| `cancel` | `func(task: u32) -> bool` | Cancels a task: false when it was not queued. |
+| `cancel-all` | `func()` | Cancels every task of the plugin. |
+| `is-queued` | `func(task: u32) -> bool` | Whether a task is still to run. |
+| `current-tick` | `func() -> u64` | The server's tick counter. |
+
+## `plugin-permissions`
+
+Access: not granted by any capability.
+
+Permissions: nodes with defaults, plus what plugins set per player.
+
+### enum `permission-default`
+
+| Case | |
+| --- | --- |
+| `always` | Everyone has it. |
+| `never` |  |
+| `op` | Operators only. |
+| `not-op` |  |
+
+| Function | Signature | What it does |
+| --- | --- | --- |
+| `has` | `func(player: string, node: string) -> bool` | What a player has: what any plugin set (`*` and `a.b.*` match the nodes under them), else the node's default (operators for a node no one declared). |
+| `is-set` | `func(player: string, node: string) -> bool` | Some plugin set it for the player. |
+| `set` | `func(player: string, node: string, value: bool)` | Sets a node for a player, as this plugin's attachment. |
+| `unset` | `func(player: string, node: string)` | Drops a node this plugin set for the player. |
+| `clear` | `func(player: string)` | Drops every node this plugin set for the player. |
+| `effective` | `func(player: string) -> list<tuple<string, bool>>` | The nodes set for the player, by every plugin. |
+| `declare` | `func(node: string, default: permission-default, description: string, children: list<tuple<string, bool>>)` | Declares a node (the manifest's `[permissions]` do this at load). |
+
+## `plugin-scoreboards`
+
+Access: not granted by any capability.
+
+Scoreboards: sidebars and name tags per player, and the server's own.
+
+### record `objective`
+
+| Field | Type | |
+| --- | --- | --- |
+| `name` | `string` |  |
+| `criteria` | `string` |  |
+| `display-name` | `string` |  |
+
+| Function | Signature | What it does |
+| --- | --- | --- |
+| `set-sidebar` | `func(player: string, title: string, lines: list<string>)` | A sidebar only this player sees: a title and up to 15 lines (text), top first. Replaces the previous one. |
+| `clear-sidebar` | `func(player: string)` | Removes the sidebar `set-sidebar` showed. |
+| `set-name-tag` | `func(target: string, prefix: string, suffix: string, color: option<string>)` | What every client shows around `target`'s name (text) and its colour (`red`, `gold` ...): a team of their own. |
+| `clear-name-tag` | `func(target: string)` | Removes what `set-name-tag` put around the name. |
+| `objectives` | `func() -> list<objective>` | The server's scoreboard (`/scoreboard`). |
+| `add-objective` | `func(name: string, criteria: string, display-name: string)` | `/scoreboard objectives add`. |
+| `remove-objective` | `func(name: string)` | `/scoreboard objectives remove`. |
+| `set-display-slot` | `func(slot: string, objective: option<string>)` | `sidebar`, `list`, `below_name`, `sidebar.team.red` ... |
+| `get-score` | `func(objective: string, holder: string) -> option<s32>` | A score holder's score; none when it has none. |
+| `set-score` | `func(objective: string, holder: string, value: s32)` | `/scoreboard players set`. |
+| `reset-score` | `func(objective: string, holder: string)` | `/scoreboard players reset`. |
+| `teams` | `func() -> list<string>` | The server's teams (`/team`). |
+| `add-team` | `func(name: string, display-name: string)` | `/team add`. |
+| `remove-team` | `func(name: string)` | `/team remove`. |
+| `join-team` | `func(team: string, member: string)` | `/team join`: a player name or another score holder. |
+| `leave-team` | `func(member: string)` | `/team leave`. |
+| `set-team-option` | `func(team: string, key: string, value: string)` | `/team modify <team> <key> <value>`. |
+
+## `plugin-bossbars`
+
+Access: not granted by any capability.
+
+Boss bars a plugin shows.
+
+### enum `bar-color`
+
+| Case | |
+| --- | --- |
+| `pink` |  |
+| `blue` |  |
+| `red` |  |
+| `green` |  |
+| `yellow` |  |
+| `purple` |  |
+| `white` |  |
+
+### enum `bar-style`
+
+| Case | |
+| --- | --- |
+| `solid` |  |
+| `segmented-six` |  |
+| `segmented-ten` |  |
+| `segmented-twelve` |  |
+| `segmented-twenty` |  |
+
+| Function | Signature | What it does |
+| --- | --- | --- |
+| `create` | `func(title: string, color: bar-color, style: bar-style, progress: f32) -> u32` | A new bar no one sees yet; its id. |
+| `set-title` | `func(bar: u32, title: string)` | The bar's title (text). |
+| `set-progress` | `func(bar: u32, progress: f32)` | 0 to 1. |
+| `set-color` | `func(bar: u32, color: bar-color)` | The bar's colour. |
+| `set-style` | `func(bar: u32, style: bar-style)` | Whether the bar is split in segments. |
+| `set-flags` | `func(bar: u32, darken-sky: bool, play-music: bool, create-fog: bool)` | The sky darkens, the boss music plays, fog thickens. |
+| `add-player` | `func(bar: u32, player: string)` | Shows the bar to a player. |
+| `remove-player` | `func(bar: u32, player: string)` | Hides the bar from a player. |
+| `players` | `func(bar: u32) -> list<string>` | The players who see the bar. |
+| `remove` | `func(bar: u32)` | Hides the bar from everyone and forgets it. |
+
+## `plugin-messaging`
+
+Access: not granted by any capability.
+
+Plugin channels: custom payloads to and from players' clients (a proxy's `bungeecord:main` too).
+
+| Function | Signature | What it does |
+| --- | --- | --- |
+| `register-incoming` | `func(channel: string)` | Hear `plugin-message` events for payloads on `channel`. |
+| `unregister-incoming` | `func(channel: string)` | Stop hearing `channel`. |
+| `send` | `func(player: string, channel: string, data: list<u8>) -> bool` | A payload to the player's client (or the proxy in front of it); false when they aren't online. |
+
+## `plugin-files`
+
+Access: not granted by any capability.
+
+The plugin's data folder, `plugins/<id>/` in the server's folder. Paths are relative, `/`-separated, of `[A-Za-z0-9_.-]` segments.
+
+| Function | Signature | What it does |
+| --- | --- | --- |
+| `read` | `func(path: string) -> option<list<u8>>` | A file's bytes; none when it doesn't exist. |
+| `write` | `func(path: string, data: list<u8>) -> result<_, string>` | Writes a file, making its folders. |
+| `append` | `func(path: string, data: list<u8>) -> result<_, string>` | Adds to the end of a file, making it when missing. |
+| `delete` | `func(path: string) -> bool` | Removes a file or an empty folder: false when there was none. |
+| `exists` | `func(path: string) -> bool` | Whether a file or folder is there. |
+| `list` | `func(dir: string) -> list<string>` | The names in a folder ("" for the data folder itself). |
+| `bundled` | `func(path: string) -> option<list<u8>>` | A file the plugin's package carries under `defaults/`. |
+| `save-default` | `func(path: string) -> bool` | Writes `bundled(path)` to `path` unless that file exists: true when it wrote it. |
+
+## `plugin`
+
+Access: exported by the mod: the game calls it.
+
+What the server calls in a plugin.
+
+### type `sender`
+
+`type sender = sender`
+
+### type `event`
+
+`type event = event`
+
+### type `priority`
+
+`type priority = priority`
+
+| Function | Signature | What it does |
+| --- | --- | --- |
+| `enable` | `func() -> result<_, string>` | Once, when the server enables the plugin (after the plugins it depends on). An error keeps it off and is logged. |
+| `disable` | `func()` | When the server disables it (stopping, or reloading it). |
+| `on-event` | `func(priority: priority, event: event) -> event` | An event of a kind the plugin listens to, at `priority`: the event back, changed as the plugin wants it (a monitor's changes are ignored). |
+| `on-command` | `func(sender: sender, command: string, label: string, args: list<string>) -> bool` | `/label args` for a command the plugin owns (`command` its name, `label` the alias typed): false shows the command's usage. |
+| `on-tab-complete` | `func(sender: sender, command: string, args: list<string>) -> list<string>` | What to offer for the last argument while `args` are typed. |
+| `on-task` | `func(task: u32)` | A task of `plugin-scheduler` is due. |

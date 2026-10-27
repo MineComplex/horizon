@@ -1012,6 +1012,22 @@ impl Game<'_> {
                     HostEvent::PlayerChat { sender, text } => {
                         self.mod_player_chat(super::server_mods::Who::Uuid(sender), &text);
                     }
+                    #[cfg(feature = "mods")]
+                    HostEvent::ChatPending { conn, message } => {
+                        for e in self.plugin_chat_pending(&mut host, conn, *message) {
+                            match e {
+                                HostEvent::PlayerChat { sender, text } => self
+                                    .mod_player_chat(super::server_mods::Who::Uuid(sender), &text),
+                                other => self.lan_log_event(other),
+                            }
+                        }
+                    }
+                    #[cfg(not(feature = "mods"))]
+                    HostEvent::ChatPending { message, .. } => {
+                        for e in host.hub.relay_chat(*message) {
+                            self.lan_log_event(e);
+                        }
+                    }
                     HostEvent::Joined(conn) => {
                         self.lan_guest_joined(&mut host, conn, state.as_ref(), entities, spawn);
                         if self.options.dedicated.is_some()
@@ -1037,6 +1053,8 @@ impl Game<'_> {
                                 &format!("System chat: {} joined the game", g.name),
                             );
                         }
+                        #[cfg(feature = "mods")]
+                        self.plugin_after_join(&mut host, conn);
                     }
                     HostEvent::Left(mut guest) => {
                         // The container they had open loses an opener.
@@ -1054,6 +1072,8 @@ impl Game<'_> {
                             }
                         }
                         self.lan_crafting_left(&mut host, &mut guest);
+                        #[cfg(feature = "mods")]
+                        self.plugin_after_leave(&mut host, &guest);
                         self.save_guest(&host, &guest);
                         host.models.remove(&guest.conn);
                         host.play.remove(&guest.conn);
@@ -1136,6 +1156,10 @@ impl Game<'_> {
         };
         if !known || force {
             g.game_mode = default_mode;
+        }
+        #[cfg(feature = "mods")]
+        if !known {
+            self.mods.plugin.newcomers.insert(conn);
         }
         if !known {
             // ServerPlayer.adjustSpawnLocation: a player new to the world

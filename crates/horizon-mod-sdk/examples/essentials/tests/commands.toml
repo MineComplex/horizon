@@ -1,0 +1,65 @@
+# Permissions from the manifest: /spawn for everyone, the rest for operators.
+[[step]]
+join = ["Steve"]
+
+[[step]]
+command = "spawn"
+expect.handled = true
+expect.told = ["Steve: Teleported to the spawn."]
+
+[[step]]
+command = "heal"
+expect.told = ["Steve: I'm sorry, but you do not have permission to perform this command. Please contact the server administrators if you believe that this is in error."]
+
+[[step]]
+command = "gm creative"
+expect.told = ["Steve: You may not change game modes."]
+
+[[step]]
+op = ["Steve"]
+command = "gm creative"
+expect.told = ["Steve: Set Steve's game mode (gm)."]
+expect.player = { name = "Steve", game-mode = "creative" }
+
+[[step]]
+command = "gamemode"
+# No mode: the usage, with the label typed.
+expect.told = ["Steve: /gamemode <survival|creative|adventure|spectator> [player]"]
+
+[[step]]
+complete = "gm cr"
+expect.completions = ["creative"]
+
+[[step]]
+complete = "heal S"
+# No completions of its own: the names of the players online.
+expect.completions = ["Steve"]
+
+[[step]]
+command = "fly"
+expect.told = ["Steve: You can fly."]
+expect.player = { name = "Steve", allow-flight = true }
+
+[[step]]
+command = "essentials:fly"
+expect.told = ["Steve: Flight off."]
+expect.player = { name = "Steve", allow-flight = false }
+
+[[step]]
+console = "bc Restart in 5 minutes"
+expect.handled = true
+expect.told = ["Steve: [Broadcast] Restart in 5 minutes"]
+expect.console = ["[Broadcast] Restart in 5 minutes"]
+
+[[step]]
+console = "spawn"
+expect.console = ["Only players can do that."]
+
+[[step]]
+command = "tps"
+expect.told = ["Steve: TPS from last 1m, 5m, 15m: 20.0, 20.0, 20.0 (1.00 ms)"]
+
+[[step]]
+# Not a plugin's command: vanilla runs it.
+command = "time set day"
+expect.handled = false

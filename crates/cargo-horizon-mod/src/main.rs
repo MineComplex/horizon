@@ -1,7 +1,8 @@
 //! `cargo horizon-mod`: make Horizon mods in Rust (`docs/mods.md`).
 //!
-//! - `new <path> [--template code|content] [--name "Name"] [--sdk-path <dir>]`:
-//!   a mod from a template: a Rust crate, or a content mod (no code).
+//! - `new <path> [--template code|content|plugin] [--name "Name"] [--sdk-path <dir>]`:
+//!   a mod from a template: a Rust crate, a content mod (no code), or a
+//!   server plugin (docs/plugins.md).
 //! - `build [--debug]`: the `.hmod` in `target/horizon-mod/`, with the mod's
 //!   `assets/` and `data/`; a folder without `Cargo.toml` is content only.
 //! - `run [--game <horizon-client>] [-- <game args>]`: build, then play with
@@ -42,7 +43,7 @@ fn main() -> ExitCode {
         Some("test") => test(&args[1..]),
         Some("check") => check(&args[1..]),
         Some("registry") => registry::main(&args[1..]),
-        _ => Err("usage: cargo horizon-mod new <path> [--template code|content] | build [--debug] | run [--game <horizon-client>] [-- <game args>] | test [--debug] [--hmod <file>] [<name>] | check <file> [--kind <kind>] [--key <public key> --signature <file.minisig>] [--json] | registry build|review|check|list".into()),
+        _ => Err("usage: cargo horizon-mod new <path> [--template code|content|plugin] | build [--debug] | run [--game <horizon-client>] [-- <game args>] | test [--debug] [--hmod <file>] [<name>] | check <file> [--kind <kind>] [--key <public key> --signature <file.minisig>] [--json] | registry build|review|check|list".into()),
     };
     match result {
         Ok(()) => ExitCode::SUCCESS,
@@ -146,10 +147,25 @@ fn new(args: &[String]) -> Result<(), String> {
         ),
         (".gitignore", include_str!("../template/gitignore")),
     ];
+    // A plugin (docs/plugins.md): a command, a permission, a listener and a config.
+    let plugin = [
+        ("Cargo.toml", include_str!("../template/Cargo.toml.in")),
+        (
+            MANIFEST,
+            include_str!("../template/plugin/horizon-mod.toml"),
+        ),
+        ("src/lib.rs", include_str!("../template/plugin/lib.rs")),
+        (
+            "defaults/config.yml",
+            include_str!("../template/plugin/defaults/config.yml"),
+        ),
+        (".gitignore", include_str!("../template/gitignore")),
+    ];
     let files: &[(&str, &str)] = match flag(args, "--template").unwrap_or("code") {
         "code" => &code,
         "content" => &content,
-        other => return Err(format!("no template {other}: code or content")),
+        "plugin" => &plugin,
+        other => return Err(format!("no template {other}: code, content or plugin")),
     };
     for &(file, text) in files {
         let file = fill(file);
@@ -199,6 +215,14 @@ fn build_in(root: &Path, release: bool) -> Result<PathBuf, String> {
     for name in &content.files {
         files.push((name.as_str(), reader.read(name)?));
     }
+    // A plugin's `defaults/`: the config it writes to its data folder.
+    let mut defaults = Vec::new();
+    if manifest.is_plugin() {
+        collect_defaults(&root.join("defaults"), "defaults", &mut defaults)?;
+    }
+    for (name, bytes) in &defaults {
+        files.push((name.as_str(), bytes.clone()));
+    }
     let files: Vec<(&str, &[u8])> = files.iter().map(|(n, b)| (*n, b.as_slice())).collect();
     let dir = target_dir.join("horizon-mod");
     std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
@@ -209,6 +233,30 @@ fn build_in(root: &Path, release: bool) -> Result<PathBuf, String> {
     std::fs::write(&partial, bytes).map_err(|e| e.to_string())?;
     std::fs::rename(&partial, &path).map_err(|e| e.to_string())?;
     Ok(path)
+}
+
+/// The files under `dir` as `prefix/...` paths, sorted.
+fn collect_defaults(
+    dir: &Path,
+    prefix: &str,
+    out: &mut Vec<(String, Vec<u8>)>,
+) -> Result<(), String> {
+    let Ok(read) = std::fs::read_dir(dir) else {
+        return Ok(());
+    };
+    let mut entries: Vec<_> = read.flatten().collect();
+    entries.sort_by_key(|e| e.file_name());
+    for e in entries {
+        let name = format!("{prefix}/{}", e.file_name().to_string_lossy());
+        let path = e.path();
+        if path.is_dir() {
+            collect_defaults(&path, &name, out)?;
+        } else {
+            let bytes = std::fs::read(&path).map_err(|e| format!("{}: {e}", path.display()))?;
+            out.push((name, bytes));
+        }
+    }
+    Ok(())
 }
 
 /// Builds the crate for WebAssembly: its component, and Cargo's target folder.
@@ -309,12 +357,23 @@ fn test(args: &[String]) -> Result<(), String> {
         scripts.len(),
         hmod.display()
     );
+    let plugin = Package::read(&hmod).is_ok_and(|p| p.manifest.is_plugin());
     let mut failed = 0;
     for path in &scripts {
         let result = std::fs::read_to_string(path)
             .map_err(|e| e.to_string())
-            .and_then(|text| Script::parse(&text))
-            .and_then(|script| {
+            .and_then(|text| {
+                if plugin {
+                    // A plugin's script plays a server (docs/plugins.md).
+                    let script = horizon_mods::plugin_test::PluginScript::parse(&text)?;
+                    let base = path.parent().unwrap_or(Path::new("."));
+                    let mut all = vec![hmod.clone()];
+                    all.extend(script.with.iter().map(|w| base.join(w)));
+                    let mut server = horizon_mods::plugin_test::TestServer::load(&all)?;
+                    script.run(&mut server)?;
+                    return Ok(script.steps());
+                }
+                let script = Script::parse(&text)?;
                 let mut game = TestGame::load(&hmod)?;
                 script.run(&mut game)?;
                 Ok(script.steps.len())
@@ -383,6 +442,45 @@ mod tests {
             new(&[path.display().to_string()]).is_err(),
             "never overwrites"
         );
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn the_plugin_template_is_a_valid_plugin() {
+        let dir = std::env::temp_dir().join(format!("horizon-plugin-new-{}", std::process::id()));
+        let path = dir.join("my-plugin");
+        new(&[path.display().to_string(), "--template".into(), "plugin".into()]).unwrap();
+        let manifest =
+            Manifest::parse(&std::fs::read_to_string(path.join(MANIFEST)).unwrap()).unwrap();
+        assert!(manifest.is_plugin());
+        assert_eq!(manifest.commands["hello"].aliases, ["hi"]);
+        assert!(manifest.permissions.contains_key("my_plugin.hello"));
+        assert!(path.join("defaults/config.yml").is_file());
+        let code = std::fs::read_to_string(path.join("src/lib.rs")).unwrap();
+        assert!(code.contains("export_plugin!(MyPlugin)"));
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    /// Builds the plugin template for WebAssembly (slow: a fresh target).
+    #[test]
+    #[ignore]
+    fn the_plugin_template_builds_and_checks() {
+        let dir = std::env::temp_dir().join(format!("horizon-plugin-build-{}", std::process::id()));
+        let path = dir.join("greeter");
+        let sdk = Path::new(env!("CARGO_MANIFEST_DIR")).join("../horizon-mod-sdk");
+        new(&[
+            path.display().to_string(),
+            "--template".into(),
+            "plugin".into(),
+            "--sdk-path".into(),
+            sdk.display().to_string(),
+        ])
+        .unwrap();
+        let hmod = build_in(&path, true).unwrap();
+        let package = Package::read(&hmod).unwrap();
+        assert!(package.manifest.is_plugin());
+        let report = check::check(&hmod, check::kind_of(&hmod).unwrap(), None, None).unwrap();
+        assert!(report.text().contains("/hello"), "{}", report.text());
         std::fs::remove_dir_all(&dir).unwrap();
     }
 

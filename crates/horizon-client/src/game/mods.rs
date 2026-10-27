@@ -104,6 +104,9 @@ pub(super) struct ModsState {
     /// Playing at the last frame, for `mod_input_frame`.
     #[cfg(feature = "mods")]
     pub(super) playing: bool,
+    /// The server's side of the plugins (game/plugins.rs).
+    #[cfg(feature = "mods")]
+    pub(super) plugin: super::plugins::PluginGame,
 }
 
 /// The mappings `input.mapping` answers for, with the default key their
@@ -294,11 +297,22 @@ impl Game<'_> {
         let dir = Self::options_path().with_file_name(mod_list::DIR);
         let dev = &self.mods.dev;
         let mut paths = horizon_mods::find(&dir);
+        // Plugins in `plugins/` beside it are on while they are there, as
+        // Bukkit's (docs/plugins.md); a game that runs no server code skips them.
+        let plugins: Vec<std::path::PathBuf> = if self.mod_runs() == Runs::Client {
+            Vec::new()
+        } else {
+            horizon_mods::find(
+                &Self::options_path().with_file_name(horizon_mods::plugin::PLUGINS_DIR),
+            )
+        };
+        paths.extend(plugins.iter().cloned());
         paths.retain(|p| !dev.contains(p));
         paths.extend(dev.iter().cloned());
-        // A dev mod is on whatever the list says.
+        // A dev mod is on whatever the list says, and so is a plugin in `plugins/`.
         let dev_ids: Vec<String> = dev
             .iter()
+            .chain(&plugins)
             .filter_map(|p| horizon_mods::Package::read(p).ok())
             .map(|p| p.manifest.id)
             .collect();

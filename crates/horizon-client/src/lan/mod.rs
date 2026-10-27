@@ -278,6 +278,14 @@ impl Shared {
     pub fn max_players(&self) -> usize {
         self.max_players.load(Ordering::Relaxed)
     }
+    /// A new message of the day for the status list (plugins).
+    pub fn set_motd(&self, motd: String) {
+        *self.motd.lock().unwrap() = motd;
+    }
+    /// A new player limit (plugins).
+    pub fn set_max_players(&self, max: usize) {
+        self.max_players.store(max, Ordering::Relaxed);
+    }
     pub fn release(&self, uuid: u128) {
         self.online.lock().unwrap().retain(|(u, _)| *u != uuid);
     }

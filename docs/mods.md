@@ -22,6 +22,7 @@ folder, loads no runtime and plays exactly like vanilla 26.3.
 | Launcher mod browser (Modrinth, CurseForge with a key) | [mod-browser.md](mod-browser.md) | resource packs, modpacks |
 | Registry index (`index.json`, `.hpack`), signatures | `horizon_mods::index`, [api/mod-index.md](api/mod-index.md) | schema 1; launcher and website next |
 | Server mods, registries | this page, [Roadmap](#roadmap) | planned |
+| Plugins (Bukkit-style server code, API 0.4) | [plugins.md](plugins.md) | events, commands, permissions, scheduler, players, worlds, entities, items, inventories, scoreboards, boss bars |
 
 ## Design goals
 

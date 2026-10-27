@@ -557,6 +557,50 @@ impl Hub {
         }
     }
 
+    /// The stack in a slot of a guest's open menu, in its numbering (the
+    /// inventory menu's when none is open), for plugins' click events.
+    pub fn menu_slot_item(&self, conn: u32, world: &World, slot: usize) -> Option<ItemStack> {
+        let i = self.guests.iter().position(|g| g.conn == conn)?;
+        self.view_slot(i, world, slot)
+    }
+
+    /// The menu a guest has open: its type's name, the plugin inventory it
+    /// shows and how many slots it has before the player's 36.
+    pub fn menu_view(&self, conn: u32) -> (String, Option<u32>, u32) {
+        let Some(g) = self.guest(conn) else {
+            return ("minecraft:inventory".into(), None, 0);
+        };
+        match &g.menu {
+            Some(m) => (
+                self.registry_name("minecraft:menu", m.kind)
+                    .unwrap_or("minecraft:generic_9x3")
+                    .to_owned(),
+                match m.slots {
+                    Slots::Plugin(id) => Some(id),
+                    _ => None,
+                },
+                m.size as u32,
+            ),
+            None => ("minecraft:inventory".into(), None, 0),
+        }
+    }
+
+    /// Sends a guest's open menu (or its inventory) and the carried stack
+    /// again: a plugin cancelled a click the client already predicted.
+    pub fn resend_menu(&mut self, conn: u32, world: &World) {
+        let Some(i) = self.guests.iter().position(|g| g.conn == conn) else {
+            return;
+        };
+        let slots = self.guests[i].menu.as_ref().map(|m| m.slots);
+        match slots.and_then(|s| s.read(world, &self.guests[i])) {
+            Some(items) => self.send_menu_content(i, items),
+            None => self.send_inventory(i),
+        }
+        let carried = self.guests[i].carried.clone();
+        let net = self.stack(&carried);
+        self.guests[i].send(&C::SetCursorItem(play::SetCursorItem { item: net }));
+    }
+
     /// Slot changes of open containers (AbstractContainerMenu.broadcastChanges).
     pub fn sync_containers(&mut self, world: &World) {
         for i in 0..self.guests.len() {

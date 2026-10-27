@@ -10,5 +10,9 @@ description = "Load-test bots for Minecraft Java Edition 26.3 servers (docs/serv
 horizon-protocol = { path = "../horizon-protocol" }
 serde_json = "1.0.151"
 
+[dev-dependencies]
+# The plugin test client prints the text components it receives.
+horizon-world = { path = "../horizon-world" }
+
 [lints]
 workspace = true

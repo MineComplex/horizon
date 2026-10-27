@@ -326,3 +326,67 @@ macro_rules! export_server_mod {
         };
     };
 }
+
+pub mod plugin;
+
+/// Exports a [`Plugin`](plugin::Plugin) as the component's `plugin`
+/// interface, as [`export_mod!`] does for a client mod. Tasks made with
+/// [`plugin::later`] and [`plugin::timer`] run their closures; the others
+/// reach [`Plugin::on_task`](plugin::Plugin::on_task).
+#[macro_export]
+macro_rules! export_plugin {
+    ($t:ty) => {
+        const _: () = {
+            use ::std::cell::RefCell;
+            use $crate::plugin::{Event, Plugin, Priority, Sender};
+            ::std::thread_local! {
+                static STATE: RefCell<Option<$t>> = const { RefCell::new(None) };
+            }
+            fn with<R>(f: impl FnOnce(&mut $t) -> R) -> Option<R> {
+                STATE.with(|s| s.borrow_mut().as_mut().map(f))
+            }
+            struct Export;
+            impl $crate::plugin::__Guest for Export {
+                fn enable() -> Result<(), String> {
+                    let p = <$t as Plugin>::enable()?;
+                    STATE.with(|s| *s.borrow_mut() = Some(p));
+                    Ok(())
+                }
+                fn disable() {
+                    with(|p| p.disable());
+                    STATE.with(|s| *s.borrow_mut() = None);
+                }
+                fn on_event(priority: Priority, mut event: Event) -> Event {
+                    with(|p| p.on_event(priority, &mut event));
+                    event
+                }
+                fn on_command(
+                    sender: Sender,
+                    command: String,
+                    label: String,
+                    args: Vec<String>,
+                ) -> bool {
+                    with(|p| p.on_command(&sender, &command, &label, &args)).unwrap_or(false)
+                }
+                fn on_tab_complete(
+                    sender: Sender,
+                    command: String,
+                    args: Vec<String>,
+                ) -> Vec<String> {
+                    with(|p| p.on_tab_complete(&sender, &command, &args)).unwrap_or_default()
+                }
+                fn on_task(task: u32) {
+                    with(|p| {
+                        if !$crate::plugin::__run_task(task, p) {
+                            p.on_task(task);
+                        }
+                    });
+                }
+            }
+            #[cfg(target_arch = "wasm32")]
+            $crate::plugin::__export_horizon_plugin!(Export);
+            #[cfg(not(target_arch = "wasm32"))]
+            let _ = <Export as $crate::plugin::__Guest>::enable;
+        };
+    };
+}

@@ -276,6 +276,14 @@ impl Game<'_> {
             horizon_client::mobs::raider::finalize(&mut mob, reason);
         }
         let id = mob.id;
+        let reason = match (persistent, scripted) {
+            (_, true) => "raid",
+            (true, false) => "command",
+            (false, false) => "natural",
+        };
+        if !self.plugin_allows_spawn(&mob, reason) {
+            return None;
+        }
         self.mobs.push(mob);
         self.enchant_spawn_equipment(id);
         if !persistent && !scripted {
@@ -684,6 +692,16 @@ impl Game<'_> {
     }
     /// LivingEntity.die / dropAllDeathLoot.
     fn mob_died(&mut self, m: &Mob) {
+        #[cfg(feature = "mods")]
+        self.plugin_entity_died(
+            horizon_mods::plugin::types::EntityRef {
+                id: m.id as i32,
+                kind: horizon_client::command::args::normalize(&m.kind.id),
+                player: None,
+            },
+            [m.position.x, m.position.y, m.position.z],
+            0,
+        );
         let killer = self.last_hurt_by_player.remove(&m.id);
         let by_player = killer.is_some() || m.ai.last_hurt_by_player > 0;
         let mut dying = m.clone();
@@ -1682,6 +1700,13 @@ impl Game<'_> {
         // DamageSource.scalesWithDifficulty: a mob (or its projectile's
         // owner) caused the hit, not a player.
         let living_cause = attacker.or(owner).is_some();
+        // EntityDamageEvent: plugins may cancel or change the hit.
+        #[cfg(feature = "mods")]
+        let Some(amount) =
+            self.plugin_damage_acting(damage_type, amount, attacker.or(owner).map(|id| id as i32))
+        else {
+            return false;
+        };
         let mut outcome = horizon_client::health::BlockOutcome::default();
         if let Some(player) = self.player.as_mut()
             && let Some(id) = self.motion.health.damage.id(damage_type)
@@ -1774,6 +1799,10 @@ impl Game<'_> {
         if self.creative {
             return;
         }
+        #[cfg(feature = "mods")]
+        let Some(amount) = self.plugin_damage_acting(damage_type, amount, None) else {
+            return;
+        };
         if let Some(player) = self.player.as_mut()
             && let Some(id) = self.motion.health.damage.id(damage_type)
         {

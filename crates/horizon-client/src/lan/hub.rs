@@ -133,6 +133,12 @@ pub enum HostEvent {
         sender: u128,
         text: String,
     },
+    /// A chat message held for the plugins ([`Hub::intercept_chat`]): the
+    /// game relays it ([`Hub::relay_chat`]) or delivers what they made of it.
+    ChatPending {
+        conn: u32,
+        message: Box<chat::ChatMessage>,
+    },
     /// A server log warning (ServerGamePacketListenerImpl's LOGGER.warn).
     Warn(String),
     /// A server log error (LOGGER.error).
@@ -140,6 +146,15 @@ pub enum HostEvent {
 }
 
 pub struct Hub {
+    /// Commands plugins own (labels and aliases), added to every player's
+    /// tree as a literal with a greedy string the server completes.
+    pub extra_commands: Vec<String>,
+    /// Plugins decide the join and quit messages: the hub sends none.
+    pub quiet_joins: bool,
+    pub quiet_leaves: bool,
+    /// Plugins hear chat first: a message waits in
+    /// [`HostEvent::ChatPending`] for [`Hub::relay_chat`].
+    pub intercept_chat: bool,
     pub lan: Lan,
     pub config: HubConfig,
     pub encoder: ChunkEncoder,
@@ -318,6 +333,10 @@ impl Hub {
         let d = horizon_protocol::registry::DimensionType::vanilla(&config.dimension);
         encoder.set_dimension(d.min_y, d.height, d.has_skylight);
         Self {
+            extra_commands: Vec::new(),
+            quiet_joins: false,
+            quiet_leaves: false,
+            intercept_chat: false,
             lan,
             config,
             encoder,
@@ -352,6 +371,10 @@ impl Hub {
         self.guests.iter_mut().find(|g| g.conn == conn)
     }
 
+    /// The registries and data the clients are sent (plugins read them).
+    pub fn sync_data(&self) -> &SyncData {
+        &self.sync
+    }
     /// The network id of a name in a built-in or synchronized registry.
     pub fn registry_id(&self, registry: &str, name: &str) -> Option<i32> {
         self.sync.id(registry, name)
@@ -669,16 +692,18 @@ impl Hub {
             self.sync.advancements.initial_recipe_book(book, &self.sync),
         ));
         // The others hear of the newcomer before it joins the list.
-        self.broadcast_except(
-            conn,
-            &C::SystemChat(play::SystemChat {
-                content: yellow_names(
-                    "multiplayer.player.joined",
-                    vec![display_name(self.guests[i].uuid, &name)],
-                ),
-                overlay: false,
-            }),
-        );
+        if !self.quiet_joins {
+            self.broadcast_except(
+                conn,
+                &C::SystemChat(play::SystemChat {
+                    content: yellow_names(
+                        "multiplayer.player.joined",
+                        vec![display_name(self.guests[i].uuid, &name)],
+                    ),
+                    overlay: false,
+                }),
+            );
+        }
         self.guests[i].placed = true;
         self.teleport(i, None);
         let g = &self.guests[i];
@@ -852,7 +877,7 @@ impl Hub {
     /// Commands.sendCommands: the command tree for this player.
     fn send_commands(&self, i: usize) {
         let g = &self.guests[i];
-        let packet = match &self.sync.commands {
+        let mut packet = match &self.sync.commands {
             Some(tree) => {
                 let dedicated = self.config.dedicated && !self.config.integrated;
                 tree.packet(g.permission, dedicated, &self.sync.builtin)
@@ -871,6 +896,7 @@ impl Hub {
                 root: 0,
             },
         };
+        add_extra_commands(&mut packet, &self.extra_commands, &self.sync.builtin);
         g.send(&C::Commands(packet));
     }
 
@@ -1180,11 +1206,35 @@ impl Hub {
         self.broadcast(&C::RemoveEntities(play::RemoveEntities {
             ids: vec![g.entity_id],
         }));
+        if !self.quiet_leaves {
+            self.system_message(yellow_names(
+                "multiplayer.player.left",
+                vec![display_name(g.uuid, &g.name)],
+            ));
+        }
+        g
+    }
+
+    /// Vanilla's join message for a player, to everyone but them.
+    pub fn announce_join(&self, conn: u32) {
+        let Some(g) = self.guest(conn) else { return };
+        self.broadcast_except(
+            conn,
+            &C::SystemChat(play::SystemChat {
+                content: yellow_names(
+                    "multiplayer.player.joined",
+                    vec![display_name(g.uuid, &g.name)],
+                ),
+                overlay: false,
+            }),
+        );
+    }
+    /// Vanilla's quit message for a player who left.
+    pub fn announce_leave(&self, uuid: u128, name: &str) {
         self.system_message(yellow_names(
             "multiplayer.player.left",
-            vec![display_name(g.uuid, &g.name)],
+            vec![display_name(uuid, name)],
         ));
-        g
     }
 
     /// Time and weather (ServerLevel.tickTime / advanceWeatherCycle broadcasts).
@@ -2591,6 +2641,57 @@ fn shared_flags(sneaking: bool, sprinting: bool, gliding: bool) -> i8 {
         shared |= -128;
     }
     shared
+}
+
+/// Adds `labels` to a command tree: each a literal taking a greedy string
+/// whose suggestions the server gives (`minecraft:ask_server`). A vanilla
+/// command of the same name is replaced.
+fn add_extra_commands(
+    packet: &mut play::Commands,
+    labels: &[String],
+    builtin: &horizon_protocol::registry::Builtin,
+) {
+    if labels.is_empty() {
+        return;
+    }
+    let string = builtin
+        .get("minecraft:command_argument_type")
+        .and_then(|t| t.id("brigadier:string"))
+        .unwrap_or(5);
+    let root = packet.root as usize;
+    let taken: Vec<i32> = packet.nodes[root]
+        .children
+        .iter()
+        .copied()
+        .filter(|&c| labels.iter().any(|l| packet.nodes[c as usize].name == *l))
+        .collect();
+    packet.nodes[root].children.retain(|c| !taken.contains(c));
+    for label in labels {
+        let args = packet.nodes.len() as i32;
+        packet.nodes.push(play::CommandNode {
+            kind: 2,
+            executable: true,
+            restricted: false,
+            children: Vec::new(),
+            redirect: None,
+            name: "args".into(),
+            // StringArgumentType.greedyString: property 2.
+            parser: Some((string, vec![2])),
+            suggestions: Some("minecraft:ask_server".into()),
+        });
+        let literal = packet.nodes.len() as i32;
+        packet.nodes.push(play::CommandNode {
+            kind: 1,
+            executable: true,
+            restricted: false,
+            children: vec![args],
+            redirect: None,
+            name: label.clone(),
+            parser: None,
+            suggestions: None,
+        });
+        packet.nodes[root].children.push(literal);
+    }
 }
 
 #[cfg(test)]

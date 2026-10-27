@@ -385,7 +385,9 @@ impl Game<'_> {
             } else {
                 self.follow_distances(&flags);
                 let started = Instant::now();
+                self.plugins_before_tick();
                 self.tick_server_timed(false)?;
+                self.plugins_after_tick();
                 // MinecraftServer.tickServer's tick times, for /tick query.
                 self.clock.record(started.elapsed());
                 self.debug_charts.log_tick(started, started.elapsed());
@@ -397,6 +399,7 @@ impl Game<'_> {
             self.apply_publish();
             self.wait_for_next_server_tick(&mut next, paused);
         }
+        self.plugins_stop();
         self.stop_integrated()
     }
 

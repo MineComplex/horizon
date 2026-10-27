@@ -44,6 +44,11 @@ index = ["dep:sha2", "dep:minisign-verify", "dep:horizon-shader-api", "dep:wasmp
 name = "sandbox"
 required-features = ["runtime", "pack"]
 
+# Real plugins on the fake server (docs/plugins.md).
+[[test]]
+name = "plugins"
+required-features = ["runtime", "pack"]
+
 # docs/api/mods-reference.md from the WIT contract (HORIZON_WRITE_DOCS=1 rewrites it).
 [[test]]
 name = "api_reference"

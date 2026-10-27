@@ -643,10 +643,95 @@ fn network_stack(
         }
     }
     if let Some(name) = s.custom_name() {
+        let text = s
+            .custom_name_rich()
+            .cloned()
+            .unwrap_or_else(|| horizon_protocol::text::literal(name));
         stack.added.push((
             horizon_protocol::item::component::CUSTOM_NAME,
-            horizon_protocol::item::Component::Text(horizon_protocol::text::literal(name)),
+            horizon_protocol::item::Component::Text(text),
         ));
+    }
+    // Components Horizon keeps as loaded that clients show (a plugin's menu
+    // items: lore, glint, models, hidden tooltips), as vanilla syncs them.
+    if let Some(d) = s.data() {
+        use horizon_protocol::item::{Component as P, component as id};
+        use horizon_world::nbt::Tag;
+        if let Some(Tag::List(lines)) = d.other("minecraft:lore") {
+            stack.added.push((id::LORE, P::Lore(lines.clone())));
+        }
+        if d.other("minecraft:unbreakable").is_some() {
+            stack.added.push((id::UNBREAKABLE, P::Unit));
+        }
+        if let Some(Tag::Byte(b)) = d.other("minecraft:enchantment_glint_override") {
+            stack.added.push((id::ENCHANTMENT_GLINT_OVERRIDE, P::Bool(*b != 0)));
+        }
+        if let Some(Tag::Int(v)) = d.other("minecraft:max_stack_size") {
+            stack.added.push((id::MAX_STACK_SIZE, P::Int(*v)));
+        }
+        if let Some(Tag::Int(v)) = d.other("minecraft:max_damage") {
+            stack.added.push((id::MAX_DAMAGE, P::Int(*v)));
+        }
+        if let Some(c @ Tag::Compound(_)) = d.other("minecraft:custom_data") {
+            stack.added.push((id::CUSTOM_DATA, P::Nbt(c.clone())));
+        }
+        if let Some(c) = d.other("minecraft:custom_model_data") {
+            let list = |k: &str| match c.get(k) {
+                Some(Tag::List(l)) => l.clone(),
+                _ => Vec::new(),
+            };
+            stack.added.push((
+                id::CUSTOM_MODEL_DATA,
+                P::CustomModelData {
+                    floats: list("floats")
+                        .iter()
+                        .filter_map(|t| match t {
+                            Tag::Float(v) => Some(f32::from_bits(*v)),
+                            Tag::Double(v) => Some(f64::from_bits(*v) as f32),
+                            Tag::Int(v) => Some(*v as f32),
+                            _ => None,
+                        })
+                        .collect(),
+                    flags: list("flags")
+                        .iter()
+                        .filter_map(|t| match t {
+                            Tag::Byte(b) => Some(*b != 0),
+                            _ => None,
+                        })
+                        .collect(),
+                    strings: list("strings")
+                        .iter()
+                        .filter_map(|t| match t {
+                            Tag::String(s) => Some(s.to_string_lossy()),
+                            _ => None,
+                        })
+                        .collect(),
+                    colors: list("colors")
+                        .iter()
+                        .filter_map(|t| match t {
+                            Tag::Int(v) => Some(*v),
+                            _ => None,
+                        })
+                        .collect(),
+                },
+            ));
+        }
+        if let Some(c) = d.other("minecraft:tooltip_display") {
+            let hide = matches!(c.get("hide_tooltip"), Some(Tag::Byte(1)));
+            let hidden = match c.get("hidden_components") {
+                Some(Tag::List(l)) => l
+                    .iter()
+                    .filter_map(|t| match t {
+                        Tag::String(s) => {
+                            synced_id("minecraft:data_component_type", &s.to_string_lossy())
+                        }
+                        _ => None,
+                    })
+                    .collect(),
+                _ => Vec::new(),
+            };
+            stack.added.push((id::TOOLTIP_DISPLAY, P::TooltipDisplay { hide, hidden }));
+        }
     }
     // The component as loaded, so a translatable name stays one.
     if let Some(name) = s.data().and_then(|d| d.other("minecraft:item_name")) {
