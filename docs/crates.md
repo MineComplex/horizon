@@ -19,7 +19,6 @@ Velocity analog.
    `WorkerContext` builds meshes from block models. Block models, sprites and the mesher are client-only.
 3. `Game::world_data` (`horizon_game::world_data::WorldData`): game rules, difficulty, clock, time markers,
    timelines and the command registries, out of the window's `UiState`.
-
 4. `Game::front` (`Frontend` in game.rs): the 84 fields only a window uses (window, renderer, input,
    fog, LOD, camera, sounds, HUD widgets) in one struct, apart from the simulation's.
 
