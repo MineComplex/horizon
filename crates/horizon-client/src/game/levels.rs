@@ -129,6 +129,68 @@ impl Levels {
 }
 
 impl Game<'_> {
+    /// A new level for `dim`, opened from the save (`MinecraftServer.createLevels`).
+    fn open_level(&self, dim: Dim) -> Result<Parked> {
+        let (streaming, save, locator) = super::world_loading::make_streaming(
+            &self.res,
+            &self.pack,
+            &self.options,
+            &self.settings,
+            &self.world_root,
+            dim,
+            self.level.seed,
+        )?;
+        let mut world = World::new(self.res.facts().air, self.level.seed);
+        world.fast_lava = dim == Dim::Nether;
+        Ok(Parked {
+            world,
+            streaming,
+            locator,
+            save,
+            block_ticks: Ticks::new(self.level.seed as i32),
+            tick_chunks: Default::default(),
+            tickets: Default::default(),
+            random_tick_sections: Default::default(),
+            level_events: Vec::new(),
+            falling: Vec::new(),
+            paintings: Vec::new(),
+            item_frames: Vec::new(),
+            armor_stands: Vec::new(),
+            cushions: Vec::new(),
+            others: Vec::new(),
+            boats: Vec::new(),
+            carts: Vec::new(),
+            jukebox_sounds: HashMap::new(),
+            bolts: Vec::new(),
+            crystals: Vec::new(),
+            dragon: None,
+            dragon_fireballs: Vec::new(),
+            breath_clouds: Vec::new(),
+            tridents: Vec::new(),
+            rockets: Vec::new(),
+            ominous_spawners: Vec::new(),
+            tnts: Vec::new(),
+            hoppers: HashMap::new(),
+            mobs: Vec::new(),
+            knot_ids: HashMap::new(),
+            projectiles: Vec::new(),
+            dropped: Vec::new(),
+            orbs: Vec::new(),
+            persist: Default::default(),
+            lectern_pulses: Vec::new(),
+            lid_openers: HashMap::new(),
+            lan_events: Vec::new(),
+            lan_block_events: Vec::new(),
+            lan_entity_events: Vec::new(),
+            lan_critical_hits: Vec::new(),
+            anims: Default::default(),
+            raiding: Default::default(),
+            sculk: Default::default(),
+            creaking: Default::default(),
+            idle: 0,
+        })
+    }
+
     /// Exchange the level in place with `p`.
     fn swap_level(&mut self, p: &mut Parked) {
         use std::mem::swap;
@@ -175,7 +237,7 @@ impl Game<'_> {
         swap(&mut self.lan_block_events, &mut p.lan_block_events);
         swap(&mut self.lan_entity_events, &mut p.lan_entity_events);
         swap(&mut self.lan_critical_hits, &mut p.lan_critical_hits);
-        let (a, b) = (&mut self.front.be_anims, &mut p.anims);
+        let (a, b) = (&mut self.be_anims, &mut p.anims);
         swap(&mut a.chests, &mut b.chests);
         swap(&mut a.books, &mut b.books);
         swap(&mut a.shulkers, &mut b.shulkers);
@@ -429,68 +491,5 @@ impl Game<'_> {
             self.save_level(wait)?;
         }
         self.enter_level(None, back)
-    }
-}
-impl crate::game::Sim<'_> {
-    /// A new level for `dim`, opened from the save (`MinecraftServer.createLevels`).
-    fn open_level(&self, dim: Dim) -> Result<Parked> {
-        let (streaming, save, locator) = super::world_loading::make_streaming(
-            &self.res,
-            &self.pack,
-            &self.options,
-            &self.settings,
-            &self.world_root,
-            dim,
-            self.level.seed,
-        )?;
-        let mut world = World::new(self.res.facts().air, self.level.seed);
-        world.fast_lava = dim == Dim::Nether;
-        Ok(Parked {
-            world,
-            streaming,
-            locator,
-            save,
-            block_ticks: Ticks::new(self.level.seed as i32),
-            tick_chunks: Default::default(),
-            tickets: Default::default(),
-            random_tick_sections: Default::default(),
-            level_events: Vec::new(),
-            falling: Vec::new(),
-            paintings: Vec::new(),
-            item_frames: Vec::new(),
-            armor_stands: Vec::new(),
-            cushions: Vec::new(),
-            others: Vec::new(),
-            boats: Vec::new(),
-            carts: Vec::new(),
-            jukebox_sounds: HashMap::new(),
-            bolts: Vec::new(),
-            crystals: Vec::new(),
-            dragon: None,
-            dragon_fireballs: Vec::new(),
-            breath_clouds: Vec::new(),
-            tridents: Vec::new(),
-            rockets: Vec::new(),
-            ominous_spawners: Vec::new(),
-            tnts: Vec::new(),
-            hoppers: HashMap::new(),
-            mobs: Vec::new(),
-            knot_ids: HashMap::new(),
-            projectiles: Vec::new(),
-            dropped: Vec::new(),
-            orbs: Vec::new(),
-            persist: Default::default(),
-            lectern_pulses: Vec::new(),
-            lid_openers: HashMap::new(),
-            lan_events: Vec::new(),
-            lan_block_events: Vec::new(),
-            lan_entity_events: Vec::new(),
-            lan_critical_hits: Vec::new(),
-            anims: Default::default(),
-            raiding: Default::default(),
-            sculk: Default::default(),
-            creaking: Default::default(),
-            idle: 0,
-        })
     }
 }

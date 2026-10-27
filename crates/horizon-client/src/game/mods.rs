@@ -271,6 +271,7 @@ impl Game<'_> {
             );
         }
     }
+    pub(super) fn merge_remote_tree(&mut self) {}
     pub(super) fn sync_mods(&mut self) {}
     pub(super) fn tick_mods(&mut self) {}
     pub(super) fn mods_frame(&mut self, _elapsed: Duration) {}
@@ -287,10 +288,6 @@ impl Game<'_> {
         false
     }
     pub(super) fn mod_screen_scroll(&mut self, _delta: f32) {}
-}
-#[cfg(not(feature = "mods"))]
-impl crate::game::Sim<'_> {
-    pub(super) fn merge_remote_tree(&mut self) {}
 }
 
 #[cfg(feature = "mods")]
@@ -319,19 +316,95 @@ impl Game<'_> {
             .filter_map(|p| horizon_mods::Package::read(p).ok())
             .map(|p| p.manifest.id)
             .collect();
-        let enabled = &self.sim.settings.mods.enabled;
+        let enabled = &self.settings.mods.enabled;
         let on = |id: &str| enabled.contains(id) || dev_ids.iter().any(|d| d == id);
         let mods = Mods::load_for(self.mod_runs(), &paths, on, vanilla_command);
-        self.sim.mods.mods = mods;
-        let chosen = &self.sim.settings.mods;
-        self.sim.mods.mods.set_bindings(|id| chosen.keys_of(id));
+        self.mods.mods = mods;
+        let chosen = &self.settings.mods;
+        self.mods.mods.set_bindings(|id| chosen.keys_of(id));
         // Entries were replaced wholesale: a screen's owner index is stale.
-        self.sim.mods.screen = None;
+        self.mods.screen = None;
         // Content mods may have changed the items: remade on the next read.
         self.mods.recipes = None;
         self.list_mods();
         self.sync_mod_commands();
         self.show_mod_output();
+    }
+    /// Which mods this game runs: a server the server mods, the window
+    /// client mods, and both when it simulates the world itself (in-frame).
+    fn mod_runs(&self) -> Runs {
+        match self.options.execution_role {
+            ExecutionRole::IntegratedServer | ExecutionRole::DedicatedServer => Runs::Server,
+            ExecutionRole::Client if self.options.server_thread => Runs::Client,
+            ExecutionRole::Client => Runs::Both,
+        }
+    }
+    /// The Mods page's rows, from what loaded.
+    fn list_mods(&mut self) {
+        self.mods.server = self.mods.mods.runs_server();
+        self.mods.world = self.mods.mods.wants_world();
+        let dev = &self.mods.dev;
+        self.settings.mods.installed = self
+            .mods
+            .mods
+            .entries()
+            .iter()
+            .map(|e| {
+                let file = e.path.file_name().unwrap_or_default().to_string_lossy();
+                let problem = match &e.status {
+                    Status::Failed(reason) => Some(format!("Stopped: {reason}")),
+                    _ => None,
+                };
+                let Some(m) = &e.manifest else {
+                    return Installed {
+                        id: String::new(),
+                        title: file.into_owned(),
+                        description: String::new(),
+                        problem,
+                        dev: false,
+                        has_settings: false,
+                    };
+                };
+                // What it may do first: the row cuts long descriptions.
+                let may: Vec<&str> = m.capabilities.iter().map(|c| c.describe()).collect();
+                let may = if may.is_empty() {
+                    "Asks for nothing.".to_owned()
+                } else {
+                    format!("May {}.", may.join(", "))
+                };
+                Installed {
+                    id: m.id.clone(),
+                    title: format!("{} {}", m.name, m.version),
+                    description: format!("{may} {}", m.description).trim().to_owned(),
+                    problem,
+                    dev: dev.contains(&e.path),
+                    has_settings: e.has_ui_settings(),
+                }
+            })
+            .collect();
+    }
+    /// The chat's tree after the running mods changed.
+    fn sync_mod_commands(&mut self) {
+        // In-frame, the window runs server mods too: their names, free text
+        // here (the server parses their arguments).
+        let server = self.mods.mods.server_commands().map(|c| c.name.as_str());
+        let mut names = self.mods.mods.commands().chain(server).peekable();
+        self.mods.tree = names
+            .peek()
+            .is_some()
+            .then(|| vanilla::game_dispatcher().with_mod_commands(names));
+        self.merge_remote_tree();
+    }
+
+    /// The server's command tree with the mods' commands, for the chat.
+    pub(super) fn merge_remote_tree(&mut self) {
+        let names: Vec<String> = self.mods.mods.commands().map(str::to_owned).collect();
+        self.mods.remote_tree = self
+            .remote
+            .as_ref()
+            .and_then(|r| r.commands.as_ref())
+            .filter(|_| !names.is_empty())
+            .map(|t| t.with_mod_commands(names.iter().map(String::as_str)));
     }
 
     /// After the options changed: restart the mods if the list of the ones
@@ -399,7 +472,7 @@ impl Game<'_> {
             })
             .collect();
         if self.mods.font_widths.is_empty() {
-            let atlas = &self.front.gui.atlas;
+            let atlas = &self.gui.atlas;
             self.mods.font_widths = (0..FONT_CHARS)
                 .map(|c| char::from_u32(c).map_or(6.0, |c| atlas.glyph_cell(c).1))
                 .collect();
@@ -463,7 +536,7 @@ impl Game<'_> {
         dir: [f64; 3],
         reach: f64,
     ) -> Option<([i32; 3], [f64; 3], horizon_world::registry::BlockStateId)> {
-        let lod = self.front.lod.as_ref()?;
+        let lod = self.lod.as_ref()?;
         let mut t = 0.0;
         while t <= reach {
             let p = [0, 1, 2].map(|i| eye[i] + dir[i] * t);
@@ -477,6 +550,35 @@ impl Game<'_> {
             t += 1.0;
         }
         None
+    }
+    /// A mod's `command.run-quiet` lines (vanilla's commands only, as
+    /// `command.run`): to a server that runs them quietly as one payload
+    /// (`horizon_protocol::quiet`), to any other as chat commands, or for this
+    /// window's own world next tick.
+    fn mod_quiet_commands(&mut self, mod_id: String, lines: Vec<String>) {
+        let lines: Vec<String> = lines
+            .into_iter()
+            .filter(|l| vanilla_command(l.split(' ').next().unwrap_or_default()))
+            .collect();
+        match self.remote.as_ref().map(|r| r.quiet_commands) {
+            Some(true) => {
+                for data in horizon_protocol::quiet::encode(&mod_id, &lines) {
+                    self.send(horizon_protocol::packets::play::Serverbound::CustomPayload(
+                        horizon_protocol::packets::configuration::CustomPayload {
+                            channel: horizon_protocol::quiet::CHANNEL.into(),
+                            data,
+                        },
+                    ));
+                }
+            }
+            // The server checks the player's permissions; its feedback shows.
+            Some(false) => {
+                for line in lines {
+                    self.send_chat(&format!("/{line}"));
+                }
+            }
+            None => self.mods.quiet.push((mod_id, lines)),
+        }
     }
     /// A quiet batch in this window's own world, as a server runs one
     /// (game/lan_quiet.rs): each line as the player typing it, no chat, a
@@ -504,13 +606,13 @@ impl Game<'_> {
         for (mod_id, lines) in std::mem::take(&mut self.mods.quiet) {
             self.run_quiet_batch(&mod_id, &lines);
         }
-        if !self.sim.mods.mods.is_running() {
+        if !self.mods.mods.is_running() {
             return;
         }
         self.tick_mod_use();
         let snapshot = self.mod_snapshot();
-        self.sim.mods.mods.set_snapshot(snapshot);
-        self.sim.mods.mods.tick(self.sim.ticks);
+        self.mods.mods.set_snapshot(snapshot);
+        self.mods.mods.tick(self.ticks);
         self.show_mod_output();
     }
     /// Restarts the dev mods rebuilt since the last check, once a second.
@@ -523,13 +625,13 @@ impl Game<'_> {
         {
             return;
         }
-        self.sim.mods.checked = Some(Instant::now());
-        if self.sim.mods.mods.reload_changed(vanilla_command) {
-            let chosen = &self.sim.settings.mods;
-            self.sim.mods.mods.set_bindings(|id| chosen.keys_of(id));
+        self.mods.checked = Some(Instant::now());
+        if self.mods.mods.reload_changed(vanilla_command) {
+            let chosen = &self.settings.mods;
+            self.mods.mods.set_bindings(|id| chosen.keys_of(id));
             self.list_mods();
             self.sync_mod_commands();
-            if self.sim.options.execution_role.is_client() {
+            if self.options.execution_role.is_client() {
                 self.system_message(Text::literal("Mods reloaded").with_color(text::GRAY));
             } else {
                 log::info!("Horizon: mods reloaded");
@@ -651,8 +753,8 @@ impl Game<'_> {
         }
         // A mod may set or clear its settings page in any call, not only
         // while loading: its row's Settings button follows.
-        let rows = self.sim.settings.mods.installed.iter_mut();
-        for (row, e) in rows.zip(self.sim.mods.mods.entries()) {
+        let rows = self.settings.mods.installed.iter_mut();
+        for (row, e) in rows.zip(self.mods.mods.entries()) {
             row.has_settings = e.has_ui_settings();
         }
     }
@@ -660,13 +762,13 @@ impl Game<'_> {
     /// must not hear its own lines.
     /// Written by this client, so the Chat option doesn't hide it.
     pub(super) fn add_mod_chat_line(&mut self, line: Text) {
-        let focused = self.sim.screen == Screen::Chat;
-        self.sim.ui.chat.add(
-            &self.front.gui.atlas,
+        let focused = self.screen == Screen::Chat;
+        self.ui.chat.add(
+            &self.gui.atlas,
             line,
             None,
             horizon_client::chat::ChatSource::Client,
-            self.sim.ticks,
+            self.ticks,
             focused,
         );
     }
@@ -688,7 +790,7 @@ impl Game<'_> {
                 .iter()
                 .map(|l| (l.text.as_str(), l.color))
                 .collect();
-            extras_hud::draw_lines(batch, &self.front.gui.atlas, corners, corner, &lines);
+            extras_hud::draw_lines(batch, &self.gui.atlas, corners, corner, &lines);
         }
         // Capability `render`'s corner panels, placed the same way.
         for panel in self.mods.mods.corner_panels() {
@@ -863,16 +965,16 @@ impl Game<'_> {
     /// The mod's screen or settings page: its title over widgets stacked
     /// down the middle, a Done button, Esc to leave (vanilla's menus).
     pub(super) fn draw_mod_screen(&mut self, batch: &mut HudBatch) {
-        let Some(ms) = self.sim.mods.screen.as_mut() else {
+        let Some(ms) = self.mods.screen.as_mut() else {
             // The screen was dropped while it was up: back to the world,
             // mouse held again like any return to Playing.
-            self.sim.screen = Screen::Playing;
-            if self.sim.player.is_some() {
+            self.screen = Screen::Playing;
+            if self.player.is_some() {
                 self.capture(true);
             }
             return;
         };
-        let Some((title, widgets)) = Self::mod_ui_view(&self.sim.mods.mods, ms) else {
+        let Some((title, widgets)) = Self::mod_ui_view(&self.mods.mods, ms) else {
             // The mod's surface is gone (it stopped or cleared it): leave
             // the screen like Done did, without `closed` — the mod ended it.
             self.close_mod_screen(false);
@@ -881,8 +983,8 @@ impl Game<'_> {
         // Item icons draw in a second pass: `draw_item` needs `&mut self`,
         // so `atlas` may not stay borrowed across it.
         let mut items: Vec<(String, f32, f32)> = Vec::new();
-        let atlas = &self.front.gui.atlas;
-        let in_world = self.sim.player.is_some();
+        let atlas = &self.gui.atlas;
+        let in_world = self.player.is_some();
         ui::menu_background(batch, atlas, 0.0, 0.0, batch.width, batch.height, in_world);
         ui::centered_text(
             batch,
@@ -896,10 +998,10 @@ impl Game<'_> {
         let cx = (batch.width / 2.0).floor();
         let x = cx - MOD_UI_COLUMN / 2.0;
         // A settings page starts with the mod's keys, as Key Binds rows.
-        let keys = Self::mod_page_keys(&self.sim.mods.mods, ms);
+        let keys = Self::mod_page_keys(&self.mods.mods, ms);
         for (i, k) in keys.iter().enumerate() {
             let wy = MOD_UI_TOP + i as f32 * MOD_UI_KEY_ROW;
-            let hover = ui::hovered(self.front.cursor, x, wy, MOD_UI_COLUMN, 20.0);
+            let hover = ui::hovered(self.cursor, x, wy, MOD_UI_COLUMN, 20.0);
             let waiting = ms.binding.as_deref() == Some(k.name.as_str());
             let label = Self::mod_key_label(k, waiting);
             ui::button(
@@ -920,7 +1022,7 @@ impl Game<'_> {
         for (w, &(wy, wh)) in widgets.iter().zip(&layout) {
             match w {
                 UiWidget::Button(b) => {
-                    let hover = ui::hovered(self.front.cursor, x, wy, MOD_UI_COLUMN, 20.0);
+                    let hover = ui::hovered(self.cursor, x, wy, MOD_UI_COLUMN, 20.0);
                     let label = Text::literal(b.label.clone());
                     ui::button(
                         batch,
@@ -951,7 +1053,7 @@ impl Game<'_> {
                     );
                 }
                 UiWidget::Item(i) => {
-                    if self.sim.res.items().get(&i.item).is_some() {
+                    if self.res.items().get(&i.item).is_some() {
                         items.push((i.item.clone(), x + 2.0, wy + 2.0));
                     } else {
                         batch.text(atlas, "?", x + 6.0, wy + 6.0, u32::MAX, true);
@@ -989,7 +1091,7 @@ impl Game<'_> {
                         .min(l.rows.len());
                     for (vi, ri) in (first..last).enumerate() {
                         let ry = rows_top + vi as f32 * 12.0 - (scroll.amount % 12.0);
-                        if ui::hovered(self.front.cursor, x, ry, MOD_UI_COLUMN - 6.0, 12.0) {
+                        if ui::hovered(self.cursor, x, ry, MOD_UI_COLUMN - 6.0, 12.0) {
                             batch.fill(atlas, x + 1.0, ry, MOD_UI_COLUMN - 8.0, 12.0, 0x20FF_FFFF);
                         }
                         if l.selected == Some(ri as u32) {
@@ -1016,13 +1118,7 @@ impl Game<'_> {
                 }
             }
         }
-        let hover = ui::hovered(
-            self.front.cursor,
-            cx - 100.0,
-            batch.height - 27.0,
-            200.0,
-            20.0,
-        );
+        let hover = ui::hovered(self.cursor, cx - 100.0, batch.height - 27.0, 200.0, 20.0);
         ui::button(
             batch,
             atlas,
@@ -1056,16 +1152,16 @@ impl Game<'_> {
             return;
         }
         let (w, h) = self.gui_size();
-        let cursor = self.front.cursor;
+        let cursor = self.cursor;
         if ui::hovered(cursor, (w / 2.0).floor() - 100.0, h - 27.0, 200.0, 20.0) {
-            self.front.audio.play_button_click();
+            self.audio.play_button_click();
             self.close_mod_screen(true);
             return;
         }
-        let Some(ms) = self.sim.mods.screen.as_ref() else {
+        let Some(ms) = self.mods.screen.as_ref() else {
             return;
         };
-        let Some((_, widgets)) = Self::mod_ui_view(&self.sim.mods.mods, ms) else {
+        let Some((_, widgets)) = Self::mod_ui_view(&self.mods.mods, ms) else {
             return;
         };
         let owner = ms.owner;
@@ -1078,7 +1174,7 @@ impl Game<'_> {
         });
         if let Some(i) = picked {
             let name = keys[i].name.clone();
-            self.front.audio.play_button_click();
+            self.audio.play_button_click();
             if let Some(ms) = self.mods.screen.as_mut() {
                 ms.binding = Some(name);
             }
@@ -1094,9 +1190,9 @@ impl Game<'_> {
             if let UiWidget::Button(b) = w
                 && ui::hovered(cursor, x, wy, MOD_UI_COLUMN, 20.0)
             {
-                self.front.audio.play_button_click();
-                let owner = self.sim.mods.screen.as_ref().map_or(0, |ms| ms.owner);
-                self.sim.mods.mods.ui_select(owner, b.id, 0);
+                self.audio.play_button_click();
+                let owner = self.mods.screen.as_ref().map_or(0, |ms| ms.owner);
+                self.mods.mods.ui_select(owner, b.id, 0);
                 self.show_mod_output();
                 return;
             }
@@ -1113,7 +1209,7 @@ impl Game<'_> {
             }
         }
         if let Some((id, row)) = hit {
-            self.front.audio.play_button_click();
+            self.audio.play_button_click();
             self.mods.mods.ui_select(owner, id, row);
             self.show_mod_output();
         }
@@ -1121,16 +1217,16 @@ impl Game<'_> {
     /// The wheel over a `list` scrolls it.
     pub(super) fn mod_screen_scroll(&mut self, delta: f32) {
         let (w, h) = self.gui_size();
-        let cursor = self.front.cursor;
-        let Some(ms) = self.sim.mods.screen.as_mut() else {
+        let cursor = self.cursor;
+        let Some(ms) = self.mods.screen.as_mut() else {
             return;
         };
-        let Some((_, widgets)) = Self::mod_ui_view(&self.sim.mods.mods, ms) else {
+        let Some((_, widgets)) = Self::mod_ui_view(&self.mods.mods, ms) else {
             return;
         };
         let x = (w / 2.0).floor() - MOD_UI_COLUMN / 2.0;
         let top =
-            MOD_UI_TOP + Self::mod_page_keys(&self.sim.mods.mods, ms).len() as f32 * MOD_UI_KEY_ROW;
+            MOD_UI_TOP + Self::mod_page_keys(&self.mods.mods, ms).len() as f32 * MOD_UI_KEY_ROW;
         let layout = Self::mod_ui_layout(h, top, widgets);
         let mut list_i = 0usize;
         for (w, &(wy, wh)) in widgets.iter().zip(&layout) {
@@ -1143,113 +1239,6 @@ impl Game<'_> {
                 return;
             }
             list_i += 1;
-        }
-    }
-}
-#[cfg(feature = "mods")]
-impl crate::game::Sim<'_> {
-    /// Which mods this game runs: a server the server mods, the window
-    /// client mods, and both when it simulates the world itself (in-frame).
-    fn mod_runs(&self) -> Runs {
-        match self.options.execution_role {
-            ExecutionRole::IntegratedServer | ExecutionRole::DedicatedServer => Runs::Server,
-            ExecutionRole::Client if self.options.server_thread => Runs::Client,
-            ExecutionRole::Client => Runs::Both,
-        }
-    }
-    /// The Mods page's rows, from what loaded.
-    fn list_mods(&mut self) {
-        self.mods.server = self.mods.mods.runs_server();
-        self.mods.world = self.mods.mods.wants_world();
-        let dev = &self.mods.dev;
-        self.settings.mods.installed = self
-            .mods
-            .mods
-            .entries()
-            .iter()
-            .map(|e| {
-                let file = e.path.file_name().unwrap_or_default().to_string_lossy();
-                let problem = match &e.status {
-                    Status::Failed(reason) => Some(format!("Stopped: {reason}")),
-                    _ => None,
-                };
-                let Some(m) = &e.manifest else {
-                    return Installed {
-                        id: String::new(),
-                        title: file.into_owned(),
-                        description: String::new(),
-                        problem,
-                        dev: false,
-                        has_settings: false,
-                    };
-                };
-                // What it may do first: the row cuts long descriptions.
-                let may: Vec<&str> = m.capabilities.iter().map(|c| c.describe()).collect();
-                let may = if may.is_empty() {
-                    "Asks for nothing.".to_owned()
-                } else {
-                    format!("May {}.", may.join(", "))
-                };
-                Installed {
-                    id: m.id.clone(),
-                    title: format!("{} {}", m.name, m.version),
-                    description: format!("{may} {}", m.description).trim().to_owned(),
-                    problem,
-                    dev: dev.contains(&e.path),
-                    has_settings: e.has_ui_settings(),
-                }
-            })
-            .collect();
-    }
-    /// The chat's tree after the running mods changed.
-    fn sync_mod_commands(&mut self) {
-        // In-frame, the window runs server mods too: their names, free text
-        // here (the server parses their arguments).
-        let server = self.mods.mods.server_commands().map(|c| c.name.as_str());
-        let mut names = self.mods.mods.commands().chain(server).peekable();
-        self.mods.tree = names
-            .peek()
-            .is_some()
-            .then(|| vanilla::game_dispatcher().with_mod_commands(names));
-        self.merge_remote_tree();
-    }
-    /// The server's command tree with the mods' commands, for the chat.
-    pub(super) fn merge_remote_tree(&mut self) {
-        let names: Vec<String> = self.mods.mods.commands().map(str::to_owned).collect();
-        self.mods.remote_tree = self
-            .remote
-            .as_ref()
-            .and_then(|r| r.commands.as_ref())
-            .filter(|_| !names.is_empty())
-            .map(|t| t.with_mod_commands(names.iter().map(String::as_str)));
-    }
-    /// A mod's `command.run-quiet` lines (vanilla's commands only, as
-    /// `command.run`): to a server that runs them quietly as one payload
-    /// (`horizon_protocol::quiet`), to any other as chat commands, or for this
-    /// window's own world next tick.
-    fn mod_quiet_commands(&mut self, mod_id: String, lines: Vec<String>) {
-        let lines: Vec<String> = lines
-            .into_iter()
-            .filter(|l| vanilla_command(l.split(' ').next().unwrap_or_default()))
-            .collect();
-        match self.remote.as_ref().map(|r| r.quiet_commands) {
-            Some(true) => {
-                for data in horizon_protocol::quiet::encode(&mod_id, &lines) {
-                    self.send(horizon_protocol::packets::play::Serverbound::CustomPayload(
-                        horizon_protocol::packets::configuration::CustomPayload {
-                            channel: horizon_protocol::quiet::CHANNEL.into(),
-                            data,
-                        },
-                    ));
-                }
-            }
-            // The server checks the player's permissions; its feedback shows.
-            Some(false) => {
-                for line in lines {
-                    self.send_chat(&format!("/{line}"));
-                }
-            }
-            None => self.mods.quiet.push((mod_id, lines)),
         }
     }
 }

@@ -13,42 +13,41 @@ impl Game<'_> {
         let (music, volume) = self.situational_music();
         // Options.musicFrequency's listener: MusicManager.setMinutesBetweenSongs.
         let frequency = MusicFrequency::parse(&self.settings.file.name("musicFrequency"));
-        if frequency != self.front.music.frequency {
-            self.front.music.set_frequency(frequency, music.as_ref());
+        if frequency != self.music.frequency {
+            self.music.set_frequency(frequency, music.as_ref());
         }
         // LevelLoadingScreen: no new track before the player is in the world.
         let loading = self.title.is_none() && self.player.is_none() && self.win.is_none();
-        self.front
-            .music
-            .tick(music.as_ref(), volume, loading, &mut self.front.audio);
+        self.music
+            .tick(music.as_ref(), volume, loading, &mut self.audio);
     }
     /// `Minecraft.tick` -> `SoundManager.tick(pause)`, after the music, with
     /// `pauseAllExcept(MUSIC, UI)` when the game pauses and `resume` when it
     /// carries on.
     pub(super) fn tick_sound_engine(&mut self) {
-        if self.pause != self.front.sound_paused {
+        if self.pause != self.sound_paused {
             if self.pause {
-                self.front.audio.pause();
+                self.audio.pause();
             } else {
-                self.front.audio.resume();
+                self.audio.resume();
             }
-            self.front.sound_paused = self.pause;
+            self.sound_paused = self.pause;
         }
         let (vehicle, carts) = self.start_cart_sounds();
         let ctx = TickContext {
-            player_underwater: self.front.ambience.was_underwater(),
+            player_underwater: self.ambience.was_underwater(),
             player_removed: self.player.is_none(),
             vehicle,
             carts,
             frozen: !self.clock.runs_normally(),
         };
         self.flush_sounds();
-        self.front.audio.tick(self.pause, &ctx);
+        self.audio.tick(self.pause, &ctx);
     }
     /// Play what the game queued (`SoundOut`) on the window's mixer, in order.
     pub(super) fn flush_sounds(&mut self) {
         for cmd in std::mem::take(&mut self.sounds.queue) {
-            self.front.audio.apply(cmd);
+            self.audio.apply(cmd);
         }
     }
     /// `getSituationalMusic` and `getMusicVolume`.
@@ -83,12 +82,10 @@ impl Game<'_> {
             background: &background,
             probe_volume,
             creative: self.creative,
-            underwater: self.front.ambience.was_underwater(),
+            underwater: self.ambience.was_underwater(),
         };
         (situation.music(), situation.volume())
     }
-}
-impl crate::game::Sim<'_> {
     /// `BiomeManager.getNoiseBiomeAtPosition`: the quart cell holding a position.
     fn biome_at(&self, p: [f64; 3]) -> &str {
         let (x, y, z) = (
@@ -130,13 +127,9 @@ impl Game<'_> {
         };
         let feet = [p.position.x, p.position.y, p.position.z];
         let eye_y = feet[1] + f64::from(p.dimensions.eye_height);
-        let sounds = self
-            .sim
-            .res
-            .ambient()
-            .get(self.sim.dim.id(), self.biome_at(feet));
+        let sounds = self.res.ambient().get(self.dim.id(), self.biome_at(feet));
         let underwater = self.eye_in_water(feet[0], eye_y, feet[2]);
-        let world = &self.sim.world;
+        let world = &self.world;
         let light = |b: [i32; 3]| {
             let l = world.light(b[0], b[1], b[2]);
             (l >> 4, l & 15)
@@ -175,6 +168,6 @@ impl Game<'_> {
             light: &light,
             bubble_column,
         };
-        self.front.ambience.tick(&ctx, &mut self.front.audio);
+        self.ambience.tick(&ctx, &mut self.audio);
     }
 }

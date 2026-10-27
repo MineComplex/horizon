@@ -49,6 +49,25 @@ impl Game<'_> {
             0,
         );
     }
+    fn is_wither_skull(&self, p: [i32; 3]) -> bool {
+        let name = &*self
+            .res
+            .facts()
+            .get(self.world.block(p[0], p[1], p[2]))
+            .name;
+        matches!(
+            name,
+            "minecraft:wither_skeleton_skull" | "minecraft:wither_skeleton_wall_skull"
+        )
+    }
+    fn is_soul_base(&self, p: [i32; 3]) -> bool {
+        let name = &*self
+            .res
+            .facts()
+            .get(self.world.block(p[0], p[1], p[2]))
+            .name;
+        matches!(name, "minecraft:soul_sand" | "minecraft:soul_soil")
+    }
     /// After a wither skeleton skull is placed: the T of soul sand (or soul
     /// soil) under three skulls, upright along X or Z, becomes a wither.
     pub(super) fn check_wither_spawn(&mut self, placed: [i32; 3]) -> horizon_client::Result<()> {
@@ -158,27 +177,6 @@ impl Game<'_> {
         let result = self.with_hive_emptying_blast(|g| g.explode(at, 1.0));
         self.combat.explosion_owner = None;
         result
-    }
-}
-impl crate::game::Sim<'_> {
-    fn is_wither_skull(&self, p: [i32; 3]) -> bool {
-        let name = &*self
-            .res
-            .facts()
-            .get(self.world.block(p[0], p[1], p[2]))
-            .name;
-        matches!(
-            name,
-            "minecraft:wither_skeleton_skull" | "minecraft:wither_skeleton_wall_skull"
-        )
-    }
-    fn is_soul_base(&self, p: [i32; 3]) -> bool {
-        let name = &*self
-            .res
-            .facts()
-            .get(self.world.block(p[0], p[1], p[2]))
-            .name;
-        matches!(name, "minecraft:soul_sand" | "minecraft:soul_soil")
     }
 }
 /// Wither skulls drawn as the skull model, blue when dangerous.

@@ -77,9 +77,6 @@ impl Shake {
 #[cfg(not(feature = "mods"))]
 impl Game<'_> {
     pub(super) fn draw_mod_shapes(&self, _batch: &mut HudBatch) {}
-}
-#[cfg(not(feature = "mods"))]
-impl crate::game::Sim<'_> {
     pub(super) fn shaken_view(&mut self, yaw: f32, pitch: f32) -> (f32, f32) {
         (yaw, pitch)
     }
@@ -95,7 +92,7 @@ impl Game<'_> {
     }
     /// Shapes with their GUI coordinates moved by `(ox, oy)`.
     pub(super) fn draw_shapes(&self, batch: &mut HudBatch, shapes: &[Shape], (ox, oy): (f32, f32)) {
-        let atlas = &self.front.gui.atlas;
+        let atlas = &self.gui.atlas;
         for shape in shapes {
             match shape {
                 Shape::Fill(f) => {
@@ -143,9 +140,6 @@ impl Game<'_> {
             }
         }
     }
-}
-#[cfg(feature = "mods")]
-impl crate::game::Sim<'_> {
     /// The view's yaw and pitch after the mods' camera shakes; unchanged
     /// while none is fading.
     pub(super) fn shaken_view(&mut self, yaw: f32, pitch: f32) -> (f32, f32) {

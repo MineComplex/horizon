@@ -122,6 +122,26 @@ impl Game<'_> {
             .put(key, BlockEntity::TrialSpawner(spawner));
         result
     }
+    /// The trial spawner block at `key`: its state and ominous flag.
+    pub(super) fn trial_spawner_block(&self, key: Pos) -> Option<(TrialState, bool)> {
+        let block = self
+            .pack
+            .assets
+            .registry
+            .state(self.world.block(key.0, key.1, key.2))?;
+        if block.name != "minecraft:trial_spawner" {
+            return None;
+        }
+        let state = block
+            .properties
+            .get("trial_spawner_state")
+            .and_then(|s| TrialState::from_name(s))
+            .unwrap_or_default();
+        Some((
+            state,
+            block.properties.get("ominous").is_some_and(|v| v == "true"),
+        ))
+    }
     fn server_tick_trial_spawner(
         &mut self,
         key: Pos,
@@ -229,9 +249,9 @@ impl Game<'_> {
                 }
                 TrialEvent::TrialOmen(_) => self.bad_omen_to_trial_omen(),
                 TrialEvent::Discard(uuid) => {
-                    let id = self.sim.persist.uuids.iter().find(|(_, u)| **u == uuid);
+                    let id = self.persist.uuids.iter().find(|(_, u)| **u == uuid);
                     if let Some((id, _)) = id
-                        && let Some(m) = self.sim.mobs.iter_mut().find(|m| m.id == *id)
+                        && let Some(m) = self.mobs.iter_mut().find(|m| m.id == *id)
                     {
                         m.removed = true;
                     }
@@ -270,28 +290,6 @@ impl Game<'_> {
             .insert("ominous".into(), ominous.to_string());
         let id = self.pack.assets.registry.resolve(&block)?;
         self.level_set([key.0, key.1, key.2], id)
-    }
-}
-impl crate::game::Sim<'_> {
-    /// The trial spawner block at `key`: its state and ominous flag.
-    pub(super) fn trial_spawner_block(&self, key: Pos) -> Option<(TrialState, bool)> {
-        let block = self
-            .pack
-            .assets
-            .registry
-            .state(self.world.block(key.0, key.1, key.2))?;
-        if block.name != "minecraft:trial_spawner" {
-            return None;
-        }
-        let state = block
-            .properties
-            .get("trial_spawner_state")
-            .and_then(|s| TrialState::from_name(s))
-            .unwrap_or_default();
-        Some((
-            state,
-            block.properties.get("ominous").is_some_and(|v| v == "true"),
-        ))
     }
     /// `transformBadOmenIntoTrialOmen`: Bad Omen becomes Trial Omen, 15
     /// minutes per level, with Trial Omen's sound when it is new.

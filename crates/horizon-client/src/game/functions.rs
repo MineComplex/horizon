@@ -48,6 +48,9 @@ pub(super) enum Outcome {
 impl Game<'_> {
     // ---- loading -----------------------------------------------------------
 
+    fn datapack_settings_path(&self) -> std::path::PathBuf {
+        self.world_root.join("datapacks.json")
+    }
     /// Discover and load the data packs of the world (once, or on `/reload`).
     pub(super) fn ensure_datapacks(&mut self) {
         if self.fns.loaded || self.world_root.as_os_str().is_empty() {
@@ -110,27 +113,100 @@ impl Game<'_> {
         self.fns.store = store;
         self.sync_function_registries();
     }
+    fn save_datapack_settings(&self) {
+        let disabled: Vec<&String> = self
+            .fns
+            .packs
+            .iter()
+            .map(|p| &p.id)
+            .filter(|id| !self.fns.enabled.contains(id))
+            .collect();
+        let json = serde_json::json!({"enabled": self.fns.enabled, "disabled": disabled});
+        let _ = std::fs::write(self.datapack_settings_path(), json.to_string());
+    }
     pub(super) fn sync_function_registries(&mut self) {
-        let reg = &mut self.sim.world_data.registries;
-        reg.functions = self.sim.fns.store.functions.keys().cloned().collect();
-        reg.function_tags = self.sim.fns.store.function_tags.keys().cloned().collect();
-        reg.predicates = self.sim.fns.store.predicates.keys().cloned().collect();
-        reg.item_modifiers = self.sim.fns.store.item_modifiers.keys().cloned().collect();
-        reg.schedules = self.sim.fns.schedule.iter().map(|s| s.id.clone()).collect();
+        let reg = &mut self.world_data.registries;
+        reg.functions = self.fns.store.functions.keys().cloned().collect();
+        reg.function_tags = self.fns.store.function_tags.keys().cloned().collect();
+        reg.predicates = self.fns.store.predicates.keys().cloned().collect();
+        reg.item_modifiers = self.fns.store.item_modifiers.keys().cloned().collect();
+        reg.schedules = self.fns.schedule.iter().map(|s| s.id.clone()).collect();
         reg.datapacks_enabled = std::iter::once("vanilla".to_owned())
-            .chain(self.sim.fns.enabled.iter().cloned())
+            .chain(self.fns.enabled.iter().cloned())
             .collect();
         reg.datapacks_disabled = self
-            .sim
             .fns
             .packs
             .iter()
             .map(|p| p.id.clone())
-            .filter(|id| !self.sim.fns.enabled.contains(id))
+            .filter(|id| !self.fns.enabled.contains(id))
             .collect();
     }
 
     // ---- scheduled events ------------------------------------------------------
+
+    fn schedule_path(&self) -> std::path::PathBuf {
+        self.world_root.join("data/minecraft/scheduled_events.dat")
+    }
+    fn load_schedule(&mut self) {
+        let Some(root) = save::read_dat(&self.schedule_path()) else {
+            return;
+        };
+        let Some(Tag::List(events)) = root.get("data").and_then(|d| d.get("events")) else {
+            return;
+        };
+        for e in events {
+            let (Some(Tag::Long(time)), Some(Tag::String(id)), Some(cb)) =
+                (e.get("trigger_time"), e.get("id"), e.get("callback"))
+            else {
+                continue;
+            };
+            let _ = cb;
+            self.fns.next_seq += 1;
+            self.fns.schedule.push(Scheduled {
+                id: id.to_string_lossy(),
+                time: *time,
+                seq: self.fns.next_seq,
+            });
+        }
+    }
+    pub(super) fn save_schedule(&self) {
+        if !self.fns.loaded || self.remote.is_some() {
+            return;
+        }
+        let mut events = self.fns.schedule.clone();
+        events.sort_by_key(|e| (e.time, e.seq));
+        let list = events
+            .iter()
+            .map(|e| {
+                let (kind, name) = match e.id.strip_prefix('#') {
+                    Some(tag) => ("minecraft:function_tag", tag),
+                    None => ("minecraft:function", e.id.as_str()),
+                };
+                Tag::compound([
+                    ("trigger_time", Tag::Long(e.time)),
+                    ("id", Tag::String(e.id.as_str().into())),
+                    (
+                        "callback",
+                        Tag::compound([
+                            ("type", Tag::String(kind.into())),
+                            ("id", Tag::String(name.into())),
+                        ]),
+                    ),
+                ])
+            })
+            .collect();
+        if events.is_empty() && !self.schedule_path().exists() {
+            return;
+        }
+        let _ = save::write_dat(
+            &self.schedule_path(),
+            Tag::compound([
+                ("data", Tag::compound([("events", Tag::List(list))])),
+                ("DataVersion", Tag::Int(horizon_world::DATA_VERSION)),
+            ]),
+        );
+    }
 
     // ---- ticking -----------------------------------------------------------------
 
@@ -459,6 +535,49 @@ impl Game<'_> {
         self.reload_datapacks(true);
         Ok(0)
     }
+    /// `PackLocationInfo.createChatLink`: the id decorated with its source
+    /// (`pack.nameAndSource`, grey) in brackets, green when enabled.
+    fn pack_link(&self, id: &str, enabled: bool) -> Text {
+        let hint = if enabled { "disable" } else { "enable" };
+        let style = text::Style {
+            color: Some(if enabled { text::GREEN } else { text::RED }),
+            click: Some(text::ClickEvent::SuggestCommand(format!(
+                "/datapack {hint} \"{id}\""
+            ))),
+            ..text::Style::default()
+        };
+        let description = self
+            .fns
+            .packs
+            .iter()
+            .find(|p| p.id == id)
+            .map_or_else(|| "Default data pack".to_owned(), DataPack::description);
+        let style = text::Style {
+            hover: Some(Box::new(Text::literal(format!("{id}\n{description}")))),
+            ..style
+        };
+        let source = if id == "vanilla" {
+            "pack.source.builtin"
+        } else if FEATURE_PACKS.iter().any(|(p, _)| *p == id) {
+            "pack.source.feature"
+        } else {
+            "pack.source.world"
+        };
+        let name = Text::translate(
+            "pack.nameAndSource",
+            &[Text::literal(id), Text::translate(source, &[])],
+        )
+        .with_color(text::GRAY);
+        bracketed(name).with_style(&style)
+    }
+    /// The selected packs, lowest priority first.
+    fn selected_packs(&self) -> Vec<String> {
+        let vanilla = (!self.cmds.vanilla_disabled).then(|| "vanilla".to_owned());
+        vanilla
+            .into_iter()
+            .chain(self.fns.enabled.iter().cloned())
+            .collect()
+    }
     pub(super) fn cmd_datapack(&mut self, id: &str, ctx: &Context) -> R<i32> {
         self.ensure_datapacks();
         let name = match ctx.get("name") {
@@ -598,127 +717,6 @@ impl Game<'_> {
         let source = self.command_source.unwrap_or_else(|| self.player_source());
         let view = source.entity.map(|t| self.entity_view_of(t));
         Ok(self.conditions_hold(&json, view.as_ref(), source.pos))
-    }
-}
-impl crate::game::Sim<'_> {
-    fn datapack_settings_path(&self) -> std::path::PathBuf {
-        self.world_root.join("datapacks.json")
-    }
-    fn save_datapack_settings(&self) {
-        let disabled: Vec<&String> = self
-            .fns
-            .packs
-            .iter()
-            .map(|p| &p.id)
-            .filter(|id| !self.fns.enabled.contains(id))
-            .collect();
-        let json = serde_json::json!({"enabled": self.fns.enabled, "disabled": disabled});
-        let _ = std::fs::write(self.datapack_settings_path(), json.to_string());
-    }
-    fn schedule_path(&self) -> std::path::PathBuf {
-        self.world_root.join("data/minecraft/scheduled_events.dat")
-    }
-    fn load_schedule(&mut self) {
-        let Some(root) = save::read_dat(&self.schedule_path()) else {
-            return;
-        };
-        let Some(Tag::List(events)) = root.get("data").and_then(|d| d.get("events")) else {
-            return;
-        };
-        for e in events {
-            let (Some(Tag::Long(time)), Some(Tag::String(id)), Some(cb)) =
-                (e.get("trigger_time"), e.get("id"), e.get("callback"))
-            else {
-                continue;
-            };
-            let _ = cb;
-            self.fns.next_seq += 1;
-            self.fns.schedule.push(Scheduled {
-                id: id.to_string_lossy(),
-                time: *time,
-                seq: self.fns.next_seq,
-            });
-        }
-    }
-    pub(super) fn save_schedule(&self) {
-        if !self.fns.loaded || self.remote.is_some() {
-            return;
-        }
-        let mut events = self.fns.schedule.clone();
-        events.sort_by_key(|e| (e.time, e.seq));
-        let list = events
-            .iter()
-            .map(|e| {
-                let (kind, name) = match e.id.strip_prefix('#') {
-                    Some(tag) => ("minecraft:function_tag", tag),
-                    None => ("minecraft:function", e.id.as_str()),
-                };
-                Tag::compound([
-                    ("trigger_time", Tag::Long(e.time)),
-                    ("id", Tag::String(e.id.as_str().into())),
-                    (
-                        "callback",
-                        Tag::compound([
-                            ("type", Tag::String(kind.into())),
-                            ("id", Tag::String(name.into())),
-                        ]),
-                    ),
-                ])
-            })
-            .collect();
-        if events.is_empty() && !self.schedule_path().exists() {
-            return;
-        }
-        let _ = save::write_dat(
-            &self.schedule_path(),
-            Tag::compound([
-                ("data", Tag::compound([("events", Tag::List(list))])),
-                ("DataVersion", Tag::Int(horizon_world::DATA_VERSION)),
-            ]),
-        );
-    }
-    /// `PackLocationInfo.createChatLink`: the id decorated with its source
-    /// (`pack.nameAndSource`, grey) in brackets, green when enabled.
-    fn pack_link(&self, id: &str, enabled: bool) -> Text {
-        let hint = if enabled { "disable" } else { "enable" };
-        let style = text::Style {
-            color: Some(if enabled { text::GREEN } else { text::RED }),
-            click: Some(text::ClickEvent::SuggestCommand(format!(
-                "/datapack {hint} \"{id}\""
-            ))),
-            ..text::Style::default()
-        };
-        let description = self
-            .fns
-            .packs
-            .iter()
-            .find(|p| p.id == id)
-            .map_or_else(|| "Default data pack".to_owned(), DataPack::description);
-        let style = text::Style {
-            hover: Some(Box::new(Text::literal(format!("{id}\n{description}")))),
-            ..style
-        };
-        let source = if id == "vanilla" {
-            "pack.source.builtin"
-        } else if FEATURE_PACKS.iter().any(|(p, _)| *p == id) {
-            "pack.source.feature"
-        } else {
-            "pack.source.world"
-        };
-        let name = Text::translate(
-            "pack.nameAndSource",
-            &[Text::literal(id), Text::translate(source, &[])],
-        )
-        .with_color(text::GRAY);
-        bracketed(name).with_style(&style)
-    }
-    /// The selected packs, lowest priority first.
-    fn selected_packs(&self) -> Vec<String> {
-        let vanilla = (!self.cmds.vanilla_disabled).then(|| "vanilla".to_owned());
-        vanilla
-            .into_iter()
-            .chain(self.fns.enabled.iter().cloned())
-            .collect()
     }
 }
 

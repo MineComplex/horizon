@@ -13,6 +13,14 @@ fn block_of(p: Vec3) -> [i32; 3] {
     [p.x.floor() as i32, p.y.floor() as i32, p.z.floor() as i32]
 }
 impl Game<'_> {
+    fn villager_index(&self, id: u32) -> Option<usize> {
+        self.mobs
+            .iter()
+            .position(|m| m.id == id && m.species() == Species::Villager)
+    }
+    fn item_max_stack(&self, item: &str) -> u32 {
+        self.res.items().get(item).map_or(64, |i| i.max_stack)
+    }
     /// `WorkAtComposter.useWorkstation`: at a composter the farmer makes
     /// bread, then composts seeds.
     pub(super) fn villager_work_at_composter(&mut self, id: u32, pos: [i32; 3]) {
@@ -25,6 +33,33 @@ impl Game<'_> {
         self.villager_make_bread(i);
         self.villager_compost_items(i, pos);
     }
+    /// `WorkAtComposter.makeBread`: up to three loaves from nine wheat while
+    /// the villager holds at most 36 bread; what does not fit drops.
+    fn villager_make_bread(&mut self, i: usize) {
+        let max_stack = self.item_max_stack("minecraft:bread");
+        let e = villager::ext_mut(&mut self.mobs[i]);
+        if e.count_item("minecraft:bread") > 36 {
+            return;
+        }
+        let loaves = (e.count_item("minecraft:wheat") / 3).min(3);
+        if loaves == 0 {
+            return;
+        }
+        e.remove_item("minecraft:wheat", loaves * 3);
+        let left = e.add_item(ItemStack::new("minecraft:bread", loaves), max_stack);
+        if let Some(rest) = left {
+            // spawnAtLocation(level, stack, 0.5F)
+            let p = self.mobs[i].position;
+            self.spawn_item(rest, [p.x, p.y + 0.5, p.z], [0.0, 0.2, 0.0], 10);
+        }
+    }
+    /// `BehaviorUtils.throwItem`: toss a stack from a villager's hand toward
+    /// a point.
+    fn villager_throw(&mut self, from: Vec3, eye: f64, to: Vec3, stack: ItemStack) {
+        let at = [from.x, eye - 0.3, from.z];
+        let d = Vec3::new(to.x - from.x, to.y - from.y, to.z - from.z).normalize();
+        self.spawn_item(stack, at, [d.x * 0.3, d.y * 0.3, d.z * 0.3], 10);
+    }
 
     /// `TradeWithVillager.tick` for one pair: gossip (at most once in 1200
     /// ticks for both), then surplus food and wanted wares tossed over.
@@ -32,9 +67,9 @@ impl Game<'_> {
         let (Some(ia), Some(ib)) = (self.villager_index(a), self.villager_index(b)) else {
             return;
         };
-        let now = self.sim.world.game_time;
-        let items = self.sim.res.items();
-        let meeting = villager::meet(&mut self.sim.mobs, ia, ib, now, |item| {
+        let now = self.world.game_time;
+        let items = self.res.items();
+        let meeting = villager::meet(&mut self.mobs, ia, ib, now, |item| {
             items.get(item).map_or(64, |i| i.max_stack)
         });
         for stack in meeting.thrown {
@@ -140,142 +175,6 @@ impl Game<'_> {
         // VillagerMakeLove.giveBirth: entity event 12 for the child.
         self.mob_event_particles(id, 12);
     }
-
-    /// `Mob.aiStep` item pickup for villagers (`InventoryCarrier`): food,
-    /// seeds and what their profession wants, from within a block.
-    pub(super) fn villager_pickups(&mut self) {
-        if self.dropped.is_empty() || !self.world_data.rules.bool("mob_griefing") {
-            return;
-        }
-        let picks_up = self
-            .res
-            .items()
-            .item_tags
-            .get("minecraft:villager_picks_up")
-            .cloned();
-        for i in 0..self.mobs.len() {
-            let m = &self.mobs[i];
-            if m.species() != Species::Villager || !m.alive() {
-                continue;
-            }
-            let (pos, half) = (m.position, f64::from(m.width()) / 2.0 + 1.0);
-            let top = f64::from(m.height());
-            let requested = villager::requested_items(m);
-            let mut j = 0;
-            while j < self.dropped.len() {
-                let e = &self.dropped[j];
-                let near = (e.position.x - pos.x).abs() <= half
-                    && (e.position.z - pos.z).abs() <= half
-                    && e.position.y >= pos.y - 0.25
-                    && e.position.y <= pos.y + top;
-                let item = e.stack.item.clone();
-                let wants = villager::food_points(&item) > 0
-                    || picks_up.as_ref().is_some_and(|t| t.contains(&*item))
-                    || requested.contains(&&*item);
-                if !near || e.pickup_delay > 0 || !wants {
-                    j += 1;
-                    continue;
-                }
-                let max = self.item_max_stack(&item);
-                let stack = self.dropped[j].stack.clone();
-                if !villager::ext_mut(&mut self.mobs[i]).can_add(&stack, max) {
-                    j += 1;
-                    continue;
-                }
-                let before = self.dropped[j].clone();
-                let rest = villager::ext_mut(&mut self.mobs[i]).add_item(stack, max);
-                if rest.as_ref().is_none_or(|r| r.count < before.stack.count) {
-                    let id = self.mobs[i].id;
-                    self.add_pickup(
-                        super::pickups::Taken::Item(Box::new(before)),
-                        super::pickups::Collector::Mob(id),
-                    );
-                }
-                match rest {
-                    None => {
-                        self.dropped.remove(j);
-                    }
-                    Some(rest) => {
-                        self.dropped[j].stack.count = rest.count;
-                        j += 1;
-                    }
-                }
-            }
-        }
-    }
-
-    /// `Villager.tellWitnessesThatIWasMurdered`: the villagers that saw a
-    /// player kill one remember it as a major wrong.
-    pub(super) fn villager_murdered(&mut self, victim: &Mob, by_player: bool) {
-        if victim.species() != Species::Villager || !by_player {
-            return;
-        }
-        let Some(uuid) = self.level.player_uuid else {
-            return;
-        };
-        let eye = Vec3::new(victim.position.x, victim.eye_y(), victim.position.z);
-        let witnesses: Vec<usize> = {
-            let w = self.mob_world_base(&[]);
-            self.mobs
-                .iter()
-                .enumerate()
-                .filter(|(_, m)| {
-                    m.id != victim.id
-                        && m.species() == Species::Villager
-                        && m.alive()
-                        && (m.position.x - victim.position.x).abs() <= 16.0
-                        && (m.position.y - victim.position.y).abs() <= 16.0
-                        && (m.position.z - victim.position.z).abs() <= 16.0
-                        && w.line_of_sight(eye, Vec3::new(m.position.x, m.eye_y(), m.position.z))
-                })
-                .map(|(i, _)| i)
-                .collect()
-        };
-        for i in witnesses {
-            villager::ext_mut(&mut self.mobs[i]).gossips.add(
-                uuid,
-                GossipType::MajorNegative,
-                gossip::REPUTATION_CHANGE_PER_EVENT,
-            );
-        }
-    }
-}
-impl crate::game::Sim<'_> {
-    fn villager_index(&self, id: u32) -> Option<usize> {
-        self.mobs
-            .iter()
-            .position(|m| m.id == id && m.species() == Species::Villager)
-    }
-    fn item_max_stack(&self, item: &str) -> u32 {
-        self.res.items().get(item).map_or(64, |i| i.max_stack)
-    }
-    /// `WorkAtComposter.makeBread`: up to three loaves from nine wheat while
-    /// the villager holds at most 36 bread; what does not fit drops.
-    fn villager_make_bread(&mut self, i: usize) {
-        let max_stack = self.item_max_stack("minecraft:bread");
-        let e = villager::ext_mut(&mut self.mobs[i]);
-        if e.count_item("minecraft:bread") > 36 {
-            return;
-        }
-        let loaves = (e.count_item("minecraft:wheat") / 3).min(3);
-        if loaves == 0 {
-            return;
-        }
-        e.remove_item("minecraft:wheat", loaves * 3);
-        let left = e.add_item(ItemStack::new("minecraft:bread", loaves), max_stack);
-        if let Some(rest) = left {
-            // spawnAtLocation(level, stack, 0.5F)
-            let p = self.mobs[i].position;
-            self.spawn_item(rest, [p.x, p.y + 0.5, p.z], [0.0, 0.2, 0.0], 10);
-        }
-    }
-    /// `BehaviorUtils.throwItem`: toss a stack from a villager's hand toward
-    /// a point.
-    fn villager_throw(&mut self, from: Vec3, eye: f64, to: Vec3, stack: ItemStack) {
-        let at = [from.x, eye - 0.3, from.z];
-        let d = Vec3::new(to.x - from.x, to.y - from.y, to.z - from.z).normalize();
-        self.spawn_item(stack, at, [d.x * 0.3, d.y * 0.3, d.z * 0.3], 10);
-    }
     /// `Level.broadcastEntityEvent` of an event whose `handleEntityEvent`
     /// draws particles about the mob (villager 12, 13 and 14, taming 6 and 7,
     /// love 18): the guests get the byte, and this game draws it as its own
@@ -340,6 +239,70 @@ impl crate::game::Sim<'_> {
             self.particles.add(&options, p, v);
         }
     }
+
+    /// `Mob.aiStep` item pickup for villagers (`InventoryCarrier`): food,
+    /// seeds and what their profession wants, from within a block.
+    pub(super) fn villager_pickups(&mut self) {
+        if self.dropped.is_empty() || !self.world_data.rules.bool("mob_griefing") {
+            return;
+        }
+        let picks_up = self
+            .res
+            .items()
+            .item_tags
+            .get("minecraft:villager_picks_up")
+            .cloned();
+        for i in 0..self.mobs.len() {
+            let m = &self.mobs[i];
+            if m.species() != Species::Villager || !m.alive() {
+                continue;
+            }
+            let (pos, half) = (m.position, f64::from(m.width()) / 2.0 + 1.0);
+            let top = f64::from(m.height());
+            let requested = villager::requested_items(m);
+            let mut j = 0;
+            while j < self.dropped.len() {
+                let e = &self.dropped[j];
+                let near = (e.position.x - pos.x).abs() <= half
+                    && (e.position.z - pos.z).abs() <= half
+                    && e.position.y >= pos.y - 0.25
+                    && e.position.y <= pos.y + top;
+                let item = e.stack.item.clone();
+                let wants = villager::food_points(&item) > 0
+                    || picks_up.as_ref().is_some_and(|t| t.contains(&*item))
+                    || requested.contains(&&*item);
+                if !near || e.pickup_delay > 0 || !wants {
+                    j += 1;
+                    continue;
+                }
+                let max = self.item_max_stack(&item);
+                let stack = self.dropped[j].stack.clone();
+                if !villager::ext_mut(&mut self.mobs[i]).can_add(&stack, max) {
+                    j += 1;
+                    continue;
+                }
+                let before = self.dropped[j].clone();
+                let rest = villager::ext_mut(&mut self.mobs[i]).add_item(stack, max);
+                if rest.as_ref().is_none_or(|r| r.count < before.stack.count) {
+                    let id = self.mobs[i].id;
+                    self.add_pickup(
+                        super::pickups::Taken::Item(Box::new(before)),
+                        super::pickups::Collector::Mob(id),
+                    );
+                }
+                match rest {
+                    None => {
+                        self.dropped.remove(j);
+                    }
+                    Some(rest) => {
+                        self.dropped[j].stack.count = rest.count;
+                        j += 1;
+                    }
+                }
+            }
+        }
+    }
+
     /// `Villager.setLastHurtByMob` and `ServerLevel.onReputationEvent`: a hit
     /// from the player counts against it with the villager that was hit.
     pub(super) fn villager_reputation_tick(&mut self) {
@@ -372,6 +335,41 @@ impl crate::game::Sim<'_> {
         // Villager.setLastHurtByMob: entity event 13.
         for id in angry {
             self.mob_event_particles(id, 13);
+        }
+    }
+    /// `Villager.tellWitnessesThatIWasMurdered`: the villagers that saw a
+    /// player kill one remember it as a major wrong.
+    pub(super) fn villager_murdered(&mut self, victim: &Mob, by_player: bool) {
+        if victim.species() != Species::Villager || !by_player {
+            return;
+        }
+        let Some(uuid) = self.level.player_uuid else {
+            return;
+        };
+        let eye = Vec3::new(victim.position.x, victim.eye_y(), victim.position.z);
+        let witnesses: Vec<usize> = {
+            let w = self.mob_world_base(&[]);
+            self.mobs
+                .iter()
+                .enumerate()
+                .filter(|(_, m)| {
+                    m.id != victim.id
+                        && m.species() == Species::Villager
+                        && m.alive()
+                        && (m.position.x - victim.position.x).abs() <= 16.0
+                        && (m.position.y - victim.position.y).abs() <= 16.0
+                        && (m.position.z - victim.position.z).abs() <= 16.0
+                        && w.line_of_sight(eye, Vec3::new(m.position.x, m.eye_y(), m.position.z))
+                })
+                .map(|(i, _)| i)
+                .collect()
+        };
+        for i in witnesses {
+            villager::ext_mut(&mut self.mobs[i]).gossips.add(
+                uuid,
+                GossipType::MajorNegative,
+                gossip::REPUTATION_CHANGE_PER_EVENT,
+            );
         }
     }
     /// `ReputationEventType.TRADE`: each trade earns a little trust.
