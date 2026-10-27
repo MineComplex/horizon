@@ -567,7 +567,11 @@ impl players::Host for PluginCtx<'_, '_> {
                 id: pack,
                 url,
                 // A SHA-1 in hex is 40 characters; anything else isn't one.
-                hash: if hash.len() == 40 { hash } else { String::new() },
+                hash: if hash.len() == 40 {
+                    hash
+                } else {
+                    String::new()
+                },
                 required,
                 prompt: prompt.as_deref().map(text_tag),
             }),

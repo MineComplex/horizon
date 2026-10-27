@@ -883,6 +883,10 @@ pub struct Mob {
     /// from the game), handed over with the next tick's events or drained
     /// by the game.
     pub outbox: Vec<MobEvent>,
+    /// Damage from the mob's surroundings (fire, lava, drowning...) held back
+    /// during its tick when `MobWorld::defer_env_damage` is set: the game
+    /// asks the plugins (`EntityDamageEvent`), then deals it.
+    pub env_damage: Vec<(f32, DamageKind)>,
     /// The skin texture of a player mob (`PlayerInfo.getSkin`), which
     /// replaces the type's default when its download is ready.
     pub skin: Option<String>,
@@ -1613,6 +1617,9 @@ pub struct MobWorld<'a> {
     pub teams: std::sync::Arc<Teams<'a>>,
     /// Item data (max stack sizes), when the host has it.
     pub items: Option<&'a crate::items::Items>,
+    /// Hold the damage of the surroundings in `Mob::env_damage` instead of
+    /// dealing it (plugins listen to the damage events).
+    pub defer_env_damage: bool,
 }
 /// `Entity.getTeam` of the player and of the mobs on a team.
 #[derive(Clone, Debug, Default)]
@@ -1693,6 +1700,7 @@ impl Mob {
             anim: anim::AnimState::default(),
             rider: None,
             outbox: Vec::new(),
+            env_damage: Vec::new(),
             skin: None,
             profile: None,
             attrs: Attrs {

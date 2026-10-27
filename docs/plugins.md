@@ -133,7 +133,7 @@ changes are ignored.
 | `player-resource-pack` | the client answered a resource pack | |
 | `block-break` | a player breaks a block, before it goes | `drop-items`, `cancelled` (the block stays; the client is sent it again) |
 | `block-place` | a player placed a block | `cancelled` (the old block is put back, the item is not used) |
-| `entity-damage` | a player attacks an entity or another player; a player is hurt by a mob, an explosion, a fall, an effect, a firework | `damage`, `cancelled` |
+| `entity-damage` | a player attacks an entity or another player; a player is hurt by a mob, an explosion, a fall, an effect, a firework; a mob is hurt by its surroundings (fire, lava, drowning, drying out, suffocation, the void, poison and wither; while a plugin listens, that damage lands at the end of the mob's tick) | `damage`, `cancelled` |
 | `entity-death` | a mob or a player died | |
 | `entity-spawn` | a mob spawns naturally, from a spawner, a command or egg, a raid, an iron golem built | `cancelled` |
 | `entity-explode` | an explosion, before it hurts and breaks | `blocks` (remove some to spare them), `cancelled` |
@@ -142,8 +142,8 @@ changes are ignored.
 | `plugin-state` | a plugin was enabled or disabled | |
 | `plugin-call` | another plugin's `send-to-plugin` | |
 
-Not yet: damage to mobs from the environment (fire, drowning) and some lib-internal player damage (lava and
-fire while moving) fire no `entity-damage`; pistons, fluids, redstone and growth fire no block events.
+Not yet: some lib-internal player damage (lava and fire while moving) and mob damage from cactus, berry
+bushes and freezing fire no `entity-damage`; pistons, fluids, redstone and growth fire no block events.
 
 ### Commands and completion
 

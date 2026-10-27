@@ -472,8 +472,16 @@ fn axolotl_air_supply(m: &mut Mob, w: &MobWorld) {
         m.air = before - 1;
         if m.air <= -20 {
             m.air = 0;
-            m.damage(2.0, Damage::of(DamageKind::DryOut));
+            env_damage(m, w, 2.0, DamageKind::DryOut);
         }
+    }
+}
+/// Damage from the mob's surroundings: dealt now, or held for the plugins.
+fn env_damage(m: &mut Mob, w: &MobWorld, amount: f32, kind: DamageKind) {
+    if w.defer_env_damage {
+        m.env_damage.push((amount, kind));
+    } else {
+        m.damage(amount, Damage::of(kind));
     }
 }
 /// Entity.baseTick + LivingEntity.baseTick + Mob.baseTick.
@@ -492,7 +500,7 @@ fn base_tick(m: &mut Mob, w: &MobWorld, events: &mut Vec<MobEvent>) {
             &mut m.random,
             multiplier,
         );
-        m.damage(fire, Damage::of(DamageKind::InFire));
+        env_damage(m, w, fire, DamageKind::InFire);
     }
     // Fire: water extinguishes, lava ignites, burning hurts every second.
     if m.fluids.in_water && m.fire_ticks > 0 {
@@ -506,21 +514,21 @@ fn base_tick(m: &mut Mob, w: &MobWorld, events: &mut Vec<MobEvent>) {
     }
     if m.fluids.in_lava && !m.kind.flags.fire_immune {
         m.ignite_for_ticks(300);
-        m.damage(4.0, Damage::of(DamageKind::Lava));
+        env_damage(m, w, 4.0, DamageKind::Lava);
     }
     if m.fire_ticks > 0 {
         if m.kind.flags.fire_immune {
             m.fire_ticks = 0;
         } else {
             if m.fire_ticks % 20 == 0 && !m.fluids.in_lava {
-                m.damage(1.0, Damage::of(DamageKind::OnFire));
+                env_damage(m, w, 1.0, DamageKind::OnFire);
             }
             m.fire_ticks -= 1;
         }
     }
     // Entity.checkBelowWorld: LivingEntity.onBelowWorld hurts 4 a tick.
     if m.position.y < f64::from(crate::chunk::MIN_Y - 64) {
-        m.damage(4.0, Damage::of(DamageKind::OutOfWorld));
+        env_damage(m, w, 4.0, DamageKind::OutOfWorld);
     }
     m.first_tick = false;
     if m.alive() {
@@ -532,7 +540,7 @@ fn base_tick(m: &mut Mob, w: &MobWorld, events: &mut Vec<MobEvent>) {
         );
         let at_eye = w.facts.get(w.world.block(ex, ey, ez));
         if at_eye.full_collision && at_eye.solid_render && m.width() < 1.0 {
-            m.damage(1.0, Damage::of(DamageKind::InWall));
+            env_damage(m, w, 1.0, DamageKind::InWall);
         }
         // Air supply and drowning (WaterAnimal.handleAirSupply for aquatic mobs).
         if m.species() == Species::Axolotl {
@@ -542,7 +550,7 @@ fn base_tick(m: &mut Mob, w: &MobWorld, events: &mut Vec<MobEvent>) {
                 m.air -= 1;
                 if m.air == -20 {
                     m.air = 0;
-                    m.damage(2.0, Damage::of(DamageKind::Drown));
+                    env_damage(m, w, 2.0, DamageKind::Drown);
                 }
             } else {
                 m.air = 300;
@@ -551,7 +559,7 @@ fn base_tick(m: &mut Mob, w: &MobWorld, events: &mut Vec<MobEvent>) {
             m.air -= 1;
             if m.air == -20 {
                 m.air = 0;
-                m.damage(2.0, Damage::of(DamageKind::Drown));
+                env_damage(m, w, 2.0, DamageKind::Drown);
             }
         } else if m.air < 300 {
             m.air = (m.air + 4).min(300);
@@ -560,10 +568,10 @@ fn base_tick(m: &mut Mob, w: &MobWorld, events: &mut Vec<MobEvent>) {
         if m.kind.flags.water_sensitive
             && (m.fluids.in_water || w.raining && w.can_see_sky(ex, ey, ez))
         {
-            m.damage(1.0, Damage::of(DamageKind::Drown));
+            env_damage(m, w, 1.0, DamageKind::Drown);
         }
     }
-    tick_effects(m);
+    tick_effects(m, w);
     if m.species() == Species::Illusioner {
         super::illusioner::tick(m, events);
     }
@@ -1576,7 +1584,7 @@ fn flower_contact_effects(m: &mut Mob, w: &MobWorld) {
 }
 
 /// MobEffect ticking for the effects mobs receive (poison, wither, regeneration).
-fn tick_effects(m: &mut Mob) {
+fn tick_effects(m: &mut Mob, w: &MobWorld) {
     let mut effects = std::mem::take(&mut m.extra.effects);
     for (effect, ticks, amp) in &mut effects {
         let interval = |base: i32| (base >> (*amp).max(0)).max(1);
@@ -1584,10 +1592,10 @@ fn tick_effects(m: &mut Mob) {
             "minecraft:poison"
                 if *ticks % interval(25) == 0 && !m.kind.flags.undead && m.health > 1.0 =>
             {
-                m.damage(1.0, Damage::of(DamageKind::Magic));
+                env_damage(m, w, 1.0, DamageKind::Magic);
             }
             "minecraft:wither" if *ticks % interval(40) == 0 => {
-                m.damage(1.0, Damage::of(DamageKind::Magic));
+                env_damage(m, w, 1.0, DamageKind::Magic);
             }
             "minecraft:regeneration"
                 if *ticks % interval(50) == 0 && !m.kind.flags.undead && m.alive() =>

@@ -1104,6 +1104,7 @@ pub fn main() -> horizon_client::Result<()> {
                     // FlatLevelSource.getSeaLevel.
                     sea_level: -63,
                     items: Some(&items),
+                    defer_env_damage: false,
                 }
             };
         }

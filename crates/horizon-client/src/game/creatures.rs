@@ -432,6 +432,11 @@ impl Game<'_> {
             sea_level: if self.dim == Dim::Nether { 32 } else { 63 },
             teams: std::sync::Arc::new(self.mob_teams()),
             items: Some(self.res.items()),
+            // Plugins hear of the damage the surroundings deal: it waits for them.
+            #[cfg(feature = "mods")]
+            defer_env_damage: self.plugins_listen(horizon_mods::plugin::EventKind::EntityDamage),
+            #[cfg(not(feature = "mods"))]
+            defer_env_damage: false,
             difficulty: self.local_difficulty(
                 self.player
                     .as_ref()
@@ -678,6 +683,10 @@ impl Game<'_> {
         }
         self.mobs.append(&mut mobs);
         self.died = died;
+        // EntityDamageEvent for the damage the surroundings dealt in the
+        // mob ticks, held back while plugins listen.
+        #[cfg(feature = "mods")]
+        self.plugin_env_damage(&mut dead);
         // ... and entity event 60 goes out as it is: the poof.
         for (id, at, width, height) in gone {
             let at = [at.x, at.y, at.z];

@@ -796,6 +796,39 @@ impl Game<'_> {
         }
     }
 
+    /// The damage the mobs' surroundings dealt them in their ticks (fire,
+    /// lava, drowning, suffocation, the void, harmful effects), held back in
+    /// `Mob::env_damage`: `EntityDamageEvent` for each hit, then the hit.
+    /// The mobs it kills go to `dead`.
+    pub(super) fn plugin_env_damage(&mut self, dead: &mut Vec<horizon_client::mobs::Mob>) {
+        let held: Vec<_> = self
+            .mobs
+            .iter_mut()
+            .filter(|m| !m.env_damage.is_empty())
+            .map(|m| (m.id, std::mem::take(&mut m.env_damage)))
+            .collect();
+        for (id, hits) in held {
+            for (amount, kind) in hits {
+                let cause = super::creatures::damage_type(kind, false);
+                let victim = self.plugin_entity_ref(id as i32);
+                let Some(amount) = self.plugin_damage(None, victim, cause, amount, None) else {
+                    continue;
+                };
+                // A plugin may have removed or killed it meanwhile.
+                let Some(m) = self.mobs.iter_mut().find(|m| m.id == id) else {
+                    break;
+                };
+                if !m.alive() || m.removed {
+                    break;
+                }
+                m.damage(amount, horizon_client::mobs::Damage::of(kind));
+                if !m.alive() && self.died.insert(id) {
+                    dead.push(m.clone());
+                }
+            }
+        }
+    }
+
     /// Damage to the player whose turn it is (a guest acting), of damage
     /// type `cause`: the amount to deal, or None when cancelled.
     pub(super) fn plugin_damage_acting(
