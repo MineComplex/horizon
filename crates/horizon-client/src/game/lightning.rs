@@ -53,13 +53,12 @@ impl Game<'_> {
                     .effective,
             );
             let below = &self
-                .sim
                 .res
                 .facts()
-                .get(self.sim.world.block(pos[0], pos[1] - 1, pos[2]))
+                .get(self.world.block(pos[0], pos[1] - 1, pos[2]))
                 .name;
-            let trap = self.sim.world_data.rules.bool("spawn_mobs")
-                && self.sim.world.random.next_double() < difficulty * 0.01
+            let trap = self.world_data.rules.bool("spawn_mobs")
+                && self.world.random.next_double() < difficulty * 0.01
                 && !below.ends_with("lightning_rod");
             if trap {
                 let at = [f64::from(pos[0]), f64::from(pos[1]), f64::from(pos[2])];
@@ -78,6 +77,62 @@ impl Game<'_> {
             ];
             self.spawn_bolt(at, trap);
         }
+    }
+    /// `ServerLevel.findLightningRod`: `PoiManager.findClosest` over the
+    /// lightning rod points of interest within 128 blocks of `center` whose
+    /// block is the top (`WORLD_SURFACE`) of its column; the strike lands one
+    /// above it. Horizon keeps no point-of-interest index, so this scans the
+    /// loaded chunks the way `/locate poi` does.
+    fn find_lightning_rod(&self, center: [i32; 3]) -> Option<[i32; 3]> {
+        const RANGE: i32 = 128;
+        let facts = self.res.facts();
+        let mut is_rod: std::collections::HashMap<u32, bool> = std::collections::HashMap::new();
+        let mut best: Option<(i64, [i32; 3])> = None;
+        let (cx0, cz0) = ((center[0] - RANGE) >> 4, (center[2] - RANGE) >> 4);
+        let (cx1, cz1) = ((center[0] + RANGE) >> 4, (center[2] + RANGE) >> 4);
+        for cx in cx0..=cx1 {
+            for cz in cz0..=cz1 {
+                let Some(chunk) = self.world.chunks.get(&(cx, cz)) else {
+                    continue;
+                };
+                for (i, section) in chunk.sections.iter().enumerate() {
+                    let mut rod = |state: u32| {
+                        *is_rod.entry(state).or_insert_with(|| {
+                            facts
+                                .get(horizon_world::registry::BlockStateId(state))
+                                .name
+                                .ends_with("lightning_rod")
+                        })
+                    };
+                    if !section.blocks.maybe_has(&mut rod) {
+                        continue;
+                    }
+                    let base_y = horizon_client::chunk::MIN_Y + 16 * i as i32;
+                    for j in 0..4096 {
+                        if !rod(section.get(j)) {
+                            continue;
+                        }
+                        let p = [
+                            cx * 16 + (j & 15) as i32,
+                            base_y + (j >> 8) as i32,
+                            cz * 16 + ((j >> 4) & 15) as i32,
+                        ];
+                        let d = [p[0] - center[0], p[1] - center[1], p[2] - center[2]]
+                            .map(|d| i64::from(d) * i64::from(d))
+                            .iter()
+                            .sum::<i64>();
+                        if d > i64::from(RANGE * RANGE) || best.is_some_and(|(b, _)| d >= b) {
+                            continue;
+                        }
+                        let surface = self.world.world_surface(p[0], p[2], |s| facts.is_air(s));
+                        if p[1] == surface - 1 {
+                            best = Some((d, p));
+                        }
+                    }
+                }
+            }
+        }
+        best.map(|(_, p)| [p[0], p[1] + 1, p[2]])
     }
     /// `findLightningTargetAround`: the closest lightning rod, else a living
     /// entity under open sky in the column (3 blocks around), else the top of
@@ -150,6 +205,24 @@ impl Game<'_> {
             flashes,
             seed,
             visual_only,
+            converted: Vec::new(),
+        });
+    }
+    /// `ClientLevel.addEntity` for a server's lightning bolt: on a client it
+    /// only flashes, sounds and draws (`LightningBolt.tick` off the server).
+    pub(super) fn spawn_remote_bolt(&mut self, id: u32, at: [f64; 3]) {
+        self.bolts.retain(|b| b.id != id);
+        let r = &mut self.world.random;
+        let seed = r.next_long();
+        let flashes = r.next_int_bound(3).unwrap_or(0) + 1;
+        self.lightning_seen[0] += 1;
+        self.bolts.push(Bolt {
+            id,
+            at,
+            life: 2,
+            flashes,
+            seed,
+            visual_only: true,
             converted: Vec::new(),
         });
     }
@@ -297,8 +370,8 @@ impl Game<'_> {
             from: Some(b.at),
         };
         let mut events = Vec::new();
-        let peaceful = self.sim.world_data.difficulty == 0;
-        for m in self.sim.mobs.iter_mut().filter(|m| m.alive()) {
+        let peaceful = self.world_data.difficulty == 0;
+        for m in self.mobs.iter_mut().filter(|m| m.alive()) {
             if !inside([m.position.x, m.position.y, m.position.z]) {
                 continue;
             }
@@ -331,12 +404,8 @@ impl Game<'_> {
                     if !b.converted.contains(&m.id) {
                         b.converted.push(m.id);
                         m.extra.variant = 1 - m.extra.variant.min(1);
-                        self.sim.sounds.play(
-                            "minecraft:entity.mooshroom.convert",
-                            Some(at),
-                            2.0,
-                            1.0,
-                        );
+                        self.sounds
+                            .play("minecraft:entity.mooshroom.convert", Some(at), 2.0, 1.0);
                     }
                     continue;
                 }
@@ -391,82 +460,6 @@ impl Game<'_> {
         self.dropped.retain(|e| {
             !inside([e.position.x, e.position.y, e.position.z])
                 || e.stack.item.contains("netherite")
-        });
-    }
-}
-impl crate::game::Sim<'_> {
-    /// `ServerLevel.findLightningRod`: `PoiManager.findClosest` over the
-    /// lightning rod points of interest within 128 blocks of `center` whose
-    /// block is the top (`WORLD_SURFACE`) of its column; the strike lands one
-    /// above it. Horizon keeps no point-of-interest index, so this scans the
-    /// loaded chunks the way `/locate poi` does.
-    fn find_lightning_rod(&self, center: [i32; 3]) -> Option<[i32; 3]> {
-        const RANGE: i32 = 128;
-        let facts = self.res.facts();
-        let mut is_rod: std::collections::HashMap<u32, bool> = std::collections::HashMap::new();
-        let mut best: Option<(i64, [i32; 3])> = None;
-        let (cx0, cz0) = ((center[0] - RANGE) >> 4, (center[2] - RANGE) >> 4);
-        let (cx1, cz1) = ((center[0] + RANGE) >> 4, (center[2] + RANGE) >> 4);
-        for cx in cx0..=cx1 {
-            for cz in cz0..=cz1 {
-                let Some(chunk) = self.world.chunks.get(&(cx, cz)) else {
-                    continue;
-                };
-                for (i, section) in chunk.sections.iter().enumerate() {
-                    let mut rod = |state: u32| {
-                        *is_rod.entry(state).or_insert_with(|| {
-                            facts
-                                .get(horizon_world::registry::BlockStateId(state))
-                                .name
-                                .ends_with("lightning_rod")
-                        })
-                    };
-                    if !section.blocks.maybe_has(&mut rod) {
-                        continue;
-                    }
-                    let base_y = horizon_client::chunk::MIN_Y + 16 * i as i32;
-                    for j in 0..4096 {
-                        if !rod(section.get(j)) {
-                            continue;
-                        }
-                        let p = [
-                            cx * 16 + (j & 15) as i32,
-                            base_y + (j >> 8) as i32,
-                            cz * 16 + ((j >> 4) & 15) as i32,
-                        ];
-                        let d = [p[0] - center[0], p[1] - center[1], p[2] - center[2]]
-                            .map(|d| i64::from(d) * i64::from(d))
-                            .iter()
-                            .sum::<i64>();
-                        if d > i64::from(RANGE * RANGE) || best.is_some_and(|(b, _)| d >= b) {
-                            continue;
-                        }
-                        let surface = self.world.world_surface(p[0], p[2], |s| facts.is_air(s));
-                        if p[1] == surface - 1 {
-                            best = Some((d, p));
-                        }
-                    }
-                }
-            }
-        }
-        best.map(|(_, p)| [p[0], p[1] + 1, p[2]])
-    }
-    /// `ClientLevel.addEntity` for a server's lightning bolt: on a client it
-    /// only flashes, sounds and draws (`LightningBolt.tick` off the server).
-    pub(super) fn spawn_remote_bolt(&mut self, id: u32, at: [f64; 3]) {
-        self.bolts.retain(|b| b.id != id);
-        let r = &mut self.world.random;
-        let seed = r.next_long();
-        let flashes = r.next_int_bound(3).unwrap_or(0) + 1;
-        self.lightning_seen[0] += 1;
-        self.bolts.push(Bolt {
-            id,
-            at,
-            life: 2,
-            flashes,
-            seed,
-            visual_only: true,
-            converted: Vec::new(),
         });
     }
     /// Simulation-order render inputs; seeded geometry lives in the renderer.

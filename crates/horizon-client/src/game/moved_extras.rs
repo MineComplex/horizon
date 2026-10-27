@@ -5,9 +5,7 @@
 //! it fails (offline), the game tries again at the next start.
 
 #[cfg(not(feature = "mods"))]
-impl super::Game<'_> {}
-#[cfg(not(feature = "mods"))]
-impl crate::game::Sim<'_> {
+impl super::Game<'_> {
     pub(super) fn start_moved_extras(&mut self) {}
     pub(super) fn poll_moved_extras(&mut self) {}
 }
@@ -82,22 +80,16 @@ mod with_mods {
                 for (m, result) in done {
                     match result {
                         Ok(()) => {
-                            self.sim.settings.extras.moved.push(m.id.to_owned());
-                            self.sim.settings.mods.enabled.insert(m.id.to_owned());
+                            self.settings.extras.moved.push(m.id.to_owned());
+                            self.settings.mods.enabled.insert(m.id.to_owned());
                             // The install wrote the key to horizon-mods.txt;
                             // the settings save below must keep it.
-                            let keys = self
-                                .sim
-                                .settings
-                                .mods
-                                .keys
-                                .entry(m.id.to_owned())
-                                .or_default();
-                            for (name, key) in m.keys(&self.sim.settings.extras) {
+                            let keys = self.settings.mods.keys.entry(m.id.to_owned()).or_default();
+                            for (name, key) in m.keys(&self.settings.extras) {
                                 keys.entry(name.to_owned()).or_insert(key);
                             }
-                            self.sim.settings.mods.keys.retain(|_, k| !k.is_empty());
-                            self.sim.mods.moved.notices.push(Text::literal(m.notice()));
+                            self.settings.mods.keys.retain(|_, k| !k.is_empty());
+                            self.mods.moved.notices.push(Text::literal(m.notice()));
                             installed = true;
                         }
                         Err(e) => {

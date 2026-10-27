@@ -4,8 +4,7 @@
 use super::Game;
 use horizon_client::items::ItemStack;
 
-impl Game<'_> {}
-impl crate::game::Sim<'_> {
+impl Game<'_> {
     /// The entity the crosshair hits before any block, as `Entity.getId`; an
     /// entity with nothing to pick (a projectile, a player, the dragon) is
     /// `Some(None)`. `None` when the view hits a block or nothing.
@@ -33,6 +32,7 @@ impl crate::game::Sim<'_> {
         }
         best.map(|b| b.1)
     }
+
     /// `Entity.getPickResult` of the entity `id`: a mob's spawn egg, the item
     /// of a boat, minecart, armor stand, cushion, painting, item frame (the
     /// framed item when it holds one) or end crystal.
@@ -66,6 +66,7 @@ impl crate::game::Sim<'_> {
         };
         Some(ItemStack::new(&item, 1))
     }
+
     /// `Player.isWithinEntityInteractionRange(entity, 3.0)`: the entity's box
     /// within the interaction range plus 3 of the eyes.
     pub(super) fn within_entity_range(&self, id: i32) -> bool {

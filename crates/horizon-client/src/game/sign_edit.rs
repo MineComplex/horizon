@@ -35,6 +35,52 @@ fn sign_box() -> EditBox {
 }
 
 impl Game<'_> {
+    /// `SignBlockEntity.getSlotPlayerIsFacing`: whether the player stands in
+    /// front of the sign's text (within 90 degrees of its facing).
+    fn facing_sign_front(&self, pos: (i32, i32, i32)) -> bool {
+        let Some(player) = self.player.as_ref() else {
+            return true;
+        };
+        let state = self.world.block(pos.0, pos.1, pos.2);
+        let Some(state) = self.pack.assets.registry.state(state) else {
+            return true;
+        };
+        let prop = |key: &str| state.properties.get(key).map(String::as_str);
+        // getYRotationDegrees: a wall sign's `Direction.toYRot`, a standing or
+        // ceiling sign's rotation segment.
+        let y_rot = if state.name.contains("_wall_") {
+            match prop("facing") {
+                Some("west") => 90.0,
+                Some("north") => 180.0,
+                Some("east") => 270.0,
+                _ => 0.0,
+            }
+        } else {
+            prop("rotation")
+                .and_then(|r| r.parse::<f32>().ok())
+                .unwrap_or(0.0)
+                * 22.5
+        };
+        // getSignHitboxCenterPosition: only a wall sign's board is off-centre,
+        // against the wall it hangs on.
+        let centre = if state.name.ends_with("_wall_sign") {
+            match y_rot as i32 {
+                90 => (0.9375, 0.5),
+                180 => (0.5, 0.9375),
+                270 => (0.0625, 0.5),
+                _ => (0.5, 0.0625),
+            }
+        } else {
+            (0.5, 0.5)
+        };
+        let xd = player.position.x - (f64::from(pos.0) + centre.0);
+        let zd = player.position.z - (f64::from(pos.2) + centre.1);
+        let player_y_rot = (zd.atan2(xd).to_degrees() - 90.0) as f32;
+        // Mth.degreesDifferenceAbs.
+        let diff = (player_y_rot - y_rot).rem_euclid(360.0);
+        let diff = if diff >= 180.0 { 360.0 - diff } else { diff };
+        diff <= 90.0
+    }
     /// `SignBlock.useWithoutItem` (the block's `OpenMenu` effect): a waxed
     /// sign plays the failed-interaction sound; otherwise a player who may
     /// build edits the side they face.
@@ -178,6 +224,59 @@ impl Game<'_> {
         }
         self.capture(true);
     }
+    /// `ServerPlayer.openTextEdit` for the guest whose action opened a sign:
+    /// the block, then the editor, on its client, and the guest may write on it.
+    pub(super) fn lan_open_sign_editor(&mut self, host: &mut LanHost, conn: u32, edit: SignEditor) {
+        let pos = [edit.pos.0, edit.pos.1, edit.pos.2];
+        let state = self.world.block(pos[0], pos[1], pos[2]).0 as i32;
+        host.hub
+            .send_to(conn, &C::BlockUpdate(play::BlockUpdate { pos, state }));
+        host.hub.send_to(
+            conn,
+            &C::OpenSignEditor(play::OpenSignEditor {
+                pos,
+                front: edit.front,
+            }),
+        );
+        host.play.entry(conn).or_default().sign_editing = Some(pos);
+    }
+    /// `ServerGamePacketListenerImpl.handleSignUpdate`: the lines, formatting
+    /// codes stripped, go on the sign the guest may write on unless it is
+    /// waxed (`SignBlockEntity.updateSignText`); a guest gone out of reach
+    /// may no longer write (`playerIsTooFarAwayToEdit`).
+    pub(super) fn lan_sign_update(&mut self, host: &mut LanHost, conn: u32, p: play::SignUpdate) {
+        let Some(g) = host.hub.guest(conn) else {
+            return;
+        };
+        let near = g.within_block_range(p.pos, 4.0);
+        let Some(play) = host.play.get_mut(&conn) else {
+            return;
+        };
+        if !near {
+            play.sign_editing = None;
+        }
+        if play.sign_editing != Some(p.pos) {
+            log::warn!("{} just tried to change non-editable sign", g.name);
+            return;
+        }
+        let key = (p.pos[0], p.pos[1], p.pos[2]);
+        let Some(BlockEntity::Sign(sign)) = self.world.block_entities.get_mut(&key) else {
+            return;
+        };
+        if sign.waxed {
+            return;
+        }
+        let side = if p.front {
+            &mut sign.front
+        } else {
+            &mut sign.back
+        };
+        for (line, new) in side.lines.iter_mut().zip(&p.lines) {
+            *line = horizon_client::clipboard::strip_formatting(new);
+        }
+        play.sign_editing = None;
+        self.mark_block_entity_updated(key);
+    }
     /// `ClientPacketListener.handleOpenSignEditor`: the editor on a sign this
     /// client has.
     pub(super) fn remote_open_sign_editor(&mut self, p: play::OpenSignEditor) {
@@ -249,6 +348,24 @@ impl Game<'_> {
         }
         self.sign_load();
     }
+    /// The edited line's text.
+    fn sign_current(&self) -> Option<String> {
+        let edit = self.sign_edit.as_ref()?;
+        let BlockEntity::Sign(sign) = self.world.block_entities.get(&edit.pos)? else {
+            return None;
+        };
+        let side = if edit.front { &sign.front } else { &sign.back };
+        Some(side.lines[edit.line].clone())
+    }
+    /// `EditBox.setValue` from the line now being edited.
+    fn sign_load(&mut self) {
+        let Some(text) = self.sign_current() else {
+            return;
+        };
+        if let Some(edit) = self.sign_edit.as_mut() {
+            edit.edit.set_value(&text);
+        }
+    }
     /// The box's text onto the editor's lines and the sign
     /// (`AbstractSignEditScreen.setMessage`), when it still fits the line.
     fn sign_write(&mut self) {
@@ -280,7 +397,7 @@ impl Game<'_> {
         let Some(BlockEntity::Sign(sign)) = self.world.block_entities.get(&edit.pos) else {
             return false;
         };
-        HudBatch::text_width(&self.front.gui.atlas, value) <= sign.max_line_width()
+        HudBatch::text_width(&self.gui.atlas, value) <= sign.max_line_width()
     }
     /// Edit the line, then keep the result only when it still fits.
     fn sign_change(&mut self, f: impl FnOnce(&mut EditBox)) {
@@ -322,18 +439,17 @@ impl Game<'_> {
     /// pass the sign's width is refused whole.
     fn sign_shortcut(&mut self, shortcut: horizon_client::clipboard::EditShortcut) {
         if shortcut == horizon_client::clipboard::EditShortcut::Paste {
-            let raw = horizon_client::clipboard::Clipboard::get(&mut self.front.clipboard);
+            let raw = horizon_client::clipboard::Clipboard::get(&mut self.clipboard);
             let text = horizon_client::clipboard::helper_clipboard_contents(&raw);
             self.sign_change(|edit| edit.insert_text(&text));
             return;
         }
         let before = self
-            .sim
             .sign_edit
             .as_ref()
             .map(|e| (e.edit.value.clone(), e.edit.cursor, e.edit.highlight));
-        if let Some(edit) = self.sim.sign_edit.as_mut() {
-            edit.edit.shortcut(shortcut, &mut self.front.clipboard);
+        if let Some(edit) = self.sign_edit.as_mut() {
+            edit.edit.shortcut(shortcut, &mut self.clipboard);
             let clean = horizon_client::clipboard::strip_formatting(&edit.edit.value);
             if clean != edit.edit.value {
                 let n = horizon_client::ui::char_len(&clean);
@@ -349,9 +465,9 @@ impl Game<'_> {
     pub(super) fn sign_edit_click(&mut self, size: [u32; 2]) {
         let b = HudBatch::new(size);
         let (x, y) = (b.width / 2.0 - 100.0, b.height / 4.0 + 144.0);
-        let (mx, my) = self.front.cursor;
+        let (mx, my) = self.cursor;
         if mx >= x && mx < x + 200.0 && my >= y && my < y + 20.0 {
-            self.front.audio.play_button_click();
+            self.audio.play_button_click();
             self.close_sign_editor();
             return;
         }
@@ -374,24 +490,42 @@ impl Game<'_> {
                 .as_ref()
                 .map(|e| e.edit.value.clone())
                 .unwrap_or_default();
-            let lw = HudBatch::text_width(&self.front.gui.atlas, &value);
+            let lw = HudBatch::text_width(&self.gui.atlas, &value);
             let text_x = cx - (lw as i32 / 2) as f32;
-            if let Some(edit) = self.sim.sign_edit.as_mut() {
+            if let Some(edit) = self.sign_edit.as_mut() {
                 edit.edit.x = text_x;
                 edit.edit.y = ly;
                 edit.edit.width = max_width;
-                edit.edit.click(&self.front.gui.atlas, mx, shift, false);
+                edit.edit.click(&self.gui.atlas, mx, shift, false);
             }
             self.sign_write();
             return;
         }
+    }
+    /// Centre x, the first line's y, the line height, the width limit and the four lines.
+    fn sign_lines(&self, width: f32) -> Option<(f32, f32, f32, f32, Vec<String>)> {
+        let edit = self.sign_edit.as_ref()?;
+        let BlockEntity::Sign(sign) = self.world.block_entities.get(&edit.pos)? else {
+            return None;
+        };
+        let text = if edit.front { &sign.front } else { &sign.back };
+        let line_height = sign.line_height();
+        let y = if sign.hanging { 125.0 } else { 90.0 };
+        let top = y - (4.0 * line_height / 2.0).floor();
+        Some((
+            width / 2.0,
+            top,
+            line_height,
+            sign.max_line_width(),
+            text.lines.to_vec(),
+        ))
     }
     pub(super) fn draw_sign_editor(&self, batch: &mut HudBatch) {
         let Some(edit) = &self.sign_edit else { return };
         let Some(BlockEntity::Sign(sign)) = self.world.block_entities.get(&edit.pos) else {
             return;
         };
-        let atlas = &self.front.gui.atlas;
+        let atlas = &self.gui.atlas;
         let (w, h) = (batch.width, batch.height);
         batch.fill(atlas, 0.0, 0.0, w, h, rgba(16, 16, 16, 160));
         let (key, fallback) = if sign.hanging {
@@ -513,142 +647,5 @@ impl Game<'_> {
             u32::MAX,
             true,
         );
-    }
-}
-impl crate::game::Sim<'_> {
-    /// `SignBlockEntity.getSlotPlayerIsFacing`: whether the player stands in
-    /// front of the sign's text (within 90 degrees of its facing).
-    fn facing_sign_front(&self, pos: (i32, i32, i32)) -> bool {
-        let Some(player) = self.player.as_ref() else {
-            return true;
-        };
-        let state = self.world.block(pos.0, pos.1, pos.2);
-        let Some(state) = self.pack.assets.registry.state(state) else {
-            return true;
-        };
-        let prop = |key: &str| state.properties.get(key).map(String::as_str);
-        // getYRotationDegrees: a wall sign's `Direction.toYRot`, a standing or
-        // ceiling sign's rotation segment.
-        let y_rot = if state.name.contains("_wall_") {
-            match prop("facing") {
-                Some("west") => 90.0,
-                Some("north") => 180.0,
-                Some("east") => 270.0,
-                _ => 0.0,
-            }
-        } else {
-            prop("rotation")
-                .and_then(|r| r.parse::<f32>().ok())
-                .unwrap_or(0.0)
-                * 22.5
-        };
-        // getSignHitboxCenterPosition: only a wall sign's board is off-centre,
-        // against the wall it hangs on.
-        let centre = if state.name.ends_with("_wall_sign") {
-            match y_rot as i32 {
-                90 => (0.9375, 0.5),
-                180 => (0.5, 0.9375),
-                270 => (0.0625, 0.5),
-                _ => (0.5, 0.0625),
-            }
-        } else {
-            (0.5, 0.5)
-        };
-        let xd = player.position.x - (f64::from(pos.0) + centre.0);
-        let zd = player.position.z - (f64::from(pos.2) + centre.1);
-        let player_y_rot = (zd.atan2(xd).to_degrees() - 90.0) as f32;
-        // Mth.degreesDifferenceAbs.
-        let diff = (player_y_rot - y_rot).rem_euclid(360.0);
-        let diff = if diff >= 180.0 { 360.0 - diff } else { diff };
-        diff <= 90.0
-    }
-    /// `ServerPlayer.openTextEdit` for the guest whose action opened a sign:
-    /// the block, then the editor, on its client, and the guest may write on it.
-    pub(super) fn lan_open_sign_editor(&mut self, host: &mut LanHost, conn: u32, edit: SignEditor) {
-        let pos = [edit.pos.0, edit.pos.1, edit.pos.2];
-        let state = self.world.block(pos[0], pos[1], pos[2]).0 as i32;
-        host.hub
-            .send_to(conn, &C::BlockUpdate(play::BlockUpdate { pos, state }));
-        host.hub.send_to(
-            conn,
-            &C::OpenSignEditor(play::OpenSignEditor {
-                pos,
-                front: edit.front,
-            }),
-        );
-        host.play.entry(conn).or_default().sign_editing = Some(pos);
-    }
-    /// `ServerGamePacketListenerImpl.handleSignUpdate`: the lines, formatting
-    /// codes stripped, go on the sign the guest may write on unless it is
-    /// waxed (`SignBlockEntity.updateSignText`); a guest gone out of reach
-    /// may no longer write (`playerIsTooFarAwayToEdit`).
-    pub(super) fn lan_sign_update(&mut self, host: &mut LanHost, conn: u32, p: play::SignUpdate) {
-        let Some(g) = host.hub.guest(conn) else {
-            return;
-        };
-        let near = g.within_block_range(p.pos, 4.0);
-        let Some(play) = host.play.get_mut(&conn) else {
-            return;
-        };
-        if !near {
-            play.sign_editing = None;
-        }
-        if play.sign_editing != Some(p.pos) {
-            log::warn!("{} just tried to change non-editable sign", g.name);
-            return;
-        }
-        let key = (p.pos[0], p.pos[1], p.pos[2]);
-        let Some(BlockEntity::Sign(sign)) = self.world.block_entities.get_mut(&key) else {
-            return;
-        };
-        if sign.waxed {
-            return;
-        }
-        let side = if p.front {
-            &mut sign.front
-        } else {
-            &mut sign.back
-        };
-        for (line, new) in side.lines.iter_mut().zip(&p.lines) {
-            *line = horizon_client::clipboard::strip_formatting(new);
-        }
-        play.sign_editing = None;
-        self.mark_block_entity_updated(key);
-    }
-    /// The edited line's text.
-    fn sign_current(&self) -> Option<String> {
-        let edit = self.sign_edit.as_ref()?;
-        let BlockEntity::Sign(sign) = self.world.block_entities.get(&edit.pos)? else {
-            return None;
-        };
-        let side = if edit.front { &sign.front } else { &sign.back };
-        Some(side.lines[edit.line].clone())
-    }
-    /// `EditBox.setValue` from the line now being edited.
-    fn sign_load(&mut self) {
-        let Some(text) = self.sign_current() else {
-            return;
-        };
-        if let Some(edit) = self.sign_edit.as_mut() {
-            edit.edit.set_value(&text);
-        }
-    }
-    /// Centre x, the first line's y, the line height, the width limit and the four lines.
-    fn sign_lines(&self, width: f32) -> Option<(f32, f32, f32, f32, Vec<String>)> {
-        let edit = self.sign_edit.as_ref()?;
-        let BlockEntity::Sign(sign) = self.world.block_entities.get(&edit.pos)? else {
-            return None;
-        };
-        let text = if edit.front { &sign.front } else { &sign.back };
-        let line_height = sign.line_height();
-        let y = if sign.hanging { 125.0 } else { 90.0 };
-        let top = y - (4.0 * line_height / 2.0).floor();
-        Some((
-            width / 2.0,
-            top,
-            line_height,
-            sign.max_line_width(),
-            text.lines.to_vec(),
-        ))
     }
 }

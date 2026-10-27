@@ -11,6 +11,19 @@ use horizon_client::{
 use horizon_core::{position::BlockPos, random::RandomSource};
 
 impl Game<'_> {
+    /// The composter's `level` at `pos`, None when it isn't a composter.
+    pub(super) fn composter_level(&self, pos: [i32; 3]) -> Option<i32> {
+        let state = self.world.block(pos[0], pos[1], pos[2]);
+        let s = self.pack.assets.registry.state(state)?;
+        if &*s.name != "minecraft:composter" {
+            return None;
+        }
+        s.properties.get("level")?.parse().ok()
+    }
+    /// The item's `compostable` layers provider.
+    fn compostable(&self, stack: &ItemStack) -> Option<serde_json::Value> {
+        self.res.items().get(&stack.item)?.compostable.clone()
+    }
     /// `ComposterBlock.addLayer` and level event 1500: the provider is
     /// evaluated in the composter's block-interaction loot context (its
     /// state; the level random), then the layer is added. True when it was.
@@ -149,21 +162,6 @@ impl Game<'_> {
         if inventory[slot].count == 0 {
             inventory.remove(slot);
         }
-    }
-}
-impl crate::game::Sim<'_> {
-    /// The composter's `level` at `pos`, None when it isn't a composter.
-    pub(super) fn composter_level(&self, pos: [i32; 3]) -> Option<i32> {
-        let state = self.world.block(pos[0], pos[1], pos[2]);
-        let s = self.pack.assets.registry.state(state)?;
-        if &*s.name != "minecraft:composter" {
-            return None;
-        }
-        s.properties.get("level")?.parse().ok()
-    }
-    /// The item's `compostable` layers provider.
-    fn compostable(&self, stack: &ItemStack) -> Option<serde_json::Value> {
-        self.res.items().get(&stack.item)?.compostable.clone()
     }
     /// `ComposterBlock.handleFill` (level event 1500) on the client: the
     /// fill sound and ten composter particles above the compost.
