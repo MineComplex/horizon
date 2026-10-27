@@ -2758,9 +2758,16 @@ impl Game<'_> {
         {
             use horizon_mods::plugin::EventKind as K;
             !self.mods.plugin.reverting
-                && [K::BlockGrow, K::BlockSpread, K::BlockForm, K::BlockFade]
-                    .into_iter()
-                    .any(|k| self.plugins_listen(k))
+                && [
+                    K::BlockGrow,
+                    K::BlockSpread,
+                    K::BlockForm,
+                    K::BlockFade,
+                    K::LeavesDecay,
+                    K::BlockBurn,
+                ]
+                .into_iter()
+                .any(|k| self.plugins_listen(k))
         }
         #[cfg(not(feature = "mods"))]
         false
@@ -3373,6 +3380,16 @@ impl Game<'_> {
                     state,
                     kind: "shrieker_respond",
                 } => self.shrieker_block_event(pos, state),
+                // LeavesDecay, BlockBurn, Form and FadeEvent before the change.
+                LevelEvent::Pending(change) => {
+                    #[cfg(feature = "mods")]
+                    if self.plugin_pending(change) {
+                        self.with_level(|b, level, ticks| b.apply_pending(level, ticks, change));
+                        self.process_level_events()?;
+                    }
+                    #[cfg(not(feature = "mods"))]
+                    let _ = change;
+                }
                 // BlockGrow, Spread, Form and FadeEvent.
                 LevelEvent::Changed { cause, changes } => {
                     #[cfg(feature = "mods")]

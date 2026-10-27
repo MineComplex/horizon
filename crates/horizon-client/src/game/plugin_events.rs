@@ -864,11 +864,51 @@ impl Game<'_> {
         vetoes
     }
 
+    /// A change the level held back for the plugins: `LeavesDecayEvent`,
+    /// `BlockBurnEvent`, `BlockFadeEvent` (snow melting) or `BlockFormEvent`
+    /// (lava meeting water). True when it may happen.
+    pub(super) fn plugin_pending(&mut self, change: horizon_world::level::PendingChange) -> bool {
+        use horizon_world::level::PendingChange as P;
+        let (pos, _) = change.at();
+        let block = self.plugin_level_block(pos);
+        let event = match change {
+            P::LeavesDecay { .. } => Event::LeavesDecay(ev::LeavesDecayEvent {
+                block,
+                cancelled: false,
+            }),
+            P::Burn { source, .. } => Event::BlockBurn(ev::BlockBurnEvent {
+                block,
+                source: self.plugin_level_block(source),
+                cancelled: false,
+            }),
+            P::SnowMelt { .. } => Event::BlockFade(ev::BlockGrowEvent {
+                block,
+                new_state: "minecraft:air".into(),
+                cancelled: false,
+            }),
+            P::Form { into, .. } => Event::BlockForm(ev::BlockGrowEvent {
+                block,
+                new_state: self.state_string(into),
+                cancelled: false,
+            }),
+        };
+        !plugin::is_cancelled(&self.plugin_fire(None, event))
+    }
+
     /// Bone meal about to be used on `target`: `BlockFertilizeEvent`, with
     /// the player whose turn it is. False when a plugin cancelled it.
     pub(super) fn plugin_fertilize(&mut self, target: horizon_core::position::BlockPos) -> bool {
-        let block = self.plugin_level_block(target);
         let player = self.plugin_acting_player();
+        self.plugin_fertilize_by(player, target)
+    }
+
+    /// `BlockFertilizeEvent` by `player`, or a dispenser (None).
+    pub(super) fn plugin_fertilize_by(
+        &mut self,
+        player: Option<types::Player>,
+        target: horizon_core::position::BlockPos,
+    ) -> bool {
+        let block = self.plugin_level_block(target);
         !plugin::is_cancelled(&self.plugin_fire(
             None,
             Event::BlockFertilize(ev::BlockFertilizeEvent {

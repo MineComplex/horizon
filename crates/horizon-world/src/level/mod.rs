@@ -230,9 +230,47 @@ pub enum BlockChange {
     /// farmland turning to dirt.
     Fade,
 }
+/// A change a server's plugins decide before it happens, as it destroys or
+/// drops: a level that `reports_changes` holds it back as
+/// `LevelEvent::Pending`, and `Behaviours::apply_pending` makes it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PendingChange {
+    /// `LeavesDecayEvent`: leaves too far from a log drop and go.
+    LeavesDecay { pos: BlockPos, state: BlockStateId },
+    /// `BlockFadeEvent`: a snow layer melts in the light (and drops).
+    SnowMelt { pos: BlockPos, state: BlockStateId },
+    /// `BlockBurnEvent`: the fire at `source` burns the block away, leaving
+    /// `fire` there or air (a TNT block is primed).
+    Burn {
+        pos: BlockPos,
+        state: BlockStateId,
+        source: BlockPos,
+        fire: Option<BlockStateId>,
+    },
+    /// `BlockFormEvent`: where lava meets water (or blue ice over soul
+    /// soil), the block turns `into` stone, cobblestone, obsidian or basalt.
+    Form {
+        pos: BlockPos,
+        state: BlockStateId,
+        into: BlockStateId,
+    },
+}
+impl PendingChange {
+    /// The block it changes, as it is.
+    pub fn at(&self) -> (BlockPos, BlockStateId) {
+        match *self {
+            Self::LeavesDecay { pos, state }
+            | Self::SnowMelt { pos, state }
+            | Self::Burn { pos, state, .. }
+            | Self::Form { pos, state, .. } => (pos, state),
+        }
+    }
+}
 /// Side effects reported to the caller, in vanilla call order.
 #[derive(Clone, Debug, PartialEq)]
 pub enum LevelEvent {
+    /// A change held back for the plugins (`PendingChange`).
+    Pending(PendingChange),
     /// Blocks changed by themselves (`BlockChange`), when the level
     /// `reports_changes`: each with the state it replaced and the new one;
     /// the first is the block the event names.

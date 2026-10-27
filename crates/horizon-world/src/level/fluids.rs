@@ -493,9 +493,10 @@ impl<L: LevelAccess + ?Sized> Sim<'_, L> {
             && b.is_water_fluid(self.fluid_at(pos).kind())
         {
             if b.instance_of(state, Class::Liquid) {
-                self.set_block_and_update(pos, b.default_of(b.named.stone));
+                self.form_from_lava(pos, state, b.default_of(b.named.stone));
+            } else {
+                self.level_event(1501, pos, 0);
             }
-            self.level_event(1501, pos, 0);
             return;
         }
         if self.is_liquid_container(state) {
@@ -666,6 +667,14 @@ impl<L: LevelAccess + ?Sized> Sim<'_, L> {
 
     // ---- LiquidBlock ----
 
+    /// Lava meeting water turns the block at `pos` `into` stone, cobblestone,
+    /// obsidian or basalt, with the fizz; held back for a server's plugins.
+    fn form_from_lava(&mut self, pos: BlockPos, state: BlockStateId, into: BlockStateId) {
+        if !self.defer(super::PendingChange::Form { pos, state, into }) {
+            self.set_block_and_update(pos, into);
+            self.level_event(1501, pos, 0);
+        }
+    }
     /// `LiquidBlock.shouldSpreadLiquid`, including lava's conversions.
     pub(crate) fn should_spread_liquid(&mut self, pos: BlockPos, state: BlockStateId) -> bool {
         let b = self.b;
@@ -681,13 +690,11 @@ impl<L: LevelAccess + ?Sized> Sim<'_, L> {
                 } else {
                     b.named.cobblestone
                 };
-                self.set_block_and_update(pos, b.default_of(block));
-                self.level_event(1501, pos, 0);
+                self.form_from_lava(pos, state, b.default_of(block));
                 return false;
             }
             if over_soul_soil && b.is_block(self.state(neighbour), b.named.blue_ice) {
-                self.set_block_and_update(pos, b.default_of(b.named.basalt));
-                self.level_event(1501, pos, 0);
+                self.form_from_lava(pos, state, b.default_of(b.named.basalt));
                 return false;
             }
         }

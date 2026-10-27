@@ -316,7 +316,10 @@ impl<L: LevelAccess + ?Sized> Sim<'_, L> {
                     }
                 }
                 Class::Leaves => {
-                    if !b.table.bool(state, p.persistent) && b.table.int(state, p.distance) == 7 {
+                    if !b.table.bool(state, p.persistent)
+                        && b.table.int(state, p.distance) == 7
+                        && !self.defer(super::PendingChange::LeavesDecay { pos, state })
+                    {
                         self.drop_resources(state, pos);
                         self.remove_block(pos, false);
                     }
@@ -371,7 +374,9 @@ impl<L: LevelAccess + ?Sized> Sim<'_, L> {
                     }
                 }
                 Class::SnowLayer => {
-                    if self.level.block_light(pos) > 11 {
+                    if self.level.block_light(pos) > 11
+                        && !self.defer(super::PendingChange::SnowMelt { pos, state })
+                    {
                         self.drop_resources(state, pos);
                         self.remove_block(pos, false);
                         self.game_event(pos, "minecraft:block_destroy");
@@ -616,7 +621,7 @@ impl<L: LevelAccess + ?Sized> Sim<'_, L> {
             (Direction::North, 300),
             (Direction::South, 300),
         ] {
-            self.fire_check_burn_out(rel(pos, direction), chance + extra, age);
+            self.fire_check_burn_out(rel(pos, direction), pos, chance + extra, age);
         }
         for xx in -1..=1 {
             for zz in -1..=1 {
@@ -672,17 +677,33 @@ impl<L: LevelAccess + ?Sized> Sim<'_, L> {
             || self.level.is_raining_at(rel(pos, Direction::North))
             || self.level.is_raining_at(rel(pos, Direction::South))
     }
-    fn fire_check_burn_out(&mut self, pos: BlockPos, chance: i32, age: i32) {
+    fn fire_check_burn_out(&mut self, pos: BlockPos, source: BlockPos, chance: i32, age: i32) {
         let b = self.b;
         let odds = self.burn_odds(self.state(pos));
         if self.rand_int(chance) < odds {
             let old = self.state(pos);
-            if self.rand_int(age + 10) < 5 && !self.level.is_raining_at(pos) {
+            let fire = if self.rand_int(age + 10) < 5 && !self.level.is_raining_at(pos) {
                 let new_age = (age + self.rand_int(5) / 4).min(15);
-                let next = self.fire_state_with_age(pos, new_age);
-                self.set_block_and_update(pos, next);
+                Some(self.fire_state_with_age(pos, new_age))
             } else {
-                self.remove_block(pos, false);
+                None
+            };
+            let burn = super::PendingChange::Burn {
+                pos,
+                state: old,
+                source,
+                fire,
+            };
+            if self.defer(burn) {
+                return;
+            }
+            match fire {
+                Some(next) => {
+                    self.set_block_and_update(pos, next);
+                }
+                None => {
+                    self.remove_block(pos, false);
+                }
             }
             if b.instance_of(old, Class::Tnt) {
                 self.prime_tnt(pos);
@@ -793,6 +814,51 @@ impl<L: LevelAccess + ?Sized> Sim<'_, L> {
     /// first).
     fn grow(&mut self, at: &[BlockPos], set: impl FnOnce(&mut Self)) {
         self.changed(super::BlockChange::Grow, at, set);
+    }
+    /// Hold `change` back for a level that `reports_changes` (true), or
+    /// leave it to the caller to make now (false).
+    pub(crate) fn defer(&mut self, change: super::PendingChange) -> bool {
+        if !self.level.reports_changes() {
+            return false;
+        }
+        self.emit(LevelEvent::Pending(change));
+        true
+    }
+    /// Make a change `defer` held back, as the block it names still is.
+    pub(crate) fn apply_pending(&mut self, change: super::PendingChange) {
+        use super::PendingChange as P;
+        let (pos, state) = change.at();
+        if self.state(pos) != state {
+            return;
+        }
+        match change {
+            P::LeavesDecay { .. } => {
+                self.drop_resources(state, pos);
+                self.remove_block(pos, false);
+            }
+            P::SnowMelt { .. } => {
+                self.drop_resources(state, pos);
+                self.remove_block(pos, false);
+                self.game_event(pos, "minecraft:block_destroy");
+            }
+            P::Burn { fire, .. } => {
+                match fire {
+                    Some(fire) => {
+                        self.set_block_and_update(pos, fire);
+                    }
+                    None => {
+                        self.remove_block(pos, false);
+                    }
+                }
+                if self.b.instance_of(state, Class::Tnt) {
+                    self.prime_tnt(pos);
+                }
+            }
+            P::Form { into, .. } => {
+                self.set_block_and_update(pos, into);
+                self.level_event(1501, pos, 0);
+            }
+        }
     }
     /// Blocks changing by themselves: `set` sets those at `at` (the one the
     /// event names first); a level that `reports_changes` hears of those it
@@ -1730,6 +1796,16 @@ impl Behaviours {
             return None;
         }
         sim.fluid_flow_preview(tick.pos)
+    }
+    /// Make a change held back as `LevelEvent::Pending` (the plugins let it
+    /// happen), if the block it names is still as it was.
+    pub fn apply_pending<L: LevelAccess + ?Sized>(
+        &self,
+        level: &mut L,
+        ticks: &mut Ticks,
+        change: super::PendingChange,
+    ) {
+        self.sim(level, ticks).apply_pending(change);
     }
     /// The positions the next fluid tick may not flow into (the plugins
     /// cancelled those flows).

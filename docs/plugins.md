@@ -137,9 +137,11 @@ changes are ignored.
 | `block-from-to` | water or lava is about to flow into a block (`face`: `down`, `north` ...) | `cancelled` (cancelling the flow down stops it flowing to the sides this tick) |
 | `block-grow` | a plant grew in a random tick: crops, stems and their fruit, cactus and its flower, sugar cane, berry bushes, cocoa, nether wart. `block` is the plant as it was; the world already shows `new-state` | `cancelled` (the blocks the growth set are put back) |
 | `block-spread` | a block spread from `source`: grass, mycelium, vines, kelp and the other growing plants, mushrooms, fire. `block` as it was | `cancelled` (put back) |
-| `block-form` | snow or ice formed in the weather | `cancelled` (put back) |
-| `block-fade` | ice melted, coral died, fire went out, grass or farmland turned to dirt | `cancelled` (put back) |
-| `block-fertilize` | bone meal is about to be used on a block that takes it (or on the water beside, for water plants), by `player` when a player uses it | `cancelled` (nothing grows, the bone meal stays) |
+| `block-form` | snow or ice formed in the weather; lava meeting water is about to turn into stone, cobblestone, obsidian or basalt | `cancelled` (put back; the lava stays) |
+| `block-fade` | ice melted, coral died, fire went out, grass or farmland turned to dirt; a snow layer is about to melt | `cancelled` (put back; the snow stays) |
+| `block-fertilize` | bone meal is about to be used on a block that takes it (or on the water beside, for water plants), by `player` when a player uses it, none from a dispenser | `cancelled` (nothing grows, the bone meal stays) |
+| `leaves-decay` | leaves too far from a log are about to decay | `cancelled` (they stay) |
+| `block-burn` | the fire at `source` is about to burn a block away | `cancelled` (the block stays, TNT isn't primed) |
 | `entity-damage` | a player attacks an entity or another player; a player is hurt by a mob, an explosion, a fall, an effect, a firework, or its surroundings (fire, lava, magma, cactus, berry bushes, campfires, freezing, drowning, suffocation, the void, flying into a wall); a mob is hurt by its surroundings (fire, lava, drowning, drying out, suffocation, the void, poison and wither). While a plugin listens, the surroundings' damage lands at the end of the mob's tick or the player's move | `damage`, `cancelled` |
 | `entity-death` | a mob or a player died | |
 | `entity-spawn` | a mob spawns naturally, from a spawner, a command or egg, a raid, an iron golem built | `cancelled` |
@@ -149,7 +151,7 @@ changes are ignored.
 | `plugin-state` | a plugin was enabled or disabled | |
 | `plugin-call` | another plugin's `send-to-plugin` | |
 
-Not yet: redstone (`BlockRedstoneEvent`), blocks burning (`BlockBurnEvent`), leaves decaying (`LeavesDecayEvent`), snow layers melting and the blocks lava and water form where they meet fire no block events; dispensers' bone meal fires no `block-fertilize`.
+Not yet: redstone (`BlockRedstoneEvent`) fires no block event. The changes that destroy or drop (leaves, burning, melting snow, lava meeting water) wait for the plugins while one listens: they happen when the block events are handled, after the tick that decided them.
 
 ### Commands and completion
 

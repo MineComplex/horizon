@@ -169,6 +169,23 @@ def block_events(o, c, server, port):
     server.console("setblock 24 79 2 minecraft:grass_block")
     server.console("setblock 28 80 0 minecraft:ice")
     server.console("setblock 29 80 0 minecraft:glowstone")
+    # Leaves far from a log decay; planks under fire burn; snow by a light
+    # melts; lava beside water turns to obsidian.
+    server.console("setblock 32 80 0 minecraft:oak_leaves[distance=7,persistent=false]")
+    server.console("fill 36 79 0 40 79 4 minecraft:oak_planks")
+    server.console("fill 36 80 0 40 80 4 minecraft:fire")
+    server.console("setblock 28 79 2 minecraft:stone")
+    server.console("setblock 28 80 2 minecraft:snow")
+    server.console("setblock 29 80 2 minecraft:glowstone")
+    server.console("setblock 44 80 0 minecraft:water")
+    server.console("setblock 45 80 0 minecraft:lava")
+    # A dispenser's bone meal on wheat.
+    server.console("setblock 49 79 0 minecraft:farmland")
+    server.console("setblock 49 80 0 minecraft:wheat")
+    server.console(
+        'setblock 48 80 0 minecraft:dispenser[facing=east]{Items:[{Slot:0b,id:"minecraft:bone_meal",count:1}]}'
+    )
+    server.console("setblock 48 81 0 minecraft:redstone_block")
     server.console("gamerule random_tick_speed 300")
     time.sleep(3.0)
     server.console("gamerule random_tick_speed 3")
@@ -190,7 +207,12 @@ def block_events(o, c, server, port):
     saw("block-grow for ripening wheat", r"EVENT block-grow minecraft:wheat\[age=6\] -> minecraft:wheat\[age=7\]")
     saw("block-spread for grass", r"EVENT block-spread minecraft:dirt\S* -> minecraft:grass_block\S* [-\d ]+ from 24 79 2")
     saw("block-fade for melting ice", r"EVENT block-fade minecraft:ice\S* -> minecraft:water\S* 28 80 0")
-    saw("block-fertilize for bone meal", r"EVENT block-fertilize minecraft:wheat\S* [-\d ]+ by Builder")
+    saw("leaves-decay", r"EVENT leaves-decay minecraft:oak_leaves\S* 32 80 0")
+    saw("block-burn for planks under fire", r"EVENT block-burn minecraft:oak_planks\S* [-\d ]+ from [-\d ]+")
+    saw("block-fade for melting snow", r"EVENT block-fade minecraft:snow\S* -> minecraft:air 28 80 2")
+    saw("block-form for lava meeting water", r"EVENT block-form minecraft:lava\S* -> minecraft:obsidian 45 80 0")
+    saw("block-fertilize for a dispenser", r"EVENT block-fertilize minecraft:wheat\S* 49 80 0 by -")
+    saw("block-fertilize for bone meal",r"EVENT block-fertilize minecraft:wheat\S* [-\d ]+ by Builder")
 
 
 def events(o, c, server, port):

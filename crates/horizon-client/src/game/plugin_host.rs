@@ -1306,7 +1306,12 @@ impl Game<'_> {
         out.extend(self.mobs.iter().map(|m| Target::Mob(m.id)));
         out.extend(self.dropped.iter().map(|i| Target::Item(i.id)));
         out.extend(self.orbs.iter().map(|o| Target::Orb(o.id)));
-        out.extend(self.creatures.projectiles.iter().map(|p| Target::Projectile(p.id)));
+        out.extend(
+            self.creatures
+                .projectiles
+                .iter()
+                .map(|p| Target::Projectile(p.id)),
+        );
         out.extend(self.armor_stands.iter().map(|a| Target::Stand(a.id)));
         out.extend(self.item_frames.iter().map(|f| Target::Frame(f.id)));
         out.extend(self.paintings.iter().map(|p| Target::Painting(p.id)));

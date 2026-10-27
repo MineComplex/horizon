@@ -1168,11 +1168,13 @@ interface plugin-event-types {
     }
     /// A block changed by itself. `block-grow`: a plant grew in a random tick
     /// (crops, stems and their fruit, cactus, sugar cane, berry bushes, cocoa,
-    /// nether wart). `block-form`: snow or ice formed in the weather.
-    /// `block-fade`: ice melted, coral died, fire went out, grass or farmland
-    /// turned to dirt. `block` is the block as it was, `new-state` what it is
-    /// now (the world already shows it). Cancelling puts back every block the
-    /// change set.
+    /// nether wart). `block-form`: snow or ice formed in the weather; lava
+    /// meeting water is about to turn into stone, cobblestone, obsidian or
+    /// basalt. `block-fade`: ice melted, coral died, fire went out, grass or
+    /// farmland turned to dirt; a snow layer is about to melt. `block` is the
+    /// block as it was, `new-state` what it is now (the world already shows
+    /// it, but for lava and snow, which wait for the plugins). Cancelling
+    /// puts back every block the change set (lava and snow stay).
     record block-grow-event {
         block: block,
         new-state: string,
@@ -1193,6 +1195,19 @@ interface plugin-event-types {
     record block-fertilize-event {
         player: option<player>,
         block: block,
+        cancelled: bool,
+    }
+    /// Leaves too far from a log are about to decay (drop and go).
+    /// Cancelling keeps them.
+    record leaves-decay-event {
+        block: block,
+        cancelled: bool,
+    }
+    /// The fire at `source` is about to burn `block` away. Cancelling keeps
+    /// the block (and doesn't prime TNT).
+    record block-burn-event {
+        block: block,
+        source: block,
         cancelled: bool,
     }
     /// An entity is about to be hurt by `cause` (a damage type,
@@ -1315,6 +1330,8 @@ interface plugin-event-types {
         block-form(block-grow-event),
         block-fade(block-grow-event),
         block-fertilize(block-fertilize-event),
+        leaves-decay(leaves-decay-event),
+        block-burn(block-burn-event),
         entity-damage(entity-damage-event),
         entity-death(entity-death-event),
         entity-spawn(entity-spawn-event),
@@ -1358,6 +1375,8 @@ interface plugin-event-types {
         block-form,
         block-fade,
         block-fertilize,
+        leaves-decay,
+        block-burn,
         entity-damage,
         entity-death,
         entity-spawn,

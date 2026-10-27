@@ -1233,7 +1233,7 @@ A fluid is about to flow from `block` into `to`, towards `face` (`down`, `north`
 
 ### record `block-grow-event`
 
-A block changed by itself. `block-grow`: a plant grew in a random tick (crops, stems and their fruit, cactus, sugar cane, berry bushes, cocoa, nether wart). `block-form`: snow or ice formed in the weather. `block-fade`: ice melted, coral died, fire went out, grass or farmland turned to dirt. `block` is the block as it was, `new-state` what it is now (the world already shows it). Cancelling puts back every block the change set.
+A block changed by itself. `block-grow`: a plant grew in a random tick (crops, stems and their fruit, cactus, sugar cane, berry bushes, cocoa, nether wart). `block-form`: snow or ice formed in the weather; lava meeting water is about to turn into stone, cobblestone, obsidian or basalt. `block-fade`: ice melted, coral died, fire went out, grass or farmland turned to dirt; a snow layer is about to melt. `block` is the block as it was, `new-state` what it is now (the world already shows it, but for lava and snow, which wait for the plugins). Cancelling puts back every block the change set (lava and snow stay).
 
 | Field | Type | |
 | --- | --- | --- |
@@ -1260,6 +1260,25 @@ Bone meal is about to be used on `block` (or on the water beside it, for water p
 | --- | --- | --- |
 | `player` | `option<player>` |  |
 | `block` | `block` |  |
+| `cancelled` | `bool` |  |
+
+### record `leaves-decay-event`
+
+Leaves too far from a log are about to decay (drop and go). Cancelling keeps them.
+
+| Field | Type | |
+| --- | --- | --- |
+| `block` | `block` |  |
+| `cancelled` | `bool` |  |
+
+### record `block-burn-event`
+
+The fire at `source` is about to burn `block` away. Cancelling keeps the block (and doesn't prime TNT).
+
+| Field | Type | |
+| --- | --- | --- |
+| `block` | `block` |  |
+| `source` | `block` |  |
 | `cancelled` | `bool` |  |
 
 ### record `entity-damage-event`
@@ -1418,6 +1437,8 @@ Every event. A listener receives each kind it registered for.
 | `block-form` | `block-grow-event` |  |
 | `block-fade` | `block-grow-event` |  |
 | `block-fertilize` | `block-fertilize-event` |  |
+| `leaves-decay` | `leaves-decay-event` |  |
+| `block-burn` | `block-burn-event` |  |
 | `entity-damage` | `entity-damage-event` |  |
 | `entity-death` | `entity-death-event` |  |
 | `entity-spawn` | `entity-spawn-event` |  |
@@ -1465,6 +1486,8 @@ The kinds of `event`, for `plugin-listeners.listen`.
 | `block-form` |  |
 | `block-fade` |  |
 | `block-fertilize` |  |
+| `leaves-decay` |  |
+| `block-burn` |  |
 | `entity-damage` |  |
 | `entity-death` |  |
 | `entity-spawn` |  |

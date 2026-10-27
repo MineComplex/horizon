@@ -5,7 +5,7 @@
 use horizon_mod_sdk::plugin::*;
 use std::collections::BTreeSet;
 
-const KINDS: [(&str, EventKind); 40] = [
+const KINDS: [(&str, EventKind); 42] = [
     ("player-join", EventKind::PlayerJoin),
     ("player-quit", EventKind::PlayerQuit),
     ("player-login", EventKind::PlayerLogin),
@@ -37,6 +37,8 @@ const KINDS: [(&str, EventKind); 40] = [
     ("block-form", EventKind::BlockForm),
     ("block-fade", EventKind::BlockFade),
     ("block-fertilize", EventKind::BlockFertilize),
+    ("leaves-decay", EventKind::LeavesDecay),
+    ("block-burn", EventKind::BlockBurn),
     ("entity-damage", EventKind::EntityDamage),
     ("entity-death", EventKind::EntityDeath),
     ("entity-spawn", EventKind::EntitySpawn),
@@ -185,6 +187,19 @@ fn describe(e: &Event) -> (&'static str, String) {
                 "{} -> {} {} from {}",
                 e.block.state,
                 e.new_state,
+                pos(&e.block.pos),
+                pos(&e.source.pos)
+            ),
+        ),
+        Event::LeavesDecay(e) => (
+            "leaves-decay",
+            format!("{} {}", e.block.state, pos(&e.block.pos)),
+        ),
+        Event::BlockBurn(e) => (
+            "block-burn",
+            format!(
+                "{} {} from {}",
+                e.block.state,
                 pos(&e.block.pos),
                 pos(&e.source.pos)
             ),

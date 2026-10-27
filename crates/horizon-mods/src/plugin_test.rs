@@ -2320,7 +2320,7 @@ impl Step {
 }
 
 /// Every kind's listener fires: the kinds plugins may register for.
-pub const KINDS: [EventKind; 40] = [
+pub const KINDS: [EventKind; 42] = [
     EventKind::PlayerJoin,
     EventKind::PlayerQuit,
     EventKind::PlayerLogin,
@@ -2352,6 +2352,8 @@ pub const KINDS: [EventKind; 40] = [
     EventKind::BlockForm,
     EventKind::BlockFade,
     EventKind::BlockFertilize,
+    EventKind::LeavesDecay,
+    EventKind::BlockBurn,
     EventKind::EntityDamage,
     EventKind::EntityDeath,
     EventKind::EntitySpawn,
