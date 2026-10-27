@@ -44,38 +44,6 @@ impl Maps for LevelMaps {
 }
 
 impl Game<'_> {
-    /// The maps of `stacks` (loaded as needed) for a menu over this level.
-    pub(super) fn level_maps<'s>(
-        &mut self,
-        stacks: impl IntoIterator<Item = &'s ItemStack>,
-    ) -> LevelMaps {
-        let ids: Vec<i32> = stacks.into_iter().filter_map(map_id).collect();
-        let mut states = HashMap::new();
-        for id in ids {
-            if let Some(m) = self.map(id) {
-                states.insert(id, (m.locked, m.scale));
-            }
-        }
-        LevelMaps {
-            states: RefCell::new(states),
-            next_id: Cell::new(self.peek_map_id()),
-            made: RefCell::new(Vec::new()),
-        }
-    }
-
-    /// The scaled and locked copies a menu made (`level.setMapData`).
-    pub(super) fn register_made_maps(&mut self, maps: LevelMaps) {
-        for (id, source, scale) in maps.made.into_inner() {
-            let Some(data) = self
-                .map(source)
-                .map(|m| if scale { m.scaled() } else { m.locked_copy() })
-            else {
-                continue;
-            };
-            let new = self.new_map_id(data);
-            debug_assert_eq!(new, id, "map ids follow peek_map_id");
-        }
-    }
     /// `CartographyTableScreen.extractBackground` after the background.
     pub(super) fn draw_cartography(&mut self, batch: &mut HudBatch, ox: f32, oy: f32) {
         let Some((map, extra)) = self
@@ -99,17 +67,17 @@ impl Game<'_> {
             if is_locked {
                 locked = true;
                 if scaling || locking {
-                    batch.sprite(&self.gui.atlas, error, ox + 35.0, oy + 31.0);
+                    batch.sprite(&self.front.gui.atlas, error, ox + 35.0, oy + 31.0);
                 }
             }
             if scaling && scale >= 4 {
                 locked = true;
-                batch.sprite(&self.gui.atlas, error, ox + 35.0, oy + 31.0);
+                batch.sprite(&self.front.gui.atlas, error, ox + 35.0, oy + 31.0);
             }
         }
         let sprite = |batch: &mut HudBatch, game: &Self, name: &str, x: f32, y: f32| {
             batch.sprite(
-                &game.gui.atlas,
+                &game.front.gui.atlas,
                 &format!("gui/sprites/container/cartography_table/{name}"),
                 ox + x,
                 oy + y,
@@ -139,6 +107,39 @@ impl Game<'_> {
         } else {
             sprite(batch, self, "map", 67.0, 13.0);
             preview(batch, self, 71.0, 17.0, 0.45);
+        }
+    }
+}
+impl crate::game::Sim<'_> {
+    /// The maps of `stacks` (loaded as needed) for a menu over this level.
+    pub(super) fn level_maps<'s>(
+        &mut self,
+        stacks: impl IntoIterator<Item = &'s ItemStack>,
+    ) -> LevelMaps {
+        let ids: Vec<i32> = stacks.into_iter().filter_map(map_id).collect();
+        let mut states = HashMap::new();
+        for id in ids {
+            if let Some(m) = self.map(id) {
+                states.insert(id, (m.locked, m.scale));
+            }
+        }
+        LevelMaps {
+            states: RefCell::new(states),
+            next_id: Cell::new(self.peek_map_id()),
+            made: RefCell::new(Vec::new()),
+        }
+    }
+    /// The scaled and locked copies a menu made (`level.setMapData`).
+    pub(super) fn register_made_maps(&mut self, maps: LevelMaps) {
+        for (id, source, scale) in maps.made.into_inner() {
+            let Some(data) = self
+                .map(source)
+                .map(|m| if scale { m.scaled() } else { m.locked_copy() })
+            else {
+                continue;
+            };
+            let new = self.new_map_id(data);
+            debug_assert_eq!(new, id, "map ids follow peek_map_id");
         }
     }
 }

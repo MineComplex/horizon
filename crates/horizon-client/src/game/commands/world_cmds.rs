@@ -30,10 +30,6 @@ fn java_double_text(v: f64) -> Text {
 impl Game<'_> {
     // ---- /recipe -----------------------------------------------------------
 
-    /// Every recipe id of the recipe manager (what `/recipe` resolves and suggests).
-    pub(super) fn learnable_recipes(&self) -> Vec<String> {
-        self.res.stations().recipe_index.ids().cloned().collect()
-    }
     pub(super) fn cmd_recipe(&mut self, id: &str, ctx: &Context) -> R<i32> {
         let targets = self.entities(ctx, "targets", true)?;
         let give = id == "recipe.give";
@@ -82,16 +78,16 @@ impl Game<'_> {
     /// many recipe book displays changed (a transmute recipe has one per
     /// material count).
     fn change_recipes(&mut self, give: bool, recipes: &[String]) -> i32 {
-        let index = &self.res.stations().recipe_index;
+        let index = &self.sim.res.stations().recipe_index;
         if give {
-            let (count, unlocked) = self.level.recipe_book.add_recipes(index, recipes);
+            let (count, unlocked) = self.sim.level.recipe_book.add_recipes(index, recipes);
             self.recipe_unlocked(&unlocked);
             return count as i32;
         }
-        let removed = self.level.recipe_book.remove_recipes(index, recipes);
+        let removed = self.sim.level.recipe_book.remove_recipes(index, recipes);
         let count = removed.len() as i32;
         // A network player's client drops them from its book.
-        if self.lan_acting.is_some() && !removed.is_empty() {
+        if self.sim.lan_acting.is_some() && !removed.is_empty() {
             self.guest_packets.push(C::RecipeBookRemove(
                 horizon_protocol::packets::recipes::RecipeBookRemove { ids: removed },
             ));
@@ -1209,19 +1205,6 @@ impl Game<'_> {
         Ok(1)
     }
 
-    /// Entity.getVehicle: the player's mount, or a mob's.
-    pub(super) fn ride_vehicle(&self, t: Target) -> Option<Target> {
-        let id = match t {
-            Target::Player => return self.riding.map(Target::Mob),
-            Target::Mob(id) => self.mobs.iter().find(|m| m.id == id)?.extra.mount?,
-            _ => return None,
-        };
-        Some(if self.boats.iter().any(|b| b.id == id) {
-            Target::Boat(id)
-        } else {
-            Target::Mob(id)
-        })
-    }
     /// LivingEntity.stopRiding for a mob: off its vehicle
     /// (Entity.removePassenger), then to where the vehicle lets it out
     /// (LivingEntity.dismountVehicle).
@@ -1455,6 +1438,25 @@ impl Game<'_> {
             ],
         ));
         Ok(points.len() as i32)
+    }
+}
+impl crate::game::Sim<'_> {
+    /// Every recipe id of the recipe manager (what `/recipe` resolves and suggests).
+    pub(super) fn learnable_recipes(&self) -> Vec<String> {
+        self.res.stations().recipe_index.ids().cloned().collect()
+    }
+    /// Entity.getVehicle: the player's mount, or a mob's.
+    pub(super) fn ride_vehicle(&self, t: Target) -> Option<Target> {
+        let id = match t {
+            Target::Player => return self.riding.map(Target::Mob),
+            Target::Mob(id) => self.mobs.iter().find(|m| m.id == id)?.extra.mount?,
+            _ => return None,
+        };
+        Some(if self.boats.iter().any(|b| b.id == id) {
+            Target::Boat(id)
+        } else {
+            Target::Mob(id)
+        })
     }
     /// `SpreadPlayersCommand.Position.getSpawnY`.
     fn spread_spawn_y(&self, p: [f64; 2], max_y: i32) -> i32 {

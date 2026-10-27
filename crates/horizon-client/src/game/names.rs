@@ -32,6 +32,137 @@ impl Game<'_> {
         self.swing_arm();
         true
     }
+    /// `SubmitNodeCollection.submitNameTag`: a discrete name is drawn once,
+    /// faded, on its background; any other in full over the world, its faded
+    /// copy and background in `see_through`, over everything.
+    pub(super) fn name_tag_geometry(
+        &self,
+        camera: glam::DVec3,
+        alpha: f64,
+        out: &mut Vec<Vertex>,
+        see_through: &mut Vec<Vertex>,
+    ) {
+        // The text alpha that goes with getBackgroundOpacity(0.25):
+        // max((0.25 + 0.75) / 2, 0.5), as ARGB.color (the floor of 255 times it).
+        const FADED: u32 = 0x7F;
+        for tag in self.name_tags(camera, alpha) {
+            let o = tag.at - camera;
+            // `gbuffers_entities` draws name tag text (2.3); a sneaking player's faded tag, on its
+            // background, blends.
+            if tag.discrete {
+                self.mark_translucent_entity(out.len(), "minecraft:name_tag");
+                self.name_tag_quads(o, &tag.lines, FADED, true, 0, vertex_light(tag.light), out);
+                continue;
+            }
+            // LightCoordsUtil.lightCoordsWithEmission(lightCoords, 2).
+            let lit = (tag.light >> 4).max(2) << 4 | (tag.light & 15).max(2);
+            self.mark_entity(out.len(), "minecraft:name_tag");
+            self.name_tag_quads(o, &tag.lines, 0xFF, false, 0, vertex_light(lit), out);
+            // RenderPipelines.TEXT_SEE_THROUGH: no depth test, no lightmap.
+            self.name_tag_quads(o, &tag.lines, FADED, true, 2, 0, see_through);
+        }
+    }
+    /// The lines of one name tag, `o` from the camera: the text at
+    /// `text_alpha` in its layer, on the translucent black background
+    /// (in `text_layer` like the glyphs, a hair behind) when `background`.
+    #[allow(clippy::too_many_arguments)]
+    fn name_tag_quads(
+        &self,
+        o: glam::DVec3,
+        lines: &[(Text, f64)],
+        text_alpha: u32,
+        background: bool,
+        text_layer: u32,
+        light: u32,
+        out: &mut Vec<Vertex>,
+    ) {
+        // Options.getBackgroundOpacity(0.25) black, as ARGB.color.
+        const BACKGROUND: u32 = 0x3F00_0000;
+        let forward = glam::DVec3::from_array(view_vector(self.yaw, self.pitch));
+        let right = forward.cross(glam::DVec3::Y).normalize_or_zero();
+        let up = right.cross(forward).normalize_or_zero();
+        let white = self.front.gui.atlas.font.white();
+        let away = forward.as_vec3() * 0.002;
+        for (text, lift) in lines {
+            let o = (o + glam::DVec3::new(0.0, *lift, 0.0)).as_vec3();
+            let (r, u) = (right.as_vec3() * 0.025, up.as_vec3() * 0.025);
+            // Text space: x right, y down (scale 0.025, -0.025).
+            let at = |x: f32, y: f32| o + r * x - u * y;
+            // Component.getVisualOrderText.
+            let shown = horizon_client::bidi::visual(text);
+            let chars: Vec<(char, u32)> = shown
+                .spans
+                .iter()
+                .flat_map(|s| {
+                    let rgb = s.style.color.unwrap_or(0xFF_FF_FF);
+                    // RGBA8, alpha in the top byte.
+                    let color = text_alpha << 24
+                        | ((rgb & 0xFF) << 16)
+                        | (rgb & 0xFF00)
+                        | ((rgb >> 16) & 0xFF);
+                    s.text.chars().map(move |c| (c, color))
+                })
+                .collect();
+            let width: f32 = chars
+                .iter()
+                .map(|(c, _)| self.front.gui.atlas.glyph(*c).map_or(6.0, |g| g.1))
+                .sum();
+            let x0 = -(width / 2.0).trunc();
+            let y0 = if text.plain() == "deadmau5" {
+                -10.0
+            } else {
+                0.0
+            };
+            let mut quad = |a: [f32; 4], uv: [f32; 4], color: u32, behind: bool, layer: u32| {
+                let corners = [(a[0], a[3]), (a[2], a[3]), (a[2], a[1]), (a[0], a[1])];
+                let uvs = [
+                    [uv[0], uv[3]],
+                    [uv[2], uv[3]],
+                    [uv[2], uv[1]],
+                    [uv[0], uv[1]],
+                ];
+                for ((x, y), uv) in corners.into_iter().zip(uvs) {
+                    out.push(Vertex {
+                        normal: [0; 4],
+                        pos: (at(x, y) + if behind { away } else { glam::Vec3::ZERO }).to_array(),
+                        uv,
+                        layer,
+                        color,
+                        light,
+                        glint_uv: [0.0, 0.0],
+                    });
+                }
+            };
+            if background {
+                quad(
+                    [x0 - 1.0, y0 - 1.0, x0 + width, y0 + 8.0],
+                    [white.u0, white.v0, white.u1, white.v1],
+                    BACKGROUND,
+                    true,
+                    text_layer,
+                );
+            }
+            let mut x = x0;
+            for (ch, color) in chars {
+                let Some((g, advance)) = self.front.gui.atlas.glyph(ch) else {
+                    x += 6.0;
+                    continue;
+                };
+                if ch != ' ' {
+                    quad(
+                        [x, y0, x + 8.0, y0 + 8.0],
+                        [g.u0, g.v0, g.u1, g.v1],
+                        color,
+                        false,
+                        text_layer,
+                    );
+                }
+                x += advance;
+            }
+        }
+    }
+}
+impl crate::game::Sim<'_> {
     /// `Entity.belowNameDisplay`: the score holder's score in the objective
     /// shown below names, then a space and the objective's name.
     fn below_name_text(&self, holder: &str) -> Option<Text> {
@@ -281,135 +412,6 @@ impl Game<'_> {
             }
         }
         tags
-    }
-    /// `SubmitNodeCollection.submitNameTag`: a discrete name is drawn once,
-    /// faded, on its background; any other in full over the world, its faded
-    /// copy and background in `see_through`, over everything.
-    pub(super) fn name_tag_geometry(
-        &self,
-        camera: glam::DVec3,
-        alpha: f64,
-        out: &mut Vec<Vertex>,
-        see_through: &mut Vec<Vertex>,
-    ) {
-        // The text alpha that goes with getBackgroundOpacity(0.25):
-        // max((0.25 + 0.75) / 2, 0.5), as ARGB.color (the floor of 255 times it).
-        const FADED: u32 = 0x7F;
-        for tag in self.name_tags(camera, alpha) {
-            let o = tag.at - camera;
-            // `gbuffers_entities` draws name tag text (2.3); a sneaking player's faded tag, on its
-            // background, blends.
-            if tag.discrete {
-                self.mark_translucent_entity(out.len(), "minecraft:name_tag");
-                self.name_tag_quads(o, &tag.lines, FADED, true, 0, vertex_light(tag.light), out);
-                continue;
-            }
-            // LightCoordsUtil.lightCoordsWithEmission(lightCoords, 2).
-            let lit = (tag.light >> 4).max(2) << 4 | (tag.light & 15).max(2);
-            self.mark_entity(out.len(), "minecraft:name_tag");
-            self.name_tag_quads(o, &tag.lines, 0xFF, false, 0, vertex_light(lit), out);
-            // RenderPipelines.TEXT_SEE_THROUGH: no depth test, no lightmap.
-            self.name_tag_quads(o, &tag.lines, FADED, true, 2, 0, see_through);
-        }
-    }
-    /// The lines of one name tag, `o` from the camera: the text at
-    /// `text_alpha` in its layer, on the translucent black background
-    /// (in `text_layer` like the glyphs, a hair behind) when `background`.
-    #[allow(clippy::too_many_arguments)]
-    fn name_tag_quads(
-        &self,
-        o: glam::DVec3,
-        lines: &[(Text, f64)],
-        text_alpha: u32,
-        background: bool,
-        text_layer: u32,
-        light: u32,
-        out: &mut Vec<Vertex>,
-    ) {
-        // Options.getBackgroundOpacity(0.25) black, as ARGB.color.
-        const BACKGROUND: u32 = 0x3F00_0000;
-        let forward = glam::DVec3::from_array(view_vector(self.yaw, self.pitch));
-        let right = forward.cross(glam::DVec3::Y).normalize_or_zero();
-        let up = right.cross(forward).normalize_or_zero();
-        let white = self.gui.atlas.font.white();
-        let away = forward.as_vec3() * 0.002;
-        for (text, lift) in lines {
-            let o = (o + glam::DVec3::new(0.0, *lift, 0.0)).as_vec3();
-            let (r, u) = (right.as_vec3() * 0.025, up.as_vec3() * 0.025);
-            // Text space: x right, y down (scale 0.025, -0.025).
-            let at = |x: f32, y: f32| o + r * x - u * y;
-            // Component.getVisualOrderText.
-            let shown = horizon_client::bidi::visual(text);
-            let chars: Vec<(char, u32)> = shown
-                .spans
-                .iter()
-                .flat_map(|s| {
-                    let rgb = s.style.color.unwrap_or(0xFF_FF_FF);
-                    // RGBA8, alpha in the top byte.
-                    let color = text_alpha << 24
-                        | ((rgb & 0xFF) << 16)
-                        | (rgb & 0xFF00)
-                        | ((rgb >> 16) & 0xFF);
-                    s.text.chars().map(move |c| (c, color))
-                })
-                .collect();
-            let width: f32 = chars
-                .iter()
-                .map(|(c, _)| self.gui.atlas.glyph(*c).map_or(6.0, |g| g.1))
-                .sum();
-            let x0 = -(width / 2.0).trunc();
-            let y0 = if text.plain() == "deadmau5" {
-                -10.0
-            } else {
-                0.0
-            };
-            let mut quad = |a: [f32; 4], uv: [f32; 4], color: u32, behind: bool, layer: u32| {
-                let corners = [(a[0], a[3]), (a[2], a[3]), (a[2], a[1]), (a[0], a[1])];
-                let uvs = [
-                    [uv[0], uv[3]],
-                    [uv[2], uv[3]],
-                    [uv[2], uv[1]],
-                    [uv[0], uv[1]],
-                ];
-                for ((x, y), uv) in corners.into_iter().zip(uvs) {
-                    out.push(Vertex {
-                        normal: [0; 4],
-                        pos: (at(x, y) + if behind { away } else { glam::Vec3::ZERO }).to_array(),
-                        uv,
-                        layer,
-                        color,
-                        light,
-                        glint_uv: [0.0, 0.0],
-                    });
-                }
-            };
-            if background {
-                quad(
-                    [x0 - 1.0, y0 - 1.0, x0 + width, y0 + 8.0],
-                    [white.u0, white.v0, white.u1, white.v1],
-                    BACKGROUND,
-                    true,
-                    text_layer,
-                );
-            }
-            let mut x = x0;
-            for (ch, color) in chars {
-                let Some((g, advance)) = self.gui.atlas.glyph(ch) else {
-                    x += 6.0;
-                    continue;
-                };
-                if ch != ' ' {
-                    quad(
-                        [x, y0, x + 8.0, y0 + 8.0],
-                        [g.u0, g.v0, g.u1, g.v1],
-                        color,
-                        false,
-                        text_layer,
-                    );
-                }
-                x += advance;
-            }
-        }
     }
 }
 

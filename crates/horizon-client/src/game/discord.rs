@@ -2,7 +2,8 @@
 use super::*;
 use horizon_client::discord_presence::{self as presence, Dimension, Play, Status};
 
-impl Game<'_> {
+impl Game<'_> {}
+impl crate::game::Sim<'_> {
     /// Each frame: only a change reaches the presence thread.
     pub(super) fn update_discord_presence(&self) {
         presence::set(self.discord_status());

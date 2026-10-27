@@ -197,15 +197,8 @@ impl Game<'_> {
     }
     fn back_button(&self, layout: &Layout) -> ([f32; 4], String) {
         let label = self.translate("gui.back", "Back");
-        let w = HudBatch::text_width(&self.gui.atlas, &label) + 8.0;
+        let w = HudBatch::text_width(&self.front.gui.atlas, &label) + 8.0;
         ([layout.grid.0, layout.grid.1, w, 14.0], label)
-    }
-    /// What a slot of a shown recipe holds now: its stacks cycle once a second.
-    fn recipe_slot_now(&self, recipe: usize, slot: usize) -> Option<&(BrowserStack, ItemStack)> {
-        let pages = self.mods.browser.recipes.as_ref()?;
-        let stacks = pages.recipes.get(recipe)?.slots.get(slot)?;
-        let n = pages.since.elapsed().as_secs() as usize;
-        stacks.get(n % stacks.len().max(1))
     }
     /// The tab under the pointer: its index and icon.
     pub(super) fn recipe_tab_hovered(
@@ -215,7 +208,7 @@ impl Game<'_> {
         let pages = self.mods.browser.recipes.as_ref()?;
         let places = tab_places(pages, layout);
         places.iter().enumerate().find_map(|(i, &(x, y))| {
-            if !inside(self.cursor, [x, y, SLOT, SLOT]) {
+            if !inside(self.front.cursor, [x, y, SLOT, SLOT]) {
                 return None;
             }
             let (sent, stack) = pages.tabs.get(i)?;
@@ -233,7 +226,7 @@ impl Game<'_> {
             .find_map(|(i, (x, y))| {
                 let (at, _, _) = pages.recipes[i].places(layout.width());
                 at.iter().enumerate().find_map(|(k, &(sx, sy))| {
-                    if !inside(self.cursor, [x + sx, y + sy, SLOT, SLOT]) {
+                    if !inside(self.front.cursor, [x + sx, y + sy, SLOT, SLOT]) {
                         return None;
                     }
                     let (mod_stack, stack) = self.recipe_slot_now(i, k)?.clone();
@@ -247,12 +240,12 @@ impl Game<'_> {
         let Some(pages) = &self.mods.browser.recipes else {
             return;
         };
-        let cursor = self.cursor;
+        let cursor = self.front.cursor;
         let starts = Self::recipe_pages(pages, layout);
         let page = pages.page.min(starts.len() - 1);
         let (title, pages_n) = (pages.title.clone(), starts.len());
         let (back, label) = self.back_button(layout);
-        let atlas = &self.gui.atlas;
+        let atlas = &self.front.gui.atlas;
         let hover = inside(cursor, back);
         let sprite = if hover {
             "gui/sprites/widget/button_highlighted"
@@ -295,7 +288,7 @@ impl Game<'_> {
                 self.translate("gui.recipebook.next_page", "Next Page"),
             ];
             let visible = [page > 0, page + 1 < pages_n];
-            let atlas = &self.gui.atlas;
+            let atlas = &self.front.gui.atlas;
             for (((x, y), name), (label, visible)) in layout
                 .arrows()
                 .into_iter()
@@ -331,7 +324,7 @@ impl Game<'_> {
             let h = r.block(layout.width());
             let (cooking, note, button) =
                 (r.layout == BrowserLayout::Cooking, r.note.clone(), r.action);
-            let atlas = &self.gui.atlas;
+            let atlas = &self.front.gui.atlas;
             for &(sx, sy) in at.iter().filter(|p| p.0.is_finite()) {
                 batch.sprite(atlas, "gui/sprites/container/slot", x + sx, y + sy);
             }
@@ -384,7 +377,7 @@ impl Game<'_> {
                 self.draw_item(batch, &stack, x + sx + 1.0, y + sy + 1.0);
                 if inside(cursor, [x + sx, y + sy, SLOT, SLOT]) {
                     batch.fill(
-                        &self.gui.atlas,
+                        &self.front.gui.atlas,
                         x + sx + 1.0,
                         y + sy + 1.0,
                         16.0,
@@ -412,7 +405,7 @@ impl Game<'_> {
         let tabs: Vec<Option<ItemStack>> = pages.tabs.iter().map(|t| t.1.clone()).collect();
         let selected = pages.tab;
         for (i, (&(x, y), stack)) in places.iter().zip(tabs).enumerate() {
-            let atlas = &self.gui.atlas;
+            let atlas = &self.front.gui.atlas;
             batch.sprite(atlas, "gui/sprites/container/slot", x, y);
             let Some(stack) = stack else {
                 continue;
@@ -421,15 +414,15 @@ impl Game<'_> {
             // The selected tab: a white frame around its slot.
             if i == selected {
                 let white = rgba(255, 255, 255, 255);
-                let atlas = &self.gui.atlas;
+                let atlas = &self.front.gui.atlas;
                 batch.fill(atlas, x - 1.0, y - 1.0, SLOT + 2.0, 1.0, white);
                 batch.fill(atlas, x - 1.0, y + SLOT, SLOT + 2.0, 1.0, white);
                 batch.fill(atlas, x - 1.0, y, 1.0, SLOT, white);
                 batch.fill(atlas, x + SLOT, y, 1.0, SLOT, white);
             }
-            if inside(self.cursor, [x, y, SLOT, SLOT]) {
+            if inside(self.front.cursor, [x, y, SLOT, SLOT]) {
                 batch.fill(
-                    &self.gui.atlas,
+                    &self.front.gui.atlas,
                     x + 1.0,
                     y + 1.0,
                     16.0,
@@ -457,7 +450,7 @@ impl Game<'_> {
         let Some(pages) = &self.mods.browser.recipes else {
             return false;
         };
-        let cursor = self.cursor;
+        let cursor = self.front.cursor;
         let starts = Self::recipe_pages(pages, layout);
         let page = pages.page.min(starts.len() - 1);
         let [back_arrow, forward] = layout.arrows();
@@ -519,5 +512,14 @@ impl Game<'_> {
             return true;
         }
         false
+    }
+}
+impl crate::game::Sim<'_> {
+    /// What a slot of a shown recipe holds now: its stacks cycle once a second.
+    fn recipe_slot_now(&self, recipe: usize, slot: usize) -> Option<&(BrowserStack, ItemStack)> {
+        let pages = self.mods.browser.recipes.as_ref()?;
+        let stacks = pages.recipes.get(recipe)?.slots.get(slot)?;
+        let n = pages.since.elapsed().as_secs() as usize;
+        stacks.get(n % stacks.len().max(1))
     }
 }

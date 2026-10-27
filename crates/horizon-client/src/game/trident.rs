@@ -190,24 +190,6 @@ impl Game<'_> {
         let (at, top) = (p.position, p.bounds().max_position().y);
         water || self.in_rain(at, top)
     }
-    /// The living entities a spinning player can touch this tick, for
-    /// `LivingEntity.checkAutoSpinAttack` (none when not spinning).
-    pub(super) fn spin_targets(&self) -> Vec<(u32, Aabb)> {
-        let Some(p) = self
-            .player
-            .as_ref()
-            .filter(|p| p.auto_spin_attack_ticks > 0)
-        else {
-            return Vec::new();
-        };
-        // A spin moves a few blocks a tick at most.
-        let near = p.bounds().inflate(Vec3::new(16.0, 16.0, 16.0));
-        self.mobs
-            .iter()
-            .filter(|m| m.alive() && m.bounds().intersects(near))
-            .map(|m| (m.id, m.bounds()))
-            .collect()
-    }
     /// `Player.doAutoAttackOnTouch`: the touched entity takes `Player.attack`
     /// with the spin's damage; once the spin is over its damage is cleared.
     pub(super) fn end_spin_attack(&mut self, hit: Option<u32>) {
@@ -367,20 +349,21 @@ impl Game<'_> {
             Some(Who::Player),
         );
         let (v, on_ground) = self
+            .sim
             .player
             .as_ref()
             .map_or((Vec3::ZERO, true), |p| (p.velocity, p.ground.on_ground));
         projectile.shoot_from_rotation(
-            &mut self.world.random,
-            self.pitch,
-            self.yaw,
+            &mut self.sim.world.random,
+            self.sim.pitch,
+            self.sim.yaw,
             0.0,
             2.5,
             1.0,
             v,
             on_ground,
         );
-        self.tridents.push(ThrownTrident {
+        self.sim.tridents.push(ThrownTrident {
             id: 0,
             loyalty: thrown.enchantment_level("minecraft:loyalty"),
             stack: thrown,
@@ -394,12 +377,13 @@ impl Game<'_> {
             dealt_damage: false,
             no_physics: false,
             returning: 0,
-            creative_only: self.creative,
+            creative_only: self.sim.creative,
             owner: 0,
-            guest: self.lan_acting,
+            guest: self.sim.lan_acting,
         });
         self.player_projectile_shot();
-        self.sounds
+        self.sim
+            .sounds
             .play("minecraft:item.trident.throw", at, 1.0, 1.0);
     }
     /// The thrower's `PLAYER_HURT_ENTITY` for a trident hit: run as the
@@ -484,14 +468,14 @@ impl Game<'_> {
                         direct_attacker: Some("minecraft:trident"),
                         is_direct: true,
                         damage_type: Some("minecraft:trident"),
-                        items: Some(self.res.items()),
+                        items: Some(self.sim.res.items()),
                         ..Default::default()
                     };
-                    let damage = self.res.stations().enchantments.modify_value(
+                    let damage = self.sim.res.stations().enchantments.modify_value(
                         Some(&t.stack),
                         "minecraft:damage",
                         &ctx,
-                        &mut self.world.random,
+                        &mut self.sim.world.random,
                         8.0,
                     );
                     t.dealt_damage = true;
@@ -617,6 +601,7 @@ impl Game<'_> {
             return;
         };
         let Some(uv) = self
+            .front
             .gui
             .atlas
             .sprites
@@ -671,5 +656,25 @@ impl Game<'_> {
                 out,
             );
         }
+    }
+}
+impl crate::game::Sim<'_> {
+    /// The living entities a spinning player can touch this tick, for
+    /// `LivingEntity.checkAutoSpinAttack` (none when not spinning).
+    pub(super) fn spin_targets(&self) -> Vec<(u32, Aabb)> {
+        let Some(p) = self
+            .player
+            .as_ref()
+            .filter(|p| p.auto_spin_attack_ticks > 0)
+        else {
+            return Vec::new();
+        };
+        // A spin moves a few blocks a tick at most.
+        let near = p.bounds().inflate(Vec3::new(16.0, 16.0, 16.0));
+        self.mobs
+            .iter()
+            .filter(|m| m.alive() && m.bounds().intersects(near))
+            .map(|m| (m.id, m.bounds()))
+            .collect()
     }
 }

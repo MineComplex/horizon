@@ -38,6 +38,37 @@ impl Game<'_> {
             }
         }
     }
+    /// One `MovingBlockRenderState`: the baked model at `at` (camera-relative),
+    /// seeded by its block position and tinted like a falling block.
+    fn moving_block_vertices(
+        &self,
+        state: BlockStateId,
+        seed: horizon_core::position::BlockPos,
+        at: glam::DVec3,
+        light: u32,
+        out: &mut Vec<Vertex>,
+    ) {
+        let tint = self
+            .particle_sprite(state, [seed.x, seed.y, seed.z])
+            .map(|(_, tint)| tint);
+        let start = out.len();
+        self.block_model_vertices(
+            state,
+            horizon_core::random::position_seed(seed),
+            glam::Mat4::from_translation(at.as_vec3()),
+            light,
+            false,
+            out,
+        );
+        if let Some(tint) = tint {
+            let tint = horizon_client::mobs::render::abgr(tint);
+            for vertex in &mut out[start..] {
+                vertex.color = horizon_client::hud_layout::multiply(vertex.color, tint);
+            }
+        }
+    }
+}
+impl crate::game::Sim<'_> {
     /// The moved block and, for a retracting piston, its extended base.
     fn moving_piston_blocks(
         &self,
@@ -79,34 +110,5 @@ impl Game<'_> {
             return Some((head, Some(base)));
         }
         Some((piston.moved_state, None))
-    }
-    /// One `MovingBlockRenderState`: the baked model at `at` (camera-relative),
-    /// seeded by its block position and tinted like a falling block.
-    fn moving_block_vertices(
-        &self,
-        state: BlockStateId,
-        seed: horizon_core::position::BlockPos,
-        at: glam::DVec3,
-        light: u32,
-        out: &mut Vec<Vertex>,
-    ) {
-        let tint = self
-            .particle_sprite(state, [seed.x, seed.y, seed.z])
-            .map(|(_, tint)| tint);
-        let start = out.len();
-        self.block_model_vertices(
-            state,
-            horizon_core::random::position_seed(seed),
-            glam::Mat4::from_translation(at.as_vec3()),
-            light,
-            false,
-            out,
-        );
-        if let Some(tint) = tint {
-            let tint = horizon_client::mobs::render::abgr(tint);
-            for vertex in &mut out[start..] {
-                vertex.color = horizon_client::hud_layout::multiply(vertex.color, tint);
-            }
-        }
     }
 }

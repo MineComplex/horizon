@@ -12,27 +12,6 @@ use horizon_client::{
 use horizon_core::{geometry::Vec3, position::BlockPos, random::RandomSource};
 
 impl Game<'_> {
-    /// `ClientPacketListener.handleParticleEvent` for the one ALTERNATIVE
-    /// snowflake `PowderSnowBlock.entityInside` sends: no spread, its speed.
-    pub(super) fn snowflake(&mut self, position: Vec3, velocity: Vec3) {
-        let r = self.particles.random();
-        // nextDouble() * dist for each axis, the distances being 0.
-        let offset = [
-            r.next_double() * 0.0,
-            r.next_double() * 0.0,
-            r.next_double() * 0.0,
-        ];
-        let options = ParticleOptions::simple(ParticleType::Snowflake);
-        self.particles.add(
-            &options,
-            [
-                position.x + offset[0],
-                position.y + offset[1],
-                position.z + offset[2],
-            ],
-            [velocity.x, velocity.y, velocity.z],
-        );
-    }
     /// The EXTINGUISH effect of the powder snow the player went into this
     /// tick: burning, it destroys those blocks (a player always may), then
     /// its fire goes out (`Entity.clearFire`) with the extinguish sound.
@@ -56,17 +35,6 @@ impl Game<'_> {
         self.extinguish_sound(at);
         Ok(())
     }
-    /// Entity.playEntityOnFireExtinguishedSound
-    fn extinguish_sound(&mut self, at: [f64; 3]) {
-        let r = self.particles.random();
-        let pitch = 1.6 + (r.next_float() - r.next_float()) * 0.4;
-        self.sounds.play(
-            "minecraft:entity.generic.extinguish_fire",
-            Some(at),
-            0.7,
-            pitch,
-        );
-    }
     /// `Entity.applyEffectsFromBlocks`: a burning player in the rain
     /// (`isInRain`) has the fire put out (`clearFire`), with the extinguish
     /// sound that everyone near hears.
@@ -89,15 +57,6 @@ impl Game<'_> {
         if self.remote.is_none() {
             self.rain_extinguish_player();
         }
-    }
-    /// Whether the block at `pos` is powder snow.
-    pub(super) fn is_powder_snow(&self, pos: [i32; 3]) -> bool {
-        &*self
-            .res
-            .facts()
-            .get(self.world.block(pos[0], pos[1], pos[2]))
-            .name
-            == "minecraft:powder_snow"
     }
     /// `BucketItem.use` with an empty bucket on powder snow:
     /// `PowderSnowBlock.pickupBlock` (air, level event 2001), the used
@@ -130,6 +89,49 @@ impl Game<'_> {
         self.trigger_item("minecraft:filled_bucket", &filled);
         self.swing_arm();
         Ok(())
+    }
+}
+impl crate::game::Sim<'_> {
+    /// `ClientPacketListener.handleParticleEvent` for the one ALTERNATIVE
+    /// snowflake `PowderSnowBlock.entityInside` sends: no spread, its speed.
+    pub(super) fn snowflake(&mut self, position: Vec3, velocity: Vec3) {
+        let r = self.particles.random();
+        // nextDouble() * dist for each axis, the distances being 0.
+        let offset = [
+            r.next_double() * 0.0,
+            r.next_double() * 0.0,
+            r.next_double() * 0.0,
+        ];
+        let options = ParticleOptions::simple(ParticleType::Snowflake);
+        self.particles.add(
+            &options,
+            [
+                position.x + offset[0],
+                position.y + offset[1],
+                position.z + offset[2],
+            ],
+            [velocity.x, velocity.y, velocity.z],
+        );
+    }
+    /// Entity.playEntityOnFireExtinguishedSound
+    fn extinguish_sound(&mut self, at: [f64; 3]) {
+        let r = self.particles.random();
+        let pitch = 1.6 + (r.next_float() - r.next_float()) * 0.4;
+        self.sounds.play(
+            "minecraft:entity.generic.extinguish_fire",
+            Some(at),
+            0.7,
+            pitch,
+        );
+    }
+    /// Whether the block at `pos` is powder snow.
+    pub(super) fn is_powder_snow(&self, pos: [i32; 3]) -> bool {
+        &*self
+            .res
+            .facts()
+            .get(self.world.block(pos[0], pos[1], pos[2]))
+            .name
+            == "minecraft:powder_snow"
     }
     /// `ItemUtils.createFilledResult(held, player, filled)` for the held stack.
     fn filled_result(&mut self, filled: ItemStack) {

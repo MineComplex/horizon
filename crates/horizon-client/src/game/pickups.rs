@@ -81,6 +81,15 @@ pub(super) fn guest_target(host: &super::lan::LanHost, id: u32) -> Option<[f64; 
 }
 
 impl Game<'_> {
+    /// `handleTakeItemEntity`: `particleEngine.add(new ItemPickupParticle(...))` when the
+    /// collector is known; it joins the group at the end of the next particle tick.
+    pub(super) fn add_pickup(&mut self, taken: Taken, collector: Collector) {
+        if let Some(target) = self.collector_target(collector) {
+            self.add_pickup_toward(taken, collector, target);
+        }
+    }
+}
+impl crate::game::Sim<'_> {
     /// `ItemPickupParticle.updatePosition`: the collector's x and z, halfway up to its eyes.
     fn collector_target(&self, collector: Collector) -> Option<[f64; 3]> {
         let (p, eye) = match collector {
@@ -97,13 +106,6 @@ impl Game<'_> {
             }
         };
         Some([p.x, (p.y + (p.y + eye)) / 2.0, p.z])
-    }
-    /// `handleTakeItemEntity`: `particleEngine.add(new ItemPickupParticle(...))` when the
-    /// collector is known; it joins the group at the end of the next particle tick.
-    pub(super) fn add_pickup(&mut self, taken: Taken, collector: Collector) {
-        if let Some(target) = self.collector_target(collector) {
-            self.add_pickup_toward(taken, collector, target);
-        }
     }
     /// [`Self::add_pickup`] with the collector's first target given (a LAN
     /// guest's model while the host is taken out for its tick).
