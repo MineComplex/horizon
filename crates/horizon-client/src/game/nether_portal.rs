@@ -542,8 +542,8 @@ impl Game<'_> {
             player.fall_distance = 0.0;
             self.previous_position = target;
             self.player = Some(player);
-            self.front.pad.player_replaced();
-            self.front.sway = Default::default();
+            self.pad.player_replaced();
+            self.sway = Default::default();
             self.apply_equipment();
             return Ok(());
         };
@@ -561,12 +561,11 @@ impl Game<'_> {
         player.velocity = rotate_y(player.velocity, -rotation);
         self.previous_position = player.position;
         self.player = Some(player);
-        self.front.pad.player_replaced();
-        self.front.sway = Default::default();
+        self.pad.player_replaced();
+        self.sway = Default::default();
         self.apply_equipment();
         let pitch = self.world.random.next_float() * 0.4 + 0.8;
-        self.front
-            .audio
+        self.audio
             .play("minecraft:block.portal.travel", None, 0.25, pitch);
         Ok(())
     }
@@ -591,10 +590,9 @@ impl Game<'_> {
                 self.capture(true);
             }
         }
-        if self.front.screen_fx.portal == 0.0 {
+        if self.screen_fx.portal == 0.0 {
             let pitch = self.world.random.next_float() * 0.4 + 0.8;
-            self.front
-                .audio
+            self.audio
                 .play("minecraft:block.portal.trigger", None, 0.25, pitch);
         }
         true

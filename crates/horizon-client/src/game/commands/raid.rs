@@ -98,8 +98,7 @@ impl Game<'_> {
             }
             "raid.sound" => {
                 let at = [player.x + 5.0, player.y, player.z];
-                self.front
-                    .audio
+                self.audio
                     .play("minecraft:event.raid.horn", Some(at), 1.0, 1.0);
                 Ok(1)
             }

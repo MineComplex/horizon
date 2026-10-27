@@ -336,7 +336,7 @@ impl Game<'_> {
             "loaded": self.world.chunks.contains_key(&(pos[0] >> 4, pos[2] >> 4)),
         });
         // How far a chest's or a shulker box's lid is open, 0..1, as drawn.
-        match self.front.be_anims.ticker(state.0) {
+        match self.be_anims.ticker(state.0) {
             Some(Ticker::Lid) => v["lid"] = json!(self.chest_lid(pos, 1.0)),
             Some(Ticker::Shulker { .. }) => v["lid"] = json!(self.block_anim(pos, 1.0).shulker.0),
             _ => {}
@@ -477,9 +477,9 @@ impl Game<'_> {
                 "on_ground": p.ground.on_ground,
                 "flying": p.flying,
                 "fall_flying": p.fall_flying,
-                "sneaking": self.front.keys.contains(&KeyCode::ShiftLeft),
+                "sneaking": self.keys.contains(&KeyCode::ShiftLeft),
                 "sprinting": p.sprinting,
-                "fov_modifier": self.front.view.fov_modifier,
+                "fov_modifier": self.view.fov_modifier,
                 "health": p.health.health(),
                 "absorption": p.health.absorption(),
                 // The hurt animation's ticks left (the camera's hurt tilt).
@@ -517,7 +517,7 @@ impl Game<'_> {
             "paused": self.pause,
             // Mouse movement turns the camera (`apply_mouse_look`): the real
             // pointer is grabbed, or an agent's `mouse-move` stands in for it.
-            "pointer_grabbed": self.front.captured || self.agent_pointer,
+            "pointer_grabbed": self.captured || self.agent_pointer,
             "player": player,
             "selected": self.selected + 1,
             "held": self.held().map(|s| self.stack_value(s)),
@@ -908,12 +908,12 @@ impl Game<'_> {
     }
     fn release_agent_keys(&mut self) {
         for k in MOVE_KEYS {
-            self.front.keys.remove(&k);
+            self.keys.remove(&k);
         }
-        if self.front.left {
+        if self.left {
             let _ = self.agent_mouse(MouseButton::Left, false);
         }
-        if self.front.right {
+        if self.right {
             let _ = self.agent_mouse(MouseButton::Right, false);
         }
     }
@@ -936,9 +936,8 @@ impl Game<'_> {
         points: &[(f32, f32)],
         button: MouseButton,
     ) -> Result<()> {
-        let id = self.front.window.as_ref().ok_or("no window yet")?.id();
+        let id = self.window.as_ref().ok_or("no window yet")?.id();
         let scale = self
-            .front
             .renderer
             .as_ref()
             .map(|r| horizon_client::hud::HudBatch::new([r.config.width, r.config.height]).scale)
@@ -1154,7 +1153,7 @@ impl Game<'_> {
                     keys.push(KeyCode::Space);
                 }
                 for &k in &keys {
-                    self.front.keys.insert(k);
+                    self.keys.insert(k);
                 }
                 let from = self.player.as_ref().map_or(Vec3::ZERO, |p| p.position);
                 let until = Instant::now() + Duration::from_secs_f64(seconds);
@@ -1167,7 +1166,7 @@ impl Game<'_> {
             }
             "jump" => {
                 self.playing()?;
-                self.front.keys.insert(KeyCode::Space);
+                self.keys.insert(KeyCode::Space);
                 let from_y = self.player.as_ref().map_or(0.0, |p| p.position.y);
                 let release_tick = self.ticks + 3;
                 self.start_task(
@@ -1506,9 +1505,8 @@ impl Game<'_> {
             "scroll-at" => {
                 let (x, y) = (a.f64(0, "X")? as f32, a.f64(1, "Y")? as f32);
                 let steps = a.f64(2, "STEPS")? as f32;
-                let id = self.front.window.as_ref().ok_or("no window yet")?.id();
+                let id = self.window.as_ref().ok_or("no window yet")?.id();
                 let scale = self
-                    .front
                     .renderer
                     .as_ref()
                     .map(|r| {
@@ -1747,7 +1745,7 @@ impl Game<'_> {
             fed: (0.0, 0.0),
             started: now,
             over,
-            fed_frame: self.front.frames,
+            fed_frame: self.frames,
             deadline: now + over + Duration::from_secs(10),
             reply: reply.clone(),
             aim,
@@ -1791,12 +1789,12 @@ impl Game<'_> {
         let due = (g.total.0 * f, g.total.1 * f);
         let step = (due.0 - g.fed.0, due.1 - g.fed.1);
         if step != (0.0, 0.0) {
-            self.front.mouse.add_motion(step.0, step.1);
+            self.mouse.add_motion(step.0, step.1);
             self.agent_pointer = true;
             g.fed = due;
-            g.fed_frame = self.front.frames;
+            g.fed_frame = self.frames;
         }
-        if t >= 1.0 && self.front.frames > g.fed_frame {
+        if t >= 1.0 && self.frames > g.fed_frame {
             let extra = match g.aim {
                 Some("block") | Some("entity") => json!({ "target": self.looking_at() }),
                 _ => json!({}),
@@ -1855,7 +1853,7 @@ impl Game<'_> {
                     return Some(json!({ "error": why, "position": self.position() }));
                 }
                 for &k in keys.iter() {
-                    self.front.keys.insert(k);
+                    self.keys.insert(k);
                 }
                 if Instant::now() < *until && !timed_out {
                     return None;
@@ -1882,7 +1880,7 @@ impl Game<'_> {
                 from_y,
             } => {
                 if self.ticks >= *release_tick || timed_out {
-                    self.front.keys.remove(&KeyCode::Space);
+                    self.keys.remove(&KeyCode::Space);
                     let on_ground = self.player.as_ref().is_some_and(|p| p.ground.on_ground);
                     if on_ground || timed_out {
                         return Some(
@@ -2040,9 +2038,9 @@ impl Game<'_> {
         if d[0].abs() + d[1].abs() > 1e-3 {
             self.yaw = (-d[0]).atan2(d[1]).to_degrees() as f32;
         }
-        self.front.keys.insert(KeyCode::KeyW);
+        self.keys.insert(KeyCode::KeyW);
         if g.sprint {
-            self.front.keys.insert(KeyCode::ControlLeft);
+            self.keys.insert(KeyCode::ControlLeft);
         }
         // Step up onto the next block, or out of water.
         let in_water = {
@@ -2057,9 +2055,9 @@ impl Game<'_> {
             g.jump_until = self.ticks + 4;
         }
         if self.ticks < g.jump_until || in_water {
-            self.front.keys.insert(KeyCode::Space);
+            self.keys.insert(KeyCode::Space);
         } else {
-            self.front.keys.remove(&KeyCode::Space);
+            self.keys.remove(&KeyCode::Space);
         }
         None
     }
@@ -2098,7 +2096,7 @@ impl Game<'_> {
                     let _ = self.agent_mouse(MouseButton::Left, false);
                     return Some(json!({ "error": e.to_string(), "pos": b.pos }));
                 }
-                if !self.front.left {
+                if !self.left {
                     let _ = self.agent_mouse(MouseButton::Left, true);
                 }
                 return None;

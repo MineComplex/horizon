@@ -16,12 +16,12 @@ impl Game<'_> {
         let (w, h) = (batch.width as i32, batch.height as i32);
         let partial = self.clock.fraction() as f32;
         let background = self.settings.text_background(0.0);
-        let font = &self.front.gui.atlas.font;
+        let font = &self.gui.atlas.font;
         let mut draws = self
             .titles
             .overlay_message(w, h, bar_height, partial, font, background);
         draws.extend(self.titles.title(w, h, partial, font, background));
-        hud_layout::paint(batch, &self.front.gui.atlas, &draws);
+        hud_layout::paint(batch, &self.gui.atlas, &draws);
     }
     /// `Hud.extractSavingIndicator`, under the screens: the option, then the
     /// fading "Saving world" text.
@@ -29,15 +29,15 @@ impl Game<'_> {
         if !self.settings.autosave_indicator {
             return;
         }
-        let draws = self.front.saving_indicator.draw(
+        let draws = self.saving_indicator.draw(
             batch.width as i32,
             batch.height as i32,
             self.clock.fraction() as f32,
-            &self.front.gui.atlas.font,
+            &self.gui.atlas.font,
             Text::literal(self.translate("menu.savingLevel", "Saving world")),
             self.settings.text_background(0.0),
         );
-        hud_layout::paint(batch, &self.front.gui.atlas, &draws);
+        hud_layout::paint(batch, &self.gui.atlas, &draws);
     }
     /// The selected stack as `Hud.tick` compares it for the name highlight.
     fn held_name(&self) -> Option<HeldName> {
@@ -68,22 +68,21 @@ impl Game<'_> {
             .integrated
             .as_ref()
             .map_or(self.autosaving, |server| server.is_saving());
-        self.front.saving_indicator.tick(saving);
+        self.saving_indicator.tick(saving);
         let held = self.held_name();
-        self.front
-            .tool_highlight
+        self.tool_highlight
             .tick(held, f64::from(self.settings.notification_display_time));
     }
     /// `Hud.extractSelectedItemName`.
     pub(super) fn draw_selected_name(&self, batch: &mut HudBatch, bar_height: i32, can_hurt: bool) {
-        let draws = self.front.tool_highlight.draw(
+        let draws = self.tool_highlight.draw(
             batch.width as i32,
             batch.height as i32,
             bar_height,
             can_hurt,
-            &self.front.gui.atlas.font,
+            &self.gui.atlas.font,
             self.settings.text_background(0.0),
         );
-        hud_layout::paint(batch, &self.front.gui.atlas, &draws);
+        hud_layout::paint(batch, &self.gui.atlas, &draws);
     }
 }

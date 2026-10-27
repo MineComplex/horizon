@@ -606,8 +606,7 @@ impl Game<'_> {
             }
         }
         let pitch = (1.0 + (client_float() - client_float()) * 0.2) * 0.7;
-        self.front
-            .audio
+        self.audio
             .play("minecraft:entity.generic.explode", Some(center), 4.0, pitch);
         // ServerLevel.explode sends toBlow.size() whatever the interaction, and
         // `ServerExplosion.isSmall` also covers an explosion that keeps blocks.

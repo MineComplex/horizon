@@ -398,8 +398,7 @@ impl Game<'_> {
     /// The Raid Omen sound when the effect is first added.
     pub(super) fn raid_omen_added(&mut self) {
         let eye = self.eye_position().unwrap_or_default();
-        self.front
-            .audio
+        self.audio
             .play("minecraft:event.mob_effect.raid_omen", Some(eye), 1.0, 1.0);
     }
     /// `Raids.createOrExtendRaid`: not for spectators, with the `raids` rule
@@ -643,8 +642,7 @@ impl Game<'_> {
         if distance <= 64.0 || in_raid {
             let k = 13.0 / distance;
             let at = [p.x + k * (rx - p.x), p.y, p.z + k * (rz - p.z)];
-            self.front
-                .audio
+            self.audio
                 .play("minecraft:event.raid.horn", Some(at), 64.0, 1.0);
         }
     }
@@ -1242,12 +1240,10 @@ impl Game<'_> {
         let eye = self.eye_position().unwrap_or_default();
         // MobEffect.onEffectAdded: Bad Omen's sound when it is new.
         if new {
-            self.front
-                .audio
+            self.audio
                 .play("minecraft:event.mob_effect.bad_omen", Some(eye), 1.0, 1.0);
         }
-        self.front
-            .audio
+        self.audio
             .play("minecraft:item.ominous_bottle.dispose", Some(eye), 1.0, 1.0);
         if !self.creative
             && let Some(s) = self.stack_in_mut(slot).as_mut()

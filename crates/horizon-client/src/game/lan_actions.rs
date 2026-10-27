@@ -332,9 +332,9 @@ impl Game<'_> {
         );
         // The host's held keys stay theirs: the guest holds only sneak, and a
         // screen the guest opens (`keys.clear()`) leaves the host walking.
-        let host_keys = std::mem::take(&mut self.front.keys);
+        let host_keys = std::mem::take(&mut self.keys);
         if g.sneaking {
-            self.front.keys.insert(KeyCode::ShiftLeft);
+            self.keys.insert(KeyCode::ShiftLeft);
         }
         // The window's screens are the host's: a sign, book, command block or
         // mount menu the guest's action opens is not drawn over the host's
@@ -360,9 +360,9 @@ impl Game<'_> {
         let attack_item = std::mem::replace(&mut self.attack_item, play.attack_item.take());
         let swing = std::mem::replace(&mut self.swing, play.swing);
         std::mem::swap(&mut self.mount, &mut play.mount);
-        let (left, right) = (self.front.left, self.front.right);
-        self.front.left = play.digging.is_some();
-        self.front.right = play.using.is_some() || self.using.is_some();
+        let (left, right) = (self.left, self.right);
+        self.left = play.digging.is_some();
+        self.right = play.using.is_some() || self.using.is_some();
         // The guest's vehicle (Entity.vehicle) for its turn.
         let riding = std::mem::replace(&mut self.riding, g.vehicle);
         let host_station = self.station.take();
@@ -594,8 +594,8 @@ impl Game<'_> {
         // ServerPlayer.displayClientMessage(_, true): the guest's action bar.
         let guest_message = std::mem::replace(&mut self.message, message);
         let guest_vehicle = std::mem::replace(&mut self.riding, riding);
-        self.front.left = left;
-        self.front.right = right;
+        self.left = left;
+        self.right = right;
         play.mining = std::mem::replace(&mut self.mining, mining);
         play.destroy_delay = std::mem::replace(&mut self.destroy_delay, destroy_delay);
         play.using = std::mem::replace(&mut self.using, using);
@@ -621,7 +621,7 @@ impl Game<'_> {
         // A mount inventory the guest's action opened (shift + use, or the
         // inventory key while riding).
         let guest_mount = std::mem::replace(&mut self.mount_menu, host_mount_menu).opened_mob();
-        self.front.keys = host_keys;
+        self.keys = host_keys;
         let g = &mut host.hub.guests[i];
         let left_vehicle = g.vehicle.filter(|_| guest_vehicle.is_none());
         if guest_vehicle.is_none() {
@@ -1134,7 +1134,7 @@ impl Game<'_> {
                 };
                 let hand = if p.hand == 1 { Hand::Off } else { Hand::Main };
                 let logged = self.world.block_log.as_ref().map_or(0, Vec::len);
-                let heard = self.front.audio.capture.as_ref().map_or(0, Vec::len);
+                let heard = self.audio.capture.as_ref().map_or(0, Vec::len);
                 let swung = self.as_guest(host, conn, |g| {
                     g.forced_hit = Some(hit);
                     g.guest_use = Some(GuestUse::OnBlock(hand));
@@ -2148,7 +2148,7 @@ impl Game<'_> {
                     }
                     let _ = g.tick_mining();
                     g.forced_hit = None;
-                    g.front.right = g.using.is_some();
+                    g.right = g.using.is_some();
                     g.tick_using();
                     if g.use_delay > 0 {
                         g.use_delay -= 1;
@@ -2677,7 +2677,7 @@ impl Game<'_> {
                     if sound {
                         let name = "minecraft:block.honey_block.slide";
                         let source = horizon_client::settings::sound_source(name) as i32;
-                        self.front.audio.play_unshared(name, Some(at), 1.0, 1.0);
+                        self.audio.play_unshared(name, Some(at), 1.0, 1.0);
                         host.hub.sound(name, at, 1.0, 1.0, source, Some(conn));
                     }
                     if particles {
@@ -3056,7 +3056,7 @@ impl Game<'_> {
         // ClientPacketListener.handleTakeItemEntity's sound, at the orb.
         let pitch = (self.world.random.next_float() - self.world.random.next_float()) * 0.35 + 0.9;
         let p = orb.position;
-        self.front.audio.play(
+        self.audio.play(
             "minecraft:entity.experience_orb.pickup",
             Some([p.x, p.y, p.z]),
             0.1,
@@ -3116,7 +3116,7 @@ impl Game<'_> {
                 (at, name.trim_start_matches("minecraft:").to_owned())
             })
             .collect();
-        if let Some(capture) = self.front.audio.capture.as_mut() {
+        if let Some(capture) = self.audio.capture.as_mut() {
             let mut i = heard.min(capture.len());
             while i < capture.len() {
                 let (name, at, ..) = &capture[i];
@@ -3139,7 +3139,7 @@ impl Game<'_> {
         {
             return;
         }
-        let Some(capture) = self.front.audio.capture.as_mut() else {
+        let Some(capture) = self.audio.capture.as_mut() else {
             return;
         };
         let sounds: Vec<_> = capture.drain(heard.min(capture.len())..).collect();
@@ -3151,8 +3151,8 @@ impl Game<'_> {
 
     /// Positional sounds and level events of the tick, for the guests.
     pub(super) fn lan_broadcast_effects(&mut self, host: &mut LanHost) {
-        let sounds = self.front.audio.capture.take().unwrap_or_default();
-        self.front.audio.capture = Some(Vec::new());
+        let sounds = self.audio.capture.take().unwrap_or_default();
+        self.audio.capture = Some(Vec::new());
         let blocks: Vec<[f64; 3]> = std::mem::take(&mut host.broken);
         for (name, at, volume, pitch) in sounds {
             // Block breaks are heard through the level event.

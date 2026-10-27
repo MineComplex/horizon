@@ -101,7 +101,7 @@ pub(super) fn inside(p: (f32, f32), [x, y, w, h]: [f32; 4]) -> bool {
 #[cfg(feature = "mods")]
 impl Game<'_> {
     fn browser_batch(&self) -> Option<HudBatch> {
-        let r = self.front.renderer.as_ref()?;
+        let r = self.renderer.as_ref()?;
         Some(HudBatch::new([r.config.width, r.config.height]))
     }
     /// The mod showing a panel, with its items made into stacks once per
@@ -190,7 +190,7 @@ impl Game<'_> {
         let first = self.mods.browser.page * layout.per_page();
         (0..layout.per_page()).find_map(|n| {
             let (x, y) = layout.slot(n);
-            if !inside(self.front.cursor, [x, y, SLOT, SLOT]) {
+            if !inside(self.cursor, [x, y, SLOT, SLOT]) {
                 return None;
             }
             let stack = self.mods.browser.stacks.get(first + n)?.clone()?;
@@ -213,14 +213,14 @@ impl Game<'_> {
         let pages = self.browser_pages(layout);
         self.mods.browser.page = self.mods.browser.page.min(pages - 1);
         let page = self.mods.browser.page;
-        let cursor = self.front.cursor;
+        let cursor = self.cursor;
         if pages > 1 {
             let labels = [
                 self.translate("gui.recipebook.previous_page", "Previous Page"),
                 self.translate("gui.recipebook.next_page", "Next Page"),
             ];
             let shown = [page > 0, page + 1 < pages];
-            let atlas = &self.front.gui.atlas;
+            let atlas = &self.gui.atlas;
             for (((x, y), name), (label, shown)) in layout
                 .arrows()
                 .into_iter()
@@ -258,7 +258,7 @@ impl Game<'_> {
             let rect = [x + 1.0, y + 1.0, 16.0, 16.0];
             if inside(cursor, [x, y, SLOT, SLOT]) {
                 batch.fill(
-                    &self.front.gui.atlas,
+                    &self.gui.atlas,
                     x + 1.0,
                     y + 1.0,
                     16.0,
@@ -284,7 +284,7 @@ impl Game<'_> {
         let Some(layout) = self.browser_layout(batch) else {
             return;
         };
-        let cursor = self.front.cursor;
+        let cursor = self.cursor;
         if self.mods.browser.recipes.is_some() {
             self.draw_browser_recipes(batch, &layout);
         } else {
@@ -295,7 +295,7 @@ impl Game<'_> {
         // The hint shows in an empty box without focus, as the recipe book's.
         search.suggestion = (search.value.is_empty() && !search.focused).then_some(hint);
         let mut search = search.clone();
-        search.draw(batch, &self.front.gui.atlas, None);
+        search.draw(batch, &self.gui.atlas, None);
         self.mods.browser.search = Some(search);
         if self.carried.is_some() {
             self.draw_carried(batch);
@@ -320,9 +320,9 @@ impl Game<'_> {
         let Some(layout) = self.browser_layout(&batch) else {
             return false;
         };
-        let cursor = self.front.cursor;
+        let cursor = self.cursor;
         let shift = self.has_shift_down();
-        let atlas = &self.front.gui.atlas;
+        let atlas = &self.gui.atlas;
         let search = self.mods.browser.search.get_or_insert_with(|| {
             let mut edit = EditBox::new(0.0, 0.0, 0.0, 0.0);
             edit.max_length = 50;
@@ -355,8 +355,7 @@ impl Game<'_> {
         };
         if let Some(to) = step {
             self.mods.browser.page = to;
-            self.front
-                .audio
+            self.audio
                 .play("minecraft:ui.button.click", None, 0.25, 1.0);
             return true;
         }
@@ -387,7 +386,7 @@ impl Game<'_> {
             return;
         };
         if let Some(shortcut) = shortcut {
-            search.shortcut(shortcut, &mut self.front.clipboard);
+            search.shortcut(shortcut, &mut self.clipboard);
         } else {
             let handled = match event.physical_key {
                 PhysicalKey::Code(code) => search.key(code, ctrl, shift),
@@ -446,11 +445,11 @@ impl Game<'_> {
             .and_then(|_| self.browser_layout(&batch))
         {
             // The panel's stacks as the mod sent them.
-            Some(layout) if inside(self.front.cursor, layout.area) => {
+            Some(layout) if inside(self.cursor, layout.area) => {
                 return Some(self.browser_pointed_stack(&layout)?.0);
             }
             _ => {
-                let slot = self.slot_at(&batch, self.front.cursor.0, self.front.cursor.1)?;
+                let slot = self.slot_at(&batch, self.cursor.0, self.cursor.1)?;
                 self.slot_view(slot)?
             }
         };

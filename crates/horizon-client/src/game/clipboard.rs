@@ -12,8 +12,8 @@ impl Game<'_> {
         if event.state != ElementState::Pressed {
             return None;
         }
-        let m = self.front.modifiers;
-        let held = |keys: [KeyCode; 2]| keys.iter().any(|k| self.front.keys.contains(k));
+        let m = self.modifiers;
+        let held = |keys: [KeyCode; 2]| keys.iter().any(|k| self.keys.contains(k));
         // InputQuirks.EDIT_SHORTCUT_KEY_MODIFIER: Cmd on macOS, Ctrl elsewhere.
         let edit = if cfg!(target_os = "macos") {
             m.super_key() || held([KeyCode::SuperLeft, KeyCode::SuperRight])
@@ -47,12 +47,12 @@ impl Game<'_> {
             return;
         };
         if title.has_caret_field() {
-            return title.field_shortcut(shortcut, &mut self.front.clipboard);
+            return title.field_shortcut(shortcut, &mut self.clipboard);
         }
         if let Some((id, value, max)) = title.focused_field() {
             let changed = Self::append_shortcut(
-                &mut self.front.text_selection,
-                &mut self.front.clipboard,
+                &mut self.text_selection,
+                &mut self.clipboard,
                 id,
                 value,
                 shortcut,
@@ -72,7 +72,7 @@ impl Game<'_> {
         let cleared = !title.has_caret_field()
             && title
                 .focused_field()
-                .is_some_and(|(id, value, _)| self.front.text_selection.take(id, value));
+                .is_some_and(|(id, value, _)| self.text_selection.take(id, value));
         if cleared {
             title.search_changed();
         }
@@ -89,7 +89,7 @@ impl Game<'_> {
         if self
             .creative_screen
             .search
-            .shortcut(shortcut, &mut self.front.clipboard)
+            .shortcut(shortcut, &mut self.clipboard)
         {
             self.creative_screen.scroll = 0.0;
         }

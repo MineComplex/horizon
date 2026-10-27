@@ -269,7 +269,7 @@ impl Game<'_> {
     }
     /// `AdvancementWidget`'s title lines, description lines and width.
     fn adv_widget_text(&self, i: usize) -> (Vec<Text>, Vec<Text>, f32) {
-        let font = &self.front.gui.atlas.font;
+        let font = &self.gui.atlas.font;
         let a = &self.adv.tree.list[i];
         let Some(d) = &a.display else {
             return (Vec::new(), Vec::new(), 0.0);
@@ -332,7 +332,7 @@ impl Game<'_> {
         let (sx, sy) = self.adv_ui.scroll.unwrap_or_default();
         let (sx, sy) = (sx.floor() as i32, sy.floor() as i32);
         self.adv_tick_hover(&view, sx, sy, left, top);
-        let atlas = &self.front.gui.atlas;
+        let atlas = &self.gui.atlas;
         ui::menu_background(batch, atlas, 0.0, 0.0, w, h, true);
         let title = Text::translate("gui.advancements", &[]);
         let tw = atlas.font.width_text(&title);
@@ -444,7 +444,7 @@ impl Game<'_> {
                     }
                     let (x, y) = pos(i);
                     let (x, y) = ((ox + x) as f32, (oy + y) as f32);
-                    let atlas = &self.front.gui.atlas;
+                    let atlas = &self.gui.atlas;
                     batch.sprite_scaled(
                         atlas,
                         frame_sprite(d.frame, done),
@@ -461,7 +461,7 @@ impl Game<'_> {
             }
         }
         // The window, tabs and title.
-        let atlas = &self.front.gui.atlas;
+        let atlas = &self.gui.atlas;
         batch.sprite_region(
             atlas,
             "gui/advancements/window",
@@ -475,7 +475,7 @@ impl Game<'_> {
                 let (x, y) = tab_pos(ty, i);
                 let sprite = tab_sprite(ty, i, ty.3, Some(t) == tab);
                 batch.sprite_scaled(
-                    &self.front.gui.atlas,
+                    &self.gui.atlas,
                     &sprite,
                     left + x,
                     top + y,
@@ -494,7 +494,7 @@ impl Game<'_> {
                 }
             }
         }
-        let atlas = &self.front.gui.atlas;
+        let atlas = &self.gui.atlas;
         let title = tab.and_then(|t| tree.list[t].display.as_ref()).map_or_else(
             || Text::translate("gui.advancements", &[]),
             |d| text_of(&d.title),
@@ -509,9 +509,9 @@ impl Game<'_> {
             }
         }
         // Done.
-        let atlas = &self.front.gui.atlas;
+        let atlas = &self.gui.atlas;
         let (bx, by) = ((w / 2.0 - 100.0).floor(), h - FOOTER + 6.0);
-        let hover = ui::hovered(self.front.cursor, bx, by, 200.0, 20.0);
+        let hover = ui::hovered(self.cursor, bx, by, 200.0, 20.0);
         ui::button(
             batch,
             atlas,
@@ -529,15 +529,10 @@ impl Game<'_> {
                 let Some((ty, i)) = tab_type(n) else { continue };
                 let (x, y) = tab_pos(ty, i);
                 let (x, y) = (left + x, top + y);
-                let (cx, cy) = self.front.cursor;
+                let (cx, cy) = self.cursor;
                 if cx > x && cx < x + ty.1 && cy > y && cy < y + ty.2 {
                     if let Some(d) = &tree.list[t].display {
-                        ui::tooltip(
-                            batch,
-                            &self.front.gui.atlas,
-                            &[text_of(&d.title)],
-                            self.front.cursor,
-                        );
+                        ui::tooltip(batch, &self.gui.atlas, &[text_of(&d.title)], self.cursor);
                     }
                     break;
                 }
@@ -553,8 +548,8 @@ impl Game<'_> {
             .map_or(0.0, |t| (now - t).as_secs_f32() * 20.0)
             .min(5.0);
         self.adv_ui.last_frame = Some(now);
-        let mx = (self.front.cursor.0 - left - 9.0).floor() as i32;
-        let my = (self.front.cursor.1 - top - 18.0).floor() as i32;
+        let mx = (self.cursor.0 - left - 9.0).floor() as i32;
+        let my = (self.cursor.1 - top - 18.0).floor() as i32;
         let mut hovered = None;
         if mx > 0 && mx < INSIDE_W && my > 0 && my < INSIDE_H {
             for &i in &view.widgets {
@@ -621,7 +616,7 @@ impl Game<'_> {
                 ],
             )
         });
-        let atlas = &self.front.gui.atlas;
+        let atlas = &self.gui.atlas;
         let progress_w = progress.as_ref().map_or(0.0, |t| atlas.font.width_text(t)) as i32;
         let top_side = title_bottom + desc_h >= INSIDE_H;
         let amount = if a.criteria.is_empty() || total == 0 {
@@ -754,14 +749,13 @@ impl Game<'_> {
         let b = HudBatch::new(size);
         let (w, h) = (b.width, b.height);
         if ui::hovered(
-            self.front.cursor,
+            self.cursor,
             (w / 2.0 - 100.0).floor(),
             h - FOOTER + 6.0,
             200.0,
             20.0,
         ) {
-            self.front
-                .audio
+            self.audio
                 .play("minecraft:ui.button.click", None, 0.25, 1.0);
             self.close_advancements();
             return;
@@ -772,7 +766,7 @@ impl Game<'_> {
             let Some((ty, i)) = tab_type(n) else { continue };
             let (x, y) = tab_pos(ty, i);
             let (x, y) = (left + x, top + y);
-            let (cx, cy) = self.front.cursor;
+            let (cx, cy) = self.cursor;
             if cx > x && cx < x + ty.1 && cy > y && cy < y + ty.2 {
                 if self.adv_ui.tab != Some(t) {
                     self.adv_ui.tab = Some(t);
@@ -781,7 +775,7 @@ impl Game<'_> {
                 return;
             }
         }
-        self.adv_ui.drag = Some(self.front.cursor);
+        self.adv_ui.drag = Some(self.cursor);
     }
     /// `mouseDragged` with the left button: the first step starts
     /// scrolling, later ones move the tree.
@@ -789,8 +783,8 @@ impl Game<'_> {
         let Some(last) = self.adv_ui.drag else {
             return;
         };
-        let (dx, dy) = (self.front.cursor.0 - last.0, self.front.cursor.1 - last.1);
-        self.adv_ui.drag = Some(self.front.cursor);
+        let (dx, dy) = (self.cursor.0 - last.0, self.cursor.1 - last.1);
+        self.adv_ui.drag = Some(self.cursor);
         if !self.adv_ui.scrolling {
             self.adv_ui.scrolling = true;
             return;

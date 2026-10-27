@@ -50,7 +50,7 @@ impl Game<'_> {
             && let Some(f) = self.fangs.list.iter_mut().find(|f| f.id == id)
         {
             f.started = true;
-            self.front.audio.play_unshared(
+            self.audio.play_unshared(
                 "minecraft:entity.evoker_fangs.attack",
                 Some(f.pos),
                 1.0,
@@ -82,7 +82,7 @@ impl Game<'_> {
             if !f.started {
                 f.started = true;
                 self.lan_entity_event(f.id as i32, 4, f.pos);
-                self.front.audio.play_unshared(
+                self.audio.play_unshared(
                     "minecraft:entity.evoker_fangs.attack",
                     Some(f.pos),
                     1.0,
@@ -169,7 +169,6 @@ impl Game<'_> {
             return;
         };
         let Some(r) = self
-            .front
             .gui
             .atlas
             .sprites

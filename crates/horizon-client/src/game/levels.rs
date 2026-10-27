@@ -237,7 +237,7 @@ impl Game<'_> {
         swap(&mut self.lan_block_events, &mut p.lan_block_events);
         swap(&mut self.lan_entity_events, &mut p.lan_entity_events);
         swap(&mut self.lan_critical_hits, &mut p.lan_critical_hits);
-        let (a, b) = (&mut self.front.be_anims, &mut p.anims);
+        let (a, b) = (&mut self.be_anims, &mut p.anims);
         swap(&mut a.chests, &mut b.chests);
         swap(&mut a.books, &mut b.books);
         swap(&mut a.shulkers, &mut b.shulkers);

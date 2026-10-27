@@ -9,17 +9,17 @@ use horizon_client::{
 
 impl Game<'_> {
     pub(super) fn open_gamemode_switcher(&mut self) {
-        self.front.gamemode_switcher = Some(GameModeSwitcher::new(self.mode, self.previous_mode));
+        self.gamemode_switcher = Some(GameModeSwitcher::new(self.mode, self.previous_mode));
         self.screen = Screen::GameModeSwitcher;
-        self.front.keys.clear();
-        self.front.left = false;
-        self.front.right = false;
+        self.keys.clear();
+        self.left = false;
+        self.right = false;
         self.mining = None;
         self.capture(false);
     }
 
     pub(super) fn close_gamemode_switcher(&mut self, apply: bool) {
-        let selected = self.front.gamemode_switcher.take().map(|s| s.selected);
+        let selected = self.gamemode_switcher.take().map(|s| s.selected);
         self.screen = Screen::Playing;
         self.capture(true);
         if apply
@@ -34,16 +34,12 @@ impl Game<'_> {
 
     pub(super) fn draw_gamemode_switcher(&mut self, batch: &mut HudBatch) {
         let (w, h) = (batch.width as i32, batch.height as i32);
-        let Some(switcher) = &mut self.front.gamemode_switcher else {
+        let Some(switcher) = &mut self.gamemode_switcher else {
             return;
         };
-        switcher.hover(
-            w,
-            h,
-            (self.front.cursor.0 as i32, self.front.cursor.1 as i32),
-        );
+        switcher.hover(w, h, (self.cursor.0 as i32, self.cursor.1 as i32));
         let selected = switcher.selected;
-        let atlas = &self.front.gui.atlas;
+        let atlas = &self.gui.atlas;
         batch.sprite_region(
             atlas,
             "gui/container/gamemode_switcher",
@@ -66,14 +62,14 @@ impl Game<'_> {
         for (index, mode) in MODES.into_iter().enumerate() {
             let (x, y) = slot_origin(w, h, index);
             batch.sprite(
-                &self.front.gui.atlas,
+                &self.gui.atlas,
                 "gui/sprites/gamemode_switcher/slot",
                 x as f32,
                 y as f32,
             );
             if mode == selected {
                 batch.sprite(
-                    &self.front.gui.atlas,
+                    &self.gui.atlas,
                     "gui/sprites/gamemode_switcher/selection",
                     x as f32,
                     y as f32,

@@ -200,10 +200,7 @@ impl Game<'_> {
             alive: !p.health.dead_or_dying(),
             // EntitySelector.NO_CREATIVE_OR_SPECTATOR.
             creative: self.creative || self.spectator(),
-            sneaking: self
-                .front
-                .keys
-                .contains(&winit::keyboard::KeyCode::ShiftLeft),
+            sneaking: self.keys.contains(&winit::keyboard::KeyCode::ShiftLeft),
             swimming: p.swimming,
             look: view_vector(self.yaw, self.pitch),
             main_hand: self.held().map(|s| s.item.clone()),
@@ -1049,8 +1046,7 @@ impl Game<'_> {
                 }
                 MobEvent::Sound(name, at, volume, pitch)
                 | MobEvent::LocalSound(name, at, volume, pitch) => {
-                    self.front
-                        .audio
+                    self.audio
                         .play(&format!("minecraft:{name}"), Some(at), volume, pitch)
                 }
                 MobEvent::LevelEventSound {
@@ -1064,12 +1060,11 @@ impl Game<'_> {
                         self.world.game_time.wrapping_mul(341_873_128_712),
                     );
                     let pitch = (r.next_float() - r.next_float()) * spread + 1.0;
-                    self.front
-                        .audio
+                    self.audio
                         .play(&format!("minecraft:{sound}"), Some(at), volume, pitch)
                 }
                 MobEvent::SoundId(name, at, volume, pitch) => {
-                    self.front.audio.play(&name, Some(at), volume, pitch)
+                    self.audio.play(&name, Some(at), volume, pitch)
                 }
                 // The sculk layer tracks the game's steps itself
                 // (`entity_motion_events`).
@@ -1200,7 +1195,7 @@ impl Game<'_> {
                             for event in std::mem::take(&mut t.outbox) {
                                 match event {
                                     MobEvent::Sound(s, _, volume, pitch) => {
-                                        self.front.audio.play(
+                                        self.audio.play(
                                             &format!("minecraft:{s}"),
                                             Some(center),
                                             volume,
@@ -1226,7 +1221,7 @@ impl Game<'_> {
                             .iter()
                             .find(|m| m.id == attacker && m.species() == Species::Axolotl)
                     {
-                        self.front.audio.play(
+                        self.audio.play(
                             "minecraft:entity.axolotl.attack",
                             Some([m.position.x, m.position.y, m.position.z]),
                             1.0,
@@ -1241,8 +1236,7 @@ impl Game<'_> {
                 MobEvent::Hiss { mob } => {
                     if let Some(m) = self.mobs.iter().find(|m| m.id == mob) {
                         let at = m.center();
-                        self.front
-                            .audio
+                        self.audio
                             .play("minecraft:entity.cat.hiss", Some(at), 1.0, 1.0);
                     }
                 }
@@ -1371,7 +1365,7 @@ impl Game<'_> {
                         let old = self.world.block(pos[0], pos[1], pos[2]);
                         self.destroy_particles(pos, old);
                         let s = self.res.facts().get(old).sounds.break_sound.clone();
-                        self.front.audio.play(
+                        self.audio.play(
                             &s,
                             Some([
                                 f64::from(pos[0]) + 0.5,
@@ -1587,7 +1581,7 @@ impl Game<'_> {
                     for d in drops {
                         self.spawn_at_location(Vec3::new(at[0], at[1], at[2]), 0.0, d);
                     }
-                    self.front.audio.play(
+                    self.audio.play(
                         "minecraft:entity.armadillo.scute_drop",
                         Some(at),
                         1.0,
@@ -1912,8 +1906,7 @@ impl Game<'_> {
         let at = [p.position.x, p.position.y, p.position.z];
         self.give_player_effect("minecraft:mining_fatigue", 6000, 2);
         if self.lan_acting.is_none() {
-            self.front
-                .audio
+            self.audio
                 .play("minecraft:entity.elder_guardian.curse", Some(at), 1.0, 1.0);
             self.creatures.elder_apparition = super::mob_blocks::APPARITION_TICKS;
         }
@@ -2170,7 +2163,7 @@ impl Game<'_> {
             if taken {
                 let r = &mut self.world.random;
                 let pitch = (r.next_float() - r.next_float()) * 1.4 + 2.0;
-                self.front.audio.play(
+                self.audio.play(
                     "minecraft:entity.item.pickup",
                     Some([at.x, at.y, at.z]),
                     0.2,
@@ -2349,8 +2342,7 @@ impl Game<'_> {
         }
         self.smoke_trails(trails);
         for at in deflections {
-            self.front
-                .audio
+            self.audio
                 .play("minecraft:entity.breeze.deflect", Some(at), 1.0, 1.0);
         }
         for (at, event) in arrow_events {
@@ -2464,8 +2456,7 @@ impl Game<'_> {
                     ArrowSound::TridentHitGround => "minecraft:item.trident.hit_ground",
                     ArrowSound::TridentHit => "minecraft:item.trident.hit",
                 };
-                self.front
-                    .audio
+                self.audio
                     .play(name, Some([at.x, at.y, at.z]), volume, pitch);
             }
             ArrowEvent::BubbleColumnParticles { pos } => {
@@ -2876,7 +2867,7 @@ impl Game<'_> {
                     }
                     self.previous_position = to;
                     self.hurt_player_by("minecraft:ender_pearl", 5.0);
-                    self.front.audio.play(
+                    self.audio.play(
                         "minecraft:entity.player.teleport",
                         Some([to.x, to.y, to.z]),
                         1.0,
@@ -3025,7 +3016,7 @@ impl Game<'_> {
                         }
                     }
                 }
-                self.front.audio.play(
+                self.audio.play(
                     "minecraft:entity.splash_potion.break",
                     Some(atp),
                     1.0,
@@ -3078,8 +3069,7 @@ impl Game<'_> {
                 self.wither_skull_hit(p, who, atp)?;
             }
             (ProjectileKind::ShulkerBullet { .. }, Hit::Block { .. }) => {
-                self.front
-                    .audio
+                self.audio
                     .play("minecraft:entity.shulker_bullet.hit", Some(atp), 1.0, 1.0);
                 if let Some(ty) = horizon_client::particles::ParticleType::from_name("explosion") {
                     let options = horizon_client::particles::ParticleOptions::simple(ty);
@@ -3170,8 +3160,7 @@ impl Game<'_> {
             filled.extra = Some(Box::new(horizon_client::entity_nbt::bucket_components(
                 &self.mobs[index],
             )));
-            self.front
-                .audio
+            self.audio
                 .play(sound, Some(self.mobs[index].center()), 1.0, 1.0);
             self.trigger_item("minecraft:filled_bucket", &filled);
             // Leashable.dropLeash, then discard.
@@ -3636,13 +3625,11 @@ impl Game<'_> {
         if let Some(s) = sound {
             let pitch =
                 (self.world.random.next_float() - self.world.random.next_float()) * 0.2 + 1.0;
-            self.front
-                .audio
+            self.audio
                 .play(&format!("minecraft:{s}"), Some(center), 1.0, pitch);
         }
         if let Some((s, volume, pitch)) = eat {
-            self.front
-                .audio
+            self.audio
                 .play(&format!("minecraft:{s}"), Some(feet), volume, pitch);
         }
         if consume
@@ -3708,8 +3695,7 @@ impl Game<'_> {
         for d in self.sequence_loot(table, table, tool.as_ref()) {
             self.spawn_at_location(at, 0.0, d);
         }
-        self.front
-            .audio
+        self.audio
             .play("minecraft:entity.armadillo.brush", Some(feet), 1.0, 1.0);
         let ctx = self.who_context(Some(Who::Mob(id)), None);
         self.post_game_event("minecraft:entity_interact", feet, ctx);
@@ -3786,7 +3772,7 @@ impl Game<'_> {
             _ => "minecraft:entity.ender_pearl.throw",
         };
         let pitch = 0.4 / (self.world.random.next_float() * 0.4 + 0.8);
-        self.front.audio.play(sound, Some(eye), 0.5, pitch);
+        self.audio.play(sound, Some(eye), 0.5, pitch);
         self.swing_arm();
         if !self.creative
             && let Some(s) = self.held_mut().as_mut()
@@ -3963,7 +3949,7 @@ impl Game<'_> {
     }
     /// Mob models and projectiles for the entity pass.
     pub(super) fn mob_geometry(&self, camera: glam::DVec3, alpha: f64, out: &mut Vec<Vertex>) {
-        let atlas = &self.front.gui.atlas;
+        let atlas = &self.gui.atlas;
         let lookup = |name: &str| atlas.sprites.get(name).map(|r| [r.u0, r.v0, r.u1, r.v1]);
         let scale = self.view_scale();
         for mob in &self.mobs {
@@ -3991,7 +3977,7 @@ impl Game<'_> {
             }
             // EntityRenderer.shouldRender: the culling box, grown by 0.5
             // (GuardianRenderer also draws while its beam is out).
-            if let Some(view) = &self.front.view_frustum
+            if let Some(view) = &self.view_frustum
                 && horizon_client::mobs::guardian::beam(mob, alpha as f32).is_none()
             {
                 let lo =

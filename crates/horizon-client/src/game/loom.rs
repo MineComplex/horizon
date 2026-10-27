@@ -85,7 +85,7 @@ impl Game<'_> {
             f64::from(pos[1]) + 0.5,
             f64::from(pos[2]) + 0.5,
         ];
-        self.front.audio.play(sound, Some(at), 1.0, 1.0);
+        self.audio.play(sound, Some(at), 1.0, 1.0);
     }
     /// `LoomScreen.mouseClicked` on a pattern button: `clickMenuButton`, and
     /// the select sound when the menu took it.
@@ -97,8 +97,7 @@ impl Game<'_> {
             Some(*flag)
         });
         if taken {
-            self.front
-                .audio
+            self.audio
                 .play("minecraft:ui.loom.select_pattern", None, 1.0, 1.0);
             self.remote_station_button(index as i32);
         }
@@ -152,7 +151,6 @@ impl Game<'_> {
     /// `LoomScreen.mouseDragged` on the scroller.
     pub(super) fn loom_drag(&mut self) {
         let Some(size) = self
-            .front
             .renderer
             .as_ref()
             .map(|r| [r.config.width, r.config.height])
@@ -160,7 +158,7 @@ impl Game<'_> {
             return;
         };
         let (_, oy) = self.inventory_origin(&HudBatch::new(size));
-        let cursor_y = self.front.cursor.1;
+        let cursor_y = self.cursor.1;
         let Some(l) = self.station.as_mut().map(|s| &mut s.loom) else {
             return;
         };
@@ -203,7 +201,7 @@ impl Game<'_> {
             .collect();
         horizon_client::item_render::gui::draw_banner_result(
             &self.pack.item_renderer,
-            &self.front.gui.atlas.sprites,
+            &self.gui.atlas.sprites,
             batch,
             x,
             y,
@@ -221,7 +219,7 @@ impl Game<'_> {
         draws: &[ScreenDraw],
         background: bool,
     ) -> Option<Vec<(horizon_client::text::Text, u32)>> {
-        let atlas = &self.front.gui.atlas;
+        let atlas = &self.gui.atlas;
         let mut tooltip = None;
         let mut sheet: Option<String> = None;
         for d in draws {

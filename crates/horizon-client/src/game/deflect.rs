@@ -131,8 +131,7 @@ impl Game<'_> {
             .player
             .as_ref()
             .map(|p| [p.position.x, p.position.y, p.position.z]);
-        self.front
-            .audio
+        self.audio
             .play("minecraft:entity.player.attack.nodamage", from, 1.0, 1.0);
     }
 }

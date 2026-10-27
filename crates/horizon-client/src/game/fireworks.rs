@@ -248,7 +248,7 @@ impl Game<'_> {
             }
             let at = [r.position.x, r.position.y, r.position.z];
             if r.life == 0 {
-                self.front.audio.play(
+                self.audio.play(
                     "minecraft:entity.firework_rocket.launch",
                     Some(at),
                     3.0,

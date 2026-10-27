@@ -314,8 +314,7 @@ impl Game<'_> {
             let m = &mut self.mobs[index];
             m.hurt(damage, None, &mut self.world.random);
             let center = [m.position.x, m.position.y, m.position.z];
-            self.front
-                .audio
+            self.audio
                 .play("minecraft:enchant.thorns.hit", Some(center), 1.0, 1.0);
         }
     }
@@ -596,7 +595,7 @@ impl Game<'_> {
         // 0.6, pitch 0.6 to 1.0.
         if r.next_float() < 0.35 && tick_effects {
             let pitch = r.next_float() * 0.4 + 0.6;
-            self.front.audio.play(
+            self.audio.play(
                 "minecraft:particle.soul_escape",
                 Some([position.x, position.y, position.z]),
                 0.6,
@@ -627,7 +626,7 @@ impl Game<'_> {
         if boots.damage >= max {
             self.armor[3] = None;
             if let Some(eye) = self.eye_position() {
-                self.front.audio.play(
+                self.audio.play(
                     "minecraft:entity.item.break",
                     Some(eye),
                     0.8,

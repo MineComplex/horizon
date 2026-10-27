@@ -1183,8 +1183,7 @@ impl Game<'_> {
                     } else {
                         let r = &mut g.world.random;
                         let pitch = ((r.next_float() - r.next_float()) * 0.7 + 1.0) * 2.0;
-                        g.front
-                            .audio
+                        g.audio
                             .play("minecraft:entity.item.pickup", Some(p), 0.2, pitch);
                     }
                 }
@@ -3103,7 +3102,7 @@ impl Game<'_> {
         }
         let focused = self.screen == Screen::Chat;
         self.ui.chat.add(
-            &self.front.gui.atlas,
+            &self.gui.atlas,
             line,
             None,
             horizon_client::chat::ChatSource::Player,

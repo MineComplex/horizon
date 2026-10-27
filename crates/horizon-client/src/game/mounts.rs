@@ -59,19 +59,14 @@ impl Game<'_> {
             } else {
                 "minecraft:entity.pig.saddle"
             };
-            self.front.audio.play(sound, Some(at), 0.5, 1.0);
+            self.audio.play(sound, Some(at), 0.5, 1.0);
             self.consume_held();
             self.world
                 .modified
                 .insert((at[0].floor() as i32 >> 4, at[2].floor() as i32 >> 4));
             return true;
         }
-        if !m.extra.saddled
-            || self
-                .front
-                .keys
-                .contains(&winit::keyboard::KeyCode::ShiftLeft)
-        {
+        if !m.extra.saddled || self.keys.contains(&winit::keyboard::KeyCode::ShiftLeft) {
             return false;
         }
         self.riding = Some(m.id);
@@ -147,14 +142,8 @@ impl Game<'_> {
         // AbstractHorse.mobInteract: shift + use opens a tamed adult's inventory.
         if !m.is_baby()
             && m.extra.tame
-            && (self
-                .front
-                .keys
-                .contains(&winit::keyboard::KeyCode::ShiftLeft)
-                || self
-                    .front
-                    .keys
-                    .contains(&winit::keyboard::KeyCode::ShiftRight))
+            && (self.keys.contains(&winit::keyboard::KeyCode::ShiftLeft)
+                || self.keys.contains(&winit::keyboard::KeyCode::ShiftRight))
         {
             self.open_mount_menu(index);
             return true;
@@ -191,7 +180,7 @@ impl Game<'_> {
         if let Some(sound) = sound {
             let pitch =
                 (self.world.random.next_float() - self.world.random.next_float()) * 0.2 + 1.0;
-            self.front.audio.play(sound, Some(at), 0.5, pitch);
+            self.audio.play(sound, Some(at), 0.5, pitch);
             self.consume_held();
             self.world
                 .modified
@@ -273,7 +262,7 @@ impl Game<'_> {
             _ => "minecraft:entity.horse.eat",
         };
         let pitch = (self.world.random.next_float() - self.world.random.next_float()) * 0.2 + 1.0;
-        self.front.audio.play(sound, Some(at), 1.0, pitch);
+        self.audio.play(sound, Some(at), 1.0, pitch);
         // Animal.setInLove: entity event 18.
         if loved {
             self.mob_event_particles(id, 18);
@@ -350,7 +339,7 @@ impl Game<'_> {
             if equine::is_equine(m.species()) {
                 let sound = "minecraft:entity.horse.jump";
                 let at = m.center();
-                self.front.audio.play(sound, Some(at), 0.4, 1.0);
+                self.audio.play(sound, Some(at), 0.4, 1.0);
             }
         }
         let m = &mut self.mobs[i];
@@ -362,11 +351,7 @@ impl Game<'_> {
             pitch: self.pitch,
             jump: if jump > 0.0 { jump } else { pending },
             steer,
-            sprint: keys.sprint
-                || self
-                    .front
-                    .keys
-                    .contains(&winit::keyboard::KeyCode::ControlLeft),
+            sprint: keys.sprint || self.keys.contains(&winit::keyboard::KeyCode::ControlLeft),
             jumping: keys.jump,
         });
         true
@@ -525,7 +510,7 @@ impl Game<'_> {
             return 0;
         };
         let m = &self.mobs[i];
-        let atlas = &self.front.gui.atlas;
+        let atlas = &self.gui.atlas;
         let hearts = horizon_client::hud_layout::vehicle_max_hearts(m.attrs.max_health);
         let draws = horizon_client::hud_layout::vehicle_health(w, h, hearts, m.health);
         horizon_client::hud_layout::paint(batch, atlas, &draws);

@@ -288,7 +288,7 @@ impl Game<'_> {
         let (x, z) = (at[0].floor() as i32 >> 4, at[2].floor() as i32 >> 4);
         self.world.modified.insert((x, z));
         if let Some(sound) = sound {
-            self.front.audio.play(&sound, Some(at), 0.5, 1.0);
+            self.audio.play(&sound, Some(at), 0.5, 1.0);
         }
     }
     pub(super) fn mount_slots(&self) -> Option<Vec<usize>> {
@@ -353,11 +353,11 @@ impl Game<'_> {
         if !self.mount_active() || self.remote.is_some() {
             return false;
         }
-        let Some(r) = self.front.renderer.as_ref() else {
+        let Some(r) = self.renderer.as_ref() else {
             return true;
         };
         let batch = HudBatch::new([r.config.width, r.config.height]);
-        let Some(slot) = self.slot_at(&batch, self.front.cursor.0, self.front.cursor.1) else {
+        let Some(slot) = self.slot_at(&batch, self.cursor.0, self.cursor.1) else {
             return true;
         };
         let shift = self.has_shift_down();
@@ -419,7 +419,7 @@ impl Game<'_> {
         let Some(open) = self.mount_menu.open.as_ref() else {
             return;
         };
-        let atlas = &self.front.gui.atlas;
+        let atlas = &self.gui.atlas;
         batch.sprite_region(
             atlas,
             "gui/container/horse",
@@ -500,8 +500,8 @@ impl Game<'_> {
         offset_y: f32,
     ) {
         let (cx, cy) = ((x0 + x1) / 2.0, (y0 + y1) / 2.0);
-        let x_angle = ((cx - self.front.cursor.0) / 40.0).atan();
-        let y_angle = ((cy - self.front.cursor.1) / 40.0).atan();
+        let x_angle = ((cx - self.cursor.0) / 40.0).atan();
+        let y_angle = ((cy - self.cursor.1) / 40.0).atan();
         let mut m = mob.clone();
         m.previous = m.position;
         m.body_yaw = 180.0 + x_angle * 20.0;
@@ -513,7 +513,7 @@ impl Game<'_> {
         m.hurt_time = 0;
         m.death_time = 0;
         let camera = glam::DVec3::new(m.position.x, m.position.y, m.position.z);
-        let atlas = &self.front.gui.atlas;
+        let atlas = &self.gui.atlas;
         let lookup = |name: &str| atlas.sprites.get(name).map(|r| [r.u0, r.v0, r.u1, r.v1]);
         let mut verts = Vec::new();
         horizon_client::mobs::render::render_with(

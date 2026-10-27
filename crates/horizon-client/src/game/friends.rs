@@ -171,7 +171,7 @@ impl Game<'_> {
             return;
         };
         use horizon_client::clipboard::Clipboard;
-        self.front.clipboard.set(&code);
+        self.clipboard.set(&code);
         if let Some(s) = self.friends.as_mut() {
             s.copied = Some(Instant::now());
         }
@@ -182,19 +182,16 @@ impl Game<'_> {
     pub(super) fn draw_friends_screen(&mut self, batch: &mut HudBatch) {
         self.tick_friends();
         let view = self.friends_view();
-        friends_screen::draw(batch, &self.front.gui.atlas, self.front.cursor, &view, true);
+        friends_screen::draw(batch, &self.gui.atlas, self.cursor, &view, true);
     }
     pub(super) fn friends_screen_click(&mut self) {
         let view = self.friends_view();
-        let Some(action) = friends_screen::click(
-            &self.front.gui.atlas,
-            self.gui_size(),
-            self.front.cursor,
-            &view,
-        ) else {
+        let Some(action) =
+            friends_screen::click(&self.gui.atlas, self.gui_size(), self.cursor, &view)
+        else {
             return;
         };
-        self.front.audio.play_button_click();
+        self.audio.play_button_click();
         match action {
             Action::Share => {
                 if let Err(e) = self.friends_start() {

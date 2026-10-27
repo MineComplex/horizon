@@ -337,7 +337,7 @@ impl Game<'_> {
         local: Option<horizon_protocol::connection::Pipe>,
         cookies: Option<horizon_client::net::Cookies>,
     ) -> Result<()> {
-        self.front.perf.world_opening();
+        self.perf.world_opening();
         let root = self.options.resources.clone();
         let builtin = Builtin::find(&root)
             .and_then(|p| Builtin::load(&p).ok())
@@ -413,7 +413,7 @@ impl Game<'_> {
         self.container = None;
         self.carried = None;
         self.using = None;
-        self.front.clicks.miss_time = 0;
+        self.clicks.miss_time = 0;
         // A new LocalPlayer has no effects: the server sends what it has
         // (ClientboundUpdateMobEffectPacket on placement).
         self.potions = Default::default();
@@ -434,13 +434,13 @@ impl Game<'_> {
         self.title = None;
         self.dim = Dim::Overworld;
         self.clear_lod();
-        self.front.pending_uploads.clear();
-        if let Some(r) = self.front.renderer.as_mut() {
+        self.pending_uploads.clear();
+        if let Some(r) = self.renderer.as_mut() {
             r.clear_sections();
         }
         self.apply_settings();
         self.clear_waypoints();
-        self.front.boss_overlay.reset();
+        self.boss_overlay.reset();
         self.remote = Some(Remote {
             session,
             brand: "unknown".into(),
@@ -537,7 +537,7 @@ impl Game<'_> {
             self.extras_left();
         }
         self.clear_waypoints();
-        self.front.boss_overlay.reset();
+        self.boss_overlay.reset();
         if let Some(mut r) = self.remote.take() {
             r.session.disconnect();
         }
@@ -555,8 +555,8 @@ impl Game<'_> {
         self.clock = Default::default();
         self.adv = Default::default();
         self.stats = Default::default();
-        self.front.debug_charts.reset();
-        self.front.tab_list.reset();
+        self.debug_charts.reset();
+        self.tab_list.reset();
         self.score.board = Default::default();
         self.streaming = Streaming::new(Arc::new(NoTerrain), self.pack.context.clone(), 1);
         self.streaming.paused = true;
@@ -569,13 +569,13 @@ impl Game<'_> {
         self.particles.clear();
         self.pickups.clear();
         self.score.board = Default::default();
-        self.front.tab_list = Default::default();
+        self.tab_list = Default::default();
         self.border = Default::default();
         self.screen = Screen::Playing;
         self.container = None;
         self.clear_lod();
-        self.front.pending_uploads.clear();
-        if let Some(r) = self.front.renderer.as_mut() {
+        self.pending_uploads.clear();
+        if let Some(r) = self.renderer.as_mut() {
             r.clear_sections();
         }
         let saves = std::env::current_dir()?.join("saves");
@@ -697,7 +697,7 @@ impl Game<'_> {
         let text = content.plain();
         log::info!("[chat] {text}");
         self.ui.chat.add(
-            &self.front.gui.atlas,
+            &self.gui.atlas,
             content,
             None,
             source,
@@ -878,7 +878,7 @@ impl Game<'_> {
                     }
                 }
                 Event::Reconfigured(registries) => {
-                    self.front.boss_overlay.reset();
+                    self.boss_overlay.reset();
                     self.set_registries(registries);
                 }
                 // handleTransfer: "Cannot transfer to server from
@@ -1071,8 +1071,8 @@ impl Game<'_> {
                 r.chunk_center = (0, 0);
             }
             self.clear_lod();
-            self.front.pending_uploads.clear();
-            if let Some(renderer) = self.front.renderer.as_mut() {
+            self.pending_uploads.clear();
+            if let Some(renderer) = self.renderer.as_mut() {
                 renderer.clear_sections();
             }
         }
@@ -1113,7 +1113,7 @@ impl Game<'_> {
         for &(x, z) in &gone {
             freed.extend(self.streaming.forget(&mut self.world, x, z));
         }
-        if let Some(renderer) = self.front.renderer.as_mut() {
+        if let Some(renderer) = self.renderer.as_mut() {
             renderer.remove_columns(gone.iter().copied());
         }
         horizon_client::chunk::free_columns(freed, gone.len());
@@ -1288,8 +1288,7 @@ impl Game<'_> {
                 f64::from(pos[1]) + 0.5,
                 f64::from(pos[2]) + 0.5,
             ];
-            self.front
-                .audio
+            self.audio
                 .play(&s.place, Some(at), (s.volume + 1.0) / 2.0, s.pitch * 0.8);
             if let Some(r) = self.remote.as_mut() {
                 r.placing = None;
@@ -1709,7 +1708,7 @@ impl Game<'_> {
             // PingDebugMonitor.onPongReceived.
             C::PongResponse(p) => {
                 let delay = self.debug_millis() - p.time;
-                self.front.debug_charts.ping.log(delay);
+                self.debug_charts.ping.log(delay);
             }
             C::Login(p) => {
                 self.level.hardcore = p.hardcore;
@@ -1770,7 +1769,7 @@ impl Game<'_> {
                 self.world
                     .block_entities
                     .retain(|k, _| (k.0 >> 4, k.2 >> 4) != (x, z));
-                if let Some(renderer) = self.front.renderer.as_mut() {
+                if let Some(renderer) = self.renderer.as_mut() {
                     renderer.remove_columns([(x, z)]);
                 }
             }
@@ -1846,16 +1845,14 @@ impl Game<'_> {
                         .filter(|s| *s < horizon_client::settings::SOUND_SOURCES.len())
                     {
                         Some(source) => {
-                            self.front
-                                .audio
+                            self.audio
                                 .play_on(source, &name, Some(at), p.volume, p.pitch)
                         }
-                        None => self.front.audio.play(&name, Some(at), p.volume, p.pitch),
+                        None => self.audio.play(&name, Some(at), p.volume, p.pitch),
                     }
                 }
             }
             C::StopSound(p) => self
-                .front
                 .audio
                 .stop_sounds(p.sound.as_deref(), p.source.map(|s| s as usize)),
             C::AddEntity(p) => {
@@ -2209,8 +2206,7 @@ impl Game<'_> {
                         * 0.7
                         + 1.0)
                         * 2.0;
-                    self.front
-                        .audio
+                    self.audio
                         .play("minecraft:entity.item.pickup", Some(eye), 0.2, pitch);
                 }
                 // ItemPickupParticle toward the collector (this player, another one or a mob).
@@ -2498,7 +2494,7 @@ impl Game<'_> {
                     if p.param == 1.0
                         && let Some(at) = self.player.as_ref().map(|m| m.position)
                     {
-                        self.front.audio.play(
+                        self.audio.play(
                             "minecraft:entity.elder_guardian.curse",
                             Some([at.x, at.y, at.z]),
                             1.0,
@@ -2779,8 +2775,8 @@ impl Game<'_> {
                     let text = horizon_client::scoreboard::comp_text(&json);
                     (!text.plain().is_empty()).then_some(text)
                 };
-                self.front.tab_list.header = text(&p.header);
-                self.front.tab_list.footer = text(&p.footer);
+                self.tab_list.header = text(&p.header);
+                self.tab_list.footer = text(&p.footer);
             }
             C::InitializeBorder(p) => {
                 let b = &mut self.border;
@@ -3170,11 +3166,10 @@ impl Game<'_> {
             self.skin_slots.len()
         } else {
             let (old, slot) = self.skin_slots.remove(0);
-            self.front.gui.atlas.sprites.remove(&old);
+            self.gui.atlas.sprites.remove(&old);
             slot
         };
         let Some(rect) = self
-            .front
             .gui
             .atlas
             .sprites
@@ -3183,18 +3178,15 @@ impl Game<'_> {
         else {
             return;
         };
-        let (w, h) = (
-            self.front.gui.atlas.width as f32,
-            self.front.gui.atlas.height as f32,
-        );
-        self.front.map_patches.push(horizon_client::font::Patch {
+        let (w, h) = (self.gui.atlas.width as f32, self.gui.atlas.height as f32);
+        self.map_patches.push(horizon_client::font::Patch {
             x: (rect.u0 * w).round() as u32,
             y: (rect.v0 * h).round() as u32,
             width: 64,
             height: 64,
             rgba,
         });
-        self.front.gui.atlas.sprites.insert(location.clone(), rect);
+        self.gui.atlas.sprites.insert(location.clone(), rect);
         self.skin_slots.push((location, slot));
     }
     /// Whether a downloaded skin is in the atlas, marking it recently shown.
@@ -3386,8 +3378,8 @@ impl Game<'_> {
                 player.spectator = self.spectator();
                 player.velocity = delta;
                 self.player = Some(player);
-                self.front.pad.player_replaced();
-                self.front.sway = Default::default();
+                self.pad.player_replaced();
+                self.sway = Default::default();
                 self.eye = 1.62;
                 self.previous_eye = 1.62;
                 self.clock.reset();
@@ -3459,7 +3451,7 @@ impl Game<'_> {
         // Minecraft.tick: TickRateManager.tick; ClientLevel.tickTime advances
         // the time only while the level runs normally.
         let running = self.clock.world_runs();
-        self.front.boss_overlay.tick_darken(running);
+        self.boss_overlay.tick_darken(running);
         if running {
             self.world.game_time += 1;
             self.remote_clock_tick();
@@ -3544,7 +3536,7 @@ impl Game<'_> {
             return Ok(());
         }
         let playing = self.screen == Screen::Playing;
-        let held = |k| playing && self.front.keys.contains(&k);
+        let held = |k| playing && self.keys.contains(&k);
         let keys = Keys {
             forward: held(KeyCode::KeyW),
             backward: held(KeyCode::KeyS),
@@ -3637,20 +3629,14 @@ impl Game<'_> {
                     } else {
                         (sounds.volume * 0.15, sounds.pitch)
                     };
-                    self.front
-                        .audio
-                        .play(&sounds.step, Some(feet), volume, pitch);
+                    self.audio.play(&sounds.step, Some(feet), volume, pitch);
                 }
                 horizon_client::motion::MotionEvent::Swim { volume, pitch } => {
-                    self.front.audio.play(
-                        "minecraft:entity.player.swim",
-                        Some(feet),
-                        volume,
-                        pitch,
-                    );
+                    self.audio
+                        .play("minecraft:entity.player.swim", Some(feet), volume, pitch);
                 }
                 horizon_client::motion::MotionEvent::Chime { volume, pitch } => {
-                    self.front.audio.play(
+                    self.audio.play(
                         "minecraft:block.amethyst_block.chime",
                         Some(feet),
                         volume,
@@ -3667,12 +3653,8 @@ impl Game<'_> {
                 // the slide sound, heard here (LocalPlayer.playSound); the
                 // particles come from the server's event 53.
                 horizon_client::motion::MotionEvent::HoneySlide { sound: true, .. } => {
-                    self.front.audio.play(
-                        "minecraft:block.honey_block.slide",
-                        Some(feet),
-                        1.0,
-                        1.0,
-                    );
+                    self.audio
+                        .play("minecraft:block.honey_block.slide", Some(feet), 1.0, 1.0);
                 }
                 _ => {}
             }
@@ -4367,7 +4349,7 @@ impl Game<'_> {
                 f64::from(pos[1]) + 0.5,
                 f64::from(pos[2]) + 0.5,
             ];
-            self.front.audio.play(
+            self.audio.play(
                 &s.break_sound,
                 Some(at),
                 (s.volume + 1.0) / 2.0,
@@ -4400,7 +4382,7 @@ impl Game<'_> {
     /// the server, and whether the click ends there is what this client's
     /// copy of the entity answers (`MultiPlayerGameMode.interact`).
     fn remote_use_entity(&mut self, hand: Hand) -> bool {
-        let sneaking = self.front.keys.contains(&KeyCode::ShiftLeft);
+        let sneaking = self.keys.contains(&KeyCode::ShiftLeft);
         // A boat, minecart, item frame, armor stand or painting nearer than
         // any mob: the server uses it (AbstractBoat.interact boards it).
         if let Some(hit) = self.remote_object_hit(false)
@@ -4549,8 +4531,7 @@ impl Game<'_> {
                 .is_some();
             if waxes {
                 self.level_event_at(3003, hit.pos, 0);
-                self.front
-                    .audio
+                self.audio
                     .play("minecraft:item.honeycomb.wax_on", Some(at), 1.0, 1.0);
             }
             waxes
@@ -4558,7 +4539,7 @@ impl Game<'_> {
             self.block_transform(stack, hit.pos, hit.face)
         {
             self.transform_particle(&particle, hit.pos);
-            self.front.audio.play(&sound, Some(at), 1.0, 1.0);
+            self.audio.play(&sound, Some(at), 1.0, 1.0);
             true
         } else {
             false
@@ -4595,7 +4576,7 @@ impl Game<'_> {
             } else {
                 format!("minecraft:{sound}")
             };
-            self.front.audio.play(&name, Some(at), *volume, *pitch);
+            self.audio.play(&name, Some(at), *volume, *pitch);
         }
     }
 
@@ -4611,7 +4592,7 @@ impl Game<'_> {
     ) -> (bool, DryUse) {
         // Player.isSecondaryUseActive with something in either hand.
         let hands_full = self.stack_in(self.selected).is_some() || self.offhand.is_some();
-        if self.front.keys.contains(&KeyCode::ShiftLeft) && hands_full {
+        if self.keys.contains(&KeyCode::ShiftLeft) && hands_full {
             return (false, DryUse::default());
         }
         // BeehiveBlock.useItemOn: shears or a glass bottle on a full hive
@@ -4698,7 +4679,7 @@ impl Game<'_> {
             inside: hit.face == [0; 3],
             yaw: self.yaw,
             pitch: self.pitch,
-            sneaking: self.front.keys.contains(&KeyCode::ShiftLeft),
+            sneaking: self.keys.contains(&KeyCode::ShiftLeft),
             item: stack.item.to_string(),
             can_use_game_master_blocks: self.can_use_game_master_blocks(),
         };
@@ -4943,17 +4924,15 @@ impl Game<'_> {
         use horizon_client::interaction_input::Button;
         let input = match button {
             MouseButton::Left => {
-                self.front
-                    .toggles
+                self.toggles
                     .button(2, pressed, false, self.settings.toggle_attack);
-                self.front.left = self.front.toggles.is_down(2);
+                self.left = self.toggles.is_down(2);
                 Some(Button::Attack)
             }
             MouseButton::Right => {
-                self.front
-                    .toggles
+                self.toggles
                     .button(3, pressed, false, self.settings.toggle_use);
-                self.front.right = self.front.toggles.is_down(3);
+                self.right = self.toggles.is_down(3);
                 Some(Button::Use)
             }
             MouseButton::Middle => Some(Button::Pick),
@@ -5001,7 +4980,7 @@ impl Game<'_> {
                 slot: self.selected as i16,
             }));
         }
-        let (attack, use_item) = (self.front.left, self.front.right);
+        let (attack, use_item) = (self.left, self.right);
         input.tick(&mut RemoteInputWorld(self), attack, use_item);
         // handleKeybinds' keybind polls: the queued presses act now, in tick
         // order, so no packet goes out between CLIENT_TICK_END and a pong.
@@ -5014,7 +4993,7 @@ impl Game<'_> {
             match key {
                 KeyCode::KeyF if !self.spectator() => self.remote_swap_hands(),
                 KeyCode::KeyQ if !self.spectator() => {
-                    let all = self.front.keys.contains(&KeyCode::ControlLeft);
+                    let all = self.keys.contains(&KeyCode::ControlLeft);
                     self.remote_drop(all);
                 }
                 KeyCode::KeyE if self.riding_mount_with_menu() => {
@@ -5028,8 +5007,8 @@ impl Game<'_> {
                 _ => {}
             }
         }
-        if self.front.clicks.miss_time > 0 {
-            self.front.clicks.miss_time -= 1;
+        if self.clicks.miss_time > 0 {
+            self.clicks.miss_time -= 1;
         }
         if let Some(r) = self.remote.as_mut() {
             r.input = input;
@@ -5037,7 +5016,7 @@ impl Game<'_> {
     }
 
     fn remote_start_attack(&mut self) -> bool {
-        if self.front.clicks.miss_time > 0 {
+        if self.clicks.miss_time > 0 {
             return false;
         }
         if self.spectator() {
@@ -5080,7 +5059,7 @@ impl Game<'_> {
                 .is_air(self.world.block(hit.pos[0], hit.pos[1], hit.pos[2]));
         } else {
             if !self.creative {
-                self.front.clicks.miss_time = 10;
+                self.clicks.miss_time = 10;
             }
             self.reset_attack_strength();
         }
@@ -5091,9 +5070,9 @@ impl Game<'_> {
 
     fn remote_continue_attack(&mut self, down: bool) {
         if !down {
-            self.front.clicks.miss_time = 0;
+            self.clicks.miss_time = 0;
         }
-        if self.front.clicks.miss_time > 0 || self.using.is_some() {
+        if self.clicks.miss_time > 0 || self.using.is_some() {
             return;
         }
         let entity = self.entity_targeted();
@@ -5226,7 +5205,6 @@ impl Game<'_> {
     /// A container click: the server answers with the authoritative slots.
     pub(super) fn remote_click(&mut self, right: bool) {
         let Some(size) = self
-            .front
             .renderer
             .as_ref()
             .map(|r| [r.config.width, r.config.height])
@@ -5234,7 +5212,7 @@ impl Game<'_> {
             return;
         };
         let batch = HudBatch::new(size);
-        let Some(internal) = self.slot_at(&batch, self.front.cursor.0, self.front.cursor.1) else {
+        let Some(internal) = self.slot_at(&batch, self.cursor.0, self.cursor.1) else {
             return;
         };
         let input = if self.has_shift_down() {
@@ -5680,7 +5658,7 @@ impl Game<'_> {
         if self.player.is_some() {
             return false;
         }
-        let atlas = &self.front.gui.atlas;
+        let atlas = &self.gui.atlas;
         let (w, h) = (batch.width, batch.height);
         batch.fill(atlas, 0.0, 0.0, w, h, rgba(20, 20, 20, 255));
         let shown = horizon_client::net::shown_address(&r.session.address);
@@ -5705,7 +5683,7 @@ impl Game<'_> {
     /// The server's death message; chat uses the shared ChatComponent.
     pub(super) fn remote_hud(&self, batch: &mut HudBatch) {
         let Some(r) = &self.remote else { return };
-        let atlas = &self.front.gui.atlas;
+        let atlas = &self.gui.atlas;
         let w = batch.width;
         if self.screen == Screen::Dead
             && let Some(message) = &r.death_message
@@ -5806,7 +5784,7 @@ impl Game<'_> {
                 .collect::<Vec<_>>(),
             // The player's own model exists (third person and the inventory draw it).
             "player_model": self.player_model.is_some(),
-            "text_display_vertices": self.front.text_display_vertices,
+            "text_display_vertices": self.text_display_vertices,
             "text_displays": self.text_displays.len(),
             "health": r.health.0,
             "food": r.health.1,

@@ -160,8 +160,7 @@ impl Game<'_> {
             (lo[1] + hi[1]) / 2.0,
             (lo[2] + hi[2]) / 2.0,
         ];
-        self.front
-            .audio
+        self.audio
             .play("minecraft:entity.painting.place", Some(at), 1.0, 1.0);
         self.paintings.push(candidate);
         self.world.modified.insert((pos[0] >> 4, pos[2] >> 4));
@@ -211,8 +210,7 @@ impl Game<'_> {
         if !self.world_data.rules.bool("entity_drops") {
             return;
         }
-        self.front
-            .audio
+        self.audio
             .play("minecraft:entity.painting.break", Some(at), 1.0, 1.0);
         if by_player && self.creative {
             return;
@@ -259,7 +257,7 @@ impl Game<'_> {
     /// PaintingRenderer: the variant on the front, the back texture behind and
     /// on the edges.
     pub(super) fn painting_geometry(&self, camera: glam::DVec3, out: &mut Vec<Vertex>) {
-        let sprites = &self.front.gui.atlas.sprites;
+        let sprites = &self.gui.atlas.sprites;
         let Some(back) = sprites.get("painting/back").copied() else {
             return;
         };

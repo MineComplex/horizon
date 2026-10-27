@@ -16,12 +16,12 @@ fn opaque(facts: &StateFacts) -> bool {
 impl Game<'_> {
     pub(super) fn prepare_entity_culling(&mut self, camera: glam::DVec3) {
         // Spans tell the pack's passes which entities are hidden; without them, nothing changes.
-        self.front.pack_shadow_casters = match (&self.front.renderer, &self.front.pack_ids) {
+        self.pack_shadow_casters = match (&self.renderer, &self.pack_ids) {
             (Some(r), Some(_)) => r.pack_shadow_casters(),
             _ => (false, false),
         };
         let at = camera.to_array().map(|v| v.floor() as i32);
-        self.front.entity_culler = (self.settings.horizon.entity_culling
+        self.entity_culler = (self.settings.horizon.entity_culling
             // Packs can replace an opaque block's model or texture.
             && self.settings.resource_packs.iter().all(|id| id == "vanilla")
             && self.player.is_some()
@@ -33,7 +33,7 @@ impl Game<'_> {
     /// Use complete generated geometry so equipment, animation and custom
     /// models cannot stick out of an assumed collision-sized culling box.
     pub(super) fn cull_entity_vertices(&self, vertices: &mut Vec<Vertex>, start: usize) {
-        let Some(culler) = &self.front.entity_culler else {
+        let Some(culler) = &self.entity_culler else {
             return;
         };
         let hidden = culler.hidden(vertices, start, |pos| {
@@ -46,22 +46,15 @@ impl Game<'_> {
             };
             let section = (pos[0] >> 4, y.div_euclid(16), pos[2] >> 4);
             // Newly edited or not-yet-uploaded terrain is not an occluder.
-            self.front
-                .renderer
+            self.renderer
                 .as_ref()
                 .is_some_and(|r| r.has_section(section))
                 && !self.world.dirty_sections.contains(&section)
                 && !self.streaming.is_meshing(section)
-                && !self
-                    .front
-                    .pending_uploads
-                    .iter()
-                    .any(|(key, _)| *key == section)
+                && !self.pending_uploads.iter().any(|(key, _)| *key == section)
         });
         // A shader pack's shadow pass still draws what the camera cannot see.
-        if hidden
-            && !(self.front.pack_shadow_casters.0 && self.hide_spans_from(start, vertices.len()))
-        {
+        if hidden && !(self.pack_shadow_casters.0 && self.hide_spans_from(start, vertices.len())) {
             vertices.truncate(start);
         }
     }
@@ -105,7 +98,7 @@ impl Game<'_> {
         if (position - camera).length_squared() >= range * range {
             return false;
         }
-        self.front.view_frustum.as_ref().is_none_or(|view| {
+        self.view_frustum.as_ref().is_none_or(|view| {
             view.intersects(
                 (lo - camera - glam::DVec3::splat(0.5)).as_vec3(),
                 (hi - camera + glam::DVec3::splat(0.5)).as_vec3(),

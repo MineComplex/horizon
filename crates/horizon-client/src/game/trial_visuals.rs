@@ -45,7 +45,7 @@ impl Game<'_> {
         self.particles.add(&ParticleOptions::simple(ty), p, v);
     }
     fn local_sound(&mut self, name: &str, pos: [i32; 3], volume: f32, pitch: f32) {
-        self.front.audio.play(
+        self.audio.play(
             &format!("minecraft:{name}"),
             Some(center(pos)),
             volume,

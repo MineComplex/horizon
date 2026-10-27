@@ -45,7 +45,7 @@ impl Game<'_> {
         if mode == GameMode::Spectator {
             self.mining = None;
             self.using = None;
-            self.front.left = false;
+            self.left = false;
             self.dismount_for_spectator();
             if let Some(p) = self.player.as_mut() {
                 p.flying = true;

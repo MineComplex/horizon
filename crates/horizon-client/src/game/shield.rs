@@ -136,7 +136,7 @@ impl Game<'_> {
             && let Some(sound) = &component.block_sound
         {
             let pitch = 0.8 + self.world.random.next_float() * 0.4;
-            self.front.audio.play(sound, at, 1.0, pitch);
+            self.audio.play(sound, at, 1.0, pitch);
         }
         if outcome.blocked <= 0.0 {
             return;
@@ -163,7 +163,7 @@ impl Game<'_> {
                 if s.damage >= max {
                     *cell = None;
                     self.using = None;
-                    self.front.audio.play(
+                    self.audio.play(
                         "minecraft:item.shield.break",
                         at,
                         0.8,
@@ -269,7 +269,7 @@ impl Game<'_> {
             self.using = None;
             if let Some(sound) = &component.disabled_sound {
                 let pitch = 0.8 + self.world.random.next_float() * 0.4;
-                self.front.audio.play(sound, at, 0.8, pitch);
+                self.audio.play(sound, at, 0.8, pitch);
             }
         }
     }

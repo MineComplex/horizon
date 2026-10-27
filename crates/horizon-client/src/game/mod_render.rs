@@ -92,7 +92,7 @@ impl Game<'_> {
     }
     /// Shapes with their GUI coordinates moved by `(ox, oy)`.
     pub(super) fn draw_shapes(&self, batch: &mut HudBatch, shapes: &[Shape], (ox, oy): (f32, f32)) {
-        let atlas = &self.front.gui.atlas;
+        let atlas = &self.gui.atlas;
         for shape in shapes {
             match shape {
                 Shape::Fill(f) => {

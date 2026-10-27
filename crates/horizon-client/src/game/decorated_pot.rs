@@ -102,7 +102,7 @@ impl Game<'_> {
             if self.hand != Hand::Main {
                 return false;
             }
-            self.front.audio.play(
+            self.audio.play(
                 "minecraft:block.decorated_pot.insert_fail",
                 Some(center),
                 1.0,
@@ -132,7 +132,7 @@ impl Game<'_> {
         }
         spill::put_saved_entity(&mut self.world, pos, tag);
         self.consume_held();
-        self.front.audio.play(
+        self.audio.play(
             "minecraft:block.decorated_pot.insert",
             Some(center),
             1.0,

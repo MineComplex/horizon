@@ -156,8 +156,8 @@ impl Game<'_> {
         normal: &mut Vec<Vertex>,
         see_through: &mut Vec<Vertex>,
     ) {
-        self.front.text_display_vertices = 0;
-        let atlas = &self.front.gui.atlas;
+        self.text_display_vertices = 0;
+        let atlas = &self.gui.atlas;
         let front = self.camera_type == super::perspective::CameraType::ThirdPersonFront;
         let angles = if front {
             [self.yaw + 180.0, -self.pitch]
@@ -274,8 +274,8 @@ impl Game<'_> {
                     });
                 }
             }
-            self.front.text_display_vertices += batch.vertices.len() / 6 * 4;
-            self.front.map_patches.extend(batch.patches);
+            self.text_display_vertices += batch.vertices.len() / 6 * 4;
+            self.map_patches.extend(batch.patches);
         }
     }
 }

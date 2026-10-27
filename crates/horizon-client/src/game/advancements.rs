@@ -1098,8 +1098,7 @@ impl Game<'_> {
                 && !std::mem::replace(&mut sound_played, true)
             {
                 let event = if show { "ui.toast.in" } else { "ui.toast.out" };
-                self.front
-                    .audio
+                self.audio
                     .play(&format!("minecraft:{event}"), None, 1.0, 1.0);
             }
             i += 1;
@@ -1120,8 +1119,7 @@ impl Game<'_> {
             challenge_sound |= !t.is_recipe() && t.frame == Frame::Challenge;
         }
         if challenge_sound {
-            self.front
-                .audio
+            self.audio
                 .play("minecraft:ui.toast.challenge_complete", None, 1.0, 1.0);
         }
         if hidden {
@@ -1155,11 +1153,11 @@ impl Game<'_> {
         if let Some((station, item)) = recipe {
             // RecipeToast: black description under a purple title, the
             // station at 0.6 scale in the corner over the cycling result.
-            let atlas = &self.front.gui.atlas;
+            let atlas = &self.gui.atlas;
             batch.sprite(atlas, "gui/sprites/toast/recipe", x, y);
             let title = self.translate("recipe.toast.title", "New Recipe(s) Unlocked!");
             let description = self.translate("recipe.toast.description", "Check your recipe book");
-            let atlas = &self.front.gui.atlas;
+            let atlas = &self.gui.atlas;
             batch.text(atlas, &title, x + 30.0, y + 7.0, 0xFF50_0050, false);
             batch.text(atlas, &description, x + 30.0, y + 18.0, 0xFF00_0000, false);
             let start = batch.vertices.len();
@@ -1168,7 +1166,7 @@ impl Game<'_> {
             self.draw_item_model(batch, &item, x + 8.0, y + 8.0);
             return;
         }
-        let atlas = &self.front.gui.atlas;
+        let atlas = &self.gui.atlas;
         batch.sprite(atlas, "gui/sprites/toast/advancement", x, y);
         let (key, color) = match frame {
             Frame::Task => ("advancements.toast.task", 0xFF00_FFFF),

@@ -148,8 +148,7 @@ impl Game<'_> {
             return false;
         }
         self.next_entity += 1;
-        self.front
-            .audio
+        self.audio
             .play(&sound(&frame, "place"), Some(center(&frame)), 1.0, 1.0);
         self.world.modified.insert((pos[0] >> 4, pos[2] >> 4));
         self.item_frames.push(frame);
@@ -211,8 +210,7 @@ impl Game<'_> {
                 return false;
             };
             self.item_frames[i].item = Some(ItemStack { count: 1, ..held });
-            self.front
-                .audio
+            self.audio
                 .play(&sound(&self.item_frames[i], "add_item"), Some(at), 1.0, 1.0);
             if !self.creative {
                 self.consume_held();
@@ -221,7 +219,7 @@ impl Game<'_> {
             let f = &mut self.item_frames[i];
             f.rotation = (f.rotation + 1) % 8;
             let s = sound(f, "rotate_item");
-            self.front.audio.play(&s, Some(at), 1.0, 1.0);
+            self.audio.play(&s, Some(at), 1.0, 1.0);
         }
         let p = self.item_frames[i].pos;
         self.world.modified.insert((p[0] >> 4, p[2] >> 4));
@@ -246,7 +244,7 @@ impl Game<'_> {
         } else {
             self.item_frames[i].clone()
         };
-        self.front.audio.play(
+        self.audio.play(
             &sound(&f, if with_frame { "break" } else { "remove_item" }),
             Some(at),
             1.0,
@@ -299,8 +297,7 @@ impl Game<'_> {
                 let f = self.item_frames[i].clone();
                 if !self.frame_survives(&f) {
                     self.item_frames.remove(i);
-                    self.front
-                        .audio
+                    self.audio
                         .play(&sound(&f, "break"), Some(center(&f)), 1.0, 1.0);
                     self.drop_frame_items(&f, true, false);
                     continue;
@@ -311,7 +308,7 @@ impl Game<'_> {
     }
     /// ItemFrameRenderer: the frame model, then the item half size on its face.
     pub(super) fn frame_geometry(&mut self, camera: glam::DVec3, out: &mut Vec<Vertex>) {
-        let sprites = &self.front.gui.atlas.sprites;
+        let sprites = &self.gui.atlas.sprites;
         let mut maps: Vec<(i32, glam::Mat4, u32)> = Vec::new();
         let mut items: Vec<(ItemStack, u32, glam::Mat4, u8)> = Vec::new();
         // ItemFrame.shouldRenderAtSqrDistance: 1024 blocks at a view scale

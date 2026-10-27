@@ -45,21 +45,20 @@ fn stack_json(s: &ItemStack) -> Value {
 impl Game<'_> {
     fn click_at(&mut self, x: f32, y: f32, right: bool, shift: bool) {
         use winit::keyboard::KeyCode;
-        let saved = self.front.cursor;
-        self.front.cursor = (x, y);
-        let had_shift = self.front.physical_keys.contains(&KeyCode::ShiftLeft);
+        let saved = self.cursor;
+        self.cursor = (x, y);
+        let had_shift = self.physical_keys.contains(&KeyCode::ShiftLeft);
         if shift {
-            self.front.physical_keys.insert(KeyCode::ShiftLeft);
+            self.physical_keys.insert(KeyCode::ShiftLeft);
         }
         self.click_inventory(right);
         if shift && !had_shift {
-            self.front.physical_keys.remove(&KeyCode::ShiftLeft);
+            self.physical_keys.remove(&KeyCode::ShiftLeft);
         }
-        self.front.cursor = saved;
+        self.cursor = saved;
     }
     pub(super) fn gui_origin(&self) -> Result<(f32, f32)> {
         let size = self
-            .front
             .renderer
             .as_ref()
             .map(|r| [r.config.width, r.config.height])

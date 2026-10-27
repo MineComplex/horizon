@@ -32,12 +32,12 @@ fn attack_range_contains(range: &serde_json::Value, distance: f64, creative: boo
 impl Game<'_> {
     /// Opening a screen stops breaking before the next game tick (which may pause).
     pub(super) fn stop_mining(&mut self) {
-        let mut destroying = std::mem::take(&mut self.front.clicks.destroying);
+        let mut destroying = std::mem::take(&mut self.clicks.destroying);
         destroying.stop(&mut GameHands {
             game: self,
             error: None,
         });
-        self.front.clicks.destroying = destroying;
+        self.clicks.destroying = destroying;
         self.attack_clicks = 0;
         self.request_remote_mining_stop();
         self.mining = None;
@@ -68,30 +68,30 @@ impl Game<'_> {
     pub(super) fn tick_local_hand(&mut self) -> Result<()> {
         let attack_clicks = std::mem::take(&mut self.attack_clicks);
         if self.screen == Screen::Playing && self.title.is_none() && self.sleeping.is_none() {
-            let mut clicks = std::mem::take(&mut self.front.clicks);
+            let mut clicks = std::mem::take(&mut self.clicks);
             // keyAttack.isDown(); playing implies the grabbed mouse here
             // (scripts under --control hold buttons without grabbing it).
-            let down = self.front.left;
-            let ticks = self.front.clicks.destroying.ticks;
+            let down = self.left;
+            let ticks = self.clicks.destroying.ticks;
             let mut world = GameHands {
                 game: self,
                 error: None,
             };
             clicks.tick(&mut world, attack_clicks, 0, down, false);
             let error = world.error.take();
-            self.front.clicks = clicks;
+            self.clicks = clicks;
             if let Some(e) = error {
                 return Err(e);
             }
             // A tick of breaking: the hit sound every fourth tick and the
             // cracking particles.
-            let d = &self.front.clicks.destroying;
+            let d = &self.clicks.destroying;
             if d.active && d.ticks > ticks {
                 let (pos, first) = (d.pos, (d.ticks as u32 - 1).is_multiple_of(4));
                 let state = self.world.block(pos[0], pos[1], pos[2]);
                 if first {
                     let sounds = self.res.facts().get(state).sounds.clone();
-                    self.front.audio.play(
+                    self.audio.play(
                         &sounds.hit,
                         Some(pos.map(|v| f64::from(v) + 0.5)),
                         (sounds.volume + 1.0) / 8.0,
@@ -104,9 +104,9 @@ impl Game<'_> {
             }
         } else {
             // Minecraft.tick: a screen keeps the attack from starting.
-            self.front.clicks.miss_time = 10000;
+            self.clicks.miss_time = 10000;
         }
-        let d = &self.front.clicks.destroying;
+        let d = &self.clicks.destroying;
         self.mining = d.active.then_some(Mining {
             pos: d.pos,
             progress: d.progress,
@@ -175,7 +175,7 @@ impl Game<'_> {
                 winit::keyboard::KeyCode::KeyD,
             ]
             .iter()
-            .any(|k| self.front.keys.contains(k))
+            .any(|k| self.keys.contains(k))
     }
     /// `MultiPlayerGameMode.startUseItem`'s bookkeeping around the game's
     /// use: nothing starts while a block is being broken or the hands are
@@ -183,7 +183,7 @@ impl Game<'_> {
     /// swung and spent (or, with infinite materials, kept) the item, or that
     /// started using it.
     pub(super) fn use_with_hand(&mut self) -> Result<()> {
-        if self.front.clicks.destroying.active || self.hands_busy() {
+        if self.clicks.destroying.active || self.hands_busy() {
             return Ok(());
         }
         let before = [self.stack_in(self.selected).cloned(), self.offhand.clone()];
@@ -202,7 +202,7 @@ impl Game<'_> {
             _ => false,
         };
         if (swung && spent) || (!using && self.using.is_some() && after.is_some()) {
-            self.front.heights.item_used(hand);
+            self.heights.item_used(hand);
         }
         Ok(())
     }
@@ -212,7 +212,7 @@ impl Game<'_> {
     pub(super) fn tick_hand(&mut self) {
         // LocalPlayer.applyInput (the camera is the player's own).
         if self.player.is_some() {
-            self.front.sway.tick(self.pitch, self.yaw);
+            self.sway.tick(self.pitch, self.yaw);
         }
         self.swing.tick();
         let main = self.inventory[self.selected].clone();
@@ -246,7 +246,7 @@ impl Game<'_> {
             changed[h] = !same;
         }
         let speed = self.main_hand_attack_speed();
-        let replace = self.front.heights.tick(
+        let replace = self.heights.tick(
             self.hands_busy(),
             self.hand_strength.swap_scale(1.0, speed),
             changed,
@@ -530,7 +530,7 @@ impl HandWorld for GameHands<'_, '_> {
         UseResult::Pass
     }
     fn item_used(&mut self, hand: Hand) {
-        self.game.front.heights.item_used(hand);
+        self.game.heights.item_used(hand);
     }
     fn release_using(&mut self) {}
 }

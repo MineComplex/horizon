@@ -174,7 +174,7 @@ impl Game<'_> {
                 continue;
             };
             let (Some(r), Some(part)) = (
-                self.front.gui.atlas.sprites.get(texture.as_str()),
+                self.gui.atlas.sprites.get(texture.as_str()),
                 assets.player.get(layer),
             ) else {
                 continue;
@@ -186,7 +186,7 @@ impl Game<'_> {
             // EquipmentLayerRenderer: the trim layer over the armour.
             if let Some(r) = stack
                 .and_then(|s| assets.trim_texture(&asset, kind, s))
-                .and_then(|t| self.front.gui.atlas.sprites.get(&t.sprite()))
+                .and_then(|t| self.gui.atlas.sprites.get(&t.sprite()))
             {
                 out.push((part, [r.u0, r.v0, r.u1, r.v1], 0xFFFF_FFFF));
             }
@@ -242,7 +242,7 @@ impl Game<'_> {
         for t in wanted {
             let name = t.sprite();
             // Entries the atlas no longer has (rebuilt by a resource reload) are free.
-            let sprites = &self.front.gui.atlas.sprites;
+            let sprites = &self.gui.atlas.sprites;
             self.trim_slots.retain(|(n, _)| sprites.contains_key(n));
             if let Some(i) = self.trim_slots.iter().position(|e| e.0 == name) {
                 let e = self.trim_slots.remove(i);
@@ -257,12 +257,11 @@ impl Game<'_> {
                 Some(free) => free,
                 None => {
                     let (old, slot) = self.trim_slots.remove(0);
-                    self.front.gui.atlas.sprites.remove(&old);
+                    self.gui.atlas.sprites.remove(&old);
                     slot
                 }
             };
             let Some(area) = self
-                .front
                 .gui
                 .atlas
                 .sprites
@@ -274,12 +273,9 @@ impl Game<'_> {
             if w > area.w || h > area.h {
                 continue;
             }
-            let (aw, ah) = (
-                self.front.gui.atlas.width as f32,
-                self.front.gui.atlas.height as f32,
-            );
+            let (aw, ah) = (self.gui.atlas.width as f32, self.gui.atlas.height as f32);
             let (x, y) = ((area.u0 * aw).round(), (area.v0 * ah).round());
-            self.front.map_patches.push(horizon_client::font::Patch {
+            self.map_patches.push(horizon_client::font::Patch {
                 x: x as u32,
                 y: y as u32,
                 width: w,
@@ -294,7 +290,7 @@ impl Game<'_> {
                 w,
                 h,
             };
-            self.front.gui.atlas.sprites.insert(name.clone(), rect);
+            self.gui.atlas.sprites.insert(name.clone(), rect);
             self.trim_slots.push((name, slot));
         }
     }
@@ -343,7 +339,7 @@ impl Game<'_> {
             return false;
         }
         self.next_entity += 1;
-        self.front.audio.play(
+        self.audio.play(
             "minecraft:entity.armor_stand.place",
             Some([foot.x, foot.y, foot.z]),
             0.75,
@@ -500,23 +496,20 @@ impl Game<'_> {
         let at = [at.x, at.y, at.z];
         if self.creative {
             self.armor_stands.remove(i);
-            self.front
-                .audio
+            self.audio
                 .play("minecraft:entity.armor_stand.break", Some(at), 1.0, 1.0);
             return true;
         }
         if time - self.armor_stands[i].last_hit > 5 {
             // First hit: entity event 32, the wobble and the hit sound.
             self.armor_stands[i].last_hit = time;
-            self.front
-                .audio
+            self.audio
                 .play("minecraft:entity.armor_stand.hit", Some(at), 0.3, 1.0);
             return true;
         }
         // brokenByPlayer: the stand item, then brokenByAnything: the equipment.
         let a = self.armor_stands.remove(i);
-        self.front
-            .audio
+        self.audio
             .play("minecraft:entity.armor_stand.break", Some(at), 1.0, 1.0);
         let center = [at[0], at[1] + if a.small { 0.4875 } else { 0.9875 }, at[2]];
         let stand = ItemStack {
@@ -565,8 +558,7 @@ impl Game<'_> {
             for stack in drops {
                 self.pop_resource(pos, stack);
             }
-            self.front
-                .audio
+            self.audio
                 .play("minecraft:entity.armor_stand.break", Some(at), 1.0, 1.0);
             self.world.modified.insert((pos[0] >> 4, pos[2] >> 4));
         }
@@ -579,7 +571,7 @@ impl Game<'_> {
         out: &mut Vec<Vertex>,
     ) {
         let assets = &self.armor_stand_assets;
-        let sprites = &self.front.gui.atlas.sprites;
+        let sprites = &self.gui.atlas.sprites;
         let uv_of = |name: &str| sprites.get(name).map(|r| [r.u0, r.v0, r.u1, r.v1]);
         let Some(wood) = uv_of("entity/armorstand/armorstand") else {
             return;
@@ -928,7 +920,7 @@ impl Game<'_> {
                 &profile,
                 false,
                 pose,
-                &self.front.gui.atlas.sprites,
+                &self.gui.atlas.sprites,
                 &self.item_host(),
                 &mut sink,
             );

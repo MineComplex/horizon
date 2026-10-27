@@ -402,9 +402,9 @@ impl Game<'_> {
                 self.plugins_after_tick();
                 // MinecraftServer.tickServer's tick times, for /tick query.
                 self.clock.record(started.elapsed());
-                self.front.debug_charts.log_tick(started, started.elapsed());
+                self.debug_charts.log_tick(started, started.elapsed());
                 flags.smoothed_tick_ms.store(
-                    self.front.debug_charts.smoothed_tick_ms.to_bits(),
+                    self.debug_charts.smoothed_tick_ms.to_bits(),
                     Ordering::Relaxed,
                 );
             }

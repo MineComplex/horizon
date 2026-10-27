@@ -240,8 +240,7 @@ impl Game<'_> {
             return;
         }
         self.spawn_bolt(at, false);
-        self.front
-            .audio
+        self.audio
             .play("minecraft:item.trident.thunder", Some(at), 5.0, 1.0);
     }
     /// `minecraft:hit_block` of Channeling (`AbstractArrow.hitBlockEnchantmentEffects`):
@@ -341,7 +340,7 @@ impl Game<'_> {
                 }
             }
             let sound = format!("minecraft:item.trident.riptide_{}", riptide.min(3));
-            self.front.audio.play(&sound, at, 1.0, 1.0);
+            self.audio.play(&sound, at, 1.0, 1.0);
             return;
         }
         // hurtWithoutBreaking (Unbreaking applies), then the thrown copy.
@@ -389,8 +388,7 @@ impl Game<'_> {
             guest: self.lan_acting,
         });
         self.player_projectile_shot();
-        self.front
-            .audio
+        self.audio
             .play("minecraft:item.trident.throw", at, 1.0, 1.0);
     }
     /// The thrower's `PLAYER_HURT_ENTITY` for a trident hit: run as the
@@ -432,7 +430,7 @@ impl Game<'_> {
                 t.in_ground = false;
                 t.loyalty_pull(owner_eye);
                 if t.returning == 0 {
-                    self.front.audio.play(
+                    self.audio.play(
                         "minecraft:item.trident.return",
                         Some([t.position.x, t.position.y, t.position.z]),
                         10.0,
@@ -519,7 +517,7 @@ impl Game<'_> {
                         };
                         self.thrower_hit(t.guest, &victim, direct, damage);
                     }
-                    self.front.audio.play(
+                    self.audio.play(
                         "minecraft:item.trident.hit",
                         Some([t.position.x, t.position.y, t.position.z]),
                         1.0,
@@ -553,7 +551,7 @@ impl Game<'_> {
                             }
                             t.in_ground = true;
                             t.velocity = Vec3::ZERO;
-                            self.front.audio.play(
+                            self.audio.play(
                                 "minecraft:item.trident.hit_ground",
                                 Some([t.position.x, t.position.y, t.position.z]),
                                 1.0,
@@ -590,7 +588,7 @@ impl Game<'_> {
                 let pitch =
                     ((self.world.random.next_float() - self.world.random.next_float()) * 0.7 + 1.0)
                         * 2.0;
-                self.front.audio.play(
+                self.audio.play(
                     "minecraft:entity.item.pickup",
                     Some([feet.x, feet.y, feet.z]),
                     0.2,
@@ -608,7 +606,6 @@ impl Game<'_> {
             return;
         };
         let Some(uv) = self
-            .front
             .gui
             .atlas
             .sprites

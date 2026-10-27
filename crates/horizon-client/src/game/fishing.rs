@@ -81,14 +81,14 @@ impl Game<'_> {
         if self.hook.is_some() {
             let damage = self.retrieve_hook(stack);
             self.damage_held(damage);
-            self.front.audio.play(
+            self.audio.play(
                 "minecraft:entity.fishing_bobber.retrieve",
                 Some(at),
                 1.0,
                 pitch,
             );
         } else {
-            self.front.audio.play(
+            self.audio.play(
                 "minecraft:entity.fishing_bobber.throw",
                 Some(at),
                 0.5,
@@ -388,7 +388,7 @@ impl Game<'_> {
             } else {
                 let pitch =
                     1.0 + (self.world.random.next_float() - self.world.random.next_float()) * 0.4;
-                self.front.audio.play(
+                self.audio.play(
                     "minecraft:entity.fishing_bobber.splash",
                     Some(at),
                     0.25,
@@ -638,7 +638,6 @@ impl Game<'_> {
             return;
         }
         let Some(r) = self
-            .front
             .gui
             .atlas
             .sprites

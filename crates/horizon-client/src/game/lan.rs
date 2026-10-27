@@ -1041,7 +1041,7 @@ impl Game<'_> {
             quiet: std::collections::VecDeque::new(),
             states: Default::default(),
         });
-        self.front.audio.capture = Some(Vec::new());
+        self.audio.capture = Some(Vec::new());
         Ok(())
     }
 
@@ -1076,7 +1076,7 @@ impl Game<'_> {
         std::thread::sleep(std::time::Duration::from_millis(100));
         self.world.block_log = None;
         self.world.light_log = None;
-        self.front.audio.capture = None;
+        self.audio.capture = None;
         self.lan_events.clear();
         self.lan_critical_hits.clear();
         self.lan_cushion_breaks.clear();
@@ -1688,7 +1688,7 @@ impl Game<'_> {
 
     /// Level events the game queued, for the guests (`process_level_events`).
     pub(super) fn lan_record_events(&mut self, events: &[horizon_world::level::LevelEvent]) {
-        if self.front.audio.capture.is_none() {
+        if self.audio.capture.is_none() {
             return;
         }
         for e in events {
@@ -1723,14 +1723,14 @@ impl Game<'_> {
 
     /// `Level.blockEvent` for the guests (`ClientboundBlockEventPacket`).
     pub(super) fn lan_block_event(&mut self, pos: [i32; 3], b0: i32, b1: i32) {
-        if self.front.audio.capture.is_some() {
+        if self.audio.capture.is_some() {
             let state = self.world.block(pos[0], pos[1], pos[2]).0;
             self.lan_block_events.push((pos, b0, b1, state));
         }
     }
     /// `Level.broadcastEntityEvent` for the guests.
     pub(super) fn lan_entity_event(&mut self, id: i32, event: i8, at: [f64; 3]) {
-        if self.front.audio.capture.is_some() {
+        if self.audio.capture.is_some() {
             self.lan_entity_events.push((id, event, at));
         }
     }
@@ -1754,7 +1754,7 @@ impl Game<'_> {
         };
         self.particles
             .tracking_emitter(ParticleOptions::simple(particle), feet, width, height);
-        if self.front.audio.capture.is_some() {
+        if self.audio.capture.is_some() {
             self.lan_critical_hits.push((attacker, id, magic));
         }
     }
@@ -2002,7 +2002,7 @@ impl Game<'_> {
         let Some(host) = &self.lan else {
             return;
         };
-        let atlas = &self.front.gui.atlas;
+        let atlas = &self.gui.atlas;
         let lookup = |name: &str| atlas.sprites.get(name).map(|r| [r.u0, r.v0, r.u1, r.v1]);
         for (conn, m) in &host.models {
             let entity_start = out.len();

@@ -648,8 +648,7 @@ impl Game<'_> {
         }
         c.fuse = 80;
         let at = [c.position.x, c.position.y, c.position.z];
-        self.front
-            .audio
+        self.audio
             .play("minecraft:entity.tnt.primed", Some(at), 1.0, 1.0);
     }
     fn explode_cart(&mut self, c: &Minecart, speed_sqr: f64) {
@@ -855,26 +854,25 @@ impl Game<'_> {
                 speed: (c.velocity.x * c.velocity.x + c.velocity.z * c.velocity.z).sqrt(),
             })
             .collect();
-        self.front
-            .cart_sounds
+        self.cart_sounds
             .retain(|id| carts.iter().any(|c| c.id == *id));
         for cart in &carts {
-            if self.front.cart_sounds.insert(cart.id) {
+            if self.cart_sounds.insert(cart.id) {
                 let instance = SoundInstance::minecart(cart, SoundEngine::unseeded());
-                self.front.audio.play_instance(instance, false);
+                self.audio.play_instance(instance, false);
             }
         }
         let vehicle = self.riding.filter(|id| carts.iter().any(|c| c.id == *id));
-        if vehicle != self.front.riding_cart_sounds
+        if vehicle != self.riding_cart_sounds
             && let Some(cart) = carts.iter().find(|c| Some(c.id) == vehicle)
         {
             for underwater in [true, false] {
                 let instance =
                     SoundInstance::riding_minecart(cart, underwater, SoundEngine::unseeded());
-                self.front.audio.play_instance(instance, false);
+                self.audio.play_instance(instance, false);
             }
         }
-        self.front.riding_cart_sounds = vehicle;
+        self.riding_cart_sounds = vehicle;
         (vehicle, carts)
     }
     /// The rider's tick: the cart moves with the rider's input as its push.
@@ -1055,10 +1053,7 @@ impl Game<'_> {
         if !self.before_block(d) {
             return false;
         }
-        let sneaking = self
-            .front
-            .keys
-            .contains(&winit::keyboard::KeyCode::ShiftLeft);
+        let sneaking = self.keys.contains(&winit::keyboard::KeyCode::ShiftLeft);
         let held = self.held().cloned();
         match self.carts[i].kind {
             CartKind::Rideable => {
@@ -1077,12 +1072,11 @@ impl Game<'_> {
                 self.container = Some(key);
                 self.screen = super::Screen::Inventory;
                 self.capture(false);
-                self.front.right = false;
+                self.right = false;
                 if c.kind == CartKind::Chest {
                     let at = [c.position.x, c.position.y, c.position.z];
                     let pitch = self.world.random.next_float() * 0.1 + 0.9;
-                    self.front
-                        .audio
+                    self.audio
                         .play("minecraft:block.chest.open", Some(at), 0.5, pitch);
                 }
             }
@@ -1132,8 +1126,7 @@ impl Game<'_> {
         {
             let at = [c.position.x, c.position.y, c.position.z];
             let pitch = self.world.random.next_float() * 0.1 + 0.9;
-            self.front
-                .audio
+            self.audio
                 .play("minecraft:block.chest.close", Some(at), 0.5, pitch);
         }
     }
@@ -1257,7 +1250,7 @@ impl Game<'_> {
                     .pack
                     .layer_names
                     .get(&face.layer)
-                    .and_then(|n| self.front.gui.atlas.sprites.get(n))
+                    .and_then(|n| self.gui.atlas.sprites.get(n))
                 else {
                     continue;
                 };
@@ -1332,7 +1325,6 @@ impl Game<'_> {
     pub(super) fn cart_geometry(&self, camera: glam::DVec3, alpha: f64, out: &mut Vec<Vertex>) {
         let a = alpha as f32;
         let Some(uv) = self
-            .front
             .gui
             .atlas
             .sprites
@@ -1363,7 +1355,7 @@ impl Game<'_> {
                 // EntityRenderer.shouldRender: the interpolated box grown by 0.5;
                 // AbstractMinecartRenderer.getBoundingBoxForCulling stretches it
                 // up by the display block's offset.
-                if let Some(view) = &self.front.view_frustum {
+                if let Some(view) = &self.view_frustum {
                     let top = HEIGHT
                         + if c.kind == CartKind::Rideable {
                             0.0
@@ -1476,13 +1468,13 @@ impl Game<'_> {
             game_time: self.world.game_time,
             max_y: self.dim.max_y(),
             world: &self.world,
-            sprites: &self.front.gui.atlas.sprites,
+            sprites: &self.gui.atlas.sprites,
             nether: self.dim == super::Dim::Nether,
             lid: &lid,
             sign: &|_| None,
             banner: &|_| Vec::new(),
             skull: &|_| None,
-            glyph: &|c| self.front.gui.atlas.glyph_cell(c),
+            glyph: &|c| self.gui.atlas.glyph_cell(c),
         };
         self.res
             .block_entity_render()

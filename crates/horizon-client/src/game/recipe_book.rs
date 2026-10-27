@@ -168,7 +168,7 @@ impl Game<'_> {
     /// Ctrl+A/C/V/X in the search box.
     pub(super) fn recipe_shortcut(&mut self, shortcut: horizon_client::clipboard::EditShortcut) {
         if let Some(search) = self.recipe_ui.search.as_mut() {
-            search.shortcut(shortcut, &mut self.front.clipboard);
+            search.shortcut(shortcut, &mut self.clipboard);
         }
     }
     /// A key press while the search box has focus.
@@ -580,7 +580,7 @@ impl Game<'_> {
         (self.recipe_ui.time / SWAP_TICKS).floor() as usize
     }
     fn batch_for_size(&self) -> Option<HudBatch> {
-        let r = self.front.renderer.as_ref()?;
+        let r = self.renderer.as_ref()?;
         Some(HudBatch::new([r.config.width, r.config.height]))
     }
 
@@ -596,7 +596,7 @@ impl Game<'_> {
             return false;
         };
         self.ensure_book();
-        let cursor = self.front.cursor;
+        let cursor = self.cursor;
         let (ox, _) = self.inventory_origin(&batch);
         // Clicking a crafting slot drops the ghost recipe (`slotClicked`).
         if let Some(slot) = self.slot_at(&batch, cursor.0, cursor.1)
@@ -613,8 +613,7 @@ impl Game<'_> {
             if !open {
                 self.recipe_ui.overlay = None;
             }
-            self.front
-                .audio
+            self.audio
                 .play("minecraft:ui.button.click", None, 0.25, 1.0);
             return true;
         }
@@ -643,15 +642,13 @@ impl Game<'_> {
             if self.recipe_ui.page + 1 < pages && inside(cursor, xo + 93.0, yo + 137.0, 12.0, 17.0)
             {
                 self.recipe_ui.page += 1;
-                self.front
-                    .audio
+                self.audio
                     .play("minecraft:ui.button.click", None, 0.25, 1.0);
                 return true;
             }
             if self.recipe_ui.page > 0 && inside(cursor, xo + 38.0, yo + 137.0, 12.0, 17.0) {
                 self.recipe_ui.page -= 1;
-                self.front
-                    .audio
+                self.audio
                     .play("minecraft:ui.button.click", None, 0.25, 1.0);
                 return true;
             }
@@ -687,7 +684,7 @@ impl Game<'_> {
                 search.focused = true;
                 search.reset_blink();
                 if !magnifier {
-                    let idx = search.index_at(&self.front.gui.atlas, cursor.0);
+                    let idx = search.index_at(&self.gui.atlas, cursor.0);
                     search.set_cursor(idx, false);
                 }
                 return true;
@@ -700,8 +697,7 @@ impl Game<'_> {
             self.level.recipe_book.filtering[book_type.index()] = filtering;
             self.send_book_settings(book_type);
             self.recipe_ui.page = 0;
-            self.front
-                .audio
+            self.audio
                 .play("minecraft:ui.button.click", None, 0.25, 1.0);
             return true;
         }
@@ -713,8 +709,7 @@ impl Game<'_> {
                     self.recipe_ui.tab = Some(tab);
                     self.recipe_ui.page = 0;
                 }
-                self.front
-                    .audio
+                self.audio
                     .play("minecraft:ui.button.click", None, 0.25, 1.0);
                 return true;
             }
@@ -816,7 +811,7 @@ impl Game<'_> {
         let selected = self.recipe_ui.tab.unwrap_or(Tab::Search);
         let hovered = tabs.iter().position(|t| *t == selected).is_some_and(|n| {
             let (x, y) = self.tab_pos(xo, yo, n);
-            inside(self.front.cursor, x, y, 35.0, 27.0)
+            inside(self.cursor, x, y, 35.0, 27.0)
         });
         Some((true, hovered))
     }
@@ -1059,14 +1054,14 @@ impl Game<'_> {
         };
         self.ensure_book();
         if !self.shift_down_or_ctrl() {
-            self.recipe_ui.time += self.front.frame_ticks;
+            self.recipe_ui.time += self.frame_ticks;
         }
         let (ox, _) = self.inventory_origin(batch);
-        let cursor = self.front.cursor;
+        let cursor = self.cursor;
         let (bx, by) = self.book_button_pos(book_type, ox, batch);
         let hover = inside(cursor, bx, by, 20.0, 18.0);
         batch.sprite(
-            &self.front.gui.atlas,
+            &self.gui.atlas,
             &sprite(if hover {
                 "button_highlighted"
             } else {
@@ -1113,8 +1108,8 @@ impl Game<'_> {
     /// out by `horizon_client::recipe_book_screen`.
     fn draw_book_panel(&mut self, batch: &mut HudBatch, book_type: BookType) {
         let (xo, yo) = self.book_origin(batch);
-        let cursor = self.front.cursor;
-        let atlas = &self.front.gui.atlas;
+        let cursor = self.cursor;
+        let atlas = &self.gui.atlas;
         let search = match self.recipe_ui.search.as_mut() {
             Some(edit) => {
                 // The box's place, for clicks and typing.
@@ -1218,7 +1213,7 @@ impl Game<'_> {
         let calls = screen::draw(&layout);
         let tooltip = self.paint_book(batch, &calls);
         // The squeeze animations run down with the frames.
-        let frame = self.front.frame_ticks;
+        let frame = self.frame_ticks;
         for e in &mut self.recipe_ui.tab_anim {
             e.1 -= frame;
         }
@@ -1241,7 +1236,7 @@ impl Game<'_> {
         let mut tooltip: Option<Vec<(horizon_client::text::Text, u32)>> = None;
         for d in calls {
             let start = batch.vertices.len();
-            let atlas = &self.front.gui.atlas;
+            let atlas = &self.gui.atlas;
             match &d.call {
                 Call::Blit {
                     x, y, w, h, u, v, ..

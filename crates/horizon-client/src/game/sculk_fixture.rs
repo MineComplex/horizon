@@ -403,9 +403,9 @@ impl Game<'_> {
         let mut player = PlayerMotion::new(self.motion, Vec3::new(at[0], at[1], at[2]))?;
         player.spectator = self.mode == GameMode::Spectator;
         self.player = Some(player);
-        self.front.keys.clear();
+        self.keys.clear();
         if s.sneak {
-            self.front.keys.insert(KeyCode::ShiftLeft);
+            self.keys.insert(KeyCode::ShiftLeft);
         }
         self.sculk.tracker = WardenSpawnTracker::default();
         if let Some(level) = s.warning {
@@ -481,7 +481,7 @@ impl Game<'_> {
         self.next_entity = self.next_entity.max(200_000);
         self.world.day_time = 6000;
         self.world.random = LegacyRandom::new(s.level_seed);
-        self.front.audio.capture = Some(Vec::new());
+        self.audio.capture = Some(Vec::new());
         let mut known: HashSet<u32> = self.mobs.iter().map(|m| m.id).collect();
         let mut seeded: HashSet<u32> = HashSet::new();
         let mut known_items = self.dropped.len();
@@ -584,12 +584,8 @@ impl Game<'_> {
                     lines.push(format!("level {rest}"));
                 }
             }
-            for (sound, at, volume, pitch) in self
-                .front
-                .audio
-                .capture
-                .replace(Vec::new())
-                .unwrap_or_default()
+            for (sound, at, volume, pitch) in
+                self.audio.capture.replace(Vec::new()).unwrap_or_default()
             {
                 if CLIENT_SOUNDS.contains(&sound.as_str()) {
                     continue;
@@ -612,7 +608,7 @@ impl Game<'_> {
                 let _ = writeln!(out, "{t} {line}");
             }
         }
-        self.front.audio.capture = None;
+        self.audio.capture = None;
         Ok(out)
     }
 

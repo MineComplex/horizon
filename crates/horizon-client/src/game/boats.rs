@@ -486,7 +486,7 @@ impl Game<'_> {
                         let v = view_vector(b.yaw, 0.0);
                         let (dx, dz) = if i == 1 { (-v[2], v[0]) } else { (v[2], -v[0]) };
                         let pitch = 0.8 + 0.4 * self.world.random.next_float();
-                        self.front.audio.play(
+                        self.audio.play(
                             sound,
                             Some([b.position.x + dx, b.position.y, b.position.z + dz]),
                             1.0,
@@ -564,8 +564,7 @@ impl Game<'_> {
     /// `Entity.lavaHurt`'s sound once the hurt went through.
     pub(super) fn lava_hurt_sound(&mut self, at: [f64; 3]) {
         let pitch = 2.0 + self.world.random.next_float() * 0.4;
-        self.front
-            .audio
+        self.audio
             .play("minecraft:entity.generic.burn", Some(at), 0.4, pitch);
     }
     /// Whether a vehicle's box, deflated by 1e-5, reaches into lava below its
@@ -781,10 +780,7 @@ impl Game<'_> {
         let Some((i, d)) = self.boat_hit() else {
             return false;
         };
-        let sneaking = self
-            .front
-            .keys
-            .contains(&winit::keyboard::KeyCode::ShiftLeft);
+        let sneaking = self.keys.contains(&winit::keyboard::KeyCode::ShiftLeft);
         if !self.before_block(d) {
             return false;
         }
@@ -799,7 +795,7 @@ impl Game<'_> {
             self.container = Some(key);
             self.screen = super::Screen::Inventory;
             self.capture(false);
-            self.front.right = false;
+            self.right = false;
             return true;
         }
         if sneaking
@@ -887,7 +883,6 @@ impl Game<'_> {
             };
             let folder = if b.chest { "chest_boat" } else { "boat" };
             let Some(uv) = self
-                .front
                 .gui
                 .atlas
                 .sprites

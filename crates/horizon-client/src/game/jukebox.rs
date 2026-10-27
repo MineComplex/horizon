@@ -102,7 +102,7 @@ impl Game<'_> {
             return;
         };
         // LevelRenderer.playJukeboxSong: SimpleSoundInstance.forJukeboxSong.
-        let id = self.front.audio.play_jukebox_song(&s.sound, pos);
+        let id = self.audio.play_jukebox_song(&s.sound, pos);
         self.jukebox_sounds.insert((pos[0], pos[1], pos[2]), id);
         let description =
             horizon_client::component::to_text(&s.description, &mut |k| Text::literal(k));
@@ -112,7 +112,7 @@ impl Game<'_> {
     }
     fn stop_song(&mut self, pos: [i32; 3]) {
         if let Some(id) = self.jukebox_sounds.remove(&(pos[0], pos[1], pos[2])) {
-            self.front.audio.stop_and_release(id);
+            self.audio.stop_and_release(id);
         }
     }
     /// `popOutTheItem`: the disc above the jukebox, and the song stops.
@@ -196,10 +196,10 @@ impl Game<'_> {
             .map(|(k, id)| (*k, *id))
             .collect();
         for (k, id) in sounds {
-            if !self.front.audio.engine.is_active(id)
+            if !self.audio.engine.is_active(id)
                 || !matches!(self.world.block_entities.get(&k), Some(BlockEntity::Jukebox(j)) if j.playing)
             {
-                self.front.audio.stop_and_release(id);
+                self.audio.stop_and_release(id);
                 self.jukebox_sounds.remove(&k);
             }
         }

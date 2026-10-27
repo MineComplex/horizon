@@ -39,14 +39,14 @@ impl Game<'_> {
             poem,
             &self.options.resources,
             &self.options.player_name(),
-            &self.front.gui.atlas.font,
+            &self.gui.atlas.font,
         );
         self.win = Some(Win {
             screen,
             finish,
             frame: Instant::now(),
         });
-        self.front.keys.clear();
+        self.keys.clear();
         self.screen = Screen::Win;
         self.capture(false);
     }
@@ -86,8 +86,7 @@ impl Game<'_> {
             now.duration_since(win.frame).as_secs_f32() / self.clock.tick_duration().as_secs_f32();
         win.frame = now;
         let sprite = |n: &str| {
-            self.front
-                .gui
+            self.gui
                 .atlas
                 .sprites
                 .get(n)
@@ -100,8 +99,7 @@ impl Game<'_> {
             ],
             game_time: (self.world.game_time % 24000) as f32 / 24000.0,
         };
-        win.screen
-            .draw(batch, &self.front.gui.atlas, delta_ticks, fill);
+        win.screen.draw(batch, &self.gui.atlas, delta_ticks, fill);
     }
     /// `WinScreen.keyPressed` / `keyReleased`; Escape closes it (`onClose`).
     pub(super) fn win_key(&mut self, event: &KeyEvent) -> Result<()> {
@@ -134,9 +132,8 @@ impl Game<'_> {
             return Ok(());
         };
         let credits = horizon_client::music::Music::credits();
-        self.front
-            .music
-            .stop_playing_music(&credits, None, &mut self.front.audio);
+        self.music
+            .stop_playing_music(&credits, None, &mut self.audio);
         match win.finish {
             Finish::Options => self.screen = Screen::Options,
             Finish::Closed if self.title.is_some() => self.screen = Screen::Playing,

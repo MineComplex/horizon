@@ -82,14 +82,14 @@ impl Game<'_> {
         };
         horizon_client::fog::setup_fog(
             tables,
-            &self.front.fog,
+            &self.fog,
             &FogInputs {
                 fog_type,
                 sky,
                 water_fog_color,
                 biome,
                 render_distance_chunks: self.terrain_distance(),
-                distant_terrain: self.front.lod.is_some(),
+                distant_terrain: self.lod.is_some(),
                 cloud_range_chunks: self.settings.cloud_range,
                 camera_y: camera.y,
                 min_y: self.level_min_y(),
@@ -101,10 +101,9 @@ impl Game<'_> {
                 blindness: None,
                 darkness: self.darkness_fog(),
                 darken_world: self
-                    .front
                     .boss_overlay
                     .darken_amount(self.clock.fraction() as f32),
-                boss_world_fog: self.front.boss_overlay.should_create_world_fog(),
+                boss_world_fog: self.boss_overlay.should_create_world_fog(),
             },
         )
     }
@@ -181,7 +180,7 @@ impl Game<'_> {
             (in_water && !spectator).then(|| (self.eye_brightness(eye), self.yaw, self.pitch));
         // Hud.extractCameraOverlays; the spyglass scope (and its easing) is
         // drawn on the HUD by draw_spyglass.
-        let fx = &self.front.screen_fx;
+        let fx = &self.screen_fx;
         let overlays = hud_overlays::CameraOverlays {
             vignette: self.settings.vignette.then_some((
                 fx.vignette_brightness,
@@ -203,12 +202,12 @@ impl Game<'_> {
             nausea: 0.0,
             screen_effect_scale: 1.0,
         };
-        let mut scope = self.front.scope_scale;
+        let mut scope = self.scope_scale;
         let gui_overlays =
             hud_overlays::camera_overlays(size[0] as i32, size[1] as i32, &overlays, &mut scope);
-        self.front.screen_fx.build(&ScreenInputs {
-            sprites: &self.front.gui.atlas.sprites,
-            flags: &self.front.gui.atlas.flags,
+        self.screen_fx.build(&ScreenInputs {
+            sprites: &self.gui.atlas.sprites,
+            flags: &self.gui.atlas.flags,
             aspect: size[0] as f32 / size[1].max(1) as f32,
             partial,
             block_overlay,
@@ -232,16 +231,16 @@ impl Game<'_> {
         lightmap_brightness(if self.dim == Dim::Nether { 0.1 } else { 0.0 }, raw)
     }
     pub(super) fn tick_particles(&mut self) {
-        self.front.fog.tick_flicker();
+        self.fog.tick_flicker();
         let eye = self.eye_position();
         if let Some(e) = eye {
             let brightness = self.eye_brightness(e);
             let inside_portal = self.client_portal_effect();
-            self.front.screen_fx.tick(brightness, inside_portal);
+            self.screen_fx.tick(brightness, inside_portal);
             // LocalPlayer water vision and AtmosphericFogEnvironment rain fog.
             let in_water =
                 fog_type(&self.world, self.res.facts(), e, self.forward()) == FogType::Water;
-            self.front.fog.tick(in_water);
+            self.fog.tick(in_water);
             let b = [
                 e[0].floor() as i32,
                 e[1].floor() as i32,
@@ -259,7 +258,7 @@ impl Game<'_> {
                 .map_or(0, |c| c.biome(b[0], b[1], b[2]));
             let rains = self.res.biomes().get(biome).precipitation;
             update_rain_fog(
-                &mut self.front.fog,
+                &mut self.fog,
                 rain,
                 self.world.light(b[0], b[1], b[2]) >> 4,
                 rains,
@@ -400,12 +399,12 @@ impl Game<'_> {
                         let p = at.map(|c| f64::from(c) + 0.5);
                         // playLocalSound: guests make their own rain, so a host
                         // must not capture it for them.
-                        self.front.audio.play_unshared(name, Some(p), volume, pitch);
+                        self.audio.play_unshared(name, Some(p), volume, pitch);
                     }
                 }
             }
         }
-        if let Some(r) = &self.front.renderer {
+        if let Some(r) = &self.renderer {
             campfire_particles(
                 self.res.animate(),
                 &mut self.particles,
@@ -429,7 +428,7 @@ impl Game<'_> {
         self.particles.tick(&level);
         self.tick_pickups();
         for (name, at, volume, pitch) in std::mem::take(&mut self.particles.sounds) {
-            self.front.audio.play(name, Some(at), volume, pitch);
+            self.audio.play(name, Some(at), volume, pitch);
         }
     }
 }

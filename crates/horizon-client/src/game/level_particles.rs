@@ -206,7 +206,7 @@ impl Game<'_> {
         if data == 1 {
             let at = [pos.x, pos.y, pos.z].map(|v| f64::from(v) + 0.5);
             let pitch = self.world.random.next_float() * 0.1 + 0.9;
-            self.front.audio.play(
+            self.audio.play(
                 "minecraft:entity.dragon_fireball.explode",
                 Some(at),
                 1.0,
@@ -292,7 +292,7 @@ impl Game<'_> {
     /// every guest whatever their dimension.
     pub(super) fn global_level_event(&mut self, id: i32, pos: [i32; 3], data: i32) {
         self.global_level_event_sound(id, pos);
-        if self.front.audio.capture.is_some() {
+        if self.audio.capture.is_some() {
             self.lan_global_events.push((id, pos, data));
         }
     }
@@ -318,7 +318,7 @@ impl Game<'_> {
             [0, 1, 2].map(|k| eye[k] + d[k] / length * 2.0)
         });
         // Each guest plays it from the global packet.
-        self.front.audio.play_unshared(sound, at, volume, 1.0);
+        self.audio.play_unshared(sound, at, volume, 1.0);
     }
     /// `ClientLevel.addBreakingBlockEffects`: the block's hit sound (only for
     /// `play_sound`) and one crumb on the face being mined; nothing for air.
@@ -335,7 +335,7 @@ impl Game<'_> {
         if play_sound {
             let sounds = self.res.facts().get(state).sounds.clone();
             // Each guest plays it from the level event itself.
-            self.front.audio.play_unshared(
+            self.audio.play_unshared(
                 &sounds.hit,
                 Some(pos.map(|v| f64::from(v) + 0.5)),
                 (sounds.volume + 1.0) / 8.0,
