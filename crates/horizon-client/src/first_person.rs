@@ -7,7 +7,7 @@
 //! `continueDestroyBlock`, `stopDestroyBlock`).
 //!
 //! What those read and do in the world is behind [`HandWorld`].
-pub use crate::items::consumable_animation;
+pub use horizon_game::swing::{SwingAnimation, swing_duration};
 
 /// The ranged item state read by the first-person hand renderer.
 #[derive(Clone, Copy, Debug)]
@@ -226,20 +226,6 @@ impl Hand {
     pub const BOTH: [Hand; 2] = [Hand::Main, Hand::Off];
 }
 
-/// `SwingAnimation`: its type (`SwingAnimationType` ordinal) and duration.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct SwingAnimation {
-    pub kind: u8,
-    pub duration: i32,
-}
-impl SwingAnimation {
-    /// `SwingAnimation.DEFAULT`: WHACK for 6 ticks.
-    pub const DEFAULT: SwingAnimation = SwingAnimation {
-        kind: 1,
-        duration: 6,
-    };
-}
-
 /// `LivingEntity.SwingDescription`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct SwingDescription {
@@ -310,24 +296,6 @@ impl SwingState {
     /// The hand of the current swing (`state.attackHand`), main by default.
     pub fn attack_hand(&self) -> Hand {
         self.current.map_or(Hand::Main, |c| c.hand)
-    }
-}
-
-/// `LivingEntity.getModifiedSwingDuration`: `dig_speed` is
-/// `MobEffectUtil.getDigSpeedAmplification` while haste or conduit power is
-/// active, `fatigue` the mining fatigue amplifier.
-pub fn swing_duration(
-    animation: SwingAnimation,
-    dig_speed: Option<i32>,
-    fatigue: Option<i32>,
-) -> i32 {
-    let duration = animation.duration;
-    if let Some(amplification) = dig_speed {
-        duration - (1 + amplification)
-    } else if let Some(amplifier) = fatigue {
-        duration + (1 + amplifier) * 2
-    } else {
-        duration
     }
 }
 
@@ -444,6 +412,7 @@ impl UseResult {
         matches!(self, Self::Success { swing: true }) && before == after
     }
 }
+pub use horizon_items::use_animation::consumable_animation;
 /// What the click handling reads and does in the world.
 pub trait HandWorld {
     fn hit(&mut self) -> Hit;

@@ -290,12 +290,11 @@ def mod_features(crates):
     return f" --features {','.join(features)}" if features else ""
 
 
-# What horizon-game's full content-root tests load (mod_content_tests.rs). They take minutes on prepared data, so
+# What horizon-client's full content-root tests load (mod_content_tests.rs). They take minutes on prepared data, so
 # they are #[ignore]d and run here only when one of these changes.
-CONTENT_ROOT = ("crates/horizon-game/src/mod_content", "crates/horizon-game/src/assets.rs",
-                "crates/horizon-game/src/blocks.rs", "crates/horizon-game/src/items.rs", "crates/horizon-items/",
+CONTENT_ROOT = ("crates/horizon-game/src/mod_content", "crates/horizon-game/src/assets.rs", "crates/horizon-items/",
                 "crates/horizon-mods/", "crates/horizon-assets/")
-CONTENT_ROOT_TESTS = "cargo test --locked -p horizon-game --lib mod_content::tests:: -- --ignored"
+CONTENT_ROOT_TESTS = "cargo test --locked -p horizon-client --features horizon-client/mods --lib mod_content::tests:: -- --ignored"
 
 
 def plan(args, base, changed, crates_of, libraries, dependencies):
