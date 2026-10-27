@@ -700,6 +700,7 @@ impl Audio {
                 source,
             } => self.play_now(&event, at, volume, pitch, seed, source),
             SoundCmd::Stop { event, source } => self.stop_now(event.as_deref(), source),
+            SoundCmd::Release(id) => self.stop_and_release(id),
         }
     }
     /// `AbstractWidget.playButtonClickSound`: an unseeded, relative UI sound.

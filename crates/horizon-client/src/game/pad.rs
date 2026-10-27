@@ -126,7 +126,7 @@ impl Game<'_> {
             .filter(|_| self.title.is_none())
             .map(|p| p.health.health());
         if let Some(damage) = self.pad.health.observe(health) {
-            self.pad_rumble(Rumble::Hurt(damage));
+            self.rumbles.push(Rumble::Hurt(damage));
         }
         let ticking = self.title.is_none() && self.screen == Screen::Playing && !self.pause;
         for button in std::mem::take(&mut self.pad.late_releases) {

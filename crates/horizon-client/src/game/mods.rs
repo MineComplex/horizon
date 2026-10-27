@@ -763,8 +763,7 @@ impl Game<'_> {
     /// Written by this client, so the Chat option doesn't hide it.
     pub(super) fn add_mod_chat_line(&mut self, line: Text) {
         let focused = self.screen == Screen::Chat;
-        self.ui.chat.add(
-            &self.gui.atlas,
+        self.ui.chat.add_unwrapped(
             line,
             None,
             horizon_client::chat::ChatSource::Client,

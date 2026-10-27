@@ -23,6 +23,8 @@ pub enum SoundCmd {
         event: Option<String>,
         source: Option<usize>,
     },
+    /// Stop and drop a held instance (a jukebox's song).
+    Release(u64),
 }
 
 pub struct SoundOut {
@@ -102,6 +104,10 @@ impl SoundOut {
         self.play(event, at, volume, pitch);
         self.source_override = None;
     }
+    /// Stop and drop a held instance the window started (a jukebox's song).
+    pub fn release(&mut self, instance: u64) {
+        self.queue.push(SoundCmd::Release(instance));
+    }
     /// `ClientboundStopSoundPacket`: stop the playing sounds of an event and/or a source.
     /// `selection` is how the control socket counts it ("<source or *> <event or *>").
     pub fn stop_sounds(&mut self, event: Option<&str>, source: Option<usize>, selection: String) {
@@ -135,7 +141,7 @@ mod tests {
             .iter()
             .filter_map(|c| match c {
                 SoundCmd::Play { seed, .. } => Some(*seed),
-                SoundCmd::Stop { .. } => None,
+                SoundCmd::Stop { .. } | SoundCmd::Release(_) => None,
             })
             .collect();
         assert_eq!(

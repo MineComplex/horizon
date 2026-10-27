@@ -205,6 +205,9 @@ pub struct Chat {
     pub received: u64,
     /// The Chat option's `visibleMessageFilter` (`set_abilities`).
     abilities: ChatAbilities,
+    /// Messages added without a font (`add_unwrapped`), oldest first, with whether the chat was
+    /// open: `layout` wraps them into `lines`.
+    unwrapped: Vec<(Message, bool)>,
 }
 impl Chat {
     pub fn lines_per_page(&self, focused: bool) -> usize {
@@ -225,7 +228,28 @@ impl Chat {
         ticks: u64,
         focused: bool,
     ) {
+        self.wrap_pending(&atlas.font);
         self.add_message(&atlas.font, content, indicator, source, ticks, focused);
+    }
+    /// `add` from the game's side, which has no font: the message is kept (logged, counted, in
+    /// the history) now and wrapped into lines by the next `wrap_pending`.
+    pub fn add_unwrapped(
+        &mut self,
+        content: Text,
+        indicator: Option<u32>,
+        source: ChatSource,
+        ticks: u64,
+        focused: bool,
+    ) {
+        if let Some(message) = self.accept(content, indicator, source, ticks) {
+            self.unwrapped.push((message, focused));
+        }
+    }
+    /// Wrap the messages `add_unwrapped` kept, in the order they came.
+    pub fn wrap_pending(&mut self, font: &crate::font::Font) {
+        for (message, focused) in std::mem::take(&mut self.unwrapped) {
+            self.add_lines(font, &message, focused);
+        }
     }
     fn add_message(
         &mut self,
@@ -236,8 +260,21 @@ impl Chat {
         ticks: u64,
         focused: bool,
     ) {
+        if let Some(message) = self.accept(content, indicator, source, ticks) {
+            self.add_lines(font, &message, focused);
+        }
+    }
+    /// A message the Chat option shows, logged and kept in the history (`addMessage` but the
+    /// wrapping).
+    fn accept(
+        &mut self,
+        content: Text,
+        indicator: Option<u32>,
+        source: ChatSource,
+        ticks: u64,
+    ) -> Option<Message> {
         if !self.abilities.shows(source) {
-            return;
+            return None;
         }
         // ChatComponent.logChatMessage: every message shown is in the log.
         crate::logging::write_only(log::Level::Info, &format!("[CHAT] {}", content.plain()));
@@ -250,10 +287,10 @@ impl Chat {
             indicator,
             source,
         };
-        self.add_lines(font, &message, focused);
-        self.messages.insert(0, message);
+        self.messages.insert(0, message.clone());
         self.messages.truncate(100);
         self.received += 1;
+        Some(message)
     }
     fn add_lines(&mut self, font: &crate::font::Font, message: &Message, focused: bool) {
         let width = self.max_width();
@@ -290,6 +327,8 @@ impl Chat {
         self.rewrap(&atlas.font);
     }
     fn rewrap(&mut self, font: &crate::font::Font) {
+        // The kept messages are in `messages` already: they are wrapped below.
+        self.unwrapped.clear();
         self.scroll = 0;
         self.new_since_scroll = false;
         self.lines.clear();
@@ -319,6 +358,7 @@ impl Chat {
     pub fn clear(&mut self) {
         self.messages.clear();
         self.lines.clear();
+        self.unwrapped.clear();
         self.scroll = 0;
     }
     /// `new CommandHistory(gameFolder)`: the commands kept from earlier runs

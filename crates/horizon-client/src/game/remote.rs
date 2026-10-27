@@ -704,8 +704,7 @@ impl Game<'_> {
         // GuiMessageTag.systemSinglePlayer: the grey bar at the line's left.
         let indicator = (source != horizon_client::chat::ChatSource::Player)
             .then_some(horizon_client::chat::SYSTEM_INDICATOR);
-        self.ui.chat.add(
-            &self.gui.atlas,
+        self.ui.chat.add_unwrapped(
             content,
             indicator,
             source,

@@ -3134,8 +3134,7 @@ impl Game<'_> {
             capture.push(line.clone());
         }
         let focused = self.screen == Screen::Chat;
-        self.ui.chat.add(
-            &self.gui.atlas,
+        self.ui.chat.add_unwrapped(
             line,
             None,
             horizon_client::chat::ChatSource::Player,

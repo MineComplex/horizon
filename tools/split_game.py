@@ -30,16 +30,15 @@ SRC = os.path.join(ROOT, "crates/horizon-client/src")
 GAME_RS = os.path.join(SRC, "game.rs")
 
 FRONT = set("""
-window renderer physical_keys cursor cursor_icon captured focused modifiers fullscreen mouse
-smooth_camera toggles pad frames fps fps_frames fps_at world_frames last_input limiter frame_clock
-frame_ticks dragging fog screen_fx weather_parameters panorama_rotation lod lod_source_attempted
-lod_observe lod_covered_at entity_vertices dynamic_lights luminance see_through_vertices entity_spans
-glowing_vertices pack_ids item_level_cache pending_uploads view_frustum entity_culler
-pack_shadow_casters native_shaders view avatar be_anims border_renderer border_state
-text_display_vertices world_renderer_ready frame_stats frame_graph perf debug_charts debug_keys heights
-sway scope_scale audio music ambience sound_paused cart_sounds riding_cart_sounds subtitles gui
-health_hud tool_highlight saving_indicator boss_overlay tab_list waypoint_styles waypoints clipboard
-text_selection gamemode_switcher map_patches bundle_mouse
+window renderer physical_keys cursor cursor_icon captured modifiers fullscreen mouse smooth_camera
+toggles pad fps fps_frames fps_at world_frames last_input limiter frame_clock frame_ticks dragging fog
+screen_fx weather_parameters panorama_rotation lod lod_source_attempted lod_observe lod_covered_at
+entity_vertices dynamic_lights luminance see_through_vertices entity_spans glowing_vertices pack_ids
+pending_uploads view_frustum entity_culler pack_shadow_casters native_shaders view avatar
+border_renderer border_state text_display_vertices world_renderer_ready frame_stats frame_graph perf
+debug_charts debug_keys heights sway scope_scale audio music ambience sound_paused cart_sounds
+riding_cart_sounds subtitles gui health_hud tool_highlight saving_indicator boss_overlay tab_list
+waypoint_styles waypoints clipboard text_selection gamemode_switcher map_patches bundle_mouse
 """.split())
 
 BORROW_CODES = ("E0502", "E0499", "E0503", "E0506", "E0505", "E0500", "E0501", "E0597", "E0716")

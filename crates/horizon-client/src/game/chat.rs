@@ -494,14 +494,9 @@ impl Game<'_> {
         }
         let focused = self.screen == Screen::Chat;
         let heard = self.mods.running().then(|| text.plain());
-        self.ui.chat.add(
-            &self.gui.atlas,
-            text,
-            indicator,
-            source,
-            self.ticks,
-            focused,
-        );
+        self.ui
+            .chat
+            .add_unwrapped(text, indicator, source, self.ticks, focused);
         if let Some(line) = heard {
             self.mods_chat(&line);
         }
@@ -646,14 +641,9 @@ impl Game<'_> {
             );
             let focused = self.screen == Screen::Chat;
             let heard = self.mods.running().then(|| line.plain());
-            self.ui.chat.add(
-                &self.gui.atlas,
-                line,
-                None,
-                ChatSource::Player,
-                self.ticks,
-                focused,
-            );
+            self.ui
+                .chat
+                .add_unwrapped(line, None, ChatSource::Player, self.ticks, focused);
             if let Some(line) = heard {
                 self.mods_chat(&line);
             }
@@ -1115,14 +1105,9 @@ impl Game<'_> {
             Err(e) => Text::translate("screenshot.failure", &[Text::literal(e.clone())]),
         };
         let focused = self.screen == Screen::Chat;
-        self.ui.chat.add(
-            &self.gui.atlas,
-            message,
-            None,
-            ChatSource::Client,
-            self.ticks,
-            focused,
-        );
+        self.ui
+            .chat
+            .add_unwrapped(message, None, ChatSource::Client, self.ticks, focused);
     }
 }
 /// `yyyy-MM-dd_HH.mm.ss[_n].png` (Util.getFilenameFormattedDateTime, local time

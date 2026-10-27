@@ -41,13 +41,21 @@ impl Game<'_> {
             carts,
             frozen: !self.clock.runs_normally(),
         };
-        self.flush_sounds();
+        self.flush_to_window();
         self.audio.tick(self.pause, &ctx);
     }
-    /// Play what the game queued (`SoundOut`) on the window's mixer, in order.
-    pub(super) fn flush_sounds(&mut self) {
+    /// Hand the window what the game queued for it: sounds (`SoundOut`) to the mixer, chat
+    /// messages to their lines, vibrations to the pad and the pointer grab a screen asked for.
+    pub(super) fn flush_to_window(&mut self) {
         for cmd in std::mem::take(&mut self.sounds.queue) {
             self.audio.apply(cmd);
+        }
+        self.ui.chat.wrap_pending(&self.gui.atlas.font);
+        for rumble in std::mem::take(&mut self.rumbles) {
+            self.pad_rumble(rumble);
+        }
+        if let Some(capture) = self.pointer_grab.take() {
+            self.grab_pointer(capture);
         }
     }
     /// `getSituationalMusic` and `getMusicVolume`.

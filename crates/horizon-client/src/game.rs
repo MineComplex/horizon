@@ -1554,6 +1554,10 @@ struct Game<'a> {
     /// The sounds the game decided to play (seeds, the guests' capture, the control socket's
     /// counts); `flush_sounds` hands them to `audio`.
     sounds: horizon_client::sound_out::SoundOut,
+    /// Vibrations the game asked of the pad, for the window to play (`flush_to_window`).
+    rumbles: Vec<horizon_client::gamepad::Rumble>,
+    /// The pointer grab a screen change asked for (`capture`), for the window to apply.
+    pointer_grab: Option<bool>,
     music: horizon_client::music::MusicManager,
     ambience: horizon_client::ambience::Ambience,
     /// The sound engine was told the game paused (pauseAllExcept).
@@ -4089,7 +4093,8 @@ impl Game<'_> {
         if !self.plugin_block_break(pos) {
             return Ok(());
         }
-        self.pad_rumble(horizon_client::gamepad::Rumble::BlockBroken);
+        self.rumbles
+            .push(horizon_client::gamepad::Rumble::BlockBroken);
         // ServerPlayerGameMode.destroyBlock.
         let state = self.world.block(pos[0], pos[1], pos[2]);
         let broken = state;
@@ -5106,7 +5111,7 @@ impl Game<'_> {
         self.with_level(|b, level, ticks| b.notify_written(level, ticks, position, flags));
     }
     fn tick(&mut self) -> Result<()> {
-        self.flush_sounds();
+        self.flush_to_window();
         if self.agent.hold_server {
             return Ok(());
         }
@@ -5741,6 +5746,10 @@ impl Game<'_> {
         }
         // The real pointer takes over from an agent's.
         self.agent_pointer = false;
+        self.pointer_grab = Some(capture);
+    }
+    /// The window's half of `capture`: grab or free the pointer, centred.
+    fn grab_pointer(&mut self, capture: bool) {
         let Some(window) = &self.window else { return };
         let size = self.renderer.as_ref().map_or_else(
             || window.inner_size().into(),
@@ -12609,6 +12618,7 @@ impl ApplicationHandler for Game<'_> {
         if self.window.as_ref().is_none_or(|w| w.id() != id) {
             return;
         }
+        self.flush_to_window();
         if let WindowEvent::KeyboardInput { event, .. } = &event
             && let PhysicalKey::Code(key) = event.physical_key
         {
@@ -13530,6 +13540,7 @@ impl ApplicationHandler for Game<'_> {
         }
     }
     fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
+        self.flush_to_window();
         if horizon_threads::stop_requests() > 0
             && self.pending_save.as_ref().is_none_or(|save| !save.quit)
         {
@@ -13768,6 +13779,8 @@ impl<'a> Game<'a> {
             sounds: horizon_client::sound_out::SoundOut::new(
                 horizon_client::sound_engine::unique_seed(),
             ),
+            rumbles: Vec::new(),
+            pointer_grab: None,
             music,
             ambience: Default::default(),
             sound_paused: false,

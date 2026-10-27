@@ -121,7 +121,7 @@ impl Game<'_> {
     }
     fn stop_sound(&mut self, pos: [i32; 3]) {
         if let Some(id) = self.jukebox_sounds.remove(&(pos[0], pos[1], pos[2])) {
-            self.audio.stop_and_release(id);
+            self.sounds.release(id);
         }
     }
     /// Level event 1011: the song ends, here and for the guests.

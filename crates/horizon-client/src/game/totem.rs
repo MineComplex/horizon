@@ -119,7 +119,7 @@ impl Game<'_> {
         self.sounds
             .play_unshared("minecraft:item.totem.use", Some(body.at), 1.0, 1.0);
         if own {
-            self.pad_rumble(horizon_client::gamepad::Rumble::Totem);
+            self.rumbles.push(horizon_client::gamepad::Rumble::Totem);
         }
     }
 }
