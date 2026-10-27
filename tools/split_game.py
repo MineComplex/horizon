@@ -3,7 +3,8 @@
 its window, mechanically and repeatably (docs/crates.md):
 
 1. `Frontend`: the fields only a window uses (FRONT below) move into `Game::front`; every access the
-   compiler then rejects gets `front.`.
+   compiler then rejects gets `front.`. The acting player's input (`keys`, `left`, `right`, `clicks`,
+   `inv_clicks`) stays in `Sim`: `as_guest` swaps a guest's in (a sneaking guest holds Shift).
 2. `Sim`: every other field moves into `Game::sim`; `Game` derefs to `Sim`. Where two borrows of
    `Game` must stay disjoint, the access names `self.sim` explicitly.
 3. `impl Sim`: methods that touch neither the window nor a window-only method, and are not named as
@@ -29,16 +30,16 @@ SRC = os.path.join(ROOT, "crates/horizon-client/src")
 GAME_RS = os.path.join(SRC, "game.rs")
 
 FRONT = set("""
-window renderer keys physical_keys left right cursor cursor_icon captured focused modifiers fullscreen
-mouse smooth_camera toggles pad frames fps fps_frames fps_at world_frames last_input limiter frame_clock
+window renderer physical_keys cursor cursor_icon captured focused modifiers fullscreen mouse
+smooth_camera toggles pad frames fps fps_frames fps_at world_frames last_input limiter frame_clock
 frame_ticks dragging fog screen_fx weather_parameters panorama_rotation lod lod_source_attempted
 lod_observe lod_covered_at entity_vertices dynamic_lights luminance see_through_vertices entity_spans
-glowing_vertices pack_ids item_level_cache pending_uploads view_frustum entity_culler pack_shadow_casters
-native_shaders view avatar be_anims border_renderer border_state text_display_vertices
-world_renderer_ready frame_stats frame_graph perf debug_charts debug_keys heights sway scope_scale audio
-music ambience sound_paused cart_sounds riding_cart_sounds subtitles gui health_hud tool_highlight
-saving_indicator boss_overlay tab_list waypoint_styles waypoints clipboard text_selection
-gamemode_switcher map_patches inv_clicks clicks bundle_mouse
+glowing_vertices pack_ids item_level_cache pending_uploads view_frustum entity_culler
+pack_shadow_casters native_shaders view avatar be_anims border_renderer border_state
+text_display_vertices world_renderer_ready frame_stats frame_graph perf debug_charts debug_keys heights
+sway scope_scale audio music ambience sound_paused cart_sounds riding_cart_sounds subtitles gui
+health_hud tool_highlight saving_indicator boss_overlay tab_list waypoint_styles waypoints clipboard
+text_selection gamemode_switcher map_patches bundle_mouse
 """.split())
 
 BORROW_CODES = ("E0502", "E0499", "E0503", "E0506", "E0505", "E0500", "E0501", "E0597", "E0716")
@@ -285,7 +286,7 @@ def classify(extra):
     for name, ms in methods.items():
         for m in ms:
             body = m["body"]
-            if (not re.search(r"\bself\b", body.split("{", 1)[0]) or re.search(r"\bfront\b", body)
+            if (not re.search(r"\bself\b", body.split("{", 1)[0]) or re.search(r"\b(?:self|game|g|this)\s*\.\s*front\b", body)
                     or re.search(r"[(,]\s*(&mut \*)?self\s*[,)]", body) or re.search(r"\bGame\b", body)
                     or re.search(r"\bSelf\b", body.split("\n", 1)[1] if "\n" in body else "")):
                 game.add(name)

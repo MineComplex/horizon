@@ -139,10 +139,8 @@ impl Game<'_> {
         if let Err(e) = self.reload_selected_packs() {
             log::warn!("Horizon: resource reload failed: {e}");
             if self.screen != super::Screen::Options {
-                self.open_options_at(
-                    self.title.is_some(),
-                    horizon_client::options_ui::Page::Packs,
-                );
+                let from_title = self.title.is_some();
+                self.open_options_at(from_title, horizon_client::options_ui::Page::Packs);
             }
             self.ui.options.resource_error = Some(e.to_string());
         }

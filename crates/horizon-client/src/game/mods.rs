@@ -949,7 +949,8 @@ impl Game<'_> {
             return;
         };
         if ms.settings {
-            self.open_options_at(self.options_from_title, Page::Mods);
+            let from_title = self.options_from_title;
+            self.open_options_at(from_title, Page::Mods);
         } else {
             self.screen = ms.under;
             if self.screen == Screen::Playing && self.player.is_some() {

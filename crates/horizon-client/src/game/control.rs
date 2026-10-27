@@ -684,7 +684,8 @@ impl Game<'_> {
                 if self.screen == Screen::Playing && self.title.is_none() {
                     self.capture(false);
                 }
-                self.open_options(self.title.is_some());
+                let from_title = self.title.is_some();
+                self.open_options(from_title);
                 self.ui.options.show(page);
                 if page == Page::ShaderPacks {
                     self.settings.shader_packs =
