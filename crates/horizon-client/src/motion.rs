@@ -1720,14 +1720,13 @@ impl MotionWorld<'_, '_, '_> {
                         volume: 1.0,
                         pitch: 1.0,
                     }));
-                let id = self
-                    .resources
-                    .health
-                    .damage
-                    .id("minecraft:fly_into_wall")
-                    .ok_or("missing fly_into_wall damage type")?;
                 let rules = self.scene.health_rules;
-                self.player.hurt(&self.resources.health, rules, id, dmg)?;
+                self.player.hurt_by_surroundings(
+                    &self.resources.health,
+                    rules,
+                    "minecraft:fly_into_wall",
+                    dmg,
+                )?;
                 if self.player.server_copy {
                     self.player.wall_hit_events = Some(first..self.player.events.len());
                 }

@@ -437,7 +437,7 @@ pub fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
                 // The client copy of a bell's ring: no level change.
                 LevelEvent::BlockEntityEvent { .. } => {}
-                LevelEvent::Grew { .. } => {}
+                LevelEvent::Changed { .. } => {}
                 LevelEvent::GrowTree { .. } => {
                     let _ = writeln!(result, "X grow_tree");
                 }

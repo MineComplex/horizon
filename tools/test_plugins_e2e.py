@@ -131,10 +131,16 @@ def block_events(o, c, server, port):
     keeps the spawn's chunks ticking; a cancelled piston stays put."""
     out = []
     run = threading.Thread(
-        target=lambda: out.extend(client(o.client, port, "Builder", ["wait 9000"], timeout=60))
+        target=lambda: out.extend(client(
+            o.client, port, "Builder", ["wait 3000", "use ~1 ~ ~ 1", "wait 7000"], timeout=60
+        ))
     )
     run.start()
     server.wait_for(r"EVENT player-join Builder", timeout=30)
+    # Bone meal for the wheat beside the builder.
+    server.console("give Builder minecraft:bone_meal 4")
+    server.console("execute at Builder run setblock ~1 ~-1 ~ minecraft:farmland")
+    server.console("execute at Builder run setblock ~1 ~ ~ minecraft:wheat")
     for line in (
         "setblock 8 80 8 minecraft:piston[facing=east]",
         "setblock 9 80 8 minecraft:stone",
@@ -158,6 +164,11 @@ def block_events(o, c, server, port):
     # Wheat about to ripen, with the random ticks sped up.
     server.console("fill 12 79 0 20 79 8 minecraft:farmland")
     server.console("fill 12 80 0 20 80 8 minecraft:wheat[age=6]")
+    # Grass among dirt spreads; ice by a light melts.
+    server.console("fill 22 79 0 26 79 4 minecraft:dirt")
+    server.console("setblock 24 79 2 minecraft:grass_block")
+    server.console("setblock 28 80 0 minecraft:ice")
+    server.console("setblock 29 80 0 minecraft:glowstone")
     server.console("gamerule random_tick_speed 300")
     time.sleep(3.0)
     server.console("gamerule random_tick_speed 3")
@@ -177,6 +188,9 @@ def block_events(o, c, server, port):
     )
     saw("block-from-to for water flowing down", r"EVENT block-from-to minecraft:water\S* 8 90 12 -> 8 89 12 down")
     saw("block-grow for ripening wheat", r"EVENT block-grow minecraft:wheat\[age=6\] -> minecraft:wheat\[age=7\]")
+    saw("block-spread for grass", r"EVENT block-spread minecraft:dirt\S* -> minecraft:grass_block\S* [-\d ]+ from 24 79 2")
+    saw("block-fade for melting ice", r"EVENT block-fade minecraft:ice\S* -> minecraft:water\S* 28 80 0")
+    saw("block-fertilize for bone meal", r"EVENT block-fertilize minecraft:wheat\S* [-\d ]+ by Builder")
 
 
 def events(o, c, server, port):

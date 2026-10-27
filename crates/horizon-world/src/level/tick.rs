@@ -79,7 +79,9 @@ impl<L: LevelAccess + ?Sized> Sim<'_, L> {
                 Class::Coral => {
                     if !self.coral_scan_for_water(pos) {
                         if let Some(dead) = b.data(state).link {
-                            self.set_block(pos, b.default_of(dead), 2);
+                            self.changed(super::BlockChange::Fade, &[pos], |s| {
+                                s.set_block(pos, b.default_of(dead), 2);
+                            });
                         }
                     }
                 }
@@ -91,7 +93,9 @@ impl<L: LevelAccess + ?Sized> Sim<'_, L> {
                             if class == Class::CoralWallFan {
                                 next = b.table.set_dir(next, p.facing, b.facing(state));
                             }
-                            self.set_block(pos, next, 2);
+                            self.changed(super::BlockChange::Fade, &[pos], |s| {
+                                s.set_block(pos, next, 2);
+                            });
                         }
                     }
                 }
@@ -294,13 +298,21 @@ impl<L: LevelAccess + ?Sized> Sim<'_, L> {
                         let growth = rel(pos, data.growth_direction);
                         if self.growing_plant_can_grow_into(state, self.state(growth)) {
                             let next = self.growing_plant_grow_into_state(state);
-                            self.set_block_and_update(growth, next);
+                            self.changed(
+                                super::BlockChange::Spread { source: pos },
+                                &[growth],
+                                |s| {
+                                    s.set_block_and_update(growth, next);
+                                },
+                            );
                         }
                     }
                 }
                 Class::Ice => {
                     if self.level.block_light(pos) > 11 - i32::from(b.facts(state).dampening) {
-                        self.ice_melt(pos, state);
+                        self.changed(super::BlockChange::Fade, &[pos], |s| {
+                            s.ice_melt(pos, state);
+                        });
                     }
                 }
                 Class::Leaves => {
@@ -397,7 +409,18 @@ impl<L: LevelAccess + ?Sized> Sim<'_, L> {
                         self.game_event(pos, "minecraft:block_change");
                     }
                 }
-                Class::Vine => self.vine_random_tick(state, pos),
+                Class::Vine => {
+                    // The blocks around it it may set, itself last.
+                    let mut around: Vec<BlockPos> = (-1..=1)
+                        .flat_map(|x| (-1..=1).flat_map(move |y| (-1..=1).map(move |z| (x, y, z))))
+                        .filter(|&d| d != (0, 0, 0))
+                        .map(|(x, y, z)| pos.offset(x, y, z))
+                        .collect();
+                    around.push(pos);
+                    self.changed(super::BlockChange::Spread { source: pos }, &around, |s| {
+                        s.vine_random_tick(state, pos);
+                    });
+                }
                 Class::Eyeblossom => self.eyeblossom_tick(state, pos, true),
                 Class::FlowerPot => self.potted_eyeblossom_tick(state, pos),
                 Class::TurtleEgg => self.turtle_egg_tick(state, pos),
@@ -529,6 +552,12 @@ impl<L: LevelAccess + ?Sized> Sim<'_, L> {
         let b = self.b;
         distance > 0 && !b.is_block(self.below_state(pos), b.named.scaffolding)
     }
+    /// Fire going out by itself (`BlockFadeEvent`).
+    fn fire_go_out(&mut self, pos: BlockPos) {
+        self.changed(super::BlockChange::Fade, &[pos], |s| {
+            s.remove_block(pos, false);
+        });
+    }
     fn fire_tick(&mut self, pos: BlockPos, state: BlockStateId) {
         let b = self.b;
         let p = b.props;
@@ -539,7 +568,7 @@ impl<L: LevelAccess + ?Sized> Sim<'_, L> {
             return;
         }
         if !self.can_survive(state, pos) {
-            self.remove_block(pos, false);
+            self.fire_go_out(pos);
         }
         let below_state = self.below_state(pos);
         let infiniburn = match self.level.dimension() {
@@ -555,7 +584,7 @@ impl<L: LevelAccess + ?Sized> Sim<'_, L> {
             && self.fire_near_rain(pos)
             && self.random().next_float() < 0.2 + age as f32 * 0.03
         {
-            self.remove_block(pos, false);
+            self.fire_go_out(pos);
             return;
         }
         let new_age = 15.min(age + self.rand_int(3) / 2);
@@ -567,12 +596,12 @@ impl<L: LevelAccess + ?Sized> Sim<'_, L> {
         if !infini {
             if !self.is_valid_fire_location(pos) {
                 if !self.sturdy(below(pos), Direction::Up) || age > 3 {
-                    self.remove_block(pos, false);
+                    self.fire_go_out(pos);
                 }
                 return;
             }
             if age == 15 && self.rand_int(4) == 0 && !self.can_burn(self.below_state(pos)) {
-                self.remove_block(pos, false);
+                self.fire_go_out(pos);
                 return;
             }
         }
@@ -612,7 +641,13 @@ impl<L: LevelAccess + ?Sized> Sim<'_, L> {
                         {
                             let spread_age = 15.min(age + self.rand_int(5) / 4);
                             let next = self.fire_state_with_age(test, spread_age);
-                            self.set_block_and_update(test, next);
+                            self.changed(
+                                super::BlockChange::Spread { source: pos },
+                                &[test],
+                                |s| {
+                                    s.set_block_and_update(test, next);
+                                },
+                            );
                         }
                     }
                 }
@@ -755,9 +790,20 @@ impl<L: LevelAccess + ?Sized> Sim<'_, L> {
         speed
     }
     /// A plant's growth: `set` sets the blocks at `at` (the one that grows
-    /// first); a level that `reports_growth` hears of those it changed.
+    /// first).
     fn grow(&mut self, at: &[BlockPos], set: impl FnOnce(&mut Self)) {
-        if !self.level.reports_growth() {
+        self.changed(super::BlockChange::Grow, at, set);
+    }
+    /// Blocks changing by themselves: `set` sets those at `at` (the one the
+    /// event names first); a level that `reports_changes` hears of those it
+    /// changed.
+    pub(crate) fn changed(
+        &mut self,
+        cause: super::BlockChange,
+        at: &[BlockPos],
+        set: impl FnOnce(&mut Self),
+    ) {
+        if !self.level.reports_changes() {
             set(self);
             return;
         }
@@ -770,7 +816,7 @@ impl<L: LevelAccess + ?Sized> Sim<'_, L> {
             .filter(|(_, old, new)| old != new)
             .collect();
         if !changes.is_empty() {
-            self.emit(LevelEvent::Grew { changes });
+            self.emit(LevelEvent::Changed { cause, changes });
         }
     }
     fn crop_random_tick(&mut self, state: BlockStateId, pos: BlockPos) {
@@ -948,7 +994,9 @@ impl<L: LevelAccess + ?Sized> Sim<'_, L> {
                     2,
                 );
             } else if !b.in_set(self.above_state(pos), &b.tags.maintains_farmland) {
-                self.turn_to_base_block(pos, state);
+                self.changed(super::BlockChange::Fade, &[pos], |s| {
+                    s.turn_to_base_block(pos, state);
+                });
             }
         } else if moisture < 7 {
             self.set_block(pos, b.table.set_int(state, b.props.moisture, 7), 2);
@@ -960,6 +1008,7 @@ impl<L: LevelAccess + ?Sized> Sim<'_, L> {
     }
     fn mushroom_random_tick(&mut self, state: BlockStateId, mut pos: BlockPos) {
         let b = self.b;
+        let origin = pos;
         if self.rand_int(25) != 0 {
             return;
         }
@@ -986,7 +1035,13 @@ impl<L: LevelAccess + ?Sized> Sim<'_, L> {
             offset = self.mushroom_offset(pos);
         }
         if self.is_empty_block(offset) && self.can_survive(state, offset) {
-            self.set_block(offset, state, 2);
+            self.changed(
+                super::BlockChange::Spread { source: origin },
+                &[offset],
+                |s| {
+                    s.set_block(offset, state, 2);
+                },
+            );
         }
     }
     fn mushroom_offset(&mut self, pos: BlockPos) -> BlockPos {
@@ -1032,7 +1087,9 @@ impl<L: LevelAccess + ?Sized> Sim<'_, L> {
         let b = self.b;
         let base = b.data(state).link.unwrap_or(b.named.dirt);
         if !self.snowy_can_stay_alive(state, pos) {
-            self.set_block_and_update(pos, b.default_of(base));
+            self.changed(super::BlockChange::Fade, &[pos], |s| {
+                s.set_block_and_update(pos, b.default_of(base));
+            });
             return;
         }
         if self.max_local_raw_brightness(above(pos)) < 9 {
@@ -1049,7 +1106,10 @@ impl<L: LevelAccess + ?Sized> Sim<'_, L> {
                 && !b.is_water_fluid(self.fluid_at(above(test)).kind())
             {
                 let snowy = b.in_set(self.above_state(test), &b.tags.snow);
-                self.set_block_and_update(test, b.table.set_bool(default, b.props.snowy, snowy));
+                let spread = b.table.set_bool(default, b.props.snowy, snowy);
+                self.changed(super::BlockChange::Spread { source: pos }, &[test], |s| {
+                    s.set_block_and_update(test, spread);
+                });
             }
         }
     }
@@ -1418,7 +1478,9 @@ impl<L: LevelAccess + ?Sized> Sim<'_, L> {
         let top = info.top;
         let below_pos = below(top);
         if info.freezes_below {
-            self.set_block_and_update(below_pos, b.default_of(b.named.ice));
+            self.changed(super::BlockChange::Form, &[below_pos], |s| {
+                s.set_block_and_update(below_pos, b.default_of(b.named.ice));
+            });
         }
         if !self.level.is_raining() {
             return;
@@ -1429,10 +1491,15 @@ impl<L: LevelAccess + ?Sized> Sim<'_, L> {
             if b.is_block(state, b.named.snow) {
                 let layers = b.table.int(state, p.layers);
                 if layers < max_height.min(8) {
-                    self.set_block_and_update(top, b.table.set_int(state, p.layers, layers + 1));
+                    let more = b.table.set_int(state, p.layers, layers + 1);
+                    self.changed(super::BlockChange::Form, &[top], |s| {
+                        s.set_block_and_update(top, more);
+                    });
                 }
             } else {
-                self.set_block_and_update(top, b.default_of(b.named.snow));
+                self.changed(super::BlockChange::Form, &[top], |s| {
+                    s.set_block_and_update(top, b.default_of(b.named.snow));
+                });
             }
         }
         if info.kind != PrecipitationKind::None {

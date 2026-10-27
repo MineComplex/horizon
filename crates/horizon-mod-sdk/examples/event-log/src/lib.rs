@@ -5,7 +5,7 @@
 use horizon_mod_sdk::plugin::*;
 use std::collections::BTreeSet;
 
-const KINDS: [(&str, EventKind); 36] = [
+const KINDS: [(&str, EventKind); 40] = [
     ("player-join", EventKind::PlayerJoin),
     ("player-quit", EventKind::PlayerQuit),
     ("player-login", EventKind::PlayerLogin),
@@ -33,6 +33,10 @@ const KINDS: [(&str, EventKind); 36] = [
     ("block-piston-retract", EventKind::BlockPistonRetract),
     ("block-from-to", EventKind::BlockFromTo),
     ("block-grow", EventKind::BlockGrow),
+    ("block-spread", EventKind::BlockSpread),
+    ("block-form", EventKind::BlockForm),
+    ("block-fade", EventKind::BlockFade),
+    ("block-fertilize", EventKind::BlockFertilize),
     ("entity-damage", EventKind::EntityDamage),
     ("entity-death", EventKind::EntityDeath),
     ("entity-spawn", EventKind::EntitySpawn),
@@ -166,6 +170,33 @@ fn describe(e: &Event) -> (&'static str, String) {
         Event::BlockGrow(e) => (
             "block-grow",
             format!("{} -> {} {}", e.block.state, e.new_state, pos(&e.block.pos)),
+        ),
+        Event::BlockForm(e) => (
+            "block-form",
+            format!("{} -> {} {}", e.block.state, e.new_state, pos(&e.block.pos)),
+        ),
+        Event::BlockFade(e) => (
+            "block-fade",
+            format!("{} -> {} {}", e.block.state, e.new_state, pos(&e.block.pos)),
+        ),
+        Event::BlockSpread(e) => (
+            "block-spread",
+            format!(
+                "{} -> {} {} from {}",
+                e.block.state,
+                e.new_state,
+                pos(&e.block.pos),
+                pos(&e.source.pos)
+            ),
+        ),
+        Event::BlockFertilize(e) => (
+            "block-fertilize",
+            format!(
+                "{} {} by {}",
+                e.block.state,
+                pos(&e.block.pos),
+                e.player.as_ref().map_or("-", |p| p.name.as_str())
+            ),
         ),
         Event::EntityDamage(e) => (
             "entity-damage",

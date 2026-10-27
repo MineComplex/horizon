@@ -237,6 +237,9 @@ mod run {
         pub resend_blocks: Vec<(String, [i32; 3])>,
         /// A break a plugin cancelled the drops of.
         pub no_drops: bool,
+        /// Putting back blocks a plugin's cancelled block event changed: the
+        /// level reports no changes meanwhile.
+        pub reverting: bool,
         pub started: bool,
         pub stop: bool,
         /// Players whose join the plugins already heard, by connection.

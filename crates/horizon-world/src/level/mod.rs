@@ -215,13 +215,29 @@ pub enum EntityQuery {
     Arrows,
 }
 
+/// Why blocks changed by themselves, as a server's plugins hear of it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum BlockChange {
+    /// `BlockGrowEvent`: a plant grew.
+    Grow,
+    /// `BlockSpreadEvent`: grass, mycelium, vines, kelp and the other growing
+    /// plants, mushrooms or fire spread from `source`.
+    Spread { source: BlockPos },
+    /// `BlockFormEvent`: snow and ice from the weather; stone, cobblestone,
+    /// obsidian and basalt where lava meets water.
+    Form,
+    /// `BlockFadeEvent`: ice melting, coral dying, fire going out, grass and
+    /// farmland turning to dirt.
+    Fade,
+}
 /// Side effects reported to the caller, in vanilla call order.
 #[derive(Clone, Debug, PartialEq)]
 pub enum LevelEvent {
-    /// A plant grew from a random tick (`BlockGrowEvent`), when the level
-    /// `reports_growth`: the blocks it set, each with the state it replaced
-    /// and the new one; the first is the block that grew.
-    Grew {
+    /// Blocks changed by themselves (`BlockChange`), when the level
+    /// `reports_changes`: each with the state it replaced and the new one;
+    /// the first is the block the event names.
+    Changed {
+        cause: BlockChange,
         changes: Vec<(BlockPos, BlockStateId, BlockStateId)>,
     },
     /// `Level.levelEvent(type, pos, data)`, using vanilla's numeric event IDs
@@ -428,9 +444,9 @@ pub trait LevelAccess {
         true
     }
     fn emit(&mut self, _event: LevelEvent) {}
-    /// Report the plants that grow (`LevelEvent::Grew`): a server whose
-    /// plugins hear of growth, and may put the blocks back.
-    fn reports_growth(&self) -> bool {
+    /// Report the blocks that change by themselves (`LevelEvent::Changed`):
+    /// a server whose plugins hear of them, and may put them back.
+    fn reports_changes(&self) -> bool {
         false
     }
     /// `LevelChunk.setBlockState` replaced a block that had a block entity by

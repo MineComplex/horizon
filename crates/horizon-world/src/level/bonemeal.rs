@@ -141,6 +141,30 @@ impl Behaviours {
         }
         false
     }
+    /// Where bone meal on `pos`, clicked on `face`, would grow something:
+    /// the block itself when it is a valid target, else the full water beside
+    /// a sturdy face (water plants). For a server's `BlockFertilizeEvent`.
+    pub fn bone_meal_target<L: LevelAccess + ?Sized>(
+        &self,
+        level: &mut L,
+        ticks: &mut Ticks,
+        pos: BlockPos,
+        face: Direction,
+    ) -> Option<BlockPos> {
+        let mut sim = self.sim(level, ticks);
+        let state = sim.state(pos);
+        if let Some(kind) = self.bonemeal_kind(state)
+            && sim.bonemeal_valid(kind, pos, state)
+        {
+            return Some(pos);
+        }
+        let relative = rel(pos, face);
+        let water = sim.state(relative);
+        (self.is_face_sturdy(state, face)
+            && self.is_block(water, self.named.water)
+            && self.fluid(water).amount() == 8)
+            .then_some(relative)
+    }
     /// `BoneMealItem.growCrop` (dispensers call this directly).
     pub fn grow_crop<L: LevelAccess + ?Sized>(
         &self,

@@ -630,8 +630,8 @@ struct GameLevel<'w> {
     /// `Level.isClientSide`: a client's copy of the level (a guest of a LAN
     /// world, a window on its server thread, a dedicated server's client).
     client_side: bool,
-    /// Plugins hear of plants growing (`LevelEvent::Grew`).
-    growth_events: bool,
+    /// Plugins hear of blocks changing by themselves (`LevelEvent::Changed`).
+    change_events: bool,
 }
 struct PlayerCollision {
     y: f64,
@@ -724,8 +724,8 @@ impl LevelAccess for GameLevel<'_> {
     fn is_client_side(&self) -> bool {
         self.client_side
     }
-    fn reports_growth(&self) -> bool {
-        self.growth_events
+    fn reports_changes(&self) -> bool {
+        self.change_events
     }
     fn world_surface(&self, x: i32, z: i32) -> i32 {
         self.world.world_surface(x, z, |s| self.facts.is_air(s))
@@ -2706,7 +2706,7 @@ impl Game<'_> {
             tnts: &self.tnts,
             falling: &self.falling,
         };
-        let growth_events = self.plugin_growth_events();
+        let change_events = self.plugin_change_events();
         let mut level = GameLevel {
             cart_boxes,
             arrow_boxes,
@@ -2744,16 +2744,22 @@ impl Game<'_> {
             random_tick_sections: &mut self.random_tick_sections,
             lid_openers: &self.lid_openers,
             client_side: self.remote.is_some(),
-            growth_events,
+            change_events,
         };
         let result = f(self.res.behaviours(), &mut level, &mut self.block_ticks);
         self.flush_spill();
         result
     }
-    /// Plugins hear of plants growing (`BlockGrowEvent`).
-    fn plugin_growth_events(&self) -> bool {
+    /// Plugins hear of blocks growing, spreading, forming and fading.
+    fn plugin_change_events(&self) -> bool {
         #[cfg(feature = "mods")]
-        return self.plugins_listen(horizon_mods::plugin::EventKind::BlockGrow);
+        {
+            use horizon_mods::plugin::EventKind as K;
+            !self.mods.plugin.reverting
+                && [K::BlockGrow, K::BlockSpread, K::BlockForm, K::BlockFade]
+                    .into_iter()
+                    .any(|k| self.plugins_listen(k))
+        }
         #[cfg(not(feature = "mods"))]
         false
     }
@@ -3365,12 +3371,12 @@ impl Game<'_> {
                     state,
                     kind: "shrieker_respond",
                 } => self.shrieker_block_event(pos, state),
-                // BlockGrowEvent for a plant that grew.
-                LevelEvent::Grew { changes } => {
+                // BlockGrow, Spread, Form and FadeEvent.
+                LevelEvent::Changed { cause, changes } => {
                     #[cfg(feature = "mods")]
-                    self.plugin_grew(&changes);
+                    self.plugin_block_changed(cause, &changes);
                     #[cfg(not(feature = "mods"))]
-                    let _ = changes;
+                    let _ = (cause, changes);
                 }
                 LevelEvent::BlockEntityEvent { pos, a, b, .. } => {
                     self.block_entity_event([pos.x, pos.y, pos.z], a, b)

@@ -2479,6 +2479,11 @@ impl Game<'_> {
             let _ = player.peaceful_regeneration(rules);
             let _ = player.food_tick(health, rules);
             events.append(&mut player.events);
+            // Flying into a wall waits for the plugins too.
+            #[cfg(feature = "mods")]
+            {
+                player.defer_env_damage = defer;
+            }
             let _ = MotionWorld {
                 entities: &[],
                 player,
@@ -2488,6 +2493,12 @@ impl Game<'_> {
                 resources: game.motion,
             }
             .server_travel();
+            // EntityDamageEvent for it.
+            #[cfg(feature = "mods")]
+            game.plugin_player_env_damage();
+            let Some(player) = game.player.as_mut() else {
+                return (Vec::new(), None);
+            };
             // Landing damage from this travel reaches the tracker too.
             events.append(&mut player.events);
             // A hurt since the last tick marked the velocity (Entity.markHurt):

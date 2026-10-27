@@ -864,10 +864,27 @@ impl Game<'_> {
         vetoes
     }
 
-    /// A plant grew: `BlockGrowEvent`. A cancelled growth puts back the
+    /// Bone meal about to be used on `target`: `BlockFertilizeEvent`, with
+    /// the player whose turn it is. False when a plugin cancelled it.
+    pub(super) fn plugin_fertilize(&mut self, target: horizon_core::position::BlockPos) -> bool {
+        let block = self.plugin_level_block(target);
+        let player = self.plugin_acting_player();
+        !plugin::is_cancelled(&self.plugin_fire(
+            None,
+            Event::BlockFertilize(ev::BlockFertilizeEvent {
+                player,
+                block,
+                cancelled: false,
+            }),
+        ))
+    }
+
+    /// Blocks changed by themselves: `BlockGrowEvent`, `BlockSpreadEvent`,
+    /// `BlockFormEvent` or `BlockFadeEvent`. A cancelled change puts back the
     /// blocks it set (those nothing changed since).
-    pub(super) fn plugin_grew(
+    pub(super) fn plugin_block_changed(
         &mut self,
+        cause: horizon_world::level::BlockChange,
         changes: &[(
             horizon_core::position::BlockPos,
             horizon_world::registry::BlockStateId,
@@ -879,22 +896,43 @@ impl Game<'_> {
         };
         let mut block = self.plugin_level_block(pos);
         block.state = self.state_string(old);
-        let back = self.plugin_fire(
-            None,
-            Event::BlockGrow(ev::BlockGrowEvent {
+        use horizon_world::level::BlockChange as C;
+        let new_state = self.state_string(new);
+        let event = match cause {
+            C::Grow => Event::BlockGrow(ev::BlockGrowEvent {
                 block,
-                new_state: self.state_string(new),
+                new_state,
                 cancelled: false,
             }),
-        );
+            C::Form => Event::BlockForm(ev::BlockGrowEvent {
+                block,
+                new_state,
+                cancelled: false,
+            }),
+            C::Fade => Event::BlockFade(ev::BlockGrowEvent {
+                block,
+                new_state,
+                cancelled: false,
+            }),
+            C::Spread { source } => Event::BlockSpread(ev::BlockSpreadEvent {
+                block,
+                source: self.plugin_level_block(source),
+                new_state,
+                cancelled: false,
+            }),
+        };
+        let back = self.plugin_fire(None, event);
         if !plugin::is_cancelled(&back) {
             return;
         }
+        // No events for the blocks put back.
+        let was = std::mem::replace(&mut self.mods.plugin.reverting, true);
         for &(pos, old, new) in changes.iter().rev() {
             if self.world.block(pos.x, pos.y, pos.z) == new {
                 let _ = self.level_set([pos.x, pos.y, pos.z], old);
             }
         }
+        self.mods.plugin.reverting = was;
     }
 
     /// The damage the mobs' surroundings dealt them in their ticks (fire,

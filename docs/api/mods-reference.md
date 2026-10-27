@@ -1225,12 +1225,33 @@ A fluid is about to flow from `block` into `to`, towards `face` (`down`, `north`
 
 ### record `block-grow-event`
 
-A plant grew in a random tick (crops, stems and their fruit, cactus, sugar cane, berry bushes, cocoa, nether wart): `block` is the block that grew as it was, `new-state` what it is now (the world already shows it). Cancelling puts back every block the growth set.
+A block changed by itself. `block-grow`: a plant grew in a random tick (crops, stems and their fruit, cactus, sugar cane, berry bushes, cocoa, nether wart). `block-form`: snow or ice formed in the weather. `block-fade`: ice melted, coral died, fire went out, grass or farmland turned to dirt. `block` is the block as it was, `new-state` what it is now (the world already shows it). Cancelling puts back every block the change set.
 
 | Field | Type | |
 | --- | --- | --- |
 | `block` | `block` |  |
 | `new-state` | `string` |  |
+| `cancelled` | `bool` |  |
+
+### record `block-spread-event`
+
+A block spread from `source` into `block` (grass, mycelium, vines, kelp and the other growing plants, mushrooms, fire): `block` as it was, `new-state` what it is now. Cancelling puts it back.
+
+| Field | Type | |
+| --- | --- | --- |
+| `block` | `block` |  |
+| `source` | `block` |  |
+| `new-state` | `string` |  |
+| `cancelled` | `bool` |  |
+
+### record `block-fertilize-event`
+
+Bone meal is about to be used on `block` (or on the water beside it, for water plants), by `player` when a player uses it. Cancelling grows nothing and keeps the bone meal.
+
+| Field | Type | |
+| --- | --- | --- |
+| `player` | `option<player>` |  |
+| `block` | `block` |  |
 | `cancelled` | `bool` |  |
 
 ### record `entity-damage-event`
@@ -1385,6 +1406,10 @@ Every event. A listener receives each kind it registered for.
 | `block-piston-retract` | `block-piston-event` |  |
 | `block-from-to` | `block-from-to-event` |  |
 | `block-grow` | `block-grow-event` |  |
+| `block-spread` | `block-spread-event` |  |
+| `block-form` | `block-grow-event` |  |
+| `block-fade` | `block-grow-event` |  |
+| `block-fertilize` | `block-fertilize-event` |  |
 | `entity-damage` | `entity-damage-event` |  |
 | `entity-death` | `entity-death-event` |  |
 | `entity-spawn` | `entity-spawn-event` |  |
@@ -1428,6 +1453,10 @@ The kinds of `event`, for `plugin-listeners.listen`.
 | `block-piston-retract` |  |
 | `block-from-to` |  |
 | `block-grow` |  |
+| `block-spread` |  |
+| `block-form` |  |
+| `block-fade` |  |
+| `block-fertilize` |  |
 | `entity-damage` |  |
 | `entity-death` |  |
 | `entity-spawn` |  |
