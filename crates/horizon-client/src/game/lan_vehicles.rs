@@ -37,60 +37,6 @@ fn corners(b: Aabb) -> ([f64; 3], [f64; 3]) {
 }
 
 impl Game<'_> {
-    /// The box of a boat, minecart, armor stand, item frame or painting, and
-    /// the point an interact packet's location is measured from (the
-    /// client's `remote_object_hit` uses the same points).
-    pub(super) fn object_target(&self, id: i32) -> Option<([f64; 3], [f64; 3], [f64; 3])> {
-        let id = u32::try_from(id).ok()?;
-        let at = |v: Vec3| [v.x, v.y, v.z];
-        let centre = |p: [i32; 3]| p.map(|v| f64::from(v) + 0.5);
-        if let Some(b) = self.boats.iter().find(|b| b.id == id) {
-            let (lo, hi) = corners(b.bounds());
-            return Some((lo, hi, at(b.position)));
-        }
-        if let Some(c) = self.carts.iter().find(|c| c.id == id) {
-            let (lo, hi) = corners(c.bounds());
-            return Some((lo, hi, at(c.position)));
-        }
-        if let Some(a) = self.armor_stands.iter().find(|a| a.id == id) {
-            let (lo, hi) = corners(a.bounds());
-            return Some((lo, hi, at(a.position)));
-        }
-        if let Some(c) = self.cushions.iter().find(|c| c.id == id) {
-            let (lo, hi) = corners(Aabb::new(
-                Vec3::new(c.position.x - 0.5, c.position.y, c.position.z - 0.5),
-                Vec3::new(c.position.x + 0.5, c.position.y + 0.25, c.position.z + 0.5),
-            ));
-            return Some((lo, hi, at(c.position)));
-        }
-        if let Some(f) = self.item_frames.iter().find(|f| f.id == id) {
-            let (lo, hi) = f.bounds();
-            return Some((lo, hi, centre(f.pos)));
-        }
-        let p = self.paintings.iter().find(|p| p.id == id)?;
-        let (lo, hi) = p.bounds();
-        Some((lo, hi, centre(p.pos)))
-    }
-
-    /// The vehicles the server's players ride: they move with their riders,
-    /// not in `tick_boats` and `tick_carts`.
-    pub(super) fn guest_vehicles(&self) -> Vec<u32> {
-        self.lan.as_ref().map_or_else(Vec::new, |h| {
-            h.hub.guests.iter().filter_map(|g| g.vehicle).collect()
-        })
-    }
-
-    /// Whether a server player other than the one acting rides `vehicle`
-    /// (`Entity.canAddPassenger`: a boat or minecart seats one player here).
-    pub(super) fn ridden_by_guest(&self, vehicle: u32) -> bool {
-        self.lan.as_ref().is_some_and(|h| {
-            h.hub
-                .guests
-                .iter()
-                .any(|g| Some(g.conn) != self.lan_acting && g.vehicle == Some(vehicle))
-        })
-    }
-
     /// `Player.rideTick` for a server player, before its moves this tick:
     /// it stays in its seat, steers its minecart, or gets out.
     pub(super) fn guest_vehicle_tick(&mut self, host: &mut LanHost, conn: u32) {
@@ -216,7 +162,59 @@ impl Game<'_> {
             g.on_ground = false;
         }
     }
-
+}
+impl crate::game::Sim<'_> {
+    /// The box of a boat, minecart, armor stand, item frame or painting, and
+    /// the point an interact packet's location is measured from (the
+    /// client's `remote_object_hit` uses the same points).
+    pub(super) fn object_target(&self, id: i32) -> Option<([f64; 3], [f64; 3], [f64; 3])> {
+        let id = u32::try_from(id).ok()?;
+        let at = |v: Vec3| [v.x, v.y, v.z];
+        let centre = |p: [i32; 3]| p.map(|v| f64::from(v) + 0.5);
+        if let Some(b) = self.boats.iter().find(|b| b.id == id) {
+            let (lo, hi) = corners(b.bounds());
+            return Some((lo, hi, at(b.position)));
+        }
+        if let Some(c) = self.carts.iter().find(|c| c.id == id) {
+            let (lo, hi) = corners(c.bounds());
+            return Some((lo, hi, at(c.position)));
+        }
+        if let Some(a) = self.armor_stands.iter().find(|a| a.id == id) {
+            let (lo, hi) = corners(a.bounds());
+            return Some((lo, hi, at(a.position)));
+        }
+        if let Some(c) = self.cushions.iter().find(|c| c.id == id) {
+            let (lo, hi) = corners(Aabb::new(
+                Vec3::new(c.position.x - 0.5, c.position.y, c.position.z - 0.5),
+                Vec3::new(c.position.x + 0.5, c.position.y + 0.25, c.position.z + 0.5),
+            ));
+            return Some((lo, hi, at(c.position)));
+        }
+        if let Some(f) = self.item_frames.iter().find(|f| f.id == id) {
+            let (lo, hi) = f.bounds();
+            return Some((lo, hi, centre(f.pos)));
+        }
+        let p = self.paintings.iter().find(|p| p.id == id)?;
+        let (lo, hi) = p.bounds();
+        Some((lo, hi, centre(p.pos)))
+    }
+    /// The vehicles the server's players ride: they move with their riders,
+    /// not in `tick_boats` and `tick_carts`.
+    pub(super) fn guest_vehicles(&self) -> Vec<u32> {
+        self.lan.as_ref().map_or_else(Vec::new, |h| {
+            h.hub.guests.iter().filter_map(|g| g.vehicle).collect()
+        })
+    }
+    /// Whether a server player other than the one acting rides `vehicle`
+    /// (`Entity.canAddPassenger`: a boat or minecart seats one player here).
+    pub(super) fn ridden_by_guest(&self, vehicle: u32) -> bool {
+        self.lan.as_ref().is_some_and(|h| {
+            h.hub
+                .guests
+                .iter()
+                .any(|g| Some(g.conn) != self.lan_acting && g.vehicle == Some(vehicle))
+        })
+    }
     /// `ServerGamePacketListenerImpl.handleMoveVehicle`: the boat its rider
     /// drives goes where the client says, unless it moved too quickly or
     /// wrongly; then it stays, and the client is told where it is.
@@ -320,7 +318,6 @@ impl Game<'_> {
         g.previous_position = g.position;
         g.position = [seat.x, seat.y, seat.z];
     }
-
     /// `handlePaddleBoat`: the paddles of the boat the player drives.
     pub(super) fn guest_paddle_boat(&mut self, host: &LanHost, conn: u32, paddles: [bool; 2]) {
         let vehicle = host

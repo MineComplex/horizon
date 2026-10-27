@@ -13,7 +13,8 @@ fn occupied(extra: &Tag, key: &str) -> bool {
     matches!(extra.get(key), Some(Tag::Compound(c)) if !c.is_empty())
 }
 
-impl Game<'_> {
+impl Game<'_> {}
+impl crate::game::Sim<'_> {
     /// `ServerPlayer.setEntityOnShoulder` for a parrot that touched its
     /// owner: stored in the first free slot, the parrot gone from the world.
     pub(super) fn parrot_to_shoulder(&mut self, mob: u32) {
@@ -54,7 +55,6 @@ impl Game<'_> {
         self.creatures.shoulder_time.insert(uuid, now);
         self.mobs[i].removed = true;
     }
-
     /// `ServerPlayer.handleShoulderEntities`: the parrots leave the shoulder
     /// of a player who falls, swims, flies, sleeps, is hurt, dying, a
     /// spectator or spinning with a riptide.
@@ -81,7 +81,6 @@ impl Game<'_> {
             self.remove_entities_on_shoulder();
         }
     }
-
     /// `ServerPlayer.removeEntitiesOnShoulder` (not within a second of the
     /// landing) and `respawnEntityOnShoulder`: the parrots come back at the
     /// player, still owned by them.

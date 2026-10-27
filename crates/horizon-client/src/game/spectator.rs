@@ -12,6 +12,29 @@ use horizon_client::{
 use horizon_protocol::packets::play::{self, Serverbound as S};
 
 impl Game<'_> {
+    /// `Hud.extractHotbar` for a spectator, and `extractAction`'s prompt.
+    pub(super) fn draw_spectator_hotbar(&mut self, batch: &mut HudBatch) {
+        let (w, h) = (batch.width as i32, batch.height as i32);
+        let now = self.spectator_now();
+        let labels: Vec<Text> = (1..=9)
+            .map(|n| keybinds::display_name(self.sim.settings.keys.get(&format!("key.hotbar.{n}"))))
+            .collect();
+        let font = &self.front.gui.atlas.font;
+        let mut draws =
+            self.sim
+                .spectator_gui
+                .hotbar(w, h, now, &|slot| labels[slot].clone(), font);
+        draws.extend(self.sim.spectator_gui.action(
+            w,
+            h,
+            now,
+            font,
+            self.settings.text_background(0.0),
+        ));
+        hud_layout::paint(batch, &self.front.gui.atlas, &draws);
+    }
+}
+impl crate::game::Sim<'_> {
     /// `Util.getMillis` for the menu's fade.
     fn spectator_now(&self) -> i64 {
         self.started.elapsed().as_millis() as i64
@@ -88,25 +111,5 @@ impl Game<'_> {
     pub(super) fn spectator_scroll(&mut self, wheel: i32) {
         let now = self.spectator_now();
         self.spectator_gui.on_mouse_scrolled(wheel, now);
-    }
-    /// `Hud.extractHotbar` for a spectator, and `extractAction`'s prompt.
-    pub(super) fn draw_spectator_hotbar(&mut self, batch: &mut HudBatch) {
-        let (w, h) = (batch.width as i32, batch.height as i32);
-        let now = self.spectator_now();
-        let labels: Vec<Text> = (1..=9)
-            .map(|n| keybinds::display_name(self.settings.keys.get(&format!("key.hotbar.{n}"))))
-            .collect();
-        let font = &self.gui.atlas.font;
-        let mut draws = self
-            .spectator_gui
-            .hotbar(w, h, now, &|slot| labels[slot].clone(), font);
-        draws.extend(self.spectator_gui.action(
-            w,
-            h,
-            now,
-            font,
-            self.settings.text_background(0.0),
-        ));
-        hud_layout::paint(batch, &self.gui.atlas, &draws);
     }
 }

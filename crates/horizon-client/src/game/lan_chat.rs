@@ -18,42 +18,6 @@ use horizon_protocol::packets::play::{self, Clientbound as C};
 type Signed = Vec<(String, ChatMessage)>;
 
 impl Game<'_> {
-    /// CommandDispatcher.parse with the guest's permission level.
-    fn parse_as(&mut self, permission: u8, command: &str) -> ParseResults {
-        let level = std::mem::replace(&mut self.world_data.registries.permission, permission);
-        let parse = vanilla::game_dispatcher().parse(command, &self.world_data.registries);
-        self.world_data.registries.permission = level;
-        parse
-    }
-
-    /// SignableCommand.of: the command's message arguments, by name, with
-    /// their text, not past a redirect to the root (`execute ... run`).
-    pub(super) fn signable_arguments(
-        &mut self,
-        permission: u8,
-        command: &str,
-    ) -> Vec<(String, String)> {
-        let parse = self.parse_as(permission, command);
-        let nodes = &vanilla::game_dispatcher().nodes;
-        let root = parse.context.root;
-        let mut out = Vec::new();
-        let mut context = Some(&parse.context);
-        while let Some(c) = context {
-            for &(node, (start, end)) in &c.nodes {
-                if let NodeKind::Argument {
-                    ty: ArgType::Message,
-                    name,
-                } = &nodes[node].kind
-                    && let Some(text) = command.get(start..end)
-                {
-                    out.push((name.clone(), text.to_owned()));
-                }
-            }
-            context = c.child.as_deref().filter(|child| child.root != root);
-        }
-        out
-    }
-
     /// handleChatCommand (performUnsignedChatCommand): refused when the
     /// server enforces secure chat and the command has a message to sign.
     pub(super) fn guest_chat_command(&mut self, host: &mut LanHost, conn: u32, command: &str) {
@@ -194,5 +158,41 @@ impl Game<'_> {
             self.lan_log_event(event);
         }
         true
+    }
+}
+impl crate::game::Sim<'_> {
+    /// CommandDispatcher.parse with the guest's permission level.
+    fn parse_as(&mut self, permission: u8, command: &str) -> ParseResults {
+        let level = std::mem::replace(&mut self.world_data.registries.permission, permission);
+        let parse = vanilla::game_dispatcher().parse(command, &self.world_data.registries);
+        self.world_data.registries.permission = level;
+        parse
+    }
+    /// SignableCommand.of: the command's message arguments, by name, with
+    /// their text, not past a redirect to the root (`execute ... run`).
+    pub(super) fn signable_arguments(
+        &mut self,
+        permission: u8,
+        command: &str,
+    ) -> Vec<(String, String)> {
+        let parse = self.parse_as(permission, command);
+        let nodes = &vanilla::game_dispatcher().nodes;
+        let root = parse.context.root;
+        let mut out = Vec::new();
+        let mut context = Some(&parse.context);
+        while let Some(c) = context {
+            for &(node, (start, end)) in &c.nodes {
+                if let NodeKind::Argument {
+                    ty: ArgType::Message,
+                    name,
+                } = &nodes[node].kind
+                    && let Some(text) = command.get(start..end)
+                {
+                    out.push((name.clone(), text.to_owned()));
+                }
+            }
+            context = c.child.as_deref().filter(|child| child.root != root);
+        }
+        out
     }
 }

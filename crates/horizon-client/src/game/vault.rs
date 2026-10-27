@@ -32,40 +32,6 @@ impl VaultLevel for Players {
 }
 
 impl Game<'_> {
-    fn vault_players(&self) -> Players {
-        let host = self.player.as_ref().map(|p| VaultPlayer {
-            uuid: self.acting_uuid(),
-            block: [p.position.x, p.position.y, p.position.z].map(|v| v.floor() as i32),
-            spectator: self.spectator(),
-        });
-        let guests = self.lan_present().into_iter().map(|g| VaultPlayer {
-            uuid: g.uuid,
-            block: g.position.map(|v| v.floor() as i32),
-            spectator: g.spectator,
-        });
-        Players {
-            time: self.world.game_time,
-            players: host.into_iter().chain(guests).collect(),
-        }
-    }
-    /// The vault at `key` with its block's state and ominous flag.
-    pub(super) fn take_vault(&mut self, key: Pos) -> Option<(Box<Vault>, VaultState, bool)> {
-        let state = self.world.block(key.0, key.1, key.2);
-        let block = self.pack.assets.registry.state(state)?;
-        if block.name != "minecraft:vault" {
-            return None;
-        }
-        let current = block
-            .properties
-            .get("vault_state")
-            .and_then(|s| VaultState::from_name(s))
-            .unwrap_or_default();
-        let ominous = block.properties.get("ominous").is_some_and(|v| v == "true");
-        let Some(BlockEntity::Vault(vault)) = self.world.block_entities.take(&key) else {
-            return None;
-        };
-        Some((vault, current, ominous))
-    }
     /// Runs `f` on the vault at `key` with the level random and a loot roll,
     /// then applies its events.
     fn with_vault<T>(
@@ -239,5 +205,41 @@ impl Game<'_> {
                 self.submit_item_world(&state, copy, vertex_light(light), out);
             }
         }
+    }
+}
+impl crate::game::Sim<'_> {
+    fn vault_players(&self) -> Players {
+        let host = self.player.as_ref().map(|p| VaultPlayer {
+            uuid: self.acting_uuid(),
+            block: [p.position.x, p.position.y, p.position.z].map(|v| v.floor() as i32),
+            spectator: self.spectator(),
+        });
+        let guests = self.lan_present().into_iter().map(|g| VaultPlayer {
+            uuid: g.uuid,
+            block: g.position.map(|v| v.floor() as i32),
+            spectator: g.spectator,
+        });
+        Players {
+            time: self.world.game_time,
+            players: host.into_iter().chain(guests).collect(),
+        }
+    }
+    /// The vault at `key` with its block's state and ominous flag.
+    pub(super) fn take_vault(&mut self, key: Pos) -> Option<(Box<Vault>, VaultState, bool)> {
+        let state = self.world.block(key.0, key.1, key.2);
+        let block = self.pack.assets.registry.state(state)?;
+        if block.name != "minecraft:vault" {
+            return None;
+        }
+        let current = block
+            .properties
+            .get("vault_state")
+            .and_then(|s| VaultState::from_name(s))
+            .unwrap_or_default();
+        let ominous = block.properties.get("ominous").is_some_and(|v| v == "true");
+        let Some(BlockEntity::Vault(vault)) = self.world.block_entities.take(&key) else {
+            return None;
+        };
+        Some((vault, current, ominous))
     }
 }

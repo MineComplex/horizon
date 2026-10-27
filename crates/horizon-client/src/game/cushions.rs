@@ -105,34 +105,8 @@ impl horizon_client::cushion::World for PlacementWorld<'_, '_> {
 }
 
 impl Game<'_> {
-    /// The cushion under the crosshair, its distance and the hit point.
-    pub(super) fn cushion_hit(&self) -> Option<(usize, f64, [f64; 3])> {
-        let eye = self.eye_position()?;
-        let dir = view_vector(self.yaw, self.pitch);
-        let reach: f64 = if self.creative { 5.0 } else { 3.0 };
-        let mut best: Option<(usize, f64, [f64; 3])> = None;
-        for (i, c) in self.cushions.iter().enumerate() {
-            let Some(d) = super::ray_box(eye, dir, reach, aabb(c.bounds())) else {
-                continue;
-            };
-            if best.is_none_or(|b| d < b.1) {
-                best = Some((i, d, std::array::from_fn(|k| eye[k] + dir[k] * d)));
-            }
-        }
-        best
-    }
-
     pub(super) fn cushion_survives(&self, c: &Cushion) -> bool {
         horizon_client::cushion::survives(&PlacementWorld(self), aabb(c.bounds()))
-    }
-
-    /// `Cushion.destroyIfInFire`: a fire-tagged block inside the deflated box.
-    fn cushion_in_fire(&self, c: &Cushion) -> bool {
-        let bounds = aabb(c.bounds()).next_deflated();
-        blocks_in(bounds).any(|p| {
-            let facts = self.res.facts().get(self.world.block(p[0], p[1], p[2]));
-            self.res.items().block_in_tag("minecraft:fire", &facts.name)
-        })
     }
 
     /// `CushionItem.useOn`: on the top face only, spawning at the click's
@@ -225,11 +199,11 @@ impl Game<'_> {
             position.y.floor() as i32,
             position.z.floor() as i32,
         ];
-        self.cushions.push(Cushion {
+        self.sim.cushions.push(Cushion {
             id,
             position,
             pos: attached,
-            yaw: snap_yaw(self.yaw),
+            yaw: snap_yaw(self.sim.yaw),
             color,
             check_interval: 0,
         });
@@ -395,45 +369,6 @@ impl Game<'_> {
         }
     }
 
-    /// `Player.rideTick` on a cushion: hold the seat, and get up on sneak.
-    pub(super) fn tick_cushion_riding(&mut self, keys: super::Keys) -> bool {
-        let Some(c) = self
-            .cushions
-            .iter()
-            .find(|c| Some(c.id) == self.riding)
-            .cloned()
-        else {
-            return false;
-        };
-        if keys.shift {
-            let at = c.dismount();
-            self.riding = None;
-            if let Some(p) = self.player.as_mut() {
-                self.previous_position = p.position;
-                p.position = at;
-                p.velocity = Vec3::ZERO;
-                p.fall_distance = 0.0;
-            }
-            // `Cushion.removePassenger`: the get-up sound for a rider that
-            // left rather than one whose cushion was killed.
-            self.sounds.play(
-                "minecraft:entity.cushion.get_up",
-                Some([c.position.x, c.position.y, c.position.z]),
-                1.0,
-                1.0,
-            );
-            return true;
-        }
-        let seat = c.seat();
-        if let Some(p) = self.player.as_mut() {
-            self.previous_position = p.position;
-            p.position = seat;
-            p.velocity = Vec3::ZERO;
-            p.fall_distance = 0.0;
-        }
-        true
-    }
-
     /// `CushionRenderer`: the coloured model, rotated to the nearest
     /// direction, with its bottom on the cushion's position.
     pub(super) fn cushion_geometry(
@@ -444,7 +379,7 @@ impl Game<'_> {
         let Some(model) = self.cushion_model.as_ref() else {
             return;
         };
-        let sprites = &self.gui.atlas.sprites;
+        let sprites = &self.front.gui.atlas.sprites;
         for c in &self.cushions {
             let entity_start = out.len();
             let a = aabb(c.bounds());
@@ -487,5 +422,69 @@ impl Game<'_> {
             );
             self.cull_entity_vertices(out, entity_start);
         }
+    }
+}
+impl crate::game::Sim<'_> {
+    /// The cushion under the crosshair, its distance and the hit point.
+    pub(super) fn cushion_hit(&self) -> Option<(usize, f64, [f64; 3])> {
+        let eye = self.eye_position()?;
+        let dir = view_vector(self.yaw, self.pitch);
+        let reach: f64 = if self.creative { 5.0 } else { 3.0 };
+        let mut best: Option<(usize, f64, [f64; 3])> = None;
+        for (i, c) in self.cushions.iter().enumerate() {
+            let Some(d) = super::ray_box(eye, dir, reach, aabb(c.bounds())) else {
+                continue;
+            };
+            if best.is_none_or(|b| d < b.1) {
+                best = Some((i, d, std::array::from_fn(|k| eye[k] + dir[k] * d)));
+            }
+        }
+        best
+    }
+    /// `Cushion.destroyIfInFire`: a fire-tagged block inside the deflated box.
+    fn cushion_in_fire(&self, c: &Cushion) -> bool {
+        let bounds = aabb(c.bounds()).next_deflated();
+        blocks_in(bounds).any(|p| {
+            let facts = self.res.facts().get(self.world.block(p[0], p[1], p[2]));
+            self.res.items().block_in_tag("minecraft:fire", &facts.name)
+        })
+    }
+    /// `Player.rideTick` on a cushion: hold the seat, and get up on sneak.
+    pub(super) fn tick_cushion_riding(&mut self, keys: super::Keys) -> bool {
+        let Some(c) = self
+            .cushions
+            .iter()
+            .find(|c| Some(c.id) == self.riding)
+            .cloned()
+        else {
+            return false;
+        };
+        if keys.shift {
+            let at = c.dismount();
+            self.riding = None;
+            if let Some(p) = self.player.as_mut() {
+                self.previous_position = p.position;
+                p.position = at;
+                p.velocity = Vec3::ZERO;
+                p.fall_distance = 0.0;
+            }
+            // `Cushion.removePassenger`: the get-up sound for a rider that
+            // left rather than one whose cushion was killed.
+            self.sounds.play(
+                "minecraft:entity.cushion.get_up",
+                Some([c.position.x, c.position.y, c.position.z]),
+                1.0,
+                1.0,
+            );
+            return true;
+        }
+        let seat = c.seat();
+        if let Some(p) = self.player.as_mut() {
+            self.previous_position = p.position;
+            p.position = seat;
+            p.velocity = Vec3::ZERO;
+            p.fall_distance = 0.0;
+        }
+        true
     }
 }
