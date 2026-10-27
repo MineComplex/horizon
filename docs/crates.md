@@ -21,12 +21,20 @@ Velocity analog.
    timelines and the command registries, out of the window's `UiState`.
 4. `Game::front` (`Frontend` in game.rs): the 84 fields only a window uses (window, renderer, input,
    fog, LOD, camera, sounds, HUD widgets) in one struct, apart from the simulation's.
+5. `Game = Sim + Frontend` (`Game` derefs to `Sim`), and about 1200 of its 3070 methods are `impl Sim`:
+   the ones that touch neither the window nor a window-only method.
+
+There is no single player in this fork: the client only joins servers. Once the server binary stands on
+its own, the integrated server thread, in-frame play, world select and create, Open to LAN and Play with
+Friends leave the client.
 
 ## Next
 
-5. Move the server half of `Game` and its `impl` blocks into a crate without the window: the methods that
+6. Move the server half of `Game` and its `impl` blocks into a crate without the window: the methods that
    touch `self.front` stay in the client, and the calls server code makes into it (sounds, particles,
    screens) go through a trait.
-6. A dedicated server binary built from that crate alone (today `horizon-client --dedicated`).
-7. `horizon-server-api`: the Bukkit-like API as native Rust plugins (traits, dynamic libraries), the way
+7. A dedicated server binary, and the game-binary fixtures (`dispense_fixture`, `sculk_fixture`,
+   `command_harness`, `net_harness`) and `horizon-ctl launch --world` on it; then single player out of the
+   client.
+8. `horizon-server-api`: the Bukkit-like API as native Rust plugins (traits, dynamic libraries), the way
    `horizon-proxy` loads its plugins.
