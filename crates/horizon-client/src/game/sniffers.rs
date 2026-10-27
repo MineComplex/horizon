@@ -10,6 +10,20 @@ use horizon_client::{
 use horizon_core::random::RandomSource;
 
 impl Game<'_> {
+    /// The egg item at the parent (`Sniffer.spawnChildFromBreeding`; the
+    /// brain already played the plop and dropped the experience).
+    pub(super) fn lay_sniffer_egg(&mut self, parent: &Mob) {
+        let at = [parent.position.x, parent.position.y, parent.position.z];
+        // new ItemEntity(level, x, y, z, stack): a little random push.
+        let vx = self.world.random.next_double() * 0.2 - 0.1;
+        let vz = self.world.random.next_double() * 0.2 - 0.1;
+        self.spawn_item(
+            ItemStack::new("minecraft:sniffer_egg", 1),
+            at,
+            [vx, 0.2, vz],
+            10,
+        );
+    }
     /// A snifflet where the egg was.
     pub(super) fn hatch_sniffer(&mut self, pos: [i32; 3]) {
         let at = [
@@ -86,21 +100,5 @@ impl Game<'_> {
                 self.front.audio.play(&hit, Some(at), 0.5, 0.5);
             }
         }
-    }
-}
-impl crate::game::Sim<'_> {
-    /// The egg item at the parent (`Sniffer.spawnChildFromBreeding`; the
-    /// brain already played the plop and dropped the experience).
-    pub(super) fn lay_sniffer_egg(&mut self, parent: &Mob) {
-        let at = [parent.position.x, parent.position.y, parent.position.z];
-        // new ItemEntity(level, x, y, z, stack): a little random push.
-        let vx = self.world.random.next_double() * 0.2 - 0.1;
-        let vz = self.world.random.next_double() * 0.2 - 0.1;
-        self.spawn_item(
-            ItemStack::new("minecraft:sniffer_egg", 1),
-            at,
-            [vx, 0.2, vz],
-            10,
-        );
     }
 }

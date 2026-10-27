@@ -138,6 +138,30 @@ pub(super) fn fireworks_of(stack: &ItemStack) -> (u8, Vec<FireworkExplosion>) {
         .unwrap_or((1, Vec::new()))
 }
 impl Game<'_> {
+    pub(super) fn new_rocket(&mut self, at: Vec3, stack: &ItemStack, attached: bool) -> Rocket {
+        let (flight, explosions) = fireworks_of(stack);
+        // FireworkRocketEntity: motion and lifetime come from the rocket's own random.
+        let r = &mut super::dispenser::entity_random();
+        let tri = |r: &mut horizon_core::random::LegacyRandom| r.triangle(0.0, 0.002297);
+        let velocity = Vec3::new(tri(r), 0.05, tri(r));
+        let lifetime = 10 * (1 + i32::from(flight))
+            + r.next_int_bound(6).unwrap_or(0)
+            + r.next_int_bound(7).unwrap_or(0);
+        Rocket {
+            id: 0,
+            position: at,
+            previous: at,
+            velocity,
+            life: 0,
+            lifetime,
+            explosions,
+            attached,
+            guest: None,
+            attached_to: None,
+            angled: false,
+            item: stack.clone(),
+        }
+    }
     /// `FireworkRocketItem.useOn`: launch from the clicked point.
     pub(super) fn launch_firework(&mut self, hit: &Hit, stack: &ItemStack) -> bool {
         if &*stack.item != "minecraft:firework_rocket" {
@@ -155,6 +179,14 @@ impl Game<'_> {
         }
         self.swing_arm();
         true
+    }
+    /// A rocket shot at an angle (`DATA_SHOT_AT_ANGLE`): out of a dispenser
+    /// (`FireworkRocketItem.asProjectile`) or a crossbow.
+    pub(super) fn launch_angled_rocket(&mut self, at: Vec3, velocity: Vec3, stack: &ItemStack) {
+        let mut rocket = self.new_rocket(at, stack, false);
+        rocket.velocity = velocity;
+        rocket.angled = true;
+        self.rockets.push(rocket);
     }
     /// `FireworkRocketItem.use` while gliding: a rocket attached to the player.
     pub(super) fn boost_firework(&mut self, stack: &ItemStack) -> bool {
@@ -419,39 +451,5 @@ impl Game<'_> {
             );
             self.submit_item_world(&state, pose, vertex_light(light), out);
         }
-    }
-}
-impl crate::game::Sim<'_> {
-    pub(super) fn new_rocket(&mut self, at: Vec3, stack: &ItemStack, attached: bool) -> Rocket {
-        let (flight, explosions) = fireworks_of(stack);
-        // FireworkRocketEntity: motion and lifetime come from the rocket's own random.
-        let r = &mut super::dispenser::entity_random();
-        let tri = |r: &mut horizon_core::random::LegacyRandom| r.triangle(0.0, 0.002297);
-        let velocity = Vec3::new(tri(r), 0.05, tri(r));
-        let lifetime = 10 * (1 + i32::from(flight))
-            + r.next_int_bound(6).unwrap_or(0)
-            + r.next_int_bound(7).unwrap_or(0);
-        Rocket {
-            id: 0,
-            position: at,
-            previous: at,
-            velocity,
-            life: 0,
-            lifetime,
-            explosions,
-            attached,
-            guest: None,
-            attached_to: None,
-            angled: false,
-            item: stack.clone(),
-        }
-    }
-    /// A rocket shot at an angle (`DATA_SHOT_AT_ANGLE`): out of a dispenser
-    /// (`FireworkRocketItem.asProjectile`) or a crossbow.
-    pub(super) fn launch_angled_rocket(&mut self, at: Vec3, velocity: Vec3, stack: &ItemStack) {
-        let mut rocket = self.new_rocket(at, stack, false);
-        rocket.velocity = velocity;
-        rocket.angled = true;
-        self.rockets.push(rocket);
     }
 }

@@ -356,6 +356,54 @@ impl Game<'_> {
         }
         true
     }
+    /// The armor stand under the crosshair, its distance and the hit point.
+    pub(super) fn armor_stand_hit(&self) -> Option<(usize, f64, [f64; 3])> {
+        let eye = self.eye_position()?;
+        let dir = view_vector(self.yaw, self.pitch);
+        let reach: f64 = if self.creative { 5.0 } else { 3.0 };
+        let mut best: Option<(usize, f64, [f64; 3])> = None;
+        for (i, a) in self.armor_stands.iter().enumerate() {
+            if a.marker {
+                continue;
+            }
+            let b = a.bounds();
+            let (lo, hi) = (b.min_position(), b.max_position());
+            let (lo, hi) = ([lo.x, lo.y, lo.z], [hi.x, hi.y, hi.z]);
+            let (mut t0, mut t1) = (0.0f64, reach);
+            let mut hit = true;
+            for k in 0..3 {
+                if dir[k].abs() < 1e-9 {
+                    hit &= eye[k] >= lo[k] && eye[k] <= hi[k];
+                    continue;
+                }
+                let (mut ta, mut tb) = ((lo[k] - eye[k]) / dir[k], (hi[k] - eye[k]) / dir[k]);
+                if ta > tb {
+                    std::mem::swap(&mut ta, &mut tb);
+                }
+                t0 = t0.max(ta);
+                t1 = t1.min(tb);
+            }
+            if hit && t0 <= t1 && best.is_none_or(|b| t0 < b.1) {
+                best = Some((i, t0, std::array::from_fn(|k| eye[k] + dir[k] * t0)));
+            }
+        }
+        best
+    }
+    fn equipment_slot(&self, stack: &ItemStack) -> usize {
+        match self
+            .res
+            .items()
+            .get(&stack.item)
+            .and_then(|i| i.equip_slot.as_deref())
+        {
+            Some("feet") => 2,
+            Some("legs") => 3,
+            Some("chest") => 4,
+            Some("head") => 5,
+            Some("offhand") => 1,
+            _ => 0,
+        }
+    }
     /// `ArmorStand.interactAt`.
     pub(super) fn interact_armor_stand(&mut self) -> bool {
         let Some((i, d, point)) = self.armor_stand_hit() else {
@@ -707,56 +755,6 @@ impl Game<'_> {
                 }
             }
             self.cull_entity_vertices(out, entity_start);
-        }
-    }
-}
-impl crate::game::Sim<'_> {
-    /// The armor stand under the crosshair, its distance and the hit point.
-    pub(super) fn armor_stand_hit(&self) -> Option<(usize, f64, [f64; 3])> {
-        let eye = self.eye_position()?;
-        let dir = view_vector(self.yaw, self.pitch);
-        let reach: f64 = if self.creative { 5.0 } else { 3.0 };
-        let mut best: Option<(usize, f64, [f64; 3])> = None;
-        for (i, a) in self.armor_stands.iter().enumerate() {
-            if a.marker {
-                continue;
-            }
-            let b = a.bounds();
-            let (lo, hi) = (b.min_position(), b.max_position());
-            let (lo, hi) = ([lo.x, lo.y, lo.z], [hi.x, hi.y, hi.z]);
-            let (mut t0, mut t1) = (0.0f64, reach);
-            let mut hit = true;
-            for k in 0..3 {
-                if dir[k].abs() < 1e-9 {
-                    hit &= eye[k] >= lo[k] && eye[k] <= hi[k];
-                    continue;
-                }
-                let (mut ta, mut tb) = ((lo[k] - eye[k]) / dir[k], (hi[k] - eye[k]) / dir[k]);
-                if ta > tb {
-                    std::mem::swap(&mut ta, &mut tb);
-                }
-                t0 = t0.max(ta);
-                t1 = t1.min(tb);
-            }
-            if hit && t0 <= t1 && best.is_none_or(|b| t0 < b.1) {
-                best = Some((i, t0, std::array::from_fn(|k| eye[k] + dir[k] * t0)));
-            }
-        }
-        best
-    }
-    fn equipment_slot(&self, stack: &ItemStack) -> usize {
-        match self
-            .res
-            .items()
-            .get(&stack.item)
-            .and_then(|i| i.equip_slot.as_deref())
-        {
-            Some("feet") => 2,
-            Some("legs") => 3,
-            Some("chest") => 4,
-            Some("head") => 5,
-            Some("offhand") => 1,
-            _ => 0,
         }
     }
 }

@@ -46,8 +46,7 @@ fn slot_item(m: &horizon_client::mobs::Mob, slot: usize) -> Option<std::sync::Ar
     }
 }
 
-impl Game<'_> {}
-impl crate::game::Sim<'_> {
+impl Game<'_> {
     /// `Mob.populateDefaultEquipmentEnchantments`: the weapon one time in
     /// four and each piece of armour one time in two, scaled by the local
     /// difficulty, enchanted as if at an enchanting table of cost 5 to 22.
@@ -87,14 +86,14 @@ impl crate::game::Sim<'_> {
     }
     /// `EnchantmentsByCostWithDifficulty.enchant` on the item in a slot.
     pub(super) fn enchant_item(&mut self, id: u32, slot: usize, item: &str, special: f32) {
-        let random = &mut self.world.random;
+        let random = &mut self.sim.world.random;
         let top = MIN_COST + (special * MAX_COST_SPAN) as i32;
         let cost = random
             .next_int_between_inclusive(MIN_COST, top)
             .unwrap_or(MIN_COST);
-        let e = &self.res.stations().enchantments;
+        let e = &self.sim.res.stations().enchantments;
         let pool = e.tag("minecraft:on_mob_spawn_equipment");
-        let picked = e.select(self.res.items(), random, item, cost, pool);
+        let picked = e.select(self.sim.res.items(), random, item, cost, pool);
         if let Some(m) = self.mobs.iter_mut().find(|m| m.id == id) {
             for (enchantment, level) in picked {
                 gear::upgrade(m, slot, &enchantment, level);
@@ -109,6 +108,7 @@ impl crate::game::Sim<'_> {
             gear::upgrade(m, slot, enchantment, level);
         }
     }
+
     /// `Pillager` / `Vindicator.applyRaidBuffs`: Quick Charge on a fresh
     /// crossbow after waves 3 and 5, Sharpness on a fresh axe.
     pub(super) fn apply_raid_buffs(&mut self, id: u32, kind: RaiderType, wave: i32, odds: f32) {

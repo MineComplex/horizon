@@ -65,6 +65,72 @@ pub(super) struct CombatTracker {
     fall_before: f64,
 }
 impl Game<'_> {
+    /// `LivingEntity.makeDrownParticles`: eight bubbles around the entity,
+    /// moving with it.
+    pub(super) fn drown_particles(&mut self, at: [f64; 3], velocity: [f64; 3]) {
+        let bubble = ParticleOptions::simple(ParticleType::Bubble);
+        for _ in 0..8 {
+            let mut triangle = || {
+                let r = self.particles.random();
+                r.next_double() - r.next_double()
+            };
+            let p = [at[0] + triangle(), at[1] + triangle(), at[2] + triangle()];
+            self.particles.add(&bubble, p, velocity);
+        }
+    }
+    /// Entity event 67 from a server, for this client's own player or an
+    /// entity it draws.
+    pub(super) fn remote_drown(&mut self, id: i32) {
+        let own = self.remote.as_ref().is_some_and(|r| r.entity_id == id);
+        let body = if own {
+            self.player.as_ref().map(|p| {
+                let (at, v) = (p.position, p.velocity);
+                ([at.x, at.y, at.z], [v.x, v.y, v.z])
+            })
+        } else {
+            self.mobs.iter().find(|m| m.id == id as u32).map(|m| {
+                let (at, v) = (m.position, m.velocity);
+                ([at.x, at.y, at.z], [v.x, v.y, v.z])
+            })
+        };
+        if let Some((at, v)) = body {
+            self.drown_particles(at, v);
+        }
+    }
+    /// The display name of a mob: its custom name or its type's name.
+    pub(super) fn mob_display_name(&self, id: u32) -> Option<Text> {
+        let m = self.mobs.iter().find(|m| m.id == id)?;
+        Some(match &m.custom_name {
+            Some(name) => Text::literal(name.clone()),
+            None => Text::translate(&format!("entity.{}", m.kind.id.replace(':', ".")), &[]),
+        })
+    }
+    /// `getLastHurtByMob`: the last mob to hurt the player, for 100 ticks.
+    pub(super) fn player_hurt_by(&self) -> Option<(horizon_client::mobs::Who, i64)> {
+        let ((id, _), at) = self.combat.last_hurt_by.as_ref()?;
+        (self.world.game_time - at <= 100).then_some((horizon_client::mobs::Who::Mob(*id), *at))
+    }
+    /// Remember who deals the next `damage_type` damage to the player.
+    pub(super) fn note_attacker(&mut self, damage_type: &str, mob: u32) {
+        if let Some(name) = self.mob_display_name(mob) {
+            self.note_named_attacker(damage_type, mob, name);
+        }
+    }
+    /// `note_attacker` for an entity that is not one of `self.mobs` (the
+    /// ender dragon).
+    pub(super) fn note_named_attacker(&mut self, damage_type: &str, id: u32, name: Text) {
+        self.combat
+            .pending
+            .push((damage_type.to_owned(), (id, name)));
+    }
+    /// The `DamageSource.directEntity` of the next `damage_type` damage when
+    /// nothing caused it (a splash potion nobody threw): the death message
+    /// names it instead (`getLocalizedDeathMessage`). It is no kill credit.
+    pub(super) fn note_direct_entity(&mut self, damage_type: &str, name: Text) {
+        self.combat
+            .pending_direct
+            .push((damage_type.to_owned(), name));
+    }
     /// `LivingEntity.handleDamageEvent` for the player: the hurt sound of the
     /// source's `DamageEffects` (`Player.getHurtSound`).
     pub(super) fn player_hurt_sound(&mut self, sound: &str, at: [f64; 3]) {
@@ -143,74 +209,6 @@ impl Game<'_> {
         self.combat.pending.clear();
         self.combat.pending_direct.clear();
         self.combat.fall_before = self.player.as_ref().map_or(0.0, |p| p.fall_distance);
-    }
-}
-impl crate::game::Sim<'_> {
-    /// `LivingEntity.makeDrownParticles`: eight bubbles around the entity,
-    /// moving with it.
-    pub(super) fn drown_particles(&mut self, at: [f64; 3], velocity: [f64; 3]) {
-        let bubble = ParticleOptions::simple(ParticleType::Bubble);
-        for _ in 0..8 {
-            let mut triangle = || {
-                let r = self.particles.random();
-                r.next_double() - r.next_double()
-            };
-            let p = [at[0] + triangle(), at[1] + triangle(), at[2] + triangle()];
-            self.particles.add(&bubble, p, velocity);
-        }
-    }
-    /// Entity event 67 from a server, for this client's own player or an
-    /// entity it draws.
-    pub(super) fn remote_drown(&mut self, id: i32) {
-        let own = self.remote.as_ref().is_some_and(|r| r.entity_id == id);
-        let body = if own {
-            self.player.as_ref().map(|p| {
-                let (at, v) = (p.position, p.velocity);
-                ([at.x, at.y, at.z], [v.x, v.y, v.z])
-            })
-        } else {
-            self.mobs.iter().find(|m| m.id == id as u32).map(|m| {
-                let (at, v) = (m.position, m.velocity);
-                ([at.x, at.y, at.z], [v.x, v.y, v.z])
-            })
-        };
-        if let Some((at, v)) = body {
-            self.drown_particles(at, v);
-        }
-    }
-    /// The display name of a mob: its custom name or its type's name.
-    pub(super) fn mob_display_name(&self, id: u32) -> Option<Text> {
-        let m = self.mobs.iter().find(|m| m.id == id)?;
-        Some(match &m.custom_name {
-            Some(name) => Text::literal(name.clone()),
-            None => Text::translate(&format!("entity.{}", m.kind.id.replace(':', ".")), &[]),
-        })
-    }
-    /// `getLastHurtByMob`: the last mob to hurt the player, for 100 ticks.
-    pub(super) fn player_hurt_by(&self) -> Option<(horizon_client::mobs::Who, i64)> {
-        let ((id, _), at) = self.combat.last_hurt_by.as_ref()?;
-        (self.world.game_time - at <= 100).then_some((horizon_client::mobs::Who::Mob(*id), *at))
-    }
-    /// Remember who deals the next `damage_type` damage to the player.
-    pub(super) fn note_attacker(&mut self, damage_type: &str, mob: u32) {
-        if let Some(name) = self.mob_display_name(mob) {
-            self.note_named_attacker(damage_type, mob, name);
-        }
-    }
-    /// `note_attacker` for an entity that is not one of `self.mobs` (the
-    /// ender dragon).
-    pub(super) fn note_named_attacker(&mut self, damage_type: &str, id: u32, name: Text) {
-        self.combat
-            .pending
-            .push((damage_type.to_owned(), (id, name)));
-    }
-    /// The `DamageSource.directEntity` of the next `damage_type` damage when
-    /// nothing caused it (a splash potion nobody threw): the death message
-    /// names it instead (`getLocalizedDeathMessage`). It is no kill credit.
-    pub(super) fn note_direct_entity(&mut self, damage_type: &str, name: Text) {
-        self.combat
-            .pending_direct
-            .push((damage_type.to_owned(), name));
     }
     /// `FallLocation.getCurrentFallLocation` and the fall distance so far.
     fn fall_location(&self) -> (Option<&'static str>, f32) {

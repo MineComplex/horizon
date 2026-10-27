@@ -49,6 +49,16 @@ impl Game<'_> {
             .ok_or_else(|| err("argument.resource_or_id.no_such_element", &[&id, &registry]))?;
         Ok((Some(id), value))
     }
+    /// A registered provider's definition.
+    fn provider_file(&self, registry: &str, id: &str) -> Option<Value> {
+        let (ns, path) = id.split_once(':').unwrap_or(("minecraft", id));
+        let dir = registry.trim_start_matches("minecraft:");
+        let file = self
+            .options
+            .resources
+            .join(format!("data/{ns}/{dir}/{path}.json"));
+        serde_json::from_slice(&std::fs::read(file).ok()?).ok()
+    }
     /// The compute context the command's source literal selects.
     pub(in crate::game) fn compute_context(&mut self, ctx: &Context) -> R<ComputeContext> {
         let mut c = ComputeContext::default();
@@ -528,17 +538,5 @@ impl Game<'_> {
             }
             _ => false,
         }
-    }
-}
-impl crate::game::Sim<'_> {
-    /// A registered provider's definition.
-    fn provider_file(&self, registry: &str, id: &str) -> Option<Value> {
-        let (ns, path) = id.split_once(':').unwrap_or(("minecraft", id));
-        let dir = registry.trim_start_matches("minecraft:");
-        let file = self
-            .options
-            .resources
-            .join(format!("data/{ns}/{dir}/{path}.json"));
-        serde_json::from_slice(&std::fs::read(file).ok()?).ok()
     }
 }

@@ -22,6 +22,126 @@ enum MendSlot {
 }
 
 impl Game<'_> {
+    /// `Player.getDestroySpeed` after the tool speed: mining efficiency, haste
+    /// and mining fatigue.
+    pub(super) fn modify_destroy_speed(&self, mut speed: f32) -> f32 {
+        if speed > 1.0 {
+            let held = self.inventory[self.selected].as_ref();
+            speed += self
+                .res
+                .stations()
+                .enchantments
+                .attribute_add(held, "minecraft:mining_efficiency") as f32;
+        }
+        speed * self.potions.effects.mining_speed_factor()
+    }
+    /// `Attributes.SUBMERGED_MINING_SPEED` (0.2, raised by aqua affinity).
+    pub(super) fn submerged_mining_speed(&self) -> f32 {
+        let mut total = 0.0;
+        for stack in self.armor.iter().flatten() {
+            for (attr, _, amount, op) in self.res.stations().enchantments.attributes(stack) {
+                if attr == "minecraft:submerged_mining_speed" && op == "add_multiplied_total" {
+                    total += amount;
+                }
+            }
+        }
+        (0.2 * (1.0 + total)) as f32
+    }
+    /// `EnchantmentHelper.processDurabilityChange` (unbreaking) for `amount` points.
+    pub(super) fn durability_loss(&mut self, stack: &ItemStack, amount: u32) -> u32 {
+        let e = &self.sim.res.stations().enchantments;
+        if !e.has_component(stack, "minecraft:item_damage") {
+            return amount;
+        }
+        let ctx = EffectContext {
+            tool: Some(&stack.item),
+            items: Some(self.sim.res.items()),
+            ..Default::default()
+        };
+        e.modify_value(
+            Some(stack),
+            "minecraft:item_damage",
+            &ctx,
+            &mut self.sim.world.random,
+            amount as f32,
+        )
+        .max(0.0) as u32
+    }
+    /// `getEnchantedDamage - base`: damage bonus of the held weapon against a mob type.
+    pub(super) fn enchant_damage_bonus(&mut self, target: &str) -> f32 {
+        let Some(held) = self.inventory[self.selected].clone() else {
+            return 0.0;
+        };
+        let ctx = EffectContext {
+            this: Some(target),
+            attacker: Some("minecraft:player"),
+            direct_attacker: Some("minecraft:player"),
+            is_direct: true,
+            damage_type: Some("minecraft:player_attack"),
+            items: Some(self.sim.res.items()),
+            ..Default::default()
+        };
+        self.sim.res.stations().enchantments.modify_value(
+            Some(&held),
+            "minecraft:damage",
+            &ctx,
+            &mut self.sim.world.random,
+            0.0,
+        )
+    }
+    /// Strength / weakness on the attack damage attribute.
+    pub(super) fn effect_attack_bonus(&self) -> f32 {
+        let fx = &self.potions.effects;
+        fx.amplifier("strength")
+            .map_or(0.0, |a| 3.0 * (a + 1) as f32)
+            - fx.amplifier("weakness")
+                .map_or(0.0, |a| 4.0 * (a + 1) as f32)
+    }
+    /// `Player.attack`'s extra knockback: `getKnockback` (the weapon's knockback
+    /// enchantment, halved) plus 0.5 for a sprinting full-strength hit, and
+    /// whether the hit is that knockback attack.
+    pub(super) fn extra_knockback(&mut self, target_kind: &str, scale: f32) -> (f32, bool) {
+        let knockback_attack = scale > 0.9 && self.player.as_ref().is_some_and(|p| p.sprinting);
+        let enchanted = match self.inventory[self.selected].clone() {
+            Some(held) => {
+                let ctx = EffectContext {
+                    this: Some(target_kind),
+                    attacker: Some("minecraft:player"),
+                    direct_attacker: Some("minecraft:player"),
+                    is_direct: true,
+                    items: Some(self.sim.res.items()),
+                    ..Default::default()
+                };
+                self.sim.res.stations().enchantments.modify_value(
+                    Some(&held),
+                    "minecraft:knockback",
+                    &ctx,
+                    &mut self.sim.world.random,
+                    0.0,
+                )
+            }
+            None => 0.0,
+        };
+        let bonus = if knockback_attack { 0.5 } else { 0.0 };
+        (enchanted / 2.0 + bonus, knockback_attack)
+    }
+    /// `causeExtraKnockback`'s direction, `(sin yRot, -cos yRot)` from Mth's
+    /// sine table: the target flies where the attacker looks, not away from
+    /// it (straight along an axis when the attacker faces one).
+    pub(super) fn extra_knockback_direction(&self) -> (f64, f64) {
+        use horizon_core::geometry::trig;
+        let yaw = f64::from(self.yaw * trig::DEG_TO_RAD);
+        (f64::from(trig::sin(yaw)), -f64::from(trig::cos(yaw)))
+    }
+    /// The attacker's side of `causeExtraKnockback` as the attacking client
+    /// sees it: the server's player stops sprinting, and its flag reaches the
+    /// client. (The server's 0.6 speed cut never does: the client's own
+    /// `Player.attack` simulates no hurt, so it skips the knockback.)
+    pub(super) fn stop_sprint_after_extra_knockback(&mut self) {
+        if let Some(p) = self.player.as_mut() {
+            let _ = p.set_sprinting(false);
+        }
+    }
     /// After a successful melee hit: fire aspect and wind burst.
     pub(super) fn post_attack(&mut self, mob: usize) {
         let Some(held) = self.inventory[self.selected].clone() else {
@@ -90,6 +210,36 @@ impl Game<'_> {
             self.apply_mob_effect(mob, &effect, level);
         }
         self.post_attack_bursts(&held, &kind);
+    }
+    /// `ApplyMobEffect.apply`: one of `to_apply` (a single id or a list) for a
+    /// random duration and amplifier between the level-based bounds.
+    fn apply_mob_effect(&mut self, mob: usize, effect: &serde_json::Value, level: u32) {
+        use horizon_client::enchant::level_value;
+        let Some(m) = self.mobs.get_mut(mob) else {
+            return;
+        };
+        let ids: Vec<&str> = match &effect["to_apply"] {
+            serde_json::Value::String(id) => vec![id.as_str()],
+            serde_json::Value::Array(list) => list.iter().filter_map(|v| v.as_str()).collect(),
+            _ => Vec::new(),
+        };
+        if ids.is_empty() {
+            return;
+        }
+        // HolderSet.getRandomElement, then Mth.randomBetween for both values.
+        let pick = m.random.next_int_bound(ids.len() as i32).unwrap_or(0) as usize;
+        let mut between = |min: &str, max: &str| {
+            let (lo, hi) = (
+                level_value(&effect[min], level),
+                level_value(&effect[max], level),
+            );
+            m.random.next_float() * (hi - lo) + lo
+        };
+        let ticks = (between("min_duration", "max_duration") * 20.0).round() as i32;
+        let amplifier = (between("min_amplifier", "max_amplifier").round() as i32).max(0);
+        if let Some(id) = super::potions::mob_effect_id(ids[pick]) {
+            m.add_effect(id, ticks, amplifier);
+        }
     }
     /// `minecraft:post_attack` explode effects on the attacker (wind burst):
     /// a burst at the player's feet that only knocks back and triggers
@@ -219,6 +369,147 @@ impl Game<'_> {
         }
         hits
     }
+    /// `ExperienceOrb.repairPlayerItems`: returns the experience left over.
+    pub(super) fn mending(&mut self, amount: u32) -> u32 {
+        let mut amount = amount;
+        loop {
+            // EnchantmentHelper.getRandomItemWith(REPAIR_WITH_XP, damaged), in
+            // EquipmentSlot order: the main hand, the off hand, then feet, legs,
+            // chest and head (`armor` holds head first).
+            let mending = |s: &Option<ItemStack>| {
+                s.as_ref()
+                    .is_some_and(|s| s.damage > 0 && s.enchantment_level("minecraft:mending") > 0)
+            };
+            let candidates: Vec<MendSlot> = [MendSlot::Main, MendSlot::Off]
+                .into_iter()
+                .chain((0..self.armor.len()).rev().map(MendSlot::Armor))
+                .filter(|&slot| mending(self.mend_slot(slot)))
+                .collect();
+            if candidates.is_empty() {
+                return amount;
+            }
+            let slot = candidates[self
+                .world
+                .random
+                .next_int_bound(candidates.len() as i32)
+                .unwrap_or(0) as usize];
+            let Some(stack) = self.mend_slot(slot).clone() else {
+                return amount;
+            };
+            let ctx = EffectContext {
+                items: Some(self.sim.res.items()),
+                ..Default::default()
+            };
+            let to_repair_xp = self.sim.res.stations().enchantments.modify_value(
+                Some(&stack),
+                "minecraft:repair_with_xp",
+                &ctx,
+                &mut self.sim.world.random,
+                amount as f32,
+            ) as u32;
+            let repaired = to_repair_xp.min(stack.damage);
+            if let Some(s) = self.mend_slot_mut(slot).as_mut() {
+                s.damage -= repaired;
+            }
+            if repaired == 0 || to_repair_xp == 0 {
+                return 0;
+            }
+            let remaining = amount.saturating_sub(repaired * amount / to_repair_xp);
+            if remaining == 0 {
+                return 0;
+            }
+            amount = remaining;
+        }
+    }
+    fn mend_slot(&self, slot: MendSlot) -> &Option<ItemStack> {
+        match slot {
+            MendSlot::Main => &self.inventory[self.selected],
+            MendSlot::Off => &self.offhand,
+            MendSlot::Armor(i) => &self.armor[i],
+        }
+    }
+    fn mend_slot_mut(&mut self, slot: MendSlot) -> &mut Option<ItemStack> {
+        match slot {
+            MendSlot::Main => &mut self.sim.inventory[self.sim.selected],
+            MendSlot::Off => &mut self.sim.offhand,
+            MendSlot::Armor(i) => &mut self.sim.armor[i],
+        }
+    }
+    /// Bow enchantments at release: (extra base damage, infinity keeps the arrow).
+    /// `ammo` is the item being fired: `Enchantment.itemContext` hands it to the
+    /// `ammo_use` conditions as the tool, so Infinity only frees plain arrows.
+    pub(super) fn bow_enchantments(&mut self, ammo: &str) -> (f64, bool) {
+        let Some(bow) = self.inventory[self.selected].clone() else {
+            return (0.0, false);
+        };
+        let e = &self.sim.res.stations().enchantments;
+        let ctx = EffectContext {
+            direct_attacker: Some("minecraft:arrow"),
+            attacker: Some("minecraft:player"),
+            items: Some(self.sim.res.items()),
+            ..Default::default()
+        };
+        let power = e.modify_value(
+            Some(&bow),
+            "minecraft:damage",
+            &ctx,
+            &mut self.sim.world.random,
+            0.0,
+        );
+        let ammo_ctx = EffectContext {
+            tool: Some(ammo),
+            items: Some(self.sim.res.items()),
+            ..Default::default()
+        };
+        let infinity = e.has_component(&bow, "minecraft:ammo_use")
+            && e.modify_value(
+                Some(&bow),
+                "minecraft:ammo_use",
+                &ammo_ctx,
+                &mut self.sim.world.random,
+                1.0,
+            ) == 0.0;
+        (f64::from(power), infinity)
+    }
+    /// `EnchantmentHelper.onProjectileSpawned` ignite effects of the held bow
+    /// (flame): the seconds the new arrow burns for.
+    pub(super) fn bow_projectile_ignite(&mut self) -> Option<f32> {
+        let bow = self.inventory[self.selected].clone()?;
+        let ctx = EffectContext {
+            this: Some("minecraft:arrow"),
+            items: Some(self.sim.res.items()),
+            ..Default::default()
+        };
+        let mut ignite: Option<f32> = None;
+        for (id, level) in bow.enchantments() {
+            let Some(def) = self.sim.res.stations().enchantments.get(id) else {
+                continue;
+            };
+            for effect in def.effects["minecraft:projectile_spawned"]
+                .as_array()
+                .into_iter()
+                .flatten()
+            {
+                if effect["effect"]["type"] != "minecraft:ignite" {
+                    continue;
+                }
+                let ok = effect.get("requirements").is_none_or(|r| {
+                    self.sim.res.stations().enchantments.condition(
+                        r,
+                        *level,
+                        &ctx,
+                        &mut self.sim.world.random,
+                    )
+                });
+                if ok {
+                    let seconds =
+                        horizon_client::enchant::level_value(&effect["effect"]["duration"], *level);
+                    ignite = Some(ignite.map_or(seconds, |s: f32| s.max(seconds)));
+                }
+            }
+        }
+        ignite
+    }
     /// Soul Speed (`data/minecraft/enchantment/soul_speed.json`), the parts of
     /// `Enchantment.runLocationChangedEffects` and `tick` that file uses. The
     /// `location_changed` effects run when the player enters a new block, lands,
@@ -347,299 +638,6 @@ impl Game<'_> {
             self.apply_equipment();
         }
     }
-}
-impl crate::game::Sim<'_> {
-    /// `Player.getDestroySpeed` after the tool speed: mining efficiency, haste
-    /// and mining fatigue.
-    pub(super) fn modify_destroy_speed(&self, mut speed: f32) -> f32 {
-        if speed > 1.0 {
-            let held = self.inventory[self.selected].as_ref();
-            speed += self
-                .res
-                .stations()
-                .enchantments
-                .attribute_add(held, "minecraft:mining_efficiency") as f32;
-        }
-        speed * self.potions.effects.mining_speed_factor()
-    }
-    /// `Attributes.SUBMERGED_MINING_SPEED` (0.2, raised by aqua affinity).
-    pub(super) fn submerged_mining_speed(&self) -> f32 {
-        let mut total = 0.0;
-        for stack in self.armor.iter().flatten() {
-            for (attr, _, amount, op) in self.res.stations().enchantments.attributes(stack) {
-                if attr == "minecraft:submerged_mining_speed" && op == "add_multiplied_total" {
-                    total += amount;
-                }
-            }
-        }
-        (0.2 * (1.0 + total)) as f32
-    }
-    /// `EnchantmentHelper.processDurabilityChange` (unbreaking) for `amount` points.
-    pub(super) fn durability_loss(&mut self, stack: &ItemStack, amount: u32) -> u32 {
-        let e = &self.res.stations().enchantments;
-        if !e.has_component(stack, "minecraft:item_damage") {
-            return amount;
-        }
-        let ctx = EffectContext {
-            tool: Some(&stack.item),
-            items: Some(self.res.items()),
-            ..Default::default()
-        };
-        e.modify_value(
-            Some(stack),
-            "minecraft:item_damage",
-            &ctx,
-            &mut self.world.random,
-            amount as f32,
-        )
-        .max(0.0) as u32
-    }
-    /// `getEnchantedDamage - base`: damage bonus of the held weapon against a mob type.
-    pub(super) fn enchant_damage_bonus(&mut self, target: &str) -> f32 {
-        let Some(held) = self.inventory[self.selected].clone() else {
-            return 0.0;
-        };
-        let ctx = EffectContext {
-            this: Some(target),
-            attacker: Some("minecraft:player"),
-            direct_attacker: Some("minecraft:player"),
-            is_direct: true,
-            damage_type: Some("minecraft:player_attack"),
-            items: Some(self.res.items()),
-            ..Default::default()
-        };
-        self.res.stations().enchantments.modify_value(
-            Some(&held),
-            "minecraft:damage",
-            &ctx,
-            &mut self.world.random,
-            0.0,
-        )
-    }
-    /// Strength / weakness on the attack damage attribute.
-    pub(super) fn effect_attack_bonus(&self) -> f32 {
-        let fx = &self.potions.effects;
-        fx.amplifier("strength")
-            .map_or(0.0, |a| 3.0 * (a + 1) as f32)
-            - fx.amplifier("weakness")
-                .map_or(0.0, |a| 4.0 * (a + 1) as f32)
-    }
-    /// `Player.attack`'s extra knockback: `getKnockback` (the weapon's knockback
-    /// enchantment, halved) plus 0.5 for a sprinting full-strength hit, and
-    /// whether the hit is that knockback attack.
-    pub(super) fn extra_knockback(&mut self, target_kind: &str, scale: f32) -> (f32, bool) {
-        let knockback_attack = scale > 0.9 && self.player.as_ref().is_some_and(|p| p.sprinting);
-        let enchanted = match self.inventory[self.selected].clone() {
-            Some(held) => {
-                let ctx = EffectContext {
-                    this: Some(target_kind),
-                    attacker: Some("minecraft:player"),
-                    direct_attacker: Some("minecraft:player"),
-                    is_direct: true,
-                    items: Some(self.res.items()),
-                    ..Default::default()
-                };
-                self.res.stations().enchantments.modify_value(
-                    Some(&held),
-                    "minecraft:knockback",
-                    &ctx,
-                    &mut self.world.random,
-                    0.0,
-                )
-            }
-            None => 0.0,
-        };
-        let bonus = if knockback_attack { 0.5 } else { 0.0 };
-        (enchanted / 2.0 + bonus, knockback_attack)
-    }
-    /// `causeExtraKnockback`'s direction, `(sin yRot, -cos yRot)` from Mth's
-    /// sine table: the target flies where the attacker looks, not away from
-    /// it (straight along an axis when the attacker faces one).
-    pub(super) fn extra_knockback_direction(&self) -> (f64, f64) {
-        use horizon_core::geometry::trig;
-        let yaw = f64::from(self.yaw * trig::DEG_TO_RAD);
-        (f64::from(trig::sin(yaw)), -f64::from(trig::cos(yaw)))
-    }
-    /// The attacker's side of `causeExtraKnockback` as the attacking client
-    /// sees it: the server's player stops sprinting, and its flag reaches the
-    /// client. (The server's 0.6 speed cut never does: the client's own
-    /// `Player.attack` simulates no hurt, so it skips the knockback.)
-    pub(super) fn stop_sprint_after_extra_knockback(&mut self) {
-        if let Some(p) = self.player.as_mut() {
-            let _ = p.set_sprinting(false);
-        }
-    }
-    /// `ApplyMobEffect.apply`: one of `to_apply` (a single id or a list) for a
-    /// random duration and amplifier between the level-based bounds.
-    fn apply_mob_effect(&mut self, mob: usize, effect: &serde_json::Value, level: u32) {
-        use horizon_client::enchant::level_value;
-        let Some(m) = self.mobs.get_mut(mob) else {
-            return;
-        };
-        let ids: Vec<&str> = match &effect["to_apply"] {
-            serde_json::Value::String(id) => vec![id.as_str()],
-            serde_json::Value::Array(list) => list.iter().filter_map(|v| v.as_str()).collect(),
-            _ => Vec::new(),
-        };
-        if ids.is_empty() {
-            return;
-        }
-        // HolderSet.getRandomElement, then Mth.randomBetween for both values.
-        let pick = m.random.next_int_bound(ids.len() as i32).unwrap_or(0) as usize;
-        let mut between = |min: &str, max: &str| {
-            let (lo, hi) = (
-                level_value(&effect[min], level),
-                level_value(&effect[max], level),
-            );
-            m.random.next_float() * (hi - lo) + lo
-        };
-        let ticks = (between("min_duration", "max_duration") * 20.0).round() as i32;
-        let amplifier = (between("min_amplifier", "max_amplifier").round() as i32).max(0);
-        if let Some(id) = super::potions::mob_effect_id(ids[pick]) {
-            m.add_effect(id, ticks, amplifier);
-        }
-    }
-    /// `ExperienceOrb.repairPlayerItems`: returns the experience left over.
-    pub(super) fn mending(&mut self, amount: u32) -> u32 {
-        let mut amount = amount;
-        loop {
-            // EnchantmentHelper.getRandomItemWith(REPAIR_WITH_XP, damaged), in
-            // EquipmentSlot order: the main hand, the off hand, then feet, legs,
-            // chest and head (`armor` holds head first).
-            let mending = |s: &Option<ItemStack>| {
-                s.as_ref()
-                    .is_some_and(|s| s.damage > 0 && s.enchantment_level("minecraft:mending") > 0)
-            };
-            let candidates: Vec<MendSlot> = [MendSlot::Main, MendSlot::Off]
-                .into_iter()
-                .chain((0..self.armor.len()).rev().map(MendSlot::Armor))
-                .filter(|&slot| mending(self.mend_slot(slot)))
-                .collect();
-            if candidates.is_empty() {
-                return amount;
-            }
-            let slot = candidates[self
-                .world
-                .random
-                .next_int_bound(candidates.len() as i32)
-                .unwrap_or(0) as usize];
-            let Some(stack) = self.mend_slot(slot).clone() else {
-                return amount;
-            };
-            let ctx = EffectContext {
-                items: Some(self.res.items()),
-                ..Default::default()
-            };
-            let to_repair_xp = self.res.stations().enchantments.modify_value(
-                Some(&stack),
-                "minecraft:repair_with_xp",
-                &ctx,
-                &mut self.world.random,
-                amount as f32,
-            ) as u32;
-            let repaired = to_repair_xp.min(stack.damage);
-            if let Some(s) = self.mend_slot_mut(slot).as_mut() {
-                s.damage -= repaired;
-            }
-            if repaired == 0 || to_repair_xp == 0 {
-                return 0;
-            }
-            let remaining = amount.saturating_sub(repaired * amount / to_repair_xp);
-            if remaining == 0 {
-                return 0;
-            }
-            amount = remaining;
-        }
-    }
-    fn mend_slot(&self, slot: MendSlot) -> &Option<ItemStack> {
-        match slot {
-            MendSlot::Main => &self.inventory[self.selected],
-            MendSlot::Off => &self.offhand,
-            MendSlot::Armor(i) => &self.armor[i],
-        }
-    }
-    fn mend_slot_mut(&mut self, slot: MendSlot) -> &mut Option<ItemStack> {
-        match slot {
-            MendSlot::Main => &mut self.inventory[self.selected],
-            MendSlot::Off => &mut self.offhand,
-            MendSlot::Armor(i) => &mut self.armor[i],
-        }
-    }
-    /// Bow enchantments at release: (extra base damage, infinity keeps the arrow).
-    /// `ammo` is the item being fired: `Enchantment.itemContext` hands it to the
-    /// `ammo_use` conditions as the tool, so Infinity only frees plain arrows.
-    pub(super) fn bow_enchantments(&mut self, ammo: &str) -> (f64, bool) {
-        let Some(bow) = self.inventory[self.selected].clone() else {
-            return (0.0, false);
-        };
-        let e = &self.res.stations().enchantments;
-        let ctx = EffectContext {
-            direct_attacker: Some("minecraft:arrow"),
-            attacker: Some("minecraft:player"),
-            items: Some(self.res.items()),
-            ..Default::default()
-        };
-        let power = e.modify_value(
-            Some(&bow),
-            "minecraft:damage",
-            &ctx,
-            &mut self.world.random,
-            0.0,
-        );
-        let ammo_ctx = EffectContext {
-            tool: Some(ammo),
-            items: Some(self.res.items()),
-            ..Default::default()
-        };
-        let infinity = e.has_component(&bow, "minecraft:ammo_use")
-            && e.modify_value(
-                Some(&bow),
-                "minecraft:ammo_use",
-                &ammo_ctx,
-                &mut self.world.random,
-                1.0,
-            ) == 0.0;
-        (f64::from(power), infinity)
-    }
-    /// `EnchantmentHelper.onProjectileSpawned` ignite effects of the held bow
-    /// (flame): the seconds the new arrow burns for.
-    pub(super) fn bow_projectile_ignite(&mut self) -> Option<f32> {
-        let bow = self.inventory[self.selected].clone()?;
-        let ctx = EffectContext {
-            this: Some("minecraft:arrow"),
-            items: Some(self.res.items()),
-            ..Default::default()
-        };
-        let mut ignite: Option<f32> = None;
-        for (id, level) in bow.enchantments() {
-            let Some(def) = self.res.stations().enchantments.get(id) else {
-                continue;
-            };
-            for effect in def.effects["minecraft:projectile_spawned"]
-                .as_array()
-                .into_iter()
-                .flatten()
-            {
-                if effect["effect"]["type"] != "minecraft:ignite" {
-                    continue;
-                }
-                let ok = effect.get("requirements").is_none_or(|r| {
-                    self.res.stations().enchantments.condition(
-                        r,
-                        *level,
-                        &ctx,
-                        &mut self.world.random,
-                    )
-                });
-                if ok {
-                    let seconds =
-                        horizon_client::enchant::level_value(&effect["effect"]["duration"], *level);
-                    ignite = Some(ignite.map_or(seconds, |s: f32| s.max(seconds)));
-                }
-            }
-        }
-        ignite
-    }
     /// Enchantment attribute modifiers of worn armor (respiration, depth strider...).
     /// Each piece's modifier id ends with its slot (`EnchantmentAttributeEffect.idForSlot`),
     /// so the same enchantment on two pieces stacks instead of replacing itself.
@@ -651,10 +649,10 @@ impl crate::game::Sim<'_> {
                 wanted.push((attr, format!("{id}/{slot}"), amount, op));
             }
         }
-        let Some(p) = self.player.as_mut() else {
+        let Some(p) = self.sim.player.as_mut() else {
             return;
         };
-        for (attr, id, _, op) in std::mem::take(&mut self.potions.enchant_modifiers) {
+        for (attr, id, _, op) in std::mem::take(&mut self.sim.potions.enchant_modifiers) {
             let _ = p.set_modifier(&attr, &id, 0.0, &op, false);
         }
         for (attr, id, amount, op) in &wanted {

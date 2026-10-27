@@ -156,6 +156,31 @@ impl Game<'_> {
             _ => self.type_eye_height(&self.target_type(t)),
         }
     }
+    /// `EntityType.getDimensions().eyeHeight()` from `entity-types.json`,
+    /// read once: a float, widened as `Entity.getEyeY` does.
+    fn type_eye_height(&self, ty: &str) -> f64 {
+        static EYE_HEIGHTS: std::sync::OnceLock<std::collections::HashMap<String, f64>> =
+            std::sync::OnceLock::new();
+        EYE_HEIGHTS
+            .get_or_init(|| {
+                std::fs::read(self.options.resources.join("entity-types.json"))
+                    .ok()
+                    .and_then(|b| serde_json::from_slice::<serde_json::Value>(&b).ok())
+                    .and_then(|v| {
+                        v.as_object().map(|o| {
+                            o.iter()
+                                .filter_map(|(k, t)| {
+                                    Some((k.clone(), f64::from(t["eye_height"].as_f64()? as f32)))
+                                })
+                                .collect()
+                        })
+                    })
+                    .unwrap_or_default()
+            })
+            .get(ty)
+            .copied()
+            .unwrap_or(0.0)
+    }
     /// EntityAnchorArgument.Anchor.apply.
     pub(super) fn anchor_position(&self, s: &Source) -> [f64; 3] {
         match s.entity {
@@ -727,6 +752,49 @@ impl Game<'_> {
             })
             .collect()
     }
+    pub(super) fn target_with_uuid(&self, uuid: [i32; 4]) -> Option<Target> {
+        if Some(uuid) == self.level.player_uuid {
+            return Some(Target::Player);
+        }
+        let id = self
+            .persist
+            .uuids
+            .iter()
+            .find(|(_, u)| **u == uuid)
+            .map(|(id, _)| *id)?;
+        self.mobs
+            .iter()
+            .any(|m| m.id == id)
+            .then_some(Target::Mob(id))
+    }
+    /// The highest block of a heightmap type at a column (`Level.getHeight`).
+    fn heightmap_at(&self, kind: &str, x: i32, z: i32) -> i32 {
+        let top = horizon_client::chunk::MIN_Y + horizon_client::chunk::HEIGHT;
+        for y in (horizon_client::chunk::MIN_Y..top).rev() {
+            let state = self.world.block(x, y, z);
+            if state == self.world.air {
+                continue;
+            }
+            let facts = self.res.facts().get(state);
+            let blocks = facts.legacy_solid || facts.fluid != horizon_client::blocks::Fluid::None;
+            let leaves = self
+                .pack
+                .assets
+                .registry
+                .state(state)
+                .is_some_and(|s| s.name.ends_with("_leaves"));
+            let found = match kind {
+                "ocean_floor" => facts.legacy_solid,
+                "motion_blocking" => blocks,
+                "motion_blocking_no_leaves" => blocks && !leaves,
+                _ => true,
+            };
+            if found {
+                return y + 1;
+            }
+        }
+        horizon_client::chunk::MIN_Y
+    }
     /// A `store` modifier: a new callback in the source's chain.
     fn store_source(&mut self, c: &Context, s: Source) -> R<Source> {
         let result = c.has("result");
@@ -891,6 +959,18 @@ impl Game<'_> {
         }
         Ok((false, 0))
     }
+    fn condition_stopwatch(&mut self, c: &Context) -> R<bool> {
+        let Some(Arg::Resource(id)) = c.get("id").cloned() else {
+            return Ok(false);
+        };
+        let Some(Arg::DoubleRange((lo, hi))) = c.get("range").cloned() else {
+            return Ok(false);
+        };
+        let Some(t) = self.score.stopwatches.elapsed_seconds(&id) else {
+            return Err(err("commands.stopwatch.does_not_exist", &[&id]));
+        };
+        Ok(lo.is_none_or(|l| t >= l) && hi.is_none_or(|h| t <= h))
+    }
     fn condition_score(&mut self, c: &Context) -> R<bool> {
         let target = self.score_holder_names(c, "target", false)?;
         let Some(Arg::Str(to)) = c.get("targetObjective").cloned() else {
@@ -985,88 +1065,6 @@ impl Game<'_> {
             }
         }
         Ok((true, count))
-    }
-}
-impl crate::game::Sim<'_> {
-    /// `EntityType.getDimensions().eyeHeight()` from `entity-types.json`,
-    /// read once: a float, widened as `Entity.getEyeY` does.
-    fn type_eye_height(&self, ty: &str) -> f64 {
-        static EYE_HEIGHTS: std::sync::OnceLock<std::collections::HashMap<String, f64>> =
-            std::sync::OnceLock::new();
-        EYE_HEIGHTS
-            .get_or_init(|| {
-                std::fs::read(self.options.resources.join("entity-types.json"))
-                    .ok()
-                    .and_then(|b| serde_json::from_slice::<serde_json::Value>(&b).ok())
-                    .and_then(|v| {
-                        v.as_object().map(|o| {
-                            o.iter()
-                                .filter_map(|(k, t)| {
-                                    Some((k.clone(), f64::from(t["eye_height"].as_f64()? as f32)))
-                                })
-                                .collect()
-                        })
-                    })
-                    .unwrap_or_default()
-            })
-            .get(ty)
-            .copied()
-            .unwrap_or(0.0)
-    }
-    pub(super) fn target_with_uuid(&self, uuid: [i32; 4]) -> Option<Target> {
-        if Some(uuid) == self.level.player_uuid {
-            return Some(Target::Player);
-        }
-        let id = self
-            .persist
-            .uuids
-            .iter()
-            .find(|(_, u)| **u == uuid)
-            .map(|(id, _)| *id)?;
-        self.mobs
-            .iter()
-            .any(|m| m.id == id)
-            .then_some(Target::Mob(id))
-    }
-    /// The highest block of a heightmap type at a column (`Level.getHeight`).
-    fn heightmap_at(&self, kind: &str, x: i32, z: i32) -> i32 {
-        let top = horizon_client::chunk::MIN_Y + horizon_client::chunk::HEIGHT;
-        for y in (horizon_client::chunk::MIN_Y..top).rev() {
-            let state = self.world.block(x, y, z);
-            if state == self.world.air {
-                continue;
-            }
-            let facts = self.res.facts().get(state);
-            let blocks = facts.legacy_solid || facts.fluid != horizon_client::blocks::Fluid::None;
-            let leaves = self
-                .pack
-                .assets
-                .registry
-                .state(state)
-                .is_some_and(|s| s.name.ends_with("_leaves"));
-            let found = match kind {
-                "ocean_floor" => facts.legacy_solid,
-                "motion_blocking" => blocks,
-                "motion_blocking_no_leaves" => blocks && !leaves,
-                _ => true,
-            };
-            if found {
-                return y + 1;
-            }
-        }
-        horizon_client::chunk::MIN_Y
-    }
-    fn condition_stopwatch(&mut self, c: &Context) -> R<bool> {
-        let Some(Arg::Resource(id)) = c.get("id").cloned() else {
-            return Ok(false);
-        };
-        let Some(Arg::DoubleRange((lo, hi))) = c.get("range").cloned() else {
-            return Ok(false);
-        };
-        let Some(t) = self.score.stopwatches.elapsed_seconds(&id) else {
-            return Err(err("commands.stopwatch.does_not_exist", &[&id]));
-        };
-        Ok(lo.is_none_or(|l| t >= l) && hi.is_none_or(|h| t <= h))
     }
     /// The biome name at a block position.
     fn biome_name_at_block(&self, p: [i32; 3]) -> Option<String> {

@@ -90,6 +90,40 @@ fn center(f: &ItemFrame) -> [f64; 3] {
     std::array::from_fn(|i| (lo[i] + hi[i]) / 2.0)
 }
 impl Game<'_> {
+    /// `ItemFrame.survives` (not fixed): no collision, a solid block behind
+    /// (or a diode for wall frames), no overlapping hanging entity.
+    fn frame_survives(&self, f: &ItemFrame) -> bool {
+        if f.fixed {
+            return true;
+        }
+        let (lo, hi) = f.bounds();
+        let bounds = Aabb::new(
+            Vec3::new(lo[0], lo[1], lo[2]),
+            Vec3::new(hi[0], hi[1], hi[2]),
+        );
+        let mut scene = horizon_client::collisions::SceneCollisions {
+            world: &self.world,
+            binding: self.collision,
+            subject: None,
+        };
+        if !scene.unobstructed(bounds).unwrap_or(false) {
+            return false;
+        }
+        let s = f.step();
+        let behind = self.res.facts().get(self.world.block(
+            f.pos[0] - s[0],
+            f.pos[1] - s[1],
+            f.pos[2] - s[2],
+        ));
+        let supported = behind.legacy_solid || (s[1] == 0 && behind.has_class("DiodeBlock"));
+        // canCoexist(true): only hanging entities facing the same way block it.
+        let overlaps = |o: ([f64; 3], [f64; 3])| (0..3).all(|i| o.0[i] < hi[i] && lo[i] < o.1[i]);
+        supported
+            && !self
+                .item_frames
+                .iter()
+                .any(|o| o.id != f.id && o.facing == f.facing && overlaps(o.bounds()))
+    }
     /// `ItemFrameItem.useOn`.
     pub(super) fn place_item_frame(&mut self, hit: &Hit, stack: &ItemStack) -> bool {
         let glow = match &*stack.item {
@@ -123,6 +157,34 @@ impl Game<'_> {
             self.consume_held();
         }
         true
+    }
+    /// The frame under the crosshair within reach and its distance.
+    pub(super) fn frame_hit(&self) -> Option<(usize, f64)> {
+        let eye = self.eye_position()?;
+        let dir = view_vector(self.yaw, self.pitch);
+        let reach: f64 = if self.creative { 5.0 } else { 3.0 };
+        let mut best: Option<(usize, f64)> = None;
+        for (i, f) in self.item_frames.iter().enumerate() {
+            let (lo, hi) = f.bounds();
+            let (mut t0, mut t1) = (0.0f64, reach);
+            let mut hit = true;
+            for a in 0..3 {
+                if dir[a].abs() < 1e-9 {
+                    hit &= eye[a] >= lo[a] && eye[a] <= hi[a];
+                    continue;
+                }
+                let (mut ta, mut tb) = ((lo[a] - eye[a]) / dir[a], (hi[a] - eye[a]) / dir[a]);
+                if ta > tb {
+                    std::mem::swap(&mut ta, &mut tb);
+                }
+                t0 = t0.max(ta);
+                t1 = t1.min(tb);
+            }
+            if hit && t0 <= t1 && best.is_none_or(|b| t0 < b.1) {
+                best = Some((i, t0));
+            }
+        }
+        best
     }
     /// Nearer than the targeted block?
     pub(super) fn before_block(&self, distance: f64) -> bool {
@@ -196,6 +258,29 @@ impl Game<'_> {
         self.drop_frame_items(&f, with_frame, true);
         self.world.modified.insert((f.pos[0] >> 4, f.pos[2] >> 4));
         true
+    }
+    /// `ItemFrame.dropItem`: the frame (when breaking) and the held item.
+    fn drop_frame_items(&mut self, f: &ItemFrame, with_frame: bool, by_player: bool) {
+        if !self.world_data.rules.bool("entity_drops") || (by_player && self.creative) {
+            return;
+        }
+        let s = f.step().map(f64::from);
+        let c = center(f);
+        let at = [c[0] + s[0] * 0.15, c[1], c[2] + s[2] * 0.15];
+        if with_frame {
+            let frame = ItemStack {
+                item: Arc::from(f.kind()),
+                count: 1,
+                damage: 0,
+                extra: None,
+            };
+            self.spawn_item(frame, at, [0.0; 3], 10);
+        }
+        if let Some(item) = f.item.clone()
+            && self.world.random.next_float() < f.drop_chance
+        {
+            self.spawn_item(item, at, [0.0; 3], 10);
+        }
     }
     /// BlockAttachedEntity.tick for frames.
     pub(super) fn tick_item_frames(&mut self) {
@@ -379,93 +464,6 @@ impl Game<'_> {
             let entity_start = out.len();
             self.map_vertices(id, true, m, light, out);
             self.cull_entity_vertices(out, entity_start);
-        }
-    }
-}
-impl crate::game::Sim<'_> {
-    /// `ItemFrame.survives` (not fixed): no collision, a solid block behind
-    /// (or a diode for wall frames), no overlapping hanging entity.
-    fn frame_survives(&self, f: &ItemFrame) -> bool {
-        if f.fixed {
-            return true;
-        }
-        let (lo, hi) = f.bounds();
-        let bounds = Aabb::new(
-            Vec3::new(lo[0], lo[1], lo[2]),
-            Vec3::new(hi[0], hi[1], hi[2]),
-        );
-        let mut scene = horizon_client::collisions::SceneCollisions {
-            world: &self.world,
-            binding: self.collision,
-            subject: None,
-        };
-        if !scene.unobstructed(bounds).unwrap_or(false) {
-            return false;
-        }
-        let s = f.step();
-        let behind = self.res.facts().get(self.world.block(
-            f.pos[0] - s[0],
-            f.pos[1] - s[1],
-            f.pos[2] - s[2],
-        ));
-        let supported = behind.legacy_solid || (s[1] == 0 && behind.has_class("DiodeBlock"));
-        // canCoexist(true): only hanging entities facing the same way block it.
-        let overlaps = |o: ([f64; 3], [f64; 3])| (0..3).all(|i| o.0[i] < hi[i] && lo[i] < o.1[i]);
-        supported
-            && !self
-                .item_frames
-                .iter()
-                .any(|o| o.id != f.id && o.facing == f.facing && overlaps(o.bounds()))
-    }
-    /// The frame under the crosshair within reach and its distance.
-    pub(super) fn frame_hit(&self) -> Option<(usize, f64)> {
-        let eye = self.eye_position()?;
-        let dir = view_vector(self.yaw, self.pitch);
-        let reach: f64 = if self.creative { 5.0 } else { 3.0 };
-        let mut best: Option<(usize, f64)> = None;
-        for (i, f) in self.item_frames.iter().enumerate() {
-            let (lo, hi) = f.bounds();
-            let (mut t0, mut t1) = (0.0f64, reach);
-            let mut hit = true;
-            for a in 0..3 {
-                if dir[a].abs() < 1e-9 {
-                    hit &= eye[a] >= lo[a] && eye[a] <= hi[a];
-                    continue;
-                }
-                let (mut ta, mut tb) = ((lo[a] - eye[a]) / dir[a], (hi[a] - eye[a]) / dir[a]);
-                if ta > tb {
-                    std::mem::swap(&mut ta, &mut tb);
-                }
-                t0 = t0.max(ta);
-                t1 = t1.min(tb);
-            }
-            if hit && t0 <= t1 && best.is_none_or(|b| t0 < b.1) {
-                best = Some((i, t0));
-            }
-        }
-        best
-    }
-    /// `ItemFrame.dropItem`: the frame (when breaking) and the held item.
-    fn drop_frame_items(&mut self, f: &ItemFrame, with_frame: bool, by_player: bool) {
-        if !self.world_data.rules.bool("entity_drops") || (by_player && self.creative) {
-            return;
-        }
-        let s = f.step().map(f64::from);
-        let c = center(f);
-        let at = [c[0] + s[0] * 0.15, c[1], c[2] + s[2] * 0.15];
-        if with_frame {
-            let frame = ItemStack {
-                item: Arc::from(f.kind()),
-                count: 1,
-                damage: 0,
-                extra: None,
-            };
-            self.spawn_item(frame, at, [0.0; 3], 10);
-        }
-        if let Some(item) = f.item.clone()
-            && self.world.random.next_float() < f.drop_chance
-        {
-            self.spawn_item(item, at, [0.0; 3], 10);
         }
     }
 }

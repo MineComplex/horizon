@@ -104,6 +104,38 @@ impl Game<'_> {
         let r = self.front.renderer.as_ref()?;
         Some(HudBatch::new([r.config.width, r.config.height]))
     }
+    /// The mod showing a panel, with its items made into stacks once per
+    /// `set-items`; none while no mod shows one or no container screen is up.
+    fn browser_sync(&mut self) -> Option<usize> {
+        if self.screen != Screen::Inventory || self.title.is_some() {
+            return None;
+        }
+        let Some((owner, version)) = self.mods.mods.browser_items().map(|(o, v, _)| (o, v)) else {
+            self.mods.browser.of = None;
+            self.mods.browser.stacks.clear();
+            return None;
+        };
+        if self.mods.browser.of != Some((owner, version)) {
+            let items = self.sim.res.items();
+            let stacks = self
+                .mods
+                .mods
+                .browser_items()
+                .map_or_else(Vec::new, |(_, _, list)| {
+                    list.iter().map(|s| browser_stack(items, s)).collect()
+                });
+            self.sim.mods.browser.stacks = stacks;
+            // The same title again (the mod updating its buttons) keeps the page.
+            let old = self.sim.mods.browser.recipes.take();
+            self.mods.browser.recipes = self
+                .mods
+                .mods
+                .browser_recipes(owner)
+                .map(|shown| super::mod_browser_recipes::Pages::new(items, shown, old));
+            self.mods.browser.of = Some((owner, version));
+        }
+        Some(owner)
+    }
     /// The panel's parts: right of the window, from the top of the screen to
     /// the search box at its foot. None when the screen has no room for it.
     fn browser_layout(&self, batch: &HudBatch) -> Option<Layout> {
@@ -127,6 +159,14 @@ impl Game<'_> {
             arrows_y,
             search,
         })
+    }
+    fn browser_pages(&self, layout: &Layout) -> usize {
+        self.mods
+            .browser
+            .stacks
+            .len()
+            .div_ceil(layout.per_page())
+            .max(1)
     }
     /// The stack under the pointer on the panel, an item's or a recipe's,
     /// as the mod sent it and as a stack.
@@ -156,6 +196,16 @@ impl Game<'_> {
             let stack = self.mods.browser.stacks.get(first + n)?.clone()?;
             Some((first + n, stack))
         })
+    }
+    fn browser_search(&mut self, layout: &Layout) -> &mut EditBox {
+        let search = self.mods.browser.search.get_or_insert_with(|| {
+            let mut edit = EditBox::new(0.0, 0.0, 0.0, 0.0);
+            edit.max_length = 50;
+            edit.focused = false;
+            edit
+        });
+        [search.x, search.y, search.width, search.height] = layout.search;
+        search
     }
 
     /// The items' page arrows and grid.
@@ -366,6 +416,21 @@ impl Game<'_> {
         }
         self.browser_searched();
     }
+    /// The mod hears the search text when it changed.
+    fn browser_searched(&mut self) {
+        let (Some((owner, _)), Some(search)) = (self.mods.browser.of, &self.mods.browser.search)
+        else {
+            return;
+        };
+        if search.value != self.mods.browser.sent {
+            let value = search.value.clone();
+            self.mods.browser.sent.clone_from(&value);
+            self.mods.browser.page = 0;
+            self.mods
+                .mods
+                .browser_event(owner, BrowserEvent::Search(value));
+        }
+    }
     /// The container screen closed: the search box lets go of the keys.
     pub(super) fn mod_browser_closed(&mut self) {
         if let Some(search) = self.mods.browser.search.as_mut() {
@@ -394,74 +459,6 @@ impl Game<'_> {
             count: stack.count,
             components: super::mod_recipes::components(&stack),
         })
-    }
-}
-#[cfg(feature = "mods")]
-impl crate::game::Sim<'_> {
-    /// The mod showing a panel, with its items made into stacks once per
-    /// `set-items`; none while no mod shows one or no container screen is up.
-    fn browser_sync(&mut self) -> Option<usize> {
-        if self.screen != Screen::Inventory || self.title.is_some() {
-            return None;
-        }
-        let Some((owner, version)) = self.mods.mods.browser_items().map(|(o, v, _)| (o, v)) else {
-            self.mods.browser.of = None;
-            self.mods.browser.stacks.clear();
-            return None;
-        };
-        if self.mods.browser.of != Some((owner, version)) {
-            let items = self.res.items();
-            let stacks = self
-                .mods
-                .mods
-                .browser_items()
-                .map_or_else(Vec::new, |(_, _, list)| {
-                    list.iter().map(|s| browser_stack(items, s)).collect()
-                });
-            self.mods.browser.stacks = stacks;
-            // The same title again (the mod updating its buttons) keeps the page.
-            let old = self.mods.browser.recipes.take();
-            self.mods.browser.recipes = self
-                .mods
-                .mods
-                .browser_recipes(owner)
-                .map(|shown| super::mod_browser_recipes::Pages::new(items, shown, old));
-            self.mods.browser.of = Some((owner, version));
-        }
-        Some(owner)
-    }
-    fn browser_pages(&self, layout: &Layout) -> usize {
-        self.mods
-            .browser
-            .stacks
-            .len()
-            .div_ceil(layout.per_page())
-            .max(1)
-    }
-    fn browser_search(&mut self, layout: &Layout) -> &mut EditBox {
-        let search = self.mods.browser.search.get_or_insert_with(|| {
-            let mut edit = EditBox::new(0.0, 0.0, 0.0, 0.0);
-            edit.max_length = 50;
-            edit.focused = false;
-            edit
-        });
-        [search.x, search.y, search.width, search.height] = layout.search;
-        search
-    }
-    /// The mod hears the search text when it changed.
-    fn browser_searched(&mut self) {
-        let (Some((owner, _)), Some(search)) = (self.mods.browser.of, &self.mods.browser.search)
-        else {
-            return;
-        };
-        if search.value != self.mods.browser.sent {
-            let value = search.value.clone();
-            self.mods.browser.sent.clone_from(&value);
-            self.mods.browser.page = 0;
-            self.mods
-                .mods
-                .browser_event(owner, BrowserEvent::Search(value));
-        }
     }
 }
 

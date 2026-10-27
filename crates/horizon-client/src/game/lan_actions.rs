@@ -803,6 +803,18 @@ impl Game<'_> {
         self.lan = Some(host);
     }
 
+    /// The game mode fields without `set_mode`'s side effects on the host.
+    fn set_mode_raw(&mut self, id: i32) {
+        use horizon_client::command::args::GameMode;
+        self.mode = match id {
+            1 => GameMode::Creative,
+            2 => GameMode::Adventure,
+            3 => GameMode::Spectator,
+            _ => GameMode::Survival,
+        };
+        self.creative = self.mode == GameMode::Creative;
+    }
+
     /// Hand a container the guest opened over (ServerPlayer.openMenu);
     /// false when it is not one a guest can open.
     fn lan_open_container(&mut self, host: &mut LanHost, conn: u32, pos: (i32, i32, i32)) -> bool {
@@ -934,6 +946,35 @@ impl Game<'_> {
                 self.guest_carried_back(host, gi);
             }
         }
+    }
+
+    /// `ContainerEntity.isChestVehicleStillValid`: the chest minecart or chest
+    /// boat is still there and within the guest's entity interaction range
+    /// plus 4 of its box.
+    fn chest_vehicle_still_valid(&self, id: i32, g: &horizon_client::lan::guest::Guest) -> bool {
+        let bounds = self
+            .carts
+            .iter()
+            .find(|c| c.id as i32 == id)
+            .map(|c| c.bounds())
+            .or_else(|| {
+                self.boats
+                    .iter()
+                    .find(|b| b.id as i32 == id)
+                    .map(|b| b.bounds())
+            });
+        let Some(b) = bounds else {
+            return false;
+        };
+        let eye = [g.position[0], g.position[1] + g.eye_height(), g.position[2]];
+        let (lo, hi) = (b.min_position(), b.max_position());
+        let d = [
+            eye[0] - eye[0].clamp(lo.x, hi.x),
+            eye[1] - eye[1].clamp(lo.y, hi.y),
+            eye[2] - eye[2].clamp(lo.z, hi.z),
+        ];
+        let range = if g.creative() { 5.0 } else { 3.0 } + 4.0;
+        d[0] * d[0] + d[1] * d[1] + d[2] * d[2] < range * range
     }
 
     /// A packet from a guest that the hub does not handle itself.
@@ -1478,6 +1519,35 @@ impl Game<'_> {
         }
     }
 
+    fn item_from_network(
+        &self,
+        host: &LanHost,
+        stack: &Option<horizon_protocol::item::Stack>,
+    ) -> Option<ItemStack> {
+        let s = stack.as_ref()?;
+        let mut out = host.hub.stack_from_network(s);
+        out.count = out.count.max(1);
+        Some(out)
+    }
+
+    /// `LivingEntity.tickDeath`: 20 ticks after dying the player is removed,
+    /// and `Player.remove`'s `inventoryMenu.removed` drops what the cursor
+    /// held (`dropOrPlaceInInventory` for a removed player). Respawning
+    /// sooner removes it too.
+    fn guest_tick_death(&mut self, host: &mut LanHost, gi: usize) {
+        let g = &mut host.hub.guests[gi];
+        g.death_time += 1;
+        if g.death_time >= 20 {
+            self.guest_drop_carried(host, gi);
+        }
+    }
+
+    fn guest_drop_carried(&mut self, host: &mut LanHost, gi: usize) {
+        if let Some(c) = host.hub.guests[gi].carried.take() {
+            self.drop_guest_items(host, gi, vec![c]);
+        }
+    }
+
     /// `AbstractContainerMenu.removed`: what a closing player held on the
     /// cursor goes back into their inventory (`placeItemBackInInventory`,
     /// dropped only if it doesn't fit), and their client's cursor empties
@@ -1487,6 +1557,93 @@ impl Game<'_> {
             self.lan_place_back(host, gi, vec![c]);
             host.hub.send_inventory(gi);
         }
+    }
+
+    pub(super) fn drop_guest_items(&mut self, host: &LanHost, gi: usize, stacks: Vec<ItemStack>) {
+        let g = &host.hub.guests[gi];
+        let eye = [
+            g.position[0],
+            g.position[1] + g.eye_height() - 0.3,
+            g.position[2],
+        ];
+        let (yaw, pitch) = (
+            f64::from(g.yaw).to_radians(),
+            f64::from(g.pitch).to_radians(),
+        );
+        for stack in stacks {
+            let v = [
+                -yaw.sin() * pitch.cos() * 0.3,
+                -pitch.sin() * 0.3 + 0.1,
+                yaw.cos() * pitch.cos() * 0.3,
+            ];
+            self.spawn_item(stack, eye, v, 40);
+        }
+    }
+
+    /// Aim the swapped-in player at an entity; returns where it aims and the
+    /// eye. A boat, minecart, armor stand, item frame or painting is aimed at
+    /// the point the client hit (the interact packet's location) when that
+    /// is on it, else at its centre.
+    fn look_at_entity(
+        &mut self,
+        host: &mut LanHost,
+        gi: usize,
+        id: i32,
+        location: Option<[f64; 3]>,
+    ) -> Option<([f64; 3], [f64; 3])> {
+        let eye = {
+            let g = &host.hub.guests[gi];
+            [g.position[0], g.position[1] + g.eye_height(), g.position[2]]
+        };
+        let object = || {
+            let (lo, hi, origin) = self.object_target(id)?;
+            let middle = [0, 1, 2].map(|k| (lo[k] + hi[k]) / 2.0);
+            let Some(l) = location else {
+                // A boat's mobs sit over its middle: aim low at its near
+                // side, so the ray meets the boat before them (the server
+                // attacks the entity it is sent).
+                let carries = u32::try_from(id).is_ok_and(|v| {
+                    self.boats.iter().any(|b| b.id == v) && !self.boat_mobs(v).is_empty()
+                });
+                if carries {
+                    let near = |k: usize| eye[k].clamp(lo[k] + 0.01, hi[k] - 0.01);
+                    return Some([near(0), lo[1] + 0.05, near(2)]);
+                }
+                return Some(middle);
+            };
+            let point = [0, 1, 2].map(|k| origin[k] + l[k]);
+            // A little inside the box, so the ray from the eye meets it.
+            let inside = [0, 1, 2].map(|k| {
+                let margin = ((hi[k] - lo[k]) / 2.0).min(0.01);
+                point[k].clamp(lo[k] + margin, hi[k] - margin)
+            });
+            let on = (0..3).all(|k| (point[k] - inside[k]).abs() < 0.1);
+            Some(if on { inside } else { middle })
+        };
+        let centre = match self.mobs.iter().find(|m| m.id as i32 == id) {
+            Some(m) => [
+                m.position.x,
+                m.position.y + m.kind.height * 0.5,
+                m.position.z,
+            ],
+            None if self.object_target(id).is_some() => object()?,
+            // A dragon part or an end crystal (game/dragon.rs).
+            None => {
+                let b = self.tracked_special_box(id)?;
+                let (lo, hi) = (b.min_position(), b.max_position());
+                [
+                    (lo.x + hi.x) / 2.0,
+                    (lo.y + hi.y) / 2.0,
+                    (lo.z + hi.z) / 2.0,
+                ]
+            }
+        };
+        let g = &mut host.hub.guests[gi];
+        let d = [centre[0] - eye[0], centre[1] - eye[1], centre[2] - eye[2]];
+        let horizontal = (d[0] * d[0] + d[2] * d[2]).sqrt();
+        g.yaw = (-d[0].atan2(d[2])).to_degrees() as f32;
+        g.pitch = (-d[1].atan2(horizontal)).to_degrees() as f32;
+        Some((centre, eye))
     }
 
     fn guest_attack(&mut self, host: &mut LanHost, conn: u32, id: i32) {
@@ -2199,6 +2356,82 @@ impl Game<'_> {
         }
     }
 
+    /// `ServerPlayer.die`'s message from a guest's own `CombatTracker`, which
+    /// sits in `guest_combat` between turns.
+    fn guest_death_message(
+        &mut self,
+        conn: u32,
+        me: horizon_client::text::Text,
+    ) -> horizon_client::text::Text {
+        let mut tracker = self.guest_combat.remove(&conn).unwrap_or_default();
+        std::mem::swap(&mut self.combat, &mut tracker);
+        let text = self.combat_death_message_for(me);
+        std::mem::swap(&mut self.combat, &mut tracker);
+        self.guest_combat.insert(conn, tracker);
+        text
+    }
+
+    /// `Player.tick`'s sleep counter, and `LivingEntity.tick`'s wake-up of a
+    /// sleeper who died or whose bed is gone.
+    fn guest_sleep_tick(&mut self, host: &mut LanHost, gi: usize) {
+        let g = &mut host.hub.guests[gi];
+        g.sleep_timer = super::tick_sleep_timer(g.sleep_timer, g.bed.is_some());
+        if let Some(head) = g.bed {
+            let block = self.world.block(head[0], head[1], head[2]);
+            let bed = self.res.facts().get(block).name.ends_with("_bed");
+            if g.dead || g.health <= 0.0 || !bed {
+                host.hub.wake(gi);
+            }
+        }
+    }
+
+    /// `SleepStatus.areEnoughSleeping` and `areEnoughDeepSleeping` over the
+    /// host's player and the guests: of the players not in spectator mode,
+    /// players_sleeping_percentage of them (at least one) are in bed, and as
+    /// many have slept 100 ticks.
+    pub(super) fn enough_slept(&self) -> bool {
+        let (mut active, mut sleeping, mut deep) = (0i64, 0i64, 0i64);
+        let mut count = |in_bed: bool, timer: u32| {
+            active += 1;
+            if in_bed {
+                sleeping += 1;
+                if timer >= 100 {
+                    deep += 1;
+                }
+            }
+        };
+        if self.player.is_some() && !self.spectator() {
+            count(self.sleeping.is_some(), self.sleep_timer);
+        }
+        if let Some(host) = self.lan.as_ref() {
+            for g in host
+                .hub
+                .guests
+                .iter()
+                .filter(|g| g.placed && !g.spectator())
+            {
+                count(g.bed.is_some(), g.sleep_timer);
+            }
+        }
+        let percent = i64::from(
+            self.world_data
+                .rules
+                .int("players_sleeping_percentage")
+                .max(0),
+        );
+        let needed = ((active * percent + 99) / 100).max(1);
+        sleeping >= needed && deep >= needed
+    }
+
+    /// `ServerLevel.wakeUpAllPlayers` for the guests.
+    pub(super) fn wake_guests(&mut self) {
+        if let Some(host) = self.lan.as_mut() {
+            for i in 0..host.hub.guests.len() {
+                host.hub.wake(i);
+            }
+        }
+    }
+
     /// `PlayerList.broadcastSystemMessage` of the advancements guests made
     /// (their own actions, commands and ticks).
     pub(super) fn announce_guest_advancements(&mut self, host: &mut LanHost) {
@@ -2551,6 +2784,21 @@ impl Game<'_> {
         });
     }
 
+    /// `Player.isInWall`: a suffocating block in the 0.48-wide box at the
+    /// eyes. Suffocating is a full collision box that is also a full render
+    /// cube (`BlockBehaviour.isSuffocating`'s default; glass and the like
+    /// opt out), as the mobs' check has it.
+    fn in_wall(&self, at: [f64; 3], eye_height: f64) -> bool {
+        let (y, half) = ((at[1] + eye_height).floor() as i32, 0.24);
+        let range = |v: f64| (v - half).floor() as i32..=(v + half).floor() as i32;
+        range(at[0]).any(|x| {
+            range(at[2]).any(|z| {
+                let f = self.res.facts().get(self.world.block(x, y, z));
+                f.full_collision && f.solid_render
+            })
+        })
+    }
+
     /// ServerPlayerGameMode.handleBlockBreakAction, STOP_DESTROY_BLOCK: the client finished
     /// digging `pos` (and predicted the break). The server breaks it if its own count of the
     /// digging since START is at least 70 % done; otherwise it keeps digging alone and breaks
@@ -2620,6 +2868,86 @@ impl Game<'_> {
         self.guest_crack_gone(host, conn, pos);
     }
 
+    /// The crack animation other players see.
+    fn guest_dig_feedback(&mut self, host: &mut LanHost, conn: u32) {
+        let Some(gi) = host.hub.guests.iter().position(|g| g.conn == conn) else {
+            return;
+        };
+        let play = host.play.entry(conn).or_default();
+        let Some((pos, _)) = play.digging else {
+            return;
+        };
+        // ServerPlayerGameMode.tick: a block gone while it is dug (the guest's own tick broke
+        // it, or something else did) clears the crack.
+        if play.last_progress >= 0
+            && self
+                .res
+                .facts()
+                .is_air(self.world.block(pos[0], pos[1], pos[2]))
+        {
+            play.last_progress = -1;
+            self.guest_crack_gone(host, conn, pos);
+            return;
+        }
+        let progress = play
+            .mining
+            .as_ref()
+            .map_or(-1, |m| (m.progress.clamp(0.0, 1.0) * 10.0) as i32 - 1);
+        let swinging = play.swing.swinging();
+        if progress != play.last_progress && progress >= 0 {
+            play.last_progress = progress;
+            // The host player sees it too (on the server thread its window is a guest).
+            self.destroy_block_progress(host.hub.guests[gi].entity_id, pos, progress);
+            host.hub.broadcast_near(
+                [f64::from(pos[0]), f64::from(pos[1]), f64::from(pos[2])],
+                64.0,
+                &C::BlockDestruction(play::BlockDestruction {
+                    id: host.hub.guests[gi].entity_id,
+                    pos,
+                    progress: progress as u8,
+                }),
+                Some(conn),
+            );
+        }
+        let _ = swinging;
+    }
+
+    /// `level.destroyBlockProgress(id, pos, -1)` for a guest: its crack on `pos` is gone, for the
+    /// host and the other guests.
+    /// A player who dies digs and uses nothing any more: the block it was
+    /// breaking, or had left to break (`hasDelayedDestroy`), stays, and its
+    /// crack goes. Respawning gives it a new ServerPlayerGameMode (#1315).
+    fn guest_forget_digging(&mut self, host: &mut LanHost, conn: u32) {
+        let Some(play) = host.play.get_mut(&conn) else {
+            return;
+        };
+        let cracked = play.digging.take().filter(|_| play.last_progress >= 0);
+        play.mining = None;
+        play.delayed = None;
+        play.destroy_delay = 0;
+        play.using = None;
+        play.last_progress = -1;
+        if let Some((pos, _)) = cracked {
+            self.guest_crack_gone(host, conn, pos);
+        }
+    }
+    fn guest_crack_gone(&mut self, host: &mut LanHost, conn: u32, pos: [i32; 3]) {
+        let Some(id) = host.hub.guest(conn).map(|g| g.entity_id) else {
+            return;
+        };
+        self.destroy_block_progress(id, pos, -1);
+        host.hub.broadcast_near(
+            [f64::from(pos[0]), f64::from(pos[1]), f64::from(pos[2])],
+            64.0,
+            &C::BlockDestruction(play::BlockDestruction {
+                id,
+                pos,
+                progress: 255,
+            }),
+            Some(conn),
+        );
+    }
+
     /// Dropped items touching a guest go into their inventory.
     fn guest_pickups(&mut self, host: &mut LanHost, gi: usize) {
         let (conn, mode, position, id) = {
@@ -2662,8 +2990,7 @@ impl Game<'_> {
                     taken.push((item_id, before));
                 }
                 Some(rest) if rest.count < before => {
-                    let stack = self.dropped[i].clone();
-                    self.guest_pickup(host, id, stack);
+                    self.guest_pickup(host, id, self.dropped[i].clone());
                     self.dropped[i].stack = rest;
                     taken.push((item_id, before - self.dropped[i].stack.count));
                 }
@@ -2755,6 +3082,23 @@ impl Game<'_> {
         });
     }
 
+    /// The host's own `ItemPickupParticle` toward the guest's model.
+    fn guest_pickup(
+        &mut self,
+        host: &LanHost,
+        id: i32,
+        item: horizon_client::entities::ItemEntity,
+    ) {
+        use super::pickups::{Collector, Taken, guest_target};
+        if let Some(target) = guest_target(host, id as u32) {
+            self.add_pickup_toward(
+                Taken::Item(Box::new(item)),
+                Collector::Guest(id as u32),
+                target,
+            );
+        }
+    }
+
     /// `level.playSound(player, ...)` of a guest's use it predicted (`remote::hand_operated`
     /// blocks only, as the guest decides): the others hear it now, the guest already did.
     fn guest_use_sounds(&mut self, host: &mut LanHost, conn: u32, logged: usize, heard: usize) {
@@ -2825,338 +3169,7 @@ impl Game<'_> {
             host.hub.sound(&name, at, volume, pitch, source, None);
         }
     }
-}
-impl crate::game::Sim<'_> {
-    /// The game mode fields without `set_mode`'s side effects on the host.
-    fn set_mode_raw(&mut self, id: i32) {
-        use horizon_client::command::args::GameMode;
-        self.mode = match id {
-            1 => GameMode::Creative,
-            2 => GameMode::Adventure,
-            3 => GameMode::Spectator,
-            _ => GameMode::Survival,
-        };
-        self.creative = self.mode == GameMode::Creative;
-    }
-    /// `ContainerEntity.isChestVehicleStillValid`: the chest minecart or chest
-    /// boat is still there and within the guest's entity interaction range
-    /// plus 4 of its box.
-    fn chest_vehicle_still_valid(&self, id: i32, g: &horizon_client::lan::guest::Guest) -> bool {
-        let bounds = self
-            .carts
-            .iter()
-            .find(|c| c.id as i32 == id)
-            .map(|c| c.bounds())
-            .or_else(|| {
-                self.boats
-                    .iter()
-                    .find(|b| b.id as i32 == id)
-                    .map(|b| b.bounds())
-            });
-        let Some(b) = bounds else {
-            return false;
-        };
-        let eye = [g.position[0], g.position[1] + g.eye_height(), g.position[2]];
-        let (lo, hi) = (b.min_position(), b.max_position());
-        let d = [
-            eye[0] - eye[0].clamp(lo.x, hi.x),
-            eye[1] - eye[1].clamp(lo.y, hi.y),
-            eye[2] - eye[2].clamp(lo.z, hi.z),
-        ];
-        let range = if g.creative() { 5.0 } else { 3.0 } + 4.0;
-        d[0] * d[0] + d[1] * d[1] + d[2] * d[2] < range * range
-    }
-    fn item_from_network(
-        &self,
-        host: &LanHost,
-        stack: &Option<horizon_protocol::item::Stack>,
-    ) -> Option<ItemStack> {
-        let s = stack.as_ref()?;
-        let mut out = host.hub.stack_from_network(s);
-        out.count = out.count.max(1);
-        Some(out)
-    }
-    /// `LivingEntity.tickDeath`: 20 ticks after dying the player is removed,
-    /// and `Player.remove`'s `inventoryMenu.removed` drops what the cursor
-    /// held (`dropOrPlaceInInventory` for a removed player). Respawning
-    /// sooner removes it too.
-    fn guest_tick_death(&mut self, host: &mut LanHost, gi: usize) {
-        let g = &mut host.hub.guests[gi];
-        g.death_time += 1;
-        if g.death_time >= 20 {
-            self.guest_drop_carried(host, gi);
-        }
-    }
-    fn guest_drop_carried(&mut self, host: &mut LanHost, gi: usize) {
-        if let Some(c) = host.hub.guests[gi].carried.take() {
-            self.drop_guest_items(host, gi, vec![c]);
-        }
-    }
-    pub(super) fn drop_guest_items(&mut self, host: &LanHost, gi: usize, stacks: Vec<ItemStack>) {
-        let g = &host.hub.guests[gi];
-        let eye = [
-            g.position[0],
-            g.position[1] + g.eye_height() - 0.3,
-            g.position[2],
-        ];
-        let (yaw, pitch) = (
-            f64::from(g.yaw).to_radians(),
-            f64::from(g.pitch).to_radians(),
-        );
-        for stack in stacks {
-            let v = [
-                -yaw.sin() * pitch.cos() * 0.3,
-                -pitch.sin() * 0.3 + 0.1,
-                yaw.cos() * pitch.cos() * 0.3,
-            ];
-            self.spawn_item(stack, eye, v, 40);
-        }
-    }
-    /// Aim the swapped-in player at an entity; returns where it aims and the
-    /// eye. A boat, minecart, armor stand, item frame or painting is aimed at
-    /// the point the client hit (the interact packet's location) when that
-    /// is on it, else at its centre.
-    fn look_at_entity(
-        &mut self,
-        host: &mut LanHost,
-        gi: usize,
-        id: i32,
-        location: Option<[f64; 3]>,
-    ) -> Option<([f64; 3], [f64; 3])> {
-        let eye = {
-            let g = &host.hub.guests[gi];
-            [g.position[0], g.position[1] + g.eye_height(), g.position[2]]
-        };
-        let object = || {
-            let (lo, hi, origin) = self.object_target(id)?;
-            let middle = [0, 1, 2].map(|k| (lo[k] + hi[k]) / 2.0);
-            let Some(l) = location else {
-                // A boat's mobs sit over its middle: aim low at its near
-                // side, so the ray meets the boat before them (the server
-                // attacks the entity it is sent).
-                let carries = u32::try_from(id).is_ok_and(|v| {
-                    self.boats.iter().any(|b| b.id == v) && !self.boat_mobs(v).is_empty()
-                });
-                if carries {
-                    let near = |k: usize| eye[k].clamp(lo[k] + 0.01, hi[k] - 0.01);
-                    return Some([near(0), lo[1] + 0.05, near(2)]);
-                }
-                return Some(middle);
-            };
-            let point = [0, 1, 2].map(|k| origin[k] + l[k]);
-            // A little inside the box, so the ray from the eye meets it.
-            let inside = [0, 1, 2].map(|k| {
-                let margin = ((hi[k] - lo[k]) / 2.0).min(0.01);
-                point[k].clamp(lo[k] + margin, hi[k] - margin)
-            });
-            let on = (0..3).all(|k| (point[k] - inside[k]).abs() < 0.1);
-            Some(if on { inside } else { middle })
-        };
-        let centre = match self.mobs.iter().find(|m| m.id as i32 == id) {
-            Some(m) => [
-                m.position.x,
-                m.position.y + m.kind.height * 0.5,
-                m.position.z,
-            ],
-            None if self.object_target(id).is_some() => object()?,
-            // A dragon part or an end crystal (game/dragon.rs).
-            None => {
-                let b = self.tracked_special_box(id)?;
-                let (lo, hi) = (b.min_position(), b.max_position());
-                [
-                    (lo.x + hi.x) / 2.0,
-                    (lo.y + hi.y) / 2.0,
-                    (lo.z + hi.z) / 2.0,
-                ]
-            }
-        };
-        let g = &mut host.hub.guests[gi];
-        let d = [centre[0] - eye[0], centre[1] - eye[1], centre[2] - eye[2]];
-        let horizontal = (d[0] * d[0] + d[2] * d[2]).sqrt();
-        g.yaw = (-d[0].atan2(d[2])).to_degrees() as f32;
-        g.pitch = (-d[1].atan2(horizontal)).to_degrees() as f32;
-        Some((centre, eye))
-    }
-    /// `ServerPlayer.die`'s message from a guest's own `CombatTracker`, which
-    /// sits in `guest_combat` between turns.
-    fn guest_death_message(
-        &mut self,
-        conn: u32,
-        me: horizon_client::text::Text,
-    ) -> horizon_client::text::Text {
-        let mut tracker = self.guest_combat.remove(&conn).unwrap_or_default();
-        std::mem::swap(&mut self.combat, &mut tracker);
-        let text = self.combat_death_message_for(me);
-        std::mem::swap(&mut self.combat, &mut tracker);
-        self.guest_combat.insert(conn, tracker);
-        text
-    }
-    /// `Player.tick`'s sleep counter, and `LivingEntity.tick`'s wake-up of a
-    /// sleeper who died or whose bed is gone.
-    fn guest_sleep_tick(&mut self, host: &mut LanHost, gi: usize) {
-        let g = &mut host.hub.guests[gi];
-        g.sleep_timer = super::tick_sleep_timer(g.sleep_timer, g.bed.is_some());
-        if let Some(head) = g.bed {
-            let block = self.world.block(head[0], head[1], head[2]);
-            let bed = self.res.facts().get(block).name.ends_with("_bed");
-            if g.dead || g.health <= 0.0 || !bed {
-                host.hub.wake(gi);
-            }
-        }
-    }
-    /// `SleepStatus.areEnoughSleeping` and `areEnoughDeepSleeping` over the
-    /// host's player and the guests: of the players not in spectator mode,
-    /// players_sleeping_percentage of them (at least one) are in bed, and as
-    /// many have slept 100 ticks.
-    pub(super) fn enough_slept(&self) -> bool {
-        let (mut active, mut sleeping, mut deep) = (0i64, 0i64, 0i64);
-        let mut count = |in_bed: bool, timer: u32| {
-            active += 1;
-            if in_bed {
-                sleeping += 1;
-                if timer >= 100 {
-                    deep += 1;
-                }
-            }
-        };
-        if self.player.is_some() && !self.spectator() {
-            count(self.sleeping.is_some(), self.sleep_timer);
-        }
-        if let Some(host) = self.lan.as_ref() {
-            for g in host
-                .hub
-                .guests
-                .iter()
-                .filter(|g| g.placed && !g.spectator())
-            {
-                count(g.bed.is_some(), g.sleep_timer);
-            }
-        }
-        let percent = i64::from(
-            self.world_data
-                .rules
-                .int("players_sleeping_percentage")
-                .max(0),
-        );
-        let needed = ((active * percent + 99) / 100).max(1);
-        sleeping >= needed && deep >= needed
-    }
-    /// `ServerLevel.wakeUpAllPlayers` for the guests.
-    pub(super) fn wake_guests(&mut self) {
-        if let Some(host) = self.lan.as_mut() {
-            for i in 0..host.hub.guests.len() {
-                host.hub.wake(i);
-            }
-        }
-    }
-    /// `Player.isInWall`: a suffocating block in the 0.48-wide box at the
-    /// eyes. Suffocating is a full collision box that is also a full render
-    /// cube (`BlockBehaviour.isSuffocating`'s default; glass and the like
-    /// opt out), as the mobs' check has it.
-    fn in_wall(&self, at: [f64; 3], eye_height: f64) -> bool {
-        let (y, half) = ((at[1] + eye_height).floor() as i32, 0.24);
-        let range = |v: f64| (v - half).floor() as i32..=(v + half).floor() as i32;
-        range(at[0]).any(|x| {
-            range(at[2]).any(|z| {
-                let f = self.res.facts().get(self.world.block(x, y, z));
-                f.full_collision && f.solid_render
-            })
-        })
-    }
-    /// The crack animation other players see.
-    fn guest_dig_feedback(&mut self, host: &mut LanHost, conn: u32) {
-        let Some(gi) = host.hub.guests.iter().position(|g| g.conn == conn) else {
-            return;
-        };
-        let play = host.play.entry(conn).or_default();
-        let Some((pos, _)) = play.digging else {
-            return;
-        };
-        // ServerPlayerGameMode.tick: a block gone while it is dug (the guest's own tick broke
-        // it, or something else did) clears the crack.
-        if play.last_progress >= 0
-            && self
-                .res
-                .facts()
-                .is_air(self.world.block(pos[0], pos[1], pos[2]))
-        {
-            play.last_progress = -1;
-            self.guest_crack_gone(host, conn, pos);
-            return;
-        }
-        let progress = play
-            .mining
-            .as_ref()
-            .map_or(-1, |m| (m.progress.clamp(0.0, 1.0) * 10.0) as i32 - 1);
-        let swinging = play.swing.swinging();
-        if progress != play.last_progress && progress >= 0 {
-            play.last_progress = progress;
-            // The host player sees it too (on the server thread its window is a guest).
-            self.destroy_block_progress(host.hub.guests[gi].entity_id, pos, progress);
-            host.hub.broadcast_near(
-                [f64::from(pos[0]), f64::from(pos[1]), f64::from(pos[2])],
-                64.0,
-                &C::BlockDestruction(play::BlockDestruction {
-                    id: host.hub.guests[gi].entity_id,
-                    pos,
-                    progress: progress as u8,
-                }),
-                Some(conn),
-            );
-        }
-        let _ = swinging;
-    }
-    /// `level.destroyBlockProgress(id, pos, -1)` for a guest: its crack on `pos` is gone, for the
-    /// host and the other guests.
-    /// A player who dies digs and uses nothing any more: the block it was
-    /// breaking, or had left to break (`hasDelayedDestroy`), stays, and its
-    /// crack goes. Respawning gives it a new ServerPlayerGameMode (#1315).
-    fn guest_forget_digging(&mut self, host: &mut LanHost, conn: u32) {
-        let Some(play) = host.play.get_mut(&conn) else {
-            return;
-        };
-        let cracked = play.digging.take().filter(|_| play.last_progress >= 0);
-        play.mining = None;
-        play.delayed = None;
-        play.destroy_delay = 0;
-        play.using = None;
-        play.last_progress = -1;
-        if let Some((pos, _)) = cracked {
-            self.guest_crack_gone(host, conn, pos);
-        }
-    }
-    fn guest_crack_gone(&mut self, host: &mut LanHost, conn: u32, pos: [i32; 3]) {
-        let Some(id) = host.hub.guest(conn).map(|g| g.entity_id) else {
-            return;
-        };
-        self.destroy_block_progress(id, pos, -1);
-        host.hub.broadcast_near(
-            [f64::from(pos[0]), f64::from(pos[1]), f64::from(pos[2])],
-            64.0,
-            &C::BlockDestruction(play::BlockDestruction {
-                id,
-                pos,
-                progress: 255,
-            }),
-            Some(conn),
-        );
-    }
-    /// The host's own `ItemPickupParticle` toward the guest's model.
-    fn guest_pickup(
-        &mut self,
-        host: &LanHost,
-        id: i32,
-        item: horizon_client::entities::ItemEntity,
-    ) {
-        use super::pickups::{Collector, Taken, guest_target};
-        if let Some(target) = guest_target(host, id as u32) {
-            self.add_pickup_toward(
-                Taken::Item(Box::new(item)),
-                Collector::Guest(id as u32),
-                target,
-            );
-        }
-    }
+
     /// The guests' items in use, for the players around (`LivingEntity.startUsingItem`
     /// and `stopUsingItem` set DATA_LIVING_ENTITY_FLAGS).
     pub(super) fn lan_living_flags(&mut self, host: &mut LanHost) {
@@ -3165,6 +3178,7 @@ impl crate::game::Sim<'_> {
             g.living_flags = super::lan::living_flags(using);
         }
     }
+
     /// A use the server ran swung the guest's hand: their own client is told
     /// too (`swing(hand, true)` for a SwingSource.SERVER result). Horizon's
     /// client does not run uses itself, so it does not predict the swing; a
@@ -3182,6 +3196,7 @@ impl crate::game::Sim<'_> {
                 .send_to(conn, &swing_packet(g.entity_id, c.hand, c.animation));
         }
     }
+
     /// The tick's arm swings for the players around (the guests' to everyone
     /// else, the host's to the guests), and `LivingEntity.updateSwingTime`
     /// for the guests' bodies here.
@@ -3215,8 +3230,7 @@ impl crate::game::Sim<'_> {
     }
 }
 
-impl Game<'_> {}
-impl crate::game::Sim<'_> {
+impl Game<'_> {
     /// The host player's crack, for the guests (`ServerLevel.destroyBlockProgress` from the
     /// host's mining): each new stage, and -1 once it stops or breaks the block.
     fn lan_host_crack(&mut self, host: &mut LanHost) {

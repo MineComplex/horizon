@@ -60,6 +60,22 @@ impl Game<'_> {
         self.end_portal_travel = false;
         result
     }
+    /// Stop the scroll `scroll` pixels in (`horizon-ctl credits ... SCROLL`).
+    pub(super) fn hold_win_screen(&mut self, scroll: f32) {
+        if let Some(win) = self.win.as_mut() {
+            win.screen.hold(scroll);
+        }
+    }
+    /// `WinScreen.isPauseScreen`: only the credits without the poem pause.
+    pub(super) fn win_screen_pauses(&self) -> bool {
+        self.win.as_ref().is_some_and(|w| !w.screen.poem)
+    }
+    /// The player waits out of the world while the poem rolls.
+    pub(super) fn win_screen_holds_arrival(&self) -> bool {
+        self.win
+            .as_ref()
+            .is_some_and(|w| w.finish == Finish::Respawn)
+    }
     pub(super) fn draw_win_screen(&mut self, batch: &mut HudBatch) {
         let Some(win) = self.sim.win.as_mut() else {
             return;
@@ -133,23 +149,5 @@ impl Game<'_> {
             }
         }
         Ok(())
-    }
-}
-impl crate::game::Sim<'_> {
-    /// Stop the scroll `scroll` pixels in (`horizon-ctl credits ... SCROLL`).
-    pub(super) fn hold_win_screen(&mut self, scroll: f32) {
-        if let Some(win) = self.win.as_mut() {
-            win.screen.hold(scroll);
-        }
-    }
-    /// `WinScreen.isPauseScreen`: only the credits without the poem pause.
-    pub(super) fn win_screen_pauses(&self) -> bool {
-        self.win.as_ref().is_some_and(|w| !w.screen.poem)
-    }
-    /// The player waits out of the world while the poem rolls.
-    pub(super) fn win_screen_holds_arrival(&self) -> bool {
-        self.win
-            .as_ref()
-            .is_some_and(|w| w.finish == Finish::Respawn)
     }
 }

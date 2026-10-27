@@ -256,6 +256,41 @@ impl Game<'_> {
         (using, attacking)
     }
 
+    /// The use trigger while nothing is in use: a loaded crossbow clicks, an item that boosts (a
+    /// rocket while gliding, the stick of the mount being ridden) catches, a shield weighs, and
+    /// locks while an axe has disabled it.
+    fn idle_use_feel(&self) -> TriggerFeel {
+        let gliding = self.player.as_ref().is_some_and(|p| p.fall_flying);
+        let mount = self
+            .riding
+            .and_then(|id| self.mobs.iter().find(|m| m.id == id));
+        let mount = mount.map_or("", |m| m.kind.id.as_str());
+        let feel = |stack: Option<&horizon_client::items::ItemStack>| match stack
+            .map(|s| (s, &*s.item))
+        {
+            Some((s, "minecraft:crossbow")) if s.data().is_some_and(|d| !d.charged.is_empty()) => {
+                TriggerFeel::Click
+            }
+            Some((_, "minecraft:firework_rocket")) if gliding => TriggerFeel::Boost,
+            Some((_, "minecraft:carrot_on_a_stick")) if mount == "minecraft:pig" => {
+                TriggerFeel::Boost
+            }
+            Some((_, "minecraft:warped_fungus_on_a_stick")) if mount == "minecraft:strider" => {
+                TriggerFeel::Boost
+            }
+            Some((s, _)) if self.blocks_attacks(s).is_some() => match self.shield_cooldown {
+                0 => TriggerFeel::Brace,
+                _ => TriggerFeel::Locked,
+            },
+            _ => TriggerFeel::Free,
+        };
+        // Use tries the main hand first.
+        match feel(self.stack_in(self.selected)) {
+            TriggerFeel::Free => feel(self.offhand.as_ref()),
+            main => main,
+        }
+    }
+
     /// Open the pad's haptics once its output is open over USB (its audio device is there
     /// only then); close them when it goes. Opt-in with `HORIZON_DUALSENSE_HAPTICS=1` until
     /// they are proven on a pad (docs/controllers.md); never for games without sound (tests).
@@ -380,41 +415,5 @@ impl Game<'_> {
             "dualsense_output": devices.output.as_ref().and_then(|o| o.open()).map(|t| format!("{t:?}")),
             "trigger_effects": devices.shown.map(|s| s.triggers),
         })
-    }
-}
-impl crate::game::Sim<'_> {
-    /// The use trigger while nothing is in use: a loaded crossbow clicks, an item that boosts (a
-    /// rocket while gliding, the stick of the mount being ridden) catches, a shield weighs, and
-    /// locks while an axe has disabled it.
-    fn idle_use_feel(&self) -> TriggerFeel {
-        let gliding = self.player.as_ref().is_some_and(|p| p.fall_flying);
-        let mount = self
-            .riding
-            .and_then(|id| self.mobs.iter().find(|m| m.id == id));
-        let mount = mount.map_or("", |m| m.kind.id.as_str());
-        let feel = |stack: Option<&horizon_client::items::ItemStack>| match stack
-            .map(|s| (s, &*s.item))
-        {
-            Some((s, "minecraft:crossbow")) if s.data().is_some_and(|d| !d.charged.is_empty()) => {
-                TriggerFeel::Click
-            }
-            Some((_, "minecraft:firework_rocket")) if gliding => TriggerFeel::Boost,
-            Some((_, "minecraft:carrot_on_a_stick")) if mount == "minecraft:pig" => {
-                TriggerFeel::Boost
-            }
-            Some((_, "minecraft:warped_fungus_on_a_stick")) if mount == "minecraft:strider" => {
-                TriggerFeel::Boost
-            }
-            Some((s, _)) if self.blocks_attacks(s).is_some() => match self.shield_cooldown {
-                0 => TriggerFeel::Brace,
-                _ => TriggerFeel::Locked,
-            },
-            _ => TriggerFeel::Free,
-        };
-        // Use tries the main hand first.
-        match feel(self.stack_in(self.selected)) {
-            TriggerFeel::Free => feel(self.offhand.as_ref()),
-            main => main,
-        }
     }
 }

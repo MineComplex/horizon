@@ -40,6 +40,10 @@ impl MountState {
     }
 }
 impl Game<'_> {
+    fn mount_index(&self) -> Option<usize> {
+        let id = self.riding?;
+        self.mobs.iter().position(|m| m.id == id)
+    }
     /// `Pig` / `Strider.mobInteract`: saddle an adult, or ride a saddled one.
     fn interact_steerable(&mut self, index: usize, item: &str) -> bool {
         let held = self.inventory[self.selected].clone();
@@ -369,6 +373,59 @@ impl Game<'_> {
         });
         true
     }
+    /// `positionRider`: the player sits on the mount after it moves.
+    pub(super) fn position_rider(&mut self) {
+        let Some(i) = self.mount_index() else {
+            return;
+        };
+        let m = &self.mobs[i];
+        let mut at = Vec3::new(m.position.x, m.position.y + seat(m.species()), m.position.z);
+        if horizon_client::mobs::camel::is_camel(m.species()) {
+            // Camel.getPassengerAttachmentPoint: the driver half a block
+            // forward, at the body anchor (lower while sitting).
+            let scale = if m.is_baby() { 0.6 } else { 1.0 };
+            let anchor = if horizon_client::mobs::camel::sitting(m) {
+                (2.375 - 1.43) * scale - if m.is_baby() { 0.09375 } else { 0.375 } + 0.2 * scale
+            } else {
+                2.375 * scale - if m.is_baby() { 0.09375 } else { 0.375 }
+            };
+            let yaw = m.yaw.to_radians();
+            at = Vec3::new(
+                m.position.x - f64::from(0.5 * scale * yaw.sin()),
+                m.position.y + f64::from(anchor) - 0.6,
+                m.position.z + f64::from(0.5 * scale * yaw.cos()),
+            );
+        }
+        if m.species() == Species::HappyGhast {
+            // The first passenger attachment (0, 4, 1.7) of the harnessed back.
+            let yaw = f64::from(m.yaw.to_radians());
+            at = Vec3::new(
+                m.position.x - 1.7 * yaw.sin(),
+                m.position.y + 4.0 - 0.6,
+                m.position.z + 1.7 * yaw.cos(),
+            );
+        }
+        if horizon_client::mobs::llama::is_llama(m.species()) {
+            // The passenger attachment (0, 1.37, -0.3), half of it for a baby.
+            let (y, z) = if m.is_baby() {
+                (0.81, -0.15)
+            } else {
+                (1.37, -0.3)
+            };
+            let yaw = f64::from(m.yaw.to_radians());
+            at = Vec3::new(
+                m.position.x - z * yaw.sin(),
+                m.position.y + y - 0.6,
+                m.position.z + z * yaw.cos(),
+            );
+        }
+        if let Some(p) = self.sim.player.as_mut() {
+            self.sim.previous_position = p.position;
+            p.position = at;
+            p.velocity = Vec3::ZERO;
+            p.fall_distance = 0.0;
+        }
+    }
     /// `removePassenger` + `getDismountLocationForPassenger`: beside the mount.
     pub(super) fn dismount_mount(&mut self) {
         let Some(id) = self.riding.take() else {
@@ -452,6 +509,10 @@ impl Game<'_> {
         self.mount_index()
             .is_some_and(|i| self.mobs[i].extra.saddled && Self::jumps(self.mobs[i].species()))
     }
+    /// `willPrioritizeJumpInfo`: charging a jump or recharging.
+    pub(super) fn mount_jumping(&self) -> bool {
+        self.mount.jump_scale > 0.0 || self.mount.jump_ticks < 0
+    }
     /// `Hud.extractVehicleHealth`, and the jump bar when it is the
     /// contextual bar (`jump_bar`). Returns the mount's heart count
     /// (`getVehicleMaxHearts`).
@@ -483,68 +544,5 @@ impl Game<'_> {
             horizon_client::hud_layout::paint(batch, atlas, &draws);
         }
         hearts
-    }
-}
-impl crate::game::Sim<'_> {
-    fn mount_index(&self) -> Option<usize> {
-        let id = self.riding?;
-        self.mobs.iter().position(|m| m.id == id)
-    }
-    /// `positionRider`: the player sits on the mount after it moves.
-    pub(super) fn position_rider(&mut self) {
-        let Some(i) = self.mount_index() else {
-            return;
-        };
-        let m = &self.mobs[i];
-        let mut at = Vec3::new(m.position.x, m.position.y + seat(m.species()), m.position.z);
-        if horizon_client::mobs::camel::is_camel(m.species()) {
-            // Camel.getPassengerAttachmentPoint: the driver half a block
-            // forward, at the body anchor (lower while sitting).
-            let scale = if m.is_baby() { 0.6 } else { 1.0 };
-            let anchor = if horizon_client::mobs::camel::sitting(m) {
-                (2.375 - 1.43) * scale - if m.is_baby() { 0.09375 } else { 0.375 } + 0.2 * scale
-            } else {
-                2.375 * scale - if m.is_baby() { 0.09375 } else { 0.375 }
-            };
-            let yaw = m.yaw.to_radians();
-            at = Vec3::new(
-                m.position.x - f64::from(0.5 * scale * yaw.sin()),
-                m.position.y + f64::from(anchor) - 0.6,
-                m.position.z + f64::from(0.5 * scale * yaw.cos()),
-            );
-        }
-        if m.species() == Species::HappyGhast {
-            // The first passenger attachment (0, 4, 1.7) of the harnessed back.
-            let yaw = f64::from(m.yaw.to_radians());
-            at = Vec3::new(
-                m.position.x - 1.7 * yaw.sin(),
-                m.position.y + 4.0 - 0.6,
-                m.position.z + 1.7 * yaw.cos(),
-            );
-        }
-        if horizon_client::mobs::llama::is_llama(m.species()) {
-            // The passenger attachment (0, 1.37, -0.3), half of it for a baby.
-            let (y, z) = if m.is_baby() {
-                (0.81, -0.15)
-            } else {
-                (1.37, -0.3)
-            };
-            let yaw = f64::from(m.yaw.to_radians());
-            at = Vec3::new(
-                m.position.x - z * yaw.sin(),
-                m.position.y + y - 0.6,
-                m.position.z + z * yaw.cos(),
-            );
-        }
-        if let Some(p) = self.player.as_mut() {
-            self.previous_position = p.position;
-            p.position = at;
-            p.velocity = Vec3::ZERO;
-            p.fall_distance = 0.0;
-        }
-    }
-    /// `willPrioritizeJumpInfo`: charging a jump or recharging.
-    pub(super) fn mount_jumping(&self) -> bool {
-        self.mount.jump_scale > 0.0 || self.mount.jump_ticks < 0
     }
 }

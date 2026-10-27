@@ -189,6 +189,10 @@ impl Game<'_> {
             .options
             .scroll_at(&self.sim.settings, size, self.front.cursor, amount);
     }
+    /// Mouse buttons pressed while a key is being bound.
+    pub(super) fn options_waiting_for_key(&self) -> bool {
+        self.ui.options.selected_key.is_some()
+    }
     pub(super) fn options_bind_mouse(&mut self, button: MouseButton) -> Result<()> {
         let events = self
             .sim
@@ -378,11 +382,5 @@ impl Game<'_> {
                 horizon_client::window::end_frame(&mut self.front.limiter, limit, &mut clock);
             }
         }
-    }
-}
-impl crate::game::Sim<'_> {
-    /// Mouse buttons pressed while a key is being bound.
-    pub(super) fn options_waiting_for_key(&self) -> bool {
-        self.ui.options.selected_key.is_some()
     }
 }

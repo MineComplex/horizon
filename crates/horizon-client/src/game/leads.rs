@@ -28,6 +28,50 @@ impl Game<'_> {
             .audio
             .play(&format!("minecraft:item.lead.{sound}"), Some(at), 1.0, 1.0);
     }
+    /// `Leashable.canHaveALeashAttachedTo` for the mob at `index` and a
+    /// holder whose box centre is `center`: within snapping range and
+    /// leashable.
+    fn can_attach_lead(&self, index: usize, center: glam::DVec3) -> bool {
+        let m = &self.mobs[index];
+        if !leash::can_be_leashed(m) || !m.alive() {
+            return false;
+        }
+        let b = m.bounds();
+        let (lo, hi) = (b.min_position(), b.max_position());
+        let mine = glam::DVec3::new(
+            (lo.x + hi.x) / 2.0,
+            (lo.y + hi.y) / 2.0,
+            (lo.z + hi.z) / 2.0,
+        );
+        mine.distance(center) <= leash::SNAP
+    }
+    fn player_center(&self) -> glam::DVec3 {
+        self.player.as_ref().map_or(glam::DVec3::ZERO, |p| {
+            glam::DVec3::new(
+                p.position.x,
+                p.position.y + f64::from(p.dimensions.height) / 2.0,
+                p.position.z,
+            )
+        })
+    }
+    /// The mobs on the player's lead within 32 blocks of a point.
+    fn player_leashed(&self, around: glam::DVec3) -> Vec<usize> {
+        (0..self.mobs.len())
+            .filter(|&i| {
+                let m = &self.mobs[i];
+                m.extra.leash == Some(Holder::Player)
+                    && (m.position.x - around.x).abs() <= 16.0
+                    && (m.position.y - around.y).abs() <= 16.0
+                    && (m.position.z - around.z).abs() <= 16.0
+            })
+            .collect()
+    }
+    /// `Entity.spawnAtLocation(level, Items.LEAD)`: the item entity draws its
+    /// motion from its own random, not the level's.
+    fn drop_lead_item(&mut self, at: [f64; 3]) {
+        let v = super::dispenser::new_item_motion();
+        self.spawn_item(ItemStack::new("minecraft:lead", 1), at, v, 10);
+    }
     /// `Leashable.dropLeash` / `removeLeash`: the lead falls as an item.
     pub(super) fn break_leash(&mut self, id: u32, drop: bool, sound: bool) {
         let Some(m) = self.sim.mobs.iter_mut().find(|m| m.id == id) else {
@@ -44,6 +88,56 @@ impl Game<'_> {
         }
         if drop {
             self.drop_lead_item(at);
+        }
+    }
+    /// Holders read from a save become real once the entity is found; a
+    /// holder that never shows up drops the lead after 100 ticks.
+    pub(super) fn tick_leads(&mut self) {
+        let player_uuid = self.level.player_uuid.unwrap_or([0, 0, 0, 1]);
+        for i in 0..self.mobs.len() {
+            let Some(pending) = self.mobs[i].extra.leash_pending else {
+                continue;
+            };
+            let holder = match pending {
+                Pending::Knot(p) => Some(Holder::Knot(p)),
+                Pending::Uuid(u) if u == player_uuid => Some(Holder::Player),
+                Pending::Uuid(u) => self.mob_by_uuid(u).map(Holder::Mob),
+            };
+            let m = &mut self.mobs[i];
+            if let Some(h) = holder {
+                if h == Holder::Player {
+                    m.extra.leash_player = Some(player_uuid);
+                }
+                m.extra.leash = Some(h);
+                m.extra.leash_pending = None;
+            } else if m.age > 100 {
+                m.extra.leash_pending = None;
+                let at = [m.position.x, m.position.y, m.position.z];
+                self.drop_lead_item(at);
+            }
+        }
+    }
+    /// The `leash` tag of a mob about to be saved.
+    pub(super) fn write_leash(&mut self, tag: &mut Tag, index: usize) {
+        let Tag::Compound(map) = tag else { return };
+        map.remove(&"leash".into());
+        let m = &self.mobs[index];
+        let holder = m.extra.leash;
+        let pending = m.extra.leash_pending;
+        let uuid = match (holder, pending) {
+            (Some(Holder::Player), _) => Some(self.level.player_uuid.unwrap_or([0, 0, 0, 1])),
+            (Some(Holder::Mob(id)), _) => Some(self.mob_uuid(id)),
+            (_, Some(Pending::Uuid(u))) => Some(u),
+            _ => None,
+        };
+        let value = match (holder, pending) {
+            (Some(h), _) => leash::to_nbt(h, uuid),
+            (None, Some(Pending::Knot(p))) => leash::to_nbt(Holder::Knot(p), None),
+            (None, Some(Pending::Uuid(u))) => leash::to_nbt(Holder::Player, Some(u)),
+            _ => None,
+        };
+        if let Some(v) = value {
+            map.insert("leash".into(), v);
         }
     }
     /// `Entity.interact`'s leash part for a mob. Returns whether it was used.
@@ -370,101 +464,5 @@ impl Game<'_> {
             if crouching { -0.2 } else { 0.07 },
         );
         pos + rot_y(v, -yaw)
-    }
-}
-impl crate::game::Sim<'_> {
-    /// `Leashable.canHaveALeashAttachedTo` for the mob at `index` and a
-    /// holder whose box centre is `center`: within snapping range and
-    /// leashable.
-    fn can_attach_lead(&self, index: usize, center: glam::DVec3) -> bool {
-        let m = &self.mobs[index];
-        if !leash::can_be_leashed(m) || !m.alive() {
-            return false;
-        }
-        let b = m.bounds();
-        let (lo, hi) = (b.min_position(), b.max_position());
-        let mine = glam::DVec3::new(
-            (lo.x + hi.x) / 2.0,
-            (lo.y + hi.y) / 2.0,
-            (lo.z + hi.z) / 2.0,
-        );
-        mine.distance(center) <= leash::SNAP
-    }
-    fn player_center(&self) -> glam::DVec3 {
-        self.player.as_ref().map_or(glam::DVec3::ZERO, |p| {
-            glam::DVec3::new(
-                p.position.x,
-                p.position.y + f64::from(p.dimensions.height) / 2.0,
-                p.position.z,
-            )
-        })
-    }
-    /// The mobs on the player's lead within 32 blocks of a point.
-    fn player_leashed(&self, around: glam::DVec3) -> Vec<usize> {
-        (0..self.mobs.len())
-            .filter(|&i| {
-                let m = &self.mobs[i];
-                m.extra.leash == Some(Holder::Player)
-                    && (m.position.x - around.x).abs() <= 16.0
-                    && (m.position.y - around.y).abs() <= 16.0
-                    && (m.position.z - around.z).abs() <= 16.0
-            })
-            .collect()
-    }
-    /// `Entity.spawnAtLocation(level, Items.LEAD)`: the item entity draws its
-    /// motion from its own random, not the level's.
-    fn drop_lead_item(&mut self, at: [f64; 3]) {
-        let v = super::dispenser::new_item_motion();
-        self.spawn_item(ItemStack::new("minecraft:lead", 1), at, v, 10);
-    }
-    /// Holders read from a save become real once the entity is found; a
-    /// holder that never shows up drops the lead after 100 ticks.
-    pub(super) fn tick_leads(&mut self) {
-        let player_uuid = self.level.player_uuid.unwrap_or([0, 0, 0, 1]);
-        for i in 0..self.mobs.len() {
-            let Some(pending) = self.mobs[i].extra.leash_pending else {
-                continue;
-            };
-            let holder = match pending {
-                Pending::Knot(p) => Some(Holder::Knot(p)),
-                Pending::Uuid(u) if u == player_uuid => Some(Holder::Player),
-                Pending::Uuid(u) => self.mob_by_uuid(u).map(Holder::Mob),
-            };
-            let m = &mut self.mobs[i];
-            if let Some(h) = holder {
-                if h == Holder::Player {
-                    m.extra.leash_player = Some(player_uuid);
-                }
-                m.extra.leash = Some(h);
-                m.extra.leash_pending = None;
-            } else if m.age > 100 {
-                m.extra.leash_pending = None;
-                let at = [m.position.x, m.position.y, m.position.z];
-                self.drop_lead_item(at);
-            }
-        }
-    }
-    /// The `leash` tag of a mob about to be saved.
-    pub(super) fn write_leash(&mut self, tag: &mut Tag, index: usize) {
-        let Tag::Compound(map) = tag else { return };
-        map.remove(&"leash".into());
-        let m = &self.mobs[index];
-        let holder = m.extra.leash;
-        let pending = m.extra.leash_pending;
-        let uuid = match (holder, pending) {
-            (Some(Holder::Player), _) => Some(self.level.player_uuid.unwrap_or([0, 0, 0, 1])),
-            (Some(Holder::Mob(id)), _) => Some(self.mob_uuid(id)),
-            (_, Some(Pending::Uuid(u))) => Some(u),
-            _ => None,
-        };
-        let value = match (holder, pending) {
-            (Some(h), _) => leash::to_nbt(h, uuid),
-            (None, Some(Pending::Knot(p))) => leash::to_nbt(Holder::Knot(p), None),
-            (None, Some(Pending::Uuid(u))) => leash::to_nbt(Holder::Player, Some(u)),
-            _ => None,
-        };
-        if let Some(v) = value {
-            map.insert("leash".into(), v);
-        }
     }
 }

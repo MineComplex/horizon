@@ -31,6 +31,23 @@ pub(super) struct ExtrasState {
 const MINIMAP_BUDGET: Duration = Duration::from_micros(300);
 
 impl Game<'_> {
+    fn extras_now(&self) -> f64 {
+        self.started.elapsed().as_secs_f64()
+    }
+    /// Mouse buttons while playing, for mods' clicks.
+    pub(super) fn extras_mouse(&mut self, button: MouseButton, pressed: bool) {
+        let i = match button {
+            MouseButton::Left => 0,
+            MouseButton::Right => 1,
+            _ => return,
+        };
+        self.extras.mouse[i] = pressed;
+        // For mods (`input.clicks-per-second`).
+        if pressed && self.mods.running() {
+            let now = self.extras_now();
+            self.extras.cps[i].click(now);
+        }
+    }
     /// Once per frame: the frame's time, and keys let go behind screens.
     pub(super) fn extras_frame(&mut self, elapsed: Duration) {
         // Under agent control the window may lack focus without pausing.
@@ -46,6 +63,59 @@ impl Game<'_> {
             self.extras.fps.record(now, elapsed.as_secs_f32() * 1000.0);
         } else {
             self.extras.fps.clear();
+        }
+    }
+    /// The frame counter for mods: fps, min, 1% low.
+    #[cfg(feature = "mods")]
+    pub(super) fn frame_reading(&self) -> (u32, u32, u32) {
+        let r = self.extras.fps.reading();
+        (r.fps, r.min, r.low)
+    }
+    /// Attack and use clicks in the last second, and whether each is held.
+    #[cfg(feature = "mods")]
+    pub(super) fn mouse_reading(&mut self) -> ((u32, u32), [bool; 2]) {
+        let now = self.extras_now();
+        let [l, r] = &mut self.extras.cps;
+        let cps = (l.per_second(now) as u32, r.per_second(now) as u32);
+        (cps, self.extras.mouse)
+    }
+    /// Auto-reconnect: a connection to `address` as `name` starts.
+    pub(super) fn extras_connecting(&mut self, address: &str, name: &str) {
+        self.extras.reconnect.connecting(address, name);
+    }
+    /// Auto-reconnect: the server let the player in.
+    pub(super) fn extras_joined(&mut self) {
+        self.extras.reconnect.joined(std::time::Instant::now());
+    }
+    /// Auto-reconnect: the player left the server on purpose.
+    pub(super) fn extras_left(&mut self) {
+        self.extras.reconnect.reset();
+    }
+    /// Auto-reconnect's next attempt after a disconnect, when it is on and
+    /// the reason allows one.
+    pub(super) fn reconnect_after(&mut self, reason: &str, from_server: bool) -> Option<Retry> {
+        if !self.settings.extras.auto_reconnect {
+            self.extras.reconnect.reset();
+            return None;
+        }
+        let now = std::time::Instant::now();
+        self.extras.reconnect.ended(reason, from_server, now)
+    }
+    /// Show the attempt's countdown on the Disconnected screen.
+    pub(super) fn offer_reconnect(&mut self, retry: Option<Retry>) {
+        let Some(retry) = retry else {
+            return;
+        };
+        if let Some(title) = self.title.as_mut()
+            && let Mode::Multiplayer(multiplayer::Screen::Disconnected { retry: slot, .. }) =
+                &mut title.mode
+        {
+            log::info!(
+                "Horizon: reconnecting to {} in {} s",
+                horizon_client::net::shown_address(&retry.address),
+                retry.seconds_left(std::time::Instant::now())
+            );
+            *slot = Some(retry);
         }
     }
     /// Auto-reconnect: connect again once the countdown is over. An
@@ -188,78 +258,6 @@ impl Game<'_> {
         }
         if mod_panels {
             self.draw_mod_panels(batch, &mut corners);
-        }
-    }
-}
-impl crate::game::Sim<'_> {
-    fn extras_now(&self) -> f64 {
-        self.started.elapsed().as_secs_f64()
-    }
-    /// Mouse buttons while playing, for mods' clicks.
-    pub(super) fn extras_mouse(&mut self, button: MouseButton, pressed: bool) {
-        let i = match button {
-            MouseButton::Left => 0,
-            MouseButton::Right => 1,
-            _ => return,
-        };
-        self.extras.mouse[i] = pressed;
-        // For mods (`input.clicks-per-second`).
-        if pressed && self.mods.running() {
-            let now = self.extras_now();
-            self.extras.cps[i].click(now);
-        }
-    }
-    /// The frame counter for mods: fps, min, 1% low.
-    #[cfg(feature = "mods")]
-    pub(super) fn frame_reading(&self) -> (u32, u32, u32) {
-        let r = self.extras.fps.reading();
-        (r.fps, r.min, r.low)
-    }
-    /// Attack and use clicks in the last second, and whether each is held.
-    #[cfg(feature = "mods")]
-    pub(super) fn mouse_reading(&mut self) -> ((u32, u32), [bool; 2]) {
-        let now = self.extras_now();
-        let [l, r] = &mut self.extras.cps;
-        let cps = (l.per_second(now) as u32, r.per_second(now) as u32);
-        (cps, self.extras.mouse)
-    }
-    /// Auto-reconnect: a connection to `address` as `name` starts.
-    pub(super) fn extras_connecting(&mut self, address: &str, name: &str) {
-        self.extras.reconnect.connecting(address, name);
-    }
-    /// Auto-reconnect: the server let the player in.
-    pub(super) fn extras_joined(&mut self) {
-        self.extras.reconnect.joined(std::time::Instant::now());
-    }
-    /// Auto-reconnect: the player left the server on purpose.
-    pub(super) fn extras_left(&mut self) {
-        self.extras.reconnect.reset();
-    }
-    /// Auto-reconnect's next attempt after a disconnect, when it is on and
-    /// the reason allows one.
-    pub(super) fn reconnect_after(&mut self, reason: &str, from_server: bool) -> Option<Retry> {
-        if !self.settings.extras.auto_reconnect {
-            self.extras.reconnect.reset();
-            return None;
-        }
-        let now = std::time::Instant::now();
-        self.extras.reconnect.ended(reason, from_server, now)
-    }
-    /// Show the attempt's countdown on the Disconnected screen.
-    pub(super) fn offer_reconnect(&mut self, retry: Option<Retry>) {
-        let Some(retry) = retry else {
-            return;
-        };
-        if let Some(title) = self.title.as_mut()
-            && let Mode::Multiplayer(multiplayer::Screen::Disconnected { retry: slot, .. }) =
-                &mut title.mode
-        {
-            log::info!(
-                "Horizon: reconnecting to {} in {} s",
-                horizon_client::net::shown_address(&retry.address),
-                retry.seconds_left(std::time::Instant::now())
-            );
-            *slot = Some(retry);
         }
     }
     /// The height the status effect icons take at the top right

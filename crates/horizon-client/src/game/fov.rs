@@ -16,6 +16,36 @@ use horizon_client::{
 const WALKING_SPEED: f32 = 0.1;
 
 impl Game<'_> {
+    /// `Player.isScoping`: using a spyglass.
+    pub(super) fn scoping(&self) -> bool {
+        self.using
+            .and_then(|(slot, _)| self.stack_in(slot))
+            .is_some_and(|s| &*s.item == "minecraft:spyglass")
+    }
+    /// `options.fovEffectScale`.
+    pub(super) fn fov_effect_scale(&self) -> f32 {
+        self.settings.file.double("fovEffectScale") as f32
+    }
+    /// What `AbstractClientPlayer.getFieldOfViewModifier` reads.
+    fn fov_player(&self) -> Option<FovPlayer> {
+        let p = self.player.as_ref()?;
+        let using = self.using.and_then(|(slot, ticks)| {
+            let stack = self.stack_in(slot)?;
+            let item = match &*stack.item {
+                "minecraft:bow" => UseItem::Bow,
+                "minecraft:spyglass" => UseItem::Spyglass,
+                _ => UseItem::Other,
+            };
+            Some((item, ticks as i32))
+        });
+        Some(FovPlayer {
+            flying: p.flying,
+            walking_speed: WALKING_SPEED,
+            // Player.aiStep keeps `speed` as the float movement speed attribute.
+            movement_speed: f64::from(p.speed),
+            using,
+        })
+    }
     /// `Camera.tick`: the eye height and the field-of-view modifier ease
     /// halfway toward the player's each tick.
     pub(super) fn tick_fov(&mut self) {
@@ -33,6 +63,24 @@ impl Game<'_> {
             }
         });
         self.front.view.tick(eye, target);
+    }
+    /// The player's `deathTime` while dead or dying: whole ticks counted by
+    /// `LivingEntity.tickDeath`, so `deathTime + partialTicks` in
+    /// `Camera.extractRenderState` rises smoothly across frames.
+    pub(super) fn death_time(&self) -> Option<i32> {
+        let p = self.player.as_ref()?;
+        p.health
+            .dead_or_dying()
+            .then(|| self.ui.death_time.min(i32::MAX as u32) as i32)
+    }
+    /// The fluid at the camera, as `Camera.getFluidInCamera` reports it.
+    pub(super) fn camera_fluid(&self, camera: [f64; 3]) -> CameraFluid {
+        match fog_type(&self.world, self.res.facts(), camera, self.forward()) {
+            FogType::Water => CameraFluid::Water,
+            FogType::Lava => CameraFluid::Lava,
+            FogType::PowderSnow => CameraFluid::PowderSnow,
+            FogType::Atmospheric => CameraFluid::None,
+        }
     }
     /// `Camera.calculateFov` with `modifyFovBasedOnDeathOrFluid`.
     pub(super) fn fov_degrees(&self, partial: f32, camera: [f64; 3]) -> f32 {
@@ -139,55 +187,5 @@ impl Game<'_> {
             self.front.scope_scale,
         );
         hud_layout::paint(batch, &self.front.gui.atlas, &draws);
-    }
-}
-impl crate::game::Sim<'_> {
-    /// `Player.isScoping`: using a spyglass.
-    pub(super) fn scoping(&self) -> bool {
-        self.using
-            .and_then(|(slot, _)| self.stack_in(slot))
-            .is_some_and(|s| &*s.item == "minecraft:spyglass")
-    }
-    /// `options.fovEffectScale`.
-    pub(super) fn fov_effect_scale(&self) -> f32 {
-        self.settings.file.double("fovEffectScale") as f32
-    }
-    /// What `AbstractClientPlayer.getFieldOfViewModifier` reads.
-    fn fov_player(&self) -> Option<FovPlayer> {
-        let p = self.player.as_ref()?;
-        let using = self.using.and_then(|(slot, ticks)| {
-            let stack = self.stack_in(slot)?;
-            let item = match &*stack.item {
-                "minecraft:bow" => UseItem::Bow,
-                "minecraft:spyglass" => UseItem::Spyglass,
-                _ => UseItem::Other,
-            };
-            Some((item, ticks as i32))
-        });
-        Some(FovPlayer {
-            flying: p.flying,
-            walking_speed: WALKING_SPEED,
-            // Player.aiStep keeps `speed` as the float movement speed attribute.
-            movement_speed: f64::from(p.speed),
-            using,
-        })
-    }
-    /// The player's `deathTime` while dead or dying: whole ticks counted by
-    /// `LivingEntity.tickDeath`, so `deathTime + partialTicks` in
-    /// `Camera.extractRenderState` rises smoothly across frames.
-    pub(super) fn death_time(&self) -> Option<i32> {
-        let p = self.player.as_ref()?;
-        p.health
-            .dead_or_dying()
-            .then(|| self.ui.death_time.min(i32::MAX as u32) as i32)
-    }
-    /// The fluid at the camera, as `Camera.getFluidInCamera` reports it.
-    pub(super) fn camera_fluid(&self, camera: [f64; 3]) -> CameraFluid {
-        match fog_type(&self.world, self.res.facts(), camera, self.forward()) {
-            FogType::Water => CameraFluid::Water,
-            FogType::Lava => CameraFluid::Lava,
-            FogType::PowderSnow => CameraFluid::PowderSnow,
-            FogType::Atmospheric => CameraFluid::None,
-        }
     }
 }

@@ -200,6 +200,13 @@ impl Game<'_> {
         let w = HudBatch::text_width(&self.front.gui.atlas, &label) + 8.0;
         ([layout.grid.0, layout.grid.1, w, 14.0], label)
     }
+    /// What a slot of a shown recipe holds now: its stacks cycle once a second.
+    fn recipe_slot_now(&self, recipe: usize, slot: usize) -> Option<&(BrowserStack, ItemStack)> {
+        let pages = self.mods.browser.recipes.as_ref()?;
+        let stacks = pages.recipes.get(recipe)?.slots.get(slot)?;
+        let n = pages.since.elapsed().as_secs() as usize;
+        stacks.get(n % stacks.len().max(1))
+    }
     /// The tab under the pointer: its index and icon.
     pub(super) fn recipe_tab_hovered(
         &self,
@@ -516,14 +523,5 @@ impl Game<'_> {
             return true;
         }
         false
-    }
-}
-impl crate::game::Sim<'_> {
-    /// What a slot of a shown recipe holds now: its stacks cycle once a second.
-    fn recipe_slot_now(&self, recipe: usize, slot: usize) -> Option<&(BrowserStack, ItemStack)> {
-        let pages = self.mods.browser.recipes.as_ref()?;
-        let stacks = pages.recipes.get(recipe)?.slots.get(slot)?;
-        let n = pages.since.elapsed().as_secs() as usize;
-        stacks.get(n % stacks.len().max(1))
     }
 }

@@ -27,52 +27,6 @@ impl Game<'_> {
     pub(super) fn clear_waypoints(&mut self) {
         self.front.waypoints = ClientWaypoints::default();
     }
-    /// `LocatorBar.extractRenderState` from the last frame's camera.
-    pub(super) fn locator_bar_draws(&self, gui_width: i32, gui_height: i32) -> Vec<GuiDraw> {
-        let (Some((camera_pos, yaw, pitch, fov)), Some(p)) = (self.locator_camera, &self.player)
-        else {
-            return Vec::new();
-        };
-        let alpha = self.clock.camera_fraction();
-        // Camera.getViewRotationProjectionMatrix, through view space: the
-        // depth along the look direction and the height on screen.
-        let (sy, cy) = (
-            f64::from(yaw.to_radians()).sin(),
-            f64::from(yaw.to_radians()).cos(),
-        );
-        let (sp, cp) = (
-            f64::from(pitch.to_radians()).sin(),
-            f64::from(pitch.to_radians()).cos(),
-        );
-        let forward = [-sy * cp, -sp, cy * cp];
-        let up = [-sy * sp, cp, cy * sp];
-        let focal = 1.0 / f64::from((fov / 2.0).to_radians()).tan();
-        let project = |o: [f64; 3]| {
-            let dot = |a: [f64; 3]| a[0] * o[0] + a[1] * o[1] + a[2] * o[2];
-            let depth = dot(forward);
-            let y = dot(up) * focal / depth;
-            // Points behind the camera land past the far plane (z > 1).
-            [0.0, y, if depth < 0.0 { 2.0 } else { 0.5 }]
-        };
-        let entity = |id: u128| self.waypoint_entity(id, alpha);
-        let view = View {
-            gui_width,
-            gui_height,
-            camera_uuid: self.own_uuid(),
-            camera_entity_pos: [p.position.x, p.position.y, p.position.z],
-            camera_pos,
-            yaw,
-            pitch,
-            fov,
-            project: &project,
-            entity: &entity,
-            styles: &self.front.waypoint_styles,
-            tick: self.ticks,
-        };
-        self.front.waypoints.draw(&view)
-    }
-}
-impl crate::game::Sim<'_> {
     /// `LocalPlayer.setExperienceValues`: a change of progress shows the
     /// experience bar for 100 ticks, except the first one
     /// (`experienceDisplayStartTick` starts at `Integer.MIN_VALUE`).
@@ -124,5 +78,49 @@ impl crate::game::Sim<'_> {
         let host = self.lan.as_ref()?;
         let g = host.hub.guests.iter().find(|g| g.uuid == id && g.placed)?;
         Some(at(g.position, g.previous_position, PLAYER_EYES))
+    }
+    /// `LocatorBar.extractRenderState` from the last frame's camera.
+    pub(super) fn locator_bar_draws(&self, gui_width: i32, gui_height: i32) -> Vec<GuiDraw> {
+        let (Some((camera_pos, yaw, pitch, fov)), Some(p)) = (self.locator_camera, &self.player)
+        else {
+            return Vec::new();
+        };
+        let alpha = self.clock.camera_fraction();
+        // Camera.getViewRotationProjectionMatrix, through view space: the
+        // depth along the look direction and the height on screen.
+        let (sy, cy) = (
+            f64::from(yaw.to_radians()).sin(),
+            f64::from(yaw.to_radians()).cos(),
+        );
+        let (sp, cp) = (
+            f64::from(pitch.to_radians()).sin(),
+            f64::from(pitch.to_radians()).cos(),
+        );
+        let forward = [-sy * cp, -sp, cy * cp];
+        let up = [-sy * sp, cp, cy * sp];
+        let focal = 1.0 / f64::from((fov / 2.0).to_radians()).tan();
+        let project = |o: [f64; 3]| {
+            let dot = |a: [f64; 3]| a[0] * o[0] + a[1] * o[1] + a[2] * o[2];
+            let depth = dot(forward);
+            let y = dot(up) * focal / depth;
+            // Points behind the camera land past the far plane (z > 1).
+            [0.0, y, if depth < 0.0 { 2.0 } else { 0.5 }]
+        };
+        let entity = |id: u128| self.waypoint_entity(id, alpha);
+        let view = View {
+            gui_width,
+            gui_height,
+            camera_uuid: self.own_uuid(),
+            camera_entity_pos: [p.position.x, p.position.y, p.position.z],
+            camera_pos,
+            yaw,
+            pitch,
+            fov,
+            project: &project,
+            entity: &entity,
+            styles: &self.front.waypoint_styles,
+            tick: self.ticks,
+        };
+        self.front.waypoints.draw(&view)
     }
 }

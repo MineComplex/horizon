@@ -16,107 +16,6 @@ use horizon_client::{
 use horizon_core::{geometry::Vec3, random::RandomSource};
 
 impl Game<'_> {
-    /// Piglins notice wanted items on the ground within 9 blocks (`PiglinAi.wantsToPickup`:
-    /// gold and other loved items, nuggets, food, gear), walk to them and
-    /// take them (`GoToWantedItem`, `Piglin.pickUpItem`).
-    pub(super) fn piglin_pickups(&mut self) {
-        if !self.world_data.rules.bool("mob_griefing") {
-            return;
-        }
-        for i in 0..self.mobs.len() {
-            let m = &self.mobs[i];
-            if m.species() != Species::Piglin
-                || !m.alive()
-                || m.is_baby()
-                || m.extra.using_item > 0
-                || m.extra.egg_time > 0
-            {
-                continue;
-            }
-            let pos = m.position;
-            let best = self
-                .dropped
-                .iter()
-                .enumerate()
-                .map(|(j, e)| (j, e.position.distance_squared(pos)))
-                .filter(|(_, d)| *d <= 81.0)
-                .filter(|&(j, _)| self.piglin_wants(m, &self.dropped[j].stack))
-                .min_by(|a, b| a.1.total_cmp(&b.1));
-            let Some((j, _)) = best else {
-                self.mobs[i].extra.point = None;
-                continue;
-            };
-            let e = &self.dropped[j];
-            let close = (e.position.x - pos.x).abs() <= 1.3
-                && (e.position.z - pos.z).abs() <= 1.3
-                && (e.position.y - pos.y).abs() <= 1.0;
-            if !close || e.pickup_delay > 0 {
-                self.mobs[i].extra.point = Some([e.position.x, e.position.y, e.position.z]);
-                continue;
-            }
-            // Nuggets come whole, anything else one at a time.
-            let (taken_item, id) = (e.clone(), self.mobs[i].id);
-            let item = e.stack.item.clone();
-            self.add_pickup(
-                super::pickups::Taken::Item(Box::new(taken_item)),
-                super::pickups::Collector::Mob(id),
-            );
-            let stack = if &*item == "minecraft:gold_nugget" {
-                self.dropped.remove(j).stack
-            } else {
-                let e = &mut self.dropped[j];
-                e.stack.count -= 1;
-                let one = ItemStack {
-                    count: 1,
-                    ..e.stack.clone()
-                };
-                if e.stack.count == 0 {
-                    self.dropped.remove(j);
-                }
-                one
-            };
-            if self.piglin_loved(&item) {
-                self.start_admiring(i, item);
-            } else if self.item_in_tag("minecraft:piglin_food", &item)
-                && self.mobs[i].extra.ints[0] <= 0
-            {
-                // PiglinAi.eat: the food is gone and it will not eat for a while.
-                self.mobs[i].extra.ints[0] = ATE_RECENTLY;
-                self.mobs[i].nav_stop();
-            } else {
-                self.mobs[i].nav_stop();
-                self.piglin_keep(i, stack);
-            }
-        }
-    }
-    fn start_admiring(&mut self, index: usize, item: std::sync::Arc<str>) {
-        let m = &mut self.mobs[index];
-        m.extra.off_hand = Some(item);
-        m.extra.using_item = ADMIRE;
-        m.extra.point = None;
-        m.nav_stop();
-        let at = m.center();
-        self.front
-            .audio
-            .play("minecraft:entity.piglin.admiring_item", Some(at), 1.0, 1.0);
-    }
-    /// `PiglinAi.mobInteract`: hand a piglin a gold ingot (only piglin
-    /// currency is accepted from the hand; other loved items are passed over).
-    pub(super) fn give_piglin(&mut self, index: usize, item: &str) -> bool {
-        let m = &self.mobs[index];
-        if m.species() != Species::Piglin
-            || m.is_baby()
-            || m.extra.using_item > 0
-            || m.extra.egg_time > 0
-            || item != "minecraft:gold_ingot"
-        {
-            return false;
-        }
-        self.start_admiring(index, item.into());
-        true
-    }
-}
-impl crate::game::Sim<'_> {
     fn item_in_tag(&self, tag: &str, item: &str) -> bool {
         self.res
             .items()
@@ -283,6 +182,105 @@ impl crate::game::Sim<'_> {
             .flatten()
             .any(|s| tag.is_some_and(|t| t.contains(&*s.item)))
     }
+    /// Piglins notice wanted items on the ground within 9 blocks (`PiglinAi.wantsToPickup`:
+    /// gold and other loved items, nuggets, food, gear), walk to them and
+    /// take them (`GoToWantedItem`, `Piglin.pickUpItem`).
+    pub(super) fn piglin_pickups(&mut self) {
+        if !self.world_data.rules.bool("mob_griefing") {
+            return;
+        }
+        for i in 0..self.mobs.len() {
+            let m = &self.mobs[i];
+            if m.species() != Species::Piglin
+                || !m.alive()
+                || m.is_baby()
+                || m.extra.using_item > 0
+                || m.extra.egg_time > 0
+            {
+                continue;
+            }
+            let pos = m.position;
+            let best = self
+                .dropped
+                .iter()
+                .enumerate()
+                .map(|(j, e)| (j, e.position.distance_squared(pos)))
+                .filter(|(_, d)| *d <= 81.0)
+                .filter(|&(j, _)| self.piglin_wants(m, &self.dropped[j].stack))
+                .min_by(|a, b| a.1.total_cmp(&b.1));
+            let Some((j, _)) = best else {
+                self.mobs[i].extra.point = None;
+                continue;
+            };
+            let e = &self.dropped[j];
+            let close = (e.position.x - pos.x).abs() <= 1.3
+                && (e.position.z - pos.z).abs() <= 1.3
+                && (e.position.y - pos.y).abs() <= 1.0;
+            if !close || e.pickup_delay > 0 {
+                self.mobs[i].extra.point = Some([e.position.x, e.position.y, e.position.z]);
+                continue;
+            }
+            // Nuggets come whole, anything else one at a time.
+            let (taken_item, id) = (e.clone(), self.mobs[i].id);
+            let item = e.stack.item.clone();
+            self.add_pickup(
+                super::pickups::Taken::Item(Box::new(taken_item)),
+                super::pickups::Collector::Mob(id),
+            );
+            let stack = if &*item == "minecraft:gold_nugget" {
+                self.dropped.remove(j).stack
+            } else {
+                let e = &mut self.dropped[j];
+                e.stack.count -= 1;
+                let one = ItemStack {
+                    count: 1,
+                    ..e.stack.clone()
+                };
+                if e.stack.count == 0 {
+                    self.dropped.remove(j);
+                }
+                one
+            };
+            if self.piglin_loved(&item) {
+                self.start_admiring(i, item);
+            } else if self.item_in_tag("minecraft:piglin_food", &item)
+                && self.mobs[i].extra.ints[0] <= 0
+            {
+                // PiglinAi.eat: the food is gone and it will not eat for a while.
+                self.mobs[i].extra.ints[0] = ATE_RECENTLY;
+                self.mobs[i].nav_stop();
+            } else {
+                self.mobs[i].nav_stop();
+                self.piglin_keep(i, stack);
+            }
+        }
+    }
+    fn start_admiring(&mut self, index: usize, item: std::sync::Arc<str>) {
+        let m = &mut self.mobs[index];
+        m.extra.off_hand = Some(item);
+        m.extra.using_item = ADMIRE;
+        m.extra.point = None;
+        m.nav_stop();
+        let at = m.center();
+        self.front
+            .audio
+            .play("minecraft:entity.piglin.admiring_item", Some(at), 1.0, 1.0);
+    }
+    /// `PiglinAi.mobInteract`: hand a piglin a gold ingot (only piglin
+    /// currency is accepted from the hand; other loved items are passed over).
+    pub(super) fn give_piglin(&mut self, index: usize, item: &str) -> bool {
+        let m = &self.mobs[index];
+        if m.species() != Species::Piglin
+            || m.is_baby()
+            || m.extra.using_item > 0
+            || m.extra.egg_time > 0
+            || item != "minecraft:gold_ingot"
+        {
+            return false;
+        }
+        self.start_admiring(index, item.into());
+        true
+    }
     /// `PiglinAi.stopHoldingOffHandItem` after admiring: gold ingots buy a
     /// roll of the bartering table, thrown toward the player; any other loved
     /// item it picked up is kept (worn if it can be, else stored).
@@ -297,14 +295,14 @@ impl crate::game::Sim<'_> {
             self.piglin_keep(i, ItemStack::new(&item, 1));
             return;
         }
-        let m = &self.mobs[i];
+        let m = &self.sim.mobs[i];
         let from = [m.position.x, m.position.y + 1.3, m.position.z];
         let items = if !m.is_baby() {
-            self.res.items().loot_table(
+            self.sim.res.items().loot_table(
                 "minecraft:gameplay/piglin_bartering",
                 false,
                 None,
-                &mut self.world.random,
+                &mut self.sim.world.random,
             )
         } else {
             vec![ItemStack::new(&item, 1)]

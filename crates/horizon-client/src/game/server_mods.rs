@@ -33,11 +33,8 @@ pub(super) enum ModEvent {
 
 #[cfg(not(feature = "mods"))]
 impl Game<'_> {
-    pub(super) fn mod_block_event(&mut self, _pos: [i32; 3], _state: BlockStateId, _placed: bool) {}
-}
-#[cfg(not(feature = "mods"))]
-impl crate::game::Sim<'_> {
     pub(super) fn tick_server_mods(&mut self) {}
+    pub(super) fn mod_block_event(&mut self, _pos: [i32; 3], _state: BlockStateId, _placed: bool) {}
     pub(super) fn mod_player_chat(&mut self, _who: Who, _text: &str) {}
     pub(super) fn local_server_mod_command(&mut self, _line: &str) -> bool {
         false

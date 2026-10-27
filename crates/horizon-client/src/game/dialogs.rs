@@ -48,6 +48,12 @@ fn warning_texts() -> (Text, Text, [Text; 2]) {
 }
 
 impl Game<'_> {
+    /// Whether a dialog screen takes the input.
+    pub(super) fn dialog_open(&self) -> bool {
+        let d = &self.dialogs;
+        d.open.is_some() || d.waiting.is_some() || d.warning
+    }
+
     /// `showDialog`: the dialog replaces an open one (and a waiting screen);
     /// under the warning screen, it is what Back returns to.
     pub(super) fn show_dialog(&mut self, tag: &Tag) {
@@ -92,6 +98,11 @@ impl Game<'_> {
         if self.dialogs.open.take().is_some() && !self.dialog_open() {
             self.dialog_closed();
         }
+    }
+
+    /// Every dialog screen goes (a disconnect, or the level loading screen).
+    pub(super) fn close_dialogs(&mut self) {
+        self.dialogs = DialogState::default();
     }
 
     fn dialog_closed(&mut self) {
@@ -562,17 +573,7 @@ impl Game<'_> {
         }
         Ok(())
     }
-}
-impl crate::game::Sim<'_> {
-    /// Whether a dialog screen takes the input.
-    pub(super) fn dialog_open(&self) -> bool {
-        let d = &self.dialogs;
-        d.open.is_some() || d.waiting.is_some() || d.warning
-    }
-    /// Every dialog screen goes (a disconnect, or the level loading screen).
-    pub(super) fn close_dialogs(&mut self) {
-        self.dialogs = DialogState::default();
-    }
+
     /// `type TEXT` with a dialog open: into the focused text input, or the
     /// first one.
     pub(super) fn dialog_type(&mut self, text: &str) -> bool {
@@ -589,6 +590,7 @@ impl crate::game::Sim<'_> {
         edit.insert_text(text);
         true
     }
+
     /// What `state` reports: the open dialog and its values, or the waiting
     /// and warning screens.
     pub(super) fn dialog_status(&self) -> serde_json::Value {

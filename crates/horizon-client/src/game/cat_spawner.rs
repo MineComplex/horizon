@@ -106,6 +106,18 @@ impl Game<'_> {
             self.spawn_cat(pos, true);
         }
     }
+    /// Cats in `AABB(pos).inflate(radius, 8, radius)`.
+    fn cats_near(&self, pos: [i32; 3], radius: f64) -> usize {
+        let [x, y, z] = pos.map(f64::from);
+        let min = Vec3::new(x - radius, y - 8.0, z - radius);
+        let max = Vec3::new(x + 1.0 + radius, y + 9.0, z + 1.0 + radius);
+        self.mobs
+            .iter()
+            .filter(|m| {
+                m.species() == Species::Cat && m.alive() && m.bounds().intersects_corners(min, max)
+            })
+            .count()
+    }
     /// `spawnCat`: finalized for a natural spawn, black inside
     /// `#cats_spawn_as_black` structures (`Cat.finalizeSpawn`).
     fn spawn_cat(&mut self, pos: [i32; 3], persistent: bool) {
@@ -122,19 +134,5 @@ impl Game<'_> {
         if in_black && let Some(m) = self.mobs.iter_mut().find(|m| m.id == id) {
             m.extra.variant = 10;
         }
-    }
-}
-impl crate::game::Sim<'_> {
-    /// Cats in `AABB(pos).inflate(radius, 8, radius)`.
-    fn cats_near(&self, pos: [i32; 3], radius: f64) -> usize {
-        let [x, y, z] = pos.map(f64::from);
-        let min = Vec3::new(x - radius, y - 8.0, z - radius);
-        let max = Vec3::new(x + 1.0 + radius, y + 9.0, z + 1.0 + radius);
-        self.mobs
-            .iter()
-            .filter(|m| {
-                m.species() == Species::Cat && m.alive() && m.bounds().intersects_corners(min, max)
-            })
-            .count()
     }
 }

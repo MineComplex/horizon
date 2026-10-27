@@ -228,6 +228,123 @@ impl BoatModels {
     }
 }
 impl Game<'_> {
+    fn fluid_height(&self, x: i32, y: i32, z: i32) -> Option<(f32, bool)> {
+        self.fluid_height_of(x, y, z, Some(Fluid::Water))
+    }
+    /// `FluidState.getHeight` and whether it is a source, for `fluid` or,
+    /// with `None`, any fluid (`ClipContext.Fluid.ANY`).
+    fn fluid_height_of(&self, x: i32, y: i32, z: i32, fluid: Option<Fluid>) -> Option<(f32, bool)> {
+        let f = self.res.facts().get(self.world.block(x, y, z));
+        if f.fluid == Fluid::None || fluid.is_some_and(|want| f.fluid != want) {
+            return None;
+        }
+        let above = self.res.facts().get(self.world.block(x, y + 1, z));
+        // FluidState.getHeight: 1 under the same fluid, else amount / 9.
+        let height = if above.fluid == f.fluid {
+            1.0
+        } else {
+            f32::from(f.fluid_level) / 9.0
+        };
+        Some((height, f.fluid_level == 8 && !f.fluid_falling))
+    }
+    /// `getWaterLevelAbove`: the top of the water column the hull is in.
+    fn water_level_above(&self, b: &Boat) -> f64 {
+        let bb = b.bounds();
+        let (lo, hi) = (bb.min_position(), bb.max_position());
+        let (y0, y1) = (hi.y.floor() as i32, hi.y.ceil() as i32);
+        'rows: for y in y0..y1 {
+            let mut height = 0.0f32;
+            for x in lo.x.floor() as i32..hi.x.ceil() as i32 {
+                for z in lo.z.floor() as i32..hi.z.ceil() as i32 {
+                    if let Some((h, _)) = self.fluid_height(x, y, z) {
+                        height = height.max(h);
+                    }
+                    if height >= 1.0 {
+                        continue 'rows;
+                    }
+                }
+            }
+            if height < 1.0 {
+                return f64::from(y) + f64::from(height);
+            }
+        }
+        f64::from(y1 + 1)
+    }
+    fn boat_status(&self, b: &mut Boat) -> Status {
+        let bb = b.bounds();
+        let (lo, hi) = (bb.min_position(), bb.max_position());
+        // isUnderwater
+        let max_y = hi.y + 0.001;
+        let mut under = false;
+        for x in lo.x.floor() as i32..hi.x.ceil() as i32 {
+            for y in hi.y.floor() as i32..max_y.ceil() as i32 {
+                for z in lo.z.floor() as i32..hi.z.ceil() as i32 {
+                    if let Some((h, source)) = self.fluid_height(x, y, z)
+                        && max_y < f64::from(y) + f64::from(h)
+                    {
+                        if !source {
+                            b.water_level = hi.y;
+                            return Status::UnderFlowingWater;
+                        }
+                        under = true;
+                    }
+                }
+            }
+        }
+        if under {
+            b.water_level = hi.y;
+            return Status::UnderWater;
+        }
+        // checkInWater
+        let mut in_water = false;
+        b.water_level = -f64::MAX;
+        for x in lo.x.floor() as i32..hi.x.ceil() as i32 {
+            for y in lo.y.floor() as i32..(lo.y + 0.001).ceil() as i32 {
+                for z in lo.z.floor() as i32..hi.z.ceil() as i32 {
+                    if let Some((h, _)) = self.fluid_height(x, y, z) {
+                        let level = f64::from(y) + f64::from(h);
+                        b.water_level = b.water_level.max(level);
+                        in_water |= lo.y < level;
+                    }
+                }
+            }
+        }
+        if in_water {
+            return Status::InWater;
+        }
+        // getGroundFriction over the blocks just below the hull (corners skipped).
+        let y0 = (lo.y - 0.001).floor() as i32;
+        let (x0, x1, z0, z1) = (
+            lo.x.floor() as i32 - 1,
+            hi.x.ceil() as i32 + 1,
+            lo.z.floor() as i32 - 1,
+            hi.z.ceil() as i32 + 1,
+        );
+        let (mut friction, mut count) = (0.0f32, 0);
+        for x in x0..x1 {
+            for z in z0..z1 {
+                let edges = i32::from(x == x0 || x == x1 - 1) + i32::from(z == z0 || z == z1 - 1);
+                if edges == 2 {
+                    continue;
+                }
+                let inside = f64::from(x) < hi.x
+                    && f64::from(x + 1) > lo.x
+                    && f64::from(z) < hi.z
+                    && f64::from(z + 1) > lo.z;
+                let f = self.res.facts().get(self.world.block(x, y0, z));
+                if inside && (f.full_collision || f.legacy_solid) && !f.has_class("LilyPadBlock") {
+                    friction += f.friction;
+                    count += 1;
+                }
+            }
+        }
+        if count > 0 && friction > 0.0 {
+            b.land_friction = friction / count as f32;
+            Status::OnLand
+        } else {
+            Status::InAir
+        }
+    }
     /// `AbstractBoat.tick` for one boat (`controlled` when the player rides it).
     pub(super) fn tick_boat(&mut self, mut b: Boat, controlled: bool) -> Boat {
         b.previous = b.position;
@@ -451,6 +568,24 @@ impl Game<'_> {
             .audio
             .play("minecraft:entity.generic.burn", Some(at), 0.4, pitch);
     }
+    /// Whether a vehicle's box, deflated by 1e-5, reaches into lava below its
+    /// surface (`Entity.collidedWithFluid`).
+    pub(super) fn in_lava(&self, bb: Aabb) -> bool {
+        let (lo, hi) = (bb.min_position(), bb.max_position());
+        let e = 1.0e-5;
+        for x in (lo.x + e).floor() as i32..=(hi.x - e).floor() as i32 {
+            for y in (lo.y + e).floor() as i32..=(hi.y - e).floor() as i32 {
+                for z in (lo.z + e).floor() as i32..=(hi.z - e).floor() as i32 {
+                    if let Some((height, _)) = self.fluid_height_of(x, y, z, Some(Fluid::Lava))
+                        && lo.y + e < f64::from(y) + f64::from(height)
+                    {
+                        return true;
+                    }
+                }
+            }
+        }
+        false
+    }
     /// The player's tick while riding: steer, tick the boat, sit in it.
     pub(super) fn tick_riding(&mut self, keys: Keys) -> horizon_client::Result<()> {
         if self.tick_cushion_riding(keys) {
@@ -486,6 +621,41 @@ impl Game<'_> {
             self.riding = None;
         }
         Ok(())
+    }
+    /// `getDismountLocationForPassenger`: in front of the player if there is
+    /// floor there, else on top of the boat.
+    pub(super) fn dismount(&mut self, i: usize) {
+        self.riding = None;
+        let target = self.boat_dismount_target(i, 0.6, self.yaw);
+        if let Some(p) = self.player.as_mut() {
+            p.position = target;
+            p.velocity = Vec3::ZERO;
+        }
+    }
+    /// `getDismountLocationForPassenger` for a passenger `width` wide
+    /// facing `yaw`.
+    pub(super) fn boat_dismount_target(&self, i: usize, width: f64, yaw: f32) -> Vec3 {
+        let b = &self.boats[i];
+        let r = yaw.to_radians();
+        let distance = (WIDTH * std::f64::consts::SQRT_2 + width + 1.0e-5) / 2.0;
+        let (s, c) = (-(r.sin()) as f64, r.cos() as f64);
+        let m = s.abs().max(c.abs());
+        let (x, z) = (
+            b.position.x + s * distance / m,
+            b.position.z + c * distance / m,
+        );
+        let top = b.bounds().max_position().y;
+        let (bx, by, bz) = (x.floor() as i32, top.floor() as i32, z.floor() as i32);
+        let below = self.res.facts().get(self.world.block(bx, by - 1, bz));
+        let here = self.res.facts().get(self.world.block(bx, by, bz));
+        if below.fluid != Fluid::Water
+            && !here.full_collision
+            && (below.full_collision || below.legacy_solid)
+        {
+            Vec3::new(x, f64::from(by), z)
+        } else {
+            Vec3::new(b.position.x, top, b.position.z)
+        }
     }
     /// `BoatItem.use`: aim at a block or the water surface.
     pub(super) fn place_boat(&mut self, stack: &ItemStack) -> bool {
@@ -574,6 +744,38 @@ impl Game<'_> {
         self.swing_arm();
         true
     }
+    pub(super) fn boat_hit(&self) -> Option<(usize, f64)> {
+        let eye = self.eye_position()?;
+        let dir = view_vector(self.yaw, self.pitch);
+        let reach: f64 = if self.creative { 5.0 } else { 3.0 };
+        let mut best: Option<(usize, f64)> = None;
+        for (i, b) in self.boats.iter().enumerate() {
+            if Some(b.id) == self.riding {
+                continue;
+            }
+            let bb = b.bounds();
+            let (lo, hi) = (bb.min_position(), bb.max_position());
+            let (lo, hi) = ([lo.x, lo.y, lo.z], [hi.x, hi.y, hi.z]);
+            let (mut t0, mut t1) = (0.0f64, reach);
+            let mut hit = true;
+            for a in 0..3 {
+                if dir[a].abs() < 1e-9 {
+                    hit &= eye[a] >= lo[a] && eye[a] <= hi[a];
+                    continue;
+                }
+                let (mut ta, mut tb) = ((lo[a] - eye[a]) / dir[a], (hi[a] - eye[a]) / dir[a]);
+                if ta > tb {
+                    std::mem::swap(&mut ta, &mut tb);
+                }
+                t0 = t0.max(ta);
+                t1 = t1.min(tb);
+            }
+            if hit && t0 <= t1 && best.is_none_or(|b| t0 < b.1) {
+                best = Some((i, t0));
+            }
+        }
+        best
+    }
     /// `AbstractBoat.interact`: board the boat under the crosshair.
     pub(super) fn interact_boat(&mut self) -> bool {
         let Some((i, d)) = self.boat_hit() else {
@@ -621,10 +823,43 @@ impl Game<'_> {
             return false;
         }
         self.vehicle_attack_sounds();
-        let creative = self.creative;
-        self.hurt_boat(i, damage, creative);
+        self.hurt_boat(i, damage, self.creative);
         self.swing_arm();
         true
+    }
+    /// `VehicleEntity.hurtServer`: wobble, add the damage and break past 40
+    /// (`creative`: a creative player's hit removes it without drops).
+    /// True when the boat was removed.
+    pub(super) fn hurt_boat(&mut self, i: usize, damage: f32, creative: bool) -> bool {
+        let b = &mut self.boats[i];
+        b.hurt_dir = -b.hurt_dir;
+        b.hurt_time = 10;
+        b.damage += damage * 10.0;
+        let destroyed = creative || b.damage > 40.0;
+        if destroyed {
+            self.eject_boat_mobs(i, true);
+            let b = self.boats.remove(i);
+            let at = [b.position.x, b.position.y, b.position.z];
+            if !creative && self.world_data.rules.bool("entity_drops") {
+                // ChestBoat.destroy: chestVehicleDestroyed spills the contents.
+                for stack in b.items.iter().flatten() {
+                    self.spawn_item(stack.clone(), at, super::dispenser::new_item_motion(), 10);
+                }
+                let item = b.entity_type();
+                self.spawn_item(
+                    ItemStack {
+                        item: Arc::from(item.as_str()),
+                        count: 1,
+                        damage: 0,
+                        extra: None,
+                    },
+                    at,
+                    [0.0, 0.1, 0.0],
+                    10,
+                );
+            }
+        }
+        destroyed
     }
     /// AbstractBoatRenderer.
     pub(super) fn boat_geometry(&self, camera: glam::DVec3, alpha: f64, out: &mut Vec<Vertex>) {
@@ -729,243 +964,5 @@ impl Game<'_> {
             }
             self.cull_entity_vertices(out, entity_start);
         }
-    }
-}
-impl crate::game::Sim<'_> {
-    fn fluid_height(&self, x: i32, y: i32, z: i32) -> Option<(f32, bool)> {
-        self.fluid_height_of(x, y, z, Some(Fluid::Water))
-    }
-    /// `FluidState.getHeight` and whether it is a source, for `fluid` or,
-    /// with `None`, any fluid (`ClipContext.Fluid.ANY`).
-    fn fluid_height_of(&self, x: i32, y: i32, z: i32, fluid: Option<Fluid>) -> Option<(f32, bool)> {
-        let f = self.res.facts().get(self.world.block(x, y, z));
-        if f.fluid == Fluid::None || fluid.is_some_and(|want| f.fluid != want) {
-            return None;
-        }
-        let above = self.res.facts().get(self.world.block(x, y + 1, z));
-        // FluidState.getHeight: 1 under the same fluid, else amount / 9.
-        let height = if above.fluid == f.fluid {
-            1.0
-        } else {
-            f32::from(f.fluid_level) / 9.0
-        };
-        Some((height, f.fluid_level == 8 && !f.fluid_falling))
-    }
-    /// `getWaterLevelAbove`: the top of the water column the hull is in.
-    fn water_level_above(&self, b: &Boat) -> f64 {
-        let bb = b.bounds();
-        let (lo, hi) = (bb.min_position(), bb.max_position());
-        let (y0, y1) = (hi.y.floor() as i32, hi.y.ceil() as i32);
-        'rows: for y in y0..y1 {
-            let mut height = 0.0f32;
-            for x in lo.x.floor() as i32..hi.x.ceil() as i32 {
-                for z in lo.z.floor() as i32..hi.z.ceil() as i32 {
-                    if let Some((h, _)) = self.fluid_height(x, y, z) {
-                        height = height.max(h);
-                    }
-                    if height >= 1.0 {
-                        continue 'rows;
-                    }
-                }
-            }
-            if height < 1.0 {
-                return f64::from(y) + f64::from(height);
-            }
-        }
-        f64::from(y1 + 1)
-    }
-    fn boat_status(&self, b: &mut Boat) -> Status {
-        let bb = b.bounds();
-        let (lo, hi) = (bb.min_position(), bb.max_position());
-        // isUnderwater
-        let max_y = hi.y + 0.001;
-        let mut under = false;
-        for x in lo.x.floor() as i32..hi.x.ceil() as i32 {
-            for y in hi.y.floor() as i32..max_y.ceil() as i32 {
-                for z in lo.z.floor() as i32..hi.z.ceil() as i32 {
-                    if let Some((h, source)) = self.fluid_height(x, y, z)
-                        && max_y < f64::from(y) + f64::from(h)
-                    {
-                        if !source {
-                            b.water_level = hi.y;
-                            return Status::UnderFlowingWater;
-                        }
-                        under = true;
-                    }
-                }
-            }
-        }
-        if under {
-            b.water_level = hi.y;
-            return Status::UnderWater;
-        }
-        // checkInWater
-        let mut in_water = false;
-        b.water_level = -f64::MAX;
-        for x in lo.x.floor() as i32..hi.x.ceil() as i32 {
-            for y in lo.y.floor() as i32..(lo.y + 0.001).ceil() as i32 {
-                for z in lo.z.floor() as i32..hi.z.ceil() as i32 {
-                    if let Some((h, _)) = self.fluid_height(x, y, z) {
-                        let level = f64::from(y) + f64::from(h);
-                        b.water_level = b.water_level.max(level);
-                        in_water |= lo.y < level;
-                    }
-                }
-            }
-        }
-        if in_water {
-            return Status::InWater;
-        }
-        // getGroundFriction over the blocks just below the hull (corners skipped).
-        let y0 = (lo.y - 0.001).floor() as i32;
-        let (x0, x1, z0, z1) = (
-            lo.x.floor() as i32 - 1,
-            hi.x.ceil() as i32 + 1,
-            lo.z.floor() as i32 - 1,
-            hi.z.ceil() as i32 + 1,
-        );
-        let (mut friction, mut count) = (0.0f32, 0);
-        for x in x0..x1 {
-            for z in z0..z1 {
-                let edges = i32::from(x == x0 || x == x1 - 1) + i32::from(z == z0 || z == z1 - 1);
-                if edges == 2 {
-                    continue;
-                }
-                let inside = f64::from(x) < hi.x
-                    && f64::from(x + 1) > lo.x
-                    && f64::from(z) < hi.z
-                    && f64::from(z + 1) > lo.z;
-                let f = self.res.facts().get(self.world.block(x, y0, z));
-                if inside && (f.full_collision || f.legacy_solid) && !f.has_class("LilyPadBlock") {
-                    friction += f.friction;
-                    count += 1;
-                }
-            }
-        }
-        if count > 0 && friction > 0.0 {
-            b.land_friction = friction / count as f32;
-            Status::OnLand
-        } else {
-            Status::InAir
-        }
-    }
-    /// Whether a vehicle's box, deflated by 1e-5, reaches into lava below its
-    /// surface (`Entity.collidedWithFluid`).
-    pub(super) fn in_lava(&self, bb: Aabb) -> bool {
-        let (lo, hi) = (bb.min_position(), bb.max_position());
-        let e = 1.0e-5;
-        for x in (lo.x + e).floor() as i32..=(hi.x - e).floor() as i32 {
-            for y in (lo.y + e).floor() as i32..=(hi.y - e).floor() as i32 {
-                for z in (lo.z + e).floor() as i32..=(hi.z - e).floor() as i32 {
-                    if let Some((height, _)) = self.fluid_height_of(x, y, z, Some(Fluid::Lava))
-                        && lo.y + e < f64::from(y) + f64::from(height)
-                    {
-                        return true;
-                    }
-                }
-            }
-        }
-        false
-    }
-    /// `getDismountLocationForPassenger`: in front of the player if there is
-    /// floor there, else on top of the boat.
-    pub(super) fn dismount(&mut self, i: usize) {
-        self.riding = None;
-        let target = self.boat_dismount_target(i, 0.6, self.yaw);
-        if let Some(p) = self.player.as_mut() {
-            p.position = target;
-            p.velocity = Vec3::ZERO;
-        }
-    }
-    /// `getDismountLocationForPassenger` for a passenger `width` wide
-    /// facing `yaw`.
-    pub(super) fn boat_dismount_target(&self, i: usize, width: f64, yaw: f32) -> Vec3 {
-        let b = &self.boats[i];
-        let r = yaw.to_radians();
-        let distance = (WIDTH * std::f64::consts::SQRT_2 + width + 1.0e-5) / 2.0;
-        let (s, c) = (-(r.sin()) as f64, r.cos() as f64);
-        let m = s.abs().max(c.abs());
-        let (x, z) = (
-            b.position.x + s * distance / m,
-            b.position.z + c * distance / m,
-        );
-        let top = b.bounds().max_position().y;
-        let (bx, by, bz) = (x.floor() as i32, top.floor() as i32, z.floor() as i32);
-        let below = self.res.facts().get(self.world.block(bx, by - 1, bz));
-        let here = self.res.facts().get(self.world.block(bx, by, bz));
-        if below.fluid != Fluid::Water
-            && !here.full_collision
-            && (below.full_collision || below.legacy_solid)
-        {
-            Vec3::new(x, f64::from(by), z)
-        } else {
-            Vec3::new(b.position.x, top, b.position.z)
-        }
-    }
-    pub(super) fn boat_hit(&self) -> Option<(usize, f64)> {
-        let eye = self.eye_position()?;
-        let dir = view_vector(self.yaw, self.pitch);
-        let reach: f64 = if self.creative { 5.0 } else { 3.0 };
-        let mut best: Option<(usize, f64)> = None;
-        for (i, b) in self.boats.iter().enumerate() {
-            if Some(b.id) == self.riding {
-                continue;
-            }
-            let bb = b.bounds();
-            let (lo, hi) = (bb.min_position(), bb.max_position());
-            let (lo, hi) = ([lo.x, lo.y, lo.z], [hi.x, hi.y, hi.z]);
-            let (mut t0, mut t1) = (0.0f64, reach);
-            let mut hit = true;
-            for a in 0..3 {
-                if dir[a].abs() < 1e-9 {
-                    hit &= eye[a] >= lo[a] && eye[a] <= hi[a];
-                    continue;
-                }
-                let (mut ta, mut tb) = ((lo[a] - eye[a]) / dir[a], (hi[a] - eye[a]) / dir[a]);
-                if ta > tb {
-                    std::mem::swap(&mut ta, &mut tb);
-                }
-                t0 = t0.max(ta);
-                t1 = t1.min(tb);
-            }
-            if hit && t0 <= t1 && best.is_none_or(|b| t0 < b.1) {
-                best = Some((i, t0));
-            }
-        }
-        best
-    }
-    /// `VehicleEntity.hurtServer`: wobble, add the damage and break past 40
-    /// (`creative`: a creative player's hit removes it without drops).
-    /// True when the boat was removed.
-    pub(super) fn hurt_boat(&mut self, i: usize, damage: f32, creative: bool) -> bool {
-        let b = &mut self.boats[i];
-        b.hurt_dir = -b.hurt_dir;
-        b.hurt_time = 10;
-        b.damage += damage * 10.0;
-        let destroyed = creative || b.damage > 40.0;
-        if destroyed {
-            self.eject_boat_mobs(i, true);
-            let b = self.boats.remove(i);
-            let at = [b.position.x, b.position.y, b.position.z];
-            if !creative && self.world_data.rules.bool("entity_drops") {
-                // ChestBoat.destroy: chestVehicleDestroyed spills the contents.
-                for stack in b.items.iter().flatten() {
-                    self.spawn_item(stack.clone(), at, super::dispenser::new_item_motion(), 10);
-                }
-                let item = b.entity_type();
-                self.spawn_item(
-                    ItemStack {
-                        item: Arc::from(item.as_str()),
-                        count: 1,
-                        damage: 0,
-                        extra: None,
-                    },
-                    at,
-                    [0.0, 0.1, 0.0],
-                    10,
-                );
-            }
-        }
-        destroyed
     }
 }

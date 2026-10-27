@@ -82,6 +82,19 @@ impl Game<'_> {
             .audio
             .play(&format!("minecraft:{sound}"), Some(at), 1.0, 1.0);
     }
+    /// Spit the swallowed block out on top (`EntityAttachment.PASSENGER`).
+    fn eject_sulfur_block(&mut self, index: usize) {
+        let m = &mut self.mobs[index];
+        let Some(item) = m.extra.head.take() else {
+            return;
+        };
+        let at = [
+            m.position.x,
+            m.position.y + f64::from(m.height()),
+            m.position.z,
+        ];
+        self.spawn_item(ItemStack::new(&item, 1), at, [0.0, 0.2, 0.0], 10);
+    }
     /// `SulfurCube.mobInteract`. Returns whether the click was used.
     pub(super) fn interact_sulfur_cube(&mut self, index: usize, item: &str) -> bool {
         let m = &self.mobs[index];
@@ -232,21 +245,6 @@ impl Game<'_> {
                 c.head_yaw = yaw;
             }
         }
-    }
-}
-impl crate::game::Sim<'_> {
-    /// Spit the swallowed block out on top (`EntityAttachment.PASSENGER`).
-    fn eject_sulfur_block(&mut self, index: usize) {
-        let m = &mut self.mobs[index];
-        let Some(item) = m.extra.head.take() else {
-            return;
-        };
-        let at = [
-            m.position.x,
-            m.position.y + f64::from(m.height()),
-            m.position.z,
-        ];
-        self.spawn_item(ItemStack::new(&item, 1), at, [0.0, 0.2, 0.0], 10);
     }
 }
 

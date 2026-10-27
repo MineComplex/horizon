@@ -50,6 +50,46 @@ fn click_mode(input: i32) -> ev::ClickMode {
 }
 
 impl Game<'_> {
+    pub(super) fn plugin_block(&self, world: &str, pos: [i32; 3]) -> types::Block {
+        let state = if world == self.dim.id() {
+            self.state_string(self.world.block(pos[0], pos[1], pos[2]))
+        } else {
+            "minecraft:air".into()
+        };
+        types::Block {
+            world: world.to_owned(),
+            pos: types::BlockPos {
+                x: pos[0],
+                y: pos[1],
+                z: pos[2],
+            },
+            state,
+        }
+    }
+
+    /// The entity a plugin event names for a network id.
+    pub(super) fn plugin_entity_ref(&self, id: i32) -> types::EntityRef {
+        if let Some(g) = self
+            .lan
+            .as_ref()
+            .and_then(|h| h.hub.guests.iter().find(|g| g.entity_id == id))
+        {
+            return types::EntityRef {
+                id,
+                kind: "minecraft:player".into(),
+                player: Some(uuid_str(g.uuid)),
+            };
+        }
+        let kind = self
+            .plugin_target(id)
+            .map(|t| self.target_type(t))
+            .unwrap_or_default();
+        types::EntityRef {
+            id,
+            kind,
+            player: None,
+        }
+    }
     fn plugin_player_ref(p: &types::Player) -> types::EntityRef {
         types::EntityRef {
             id: p.entity_id,
@@ -373,6 +413,33 @@ impl Game<'_> {
         }
     }
 
+    /// The blocks at `positions` sent again to a guest as they are.
+    fn resend_blocks(&self, host: &mut LanHost, conn: u32, positions: &[[i32; 3]]) {
+        for &pos in positions {
+            let state = self.world.block(pos[0], pos[1], pos[2]);
+            host.hub.send_to(
+                conn,
+                &C::BlockUpdate(play::BlockUpdate {
+                    pos,
+                    state: state.0 as i32,
+                }),
+            );
+        }
+    }
+    /// `resend_after_cancel` with the hub in hand.
+    fn resend_after_cancel_with(&mut self, host: &mut LanHost) {
+        let conns: Vec<u32> = std::mem::take(&mut self.mods.plugin.resync)
+            .into_iter()
+            .collect();
+        for conn in conns {
+            if let Some(i) = host.hub.guests.iter().position(|g| g.conn == conn) {
+                host.hub.send_inventory(i);
+                let selected = host.hub.guests[i].selected as i32;
+                host.hub.guests[i].send(&C::SetHeldSlot(play::SetHeldSlot { slot: selected }));
+            }
+        }
+    }
+
     /// A command a guest typed (without its slash): `PlayerCommandEvent`,
     /// `/plugins`, then a plugin's command. The line the game should run
     /// on, or None when a plugin took it or cancelled it.
@@ -425,6 +492,16 @@ impl Game<'_> {
             })
             .unwrap_or(false);
         if owned { None } else { Some(line) }
+    }
+
+    /// `/plugins`: the installed plugins, green when enabled, red when not.
+    pub(super) fn plugin_list_text(&self) -> String {
+        let infos = self.mods.mods.plugin_infos();
+        let names: Vec<String> = infos
+            .iter()
+            .map(|p| format!("{}{}", if p.enabled { "§a" } else { "§c" }, p.name))
+            .collect();
+        format!("Plugins ({}): {}", infos.len(), names.join("§f, "))
     }
 
     /// A console line: `ServerCommandEvent`, `plugins`, then a plugin's
@@ -719,6 +796,11 @@ impl Game<'_> {
         }
     }
 
+    /// A block of this level as a plugin reads it.
+    fn plugin_level_block(&self, pos: horizon_core::position::BlockPos) -> types::Block {
+        self.plugin_block(self.dim.id(), [pos.x, pos.y, pos.z])
+    }
+
     /// A piston about to move: `BlockPistonExtendEvent` or
     /// `BlockPistonRetractEvent`. False when a plugin cancelled it.
     pub(super) fn plugin_piston(&mut self, mv: &horizon_world::level::PistonMove) -> bool {
@@ -780,6 +862,14 @@ impl Game<'_> {
             }
         }
         vetoes
+    }
+
+    /// The inventory of the player whose turn it is goes to their client
+    /// again (a cancelled action it predicted).
+    fn plugin_resync_acting(&mut self) {
+        if let Some(conn) = self.lan_acting {
+            self.mods.plugin.resync.insert(conn);
+        }
     }
 
     /// A guest is about to pick up the dropped `item`: `PlayerPickupItemEvent`.
@@ -1378,92 +1468,5 @@ impl Game<'_> {
     #[allow(dead_code)]
     fn plugin_stack_in(s: &types::ItemStack) -> Option<horizon_client::items::ItemStack> {
         stack_in(s)
-    }
-}
-impl crate::game::Sim<'_> {
-    pub(super) fn plugin_block(&self, world: &str, pos: [i32; 3]) -> types::Block {
-        let state = if world == self.dim.id() {
-            self.state_string(self.world.block(pos[0], pos[1], pos[2]))
-        } else {
-            "minecraft:air".into()
-        };
-        types::Block {
-            world: world.to_owned(),
-            pos: types::BlockPos {
-                x: pos[0],
-                y: pos[1],
-                z: pos[2],
-            },
-            state,
-        }
-    }
-    /// The entity a plugin event names for a network id.
-    pub(super) fn plugin_entity_ref(&self, id: i32) -> types::EntityRef {
-        if let Some(g) = self
-            .lan
-            .as_ref()
-            .and_then(|h| h.hub.guests.iter().find(|g| g.entity_id == id))
-        {
-            return types::EntityRef {
-                id,
-                kind: "minecraft:player".into(),
-                player: Some(uuid_str(g.uuid)),
-            };
-        }
-        let kind = self
-            .plugin_target(id)
-            .map(|t| self.target_type(t))
-            .unwrap_or_default();
-        types::EntityRef {
-            id,
-            kind,
-            player: None,
-        }
-    }
-    /// The blocks at `positions` sent again to a guest as they are.
-    fn resend_blocks(&self, host: &mut LanHost, conn: u32, positions: &[[i32; 3]]) {
-        for &pos in positions {
-            let state = self.world.block(pos[0], pos[1], pos[2]);
-            host.hub.send_to(
-                conn,
-                &C::BlockUpdate(play::BlockUpdate {
-                    pos,
-                    state: state.0 as i32,
-                }),
-            );
-        }
-    }
-    /// `resend_after_cancel` with the hub in hand.
-    fn resend_after_cancel_with(&mut self, host: &mut LanHost) {
-        let conns: Vec<u32> = std::mem::take(&mut self.mods.plugin.resync)
-            .into_iter()
-            .collect();
-        for conn in conns {
-            if let Some(i) = host.hub.guests.iter().position(|g| g.conn == conn) {
-                host.hub.send_inventory(i);
-                let selected = host.hub.guests[i].selected as i32;
-                host.hub.guests[i].send(&C::SetHeldSlot(play::SetHeldSlot { slot: selected }));
-            }
-        }
-    }
-    /// `/plugins`: the installed plugins, green when enabled, red when not.
-    pub(super) fn plugin_list_text(&self) -> String {
-        let infos = self.mods.mods.plugin_infos();
-        let names: Vec<String> = infos
-            .iter()
-            .map(|p| format!("{}{}", if p.enabled { "§a" } else { "§c" }, p.name))
-            .collect();
-        format!("Plugins ({}): {}", infos.len(), names.join("§f, "))
-    }
-    /// A block of this level as a plugin reads it.
-    fn plugin_level_block(&self, pos: horizon_core::position::BlockPos) -> types::Block {
-        self.plugin_block(self.dim.id(), [pos.x, pos.y, pos.z])
-    }
-    /// The inventory of the player whose turn it is goes to their client
-    /// again (a cancelled action it predicted).
-    fn plugin_resync_acting(&mut self) {
-        if let Some(conn) = self.lan_acting {
-            self.mods.plugin.resync.insert(conn);
-        }
     }
 }

@@ -131,15 +131,14 @@ impl Game<'_> {
             );
         }
     }
-}
-impl crate::game::Sim<'_> {
+
     /// `LivingEntity.tickEffects` on a client: the swirls around an entity
     /// with visible effects, from the particles its synched data lists. The
     /// window's player has its own effects, a server's mobs and players the
     /// list the server sent, and the mobs and guests of a game in the frame
     /// theirs.
     fn effect_swirls(&mut self) {
-        if let Some(p) = self.player.as_ref() {
+        if let Some(p) = self.sim.player.as_ref() {
             let effects = &self.potions.effects.list;
             let list: Vec<_> = effects
                 .iter()
@@ -153,7 +152,7 @@ impl crate::game::Sim<'_> {
                 f64::from(p.dimensions.height),
             );
             swirl(
-                &mut self.particles,
+                &mut self.sim.particles,
                 p.position,
                 size,
                 &list,
@@ -161,8 +160,8 @@ impl crate::game::Sim<'_> {
                 invisible,
             );
         }
-        let guests = self.lan.iter().flat_map(|host| host.models.values());
-        for m in self.mobs.iter().chain(guests) {
+        let guests = self.sim.lan.iter().flat_map(|host| host.models.values());
+        for m in self.sim.mobs.iter().chain(guests) {
             if !m.alive() {
                 continue;
             }
@@ -181,7 +180,7 @@ impl crate::game::Sim<'_> {
                     .filter_map(|e| effect_particle(e.0, false))
                     .collect();
                 swirl(
-                    &mut self.particles,
+                    &mut self.sim.particles,
                     m.position,
                     size,
                     &list,
@@ -192,7 +191,7 @@ impl crate::game::Sim<'_> {
                 let list = &m.extra.effect_particles;
                 let ambient = m.extra.effect_ambient;
                 swirl(
-                    &mut self.particles,
+                    &mut self.sim.particles,
                     m.position,
                     size,
                     list,

@@ -113,9 +113,7 @@ impl Game<'_> {
 }
 
 #[cfg(not(feature = "mods"))]
-impl Game<'_> {}
-#[cfg(not(feature = "mods"))]
-impl crate::game::Sim<'_> {
+impl Game<'_> {
     pub(super) fn plugins_before_tick(&mut self) {}
     pub(super) fn plugins_after_tick(&mut self) {}
     pub(super) fn plugins_stop(&mut self) {}

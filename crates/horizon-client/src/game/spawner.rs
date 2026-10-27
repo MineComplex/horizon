@@ -38,6 +38,31 @@ pub(super) struct SpawnerState {
 }
 
 impl Game<'_> {
+    /// `EntityType.byString`: the type is in the registry.
+    pub(super) fn entity_type_exists(&self, id: &str) -> bool {
+        self.spawners
+            .entity_types
+            .as_ref()
+            .is_some_and(|t| t.contains(id))
+    }
+    pub(super) fn load_entity_types(&mut self) {
+        if self.spawners.entity_types.is_some() {
+            return;
+        }
+        let path = self.options.resources.join("entity-types.json");
+        let types = std::fs::read(path)
+            .ok()
+            .and_then(|b| serde_json::from_slice::<serde_json::Value>(&b).ok())
+            .and_then(|v| {
+                v.as_object().map(|o| {
+                    o.keys()
+                        .map(|k| horizon_client::command::args::normalize(k))
+                        .collect()
+                })
+            })
+            .unwrap_or_default();
+        self.spawners.entity_types = Some(types);
+    }
     /// The server tick of the spawner at `key`, if its block is still a
     /// spawner. Its client tick comes after every block entity's
     /// (`client_tick_spawners`).
@@ -54,6 +79,20 @@ impl Game<'_> {
             .block_entities
             .put(key, BlockEntity::Spawner(spawner));
         result
+    }
+    /// The client ticks of these spawners, then the shown mobs of spawners
+    /// that are gone go.
+    pub(super) fn client_tick_spawners(&mut self, keys: &[Pos]) {
+        for &key in keys {
+            self.client_tick_spawner(key);
+        }
+        let entities = &self.sim.world.block_entities;
+        self.sim.spawners.displays.retain(|k, _| {
+            matches!(
+                entities.get(k),
+                Some(BlockEntity::Spawner(_) | BlockEntity::TrialSpawner(_))
+            )
+        });
     }
     fn server_tick_spawner(&mut self, key: Pos, spawner: &mut Spawner) -> Result<()> {
         let pos = [key.0, key.1, key.2];
@@ -102,6 +141,77 @@ impl Game<'_> {
         }
         ids
     }
+    /// The spawner's `loadEntityRecursive` and `tryAddFreshEntityWithPassengers`:
+    /// the mob it will add (created after the tick) and its box.
+    pub(super) fn plan_spawner_mob(
+        &self,
+        l: &super::natural_spawning::GameLevel,
+        r: &SpawnerSpawn,
+        planned: &mut Vec<Planned>,
+    ) -> Option<SpawnerAdded> {
+        let kind = self.res.mob_types().get(r.id)?.clone();
+        let [x, y, z] = r.position;
+        let at = Vec3::new(x, y, z);
+        let bounds = if r.finalize {
+            let mut mob = Mob::new(0, kind, at, r.yaw);
+            let facts = self.biome_facts(x.floor() as i32, y.floor() as i32, z.floor() as i32);
+            let difficulty = self.local_difficulty(r.position);
+            spawning::finalize(&mut mob, &facts, &difficulty);
+            // TrialSpawner.spawnMob: setPersistenceRequired.
+            mob.persistent = r.trial;
+            horizon_client::mobs::raider::finalize(
+                &mut mob,
+                horizon_client::mobs::raider::Reason::Other,
+            );
+            // Shulker.finalizeSpawn faces it south.
+            if mob.species() == horizon_client::mobs::Species::Shulker {
+                mob.yaw = 0.0;
+                mob.previous_yaw = 0.0;
+                mob.body_yaw = 0.0;
+                mob.previous_body_yaw = 0.0;
+                mob.head_yaw = 0.0;
+                mob.previous_head_yaw = 0.0;
+            }
+            let bounds = mob.bounds();
+            planned.push(Planned::Finalized(mob));
+            bounds
+        } else {
+            // A UUID already in the level is refused.
+            let mut tag = r.entity.clone();
+            if let Some(uuid) = horizon_client::entity_nbt::uuid(&Tag::Compound(tag.clone()))
+                && self.persist.uuids.values().any(|u| *u == uuid)
+            {
+                return None;
+            }
+            let double = |v: f64| Tag::Double(v.to_bits());
+            tag.insert(
+                "Pos".into(),
+                Tag::List(vec![double(x), double(y), double(z)]),
+            );
+            tag.insert(
+                "Rotation".into(),
+                Tag::List(vec![
+                    Tag::Float(r.yaw.to_bits()),
+                    Tag::Float(0f32.to_bits()),
+                ]),
+            );
+            if r.trial {
+                tag.insert("PersistenceRequired".into(), Tag::Byte(1));
+            }
+            let tag = Tag::Compound(tag);
+            let mob = horizon_client::entity_nbt::mob_from_nbt(&tag, self.res.mob_types(), 0)?;
+            let bounds = mob.bounds();
+            planned.push(Planned::Loaded(tag));
+            bounds
+        };
+        l.pending.borrow_mut().push(bounds);
+        l.pending_ids.borrow_mut().push((r.id.to_owned(), bounds));
+        Some(SpawnerAdded {
+            id: u32::MAX - (planned.len() as u32 - 1),
+            bounds,
+            mob: true,
+        })
+    }
     /// What a spawner's tick or a spawn egg did, shown and sent.
     fn apply_spawner_events(
         &mut self,
@@ -134,6 +244,18 @@ impl Game<'_> {
         }
         Ok(())
     }
+    /// `sendBlockUpdated`: the clients load the new update tag (the client
+    /// copy's delay follows it, its display mob is made again).
+    fn spawner_block_updated(&mut self, key: Pos) {
+        if let Some(BlockEntity::Spawner(s)) = self.world.block_entities.get_mut(&key) {
+            s.client_loaded();
+        }
+        self.spawners.displays.remove(&key);
+        if let Some(log) = self.world.block_log.as_mut() {
+            log.push(key);
+        }
+        self.world.modified.insert((key.0 >> 4, key.2 >> 4));
+    }
     /// `LivingEntity.makePoofParticles` (entity event 20) for a mob.
     pub(super) fn mob_poof(&mut self, id: u32) {
         let Some(m) = self.mobs.iter().find(|m| m.id == id) else {
@@ -142,6 +264,107 @@ impl Game<'_> {
         let at = m.position;
         self.lan_entity_event(id as i32, 20, [at.x, at.y, at.z]);
         self.poof_particles(id);
+    }
+    /// `Mob.handleEntityEvent` 20 (`spawnAnim` on a client): the poof about
+    /// mob `id`.
+    pub(super) fn poof_particles(&mut self, id: u32) {
+        let Some(m) = self.mobs.iter().find(|m| m.id == id) else {
+            return;
+        };
+        let (at, w, h) = (m.position, f64::from(m.width()), f64::from(m.height()));
+        let options = ParticleOptions::simple(ParticleType::Poof);
+        for _ in 0..20 {
+            let r = self.particles.level_random();
+            let xa = r.next_gaussian() * 0.02;
+            let ya = r.next_gaussian() * 0.02;
+            let za = r.next_gaussian() * 0.02;
+            let x = at.x + w * (2.0 * r.next_double() - 1.0) - xa * 10.0;
+            let y = at.y + h * r.next_double() - ya * 10.0;
+            let z = at.z + w * (2.0 * r.next_double() - 1.0) - za * 10.0;
+            self.particles.add(&options, [x, y, z], [xa, ya, za]);
+        }
+    }
+    /// `LevelEventHandler` 2004: twenty smoke and flame pairs around the spawner.
+    pub(super) fn spawner_burst(&mut self, pos: [i32; 3]) {
+        let (smoke, flame) = (
+            ParticleOptions::simple(ParticleType::Smoke),
+            ParticleOptions::simple(ParticleType::Flame),
+        );
+        for _ in 0..20 {
+            let r = self.particles.level_random();
+            let x = f64::from(pos[0]) + 0.5 + (r.next_double() - 0.5) * 2.0;
+            let y = f64::from(pos[1]) + 0.5 + (r.next_double() - 0.5) * 2.0;
+            let z = f64::from(pos[2]) + 0.5 + (r.next_double() - 0.5) * 2.0;
+            self.particles.add(&smoke, [x, y, z], [0.0; 3]);
+            self.particles.add(&flame, [x, y, z], [0.0; 3]);
+        }
+    }
+    /// The client copy's tick: particles and the spin while a player is near.
+    fn client_tick_spawner(&mut self, key: Pos) {
+        let near = {
+            let Some(BlockEntity::Spawner(s)) = self.world.block_entities.get(&key) else {
+                return;
+            };
+            let range = f64::from(s.required_player_range);
+            let center = [
+                f64::from(key.0) + 0.5,
+                f64::from(key.1) + 0.5,
+                f64::from(key.2) + 0.5,
+            ];
+            self.player.as_ref().is_some_and(|p| {
+                let d = (p.position.x - center[0]).powi(2)
+                    + (p.position.y - center[1]).powi(2)
+                    + (p.position.z - center[2]).powi(2);
+                !p.health.dead_or_dying() && !self.spectator() && (range < 0.0 || d < range * range)
+            })
+        };
+        let display = self.update_spawner_display(key);
+        let pos = [key.0, key.1, key.2];
+        let random = self.sim.particles.level_random();
+        let Some(BlockEntity::Spawner(s)) = self.sim.world.block_entities.get_mut(&key) else {
+            return;
+        };
+        if let Some(p) = s.client_tick(near, display, random, pos) {
+            self.particles
+                .add(&ParticleOptions::simple(ParticleType::Smoke), p, [0.0; 3]);
+            self.particles
+                .add(&ParticleOptions::simple(ParticleType::Flame), p, [0.0; 3]);
+        }
+    }
+    /// `getOrCreateDisplayEntity`: the mob shown in the spawner, made again
+    /// when its type changes. False when there is none.
+    pub(super) fn update_spawner_display(&mut self, key: Pos) -> bool {
+        let Some(kind) = self.spawner_display_kind(key) else {
+            self.spawners.displays.remove(&key);
+            return false;
+        };
+        if self
+            .spawners
+            .displays
+            .get(&key)
+            .is_none_or(|(k, _)| *k != kind)
+        {
+            let Some(t) = self.res.mob_types().get(&kind).cloned() else {
+                return false;
+            };
+            let mob = Mob::new(u32::MAX, t, Vec3::ZERO, 0.0);
+            self.spawners.displays.insert(key, (kind, mob));
+        }
+        true
+    }
+    /// The type of the mob a spawner shows: its next data's id, when the game
+    /// knows the mob.
+    /// A trial spawner shows one only in the states with a spinning mob.
+    fn spawner_display_kind(&self, key: Pos) -> Option<String> {
+        let id = match self.world.block_entities.get(&key)? {
+            BlockEntity::Spawner(s) => s.next_data()?.id()?,
+            BlockEntity::TrialSpawner(s) => {
+                self.trial_spawner_block(key)?.0.spinning_mob_speed()?;
+                s.next_spawn_data.as_ref()?.id()?
+            }
+            _ => return None,
+        };
+        self.res.mob_types().contains_key(&id).then_some(id)
     }
     /// `SpawnEggItem.useOn` on a spawner: the egg sets its mob. None when the
     /// clicked block has no spawner.
@@ -230,230 +453,5 @@ impl Game<'_> {
                 out,
             );
         }
-    }
-}
-impl crate::game::Sim<'_> {
-    /// `EntityType.byString`: the type is in the registry.
-    pub(super) fn entity_type_exists(&self, id: &str) -> bool {
-        self.spawners
-            .entity_types
-            .as_ref()
-            .is_some_and(|t| t.contains(id))
-    }
-    pub(super) fn load_entity_types(&mut self) {
-        if self.spawners.entity_types.is_some() {
-            return;
-        }
-        let path = self.options.resources.join("entity-types.json");
-        let types = std::fs::read(path)
-            .ok()
-            .and_then(|b| serde_json::from_slice::<serde_json::Value>(&b).ok())
-            .and_then(|v| {
-                v.as_object().map(|o| {
-                    o.keys()
-                        .map(|k| horizon_client::command::args::normalize(k))
-                        .collect()
-                })
-            })
-            .unwrap_or_default();
-        self.spawners.entity_types = Some(types);
-    }
-    /// The client ticks of these spawners, then the shown mobs of spawners
-    /// that are gone go.
-    pub(super) fn client_tick_spawners(&mut self, keys: &[Pos]) {
-        for &key in keys {
-            self.client_tick_spawner(key);
-        }
-        let entities = &self.world.block_entities;
-        self.spawners.displays.retain(|k, _| {
-            matches!(
-                entities.get(k),
-                Some(BlockEntity::Spawner(_) | BlockEntity::TrialSpawner(_))
-            )
-        });
-    }
-    /// The spawner's `loadEntityRecursive` and `tryAddFreshEntityWithPassengers`:
-    /// the mob it will add (created after the tick) and its box.
-    pub(super) fn plan_spawner_mob(
-        &self,
-        l: &super::natural_spawning::GameLevel,
-        r: &SpawnerSpawn,
-        planned: &mut Vec<Planned>,
-    ) -> Option<SpawnerAdded> {
-        let kind = self.res.mob_types().get(r.id)?.clone();
-        let [x, y, z] = r.position;
-        let at = Vec3::new(x, y, z);
-        let bounds = if r.finalize {
-            let mut mob = Mob::new(0, kind, at, r.yaw);
-            let facts = self.biome_facts(x.floor() as i32, y.floor() as i32, z.floor() as i32);
-            let difficulty = self.local_difficulty(r.position);
-            spawning::finalize(&mut mob, &facts, &difficulty);
-            // TrialSpawner.spawnMob: setPersistenceRequired.
-            mob.persistent = r.trial;
-            horizon_client::mobs::raider::finalize(
-                &mut mob,
-                horizon_client::mobs::raider::Reason::Other,
-            );
-            // Shulker.finalizeSpawn faces it south.
-            if mob.species() == horizon_client::mobs::Species::Shulker {
-                mob.yaw = 0.0;
-                mob.previous_yaw = 0.0;
-                mob.body_yaw = 0.0;
-                mob.previous_body_yaw = 0.0;
-                mob.head_yaw = 0.0;
-                mob.previous_head_yaw = 0.0;
-            }
-            let bounds = mob.bounds();
-            planned.push(Planned::Finalized(mob));
-            bounds
-        } else {
-            // A UUID already in the level is refused.
-            let mut tag = r.entity.clone();
-            if let Some(uuid) = horizon_client::entity_nbt::uuid(&Tag::Compound(tag.clone()))
-                && self.persist.uuids.values().any(|u| *u == uuid)
-            {
-                return None;
-            }
-            let double = |v: f64| Tag::Double(v.to_bits());
-            tag.insert(
-                "Pos".into(),
-                Tag::List(vec![double(x), double(y), double(z)]),
-            );
-            tag.insert(
-                "Rotation".into(),
-                Tag::List(vec![
-                    Tag::Float(r.yaw.to_bits()),
-                    Tag::Float(0f32.to_bits()),
-                ]),
-            );
-            if r.trial {
-                tag.insert("PersistenceRequired".into(), Tag::Byte(1));
-            }
-            let tag = Tag::Compound(tag);
-            let mob = horizon_client::entity_nbt::mob_from_nbt(&tag, self.res.mob_types(), 0)?;
-            let bounds = mob.bounds();
-            planned.push(Planned::Loaded(tag));
-            bounds
-        };
-        l.pending.borrow_mut().push(bounds);
-        l.pending_ids.borrow_mut().push((r.id.to_owned(), bounds));
-        Some(SpawnerAdded {
-            id: u32::MAX - (planned.len() as u32 - 1),
-            bounds,
-            mob: true,
-        })
-    }
-    /// `sendBlockUpdated`: the clients load the new update tag (the client
-    /// copy's delay follows it, its display mob is made again).
-    fn spawner_block_updated(&mut self, key: Pos) {
-        if let Some(BlockEntity::Spawner(s)) = self.world.block_entities.get_mut(&key) {
-            s.client_loaded();
-        }
-        self.spawners.displays.remove(&key);
-        if let Some(log) = self.world.block_log.as_mut() {
-            log.push(key);
-        }
-        self.world.modified.insert((key.0 >> 4, key.2 >> 4));
-    }
-    /// `Mob.handleEntityEvent` 20 (`spawnAnim` on a client): the poof about
-    /// mob `id`.
-    pub(super) fn poof_particles(&mut self, id: u32) {
-        let Some(m) = self.mobs.iter().find(|m| m.id == id) else {
-            return;
-        };
-        let (at, w, h) = (m.position, f64::from(m.width()), f64::from(m.height()));
-        let options = ParticleOptions::simple(ParticleType::Poof);
-        for _ in 0..20 {
-            let r = self.particles.level_random();
-            let xa = r.next_gaussian() * 0.02;
-            let ya = r.next_gaussian() * 0.02;
-            let za = r.next_gaussian() * 0.02;
-            let x = at.x + w * (2.0 * r.next_double() - 1.0) - xa * 10.0;
-            let y = at.y + h * r.next_double() - ya * 10.0;
-            let z = at.z + w * (2.0 * r.next_double() - 1.0) - za * 10.0;
-            self.particles.add(&options, [x, y, z], [xa, ya, za]);
-        }
-    }
-    /// `LevelEventHandler` 2004: twenty smoke and flame pairs around the spawner.
-    pub(super) fn spawner_burst(&mut self, pos: [i32; 3]) {
-        let (smoke, flame) = (
-            ParticleOptions::simple(ParticleType::Smoke),
-            ParticleOptions::simple(ParticleType::Flame),
-        );
-        for _ in 0..20 {
-            let r = self.particles.level_random();
-            let x = f64::from(pos[0]) + 0.5 + (r.next_double() - 0.5) * 2.0;
-            let y = f64::from(pos[1]) + 0.5 + (r.next_double() - 0.5) * 2.0;
-            let z = f64::from(pos[2]) + 0.5 + (r.next_double() - 0.5) * 2.0;
-            self.particles.add(&smoke, [x, y, z], [0.0; 3]);
-            self.particles.add(&flame, [x, y, z], [0.0; 3]);
-        }
-    }
-    /// The client copy's tick: particles and the spin while a player is near.
-    fn client_tick_spawner(&mut self, key: Pos) {
-        let near = {
-            let Some(BlockEntity::Spawner(s)) = self.world.block_entities.get(&key) else {
-                return;
-            };
-            let range = f64::from(s.required_player_range);
-            let center = [
-                f64::from(key.0) + 0.5,
-                f64::from(key.1) + 0.5,
-                f64::from(key.2) + 0.5,
-            ];
-            self.player.as_ref().is_some_and(|p| {
-                let d = (p.position.x - center[0]).powi(2)
-                    + (p.position.y - center[1]).powi(2)
-                    + (p.position.z - center[2]).powi(2);
-                !p.health.dead_or_dying() && !self.spectator() && (range < 0.0 || d < range * range)
-            })
-        };
-        let display = self.update_spawner_display(key);
-        let pos = [key.0, key.1, key.2];
-        let random = self.particles.level_random();
-        let Some(BlockEntity::Spawner(s)) = self.world.block_entities.get_mut(&key) else {
-            return;
-        };
-        if let Some(p) = s.client_tick(near, display, random, pos) {
-            self.particles
-                .add(&ParticleOptions::simple(ParticleType::Smoke), p, [0.0; 3]);
-            self.particles
-                .add(&ParticleOptions::simple(ParticleType::Flame), p, [0.0; 3]);
-        }
-    }
-    /// `getOrCreateDisplayEntity`: the mob shown in the spawner, made again
-    /// when its type changes. False when there is none.
-    pub(super) fn update_spawner_display(&mut self, key: Pos) -> bool {
-        let Some(kind) = self.spawner_display_kind(key) else {
-            self.spawners.displays.remove(&key);
-            return false;
-        };
-        if self
-            .spawners
-            .displays
-            .get(&key)
-            .is_none_or(|(k, _)| *k != kind)
-        {
-            let Some(t) = self.res.mob_types().get(&kind).cloned() else {
-                return false;
-            };
-            let mob = Mob::new(u32::MAX, t, Vec3::ZERO, 0.0);
-            self.spawners.displays.insert(key, (kind, mob));
-        }
-        true
-    }
-    /// The type of the mob a spawner shows: its next data's id, when the game
-    /// knows the mob.
-    /// A trial spawner shows one only in the states with a spinning mob.
-    fn spawner_display_kind(&self, key: Pos) -> Option<String> {
-        let id = match self.world.block_entities.get(&key)? {
-            BlockEntity::Spawner(s) => s.next_data()?.id()?,
-            BlockEntity::TrialSpawner(s) => {
-                self.trial_spawner_block(key)?.0.spinning_mob_speed()?;
-                s.next_spawn_data.as_ref()?.id()?
-            }
-            _ => return None,
-        };
-        self.res.mob_types().contains_key(&id).then_some(id)
     }
 }

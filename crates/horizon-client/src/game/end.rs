@@ -253,6 +253,15 @@ impl EyeOfEnder {
 }
 
 impl Game<'_> {
+    /// The environment attributes of the current dimension.
+    pub(super) fn dim_environment(&self) -> &Environment {
+        match self.dim {
+            Dim::Overworld => self.res.environment(),
+            Dim::Nether => self.res.nether_environment(),
+            Dim::End => self.res.end_environment(),
+        }
+    }
+
     /// SkyRenderer.renderEndFlash, drawn after the renderer's resident sky mesh.
     pub(super) fn end_flash_geometry(&self) -> Vec<Vertex> {
         let mut out = Vec::new();
@@ -317,6 +326,14 @@ impl Game<'_> {
                 intensity
             };
         }
+    }
+
+    pub(super) fn block_name(&self, p: [i32; 3]) -> std::sync::Arc<str> {
+        self.res
+            .facts()
+            .get(self.world.block(p[0], p[1], p[2]))
+            .name
+            .clone()
     }
 
     /// EnderEyeItem.useOn: fill an empty End portal frame, then light the
@@ -392,6 +409,46 @@ impl Game<'_> {
         Ok(true)
     }
 
+    /// EndPortalFrameBlock.getOrCreatePortalShape matched around `frame`: a 5×5
+    /// ring (corners free) of filled frames, all facing the centre or all
+    /// facing away from it. Returns the centre of the 3×3 opening.
+    fn portal_ring_center(&self, frame: [i32; 3]) -> Option<[i32; 3]> {
+        let registry = self.pack.assets.registry;
+        // (offset from the centre, facing when the frames face the centre)
+        let mut ring = Vec::with_capacity(12);
+        for i in -1..=1 {
+            ring.push(([i, -2], "south"));
+            ring.push(([i, 2], "north"));
+            ring.push(([-2, i], "east"));
+            ring.push(([2, i], "west"));
+        }
+        let opposite = |f: &str| match f {
+            "south" => "north",
+            "north" => "south",
+            "east" => "west",
+            _ => "east",
+        };
+        for &([ox, oz], _) in &ring {
+            let c = [frame[0] - ox, frame[1], frame[2] - oz];
+            for inward in [true, false] {
+                let ok = ring.iter().all(|&([dx, dz], facing)| {
+                    let id = self.world.block(c[0] + dx, c[1], c[2] + dz);
+                    let Some(s) = registry.state(id) else {
+                        return false;
+                    };
+                    let want = if inward { facing } else { opposite(facing) };
+                    s.name == "minecraft:end_portal_frame"
+                        && s.properties.get("eye").map(String::as_str) == Some("true")
+                        && s.properties.get("facing").map(String::as_str) == Some(want)
+                });
+                if ok {
+                    return Some(c);
+                }
+            }
+        }
+        None
+    }
+
     /// End portals, End gateways and the exit portal, once per tick.
     pub(super) fn tick_end(&mut self) -> Result<()> {
         self.end.gateway_cooldown = self.end.gateway_cooldown.saturating_sub(1);
@@ -454,6 +511,64 @@ impl Game<'_> {
             self.enter_gateway(g)?;
         }
         Ok(())
+    }
+
+    /// Whether a `width` by `height` box at `position` is inside an End
+    /// portal (its entity-inside shape), and the End gateway it touches.
+    pub(super) fn inside_end_portals(
+        &self,
+        position: Vec3,
+        width: f64,
+        height: f64,
+    ) -> (bool, Option<[i32; 3]>) {
+        let w = width / 2.0;
+        let lo = [position.x - w, position.y, position.z - w];
+        let hi = [position.x + w, position.y + height, position.z + w];
+        let mut portal = false;
+        let mut gateway = None;
+        for x in lo[0].floor() as i32..=hi[0].floor() as i32 {
+            for y in lo[1].floor() as i32..=hi[1].floor() as i32 {
+                for z in lo[2].floor() as i32..=hi[2].floor() as i32 {
+                    let name = self.block_name([x, y, z]);
+                    // EndPortalBlock entity-inside shape: y 6/16..12/16.
+                    if &*name == "minecraft:end_portal"
+                        && lo[1] < f64::from(y) + 0.75
+                        && hi[1] > f64::from(y) + 0.375
+                    {
+                        portal = true;
+                    } else if &*name == "minecraft:end_gateway" && self.dim == Dim::End {
+                        gateway = Some([x, y, z]);
+                    }
+                }
+            }
+        }
+        (portal, gateway)
+    }
+
+    /// EndPortalBlock.getPortalDestination for the pending enter_dimension.
+    pub(super) fn end_destination(&self, target: Dim) -> Option<Vec3> {
+        if !self.end_portal_travel {
+            return None;
+        }
+        if target == Dim::End {
+            // Vec3.atBottomCenterOf(END_SPAWN_POINT), one block lower for players.
+            return Some(Vec3::new(
+                f64::from(END_SPAWN[0]) + 0.5,
+                f64::from(END_SPAWN[1] - 1),
+                f64::from(END_SPAWN[2]) + 0.5,
+            ));
+        }
+        // Leaving the End: the respawn position, a bed's found once it has
+        // loaded (findRespawnPositionAndUseSpawnBlock, not using it up).
+        if let Some(c) = self.respawn_config.filter(|c| c.dim == target) {
+            return Some(Vec3::new(
+                f64::from(c.pos[0]) + 0.5,
+                f64::from(c.pos[1]),
+                f64::from(c.pos[2]) + 0.5,
+            ));
+        }
+        let s = self.level.spawn.unwrap_or([0.0, 64.0, 0.0]);
+        Some(Vec3::new(s[0].floor() + 0.5, s[1], s[2].floor() + 0.5))
     }
 
     /// Arrival after End portal or gateway travel, once the destination is loaded.
@@ -628,6 +743,33 @@ impl Game<'_> {
         }
         Ok(())
     }
+    /// The portal level of the podium around the centre column, read from the
+    /// bedrock that EndPodiumFeature places (rim at the portal level, disc
+    /// below it, the torch column) so a broken column does not hide it.
+    fn podium_level(&self) -> Option<i32> {
+        let mut offsets: Vec<[i32; 3]> = (0..4).map(|dy| [0, dy, 0]).collect();
+        for z in -4..=4i32 {
+            for x in -4..=4i32 {
+                let flat = f64::from(x * x + z * z);
+                if (6.25..12.25).contains(&flat) {
+                    offsets.push([x, 0, z]);
+                } else if flat + 1.0 < 6.25 {
+                    offsets.push([x, -1, z]);
+                }
+            }
+        }
+        (1..253)
+            .map(|y| {
+                let score = offsets
+                    .iter()
+                    .filter(|o| &*self.block_name([o[0], y + o[1], o[2]]) == "minecraft:bedrock")
+                    .count();
+                (score, y)
+            })
+            .filter(|&(score, _)| score >= 3)
+            .max()
+            .map(|(_, y)| y)
+    }
     /// `spawnExitPortal(true)` after the dragon dies.
     pub(super) fn activate_exit_portal(&mut self) -> Result<()> {
         let origin = match self.exit_portal() {
@@ -641,6 +783,24 @@ impl Game<'_> {
     }
     pub(super) fn place_gateway_at(&mut self, pos: [i32; 3]) -> Result<()> {
         self.place_gateway(pos)
+    }
+
+    /// The first gateway of the shuffled ring (EnderDragonFight constructor
+    /// and spawnNewGateway).
+    fn first_gateway(&self) -> [i32; 3] {
+        let mut gateways: Vec<i32> = (0..20).collect();
+        let mut random = LegacyRandom::new(self.level.seed);
+        for i in (2..=gateways.len()).rev() {
+            let j = random.next_int_bound(i as i32).unwrap_or(0) as usize;
+            gateways.swap(i - 1, j);
+        }
+        let index = f64::from(gateways[gateways.len() - 1]);
+        let angle = 2.0 * (-std::f64::consts::PI + std::f64::consts::PI / 20.0 * index);
+        [
+            (GATEWAY_RADIUS * angle.cos()).floor() as i32,
+            GATEWAY_Y,
+            (GATEWAY_RADIUS * angle.sin()).floor() as i32,
+        ]
     }
 
     /// EndPodiumFeature(active).place at `origin` (the portal level).
@@ -725,6 +885,158 @@ impl Game<'_> {
                 BlockEntity::EndGateway(Default::default())
             });
         Ok(())
+    }
+
+    fn gateway_exits(&mut self) -> &mut HashMap<[i32; 3], ([i32; 3], bool)> {
+        if self.end.exits.is_none() {
+            let path = horizon_client::save::dimension_dir(&self.world_root, "minecraft:the_end")
+                .join(GATEWAY_FILE);
+            let parsed: Option<Vec<([i32; 3], [i32; 3], bool)>> = std::fs::read(&path)
+                .ok()
+                .and_then(|b| serde_json::from_slice(&b).ok());
+            self.end.exits = Some(
+                parsed
+                    .unwrap_or_default()
+                    .into_iter()
+                    .map(|(g, e, x)| (g, (e, x)))
+                    .collect(),
+            );
+        }
+        self.end.exits.as_mut().expect("loaded exits")
+    }
+
+    fn save_gateway_exits(&mut self) -> Result<()> {
+        let list: Vec<_> = self
+            .gateway_exits()
+            .iter()
+            .map(|(g, (e, x))| (*g, *e, *x))
+            .collect();
+        let dir = horizon_client::save::dimension_dir(&self.world_root, "minecraft:the_end");
+        std::fs::create_dir_all(&dir)?;
+        std::fs::write(dir.join(GATEWAY_FILE), serde_json::to_vec(&list)?)?;
+        Ok(())
+    }
+
+    /// Drops a gateway's entry from the side file: its block entity is the source of truth.
+    fn forget_gateway_exit(&mut self, gateway: [i32; 3]) -> Result<()> {
+        if self.gateway_exits().remove(&gateway).is_some() {
+            self.save_gateway_exits()?;
+        }
+        Ok(())
+    }
+
+    fn set_gateway_exit(&mut self, gateway: [i32; 3], exit: [i32; 3], exact: bool) -> Result<()> {
+        // TheEndGatewayBlockEntity.setExitPosition (also EndGatewayFeature.knownExit).
+        let key = (gateway[0], gateway[1], gateway[2]);
+        let chunk = (gateway[0] >> 4, gateway[2] >> 4);
+        // The gateway's chunk can be unloaded by now (travel waits for the destination): the
+        // exit then waits in the side file until the gateway is used again (`gateway_job`).
+        if self.world.chunks.contains_key(&chunk)
+            && let BlockEntity::EndGateway(g) = self
+                .world
+                .block_entities
+                .get_or_insert_with(key, || BlockEntity::EndGateway(Default::default()))
+        {
+            g.exit_portal = Some(exit);
+            g.exact_teleport = exact;
+            self.world.modified.insert(chunk);
+            return self.forget_gateway_exit(gateway);
+        }
+        self.gateway_exits().insert(gateway, (exit, exact));
+        self.save_gateway_exits()
+    }
+
+    /// EndGatewayBlock.entityInside and TheEndGatewayBlockEntity.getPortalPosition:
+    /// travel within the End, waiting for the destination chunks to load.
+    fn enter_gateway(&mut self, gateway: [i32; 3]) -> Result<()> {
+        // TheEndGatewayBlockEntity.triggerCooldown: 40 ticks.
+        self.end.gateway_cooldown = 40;
+        let (job, destination) = self.gateway_job(gateway);
+        let Some(player) = self.player.take() else {
+            return Ok(());
+        };
+        self.end.job = Some(job);
+        self.end_travel = true;
+        self.travelling = Some((player, destination));
+        Ok(())
+    }
+
+    /// Where `gateway` leads (TheEndGatewayBlockEntity.getPortalPosition):
+    /// its exit, or the search for one, and the spot to load before either
+    /// is resolved ([`Game::resolve_gateway`]).
+    pub(super) fn gateway_job(&mut self, gateway: [i32; 3]) -> (GatewayJob, Vec3) {
+        let mut known = self.gateway_exits().get(&gateway).copied();
+        // Once the gateway's chunk is loaded its block entity is the source of truth: an exit the
+        // side file kept for it moves there, and the entry is dropped, so removing or replacing
+        // the exit (`/data remove block`) is not undone by an old entry.
+        let key = (gateway[0], gateway[1], gateway[2]);
+        let chunk = (gateway[0] >> 4, gateway[2] >> 4);
+        if let Some(saved) = known
+            && self.world.chunks.contains_key(&chunk)
+            && let BlockEntity::EndGateway(g) = self
+                .world
+                .block_entities
+                .get_or_insert_with(key, || BlockEntity::EndGateway(Default::default()))
+        {
+            if adopt_saved_exit(g, saved) {
+                self.world.modified.insert(chunk);
+            }
+            known = None;
+            let _ = self.forget_gateway_exit(gateway);
+        }
+        let job = GatewayJob::for_gateway(
+            gateway,
+            self.world
+                .block_entities
+                .get(&(gateway[0], gateway[1], gateway[2])),
+            known,
+        );
+        let destination = match job {
+            GatewayJob::Known { exit, .. } => Vec3::new(
+                f64::from(exit[0]) + 0.5,
+                f64::from(exit[1]),
+                f64::from(exit[2]) + 0.5,
+            ),
+            GatewayJob::Find { gateway, .. } => {
+                let d = glam::DVec2::new(f64::from(gateway[0]), f64::from(gateway[2]))
+                    .normalize_or_zero()
+                    * 1024.0;
+                Vec3::new(d.x, 75.0, d.y)
+            }
+        };
+        (job, destination)
+    }
+
+    fn chunk_empty(&self, x: f64, z: f64) -> Option<bool> {
+        let chunk = self
+            .world
+            .chunks
+            .get(&((x / 16.0).floor() as i32, (z / 16.0).floor() as i32))?;
+        Some(chunk.sections.iter().all(|s| s.is_uniform(0)))
+    }
+
+    /// TheEndGatewayBlockEntity.findTallestBlock.
+    fn tallest_block(&self, around: [i32; 3], dist: i32, allow_bedrock: bool) -> [i32; 3] {
+        let mut tallest: Option<[i32; 3]> = None;
+        for xd in -dist..=dist {
+            for zd in -dist..=dist {
+                if xd == 0 && zd == 0 && !allow_bedrock {
+                    continue;
+                }
+                let floor = tallest.map_or(0, |t| t[1]);
+                let mut y = 255;
+                while y > floor {
+                    let p = [around[0] + xd, y, around[2] + zd];
+                    let f = self.res.facts().get(self.world.block(p[0], p[1], p[2]));
+                    if f.full_collision && (allow_bedrock || &*f.name != "minecraft:bedrock") {
+                        tallest = Some(p);
+                        break;
+                    }
+                    y -= 1;
+                }
+            }
+        }
+        tallest.unwrap_or(around)
     }
 
     /// The teleport position of a gateway job, creating the exit gateway (and
@@ -1044,6 +1356,35 @@ impl Game<'_> {
         }
     }
 
+    /// `EyeOfEnder.tick` on a client: behind each eye (a quarter of its last
+    /// move back), four bubbles in water, else a portal particle.
+    pub(super) fn eye_particles(&mut self) {
+        for i in 0..self.end.eyes.len() {
+            let e = &self.end.eyes[i];
+            let movement = (e.position - e.previous).to_array();
+            let origin = (e.position - (e.position - e.previous) * 0.25).to_array();
+            let block = origin.map(|v| v.floor() as i32);
+            let water = self
+                .res
+                .facts()
+                .get(self.world.block(block[0], block[1], block[2]))
+                .fluid
+                == horizon_client::blocks::Fluid::Water;
+            if water {
+                let bubble = ParticleOptions::simple(ParticleType::Bubble);
+                for _ in 0..4 {
+                    self.particles.add(&bubble, origin, movement);
+                }
+            } else {
+                let r = self.particles.random();
+                let x = origin[0] + r.next_double() * 0.6 - 0.3;
+                let z = origin[2] + r.next_double() * 0.6 - 0.3;
+                let portal = ParticleOptions::simple(ParticleType::Portal);
+                self.particles
+                    .add(&portal, [x, origin[1] - 0.5, z], movement);
+            }
+        }
+    }
     /// ThrownItemRenderer: the ender eye item facing the camera.
     fn eye_geometry(&self, camera: glam::DVec3, out: &mut Vec<Vertex>) {
         let Some(r) = self.front.gui.atlas.sprites.get("item/ender_eye").copied() else {
@@ -1078,335 +1419,6 @@ impl Game<'_> {
 
                     glint_uv: [0.0, 0.0],
                 });
-            }
-        }
-    }
-}
-impl crate::game::Sim<'_> {
-    /// The environment attributes of the current dimension.
-    pub(super) fn dim_environment(&self) -> &Environment {
-        match self.dim {
-            Dim::Overworld => self.res.environment(),
-            Dim::Nether => self.res.nether_environment(),
-            Dim::End => self.res.end_environment(),
-        }
-    }
-    pub(super) fn block_name(&self, p: [i32; 3]) -> std::sync::Arc<str> {
-        self.res
-            .facts()
-            .get(self.world.block(p[0], p[1], p[2]))
-            .name
-            .clone()
-    }
-    /// EndPortalFrameBlock.getOrCreatePortalShape matched around `frame`: a 5×5
-    /// ring (corners free) of filled frames, all facing the centre or all
-    /// facing away from it. Returns the centre of the 3×3 opening.
-    fn portal_ring_center(&self, frame: [i32; 3]) -> Option<[i32; 3]> {
-        let registry = self.pack.assets.registry;
-        // (offset from the centre, facing when the frames face the centre)
-        let mut ring = Vec::with_capacity(12);
-        for i in -1..=1 {
-            ring.push(([i, -2], "south"));
-            ring.push(([i, 2], "north"));
-            ring.push(([-2, i], "east"));
-            ring.push(([2, i], "west"));
-        }
-        let opposite = |f: &str| match f {
-            "south" => "north",
-            "north" => "south",
-            "east" => "west",
-            _ => "east",
-        };
-        for &([ox, oz], _) in &ring {
-            let c = [frame[0] - ox, frame[1], frame[2] - oz];
-            for inward in [true, false] {
-                let ok = ring.iter().all(|&([dx, dz], facing)| {
-                    let id = self.world.block(c[0] + dx, c[1], c[2] + dz);
-                    let Some(s) = registry.state(id) else {
-                        return false;
-                    };
-                    let want = if inward { facing } else { opposite(facing) };
-                    s.name == "minecraft:end_portal_frame"
-                        && s.properties.get("eye").map(String::as_str) == Some("true")
-                        && s.properties.get("facing").map(String::as_str) == Some(want)
-                });
-                if ok {
-                    return Some(c);
-                }
-            }
-        }
-        None
-    }
-    /// Whether a `width` by `height` box at `position` is inside an End
-    /// portal (its entity-inside shape), and the End gateway it touches.
-    pub(super) fn inside_end_portals(
-        &self,
-        position: Vec3,
-        width: f64,
-        height: f64,
-    ) -> (bool, Option<[i32; 3]>) {
-        let w = width / 2.0;
-        let lo = [position.x - w, position.y, position.z - w];
-        let hi = [position.x + w, position.y + height, position.z + w];
-        let mut portal = false;
-        let mut gateway = None;
-        for x in lo[0].floor() as i32..=hi[0].floor() as i32 {
-            for y in lo[1].floor() as i32..=hi[1].floor() as i32 {
-                for z in lo[2].floor() as i32..=hi[2].floor() as i32 {
-                    let name = self.block_name([x, y, z]);
-                    // EndPortalBlock entity-inside shape: y 6/16..12/16.
-                    if &*name == "minecraft:end_portal"
-                        && lo[1] < f64::from(y) + 0.75
-                        && hi[1] > f64::from(y) + 0.375
-                    {
-                        portal = true;
-                    } else if &*name == "minecraft:end_gateway" && self.dim == Dim::End {
-                        gateway = Some([x, y, z]);
-                    }
-                }
-            }
-        }
-        (portal, gateway)
-    }
-    /// EndPortalBlock.getPortalDestination for the pending enter_dimension.
-    pub(super) fn end_destination(&self, target: Dim) -> Option<Vec3> {
-        if !self.end_portal_travel {
-            return None;
-        }
-        if target == Dim::End {
-            // Vec3.atBottomCenterOf(END_SPAWN_POINT), one block lower for players.
-            return Some(Vec3::new(
-                f64::from(END_SPAWN[0]) + 0.5,
-                f64::from(END_SPAWN[1] - 1),
-                f64::from(END_SPAWN[2]) + 0.5,
-            ));
-        }
-        // Leaving the End: the respawn position, a bed's found once it has
-        // loaded (findRespawnPositionAndUseSpawnBlock, not using it up).
-        if let Some(c) = self.respawn_config.filter(|c| c.dim == target) {
-            return Some(Vec3::new(
-                f64::from(c.pos[0]) + 0.5,
-                f64::from(c.pos[1]),
-                f64::from(c.pos[2]) + 0.5,
-            ));
-        }
-        let s = self.level.spawn.unwrap_or([0.0, 64.0, 0.0]);
-        Some(Vec3::new(s[0].floor() + 0.5, s[1], s[2].floor() + 0.5))
-    }
-    /// The portal level of the podium around the centre column, read from the
-    /// bedrock that EndPodiumFeature places (rim at the portal level, disc
-    /// below it, the torch column) so a broken column does not hide it.
-    fn podium_level(&self) -> Option<i32> {
-        let mut offsets: Vec<[i32; 3]> = (0..4).map(|dy| [0, dy, 0]).collect();
-        for z in -4..=4i32 {
-            for x in -4..=4i32 {
-                let flat = f64::from(x * x + z * z);
-                if (6.25..12.25).contains(&flat) {
-                    offsets.push([x, 0, z]);
-                } else if flat + 1.0 < 6.25 {
-                    offsets.push([x, -1, z]);
-                }
-            }
-        }
-        (1..253)
-            .map(|y| {
-                let score = offsets
-                    .iter()
-                    .filter(|o| &*self.block_name([o[0], y + o[1], o[2]]) == "minecraft:bedrock")
-                    .count();
-                (score, y)
-            })
-            .filter(|&(score, _)| score >= 3)
-            .max()
-            .map(|(_, y)| y)
-    }
-    /// The first gateway of the shuffled ring (EnderDragonFight constructor
-    /// and spawnNewGateway).
-    fn first_gateway(&self) -> [i32; 3] {
-        let mut gateways: Vec<i32> = (0..20).collect();
-        let mut random = LegacyRandom::new(self.level.seed);
-        for i in (2..=gateways.len()).rev() {
-            let j = random.next_int_bound(i as i32).unwrap_or(0) as usize;
-            gateways.swap(i - 1, j);
-        }
-        let index = f64::from(gateways[gateways.len() - 1]);
-        let angle = 2.0 * (-std::f64::consts::PI + std::f64::consts::PI / 20.0 * index);
-        [
-            (GATEWAY_RADIUS * angle.cos()).floor() as i32,
-            GATEWAY_Y,
-            (GATEWAY_RADIUS * angle.sin()).floor() as i32,
-        ]
-    }
-    fn gateway_exits(&mut self) -> &mut HashMap<[i32; 3], ([i32; 3], bool)> {
-        if self.end.exits.is_none() {
-            let path = horizon_client::save::dimension_dir(&self.world_root, "minecraft:the_end")
-                .join(GATEWAY_FILE);
-            let parsed: Option<Vec<([i32; 3], [i32; 3], bool)>> = std::fs::read(&path)
-                .ok()
-                .and_then(|b| serde_json::from_slice(&b).ok());
-            self.end.exits = Some(
-                parsed
-                    .unwrap_or_default()
-                    .into_iter()
-                    .map(|(g, e, x)| (g, (e, x)))
-                    .collect(),
-            );
-        }
-        self.end.exits.as_mut().expect("loaded exits")
-    }
-    fn save_gateway_exits(&mut self) -> Result<()> {
-        let list: Vec<_> = self
-            .gateway_exits()
-            .iter()
-            .map(|(g, (e, x))| (*g, *e, *x))
-            .collect();
-        let dir = horizon_client::save::dimension_dir(&self.world_root, "minecraft:the_end");
-        std::fs::create_dir_all(&dir)?;
-        std::fs::write(dir.join(GATEWAY_FILE), serde_json::to_vec(&list)?)?;
-        Ok(())
-    }
-    /// Drops a gateway's entry from the side file: its block entity is the source of truth.
-    fn forget_gateway_exit(&mut self, gateway: [i32; 3]) -> Result<()> {
-        if self.gateway_exits().remove(&gateway).is_some() {
-            self.save_gateway_exits()?;
-        }
-        Ok(())
-    }
-    fn set_gateway_exit(&mut self, gateway: [i32; 3], exit: [i32; 3], exact: bool) -> Result<()> {
-        // TheEndGatewayBlockEntity.setExitPosition (also EndGatewayFeature.knownExit).
-        let key = (gateway[0], gateway[1], gateway[2]);
-        let chunk = (gateway[0] >> 4, gateway[2] >> 4);
-        // The gateway's chunk can be unloaded by now (travel waits for the destination): the
-        // exit then waits in the side file until the gateway is used again (`gateway_job`).
-        if self.world.chunks.contains_key(&chunk)
-            && let BlockEntity::EndGateway(g) = self
-                .world
-                .block_entities
-                .get_or_insert_with(key, || BlockEntity::EndGateway(Default::default()))
-        {
-            g.exit_portal = Some(exit);
-            g.exact_teleport = exact;
-            self.world.modified.insert(chunk);
-            return self.forget_gateway_exit(gateway);
-        }
-        self.gateway_exits().insert(gateway, (exit, exact));
-        self.save_gateway_exits()
-    }
-    /// EndGatewayBlock.entityInside and TheEndGatewayBlockEntity.getPortalPosition:
-    /// travel within the End, waiting for the destination chunks to load.
-    fn enter_gateway(&mut self, gateway: [i32; 3]) -> Result<()> {
-        // TheEndGatewayBlockEntity.triggerCooldown: 40 ticks.
-        self.end.gateway_cooldown = 40;
-        let (job, destination) = self.gateway_job(gateway);
-        let Some(player) = self.player.take() else {
-            return Ok(());
-        };
-        self.end.job = Some(job);
-        self.end_travel = true;
-        self.travelling = Some((player, destination));
-        Ok(())
-    }
-    /// Where `gateway` leads (TheEndGatewayBlockEntity.getPortalPosition):
-    /// its exit, or the search for one, and the spot to load before either
-    /// is resolved ([`Game::resolve_gateway`]).
-    pub(super) fn gateway_job(&mut self, gateway: [i32; 3]) -> (GatewayJob, Vec3) {
-        let mut known = self.gateway_exits().get(&gateway).copied();
-        // Once the gateway's chunk is loaded its block entity is the source of truth: an exit the
-        // side file kept for it moves there, and the entry is dropped, so removing or replacing
-        // the exit (`/data remove block`) is not undone by an old entry.
-        let key = (gateway[0], gateway[1], gateway[2]);
-        let chunk = (gateway[0] >> 4, gateway[2] >> 4);
-        if let Some(saved) = known
-            && self.world.chunks.contains_key(&chunk)
-            && let BlockEntity::EndGateway(g) = self
-                .world
-                .block_entities
-                .get_or_insert_with(key, || BlockEntity::EndGateway(Default::default()))
-        {
-            if adopt_saved_exit(g, saved) {
-                self.world.modified.insert(chunk);
-            }
-            known = None;
-            let _ = self.forget_gateway_exit(gateway);
-        }
-        let job = GatewayJob::for_gateway(
-            gateway,
-            self.world
-                .block_entities
-                .get(&(gateway[0], gateway[1], gateway[2])),
-            known,
-        );
-        let destination = match job {
-            GatewayJob::Known { exit, .. } => Vec3::new(
-                f64::from(exit[0]) + 0.5,
-                f64::from(exit[1]),
-                f64::from(exit[2]) + 0.5,
-            ),
-            GatewayJob::Find { gateway, .. } => {
-                let d = glam::DVec2::new(f64::from(gateway[0]), f64::from(gateway[2]))
-                    .normalize_or_zero()
-                    * 1024.0;
-                Vec3::new(d.x, 75.0, d.y)
-            }
-        };
-        (job, destination)
-    }
-    fn chunk_empty(&self, x: f64, z: f64) -> Option<bool> {
-        let chunk = self
-            .world
-            .chunks
-            .get(&((x / 16.0).floor() as i32, (z / 16.0).floor() as i32))?;
-        Some(chunk.sections.iter().all(|s| s.is_uniform(0)))
-    }
-    /// TheEndGatewayBlockEntity.findTallestBlock.
-    fn tallest_block(&self, around: [i32; 3], dist: i32, allow_bedrock: bool) -> [i32; 3] {
-        let mut tallest: Option<[i32; 3]> = None;
-        for xd in -dist..=dist {
-            for zd in -dist..=dist {
-                if xd == 0 && zd == 0 && !allow_bedrock {
-                    continue;
-                }
-                let floor = tallest.map_or(0, |t| t[1]);
-                let mut y = 255;
-                while y > floor {
-                    let p = [around[0] + xd, y, around[2] + zd];
-                    let f = self.res.facts().get(self.world.block(p[0], p[1], p[2]));
-                    if f.full_collision && (allow_bedrock || &*f.name != "minecraft:bedrock") {
-                        tallest = Some(p);
-                        break;
-                    }
-                    y -= 1;
-                }
-            }
-        }
-        tallest.unwrap_or(around)
-    }
-    /// `EyeOfEnder.tick` on a client: behind each eye (a quarter of its last
-    /// move back), four bubbles in water, else a portal particle.
-    pub(super) fn eye_particles(&mut self) {
-        for i in 0..self.end.eyes.len() {
-            let e = &self.end.eyes[i];
-            let movement = (e.position - e.previous).to_array();
-            let origin = (e.position - (e.position - e.previous) * 0.25).to_array();
-            let block = origin.map(|v| v.floor() as i32);
-            let water = self
-                .res
-                .facts()
-                .get(self.world.block(block[0], block[1], block[2]))
-                .fluid
-                == horizon_client::blocks::Fluid::Water;
-            if water {
-                let bubble = ParticleOptions::simple(ParticleType::Bubble);
-                for _ in 0..4 {
-                    self.particles.add(&bubble, origin, movement);
-                }
-            } else {
-                let r = self.particles.random();
-                let x = origin[0] + r.next_double() * 0.6 - 0.3;
-                let z = origin[2] + r.next_double() * 0.6 - 0.3;
-                let portal = ParticleOptions::simple(ParticleType::Portal);
-                self.particles
-                    .add(&portal, [x, origin[1] - 0.5, z], movement);
             }
         }
     }

@@ -65,6 +65,10 @@ fn banner_matrix(head: glam::Mat4) -> glam::Mat4 {
 pub(super) const APPARITION_TICKS: i32 = 30;
 
 impl Game<'_> {
+    /// Count the elder guardian's apparition down.
+    pub(super) fn tick_apparition(&mut self) {
+        self.creatures.elder_apparition = (self.creatures.elder_apparition - 1).max(0);
+    }
     /// `ElderGuardianParticleGroup`: the ghostly elder guardian that swings
     /// up in front of the camera while the curse is laid, fading in and out.
     pub(super) fn elder_apparition_geometry(&self, alpha: f64, out: &mut Vec<Vertex>) {
@@ -405,11 +409,5 @@ impl Game<'_> {
                 self.submit_item_unlit(&state, t, light, out);
             }
         }
-    }
-}
-impl crate::game::Sim<'_> {
-    /// Count the elder guardian's apparition down.
-    pub(super) fn tick_apparition(&mut self) {
-        self.creatures.elder_apparition = (self.creatures.elder_apparition - 1).max(0);
     }
 }

@@ -50,8 +50,7 @@ struct Body {
     supported: bool,
 }
 
-impl Game<'_> {}
-impl crate::game::Sim<'_> {
+impl Game<'_> {
     /// Push whatever this tick's moving pistons ran into, in the order the
     /// pistons ticked: vanilla pushes from each block entity's own tick.
     pub(super) fn push_piston_entities(&mut self, pushes: Vec<Push>) {
@@ -60,6 +59,7 @@ impl crate::game::Sim<'_> {
             self.push_for_piston(push, &mut accumulators);
         }
     }
+
     fn push_for_piston(
         &mut self,
         (pos, piston, new_progress): Push,
@@ -202,6 +202,7 @@ impl crate::game::Sim<'_> {
             }
         }
     }
+
     /// `Entity.getStepHeight` for each body, read once: the attribute lookup
     /// needs the mutable body, and the push only needs the number.
     fn push_step_heights(&mut self) -> StepHeights {
@@ -223,6 +224,7 @@ impl crate::game::Sim<'_> {
         }
         StepHeights { player, guests }
     }
+
     /// The entities a moving block can run into: the window's player, the LAN
     /// guests in the level, then the mobs.
     fn push_targets(&self) -> Vec<Target> {
@@ -246,6 +248,7 @@ impl crate::game::Sim<'_> {
         targets.extend((0..self.armor_stands.len()).map(Target::ArmorStand));
         targets
     }
+
     /// What the push needs from one entity, or `None` when it is not pushed:
     /// removed, dead, a spectator, or an armor-stand marker.
     fn push_body(&self, target: Target, pos: BlockPos, steps: &StepHeights) -> Option<Body> {
@@ -343,6 +346,7 @@ impl crate::game::Sim<'_> {
             }
         }
     }
+
     /// `Entity.move(MoverType.PISTON, movement)` for one pushed entity: the
     /// per-tick piston limit, then the block and world border collision scan.
     fn move_pushed(
@@ -386,6 +390,7 @@ impl crate::game::Sim<'_> {
         }
         self.apply_push(target, resolved);
     }
+
     /// `Entity.limitPistonMovement`: each axis may travel at most 0.51 blocks
     /// per game tick, and a move touches only its first non-zero axis.
     fn limit_piston(
@@ -410,6 +415,7 @@ impl crate::game::Sim<'_> {
             _ => limit(accumulators.entry(target).or_default()),
         }
     }
+
     fn apply_push(&mut self, target: Target, movement: Vec3) {
         match target {
             Target::Player => {
@@ -445,6 +451,7 @@ impl crate::game::Sim<'_> {
             }
         }
     }
+
     /// `causeBounce`: a slime block sets the velocity along the movement axis.
     fn bounce(&mut self, target: Target, movement: Direction) {
         match target {

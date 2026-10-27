@@ -122,6 +122,100 @@ impl merchant::MapMaker for GameMaps<'_> {
 }
 
 impl Game<'_> {
+    pub(super) fn random_sequences_path(&self) -> std::path::PathBuf {
+        self.world_root.join("data/minecraft/random_sequences.dat")
+    }
+    /// `RandomSequences` as `random_sequences.dat` (not on a server's guest).
+    pub(super) fn save_random_sequences(&mut self) {
+        if self.remote.is_some() || self.rand_sequences.ids().is_empty() {
+            return;
+        }
+        let tag = horizon_world::nbt::Tag::compound([
+            ("data", self.rand_sequences.to_nbt()),
+            (
+                "DataVersion",
+                horizon_world::nbt::Tag::Int(horizon_world::DATA_VERSION),
+            ),
+        ]);
+        let _ = horizon_client::save::write_dat(&self.random_sequences_path(), tag);
+    }
+    /// `AbstractVillager.addOffersFromTradeSet` with the world's random
+    /// sequence of the set, at the merchant's position.
+    fn offers_from_set(
+        &mut self,
+        set: &str,
+        variant: &str,
+        origin: [f64; 3],
+    ) -> Vec<MerchantOffer> {
+        let Some(sequence) = self.res.stations().trades.sequence(set) else {
+            return Vec::new();
+        };
+        let mut random = self.sim.rand_sequences.lend(&sequence, self.sim.level.seed);
+        let next_map = self.peek_map_id();
+        let tag = |t: &str| self.structure_tag(t);
+        let maps = GameMaps {
+            terrain: self.end.locator(),
+            structure_tag: &tag,
+            made: Default::default(),
+            next_id: std::cell::Cell::new(next_map),
+        };
+        let ctx = TradeContext {
+            items: self.res.items(),
+            enchantments: &self.res.stations().enchantments,
+            variant,
+            origin,
+            maps: Some(&maps),
+        };
+        let offers = self
+            .res
+            .stations()
+            .trades
+            .offers_from_set(&ctx, set, &mut random);
+        let made = maps.made.into_inner();
+        self.rand_sequences.give_back(sequence, random);
+        self.register_exploration_maps(made);
+        offers
+    }
+    /// `AbstractVillager.getOffers`: generated on first use.
+    pub(super) fn ensure_offers(&mut self, index: usize) {
+        let species = self.mobs[index].species();
+        let unset = self.mobs[index]
+            .extra
+            .trade
+            .as_ref()
+            .is_none_or(|t| t.unset);
+        if unset {
+            let m = &self.mobs[index];
+            let variant = format!(
+                "minecraft:{}",
+                VILLAGER_TYPES[m.extra.variant as usize % VILLAGER_TYPES.len()]
+            );
+            let origin = [m.position.x, m.position.y, m.position.z];
+            let offers = if species == Species::WanderingTrader {
+                let mut v = Vec::new();
+                for set in ["buying", "uncommon", "common"] {
+                    v.extend(self.offers_from_set(
+                        &format!("minecraft:wandering_trader/{set}"),
+                        &variant,
+                        origin,
+                    ));
+                }
+                v
+            } else {
+                let profession = PROFESSIONS[m.extra.variant2 as usize % PROFESSIONS.len()];
+                let level = i32::from(m.extra.variant3.max(1));
+                let set = merchant::Trades::set_for(profession, level);
+                if self.res.stations().trades.sets.contains_key(&set) {
+                    self.offers_from_set(&set, &variant, origin)
+                } else {
+                    Vec::new()
+                }
+            };
+            let trade = self.mobs[index].extra.trade.get_or_insert_default();
+            trade.offers = offers;
+            trade.unset = false;
+        }
+    }
     /// `Villager.mobInteract` / `WanderingTrader.mobInteract`: shake the
     /// head without offers, else open the trading screen.
     pub(super) fn interact_trader(
@@ -288,6 +382,14 @@ impl Game<'_> {
         self.capture(false);
         self.front.right = false;
     }
+    /// The trading mob's random before a menu click (it ticks meanwhile).
+    pub(super) fn merchant_sync_in(&self, session: &mut merchant::Session, mob: Option<u32>) {
+        if let Some(m) = mob.and_then(|id| self.mobs.iter().find(|m| m.id == id)) {
+            session.random = m.random.clone();
+            session.ambient_sound_time = m.ambient_timer;
+            session.origin = [m.position.x, m.position.y, m.position.z];
+        }
+    }
     /// After a menu click: the session back to the station, its random to
     /// the mob, and what it did (orbs, level-ups, the yes/no voice).
     pub(super) fn merchant_sync_out(&mut self, session: Box<merchant::Session>) {
@@ -423,6 +525,25 @@ impl Game<'_> {
             }
         }
         false
+    }
+    /// The offer buttons a controller can focus (GUI origin relative).
+    pub(super) fn merchant_targets(&self) -> Vec<[f32; 4]> {
+        let Some(m) = self.station.as_ref().and_then(|s| s.merchant.as_ref()) else {
+            return Vec::new();
+        };
+        (0..7)
+            .filter(|i| i + m.scroll < m.session.offers.len())
+            .map(|i| [5.0 + SHIFT, 18.0 + 20.0 * i as f32, 88.0, 20.0])
+            .collect()
+    }
+    pub(super) fn merchant_scroll(&mut self, d: f32) {
+        let Some(m) = self.station.as_mut().and_then(|s| s.merchant.as_mut()) else {
+            return;
+        };
+        if m.session.offers.len() > 7 {
+            let max = m.session.offers.len() - 7;
+            m.scroll = (m.scroll as i32 - d.signum() as i32).clamp(0, max as i32) as usize;
+        }
     }
     /// `MerchantScreen` rendering.
     pub(super) fn draw_merchant(&mut self, batch: &mut HudBatch) -> bool {
@@ -704,128 +825,5 @@ impl Game<'_> {
             self.draw_stack_tooltip(batch, &stack, self.front.cursor.0, self.front.cursor.1);
         }
         true
-    }
-}
-impl crate::game::Sim<'_> {
-    pub(super) fn random_sequences_path(&self) -> std::path::PathBuf {
-        self.world_root.join("data/minecraft/random_sequences.dat")
-    }
-    /// `RandomSequences` as `random_sequences.dat` (not on a server's guest).
-    pub(super) fn save_random_sequences(&mut self) {
-        if self.remote.is_some() || self.rand_sequences.ids().is_empty() {
-            return;
-        }
-        let tag = horizon_world::nbt::Tag::compound([
-            ("data", self.rand_sequences.to_nbt()),
-            (
-                "DataVersion",
-                horizon_world::nbt::Tag::Int(horizon_world::DATA_VERSION),
-            ),
-        ]);
-        let _ = horizon_client::save::write_dat(&self.random_sequences_path(), tag);
-    }
-    /// `AbstractVillager.addOffersFromTradeSet` with the world's random
-    /// sequence of the set, at the merchant's position.
-    fn offers_from_set(
-        &mut self,
-        set: &str,
-        variant: &str,
-        origin: [f64; 3],
-    ) -> Vec<MerchantOffer> {
-        let Some(sequence) = self.res.stations().trades.sequence(set) else {
-            return Vec::new();
-        };
-        let mut random = self.rand_sequences.lend(&sequence, self.level.seed);
-        let next_map = self.peek_map_id();
-        let tag = |t: &str| self.structure_tag(t);
-        let maps = GameMaps {
-            terrain: self.end.locator(),
-            structure_tag: &tag,
-            made: Default::default(),
-            next_id: std::cell::Cell::new(next_map),
-        };
-        let ctx = TradeContext {
-            items: self.res.items(),
-            enchantments: &self.res.stations().enchantments,
-            variant,
-            origin,
-            maps: Some(&maps),
-        };
-        let offers = self
-            .res
-            .stations()
-            .trades
-            .offers_from_set(&ctx, set, &mut random);
-        let made = maps.made.into_inner();
-        self.rand_sequences.give_back(sequence, random);
-        self.register_exploration_maps(made);
-        offers
-    }
-    /// `AbstractVillager.getOffers`: generated on first use.
-    pub(super) fn ensure_offers(&mut self, index: usize) {
-        let species = self.mobs[index].species();
-        let unset = self.mobs[index]
-            .extra
-            .trade
-            .as_ref()
-            .is_none_or(|t| t.unset);
-        if unset {
-            let m = &self.mobs[index];
-            let variant = format!(
-                "minecraft:{}",
-                VILLAGER_TYPES[m.extra.variant as usize % VILLAGER_TYPES.len()]
-            );
-            let origin = [m.position.x, m.position.y, m.position.z];
-            let offers = if species == Species::WanderingTrader {
-                let mut v = Vec::new();
-                for set in ["buying", "uncommon", "common"] {
-                    v.extend(self.offers_from_set(
-                        &format!("minecraft:wandering_trader/{set}"),
-                        &variant,
-                        origin,
-                    ));
-                }
-                v
-            } else {
-                let profession = PROFESSIONS[m.extra.variant2 as usize % PROFESSIONS.len()];
-                let level = i32::from(m.extra.variant3.max(1));
-                let set = merchant::Trades::set_for(profession, level);
-                if self.res.stations().trades.sets.contains_key(&set) {
-                    self.offers_from_set(&set, &variant, origin)
-                } else {
-                    Vec::new()
-                }
-            };
-            let trade = self.mobs[index].extra.trade.get_or_insert_default();
-            trade.offers = offers;
-            trade.unset = false;
-        }
-    }
-    /// The trading mob's random before a menu click (it ticks meanwhile).
-    pub(super) fn merchant_sync_in(&self, session: &mut merchant::Session, mob: Option<u32>) {
-        if let Some(m) = mob.and_then(|id| self.mobs.iter().find(|m| m.id == id)) {
-            session.random = m.random.clone();
-            session.ambient_sound_time = m.ambient_timer;
-            session.origin = [m.position.x, m.position.y, m.position.z];
-        }
-    }
-    /// The offer buttons a controller can focus (GUI origin relative).
-    pub(super) fn merchant_targets(&self) -> Vec<[f32; 4]> {
-        let Some(m) = self.station.as_ref().and_then(|s| s.merchant.as_ref()) else {
-            return Vec::new();
-        };
-        (0..7)
-            .filter(|i| i + m.scroll < m.session.offers.len())
-            .map(|i| [5.0 + SHIFT, 18.0 + 20.0 * i as f32, 88.0, 20.0])
-            .collect()
-    }
-    pub(super) fn merchant_scroll(&mut self, d: f32) {
-        let Some(m) = self.station.as_mut().and_then(|s| s.merchant.as_mut()) else {
-            return;
-        };
-        if m.session.offers.len() > 7 {
-            let max = m.session.offers.len() - 7;
-            m.scroll = (m.scroll as i32 - d.signum() as i32).clamp(0, max as i32) as usize;
-        }
     }
 }

@@ -122,6 +122,26 @@ impl Game<'_> {
             .put(key, BlockEntity::TrialSpawner(spawner));
         result
     }
+    /// The trial spawner block at `key`: its state and ominous flag.
+    pub(super) fn trial_spawner_block(&self, key: Pos) -> Option<(TrialState, bool)> {
+        let block = self
+            .pack
+            .assets
+            .registry
+            .state(self.world.block(key.0, key.1, key.2))?;
+        if block.name != "minecraft:trial_spawner" {
+            return None;
+        }
+        let state = block
+            .properties
+            .get("trial_spawner_state")
+            .and_then(|s| TrialState::from_name(s))
+            .unwrap_or_default();
+        Some((
+            state,
+            block.properties.get("ominous").is_some_and(|v| v == "true"),
+        ))
+    }
     fn server_tick_trial_spawner(
         &mut self,
         key: Pos,
@@ -293,28 +313,6 @@ impl Game<'_> {
                 .audio
                 .play("minecraft:event.mob_effect.trial_omen", Some(eye), 1.0, 1.0);
         }
-    }
-}
-impl crate::game::Sim<'_> {
-    /// The trial spawner block at `key`: its state and ominous flag.
-    pub(super) fn trial_spawner_block(&self, key: Pos) -> Option<(TrialState, bool)> {
-        let block = self
-            .pack
-            .assets
-            .registry
-            .state(self.world.block(key.0, key.1, key.2))?;
-        if block.name != "minecraft:trial_spawner" {
-            return None;
-        }
-        let state = block
-            .properties
-            .get("trial_spawner_state")
-            .and_then(|s| TrialState::from_name(s))
-            .unwrap_or_default();
-        Some((
-            state,
-            block.properties.get("ominous").is_some_and(|v| v == "true"),
-        ))
     }
     /// `sendBlockUpdated` of a block entity: the clients load its new update tag.
     pub(super) fn mark_block_entity_updated(&mut self, key: Pos) {

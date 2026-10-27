@@ -69,6 +69,20 @@ impl Strike {
 }
 
 impl Game<'_> {
+    /// The guest on the host's crosshair and how far, within reach.
+    pub(super) fn guest_hit(&self) -> Option<(u32, f64)> {
+        let host = self.lan.as_ref()?;
+        let eye = self.eye_position()?;
+        let dir = view_vector(self.yaw, self.pitch);
+        let reach = if self.creative { 5.0 } else { 3.0 };
+        host.hub
+            .guests
+            .iter()
+            .filter(|g| host.hub.here(g) && g.loaded && !g.dead && !g.spectator())
+            .filter_map(|g| Some((g.conn, ray_box(eye, dir, reach, guest_bounds(g))?)))
+            .min_by(|a, b| a.1.total_cmp(&b.1))
+    }
+
     /// The host's attack on the guest under the crosshair, when no mob or
     /// block is nearer.
     pub(super) fn attack_guest(&mut self) -> bool {
@@ -105,6 +119,16 @@ impl Game<'_> {
             .map(|g| Victim::Guest(g.conn))
     }
 
+    /// `Player.attack`'s `causeFoodExhaustion(0.1F)`, charged to the attacker
+    /// (the host, or a guest swapped in) only once the hit hurt the victim.
+    pub(super) fn pvp_exhaustion(&mut self) {
+        if let Some(p) = self.sim.player.as_mut()
+            && !self.sim.creative
+        {
+            p.cause_food_exhaustion(0.1);
+        }
+    }
+
     /// The attacker's side of `Player.attack` (the host, or a guest swapped
     /// in): the damage, the charge reset and the swing.
     pub(super) fn pvp_strike(&mut self) -> Option<Strike> {
@@ -137,6 +161,39 @@ impl Game<'_> {
             knockback_attack,
             team: self.player_team().cloned(),
         })
+    }
+
+    /// The guests by connection, with their entity ids.
+    pub(super) fn lan_guest_entities(&self) -> Vec<(u32, u32)> {
+        self.lan.as_ref().map_or_else(Vec::new, |host| {
+            host.hub
+                .guests
+                .iter()
+                .map(|g| (g.conn, g.entity_id as u32))
+                .collect()
+        })
+    }
+
+    /// The player a player's projectile hit, when it hit one: the host for a
+    /// guest's shot, or a guest.
+    pub(super) fn projectile_pvp_victim(&self, p: &Projectile, hit: Hit) -> Option<Victim> {
+        if p.owner != Some(Who::Player) || !meets_players(&p.kind) {
+            return None;
+        }
+        let Hit::Entity { who, .. } = hit else {
+            return None;
+        };
+        match who {
+            Who::Player => p.guest.map(|_| Victim::Host),
+            Who::Mob(id) => self
+                .lan
+                .as_ref()?
+                .hub
+                .guests
+                .iter()
+                .find(|g| g.entity_id as u32 == id)
+                .map(|g| Victim::Guest(g.conn)),
+        }
     }
 
     /// A player's projectile on a player: the hit runs as the victim, whose
@@ -300,60 +357,5 @@ impl Game<'_> {
             self.front.audio.play(sound, Some(s.from), 1.0, 1.0);
         }
         hurt
-    }
-}
-impl crate::game::Sim<'_> {
-    /// The guest on the host's crosshair and how far, within reach.
-    pub(super) fn guest_hit(&self) -> Option<(u32, f64)> {
-        let host = self.lan.as_ref()?;
-        let eye = self.eye_position()?;
-        let dir = view_vector(self.yaw, self.pitch);
-        let reach = if self.creative { 5.0 } else { 3.0 };
-        host.hub
-            .guests
-            .iter()
-            .filter(|g| host.hub.here(g) && g.loaded && !g.dead && !g.spectator())
-            .filter_map(|g| Some((g.conn, ray_box(eye, dir, reach, guest_bounds(g))?)))
-            .min_by(|a, b| a.1.total_cmp(&b.1))
-    }
-    /// `Player.attack`'s `causeFoodExhaustion(0.1F)`, charged to the attacker
-    /// (the host, or a guest swapped in) only once the hit hurt the victim.
-    pub(super) fn pvp_exhaustion(&mut self) {
-        if let Some(p) = self.player.as_mut()
-            && !self.creative
-        {
-            p.cause_food_exhaustion(0.1);
-        }
-    }
-    /// The guests by connection, with their entity ids.
-    pub(super) fn lan_guest_entities(&self) -> Vec<(u32, u32)> {
-        self.lan.as_ref().map_or_else(Vec::new, |host| {
-            host.hub
-                .guests
-                .iter()
-                .map(|g| (g.conn, g.entity_id as u32))
-                .collect()
-        })
-    }
-    /// The player a player's projectile hit, when it hit one: the host for a
-    /// guest's shot, or a guest.
-    pub(super) fn projectile_pvp_victim(&self, p: &Projectile, hit: Hit) -> Option<Victim> {
-        if p.owner != Some(Who::Player) || !meets_players(&p.kind) {
-            return None;
-        }
-        let Hit::Entity { who, .. } = hit else {
-            return None;
-        };
-        match who {
-            Who::Player => p.guest.map(|_| Victim::Host),
-            Who::Mob(id) => self
-                .lan
-                .as_ref()?
-                .hub
-                .guests
-                .iter()
-                .find(|g| g.entity_id as u32 == id)
-                .map(|g| Victim::Guest(g.conn)),
-        }
     }
 }

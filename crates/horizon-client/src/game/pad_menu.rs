@@ -92,6 +92,15 @@ pub(super) struct MenuCursor {
 }
 
 impl Game<'_> {
+    /// A menu, a screen, the title, a sign or a book is open: the pad drives
+    /// it instead of the player.
+    pub(super) fn pad_in_menu(&self) -> bool {
+        self.title.is_some()
+            || self.screen != Screen::Playing
+            || self.sign_edit.is_some()
+            || self.book.is_some()
+    }
+
     pub(super) fn gui_scale(&self) -> Option<HudBatch> {
         self.front
             .renderer
@@ -852,6 +861,18 @@ impl Game<'_> {
 
     // ---- text fields ----
 
+    /// A text field has keyboard focus: chat, a sign, a book being written,
+    /// a search box, the anvil's name, the title screens' and the options'
+    /// fields, the LAN port.
+    fn pad_typing(&self) -> bool {
+        (self.screen == Screen::Chat && self.title.is_none())
+            || self.sign_edit.is_some()
+            || matches!(self.book, Some(super::books::BookScreen::Edit { .. }))
+            || (self.screen == Screen::Creative && self.creative_screen.tab().search)
+            || self.recipe_search_focused()
+            || self.station_typing()
+    }
+
     /// Open the on-screen keyboard over the focused field: Horizon's, or
     /// Steam's on a Steam Deck (`steam://open/keyboard`, which types into
     /// the window like a real keyboard).
@@ -1036,26 +1057,5 @@ impl Game<'_> {
             batch.fill(atlas, x, y, 1.0, h, white);
             batch.fill(atlas, x + w - 1.0, y, 1.0, h, white);
         }
-    }
-}
-impl crate::game::Sim<'_> {
-    /// A menu, a screen, the title, a sign or a book is open: the pad drives
-    /// it instead of the player.
-    pub(super) fn pad_in_menu(&self) -> bool {
-        self.title.is_some()
-            || self.screen != Screen::Playing
-            || self.sign_edit.is_some()
-            || self.book.is_some()
-    }
-    /// A text field has keyboard focus: chat, a sign, a book being written,
-    /// a search box, the anvil's name, the title screens' and the options'
-    /// fields, the LAN port.
-    fn pad_typing(&self) -> bool {
-        (self.screen == Screen::Chat && self.title.is_none())
-            || self.sign_edit.is_some()
-            || matches!(self.book, Some(super::books::BookScreen::Edit { .. }))
-            || (self.screen == Screen::Creative && self.creative_screen.tab().search)
-            || self.recipe_search_focused()
-            || self.station_typing()
     }
 }

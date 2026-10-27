@@ -35,6 +35,52 @@ fn sign_box() -> EditBox {
 }
 
 impl Game<'_> {
+    /// `SignBlockEntity.getSlotPlayerIsFacing`: whether the player stands in
+    /// front of the sign's text (within 90 degrees of its facing).
+    fn facing_sign_front(&self, pos: (i32, i32, i32)) -> bool {
+        let Some(player) = self.player.as_ref() else {
+            return true;
+        };
+        let state = self.world.block(pos.0, pos.1, pos.2);
+        let Some(state) = self.pack.assets.registry.state(state) else {
+            return true;
+        };
+        let prop = |key: &str| state.properties.get(key).map(String::as_str);
+        // getYRotationDegrees: a wall sign's `Direction.toYRot`, a standing or
+        // ceiling sign's rotation segment.
+        let y_rot = if state.name.contains("_wall_") {
+            match prop("facing") {
+                Some("west") => 90.0,
+                Some("north") => 180.0,
+                Some("east") => 270.0,
+                _ => 0.0,
+            }
+        } else {
+            prop("rotation")
+                .and_then(|r| r.parse::<f32>().ok())
+                .unwrap_or(0.0)
+                * 22.5
+        };
+        // getSignHitboxCenterPosition: only a wall sign's board is off-centre,
+        // against the wall it hangs on.
+        let centre = if state.name.ends_with("_wall_sign") {
+            match y_rot as i32 {
+                90 => (0.9375, 0.5),
+                180 => (0.5, 0.9375),
+                270 => (0.0625, 0.5),
+                _ => (0.5, 0.0625),
+            }
+        } else {
+            (0.5, 0.5)
+        };
+        let xd = player.position.x - (f64::from(pos.0) + centre.0);
+        let zd = player.position.z - (f64::from(pos.2) + centre.1);
+        let player_y_rot = (zd.atan2(xd).to_degrees() - 90.0) as f32;
+        // Mth.degreesDifferenceAbs.
+        let diff = (player_y_rot - y_rot).rem_euclid(360.0);
+        let diff = if diff >= 180.0 { 360.0 - diff } else { diff };
+        diff <= 90.0
+    }
     /// `SignBlock.useWithoutItem` (the block's `OpenMenu` effect): a waxed
     /// sign plays the failed-interaction sound; otherwise a player who may
     /// build edits the side they face.
@@ -602,53 +648,5 @@ impl Game<'_> {
             u32::MAX,
             true,
         );
-    }
-}
-impl crate::game::Sim<'_> {
-    /// `SignBlockEntity.getSlotPlayerIsFacing`: whether the player stands in
-    /// front of the sign's text (within 90 degrees of its facing).
-    fn facing_sign_front(&self, pos: (i32, i32, i32)) -> bool {
-        let Some(player) = self.player.as_ref() else {
-            return true;
-        };
-        let state = self.world.block(pos.0, pos.1, pos.2);
-        let Some(state) = self.pack.assets.registry.state(state) else {
-            return true;
-        };
-        let prop = |key: &str| state.properties.get(key).map(String::as_str);
-        // getYRotationDegrees: a wall sign's `Direction.toYRot`, a standing or
-        // ceiling sign's rotation segment.
-        let y_rot = if state.name.contains("_wall_") {
-            match prop("facing") {
-                Some("west") => 90.0,
-                Some("north") => 180.0,
-                Some("east") => 270.0,
-                _ => 0.0,
-            }
-        } else {
-            prop("rotation")
-                .and_then(|r| r.parse::<f32>().ok())
-                .unwrap_or(0.0)
-                * 22.5
-        };
-        // getSignHitboxCenterPosition: only a wall sign's board is off-centre,
-        // against the wall it hangs on.
-        let centre = if state.name.ends_with("_wall_sign") {
-            match y_rot as i32 {
-                90 => (0.9375, 0.5),
-                180 => (0.5, 0.9375),
-                270 => (0.0625, 0.5),
-                _ => (0.5, 0.0625),
-            }
-        } else {
-            (0.5, 0.5)
-        };
-        let xd = player.position.x - (f64::from(pos.0) + centre.0);
-        let zd = player.position.z - (f64::from(pos.2) + centre.1);
-        let player_y_rot = (zd.atan2(xd).to_degrees() - 90.0) as f32;
-        // Mth.degreesDifferenceAbs.
-        let diff = (player_y_rot - y_rot).rem_euclid(360.0);
-        let diff = if diff >= 180.0 { 360.0 - diff } else { diff };
-        diff <= 90.0
     }
 }

@@ -42,10 +42,26 @@ impl Game<'_> {
         self.request_remote_mining_stop();
         self.mining = None;
     }
+    /// `LivingEntity.swing` with `getModifiedSwingDuration`.
+    pub(super) fn swing_hand(&mut self, hand: Hand, animation: SwingAnimation) {
+        let effects = &self.potions.effects;
+        let dig_speed = effects
+            .amplifier("haste")
+            .max(effects.amplifier("conduit_power"));
+        let fatigue = effects.amplifier("mining_fatigue");
+        let duration = swing_duration(animation, dig_speed, fatigue);
+        if self.swing.start_if_able(hand, animation, duration) {
+            self.swings_started += 1;
+        }
+    }
     /// `swing(hand)` for the hand that acts, with the default animation.
     pub(super) fn swing_arm(&mut self) {
-        let hand = self.hand;
-        self.swing_hand(hand, SwingAnimation::DEFAULT);
+        self.swing_hand(self.hand, SwingAnimation::DEFAULT);
+    }
+    /// `Player.resetAttackStrengthTicker`.
+    pub(super) fn reset_attack_strength(&mut self) {
+        self.attack_ticks = 0;
+        self.hand_strength.reset();
     }
     /// The attack and use part of `Minecraft.tick` for the local player:
     /// attack clicks since the last tick and the held attack button.
@@ -97,6 +113,41 @@ impl Game<'_> {
             ticks: d.ticks as u32,
         });
         Ok(())
+    }
+    /// `BlockBehaviour.getDestroyProgress` with `Player.getDestroySpeed`.
+    pub(super) fn destroy_progress(&self, pos: [i32; 3]) -> f32 {
+        let state = self.world.block(pos[0], pos[1], pos[2]);
+        let facts = self.res.facts().get(state);
+        if facts.hardness == -1.0 {
+            return 0.0;
+        }
+        let held = self.held();
+        let mut speed = self.res.items().mining_speed(held, &facts.name);
+        speed = self.modify_destroy_speed(speed);
+        if let Some(eye) = self.eye_position()
+            && self
+                .res
+                .facts()
+                .get(self.world.block(
+                    eye[0].floor() as i32,
+                    eye[1].floor() as i32,
+                    eye[2].floor() as i32,
+                ))
+                .fluid
+                == horizon_client::blocks::Fluid::Water
+        {
+            speed *= self.submerged_mining_speed();
+        }
+        if self.player.as_ref().is_some_and(|p| !p.ground.on_ground) {
+            speed /= 5.0;
+        }
+        let harvest = !facts.requires_tool || self.res.items().correct_for_drops(held, &facts.name);
+        speed / facts.hardness / if harvest { 30.0 } else { 100.0 }
+    }
+    /// A key for the main-hand stack (`destroyingItem`): its item and components.
+    pub(super) fn main_hand_key(&self) -> String {
+        self.held()
+            .map_or(String::new(), |s| format!("{} {:?}", s.item, s.extra))
     }
     /// Whether an attack would hit an entity rather than the block behind
     /// it: the crosshair's `EntityHitResult`.
@@ -300,60 +351,6 @@ impl Game<'_> {
             }
             _ => name.ends_with("shulker_box"),
         }
-    }
-}
-impl crate::game::Sim<'_> {
-    /// `LivingEntity.swing` with `getModifiedSwingDuration`.
-    pub(super) fn swing_hand(&mut self, hand: Hand, animation: SwingAnimation) {
-        let effects = &self.potions.effects;
-        let dig_speed = effects
-            .amplifier("haste")
-            .max(effects.amplifier("conduit_power"));
-        let fatigue = effects.amplifier("mining_fatigue");
-        let duration = swing_duration(animation, dig_speed, fatigue);
-        if self.swing.start_if_able(hand, animation, duration) {
-            self.swings_started += 1;
-        }
-    }
-    /// `Player.resetAttackStrengthTicker`.
-    pub(super) fn reset_attack_strength(&mut self) {
-        self.attack_ticks = 0;
-        self.hand_strength.reset();
-    }
-    /// `BlockBehaviour.getDestroyProgress` with `Player.getDestroySpeed`.
-    pub(super) fn destroy_progress(&self, pos: [i32; 3]) -> f32 {
-        let state = self.world.block(pos[0], pos[1], pos[2]);
-        let facts = self.res.facts().get(state);
-        if facts.hardness == -1.0 {
-            return 0.0;
-        }
-        let held = self.held();
-        let mut speed = self.res.items().mining_speed(held, &facts.name);
-        speed = self.modify_destroy_speed(speed);
-        if let Some(eye) = self.eye_position()
-            && self
-                .res
-                .facts()
-                .get(self.world.block(
-                    eye[0].floor() as i32,
-                    eye[1].floor() as i32,
-                    eye[2].floor() as i32,
-                ))
-                .fluid
-                == horizon_client::blocks::Fluid::Water
-        {
-            speed *= self.submerged_mining_speed();
-        }
-        if self.player.as_ref().is_some_and(|p| !p.ground.on_ground) {
-            speed /= 5.0;
-        }
-        let harvest = !facts.requires_tool || self.res.items().correct_for_drops(held, &facts.name);
-        speed / facts.hardness / if harvest { 30.0 } else { 100.0 }
-    }
-    /// A key for the main-hand stack (`destroyingItem`): its item and components.
-    pub(super) fn main_hand_key(&self) -> String {
-        self.held()
-            .map_or(String::new(), |s| format!("{} {:?}", s.item, s.extra))
     }
     /// `Attributes.ATTACK_SPEED` with the main-hand item's modifier.
     pub(super) fn main_hand_attack_speed(&self) -> f64 {

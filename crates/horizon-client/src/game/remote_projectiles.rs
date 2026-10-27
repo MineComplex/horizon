@@ -154,6 +154,115 @@ pub(super) fn has_smoke_trail(kind: &ProjectileKind) -> bool {
 }
 
 impl Game<'_> {
+    /// `AbstractHurtingProjectile.createParticleTrail`: one smoke puff half a
+    /// block above each position.
+    pub(super) fn smoke_trails(&mut self, at: impl IntoIterator<Item = Vec3>) {
+        let smoke = ParticleOptions::simple(ParticleType::Smoke);
+        for p in at {
+            self.particles.add(&smoke, [p.x, p.y + 0.5, p.z], [0.0; 3]);
+        }
+    }
+
+    /// `handleAddEntity` for these types; false when `kind` isn't one.
+    pub(super) fn spawn_remote_projectile(
+        &mut self,
+        id: i32,
+        kind: &str,
+        position: [f64; 3],
+        rotation: (f32, f32),
+        velocity: [f64; 3],
+        data: i32,
+    ) -> bool {
+        let id = id as u32;
+        let at = Vec3::new(position[0], position[1], position[2]);
+        let velocity = Vec3::new(velocity[0], velocity[1], velocity[2]);
+        let (yaw, pitch) = rotation;
+        self.remove_remote_projectile(id);
+        match kind {
+            "minecraft:evoker_fangs" => self.insert_fangs(id, position, yaw, 0, 0),
+            "minecraft:tnt" => self.tnts.push(super::tnt::PrimedTnt {
+                id,
+                position: at,
+                previous: at,
+                velocity,
+                fuse: 80,
+                on_ground: false,
+            }),
+            // FallingBlockEntity.recreateFromPacket: the block state is the data.
+            "minecraft:falling_block" => self.falling.push(FallingBlock {
+                id,
+                state: BlockStateId(data.max(0) as u32),
+                start_pos: BlockPos::default(),
+                position: at,
+                previous: at,
+                velocity,
+                age: 0,
+                no_gravity: false,
+                drop_item: false,
+                fall_distance: 0.0,
+                stuck: Vec3::ZERO,
+                damage: Default::default(),
+                saved: None,
+            }),
+            "minecraft:trident" => {
+                let mut t = super::trident::ThrownTrident::remote(id, at, yaw, pitch);
+                t.velocity = velocity;
+                // Projectile.getAddEntityPacket: the owner's id is the data.
+                t.owner = data as u32;
+                self.tridents.push(t);
+            }
+            "minecraft:firework_rocket" => {
+                self.rockets
+                    .push(super::fireworks::Rocket::remote(id, at, velocity));
+            }
+            "minecraft:splash_potion"
+            | "minecraft:lingering_potion"
+            | "minecraft:experience_bottle" => {
+                self.potions.add_remote_thrown(id, kind, at, velocity);
+            }
+            "minecraft:dragon_fireball" => self
+                .dragon_fireballs
+                .push(super::dragon::DragonFireball::remote(id, at, velocity)),
+            "minecraft:area_effect_cloud" => self.potions.clouds.push(RemoteCloud {
+                id,
+                at: position,
+                radius: 3.0,
+                waiting: false,
+                particle: default_cloud_particle(),
+            }),
+            "minecraft:eye_of_ender" => {
+                self.end
+                    .add_remote_eye(id, position, [velocity.x, velocity.y, velocity.z])
+            }
+            // FishingHook.recreateFromPacket: the owner's id is the data.
+            "minecraft:fishing_bobber" => self.spawn_remote_hook(id, at, data),
+            "minecraft:end_crystal" => self.crystals.push(super::dragon::Crystal {
+                id,
+                position: at,
+                show_bottom: true,
+                time: 0,
+                beam: None,
+                invulnerable: false,
+            }),
+            _ => {
+                let Some(k) = projectile_kind(kind) else {
+                    return false;
+                };
+                if k == ProjectileKind::LlamaSpit {
+                    self.particles
+                        .llama_spit_burst(position, [velocity.x, velocity.y, velocity.z]);
+                }
+                let mut p = Projectile::new(k, at, None);
+                p.id = id;
+                p.velocity = velocity;
+                p.yaw = yaw;
+                p.pitch = pitch;
+                self.add_projectile(p);
+            }
+        }
+        true
+    }
+
     /// `handleSetEntityData` for these types: what changes how they look.
     pub(super) fn remote_projectile_data(&mut self, id: i32, values: &[(u8, i32, Value)]) {
         let id = id as u32;
@@ -269,6 +378,39 @@ impl Game<'_> {
                 }
             }
         }
+    }
+
+    /// A move's rotation for a projectile or trident.
+    pub(super) fn turn_remote_projectile(&mut self, id: i32, rotation: Option<(f32, f32)>) {
+        let (id, Some((yaw, pitch))) = (id as u32, rotation) else {
+            return;
+        };
+        if let Some(p) = self.creatures.projectiles.iter_mut().find(|p| p.id == id) {
+            p.yaw = yaw;
+            p.pitch = pitch;
+        } else if let Some(t) = self.tridents.iter_mut().find(|t| t.id == id) {
+            t.yaw = yaw;
+            t.pitch = pitch;
+        }
+    }
+
+    /// `Entity.getEyePosition` of a projectile's owner: this game's player or
+    /// another player the server sent.
+    fn remote_eye(&self, id: u32) -> Option<Vec3> {
+        let me = self
+            .remote
+            .as_ref()
+            .and_then(|r| u32::try_from(r.entity_id).ok());
+        if me == Some(id) {
+            let eye = self.eye_position()?;
+            return Some(Vec3::new(eye[0], eye[1], eye[2]));
+        }
+        let m = self.mobs.iter().find(|m| m.id == id)?;
+        Some(Vec3::new(
+            m.position.x,
+            m.position.y + m.eye_height(),
+            m.position.z,
+        ))
     }
 
     /// One tick of interpolation, as `tick_remote_objects`.
@@ -420,152 +562,20 @@ impl Game<'_> {
                 .add(&trail, [p.x, p.y + 0.5, p.z], [0.0; 3]);
         }
     }
-}
-impl crate::game::Sim<'_> {
-    /// `AbstractHurtingProjectile.createParticleTrail`: one smoke puff half a
-    /// block above each position.
-    pub(super) fn smoke_trails(&mut self, at: impl IntoIterator<Item = Vec3>) {
-        let smoke = ParticleOptions::simple(ParticleType::Smoke);
-        for p in at {
-            self.particles.add(&smoke, [p.x, p.y + 0.5, p.z], [0.0; 3]);
-        }
-    }
-    /// `handleAddEntity` for these types; false when `kind` isn't one.
-    pub(super) fn spawn_remote_projectile(
-        &mut self,
-        id: i32,
-        kind: &str,
-        position: [f64; 3],
-        rotation: (f32, f32),
-        velocity: [f64; 3],
-        data: i32,
-    ) -> bool {
-        let id = id as u32;
-        let at = Vec3::new(position[0], position[1], position[2]);
-        let velocity = Vec3::new(velocity[0], velocity[1], velocity[2]);
-        let (yaw, pitch) = rotation;
-        self.remove_remote_projectile(id);
-        match kind {
-            "minecraft:evoker_fangs" => self.insert_fangs(id, position, yaw, 0, 0),
-            "minecraft:tnt" => self.tnts.push(super::tnt::PrimedTnt {
-                id,
-                position: at,
-                previous: at,
-                velocity,
-                fuse: 80,
-                on_ground: false,
-            }),
-            // FallingBlockEntity.recreateFromPacket: the block state is the data.
-            "minecraft:falling_block" => self.falling.push(FallingBlock {
-                id,
-                state: BlockStateId(data.max(0) as u32),
-                start_pos: BlockPos::default(),
-                position: at,
-                previous: at,
-                velocity,
-                age: 0,
-                no_gravity: false,
-                drop_item: false,
-                fall_distance: 0.0,
-                stuck: Vec3::ZERO,
-                damage: Default::default(),
-                saved: None,
-            }),
-            "minecraft:trident" => {
-                let mut t = super::trident::ThrownTrident::remote(id, at, yaw, pitch);
-                t.velocity = velocity;
-                // Projectile.getAddEntityPacket: the owner's id is the data.
-                t.owner = data as u32;
-                self.tridents.push(t);
-            }
-            "minecraft:firework_rocket" => {
-                self.rockets
-                    .push(super::fireworks::Rocket::remote(id, at, velocity));
-            }
-            "minecraft:splash_potion"
-            | "minecraft:lingering_potion"
-            | "minecraft:experience_bottle" => {
-                self.potions.add_remote_thrown(id, kind, at, velocity);
-            }
-            "minecraft:dragon_fireball" => self
-                .dragon_fireballs
-                .push(super::dragon::DragonFireball::remote(id, at, velocity)),
-            "minecraft:area_effect_cloud" => self.potions.clouds.push(RemoteCloud {
-                id,
-                at: position,
-                radius: 3.0,
-                waiting: false,
-                particle: default_cloud_particle(),
-            }),
-            "minecraft:eye_of_ender" => {
-                self.end
-                    .add_remote_eye(id, position, [velocity.x, velocity.y, velocity.z])
-            }
-            // FishingHook.recreateFromPacket: the owner's id is the data.
-            "minecraft:fishing_bobber" => self.spawn_remote_hook(id, at, data),
-            "minecraft:end_crystal" => self.crystals.push(super::dragon::Crystal {
-                id,
-                position: at,
-                show_bottom: true,
-                time: 0,
-                beam: None,
-                invulnerable: false,
-            }),
-            _ => {
-                let Some(k) = projectile_kind(kind) else {
-                    return false;
-                };
-                if k == ProjectileKind::LlamaSpit {
-                    self.particles
-                        .llama_spit_burst(position, [velocity.x, velocity.y, velocity.z]);
-                }
-                let mut p = Projectile::new(k, at, None);
-                p.id = id;
-                p.velocity = velocity;
-                p.yaw = yaw;
-                p.pitch = pitch;
-                self.add_projectile(p);
-            }
-        }
-        true
-    }
-    /// A move's rotation for a projectile or trident.
-    pub(super) fn turn_remote_projectile(&mut self, id: i32, rotation: Option<(f32, f32)>) {
-        let (id, Some((yaw, pitch))) = (id as u32, rotation) else {
-            return;
-        };
-        if let Some(p) = self.creatures.projectiles.iter_mut().find(|p| p.id == id) {
-            p.yaw = yaw;
-            p.pitch = pitch;
-        } else if let Some(t) = self.tridents.iter_mut().find(|t| t.id == id) {
-            t.yaw = yaw;
-            t.pitch = pitch;
-        }
-    }
-    /// `Entity.getEyePosition` of a projectile's owner: this game's player or
-    /// another player the server sent.
-    fn remote_eye(&self, id: u32) -> Option<Vec3> {
-        let me = self
-            .remote
-            .as_ref()
-            .and_then(|r| u32::try_from(r.entity_id).ok());
-        if me == Some(id) {
-            let eye = self.eye_position()?;
-            return Some(Vec3::new(eye[0], eye[1], eye[2]));
-        }
-        let m = self.mobs.iter().find(|m| m.id == id)?;
-        Some(Vec3::new(
-            m.position.x,
-            m.position.y + m.eye_height(),
-            m.position.z,
-        ))
-    }
+
     /// `AreaEffectCloud.clientTick` for each cloud a server tracks.
     fn tick_remote_clouds(&mut self) {
-        for c in &self.potions.clouds {
-            cloud_client_tick(&mut self.particles, c.at, c.radius, c.waiting, &c.particle);
+        for c in &self.sim.potions.clouds {
+            cloud_client_tick(
+                &mut self.sim.particles,
+                c.at,
+                c.radius,
+                c.waiting,
+                &c.particle,
+            );
         }
     }
+
     pub(super) fn remove_remote_projectile(&mut self, id: u32) {
         self.fangs.list.retain(|f| f.id != id);
         self.tnts.retain(|t| t.id != id);
@@ -580,6 +590,7 @@ impl crate::game::Sim<'_> {
         self.end.remove_remote_eye(id);
         self.remove_remote_hook(id);
     }
+
     /// Every one a server sent (a new connection, level or dimension).
     pub(super) fn clear_remote_projectiles(&mut self) {
         self.fangs.list.clear();
@@ -597,6 +608,7 @@ impl crate::game::Sim<'_> {
         self.end.clear_remote_eyes();
         self.clear_remote_hooks();
     }
+
     /// Their kind and place, for `status`.
     pub(super) fn projectiles_status(&self) -> Vec<serde_json::Value> {
         use serde_json::json;

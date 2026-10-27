@@ -282,6 +282,14 @@ fn rgb_of(rgba: u32) -> u32 {
     (rgba & 0xFF) << 16 | (rgba >> 8 & 0xFF) << 8 | (rgba >> 16 & 0xFF)
 }
 impl Game<'_> {
+    /// `Component.translatable`: the selected language (which `lang` layers
+    /// over `en_us`), the caller's English text last.
+    pub(super) fn translate(&self, key: &str, fallback: &str) -> String {
+        horizon_client::lang::get_or(key, fallback)
+    }
+    fn brewing_open(&self) -> bool {
+        matches!(self.container_kind(), Some(BlockEntity::Brewing(_)))
+    }
     /// Opens a workstation menu for the block; false when it is not one.
     pub(super) fn open_station(&mut self, pos: [i32; 3], name: &str) -> bool {
         let Some(kind) = Kind::from_block(name) else {
@@ -339,6 +347,87 @@ impl Game<'_> {
         }
         for stack in station.inputs.into_iter().flatten() {
             self.give_or_drop(stack);
+        }
+    }
+    pub(super) fn station_slots(&self) -> Option<Vec<usize>> {
+        let mut v: Vec<usize> = (0..36).collect();
+        if self.brewing_open() {
+            v.extend(300..305);
+            return Some(v);
+        }
+        let s = self.station.as_ref()?;
+        v.extend((0..s.inputs.len()).map(|i| INPUT + i));
+        if s.kind.result_pos().is_some() {
+            v.push(RESULT);
+        }
+        Some(v)
+    }
+    pub(super) fn station_slot_position(&self, i: usize) -> Option<(f32, f32)> {
+        if self.brewing_open() && (300..305).contains(&i) {
+            return Some(
+                [
+                    (56.0, 51.0),
+                    (79.0, 58.0),
+                    (102.0, 51.0),
+                    (79.0, 17.0),
+                    (17.0, 17.0),
+                ][i - 300],
+            );
+        }
+        let s = self.station.as_ref()?;
+        if s.kind == Kind::Merchant && i < 36 {
+            return Some(super::trading::inventory_slot(i));
+        }
+        if s.kind == Kind::Beacon {
+            return super::beacon::slot_position(i);
+        }
+        match i {
+            RESULT => s.kind.result_pos(),
+            _ if i >= INPUT && i < INPUT + s.inputs.len() => Some(s.kind.input_pos(i - INPUT)),
+            _ => None,
+        }
+    }
+    pub(super) fn station_slot_mut(&mut self, i: usize) -> &mut Option<ItemStack> {
+        match self.sim.station.as_mut() {
+            Some(s) if i == RESULT => &mut s.result,
+            Some(s) if i >= INPUT && i < INPUT + s.inputs.len() => &mut s.inputs[i - INPUT],
+            _ => &mut self.sim.scratch_slot,
+        }
+    }
+    pub(super) fn count_bookshelves(&self, pos: [i32; 3]) -> i32 {
+        let tags = &self.res.items().block_tags;
+        let is = |p: [i32; 3], tag: &str| {
+            let name = &self
+                .res
+                .facts()
+                .get(self.world.block(p[0], p[1], p[2]))
+                .name;
+            tags.get(tag).is_some_and(|t| t.contains(&**name))
+        };
+        stations::bookshelf_offsets()
+            .into_iter()
+            .filter(|o| {
+                is(
+                    [pos[0] + o[0], pos[1] + o[1], pos[2] + o[2]],
+                    "minecraft:enchantment_power_provider",
+                ) && is(
+                    [pos[0] + o[0] / 2, pos[1] + o[1], pos[2] + o[2] / 2],
+                    "minecraft:enchantment_power_transmitter",
+                )
+            })
+            .count() as i32
+    }
+    /// The anvil name the menu works with (`AnvilScreen.onNameChanged`).
+    pub(super) fn anvil_item_name(&self, s: &Station) -> String {
+        match &s.inputs[0] {
+            Some(input)
+                if input.custom_name().is_none()
+                    && s.name == self.pack.names.display_item(&input.item) =>
+            {
+                String::new()
+            }
+            Some(_) => s.name.clone(),
+            None => String::new(),
         }
     }
     /// `slotsChanged` / `createResult` for the open station.
@@ -411,6 +500,38 @@ impl Game<'_> {
             Kind::Cartography | Kind::Loom | Kind::Stonecutter => {}
         }
         self.station = Some(s);
+    }
+    pub(super) fn max_stack(&self, stack: &ItemStack) -> u32 {
+        self.res
+            .items()
+            .get(&stack.item)
+            .map_or(64, |i| i.max_stack)
+    }
+    /// `Slot.mayPlace` and `getMaxStackSize` for station slots.
+    fn slot_rules(&self, slot: usize, stack: &ItemStack) -> (bool, u32) {
+        if slot >= super::mount_menu::SADDLE {
+            return self.mount_slot_rules(slot, stack);
+        }
+        if let Some(BlockEntity::Crafter(c)) = self.container_kind()
+            && (300..309).contains(&slot)
+        {
+            // CrafterSlot.mayPlace: not a disabled slot.
+            return (!c.disabled[slot - 300], 64);
+        }
+        if (300..400).contains(&slot) && !self.brewing_open() && self.refuses(slot, stack) {
+            // ShulkerBoxSlot.mayPlace.
+            return (false, 64);
+        }
+        let Some(s) = self.station.as_ref() else {
+            return (true, 64);
+        };
+        if slot < 36 {
+            return (true, 64);
+        }
+        if slot == RESULT {
+            return (false, 64);
+        }
+        (s.kind != Kind::Loom, 64)
     }
     /// `AbstractContainerMenu.doClick` PICKUP on a filtered slot.
     pub(super) fn click_filtered(&mut self, slot: usize, right: bool) {
@@ -595,6 +716,36 @@ impl Game<'_> {
         ];
         self.front.audio.play(sound, Some(at), volume, pitch);
     }
+    pub(super) fn give_or_drop(&mut self, stack: ItemStack) {
+        if let Some(rest) = self.give(stack)
+            && let Some(eye) = self.eye_position()
+        {
+            // Inventory.placeItemBackInInventory: `player.drop(stack, false)`.
+            self.throw_from_eyes(rest, eye, false);
+        }
+    }
+    /// `Player.giveExperienceLevels`.
+    pub(super) fn give_levels(&mut self, levels: i32) {
+        let xp = &mut self.experience;
+        xp.level = xp.level.saturating_add(levels);
+        if xp.level < 0 {
+            xp.level = 0;
+            xp.progress = 0.0;
+            xp.total = 0;
+        }
+    }
+    /// Whether the result slot may be taken (`mayPickup`).
+    fn may_take_result(&self) -> bool {
+        let Some(s) = self.station.as_ref() else {
+            return false;
+        };
+        match s.kind {
+            Kind::Anvil => {
+                (self.creative || self.experience.level >= s.anvil.cost) && s.anvil.cost > 0
+            }
+            _ => true,
+        }
+    }
     /// `EnchantmentMenu.clickMenuButton`.
     fn click_enchant(&mut self, button: usize) {
         let Some(s) = self.station.as_ref() else {
@@ -651,6 +802,39 @@ impl Game<'_> {
         self.trigger_enchanted_item(&enchanted_item, lapis_needed as i32);
         self.play_at("minecraft:block.enchantment_table.use", pos, 1.0, pitch);
         self.station_changed();
+    }
+    /// Mouse click while a station or the brewing stand is open. True when handled.
+    /// A station's own buttons a controller can focus besides its slots
+    /// (GUI origin relative): offers, patterns, effects, enchantments and
+    /// stonecutter recipes.
+    pub(super) fn station_targets(&self) -> Vec<[f32; 4]> {
+        let Some(s) = self.station.as_ref() else {
+            return Vec::new();
+        };
+        match s.kind {
+            Kind::Merchant => self.merchant_targets(),
+            Kind::Loom => self.loom_targets(),
+            Kind::Beacon => self.beacon_targets(),
+            Kind::Enchanting => (0..3)
+                .map(|i| {
+                    let (x, y, w, h) = enchant_button(i);
+                    [x, y, w, h]
+                })
+                .collect(),
+            Kind::Stonecutter if s.inputs[0].is_some() => (s.start
+                ..(s.start + 12).min(s.stone.recipes.len()))
+                .map(|index| {
+                    let p = index - s.start;
+                    [
+                        52.0 + (p % 4) as f32 * 16.0,
+                        14.0 + (p / 4) as f32 * 18.0,
+                        16.0,
+                        18.0,
+                    ]
+                })
+                .collect(),
+            _ => Vec::new(),
+        }
     }
     pub(super) fn station_click(&mut self, right: bool) -> bool {
         // A server's brewing stand: its slots are the server's.
@@ -762,6 +946,27 @@ impl Game<'_> {
             }
         }
         false
+    }
+    pub(super) fn station_scroll(&mut self, d: f32) {
+        self.merchant_scroll(d);
+        self.loom_scroll(d);
+        let Some(s) = self.station.as_mut() else {
+            return;
+        };
+        if s.kind != Kind::Stonecutter || s.stone.recipes.len() <= 12 {
+            return;
+        }
+        let rows = s.stone.recipes.len().div_ceil(4) - 3;
+        let first_row = (s.start / 4) as i32 - d.signum() as i32;
+        s.start = first_row.clamp(0, rows as i32) as usize * 4;
+    }
+    /// Whether keyboard text goes to the anvil rename box.
+    pub(super) fn station_typing(&self) -> bool {
+        self.screen == Screen::Inventory
+            && self
+                .station
+                .as_ref()
+                .is_some_and(|s| s.kind == Kind::Anvil && s.inputs[0].is_some())
     }
     pub(super) fn station_text(&mut self, text: Option<&str>, backspace: bool) {
         // The recipe book's search box takes scripted typing too.
@@ -1490,530 +1695,6 @@ impl Game<'_> {
 
     // ---------------------------------------------------------------- tooltips
 
-    /// `TooltipRenderUtil`: dark box with the purple border, first line spaced.
-    pub(super) fn draw_tooltip_lines<T: Clone + Into<horizon_client::text::Text>>(
-        &self,
-        batch: &mut HudBatch,
-        lines: &[(T, u32)],
-        x: f32,
-        y: f32,
-    ) {
-        if lines.is_empty() {
-            return;
-        }
-        let lines = Self::resolved(lines);
-        let atlas = &self.front.gui.atlas;
-        let (x, y, w, h) =
-            Self::tooltip_geometry(atlas, &lines, (x, y), (batch.width, batch.height), 0.0);
-        Self::tooltip_box(batch, atlas, x, y, w, h);
-        Self::tooltip_text(batch, atlas, &lines, x, y);
-    }
-    /// A tooltip's lines with their legacy codes resolved and their colours.
-    fn resolved<T: Clone + Into<horizon_client::text::Text>>(
-        lines: &[(T, u32)],
-    ) -> Vec<(horizon_client::text::Text, u32)> {
-        lines
-            .iter()
-            .map(|(text, color)| {
-                let text: horizon_client::text::Text = text.clone().into();
-                (text.resolve_legacy(), *color)
-            })
-            .collect()
-    }
-    /// The tooltip's text's top-left corner and the box's size: beside the
-    /// cursor, kept on screen, `extra` pixels taller than the text.
-    fn tooltip_geometry(
-        atlas: &horizon_client::hud::HudAtlas,
-        lines: &[(horizon_client::text::Text, u32)],
-        (x, y): (f32, f32),
-        (width, height): (f32, f32),
-        extra: f32,
-    ) -> (f32, f32, f32, f32) {
-        let w = lines
-            .iter()
-            .map(|(t, _)| atlas.font.width_text(t))
-            .fold(0.0, f32::max)
-            .max(if extra > 0.0 { 96.0 } else { 0.0 });
-        let text_h = if lines.len() == 1 {
-            8.0
-        } else {
-            8.0 + 2.0 + (lines.len() - 1) as f32 * 10.0
-        };
-        let h = text_h + extra;
-        let mut x = x + 12.0;
-        let mut y = y - 12.0;
-        if x + w > width - 4.0 {
-            x = (x - 28.0 - w).max(4.0);
-        }
-        if y + h + 3.0 > height {
-            y = height - h - 3.0;
-        }
-        y = y.max(4.0);
-        (x, y, w, h)
-    }
-    /// The box and its frame sprites.
-    fn tooltip_box(
-        batch: &mut HudBatch,
-        atlas: &horizon_client::hud::HudAtlas,
-        x: f32,
-        y: f32,
-        w: f32,
-        h: f32,
-    ) {
-        batch.fill(atlas, x - 3.0, y - 4.0, w + 6.0, 1.0, rgba(16, 0, 16, 240));
-        batch.fill(
-            atlas,
-            x - 3.0,
-            y + h + 3.0,
-            w + 6.0,
-            1.0,
-            rgba(16, 0, 16, 240),
-        );
-        batch.fill(
-            atlas,
-            x - 4.0,
-            y - 3.0,
-            w + 8.0,
-            h + 6.0,
-            rgba(16, 0, 16, 240),
-        );
-        batch.fill(atlas, x - 3.0, y - 3.0, w + 6.0, 1.0, rgba(80, 0, 255, 80));
-        batch.fill(
-            atlas,
-            x - 3.0,
-            y + h + 2.0,
-            w + 6.0,
-            1.0,
-            rgba(40, 0, 127, 80),
-        );
-        batch.fill(atlas, x - 3.0, y - 2.0, 1.0, h + 4.0, rgba(60, 0, 190, 80));
-        batch.fill(
-            atlas,
-            x + w + 2.0,
-            y - 2.0,
-            1.0,
-            h + 4.0,
-            rgba(60, 0, 190, 80),
-        );
-    }
-    fn tooltip_text(
-        batch: &mut HudBatch,
-        atlas: &horizon_client::hud::HudAtlas,
-        lines: &[(horizon_client::text::Text, u32)],
-        x: f32,
-        y: f32,
-    ) {
-        let mut ty = y;
-        for (i, (text, color)) in lines.iter().enumerate() {
-            batch.text_styled(atlas, text, x, ty, *color, true);
-            ty += if i == 0 { 12.0 } else { 10.0 };
-        }
-    }
-    /// A stack's tooltip: its lines, and under them a bundle's contents
-    /// (`ClientBundleTooltip`: the 4 wide grid, the `+N` of what it leaves
-    /// out, and the weight bar).
-    pub(super) fn draw_stack_tooltip(
-        &mut self,
-        batch: &mut HudBatch,
-        stack: &ItemStack,
-        x: f32,
-        y: f32,
-    ) {
-        let lines = Self::resolved(&self.stack_tooltip(stack));
-        if lines.is_empty() {
-            return;
-        }
-        // The component's height does not depend on where it is drawn, so a
-        // probe at the origin gives the box its extra height.
-        let probe = horizon_client::bundle::tooltip_layout(self.res.items(), stack, 0.0, 0.0, 96.0);
-        let extra = probe.as_ref().map_or(0.0, |l| l.height + 2.0);
-        let atlas = &self.front.gui.atlas;
-        let (x, y, w, h) =
-            Self::tooltip_geometry(atlas, &lines, (x, y), (batch.width, batch.height), extra);
-        Self::tooltip_box(batch, atlas, x, y, w, h);
-        let text_h = h - extra;
-        Self::tooltip_text(batch, atlas, &lines, x, y);
-        let Some(layout) =
-            horizon_client::bundle::tooltip_layout(self.res.items(), stack, x, y + text_h + 2.0, w)
-        else {
-            return;
-        };
-        self.draw_bundle_tooltip(batch, &layout);
-    }
-    /// `ClientBundleTooltip.extractImage`: the slots, the count past them and
-    /// the progress bar.
-    fn draw_bundle_tooltip(
-        &mut self,
-        batch: &mut HudBatch,
-        layout: &horizon_client::bundle::TooltipLayout,
-    ) {
-        for (i, (at, stack)) in layout.slots.iter().enumerate() {
-            let selected = layout.selected == Some(i);
-            let sprite = |name: &str| format!("gui/sprites/container/bundle/{name}");
-            // Each draw takes the atlas on its own: the item's needs `&mut self`.
-            horizon_client::ui::nine_slice(
-                batch,
-                &self.front.gui.atlas,
-                &sprite(if selected {
-                    "slot_highlight_back"
-                } else {
-                    "slot_background"
-                }),
-                at[0],
-                at[1],
-                24.0,
-                24.0,
-                u32::MAX,
-            );
-            let stack = stack.clone();
-            let [x, y] = *at;
-            self.draw_item(batch, &stack, x + 4.0, y + 4.0);
-            if selected {
-                horizon_client::ui::nine_slice(
-                    batch,
-                    &self.front.gui.atlas,
-                    &sprite("slot_highlight_front"),
-                    x,
-                    y,
-                    24.0,
-                    24.0,
-                    u32::MAX,
-                );
-            }
-        }
-        let atlas = &self.front.gui.atlas;
-        if let Some((at, hidden)) = layout.overflow {
-            let label = horizon_client::text::Text::literal(format!("+{hidden}"));
-            let w = atlas.font.width_text(&label);
-            batch.text_styled(
-                atlas,
-                &label,
-                at[0] + 12.0 - (w / 2.0).floor(),
-                at[1] + 10.0,
-                u32::MAX,
-                true,
-            );
-        }
-        if let Some((at, description)) = layout
-            .empty_description
-            .zip(Some("item.minecraft.bundle.empty.description"))
-        {
-            let text = horizon_client::text::Text::translate(description, &[]);
-            let mut ty = at[1];
-            for line in atlas.font.split_lines(&text, layout.width) {
-                batch.text_styled(atlas, &line.0, at[0], ty, 0xFFAA_AAAA, false);
-                ty += 9.0;
-            }
-        }
-        let [bx, by] = layout.bar;
-        let fill_sprite = if layout.full {
-            "gui/sprites/container/bundle/bundle_progressbar_full"
-        } else {
-            "gui/sprites/container/bundle/bundle_progressbar_fill"
-        };
-        horizon_client::ui::nine_slice(
-            batch,
-            atlas,
-            fill_sprite,
-            bx + 1.0,
-            by,
-            layout.fill,
-            13.0,
-            u32::MAX,
-        );
-        horizon_client::ui::nine_slice(
-            batch,
-            atlas,
-            "gui/sprites/container/bundle/bundle_progressbar_border",
-            bx,
-            by,
-            96.0,
-            13.0,
-            u32::MAX,
-        );
-        if let Some(key) = layout.label {
-            let label = horizon_client::text::Text::translate(key, &[]);
-            let w = atlas.font.width_text(&label);
-            batch.text_styled(
-                atlas,
-                &label,
-                bx + 48.0 - (w / 2.0).floor(),
-                by + 3.0,
-                u32::MAX,
-                true,
-            );
-        }
-    }
-    /// Hovered-slot tooltip on the plain inventory, crafting and container screens.
-    pub(super) fn draw_slot_tooltip(&mut self, batch: &mut HudBatch) {
-        if self.carried.is_some() {
-            return;
-        }
-        let Some(slot) = self.slot_at(batch, self.front.cursor.0, self.front.cursor.1) else {
-            return;
-        };
-        let stack = self.slot_view(slot);
-        if let Some(stack) = stack {
-            self.draw_stack_tooltip(batch, &stack, self.front.cursor.0, self.front.cursor.1);
-        } else if let Some(text) = self.crafter_tooltip(slot) {
-            self.draw_tooltip_lines(
-                batch,
-                &[(horizon_client::text::Text::literal(text), u32::MAX)],
-                self.front.cursor.0,
-                self.front.cursor.1,
-            );
-        }
-    }
-
-    // ---------------------------------------------------------------- brewing stand
-
-    /// `BrewingStandBlockEntity.serverTick` of the brewing stand at `pos`, in
-    /// its place among the level's block entity tickers.
-    pub(super) fn tick_brewing_stand(
-        &mut self,
-        pos: (i32, i32, i32),
-    ) -> horizon_client::Result<()> {
-        let Some(BlockEntity::Brewing(b)) = self.sim.world.block_entities.get_mut(&pos) else {
-            return Ok(());
-        };
-        let out = b.tick(
-            &self.sim.res.stations().brewing,
-            self.sim.res.items(),
-            self.sim.res.providers(),
-        );
-        if out != brewing::BrewTick::default() {
-            let (x, y, z) = pos;
-            self.world.modified.insert((x >> 4, z >> 4));
-            if out.brewed {
-                self.play_at("minecraft:block.brewing_stand.brew", [x, y, z], 1.0, 1.0);
-            }
-            for d in out.drops {
-                self.pop_resource([x, y, z], d);
-            }
-            if let Some(bottles) = out.bottles {
-                let state = self.world.block(x, y, z);
-                if let Some(mut s) = self.pack.assets.registry.state(state).cloned()
-                    && AsRef::<str>::as_ref(&s.name) == "minecraft:brewing_stand"
-                {
-                    for (i, has) in bottles.iter().enumerate() {
-                        s.properties
-                            .insert(format!("has_bottle_{i}"), has.to_string());
-                    }
-                    if let Ok(id) = self.pack.assets.registry.resolve(&s) {
-                        self.world.set(x, y, z, id)?;
-                    }
-                }
-            }
-        }
-        Ok(())
-    }
-}
-impl crate::game::Sim<'_> {
-    /// `Component.translatable`: the selected language (which `lang` layers
-    /// over `en_us`), the caller's English text last.
-    pub(super) fn translate(&self, key: &str, fallback: &str) -> String {
-        horizon_client::lang::get_or(key, fallback)
-    }
-    fn brewing_open(&self) -> bool {
-        matches!(self.container_kind(), Some(BlockEntity::Brewing(_)))
-    }
-    pub(super) fn station_slots(&self) -> Option<Vec<usize>> {
-        let mut v: Vec<usize> = (0..36).collect();
-        if self.brewing_open() {
-            v.extend(300..305);
-            return Some(v);
-        }
-        let s = self.station.as_ref()?;
-        v.extend((0..s.inputs.len()).map(|i| INPUT + i));
-        if s.kind.result_pos().is_some() {
-            v.push(RESULT);
-        }
-        Some(v)
-    }
-    pub(super) fn station_slot_position(&self, i: usize) -> Option<(f32, f32)> {
-        if self.brewing_open() && (300..305).contains(&i) {
-            return Some(
-                [
-                    (56.0, 51.0),
-                    (79.0, 58.0),
-                    (102.0, 51.0),
-                    (79.0, 17.0),
-                    (17.0, 17.0),
-                ][i - 300],
-            );
-        }
-        let s = self.station.as_ref()?;
-        if s.kind == Kind::Merchant && i < 36 {
-            return Some(super::trading::inventory_slot(i));
-        }
-        if s.kind == Kind::Beacon {
-            return super::beacon::slot_position(i);
-        }
-        match i {
-            RESULT => s.kind.result_pos(),
-            _ if i >= INPUT && i < INPUT + s.inputs.len() => Some(s.kind.input_pos(i - INPUT)),
-            _ => None,
-        }
-    }
-    pub(super) fn station_slot_mut(&mut self, i: usize) -> &mut Option<ItemStack> {
-        match self.station.as_mut() {
-            Some(s) if i == RESULT => &mut s.result,
-            Some(s) if i >= INPUT && i < INPUT + s.inputs.len() => &mut s.inputs[i - INPUT],
-            _ => &mut self.scratch_slot,
-        }
-    }
-    pub(super) fn count_bookshelves(&self, pos: [i32; 3]) -> i32 {
-        let tags = &self.res.items().block_tags;
-        let is = |p: [i32; 3], tag: &str| {
-            let name = &self
-                .res
-                .facts()
-                .get(self.world.block(p[0], p[1], p[2]))
-                .name;
-            tags.get(tag).is_some_and(|t| t.contains(&**name))
-        };
-        stations::bookshelf_offsets()
-            .into_iter()
-            .filter(|o| {
-                is(
-                    [pos[0] + o[0], pos[1] + o[1], pos[2] + o[2]],
-                    "minecraft:enchantment_power_provider",
-                ) && is(
-                    [pos[0] + o[0] / 2, pos[1] + o[1], pos[2] + o[2] / 2],
-                    "minecraft:enchantment_power_transmitter",
-                )
-            })
-            .count() as i32
-    }
-    /// The anvil name the menu works with (`AnvilScreen.onNameChanged`).
-    pub(super) fn anvil_item_name(&self, s: &Station) -> String {
-        match &s.inputs[0] {
-            Some(input)
-                if input.custom_name().is_none()
-                    && s.name == self.pack.names.display_item(&input.item) =>
-            {
-                String::new()
-            }
-            Some(_) => s.name.clone(),
-            None => String::new(),
-        }
-    }
-    pub(super) fn max_stack(&self, stack: &ItemStack) -> u32 {
-        self.res
-            .items()
-            .get(&stack.item)
-            .map_or(64, |i| i.max_stack)
-    }
-    /// `Slot.mayPlace` and `getMaxStackSize` for station slots.
-    fn slot_rules(&self, slot: usize, stack: &ItemStack) -> (bool, u32) {
-        if slot >= super::mount_menu::SADDLE {
-            return self.mount_slot_rules(slot, stack);
-        }
-        if let Some(BlockEntity::Crafter(c)) = self.container_kind()
-            && (300..309).contains(&slot)
-        {
-            // CrafterSlot.mayPlace: not a disabled slot.
-            return (!c.disabled[slot - 300], 64);
-        }
-        if (300..400).contains(&slot) && !self.brewing_open() && self.refuses(slot, stack) {
-            // ShulkerBoxSlot.mayPlace.
-            return (false, 64);
-        }
-        let Some(s) = self.station.as_ref() else {
-            return (true, 64);
-        };
-        if slot < 36 {
-            return (true, 64);
-        }
-        if slot == RESULT {
-            return (false, 64);
-        }
-        (s.kind != Kind::Loom, 64)
-    }
-    pub(super) fn give_or_drop(&mut self, stack: ItemStack) {
-        if let Some(rest) = self.give(stack)
-            && let Some(eye) = self.eye_position()
-        {
-            // Inventory.placeItemBackInInventory: `player.drop(stack, false)`.
-            self.throw_from_eyes(rest, eye, false);
-        }
-    }
-    /// `Player.giveExperienceLevels`.
-    pub(super) fn give_levels(&mut self, levels: i32) {
-        let xp = &mut self.experience;
-        xp.level = xp.level.saturating_add(levels);
-        if xp.level < 0 {
-            xp.level = 0;
-            xp.progress = 0.0;
-            xp.total = 0;
-        }
-    }
-    /// Whether the result slot may be taken (`mayPickup`).
-    fn may_take_result(&self) -> bool {
-        let Some(s) = self.station.as_ref() else {
-            return false;
-        };
-        match s.kind {
-            Kind::Anvil => {
-                (self.creative || self.experience.level >= s.anvil.cost) && s.anvil.cost > 0
-            }
-            _ => true,
-        }
-    }
-    /// Mouse click while a station or the brewing stand is open. True when handled.
-    /// A station's own buttons a controller can focus besides its slots
-    /// (GUI origin relative): offers, patterns, effects, enchantments and
-    /// stonecutter recipes.
-    pub(super) fn station_targets(&self) -> Vec<[f32; 4]> {
-        let Some(s) = self.station.as_ref() else {
-            return Vec::new();
-        };
-        match s.kind {
-            Kind::Merchant => self.merchant_targets(),
-            Kind::Loom => self.loom_targets(),
-            Kind::Beacon => self.beacon_targets(),
-            Kind::Enchanting => (0..3)
-                .map(|i| {
-                    let (x, y, w, h) = enchant_button(i);
-                    [x, y, w, h]
-                })
-                .collect(),
-            Kind::Stonecutter if s.inputs[0].is_some() => (s.start
-                ..(s.start + 12).min(s.stone.recipes.len()))
-                .map(|index| {
-                    let p = index - s.start;
-                    [
-                        52.0 + (p % 4) as f32 * 16.0,
-                        14.0 + (p / 4) as f32 * 18.0,
-                        16.0,
-                        18.0,
-                    ]
-                })
-                .collect(),
-            _ => Vec::new(),
-        }
-    }
-    pub(super) fn station_scroll(&mut self, d: f32) {
-        self.merchant_scroll(d);
-        self.loom_scroll(d);
-        let Some(s) = self.station.as_mut() else {
-            return;
-        };
-        if s.kind != Kind::Stonecutter || s.stone.recipes.len() <= 12 {
-            return;
-        }
-        let rows = s.stone.recipes.len().div_ceil(4) - 3;
-        let first_row = (s.start / 4) as i32 - d.signum() as i32;
-        s.start = first_row.clamp(0, rows as i32) as usize * 4;
-    }
-    /// Whether keyboard text goes to the anvil rename box.
-    pub(super) fn station_typing(&self) -> bool {
-        self.screen == Screen::Inventory
-            && self
-                .station
-                .as_ref()
-                .is_some_and(|s| s.kind == Kind::Anvil && s.inputs[0].is_some())
-    }
     /// `ItemStack.getTooltipLines` subset: name in rarity colour, lore,
     /// potion effects, enchantments (gray, curses red), stored enchantments, trims.
     pub(super) fn stack_tooltip(
@@ -2432,6 +2113,323 @@ impl crate::game::Sim<'_> {
     /// Options.advancedItemTooltips (F3+H).
     fn options_advanced_tooltips(&self) -> bool {
         self.settings.file.bool("advancedItemTooltips")
+    }
+    /// `TooltipRenderUtil`: dark box with the purple border, first line spaced.
+    pub(super) fn draw_tooltip_lines<T: Clone + Into<horizon_client::text::Text>>(
+        &self,
+        batch: &mut HudBatch,
+        lines: &[(T, u32)],
+        x: f32,
+        y: f32,
+    ) {
+        if lines.is_empty() {
+            return;
+        }
+        let lines = Self::resolved(lines);
+        let atlas = &self.front.gui.atlas;
+        let (x, y, w, h) =
+            Self::tooltip_geometry(atlas, &lines, (x, y), (batch.width, batch.height), 0.0);
+        Self::tooltip_box(batch, atlas, x, y, w, h);
+        Self::tooltip_text(batch, atlas, &lines, x, y);
+    }
+    /// A tooltip's lines with their legacy codes resolved and their colours.
+    fn resolved<T: Clone + Into<horizon_client::text::Text>>(
+        lines: &[(T, u32)],
+    ) -> Vec<(horizon_client::text::Text, u32)> {
+        lines
+            .iter()
+            .map(|(text, color)| {
+                let text: horizon_client::text::Text = text.clone().into();
+                (text.resolve_legacy(), *color)
+            })
+            .collect()
+    }
+    /// The tooltip's text's top-left corner and the box's size: beside the
+    /// cursor, kept on screen, `extra` pixels taller than the text.
+    fn tooltip_geometry(
+        atlas: &horizon_client::hud::HudAtlas,
+        lines: &[(horizon_client::text::Text, u32)],
+        (x, y): (f32, f32),
+        (width, height): (f32, f32),
+        extra: f32,
+    ) -> (f32, f32, f32, f32) {
+        let w = lines
+            .iter()
+            .map(|(t, _)| atlas.font.width_text(t))
+            .fold(0.0, f32::max)
+            .max(if extra > 0.0 { 96.0 } else { 0.0 });
+        let text_h = if lines.len() == 1 {
+            8.0
+        } else {
+            8.0 + 2.0 + (lines.len() - 1) as f32 * 10.0
+        };
+        let h = text_h + extra;
+        let mut x = x + 12.0;
+        let mut y = y - 12.0;
+        if x + w > width - 4.0 {
+            x = (x - 28.0 - w).max(4.0);
+        }
+        if y + h + 3.0 > height {
+            y = height - h - 3.0;
+        }
+        y = y.max(4.0);
+        (x, y, w, h)
+    }
+    /// The box and its frame sprites.
+    fn tooltip_box(
+        batch: &mut HudBatch,
+        atlas: &horizon_client::hud::HudAtlas,
+        x: f32,
+        y: f32,
+        w: f32,
+        h: f32,
+    ) {
+        batch.fill(atlas, x - 3.0, y - 4.0, w + 6.0, 1.0, rgba(16, 0, 16, 240));
+        batch.fill(
+            atlas,
+            x - 3.0,
+            y + h + 3.0,
+            w + 6.0,
+            1.0,
+            rgba(16, 0, 16, 240),
+        );
+        batch.fill(
+            atlas,
+            x - 4.0,
+            y - 3.0,
+            w + 8.0,
+            h + 6.0,
+            rgba(16, 0, 16, 240),
+        );
+        batch.fill(atlas, x - 3.0, y - 3.0, w + 6.0, 1.0, rgba(80, 0, 255, 80));
+        batch.fill(
+            atlas,
+            x - 3.0,
+            y + h + 2.0,
+            w + 6.0,
+            1.0,
+            rgba(40, 0, 127, 80),
+        );
+        batch.fill(atlas, x - 3.0, y - 2.0, 1.0, h + 4.0, rgba(60, 0, 190, 80));
+        batch.fill(
+            atlas,
+            x + w + 2.0,
+            y - 2.0,
+            1.0,
+            h + 4.0,
+            rgba(60, 0, 190, 80),
+        );
+    }
+    fn tooltip_text(
+        batch: &mut HudBatch,
+        atlas: &horizon_client::hud::HudAtlas,
+        lines: &[(horizon_client::text::Text, u32)],
+        x: f32,
+        y: f32,
+    ) {
+        let mut ty = y;
+        for (i, (text, color)) in lines.iter().enumerate() {
+            batch.text_styled(atlas, text, x, ty, *color, true);
+            ty += if i == 0 { 12.0 } else { 10.0 };
+        }
+    }
+    /// A stack's tooltip: its lines, and under them a bundle's contents
+    /// (`ClientBundleTooltip`: the 4 wide grid, the `+N` of what it leaves
+    /// out, and the weight bar).
+    pub(super) fn draw_stack_tooltip(
+        &mut self,
+        batch: &mut HudBatch,
+        stack: &ItemStack,
+        x: f32,
+        y: f32,
+    ) {
+        let lines = Self::resolved(&self.stack_tooltip(stack));
+        if lines.is_empty() {
+            return;
+        }
+        // The component's height does not depend on where it is drawn, so a
+        // probe at the origin gives the box its extra height.
+        let probe = horizon_client::bundle::tooltip_layout(self.res.items(), stack, 0.0, 0.0, 96.0);
+        let extra = probe.as_ref().map_or(0.0, |l| l.height + 2.0);
+        let atlas = &self.front.gui.atlas;
+        let (x, y, w, h) =
+            Self::tooltip_geometry(atlas, &lines, (x, y), (batch.width, batch.height), extra);
+        Self::tooltip_box(batch, atlas, x, y, w, h);
+        let text_h = h - extra;
+        Self::tooltip_text(batch, atlas, &lines, x, y);
+        let Some(layout) =
+            horizon_client::bundle::tooltip_layout(self.res.items(), stack, x, y + text_h + 2.0, w)
+        else {
+            return;
+        };
+        self.draw_bundle_tooltip(batch, &layout);
+    }
+    /// `ClientBundleTooltip.extractImage`: the slots, the count past them and
+    /// the progress bar.
+    fn draw_bundle_tooltip(
+        &mut self,
+        batch: &mut HudBatch,
+        layout: &horizon_client::bundle::TooltipLayout,
+    ) {
+        for (i, (at, stack)) in layout.slots.iter().enumerate() {
+            let selected = layout.selected == Some(i);
+            let sprite = |name: &str| format!("gui/sprites/container/bundle/{name}");
+            // Each draw takes the atlas on its own: the item's needs `&mut self`.
+            horizon_client::ui::nine_slice(
+                batch,
+                &self.front.gui.atlas,
+                &sprite(if selected {
+                    "slot_highlight_back"
+                } else {
+                    "slot_background"
+                }),
+                at[0],
+                at[1],
+                24.0,
+                24.0,
+                u32::MAX,
+            );
+            let stack = stack.clone();
+            let [x, y] = *at;
+            self.draw_item(batch, &stack, x + 4.0, y + 4.0);
+            if selected {
+                horizon_client::ui::nine_slice(
+                    batch,
+                    &self.front.gui.atlas,
+                    &sprite("slot_highlight_front"),
+                    x,
+                    y,
+                    24.0,
+                    24.0,
+                    u32::MAX,
+                );
+            }
+        }
+        let atlas = &self.front.gui.atlas;
+        if let Some((at, hidden)) = layout.overflow {
+            let label = horizon_client::text::Text::literal(format!("+{hidden}"));
+            let w = atlas.font.width_text(&label);
+            batch.text_styled(
+                atlas,
+                &label,
+                at[0] + 12.0 - (w / 2.0).floor(),
+                at[1] + 10.0,
+                u32::MAX,
+                true,
+            );
+        }
+        if let Some((at, description)) = layout
+            .empty_description
+            .zip(Some("item.minecraft.bundle.empty.description"))
+        {
+            let text = horizon_client::text::Text::translate(description, &[]);
+            let mut ty = at[1];
+            for line in atlas.font.split_lines(&text, layout.width) {
+                batch.text_styled(atlas, &line.0, at[0], ty, 0xFFAA_AAAA, false);
+                ty += 9.0;
+            }
+        }
+        let [bx, by] = layout.bar;
+        let fill_sprite = if layout.full {
+            "gui/sprites/container/bundle/bundle_progressbar_full"
+        } else {
+            "gui/sprites/container/bundle/bundle_progressbar_fill"
+        };
+        horizon_client::ui::nine_slice(
+            batch,
+            atlas,
+            fill_sprite,
+            bx + 1.0,
+            by,
+            layout.fill,
+            13.0,
+            u32::MAX,
+        );
+        horizon_client::ui::nine_slice(
+            batch,
+            atlas,
+            "gui/sprites/container/bundle/bundle_progressbar_border",
+            bx,
+            by,
+            96.0,
+            13.0,
+            u32::MAX,
+        );
+        if let Some(key) = layout.label {
+            let label = horizon_client::text::Text::translate(key, &[]);
+            let w = atlas.font.width_text(&label);
+            batch.text_styled(
+                atlas,
+                &label,
+                bx + 48.0 - (w / 2.0).floor(),
+                by + 3.0,
+                u32::MAX,
+                true,
+            );
+        }
+    }
+    /// Hovered-slot tooltip on the plain inventory, crafting and container screens.
+    pub(super) fn draw_slot_tooltip(&mut self, batch: &mut HudBatch) {
+        if self.carried.is_some() {
+            return;
+        }
+        let Some(slot) = self.slot_at(batch, self.front.cursor.0, self.front.cursor.1) else {
+            return;
+        };
+        let stack = self.slot_view(slot);
+        if let Some(stack) = stack {
+            self.draw_stack_tooltip(batch, &stack, self.front.cursor.0, self.front.cursor.1);
+        } else if let Some(text) = self.crafter_tooltip(slot) {
+            self.draw_tooltip_lines(
+                batch,
+                &[(horizon_client::text::Text::literal(text), u32::MAX)],
+                self.front.cursor.0,
+                self.front.cursor.1,
+            );
+        }
+    }
+
+    // ---------------------------------------------------------------- brewing stand
+
+    /// `BrewingStandBlockEntity.serverTick` of the brewing stand at `pos`, in
+    /// its place among the level's block entity tickers.
+    pub(super) fn tick_brewing_stand(
+        &mut self,
+        pos: (i32, i32, i32),
+    ) -> horizon_client::Result<()> {
+        let Some(BlockEntity::Brewing(b)) = self.sim.world.block_entities.get_mut(&pos) else {
+            return Ok(());
+        };
+        let out = b.tick(
+            &self.sim.res.stations().brewing,
+            self.sim.res.items(),
+            self.sim.res.providers(),
+        );
+        if out != brewing::BrewTick::default() {
+            let (x, y, z) = pos;
+            self.world.modified.insert((x >> 4, z >> 4));
+            if out.brewed {
+                self.play_at("minecraft:block.brewing_stand.brew", [x, y, z], 1.0, 1.0);
+            }
+            for d in out.drops {
+                self.pop_resource([x, y, z], d);
+            }
+            if let Some(bottles) = out.bottles {
+                let state = self.world.block(x, y, z);
+                if let Some(mut s) = self.pack.assets.registry.state(state).cloned()
+                    && AsRef::<str>::as_ref(&s.name) == "minecraft:brewing_stand"
+                {
+                    for (i, has) in bottles.iter().enumerate() {
+                        s.properties
+                            .insert(format!("has_bottle_{i}"), has.to_string());
+                    }
+                    if let Ok(id) = self.pack.assets.registry.resolve(&s) {
+                        self.world.set(x, y, z, id)?;
+                    }
+                }
+            }
+        }
+        Ok(())
     }
 }
 

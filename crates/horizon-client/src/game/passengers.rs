@@ -25,6 +25,98 @@ fn zombie_kind(s: Species) -> bool {
 }
 
 impl Game<'_> {
+    /// `Entity.startRiding` for two mobs.
+    pub(super) fn mount_mob(&mut self, rider: u32, vehicle: u32) {
+        if rider == vehicle {
+            return;
+        }
+        if let Some(m) = self.mobs.iter_mut().find(|m| m.id == rider) {
+            m.extra.mount = Some(vehicle);
+            m.extra.passenger = true;
+        }
+        if let Some(m) = self.mobs.iter_mut().find(|m| m.id == vehicle) {
+            m.extra.rider = Some(rider);
+        }
+    }
+    /// Riders sit on their vehicles (`Entity.positionRider`), mobs or boats,
+    /// and let go when the vehicle dies or is gone.
+    pub(super) fn sync_riders(&mut self) {
+        // Entity.baseTick.
+        for m in &mut self.mobs {
+            if m.extra.boarding_cooldown > 0 {
+                m.extra.boarding_cooldown -= 1;
+            }
+        }
+        let boats: std::collections::HashSet<u32> = self.boats.iter().map(|b| b.id).collect();
+        let index: HashMap<u32, usize> = self
+            .mobs
+            .iter()
+            .enumerate()
+            .map(|(i, m)| (m.id, i))
+            .collect();
+        let mut riding: HashMap<u32, u32> = HashMap::new();
+        for i in 0..self.mobs.len() {
+            let Some(v) = self.mobs[i].extra.mount else {
+                continue;
+            };
+            let valid = self.mobs[i].alive()
+                && !self.mobs[i].removed
+                && (boats.contains(&v)
+                    || index
+                        .get(&v)
+                        .is_some_and(|&j| self.mobs[j].alive() && !self.mobs[j].removed));
+            if valid {
+                riding.insert(v, self.mobs[i].id);
+            } else {
+                let m = &mut self.mobs[i];
+                m.extra.mount = None;
+                m.extra.passenger = false;
+            }
+        }
+        for m in &mut self.mobs {
+            m.extra.rider = riding.get(&m.id).copied();
+        }
+        self.position_riders();
+    }
+    /// `Entity.positionRider` for every mob passenger: in its boat, then on
+    /// its mob. A server's client places them itself too, as the server sends
+    /// no passenger's position.
+    pub(super) fn position_riders(&mut self) {
+        self.seat_boat_mobs();
+        let index: HashMap<u32, usize> = self
+            .mobs
+            .iter()
+            .enumerate()
+            .map(|(i, m)| (m.id, i))
+            .collect();
+        // Riders of riders settle over a few passes.
+        for _ in 0..3 {
+            for i in 0..self.mobs.len() {
+                let Some(v) = self.mobs[i].extra.mount else {
+                    continue;
+                };
+                let Some(&j) = index.get(&v) else { continue };
+                let vehicle = &self.mobs[j];
+                let attach = riders::passenger_attachment(vehicle);
+                let (pos, prev) = (vehicle.position, vehicle.previous);
+                let (yaw, prev_yaw) = (vehicle.yaw, vehicle.previous_yaw);
+                let (body, prev_body) = (vehicle.body_yaw, vehicle.previous_body_yaw);
+                let m = &mut self.mobs[i];
+                let offset = riders::vehicle_attachment(m);
+                m.position = riders::seat(attach, offset, pos, yaw);
+                m.previous = riders::seat(attach, offset, prev, prev_yaw);
+                m.velocity = Vec3::ZERO;
+                m.fall_distance = 0.0;
+                m.on_ground = false;
+                m.body_yaw = body;
+                m.previous_body_yaw = prev_body;
+                m.extra.passenger = true;
+                // A rider never walks off on its own.
+                m.ai.nav.stop();
+            }
+        }
+    }
+
     /// `finalizeSpawn` jockeys of a naturally spawned mob: baby zombies on
     /// chickens, skeletons on spiders, piglins and baby striders on striders,
     /// zombies on zombie horses.
@@ -133,6 +225,25 @@ impl Game<'_> {
         }
         if let Some(n) = self.spawn_mob("minecraft:zombie_nautilus", at, false) {
             self.mount_mob(id, n);
+        }
+    }
+    fn free_chicken_near(&self, at: [f64; 3]) -> Option<u32> {
+        self.mobs
+            .iter()
+            .find(|c| {
+                c.species() == Species::Chicken
+                    && c.alive()
+                    && c.extra.rider.is_none()
+                    && c.extra.mount.is_none()
+                    && (c.position.x - at[0]).abs() <= 5.3
+                    && (c.position.y - at[1]).abs() <= 3.0 + 1.0
+                    && (c.position.z - at[2]).abs() <= 5.3
+            })
+            .map(|c| c.id)
+    }
+    fn make_chicken_jockey(&mut self, chicken: u32) {
+        if let Some(c) = self.mobs.iter_mut().find(|m| m.id == chicken) {
+            c.extra.jockey = true;
         }
     }
     /// `Strider.finalizeSpawn`: one strider in thirty carries a zombified
@@ -246,117 +357,5 @@ impl Game<'_> {
             }
         }
         Some(id)
-    }
-}
-impl crate::game::Sim<'_> {
-    /// `Entity.startRiding` for two mobs.
-    pub(super) fn mount_mob(&mut self, rider: u32, vehicle: u32) {
-        if rider == vehicle {
-            return;
-        }
-        if let Some(m) = self.mobs.iter_mut().find(|m| m.id == rider) {
-            m.extra.mount = Some(vehicle);
-            m.extra.passenger = true;
-        }
-        if let Some(m) = self.mobs.iter_mut().find(|m| m.id == vehicle) {
-            m.extra.rider = Some(rider);
-        }
-    }
-    /// Riders sit on their vehicles (`Entity.positionRider`), mobs or boats,
-    /// and let go when the vehicle dies or is gone.
-    pub(super) fn sync_riders(&mut self) {
-        // Entity.baseTick.
-        for m in &mut self.mobs {
-            if m.extra.boarding_cooldown > 0 {
-                m.extra.boarding_cooldown -= 1;
-            }
-        }
-        let boats: std::collections::HashSet<u32> = self.boats.iter().map(|b| b.id).collect();
-        let index: HashMap<u32, usize> = self
-            .mobs
-            .iter()
-            .enumerate()
-            .map(|(i, m)| (m.id, i))
-            .collect();
-        let mut riding: HashMap<u32, u32> = HashMap::new();
-        for i in 0..self.mobs.len() {
-            let Some(v) = self.mobs[i].extra.mount else {
-                continue;
-            };
-            let valid = self.mobs[i].alive()
-                && !self.mobs[i].removed
-                && (boats.contains(&v)
-                    || index
-                        .get(&v)
-                        .is_some_and(|&j| self.mobs[j].alive() && !self.mobs[j].removed));
-            if valid {
-                riding.insert(v, self.mobs[i].id);
-            } else {
-                let m = &mut self.mobs[i];
-                m.extra.mount = None;
-                m.extra.passenger = false;
-            }
-        }
-        for m in &mut self.mobs {
-            m.extra.rider = riding.get(&m.id).copied();
-        }
-        self.position_riders();
-    }
-    /// `Entity.positionRider` for every mob passenger: in its boat, then on
-    /// its mob. A server's client places them itself too, as the server sends
-    /// no passenger's position.
-    pub(super) fn position_riders(&mut self) {
-        self.seat_boat_mobs();
-        let index: HashMap<u32, usize> = self
-            .mobs
-            .iter()
-            .enumerate()
-            .map(|(i, m)| (m.id, i))
-            .collect();
-        // Riders of riders settle over a few passes.
-        for _ in 0..3 {
-            for i in 0..self.mobs.len() {
-                let Some(v) = self.mobs[i].extra.mount else {
-                    continue;
-                };
-                let Some(&j) = index.get(&v) else { continue };
-                let vehicle = &self.mobs[j];
-                let attach = riders::passenger_attachment(vehicle);
-                let (pos, prev) = (vehicle.position, vehicle.previous);
-                let (yaw, prev_yaw) = (vehicle.yaw, vehicle.previous_yaw);
-                let (body, prev_body) = (vehicle.body_yaw, vehicle.previous_body_yaw);
-                let m = &mut self.mobs[i];
-                let offset = riders::vehicle_attachment(m);
-                m.position = riders::seat(attach, offset, pos, yaw);
-                m.previous = riders::seat(attach, offset, prev, prev_yaw);
-                m.velocity = Vec3::ZERO;
-                m.fall_distance = 0.0;
-                m.on_ground = false;
-                m.body_yaw = body;
-                m.previous_body_yaw = prev_body;
-                m.extra.passenger = true;
-                // A rider never walks off on its own.
-                m.ai.nav.stop();
-            }
-        }
-    }
-    fn free_chicken_near(&self, at: [f64; 3]) -> Option<u32> {
-        self.mobs
-            .iter()
-            .find(|c| {
-                c.species() == Species::Chicken
-                    && c.alive()
-                    && c.extra.rider.is_none()
-                    && c.extra.mount.is_none()
-                    && (c.position.x - at[0]).abs() <= 5.3
-                    && (c.position.y - at[1]).abs() <= 3.0 + 1.0
-                    && (c.position.z - at[2]).abs() <= 5.3
-            })
-            .map(|c| c.id)
-    }
-    fn make_chicken_jockey(&mut self, chicken: u32) {
-        if let Some(c) = self.mobs.iter_mut().find(|m| m.id == chicken) {
-            c.extra.jockey = true;
-        }
     }
 }

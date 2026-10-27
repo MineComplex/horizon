@@ -193,6 +193,10 @@ pub(super) fn analog_signal(world: &World, pos: Pos) -> Option<i32> {
 }
 
 impl Game<'_> {
+    /// `Player.canUseGameMasterBlocks`: creative with game master commands.
+    pub(super) fn can_use_game_master_blocks(&self) -> bool {
+        self.creative && self.world_data.registries.permission >= 2
+    }
     /// `CommandBlock.useWithoutItem` on a server's client, which opens the
     /// screen itself (`Player.openCommandBlock`) while the server only
     /// answers the click: the block at `pos`, when it is a command block the
@@ -204,6 +208,16 @@ impl Game<'_> {
         if is_command_block && self.can_use_game_master_blocks() {
             self.open_command_block(pos);
         }
+    }
+    fn command_block(&self, pos: Pos) -> Option<&CommandBlock> {
+        match self.world.block_entities.get(&pos)? {
+            BlockEntity::CommandBlock(c) => Some(c),
+            _ => None,
+        }
+    }
+    fn block_state_at(&self, pos: Pos) -> Option<&'static BlockState> {
+        let registry = self.pack.assets.registry;
+        state_of(registry, self.world.block(pos.0, pos.1, pos.2))
     }
     fn schedule_command_block(&mut self, pos: Pos) {
         let at = BlockPos::new(pos.0, pos.1, pos.2);
@@ -390,6 +404,17 @@ impl Game<'_> {
         }
         true
     }
+    /// `CloseableCommandBlockSource.sendSystemMessage`: the block's last
+    /// output, stamped with the time. Nothing when it doesn't track output
+    /// (`CommandSource.NULL`).
+    pub(super) fn command_block_output(&mut self, pos: Pos, message: Text) {
+        if let Some(c) = command_block_mut(&mut self.world, pos)
+            && c.track_output
+        {
+            let time = chrono::Local::now().format("[%H:%M:%S] ").to_string();
+            c.last_output = Some(Text::literal(time).append(message));
+        }
+    }
     /// `CommandSourceStack.sendSuccess` from a command block: its output when
     /// `send_command_feedback`, and `broadcastToAdmins` when
     /// `command_block_output`.
@@ -559,6 +584,18 @@ impl Game<'_> {
             self.command_block_type(event.text.as_deref().unwrap_or(""));
         }
     }
+    /// Characters typed into the command box (`StringUtil.isAllowedChatCharacter`).
+    pub(super) fn command_block_type(&mut self, typed: &str) {
+        let allowed: String = typed
+            .chars()
+            .filter(|&c| c != '\u{a7}' && c >= ' ' && c != '\u{7f}')
+            .collect();
+        if let Some(s) = self.command_block_screen.as_mut()
+            && !allowed.is_empty()
+        {
+            s.command.insert_text(&allowed);
+        }
+    }
     /// The edit screen's Done: a server's client sends the packet, the
     /// window's own world applies it (`handleSetCommandBlock`).
     fn set_command_block(&mut self, s: &CommandBlockScreen) {
@@ -675,45 +712,6 @@ impl Game<'_> {
                 "advMode.setCommand.disabled"
             };
             self.system_message(Text::translate(key, &[Text::literal(command)]));
-        }
-    }
-}
-impl crate::game::Sim<'_> {
-    /// `Player.canUseGameMasterBlocks`: creative with game master commands.
-    pub(super) fn can_use_game_master_blocks(&self) -> bool {
-        self.creative && self.world_data.registries.permission >= 2
-    }
-    fn command_block(&self, pos: Pos) -> Option<&CommandBlock> {
-        match self.world.block_entities.get(&pos)? {
-            BlockEntity::CommandBlock(c) => Some(c),
-            _ => None,
-        }
-    }
-    fn block_state_at(&self, pos: Pos) -> Option<&'static BlockState> {
-        let registry = self.pack.assets.registry;
-        state_of(registry, self.world.block(pos.0, pos.1, pos.2))
-    }
-    /// `CloseableCommandBlockSource.sendSystemMessage`: the block's last
-    /// output, stamped with the time. Nothing when it doesn't track output
-    /// (`CommandSource.NULL`).
-    pub(super) fn command_block_output(&mut self, pos: Pos, message: Text) {
-        if let Some(c) = command_block_mut(&mut self.world, pos)
-            && c.track_output
-        {
-            let time = chrono::Local::now().format("[%H:%M:%S] ").to_string();
-            c.last_output = Some(Text::literal(time).append(message));
-        }
-    }
-    /// Characters typed into the command box (`StringUtil.isAllowedChatCharacter`).
-    pub(super) fn command_block_type(&mut self, typed: &str) {
-        let allowed: String = typed
-            .chars()
-            .filter(|&c| c != '\u{a7}' && c >= ' ' && c != '\u{7f}')
-            .collect();
-        if let Some(s) = self.command_block_screen.as_mut()
-            && !allowed.is_empty()
-        {
-            s.command.insert_text(&allowed);
         }
     }
 }

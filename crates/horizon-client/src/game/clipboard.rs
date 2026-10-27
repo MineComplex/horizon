@@ -95,8 +95,6 @@ impl Game<'_> {
             self.creative_screen.scroll = 0.0;
         }
     }
-}
-impl crate::game::Sim<'_> {
     /// A backspace in the creative search box: with Ctrl, the whole word
     /// before the caret (`EditBox.deleteWords(-1)`), otherwise one character.
     /// A selection is what it deletes, as in `EditBox.keyPressed`.

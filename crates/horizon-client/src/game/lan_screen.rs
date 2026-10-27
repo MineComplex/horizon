@@ -446,6 +446,34 @@ impl Restrictions {
 }
 
 impl Game<'_> {
+    pub(super) fn remote_world_options_permission(&mut self, permission: bool) {
+        if let Some(o) = self.world_options.as_mut() {
+            let lost = o.gamemaster && !permission;
+            o.gamemaster = permission;
+            if lost && o.remote {
+                self.close_world_options();
+            }
+        }
+    }
+    pub(super) fn remote_world_options_difficulty(&mut self, difficulty: u8, locked: bool) {
+        if let Some(o) = self.world_options.as_mut() {
+            o.server_difficulty(difficulty, locked);
+        }
+    }
+    pub(super) fn remote_world_options_rules(&mut self, entries: Vec<play::GameRuleEntry>) {
+        let Some(o) = self
+            .world_options
+            .as_mut()
+            .filter(|o| o.view == View::GameRules)
+        else {
+            return;
+        };
+        let mut rules = horizon_client::gamerules::GameRules::default();
+        for entry in entries {
+            rules.set_string(&entry.name, &entry.value);
+        }
+        o.rules = Some(RulesScreen::new(&rules));
+    }
     pub(super) fn open_world_options(&mut self) {
         let hint = horizon_client::lan::available_port();
         let mut port = EditBox::new(0.0, 0.0, 150.0, 20.0);
@@ -494,6 +522,11 @@ impl Game<'_> {
         options.initial = options.snapshot();
         self.world_options = Some(options);
         self.screen = Screen::WorldOptions;
+    }
+
+    pub(super) fn close_world_options(&mut self) {
+        self.world_options = None;
+        self.screen = Screen::Paused;
     }
 
     /// Escape: the question and RestrictionsScreen return to the options
@@ -780,6 +813,15 @@ impl Game<'_> {
         }
     }
 
+    /// The button came up: a held scrollbar lets go (onRelease).
+    pub(super) fn world_options_release(&mut self) {
+        if let Some(o) = self.world_options.as_mut()
+            && let Some(rules) = o.rules.as_mut()
+        {
+            rules.release();
+        }
+    }
+
     pub(super) fn world_options_click(&mut self) {
         let Some(mut o) = self.world_options.take() else {
             return;
@@ -951,6 +993,44 @@ impl Game<'_> {
             self.world_options_text(event.text.as_deref());
         }
     }
+    /// Digits typed into the port field (the keyboard, or a controller's
+    /// on-screen keyboard), and its backspace.
+    pub(super) fn world_options_text(&mut self, text: Option<&str>) {
+        if let Some(rules) = self
+            .world_options
+            .as_mut()
+            .and_then(|o| o.rules.as_mut())
+            .filter(|r| r.typing())
+        {
+            match text {
+                Some(text) => {
+                    let typed: String = text.chars().filter(|c| !c.is_control()).collect();
+                    if !typed.is_empty() {
+                        rules.edit(|b| b.insert_text(&typed));
+                    }
+                }
+                None => rules.edit(|b| {
+                    b.key(winit::keyboard::KeyCode::Backspace, false, false);
+                }),
+            }
+            return;
+        }
+        let Some(o) = self.world_options.as_mut().filter(|o| o.port.focused) else {
+            return;
+        };
+        match text {
+            Some(text) => {
+                let digits: String = text.chars().filter(char::is_ascii_digit).collect();
+                if !digits.is_empty() {
+                    o.port.insert_text(&digits);
+                }
+            }
+            None => {
+                o.port
+                    .key(winit::keyboard::KeyCode::Backspace, false, false);
+            }
+        }
+    }
 
     /// The world options of a world run in the frame.
     fn local_server_options(&self) -> ServerOptions {
@@ -1044,86 +1124,6 @@ impl Game<'_> {
             }
         } else if settings_changed {
             self.lan_apply_settings(wanted.guest_commands, wanted.force);
-        }
-    }
-}
-impl crate::game::Sim<'_> {
-    pub(super) fn remote_world_options_permission(&mut self, permission: bool) {
-        if let Some(o) = self.world_options.as_mut() {
-            let lost = o.gamemaster && !permission;
-            o.gamemaster = permission;
-            if lost && o.remote {
-                self.close_world_options();
-            }
-        }
-    }
-    pub(super) fn remote_world_options_difficulty(&mut self, difficulty: u8, locked: bool) {
-        if let Some(o) = self.world_options.as_mut() {
-            o.server_difficulty(difficulty, locked);
-        }
-    }
-    pub(super) fn remote_world_options_rules(&mut self, entries: Vec<play::GameRuleEntry>) {
-        let Some(o) = self
-            .world_options
-            .as_mut()
-            .filter(|o| o.view == View::GameRules)
-        else {
-            return;
-        };
-        let mut rules = horizon_client::gamerules::GameRules::default();
-        for entry in entries {
-            rules.set_string(&entry.name, &entry.value);
-        }
-        o.rules = Some(RulesScreen::new(&rules));
-    }
-    pub(super) fn close_world_options(&mut self) {
-        self.world_options = None;
-        self.screen = Screen::Paused;
-    }
-    /// The button came up: a held scrollbar lets go (onRelease).
-    pub(super) fn world_options_release(&mut self) {
-        if let Some(o) = self.world_options.as_mut()
-            && let Some(rules) = o.rules.as_mut()
-        {
-            rules.release();
-        }
-    }
-    /// Digits typed into the port field (the keyboard, or a controller's
-    /// on-screen keyboard), and its backspace.
-    pub(super) fn world_options_text(&mut self, text: Option<&str>) {
-        if let Some(rules) = self
-            .world_options
-            .as_mut()
-            .and_then(|o| o.rules.as_mut())
-            .filter(|r| r.typing())
-        {
-            match text {
-                Some(text) => {
-                    let typed: String = text.chars().filter(|c| !c.is_control()).collect();
-                    if !typed.is_empty() {
-                        rules.edit(|b| b.insert_text(&typed));
-                    }
-                }
-                None => rules.edit(|b| {
-                    b.key(winit::keyboard::KeyCode::Backspace, false, false);
-                }),
-            }
-            return;
-        }
-        let Some(o) = self.world_options.as_mut().filter(|o| o.port.focused) else {
-            return;
-        };
-        match text {
-            Some(text) => {
-                let digits: String = text.chars().filter(char::is_ascii_digit).collect();
-                if !digits.is_empty() {
-                    o.port.insert_text(&digits);
-                }
-            }
-            None => {
-                o.port
-                    .key(winit::keyboard::KeyCode::Backspace, false, false);
-            }
         }
     }
 }

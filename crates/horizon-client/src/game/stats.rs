@@ -168,6 +168,155 @@ pub(super) fn player_json(world: &Path, dir: &str, uuid: [i32; 4]) -> PathBuf {
     world.join("players").join(dir).join(format!("{text}.json"))
 }
 impl Game<'_> {
+    fn stats_path(&self) -> Option<PathBuf> {
+        Some(player_json(
+            &self.world_root,
+            "stats",
+            self.level.player_uuid?,
+        ))
+    }
+    /// `ServerStatsCounter.parseLocal`.
+    pub(super) fn load_stats(&mut self) {
+        if self.stats.loaded || self.remote.is_some() || self.no_player_here() {
+            return;
+        }
+        self.stats.loaded = true;
+        if let Some(path) = self.stats_path() {
+            self.stats.values = Stats::read(&path).values;
+        }
+    }
+    /// `ServerStatsCounter.save`.
+    pub(super) fn save_stats(&self) {
+        if !self.stats.loaded || self.remote.is_some() || self.no_player_here() {
+            return;
+        }
+        if let Some(path) = self.stats_path() {
+            self.stats.write(&path);
+        }
+    }
+    /// The per-tick counters (`Player.tick`/`ServerPlayer.tick` awardStat).
+    pub(super) fn tick_stats(&mut self) {
+        self.load_stats();
+        self.count_tick_stats(self.sleeping.is_some());
+        self.tick_movement_stats();
+    }
+    /// `Player.tick`'s counters for the player in `self.player`.
+    pub(super) fn count_tick_stats(&mut self, sleeping: bool) {
+        let Some(p) = self.player.as_ref() else {
+            return;
+        };
+        let alive = !p.health.dead_or_dying();
+        let crouching = p.pose == horizon_client::pose::Pose::Crouching;
+        let s = &mut self.stats;
+        s.custom("play_time", 1);
+        s.custom("total_world_time", 1);
+        if alive {
+            s.custom("time_since_death", 1);
+            if !sleeping {
+                s.custom("time_since_rest", 1);
+            }
+        }
+        if crouching {
+            s.custom("sneak_time", 1);
+        }
+    }
+    fn tick_movement_stats(&mut self) {
+        let Some(p) = self.player.as_ref() else {
+            return;
+        };
+        let d = p.position.subtract(self.previous_position);
+        self.movement_stats(d);
+    }
+    /// `Player.checkMovementStatistics` / `checkRidingStatistics` for one move.
+    pub(super) fn movement_stats(&mut self, d: Vec3) {
+        let Some(p) = self.player.as_ref() else {
+            return;
+        };
+        let horizontal = ((d.x * d.x + d.z * d.z).sqrt() * 100.0).round() as i32;
+        let total = ((d.x * d.x + d.y * d.y + d.z * d.z).sqrt() * 100.0).round() as i32;
+        // Teleports are not travel.
+        if total <= 0 || total > 1000 {
+            return;
+        }
+        let crouching = p.pose == horizon_client::pose::Pose::Crouching;
+        let feet = [
+            p.position.x.floor() as i32,
+            p.position.y.floor() as i32,
+            p.position.z.floor() as i32,
+        ];
+        let eye_in_water = self.sim.res.facts().get(self.sim.world.block(
+            feet[0],
+            (p.position.y + f64::from(p.dimensions.eye_height)).floor() as i32,
+            feet[2],
+        ));
+        let in_water = self
+            .res
+            .facts()
+            .get(self.world.block(feet[0], feet[1], feet[2]))
+            .fluid
+            == horizon_client::blocks::Fluid::Water;
+        let on_ground = p.ground.on_ground;
+        let (sprinting, gliding, swimming) = (
+            p.sprinting,
+            p.fall_flying,
+            p.pose == horizon_client::pose::Pose::Swimming,
+        );
+        let climbing = p.last_climbable.is_some() && d.y > 0.0;
+        let riding = self.riding.map(|id| {
+            self.mobs
+                .iter()
+                .find(|m| m.id == id)
+                .map(|m| m.species())
+                .ok_or(())
+        });
+        let s = &mut self.sim.stats;
+        match riding {
+            Some(Ok(sp)) => {
+                use horizon_client::mobs::Species;
+                // `checkRidingStatistics`: only these mounts count, the horse
+                // family by the full 3D distance; any other mount nothing.
+                match sp {
+                    Species::Pig => s.custom("pig_one_cm", total),
+                    Species::Strider => s.custom("strider_one_cm", total),
+                    Species::HappyGhast => s.custom("happy_ghast_one_cm", total),
+                    Species::Nautilus | Species::ZombieNautilus => {
+                        s.custom("nautilus_one_cm", total)
+                    }
+                    sp if horizon_client::mobs::equine::is_equine(sp) => {
+                        s.custom("horse_one_cm", total)
+                    }
+                    _ => {}
+                }
+            }
+            Some(Err(())) => {
+                if self.sim.boats.iter().any(|b| Some(b.id) == self.sim.riding) {
+                    s.custom("boat_one_cm", total)
+                } else if self.sim.carts.iter().any(|c| Some(c.id) == self.sim.riding) {
+                    s.custom("minecart_one_cm", total)
+                }
+            }
+            None if swimming => s.custom("swim_one_cm", total),
+            None if eye_in_water.fluid == horizon_client::blocks::Fluid::Water => {
+                s.custom("walk_under_water_one_cm", total)
+            }
+            None if in_water => s.custom("walk_on_water_one_cm", horizontal),
+            None if climbing => s.custom("climb_one_cm", (d.y * 100.0).round() as i32),
+            None if on_ground => {
+                if sprinting {
+                    s.custom("sprint_one_cm", horizontal)
+                } else if crouching {
+                    s.custom("crouch_one_cm", horizontal)
+                } else {
+                    s.custom("walk_one_cm", horizontal)
+                }
+            }
+            None if gliding => s.custom("aviate_one_cm", total),
+            // Airborne and not gliding: more than 25 cm sideways per move
+            // (creative flight, or a long jump), not only flying.
+            None if horizontal > 25 => s.custom("fly_one_cm", horizontal),
+            None => {}
+        }
+    }
     /// `PhantomSpawner.tick`: tired players under an open night sky draw
     /// phantoms. A custom spawner ticks only while `spawn_mobs` is on
     /// (`ServerChunkCache.tickChunks`), and this one only spawns enemies
@@ -262,157 +411,6 @@ impl Game<'_> {
                 ],
                 false,
             );
-        }
-    }
-}
-impl crate::game::Sim<'_> {
-    fn stats_path(&self) -> Option<PathBuf> {
-        Some(player_json(
-            &self.world_root,
-            "stats",
-            self.level.player_uuid?,
-        ))
-    }
-    /// `ServerStatsCounter.parseLocal`.
-    pub(super) fn load_stats(&mut self) {
-        if self.stats.loaded || self.remote.is_some() || self.no_player_here() {
-            return;
-        }
-        self.stats.loaded = true;
-        if let Some(path) = self.stats_path() {
-            self.stats.values = Stats::read(&path).values;
-        }
-    }
-    /// `ServerStatsCounter.save`.
-    pub(super) fn save_stats(&self) {
-        if !self.stats.loaded || self.remote.is_some() || self.no_player_here() {
-            return;
-        }
-        if let Some(path) = self.stats_path() {
-            self.stats.write(&path);
-        }
-    }
-    /// The per-tick counters (`Player.tick`/`ServerPlayer.tick` awardStat).
-    pub(super) fn tick_stats(&mut self) {
-        self.load_stats();
-        self.count_tick_stats(self.sleeping.is_some());
-        self.tick_movement_stats();
-    }
-    /// `Player.tick`'s counters for the player in `self.player`.
-    pub(super) fn count_tick_stats(&mut self, sleeping: bool) {
-        let Some(p) = self.player.as_ref() else {
-            return;
-        };
-        let alive = !p.health.dead_or_dying();
-        let crouching = p.pose == horizon_client::pose::Pose::Crouching;
-        let s = &mut self.stats;
-        s.custom("play_time", 1);
-        s.custom("total_world_time", 1);
-        if alive {
-            s.custom("time_since_death", 1);
-            if !sleeping {
-                s.custom("time_since_rest", 1);
-            }
-        }
-        if crouching {
-            s.custom("sneak_time", 1);
-        }
-    }
-    fn tick_movement_stats(&mut self) {
-        let Some(p) = self.player.as_ref() else {
-            return;
-        };
-        let d = p.position.subtract(self.previous_position);
-        self.movement_stats(d);
-    }
-    /// `Player.checkMovementStatistics` / `checkRidingStatistics` for one move.
-    pub(super) fn movement_stats(&mut self, d: Vec3) {
-        let Some(p) = self.player.as_ref() else {
-            return;
-        };
-        let horizontal = ((d.x * d.x + d.z * d.z).sqrt() * 100.0).round() as i32;
-        let total = ((d.x * d.x + d.y * d.y + d.z * d.z).sqrt() * 100.0).round() as i32;
-        // Teleports are not travel.
-        if total <= 0 || total > 1000 {
-            return;
-        }
-        let crouching = p.pose == horizon_client::pose::Pose::Crouching;
-        let feet = [
-            p.position.x.floor() as i32,
-            p.position.y.floor() as i32,
-            p.position.z.floor() as i32,
-        ];
-        let eye_in_water = self.res.facts().get(self.world.block(
-            feet[0],
-            (p.position.y + f64::from(p.dimensions.eye_height)).floor() as i32,
-            feet[2],
-        ));
-        let in_water = self
-            .res
-            .facts()
-            .get(self.world.block(feet[0], feet[1], feet[2]))
-            .fluid
-            == horizon_client::blocks::Fluid::Water;
-        let on_ground = p.ground.on_ground;
-        let (sprinting, gliding, swimming) = (
-            p.sprinting,
-            p.fall_flying,
-            p.pose == horizon_client::pose::Pose::Swimming,
-        );
-        let climbing = p.last_climbable.is_some() && d.y > 0.0;
-        let riding = self.riding.map(|id| {
-            self.mobs
-                .iter()
-                .find(|m| m.id == id)
-                .map(|m| m.species())
-                .ok_or(())
-        });
-        let s = &mut self.stats;
-        match riding {
-            Some(Ok(sp)) => {
-                use horizon_client::mobs::Species;
-                // `checkRidingStatistics`: only these mounts count, the horse
-                // family by the full 3D distance; any other mount nothing.
-                match sp {
-                    Species::Pig => s.custom("pig_one_cm", total),
-                    Species::Strider => s.custom("strider_one_cm", total),
-                    Species::HappyGhast => s.custom("happy_ghast_one_cm", total),
-                    Species::Nautilus | Species::ZombieNautilus => {
-                        s.custom("nautilus_one_cm", total)
-                    }
-                    sp if horizon_client::mobs::equine::is_equine(sp) => {
-                        s.custom("horse_one_cm", total)
-                    }
-                    _ => {}
-                }
-            }
-            Some(Err(())) => {
-                if self.boats.iter().any(|b| Some(b.id) == self.riding) {
-                    s.custom("boat_one_cm", total)
-                } else if self.carts.iter().any(|c| Some(c.id) == self.riding) {
-                    s.custom("minecart_one_cm", total)
-                }
-            }
-            None if swimming => s.custom("swim_one_cm", total),
-            None if eye_in_water.fluid == horizon_client::blocks::Fluid::Water => {
-                s.custom("walk_under_water_one_cm", total)
-            }
-            None if in_water => s.custom("walk_on_water_one_cm", horizontal),
-            None if climbing => s.custom("climb_one_cm", (d.y * 100.0).round() as i32),
-            None if on_ground => {
-                if sprinting {
-                    s.custom("sprint_one_cm", horizontal)
-                } else if crouching {
-                    s.custom("crouch_one_cm", horizontal)
-                } else {
-                    s.custom("walk_one_cm", horizontal)
-                }
-            }
-            None if gliding => s.custom("aviate_one_cm", total),
-            // Airborne and not gliding: more than 25 cm sideways per move
-            // (creative flight, or a long jump), not only flying.
-            None if horizontal > 25 => s.custom("fly_one_cm", horizontal),
-            None => {}
         }
     }
     fn can_see_sky(&self, pos: [i32; 3]) -> bool {

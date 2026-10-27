@@ -9,17 +9,6 @@ pub(super) fn is_shulker_box(name: &str) -> bool {
     name.ends_with("shulker_box")
 }
 impl Game<'_> {
-    /// Opening an ender chest shows the player's ender inventory in its place.
-    pub(super) fn open_ender_chest(&mut self, key: (i32, i32, i32)) {
-        self.sim
-            .world
-            .block_entities
-            .insert(key, BlockEntity::Chest(self.sim.ender_items.clone()));
-        self.container = Some(key);
-        self.ender_open = Some(key);
-    }
-}
-impl crate::game::Sim<'_> {
     /// The custom name of the open container, or its default title
     /// (a double chest is named by whichever half has a name).
     pub(super) fn container_title(&self, default: String) -> String {
@@ -36,6 +25,15 @@ impl crate::game::Sim<'_> {
             && self.container.is_some_and(|k| {
                 is_shulker_box(&self.res.facts().get(self.world.block(k.0, k.1, k.2)).name)
             })
+    }
+    /// Opening an ender chest shows the player's ender inventory in its place.
+    pub(super) fn open_ender_chest(&mut self, key: (i32, i32, i32)) {
+        self.sim
+            .world
+            .block_entities
+            .insert(key, BlockEntity::Chest(self.sim.ender_items.clone()));
+        self.container = Some(key);
+        self.ender_open = Some(key);
     }
     /// The block above `key` is a redstone conductor.
     fn conductor_above(&self, key: (i32, i32, i32)) -> bool {
@@ -126,6 +124,40 @@ fn facing_step(facing: &str) -> (i32, i32) {
 }
 
 impl Game<'_> {
+    /// The other half of the open double chest and whether the open one is
+    /// the right half (`ChestBlock.getConnectedDirection`).
+    pub(super) fn chest_partner(&self, key: (i32, i32, i32)) -> Option<((i32, i32, i32), bool)> {
+        let registry = self.pack.assets.registry;
+        let state = registry.state(self.world.block(key.0, key.1, key.2))?;
+        if !matches!(
+            state.name.as_str(),
+            "minecraft:chest" | "minecraft:trapped_chest"
+        ) {
+            return None;
+        }
+        let kind = state.properties.get("type")?.as_str();
+        if kind == "single" {
+            return None;
+        }
+        let facing = state.properties.get("facing")?.as_str();
+        let dir = if kind == "left" {
+            clockwise(facing)
+        } else {
+            counter_clockwise(facing)
+        };
+        let (dx, dz) = facing_step(dir);
+        let other = (key.0 + dx, key.1, key.2 + dz);
+        let other_state = registry.state(self.world.block(other.0, other.1, other.2))?;
+        let other_kind = other_state.properties.get("type")?.as_str();
+        let paired = other_state.name == state.name
+            && other_kind != "single"
+            && other_kind != kind
+            && matches!(
+                self.world.block_entities.get(&other),
+                Some(BlockEntity::Chest(items)) if items.len() == 27
+            );
+        paired.then_some((other, kind == "right"))
+    }
     /// The open or close sound of a container block (`ChestBlockEntity.playSound`,
     /// `BarrelBlockEntity.playSound`, `ShulkerBoxBlockEntity.startOpen`): volume
     /// 0.5 and pitch 0.9 to 1.0. A double chest sounds once from the middle of
@@ -199,6 +231,26 @@ impl Game<'_> {
         };
         self.container_sound(sound, key, &name);
     }
+    /// The other half of a double chest at `key`, for neighbour updates.
+    pub(super) fn chest_other_half(&self, key: (i32, i32, i32)) -> Option<(i32, i32, i32)> {
+        self.chest_partner(key).map(|p| p.0)
+    }
+    /// The block entities of the open container in menu order, with their
+    /// sizes: a double chest is its right half then its left half.
+    pub(super) fn container_parts(&self) -> Vec<((i32, i32, i32), usize)> {
+        let Some(key) = self.container else {
+            return Vec::new();
+        };
+        let Some(entity) = self.world.block_entities.get(&key) else {
+            return Vec::new();
+        };
+        let own = (key, entity.slots().len());
+        match self.chest_partner(key) {
+            Some((other, true)) => vec![own, (other, 27)],
+            Some((other, false)) => vec![(other, 27), own],
+            None => vec![own],
+        }
+    }
     /// `Container.stillValidBlockEntity`: the open block container closes once
     /// the player's eyes are out of reach of any of its blocks (a 4-block buffer).
     pub(super) fn tick_container_reach(&mut self) {
@@ -245,6 +297,10 @@ impl Game<'_> {
             self.capture(true);
         }
     }
+    /// The number of slots of the open container.
+    pub(super) fn container_size(&self) -> usize {
+        self.container_parts().iter().map(|p| p.1).sum()
+    }
     /// Container slot `n` (menu slot `300 + n`).
     pub(super) fn container_slot_mut(&mut self, mut n: usize) -> &mut Option<ItemStack> {
         let mut target = None;
@@ -265,6 +321,57 @@ impl Game<'_> {
             Some(slot) => slot,
             None => &mut self.sim.scratch_slot,
         }
+    }
+    pub(super) fn container_block_is_shulker(&self) -> bool {
+        self.container_block()
+            .as_deref()
+            .is_some_and(is_shulker_box)
+    }
+    fn container_block(&self) -> Option<std::sync::Arc<str>> {
+        let k = self.container?;
+        Some(
+            self.res
+                .facts()
+                .get(self.world.block(k.0, k.1, k.2))
+                .name
+                .clone(),
+        )
+    }
+    /// Rows of the open generic 9-wide container (`ChestMenu`), or None for
+    /// the other menus (hoppers, dispensers, shulker boxes, furnaces...).
+    pub(super) fn chest_rows(&self) -> Option<usize> {
+        if let Some((rows, _)) = self.remote_chest_menu() {
+            return Some(rows);
+        }
+        if !matches!(self.container_kind()?, BlockEntity::Chest(_)) {
+            return None;
+        }
+        let generic = match self.container_block().as_deref() {
+            Some(
+                "minecraft:chest"
+                | "minecraft:trapped_chest"
+                | "minecraft:barrel"
+                | "minecraft:ender_chest",
+            ) => true,
+            _ => self.open_cart_kind() == Some(super::minecarts::CartKind::Chest),
+        };
+        generic.then(|| self.container_size() / 9)
+    }
+    /// The title of the open chest-like menu.
+    fn chest_title(&self, rows: usize) -> Text {
+        if let Some((_, title)) = self.remote_chest_menu() {
+            return title;
+        }
+        let (key, fallback) = match self.container_block().as_deref() {
+            Some("minecraft:barrel") => ("container.barrel", "Barrel"),
+            Some("minecraft:ender_chest") => ("container.enderchest", "Ender Chest"),
+            _ if self.open_cart_kind().is_some() => {
+                ("entity.minecraft.chest_minecart", "Minecart with Chest")
+            }
+            _ if rows > 3 => ("container.chestDouble", "Large Chest"),
+            _ => ("container.chest", "Chest"),
+        };
+        Text::literal(self.container_title(self.translate(key, fallback))).resolve_legacy()
     }
     /// `ContainerScreen` / `ShulkerBoxScreen`: the background with its
     /// container rows, the title and the inventory label.
@@ -329,117 +436,6 @@ impl Game<'_> {
             grey,
             false,
         );
-    }
-}
-impl crate::game::Sim<'_> {
-    /// The other half of the open double chest and whether the open one is
-    /// the right half (`ChestBlock.getConnectedDirection`).
-    pub(super) fn chest_partner(&self, key: (i32, i32, i32)) -> Option<((i32, i32, i32), bool)> {
-        let registry = self.pack.assets.registry;
-        let state = registry.state(self.world.block(key.0, key.1, key.2))?;
-        if !matches!(
-            state.name.as_str(),
-            "minecraft:chest" | "minecraft:trapped_chest"
-        ) {
-            return None;
-        }
-        let kind = state.properties.get("type")?.as_str();
-        if kind == "single" {
-            return None;
-        }
-        let facing = state.properties.get("facing")?.as_str();
-        let dir = if kind == "left" {
-            clockwise(facing)
-        } else {
-            counter_clockwise(facing)
-        };
-        let (dx, dz) = facing_step(dir);
-        let other = (key.0 + dx, key.1, key.2 + dz);
-        let other_state = registry.state(self.world.block(other.0, other.1, other.2))?;
-        let other_kind = other_state.properties.get("type")?.as_str();
-        let paired = other_state.name == state.name
-            && other_kind != "single"
-            && other_kind != kind
-            && matches!(
-                self.world.block_entities.get(&other),
-                Some(BlockEntity::Chest(items)) if items.len() == 27
-            );
-        paired.then_some((other, kind == "right"))
-    }
-    /// The other half of a double chest at `key`, for neighbour updates.
-    pub(super) fn chest_other_half(&self, key: (i32, i32, i32)) -> Option<(i32, i32, i32)> {
-        self.chest_partner(key).map(|p| p.0)
-    }
-    /// The block entities of the open container in menu order, with their
-    /// sizes: a double chest is its right half then its left half.
-    pub(super) fn container_parts(&self) -> Vec<((i32, i32, i32), usize)> {
-        let Some(key) = self.container else {
-            return Vec::new();
-        };
-        let Some(entity) = self.world.block_entities.get(&key) else {
-            return Vec::new();
-        };
-        let own = (key, entity.slots().len());
-        match self.chest_partner(key) {
-            Some((other, true)) => vec![own, (other, 27)],
-            Some((other, false)) => vec![(other, 27), own],
-            None => vec![own],
-        }
-    }
-    /// The number of slots of the open container.
-    pub(super) fn container_size(&self) -> usize {
-        self.container_parts().iter().map(|p| p.1).sum()
-    }
-    pub(super) fn container_block_is_shulker(&self) -> bool {
-        self.container_block()
-            .as_deref()
-            .is_some_and(is_shulker_box)
-    }
-    fn container_block(&self) -> Option<std::sync::Arc<str>> {
-        let k = self.container?;
-        Some(
-            self.res
-                .facts()
-                .get(self.world.block(k.0, k.1, k.2))
-                .name
-                .clone(),
-        )
-    }
-    /// Rows of the open generic 9-wide container (`ChestMenu`), or None for
-    /// the other menus (hoppers, dispensers, shulker boxes, furnaces...).
-    pub(super) fn chest_rows(&self) -> Option<usize> {
-        if let Some((rows, _)) = self.remote_chest_menu() {
-            return Some(rows);
-        }
-        if !matches!(self.container_kind()?, BlockEntity::Chest(_)) {
-            return None;
-        }
-        let generic = match self.container_block().as_deref() {
-            Some(
-                "minecraft:chest"
-                | "minecraft:trapped_chest"
-                | "minecraft:barrel"
-                | "minecraft:ender_chest",
-            ) => true,
-            _ => self.open_cart_kind() == Some(super::minecarts::CartKind::Chest),
-        };
-        generic.then(|| self.container_size() / 9)
-    }
-    /// The title of the open chest-like menu.
-    fn chest_title(&self, rows: usize) -> Text {
-        if let Some((_, title)) = self.remote_chest_menu() {
-            return title;
-        }
-        let (key, fallback) = match self.container_block().as_deref() {
-            Some("minecraft:barrel") => ("container.barrel", "Barrel"),
-            Some("minecraft:ender_chest") => ("container.enderchest", "Ender Chest"),
-            _ if self.open_cart_kind().is_some() => {
-                ("entity.minecraft.chest_minecart", "Minecart with Chest")
-            }
-            _ if rows > 3 => ("container.chestDouble", "Large Chest"),
-            _ => ("container.chest", "Chest"),
-        };
-        Text::literal(self.container_title(self.translate(key, fallback))).resolve_legacy()
     }
 }
 
