@@ -163,7 +163,7 @@ impl Game<'_> {
         } else {
             "players_nether_portal_default_delay"
         };
-        let transition = self.ui.rules.int(rule).max(0);
+        let transition = self.world_data.rules.int(rule).max(0);
         let Some(entry) = self
             .portals
             .player
@@ -476,7 +476,7 @@ impl Game<'_> {
             entities: &[],
             next_entity: &mut self.next_entity,
             spawn,
-            difficulty: i32::from(self.ui.difficulty),
+            difficulty: i32::from(self.world_data.difficulty),
             difficulty_locked: self.level.difficulty_locked,
             clock_rate,
             tick_rate: self.clock.rate(),

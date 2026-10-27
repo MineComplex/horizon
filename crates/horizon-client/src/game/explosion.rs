@@ -696,7 +696,7 @@ impl Game<'_> {
         }
         // TntBlock.wasExploded: new PrimedTnt (its push drawn first), then
         // getRandomShortFuse(80); no game event.
-        if is_tnt && self.ui.rules.bool("tnt_explodes") {
+        if is_tnt && self.world_data.rules.bool("tnt_explodes") {
             let r = &mut self.world.random;
             let rot = r.next_double() * f64::from(std::f32::consts::TAU);
             let fuse = r.next_int_bound(20).unwrap_or(0) + 10;

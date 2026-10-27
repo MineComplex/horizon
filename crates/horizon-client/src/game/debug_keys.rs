@@ -510,7 +510,7 @@ impl Game<'_> {
     }
     /// `LocalPlayer.isReducedDebugInfo`: the server's rule or the option.
     fn reduced_debug_info(&self) -> bool {
-        self.settings.reduced_debug_info || self.ui.rules.bool("reduced_debug_info")
+        self.settings.reduced_debug_info || self.world_data.rules.bool("reduced_debug_info")
     }
     /// The default profile's `3d_crosshair` entry: on while the overlay is
     /// open, unless debug info is reduced.
@@ -519,7 +519,7 @@ impl Game<'_> {
     }
     /// `Permissions.COMMANDS_GAMEMASTER` (`GameModeCommand.PERMISSION_CHECK`).
     pub(super) fn gamemaster(&self) -> bool {
-        self.ui.registries.permission >= 2
+        self.world_data.registries.permission >= 2
     }
     fn toggle_option(&mut self, key: &str) -> bool {
         let on = !self.settings.file.bool(key);

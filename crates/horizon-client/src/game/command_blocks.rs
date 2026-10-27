@@ -195,7 +195,7 @@ pub(super) fn analog_signal(world: &World, pos: Pos) -> Option<i32> {
 impl Game<'_> {
     /// `Player.canUseGameMasterBlocks`: creative with game master commands.
     pub(super) fn can_use_game_master_blocks(&self) -> bool {
-        self.creative && self.ui.registries.permission >= 2
+        self.creative && self.world_data.registries.permission >= 2
     }
     /// `CommandBlock.useWithoutItem` on a server's client, which opens the
     /// screen itself (`Player.openCommandBlock`) while the server only
@@ -237,7 +237,7 @@ impl Game<'_> {
     /// (`defaults` false), output tracking follows `send_command_feedback` and
     /// the block's own automatic flag; then the block takes the signal around it.
     pub(super) fn command_block_placed(&mut self, pos: Pos, defaults: bool) {
-        let feedback = self.ui.rules.bool("send_command_feedback");
+        let feedback = self.world_data.rules.bool("send_command_feedback");
         let Some(name) = self.block_state_at(pos).map(|s| s.name.as_str()) else {
             return;
         };
@@ -307,7 +307,7 @@ impl Game<'_> {
     /// facing on to the next, up to `max_command_sequence_length`.
     fn execute_chain(&mut self, start: Pos, mut step: [i32; 3]) {
         let registry = self.pack.assets.registry;
-        let limit = self.ui.rules.int("max_command_sequence_length");
+        let limit = self.world_data.rules.int("max_command_sequence_length");
         let mut remaining = limit;
         let mut pos = start;
         while remaining > 0 {
@@ -361,7 +361,7 @@ impl Game<'_> {
         }
         c.success_count = 0;
         let command = c.command.clone();
-        if self.ui.rules.bool("command_blocks_work") && !command.is_empty() {
+        if self.world_data.rules.bool("command_blocks_work") && !command.is_empty() {
             if let Some(c) = command_block_mut(&mut self.world, pos) {
                 c.last_output = None;
             }
@@ -386,9 +386,9 @@ impl Game<'_> {
             // performPrefixedCommand: a leading slash is allowed.
             let line = command.strip_prefix('/').unwrap_or(&command).to_owned();
             let outer = self.cmds.results.replace(Vec::new());
-            let level = std::mem::replace(&mut self.ui.registries.permission, 2);
+            let level = std::mem::replace(&mut self.world_data.registries.permission, 2);
             self.with_source(source, |g| g.run_command(&line));
-            self.ui.registries.permission = level;
+            self.world_data.registries.permission = level;
             let results = std::mem::replace(&mut self.cmds.results, outer).unwrap_or_default();
             let successes = results.iter().filter(|(success, _)| *success).count();
             if let Some(c) = command_block_mut(&mut self.world, pos) {
@@ -426,11 +426,11 @@ impl Game<'_> {
         else {
             return;
         };
-        let feedback = self.ui.rules.bool("send_command_feedback");
+        let feedback = self.world_data.rules.bool("send_command_feedback");
         if feedback {
             self.command_block_output(pos, message.clone());
         }
-        if feedback && self.ui.rules.bool("command_block_output") {
+        if feedback && self.world_data.rules.bool("command_block_output") {
             let broadcast = Text::translate("chat.type.admin", &[name, message])
                 .with_color(text::GRAY)
                 .italic();
@@ -705,7 +705,7 @@ impl Game<'_> {
             self.schedule_command_block_tick(pos);
         }
         if !command.is_empty() {
-            let key = if self.ui.rules.bool("command_blocks_work") {
+            let key = if self.world_data.rules.bool("command_blocks_work") {
                 "advMode.setCommand.success"
             } else {
                 "advMode.setCommand.disabled"

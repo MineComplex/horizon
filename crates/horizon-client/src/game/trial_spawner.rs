@@ -29,7 +29,7 @@ impl TrialSpawnerLevel for GameLevel<'_, '_> {
         self.game.world.game_time
     }
     fn mob_spawning(&self) -> bool {
-        self.game.ui.rules.bool("spawn_mobs")
+        self.game.world_data.rules.bool("spawn_mobs")
     }
     fn players(&self) -> Vec<TrialPlayer> {
         let guests = self.game.lan_present().into_iter().map(|g| TrialPlayer {

@@ -212,7 +212,7 @@ impl Game<'_> {
     /// for functions and `execute run`.
     pub(in crate::game) fn execute_line(&mut self, line: &str, source: Source) -> R<i32> {
         let d = vanilla::game_dispatcher();
-        let parse = d.parse(line, &self.ui.registries);
+        let parse = d.parse(line, &self.world_data.registries);
         let (ctx, _) = parse.executable()?;
         let ctx = ctx.clone();
         let root = parse.context.clone();
@@ -222,7 +222,11 @@ impl Game<'_> {
     /// the executable node): `execute` and `return` walk their own chains.
     pub(in crate::game) fn run_chain(&mut self, root: &Context, ctx: &Context) -> R<i32> {
         self.exec.commands += 1;
-        let limit = self.ui.rules.int("max_command_sequence_length").max(1) as u32;
+        let limit = self
+            .world_data
+            .rules
+            .int("max_command_sequence_length")
+            .max(1) as u32;
         if self.exec.commands > limit {
             return Err(err("command.failed", &[]));
         }

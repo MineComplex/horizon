@@ -1826,6 +1826,8 @@ struct Game<'a> {
     /// State of `/spectate`, `/posteffect`, `/debug`, `/waypoint` and friends.
     cmds: commands::extra::CommandExtras,
     ui: chat::UiState,
+    /// Game rules, difficulty, the clock and the command registries (vanilla's `ServerLevelData`).
+    world_data: horizon_client::world_data::WorldData,
     combat: combat::CombatTracker,
     /// Each guest's own `CombatTracker`, out of `combat` between turns.
     guest_combat: std::collections::HashMap<u32, combat::CombatTracker>,
@@ -2402,7 +2404,7 @@ impl Game<'_> {
     /// `at` (the eyes less 0.3): slots 0..36, armor feet to head (36..39),
     /// the off hand (40), each thrown in a random direction.
     fn drop_inventory(&mut self, at: [f64; 3]) {
-        if self.ui.rules.bool("keep_inventory") {
+        if self.world_data.rules.bool("keep_inventory") {
             return;
         }
         let mut stacks: Vec<ItemStack> =
@@ -2828,7 +2830,7 @@ impl Game<'_> {
             loot: horizon_client::structure_blocks::loot_data(&self.options.resources),
             registry: self.pack.assets.registry,
             rules,
-            difficulty: i32::from(self.ui.difficulty),
+            difficulty: i32::from(self.world_data.difficulty),
             fire_players,
             rand_sequences: &mut self.rand_sequences,
             pending: &mut self.pending,
@@ -3696,7 +3698,7 @@ impl Game<'_> {
         let falling = std::mem::take(&mut self.falling);
         let mut kept = Vec::with_capacity(falling.len());
         let mut collision_error = None;
-        let entity_drops = self.ui.rules.bool("entity_drops");
+        let entity_drops = self.world_data.rules.bool("entity_drops");
         // ServerLevel.tick: only entities in entity-ticking chunks tick.
         let ticking = self.entity_ticking_area();
         // FallingBlockEntity.tick places or drops each block in its own tick,
@@ -4008,7 +4010,7 @@ impl Game<'_> {
                 // tool has silk touch (#prevents_infested_spawns) or blocks don't drop.
                 if facts.name.starts_with("minecraft:infested_")
                     && !silk
-                    && self.ui.rules.bool("block_drops")
+                    && self.world_data.rules.bool("block_drops")
                 {
                     let at = [
                         f64::from(pos[0]) + 0.5,
@@ -4945,7 +4947,7 @@ impl Game<'_> {
         self.boss_overlay.tick_darken(running);
         if running {
             self.world.game_time += 1;
-            if self.ui.rules.bool("advance_weather") {
+            if self.world_data.rules.bool("advance_weather") {
                 self.world.weather.tick_timers(&mut self.world.random);
             }
             self.world.weather.tick_levels();
@@ -5262,7 +5264,7 @@ impl Game<'_> {
             self.stats.reset("custom", "minecraft:time_since_rest");
             let reward = self
                 .experience
-                .death_reward(self.ui.rules.bool("keep_inventory") || self.spectator());
+                .death_reward(self.world_data.rules.bool("keep_inventory") || self.spectator());
             self.spawn_orbs(feet, reward);
             if !self.spectator() {
                 self.drop_inventory(at);
@@ -5273,7 +5275,7 @@ impl Game<'_> {
             if let Some(host) = &self.lan {
                 host.hub.entity_event(host.host_entity, 3, feet);
             }
-            if self.ui.rules.bool("immediate_respawn") {
+            if self.world_data.rules.bool("immediate_respawn") {
                 // Gui.setScreen: without the death screen the player respawns at once.
                 self.respawn_player()?;
             } else {
@@ -8631,9 +8633,9 @@ impl Game<'_> {
     /// blocks are kept without mobGriefing, else the mob_explosion_drop_decay
     /// rule picks decay).
     fn explode(&mut self, center: [f64; 3], radius: f32) -> Result<()> {
-        let interaction = if !self.ui.rules.bool("mob_griefing") {
+        let interaction = if !self.world_data.rules.bool("mob_griefing") {
             explosion::BlockInteraction::Keep
-        } else if self.ui.rules.bool("mob_explosion_drop_decay") {
+        } else if self.world_data.rules.bool("mob_explosion_drop_decay") {
             explosion::BlockInteraction::DestroyWithDecay
         } else {
             explosion::BlockInteraction::Destroy
@@ -10810,7 +10812,7 @@ impl Game<'_> {
             return;
         }
         // ServerPlayer.startSleepInBed: a percentage above 100 cannot skip the night.
-        if self.ui.rules.int("players_sleeping_percentage") > 100 {
+        if self.world_data.rules.int("players_sleeping_percentage") > 100 {
             self.tell_sleeper(
                 "sleep.not_possible",
                 "No amount of rest can pass this night",
@@ -10863,12 +10865,14 @@ impl Game<'_> {
         // skip to morning if `advance_time` is on, wake everyone, and
         // resetWeatherCycle if `advance_weather` is on and it is raining.
         if self.enough_slept() {
-            if self.ui.rules.bool("advance_time") {
+            if self.world_data.rules.bool("advance_time") {
                 let t = self.world.day_time;
                 self.world.day_time = t + 24000 - t.rem_euclid(24000);
             }
             // Level.isRaining: the rain level is above 0.2.
-            if self.ui.rules.bool("advance_weather") && self.world.weather.levels(1.0).0 > 0.2 {
+            if self.world_data.rules.bool("advance_weather")
+                && self.world.weather.levels(1.0).0 > 0.2
+            {
                 self.world.weather.raining = false;
                 self.world.weather.thundering = false;
                 self.world.weather.rain_time = 0;
@@ -11175,7 +11179,7 @@ impl Game<'_> {
     /// Copy the live player and world state into the `Level` that gets saved.
     pub(super) fn sync_level(&mut self) {
         // Level.write saves the game rules (game_rules.dat) with the rest.
-        self.level.game_rules = self.ui.rules.by_name();
+        self.level.game_rules = self.world_data.rules.by_name();
         self.level.selected_slot = self.selected as i32;
         let mode = self.mode_id();
         let level = &mut self.level;
@@ -11183,7 +11187,7 @@ impl Game<'_> {
         level.game_mode = mode;
         // PrimaryLevelData.setDifficulty: /difficulty and the options button change it.
         level.difficulty =
-            horizon_client::title::DIFFICULTIES[usize::from(self.ui.difficulty) & 3].into();
+            horizon_client::title::DIFFICULTIES[usize::from(self.world_data.difficulty) & 3].into();
         level.time = self.world.game_time;
         level.weather = self.world.weather;
         level.day_time = self.world.day_time;
@@ -13748,6 +13752,7 @@ impl<'a> Game<'a> {
             console_broadcast: None,
             cmds: Default::default(),
             ui: chat::UiState::new(),
+            world_data: Default::default(),
             combat: Default::default(),
             guest_combat: Default::default(),
             mount: Default::default(),

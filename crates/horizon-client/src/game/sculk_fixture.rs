@@ -344,7 +344,7 @@ impl Game<'_> {
         self.dropped.clear();
         self.orbs.clear();
         self.level_events.clear();
-        self.ui.rules = Default::default();
+        self.world_data.rules = Default::default();
         for (rule, value) in [
             ("spawn_mobs", false),
             ("spawn_monsters", false),
@@ -356,11 +356,11 @@ impl Game<'_> {
             ("raids", false),
             ("spawn_wardens", s.wardens),
         ] {
-            self.ui
+            self.world_data
                 .rules
                 .set(rule, horizon_client::gamerules::Value::Bool(value));
         }
-        self.ui.rules.set(
+        self.world_data.rules.set(
             "random_tick_speed",
             horizon_client::gamerules::Value::Int(0),
         );
@@ -372,7 +372,7 @@ impl Game<'_> {
             _ => Difficulty::Normal,
         };
         self.world.health_rules.difficulty = difficulty;
-        self.ui.difficulty = match difficulty {
+        self.world_data.difficulty = match difficulty {
             Difficulty::Peaceful => 0,
             Difficulty::Easy => 1,
             Difficulty::Normal => 2,

@@ -45,7 +45,7 @@ impl Game<'_> {
         {
             self.bosses.bars = BossBars::unpack(data);
         }
-        self.ui.registries.bossbars = self.bosses.bars.ids();
+        self.world_data.registries.bossbars = self.bosses.bars.ids();
     }
     pub(super) fn save_bossbars(&self) {
         if !self.bosses.loaded || self.remote.is_some() {
@@ -95,7 +95,7 @@ impl Game<'_> {
     pub(super) fn cmd_bossbar(&mut self, id: &str, ctx: &Context) -> R<i32> {
         self.load_bossbars();
         let result = self.bossbar_command(id, ctx);
-        self.ui.registries.bossbars = self.bosses.bars.ids();
+        self.world_data.registries.bossbars = self.bosses.bars.ids();
         self.publish_boss_bars();
         result
     }

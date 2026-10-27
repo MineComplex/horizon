@@ -20,9 +20,9 @@ type Signed = Vec<(String, ChatMessage)>;
 impl Game<'_> {
     /// CommandDispatcher.parse with the guest's permission level.
     fn parse_as(&mut self, permission: u8, command: &str) -> ParseResults {
-        let level = std::mem::replace(&mut self.ui.registries.permission, permission);
-        let parse = vanilla::game_dispatcher().parse(command, &self.ui.registries);
-        self.ui.registries.permission = level;
+        let level = std::mem::replace(&mut self.world_data.registries.permission, permission);
+        let parse = vanilla::game_dispatcher().parse(command, &self.world_data.registries);
+        self.world_data.registries.permission = level;
         parse
     }
 

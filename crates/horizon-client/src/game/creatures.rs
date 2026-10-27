@@ -451,8 +451,8 @@ impl Game<'_> {
             nether: self.dim == Dim::Nether,
             block_tags: &self.res.items().block_tags,
             biomes: self.res.biomes(),
-            mob_griefing: self.ui.rules.bool("mob_griefing"),
-            mob_drops: self.ui.rules.bool("mob_drops"),
+            mob_griefing: self.world_data.rules.bool("mob_griefing"),
+            mob_drops: self.world_data.rules.bool("mob_drops"),
             end: self.dim == Dim::End,
             world_seed: self.level.seed,
             sea_level: if self.dim == Dim::Nether { 32 } else { 63 },
@@ -517,7 +517,7 @@ impl Game<'_> {
         self.tick_leads();
         self.spawn_natural();
         // ServerChunkCache.tickChunks: the custom spawners tick only with spawn_mobs.
-        if self.ui.rules.bool("spawn_mobs") {
+        if self.world_data.rules.bool("spawn_mobs") {
             self.tick_wandering_trader();
             self.tick_patrol_spawner();
             self.tick_cat_spawner();
@@ -938,7 +938,7 @@ impl Game<'_> {
             player: by_player.then(player),
             luck: 0.0,
             vehicle,
-            mob_drops: self.ui.rules.bool("mob_drops"),
+            mob_drops: self.world_data.rules.bool("mob_drops"),
             world_seed: self.level.seed,
         };
         let (items, skulls) = drops::die(m, &death, &mut self.rand_sequences);
@@ -1588,7 +1588,7 @@ impl Game<'_> {
                     if matches!(
                         table,
                         "minecraft:gameplay/turtle_grow" | "minecraft:gameplay/panda_sneeze"
-                    ) && !self.ui.rules.bool("mob_drops")
+                    ) && !self.world_data.rules.bool("mob_drops")
                     {
                         continue;
                     }
@@ -1667,7 +1667,7 @@ impl Game<'_> {
     /// `Animal.finalizeSpawnChildFromBreeding`'s experience orb: only when the
     /// `mob_drops` game rule is on.
     fn spawn_breeding_orb(&mut self, at: [f64; 3], amount: u32) {
-        if self.ui.rules.bool("mob_drops") {
+        if self.world_data.rules.bool("mob_drops") {
             self.spawn_orbs(at, amount);
         }
     }
@@ -1726,7 +1726,7 @@ impl Game<'_> {
         if p.species() == Species::Turtle {
             // One `new ExperienceOrb` of 1 to 7 from the mother's random (not
             // split up as `ExperienceOrb.award` does).
-            if self.ui.rules.bool("mob_drops")
+            if self.world_data.rules.bool("mob_drops")
                 && let Some(m) = self.mobs.iter_mut().find(|m| m.id == parent)
             {
                 let xp = 1 + m.random.next_int_bound(7).unwrap_or(0) as u32;
@@ -2090,7 +2090,7 @@ impl Game<'_> {
     /// player is invulnerable to wither damage (creative, spectator). A
     /// server's player gets it from the server.
     pub(super) fn wither_rose_contact(&mut self) {
-        if self.remote.is_some() || self.ui.difficulty == 0 {
+        if self.remote.is_some() || self.world_data.difficulty == 0 {
             return;
         }
         self.give_player_effect("minecraft:wither", 40, 0);
@@ -2231,7 +2231,7 @@ impl Game<'_> {
             let guest_entities = self.lan_guest_entities();
             // ThrownEnderpearl.tick: a dead player's pearl is discarded in
             // place of its tick while ender_pearls_vanish_on_death is on.
-            let vanish = self.ui.rules.bool("ender_pearls_vanish_on_death");
+            let vanish = self.world_data.rules.bool("ender_pearls_vanish_on_death");
             let host_dead = self.player_view().is_some_and(|p| !p.alive);
             let dead_guests: Vec<u32> = self.lan.as_ref().map_or_else(Vec::new, |h| {
                 h.hub
@@ -2514,8 +2514,8 @@ impl Game<'_> {
             collision: self.collision,
             fluids: &self.motion.fluids,
             raining: rain,
-            mob_griefing: self.ui.rules.bool("mob_griefing"),
-            tnt_explodes: self.ui.rules.bool("tnt_explodes"),
+            mob_griefing: self.world_data.rules.bool("mob_griefing"),
+            tnt_explodes: self.world_data.rules.bool("tnt_explodes"),
         }
     }
     /// The rest of the tick of an arrow that hit an entity
@@ -2842,8 +2842,8 @@ impl Game<'_> {
                     // ThrownEnderpearl: 5% endermite where the player was
                     // (when monsters spawn), teleport, 5 damage.
                     if self.world.random.next_float() < 0.05
-                        && self.ui.rules.bool("spawn_monsters")
-                        && self.ui.difficulty != 0
+                        && self.world_data.rules.bool("spawn_monsters")
+                        && self.world_data.difficulty != 0
                         && let Some(pl) = self.player.as_ref()
                     {
                         let from = pl.position;
@@ -2896,7 +2896,7 @@ impl Game<'_> {
                     // ticks, ages and goes out where it can't stay).
                     let fire = [pos[0] + face[0], pos[1] + face[1], pos[2] + face[2]];
                     let mob = matches!(p.owner, Some(Who::Mob(_)));
-                    if (!mob || self.ui.rules.bool("mob_griefing"))
+                    if (!mob || self.world_data.rules.bool("mob_griefing"))
                         && self
                             .res
                             .facts()
@@ -3822,7 +3822,7 @@ impl Game<'_> {
         let kind = stack.item.trim_end_matches("_spawn_egg").to_owned();
         // EntityType.canSpawn: no monsters in peaceful (FAIL ends the click).
         let id = format!("minecraft:{}", kind.trim_start_matches("minecraft:"));
-        if self.ui.difficulty == 0
+        if self.world_data.difficulty == 0
             && let Some(t) = self.res.mob_types().get(&id)
             && !horizon_client::mobs::spawn_rules::allowed_in_peaceful(t.species)
         {

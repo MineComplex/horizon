@@ -836,7 +836,7 @@ impl Game<'_> {
             self.eject_boat_mobs(i, true);
             let b = self.boats.remove(i);
             let at = [b.position.x, b.position.y, b.position.z];
-            if !creative && self.ui.rules.bool("entity_drops") {
+            if !creative && self.world_data.rules.bool("entity_drops") {
                 // ChestBoat.destroy: chestVehicleDestroyed spills the contents.
                 for stack in b.items.iter().flatten() {
                     self.spawn_item(stack.clone(), at, super::dispenser::new_item_motion(), 10);

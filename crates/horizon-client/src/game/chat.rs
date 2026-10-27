@@ -1,12 +1,12 @@
 //! Chat, the command registries and the per-world state behind commands
 //! (game rules, the world clock, difficulty), bound to the game.
 use super::{Game, Screen};
+pub use horizon_client::world_data::{TimeMarker, WorldClock};
 use horizon_client::{
     chat::{
         Chat, ChatAbilities, ChatAction, ChatScreen, ChatSource, ChatVisibility, Commands,
         SYSTEM_INDICATOR,
     },
-    command::Registries,
     gamerules::GameRules,
     hud::HudBatch,
     screen_draw::Measure,
@@ -33,48 +33,8 @@ use winit::{
 /// The local player's name (offline single player).
 pub const PLAYER_NAME: &str = "Player";
 
-/// ServerClockManager.ServerClockInstance for the overworld clock (its
-/// total ticks are the world's day time).
-#[derive(Clone, Copy, Debug)]
-pub struct WorldClock {
-    pub partial: f32,
-    pub rate: f32,
-    pub paused: bool,
-}
-impl Default for WorldClock {
-    fn default() -> Self {
-        Self {
-            partial: 0.0,
-            rate: 1.0,
-            paused: false,
-        }
-    }
-}
-/// A clock time marker from the timelines (ClockTimeMarker).
-#[derive(Clone, Copy, Debug)]
-pub struct TimeMarker {
-    pub ticks: i64,
-    pub period: Option<i64>,
-    pub show: bool,
-}
-impl TimeMarker {
-    pub fn occurs_at(&self, total: i64) -> bool {
-        match self.period {
-            Some(p) => self.ticks == total.rem_euclid(p),
-            None => self.ticks == total,
-        }
-    }
-    pub fn resolve(&self, total: i64) -> i64 {
-        match self.period {
-            Some(p) => {
-                let d = self.ticks - total.rem_euclid(p);
-                total + if d > 0 { d } else { p + d }
-            }
-            None => self.ticks,
-        }
-    }
-}
-/// UI and command state that lives beside the game.
+/// The window's chat, death screen and options state (the world's rules and clock are in
+/// `Game::world_data`).
 #[derive(Default)]
 pub struct UiState {
     pub chat: Chat,
@@ -83,14 +43,6 @@ pub struct UiState {
     pub chat_opened: Option<std::time::Instant>,
     /// The chat screen is `InBedChatScreen`: the sleeper's, with a Leave Bed button.
     pub in_bed_chat: bool,
-    pub registries: Registries,
-    pub rules: GameRules,
-    pub clock: WorldClock,
-    /// Time markers and timelines of the overworld clock.
-    pub markers: BTreeMap<String, TimeMarker>,
-    pub timelines: BTreeMap<String, Option<i64>>,
-    /// 0 peaceful .. 3 hard.
-    pub difficulty: u8,
     /// F1: hide the HUD.
     pub hide_gui: bool,
     /// Death message key set by the cause of death (e.g. /kill).
@@ -128,20 +80,20 @@ impl Game<'_> {
     /// `IntegratedServer.setWorldAllowCommands`, then `updatePermissions`.
     pub(super) fn set_allow_commands(&mut self, allow: bool) {
         self.level.allow_commands = Some(allow);
-        self.ui.registries.permission = owner_permission(allow);
+        self.world_data.registries.permission = owner_permission(allow);
     }
     /// Commands the game issues itself (the server console, harnesses, the
     /// control socket) run at the owner's level whatever Allow Commands says.
     pub(super) fn as_console<T>(&mut self, f: impl FnOnce(&mut Self) -> T) -> T {
-        let level = std::mem::replace(&mut self.ui.registries.permission, 4);
+        let level = std::mem::replace(&mut self.world_data.registries.permission, 4);
         let out = f(self);
-        self.ui.registries.permission = level;
+        self.world_data.registries.permission = level;
         out
     }
     /// Registry contents for argument parsing (built when a world opens).
     pub(super) fn build_registries(&mut self) {
         let permission = owner_permission(self.allow_commands());
-        let reg = &mut self.ui.registries;
+        let reg = &mut self.world_data.registries;
         reg.permission = permission;
         {
             let dir = |sub: &str| -> Vec<String> {
@@ -169,10 +121,10 @@ impl Game<'_> {
                 out.sort();
                 out
             };
-            self.ui.registries.recipes = dir("recipe");
-            self.ui.registries.damage_types = dir("damage_type");
-            self.ui.registries.loot_tables = dir("loot_table");
-            self.ui.registries.templates = {
+            self.world_data.registries.recipes = dir("recipe");
+            self.world_data.registries.damage_types = dir("damage_type");
+            self.world_data.registries.loot_tables = dir("loot_table");
+            self.world_data.registries.templates = {
                 let root = self.options.resources.join("worldgen/structure/minecraft");
                 let mut out = Vec::new();
                 let mut stack = vec![root.clone()];
@@ -198,8 +150,8 @@ impl Game<'_> {
                 out
             };
         }
-        self.ui.registries.sounds = self.audio.event_names();
-        self.ui.registries.attributes = [
+        self.world_data.registries.sounds = self.audio.event_names();
+        self.world_data.registries.attributes = [
             "armor",
             "armor_toughness",
             "attack_damage",
@@ -237,7 +189,7 @@ impl Game<'_> {
         .iter()
         .map(|a| format!("minecraft:{a}"))
         .collect();
-        let reg = &mut self.ui.registries;
+        let reg = &mut self.world_data.registries;
         let mut items: Vec<String> = self
             .res
             .items()
@@ -358,8 +310,8 @@ impl Game<'_> {
         ];
         reg.players = vec![PLAYER_NAME.into()];
         // Timelines of the overworld clock and their time markers.
-        self.ui.markers.clear();
-        self.ui.timelines.clear();
+        self.world_data.markers.clear();
+        self.world_data.timelines.clear();
         for name in list("data/minecraft/timeline") {
             let path = root.join(format!(
                 "data/minecraft/timeline/{}.json",
@@ -374,7 +326,7 @@ impl Game<'_> {
                 continue;
             }
             let period = v["period_ticks"].as_i64();
-            self.ui.timelines.insert(name.clone(), period);
+            self.world_data.timelines.insert(name.clone(), period);
             for (marker, def) in v["time_markers"].as_object().into_iter().flatten() {
                 let (ticks, show) = match def {
                     serde_json::Value::Number(n) => (n.as_i64().unwrap_or(0), false),
@@ -383,7 +335,7 @@ impl Game<'_> {
                         other["show_in_commands"].as_bool().unwrap_or(false),
                     ),
                 };
-                self.ui.markers.insert(
+                self.world_data.markers.insert(
                     marker.clone(),
                     TimeMarker {
                         ticks,
@@ -398,14 +350,14 @@ impl Game<'_> {
             if let Ok(bytes) = std::fs::read(dir.join("command-registries.json"))
                 && let Ok(v) = serde_json::from_slice::<serde_json::Value>(&bytes)
             {
-                self.ui.registries.fill_from_export(&v);
+                self.world_data.registries.fill_from_export(&v);
                 break;
             }
         }
-        let reg = &mut self.ui.registries;
-        reg.timelines = self.ui.timelines.keys().cloned().collect();
+        let reg = &mut self.world_data.registries;
+        reg.timelines = self.world_data.timelines.keys().cloned().collect();
         reg.time_markers = self
-            .ui
+            .world_data
             .markers
             .iter()
             .filter(|(_, m)| m.show)
@@ -414,10 +366,10 @@ impl Game<'_> {
     }
     /// The block the player is looking at, for coordinate suggestions.
     fn refresh_dynamic_registries(&mut self) {
-        self.ui.registries.target_block = self.pick().map(|h| h.pos);
+        self.world_data.registries.target_block = self.pick().map(|h| h.pos);
         // ClientPacketListener.getOnlinePlayerNames on a server.
         if let Some(names) = self.remote_online_names() {
-            self.ui.registries.players = names;
+            self.world_data.registries.players = names;
         }
     }
     pub(super) fn open_chat(&mut self, initial: &str) {
@@ -433,7 +385,7 @@ impl Game<'_> {
         let m = Measure(&self.gui.atlas.font);
         let c = Commands {
             dispatcher: chat_tree(&self.remote, &self.mods),
-            registries: &self.ui.registries,
+            registries: &self.world_data.registries,
         };
         let mut screen = ChatScreen::new(
             &m,
@@ -557,7 +509,7 @@ impl Game<'_> {
             let m = Measure(&self.gui.atlas.font);
             let c = Commands {
                 dispatcher: chat_tree(&self.remote, &self.mods),
-                registries: &self.ui.registries,
+                registries: &self.world_data.registries,
             };
             if let Some(screen) = self.ui.chat_screen.as_mut() {
                 screen.shortcut(&m, &c, shortcut, &mut self.clipboard);
@@ -603,7 +555,7 @@ impl Game<'_> {
         let m = Measure(&self.gui.atlas.font);
         let c = Commands {
             dispatcher: chat_tree(&self.remote, &self.mods),
-            registries: &self.ui.registries,
+            registries: &self.world_data.registries,
         };
         match screen.key(&m, &c, &self.ui.chat.recent, key, shift, ctrl) {
             ChatAction::Close => self.close_chat(),
@@ -643,7 +595,7 @@ impl Game<'_> {
         let m = Measure(&self.gui.atlas.font);
         let c = Commands {
             dispatcher: chat_tree(&self.remote, &self.mods),
-            registries: &self.ui.registries,
+            registries: &self.world_data.registries,
         };
         if let Some(screen) = self.ui.chat_screen.as_mut() {
             screen.server_suggestions(&m, &c, id, range, list);
@@ -654,7 +606,7 @@ impl Game<'_> {
         let m = Measure(&self.gui.atlas.font);
         let c = Commands {
             dispatcher: chat_tree(&self.remote, &self.mods),
-            registries: &self.ui.registries,
+            registries: &self.world_data.registries,
         };
         if let Some(screen) = self.ui.chat_screen.as_mut() {
             screen.type_text(&m, &c, text);
@@ -731,7 +683,7 @@ impl Game<'_> {
         let m = Measure(&self.gui.atlas.font);
         let c = Commands {
             dispatcher: chat_tree(&self.remote, &self.mods),
-            registries: &self.ui.registries,
+            registries: &self.world_data.registries,
         };
         if self.ui.in_bed_chat && self.sleeping.is_some() {
             let width = self.renderer.as_ref().map_or(1280.0, |r| {
@@ -854,7 +806,7 @@ impl Game<'_> {
         let m = Measure(&self.gui.atlas.font);
         let c = Commands {
             dispatcher: chat_tree(&self.remote, &self.mods),
-            registries: &self.ui.registries,
+            registries: &self.world_data.registries,
         };
         screen.resize(&m, &c, batch.width as i32, batch.height as i32);
         // Options.getBackgroundColor(Integer.MIN_VALUE).
@@ -905,10 +857,10 @@ impl Game<'_> {
     /// Advance the overworld clock (ServerClockManager.tick) when
     /// `advance_time` allows it.
     pub(super) fn advance_clock(&mut self) {
-        if !self.ui.rules.bool("advance_time") || self.ui.clock.paused {
+        if !self.world_data.rules.bool("advance_time") || self.world_data.clock.paused {
             return;
         }
-        let c = &mut self.ui.clock;
+        let c = &mut self.world_data.clock;
         c.partial += c.rate;
         let whole = c.partial.floor();
         c.partial -= whole;
@@ -918,15 +870,15 @@ impl Game<'_> {
     /// advance the overworld clock at, 0 while it is paused (`/time pause`)
     /// or `advance_time` is off.
     pub(super) fn network_clock_rate(&self) -> f32 {
-        if self.ui.rules.bool("advance_time") && !self.ui.clock.paused {
-            self.ui.clock.rate
+        if self.world_data.rules.bool("advance_time") && !self.world_data.clock.paused {
+            self.world_data.clock.rate
         } else {
             0.0
         }
     }
     /// The engine-side rule values (block behaviour and health).
     pub(super) fn level_rules(&self) -> horizon_world::level::GameRules {
-        let r = &self.ui.rules;
+        let r = &self.world_data.rules;
         horizon_world::level::GameRules {
             water_source_conversion: r.bool("water_source_conversion"),
             lava_source_conversion: r.bool("lava_source_conversion"),
@@ -942,14 +894,14 @@ impl Game<'_> {
     /// Apply rules mirrored in other state (natural regeneration, difficulty).
     pub(super) fn sync_rules(&mut self) {
         self.world.health_rules.natural_regeneration =
-            self.ui.rules.bool("natural_health_regeneration");
+            self.world_data.rules.bool("natural_health_regeneration");
         // Player.isInvulnerableTo: the damage-type rules.
-        self.world.health_rules.drowning_damage = self.ui.rules.bool("drowning_damage");
-        self.world.health_rules.fall_damage = self.ui.rules.bool("fall_damage");
-        self.world.health_rules.fire_damage = self.ui.rules.bool("fire_damage");
-        self.world.health_rules.freeze_damage = self.ui.rules.bool("freeze_damage");
+        self.world.health_rules.drowning_damage = self.world_data.rules.bool("drowning_damage");
+        self.world.health_rules.fall_damage = self.world_data.rules.bool("fall_damage");
+        self.world.health_rules.fire_damage = self.world_data.rules.bool("fire_damage");
+        self.world.health_rules.freeze_damage = self.world_data.rules.bool("freeze_damage");
         use horizon_world::food::Difficulty;
-        self.world.health_rules.difficulty = match self.ui.difficulty {
+        self.world.health_rules.difficulty = match self.world_data.difficulty {
             0 => Difficulty::Peaceful,
             1 => Difficulty::Easy,
             3 => Difficulty::Hard,
@@ -958,10 +910,10 @@ impl Game<'_> {
     }
     /// Load per-world command state when a world opens.
     pub(super) fn load_world_state(&mut self) {
-        self.ui.rules = GameRules::load(&self.world_root);
-        self.ui.clock = WorldClock::default();
+        self.world_data.rules = GameRules::load(&self.world_root);
+        self.world_data.clock = WorldClock::default();
         // PrimaryLevelData: the difficulty comes back from level.dat's difficulty_settings.
-        self.ui.difficulty = horizon_client::title::DIFFICULTIES
+        self.world_data.difficulty = horizon_client::title::DIFFICULTIES
             .iter()
             .position(|d| *d == self.level.difficulty)
             .map_or(2, |i| i as u8);
@@ -976,13 +928,13 @@ impl Game<'_> {
         {
             use horizon_world::nbt::Tag;
             if let Some(Tag::Float(r)) = c.get("rate") {
-                self.ui.clock.rate = f32::from_bits(*r);
+                self.world_data.clock.rate = f32::from_bits(*r);
             }
             if let Some(Tag::Float(p)) = c.get("partial_tick") {
-                self.ui.clock.partial = f32::from_bits(*p);
+                self.world_data.clock.partial = f32::from_bits(*p);
             }
             if let Some(Tag::Byte(p)) = c.get("paused") {
-                self.ui.clock.paused = *p != 0;
+                self.world_data.clock.paused = *p != 0;
             }
         }
         self.ui.chat.clear();
@@ -997,7 +949,7 @@ impl Game<'_> {
             return;
         }
         use horizon_world::nbt::Tag;
-        let c = self.ui.clock;
+        let c = self.world_data.clock;
         // The other clocks stay as saved; the overworld one keeps the fields Horizon
         // does not model, and (like vanilla's codec) omits rate, partial tick and
         // pause while they have their defaults.
@@ -1046,7 +998,7 @@ impl Game<'_> {
         let cause = self.ui.death_cause.take();
         self.ui.died_at = Some(std::time::Instant::now());
         self.ui.death_text = None;
-        if !self.ui.rules.bool("show_death_messages") {
+        if !self.world_data.rules.bool("show_death_messages") {
             return;
         }
         let Some(p) = self.player.as_ref() else {

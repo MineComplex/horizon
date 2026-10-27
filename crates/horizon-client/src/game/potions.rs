@@ -137,7 +137,7 @@ impl Game<'_> {
         if effects.contains(&"oozing") {
             // OozingMobEffect.numberOfSlimesToSpawn: two, fewer when the
             // slimes close by already fill the cramming limit.
-            let limit = self.ui.rules.int("max_entity_cramming");
+            let limit = self.world_data.rules.int("max_entity_cramming");
             let mut count = 2;
             if limit >= 1 {
                 let near = bounds.inflate(Vec3::new(2.0, 2.0, 2.0));
@@ -166,7 +166,7 @@ impl Game<'_> {
                 }
             }
         }
-        if effects.contains(&"weaving") && (player || self.ui.rules.bool("mob_griefing")) {
+        if effects.contains(&"weaving") && (player || self.world_data.rules.bool("mob_griefing")) {
             self.spawn_cobwebs_around(
                 [
                     feet.x.floor() as i32,

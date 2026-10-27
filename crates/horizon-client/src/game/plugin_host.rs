@@ -988,7 +988,7 @@ impl PluginCtx<'_, '_> {
             .filter(|p| p.location.world == name)
             .count() as u32;
         let game = &*self.game;
-        let difficulty = match game.ui.difficulty {
+        let difficulty = match game.world_data.difficulty {
             0 => "peaceful",
             1 => "easy",
             3 => "hard",
@@ -1163,7 +1163,7 @@ impl worlds::Host for PluginCtx<'_, '_> {
         self.command(format!("difficulty {difficulty}"));
     }
     fn game_rule(&mut self, rule: String) -> Option<String> {
-        self.game.ui.rules.get(&rule).map(|v| v.to_string())
+        self.game.world_data.rules.get(&rule).map(|v| v.to_string())
     }
     fn set_game_rule(&mut self, rule: String, value: String) {
         self.command(format!("gamerule {rule} {value}"));

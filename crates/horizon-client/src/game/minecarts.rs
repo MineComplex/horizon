@@ -643,7 +643,7 @@ impl Game<'_> {
         }
     }
     fn prime_cart(&mut self, c: &mut Minecart) {
-        if !self.ui.rules.bool("tnt_explodes") {
+        if !self.world_data.rules.bool("tnt_explodes") {
             return;
         }
         c.fuse = 80;
@@ -652,7 +652,7 @@ impl Game<'_> {
             .play("minecraft:entity.tnt.primed", Some(at), 1.0, 1.0);
     }
     fn explode_cart(&mut self, c: &Minecart, speed_sqr: f64) {
-        if !self.ui.rules.bool("tnt_explodes") {
+        if !self.world_data.rules.bool("tnt_explodes") {
             return;
         }
         let speed = speed_sqr.sqrt().min(5.0);
@@ -1220,7 +1220,7 @@ impl Game<'_> {
                 self.carts.insert(i, c);
             } else {
                 let at = [c.position.x, c.position.y, c.position.z];
-                if self.ui.rules.bool("entity_drops") {
+                if self.world_data.rules.bool("entity_drops") {
                     for s in c.items.iter().flatten() {
                         self.spawn_item(s.clone(), at, [0.0, 0.1, 0.0], 10);
                     }

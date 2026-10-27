@@ -152,7 +152,7 @@ impl Game<'_> {
             // (canSpawn), so a peaceful zombie horse spawns without one.
             Species::ZombieHorse
                 if natural
-                    && (self.ui.difficulty != 0
+                    && (self.world_data.difficulty != 0
                         || horizon_client::mobs::spawn_rules::allowed_in_peaceful(
                             Species::Zombie,
                         )) =>
@@ -251,7 +251,7 @@ impl Game<'_> {
     /// ten of the rest a baby strider.
     fn spawn_strider_jockey(&mut self, id: u32, at: [f64; 3]) {
         if self.world.random.next_int_bound(30).unwrap_or(1) == 0 {
-            if !self.ui.rules.bool("spawn_mobs") {
+            if !self.world_data.rules.bool("spawn_mobs") {
                 return;
             }
             if let Some(piglin) = self.spawn_mob("minecraft:zombified_piglin", at, false) {

@@ -542,7 +542,7 @@ impl Game<'_> {
                 };
                 let mut reader = horizon_client::command::Reader::new(&text);
                 let block = horizon_client::command::args::ArgType::BlockState
-                    .parse(&mut reader, &self.ui.registries);
+                    .parse(&mut reader, &self.world_data.registries);
                 match block {
                     Ok(Arg::Block(b)) => {
                         let state = self.block_state(&b)?;

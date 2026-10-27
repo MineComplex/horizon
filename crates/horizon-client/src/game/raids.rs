@@ -169,7 +169,7 @@ impl SpawnLevel for PatrolCx<'_, '_, '_> {
 }
 impl PatrolLevel for PatrolCx<'_, '_, '_> {
     fn spawn_patrols(&self) -> bool {
-        self.level.game.ui.rules.bool("spawn_patrols")
+        self.level.game.world_data.rules.bool("spawn_patrols")
     }
     fn bright_outside(&self) -> bool {
         self.level.game.dim == Dim::Overworld && self.level.game.sky_darken() < 4
@@ -406,7 +406,7 @@ impl Game<'_> {
     /// points of interest within 64 blocks.
     fn create_or_extend_raid(&mut self, at: [i32; 3], amplifier: Option<i32>) -> Option<i32> {
         if self.spectator()
-            || !self.ui.rules.bool("raids")
+            || !self.world_data.rules.bool("raids")
             || !self.gameplay_attribute(horizon_client::patrol::CAN_START_RAID, at)
         {
             return None;
@@ -591,7 +591,7 @@ impl Game<'_> {
                 centers: &centers,
             };
             let members = |id: i32| infos.get(&id).cloned().unwrap_or_default();
-            raids.tick(&lvl, self.ui.rules.bool("raids"), &members)
+            raids.tick(&lvl, self.world_data.rules.bool("raids"), &members)
         };
         self.raiding.raids = raids;
         for (id, action) in actions {
@@ -1186,7 +1186,8 @@ impl Game<'_> {
                 game.world.day_time,
             )
         };
-        let enemies = self.ui.rules.bool("spawn_mobs") && self.ui.rules.bool("spawn_monsters");
+        let enemies = self.world_data.rules.bool("spawn_mobs")
+            && self.world_data.rules.bool("spawn_monsters");
         let mut random = std::mem::replace(
             &mut self.world.random,
             horizon_core::random::LegacyRandom::new(0),

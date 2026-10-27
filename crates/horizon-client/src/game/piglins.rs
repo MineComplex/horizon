@@ -186,7 +186,7 @@ impl Game<'_> {
     /// gold and other loved items, nuggets, food, gear), walk to them and
     /// take them (`GoToWantedItem`, `Piglin.pickUpItem`).
     pub(super) fn piglin_pickups(&mut self) {
-        if !self.ui.rules.bool("mob_griefing") {
+        if !self.world_data.rules.bool("mob_griefing") {
             return;
         }
         for i in 0..self.mobs.len() {

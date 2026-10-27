@@ -29,7 +29,7 @@ impl Game<'_> {
         ];
         let registry = self.pack.assets.registry;
         let rose = registry.default_state("minecraft:wither_rose");
-        if self.ui.rules.bool("mob_griefing")
+        if self.world_data.rules.bool("mob_griefing")
             && let Some(rose) = rose
             && self
                 .res

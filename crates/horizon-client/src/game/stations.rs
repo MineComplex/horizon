@@ -2060,7 +2060,10 @@ impl Game<'_> {
             }
         }
         // ItemStack.OP_NBT_WARNING, for a player with game master permission.
-        if !nested && self.ui.registries.permission >= 2 && block_entity_item::op_warning(stack) {
+        if !nested
+            && self.world_data.registries.permission >= 2
+            && block_entity_item::op_warning(stack)
+        {
             for (key, fallback) in [
                 ("item.op_warning.line1", "Warning:"),
                 (

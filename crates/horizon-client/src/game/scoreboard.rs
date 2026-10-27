@@ -101,7 +101,7 @@ impl Game<'_> {
     /// The names commands complete: objectives, teams and tracked holders.
     pub(super) fn sync_score_registries(&mut self) {
         let board = &self.score.board;
-        let reg = &mut self.ui.registries;
+        let reg = &mut self.world_data.registries;
         reg.objectives = board.objectives.iter().map(|o| o.name.clone()).collect();
         // Trigger objectives: the locks `/trigger` and `scoreboard players enable` complete from.
         reg.trigger_scores.clear();
@@ -580,7 +580,7 @@ impl Game<'_> {
             players: false,
         };
         let Ok(horizon_client::command::Arg::Entity(sel)) =
-            ty.parse(&mut reader, &self.ui.registries)
+            ty.parse(&mut reader, &self.world_data.registries)
         else {
             return raw.to_owned();
         };

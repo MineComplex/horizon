@@ -117,7 +117,7 @@ impl Game<'_> {
         }
         let explosive = sulfur_cube::archetype(m).is_some_and(|a| a.explosion.is_some());
         if explosive && matches!(item, "minecraft:flint_and_steel" | "minecraft:fire_charge") {
-            if !self.ui.rules.bool("tnt_explodes") {
+            if !self.world_data.rules.bool("tnt_explodes") {
                 return false;
             }
             sulfur_cube::prime(&mut self.mobs[index], false);
@@ -152,7 +152,7 @@ impl Game<'_> {
     /// `SulfurCubeSearchForItemsGoal` and `pickUpItem`: an adult with nothing
     /// inside hops to a block it can swallow within 8 and takes it in.
     pub(super) fn sulfur_cube_pickups(&mut self) {
-        let griefing = self.ui.rules.bool("mob_griefing");
+        let griefing = self.world_data.rules.bool("mob_griefing");
         for i in 0..self.mobs.len() {
             let m = &self.mobs[i];
             if m.species() != Species::SulfurCube {

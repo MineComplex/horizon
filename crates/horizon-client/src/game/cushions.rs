@@ -330,7 +330,7 @@ impl Game<'_> {
             1.0,
         );
         self.cushion_break_particles(&c);
-        if !self.ui.rules.bool("entity_drops") || (by_player && self.creative) {
+        if !self.world_data.rules.bool("entity_drops") || (by_player && self.creative) {
             return;
         }
         let stack = ItemStack {

@@ -434,11 +434,11 @@ impl Game<'_> {
         self.post_game_event("minecraft:explode", center, ctx);
         let mut targets = self.wind_positions(center, radius);
         // ServerExplosion.shouldAffectBlocklikeEntities
-        let blocklike = !breeze && !wind_charge && self.ui.rules.bool("mob_griefing");
+        let blocklike = !breeze && !wind_charge && self.world_data.rules.bool("mob_griefing");
         let pushed = self.wind_knockback(center, radius, multiplier, wind_charge, blocklike);
         let block_count = targets.len();
         // Explosion.canTriggerBlocks: a breeze's charge needs mob griefing.
-        if !breeze || self.ui.rules.bool("mob_griefing") {
+        if !breeze || self.world_data.rules.bool("mob_griefing") {
             // Util.shuffle(list, level.random)
             for i in (2..=targets.len()).rev() {
                 let swap = self.world.random.next_int_bound(i as i32).unwrap_or(0) as usize;

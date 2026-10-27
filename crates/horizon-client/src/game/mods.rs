@@ -584,7 +584,7 @@ impl Game<'_> {
     /// (game/lan_quiet.rs): each line as the player typing it, no chat, a
     /// chat message refused; one line in the log.
     fn run_quiet_batch(&mut self, mod_id: &str, lines: &[String]) {
-        let permission = self.ui.registries.permission;
+        let permission = self.world_data.registries.permission;
         let mut failed = 0;
         for line in lines {
             let ok = self.signable_arguments(permission, line).is_empty()

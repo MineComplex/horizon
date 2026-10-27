@@ -491,7 +491,7 @@ impl Game<'_> {
         }
         let mut options = WorldOptions {
             remote: self.external_server(),
-            gamemaster: self.ui.registries.permission >= 2,
+            gamemaster: self.world_data.registries.permission >= 2,
             default_mode: state.default_mode,
             personal_mode: state.personal_mode,
             cheats: state.cheats,
@@ -558,7 +558,7 @@ impl Game<'_> {
             return;
         };
         if self.remote.is_some() {
-            if self.ui.registries.permission >= 2 && !changes.is_empty() {
+            if self.world_data.registries.permission >= 2 && !changes.is_empty() {
                 self.send(S::SetGameRule(play::SetGameRule {
                     entries: changes
                         .into_iter()
@@ -575,7 +575,7 @@ impl Game<'_> {
             return;
         }
         for (name, value) in changes {
-            self.ui.rules.set(name, value);
+            self.world_data.rules.set(name, value);
             self.system_message(Text::tr("commands.gamerule.set", &[&name, &value]));
         }
         self.sync_rules();
@@ -919,7 +919,7 @@ impl Game<'_> {
                     o.rules = None;
                     self.send(S::ClientCommand(play::ClientCommand { action: 2 }));
                 } else {
-                    o.rules = Some(RulesScreen::new(&self.ui.rules));
+                    o.rules = Some(RulesScreen::new(&self.world_data.rules));
                 }
                 o.view = View::GameRules;
             }
@@ -1036,7 +1036,7 @@ impl Game<'_> {
             default_mode: self.level.mode(),
             personal_mode: self.mode_id(),
             cheats: self.allow_commands(),
-            difficulty: self.ui.difficulty,
+            difficulty: self.world_data.difficulty,
             hardcore: self.level.hardcore,
             difficulty_locked: self.level.difficulty_locked,
             port: self.lan_port(),
@@ -1047,7 +1047,7 @@ impl Game<'_> {
 
     fn apply_world_options(&mut self, before: &Snapshot, wanted: &Snapshot) {
         if self.external_server() {
-            if self.ui.registries.permission >= 2 {
+            if self.world_data.registries.permission >= 2 {
                 if wanted.difficulty != before.difficulty {
                     self.send(S::ChangeDifficulty(play::ChangeDifficultyRequest {
                         difficulty: i32::from(wanted.difficulty),

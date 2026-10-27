@@ -212,5 +212,5 @@ pub use horizon_game::world_spawn;
 pub use horizon_game::worldborder;
 pub use horizon_game::zip;
 pub use horizon_game::{
-    chunk_status, creative_menu, face_visibility, gallery, image, lod_column, vertex,
+    chunk_status, creative_menu, face_visibility, gallery, image, lod_column, vertex, world_data,
 };

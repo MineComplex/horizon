@@ -125,7 +125,7 @@ impl Game<'_> {
         let _ = std::fs::write(self.datapack_settings_path(), json.to_string());
     }
     pub(super) fn sync_function_registries(&mut self) {
-        let reg = &mut self.ui.registries;
+        let reg = &mut self.world_data.registries;
         reg.functions = self.fns.store.functions.keys().cloned().collect();
         reg.function_tags = self.fns.store.function_tags.keys().cloned().collect();
         reg.predicates = self.fns.store.predicates.keys().cloned().collect();
@@ -288,7 +288,13 @@ impl Game<'_> {
             if self.exec.returned.is_some() {
                 break;
             }
-            if self.exec.commands > self.ui.rules.int("max_command_sequence_length").max(1) as u32 {
+            if self.exec.commands
+                > self
+                    .world_data
+                    .rules
+                    .int("max_command_sequence_length")
+                    .max(1) as u32
+            {
                 break;
             }
         }

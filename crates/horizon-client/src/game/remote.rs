@@ -426,9 +426,9 @@ impl Game<'_> {
         // The connected client never opens a server world (single player also
         // joins here), so load the registries its argument parsers and local
         // suggestions need before receiving the server's command tree.
-        self.ui.registries = Default::default();
+        self.world_data.registries = Default::default();
         self.build_registries();
-        self.ui.registries.permission = 0;
+        self.world_data.registries.permission = 0;
         self.ui.chat.clear();
         self.screen = Screen::Playing;
         self.title = None;
@@ -2265,7 +2265,7 @@ impl Game<'_> {
                 if (24..=28).contains(&p.event)
                     && self.remote.as_ref().is_some_and(|r| r.entity_id == p.id)
                 {
-                    self.ui.registries.permission = (p.event - 24) as u8;
+                    self.world_data.registries.permission = (p.event - 24) as u8;
                     self.remote_world_options_permission(p.event >= 26);
                 }
                 if p.event == 1
@@ -2390,9 +2390,9 @@ impl Game<'_> {
                 }
             }
             C::ChangeDifficulty(p) => {
-                self.ui.difficulty = p.difficulty.clamp(0, 3) as u8;
+                self.world_data.difficulty = p.difficulty.clamp(0, 3) as u8;
                 self.level.difficulty_locked = p.locked;
-                self.remote_world_options_difficulty(self.ui.difficulty, p.locked);
+                self.remote_world_options_difficulty(self.world_data.difficulty, p.locked);
             }
             C::GameRuleValues(p) => self.remote_world_options_rules(p.entries),
             // ClientPacketListener.handleSetHealth: LocalPlayer.hurtTo.

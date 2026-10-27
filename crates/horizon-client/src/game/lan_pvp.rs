@@ -221,7 +221,7 @@ impl Game<'_> {
             Victim::Host => self.player_team().cloned(),
             Victim::Guest(conn) => host.hub.guest(conn).and_then(|g| team_of(self, &g.name)),
         };
-        let refused = !(self.ui.rules.bool("pvp")
+        let refused = !(self.world_data.rules.bool("pvp")
             && horizon_client::scoreboard::teams_allow_damage(target.as_ref(), attacker.as_ref()));
         let on_player = Hit::Entity {
             who: Who::Player,
@@ -281,7 +281,7 @@ impl Game<'_> {
             let thorns = if hurt { g.thorns_damage() } else { Vec::new() };
             (hurt, thorns)
         };
-        let (hurt, thorns) = if self.ui.rules.bool("pvp") && harm {
+        let (hurt, thorns) = if self.world_data.rules.bool("pvp") && harm {
             match victim {
                 Victim::Host => land(self),
                 Victim::Guest(conn) => self.guest_struck_by(host, conn, land).unwrap_or_default(),

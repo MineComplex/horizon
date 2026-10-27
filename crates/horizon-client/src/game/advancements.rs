@@ -300,7 +300,7 @@ impl Game<'_> {
         // rewards of done advancements: /recipe take sticks.
         let tree = self.adv.tree.clone();
         self.adv.progress = progress;
-        self.ui.registries.advancements = tree.list.iter().map(|a| a.id.clone()).collect();
+        self.world_data.registries.advancements = tree.list.iter().map(|a| a.id.clone()).collect();
     }
     pub(super) fn save_advancements(&self) {
         if !self.adv.loaded || self.remote.is_some() || self.no_player_here() {
@@ -545,7 +545,7 @@ impl Game<'_> {
                     last_changed: 0,
                 });
             }
-            if d.announce && self.ui.rules.bool("show_advancement_messages") {
+            if d.announce && self.world_data.rules.bool("show_advancement_messages") {
                 let key = match d.frame {
                     Frame::Task => "chat.type.advancement.task",
                     Frame::Goal => "chat.type.advancement.goal",
@@ -1324,7 +1324,7 @@ impl Game<'_> {
         for (i, a) in tree.list.iter().enumerate() {
             tree.by_id.insert(a.id.clone(), i);
         }
-        self.ui.registries.advancements = tree.list.iter().map(|a| a.id.clone()).collect();
+        self.world_data.registries.advancements = tree.list.iter().map(|a| a.id.clone()).collect();
         self.adv.tree = Arc::new(tree);
         self.adv.positions = Some(positions);
         let tree = self.adv.tree.clone();

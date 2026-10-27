@@ -150,11 +150,11 @@ impl Game<'_> {
         self.falling.clear();
         // Hopper cooldowns of an earlier case.
         self.hoppers.clear();
-        self.ui.rules = Default::default();
+        self.world_data.rules = Default::default();
         self.dim = super::Dim::Overworld;
         self.respawn_config = None;
         // The oracle level plays on normal difficulty.
-        self.ui.difficulty = 2;
+        self.world_data.difficulty = 2;
         // The oracle level has world seed 0 and fresh random sequences.
         self.level.seed = 0;
         self.rand_sequences = Default::default();
@@ -188,7 +188,7 @@ impl Game<'_> {
         if let Some(rules) = case["rules"].as_object() {
             for (name, value) in rules {
                 if let Some(b) = value.as_bool() {
-                    self.ui.rules.set(name, RuleValue::Bool(b));
+                    self.world_data.rules.set(name, RuleValue::Bool(b));
                 }
             }
         }

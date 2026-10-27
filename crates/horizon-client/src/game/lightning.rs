@@ -47,13 +47,13 @@ impl Game<'_> {
                 continue;
             }
             // Skeleton trap: effective difficulty / 100 (regional difficulty approximated).
-            let difficulty = f64::from(self.ui.difficulty) * 0.75;
+            let difficulty = f64::from(self.world_data.difficulty) * 0.75;
             let below = &self
                 .res
                 .facts()
                 .get(self.world.block(pos[0], pos[1] - 1, pos[2]))
                 .name;
-            let trap = self.ui.rules.bool("spawn_mobs")
+            let trap = self.world_data.rules.bool("spawn_mobs")
                 && self.world.random.next_double() < difficulty * 0.01
                 && !below.ends_with("lightning_rod");
             if trap {
@@ -273,7 +273,7 @@ impl Game<'_> {
                 );
                 if !b.visual_only {
                     // Only Normal and Hard start fires with the strike itself.
-                    if self.ui.difficulty >= 2 {
+                    if self.world_data.difficulty >= 2 {
                         self.bolt_fire(b.at, 4);
                     }
                     self.strike_rod(b.at);
@@ -366,7 +366,7 @@ impl Game<'_> {
             from: Some(b.at),
         };
         let mut events = Vec::new();
-        let peaceful = self.ui.difficulty == 0;
+        let peaceful = self.world_data.difficulty == 0;
         for m in self.mobs.iter_mut().filter(|m| m.alive()) {
             if !inside([m.position.x, m.position.y, m.position.z]) {
                 continue;

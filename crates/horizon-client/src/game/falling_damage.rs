@@ -97,7 +97,7 @@ impl Game<'_> {
         });
         if matches!(landing, Landing::Broken)
             && block.drop_item
-            && self.ui.rules.bool("entity_drops")
+            && self.world_data.rules.bool("entity_drops")
         {
             let item = self.res.facts().get(block.state).item.clone();
             if &*item != "minecraft:air" {

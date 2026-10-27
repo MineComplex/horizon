@@ -1336,7 +1336,7 @@ impl Game<'_> {
     /// One phase server tick (`doServerTick`).
     fn tick_phase(&mut self) {
         let players = self.fight_players();
-        let peaceful = self.ui.difficulty == 0;
+        let peaceful = self.world_data.difficulty == 0;
         // A crystal destroyed since: strafe whoever it names, if the dragon
         // can attack them (`canAttack`).
         if let Some(d) = self.dragon.as_mut()
@@ -1993,7 +1993,7 @@ impl Game<'_> {
             }
         }
         // checkWalls over head, neck and body.
-        let griefing = self.ui.rules.bool("mob_griefing");
+        let griefing = self.world_data.rules.bool("mob_griefing");
         let mut in_wall = false;
         let Some(d) = self.dragon.as_ref() else {
             return;
@@ -2073,7 +2073,7 @@ impl Game<'_> {
         }
         let first_kill = !self.fight.previously_killed;
         let xp = if first_kill { 12000 } else { 500 };
-        let drops = self.ui.rules.bool("mob_drops");
+        let drops = self.world_data.rules.bool("mob_drops");
         if t > 150 && t % 5 == 0 && drops {
             self.spawn_orbs([p.x, p.y, p.z], (xp as f32 * 0.08) as u32);
         }

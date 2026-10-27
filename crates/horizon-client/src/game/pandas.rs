@@ -25,7 +25,7 @@ impl Game<'_> {
     /// A panda takes what lies at its feet when its mouth is free, and
     /// looks for food within 6 and 8 blocks for `PandaSitGoal`.
     pub(super) fn tick_pandas(&mut self) {
-        let griefing = self.ui.rules.bool("mob_griefing");
+        let griefing = self.world_data.rules.bool("mob_griefing");
         for i in 0..self.mobs.len() {
             let m = &self.mobs[i];
             if m.species() != Species::Panda || !m.alive() {

@@ -324,7 +324,7 @@ impl Game<'_> {
     /// player of the level counts: the game's own and the hosted ones (a
     /// server thread's players are all hosted).
     pub(super) fn spawn_phantoms(&mut self) {
-        let rules = &self.ui.rules;
+        let rules = &self.world_data.rules;
         if !rules.bool("spawn_mobs")
             || !rules.bool("spawn_monsters")
             || !rules.bool("spawn_phantoms")

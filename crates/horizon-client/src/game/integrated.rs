@@ -674,7 +674,7 @@ impl Game<'_> {
             default_mode: self.level.mode(),
             personal_mode,
             cheats: self.allow_commands(),
-            difficulty: self.ui.difficulty,
+            difficulty: self.world_data.difficulty,
             hardcore: self.level.hardcore,
             difficulty_locked: self.level.difficulty_locked,
             port: published,

@@ -206,7 +206,11 @@ impl Game<'_> {
     }
     /// `ServerLevel.isAllowedToEnterPortal`.
     pub(super) fn may_enter(&self, target: Dim) -> bool {
-        target != Dim::Nether || self.ui.rules.bool("allow_entering_nether_using_portals")
+        target != Dim::Nether
+            || self
+                .world_data
+                .rules
+                .bool("allow_entering_nether_using_portals")
     }
     /// The plan of an entity of `width` by `height` at `at` going through the
     /// portal at `entry` (`getDimensionTransitionFromExit` and the scaled,
@@ -459,7 +463,7 @@ impl Game<'_> {
         } else {
             "players_nether_portal_default_delay"
         };
-        let transition = self.ui.rules.int(rule).max(0);
+        let transition = self.world_data.rules.int(rule).max(0);
         let Some(entry) = self
             .portals
             .player

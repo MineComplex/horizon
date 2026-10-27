@@ -54,7 +54,8 @@ impl Game<'_> {
                 single: false,
                 players: false,
             };
-            let Ok(Arg::Entity(sel)) = entities.parse(&mut reader, &self.ui.registries) else {
+            let Ok(Arg::Entity(sel)) = entities.parse(&mut reader, &self.world_data.registries)
+            else {
                 return Text::literal(raw);
             };
             let found = self.select(&sel);
@@ -98,7 +99,7 @@ impl Game<'_> {
             players: false,
         };
         let mut holder = name.to_owned();
-        if let Ok(Arg::Entity(sel)) = ty.parse(&mut reader, &self.ui.registries)
+        if let Ok(Arg::Entity(sel)) = ty.parse(&mut reader, &self.world_data.registries)
             && !reader.can_read()
         {
             let found = self.select(&sel);
@@ -137,7 +138,7 @@ impl Game<'_> {
                 single: false,
                 players: false,
             };
-            if let Ok(Arg::Entity(s)) = ty.parse(&mut reader, &self.ui.registries) {
+            if let Ok(Arg::Entity(s)) = ty.parse(&mut reader, &self.world_data.registries) {
                 for t in self.select(&s) {
                     if let Ok(tag) = self.data_of(&super::data::DataRef::Entity(t)) {
                         sources.push(tag);

@@ -306,7 +306,7 @@ impl NaturalLevel for GameLevel<'_, '_> {
                 .any(|(_, b, alive, _)| alive && b.intersects(bounds))
     }
     fn spawn_mobs(&self) -> bool {
-        self.game.ui.rules.bool("spawn_mobs")
+        self.game.world_data.rules.bool("spawn_mobs")
     }
     /// WORLD_SURFACE (every spawn attempt's) is the chunk's kept heightmap.
     /// The others are scanned down the column: sections of air alone are
@@ -338,7 +338,7 @@ impl horizon_client::mobs::spawner::SpawnerLevel for GameLevel<'_, '_> {
         })
     }
     fn spawner_blocks_work(&self) -> bool {
-        self.game.ui.rules.bool("spawner_blocks_work")
+        self.game.world_data.rules.bool("spawner_blocks_work")
     }
     fn entity_exists(&self, id: &str) -> bool {
         self.game.res.mob_types().contains_key(id) || self.game.entity_type_exists(id)
@@ -489,8 +489,8 @@ impl<'a> Game<'a> {
         for &key in &chunks {
             *self.world.inhabited.entry(key).or_insert(0) += 1;
         }
-        let spawn_mobs = self.ui.rules.bool("spawn_mobs");
-        let spawn_enemies = self.ui.rules.bool("spawn_monsters");
+        let spawn_mobs = self.world_data.rules.bool("spawn_mobs");
+        let spawn_enemies = self.world_data.rules.bool("spawn_monsters");
         let mut random = std::mem::replace(&mut self.world.random, LegacyRandom::new(0));
         let mut pending = Vec::new();
         {

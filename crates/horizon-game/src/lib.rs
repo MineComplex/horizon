@@ -102,6 +102,7 @@ pub mod vanillagen;
 pub mod vault;
 pub mod vertex;
 pub mod world;
+pub mod world_data;
 pub mod world_spawn;
 pub mod worldborder;
 pub mod zip;

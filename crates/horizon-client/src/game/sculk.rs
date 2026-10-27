@@ -243,7 +243,7 @@ impl Game<'_> {
                 "commands.warden_spawn_tracker.clear.success.single"
             }
         };
-        if self.ui.rules.bool("send_command_feedback") {
+        if self.world_data.rules.bool("send_command_feedback") {
             self.system_message(Text::translate(
                 key,
                 &[Text::literal(super::chat::PLAYER_NAME)],
@@ -946,7 +946,7 @@ impl Game<'_> {
         use horizon_world::food::Difficulty;
         self.state_property(state, "can_summon") == Some("true")
             && self.world.health_rules.difficulty != Difficulty::Peaceful
-            && self.ui.rules.bool("spawn_wardens")
+            && self.world_data.rules.bool("spawn_wardens")
     }
     /// `SculkShriekerBlockEntity.tryShriek`.
     fn try_shriek(&mut self, key: (i32, i32, i32), by_player: bool) -> Result<()> {

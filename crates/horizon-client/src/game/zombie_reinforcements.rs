@@ -41,7 +41,9 @@ impl Game<'_> {
             return;
         }
         // ServerLevel.isSpawningMonsters.
-        if !self.ui.rules.bool("spawn_mobs") || !self.ui.rules.bool("spawn_monsters") {
+        if !self.world_data.rules.bool("spawn_mobs")
+            || !self.world_data.rules.bool("spawn_monsters")
+        {
             return;
         }
         let kind = zombie.kind.clone();

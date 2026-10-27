@@ -595,11 +595,11 @@ impl Game<'_> {
         self.level.position = None;
         // DedicatedServer.initServer: worldData.setGameType; forceDifficulty.
         self.set_default_game_mode(game_mode);
-        self.ui.difficulty = props.difficulty as u8;
+        self.world_data.difficulty = props.difficulty as u8;
         // DedicatedServer.initServer: a legacy `announce-player-achievements`
         // sets the show_advancement_messages rule once, as the file is read.
         if let Some(announce) = props.announce_player_achievements {
-            self.ui.rules.set(
+            self.world_data.rules.set(
                 "show_advancement_messages",
                 horizon_client::gamerules::Value::Bool(announce),
             );

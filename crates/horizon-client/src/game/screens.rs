@@ -334,7 +334,7 @@ impl Game<'_> {
             {
                 self.throw_from_eyes(stack, eye, false);
             }
-            let keep = self.ui.rules.bool("keep_inventory") || self.spectator();
+            let keep = self.world_data.rules.bool("keep_inventory") || self.spectator();
             self.experience.respawn(keep);
             // The guests are sent the respawned host as a new entity, not the dead body.
             if let Some(host) = self.lan.as_mut() {

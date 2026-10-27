@@ -1333,18 +1333,18 @@ impl Game<'_> {
             S::ChatCommandSigned(p) => self.guest_signed_command(host, conn, p),
             S::ChangeDifficulty(p) if host.hub.guests[gi].permission >= 2 => {
                 if !self.level.difficulty_locked && (0..=3).contains(&p.difficulty) {
-                    self.ui.difficulty = if self.level.hardcore {
+                    self.world_data.difficulty = if self.level.hardcore {
                         3
                     } else {
                         p.difficulty as u8
                     };
                     self.sync_rules();
-                    if self.ui.difficulty == 0 {
+                    if self.world_data.difficulty == 0 {
                         self.mobs.retain(|m| !m.hostile());
                     }
                     host.hub
                         .broadcast(&C::ChangeDifficulty(play::ChangeDifficulty {
-                            difficulty: i32::from(self.ui.difficulty),
+                            difficulty: i32::from(self.world_data.difficulty),
                             locked: self.level.difficulty_locked,
                         }));
                 }
@@ -1353,7 +1353,7 @@ impl Game<'_> {
                 self.level.difficulty_locked = p.locked;
                 host.hub
                     .broadcast(&C::ChangeDifficulty(play::ChangeDifficulty {
-                        difficulty: i32::from(self.ui.difficulty),
+                        difficulty: i32::from(self.world_data.difficulty),
                         locked: self.level.difficulty_locked,
                     }));
             }
@@ -1365,7 +1365,12 @@ impl Game<'_> {
                             .iter()
                             .map(|r| play::GameRuleEntry {
                                 name: format!("minecraft:{}", r.name),
-                                value: self.ui.rules.get(r.name).unwrap_or(r.default).to_string(),
+                                value: self
+                                    .world_data
+                                    .rules
+                                    .get(r.name)
+                                    .unwrap_or(r.default)
+                                    .to_string(),
                             })
                             .collect(),
                     }),
@@ -1373,7 +1378,7 @@ impl Game<'_> {
             }
             S::SetGameRule(p) if host.hub.guests[gi].permission >= 2 => {
                 for entry in p.entries {
-                    if self.ui.rules.set_string(&entry.name, &entry.value) {
+                    if self.world_data.rules.set_string(&entry.name, &entry.value) {
                         let message = horizon_client::text::Text::tr(
                             "commands.gamerule.set",
                             &[&entry.name, &entry.value],
@@ -1829,13 +1834,13 @@ impl Game<'_> {
         };
         self.lan = Some(host);
         self.chat_capture = Some(Vec::new());
-        let level = std::mem::replace(&mut self.ui.registries.permission, c.permission);
+        let level = std::mem::replace(&mut self.world_data.registries.permission, c.permission);
         let ok = if c.quiet {
             self.run_command_quietly(&c.command)
         } else {
             self.run_command(&c.command)
         };
-        self.ui.registries.permission = level;
+        self.world_data.registries.permission = level;
         let lines = self.chat_capture.take().unwrap_or_default();
         let mut host = self.lan.take().expect("a command puts the hub back");
         self.leave_guest(&mut host, swap);
@@ -1931,10 +1936,11 @@ impl Game<'_> {
             return;
         }
         let d = vanilla::game_dispatcher();
-        let level = std::mem::replace(&mut self.ui.registries.permission, permission);
-        let parse = d.parse(command, &self.ui.registries);
-        let ((start, end), suggestions) = d.suggestions(&parse, command.len(), &self.ui.registries);
-        self.ui.registries.permission = level;
+        let level = std::mem::replace(&mut self.world_data.registries.permission, permission);
+        let parse = d.parse(command, &self.world_data.registries);
+        let ((start, end), suggestions) =
+            d.suggestions(&parse, command.len(), &self.world_data.registries);
+        self.world_data.registries.permission = level;
         let utf16 = |byte: usize| command[..byte.min(command.len())].encode_utf16().count() as i32;
         let mut w = horizon_protocol::buf::Writer::new();
         w.varint(id);
@@ -2030,7 +2036,7 @@ impl Game<'_> {
             progress: g.xp_progress,
             total: g.xp_total,
         };
-        xp.respawn(self.ui.rules.bool("keep_inventory") || g.game_mode == SPECTATOR);
+        xp.respawn(self.world_data.rules.bool("keep_inventory") || g.game_mode == SPECTATOR);
         (g.xp_level, g.xp_progress, g.xp_total) = (xp.level, xp.progress, xp.total);
         let clock_rate = self.network_clock_rate();
         let ctx = TickCtx {
@@ -2039,7 +2045,7 @@ impl Game<'_> {
             entities: &[],
             next_entity: &mut self.next_entity,
             spawn,
-            difficulty: i32::from(self.ui.difficulty),
+            difficulty: i32::from(self.world_data.difficulty),
             difficulty_locked: self.level.difficulty_locked,
             clock_rate,
             tick_rate: self.clock.rate(),
@@ -2225,7 +2231,7 @@ impl Game<'_> {
                 progress: g.xp_progress,
                 total: g.xp_total,
             }
-            .death_reward(self.ui.rules.bool("keep_inventory") || g.game_mode == SPECTATOR);
+            .death_reward(self.world_data.rules.bool("keep_inventory") || g.game_mode == SPECTATOR);
             let (name, uuid) = (g.name.clone(), g.uuid);
             // ServerPlayer.die: dropAllDeathLoot unless a spectator, from the eyes less 0.3.
             let drops =
@@ -2234,7 +2240,7 @@ impl Game<'_> {
             // ServerPlayer.die: with showDeathMessages, the message goes to
             // the dying player's death screen and to everyone the team lets
             // see it; without it, the death screen gets an empty one.
-            let shown = self.ui.rules.bool("show_death_messages");
+            let shown = self.world_data.rules.bool("show_death_messages");
             let mut keep_inventory = false;
             #[cfg(feature = "mods")]
             let mut plugin_message: Option<Option<String>> = None;
@@ -2248,7 +2254,7 @@ impl Game<'_> {
                     }
                     None => self.guest_death_message(conn, me),
                 };
-                let rule = self.ui.rules.bool("keep_inventory");
+                let rule = self.world_data.rules.bool("keep_inventory");
                 if let Some((message, keep_inv, keep_level)) =
                     self.plugin_player_death(host, conn, shown.then(|| text.component()), rule)
                 {
@@ -2396,7 +2402,12 @@ impl Game<'_> {
                 count(g.bed.is_some(), g.sleep_timer);
             }
         }
-        let percent = i64::from(self.ui.rules.int("players_sleeping_percentage").max(0));
+        let percent = i64::from(
+            self.world_data
+                .rules
+                .int("players_sleeping_percentage")
+                .max(0),
+        );
         let needed = ((active * percent + 99) / 100).max(1);
         sleeping >= needed && deep >= needed
     }

@@ -259,7 +259,7 @@ impl Game<'_> {
     }
     /// `ItemFrame.dropItem`: the frame (when breaking) and the held item.
     fn drop_frame_items(&mut self, f: &ItemFrame, with_frame: bool, by_player: bool) {
-        if !self.ui.rules.bool("entity_drops") || (by_player && self.creative) {
+        if !self.world_data.rules.bool("entity_drops") || (by_player && self.creative) {
             return;
         }
         let s = f.step().map(f64::from);

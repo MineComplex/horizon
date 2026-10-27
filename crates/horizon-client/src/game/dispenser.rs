@@ -1283,7 +1283,9 @@ impl Game<'_> {
         if let Some(i) = cube {
             // primeTime(false): the fuse is lit only while TNT explodes; the
             // ignition counts either way.
-            if self.ui.rules.bool("tnt_explodes") && sulfur_cube::prime(&mut self.mobs[i], false) {
+            if self.world_data.rules.bool("tnt_explodes")
+                && sulfur_cube::prime(&mut self.mobs[i], false)
+            {
                 let m = &mut self.mobs[i];
                 let (at, id) = (m.position, m.id);
                 let mut events = Vec::new();
@@ -1317,7 +1319,7 @@ impl Game<'_> {
                 None,
             );
         } else if &*name == "minecraft:tnt" {
-            if self.ui.rules.bool("tnt_explodes") {
+            if self.world_data.rules.bool("tnt_explodes") {
                 self.spawn_primed_tnt(target_pos, false);
                 self.with_level(|b, level, ticks| b.remove_block(level, ticks, target_pos, false));
                 self.process_level_events()?;
@@ -1385,7 +1387,7 @@ impl Game<'_> {
         }
     }
     fn dispense_tnt(&mut self, pos: Pos, facing: Direction, stack: ItemStack) -> Dispensed {
-        if !self.ui.rules.bool("tnt_explodes") {
+        if !self.world_data.rules.bool("tnt_explodes") {
             set_success("tnt", false);
             return (Some(stack), FAIL);
         }
@@ -1428,7 +1430,7 @@ impl Game<'_> {
         let target = offset(pos, facing);
         let free = self.res.facts().is_air(self.block_at(target))
             && target.1 >= horizon_client::chunk::MIN_Y + 2
-            && self.ui.difficulty != 0
+            && self.world_data.difficulty != 0
             && self.can_build_wither(target);
         if free {
             let rotation = match facing {

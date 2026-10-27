@@ -376,7 +376,7 @@ impl Game<'_> {
         ) {
             return None;
         }
-        if !self.ui.rules.bool("spawner_blocks_work") {
+        if !self.world_data.rules.bool("spawner_blocks_work") {
             self.system_message(horizon_client::text::Text::translate(
                 "advMode.notEnabled.spawner",
                 &[],

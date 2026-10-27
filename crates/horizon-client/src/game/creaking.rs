@@ -289,9 +289,9 @@ impl Game<'_> {
     }
     /// `ServerLevel.isSpawningMonsters`.
     fn spawning_monsters(&self) -> bool {
-        self.ui.difficulty != 0
-            && self.ui.rules.bool("spawn_mobs")
-            && self.ui.rules.bool("spawn_monsters")
+        self.world_data.difficulty != 0
+            && self.world_data.rules.bool("spawn_mobs")
+            && self.world_data.rules.bool("spawn_monsters")
     }
     /// Hearts that came with generated or loaded chunks get their block
     /// entity (`newBlockEntity`) the first time their chunk is seen.

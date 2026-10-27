@@ -7,7 +7,7 @@ use horizon_core::random::RandomSource;
 
 impl Game<'_> {
     pub(super) fn tick_allays(&mut self) {
-        let griefing = self.ui.rules.bool("mob_griefing");
+        let griefing = self.world_data.rules.bool("mob_griefing");
         let player = self.player.as_ref().map(|p| p.position);
         // The playing jukeboxes, found at the first allay: no allay starts
         // or stops one, and the block entities run into the thousands.

@@ -95,7 +95,7 @@ impl Game<'_> {
             return true;
         }
         let d = vanilla::game_dispatcher();
-        let parse = d.parse(command, &self.ui.registries);
+        let parse = d.parse(command, &self.world_data.registries);
         let result = match parse.executable() {
             Err(e) => {
                 self.syntax_failure(&e, command);
@@ -187,7 +187,7 @@ impl Game<'_> {
             self.command_block_success(block, message);
             return;
         }
-        if self.ui.rules.bool("send_command_feedback") {
+        if self.world_data.rules.bool("send_command_feedback") {
             self.system_message(message.clone());
         }
         self.broadcast_to_admins(message);
@@ -212,12 +212,12 @@ impl Game<'_> {
         {
             return;
         }
-        let ops = self.ui.rules.bool("send_command_feedback");
+        let ops = self.world_data.rules.bool("send_command_feedback");
         // MinecraftServer.sendSystemMessage, unless the server is the source.
         let console = self.console_broadcast.is_none()
             && self.lan_acting.is_some()
             && self.options.dedicated.is_some()
-            && self.ui.rules.bool("log_admin_commands");
+            && self.world_data.rules.bool("log_admin_commands");
         if !ops && !console {
             return;
         }
@@ -948,7 +948,7 @@ impl Game<'_> {
     }
     fn cmd_help(&mut self, ctx: &Context) -> R<i32> {
         let d = vanilla::game_dispatcher();
-        let level = self.ui.registries.permission;
+        let level = self.world_data.registries.permission;
         match ctx.get("command") {
             None => {
                 let usage = d.smart_usage(0, level);
@@ -959,7 +959,7 @@ impl Game<'_> {
                 Ok(n)
             }
             Some(Arg::Str(command)) => {
-                let parse = d.parse(command, &self.ui.registries);
+                let parse = d.parse(command, &self.world_data.registries);
                 if parse.context.nodes.is_empty() {
                     return Err(err("commands.help.failed", &[]));
                 }
@@ -1001,7 +1001,7 @@ impl Game<'_> {
             let mode_name = Text::translate(&format!("gameMode.{}", mode.name()), &[]);
             // GameModeCommand.logGamemodeChange: the source's own entity.
             let own = self.source_entity() == Some(t);
-            let told = !own && self.ui.rules.bool("send_command_feedback");
+            let told = !own && self.world_data.rules.bool("send_command_feedback");
             let changed = self.for_player(t, |g| {
                 if !g.set_game_mode(mode) {
                     return false;
@@ -1547,7 +1547,7 @@ impl Game<'_> {
                     return Err(err("commands.time.set.already_at_time", &[&clock, &t]));
                 }
                 self.world.day_time = t;
-                self.ui.clock.partial = 0.0;
+                self.world_data.clock.partial = 0.0;
                 self.feedback(Text::tr("commands.time.set.absolute", &[&clock, &t]));
                 Ok(t as i32)
             }
@@ -1555,7 +1555,7 @@ impl Game<'_> {
                 let Some(Arg::Resource(marker)) = ctx.get("timemarker").cloned() else {
                     return Ok(0);
                 };
-                let Some(m) = self.ui.markers.get(&marker).copied() else {
+                let Some(m) = self.world_data.markers.get(&marker).copied() else {
                     return Err(err(
                         "commands.time.no_time_marker_found",
                         &[&marker, &clock],
@@ -1568,7 +1568,7 @@ impl Game<'_> {
                     ));
                 }
                 self.world.day_time = m.resolve(total);
-                self.ui.clock.partial = 0.0;
+                self.world_data.clock.partial = 0.0;
                 self.feedback(Text::tr(
                     "commands.time.set.time_marker",
                     &[&clock, &marker],
@@ -1584,7 +1584,7 @@ impl Game<'_> {
             }
             "time.pause" | "time.resume" => {
                 let pause = id == "time.pause";
-                if self.ui.clock.paused == pause {
+                if self.world_data.clock.paused == pause {
                     return Err(err(
                         if pause {
                             "commands.time.pause.already_paused"
@@ -1594,7 +1594,7 @@ impl Game<'_> {
                         &[&clock],
                     ));
                 }
-                self.ui.clock.paused = pause;
+                self.world_data.clock.paused = pause;
                 self.feedback(Text::tr(
                     if pause {
                         "commands.time.pause"
@@ -1610,13 +1610,13 @@ impl Game<'_> {
                     Some(Arg::Float(r)) => *r,
                     _ => 1.0,
                 };
-                if self.ui.clock.rate == rate {
+                if self.world_data.clock.rate == rate {
                     return Err(err(
                         "commands.time.rate.already_same",
                         &[&clock, &java_float(f64::from(rate))],
                     ));
                 }
-                self.ui.clock.rate = rate;
+                self.world_data.clock.rate = rate;
                 self.feedback(Text::tr(
                     "commands.time.rate",
                     &[&clock, &java_float(f64::from(rate))],
@@ -1631,7 +1631,7 @@ impl Game<'_> {
                 let Some(Arg::Resource(timeline)) = ctx.get("timeline").cloned() else {
                     return Ok(0);
                 };
-                let Some(period) = self.ui.timelines.get(&timeline).copied() else {
+                let Some(period) = self.world_data.timelines.get(&timeline).copied() else {
                     return Err(err(
                         "commands.time.wrong_timeline_for_clock",
                         &[&clock, &timeline],
@@ -1791,7 +1791,7 @@ impl Game<'_> {
         let short = kind.trim_start_matches("minecraft:").to_owned();
         if let Some(Arg::Str(nbt)) = ctx.get("nbt").cloned() {
             // With an NBT argument the entity is built from it, unfinalized.
-            if self.ui.difficulty == 0
+            if self.world_data.difficulty == 0
                 && self
                     .res
                     .mob_types()
@@ -1820,7 +1820,7 @@ impl Game<'_> {
             .get(&format!("minecraft:{short}"))
             .cloned()
         {
-            if self.ui.difficulty == 0 && t.category == "monster" {
+            if self.world_data.difficulty == 0 && t.category == "monster" {
                 return Err(err("commands.summon.failed.peaceful", &[]));
             }
             self.spawn_mob(&short, pos, true);
@@ -2145,7 +2145,7 @@ impl Game<'_> {
         let area = (0..3)
             .map(|i| i64::from(max[i] - min[i] + 1))
             .product::<i64>();
-        let limit = self.ui.rules.int("max_block_modifications");
+        let limit = self.world_data.rules.int("max_block_modifications");
         if area > i64::from(limit) {
             return Err(err("commands.fill.toobig", &[&limit, &area]));
         }
@@ -2220,7 +2220,7 @@ impl Game<'_> {
             return Err(err("commands.clone.overlap", &[]));
         }
         let area = (0..3).map(|i| i64::from(size[i] + 1)).product::<i64>();
-        let limit = self.ui.rules.int("max_block_modifications");
+        let limit = self.world_data.rules.int("max_block_modifications");
         if area > i64::from(limit) {
             return Err(err("commands.clone.toobig", &[&limit, &area]));
         }
@@ -2499,7 +2499,7 @@ impl Game<'_> {
         let Some(rule) = gamerules::rule(&name) else {
             return Ok(0);
         };
-        let current = self.ui.rules.get(rule.name).unwrap_or(rule.default);
+        let current = self.world_data.rules.get(rule.name).unwrap_or(rule.default);
         let value = match ctx.get("value") {
             Some(Arg::Bool(b)) => Value::Bool(*b),
             Some(Arg::Int(i)) => Value::Int(*i),
@@ -2514,7 +2514,7 @@ impl Game<'_> {
         if current == value {
             return Err(err("commands.gamerule.not_set", &[&rule.name, &value]));
         }
-        self.ui.rules.set(rule.name, value);
+        self.world_data.rules.set(rule.name, value);
         self.sync_rules();
         self.feedback(Text::tr("commands.gamerule.set", &[&rule.name, &value]));
         Ok(match value {
@@ -2530,7 +2530,7 @@ impl Game<'_> {
             )
         };
         let Some(i) = DIFFICULTIES.iter().position(|d| ctx.has(d)) else {
-            let current = self.ui.difficulty;
+            let current = self.world_data.difficulty;
             self.system_message(Text::translate(
                 "commands.difficulty.query",
                 &[name(current)],
@@ -2538,13 +2538,13 @@ impl Game<'_> {
             return Ok(i32::from(current));
         };
         let i = i as u8;
-        if self.ui.difficulty == i {
+        if self.world_data.difficulty == i {
             return Err(CommandError::new(Text::translate(
                 "commands.difficulty.failure",
                 &[name(i)],
             )));
         }
-        self.ui.difficulty = i;
+        self.world_data.difficulty = i;
         self.sync_rules();
         if i == 0 {
             // Peaceful removes hostile mobs.
@@ -3122,7 +3122,7 @@ impl Game<'_> {
                 single: false,
                 players: false,
             })
-            .parse(&mut reader, &self.ui.registries)
+            .parse(&mut reader, &self.world_data.registries)
             {
                 Ok(Arg::Entity(s)) if reader.cursor > 1 => {
                     let found = self.select(&s);

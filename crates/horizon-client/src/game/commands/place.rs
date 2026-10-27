@@ -123,7 +123,7 @@ impl Game<'_> {
                     return Ok(0);
                 };
                 if !self
-                    .ui
+                    .world_data
                     .registries
                     .ids("minecraft:worldgen/template_pool")
                     .contains(&pool)
@@ -169,7 +169,7 @@ impl Game<'_> {
                     return Ok(0);
                 };
                 if !self
-                    .ui
+                    .world_data
                     .registries
                     .ids("minecraft:worldgen/structure")
                     .contains(&structure)
