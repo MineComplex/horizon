@@ -56,8 +56,9 @@ def main():
         code += '\n' + (function(source, 'sprite_mipmap_limit') if 'fn sprite_mipmap_limit' in source
                          else 'use sprites::sprite_mipmap_limit;')
         code += '\n' + source[source.index('#[cfg(test)]\nmod sprite_upload_tests'):]
-    modules = '\n'.join(f'#[path = {json.dumps(str(ROOT / "crates/horizon-game/src" / (name + ".rs")))}] mod {name};'
-                        for name in ('mipmap', 'sprites', 'fast_hash'))
+    modules = '\n'.join(f'#[path = {json.dumps(str(ROOT / "crates" / crate / "src" / (name + ".rs")))}] mod {name};'
+                        for crate, name in (('horizon-client', 'mipmap'), ('horizon-client', 'sprites'),
+                                            ('horizon-game', 'fast_hash')))
     (build / 'main.rs').write_text(modules + '\nuse sprites::SpriteAnimation;\n'
                                   + code + '\n' + (ROOT / 'tools/bench_sprite_mips.rs').read_text())
     (build / 'Cargo.toml').write_text(f'''[package]

@@ -56,7 +56,7 @@ fn main() -> horizon_client::Result<()> {
     let initial = LIVE.load(Relaxed);
     let start = Instant::now();
     let assets = Assets::load(root)?;
-    let render = assets.reload(root)?;
+    let render = horizon_client::render_assets::RenderAssets::load(root, &assets)?;
     let block_ms = start.elapsed().as_secs_f64() * 1000.;
     let block_retained = LIVE.load(Relaxed) - initial;
     let start_items = Instant::now();

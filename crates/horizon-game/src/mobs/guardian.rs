@@ -371,7 +371,7 @@ pub fn beam_geometry(
     time: f32,
     scale: f32,
     uv: [f32; 4],
-    out: &mut Vec<crate::mesher::Vertex>,
+    out: &mut Vec<crate::vertex::Vertex>,
 ) {
     let v = target - eye;
     let length = v.length() + 1.0;
@@ -404,7 +404,7 @@ pub fn beam_geometry(
     let max_v = min_v + length * 2.5;
     let atlas = |u: f32, v: f32| [uv[0] + (uv[2] - uv[0]) * u, uv[1] + (uv[3] - uv[1]) * v];
     let mut push = |p: [f32; 3], t: [f32; 2]| {
-        out.push(crate::mesher::Vertex {
+        out.push(crate::vertex::Vertex {
             normal: [0; 4],
             pos: pose.transform_point3(glam::Vec3::from(p)).to_array(),
             uv: t,

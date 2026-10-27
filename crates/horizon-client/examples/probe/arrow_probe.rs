@@ -58,8 +58,8 @@ pub fn main() -> Result<()> {
     let root = PathBuf::from(&args[0]);
     let dir = PathBuf::from(&args[1]);
     let assets = Assets::load(&root)?;
-    let render = assets.reload(&root)?;
-    let mut scene = World::test_scene(&assets, &render, 1)?;
+    let render = horizon_client::render_assets::RenderAssets::load(&root, &assets)?;
+    let mut scene = World::test_scene(&assets, 1)?;
     fs::write(
         dir.join("scene.json"),
         serde_json::to_vec(

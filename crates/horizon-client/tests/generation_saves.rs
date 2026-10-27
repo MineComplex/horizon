@@ -176,7 +176,8 @@ fn chunks_left_behind_keep_their_decoration() {
         return;
     };
     let assets = Arc::new(Assets::load(&root).unwrap());
-    let render = Arc::new(assets.reload(&root).unwrap());
+    let render =
+        Arc::new(horizon_client::render_assets::RenderAssets::load(&root, &assets).unwrap());
     let facts = BlockFacts::load(&root, assets.registry).unwrap();
     let visibility = models::load_visibility(&root, assets.registry).unwrap();
     let context = Arc::new(WorkerContext {

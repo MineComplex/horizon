@@ -3,15 +3,17 @@
 //! `ModelBlockRenderer`/`BlockModelLighter` (smooth light, ambient occlusion,
 //! cardinal shading, tint sources, block offsets; see `lighting`). Fluids
 //! follow `FluidRenderer` (see `fluid`).
+pub use horizon_game::vertex::{Vertex, stage_light};
 mod fluid;
 mod lighting;
 mod sides;
 use crate::{
-    assets::{Assets, RenderAssets},
+    assets::Assets,
     biome::Biomes,
     blocks::{BlockFacts, RenderShape},
     chunk::{Chunk, MIN_Y},
     models::catalog::BakedFace,
+    render_assets::RenderAssets,
 };
 use horizon_core::{
     biome::BiomeZoom, geometry::Direction, position::BlockPos, random::position_seed,
@@ -22,25 +24,7 @@ use horizon_world::{
     registry::BlockStateId,
 };
 pub use sides::Sides;
-use std::sync::Arc;
 
-/// An entity, item and effect vertex (the entity pipelines), with a face
-/// normal for `entity.wgsl`'s directional light.
-#[repr(C)]
-#[derive(Clone, Copy, Debug, bytemuck::Pod, bytemuck::Zeroable)]
-pub struct Vertex {
-    pub pos: [f32; 3],
-    pub uv: [f32; 2],
-    pub layer: u32,
-    /// RGBA8: tint multiplied by directional shade and ambient occlusion.
-    pub color: u32,
-    /// Smooth light, 16x fixed point: sky in bits 0..8, block in bits 8..16.
-    pub light: u32,
-    /// RGBA8_SNORM face normal; w = -127 for two-sided lighting, 0 to keep baked/unlit colour.
-    pub normal: [i8; 4],
-    /// The `GLINT_TEXTURING` atlas UV for a foil item quad; zero elsewhere.
-    pub glint_uv: [f32; 2],
-}
 /// A section vertex: vanilla's `DefaultVertexFormat.BLOCK` (position, colour,
 /// UV0, UV2) with the sprite's array layer beside the light, in 24 bytes
 /// rather than vanilla's 28: the UV is fixed point, which holds model UVs
@@ -905,15 +889,4 @@ impl Mesher<'_> {
     }
 }
 /// Snapshot of the 3x3 chunk neighbourhood used by a worker job.
-pub type Region = [[Option<Arc<Chunk>>; 3]; 3];
-pub fn borrow(region: &Region) -> [[Option<&Chunk>; 3]; 3] {
-    std::array::from_fn(|z| std::array::from_fn(|x| region[z][x].as_deref()))
-}
-
-/// The light bytes of a crack vertex: the pass is unlit, so they carry the origin of the
-/// vertex's destroy stage sprite (each crack in `LevelRenderer.destroyingBlocks` has its own
-/// stage; every stage sprite has the same size, `crumbling_sprite.zw`).
-pub fn stage_light([u0, v0]: [f32; 2]) -> u32 {
-    let q = |x: f32| (x.clamp(0.0, 1.0) * 65535.0).round() as u32;
-    q(u0) | (q(v0) << 16)
-}
+pub use horizon_game::streaming::{Region, borrow};

@@ -277,7 +277,9 @@ pub(super) fn stage_pack(
     let root = startup_root(vanilla_root, selected, server)?;
     let root = super::mods::content_root(&root, mods_enabled, dev_mods);
     progress.set(1);
-    let render = Arc::new(assets.reload(&root)?);
+    let render = Arc::new(horizon_client::render_assets::RenderAssets::load(
+        &root, assets,
+    )?);
     let mut atlas = HudAtlas::build_over(&root, vanilla_root)?;
     atlas.font.uniform = force_unicode;
     atlas.font.japanese = japanese;

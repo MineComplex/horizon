@@ -6,11 +6,9 @@ use crate::fast_hash::{FxHashMap, FxHashSet};
 use crate::{
     chunk::{Chunk, SECTIONS},
     light::{LightChanges, LightTables, apply_lighting, apply_relighting, light_chunk},
-    mesher::{MeshTables, Mesher, Region, SectionMesh, borrow},
     world::World,
 };
 use horizon_core::biome::BiomeZoom;
-use horizon_world::block_render::FaceVisibility;
 use horizon_world::worldgen::decoration_order::DecorationOrder;
 use std::{
     collections::{BinaryHeap, HashSet},
@@ -150,14 +148,36 @@ impl<G: ChunkGenerator> Saves for G {
         ChunkGenerator::save_finished(self, chunk);
     }
 }
+/// A chunk and its eight neighbours, as light and mesh jobs read them.
+pub type Region = [[Option<Arc<Chunk>>; 3]; 3];
+pub fn borrow(region: &Region) -> [[Option<&Chunk>; 3]; 3] {
+    std::array::from_fn(|z| std::array::from_fn(|x| region[z][x].as_deref()))
+}
 /// Per-job mesher inputs that change with the dimension or the options.
-#[derive(Clone, Copy)]
-struct MeshSettings {
-    nether: bool,
-    zoom: BiomeZoom,
-    blend_radius: i32,
-    smooth_lighting: bool,
-    cutout_leaves: bool,
+#[derive(Clone, Copy, Debug)]
+pub struct MeshSettings {
+    pub nether: bool,
+    pub zoom: BiomeZoom,
+    pub blend_radius: i32,
+    pub smooth_lighting: bool,
+    pub cutout_leaves: bool,
+}
+/// What the workers share: the light tables, and how a section becomes a mesh. The client's
+/// `WorkerContext` builds section meshes from block models; a server without a window never
+/// asks for one (`Streaming::set_meshing`).
+pub trait MeshContext: Send + Sync + 'static {
+    /// A section's mesh, handed back by `Streaming::update`.
+    type Mesh: Send + 'static;
+    /// A worker's own state kept across its mesh jobs (vanilla's per-thread caches).
+    type Scratch: Default;
+    fn light(&self) -> &Arc<LightTables>;
+    fn mesh(
+        &self,
+        region: &[[Option<&Chunk>; 3]; 3],
+        sy: i32,
+        settings: MeshSettings,
+        scratch: &mut Self::Scratch,
+    ) -> Self::Mesh;
 }
 enum Job {
     Generate(i32, i32),
@@ -169,13 +189,13 @@ enum Job {
     /// off the main thread like vanilla's IOWorker.
     Save(Vec<((i32, i32), Proto)>),
 }
-pub enum Done {
+pub enum Done<M> {
     Generated(Chunk),
     /// A proto chunk, and whether it was decorated (loaded so from the save).
     Proto(i32, i32, Proto, bool),
     Decorated(i32, i32, Box<[Proto; 9]>),
     Lit(i32, i32, Vec<crate::chunk::Light>, u64),
-    Meshed(i32, i32, i32, SectionMesh, u64),
+    Meshed(i32, i32, i32, M, u64),
     Saved(Vec<((i32, i32), Proto)>),
 }
 struct Queued {
@@ -207,18 +227,18 @@ impl Ord for Queued {
             .then(o.order.cmp(&self.order))
     }
 }
-struct Shared {
+struct Shared<C> {
     queue: Mutex<BinaryHeap<Queued>>,
     ready: Condvar,
     stop: AtomicBool,
     /// What meshing reads (block models and sprites), swapped when resource
     /// packs reload; each mesh job takes the current one.
-    context: RwLock<Arc<WorkerContext>>,
+    context: RwLock<Arc<C>>,
 }
-pub struct Streaming {
-    shared: Arc<Shared>,
+pub struct Streaming<C: MeshContext> {
+    shared: Arc<Shared<C>>,
     light_view: Arc<dyn Fn(&Proto) -> Option<Chunk> + Send + Sync>,
-    results: mpsc::Receiver<Done>,
+    results: mpsc::Receiver<Done<C::Mesh>>,
     threads: Vec<thread::JoinHandle<()>>,
     order: u64,
     generating: FxHashSet<(i32, i32)>,
@@ -252,7 +272,7 @@ pub struct Streaming {
     written: FxHashSet<(i32, i32)>,
     saves: Arc<dyn Saves>,
     /// Results received while `save` waited, for the next `update`.
-    deferred: Vec<Done>,
+    deferred: Vec<Done<C::Mesh>>,
     sequence: u64,
     pub center: (i32, i32),
     pub radius: i32,
@@ -433,19 +453,8 @@ impl GenerationScan {
         }
     }
 }
-pub struct WorkerContext {
-    pub assets: Arc<crate::assets::Assets>,
-    pub render: Arc<crate::assets::RenderAssets>,
-    pub tables: Arc<MeshTables>,
-    pub biomes: Arc<crate::biome::Biomes>,
-    pub light: Arc<LightTables>,
-}
-impl Streaming {
-    pub fn new<G: ChunkGenerator>(
-        generator: Arc<G>,
-        context: Arc<WorkerContext>,
-        threads: usize,
-    ) -> Self {
+impl<C: MeshContext> Streaming<C> {
+    pub fn new<G: ChunkGenerator>(generator: Arc<G>, context: Arc<C>, threads: usize) -> Self {
         let shared = Arc::new(Shared {
             queue: Mutex::new(BinaryHeap::new()),
             ready: Condvar::new(),
@@ -453,24 +462,21 @@ impl Streaming {
             context: RwLock::new(context.clone()),
         });
         let (send, results) = mpsc::channel();
-        let light_tables = context.light.clone();
+        let light_tables = context.light().clone();
         let saves: Arc<dyn Saves> = generator.clone();
         let threads = (0..threads.max(1))
             .map(|i| {
                 let shared = shared.clone();
                 let send = send.clone();
                 let generator = generator.clone();
-                let light = context.light.clone();
+                let light = context.light().clone();
                 thread::Builder::new()
                     .name(format!("horizon-worker-{i}"))
                     .spawn(move || {
                         // Ticks and frames come first (horizon_threads).
                         horizon_threads::behind_server();
                         let mut worker = generator.worker();
-                        // The face visibility table and its occlusion cache stay with
-                        // the worker across mesh jobs, like vanilla's per-thread cache:
-                        // cloning it per job copied every state and face shape.
-                        let mut faces: Option<(Arc<MeshTables>, FaceVisibility)> = None;
+                        let mut scratch = C::Scratch::default();
                         loop {
                             let job = {
                                 let mut queue = shared.queue.lock().unwrap();
@@ -511,29 +517,8 @@ impl Streaming {
                                 }
                                 Job::Mesh(x, sy, z, region, seq, settings) => {
                                     let context = shared.context.read().unwrap().clone();
-                                    let visibility = match faces.take() {
-                                        Some((tables, visibility))
-                                            if Arc::ptr_eq(&tables, &context.tables) =>
-                                        {
-                                            visibility
-                                        }
-                                        _ => context.tables.visibility.clone(),
-                                    };
-                                    let mut mesher = Mesher {
-                                        nether_shading: settings.nether,
-                                        zoom: settings.zoom,
-                                        blend_radius: settings.blend_radius,
-                                        smooth_lighting: settings.smooth_lighting,
-                                        cutout_leaves: settings.cutout_leaves,
-                                        assets: &context.assets,
-                                        render: &context.render,
-                                        tables: &context.tables,
-                                        biomes: &context.biomes,
-                                        visibility,
-                                    };
-                                    let mut mesh = mesher.mesh(&borrow(&region), sy);
-                                    mesh.sort_solid();
-                                    faces = Some((context.tables.clone(), mesher.visibility));
+                                    let mesh =
+                                        context.mesh(&borrow(&region), sy, settings, &mut scratch);
                                     Done::Meshed(x, sy, z, mesh, seq)
                                 }
                             };
@@ -608,7 +593,7 @@ impl Streaming {
     /// Resource packs reloaded (`LevelRenderer.allChanged`): mesh with the new
     /// models and sprites, and rebuild every loaded section. Meshes in flight
     /// were made with the old resources; their results are dropped.
-    pub fn reload_resources(&mut self, world: &mut World, context: Arc<WorkerContext>) {
+    pub fn reload_resources(&mut self, world: &mut World, context: Arc<C>) {
         *self.shared.context.write().unwrap() = context;
         self.meshing.clear();
         for &(x, z) in world.chunks.keys() {
@@ -887,7 +872,7 @@ impl Streaming {
     pub fn update(
         &mut self,
         world: &mut World,
-    ) -> (Vec<((i32, i32, i32), SectionMesh)>, Vec<Arc<Chunk>>) {
+    ) -> (Vec<((i32, i32, i32), C::Mesh)>, Vec<Arc<Chunk>>) {
         let mut uploads = Vec::new();
         if self.paused {
             return (uploads, Vec::new());
@@ -1789,7 +1774,7 @@ impl Ranges<'_> {
             .any(|f| (x - f.0).abs() <= reach && (z - f.1).abs() <= reach)
     }
 }
-impl Drop for Streaming {
+impl<C: MeshContext> Drop for Streaming<C> {
     fn drop(&mut self) {
         // Saves in flight hold proto chunks nothing else would save.
         let deadline = std::time::Instant::now() + std::time::Duration::from_secs(30);

@@ -9,7 +9,7 @@ use crate::{
     blocks::{BlockFacts, Fluid},
     collisions::SceneCollisions,
     image::Rect,
-    mesher::Vertex,
+    vertex::Vertex,
     world::World,
 };
 use glam::{DVec3, Quat, Vec3 as FVec3};

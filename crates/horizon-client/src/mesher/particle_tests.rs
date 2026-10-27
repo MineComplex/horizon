@@ -10,7 +10,7 @@ fn terrain_particles_use_the_particle_sprite_and_vanilla_tint_sources() {
         return;
     }
     let assets = Assets::load(&root).unwrap();
-    let render = assets.reload(&root).unwrap();
+    let render = crate::render_assets::RenderAssets::load(&root, &assets).unwrap();
     let facts = BlockFacts::load(&root, assets.registry).unwrap();
     let visibility = crate::models::load_visibility(&root, assets.registry).unwrap();
     let tables = MeshTables::new(&assets, &render, &facts, visibility).unwrap();

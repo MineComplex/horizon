@@ -7,7 +7,7 @@ use super::{
     anim::{self, Poses},
     living::wrap,
 };
-use crate::mesher::Vertex;
+use crate::vertex::Vertex;
 use horizon_core::geometry::trig::Mth;
 use std::f32::consts::PI;
 
@@ -1271,8 +1271,8 @@ fn render_visible(
             base,
             &layer_poses,
             [du, dv, 1.0 + du, 1.0 + dv],
-            crate::mesher::stage_light([u1 - u0, v1 - v0]),
-            crate::mesher::stage_light([u0, v0]),
+            crate::vertex::stage_light([u1 - u0, v1 - v0]),
+            crate::vertex::stage_light([u0, v0]),
             crate::overlay::ENERGY_SWIRL_OVERLAY,
             out,
         );

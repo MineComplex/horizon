@@ -196,11 +196,7 @@ impl World {
     }
     /// A controlled blockstate scene for the native scene probes: material
     /// layers, a stepped pyramid and the model gallery. Not generated terrain.
-    pub fn test_scene(
-        assets: &crate::assets::Assets,
-        render: &crate::assets::RenderAssets,
-        radius: i32,
-    ) -> crate::Result<Self> {
+    pub fn test_scene(assets: &crate::assets::Assets, radius: i32) -> crate::Result<Self> {
         let air = assets
             .registry
             .default_state("minecraft:air")
@@ -245,8 +241,8 @@ impl World {
                 }
             }
         }
-        for (position, state) in &render.model_placements {
-            world.set(position.x, position.y, position.z, *state)?;
+        for (position, state) in crate::gallery::placements(assets.registry)? {
+            world.set(position.x, position.y, position.z, state)?;
         }
         world.revision = 0;
         Ok(world)

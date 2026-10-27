@@ -57,7 +57,8 @@ fn columns_loaded_past_the_render_distance_mesh_when_they_come_in_range() {
         return;
     };
     let assets = Arc::new(Assets::load(&root).unwrap());
-    let render = Arc::new(assets.reload(&root).unwrap());
+    let render =
+        Arc::new(horizon_client::render_assets::RenderAssets::load(&root, &assets).unwrap());
     let facts = BlockFacts::load(&root, assets.registry).unwrap();
     let visibility = models::load_visibility(&root, assets.registry).unwrap();
     let context = Arc::new(WorkerContext {
@@ -139,7 +140,8 @@ fn relit_columns_keep_every_mesh_current() {
         return;
     };
     let assets = Arc::new(Assets::load(&root).unwrap());
-    let render = Arc::new(assets.reload(&root).unwrap());
+    let render =
+        Arc::new(horizon_client::render_assets::RenderAssets::load(&root, &assets).unwrap());
     let facts = BlockFacts::load(&root, assets.registry).unwrap();
     let visibility = models::load_visibility(&root, assets.registry).unwrap();
     let context = Arc::new(WorkerContext {

@@ -60,7 +60,7 @@ pub fn wgsl_constants() -> String {
 
 /// The overlay of energy swirl quads (`RenderTypes.energySwirl`: the charged creeper's and the
 /// powered wither's armour). The light bytes carry the sprite's origin and the colour bytes its
-/// size (`mesher::stage_light`), the UV the scrolled position in the sprite.
+/// size (`vertex::stage_light`), the UV the scrolled position in the sprite.
 pub const ENERGY_SWIRL_OVERLAY: u32 = 34;
 /// The overlay of translucent-layer particles (`SingleQuadParticle.Layer.translucent`).
 pub const TRANSLUCENT_PARTICLE_OVERLAY: u32 = 15;

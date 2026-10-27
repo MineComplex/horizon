@@ -14,10 +14,8 @@ use horizon_core::{
     position::BlockPos,
     random::{LegacyRandom, position_seed},
 };
-use horizon_world::{
-    chunk::BlockState,
-    registry::{BlockRegistry, BlockStateId},
-};
+pub use horizon_game::gallery::descriptor;
+use horizon_world::registry::{BlockRegistry, BlockStateId};
 use serde_json::Value;
 use std::{
     collections::{BTreeMap, BTreeSet},
@@ -311,15 +309,5 @@ impl StateModels {
     }
     fn state(&self, state: BlockStateId) -> Option<&(usize, SelectedModels)> {
         self.states.get(state.0 as usize)?.as_ref()
-    }
-}
-
-pub fn descriptor(name: &str, overrides: &[(&str, &str)]) -> BlockState {
-    BlockState {
-        name: format!("minecraft:{name}"),
-        properties: overrides
-            .iter()
-            .map(|(k, v)| ((*k).to_owned(), (*v).to_owned()))
-            .collect(),
     }
 }

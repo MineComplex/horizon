@@ -91,7 +91,7 @@ mod world;
 pub use world::visual_clip;
 pub mod zombie_villager;
 
-use crate::{blocks::BlockFacts, mesher::Vertex, world::World};
+use crate::{blocks::BlockFacts, vertex::Vertex, world::World};
 pub use data::MobData;
 use horizon_core::{
     geometry::{Aabb, Vec3},

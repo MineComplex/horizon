@@ -2594,10 +2594,9 @@ mod tests {
             return;
         }
         let assets = Assets::load(&root).unwrap();
-        let render = assets.reload(&root).unwrap();
         let binding = crate::collisions::load(&root, assets.registry).unwrap();
         let resources = MotionResources::load(&root, &assets).unwrap();
-        let mut scene = World::test_scene(&assets, &render, 1).unwrap();
+        let mut scene = World::test_scene(&assets, 1).unwrap();
         let entities = [Aabb::new(
             Vec3::new(10.0, 80.0, 10.0),
             Vec3::new(14.0, 84.0, 14.0),
@@ -2669,10 +2668,9 @@ mod tests {
             return;
         }
         let assets = Assets::load(&root).unwrap();
-        let render = assets.reload(&root).unwrap();
         let binding = crate::collisions::load(&root, assets.registry).unwrap();
         let resources = MotionResources::load(&root, &assets).unwrap();
-        let mut scene = World::test_scene(&assets, &render, 1).unwrap();
+        let mut scene = World::test_scene(&assets, 1).unwrap();
         let registry = assets.registry;
         let moving = registry.default_state("minecraft:moving_piston").unwrap();
         let stone = registry.default_state("minecraft:stone").unwrap();
@@ -2733,10 +2731,9 @@ mod tests {
             return;
         }
         let assets = Assets::load(&root).unwrap();
-        let render = assets.reload(&root).unwrap();
         let binding = crate::collisions::load(&root, assets.registry).unwrap();
         let resources = MotionResources::load(&root, &assets).unwrap();
-        let mut scene = World::test_scene(&assets, &render, 1).unwrap();
+        let mut scene = World::test_scene(&assets, 1).unwrap();
         let cauldron = assets
             .registry
             .default_state("minecraft:lava_cauldron")
@@ -2781,10 +2778,9 @@ mod tests {
             return;
         }
         let assets = Assets::load(&root).unwrap();
-        let render = assets.reload(&root).unwrap();
         let binding = crate::collisions::load(&root, assets.registry).unwrap();
         let resources = MotionResources::load(&root, &assets).unwrap();
-        let mut scene = World::test_scene(&assets, &render, 1).unwrap();
+        let mut scene = World::test_scene(&assets, 1).unwrap();
         let water = assets
             .registry
             .resolve(&horizon_world::chunk::BlockState {
@@ -2838,10 +2834,9 @@ mod tests {
             return;
         }
         let assets = Assets::load(&root).unwrap();
-        let render = assets.reload(&root).unwrap();
         let binding = crate::collisions::load(&root, assets.registry).unwrap();
         let resources = MotionResources::load(&root, &assets).unwrap();
-        let mut scene = World::test_scene(&assets, &render, 1).unwrap();
+        let mut scene = World::test_scene(&assets, 1).unwrap();
         let rose = assets
             .registry
             .default_state("minecraft:wither_rose")
@@ -2904,10 +2899,9 @@ mod tests {
             return;
         }
         let assets = Assets::load(&root).unwrap();
-        let render = assets.reload(&root).unwrap();
         let binding = crate::collisions::load(&root, assets.registry).unwrap();
         let resources = MotionResources::load(&root, &assets).unwrap();
-        let mut scene = World::test_scene(&assets, &render, 1).unwrap();
+        let mut scene = World::test_scene(&assets, 1).unwrap();
         let at = Vec3::new(20.5, 4.0, 20.5);
         let mut player = PlayerMotion::new(&resources, at).unwrap();
         let mut travel = |player: &mut PlayerMotion| {
@@ -2962,11 +2956,10 @@ mod tests {
             return;
         }
         let assets = Assets::load(&root).unwrap();
-        let render = assets.reload(&root).unwrap();
         let binding = crate::collisions::load(&root, assets.registry).unwrap();
         let resources = MotionResources::load(&root, &assets).unwrap();
         let run = |steps| {
-            let mut scene = World::test_scene(&assets, &render, 2).unwrap();
+            let mut scene = World::test_scene(&assets, 2).unwrap();
             let start = Vec3::new(20.5, 12.0, 20.5);
             let mut player = PlayerMotion::new(&resources, start).unwrap();
             player.spectator = true;
@@ -3005,11 +2998,10 @@ mod tests {
             return;
         }
         let assets = Assets::load(&root).unwrap();
-        let render = assets.reload(&root).unwrap();
         let binding = crate::collisions::load(&root, assets.registry).unwrap();
         let resources = MotionResources::load(&root, &assets).unwrap();
         let run = |name: &str, spectator: bool| {
-            let mut scene = World::test_scene(&assets, &render, 2).unwrap();
+            let mut scene = World::test_scene(&assets, 2).unwrap();
             let state = assets.registry.default_state(name).unwrap();
             for x in 19..=23 {
                 for y in 10..=17 {
@@ -3315,12 +3307,11 @@ mod tests {
             return;
         }
         let assets = Assets::load(&root).unwrap();
-        let render = assets.reload(&root).unwrap();
         let binding = crate::collisions::load(&root, assets.registry).unwrap();
         let resources = MotionResources::load(&root, &assets).unwrap();
         // Entity.checkFallDistanceAccumulation: capped above -0.5 a tick, not below.
         for (dy, capped) in [(-0.3, true), (-0.49, true), (-0.8, false)] {
-            let mut scene = World::test_scene(&assets, &render, 2).unwrap();
+            let mut scene = World::test_scene(&assets, 2).unwrap();
             let mut player = PlayerMotion::new(&resources, Vec3::new(20.5, 20.0, 20.5)).unwrap();
             player.glider = true;
             player.fall_flying = true;
@@ -3363,11 +3354,10 @@ mod tests {
             return;
         }
         let assets = Assets::load(&root).unwrap();
-        let render = assets.reload(&root).unwrap();
         let binding = crate::collisions::load(&root, assets.registry).unwrap();
         let resources = MotionResources::load(&root, &assets).unwrap();
         for wet in [false, true] {
-            let mut scene = World::test_scene(&assets, &render, 2).unwrap();
+            let mut scene = World::test_scene(&assets, 2).unwrap();
             if wet {
                 let water = assets.registry.default_state("minecraft:water").unwrap();
                 for x in 19..=21 {
@@ -3410,11 +3400,10 @@ mod tests {
             return;
         }
         let assets = Assets::load(&root).unwrap();
-        let render = assets.reload(&root).unwrap();
         let binding = crate::collisions::load(&root, assets.registry).unwrap();
         let resources = MotionResources::load(&root, &assets).unwrap();
         for client_side in [false, true] {
-            let mut scene = World::test_scene(&assets, &render, 2).unwrap();
+            let mut scene = World::test_scene(&assets, 2).unwrap();
             let mut player = PlayerMotion::new(&resources, Vec3::new(20.5, 20.0, 20.5)).unwrap();
             player.client_side = client_side;
             player.fall_distance = 30.0;
@@ -3463,11 +3452,10 @@ mod tests {
             return;
         }
         let assets = Assets::load(&root).unwrap();
-        let render = assets.reload(&root).unwrap();
         let binding = crate::collisions::load(&root, assets.registry).unwrap();
         let resources = MotionResources::load(&root, &assets).unwrap();
         for slow_falling in [false, true] {
-            let mut scene = World::test_scene(&assets, &render, 2).unwrap();
+            let mut scene = World::test_scene(&assets, 2).unwrap();
             let mut player = PlayerMotion::new(&resources, Vec3::new(20.5, 9.0, 20.5)).unwrap();
             player.fall_distance = 30.0;
             player.status.slow_falling = slow_falling;
@@ -3503,10 +3491,9 @@ mod tests {
             return;
         }
         let assets = Assets::load(&root).unwrap();
-        let render = assets.reload(&root).unwrap();
         let binding = crate::collisions::load(&root, assets.registry).unwrap();
         let resources = MotionResources::load(&root, &assets).unwrap();
-        let mut scene = World::test_scene(&assets, &render, 2).unwrap();
+        let mut scene = World::test_scene(&assets, 2).unwrap();
         let ahead = Aabb::new(Vec3::new(20.2, 9.0, 21.5), Vec3::new(20.8, 11.0, 22.1));
         for target in [None, Some(ahead)] {
             let mut player = PlayerMotion::new(&resources, Vec3::new(20.5, 10.0, 20.5)).unwrap();
@@ -3546,10 +3533,9 @@ mod tests {
             return;
         }
         let assets = Assets::load(&root).unwrap();
-        let render = assets.reload(&root).unwrap();
         let binding = crate::collisions::load(&root, assets.registry).unwrap();
         let resources = MotionResources::load(&root, &assets).unwrap();
-        let mut scene = World::test_scene(&assets, &render, 2).unwrap();
+        let mut scene = World::test_scene(&assets, 2).unwrap();
         let mut player = PlayerMotion::new(&resources, Vec3::new(20.5, 4.2, 20.5)).unwrap();
         let mut w = MotionWorld {
             entities: &[],
@@ -3593,10 +3579,9 @@ mod tests {
             return;
         }
         let assets = Assets::load(&root).unwrap();
-        let render = assets.reload(&root).unwrap();
         let binding = crate::collisions::load(&root, assets.registry).unwrap();
         let resources = MotionResources::load(&root, &assets).unwrap();
-        let mut scene = World::test_scene(&assets, &render, 3).unwrap();
+        let mut scene = World::test_scene(&assets, 3).unwrap();
         let mut player = PlayerMotion::new(&resources, Vec3::new(20.5, 4.0, 20.5)).unwrap();
         let water = assets.registry.default_state("minecraft:water").unwrap();
         for x in 19..=21 {
@@ -3850,10 +3835,9 @@ mod tests {
             return;
         }
         let assets = Assets::load(&root).unwrap();
-        let render = assets.reload(&root).unwrap();
         let binding = crate::collisions::load(&root, assets.registry).unwrap();
         let resources = MotionResources::load(&root, &assets).unwrap();
-        let mut scene = World::test_scene(&assets, &render, 3).unwrap();
+        let mut scene = World::test_scene(&assets, 3).unwrap();
         let water = assets.registry.default_state("minecraft:water").unwrap();
         for y in 4..=6 {
             scene.set(20, y, 20, water).unwrap();
@@ -3925,11 +3909,10 @@ mod tests {
             return;
         }
         let assets = Assets::load(&root).unwrap();
-        let render = assets.reload(&root).unwrap();
         let binding = crate::collisions::load(&root, assets.registry).unwrap();
         let resources = MotionResources::load(&root, &assets).unwrap();
         for name in ["minecraft:lava", "minecraft:water"] {
-            let mut scene = World::test_scene(&assets, &render, 3).unwrap();
+            let mut scene = World::test_scene(&assets, 3).unwrap();
             let fluid = assets.registry.default_state(name).unwrap();
             scene.set(20, 4, 20, fluid).unwrap();
             let mut player = PlayerMotion::new(&resources, Vec3::new(20.5, 4.0, 20.5)).unwrap();
@@ -3979,10 +3962,9 @@ mod tests {
             return;
         }
         let assets = Assets::load(&root).unwrap();
-        let render = assets.reload(&root).unwrap();
         let binding = crate::collisions::load(&root, assets.registry).unwrap();
         let resources = MotionResources::load(&root, &assets).unwrap();
-        let mut scene = World::test_scene(&assets, &render, 3).unwrap();
+        let mut scene = World::test_scene(&assets, 3).unwrap();
         let water = assets.registry.default_state("minecraft:water").unwrap();
         scene.set(20, 4, 20, water).unwrap();
         scene.set(20, 5, 20, water).unwrap();
@@ -4051,11 +4033,10 @@ mod tests {
             return;
         }
         let assets = Assets::load(&root).unwrap();
-        let render = assets.reload(&root).unwrap();
         let binding = crate::collisions::load(&root, assets.registry).unwrap();
         let resources = MotionResources::load(&root, &assets).unwrap();
         for (water_level, lava_level, ground_jump) in [(0, 6, true), (6, 0, false)] {
-            let mut scene = World::test_scene(&assets, &render, 3).unwrap();
+            let mut scene = World::test_scene(&assets, 3).unwrap();
             for (name, level, x) in [
                 ("minecraft:water", water_level, 20),
                 ("minecraft:lava", lava_level, 21),
@@ -4102,8 +4083,7 @@ mod tests {
             return;
         }
         let assets = Assets::load(&root).unwrap();
-        let render = assets.reload(&root).unwrap();
-        let mut scene = World::test_scene(&assets, &render, 3).unwrap();
+        let mut scene = World::test_scene(&assets, 3).unwrap();
         let binding = crate::collisions::load(&root, assets.registry).unwrap();
         let resources = MotionResources::load(&root, &assets).unwrap();
         let mut player = PlayerMotion::new(&resources, Vec3::new(20.5, 4.0, 20.5)).unwrap();
@@ -4156,7 +4136,6 @@ mod tests {
             return;
         }
         let assets = Assets::load(&root).unwrap();
-        let render = assets.reload(&root).unwrap();
         let binding = crate::collisions::load(&root, assets.registry).unwrap();
         let resources = MotionResources::load(&root, &assets).unwrap();
         let water = assets.registry.default_state("minecraft:water").unwrap();
@@ -4172,7 +4151,7 @@ mod tests {
         // once the sprint has started: the speed must not change.
         let mut swims = Vec::new();
         for release in [false, true] {
-            let mut scene = World::test_scene(&assets, &render, 3).unwrap();
+            let mut scene = World::test_scene(&assets, 3).unwrap();
             for x in 19..=21 {
                 for y in 4..=8 {
                     for z in 19..=31 {
@@ -4226,10 +4205,9 @@ mod tests {
             return;
         }
         let assets = Assets::load(&root).unwrap();
-        let render = assets.reload(&root).unwrap();
         let binding = crate::collisions::load(&root, assets.registry).unwrap();
         let resources = MotionResources::load(&root, &assets).unwrap();
-        let mut scene = World::test_scene(&assets, &render, 3).unwrap();
+        let mut scene = World::test_scene(&assets, 3).unwrap();
         let mut player = PlayerMotion::new(&resources, Vec3::new(20.5, 4.0, 20.5)).unwrap();
         let mut w = MotionWorld {
             entities: &[],
@@ -4282,10 +4260,9 @@ mod tests {
             return;
         }
         let assets = Assets::load(&root).unwrap();
-        let render = assets.reload(&root).unwrap();
         let binding = crate::collisions::load(&root, assets.registry).unwrap();
         let resources = MotionResources::load(&root, &assets).unwrap();
-        let mut scene = World::test_scene(&assets, &render, 3).unwrap();
+        let mut scene = World::test_scene(&assets, 3).unwrap();
         let mut player = PlayerMotion::new(&resources, Vec3::new(20.5, 10.0, 20.5)).unwrap();
         let mut w = MotionWorld {
             entities: &[],

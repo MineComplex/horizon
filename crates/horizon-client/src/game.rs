@@ -208,7 +208,7 @@ mod zombie_reinforcements;
 mod zombie_villagers;
 use horizon_client::{
     Result,
-    assets::{Assets, RenderAssets},
+    assets::Assets,
     audio::Audio,
     biome::Biomes,
     blocks::{BlockFacts, Fluid},
@@ -233,6 +233,7 @@ use horizon_client::{
     motion::{MotionEvent, MotionResources, MotionWorld, PlayerMotion},
     mouse::{LookOptions, MouseLook, Rotation},
     particles::Particle,
+    render_assets::RenderAssets,
     save::{Level, Persistent, SaveDir},
     settings::Settings,
     sprint::Keys,
@@ -14109,7 +14110,7 @@ fn load_resources(
     }
     progress.set(0);
     let (assets, render) = match Assets::load(&root).and_then(|assets| {
-        let render = assets.reload(&root)?;
+        let render = horizon_client::render_assets::RenderAssets::load(&root, &assets)?;
         Ok((assets, render))
     }) {
         Ok(bundle) => bundle,
@@ -14120,7 +14121,7 @@ fn load_resources(
             pack_error = Some(e.to_string());
             root = vanilla_root.to_path_buf();
             let assets = Assets::load(vanilla_root)?;
-            let render = assets.reload(vanilla_root)?;
+            let render = horizon_client::render_assets::RenderAssets::load(vanilla_root, &assets)?;
             (assets, render)
         }
         Err(e) => {

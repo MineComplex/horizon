@@ -94,7 +94,7 @@ fn main() -> Result<()> {
     drop(registry);
     step("registry dropped");
     let assets = Assets::load(&root)?;
-    let render = assets.reload(&root)?;
+    let render = horizon_client::render_assets::RenderAssets::load(&root, &assets)?;
     step("assets");
     println!(
         "  sprites: {} layers of {}px, {:.0} MB of pixels",

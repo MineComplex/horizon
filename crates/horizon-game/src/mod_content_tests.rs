@@ -261,7 +261,7 @@ fn content_root_loads_with_every_table() {
     assert_eq!(items.item_tag_order["c:gems/ruby"], ["ruby:ruby"]);
 
     crate::collisions::load(&root, new).unwrap();
-    crate::models::load_visibility(&root, new).unwrap();
+    crate::face_visibility::load_visibility(&root, new).unwrap();
     crate::light::LightTables::load(&root, new, &facts).unwrap();
     crate::motion::MotionResources::load(&root, &assets).unwrap();
     horizon_world::worldgen::generator::GeneratorData::load(&root.join("worldgen"), new).unwrap();

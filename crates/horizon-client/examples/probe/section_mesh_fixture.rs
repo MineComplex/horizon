@@ -3,12 +3,13 @@
 //! the oracle's canonical form (vanilla ARGB colours and packed light coords).
 #![forbid(unsafe_code)]
 use horizon_client::{
-    assets::{Assets, RenderAssets},
+    assets::Assets,
     biome::{BiomeInfo, Biomes, GrassModifier},
     blocks::BlockFacts,
     chunk::{Chunk, Light, MIN_Y, index},
     mesher::{EMISSION_BITS, MeshTables, Mesher, OPAQUE_LAYER, TerrainVertex},
     models,
+    render_assets::RenderAssets,
 };
 use horizon_core::biome::BiomeZoom;
 use horizon_world::registry::BlockStateId;
@@ -186,7 +187,7 @@ pub fn main() -> Result<()> {
     }
     let root = PathBuf::from(&args[0]);
     let assets = Assets::load(&root)?;
-    let render = assets.reload(&root)?;
+    let render = horizon_client::render_assets::RenderAssets::load(&root, &assets)?;
     let facts = BlockFacts::load(&root, assets.registry)?;
     let mut biomes = Biomes::load(&root)?;
     let visibility = models::load_visibility(&root, assets.registry)?;
