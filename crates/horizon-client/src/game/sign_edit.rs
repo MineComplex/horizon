@@ -35,52 +35,6 @@ fn sign_box() -> EditBox {
 }
 
 impl Game<'_> {
-    /// `SignBlockEntity.getSlotPlayerIsFacing`: whether the player stands in
-    /// front of the sign's text (within 90 degrees of its facing).
-    fn facing_sign_front(&self, pos: (i32, i32, i32)) -> bool {
-        let Some(player) = self.player.as_ref() else {
-            return true;
-        };
-        let state = self.world.block(pos.0, pos.1, pos.2);
-        let Some(state) = self.pack.assets.registry.state(state) else {
-            return true;
-        };
-        let prop = |key: &str| state.properties.get(key).map(String::as_str);
-        // getYRotationDegrees: a wall sign's `Direction.toYRot`, a standing or
-        // ceiling sign's rotation segment.
-        let y_rot = if state.name.contains("_wall_") {
-            match prop("facing") {
-                Some("west") => 90.0,
-                Some("north") => 180.0,
-                Some("east") => 270.0,
-                _ => 0.0,
-            }
-        } else {
-            prop("rotation")
-                .and_then(|r| r.parse::<f32>().ok())
-                .unwrap_or(0.0)
-                * 22.5
-        };
-        // getSignHitboxCenterPosition: only a wall sign's board is off-centre,
-        // against the wall it hangs on.
-        let centre = if state.name.ends_with("_wall_sign") {
-            match y_rot as i32 {
-                90 => (0.9375, 0.5),
-                180 => (0.5, 0.9375),
-                270 => (0.0625, 0.5),
-                _ => (0.5, 0.0625),
-            }
-        } else {
-            (0.5, 0.5)
-        };
-        let xd = player.position.x - (f64::from(pos.0) + centre.0);
-        let zd = player.position.z - (f64::from(pos.2) + centre.1);
-        let player_y_rot = (zd.atan2(xd).to_degrees() - 90.0) as f32;
-        // Mth.degreesDifferenceAbs.
-        let diff = (player_y_rot - y_rot).rem_euclid(360.0);
-        let diff = if diff >= 180.0 { 360.0 - diff } else { diff };
-        diff <= 90.0
-    }
     /// `SignBlock.useWithoutItem` (the block's `OpenMenu` effect): a waxed
     /// sign plays the failed-interaction sound; otherwise a player who may
     /// build edits the side they face.
@@ -96,7 +50,8 @@ impl Game<'_> {
             } else {
                 "minecraft:block.sign.waxed_interact_fail"
             };
-            self.audio
+            self.front
+                .audio
                 .play(sound, Some(pos.map(|v| f64::from(v) + 0.5)), 1.0, 1.0);
         } else if self.may_build() {
             let front = self.facing_sign_front(key);
@@ -172,7 +127,7 @@ impl Game<'_> {
         if item == "minecraft:honeycomb" {
             self.level_event_at(3003, pos, 0);
         }
-        self.audio.play(sound, Some(centre), 1.0, 1.0);
+        self.front.audio.play(sound, Some(centre), 1.0, 1.0);
         self.mark_block_entity_updated(key);
         let state = self.world.block(pos[0], pos[1], pos[2]);
         self.post_block_game_event(
@@ -203,8 +158,8 @@ impl Game<'_> {
             lines,
         });
         self.sign_load();
-        self.keys.clear();
-        self.right = false;
+        self.front.keys.clear();
+        self.front.right = false;
         self.capture(false);
     }
     /// `AbstractSignEditScreen.removed`: a server's client sends what it
@@ -397,7 +352,7 @@ impl Game<'_> {
         let Some(BlockEntity::Sign(sign)) = self.world.block_entities.get(&edit.pos) else {
             return false;
         };
-        HudBatch::text_width(&self.gui.atlas, value) <= sign.max_line_width()
+        HudBatch::text_width(&self.front.gui.atlas, value) <= sign.max_line_width()
     }
     /// Edit the line, then keep the result only when it still fits.
     fn sign_change(&mut self, f: impl FnOnce(&mut EditBox)) {
@@ -439,17 +394,18 @@ impl Game<'_> {
     /// pass the sign's width is refused whole.
     fn sign_shortcut(&mut self, shortcut: horizon_client::clipboard::EditShortcut) {
         if shortcut == horizon_client::clipboard::EditShortcut::Paste {
-            let raw = horizon_client::clipboard::Clipboard::get(&mut self.clipboard);
+            let raw = horizon_client::clipboard::Clipboard::get(&mut self.front.clipboard);
             let text = horizon_client::clipboard::helper_clipboard_contents(&raw);
             self.sign_change(|edit| edit.insert_text(&text));
             return;
         }
         let before = self
+            .sim
             .sign_edit
             .as_ref()
             .map(|e| (e.edit.value.clone(), e.edit.cursor, e.edit.highlight));
-        if let Some(edit) = self.sign_edit.as_mut() {
-            edit.edit.shortcut(shortcut, &mut self.clipboard);
+        if let Some(edit) = self.sim.sign_edit.as_mut() {
+            edit.edit.shortcut(shortcut, &mut self.front.clipboard);
             let clean = horizon_client::clipboard::strip_formatting(&edit.edit.value);
             if clean != edit.edit.value {
                 let n = horizon_client::ui::char_len(&clean);
@@ -465,9 +421,9 @@ impl Game<'_> {
     pub(super) fn sign_edit_click(&mut self, size: [u32; 2]) {
         let b = HudBatch::new(size);
         let (x, y) = (b.width / 2.0 - 100.0, b.height / 4.0 + 144.0);
-        let (mx, my) = self.cursor;
+        let (mx, my) = self.front.cursor;
         if mx >= x && mx < x + 200.0 && my >= y && my < y + 20.0 {
-            self.audio.play_button_click();
+            self.front.audio.play_button_click();
             self.close_sign_editor();
             return;
         }
@@ -490,13 +446,13 @@ impl Game<'_> {
                 .as_ref()
                 .map(|e| e.edit.value.clone())
                 .unwrap_or_default();
-            let lw = HudBatch::text_width(&self.gui.atlas, &value);
+            let lw = HudBatch::text_width(&self.front.gui.atlas, &value);
             let text_x = cx - (lw as i32 / 2) as f32;
-            if let Some(edit) = self.sign_edit.as_mut() {
+            if let Some(edit) = self.sim.sign_edit.as_mut() {
                 edit.edit.x = text_x;
                 edit.edit.y = ly;
                 edit.edit.width = max_width;
-                edit.edit.click(&self.gui.atlas, mx, shift, false);
+                edit.edit.click(&self.front.gui.atlas, mx, shift, false);
             }
             self.sign_write();
             return;
@@ -525,7 +481,7 @@ impl Game<'_> {
         let Some(BlockEntity::Sign(sign)) = self.world.block_entities.get(&edit.pos) else {
             return;
         };
-        let atlas = &self.gui.atlas;
+        let atlas = &self.front.gui.atlas;
         let (w, h) = (batch.width, batch.height);
         batch.fill(atlas, 0.0, 0.0, w, h, rgba(16, 16, 16, 160));
         let (key, fallback) = if sign.hanging {
@@ -647,5 +603,53 @@ impl Game<'_> {
             u32::MAX,
             true,
         );
+    }
+}
+impl crate::game::Sim<'_> {
+    /// `SignBlockEntity.getSlotPlayerIsFacing`: whether the player stands in
+    /// front of the sign's text (within 90 degrees of its facing).
+    fn facing_sign_front(&self, pos: (i32, i32, i32)) -> bool {
+        let Some(player) = self.player.as_ref() else {
+            return true;
+        };
+        let state = self.world.block(pos.0, pos.1, pos.2);
+        let Some(state) = self.pack.assets.registry.state(state) else {
+            return true;
+        };
+        let prop = |key: &str| state.properties.get(key).map(String::as_str);
+        // getYRotationDegrees: a wall sign's `Direction.toYRot`, a standing or
+        // ceiling sign's rotation segment.
+        let y_rot = if state.name.contains("_wall_") {
+            match prop("facing") {
+                Some("west") => 90.0,
+                Some("north") => 180.0,
+                Some("east") => 270.0,
+                _ => 0.0,
+            }
+        } else {
+            prop("rotation")
+                .and_then(|r| r.parse::<f32>().ok())
+                .unwrap_or(0.0)
+                * 22.5
+        };
+        // getSignHitboxCenterPosition: only a wall sign's board is off-centre,
+        // against the wall it hangs on.
+        let centre = if state.name.ends_with("_wall_sign") {
+            match y_rot as i32 {
+                90 => (0.9375, 0.5),
+                180 => (0.5, 0.9375),
+                270 => (0.0625, 0.5),
+                _ => (0.5, 0.0625),
+            }
+        } else {
+            (0.5, 0.5)
+        };
+        let xd = player.position.x - (f64::from(pos.0) + centre.0);
+        let zd = player.position.z - (f64::from(pos.2) + centre.1);
+        let player_y_rot = (zd.atan2(xd).to_degrees() - 90.0) as f32;
+        // Mth.degreesDifferenceAbs.
+        let diff = (player_y_rot - y_rot).rem_euclid(360.0);
+        let diff = if diff >= 180.0 { 360.0 - diff } else { diff };
+        diff <= 90.0
     }
 }

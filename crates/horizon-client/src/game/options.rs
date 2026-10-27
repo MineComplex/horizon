@@ -18,14 +18,14 @@ pub(super) const CONTROL_HELP: &[&str] = &[
 
 impl Game<'_> {
     pub(super) fn save_title_options(&mut self) {
-        if let Some(title) = &self.title
-            && title.last_server != self.settings.file.string("lastServer")
+        if let Some(title) = &self.sim.title
+            && title.last_server != self.sim.settings.file.string("lastServer")
         {
-            self.settings.file.set(
+            self.sim.settings.file.set(
                 "lastServer",
                 horizon_client::options_file::V::Str(title.last_server.clone()),
             );
-            self.settings.save(&Self::options_path());
+            self.sim.settings.save(&Self::options_path());
         }
     }
     /// `options-get` and `options-set`; None for other commands.
@@ -84,6 +84,7 @@ impl Game<'_> {
     }
     pub(super) fn gui_size(&self) -> (f32, f32) {
         let size = self
+            .front
             .renderer
             .as_ref()
             .map_or([1280, 720], |r| [r.config.width, r.config.height]);
@@ -97,18 +98,23 @@ impl Game<'_> {
     pub(super) fn open_options_at(&mut self, from_title: bool, page: Page) {
         // Gameplay keys must not stay held behind the options screen, where
         // bindings can also change before the physical key is released.
-        self.keys.clear();
-        self.screen = Screen::Options;
-        self.options_from_title = from_title;
-        let ui = &mut self.ui.options;
-        ui.open_at(!from_title && self.title.is_none(), page);
-        let root = self.options.resources.clone();
+        self.front.keys.clear();
+        self.sim.screen = Screen::Options;
+        self.sim.options_from_title = from_title;
+        let ui = &mut self.sim.ui.options;
+        ui.open_at(!from_title && self.sim.title.is_none(), page);
+        let root = self.sim.options.resources.clone();
         ui.languages = lang::available(&[&root]);
         self.refresh_pack_lists();
     }
     pub(super) fn draw_options(&mut self, batch: &mut HudBatch) {
         let mut ui = std::mem::take(&mut self.ui.options);
-        ui.draw(&self.settings, batch, &self.gui.atlas, self.cursor);
+        ui.draw(
+            &self.settings,
+            batch,
+            &self.front.gui.atlas,
+            self.front.cursor,
+        );
         self.ui.options = ui;
     }
     pub(super) fn options_mouse(&mut self, pressed: bool, right: bool) -> Result<()> {
@@ -117,22 +123,22 @@ impl Game<'_> {
                 return Ok(());
             }
             let events = self.ui.options.release();
-            self.dragging = false;
+            self.front.dragging = false;
             return self.handle_option_events(events);
         }
         if !right {
-            self.dragging = true;
+            self.front.dragging = true;
         }
         let size = self.gui_size();
-        let framebuffer = self.renderer.as_ref().map_or([1280, 720], |r| {
+        let framebuffer = self.front.renderer.as_ref().map_or([1280, 720], |r| {
             [r.config.width as i32, r.config.height as i32]
         });
-        let mut ui = std::mem::take(&mut self.ui.options);
+        let mut ui = std::mem::take(&mut self.sim.ui.options);
         let events = ui.click(
-            &mut self.settings,
-            &self.gui.atlas,
-            self.cursor.0,
-            self.cursor.1,
+            &mut self.sim.settings,
+            &self.front.gui.atlas,
+            self.front.cursor.0,
+            self.front.cursor.1,
             size,
             framebuffer,
             false,
@@ -143,27 +149,27 @@ impl Game<'_> {
     }
     pub(super) fn options_drag(&mut self) -> Result<()> {
         let size = self.gui_size();
-        let framebuffer = self.renderer.as_ref().map_or([1280, 720], |r| {
+        let framebuffer = self.front.renderer.as_ref().map_or([1280, 720], |r| {
             [r.config.width as i32, r.config.height as i32]
         });
-        let mut ui = std::mem::take(&mut self.ui.options);
+        let mut ui = std::mem::take(&mut self.sim.ui.options);
         let events = ui.click(
-            &mut self.settings,
-            &self.gui.atlas,
-            self.cursor.0,
-            self.cursor.1,
+            &mut self.sim.settings,
+            &self.front.gui.atlas,
+            self.front.cursor.0,
+            self.front.cursor.1,
             size,
             framebuffer,
             true,
             false,
         );
-        self.ui.options = ui;
+        self.sim.ui.options = ui;
         self.handle_option_events(events)
     }
     pub(super) fn options_key(&mut self, key: KeyCode, text: Option<&str>) -> Result<()> {
-        let mut ui = std::mem::take(&mut self.ui.options);
-        let events = ui.key(&mut self.settings, &self.gui.atlas, key, text);
-        self.ui.options = ui;
+        let mut ui = std::mem::take(&mut self.sim.ui.options);
+        let events = ui.key(&mut self.sim.settings, &self.front.gui.atlas, key, text);
+        self.sim.ui.options = ui;
         self.handle_option_events(events)
     }
     /// Ctrl+A/C/V/X in the options' search boxes; false when none has focus.
@@ -171,28 +177,30 @@ impl Game<'_> {
         &mut self,
         shortcut: horizon_client::clipboard::EditShortcut,
     ) -> bool {
-        self.ui
+        self.sim
+            .ui
             .options
-            .shortcut(&self.gui.atlas, shortcut, &mut self.clipboard)
+            .shortcut(&self.front.gui.atlas, shortcut, &mut self.front.clipboard)
     }
     pub(super) fn options_scroll(&mut self, amount: f32) {
         let size = self.gui_size();
-        self.ui
+        self.sim
+            .ui
             .options
-            .scroll_at(&self.settings, size, self.cursor, amount);
-    }
-    /// Mouse buttons pressed while a key is being bound.
-    pub(super) fn options_waiting_for_key(&self) -> bool {
-        self.ui.options.selected_key.is_some()
+            .scroll_at(&self.sim.settings, size, self.front.cursor, amount);
     }
     pub(super) fn options_bind_mouse(&mut self, button: MouseButton) -> Result<()> {
-        let events = self.ui.options.bind_mouse(&mut self.settings, button);
+        let events = self
+            .sim
+            .ui
+            .options
+            .bind_mouse(&mut self.sim.settings, button);
         self.handle_option_events(events)
     }
     pub(super) fn handle_option_events(&mut self, events: Vec<Event>) -> Result<()> {
         for e in events {
             match e {
-                Event::ButtonClick => self.audio.play_button_click(),
+                Event::ButtonClick => self.front.audio.play_button_click(),
                 Event::Changed => {
                     self.settings.save(&Self::options_path());
                     self.apply_settings();
@@ -203,7 +211,7 @@ impl Game<'_> {
                 Event::CopyAgentDetails => {
                     use horizon_client::clipboard::Clipboard;
                     let text = self.agent_details();
-                    self.clipboard.set(&text);
+                    self.front.clipboard.set(&text);
                 }
                 Event::Close if self.ui.options.resource_error.is_some() => {}
                 Event::Close => {
@@ -215,7 +223,7 @@ impl Game<'_> {
                     } else {
                         Screen::Paused
                     };
-                    self.dragging = false;
+                    self.front.dragging = false;
                 }
                 Event::Language(code) => {
                     self.load_language(&code);
@@ -253,16 +261,16 @@ impl Game<'_> {
     }
     /// LanguageManager.setSelected + reload: translations, then re-wrap chat.
     pub(super) fn load_language(&mut self, code: &str) {
-        let root = self.options.resources.clone();
+        let root = self.sim.options.resources.clone();
         lang::set(lang::Language::load(&[&root], code));
         self.refresh_remote_language();
-        self.ui.chat.rescale(&self.gui.atlas);
-        self.creative_screen.forget_items();
+        self.sim.ui.chat.rescale(&self.front.gui.atlas);
+        self.sim.creative_screen.forget_items();
     }
     /// Settings that Horizon applies beyond render distance, volume and GUI scale.
     pub(super) fn apply_ui_settings(&mut self) {
-        let s = &self.settings;
-        if let Some(r) = self.renderer.as_mut() {
+        let s = &self.sim.settings;
+        if let Some(r) = self.front.renderer.as_mut() {
             r.gamma = s.gamma;
             r.fullbright = s.extras.fullbright;
             r.set_present_mode(s.vsync, s.horizon.present_mode);
@@ -278,8 +286,8 @@ impl Game<'_> {
         // Window.updateFullscreenIfChanged: only a changed option asks the
         // window to change, so applying settings never undoes a fullscreen
         // the compositor set up.
-        if let Some(w) = &self.window
-            && let Some(want) = self.fullscreen.request(s.fullscreen)
+        if let Some(w) = &self.front.window
+            && let Some(want) = self.front.fullscreen.request(s.fullscreen)
         {
             w.set_fullscreen(want.then_some(Fullscreen::Borderless(None)));
         }
@@ -288,26 +296,26 @@ impl Game<'_> {
         horizon_client::settings::set_source_volumes(volumes);
         let chat = s.chat_options();
         let rescale = {
-            let o = &self.ui.chat.options;
+            let o = &self.sim.ui.chat.options;
             o.width != chat.width || o.scale != chat.scale || o.line_spacing != chat.line_spacing
         };
-        self.ui.chat.options = chat;
+        self.sim.ui.chat.options = chat;
         if rescale {
-            self.ui.chat.rescale(&self.gui.atlas);
+            self.sim.ui.chat.rescale(&self.front.gui.atlas);
         }
-        let font = &mut self.gui.atlas.font;
+        let font = &mut self.front.gui.atlas.font;
         if font.uniform != s.force_unicode || font.japanese != s.japanese_glyphs {
             font.uniform = s.force_unicode;
             font.japanese = s.japanese_glyphs;
             font.reset_cache();
-            self.ui.chat.rescale(&self.gui.atlas);
+            self.sim.ui.chat.rescale(&self.front.gui.atlas);
         }
     }
     /// `Window.updateFullscreenState`: a fullscreen change made by the window
     /// system is adopted by the option (`Minecraft.fullscreenStateChanged`).
     pub(super) fn observe_fullscreen(&mut self) {
-        let Some(w) = &self.window else { return };
-        if let Some(now) = self.fullscreen.observe(w.fullscreen().is_some())
+        let Some(w) = &self.front.window else { return };
+        if let Some(now) = self.front.fullscreen.observe(w.fullscreen().is_some())
             && self.settings.fullscreen != now
         {
             self.settings.fullscreen = now;
@@ -330,13 +338,18 @@ impl Game<'_> {
                 InactivityFpsLimit::Afk
             },
             iconified: self
+                .front
                 .window
                 .as_ref()
                 .is_some_and(|w| w.is_minimized().unwrap_or(false)),
-            focused: self.focused,
+            focused: self.front.focused,
             exclusive_fullscreen: false,
             now_ms: self.started.elapsed().as_millis() as i64,
-            latest_input_ms: self.last_input.duration_since(self.started).as_millis() as i64,
+            latest_input_ms: self
+                .front
+                .last_input
+                .duration_since(self.started)
+                .as_millis() as i64,
             has_level: self.title.is_none(),
             has_screen: self.title.is_some() || self.screen != super::Screen::Playing,
             has_overlay: false,
@@ -344,7 +357,7 @@ impl Game<'_> {
         let limit = framerate_limit(self.settings.max_fps as i32, context);
         self.settings
             .horizon
-            .battery_limit(limit, self.title.is_none(), self.focused)
+            .battery_limit(limit, self.title.is_none(), self.front.focused)
     }
     /// `Minecraft.runTick`'s frame limiter: `FramerateLimiter.limitDisplayFPS`
     /// below 260 frames per second, sleeping then spin-waiting until the
@@ -355,13 +368,21 @@ impl Game<'_> {
         }
         let limit = self.framerate_limit();
         match self.settings.horizon.pacing {
-            horizon_client::graphics::Pacing::Precise => {
-                horizon_client::window::end_frame(&mut self.limiter, limit, &mut self.frame_clock)
-            }
+            horizon_client::graphics::Pacing::Precise => horizon_client::window::end_frame(
+                &mut self.front.limiter,
+                limit,
+                &mut self.front.frame_clock,
+            ),
             horizon_client::graphics::Pacing::Efficient => {
-                let mut clock = horizon_client::window::SleepingClock(self.frame_clock);
-                horizon_client::window::end_frame(&mut self.limiter, limit, &mut clock);
+                let mut clock = horizon_client::window::SleepingClock(self.front.frame_clock);
+                horizon_client::window::end_frame(&mut self.front.limiter, limit, &mut clock);
             }
         }
+    }
+}
+impl crate::game::Sim<'_> {
+    /// Mouse buttons pressed while a key is being bound.
+    pub(super) fn options_waiting_for_key(&self) -> bool {
+        self.ui.options.selected_key.is_some()
     }
 }

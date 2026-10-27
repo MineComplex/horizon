@@ -12,15 +12,6 @@ const TOTEM: &str = "minecraft:totem_of_undying";
 pub(super) const TOTEM_EVENT: i8 = 35;
 
 impl Game<'_> {
-    /// Whether either hand holds a totem, for the next hurt: the window's
-    /// player once a tick, a server's player for each of its turns.
-    pub(super) fn update_totem_ready(&mut self) {
-        let ready = self.held().is_some_and(|s| &*s.item == TOTEM)
-            || self.offhand.as_ref().is_some_and(|s| &*s.item == TOTEM);
-        if let Some(p) = self.player.as_mut() {
-            p.health.totem_ready = ready;
-        }
-    }
     /// The server's half once a totem fired: use it up (main hand first),
     /// count it, set health to 1, then clear and apply its effects. Returns
     /// the player's body, for entity event 35, which the caller broadcasts.
@@ -116,10 +107,22 @@ impl Game<'_> {
             body.height,
             30,
         );
-        self.audio
+        self.front
+            .audio
             .play_unshared("minecraft:item.totem.use", Some(body.at), 1.0, 1.0);
         if own {
             self.pad_rumble(horizon_client::gamepad::Rumble::Totem);
+        }
+    }
+}
+impl crate::game::Sim<'_> {
+    /// Whether either hand holds a totem, for the next hurt: the window's
+    /// player once a tick, a server's player for each of its turns.
+    pub(super) fn update_totem_ready(&mut self) {
+        let ready = self.held().is_some_and(|s| &*s.item == TOTEM)
+            || self.offhand.as_ref().is_some_and(|s| &*s.item == TOTEM);
+        if let Some(p) = self.player.as_mut() {
+            p.health.totem_ready = ready;
         }
     }
 }

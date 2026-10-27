@@ -175,137 +175,6 @@ impl Game<'_> {
         Ok(())
     }
 
-    /// `minecraft:name[key=value,...]` to a state.
-    fn fixture_state(&self, text: &str) -> Result<BlockStateId> {
-        let (name, props) = match text.split_once('[') {
-            Some((n, rest)) => (n, rest.trim_end_matches(']')),
-            None => (text, ""),
-        };
-        let registry = self.pack.assets.registry;
-        let base = registry
-            .default_state(name)
-            .ok_or_else(|| format!("unknown block {name}"))?;
-        let mut properties: BTreeMap<String, String> = registry
-            .state(base)
-            .map(|s| s.properties.clone().into_iter().collect())
-            .unwrap_or_default();
-        for kv in props.split(',').filter(|s| !s.is_empty()) {
-            let (k, v) = kv.split_once('=').ok_or("property")?;
-            properties.insert(k.to_owned(), v.to_owned());
-        }
-        Ok(registry.resolve(&BlockState {
-            name: name.to_owned(),
-            properties,
-        })?)
-    }
-
-    /// `BlockStateParser.serialize`.
-    fn fixture_state_text(&self, state: BlockStateId) -> String {
-        let Some(s) = self.pack.assets.registry.state(state) else {
-            return "?".into();
-        };
-        if s.properties.is_empty() {
-            return s.name.clone();
-        }
-        let mut sorted: Vec<(&String, &String)> = s.properties.iter().collect();
-        sorted.sort();
-        let props: Vec<String> = sorted.iter().map(|(k, v)| format!("{k}={v}")).collect();
-        format!("{}[{}]", s.name, props.join(","))
-    }
-
-    fn fixture_who(&self, who: Option<Who>, names: &HashMap<u32, String>) -> String {
-        match who {
-            None => "none".into(),
-            Some(Who::Player) => "player".into(),
-            Some(Who::Mob(id)) => names.get(&id).cloned().unwrap_or_else(|| format!("e{id}")),
-        }
-    }
-
-    fn fixture_info(&self, info: Option<&Info>, names: &HashMap<u32, String>) -> String {
-        let Some(i) = info else {
-            return "-".into();
-        };
-        // A source entity that is gone reads as none (VibrationInfo.getEntity).
-        let alive = |w: Option<Who>| match w {
-            Some(Who::Mob(id)) if !self.mobs.iter().any(|m| m.id == id && !m.removed) => None,
-            other => other,
-        };
-        format!(
-            "{}/{}/{},{},{}/{}/{}",
-            i.event.trim_start_matches("minecraft:"),
-            f(i.distance),
-            d(i.pos[0]),
-            d(i.pos[1]),
-            d(i.pos[2]),
-            self.fixture_who(alive(i.source), names),
-            self.fixture_who(alive(i.owner), names)
-        )
-    }
-
-    fn sculk_describe(&self, p: [i32; 3], names: &HashMap<u32, String>) -> String {
-        let state = self.world.block(p[0], p[1], p[2]);
-        let mut line = self.fixture_state_text(state);
-        if let Some(BlockEntity::Sculk(e)) = self.world.block_entities.get(&(p[0], p[1], p[2])) {
-            let vibration = |line: &mut String| {
-                let v = &e.vibration;
-                let _ = write!(
-                    line,
-                    " cur={} travel={}",
-                    self.fixture_info(v.current.as_ref(), names),
-                    v.travel
-                );
-                match v.selector.current() {
-                    None => line.push_str(" sel=-"),
-                    Some((info, tick)) => {
-                        let _ = write!(
-                            line,
-                            " sel={}@{tick}",
-                            self.fixture_info(Some(&info), names)
-                        );
-                    }
-                }
-            };
-            match e.kind {
-                SculkKind::Sensor | SculkKind::Calibrated => {
-                    let _ = write!(line, " freq={}", e.last_frequency);
-                    vibration(&mut line);
-                }
-                SculkKind::Shrieker => {
-                    let _ = write!(line, " warn={}", e.warning_level);
-                    vibration(&mut line);
-                }
-                SculkKind::Catalyst => {
-                    let _ = write!(line, " cursors={}", e.spreader.cursors.len());
-                    for c in &e.spreader.cursors {
-                        let _ = write!(
-                            line,
-                            " {},{},{}:{}:{}:{}:",
-                            c.pos.x, c.pos.y, c.pos.z, c.charge, c.update_delay, c.decay_delay
-                        );
-                        match &c.facings {
-                            None => line.push('-'),
-                            Some(faces) => {
-                                let mut faces = faces.clone();
-                                faces.sort_by_key(|d| *d as u8);
-                                for d in faces {
-                                    line.push(match d {
-                                        Direction::Down => 'd',
-                                        Direction::Up => 'u',
-                                        Direction::North => 'n',
-                                        Direction::South => 's',
-                                        Direction::West => 'w',
-                                        Direction::East => 'e',
-                                    });
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        line
-    }
-
     fn sculk_fixture_reset(&mut self, s: &Scenario) -> Result<()> {
         self.world = World::new(self.res.facts().air, 0);
         let plains = u32::from(self.res.biomes().id("minecraft:plains"));
@@ -403,9 +272,9 @@ impl Game<'_> {
         let mut player = PlayerMotion::new(self.motion, Vec3::new(at[0], at[1], at[2]))?;
         player.spectator = self.mode == GameMode::Spectator;
         self.player = Some(player);
-        self.keys.clear();
+        self.front.keys.clear();
         if s.sneak {
-            self.keys.insert(KeyCode::ShiftLeft);
+            self.front.keys.insert(KeyCode::ShiftLeft);
         }
         self.sculk.tracker = WardenSpawnTracker::default();
         if let Some(level) = s.warning {
@@ -481,7 +350,7 @@ impl Game<'_> {
         self.next_entity = self.next_entity.max(200_000);
         self.world.day_time = 6000;
         self.world.random = LegacyRandom::new(s.level_seed);
-        self.audio.capture = Some(Vec::new());
+        self.front.audio.capture = Some(Vec::new());
         let mut known: HashSet<u32> = self.mobs.iter().map(|m| m.id).collect();
         let mut seeded: HashSet<u32> = HashSet::new();
         let mut known_items = self.dropped.len();
@@ -584,8 +453,12 @@ impl Game<'_> {
                     lines.push(format!("level {rest}"));
                 }
             }
-            for (sound, at, volume, pitch) in
-                self.audio.capture.replace(Vec::new()).unwrap_or_default()
+            for (sound, at, volume, pitch) in self
+                .front
+                .audio
+                .capture
+                .replace(Vec::new())
+                .unwrap_or_default()
             {
                 if CLIENT_SOUNDS.contains(&sound.as_str()) {
                     continue;
@@ -608,7 +481,7 @@ impl Game<'_> {
                 let _ = writeln!(out, "{t} {line}");
             }
         }
-        self.audio.capture = None;
+        self.front.audio.capture = None;
         Ok(out)
     }
 
@@ -667,10 +540,10 @@ impl Game<'_> {
                         .as_ref()
                         .map(|p| [p.position.x, p.position.y, p.position.z])
                         .unwrap_or_default();
-                    if let Some(m) = self.mobs.iter_mut().find(|m| m.id == id) {
+                    if let Some(m) = self.sim.mobs.iter_mut().find(|m| m.id == id) {
                         m.damage(amount, horizon_client::mobs::Damage::player(at));
                     }
-                    self.last_hurt_by_player.insert(id, self.lan_acting);
+                    self.sim.last_hurt_by_player.insert(id, self.sim.lan_acting);
                 }
                 "set" => {
                     let n = |i: usize| words[i].parse::<i32>().unwrap_or(0);
@@ -711,5 +584,133 @@ impl Game<'_> {
         // Block entities.
         self.tick_sculk_blocks()?;
         Ok(())
+    }
+}
+impl crate::game::Sim<'_> {
+    /// `minecraft:name[key=value,...]` to a state.
+    fn fixture_state(&self, text: &str) -> Result<BlockStateId> {
+        let (name, props) = match text.split_once('[') {
+            Some((n, rest)) => (n, rest.trim_end_matches(']')),
+            None => (text, ""),
+        };
+        let registry = self.pack.assets.registry;
+        let base = registry
+            .default_state(name)
+            .ok_or_else(|| format!("unknown block {name}"))?;
+        let mut properties: BTreeMap<String, String> = registry
+            .state(base)
+            .map(|s| s.properties.clone().into_iter().collect())
+            .unwrap_or_default();
+        for kv in props.split(',').filter(|s| !s.is_empty()) {
+            let (k, v) = kv.split_once('=').ok_or("property")?;
+            properties.insert(k.to_owned(), v.to_owned());
+        }
+        Ok(registry.resolve(&BlockState {
+            name: name.to_owned(),
+            properties,
+        })?)
+    }
+    /// `BlockStateParser.serialize`.
+    fn fixture_state_text(&self, state: BlockStateId) -> String {
+        let Some(s) = self.pack.assets.registry.state(state) else {
+            return "?".into();
+        };
+        if s.properties.is_empty() {
+            return s.name.clone();
+        }
+        let mut sorted: Vec<(&String, &String)> = s.properties.iter().collect();
+        sorted.sort();
+        let props: Vec<String> = sorted.iter().map(|(k, v)| format!("{k}={v}")).collect();
+        format!("{}[{}]", s.name, props.join(","))
+    }
+    fn fixture_who(&self, who: Option<Who>, names: &HashMap<u32, String>) -> String {
+        match who {
+            None => "none".into(),
+            Some(Who::Player) => "player".into(),
+            Some(Who::Mob(id)) => names.get(&id).cloned().unwrap_or_else(|| format!("e{id}")),
+        }
+    }
+    fn fixture_info(&self, info: Option<&Info>, names: &HashMap<u32, String>) -> String {
+        let Some(i) = info else {
+            return "-".into();
+        };
+        // A source entity that is gone reads as none (VibrationInfo.getEntity).
+        let alive = |w: Option<Who>| match w {
+            Some(Who::Mob(id)) if !self.mobs.iter().any(|m| m.id == id && !m.removed) => None,
+            other => other,
+        };
+        format!(
+            "{}/{}/{},{},{}/{}/{}",
+            i.event.trim_start_matches("minecraft:"),
+            f(i.distance),
+            d(i.pos[0]),
+            d(i.pos[1]),
+            d(i.pos[2]),
+            self.fixture_who(alive(i.source), names),
+            self.fixture_who(alive(i.owner), names)
+        )
+    }
+    fn sculk_describe(&self, p: [i32; 3], names: &HashMap<u32, String>) -> String {
+        let state = self.world.block(p[0], p[1], p[2]);
+        let mut line = self.fixture_state_text(state);
+        if let Some(BlockEntity::Sculk(e)) = self.world.block_entities.get(&(p[0], p[1], p[2])) {
+            let vibration = |line: &mut String| {
+                let v = &e.vibration;
+                let _ = write!(
+                    line,
+                    " cur={} travel={}",
+                    self.fixture_info(v.current.as_ref(), names),
+                    v.travel
+                );
+                match v.selector.current() {
+                    None => line.push_str(" sel=-"),
+                    Some((info, tick)) => {
+                        let _ = write!(
+                            line,
+                            " sel={}@{tick}",
+                            self.fixture_info(Some(&info), names)
+                        );
+                    }
+                }
+            };
+            match e.kind {
+                SculkKind::Sensor | SculkKind::Calibrated => {
+                    let _ = write!(line, " freq={}", e.last_frequency);
+                    vibration(&mut line);
+                }
+                SculkKind::Shrieker => {
+                    let _ = write!(line, " warn={}", e.warning_level);
+                    vibration(&mut line);
+                }
+                SculkKind::Catalyst => {
+                    let _ = write!(line, " cursors={}", e.spreader.cursors.len());
+                    for c in &e.spreader.cursors {
+                        let _ = write!(
+                            line,
+                            " {},{},{}:{}:{}:{}:",
+                            c.pos.x, c.pos.y, c.pos.z, c.charge, c.update_delay, c.decay_delay
+                        );
+                        match &c.facings {
+                            None => line.push('-'),
+                            Some(faces) => {
+                                let mut faces = faces.clone();
+                                faces.sort_by_key(|d| *d as u8);
+                                for d in faces {
+                                    line.push(match d {
+                                        Direction::Down => 'd',
+                                        Direction::Up => 'u',
+                                        Direction::North => 'n',
+                                        Direction::South => 's',
+                                        Direction::West => 'w',
+                                        Direction::East => 'e',
+                                    });
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        line
     }
 }

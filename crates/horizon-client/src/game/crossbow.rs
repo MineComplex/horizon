@@ -70,11 +70,6 @@ impl Game<'_> {
             ],
         }
     }
-    /// `Player.getProjectile` for `weapon` (`projectile_slot`).
-    pub(super) fn projectile_slot(&self, weapon: &str) -> Option<usize> {
-        let hands = [OFFHAND_SLOT, self.selected].map(|slot| (slot, self.stack_in(slot)));
-        projectile_slot(weapon, hands, &self.inventory)
-    }
     /// `CrossbowItem.use`: shoot when charged, else start charging.
     pub(super) fn use_crossbow(&mut self, stack: &ItemStack) -> bool {
         if &*stack.item != CROSSBOW {
@@ -105,10 +100,10 @@ impl Game<'_> {
             .as_ref()
             .map(|p| [p.position.x, p.position.y, p.position.z]);
         if before < 0.2 && now >= 0.2 && !sounds[0].is_empty() {
-            self.audio.play(sounds[0], at, 0.5, 1.0);
+            self.front.audio.play(sounds[0], at, 0.5, 1.0);
         }
         if before < 0.5 && now >= 0.5 && !sounds[1].is_empty() {
-            self.audio.play(sounds[1], at, 0.5, 1.0);
+            self.front.audio.play(sounds[1], at, 0.5, 1.0);
         }
         let charged = stack.data().is_some_and(|d| !d.charged.is_empty());
         if now >= 1.0 && !charged {
@@ -140,7 +135,7 @@ impl Game<'_> {
                 bow.data_mut().charged = drawn;
             }
             let pitch = 1.0 / (self.world.random.next_float() * 0.5 + 1.0) + 0.2;
-            self.audio.play(sounds[2], at, 1.0, pitch);
+            self.front.audio.play(sounds[2], at, 1.0, pitch);
         }
     }
     /// `CrossbowItem.performShooting`.
@@ -156,6 +151,7 @@ impl Game<'_> {
         let weapon = bow.clone();
         // AbstractArrow's constructor: `getPiercingCount` of the weapon.
         let pierce = self
+            .sim
             .res
             .stations()
             .enchantments
@@ -163,7 +159,7 @@ impl Game<'_> {
                 Some(&weapon),
                 "minecraft:projectile_piercing",
                 &EffectContext::default(),
-                &mut self.world.random,
+                &mut self.sim.world.random,
                 0.0,
             )
             .clamp(0.0, 127.0) as u8;
@@ -232,7 +228,8 @@ impl Game<'_> {
                 let high = index & 1 == 1;
                 1.0 / (self.world.random.next_float() * 0.5 + 1.8) + if high { 0.63 } else { 0.43 }
             };
-            self.audio
+            self.front
+                .audio
                 .play("minecraft:item.crossbow.shoot", Some(eye), 1.0, pitch);
             self.damage_held(if rocket { 3 } else { 1 });
         }
@@ -241,6 +238,13 @@ impl Game<'_> {
         if let Some(stack) = self.held().cloned() {
             self.trigger_item("minecraft:shot_crossbow", &stack);
         }
+    }
+}
+impl crate::game::Sim<'_> {
+    /// `Player.getProjectile` for `weapon` (`projectile_slot`).
+    pub(super) fn projectile_slot(&self, weapon: &str) -> Option<usize> {
+        let hands = [OFFHAND_SLOT, self.selected].map(|slot| (slot, self.stack_in(slot)));
+        projectile_slot(weapon, hands, &self.inventory)
     }
 }
 

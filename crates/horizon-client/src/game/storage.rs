@@ -8,7 +8,8 @@ use horizon_core::random::RandomSource;
 pub(super) fn is_shulker_box(name: &str) -> bool {
     name.ends_with("shulker_box")
 }
-impl Game<'_> {
+impl Game<'_> {}
+impl crate::game::Sim<'_> {
     /// The custom name of the open container, or its default title
     /// (a double chest is named by whichever half has a name).
     pub(super) fn container_title(&self, default: String) -> String {
@@ -123,40 +124,6 @@ fn facing_step(facing: &str) -> (i32, i32) {
 }
 
 impl Game<'_> {
-    /// The other half of the open double chest and whether the open one is
-    /// the right half (`ChestBlock.getConnectedDirection`).
-    pub(super) fn chest_partner(&self, key: (i32, i32, i32)) -> Option<((i32, i32, i32), bool)> {
-        let registry = self.pack.assets.registry;
-        let state = registry.state(self.world.block(key.0, key.1, key.2))?;
-        if !matches!(
-            state.name.as_str(),
-            "minecraft:chest" | "minecraft:trapped_chest"
-        ) {
-            return None;
-        }
-        let kind = state.properties.get("type")?.as_str();
-        if kind == "single" {
-            return None;
-        }
-        let facing = state.properties.get("facing")?.as_str();
-        let dir = if kind == "left" {
-            clockwise(facing)
-        } else {
-            counter_clockwise(facing)
-        };
-        let (dx, dz) = facing_step(dir);
-        let other = (key.0 + dx, key.1, key.2 + dz);
-        let other_state = registry.state(self.world.block(other.0, other.1, other.2))?;
-        let other_kind = other_state.properties.get("type")?.as_str();
-        let paired = other_state.name == state.name
-            && other_kind != "single"
-            && other_kind != kind
-            && matches!(
-                self.world.block_entities.get(&other),
-                Some(BlockEntity::Chest(items)) if items.len() == 27
-            );
-        paired.then_some((other, kind == "right"))
-    }
     /// The open or close sound of a container block (`ChestBlockEntity.playSound`,
     /// `BarrelBlockEntity.playSound`, `ShulkerBoxBlockEntity.startOpen`): volume
     /// 0.5 and pitch 0.9 to 1.0. A double chest sounds once from the middle of
@@ -189,7 +156,7 @@ impl Game<'_> {
             at = [at[0] + dx, at[1] + dy, at[2] + dz];
         }
         let pitch = self.world.random.next_float() * 0.1 + 0.9;
-        self.audio.play(sound, Some(at), 0.5, pitch);
+        self.front.audio.play(sound, Some(at), 0.5, pitch);
     }
     /// The open or close sound of the container block at `key`, if it has one.
     /// Callers play it only when the opener count crosses zero
@@ -229,26 +196,6 @@ impl Game<'_> {
             return;
         };
         self.container_sound(sound, key, &name);
-    }
-    /// The other half of a double chest at `key`, for neighbour updates.
-    pub(super) fn chest_other_half(&self, key: (i32, i32, i32)) -> Option<(i32, i32, i32)> {
-        self.chest_partner(key).map(|p| p.0)
-    }
-    /// The block entities of the open container in menu order, with their
-    /// sizes: a double chest is its right half then its left half.
-    pub(super) fn container_parts(&self) -> Vec<((i32, i32, i32), usize)> {
-        let Some(key) = self.container else {
-            return Vec::new();
-        };
-        let Some(entity) = self.world.block_entities.get(&key) else {
-            return Vec::new();
-        };
-        let own = (key, entity.slots().len());
-        match self.chest_partner(key) {
-            Some((other, true)) => vec![own, (other, 27)],
-            Some((other, false)) => vec![(other, 27), own],
-            None => vec![own],
-        }
     }
     /// `Container.stillValidBlockEntity`: the open block container closes once
     /// the player's eyes are out of reach of any of its blocks (a 4-block buffer).
@@ -294,6 +241,126 @@ impl Game<'_> {
             self.close_container();
             self.screen = super::Screen::Playing;
             self.capture(true);
+        }
+    }
+    /// `ContainerScreen` / `ShulkerBoxScreen`: the background with its
+    /// container rows, the title and the inventory label.
+    pub(super) fn draw_chest_screen(
+        &self,
+        batch: &mut horizon_client::hud::HudBatch,
+        ox: f32,
+        oy: f32,
+    ) {
+        use horizon_client::hud::rgba;
+        let atlas = &self.front.gui.atlas;
+        let grey = rgba(64, 64, 64, 255);
+        if self
+            .container_block()
+            .as_deref()
+            .is_some_and(is_shulker_box)
+        {
+            batch.sprite_region(
+                atlas,
+                "gui/container/shulker_box",
+                [ox, oy, 176.0, 167.0],
+                256.0,
+                256.0,
+            );
+            let title = self.translate("container.shulkerBox", "Shulker Box");
+            batch.text(atlas, &title, ox + 8.0, oy + 6.0, grey, false);
+            let inventory = self.translate("container.inventory", "Inventory");
+            batch.text(atlas, &inventory, ox + 8.0, oy + 73.0, grey, false);
+            return;
+        }
+        let rows = self.chest_rows().unwrap_or(3);
+        let top = rows as f32 * 18.0 + 17.0;
+        batch.sprite_region(
+            atlas,
+            "gui/container/generic_54",
+            [ox, oy, 176.0, top],
+            256.0,
+            256.0,
+        );
+        // The player half of the texture starts at v = 126.
+        if let Some(mut r) = atlas.sprites.get("gui/container/generic_54").copied() {
+            let (du, dv) = ((r.u1 - r.u0) / r.w as f32, (r.v1 - r.v0) / r.h as f32);
+            r.v0 += 126.0 * dv;
+            r.v1 = r.v0 + 96.0 * dv;
+            r.u1 = r.u0 + 176.0 * du;
+            batch.rect_uv(ox, oy + top, 176.0, 96.0, r, u32::MAX);
+        }
+        batch.text_styled(
+            atlas,
+            &self.chest_title(rows),
+            ox + 8.0,
+            oy + 6.0,
+            grey,
+            false,
+        );
+        let inventory = self.translate("container.inventory", "Inventory");
+        batch.text(
+            atlas,
+            &inventory,
+            ox + 8.0,
+            oy + 114.0 + rows as f32 * 18.0 - 94.0,
+            grey,
+            false,
+        );
+    }
+}
+impl crate::game::Sim<'_> {
+    /// The other half of the open double chest and whether the open one is
+    /// the right half (`ChestBlock.getConnectedDirection`).
+    pub(super) fn chest_partner(&self, key: (i32, i32, i32)) -> Option<((i32, i32, i32), bool)> {
+        let registry = self.pack.assets.registry;
+        let state = registry.state(self.world.block(key.0, key.1, key.2))?;
+        if !matches!(
+            state.name.as_str(),
+            "minecraft:chest" | "minecraft:trapped_chest"
+        ) {
+            return None;
+        }
+        let kind = state.properties.get("type")?.as_str();
+        if kind == "single" {
+            return None;
+        }
+        let facing = state.properties.get("facing")?.as_str();
+        let dir = if kind == "left" {
+            clockwise(facing)
+        } else {
+            counter_clockwise(facing)
+        };
+        let (dx, dz) = facing_step(dir);
+        let other = (key.0 + dx, key.1, key.2 + dz);
+        let other_state = registry.state(self.world.block(other.0, other.1, other.2))?;
+        let other_kind = other_state.properties.get("type")?.as_str();
+        let paired = other_state.name == state.name
+            && other_kind != "single"
+            && other_kind != kind
+            && matches!(
+                self.world.block_entities.get(&other),
+                Some(BlockEntity::Chest(items)) if items.len() == 27
+            );
+        paired.then_some((other, kind == "right"))
+    }
+    /// The other half of a double chest at `key`, for neighbour updates.
+    pub(super) fn chest_other_half(&self, key: (i32, i32, i32)) -> Option<(i32, i32, i32)> {
+        self.chest_partner(key).map(|p| p.0)
+    }
+    /// The block entities of the open container in menu order, with their
+    /// sizes: a double chest is its right half then its left half.
+    pub(super) fn container_parts(&self) -> Vec<((i32, i32, i32), usize)> {
+        let Some(key) = self.container else {
+            return Vec::new();
+        };
+        let Some(entity) = self.world.block_entities.get(&key) else {
+            return Vec::new();
+        };
+        let own = (key, entity.slots().len());
+        match self.chest_partner(key) {
+            Some((other, true)) => vec![own, (other, 27)],
+            Some((other, false)) => vec![(other, 27), own],
+            None => vec![own],
         }
     }
     /// The number of slots of the open container.
@@ -370,70 +437,6 @@ impl Game<'_> {
             _ => ("container.chest", "Chest"),
         };
         Text::literal(self.container_title(self.translate(key, fallback))).resolve_legacy()
-    }
-    /// `ContainerScreen` / `ShulkerBoxScreen`: the background with its
-    /// container rows, the title and the inventory label.
-    pub(super) fn draw_chest_screen(
-        &self,
-        batch: &mut horizon_client::hud::HudBatch,
-        ox: f32,
-        oy: f32,
-    ) {
-        use horizon_client::hud::rgba;
-        let atlas = &self.gui.atlas;
-        let grey = rgba(64, 64, 64, 255);
-        if self
-            .container_block()
-            .as_deref()
-            .is_some_and(is_shulker_box)
-        {
-            batch.sprite_region(
-                atlas,
-                "gui/container/shulker_box",
-                [ox, oy, 176.0, 167.0],
-                256.0,
-                256.0,
-            );
-            let title = self.translate("container.shulkerBox", "Shulker Box");
-            batch.text(atlas, &title, ox + 8.0, oy + 6.0, grey, false);
-            let inventory = self.translate("container.inventory", "Inventory");
-            batch.text(atlas, &inventory, ox + 8.0, oy + 73.0, grey, false);
-            return;
-        }
-        let rows = self.chest_rows().unwrap_or(3);
-        let top = rows as f32 * 18.0 + 17.0;
-        batch.sprite_region(
-            atlas,
-            "gui/container/generic_54",
-            [ox, oy, 176.0, top],
-            256.0,
-            256.0,
-        );
-        // The player half of the texture starts at v = 126.
-        if let Some(mut r) = atlas.sprites.get("gui/container/generic_54").copied() {
-            let (du, dv) = ((r.u1 - r.u0) / r.w as f32, (r.v1 - r.v0) / r.h as f32);
-            r.v0 += 126.0 * dv;
-            r.v1 = r.v0 + 96.0 * dv;
-            r.u1 = r.u0 + 176.0 * du;
-            batch.rect_uv(ox, oy + top, 176.0, 96.0, r, u32::MAX);
-        }
-        batch.text_styled(
-            atlas,
-            &self.chest_title(rows),
-            ox + 8.0,
-            oy + 6.0,
-            grey,
-            false,
-        );
-        let inventory = self.translate("container.inventory", "Inventory");
-        batch.text(
-            atlas,
-            &inventory,
-            ox + 8.0,
-            oy + 114.0 + rows as f32 * 18.0 - 94.0,
-            grey,
-            false,
-        );
     }
 }
 

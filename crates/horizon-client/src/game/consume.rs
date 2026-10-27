@@ -23,13 +23,6 @@ type ItemConsumable = Consumable<String, ConsumeEffect>;
 pub(super) const USE_ITEM_COMPLETE_EVENT: i8 = 9;
 
 impl Game<'_> {
-    /// `ServerPlayer.completeUsingItem`: the player's own client is told
-    /// first, and completes the use itself (eating the food there too).
-    pub(super) fn send_use_item_complete(&mut self) {
-        if self.lan_acting.is_some() {
-            self.guest_entity_events.push(USE_ITEM_COMPLETE_EVENT);
-        }
-    }
     /// `Consumable.emitParticlesAndSounds(user.getRandom(), user, stack, count)`.
     pub(super) fn emit_consume(
         &mut self,
@@ -60,7 +53,7 @@ impl Game<'_> {
         if let Some((nutrition, saturation)) = info.food {
             let at = self.feet();
             let pitch = self.world.random.triangle_float(1.0, 0.4);
-            self.audio.play(&consumable.sound, at, 1.0, pitch);
+            self.front.audio.play(&consumable.sound, at, 1.0, pitch);
             if let Some(p) = self.player.as_mut() {
                 // FoodData.eat(nutrition, saturation)
                 let food = &mut p.health.food;
@@ -69,7 +62,8 @@ impl Game<'_> {
             }
             // Mth.randomBetween(random, 0.9, 1.0)
             let pitch = self.world.random.next_float() * (1.0f32 - 0.9f32) + 0.9;
-            self.audio
+            self.front
+                .audio
                 .play("minecraft:entity.player.burp", self.feet(), 0.5, pitch);
         }
         // SuspiciousStewEffects.onConsume, a ConsumableListener: each entry is
@@ -106,11 +100,6 @@ impl Game<'_> {
                 self.player_drop(rest);
             }
         }
-    }
-    fn feet(&self) -> Option<[f64; 3]> {
-        self.player
-            .as_ref()
-            .map(|p| [p.position.x, p.position.y, p.position.z])
     }
     /// `TeleportRandomlyConsumeEffect.apply` for the local player.
     pub(super) fn teleport_randomly(&mut self, teleport: &TeleportConsume) {
@@ -155,17 +144,17 @@ impl Game<'_> {
             return false;
         }
         let entities = self.player_entity_collisions();
-        let Some(player) = self.player.as_mut() else {
+        let Some(player) = self.sim.player.as_mut() else {
             return false;
         };
         let bounds = player.dimensions.bounds(at);
         let free = horizon_client::motion::MotionWorld {
             entities: &entities,
             player,
-            scene: &mut self.world,
-            assets: &self.pack.assets,
-            collision_binding: self.collision,
-            resources: self.motion,
+            scene: &mut self.sim.world,
+            assets: &self.sim.pack.assets,
+            collision_binding: self.sim.collision,
+            resources: self.sim.motion,
         }
         .no_player_collision(bounds)
         .unwrap_or(false);
@@ -196,6 +185,33 @@ impl Game<'_> {
         self.previous_position = at;
         self.portal_particles();
         true
+    }
+    /// `LivingEntity.stopRiding`.
+    pub(super) fn stop_riding(&mut self) {
+        let Some(id) = self.riding else {
+            return;
+        };
+        if let Some(i) = self.boats.iter().position(|b| b.id == id) {
+            self.dismount(i);
+        } else if let Some(i) = self.carts.iter().position(|c| c.id == id) {
+            self.dismount_cart(i);
+        } else {
+            self.dismount_mount();
+        }
+    }
+}
+impl crate::game::Sim<'_> {
+    /// `ServerPlayer.completeUsingItem`: the player's own client is told
+    /// first, and completes the use itself (eating the food there too).
+    pub(super) fn send_use_item_complete(&mut self) {
+        if self.lan_acting.is_some() {
+            self.guest_entity_events.push(USE_ITEM_COMPLETE_EVENT);
+        }
+    }
+    fn feet(&self) -> Option<[f64; 3]> {
+        self.player
+            .as_ref()
+            .map(|p| [p.position.x, p.position.y, p.position.z])
     }
     fn state_in_tag(&self, tag: &str, state: horizon_world::registry::BlockStateId) -> bool {
         let name = &self.res.facts().get(state).name;
@@ -228,19 +244,6 @@ impl Game<'_> {
             self.particles.add(&options, [x, y, z], v);
         }
     }
-    /// `LivingEntity.stopRiding`.
-    pub(super) fn stop_riding(&mut self) {
-        let Some(id) = self.riding else {
-            return;
-        };
-        if let Some(i) = self.boats.iter().position(|b| b.id == id) {
-            self.dismount(i);
-        } else if let Some(i) = self.carts.iter().position(|c| c.id == id) {
-            self.dismount_cart(i);
-        } else {
-            self.dismount_mount();
-        }
-    }
 }
 
 /// `Consumable.emitParticlesAndSounds` against the local player.
@@ -268,7 +271,7 @@ impl EmissionWorld for Emitter<'_, '_> {
     /// `Entity.playSound`: at the player's position.
     fn play_sound(&mut self, sound: String, volume: f32, pitch: f32) -> Result<(), Infallible> {
         let at = self.0.feet();
-        self.0.audio.play(&sound, at, volume, pitch);
+        self.0.front.audio.play(&sound, at, volume, pitch);
         Ok(())
     }
 }
@@ -325,7 +328,7 @@ impl TeleportConsumeWorld for Teleporter<'_, '_> {
         false
     }
     fn teleport_sound(&mut self, _: Dim, at: Vec3, _: bool) -> Result<(), Infallible> {
-        self.0.audio.play(
+        self.0.front.audio.play(
             "minecraft:item.chorus_fruit.teleport",
             Some([at.x, at.y, at.z]),
             1.0,

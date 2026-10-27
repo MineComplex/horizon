@@ -122,26 +122,6 @@ impl Game<'_> {
             .put(key, BlockEntity::TrialSpawner(spawner));
         result
     }
-    /// The trial spawner block at `key`: its state and ominous flag.
-    pub(super) fn trial_spawner_block(&self, key: Pos) -> Option<(TrialState, bool)> {
-        let block = self
-            .pack
-            .assets
-            .registry
-            .state(self.world.block(key.0, key.1, key.2))?;
-        if block.name != "minecraft:trial_spawner" {
-            return None;
-        }
-        let state = block
-            .properties
-            .get("trial_spawner_state")
-            .and_then(|s| TrialState::from_name(s))
-            .unwrap_or_default();
-        Some((
-            state,
-            block.properties.get("ominous").is_some_and(|v| v == "true"),
-        ))
-    }
     fn server_tick_trial_spawner(
         &mut self,
         key: Pos,
@@ -238,7 +218,8 @@ impl Game<'_> {
                 TrialEvent::BlockUpdated => self.mark_block_entity_updated(key),
                 TrialEvent::LevelEvent(id, at, data) => self.level_event_at(id, at, data),
                 TrialEvent::Sound(name) => {
-                    self.audio
+                    self.front
+                        .audio
                         .play(&format!("minecraft:{name}"), Some(center), 1.0, 1.0)
                 }
                 // Written with the state above.
@@ -249,14 +230,14 @@ impl Game<'_> {
                 }
                 TrialEvent::TrialOmen(_) => self.bad_omen_to_trial_omen(),
                 TrialEvent::Discard(uuid) => {
-                    let id = self.persist.uuids.iter().find(|(_, u)| **u == uuid);
+                    let id = self.sim.persist.uuids.iter().find(|(_, u)| **u == uuid);
                     if let Some((id, _)) = id
-                        && let Some(m) = self.mobs.iter_mut().find(|m| m.id == *id)
+                        && let Some(m) = self.sim.mobs.iter_mut().find(|m| m.id == *id)
                     {
                         m.removed = true;
                     }
                 }
-                TrialEvent::SoundAt(name, at, pitch) => self.audio.play(
+                TrialEvent::SoundAt(name, at, pitch) => self.front.audio.play(
                     &format!("minecraft:{name}"),
                     Some(at.map(|v| f64::from(v) + 0.5)),
                     1.0,
@@ -308,9 +289,32 @@ impl Game<'_> {
             ));
         if new {
             let eye = self.eye_position().unwrap_or_default();
-            self.audio
+            self.front
+                .audio
                 .play("minecraft:event.mob_effect.trial_omen", Some(eye), 1.0, 1.0);
         }
+    }
+}
+impl crate::game::Sim<'_> {
+    /// The trial spawner block at `key`: its state and ominous flag.
+    pub(super) fn trial_spawner_block(&self, key: Pos) -> Option<(TrialState, bool)> {
+        let block = self
+            .pack
+            .assets
+            .registry
+            .state(self.world.block(key.0, key.1, key.2))?;
+        if block.name != "minecraft:trial_spawner" {
+            return None;
+        }
+        let state = block
+            .properties
+            .get("trial_spawner_state")
+            .and_then(|s| TrialState::from_name(s))
+            .unwrap_or_default();
+        Some((
+            state,
+            block.properties.get("ominous").is_some_and(|v| v == "true"),
+        ))
     }
     /// `sendBlockUpdated` of a block entity: the clients load its new update tag.
     pub(super) fn mark_block_entity_updated(&mut self, key: Pos) {

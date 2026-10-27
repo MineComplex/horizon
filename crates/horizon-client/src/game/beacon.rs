@@ -84,22 +84,6 @@ fn average(a: u32, b: u32) -> u32 {
         .fold(0, |acc, &s| acc | ((ch(a, s) + ch(b, s)) / 2) << s)
 }
 impl Game<'_> {
-    /// The beam color of a `BeaconBeamBlock` (stained glass and panes, the beacon).
-    fn beam_color(&self, name: &str) -> Option<u32> {
-        if name == "minecraft:beacon" {
-            return Some(DYE[0]);
-        }
-        let n = name.strip_prefix("minecraft:")?;
-        let dye = n
-            .strip_suffix("_stained_glass")
-            .or_else(|| n.strip_suffix("_stained_glass_pane"))?;
-        DYE_NAMES.iter().position(|d| *d == dye).map(|i| DYE[i])
-    }
-    /// `getHeight(WORLD_SURFACE)`: above the highest non-air block.
-    pub(super) fn world_surface(&self, x: i32, z: i32) -> i32 {
-        self.world
-            .world_surface(x, z, |id| self.res.facts().is_air(id))
-    }
     /// `BeaconBlockEntity.tick` of the beacon at `key`.
     pub(super) fn tick_beacon_at(&mut self, key: (i32, i32, i32)) {
         let Some(BlockEntity::Beacon(mut b)) = self.world.block_entities.take(&key) else {
@@ -199,107 +183,12 @@ impl Game<'_> {
             f64::from(p[1]) + 0.5,
             f64::from(p[2]) + 0.5,
         ];
-        self.audio.play(sound, Some(at), 1.0, 1.0);
-    }
-    /// `updateBase`: complete layers of `beacon_base_blocks` below.
-    fn beacon_base(&self, x: i32, y: i32, z: i32) -> i32 {
-        let base = self
-            .res
-            .items()
-            .block_tags
-            .get("minecraft:beacon_base_blocks");
-        let mut levels = 0;
-        for step in 1..=4 {
-            let ly = y - step;
-            if ly < super::MIN_Y {
-                break;
-            }
-            let ok = (x - step..=x + step).all(|lx| {
-                (z - step..=z + step).all(|lz| {
-                    let name = &self.res.facts().get(self.world.block(lx, ly, lz)).name;
-                    base.is_some_and(|t| t.contains(&**name))
-                })
-            });
-            if !ok {
-                break;
-            }
-            levels = step;
-        }
-        levels
+        self.front.audio.play(sound, Some(at), 1.0, 1.0);
     }
     /// `applyEffects`: the powers for players within `levels * 10 + 10` (any height above).
     /// `BeaconBlockEntity.applyEffects`: every player in range.
     fn beacon_effects(&mut self, p: [i32; 3], b: &Beacon) {
         self.for_each_player(|g| g.beacon_effects_on_player(p, b));
-    }
-    fn beacon_effects_on_player(&mut self, p: [i32; 3], b: &Beacon) {
-        let Some(primary) = b.primary.as_deref().and_then(effect_id) else {
-            return;
-        };
-        let range = f64::from(b.levels * 10 + 10);
-        let Some(pp) = self.player.as_ref().map(|p| p.position) else {
-            return;
-        };
-        let inside = pp.x >= f64::from(p[0]) - range
-            && pp.x <= f64::from(p[0] + 1) + range
-            && pp.z >= f64::from(p[2]) - range
-            && pp.z <= f64::from(p[2] + 1) + range
-            && pp.y >= f64::from(p[1]) - range;
-        if !inside {
-            return;
-        }
-        let secondary = b.secondary.as_deref().and_then(effect_id);
-        let amplifier = i32::from(b.levels >= 4 && secondary == Some(primary));
-        let duration = (9 + b.levels * 2) * 20;
-        let ambient = |id, amp| EffectInstance {
-            ambient: true,
-            ..EffectInstance::new(id, duration, amp)
-        };
-        self.potions.effects.add(ambient(primary, amplifier));
-        if let Some(s) = secondary.filter(|&s| b.levels >= 4 && s != primary) {
-            self.potions.effects.add(ambient(s, 0));
-        }
-    }
-    /// Opening the menu shows the beacon's current powers.
-    pub(super) fn beacon_opened(&mut self) {
-        let Some(s) = self.station.as_ref().filter(|s| s.kind == Kind::Beacon) else {
-            return;
-        };
-        let pos = s.pos;
-        let (p, sec) = match self.world.block_entities.get(&(pos[0], pos[1], pos[2])) {
-            Some(BlockEntity::Beacon(b)) => (b.primary.clone(), b.secondary.clone()),
-            _ => (None, None),
-        };
-        let index =
-            |e: Option<String>| e.and_then(|e| EFFECTS.iter().position(|(n, _)| e.ends_with(n)));
-        if let Some(s) = self.station.as_mut() {
-            s.beacon = [index(p), index(sec)];
-        }
-    }
-    fn beacon_levels(&self) -> i32 {
-        let Some(s) = self.station.as_ref() else {
-            return 0;
-        };
-        if let Some(levels) = s.beacon_levels {
-            return levels;
-        }
-        let pos = s.pos;
-        match self.world.block_entities.get(&(pos[0], pos[1], pos[2])) {
-            Some(BlockEntity::Beacon(b)) => b.levels,
-            _ => 0,
-        }
-    }
-    /// Clicks on the power, confirm and cancel buttons.
-    /// The effect, upgrade, confirm and cancel buttons a controller can
-    /// focus (GUI origin relative).
-    pub(super) fn beacon_targets(&self) -> Vec<[f32; 4]> {
-        let (ux, uy) = upgrade_button();
-        buttons()
-            .into_iter()
-            .map(|(_, x, y, _)| (x, y))
-            .chain([(ux, uy), (164.0, 107.0), (190.0, 107.0)])
-            .map(|(x, y)| [x + SHIFT, y, 22.0, 22.0])
-            .collect()
     }
     pub(super) fn beacon_click(&mut self, local: (f32, f32)) -> bool {
         let l = (local.0 - SHIFT, local.1);
@@ -331,7 +220,8 @@ impl Game<'_> {
                         s.beacon[1] = Some(e);
                     }
                 }
-                self.audio
+                self.front
+                    .audio
                     .play("minecraft:ui.button.click", None, 0.25, 1.0);
             }
             return true;
@@ -344,7 +234,8 @@ impl Game<'_> {
                 && let Some(s) = self.station.as_mut()
             {
                 s.beacon[1] = Some(p);
-                self.audio
+                self.front
+                    .audio
                     .play("minecraft:ui.button.click", None, 0.25, 1.0);
             }
             return true;
@@ -352,7 +243,8 @@ impl Game<'_> {
         if inside(l, 164.0, 107.0, 22.0, 22.0) {
             let paid = self.station.as_ref().is_some_and(|s| s.inputs[0].is_some());
             if paid && sel[0].is_some() {
-                self.audio
+                self.front
+                    .audio
                     .play("minecraft:ui.button.click", None, 0.25, 1.0);
                 self.confirm_beacon(sel);
                 self.close_beacon_screen();
@@ -360,7 +252,8 @@ impl Game<'_> {
             return true;
         }
         if inside(l, 190.0, 107.0, 22.0, 22.0) {
-            self.audio
+            self.front
+                .audio
                 .play("minecraft:ui.button.click", None, 0.25, 1.0);
             self.close_beacon_screen();
             return true;
@@ -405,11 +298,11 @@ impl Game<'_> {
     pub(super) fn draw_beacon(&mut self, batch: &mut HudBatch) {
         let (ox, oy) = self.inventory_origin(batch);
         let (bx, by) = (ox + SHIFT, oy);
-        let local = (self.cursor.0 - bx, self.cursor.1 - by);
+        let local = (self.front.cursor.0 - bx, self.front.cursor.1 - by);
         let levels = self.beacon_levels();
         let sel = self.station.as_ref().map_or([None; 2], |s| s.beacon);
         let paid = self.station.as_ref().is_some_and(|s| s.inputs[0].is_some());
-        let atlas = &self.gui.atlas;
+        let atlas = &self.front.gui.atlas;
         batch.fill(
             atlas,
             0.0,
@@ -430,7 +323,7 @@ impl Game<'_> {
             ("block.minecraft.beacon.secondary", "Secondary Power", 169.0),
         ] {
             let text = self.translate(key, fallback);
-            let atlas = &self.gui.atlas;
+            let atlas = &self.front.gui.atlas;
             let w = HudBatch::text_width(atlas, &text);
             batch.text(
                 atlas,
@@ -445,7 +338,7 @@ impl Game<'_> {
             let x = [20.0, 41.0, 63.0, 86.0, 108.0][i];
             self.draw_item(batch, &ItemStack::new(item, 1), bx + x, by + 109.0);
         }
-        let atlas = &self.gui.atlas;
+        let atlas = &self.front.gui.atlas;
         let mut tooltip = None;
         let button =
             |batch: &mut HudBatch, x: f32, y: f32, active: bool, selected: bool, icon: &str| {
@@ -524,10 +417,10 @@ impl Game<'_> {
             }
         }
         let mut stack_tip = None;
-        if let Some(slot) = self.slot_at(batch, self.cursor.0, self.cursor.1) {
+        if let Some(slot) = self.slot_at(batch, self.front.cursor.0, self.front.cursor.1) {
             let (sx, sy) = self.slot_position(slot);
             batch.fill(
-                &self.gui.atlas,
+                &self.front.gui.atlas,
                 ox + sx,
                 oy + sy,
                 16.0,
@@ -539,20 +432,21 @@ impl Game<'_> {
         if self.carried.is_some() {
             self.draw_carried(batch);
         } else if let Some(stack) = stack_tip {
-            self.draw_stack_tooltip(batch, &stack, self.cursor.0, self.cursor.1);
+            self.draw_stack_tooltip(batch, &stack, self.front.cursor.0, self.front.cursor.1);
         } else if let Some(key) = tooltip {
             let text = self.translate(&key, &key);
             self.draw_tooltip_lines(
                 batch,
                 &[(horizon_client::text::Text::literal(text), u32::MAX)],
-                self.cursor.0,
-                self.cursor.1,
+                self.front.cursor.0,
+                self.front.cursor.1,
             );
         }
     }
     /// `BeaconRenderer`: each section's rotating solid beam and its glow.
     pub(super) fn beacon_geometry(&self, camera: glam::DVec3, alpha: f64, out: &mut Vec<Vertex>) {
         let Some(s) = self
+            .front
             .gui
             .atlas
             .sprites
@@ -587,5 +481,118 @@ impl Game<'_> {
                 out,
             );
         }
+    }
+}
+impl crate::game::Sim<'_> {
+    /// The beam color of a `BeaconBeamBlock` (stained glass and panes, the beacon).
+    fn beam_color(&self, name: &str) -> Option<u32> {
+        if name == "minecraft:beacon" {
+            return Some(DYE[0]);
+        }
+        let n = name.strip_prefix("minecraft:")?;
+        let dye = n
+            .strip_suffix("_stained_glass")
+            .or_else(|| n.strip_suffix("_stained_glass_pane"))?;
+        DYE_NAMES.iter().position(|d| *d == dye).map(|i| DYE[i])
+    }
+    /// `getHeight(WORLD_SURFACE)`: above the highest non-air block.
+    pub(super) fn world_surface(&self, x: i32, z: i32) -> i32 {
+        self.world
+            .world_surface(x, z, |id| self.res.facts().is_air(id))
+    }
+    /// `updateBase`: complete layers of `beacon_base_blocks` below.
+    fn beacon_base(&self, x: i32, y: i32, z: i32) -> i32 {
+        let base = self
+            .res
+            .items()
+            .block_tags
+            .get("minecraft:beacon_base_blocks");
+        let mut levels = 0;
+        for step in 1..=4 {
+            let ly = y - step;
+            if ly < super::MIN_Y {
+                break;
+            }
+            let ok = (x - step..=x + step).all(|lx| {
+                (z - step..=z + step).all(|lz| {
+                    let name = &self.res.facts().get(self.world.block(lx, ly, lz)).name;
+                    base.is_some_and(|t| t.contains(&**name))
+                })
+            });
+            if !ok {
+                break;
+            }
+            levels = step;
+        }
+        levels
+    }
+    fn beacon_effects_on_player(&mut self, p: [i32; 3], b: &Beacon) {
+        let Some(primary) = b.primary.as_deref().and_then(effect_id) else {
+            return;
+        };
+        let range = f64::from(b.levels * 10 + 10);
+        let Some(pp) = self.player.as_ref().map(|p| p.position) else {
+            return;
+        };
+        let inside = pp.x >= f64::from(p[0]) - range
+            && pp.x <= f64::from(p[0] + 1) + range
+            && pp.z >= f64::from(p[2]) - range
+            && pp.z <= f64::from(p[2] + 1) + range
+            && pp.y >= f64::from(p[1]) - range;
+        if !inside {
+            return;
+        }
+        let secondary = b.secondary.as_deref().and_then(effect_id);
+        let amplifier = i32::from(b.levels >= 4 && secondary == Some(primary));
+        let duration = (9 + b.levels * 2) * 20;
+        let ambient = |id, amp| EffectInstance {
+            ambient: true,
+            ..EffectInstance::new(id, duration, amp)
+        };
+        self.potions.effects.add(ambient(primary, amplifier));
+        if let Some(s) = secondary.filter(|&s| b.levels >= 4 && s != primary) {
+            self.potions.effects.add(ambient(s, 0));
+        }
+    }
+    /// Opening the menu shows the beacon's current powers.
+    pub(super) fn beacon_opened(&mut self) {
+        let Some(s) = self.station.as_ref().filter(|s| s.kind == Kind::Beacon) else {
+            return;
+        };
+        let pos = s.pos;
+        let (p, sec) = match self.world.block_entities.get(&(pos[0], pos[1], pos[2])) {
+            Some(BlockEntity::Beacon(b)) => (b.primary.clone(), b.secondary.clone()),
+            _ => (None, None),
+        };
+        let index =
+            |e: Option<String>| e.and_then(|e| EFFECTS.iter().position(|(n, _)| e.ends_with(n)));
+        if let Some(s) = self.station.as_mut() {
+            s.beacon = [index(p), index(sec)];
+        }
+    }
+    fn beacon_levels(&self) -> i32 {
+        let Some(s) = self.station.as_ref() else {
+            return 0;
+        };
+        if let Some(levels) = s.beacon_levels {
+            return levels;
+        }
+        let pos = s.pos;
+        match self.world.block_entities.get(&(pos[0], pos[1], pos[2])) {
+            Some(BlockEntity::Beacon(b)) => b.levels,
+            _ => 0,
+        }
+    }
+    /// Clicks on the power, confirm and cancel buttons.
+    /// The effect, upgrade, confirm and cancel buttons a controller can
+    /// focus (GUI origin relative).
+    pub(super) fn beacon_targets(&self) -> Vec<[f32; 4]> {
+        let (ux, uy) = upgrade_button();
+        buttons()
+            .into_iter()
+            .map(|(_, x, y, _)| (x, y))
+            .chain([(ux, uy), (164.0, 107.0), (190.0, 107.0)])
+            .map(|(x, y)| [x + SHIFT, y, 22.0, 22.0])
+            .collect()
     }
 }

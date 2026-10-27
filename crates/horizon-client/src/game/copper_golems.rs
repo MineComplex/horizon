@@ -129,7 +129,7 @@ impl Game<'_> {
             f64::from(p[2]) + 0.5,
         ];
         let pitch = self.world.random.next_float() * 0.1 + 0.9;
-        self.audio.play(
+        self.front.audio.play(
             &format!("minecraft:block.{kind}.{side}"),
             Some(at),
             0.5,
@@ -182,26 +182,12 @@ impl Game<'_> {
             m.extra.leash = None;
         }
         m.removed = true;
-        self.audio.play(
+        self.front.audio.play(
             "minecraft:entity.copper_golem_become_statue",
             Some([m.position.x, m.position.y, m.position.z]),
             1.0,
             1.0,
         );
-    }
-    /// `Mob.dropPreservedEquipment`: the guaranteed drops in `EquipmentSlot`
-    /// order, the carried stack (main hand) then the antenna flower (saddle),
-    /// each `spawnAtLocation` at the golem's feet.
-    pub(super) fn golem_drop_equipment(&mut self, m: &mut Mob) {
-        let at = m.position;
-        if let Some(stack) = held(m).cloned() {
-            set_held(m, None);
-            self.spawn_at_location(at, 0.0, stack);
-        }
-        if let Some(antenna) = m.saddle_item() {
-            m.set_saddle(None);
-            self.spawn_at_location(at, 0.0, antenna);
-        }
     }
     // ---- interactions -----------------------------------------------------
     /// `WeatheringCopperGolemStatueBlock.useItemOn`: an axe on an unoxidized
@@ -248,7 +234,8 @@ impl Game<'_> {
             m.previous_head_yaw = yaw;
         }
         self.damage_held(1);
-        self.audio
+        self.front
+            .audio
             .play("minecraft:entity.copper_golem.spawn", Some(at), 1.0, 1.0);
         // Level.removeBlock(pos, false): air, or the water the statue stood in.
         let replacement = registry.default_state(if waterlogged {
@@ -300,7 +287,8 @@ impl Game<'_> {
         if name == "minecraft:shears" && self.golem_shearable(index) {
             // CopperGolem.shear: the sound, the antenna slot emptied (an
             // unequip) and the flower dropped 1.5 up.
-            self.audio
+            self.front
+                .audio
                 .play("minecraft:entity.copper_golem.shear", Some(at), 1.0, 1.0);
             let antenna = self.mobs[index].saddle_item();
             self.mobs[index].set_saddle(None);
@@ -321,14 +309,16 @@ impl Game<'_> {
         if name == "minecraft:honeycomb" && !waxed {
             self.mobs[index].extra.vector[0] = -2.0;
             self.level_event_at(3003, block, 0);
-            self.audio
+            self.front
+                .audio
                 .play("minecraft:item.honeycomb.wax_on", Some(at), 1.0, 1.0);
             self.consume_held();
             return true;
         }
         if is_axe && waxed {
             self.mobs[index].extra.vector[0] = -1.0;
-            self.audio
+            self.front
+                .audio
                 .play("minecraft:item.axe.scrape", Some(at), 1.0, 1.0);
             self.level_event_at(3004, block, 0);
             self.damage_held_tool();
@@ -338,13 +328,30 @@ impl Game<'_> {
             let m = &mut self.mobs[index];
             m.extra.vector[0] = -1.0;
             m.extra.variant = horizon_client::mobs::copper_golem::weather_previous(m.extra.variant);
-            self.audio
+            self.front
+                .audio
                 .play("minecraft:item.axe.scrape", Some(at), 1.0, 1.0);
             self.level_event_at(3005, block, 0);
             self.damage_held_tool();
             return true;
         }
         false
+    }
+}
+impl crate::game::Sim<'_> {
+    /// `Mob.dropPreservedEquipment`: the guaranteed drops in `EquipmentSlot`
+    /// order, the carried stack (main hand) then the antenna flower (saddle),
+    /// each `spawnAtLocation` at the golem's feet.
+    pub(super) fn golem_drop_equipment(&mut self, m: &mut Mob) {
+        let at = m.position;
+        if let Some(stack) = held(m).cloned() {
+            set_held(m, None);
+            self.spawn_at_location(at, 0.0, stack);
+        }
+        if let Some(antenna) = m.saddle_item() {
+            m.set_saddle(None);
+            self.spawn_at_location(at, 0.0, antenna);
+        }
     }
     /// `readyForShearing`: the antenna holds a flower shears take.
     pub(super) fn golem_shearable(&self, index: usize) -> bool {

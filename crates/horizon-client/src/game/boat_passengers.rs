@@ -60,122 +60,6 @@ pub(super) fn boat_pushes(boat: Aabb, other: Aabb, other_is_boat: bool) -> bool 
 }
 
 impl Game<'_> {
-    /// The players in boat `id`: the window's player (or the server player
-    /// acting as it) and the server's other players.
-    pub(super) fn boat_players(&self, id: u32) -> usize {
-        let guests = self.lan.as_ref().map_or(0, |h| {
-            h.hub
-                .guests
-                .iter()
-                .filter(|g| Some(g.conn) != self.lan_acting && g.vehicle == Some(id))
-                .count()
-        });
-        usize::from(self.riding == Some(id)) + guests
-    }
-    /// The mobs in boat `id`, in their seat order after the players
-    /// (`Entity.addPassenger` puts a player first).
-    pub(super) fn boat_mobs(&self, id: u32) -> Vec<usize> {
-        (0..self.mobs.len())
-            .filter(|&j| {
-                let m = &self.mobs[j];
-                m.extra.mount == Some(id) && !m.removed && m.alive()
-            })
-            .collect()
-    }
-    /// `getPassengers().size()` of boat `id`.
-    pub(super) fn boat_passengers(&self, id: u32) -> usize {
-        self.boat_players(id) + self.boat_mobs(id).len()
-    }
-    /// `AbstractBoat.canAddPassenger`: a seat is free and the boat is not
-    /// under water.
-    pub(super) fn boat_has_room(&self, i: usize) -> bool {
-        let b = &self.boats[i];
-        self.boat_passengers(b.id) < b.max_passengers() && !b.under_water()
-    }
-    /// Where the player in boat `i` sits: in the middle alone, in front of a
-    /// mob.
-    pub(super) fn player_boat_seat(&self, i: usize) -> Vec3 {
-        let b = &self.boats[i];
-        let count = self.boat_players(b.id).max(1) + self.boat_mobs(b.id).len();
-        b.seat(0, count, false, PLAYER_RIDING_OFFSET, false)
-    }
-    /// `getRootVehicle` of mob `j`: the mob or boat at the bottom of what it
-    /// rides, None when it rides nothing.
-    fn mob_root_vehicle(&self, mut j: usize) -> Option<u32> {
-        let mut root = None;
-        for _ in 0..8 {
-            let Some(v) = self.mobs[j].extra.mount else {
-                break;
-            };
-            root = Some(v);
-            match self.mobs.iter().position(|m| m.id == v) {
-                Some(k) => j = k,
-                None => break,
-            }
-        }
-        root
-    }
-    /// The players outside boat `id` that push and block it (living, not
-    /// spectators), with the window player's team.
-    fn players_outside(&self, id: u32) -> Vec<(Aabb, bool)> {
-        let mut out = Vec::new();
-        if let Some(p) = self.player.as_ref()
-            && self.riding != Some(id)
-            && !self.spectator()
-            && !p.health.dead_or_dying()
-        {
-            out.push((p.bounds(), true));
-        }
-        if let Some(host) = self.lan.as_ref() {
-            for g in host.hub.guests.iter().filter(|g| {
-                Some(g.conn) != self.lan_acting
-                    && host.hub.here(g)
-                    && g.loaded
-                    && !g.dead
-                    && !g.spectator()
-                    && g.vehicle != Some(id)
-            }) {
-                out.push((guest_bounds(g), false));
-            }
-        }
-        out
-    }
-    /// `getEntityCollisions` of boat `id` within `area`, with
-    /// `AbstractBoat.canVehicleCollide`: the other boats, minecarts,
-    /// shulkers and pushable mobs and players, but not its own passengers.
-    pub(super) fn boat_obstacles(&self, id: u32, area: Aabb) -> Vec<Aabb> {
-        let mut out: Vec<Aabb> = (0..self.mobs.len())
-            .filter(|&j| {
-                let m = &self.mobs[j];
-                pushable(m)
-                    && m.bounds().intersects(area)
-                    && (m.extra.mount.is_none() || self.mob_root_vehicle(j) != Some(id))
-            })
-            .map(|j| self.mobs[j].bounds())
-            .collect();
-        out.extend(
-            self.boats
-                .iter()
-                .filter(|b| b.id != id)
-                .map(Boat::bounds)
-                .chain(self.carts.iter().map(|c| c.bounds()))
-                .chain(self.players_outside(id).into_iter().map(|(bb, _)| bb))
-                .filter(|bb| bb.intersects(area)),
-        );
-        out
-    }
-    /// What boat `b` may run into this tick.
-    pub(super) fn boat_move_obstacles(&self, b: &Boat) -> Vec<Aabb> {
-        let reach = b.velocity.length() + 1.0;
-        self.boat_obstacles(b.id, b.bounds().inflate(Vec3::new(reach, reach, reach)))
-    }
-    /// `noEntityCollision(boat, box)` for a new boat (`BoatItem.use`).
-    pub(super) fn boat_entity_collision(&self, bb: Aabb) -> bool {
-        // EntityGetter.getEntityCollisions: the box grown by 1e-7.
-        let area = bb.inflate(Vec3::new(1.0e-7, 1.0e-7, 1.0e-7));
-        !self.boat_obstacles(u32::MAX, area).is_empty()
-    }
-
     /// The end of `AbstractBoat.tick` on the server for boat `i`: each
     /// entity it touches gets in (a mob, while no player steers) or is
     /// pushed apart from it, and `LivingEntity.pushEntities` of each mob and
@@ -315,6 +199,123 @@ impl Game<'_> {
             }
         }
     }
+}
+impl crate::game::Sim<'_> {
+    /// The players in boat `id`: the window's player (or the server player
+    /// acting as it) and the server's other players.
+    pub(super) fn boat_players(&self, id: u32) -> usize {
+        let guests = self.lan.as_ref().map_or(0, |h| {
+            h.hub
+                .guests
+                .iter()
+                .filter(|g| Some(g.conn) != self.lan_acting && g.vehicle == Some(id))
+                .count()
+        });
+        usize::from(self.riding == Some(id)) + guests
+    }
+    /// The mobs in boat `id`, in their seat order after the players
+    /// (`Entity.addPassenger` puts a player first).
+    pub(super) fn boat_mobs(&self, id: u32) -> Vec<usize> {
+        (0..self.mobs.len())
+            .filter(|&j| {
+                let m = &self.mobs[j];
+                m.extra.mount == Some(id) && !m.removed && m.alive()
+            })
+            .collect()
+    }
+    /// `getPassengers().size()` of boat `id`.
+    pub(super) fn boat_passengers(&self, id: u32) -> usize {
+        self.boat_players(id) + self.boat_mobs(id).len()
+    }
+    /// `AbstractBoat.canAddPassenger`: a seat is free and the boat is not
+    /// under water.
+    pub(super) fn boat_has_room(&self, i: usize) -> bool {
+        let b = &self.boats[i];
+        self.boat_passengers(b.id) < b.max_passengers() && !b.under_water()
+    }
+    /// Where the player in boat `i` sits: in the middle alone, in front of a
+    /// mob.
+    pub(super) fn player_boat_seat(&self, i: usize) -> Vec3 {
+        let b = &self.boats[i];
+        let count = self.boat_players(b.id).max(1) + self.boat_mobs(b.id).len();
+        b.seat(0, count, false, PLAYER_RIDING_OFFSET, false)
+    }
+    /// `getRootVehicle` of mob `j`: the mob or boat at the bottom of what it
+    /// rides, None when it rides nothing.
+    fn mob_root_vehicle(&self, mut j: usize) -> Option<u32> {
+        let mut root = None;
+        for _ in 0..8 {
+            let Some(v) = self.mobs[j].extra.mount else {
+                break;
+            };
+            root = Some(v);
+            match self.mobs.iter().position(|m| m.id == v) {
+                Some(k) => j = k,
+                None => break,
+            }
+        }
+        root
+    }
+    /// The players outside boat `id` that push and block it (living, not
+    /// spectators), with the window player's team.
+    fn players_outside(&self, id: u32) -> Vec<(Aabb, bool)> {
+        let mut out = Vec::new();
+        if let Some(p) = self.player.as_ref()
+            && self.riding != Some(id)
+            && !self.spectator()
+            && !p.health.dead_or_dying()
+        {
+            out.push((p.bounds(), true));
+        }
+        if let Some(host) = self.lan.as_ref() {
+            for g in host.hub.guests.iter().filter(|g| {
+                Some(g.conn) != self.lan_acting
+                    && host.hub.here(g)
+                    && g.loaded
+                    && !g.dead
+                    && !g.spectator()
+                    && g.vehicle != Some(id)
+            }) {
+                out.push((guest_bounds(g), false));
+            }
+        }
+        out
+    }
+    /// `getEntityCollisions` of boat `id` within `area`, with
+    /// `AbstractBoat.canVehicleCollide`: the other boats, minecarts,
+    /// shulkers and pushable mobs and players, but not its own passengers.
+    pub(super) fn boat_obstacles(&self, id: u32, area: Aabb) -> Vec<Aabb> {
+        let mut out: Vec<Aabb> = (0..self.mobs.len())
+            .filter(|&j| {
+                let m = &self.mobs[j];
+                pushable(m)
+                    && m.bounds().intersects(area)
+                    && (m.extra.mount.is_none() || self.mob_root_vehicle(j) != Some(id))
+            })
+            .map(|j| self.mobs[j].bounds())
+            .collect();
+        out.extend(
+            self.boats
+                .iter()
+                .filter(|b| b.id != id)
+                .map(Boat::bounds)
+                .chain(self.carts.iter().map(|c| c.bounds()))
+                .chain(self.players_outside(id).into_iter().map(|(bb, _)| bb))
+                .filter(|bb| bb.intersects(area)),
+        );
+        out
+    }
+    /// What boat `b` may run into this tick.
+    pub(super) fn boat_move_obstacles(&self, b: &Boat) -> Vec<Aabb> {
+        let reach = b.velocity.length() + 1.0;
+        self.boat_obstacles(b.id, b.bounds().inflate(Vec3::new(reach, reach, reach)))
+    }
+    /// `noEntityCollision(boat, box)` for a new boat (`BoatItem.use`).
+    pub(super) fn boat_entity_collision(&self, bb: Aabb) -> bool {
+        // EntityGetter.getEntityCollisions: the box grown by 1e-7.
+        let area = bb.inflate(Vec3::new(1.0e-7, 1.0e-7, 1.0e-7));
+        !self.boat_obstacles(u32::MAX, area).is_empty()
+    }
     /// `AbstractBoat.push(mob)` from boat `i`, which has `count` passengers.
     fn boat_push_mob(&mut self, i: usize, j: usize, count: usize) {
         let (b, m) = (&self.boats[i], &self.mobs[j]);
@@ -334,7 +335,6 @@ impl Game<'_> {
             m.needs_sync = true;
         }
     }
-
     /// `positionRider` and `clampRotation` for the mobs in boats: each sits
     /// in its seat facing the way the boat does, an animal in a full boat
     /// sideways, its head kept within its reach of its body.

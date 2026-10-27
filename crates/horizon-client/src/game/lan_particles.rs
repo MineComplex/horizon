@@ -323,15 +323,15 @@ impl Game<'_> {
             let sound = self
                 .remote_sound_name(&p.sound)
                 .unwrap_or_else(|| "minecraft:entity.generic.explode".to_owned());
-            self.audio.play(&sound, Some(p.center), 4.0, pitch);
+            self.front.audio.play(&sound, Some(p.center), 4.0, pitch);
         }
         if let Some(options) = self.received_particle(&p.particle, p.center) {
-            self.particles.add(&options, p.center, [1.0, 0.0, 0.0]);
+            self.sim.particles.add(&options, p.center, [1.0, 0.0, 0.0]);
         }
         // A wind charge's burst throws none.
         if !p.block_particles.is_empty() {
-            let (world, facts) = (&self.world, self.res.facts());
-            self.particles.explosion_blocks(
+            let (world, facts) = (&self.sim.world, self.sim.res.facts());
+            self.sim.particles.explosion_blocks(
                 p.center,
                 p.radius,
                 p.block_count.max(0) as usize,
@@ -365,7 +365,7 @@ impl Game<'_> {
     ) {
         if self.lan.is_none() {
             // The server is running (its sounds are captured for the guests).
-            if self.audio.capture.is_some() {
+            if self.front.audio.capture.is_some() {
                 self.creatures
                     .lan_particles
                     .push((options.clone(), at, spread, speed, count));
@@ -408,7 +408,8 @@ impl Game<'_> {
             self.lan_send_particles(&options, at, spread, speed, count);
         }
     }
-
+}
+impl crate::game::Sim<'_> {
     /// `ServerLevel.explode`'s packet to each player within 64 blocks. The
     /// sound and the push reach them on their own (the level's sounds, the
     /// motion a hurt player is sent), so the packet carries neither.
@@ -440,7 +441,6 @@ impl Game<'_> {
             self.send_explosion(packet, &[]);
         }
     }
-
     /// The explosions guests' turns put off.
     pub(super) fn flush_lan_explosions(&mut self) {
         for (center, small, radius, block_count) in
@@ -449,7 +449,6 @@ impl Game<'_> {
             self.lan_explode(center, small, radius, block_count);
         }
     }
-
     /// A wind charge's burst (`AbstractWindCharge.explode`): gust emitters,
     /// no block particles, and for each player it pushed the push
     /// (`ServerExplosion.hitPlayers`), which only that client applies, as
@@ -473,7 +472,6 @@ impl Game<'_> {
             self.send_explosion(packet, pushed);
         }
     }
-
     /// `ClientboundExplodePacket` without a push, or None while not serving.
     /// The sound is the level's, which the players hear already, so it isn't
     /// played from the packet.
@@ -522,7 +520,6 @@ impl Game<'_> {
             play_sound: false,
         })
     }
-
     /// `packet` to each player within 64 blocks of its centre, with the push
     /// `pushed` holds for them.
     fn send_explosion(&self, mut packet: play::Explode, pushed: &[(u32, [f64; 3])]) {

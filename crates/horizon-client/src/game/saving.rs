@@ -87,18 +87,19 @@ impl Game<'_> {
         all: bool,
         reply: std::sync::mpsc::Sender<String>,
     ) -> Result<()> {
-        if self.pending_save.is_some() {
+        if self.sim.pending_save.is_some() {
             return Err("a world save is already in progress".into());
         }
         if all {
-            self.world
+            self.sim
+                .world
                 .modified
-                .extend(self.world.chunks.keys().copied());
+                .extend(self.sim.world.chunks.keys().copied());
         }
-        self.keys.clear();
-        self.physical_keys.clear();
-        self.left = false;
-        self.right = false;
+        self.front.keys.clear();
+        self.front.physical_keys.clear();
+        self.front.left = false;
+        self.front.right = false;
         self.pending_save = Some(ClosingSave {
             quit: false,
             close: false,
@@ -138,8 +139,9 @@ impl Game<'_> {
                     if save.started.elapsed() > Duration::from_secs(30) {
                         return Err("chunk generation did not finish before saving".into());
                     }
-                    if self.streaming.poll_save(&mut self.world) {
-                        save.stage = Stage::Chunks(self.world.modified.iter().copied().collect());
+                    if self.sim.streaming.poll_save(&mut self.sim.world) {
+                        save.stage =
+                            Stage::Chunks(self.sim.world.modified.iter().copied().collect());
                     }
                     Ok(false)
                 }
@@ -228,11 +230,11 @@ impl Game<'_> {
     }
 
     pub(super) fn render_closing_save(&mut self) -> Result<()> {
-        let Some(renderer) = &mut self.renderer else {
+        let Some(renderer) = &mut self.front.renderer else {
             return Ok(());
         };
         let mut hud = HudBatch::new([renderer.config.width, renderer.config.height]);
-        let progress = match self.pending_save.as_ref().map(|save| &save.stage) {
+        let progress = match self.sim.pending_save.as_ref().map(|save| &save.stage) {
             Some(Stage::Chunks(_)) => 0.25,
             Some(Stage::Entities(_)) => 0.5,
             Some(Stage::Writes) => 0.9,
@@ -240,7 +242,7 @@ impl Game<'_> {
         };
         horizon_client::level_loading::draw_progress(
             &mut hud,
-            &self.gui.atlas,
+            &self.front.gui.atlas,
             "Saving world...",
             progress,
         );

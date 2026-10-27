@@ -59,31 +59,6 @@ pub(super) fn unpack_loot(
 }
 
 impl Game<'_> {
-    /// The pot's saved tag at `pos` with its loot unpacked (a new one for a
-    /// pot without), or None when no pot is there.
-    fn pot_tag(&mut self, pos: [i32; 3]) -> Option<Tag> {
-        let state = self.world.block(pos[0], pos[1], pos[2]);
-        if &*self.res.facts().get(state).name != "minecraft:decorated_pot" {
-            return None;
-        }
-        let mut tag = spill::saved_entity(&self.world, pos).unwrap_or_else(|| {
-            Tag::compound([
-                ("id", Tag::String("minecraft:decorated_pot".into())),
-                ("x", Tag::Int(pos[0])),
-                ("y", Tag::Int(pos[1])),
-                ("z", Tag::Int(pos[2])),
-            ])
-        });
-        let loot = horizon_client::structure_blocks::loot_data(&self.options.resources);
-        unpack_loot(
-            &mut tag,
-            loot.as_deref(),
-            &mut self.world.random,
-            &mut self.rand_sequences,
-            self.level.seed,
-        );
-        Some(tag)
-    }
     /// `DecoratedPotBlock.useItemOn` with `held`, then `useWithoutItem` on the
     /// main hand's turn: true when the pot took the click.
     pub(super) fn use_decorated_pot(&mut self, pos: [i32; 3], held: Option<&ItemStack>) -> bool {
@@ -102,7 +77,7 @@ impl Game<'_> {
             if self.hand != Hand::Main {
                 return false;
             }
-            self.audio.play(
+            self.front.audio.play(
                 "minecraft:block.decorated_pot.insert_fail",
                 Some(center),
                 1.0,
@@ -132,7 +107,7 @@ impl Game<'_> {
         }
         spill::put_saved_entity(&mut self.world, pos, tag);
         self.consume_held();
-        self.audio.play(
+        self.front.audio.play(
             "minecraft:block.decorated_pot.insert",
             Some(center),
             1.0,
@@ -148,5 +123,32 @@ impl Game<'_> {
         self.post_block_game_event("minecraft:block_change", pos, Some(Who::Player), None);
         self.trigger_block("minecraft:item_used_on_block", pos, &stack);
         true
+    }
+}
+impl crate::game::Sim<'_> {
+    /// The pot's saved tag at `pos` with its loot unpacked (a new one for a
+    /// pot without), or None when no pot is there.
+    fn pot_tag(&mut self, pos: [i32; 3]) -> Option<Tag> {
+        let state = self.world.block(pos[0], pos[1], pos[2]);
+        if &*self.res.facts().get(state).name != "minecraft:decorated_pot" {
+            return None;
+        }
+        let mut tag = spill::saved_entity(&self.world, pos).unwrap_or_else(|| {
+            Tag::compound([
+                ("id", Tag::String("minecraft:decorated_pot".into())),
+                ("x", Tag::Int(pos[0])),
+                ("y", Tag::Int(pos[1])),
+                ("z", Tag::Int(pos[2])),
+            ])
+        });
+        let loot = horizon_client::structure_blocks::loot_data(&self.options.resources);
+        unpack_loot(
+            &mut tag,
+            loot.as_deref(),
+            &mut self.world.random,
+            &mut self.rand_sequences,
+            self.level.seed,
+        );
+        Some(tag)
     }
 }

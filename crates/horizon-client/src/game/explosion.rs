@@ -98,66 +98,6 @@ pub(super) fn client_float() -> f32 {
 }
 
 impl Game<'_> {
-    /// `ServerExplosion.getSeenPercent` for an entity box.
-    pub(super) fn seen_percent(&self, center: [f64; 3], min: [f64; 3], max: [f64; 3]) -> f32 {
-        let xs = 1.0 / ((max[0] - min[0]) * 2.0 + 1.0);
-        let ys = 1.0 / ((max[1] - min[1]) * 2.0 + 1.0);
-        let zs = 1.0 / ((max[2] - min[2]) * 2.0 + 1.0);
-        let x_offset = (1.0 - (1.0 / xs).floor() * xs) / 2.0;
-        let z_offset = (1.0 - (1.0 / zs).floor() * zs) / 2.0;
-        if xs < 0.0 || ys < 0.0 || zs < 0.0 {
-            return 0.0;
-        }
-        // ClipContext(..., entity): the entity standing at the box's bottom.
-        let mut rays = ColliderRays {
-            scene: SceneCollisions {
-                world: &self.world,
-                binding: self.collision,
-                subject: None,
-            },
-            context: CollisionContext::for_entity(
-                CollisionEntity {
-                    identity: EntityIdentity(0),
-                    y: min[1],
-                    descending: false,
-                    main_hand: Some(CollisionItem::EMPTY),
-                },
-                false,
-            ),
-        };
-        let (mut hits, mut count) = (0, 0);
-        let mut xx = 0.0;
-        while xx <= 1.0 {
-            let mut yy = 0.0;
-            while yy <= 1.0 {
-                let mut zz = 0.0;
-                while zz <= 1.0 {
-                    let x = min[0] + (max[0] - min[0]) * xx;
-                    let y = min[1] + (max[1] - min[1]) * yy;
-                    let z = min[2] + (max[2] - min[2]) * zz;
-                    let from = Vec3::new(x + x_offset, y, z + z_offset);
-                    let to = Vec3::new(center[0], center[1], center[2]);
-                    let missed = clip_world(
-                        &mut rays,
-                        from,
-                        to,
-                        RayBlockMode::Collider,
-                        RayFluidMode::None,
-                        4096,
-                    )
-                    .is_ok_and(|r| r.miss);
-                    if missed {
-                        hits += 1;
-                    }
-                    count += 1;
-                    zz += zs;
-                }
-                yy += ys;
-            }
-            xx += xs;
-        }
-        hits as f32 / count as f32
-    }
     /// `ServerExplosion.calculateExplodedPositions`; `resists` overrides one
     /// block's resistance (`ExplosionDamageCalculator.getBlockExplosionResistance`).
     fn exploded_positions(
@@ -295,19 +235,19 @@ impl Game<'_> {
         };
         let blocking = self.player_blocking(Some(center), damage_type, false);
         let raised = blocking.is_some();
-        let (creative, spectator) = (self.creative, self.spectator());
-        let flying = self.player.as_ref().is_some_and(|p| p.flying);
+        let (creative, spectator) = (self.sim.creative, self.spectator());
+        let flying = self.sim.player.as_ref().is_some_and(|p| p.flying);
         let mut outcome = horizon_client::health::BlockOutcome::default();
-        if let Some(p) = self.player.as_mut()
-            && let Some(id) = self.motion.health.damage.id(damage_type)
+        if let Some(p) = self.sim.player.as_mut()
+            && let Some(id) = self.sim.motion.health.damage.id(damage_type)
         {
             // Creative players are invulnerable to explosions.
             if !creative
                 && !spectator
                 && hurtable
                 && let Ok(o) = p.hurt_caused_by(
-                    &self.motion.health,
-                    self.world.health_rules,
+                    &self.sim.motion.health,
+                    self.sim.world.health_rules,
                     id,
                     amount,
                     blocking,
@@ -606,14 +546,16 @@ impl Game<'_> {
             }
         }
         let pitch = (1.0 + (client_float() - client_float()) * 0.2) * 0.7;
-        self.audio
+        self.front
+            .audio
             .play("minecraft:entity.generic.explode", Some(center), 4.0, pitch);
         // ServerLevel.explode sends toBlow.size() whatever the interaction, and
         // `ServerExplosion.isSmall` also covers an explosion that keeps blocks.
         let block_count = targets.len();
         let small = radius < 2.0 || interaction == BlockInteraction::Keep;
-        let (world, facts) = (&self.world, self.res.facts());
-        self.particles
+        let (world, facts) = (&self.sim.world, self.sim.res.facts());
+        self.sim
+            .particles
             .explosion(center, small, block_count, radius, &|b| {
                 facts.is_air(world.block(b[0], b[1], b[2]))
             });
@@ -665,18 +607,18 @@ impl Game<'_> {
             self.pending.record_saved(pos, &tag);
         }
         if !is_tnt {
-            let dynamic = self.pending.dynamic(pos);
+            let dynamic = self.sim.pending.dynamic(pos);
             // LootContextParams.EXPLOSION_RADIUS under DESTROY_WITH_DECAY: the
             // tables' survives_explosion and explosion_decay draw from their
             // random sequence.
             let decay = (interaction == BlockInteraction::DestroyWithDecay).then_some(radius);
-            let drops = self.res.items().block_drops_exploded(
-                self.pack.assets.registry,
+            let drops = self.sim.res.items().block_drops_exploded(
+                self.sim.pack.assets.registry,
                 state,
                 None,
                 &dynamic,
-                &mut self.world.random,
-                Some((&mut self.rand_sequences, self.level.seed)),
+                &mut self.sim.world.random,
+                Some((&mut self.sim.rand_sequences, self.sim.level.seed)),
                 decay,
                 false,
             );
@@ -703,6 +645,68 @@ impl Game<'_> {
             self.add_primed_tnt(BlockPos::new(pos[0], pos[1], pos[2]), rot, fuse);
         }
         Ok(())
+    }
+}
+impl crate::game::Sim<'_> {
+    /// `ServerExplosion.getSeenPercent` for an entity box.
+    pub(super) fn seen_percent(&self, center: [f64; 3], min: [f64; 3], max: [f64; 3]) -> f32 {
+        let xs = 1.0 / ((max[0] - min[0]) * 2.0 + 1.0);
+        let ys = 1.0 / ((max[1] - min[1]) * 2.0 + 1.0);
+        let zs = 1.0 / ((max[2] - min[2]) * 2.0 + 1.0);
+        let x_offset = (1.0 - (1.0 / xs).floor() * xs) / 2.0;
+        let z_offset = (1.0 - (1.0 / zs).floor() * zs) / 2.0;
+        if xs < 0.0 || ys < 0.0 || zs < 0.0 {
+            return 0.0;
+        }
+        // ClipContext(..., entity): the entity standing at the box's bottom.
+        let mut rays = ColliderRays {
+            scene: SceneCollisions {
+                world: &self.world,
+                binding: self.collision,
+                subject: None,
+            },
+            context: CollisionContext::for_entity(
+                CollisionEntity {
+                    identity: EntityIdentity(0),
+                    y: min[1],
+                    descending: false,
+                    main_hand: Some(CollisionItem::EMPTY),
+                },
+                false,
+            ),
+        };
+        let (mut hits, mut count) = (0, 0);
+        let mut xx = 0.0;
+        while xx <= 1.0 {
+            let mut yy = 0.0;
+            while yy <= 1.0 {
+                let mut zz = 0.0;
+                while zz <= 1.0 {
+                    let x = min[0] + (max[0] - min[0]) * xx;
+                    let y = min[1] + (max[1] - min[1]) * yy;
+                    let z = min[2] + (max[2] - min[2]) * zz;
+                    let from = Vec3::new(x + x_offset, y, z + z_offset);
+                    let to = Vec3::new(center[0], center[1], center[2]);
+                    let missed = clip_world(
+                        &mut rays,
+                        from,
+                        to,
+                        RayBlockMode::Collider,
+                        RayFluidMode::None,
+                        4096,
+                    )
+                    .is_ok_and(|r| r.miss);
+                    if missed {
+                        hits += 1;
+                    }
+                    count += 1;
+                    zz += zs;
+                }
+                yy += ys;
+            }
+            xx += xs;
+        }
+        hits as f32 / count as f32
     }
 }
 

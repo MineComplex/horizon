@@ -82,13 +82,6 @@ fn body_armor_fits(species: Species, item: &str) -> bool {
 }
 
 impl Game<'_> {
-    /// Whether the mount menu is the open screen.
-    pub(super) fn mount_active(&self) -> bool {
-        self.screen == Screen::Inventory && self.mount_menu.open.is_some()
-    }
-    fn mount_mob_index(&self, id: u32) -> Option<usize> {
-        self.mobs.iter().position(|m| m.id == id)
-    }
     /// `AbstractHorse.openCustomInventoryScreen` for a tamed adult mount.
     pub(super) fn open_mount_menu(&mut self, index: usize) {
         let m = &self.mobs[index];
@@ -166,26 +159,6 @@ impl Game<'_> {
         self.open_mount_menu(index);
         true
     }
-    /// Riding a mount that has a horse inventory (`HasCustomInventoryScreen`).
-    pub(super) fn riding_mount_with_menu(&self) -> bool {
-        self.riding
-            .and_then(|id| self.mount_mob_index(id))
-            .is_some_and(|i| has_mount_menu(self.mobs[i].species()))
-    }
-    /// A server closed its window: the screen's copy goes.
-    pub(super) fn mount_menu_reset(&mut self) {
-        self.mount_menu.open = None;
-    }
-    /// The entity type of the open mount menu's mount (`minecraft:horse`).
-    pub(super) fn mount_menu_entity(&self) -> Option<String> {
-        let open = self.mount_menu.open.as_ref()?;
-        let m = self.mobs.iter().find(|m| m.id == open.mob)?;
-        Some(m.kind.id.to_string())
-    }
-    /// The chest columns of the open mount menu (the server's window's).
-    pub(super) fn mount_menu_columns(&self) -> Option<usize> {
-        self.mount_menu.open.as_ref().map(|o| o.columns)
-    }
     /// The menu ends when the mount dies or is more than 4 blocks away
     /// (`AbstractMountInventoryMenu.stillValid`).
     pub(super) fn tick_mount_menu(&mut self) {
@@ -233,24 +206,6 @@ impl Game<'_> {
         let items = open.items.clone();
         self.mount_store(index, saddle, body, items);
     }
-    /// The slots of mount `index` as its menu shows them: the saddle, the
-    /// body item (None when the slot isn't active), the chest.
-    pub(super) fn mount_contents(
-        &self,
-        index: usize,
-    ) -> (
-        Option<ItemStack>,
-        Option<Option<ItemStack>>,
-        Vec<Option<ItemStack>>,
-    ) {
-        let m = &self.mobs[index];
-        let species = m.species();
-        let body =
-            shows_body(species).then(|| m.extra.head.as_deref().map(|i| ItemStack::new(i, 1)));
-        let mut items = m.extra.items.clone();
-        items.resize(mount_columns(m) * 3, None);
-        (m.saddle_item(), body, items)
-    }
     /// The menu's slots back on mount `index` (`body` None: not its slot),
     /// with the equip sound of what was put on (`Equippable.equipSound`).
     pub(super) fn mount_store(
@@ -288,63 +243,7 @@ impl Game<'_> {
         let (x, z) = (at[0].floor() as i32 >> 4, at[2].floor() as i32 >> 4);
         self.world.modified.insert((x, z));
         if let Some(sound) = sound {
-            self.audio.play(&sound, Some(at), 0.5, 1.0);
-        }
-    }
-    pub(super) fn mount_slots(&self) -> Option<Vec<usize>> {
-        let open = self
-            .mount_menu
-            .open
-            .as_ref()
-            .filter(|_| self.mount_active())?;
-        let mut v: Vec<usize> = (0..36).collect();
-        if open.show_saddle {
-            v.push(SADDLE);
-        }
-        if open.show_armor {
-            v.push(ARMOR);
-        }
-        v.extend((0..open.columns * 3).map(|i| CHEST + i));
-        Some(v)
-    }
-    pub(super) fn mount_slot_position(&self, i: usize) -> Option<(f32, f32)> {
-        let open = self
-            .mount_menu
-            .open
-            .as_ref()
-            .filter(|_| self.mount_active())?;
-        match i {
-            SADDLE => Some((8.0, 18.0)),
-            ARMOR => Some((8.0, 36.0)),
-            _ if i >= CHEST => {
-                let n = i - CHEST;
-                (n < open.columns * 3).then(|| {
-                    (
-                        80.0 + (n % open.columns) as f32 * 18.0,
-                        18.0 + (n / open.columns) as f32 * 18.0,
-                    )
-                })
-            }
-            _ => None,
-        }
-    }
-    pub(super) fn mount_slot_mut(&mut self, i: usize) -> &mut Option<ItemStack> {
-        match self.mount_menu.open.as_mut() {
-            Some(open) if i == SADDLE => &mut open.saddle,
-            Some(open) if i == ARMOR => &mut open.armor,
-            Some(open) if i >= CHEST && i - CHEST < CHEST_SIZE => &mut open.items[i - CHEST],
-            _ => &mut self.scratch_slot,
-        }
-    }
-    /// `ArmorSlot.mayPlace` and the stack limits of the mount's slots.
-    pub(super) fn mount_slot_rules(&self, slot: usize, stack: &ItemStack) -> (bool, u32) {
-        let Some(open) = self.mount_menu.open.as_ref() else {
-            return (false, 64);
-        };
-        match slot {
-            SADDLE => (&*stack.item == "minecraft:saddle", 1),
-            ARMOR => (body_armor_fits(open.species, &stack.item), 1),
-            _ => (true, 64),
+            self.front.audio.play(&sound, Some(at), 0.5, 1.0);
         }
     }
     /// A click in the mount menu before the generic handling.
@@ -353,11 +252,11 @@ impl Game<'_> {
         if !self.mount_active() || self.remote.is_some() {
             return false;
         }
-        let Some(r) = self.renderer.as_ref() else {
+        let Some(r) = self.front.renderer.as_ref() else {
             return true;
         };
         let batch = HudBatch::new([r.config.width, r.config.height]);
-        let Some(slot) = self.slot_at(&batch, self.cursor.0, self.cursor.1) else {
+        let Some(slot) = self.slot_at(&batch, self.front.cursor.0, self.front.cursor.1) else {
             return true;
         };
         let shift = self.has_shift_down();
@@ -419,7 +318,7 @@ impl Game<'_> {
         let Some(open) = self.mount_menu.open.as_ref() else {
             return;
         };
-        let atlas = &self.gui.atlas;
+        let atlas = &self.front.gui.atlas;
         batch.sprite_region(
             atlas,
             "gui/container/horse",
@@ -500,8 +399,8 @@ impl Game<'_> {
         offset_y: f32,
     ) {
         let (cx, cy) = ((x0 + x1) / 2.0, (y0 + y1) / 2.0);
-        let x_angle = ((cx - self.cursor.0) / 40.0).atan();
-        let y_angle = ((cy - self.cursor.1) / 40.0).atan();
+        let x_angle = ((cx - self.front.cursor.0) / 40.0).atan();
+        let y_angle = ((cy - self.front.cursor.1) / 40.0).atan();
         let mut m = mob.clone();
         m.previous = m.position;
         m.body_yaw = 180.0 + x_angle * 20.0;
@@ -513,7 +412,7 @@ impl Game<'_> {
         m.hurt_time = 0;
         m.death_time = 0;
         let camera = glam::DVec3::new(m.position.x, m.position.y, m.position.z);
-        let atlas = &self.gui.atlas;
+        let atlas = &self.front.gui.atlas;
         let lookup = |name: &str| atlas.sprites.get(name).map(|r| [r.u0, r.v0, r.u1, r.v1]);
         let mut verts = Vec::new();
         horizon_client::mobs::render::render_with(
@@ -559,6 +458,109 @@ impl Game<'_> {
             batch.quad(p, uv, color);
         }
         batch.clip_since(start, x0, y0, x1, y1);
+    }
+}
+impl crate::game::Sim<'_> {
+    /// Whether the mount menu is the open screen.
+    pub(super) fn mount_active(&self) -> bool {
+        self.screen == Screen::Inventory && self.mount_menu.open.is_some()
+    }
+    fn mount_mob_index(&self, id: u32) -> Option<usize> {
+        self.mobs.iter().position(|m| m.id == id)
+    }
+    /// Riding a mount that has a horse inventory (`HasCustomInventoryScreen`).
+    pub(super) fn riding_mount_with_menu(&self) -> bool {
+        self.riding
+            .and_then(|id| self.mount_mob_index(id))
+            .is_some_and(|i| has_mount_menu(self.mobs[i].species()))
+    }
+    /// A server closed its window: the screen's copy goes.
+    pub(super) fn mount_menu_reset(&mut self) {
+        self.mount_menu.open = None;
+    }
+    /// The entity type of the open mount menu's mount (`minecraft:horse`).
+    pub(super) fn mount_menu_entity(&self) -> Option<String> {
+        let open = self.mount_menu.open.as_ref()?;
+        let m = self.mobs.iter().find(|m| m.id == open.mob)?;
+        Some(m.kind.id.to_string())
+    }
+    /// The chest columns of the open mount menu (the server's window's).
+    pub(super) fn mount_menu_columns(&self) -> Option<usize> {
+        self.mount_menu.open.as_ref().map(|o| o.columns)
+    }
+    /// The slots of mount `index` as its menu shows them: the saddle, the
+    /// body item (None when the slot isn't active), the chest.
+    pub(super) fn mount_contents(
+        &self,
+        index: usize,
+    ) -> (
+        Option<ItemStack>,
+        Option<Option<ItemStack>>,
+        Vec<Option<ItemStack>>,
+    ) {
+        let m = &self.mobs[index];
+        let species = m.species();
+        let body =
+            shows_body(species).then(|| m.extra.head.as_deref().map(|i| ItemStack::new(i, 1)));
+        let mut items = m.extra.items.clone();
+        items.resize(mount_columns(m) * 3, None);
+        (m.saddle_item(), body, items)
+    }
+    pub(super) fn mount_slots(&self) -> Option<Vec<usize>> {
+        let open = self
+            .mount_menu
+            .open
+            .as_ref()
+            .filter(|_| self.mount_active())?;
+        let mut v: Vec<usize> = (0..36).collect();
+        if open.show_saddle {
+            v.push(SADDLE);
+        }
+        if open.show_armor {
+            v.push(ARMOR);
+        }
+        v.extend((0..open.columns * 3).map(|i| CHEST + i));
+        Some(v)
+    }
+    pub(super) fn mount_slot_position(&self, i: usize) -> Option<(f32, f32)> {
+        let open = self
+            .mount_menu
+            .open
+            .as_ref()
+            .filter(|_| self.mount_active())?;
+        match i {
+            SADDLE => Some((8.0, 18.0)),
+            ARMOR => Some((8.0, 36.0)),
+            _ if i >= CHEST => {
+                let n = i - CHEST;
+                (n < open.columns * 3).then(|| {
+                    (
+                        80.0 + (n % open.columns) as f32 * 18.0,
+                        18.0 + (n / open.columns) as f32 * 18.0,
+                    )
+                })
+            }
+            _ => None,
+        }
+    }
+    pub(super) fn mount_slot_mut(&mut self, i: usize) -> &mut Option<ItemStack> {
+        match self.mount_menu.open.as_mut() {
+            Some(open) if i == SADDLE => &mut open.saddle,
+            Some(open) if i == ARMOR => &mut open.armor,
+            Some(open) if i >= CHEST && i - CHEST < CHEST_SIZE => &mut open.items[i - CHEST],
+            _ => &mut self.scratch_slot,
+        }
+    }
+    /// `ArmorSlot.mayPlace` and the stack limits of the mount's slots.
+    pub(super) fn mount_slot_rules(&self, slot: usize, stack: &ItemStack) -> (bool, u32) {
+        let Some(open) = self.mount_menu.open.as_ref() else {
+            return (false, 64);
+        };
+        match slot {
+            SADDLE => (&*stack.item == "minecraft:saddle", 1),
+            ARMOR => (body_armor_fits(open.species, &stack.item), 1),
+            _ => (true, 64),
+        }
     }
 }
 

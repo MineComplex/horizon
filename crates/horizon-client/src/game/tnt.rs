@@ -120,7 +120,7 @@ impl Game<'_> {
             // PrimedTnt.getRandomShortFuse
             r.next_int_bound(20).unwrap_or(0) + 10
         } else {
-            self.audio.play(
+            self.front.audio.play(
                 "minecraft:entity.tnt.primed",
                 Some([
                     f64::from(pos.x) + 0.5,
@@ -134,41 +134,25 @@ impl Game<'_> {
         };
         self.add_primed_tnt(pos, rot, fuse);
     }
-    /// Adds primed TNT at the block's bottom centre, pushed along `rot`.
-    pub(super) fn add_primed_tnt(&mut self, pos: BlockPos, rot: f64, fuse: i32) {
-        let position = Vec3::new(
-            f64::from(pos.x) + 0.5,
-            f64::from(pos.y),
-            f64::from(pos.z) + 0.5,
-        );
-        self.tnts.push(PrimedTnt {
-            id: 0,
-            position,
-            previous: position,
-            velocity: Vec3::new(-rot.sin() * 0.02, f64::from(0.2f32), -rot.cos() * 0.02),
-            fuse,
-            on_ground: false,
-        });
-    }
     /// `PrimedTnt.tick` for every primed TNT, in order; an expired fuse
     /// explodes immediately (later TNT in the list feel its knockback this
     /// tick). TNT primed by an explosion starts ticking next tick.
     pub(super) fn tick_tnt(&mut self) -> Result<()> {
-        let mut count = self.tnts.len();
+        let mut count = self.sim.tnts.len();
         let mut i = 0;
         // ServerLevel.tick: only entities in entity-ticking chunks tick.
         let ticking = self.entity_ticking_area();
         while i < count {
-            let t = &mut self.tnts[i];
+            let t = &mut self.sim.tnts[i];
             if !ticking(t.position.x.floor() as i32, t.position.z.floor() as i32) {
                 i += 1;
                 continue;
             }
             t.tick(
-                &self.world,
-                self.collision,
-                &self.pack.assets,
-                self.res.facts(),
+                &self.sim.world,
+                self.sim.collision,
+                &self.sim.pack.assets,
+                self.sim.res.facts(),
             )?;
             if t.fuse <= 0 {
                 let center = [
@@ -249,7 +233,7 @@ impl Game<'_> {
                     .pack
                     .layer_names
                     .get(&face.layer)
-                    .and_then(|name| self.gui.atlas.sprites.get(name).copied());
+                    .and_then(|name| self.front.gui.atlas.sprites.get(name).copied());
             }
         }
         let range = super::entity_culling::default_range(
@@ -340,6 +324,24 @@ impl Game<'_> {
                 }
             }
         }
+    }
+}
+impl crate::game::Sim<'_> {
+    /// Adds primed TNT at the block's bottom centre, pushed along `rot`.
+    pub(super) fn add_primed_tnt(&mut self, pos: BlockPos, rot: f64, fuse: i32) {
+        let position = Vec3::new(
+            f64::from(pos.x) + 0.5,
+            f64::from(pos.y),
+            f64::from(pos.z) + 0.5,
+        );
+        self.tnts.push(PrimedTnt {
+            id: 0,
+            position,
+            previous: position,
+            velocity: Vec3::new(-rot.sin() * 0.02, f64::from(0.2f32), -rot.cos() * 0.02),
+            fuse,
+            on_ground: false,
+        });
     }
 }
 

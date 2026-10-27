@@ -131,10 +131,15 @@ impl Game<'_> {
         let Some(amount) = self.plugin_damage_acting(kind, amount, None) else {
             return;
         };
-        if let Some(p) = self.player.as_mut()
-            && let Some(id) = self.motion.health.damage.id(kind)
+        if let Some(p) = self.sim.player.as_mut()
+            && let Some(id) = self.sim.motion.health.damage.id(kind)
         {
-            let _ = p.hurt(&self.motion.health, self.world.health_rules, id, amount);
+            let _ = p.hurt(
+                &self.sim.motion.health,
+                self.sim.world.health_rules,
+                id,
+                amount,
+            );
         }
     }
 }

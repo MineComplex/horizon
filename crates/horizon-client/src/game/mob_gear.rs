@@ -50,7 +50,8 @@ fn slot_item(m: &horizon_client::mobs::Mob, slot: usize) -> Option<std::sync::Ar
     }
 }
 
-impl Game<'_> {
+impl Game<'_> {}
+impl crate::game::Sim<'_> {
     /// `Mob.equip(EquipmentTable)` for a spawner's `equipment`: the loot table
     /// (the mob as `this`, its random sequence) is rolled and each stack goes
     /// in the slot `EquipmentUser.resolveSlot` picks, with the table's drop
@@ -164,7 +165,6 @@ impl Game<'_> {
             gear::upgrade(m, slot, enchantment, level);
         }
     }
-
     /// `Pillager` / `Vindicator.applyRaidBuffs`: Quick Charge on a fresh
     /// crossbow after waves 3 and 5, Sharpness on a fresh axe.
     pub(super) fn apply_raid_buffs(&mut self, id: u32, kind: RaiderType, wave: i32, odds: f32) {
