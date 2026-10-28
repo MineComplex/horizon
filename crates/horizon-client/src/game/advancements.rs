@@ -971,28 +971,6 @@ impl Game<'_> {
                 && (c["item"].is_null() || items.iter().any(|i| adv::item(&c["item"], i, w)))
         });
     }
-    /// `EnterBlockTrigger`: the block, its state properties and the player.
-    pub(super) fn trigger_enter_block(&mut self, state: horizon_world::registry::BlockStateId) {
-        let Some(definition) = self.pack.assets.registry.state(state).cloned() else {
-            return;
-        };
-        let me = self.player_entity();
-        self.trigger("minecraft:enter_block", move |c, w| {
-            let block_ok = adv::id_matches(&c["blocks"], "block", &definition.name, w);
-            let state_ok = c["state"]
-                .as_object()
-                .into_iter()
-                .flatten()
-                .all(|(k, v)| definition.properties.get(k).map(String::as_str) == v.as_str());
-            let pctx = adv::Entities {
-                this: Some(&me),
-                origin: me.position,
-                tool: None,
-                block_pos: None,
-            };
-            block_ok && state_ok && adv::conditions(&c["player"], &pctx, w)
-        });
-    }
     /// `SlideDownBlockTrigger`: match the actual block and its state.
     pub(super) fn trigger_honey_slide(&mut self, pos: [i32; 3]) {
         let me = self.player_entity();

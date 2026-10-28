@@ -1,6 +1,6 @@
 //! The player's `CombatTracker`: the damage taken lately, who dealt it and
 //! where the player fell from, turned into the vanilla death message.
-use super::{Game, chat::PLAYER_NAME};
+use super::Game;
 use horizon_client::{
     health::HealthEvent,
     motion::MotionEvent,
@@ -256,14 +256,6 @@ impl Game<'_> {
             damage.in_tag(id, tag) || damage.in_tag(id, &format!("minecraft:{tag}"))
         })
     }
-    /// The type of the mob that dealt the killing blow (`killed_by`).
-    pub(super) fn combat_killer_kind(&self) -> Option<String> {
-        let (id, _) = self.combat.entries.last()?.attacker.clone()?;
-        self.mobs
-            .iter()
-            .find(|m| m.id == id)
-            .map(|m| m.kind.id.clone())
-    }
     /// `CombatTracker.getMostSignificantFall`.
     fn most_significant_fall(&self) -> Option<usize> {
         let (mut result, mut alternative) = (None, None);
@@ -290,10 +282,6 @@ impl Game<'_> {
         } else {
             None
         }
-    }
-    /// `CombatTracker.getDeathMessage`.
-    pub(super) fn combat_death_message(&mut self) -> Text {
-        self.combat_death_message_for(Text::literal(PLAYER_NAME))
     }
     /// `CombatTracker.getDeathMessage` for a player whose display name is
     /// `me`: a server's guest is not `PLAYER_NAME`.

@@ -419,19 +419,6 @@ impl Game<'_> {
 
     // ---- the player ----
 
-    /// `NetherPortalBlock.entityInside` for the player: `canUsePortal`, then
-    /// `setAsInsidePortal` (and the client's own, which drives the effect).
-    pub(super) fn player_inside_nether_portal(&mut self, pos: BlockPos) {
-        let alive = self
-            .player
-            .as_ref()
-            .is_some_and(|p| !p.health.dead_or_dying());
-        if !alive || self.riding.is_some() || self.sleeping.is_some() {
-            return;
-        }
-        self.portals.player.set_inside(pos, PLAYER_DELAY);
-        self.portals.client_inside = true;
-    }
     /// The same on a server's client: `Entity.canUsePortal` (alive, not a
     /// passenger), then only the client's `setAsInsidePortal`, which drives
     /// the confusion effect (`client_portal_effect`).

@@ -207,10 +207,6 @@ impl Game<'_> {
             _ => self.set_camera(None),
         }
     }
-    /// The eye height the camera follows (`Camera.tick`'s entity).
-    pub(in crate::game) fn camera_eye_height(&self) -> Option<f32> {
-        self.cmds.camera.map(|t| self.target_eye_height(t) as f32)
-    }
 
     // ---- /waypoint ------------------------------------------------------
 
