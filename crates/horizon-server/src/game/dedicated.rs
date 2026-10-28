@@ -1,0 +1,1061 @@
+//! The dedicated server (net.minecraft.server.Main and DedicatedServer):
+//! `horizon-client --dedicated [--nogui] [--port N] [--world NAME]
+//! [--universe DIR] [--initSettings]`. It reads server.properties and
+//! eula.txt from the working directory, opens `<universe>/<level-name>` and
+//! runs the same game as single player, without a local player: the world,
+//! its simulation and the play-state hub that LAN hosting uses, configured
+//! from server.properties, with the operator, whitelist and ban lists and a
+//! console on standard input.
+use super::{Options, lan::LanSettings, world_loading::WorldRequest};
+use crate::hc::{
+    Result,
+    lan::{LoginGate, NetConfig, NetLog, hub::HubConfig, velocity::Velocity},
+    server::{
+        eula, paper_global,
+        properties::{GAME_MODES, ServerProperties, SystemEntropy},
+        user_cache::UserCache,
+        user_lists::{
+            BanEntry, BanList, IpBanList, NameAndId, OpEntry, OpList, WhiteEntry, WhiteList,
+            format_date,
+        },
+    },
+    text::Text,
+};
+use horizon_protocol::text::translatable;
+use horizon_world::nbt::{JavaString, Tag};
+use std::{
+    io::Write,
+    path::PathBuf,
+    sync::{Arc, Mutex, OnceLock, mpsc},
+    time::{Duration, Instant},
+};
+
+mod status;
+
+/// Double.toString for the magnitudes positions have (no exponent form
+/// between 1e-3 and 1e7).
+pub(super) fn java_double(v: f64) -> String {
+    if v == 0.0 || (1e-3..1e7).contains(&v.abs()) {
+        format!("{v:?}")
+    } else {
+        let s = format!("{v:E}");
+        let (m, e) = s.split_once('E').unwrap_or((&s, "0"));
+        let m = if m.contains('.') {
+            m.to_owned()
+        } else {
+            format!("{m}.0")
+        };
+        format!("{m}E{e}")
+    }
+}
+
+/// What the startup read before the game's resources were loaded.
+struct Setup {
+    props: ServerProperties,
+    universe: PathBuf,
+    level_name: String,
+    port: Option<u16>,
+    started: Instant,
+}
+static SETUP: OnceLock<Mutex<Option<Setup>>> = OnceLock::new();
+/// usercache.json (Services.nameToIdCache): used by the server thread only.
+static USER_CACHE: Mutex<Option<UserCache>> = Mutex::new(None);
+
+/// PlayerList.placeNewPlayer: a player who joined is cached (and the file saved).
+pub(super) fn player_joined(id: u128, name: &str) {
+    if let Some(cache) = USER_CACHE.lock().unwrap().as_mut() {
+        cache.add(NameAndId {
+            id,
+            name: name.to_owned(),
+        });
+    }
+}
+
+/// Log4j's console pattern: `[HH:mm:ss] [thread/LEVEL]: message`.
+pub(super) fn log(level: &str, message: &str) {
+    log_from("Server thread", level, message);
+}
+
+/// A line from another of vanilla's threads (the login's User Authenticator).
+fn log_from(thread: &str, level: &str, message: &str) {
+    let file_level = match level {
+        "WARN" => ::log::Level::Warn,
+        "ERROR" => ::log::Level::Error,
+        _ => ::log::Level::Info,
+    };
+    crate::hc::logging::write_as(thread, file_level, message);
+    CAPTURE.with_borrow_mut(|lines| {
+        if let Some(lines) = lines {
+            lines.push(message.to_owned());
+        }
+    });
+    // Log4j's %d{HH:mm:ss}: the local time, as in logs/latest.log.
+    // The launcher can close its stdout pipe while the server keeps running.
+    let _ = writeln!(
+        std::io::stdout().lock(),
+        "[{}] [{thread}/{level}]: {message}",
+        chrono::Local::now().format("%H:%M:%S")
+    );
+}
+
+thread_local! {
+    /// The lines logged while a control request runs a console command.
+    static CAPTURE: std::cell::RefCell<Option<Vec<String>>> = const { std::cell::RefCell::new(None) };
+}
+
+/// Runs `f` and returns the lines it logged.
+fn capture_log(f: impl FnOnce()) -> Vec<String> {
+    CAPTURE.set(Some(Vec::new()));
+    f();
+    CAPTURE.take().unwrap_or_default()
+}
+
+/// Main.main up to the server start: arguments, server.properties (stored
+/// back at once), eula.txt. False when the process should stop here.
+pub(super) fn preflight(options: &mut Options) -> Result<bool> {
+    let args = options.dedicated.clone().unwrap_or_default();
+    let mut universe = PathBuf::from(".");
+    let mut world = None;
+    let mut port = None;
+    let mut init_settings = false;
+    let mut it = args.iter();
+    while let Some(arg) = it.next() {
+        let name = arg.trim_start_matches('-');
+        match name {
+            "nogui"
+            | "demo"
+            | "bonusChest"
+            | "forceUpgrade"
+            | "eraseCache"
+            | "recreateRegionFiles"
+            | "safeMode"
+            | "jfrProfile" => {}
+            "initSettings" => init_settings = true,
+            "help" => {
+                eprintln!(
+                    "Option                Description\n------                -----------\n--help\n--initSettings        Initializes 'server.properties' and 'eula.txt', then quits\n--nogui\n--port <Integer>      (default: -1)\n--universe <String>   (default: .)\n--world <String>"
+                );
+                return Ok(false);
+            }
+            "universe" => universe = PathBuf::from(it.next().ok_or("--universe needs a value")?),
+            "world" => world = Some(it.next().ok_or("--world needs a value")?.clone()),
+            "port" => {
+                let v: i32 = it.next().ok_or("--port needs a value")?.parse()?;
+                port = u16::try_from(v).ok();
+            }
+            "serverId" | "pidFile" => {
+                let value = it.next().ok_or("missing value")?;
+                if name == "pidFile" {
+                    std::fs::write(value, std::process::id().to_string())?;
+                }
+            }
+            _ => return Err(format!("{arg} is not a recognized option").into()),
+        }
+    }
+    let started = Instant::now();
+    let settings = PathBuf::from("server.properties");
+    let props = ServerProperties::from_file(&settings, &mut SystemEntropy::default())?;
+    for w in &props.warnings {
+        log("WARN", w);
+    }
+    // Horizon's own commands are the owner's choice, off as on vanilla.
+    if props
+        .raw
+        .get(crate::hc::command::vanilla::PREGEN_PROPERTY)
+        .is_some_and(|v| v.trim().eq_ignore_ascii_case("true"))
+    {
+        crate::hc::command::vanilla::set_horizon_commands(true);
+    }
+    props.store(&settings)?;
+    let eula_file = PathBuf::from("eula.txt");
+    let agreed = match eula::agreed(&eula_file) {
+        Ok(a) => a,
+        Err(w) => {
+            log("WARN", &w);
+            false
+        }
+    };
+    if init_settings {
+        let abs = |p: &PathBuf| std::env::current_dir().map_or(p.clone(), |d| d.join(p));
+        log(
+            "INFO",
+            &format!(
+                "Initialized '{}' and '{}'",
+                abs(&settings).display(),
+                abs(&eula_file).display()
+            ),
+        );
+        return Ok(false);
+    }
+    if !agreed {
+        log(
+            "INFO",
+            "You need to agree to the EULA in order to run the server. Go to eula.txt for more info.",
+        );
+        return Ok(false);
+    }
+    let level_name = world.unwrap_or_else(|| props.level_name.clone());
+    SETUP
+        .get_or_init(|| Mutex::new(None))
+        .lock()
+        .unwrap()
+        .replace(Setup {
+            props,
+            universe,
+            level_name,
+            port,
+            started,
+        });
+    Ok(true)
+}
+
+/// The operator, whitelist and ban lists (DedicatedPlayerList), shared with
+/// the connection threads that check logins.
+pub(super) struct Lists {
+    pub ops: OpList,
+    pub white: WhiteList,
+    pub bans: BanList,
+    pub ip_bans: IpBanList,
+    pub use_whitelist: bool,
+    pub enforce_whitelist: bool,
+}
+impl Lists {
+    fn load() -> Self {
+        let mut l = Self {
+            ops: OpList::new("ops.json"),
+            white: WhiteList::new("whitelist.json"),
+            bans: BanList::new("banned-players.json"),
+            ip_bans: IpBanList::new("banned-ips.json"),
+            use_whitelist: false,
+            enforce_whitelist: false,
+        };
+        // DedicatedPlayerList's constructor order and its LOGGER.warn lines.
+        let warn = |what: &str, r: std::result::Result<(), String>| {
+            if let Err(e) = r {
+                log("WARN", &format!("Failed to {what}: {e}"));
+            }
+        };
+        let saved = |r: std::io::Result<()>| r.map_err(|e| e.to_string());
+        warn("load user banlist", l.bans.load());
+        warn("save user banlist", saved(l.bans.save()));
+        warn("load ip banlist", l.ip_bans.load());
+        warn("save ip banlist", saved(l.ip_bans.save()));
+        warn("load operators list", l.ops.load());
+        warn("load white-list", l.white.load());
+        warn("save operators list", saved(l.ops.save()));
+        if !l.white.file.exists() {
+            warn("save white-list", saved(l.white.save()));
+        }
+        l
+    }
+    /// PlayerList.isWhiteListed.
+    fn whitelisted(&self, user: &NameAndId) -> bool {
+        !self.use_whitelist || self.ops.contains(user) || self.white.contains(user)
+    }
+    /// PlayerList.canPlayerLogin before the player count.
+    fn can_login(&mut self, address: std::net::SocketAddr, user: &NameAndId) -> Option<Tag> {
+        if self.bans.contains(user)
+            && let Some(ban) = self.bans.get(user).cloned()
+        {
+            let mut reason = translatable_tag(
+                "multiplayer.disconnect.banned.reason",
+                vec![ban_reason(&ban.reason)],
+            );
+            if let Some(expires) = ban.expires {
+                append(
+                    &mut reason,
+                    translatable_tag(
+                        "multiplayer.disconnect.banned.expiration",
+                        vec![Tag::String(JavaString::from(ban_date(expires).as_str()))],
+                    ),
+                );
+            }
+            return Some(reason);
+        }
+        if !self.whitelisted(user) {
+            return Some(translatable("multiplayer.disconnect.not_whitelisted", &[]));
+        }
+        let ip = address.ip().to_string();
+        if self.ip_bans.contains(&ip)
+            && let Some(ban) = self.ip_bans.get(&ip).cloned()
+        {
+            let mut reason = translatable_tag(
+                "multiplayer.disconnect.banned_ip.reason",
+                vec![ban_reason(&ban.reason)],
+            );
+            if let Some(expires) = ban.expires {
+                append(
+                    &mut reason,
+                    translatable_tag(
+                        "multiplayer.disconnect.banned_ip.expiration",
+                        vec![Tag::String(JavaString::from(ban_date(expires).as_str()))],
+                    ),
+                );
+            }
+            return Some(reason);
+        }
+        None
+    }
+}
+
+/// The world presets of 26.3's `worldgen/world_preset`.
+const WORLD_PRESETS: [&str; 6] = [
+    "minecraft:normal",
+    "minecraft:flat",
+    "minecraft:large_biomes",
+    "minecraft:amplified",
+    "minecraft:single_biome_surface",
+    "minecraft:debug_all_block_states",
+];
+
+/// Identifier.tryParse: `namespace:path`, or a path in `minecraft`.
+fn parse_identifier(text: &str) -> Option<String> {
+    let (namespace, path) = text.split_once(':').unwrap_or(("minecraft", text));
+    let valid = |s: &str, extra: &[char]| {
+        s.chars()
+            .all(|c| matches!(c, 'a'..='z' | '0'..='9' | '_' | '.' | '-') || extra.contains(&c))
+    };
+    (valid(namespace, &[]) && valid(path, &['/'])).then(|| format!("{namespace}:{path}"))
+}
+
+impl crate::game::Sim<'_> {
+    /// DedicatedServerProperties.createDimensions for a world that doesn't
+    /// exist yet: `level-type`'s preset, a flat world's `generator-settings`
+    /// and `generate-structures`, written before the world opens so that
+    /// streaming reads them. Horizon generates the normal and flat presets.
+    fn write_world_gen(&self, dir: &std::path::Path, props: &ServerProperties) -> Result<()> {
+        let level_type = &props.level_type;
+        let preset = parse_identifier(level_type)
+            .filter(|id| WORLD_PRESETS.contains(&id.as_str()))
+            .unwrap_or_else(|| {
+                log_from(
+                    "Worker-Main-1",
+                    "WARN",
+                    &format!(
+                        "Failed to parse level-type {level_type}, defaulting to minecraft:normal"
+                    ),
+                );
+                "minecraft:normal".to_owned()
+            });
+        let flat = preset == "minecraft:flat";
+        if !flat && preset != "minecraft:normal" {
+            log_from(
+                "Worker-Main-1",
+                "WARN",
+                &format!(
+                    "Horizon doesn't generate the {preset} world preset yet: using minecraft:normal"
+                ),
+            );
+        }
+        let settings = if flat {
+            let biomes = self.res.biomes();
+            let (settings, errors) = crate::hc::flatgen::settings_from_json(
+                &props.generator_settings,
+                |b| self.pack.assets.registry.default_state(b).is_some(),
+                |b| biomes.get(biomes.id(b)).name == b,
+            );
+            for e in errors {
+                log_from("Worker-Main-1", "ERROR", &e);
+            }
+            settings
+        } else {
+            None
+        };
+        let options = crate::hc::save::WorldGen {
+            flat,
+            structures: props.generate_structures,
+            bonus_chest: false,
+        };
+        crate::hc::save::write_world_gen_settings_with(dir, props.seed, options, settings)
+    }
+}
+
+/// PlayerList.BAN_DATE_FORMAT ("yyyy-MM-dd 'at' HH:mm:ss z"), in UTC.
+fn ban_date(millis: i64) -> String {
+    let s = format_date(millis);
+    format!("{} at {} UTC", &s[..10], &s[11..19])
+}
+/// BanListEntry.getReasonMessage.
+fn ban_reason(reason: &Option<String>) -> Tag {
+    match reason {
+        Some(r) => Tag::String(JavaString::from(r.as_str())),
+        None => translatable("multiplayer.disconnect.banned.reason.default", &[]),
+    }
+}
+fn translatable_tag(key: &str, args: Vec<Tag>) -> Tag {
+    Tag::compound([
+        ("translate", Tag::String(JavaString::from(key))),
+        ("with", Tag::List(args)),
+    ])
+}
+/// MutableComponent.append.
+fn append(to: &mut Tag, sibling: Tag) {
+    if let Tag::Compound(map) = to {
+        let extra = map
+            .entry(JavaString::from("extra"))
+            .or_insert_with(|| Tag::List(Vec::new()));
+        if let Tag::List(items) = extra {
+            items.push(sibling);
+        }
+    }
+}
+
+/// What the server loop keeps between ticks.
+struct ServerState {
+    lists: Arc<Mutex<Lists>>,
+    console: mpsc::Receiver<String>,
+    stop: bool,
+    autosave: bool,
+    empty_ticks: i32,
+    /// When the last passes of the loop ended, for the tick rate horizon-server shows.
+    ticks: std::collections::VecDeque<Instant>,
+    paused: bool,
+    /// `broadcast-console-to-ops`.
+    broadcast_console: bool,
+    /// `op-permission-level`: what `/op` grants (operatorUserPermissions).
+    op_level: i32,
+    /// `exit-with PID` on the control endpoint: stop once that process ends.
+    exit_with: Option<u32>,
+    ticks_since_check: u32,
+}
+
+/// The dedicated-only commands' replies vanilla sends with `broadcast`
+/// (`sendSuccess(..., true)`): the operators hear of them.
+const BROADCAST: &[&str] = &[
+    "commands.ban.success",
+    "commands.banip.info",
+    "commands.banip.success",
+    "commands.deop.success",
+    "commands.kick.success",
+    "commands.op.success",
+    "commands.pardon.success",
+    "commands.pardonip.success",
+    "commands.save.disabled",
+    "commands.save.enabled",
+    "commands.save.success",
+    "commands.stop.stopping",
+    "commands.whitelist.add.success",
+    "commands.whitelist.disabled",
+    "commands.whitelist.enabled",
+    "commands.whitelist.reloaded",
+    "commands.whitelist.remove.success",
+];
+
+impl crate::game::Sim<'_> {
+    /// The chunks to keep loaded: the players' (lan_update_streaming), or
+    /// the spawn chunk while nobody is online.
+    pub(super) fn update_dedicated_streaming(&mut self) {
+        let center = self
+            .lan
+            .as_ref()
+            .and_then(|h| {
+                h.hub
+                    .guests
+                    .iter()
+                    .find(|g| h.hub.here(g))
+                    .map(|g| g.chunk())
+            })
+            .or_else(|| {
+                self.spawn
+                    .map(|s| ((s.x.floor() as i32) >> 4, (s.z.floor() as i32) >> 4))
+            });
+        if let Some(c) = center {
+            self.streaming.center = c;
+        }
+    }
+    /// ServerGamePacketListenerImpl.tick: players idle longer than the
+    /// timeout are kicked.
+    fn kick_idle(&mut self, minutes: i32) {
+        let Some(host) = self.lan.as_mut() else {
+            return;
+        };
+        let limit = u64::try_from(minutes).unwrap_or(0) * 1200;
+        let idle: Vec<u32> = host
+            .hub
+            .guests
+            .iter()
+            .filter(|g| host.hub.ticks.saturating_sub(g.last_action_tick) > limit)
+            .map(|g| g.conn)
+            .collect();
+        for conn in idle {
+            host.hub
+                .kick(conn, translatable("multiplayer.disconnect.idling", &[]));
+        }
+    }
+    /// Ops' permission levels for the hub (PlayerList.getProfilePermissions).
+    fn sync_ops(&mut self, lists: &Arc<Mutex<Lists>>) {
+        let Some(host) = self.lan.as_mut() else {
+            return;
+        };
+        host.hub.ops = lists
+            .lock()
+            .unwrap()
+            .ops
+            .entries()
+            .iter()
+            .map(|e| (e.user.id, e.level as u8))
+            .collect();
+        host.hub.resend_commands();
+    }
+    /// A player on the server, by name.
+    fn online_player(&self, name: &str) -> Option<NameAndId> {
+        let hub = &self.lan.as_ref()?.hub;
+        let g = hub
+            .guests
+            .iter()
+            .find(|g| g.name.eq_ignore_ascii_case(name))?;
+        Some(NameAndId {
+            id: g.uuid,
+            name: g.name.clone(),
+        })
+    }
+    /// GameProfileArgument for a name: the user cache, else the offline
+    /// player (no profile service is asked). None, told to the console: no
+    /// such player.
+    fn resolve(&self, name: &str) -> Option<NameAndId> {
+        let found = USER_CACHE
+            .lock()
+            .unwrap()
+            .as_mut()
+            .and_then(|cache| cache.get_by_name(name, |_| None));
+        if found.is_none() {
+            let unknown = Text::translate("argument.player.unknown", &[]);
+            log("INFO", &format!("System chat: {}", unknown.plain()));
+        }
+        found
+    }
+    /// MinecraftServer.sendSystemMessage: what the console is told; while
+    /// the console runs a command, the replies vanilla broadcasts go to the
+    /// operators too.
+    fn console_reply(&mut self, text: Text) {
+        log("INFO", &format!("System chat: {}", text.plain()));
+        if self.console_broadcast.is_some()
+            && text
+                .translation_key()
+                .is_some_and(|k| BROADCAST.contains(&k))
+        {
+            self.broadcast_to_admins(text);
+        }
+    }
+    /// One console line, then the operators' share of its feedback.
+    fn console_line(&mut self, state: &mut ServerState, line: &str) {
+        self.console_broadcast = Some(state.broadcast_console);
+        self.console_command(state, line);
+        self.console_broadcast = None;
+        if let Some(mut host) = self.lan.take() {
+            self.run_level_teleports(&mut host);
+            self.send_admin_feedback(&mut host, None);
+            self.lan = Some(host);
+        }
+        self.admin_feedback.clear();
+    }
+    /// DedicatedServer.handleConsoleInputs: one console line, run as the
+    /// server (permission level 4). The dedicated-only commands are here;
+    /// everything else goes to the game's dispatcher.
+    fn console_command(&mut self, state: &mut ServerState, line: &str) {
+        // ServerCommandEvent, then the plugins' commands.
+        let Some(line) = self.plugin_console_command(line) else {
+            return;
+        };
+        let line = line.as_str();
+        let mut words = line.split_whitespace();
+        let Some(command) = words.next() else {
+            return;
+        };
+        let rest: Vec<&str> = words.collect();
+        let lit = |s: &str| Text::literal(s.to_owned());
+        match command {
+            "stop" => {
+                self.console_reply(Text::translate("commands.stop.stopping", &[]));
+                state.stop = true;
+            }
+            "save-all" => {
+                self.console_reply(Text::translate("commands.save.saving", &[]));
+                match self.save_game() {
+                    Ok(()) => self.console_reply(Text::translate("commands.save.success", &[])),
+                    Err(e) => log("ERROR", &format!("{e}")),
+                }
+            }
+            "save-off" => {
+                if state.autosave {
+                    state.autosave = false;
+                    self.console_reply(Text::translate("commands.save.disabled", &[]));
+                } else {
+                    self.console_reply(Text::translate("commands.save.alreadyOff", &[]));
+                }
+            }
+            "save-on" => {
+                if state.autosave {
+                    self.console_reply(Text::translate("commands.save.alreadyOn", &[]));
+                } else {
+                    state.autosave = true;
+                    self.console_reply(Text::translate("commands.save.enabled", &[]));
+                }
+            }
+            "list" => {
+                let guests: Vec<(String, u128)> = self
+                    .lan
+                    .as_ref()
+                    .map(|h| {
+                        h.hub
+                            .guests
+                            .iter()
+                            .map(|g| (g.name.clone(), g.uuid))
+                            .collect()
+                    })
+                    .unwrap_or_default();
+                let max = self
+                    .lan
+                    .as_ref()
+                    .map_or(0, |h| h.hub.lan.shared.max_players());
+                let names: Vec<String> = if rest.first() == Some(&"uuids") {
+                    guests
+                        .iter()
+                        .map(|(n, u)| {
+                            format!("{n} ({})", horizon_protocol::crypto::uuid_string(*u))
+                        })
+                        .collect()
+                } else {
+                    guests.iter().map(|(n, _)| n.clone()).collect()
+                };
+                self.console_reply(Text::translate(
+                    "commands.list.players",
+                    &[
+                        lit(&guests.len().to_string()),
+                        lit(&max.to_string()),
+                        lit(&names.join(", ")),
+                    ],
+                ));
+            }
+            "op" | "deop" if !rest.is_empty() => {
+                let Some(user) = self.resolve(rest[0]) else {
+                    return;
+                };
+                let level = state.op_level;
+                let changed = {
+                    let mut l = state.lists.lock().unwrap();
+                    if command == "op" {
+                        if l.ops.contains(&user) {
+                            false
+                        } else {
+                            l.ops.add(OpEntry {
+                                user: user.clone(),
+                                level,
+                                bypasses_player_limit: false,
+                            })
+                        }
+                    } else {
+                        l.ops.remove(&user)
+                    }
+                };
+                let key = match (command, changed) {
+                    ("op", true) => "commands.op.success",
+                    ("op", false) => "commands.op.failed",
+                    (_, true) => "commands.deop.success",
+                    _ => "commands.deop.failed",
+                };
+                self.console_reply(Text::translate(key, &[lit(&user.name)]));
+                let lists = state.lists.clone();
+                self.sync_ops(&lists);
+                // DeOpCommands.deopPlayers.
+                if command == "deop" && changed {
+                    self.kick_unlisted_players(&lists);
+                }
+            }
+            "whitelist" => self.console_whitelist(state, &rest),
+            "ban" if !rest.is_empty() => {
+                let Some(user) = self.resolve(rest[0]) else {
+                    return;
+                };
+                let reason = (rest.len() > 1).then(|| rest[1..].join(" "));
+                let added = state.lists.lock().unwrap().bans.add(BanEntry::new(
+                    user.clone(),
+                    Some("Server".into()),
+                    None,
+                    reason.clone(),
+                ));
+                if added {
+                    self.console_reply(Text::translate(
+                        "commands.ban.success",
+                        &[
+                            lit(&user.name),
+                            reason.as_deref().map_or_else(
+                                || {
+                                    Text::translate(
+                                        "multiplayer.disconnect.banned.reason.default",
+                                        &[],
+                                    )
+                                },
+                                lit,
+                            ),
+                        ],
+                    ));
+                    self.kick_uuid(user.id, translatable("multiplayer.disconnect.banned", &[]));
+                } else {
+                    self.console_reply(Text::translate("commands.ban.failed", &[]));
+                }
+            }
+            "ban-ip" if !rest.is_empty() => {
+                let target = rest[0];
+                let ip = if target.parse::<std::net::IpAddr>().is_ok() {
+                    Some(target.to_owned())
+                } else {
+                    self.lan.as_ref().and_then(|h| {
+                        h.hub
+                            .guests
+                            .iter()
+                            .find(|g| g.name.eq_ignore_ascii_case(target))
+                            .map(|g| g.address.ip().to_string())
+                    })
+                };
+                let Some(ip) = ip else {
+                    self.console_reply(Text::translate("commands.banip.invalid", &[]));
+                    return;
+                };
+                let reason = (rest.len() > 1).then(|| rest[1..].join(" "));
+                let added = state.lists.lock().unwrap().ip_bans.add(BanEntry::new(
+                    ip.clone(),
+                    Some("Server".into()),
+                    None,
+                    reason.clone(),
+                ));
+                if !added {
+                    self.console_reply(Text::translate("commands.banip.failed", &[]));
+                    return;
+                }
+                self.console_reply(Text::translate(
+                    "commands.banip.success",
+                    &[
+                        lit(&ip),
+                        reason.as_deref().map_or_else(
+                            || Text::translate("multiplayer.disconnect.banned.reason.default", &[]),
+                            lit,
+                        ),
+                    ],
+                ));
+                let banned: Vec<u128> = self
+                    .lan
+                    .as_ref()
+                    .map(|h| {
+                        h.hub
+                            .guests
+                            .iter()
+                            .filter(|g| g.address.ip().to_string() == ip)
+                            .map(|g| g.uuid)
+                            .collect()
+                    })
+                    .unwrap_or_default();
+                if !banned.is_empty() {
+                    self.console_reply(Text::translate(
+                        "commands.banip.info",
+                        &[lit(&banned.len().to_string()), lit("")],
+                    ));
+                }
+                for uuid in banned {
+                    self.kick_uuid(uuid, translatable("multiplayer.disconnect.ip_banned", &[]));
+                }
+            }
+            "pardon" if !rest.is_empty() => {
+                let Some(user) = self.resolve(rest[0]) else {
+                    return;
+                };
+                let removed = state.lists.lock().unwrap().bans.remove(&user);
+                let key = if removed {
+                    "commands.pardon.success"
+                } else {
+                    "commands.pardon.failed"
+                };
+                self.console_reply(Text::translate(key, &[lit(&user.name)]));
+            }
+            "pardon-ip" if !rest.is_empty() => {
+                let ip = rest[0].to_owned();
+                if ip.parse::<std::net::IpAddr>().is_err() {
+                    self.console_reply(Text::translate("commands.pardonip.invalid", &[]));
+                    return;
+                }
+                let removed = state.lists.lock().unwrap().ip_bans.remove(&ip);
+                let key = if removed {
+                    "commands.pardonip.success"
+                } else {
+                    "commands.pardonip.failed"
+                };
+                self.console_reply(Text::translate(key, &[lit(&ip)]));
+            }
+            "banlist" => {
+                let l = state.lists.lock().unwrap();
+                let mut lines = Vec::new();
+                let which = rest.first().copied().unwrap_or("");
+                if which != "ips" {
+                    for b in l.bans.entries() {
+                        lines.push((b.user.name.clone(), b.source.clone(), b.reason.clone()));
+                    }
+                }
+                if which != "players" {
+                    for b in l.ip_bans.entries() {
+                        lines.push((b.user.clone(), b.source.clone(), b.reason.clone()));
+                    }
+                }
+                drop(l);
+                if lines.is_empty() {
+                    self.console_reply(Text::translate("commands.banlist.none", &[]));
+                } else {
+                    self.console_reply(Text::translate(
+                        "commands.banlist.list",
+                        &[lit(&lines.len().to_string())],
+                    ));
+                    for (name, source, reason) in lines {
+                        self.console_reply(Text::translate(
+                            "commands.banlist.entry",
+                            &[
+                                lit(&name),
+                                lit(&source),
+                                reason.as_deref().map_or_else(
+                                    || {
+                                        Text::translate(
+                                            "multiplayer.disconnect.banned.reason.default",
+                                            &[],
+                                        )
+                                    },
+                                    lit,
+                                ),
+                            ],
+                        ));
+                    }
+                }
+            }
+            "kick" if !rest.is_empty() => {
+                let Some(user) = self.online_player(rest[0]) else {
+                    self.console_reply(Text::translate("argument.entity.notfound.player", &[]));
+                    return;
+                };
+                let reason = if rest.len() > 1 {
+                    Tag::String(JavaString::from(rest[1..].join(" ").as_str()))
+                } else {
+                    translatable("multiplayer.disconnect.kicked", &[])
+                };
+                self.kick_uuid(user.id, reason);
+                self.console_reply(Text::translate(
+                    "commands.kick.success",
+                    &[
+                        lit(&user.name),
+                        if rest.len() > 1 {
+                            lit(&rest[1..].join(" "))
+                        } else {
+                            Text::translate("multiplayer.disconnect.kicked", &[])
+                        },
+                    ],
+                ));
+            }
+            "say" if !rest.is_empty() => {
+                // SayCommand from the console: an unsigned system chat
+                // message of type say_command, logged as not secure.
+                let message = rest.join(" ");
+                log("INFO", &format!("[Not Secure] [Server] {message}"));
+                if let Some(h) = &self.lan {
+                    h.hub.say("Server", &message);
+                }
+            }
+            _ => {
+                // The game's dispatcher, captured for the console.
+                self.chat_capture = Some(Vec::new());
+                self.as_console(|g| g.run_command(line));
+                for text in self.chat_capture.take().unwrap_or_default() {
+                    self.console_reply(text);
+                }
+            }
+        }
+    }
+    fn console_whitelist(&mut self, state: &mut ServerState, rest: &[&str]) {
+        let lit = |s: &str| Text::literal(s.to_owned());
+        match rest {
+            ["on"] | ["off"] => {
+                let on = rest[0] == "on";
+                let mut l = state.lists.lock().unwrap();
+                let turned_on = on && !l.use_whitelist;
+                let key = match (on, l.use_whitelist) {
+                    (true, true) => "commands.whitelist.alreadyOn",
+                    (true, false) => "commands.whitelist.enabled",
+                    (false, false) => "commands.whitelist.alreadyOff",
+                    (false, true) => "commands.whitelist.disabled",
+                };
+                l.use_whitelist = on;
+                drop(l);
+                self.store_property("white-list", on.to_string());
+                self.console_reply(Text::translate(key, &[]));
+                if turned_on {
+                    let lists = state.lists.clone();
+                    self.kick_unlisted_players(&lists);
+                }
+            }
+            ["list"] => {
+                let names: Vec<String> = state
+                    .lists
+                    .lock()
+                    .unwrap()
+                    .white
+                    .entries()
+                    .iter()
+                    .map(|e| e.user.name.clone())
+                    .collect();
+                if names.is_empty() {
+                    self.console_reply(Text::translate("commands.whitelist.none", &[]));
+                } else {
+                    self.console_reply(Text::translate(
+                        "commands.whitelist.list",
+                        &[lit(&names.len().to_string()), lit(&names.join(", "))],
+                    ));
+                }
+            }
+            ["reload"] => {
+                let _ = state.lists.lock().unwrap().white.load();
+                self.console_reply(Text::translate("commands.whitelist.reloaded", &[]));
+                let lists = state.lists.clone();
+                self.kick_unlisted_players(&lists);
+            }
+            ["add", name] | ["remove", name] => {
+                let Some(user) = self.resolve(name) else {
+                    return;
+                };
+                let mut l = state.lists.lock().unwrap();
+                let (ok, key) = if rest[0] == "add" {
+                    if l.white.contains(&user) {
+                        (false, "commands.whitelist.add.failed")
+                    } else {
+                        l.white.add(WhiteEntry { user: user.clone() });
+                        (true, "commands.whitelist.add.success")
+                    }
+                } else if l.white.remove(&user) {
+                    (true, "commands.whitelist.remove.success")
+                } else {
+                    (false, "commands.whitelist.remove.failed")
+                };
+                drop(l);
+                let args = if ok {
+                    vec![lit(&user.name)]
+                } else {
+                    Vec::new()
+                };
+                self.console_reply(Text::translate(key, &args));
+                if ok && rest[0] == "remove" {
+                    let lists = state.lists.clone();
+                    self.kick_unlisted_players(&lists);
+                }
+            }
+            _ => self.console_reply(Text::translate("command.unknown.argument", &[])),
+        }
+    }
+    /// DedicatedServerSettings.update: change one key and store the file.
+    fn store_property(&mut self, key: &str, value: String) {
+        let path = PathBuf::from("server.properties");
+        if let Ok(p) = ServerProperties::from_file(&path, &mut SystemEntropy::default())
+            && let Ok(p) = p.update(key, value)
+        {
+            let _ = p.store(&path);
+        }
+    }
+    /// MinecraftServer.kickUnlistedPlayers: with `enforce-whitelist` and the
+    /// whitelist on, whoever is online and not on the whitelist file is
+    /// disconnected (operators are not spared here).
+    fn kick_unlisted_players(&mut self, lists: &Arc<Mutex<Lists>>) {
+        let unlisted: Vec<u128> = {
+            let l = lists.lock().unwrap();
+            let Some(host) = self.lan.as_ref() else {
+                return;
+            };
+            if !(l.enforce_whitelist && l.use_whitelist) {
+                return;
+            }
+            host.hub
+                .guests
+                .iter()
+                .filter(|g| {
+                    !l.white.contains(&NameAndId {
+                        id: g.uuid,
+                        name: g.name.clone(),
+                    })
+                })
+                .map(|g| g.uuid)
+                .collect()
+        };
+        for uuid in unlisted {
+            self.kick_uuid(
+                uuid,
+                translatable("multiplayer.disconnect.not_whitelisted", &[]),
+            );
+        }
+    }
+    fn kick_uuid(&mut self, uuid: u128, reason: Tag) {
+        if let Some(h) = self.lan.as_mut() {
+            let conns: Vec<u32> = h
+                .hub
+                .guests
+                .iter()
+                .filter(|g| g.uuid == uuid)
+                .map(|g| g.conn)
+                .collect();
+            for conn in conns {
+                h.hub.kick(conn, reason.clone());
+            }
+        }
+    }
+    /// MinecraftServer.stopServer: players saved and sent away, worlds saved.
+    /// MinecraftServer.saveAllChunks, not silent: one line per level, in
+    /// the server's level order.
+    fn log_saved_levels(&self) {
+        for dimension in [
+            "minecraft:overworld",
+            "minecraft:the_nether",
+            "minecraft:the_end",
+        ] {
+            log(
+                "INFO",
+                &format!(
+                    "Saving chunks for level 'ServerLevel[{}]'/{dimension}",
+                    self.level.name
+                ),
+            );
+        }
+    }
+    fn stop_dedicated(&mut self) -> Result<()> {
+        log("INFO", "Stopping server");
+        self.plugins_disable();
+        self.apply_plugin_actions();
+        log("INFO", "Saving players");
+        if let Some(h) = self.lan.as_mut() {
+            for g in &h.hub.guests {
+                crate::hc::lan::playerdata::save(g, &self.world_root);
+            }
+        }
+        if let Some(h) = self.lan.as_ref() {
+            for g in &h.hub.guests {
+                self.save_guest_records(h, g);
+            }
+        }
+        if let Some(h) = self.lan.as_mut() {
+            let conns: Vec<u32> = h.hub.guests.iter().map(|g| g.conn).collect();
+            for conn in conns {
+                h.hub.kick(
+                    conn,
+                    translatable("multiplayer.disconnect.server_shutdown", &[]),
+                );
+            }
+        }
+        std::thread::sleep(Duration::from_millis(100));
+        log("INFO", "Saving worlds");
+        self.save_game()?;
+        self.log_saved_levels();
+        self.lan_close(false);
+        Ok(())
+    }
+}
+
+/// The width and height of a PNG (its IHDR chunk).
+fn png_size(bytes: &[u8]) -> Option<(u32, u32)> {
+    if bytes.len() < 24 || &bytes[..8] != b"\x89PNG\r\n\x1a\n" || &bytes[12..16] != b"IHDR" {
+        return None;
+    }
+    let w = u32::from_be_bytes(bytes[16..20].try_into().ok()?);
+    let h = u32::from_be_bytes(bytes[20..24].try_into().ok()?);
+    Some((w, h))
+}
+

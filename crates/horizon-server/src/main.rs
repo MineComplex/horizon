@@ -17,6 +17,8 @@
 //! is vanilla's (`net.minecraft.server.Main`).
 #![forbid(unsafe_code)]
 
+mod game;
+mod hc;
 mod plugins;
 
 use horizon_client::{crash, logging};

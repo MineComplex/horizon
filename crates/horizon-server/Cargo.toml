@@ -12,7 +12,30 @@ path = "src/main.rs"
 
 [dependencies]
 # The game without sound or controllers (the server half moves here step by step: docs/crates.md).
-horizon-client = { path = "../horizon-client", default-features = false }
+# The game's server half (src/game*): the windowless crates only.
+horizon-assets = { path = "../horizon-assets" }
+horizon-client-core = { path = "../horizon-client-core" }
+horizon-command = { path = "../horizon-command" }
+horizon-items = { path = "../horizon-items" }
+horizon-core = { path = "../horizon-core" }
+horizon-game = { path = "../horizon-game" }
+horizon-threads = { path = "../horizon-threads" }
+horizon-world = { path = "../horizon-world" }
+horizon-protocol = { path = "../horizon-protocol" }
+horizon-server-files = { path = "../horizon-server-files" }
+horizon-bench = { path = "../horizon-bench" }
+# Key codes of the acting player's input, as the game's code names them (the types only: no window).
+winit = "0.30.13"
+glam = "0.30"
+sha1 = "0.10"
+sha2 = "0.10.9"
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1.0.151", features = ["raw_value"] }
+png = "0.18"
+miniz_oxide = "0.8"
+chrono = { version = "0.4.42", default-features = false, features = ["clock", "std"] }
+flate2 = { version = "1.1.10", default-features = false, features = ["zlib-rs", "runtime_detection"] }
+zip = { version = "2", default-features = false, features = ["deflate"] }
 # The plugin API (Bukkit-shaped), and the plugins this server is built with (src/plugins.rs).
 horizon-server-api = { path = "../horizon-server-api" }
 horizon-plugin-example = { path = "../horizon-plugin-example", optional = true }
