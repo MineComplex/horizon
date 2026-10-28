@@ -209,13 +209,13 @@ impl Game<'_> {
                         continue;
                     };
                     let e = &self.res.stations().enchantments;
-                    let compatible = e.can_enchant(self.res.items(), &id, &stack.item)
+                    let compatible = e.can_enchant(self.sim.res.items(), &id, &stack.item)
                         && stack
                             .crafting_enchantments()
                             .iter()
                             .all(|(other, _)| e.compatible(other, &id));
                     if compatible {
-                        if let Some(s) = self.inventory[self.selected].as_mut() {
+                        if let Some(s) = self.sim.inventory[self.sim.selected].as_mut() {
                             s.enchant(&id, level.max(0) as u32);
                         }
                         tracker.track(t, true);

@@ -117,19 +117,19 @@ impl Game<'_> {
         if self.mobs[i].removed || zombie_villager::cure(&self.mobs[i]).is_none() {
             return;
         }
-        let old = self.mobs[i].clone();
-        self.mobs[i].removed = true;
+        let old = self.sim.mobs[i].clone();
+        self.sim.mobs[i].removed = true;
         let at = [old.position.x, old.position.y, old.position.z];
         let Some(vid) = self.spawn_mob("minecraft:villager", at, old.persistent) else {
             return;
         };
-        let Some(v) = self.mobs.iter_mut().find(|m| m.id == vid) else {
+        let Some(v) = self.sim.mobs.iter_mut().find(|m| m.id == vid) else {
             return;
         };
         convert_to_villager(&old, v);
         // `Villager.onReputationEventFrom(ZOMBIE_VILLAGER_CURED)`.
         let starter = zombie_villager::cure(&old).and_then(|c| c.starter);
-        let player = self.level.player_uuid;
+        let player = self.sim.level.player_uuid;
         let cured_by_player = starter.is_some() && starter == player;
         if cured_by_player && let Some(uuid) = starter {
             let g = &mut villager::ext_mut(v).gossips;

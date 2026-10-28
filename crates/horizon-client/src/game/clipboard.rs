@@ -12,7 +12,7 @@ impl Game<'_> {
         if event.state != ElementState::Pressed {
             return None;
         }
-        let m = self.modifiers;
+        let m = self.front.modifiers;
         let held = |keys: [KeyCode; 2]| keys.iter().any(|k| self.keys.contains(k));
         // InputQuirks.EDIT_SHORTCUT_KEY_MODIFIER: Cmd on macOS, Ctrl elsewhere.
         let edit = if cfg!(target_os = "macos") {
@@ -43,16 +43,16 @@ impl Game<'_> {
     }
     /// Shortcuts on the title, world creation and server screens.
     pub(super) fn title_shortcut(&mut self, shortcut: EditShortcut) {
-        let Some(title) = self.title.as_mut() else {
+        let Some(title) = self.sim.title.as_mut() else {
             return;
         };
         if title.has_caret_field() {
-            return title.field_shortcut(shortcut, &mut self.clipboard);
+            return title.field_shortcut(shortcut, &mut self.front.clipboard);
         }
         if let Some((id, value, max)) = title.focused_field() {
             let changed = Self::append_shortcut(
-                &mut self.text_selection,
-                &mut self.clipboard,
+                &mut self.front.text_selection,
+                &mut self.front.clipboard,
                 id,
                 value,
                 shortcut,
@@ -64,13 +64,13 @@ impl Game<'_> {
     /// Typing or a backspace in a title-screen field. A field that still only
     /// appends replaces a Select All selection before the edit.
     pub(super) fn title_edit(&mut self, typed: Option<&str>, backspace: bool) {
-        let Some(title) = self.title.as_mut() else {
+        let Some(title) = self.sim.title.as_mut() else {
             return;
         };
         let cleared = !title.has_caret_field()
             && title
                 .focused_field()
-                .is_some_and(|(id, value, _)| self.text_selection.take(id, value));
+                .is_some_and(|(id, value, _)| self.front.text_selection.take(id, value));
         if backspace {
             if !cleared {
                 title.backspace();
@@ -82,13 +82,16 @@ impl Game<'_> {
     /// Shortcuts in the creative inventory's search box (an `EditBox` of 50).
     pub(super) fn creative_search_shortcut(&mut self, shortcut: EditShortcut) {
         if self
+            .sim
             .creative_screen
             .search
-            .shortcut(shortcut, &mut self.clipboard)
+            .shortcut(shortcut, &mut self.front.clipboard)
         {
-            self.creative_screen.scroll = 0.0;
+            self.sim.creative_screen.scroll = 0.0;
         }
     }
+}
+impl crate::game::Sim<'_> {
     /// A backspace in the creative search box: with Ctrl, the whole word
     /// before the caret (`EditBox.deleteWords(-1)`), otherwise one character.
     /// A selection is what it deletes, as in `EditBox.keyPressed`.

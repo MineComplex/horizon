@@ -89,28 +89,6 @@ pub(super) enum AnchorUse {
 }
 
 impl Game<'_> {
-    pub(super) fn is_anchor(&self, state: BlockStateId) -> bool {
-        &*self.res.facts().get(state).name == "minecraft:respawn_anchor"
-    }
-    fn anchor_charges(&self, state: BlockStateId) -> i32 {
-        self.pack
-            .assets
-            .registry
-            .state(state)
-            .and_then(|s| s.properties.get("charges"))
-            .and_then(|c| c.parse().ok())
-            .unwrap_or(0)
-    }
-    fn anchor_with_charges(&self, state: BlockStateId, charges: i32) -> Option<BlockStateId> {
-        let mut s = self.pack.assets.registry.state(state)?.clone();
-        s.properties.insert("charges".into(), charges.to_string());
-        self.pack.assets.registry.resolve(&s).ok()
-    }
-    /// `RespawnAnchorBlock.canSetSpawn`: the `respawn_anchor_works` attribute
-    /// (only the Nether's dimension type sets it).
-    pub(super) fn anchor_works(&self) -> bool {
-        self.dim == Dim::Nether
-    }
     /// `RespawnAnchorBlock.charge`: one more charge, the block change and the sound.
     fn charge_anchor(
         &mut self,
@@ -202,24 +180,6 @@ impl Game<'_> {
         }
         Ok(())
     }
-    /// `RespawnAnchorBlock.isWaterThatWouldFlow`.
-    fn water_would_flow(&self, p: [i32; 3]) -> bool {
-        let f = self.res.facts().get(self.world.block(p[0], p[1], p[2]));
-        if f.fluid != Fluid::Water {
-            return false;
-        }
-        if f.fluid_level == 8 && !f.fluid_falling {
-            return true;
-        }
-        if f.fluid_level < 2 {
-            return false;
-        }
-        self.res
-            .facts()
-            .get(self.world.block(p[0], p[1] - 1, p[2]))
-            .fluid
-            != Fluid::Water
-    }
     /// `RespawnAnchorBlock.explode`: the anchor goes, then a power 5 fiery
     /// explosion (`badRespawnPointExplosion`, `ExplosionInteraction.BLOCK`)
     /// whose centre resists like water when water would flow into it.
@@ -241,11 +201,6 @@ impl Game<'_> {
             f64::from(pos[2]) + 0.5,
         ];
         self.block_explosion(center, in_water.then_some(pos))
-    }
-    /// `BedRule.destroyOnUse` of the dimension's `bed_rule` and
-    /// `straw_bed_rule`: true in the Nether and the End.
-    pub(super) fn beds_destroy_on_use(&self) -> bool {
-        self.dim != Dim::Overworld
     }
     /// `AbstractBedBlock.useWithoutItem` where the bed rule destroys on use
     /// (the bed's head at `head`): `BedBlock.destroyOnUse` removes both
@@ -320,6 +275,178 @@ impl Game<'_> {
 
     // ---- respawning -------------------------------------------------------
 
+    /// `ServerPlayer.findRespawnAndUseSpawnBlock` for a config in the loaded
+    /// dimension: the position and yaw, using an anchor's charge; a bed's
+    /// stand-up spot. A forced point (`spawnpoint`) that is no anchor or bed
+    /// holds if a player fits in it; anything else is gone.
+    pub(super) fn find_respawn_and_use(
+        &mut self,
+        c: RespawnConfig,
+        consume: bool,
+    ) -> Result<Option<(Vec3, f32)>> {
+        let state = self.world.block(c.pos[0], c.pos[1], c.pos[2]);
+        if !(self.is_anchor(state)
+            && (c.forced || self.anchor_charges(state) > 0)
+            && self.anchor_works())
+        {
+            // A bed where its bed rule lets it set the spawn.
+            if self.is_bed(state) && self.bed_sets_spawn(state) {
+                let facing = self.bed_forward(state);
+                let stand = self.bed_stand_up(c.pos, facing, c.yaw);
+                return Ok(stand.map(|p| (p, look_at_yaw(p, c.pos))));
+            }
+            let [x, y, z] = c.pos;
+            let free = c.forced
+                && !self.is_anchor(state)
+                && self.possible_to_respawn_in(state)
+                && self.possible_to_respawn_in(self.world.block(x, y + 1, z));
+            let at = Vec3::new(f64::from(x) + 0.5, f64::from(y) + 0.1, f64::from(z) + 0.5);
+            return Ok(free.then_some((at, c.yaw)));
+        }
+        let stand = self.anchor_stand_up(c.pos);
+        if !c.forced
+            && consume
+            && stand.is_some()
+            && let Some(next) = self.anchor_with_charges(state, self.anchor_charges(state) - 1)
+        {
+            self.level_set(c.pos, next)?;
+        }
+        Ok(stand.map(|p| (p, look_at_yaw(p, c.pos))))
+    }
+    /// The death screen's respawn with an anchor as the respawn point: travel
+    /// to its dimension and wait for its chunks (`travelling`), then resolve
+    /// it in [`Game::place_respawned`].
+    pub(super) fn begin_anchor_respawn(&mut self) -> Result<bool> {
+        let Some(config) = self.respawn_config else {
+            return Ok(false);
+        };
+        if self.player.is_none() {
+            return Ok(false);
+        }
+        if self.dim != config.dim {
+            self.end_portal_travel = false;
+            self.enter_dimension(config.dim)?;
+        } else {
+            let player = self.player.take().ok_or("player")?;
+            self.travelling = Some((player, Vec3::ZERO));
+        }
+        let target = Vec3::new(
+            f64::from(config.pos[0]) + 0.5,
+            f64::from(config.pos[1]),
+            f64::from(config.pos[2]) + 0.5,
+        );
+        if let Some((_, t)) = self.travelling.as_mut() {
+            *t = target;
+        }
+        self.end_travel = false;
+        self.respawn_travel = Some(config);
+        Ok(true)
+    }
+    /// `PlayerList.respawn` at an anchor once its dimension is loaded around
+    /// it: a fresh player at the stand-up position facing the anchor and the
+    /// deplete sound, or, with no anchor left, the world spawn and
+    /// `block.minecraft.spawn.not_valid`.
+    pub(super) fn place_respawned(&mut self, config: RespawnConfig) -> Result<()> {
+        match self.find_respawn_and_use(config, true)? {
+            Some((position, yaw)) => {
+                let mut player = PlayerMotion::new(self.motion, position)?;
+                player.yaw = yaw;
+                player.head_yaw = yaw;
+                self.yaw = yaw;
+                self.pitch = 0.0;
+                player.pitch = 0.0;
+                self.eye = 1.62;
+                self.previous_eye = 1.62;
+                self.clock.reset();
+                self.previous_position = position;
+                self.player = Some(player);
+                self.front.sway = Default::default();
+                self.apply_equipment();
+                // ClientboundSoundPacket at the block's corner, seeded from the level random.
+                let state = self
+                    .world
+                    .block(config.pos[0], config.pos[1], config.pos[2]);
+                if self.is_anchor(state) {
+                    let _seed = self.world.random.next_long();
+                    let at = [
+                        f64::from(config.pos[0]),
+                        f64::from(config.pos[1]),
+                        f64::from(config.pos[2]),
+                    ];
+                    self.sounds
+                        .play("minecraft:block.respawn_anchor.deplete", Some(at), 1.0, 1.0);
+                }
+                Ok(())
+            }
+            None => {
+                // TeleportTransition.missingRespawnBlock: the world spawn, and
+                // the point is forgotten.
+                self.respawn_config = None;
+                self.system_message(Text::translate("block.minecraft.spawn.not_valid", &[]));
+                let dead = PlayerMotion::new(self.motion, Vec3::ZERO)?;
+                if self.dim != Dim::Overworld {
+                    // A dead stand-in travels; the arrival makes a fresh player.
+                    let mut dead = dead;
+                    dead.set_health(0.0, false)?;
+                    self.player = Some(dead);
+                    self.end_portal_travel = true;
+                    let result = self.enter_dimension(Dim::Overworld);
+                    self.end_portal_travel = false;
+                    self.end_travel = true;
+                    return result;
+                }
+                self.player = None;
+                self.spawn_player()
+            }
+        }
+    }
+}
+impl crate::game::Sim<'_> {
+    pub(super) fn is_anchor(&self, state: BlockStateId) -> bool {
+        &*self.res.facts().get(state).name == "minecraft:respawn_anchor"
+    }
+    fn anchor_charges(&self, state: BlockStateId) -> i32 {
+        self.pack
+            .assets
+            .registry
+            .state(state)
+            .and_then(|s| s.properties.get("charges"))
+            .and_then(|c| c.parse().ok())
+            .unwrap_or(0)
+    }
+    fn anchor_with_charges(&self, state: BlockStateId, charges: i32) -> Option<BlockStateId> {
+        let mut s = self.pack.assets.registry.state(state)?.clone();
+        s.properties.insert("charges".into(), charges.to_string());
+        self.pack.assets.registry.resolve(&s).ok()
+    }
+    /// `RespawnAnchorBlock.canSetSpawn`: the `respawn_anchor_works` attribute
+    /// (only the Nether's dimension type sets it).
+    pub(super) fn anchor_works(&self) -> bool {
+        self.dim == Dim::Nether
+    }
+    /// `RespawnAnchorBlock.isWaterThatWouldFlow`.
+    fn water_would_flow(&self, p: [i32; 3]) -> bool {
+        let f = self.res.facts().get(self.world.block(p[0], p[1], p[2]));
+        if f.fluid != Fluid::Water {
+            return false;
+        }
+        if f.fluid_level == 8 && !f.fluid_falling {
+            return true;
+        }
+        if f.fluid_level < 2 {
+            return false;
+        }
+        self.res
+            .facts()
+            .get(self.world.block(p[0], p[1] - 1, p[2]))
+            .fluid
+            != Fluid::Water
+    }
+    /// `BedRule.destroyOnUse` of the dimension's `bed_rule` and
+    /// `straw_bed_rule`: true in the Nether and the End.
+    pub(super) fn beds_destroy_on_use(&self) -> bool {
+        self.dim != Dim::Overworld
+    }
     /// `DismountHelper.nonClimbableShape`: the collision shape, empty for
     /// climbable blocks and open trapdoors.
     fn non_climbable_shape(&self, p: [i32; 3]) -> VoxelShape {
@@ -541,131 +668,6 @@ impl Game<'_> {
     /// beds never.
     pub(super) fn bed_sets_spawn(&self, state: BlockStateId) -> bool {
         self.dim == Dim::Overworld && &*self.res.facts().get(state).name != "minecraft:straw_bed"
-    }
-    /// `ServerPlayer.findRespawnAndUseSpawnBlock` for a config in the loaded
-    /// dimension: the position and yaw, using an anchor's charge; a bed's
-    /// stand-up spot. A forced point (`spawnpoint`) that is no anchor or bed
-    /// holds if a player fits in it; anything else is gone.
-    pub(super) fn find_respawn_and_use(
-        &mut self,
-        c: RespawnConfig,
-        consume: bool,
-    ) -> Result<Option<(Vec3, f32)>> {
-        let state = self.world.block(c.pos[0], c.pos[1], c.pos[2]);
-        if !(self.is_anchor(state)
-            && (c.forced || self.anchor_charges(state) > 0)
-            && self.anchor_works())
-        {
-            // A bed where its bed rule lets it set the spawn.
-            if self.is_bed(state) && self.bed_sets_spawn(state) {
-                let facing = self.bed_forward(state);
-                let stand = self.bed_stand_up(c.pos, facing, c.yaw);
-                return Ok(stand.map(|p| (p, look_at_yaw(p, c.pos))));
-            }
-            let [x, y, z] = c.pos;
-            let free = c.forced
-                && !self.is_anchor(state)
-                && self.possible_to_respawn_in(state)
-                && self.possible_to_respawn_in(self.world.block(x, y + 1, z));
-            let at = Vec3::new(f64::from(x) + 0.5, f64::from(y) + 0.1, f64::from(z) + 0.5);
-            return Ok(free.then_some((at, c.yaw)));
-        }
-        let stand = self.anchor_stand_up(c.pos);
-        if !c.forced
-            && consume
-            && stand.is_some()
-            && let Some(next) = self.anchor_with_charges(state, self.anchor_charges(state) - 1)
-        {
-            self.level_set(c.pos, next)?;
-        }
-        Ok(stand.map(|p| (p, look_at_yaw(p, c.pos))))
-    }
-    /// The death screen's respawn with an anchor as the respawn point: travel
-    /// to its dimension and wait for its chunks (`travelling`), then resolve
-    /// it in [`Game::place_respawned`].
-    pub(super) fn begin_anchor_respawn(&mut self) -> Result<bool> {
-        let Some(config) = self.respawn_config else {
-            return Ok(false);
-        };
-        if self.player.is_none() {
-            return Ok(false);
-        }
-        if self.dim != config.dim {
-            self.end_portal_travel = false;
-            self.enter_dimension(config.dim)?;
-        } else {
-            let player = self.player.take().ok_or("player")?;
-            self.travelling = Some((player, Vec3::ZERO));
-        }
-        let target = Vec3::new(
-            f64::from(config.pos[0]) + 0.5,
-            f64::from(config.pos[1]),
-            f64::from(config.pos[2]) + 0.5,
-        );
-        if let Some((_, t)) = self.travelling.as_mut() {
-            *t = target;
-        }
-        self.end_travel = false;
-        self.respawn_travel = Some(config);
-        Ok(true)
-    }
-    /// `PlayerList.respawn` at an anchor once its dimension is loaded around
-    /// it: a fresh player at the stand-up position facing the anchor and the
-    /// deplete sound, or, with no anchor left, the world spawn and
-    /// `block.minecraft.spawn.not_valid`.
-    pub(super) fn place_respawned(&mut self, config: RespawnConfig) -> Result<()> {
-        match self.find_respawn_and_use(config, true)? {
-            Some((position, yaw)) => {
-                let mut player = PlayerMotion::new(self.motion, position)?;
-                player.yaw = yaw;
-                player.head_yaw = yaw;
-                self.yaw = yaw;
-                self.pitch = 0.0;
-                player.pitch = 0.0;
-                self.eye = 1.62;
-                self.previous_eye = 1.62;
-                self.clock.reset();
-                self.previous_position = position;
-                self.player = Some(player);
-                self.sway = Default::default();
-                self.apply_equipment();
-                // ClientboundSoundPacket at the block's corner, seeded from the level random.
-                let state = self
-                    .world
-                    .block(config.pos[0], config.pos[1], config.pos[2]);
-                if self.is_anchor(state) {
-                    let _seed = self.world.random.next_long();
-                    let at = [
-                        f64::from(config.pos[0]),
-                        f64::from(config.pos[1]),
-                        f64::from(config.pos[2]),
-                    ];
-                    self.sounds
-                        .play("minecraft:block.respawn_anchor.deplete", Some(at), 1.0, 1.0);
-                }
-                Ok(())
-            }
-            None => {
-                // TeleportTransition.missingRespawnBlock: the world spawn, and
-                // the point is forgotten.
-                self.respawn_config = None;
-                self.system_message(Text::translate("block.minecraft.spawn.not_valid", &[]));
-                let dead = PlayerMotion::new(self.motion, Vec3::ZERO)?;
-                if self.dim != Dim::Overworld {
-                    // A dead stand-in travels; the arrival makes a fresh player.
-                    let mut dead = dead;
-                    dead.set_health(0.0, false)?;
-                    self.player = Some(dead);
-                    self.end_portal_travel = true;
-                    let result = self.enter_dimension(Dim::Overworld);
-                    self.end_portal_travel = false;
-                    self.end_travel = true;
-                    return result;
-                }
-                self.player = None;
-                self.spawn_player()
-            }
-        }
     }
 }
 

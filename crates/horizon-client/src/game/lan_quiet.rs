@@ -27,40 +27,6 @@ pub(super) struct QuietBatch {
 }
 
 impl Game<'_> {
-    /// A `horizon:quiet_commands` payload from `conn`: queued (or logged as
-    /// refused when it breaks the payload's caps).
-    pub(super) fn guest_quiet_commands(&mut self, host: &mut LanHost, conn: u32, data: &[u8]) {
-        let Some(name) = host.hub.guest(conn).map(|g| g.name.clone()) else {
-            return;
-        };
-        let batch = match quiet::decode(data) {
-            Ok(b) => b,
-            Err(e) => {
-                super::dedicated::log(
-                    "WARN",
-                    &format!("{name} sent quiet commands that were refused: {e}"),
-                );
-                return;
-            }
-        };
-        let waiting: usize = host
-            .quiet
-            .iter()
-            .filter(|b| b.conn == conn)
-            .map(|b| b.lines.len())
-            .sum();
-        let room = PENDING.saturating_sub(waiting);
-        let dropped = batch.lines.len().saturating_sub(room);
-        host.quiet.push_back(QuietBatch {
-            conn,
-            mod_id: batch.mod_id,
-            lines: batch.lines.into_iter().take(room).collect(),
-            ran: 0,
-            failed: 0,
-            dropped,
-        });
-    }
-
     /// The waiting batches, [`PER_TICK`] lines a player this tick, in order.
     pub(super) fn run_quiet_commands(&mut self) {
         let mut left: HashMap<u32, usize> = HashMap::new();
@@ -126,6 +92,41 @@ impl Game<'_> {
             integrated,
             quiet: true,
         })
+    }
+}
+impl crate::game::Sim<'_> {
+    /// A `horizon:quiet_commands` payload from `conn`: queued (or logged as
+    /// refused when it breaks the payload's caps).
+    pub(super) fn guest_quiet_commands(&mut self, host: &mut LanHost, conn: u32, data: &[u8]) {
+        let Some(name) = host.hub.guest(conn).map(|g| g.name.clone()) else {
+            return;
+        };
+        let batch = match quiet::decode(data) {
+            Ok(b) => b,
+            Err(e) => {
+                super::dedicated::log(
+                    "WARN",
+                    &format!("{name} sent quiet commands that were refused: {e}"),
+                );
+                return;
+            }
+        };
+        let waiting: usize = host
+            .quiet
+            .iter()
+            .filter(|b| b.conn == conn)
+            .map(|b| b.lines.len())
+            .sum();
+        let room = PENDING.saturating_sub(waiting);
+        let dropped = batch.lines.len().saturating_sub(room);
+        host.quiet.push_back(QuietBatch {
+            conn,
+            mod_id: batch.mod_id,
+            lines: batch.lines.into_iter().take(room).collect(),
+            ran: 0,
+            failed: 0,
+            dropped,
+        });
     }
 }
 

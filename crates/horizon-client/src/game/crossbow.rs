@@ -70,11 +70,6 @@ impl Game<'_> {
             ],
         }
     }
-    /// `Player.getProjectile` for `weapon` (`projectile_slot`).
-    pub(super) fn projectile_slot(&self, weapon: &str) -> Option<usize> {
-        let hands = [OFFHAND_SLOT, self.selected].map(|slot| (slot, self.stack_in(slot)));
-        projectile_slot(weapon, hands, &self.inventory)
-    }
     /// `CrossbowItem.use`: shoot when charged, else start charging.
     pub(super) fn use_crossbow(&mut self, stack: &ItemStack) -> bool {
         if &*stack.item != CROSSBOW {
@@ -156,6 +151,7 @@ impl Game<'_> {
         let weapon = bow.clone();
         // AbstractArrow's constructor: `getPiercingCount` of the weapon.
         let pierce = self
+            .sim
             .res
             .stations()
             .enchantments
@@ -163,7 +159,7 @@ impl Game<'_> {
                 Some(&weapon),
                 "minecraft:projectile_piercing",
                 &EffectContext::default(),
-                &mut self.world.random,
+                &mut self.sim.world.random,
                 0.0,
             )
             .clamp(0.0, 127.0) as u8;
@@ -241,6 +237,13 @@ impl Game<'_> {
         if let Some(stack) = self.held().cloned() {
             self.trigger_item("minecraft:shot_crossbow", &stack);
         }
+    }
+}
+impl crate::game::Sim<'_> {
+    /// `Player.getProjectile` for `weapon` (`projectile_slot`).
+    pub(super) fn projectile_slot(&self, weapon: &str) -> Option<usize> {
+        let hands = [OFFHAND_SLOT, self.selected].map(|slot| (slot, self.stack_in(slot)));
+        projectile_slot(weapon, hands, &self.inventory)
     }
 }
 

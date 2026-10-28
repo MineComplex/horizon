@@ -184,10 +184,6 @@ fn wrap(d: f32) -> f32 {
     }
 }
 impl Game<'_> {
-    /// `key.togglePerspective`.
-    pub(super) fn cycle_camera(&mut self) {
-        self.camera_type = self.camera_type.cycle();
-    }
     /// `Camera.update` (`alignWithEntity` and `getMaxZoom`): the
     /// interpolated eye, or a point up to the camera distance behind (or in
     /// front of) it, pulled in where visual shapes are in the way. Returns the
@@ -262,7 +258,7 @@ impl Game<'_> {
             }),
             mount,
         };
-        let mut view = self.view;
+        let mut view = self.front.view;
         let kind = match self.camera_type {
             CameraType::FirstPerson => horizon_client::camera::CameraType::FirstPerson,
             CameraType::ThirdPersonBack => horizon_client::camera::CameraType::ThirdPersonBack,
@@ -298,7 +294,7 @@ impl Game<'_> {
             .ok()?;
             (!hit.miss).then_some([hit.hit.location.x, hit.hit.location.y, hit.hit.location.z])
         });
-        self.view = view;
+        self.front.view = view;
         Some((
             glam::DVec3::from_array(view.position),
             view.y_rot,
@@ -308,15 +304,15 @@ impl Game<'_> {
     /// Keep the player's model in step with the player (`LivingEntity.tick`
     /// body turning, `WalkAnimationState`, the swing and the pose).
     pub(super) fn tick_player_model(&mut self) {
-        let Some(p) = self.player.as_ref() else {
-            self.player_model = None;
+        let Some(p) = self.sim.player.as_ref() else {
+            self.sim.player_model = None;
             return;
         };
-        if self.player_model.is_none() {
-            let Some(kind) = self.res.player_type().clone() else {
+        if self.sim.player_model.is_none() {
+            let Some(kind) = self.sim.res.player_type().clone() else {
                 return;
             };
-            self.player_model = Some(Mob::new(0, kind, p.position, self.yaw));
+            self.sim.player_model = Some(Mob::new(0, kind, p.position, self.sim.yaw));
         }
         let crouching = p.pose == Pose::Crouching;
         let (position, flying) = (p.position, p.flying || p.fall_flying);
@@ -348,13 +344,13 @@ impl Game<'_> {
             p.pose == Pose::Swimming || (!p.fall_flying && p.pose == Pose::FallFlying);
         let in_water = p.fluids.was_touching_water;
         let (yaw, pitch) = (self.yaw, self.pitch);
-        let main = self.inventory[self.selected]
+        let main = self.sim.inventory[self.sim.selected]
             .as_ref()
             .map(|s| s.item.clone());
-        let off = self.offhand.as_ref().map(|s| s.item.clone());
-        let riding = self.riding.is_some();
+        let off = self.sim.offhand.as_ref().map(|s| s.item.clone());
+        let riding = self.sim.riding.is_some();
         let hurt = p.health.hurt_animation_time;
-        let Some(m) = self.player_model.as_mut() else {
+        let Some(m) = self.sim.player_model.as_mut() else {
             return;
         };
         let at = Vec3::new(
@@ -416,7 +412,7 @@ impl Game<'_> {
         m.extra.fall_flying = fall_flying;
         m.extra.fall_fly_ticks = fly_ticks;
         m.extra.auto_spin_attack = spinning;
-        m.extra.main_hand_left = self.settings.main_hand_left;
+        m.extra.main_hand_left = self.sim.settings.main_hand_left;
         m.extra.using_item = using;
         m.extra.using_off_hand = using_off_hand;
         m.extra.blocking = blocking;
@@ -430,7 +426,7 @@ impl Game<'_> {
     /// Whether the player's own model shows in the world view.
     fn player_model_shown(&self) -> bool {
         // A shader pack's shadow pass draws the player in first person too (shadowPlayer).
-        (!self.camera_type.first_person() || self.pack_shadow_casters.1)
+        (!self.camera_type.first_person() || self.front.pack_shadow_casters.1)
             && self.sleeping.is_none()
             && !self.spectator()
             && self.potions.effects.get("minecraft:invisibility").is_none()
@@ -458,7 +454,7 @@ impl Game<'_> {
             m.position.z.floor() as i32,
         );
         let packed = (u32::from(light >> 4) * 16) | ((u32::from(light & 15) * 16) << 8);
-        let atlas = &self.gui.atlas;
+        let atlas = &self.front.gui.atlas;
         let lookup = |name: &str| atlas.sprites.get(name).map(|r| [r.u0, r.v0, r.u1, r.v1]);
         let start = out.len();
         horizon_client::mobs::render::render_with(
@@ -516,8 +512,8 @@ impl Game<'_> {
             return;
         }
         let (cx, cy) = ((x0 + x1) / 2.0, (y0 + y1) / 2.0);
-        let x_angle = ((cx - self.cursor.0) / 40.0).atan();
-        let y_angle = ((cy - self.cursor.1) / 40.0).atan();
+        let x_angle = ((cx - self.front.cursor.0) / 40.0).atan();
+        let y_angle = ((cy - self.front.cursor.1) / 40.0).atan();
         let mut m = m.clone();
         // The render state: still, facing out, the head toward the cursor.
         m.previous = m.position;
@@ -530,7 +526,7 @@ impl Game<'_> {
         m.position.y += 0.125 * f64::from(u8::from(m.extra.crouching));
         m.previous = m.position;
         let camera = glam::DVec3::new(m.position.x, m.position.y, m.position.z);
-        let atlas = &self.gui.atlas;
+        let atlas = &self.front.gui.atlas;
         let lookup = |name: &str| atlas.sprites.get(name).map(|r| [r.u0, r.v0, r.u1, r.v1]);
         let mut verts = Vec::new();
         horizon_client::mobs::render::render_with(
@@ -587,6 +583,12 @@ impl Game<'_> {
         }
     }
 }
+impl crate::game::Sim<'_> {
+    /// `key.togglePerspective`.
+    pub(super) fn cycle_camera(&mut self) {
+        self.camera_type = self.camera_type.cycle();
+    }
+}
 
 impl Game<'_> {
     /// `WingsLayer` for a player wearing `chest`.
@@ -611,7 +613,7 @@ impl Game<'_> {
         };
         let (Some(model), Some(rect)) = (
             assets.player.get("elytra"),
-            self.gui.atlas.sprites.get(texture),
+            self.front.gui.atlas.sprites.get(texture),
         ) else {
             return;
         };
@@ -653,7 +655,11 @@ impl Game<'_> {
         }
         let (Some(model), Some(rect)) = (
             self.res.spin_attack().as_ref(),
-            self.gui.atlas.sprites.get("entity/trident/trident_riptide"),
+            self.front
+                .gui
+                .atlas
+                .sprites
+                .get("entity/trident/trident_riptide"),
         ) else {
             return;
         };
