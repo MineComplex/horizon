@@ -340,7 +340,7 @@ fn read_levels(t: Option<&Tag>) -> Levels {
     // The keys are enchantment Identifiers: `knockback` is `minecraft:knockback`.
     map.iter()
         .filter_map(|(k, v)| {
-            let id = horizon_world::datafix::dynamic::namespaced(&k.to_string_lossy());
+            let id = horizon_world::ident::namespaced(&k.to_string_lossy());
             Some((Arc::from(id), int(v)?.clamp(1, 255) as u32))
         })
         .collect()

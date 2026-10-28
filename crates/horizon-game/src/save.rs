@@ -154,12 +154,9 @@ impl SessionLock {
         Ok(Self(file))
     }
 }
-/// Bring a world last saved by an older game version to the current format, as
-/// 26.3 does when it opens one: the file fixes and level.dat first
-/// (`FileFixerUpper`), then the DataFixers upgrades of every chunk, entity chunk,
-/// POI chunk, player, saved data, advancements and statistics file. Vanilla runs
-/// the latter as it reads each file; Horizon runs them all on opening, which reads
-/// the same data. Worlds older than the ported fixes (1.17) are refused.
+/// Worlds of an older Minecraft version are refused: this server runs only
+/// 26.3's (DataVersion [`DATA_VERSION`]) and carries no DataFixers.
+/// `tools/upgrade_world.py` upgrades an older world with vanilla's own server.
 pub fn upgrade_older_world(world: &Path) -> Result<()> {
     let Some(root) = read_dat(&world.join("level.dat")) else {
         return Ok(());
@@ -167,20 +164,15 @@ pub fn upgrade_older_world(world: &Path) -> Result<()> {
     let version = root.get("Data").map_or(i64::from(DATA_VERSION), |d| {
         number(d.get("DataVersion")).unwrap_or(-1) // saves of 1.8 and before have none
     });
-    if version >= i64::from(DATA_VERSION) {
-        return Ok(());
-    }
-    if version < i64::from(horizon_world::datafix::OLDEST_SUPPORTED) {
+    if version < i64::from(DATA_VERSION) {
         return Err(format!(
-            "{} was saved with DataVersion {version}; worlds older than DataVersion {} \
-             cannot be upgraded yet (tools/upgrade_world.py runs vanilla's own upgrader)",
+            "{} was saved with DataVersion {version}; this server runs only DataVersion {} \
+             (Minecraft 26.3) worlds: tools/upgrade_world.py upgrades it with vanilla's server",
             world.display(),
-            horizon_world::datafix::OLDEST_SUPPORTED
+            DATA_VERSION
         )
         .into());
     }
-    horizon_world::datafix::files::upgrade_world(world)
-        .map_err(|e| format!("upgrading {}: {e}", world.display()))?;
     Ok(())
 }
 /// Move a world saved by an older Horizon build (pre-26.3 layout with a
@@ -4362,25 +4354,16 @@ mod tests {
     }
 
     #[test]
-    fn older_worlds_are_upgraded_on_opening() {
+    fn worlds_of_other_versions_are_refused() {
         let dir = std::env::temp_dir().join(format!("horizon-dv-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         let level =
             |v: i32| Tag::compound([("Data", Tag::compound([("DataVersion", Tag::Int(v))]))]);
-        let version = |dir: &std::path::Path| {
-            super::read_dat(&dir.join("level.dat"))
-                .and_then(|r| super::number(r.get("Data")?.get("DataVersion")))
-        };
-        // 1.12.2 and 1.16.5: upgraded too, every server fix is ported.
-        for old in [1343, 2586] {
+        for old in [1343, 3955] {
             super::write_dat(&dir.join("level.dat"), level(old)).unwrap();
-            super::upgrade_older_world(&dir).unwrap();
-            assert_eq!(version(&dir), Some(i64::from(super::DATA_VERSION)));
+            assert!(super::upgrade_older_world(&dir).is_err());
         }
-        // 1.21.1: upgraded to the current version.
-        super::write_dat(&dir.join("level.dat"), level(3955)).unwrap();
-        super::upgrade_older_world(&dir).unwrap();
-        assert_eq!(version(&dir), Some(i64::from(super::DATA_VERSION)));
+        super::write_dat(&dir.join("level.dat"), level(super::DATA_VERSION)).unwrap();
         super::upgrade_older_world(&dir).unwrap();
         let _ = std::fs::remove_dir_all(&dir);
     }

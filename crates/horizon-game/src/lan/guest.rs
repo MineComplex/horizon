@@ -633,7 +633,7 @@ fn network_stack(
         if let Some(id) = (d.potion.as_deref()).and_then(|potion| {
             synced_id(
                 "minecraft:potion",
-                &horizon_world::datafix::dynamic::namespaced(potion),
+                &horizon_world::ident::namespaced(potion),
             )
         }) {
             stack.added.push((

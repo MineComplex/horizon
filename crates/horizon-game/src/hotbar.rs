@@ -105,7 +105,6 @@ pub fn from_tag(mut tag: Tag, known: &dyn Fn(&str) -> bool) -> Vec<Hotbar> {
             }
         }
     }
-    horizon_world::datafix::update_hotbar(&mut tag);
     (0..GROUPS)
         .map(|i| row(tag.get(&i.to_string()), known))
         .collect()

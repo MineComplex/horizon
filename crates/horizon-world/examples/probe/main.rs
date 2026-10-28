@@ -63,7 +63,6 @@ mod consume_effect_fixture;
 mod damage_immunity_fixture;
 mod damage_reduction_fixture;
 mod damage_source_fixture;
-mod datafix_world;
 mod decoration_fixture;
 mod decoration_region_fixture;
 mod dynamic_support_fixture;
@@ -236,7 +235,6 @@ probes! {
     damage_immunity_fixture,
     damage_reduction_fixture,
     damage_source_fixture,
-    datafix_world,
     decoration_fixture,
     decoration_region_fixture,
     dynamic_support_fixture,

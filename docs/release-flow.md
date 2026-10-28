@@ -142,7 +142,7 @@ contributor's branch; push a fixup commit, or merge main into it.
 **A risky pull request gets the `needs-proof` label** and waits for an agent's local proof (both single-player
 paths, `lan_e2e`, a screenshot for anything visible) before it merges. Risky means any of:
 
-- it changes what is saved or loaded (`save.rs`, `entity_nbt.rs`, `block_entity_nbt.rs`, `region.rs`, `datafix/`):
+- it changes what is saved or loaded (`save.rs`, `entity_nbt.rs`, `block_entity_nbt.rs`, `region.rs`):
   a bug there damages players' worlds;
 - the network or the server thread: `horizon-protocol`, `net.rs`, `remote*.rs`, `lan/`, `lan*.rs`,
   `integrated.rs`, `levels.rs`, `dedicated*`;

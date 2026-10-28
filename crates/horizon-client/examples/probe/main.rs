@@ -45,7 +45,6 @@ mod frame_limiter_probe;
 mod game_loop_probe;
 mod ghost_recipe_fixture;
 mod held_drop_fixture;
-mod hotbar_fixture;
 mod hud_fixture;
 mod input_probe;
 mod interaction_input_fixture;
@@ -133,7 +132,6 @@ probes! {
     game_loop_probe,
     ghost_recipe_fixture,
     held_drop_fixture,
-    hotbar_fixture,
     hud_fixture,
     input_probe,
     interaction_input_fixture,
