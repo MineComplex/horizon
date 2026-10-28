@@ -65,6 +65,7 @@ impl Game<'_> {
         self.sounds.queue.clear();
         self.ui.chat.drop_unwrapped();
         self.rumbles.clear();
+        self.hands_used.clear();
         self.pointer_grab = None;
     }
     /// `getSituationalMusic` and `getMusicVolume`.

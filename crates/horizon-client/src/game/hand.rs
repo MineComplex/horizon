@@ -196,6 +196,9 @@ impl Game<'_> {
             changed[h] = !same;
         }
         let speed = self.main_hand_attack_speed();
+        for hand in std::mem::take(&mut self.hands_used) {
+            self.heights.item_used(hand);
+        }
         let replace = self.heights.tick(
             self.hands_busy(),
             self.hand_strength.swap_scale(1.0, speed),
@@ -504,7 +507,7 @@ impl HandWorld for GameHands<'_, '_> {
         UseResult::Pass
     }
     fn item_used(&mut self, hand: Hand) {
-        self.game.heights.item_used(hand);
+        self.game.hands_used.push(hand);
     }
     fn release_using(&mut self) {}
 }

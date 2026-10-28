@@ -1539,6 +1539,9 @@ struct Game<'a> {
     sounds: horizon_client::sound_out::SoundOut,
     /// Vibrations the game asked of the pad, for the window to play (`flush_to_window`).
     rumbles: Vec<horizon_client::gamepad::Rumble>,
+    /// `LocalPlayer.itemUsed` for the first-person hand heights, applied by the window
+    /// before it ticks them.
+    hands_used: Vec<horizon_client::first_person::Hand>,
     /// The pointer grab a screen change asked for (`capture`), for the window to apply.
     pointer_grab: Option<bool>,
     music: horizon_client::music::MusicManager,
@@ -13245,6 +13248,7 @@ impl<'a> Game<'a> {
                 horizon_client::sound_engine::unique_seed(),
             ),
             rumbles: Vec::new(),
+            hands_used: Vec::new(),
             pointer_grab: None,
             music,
             ambience: Default::default(),
