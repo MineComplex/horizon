@@ -64,6 +64,31 @@ impl HiveHost for GameHive<'_, '_> {
 }
 
 impl Game<'_> {
+    fn hive_with_honey(&self, state: BlockStateId, level: i32) -> Option<BlockStateId> {
+        let registry = self.pack.assets.registry;
+        let mut s = registry.state(state)?.clone();
+        s.properties
+            .insert("honey_level".to_owned(), level.to_string());
+        registry.resolve(&s).ok()
+    }
+    /// The hive's honey level and front, from its block state.
+    pub(super) fn hive_state(&self, at: [i32; 3]) -> Option<(Option<i32>, [i32; 2])> {
+        let state = self.world.block(at[0], at[1], at[2]);
+        let name = &self.res.facts().get(state).name;
+        if !self
+            .res
+            .items()
+            .block_tags
+            .get("minecraft:beehives")
+            .is_some_and(|t| t.contains(&**name))
+        {
+            return None;
+        }
+        let props = &self.pack.assets.registry.state(state)?.properties;
+        let honey = props.get("honey_level").and_then(|v| v.parse().ok());
+        let facing = beehive::facing_step(props.get("facing").map(String::as_str));
+        Some((honey, facing))
+    }
     /// `BeehiveBlockEntity.serverTick` of the hive at `key`, after an
     /// emergency exit if fire is beside it (`BeehiveBlock.updateShape`).
     pub(super) fn tick_beehive(&mut self, key: (i32, i32, i32)) {
@@ -275,33 +300,6 @@ impl Game<'_> {
         // ServerPlayerGameMode.useItemOn: the action was consumed.
         self.trigger_block("minecraft:item_used_on_block", pos, held);
         Ok(true)
-    }
-}
-impl crate::game::Sim<'_> {
-    fn hive_with_honey(&self, state: BlockStateId, level: i32) -> Option<BlockStateId> {
-        let registry = self.pack.assets.registry;
-        let mut s = registry.state(state)?.clone();
-        s.properties
-            .insert("honey_level".to_owned(), level.to_string());
-        registry.resolve(&s).ok()
-    }
-    /// The hive's honey level and front, from its block state.
-    pub(super) fn hive_state(&self, at: [i32; 3]) -> Option<(Option<i32>, [i32; 2])> {
-        let state = self.world.block(at[0], at[1], at[2]);
-        let name = &self.res.facts().get(state).name;
-        if !self
-            .res
-            .items()
-            .block_tags
-            .get("minecraft:beehives")
-            .is_some_and(|t| t.contains(&**name))
-        {
-            return None;
-        }
-        let props = &self.pack.assets.registry.state(state)?.properties;
-        let honey = props.get("honey_level").and_then(|v| v.parse().ok());
-        let facing = beehive::facing_step(props.get("facing").map(String::as_str));
-        Some((honey, facing))
     }
     /// `BeehiveBlock.angerNearbyBees`: bees within 8 blocks (6 up and down)
     /// without a target go for a random player in the same box, the window's

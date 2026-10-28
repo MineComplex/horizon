@@ -48,6 +48,63 @@ impl Game<'_> {
         self.lan_send_mount(host, conn);
     }
 
+    /// `HorseInventoryMenu` over mount `index`, with the player's inventory
+    /// loaded by the caller.
+    fn mount_engine_menu(&self, index: usize, columns: usize) -> Menu {
+        let env = self.menu_env();
+        let mut menu = Menu::new(Kind::Mount(columns));
+        menu.mount = Some(self.mobs[index].kind.id.to_string());
+        let (saddle, body, items) = self.mount_contents(index);
+        menu.set_slot(&env, 0, saddle);
+        menu.set_slot(&env, 1, body.flatten());
+        for (k, item) in items.into_iter().take(columns * 3).enumerate() {
+            menu.set_slot(&env, 2 + k, item);
+        }
+        menu
+    }
+
+    /// The menu's slots (the mount's, then the inventory and the hotbar)
+    /// and the carried stack, sent when they changed since the last time.
+    fn lan_send_mount(&mut self, host: &mut LanHost, conn: u32) {
+        let Some(gm) = host.play.get(&conn).and_then(|p| p.mount_window.as_ref()) else {
+            return;
+        };
+        let (mob, columns) = (gm.mob, gm.columns);
+        let Some(index) = self.mobs.iter().position(|m| m.id == mob) else {
+            return;
+        };
+        let Some(g) = host.hub.guests.iter().find(|g| g.conn == conn) else {
+            return;
+        };
+        let (saddle, body, items) = self.mount_contents(index);
+        let mut slots = vec![saddle, body.flatten()];
+        slots.extend(items.into_iter().take(columns * 3));
+        slots.extend((9..36).chain(0..9).map(|i| g.inventory[i].clone()));
+        let carried = g.carried.clone();
+        let now = Some((slots, carried));
+        let Some(gm) = host
+            .play
+            .get_mut(&conn)
+            .and_then(|p| p.mount_window.as_mut())
+        else {
+            return;
+        };
+        if gm.sent == now {
+            return;
+        }
+        gm.state = (gm.state + 1) & 0x7FFF;
+        let (window, state) = (gm.window, gm.state);
+        let (slots, carried) = now.clone().unwrap_or_default();
+        gm.sent = now;
+        let content = C::ContainerSetContent(play::ContainerSetContent {
+            container: window,
+            state,
+            items: slots.iter().map(|s| host.hub.stack(s)).collect(),
+            carried: host.hub.stack(&carried),
+        });
+        host.hub.send_to(conn, &content);
+    }
+
     /// A click on the guest's mount window; false for other windows.
     pub(super) fn lan_mount_click(
         &mut self,
@@ -161,62 +218,5 @@ impl Game<'_> {
                 );
             }
         }
-    }
-}
-impl crate::game::Sim<'_> {
-    /// `HorseInventoryMenu` over mount `index`, with the player's inventory
-    /// loaded by the caller.
-    fn mount_engine_menu(&self, index: usize, columns: usize) -> Menu {
-        let env = self.menu_env();
-        let mut menu = Menu::new(Kind::Mount(columns));
-        menu.mount = Some(self.mobs[index].kind.id.to_string());
-        let (saddle, body, items) = self.mount_contents(index);
-        menu.set_slot(&env, 0, saddle);
-        menu.set_slot(&env, 1, body.flatten());
-        for (k, item) in items.into_iter().take(columns * 3).enumerate() {
-            menu.set_slot(&env, 2 + k, item);
-        }
-        menu
-    }
-    /// The menu's slots (the mount's, then the inventory and the hotbar)
-    /// and the carried stack, sent when they changed since the last time.
-    fn lan_send_mount(&mut self, host: &mut LanHost, conn: u32) {
-        let Some(gm) = host.play.get(&conn).and_then(|p| p.mount_window.as_ref()) else {
-            return;
-        };
-        let (mob, columns) = (gm.mob, gm.columns);
-        let Some(index) = self.mobs.iter().position(|m| m.id == mob) else {
-            return;
-        };
-        let Some(g) = host.hub.guests.iter().find(|g| g.conn == conn) else {
-            return;
-        };
-        let (saddle, body, items) = self.mount_contents(index);
-        let mut slots = vec![saddle, body.flatten()];
-        slots.extend(items.into_iter().take(columns * 3));
-        slots.extend((9..36).chain(0..9).map(|i| g.inventory[i].clone()));
-        let carried = g.carried.clone();
-        let now = Some((slots, carried));
-        let Some(gm) = host
-            .play
-            .get_mut(&conn)
-            .and_then(|p| p.mount_window.as_mut())
-        else {
-            return;
-        };
-        if gm.sent == now {
-            return;
-        }
-        gm.state = (gm.state + 1) & 0x7FFF;
-        let (window, state) = (gm.window, gm.state);
-        let (slots, carried) = now.clone().unwrap_or_default();
-        gm.sent = now;
-        let content = C::ContainerSetContent(play::ContainerSetContent {
-            container: window,
-            state,
-            items: slots.iter().map(|s| host.hub.stack(s)).collect(),
-            carried: host.hub.stack(&carried),
-        });
-        host.hub.send_to(conn, &content);
     }
 }

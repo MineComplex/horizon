@@ -210,6 +210,20 @@ impl Game<'_> {
             .state(state)
             .map_or_else(|| "minecraft:air".into(), |s| s.name.to_string())
     }
+    fn raw_mut(&mut self, t: Target) -> Option<&mut Tag> {
+        match t {
+            Target::Player => Some(self.level.player_extra.get_or_insert_with(empty)),
+            Target::Mob(id)
+            | Target::Item(id)
+            | Target::Stand(id)
+            | Target::Frame(id)
+            | Target::Painting(id)
+            | Target::Boat(id)
+            | Target::Cart(id)
+            | Target::Other(id) => Some(self.persist.raw.entry(id).or_insert_with(empty)),
+            _ => None,
+        }
+    }
     pub(in crate::game) fn set_entity_tags(&mut self, t: Target, tags: &[String]) {
         if let Some(raw) = self.raw_mut(t) {
             let list = tags
@@ -392,6 +406,12 @@ impl Game<'_> {
 
     // ---- /data -----------------------------------------------------------
 
+    fn path_arg(&self, ctx: &Context, name: &str) -> R<NbtPath> {
+        let Some(Arg::Str(text)) = ctx.get(name) else {
+            return Err(err("command.failed", &[]));
+        };
+        NbtPath::parse(text).map_err(path_error)
+    }
     pub(super) fn cmd_data(&mut self, id: &str, ctx: &Context) -> R<i32> {
         let target = self.data_ref(ctx, 0)?;
         // An entity in another level is read and written in the level that
@@ -676,28 +696,7 @@ impl Game<'_> {
     }
 
     // ---- /summon ---------------------------------------------------------
-}
-impl crate::game::Sim<'_> {
-    fn raw_mut(&mut self, t: Target) -> Option<&mut Tag> {
-        match t {
-            Target::Player => Some(self.level.player_extra.get_or_insert_with(empty)),
-            Target::Mob(id)
-            | Target::Item(id)
-            | Target::Stand(id)
-            | Target::Frame(id)
-            | Target::Painting(id)
-            | Target::Boat(id)
-            | Target::Cart(id)
-            | Target::Other(id) => Some(self.persist.raw.entry(id).or_insert_with(empty)),
-            _ => None,
-        }
-    }
-    fn path_arg(&self, ctx: &Context, name: &str) -> R<NbtPath> {
-        let Some(Arg::Str(text)) = ctx.get(name) else {
-            return Err(err("command.failed", &[]));
-        };
-        NbtPath::parse(text).map_err(path_error)
-    }
+
     /// Spawn an entity from its compound (`EntityType.loadEntityRecursive`);
     /// returns what was created.
     pub(super) fn spawn_entity_from_nbt(&mut self, tag: Tag) -> Option<Target> {

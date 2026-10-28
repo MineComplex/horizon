@@ -17,16 +17,16 @@ impl Game<'_> {
     /// `LivingEntity.spawnItemParticles(stack, count)` for the local player,
     /// drawing from the world random as its eating sounds do.
     pub(super) fn eat_particles(&mut self, stack: &ItemStack, count: u32) {
-        let Some(p) = self.sim.player.as_ref().map(|p| p.position) else {
+        let Some(p) = self.player.as_ref().map(|p| p.position) else {
             return;
         };
         let eye_y = self.eye_position().map_or(p.y, |e| e[1]);
         let options = self.item_particle(stack);
         let mut spawned = Vec::new();
         particles::item_use_particles(
-            &mut self.sim.world.random,
-            self.sim.pitch,
-            self.sim.yaw,
+            &mut self.world.random,
+            self.pitch,
+            self.yaw,
             [p.x, p.y, p.z],
             eye_y,
             count,

@@ -10,6 +10,29 @@ use horizon_core::geometry::{Aabb, Vec3};
 use horizon_world::registry::BlockStateId;
 
 impl Game<'_> {
+    /// Client `EntityGetter.getEntityCollisions` for the player: the
+    /// entities that `canBeCollidedWith` it, solid happy ghasts and boats
+    /// (`AbstractBoat.canBeCollidedWith`), except the player's own vehicle.
+    pub(super) fn player_entity_collisions(&self) -> Vec<Aabb> {
+        let Some(p) = &self.player else {
+            return Vec::new();
+        };
+        self.mobs
+            .iter()
+            .filter(|m| {
+                m.species() == horizon_client::mobs::Species::HappyGhast
+                    && Some(m.id) != self.riding
+                    && happy_ghast::collides_with_player(m, p.position.y)
+            })
+            .map(|m| m.bounds())
+            .chain(
+                self.boats
+                    .iter()
+                    .filter(|b| Some(b.id) != self.riding)
+                    .map(super::boats::Boat::bounds),
+            )
+            .collect()
+    }
     /// `HappyGhast.mobInteract`. Returns whether the click was used.
     pub(super) fn interact_happy_ghast(&mut self, index: usize, item: &str) -> bool {
         let m = &self.mobs[index];
@@ -116,30 +139,5 @@ impl Game<'_> {
             self.sounds
                 .play("minecraft:entity.ghastling.spawn", Some(at), 1.0, 1.0);
         }
-    }
-}
-impl crate::game::Sim<'_> {
-    /// Client `EntityGetter.getEntityCollisions` for the player: the
-    /// entities that `canBeCollidedWith` it, solid happy ghasts and boats
-    /// (`AbstractBoat.canBeCollidedWith`), except the player's own vehicle.
-    pub(super) fn player_entity_collisions(&self) -> Vec<Aabb> {
-        let Some(p) = &self.player else {
-            return Vec::new();
-        };
-        self.mobs
-            .iter()
-            .filter(|m| {
-                m.species() == horizon_client::mobs::Species::HappyGhast
-                    && Some(m.id) != self.riding
-                    && happy_ghast::collides_with_player(m, p.position.y)
-            })
-            .map(|m| m.bounds())
-            .chain(
-                self.boats
-                    .iter()
-                    .filter(|b| Some(b.id) != self.riding)
-                    .map(super::boats::Boat::bounds),
-            )
-            .collect()
     }
 }

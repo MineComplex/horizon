@@ -446,6 +446,40 @@ impl Restrictions {
 }
 
 impl Game<'_> {
+    pub(super) fn remote_world_options_permission(&mut self, permission: bool) {
+        if let Some(o) = self.world_options.as_mut() {
+            let lost = o.gamemaster && !permission;
+            o.gamemaster = permission;
+            if lost && o.remote {
+                self.close_world_options();
+            }
+        }
+    }
+    pub(super) fn remote_world_options_difficulty(&mut self, difficulty: u8, locked: bool) {
+        if let Some(o) = self.world_options.as_mut() {
+            o.server_difficulty(difficulty, locked);
+        }
+    }
+    pub(super) fn remote_world_options_rules(&mut self, entries: Vec<play::GameRuleEntry>) {
+        let Some(o) = self
+            .world_options
+            .as_mut()
+            .filter(|o| o.view == View::GameRules)
+        else {
+            return;
+        };
+        let mut rules = horizon_client::gamerules::GameRules::default();
+        for entry in entries {
+            rules.set_string(&entry.name, &entry.value);
+        }
+        o.rules = Some(RulesScreen::new(&rules));
+    }
+
+    pub(super) fn close_world_options(&mut self) {
+        self.world_options = None;
+        self.screen = Screen::Paused;
+    }
+
     /// Escape: the question and RestrictionsScreen return to the options
     /// (their onClose), which close; the game rules ask first.
     pub(super) fn world_options_escape(&mut self) {
@@ -503,7 +537,7 @@ impl Game<'_> {
             return;
         };
         match o.view {
-            View::Options => self.draw_options_view(&mut o, batch, self.front.cursor),
+            View::Options => self.draw_options_view(&mut o, batch, self.cursor),
             View::LockQuestion => {
                 // PopupScreen: the screen behind without the pointer, then the popup.
                 self.draw_options_view(&mut o, batch, (-1.0, -1.0));
@@ -512,11 +546,11 @@ impl Game<'_> {
             View::Restrictions => self.draw_restrictions(batch),
             View::GameRules => {
                 if let Some(rules) = o.rules.as_mut() {
-                    rules.draw(batch, &self.front.gui.atlas, self.front.cursor);
+                    rules.draw(batch, &self.gui.atlas, self.cursor);
                 } else {
                     ui::menu_background(
                         batch,
-                        &self.front.gui.atlas,
+                        &self.gui.atlas,
                         0.0,
                         0.0,
                         batch.width,
@@ -530,7 +564,7 @@ impl Game<'_> {
     }
 
     fn draw_lock_question(&self, o: &WorldOptions, batch: &mut HudBatch) {
-        let atlas = &self.front.gui.atlas;
+        let atlas = &self.gui.atlas;
         let (w, h) = (batch.width, batch.height);
         // Screen.extractTransparentBackground.
         batch.fill_gradient(
@@ -555,7 +589,7 @@ impl Game<'_> {
             batch.text_styled(atlas, line, *x, *y, u32::MAX, true);
         }
         for ((bx, by), key) in p.buttons.into_iter().zip(["gui.yes", "gui.no"]) {
-            let hover = ui::hovered(self.front.cursor, bx, by, POPUP_BUTTON, 20.0);
+            let hover = ui::hovered(self.cursor, bx, by, POPUP_BUTTON, 20.0);
             let label = Text::translate(key, &[]);
             ui::button(
                 batch,
@@ -572,7 +606,7 @@ impl Game<'_> {
     }
 
     fn draw_restrictions(&self, batch: &mut HudBatch) {
-        let atlas = &self.front.gui.atlas;
+        let atlas = &self.gui.atlas;
         let (w, h) = (batch.width, batch.height);
         ui::menu_background(batch, atlas, 0.0, 0.0, w, h, true);
         let title = Text::translate("restrictions_screen.title", &[]);
@@ -591,19 +625,19 @@ impl Game<'_> {
             batch.text_styled(atlas, line, *x, *y, u32::MAX, true);
         }
         if let Some((ax, ay)) = r.action {
-            let hover = ui::hovered(self.front.cursor, ax, ay, 200.0, 20.0);
+            let hover = ui::hovered(self.cursor, ax, ay, 200.0, 20.0);
             let label = Text::translate("chat_restriction.chat_disabled_by_options.action", &[]);
             ui::button(batch, atlas, ax, ay, 200.0, 20.0, &label, true, hover);
         }
         batch.clip_since(first, 0.0, r.area.0, w, r.area.1);
         let (dx, dy) = Restrictions::done(w, h);
-        let hover = ui::hovered(self.front.cursor, dx, dy, 200.0, 20.0);
+        let hover = ui::hovered(self.cursor, dx, dy, 200.0, 20.0);
         let label = Text::translate("gui.done", &[]);
         ui::button(batch, atlas, dx, dy, 200.0, 20.0, &label, true, hover);
     }
 
     fn draw_options_view(&self, o: &mut WorldOptions, batch: &mut HudBatch, cursor: (f32, f32)) {
-        let atlas = &self.front.gui.atlas;
+        let atlas = &self.gui.atlas;
         let (w, h) = (batch.width, batch.height);
         o.scroll = o.scroll.clamp(0.0, o.scroll_limit(h));
         // extractMenuBackground: the in-world background, the list
@@ -722,11 +756,20 @@ impl Game<'_> {
     /// list follows it (AbstractSelectionList.mouseDragged).
     pub(super) fn world_options_drag(&mut self) {
         let h = self.gui_size().1;
-        if let Some(o) = self.sim.world_options.as_mut()
+        if let Some(o) = self.world_options.as_mut()
             && o.view == View::GameRules
             && let Some(rules) = o.rules.as_mut()
         {
-            rules.drag(self.front.cursor.1, h);
+            rules.drag(self.cursor.1, h);
+        }
+    }
+
+    /// The button came up: a held scrollbar lets go (onRelease).
+    pub(super) fn world_options_release(&mut self) {
+        if let Some(o) = self.world_options.as_mut()
+            && let Some(rules) = o.rules.as_mut()
+        {
+            rules.release();
         }
     }
 
@@ -738,12 +781,12 @@ impl Game<'_> {
         match o.view {
             View::Options => {}
             View::GameRules => {
-                let atlas = &self.front.gui.atlas;
+                let atlas = &self.gui.atlas;
                 let exit = o.rules.as_mut().and_then(|rules| {
-                    if rules.clicks_button(atlas, self.front.cursor, (w, h)) {
-                        self.front.audio.play_button_click();
+                    if rules.clicks_button(atlas, self.cursor, (w, h)) {
+                        self.audio.play_button_click();
                     }
-                    rules.click(atlas, self.front.cursor, (w, h))
+                    rules.click(atlas, self.cursor, (w, h))
                 });
                 self.world_options = Some(o);
                 if let Some(exit) = exit {
@@ -752,12 +795,13 @@ impl Game<'_> {
                 return;
             }
             View::LockQuestion => {
-                let p = Popup::lock_question(&self.front.gui.atlas.font, o.difficulty, (w, h));
-                let hit = p.buttons.iter().position(|&(bx, by)| {
-                    ui::hovered(self.front.cursor, bx, by, POPUP_BUTTON, 20.0)
-                });
+                let p = Popup::lock_question(&self.gui.atlas.font, o.difficulty, (w, h));
+                let hit = p
+                    .buttons
+                    .iter()
+                    .position(|&(bx, by)| ui::hovered(self.cursor, bx, by, POPUP_BUTTON, 20.0));
                 if hit.is_some() {
-                    self.front.audio.play_button_click();
+                    self.audio.play_button_click();
                 }
                 match hit {
                     // Yes: apply, then back to the pause menu; No: back to the options.
@@ -769,19 +813,16 @@ impl Game<'_> {
                 return;
             }
             View::Restrictions => {
-                let r = Restrictions::new(
-                    &self.front.gui.atlas.font,
-                    self.settings.chat_visibility,
-                    (w, h),
-                );
-                let in_body = self.front.cursor.1 >= r.area.0 && self.front.cursor.1 < r.area.1;
+                let r =
+                    Restrictions::new(&self.gui.atlas.font, self.settings.chat_visibility, (w, h));
+                let in_body = self.cursor.1 >= r.area.0 && self.cursor.1 < r.area.1;
                 let action = r.action.is_some_and(|(ax, ay)| {
-                    in_body && ui::hovered(self.front.cursor, ax, ay, 200.0, 20.0)
+                    in_body && ui::hovered(self.cursor, ax, ay, 200.0, 20.0)
                 });
                 let (dx, dy) = Restrictions::done(w, h);
-                let done = ui::hovered(self.front.cursor, dx, dy, 200.0, 20.0);
+                let done = ui::hovered(self.cursor, dx, dy, 200.0, 20.0);
                 if action || done {
-                    self.front.audio.play_button_click();
+                    self.audio.play_button_click();
                     o.view = View::Options;
                 }
                 self.world_options = Some(o);
@@ -794,20 +835,20 @@ impl Game<'_> {
                 return;
             }
         }
-        let inside = self.front.cursor.1 >= HEADER && self.front.cursor.1 < h - FOOTER;
+        let inside = self.cursor.1 >= HEADER && self.cursor.1 < h - FOOTER;
         o.port.focused = !o.remote
             && o.lan
             && inside
             && ui::hovered(
-                self.front.cursor,
+                self.cursor,
                 WorldOptions::left(w) + 158.0,
                 o.top() + PORT_TOP,
                 150.0,
                 20.0,
             );
-        let hit = o.hit(self.front.cursor, (w, h));
+        let hit = o.hit(self.cursor, (w, h));
         if hit.is_some() {
-            self.front.audio.play_button_click();
+            self.audio.play_button_click();
         }
         match hit {
             Some(Button::DefaultMode) => o.default_mode = (o.default_mode + 1) % 4,
@@ -867,18 +908,15 @@ impl Game<'_> {
         let PhysicalKey::Code(key) = event.physical_key else {
             return;
         };
-        let ctrl = self
-            .sim
-            .keys
-            .contains(&winit::keyboard::KeyCode::ControlLeft);
+        let ctrl = self.keys.contains(&winit::keyboard::KeyCode::ControlLeft);
         let shortcut = self.edit_shortcut(event);
-        let Some(o) = self.sim.world_options.as_mut() else {
+        let Some(o) = self.world_options.as_mut() else {
             return;
         };
         if let Some(rules) = o.rules.as_mut().filter(|r| r.typing()) {
             match shortcut {
                 Some(shortcut) => rules.edit(|b| {
-                    b.shortcut(shortcut, &mut self.front.clipboard);
+                    b.shortcut(shortcut, &mut self.clipboard);
                 }),
                 None => {
                     let mut handled = false;
@@ -894,11 +932,49 @@ impl Game<'_> {
             return;
         }
         if let Some(shortcut) = shortcut {
-            o.port.shortcut(shortcut, &mut self.front.clipboard);
+            o.port.shortcut(shortcut, &mut self.clipboard);
             return;
         }
         if !o.port.key(key, ctrl, false) && !ctrl {
             self.world_options_text(event.text.as_deref());
+        }
+    }
+    /// Digits typed into the port field (the keyboard, or a controller's
+    /// on-screen keyboard), and its backspace.
+    pub(super) fn world_options_text(&mut self, text: Option<&str>) {
+        if let Some(rules) = self
+            .world_options
+            .as_mut()
+            .and_then(|o| o.rules.as_mut())
+            .filter(|r| r.typing())
+        {
+            match text {
+                Some(text) => {
+                    let typed: String = text.chars().filter(|c| !c.is_control()).collect();
+                    if !typed.is_empty() {
+                        rules.edit(|b| b.insert_text(&typed));
+                    }
+                }
+                None => rules.edit(|b| {
+                    b.key(winit::keyboard::KeyCode::Backspace, false, false);
+                }),
+            }
+            return;
+        }
+        let Some(o) = self.world_options.as_mut().filter(|o| o.port.focused) else {
+            return;
+        };
+        match text {
+            Some(text) => {
+                let digits: String = text.chars().filter(char::is_ascii_digit).collect();
+                if !digits.is_empty() {
+                    o.port.insert_text(&digits);
+                }
+            }
+            None => {
+                o.port
+                    .key(winit::keyboard::KeyCode::Backspace, false, false);
+            }
         }
     }
 
@@ -976,86 +1052,6 @@ impl Game<'_> {
             }
         } else if settings_changed {
             self.lan_apply_settings(wanted.guest_commands, wanted.force);
-        }
-    }
-}
-impl crate::game::Sim<'_> {
-    pub(super) fn remote_world_options_permission(&mut self, permission: bool) {
-        if let Some(o) = self.world_options.as_mut() {
-            let lost = o.gamemaster && !permission;
-            o.gamemaster = permission;
-            if lost && o.remote {
-                self.close_world_options();
-            }
-        }
-    }
-    pub(super) fn remote_world_options_difficulty(&mut self, difficulty: u8, locked: bool) {
-        if let Some(o) = self.world_options.as_mut() {
-            o.server_difficulty(difficulty, locked);
-        }
-    }
-    pub(super) fn remote_world_options_rules(&mut self, entries: Vec<play::GameRuleEntry>) {
-        let Some(o) = self
-            .world_options
-            .as_mut()
-            .filter(|o| o.view == View::GameRules)
-        else {
-            return;
-        };
-        let mut rules = horizon_client::gamerules::GameRules::default();
-        for entry in entries {
-            rules.set_string(&entry.name, &entry.value);
-        }
-        o.rules = Some(RulesScreen::new(&rules));
-    }
-    pub(super) fn close_world_options(&mut self) {
-        self.world_options = None;
-        self.screen = Screen::Paused;
-    }
-    /// The button came up: a held scrollbar lets go (onRelease).
-    pub(super) fn world_options_release(&mut self) {
-        if let Some(o) = self.world_options.as_mut()
-            && let Some(rules) = o.rules.as_mut()
-        {
-            rules.release();
-        }
-    }
-    /// Digits typed into the port field (the keyboard, or a controller's
-    /// on-screen keyboard), and its backspace.
-    pub(super) fn world_options_text(&mut self, text: Option<&str>) {
-        if let Some(rules) = self
-            .world_options
-            .as_mut()
-            .and_then(|o| o.rules.as_mut())
-            .filter(|r| r.typing())
-        {
-            match text {
-                Some(text) => {
-                    let typed: String = text.chars().filter(|c| !c.is_control()).collect();
-                    if !typed.is_empty() {
-                        rules.edit(|b| b.insert_text(&typed));
-                    }
-                }
-                None => rules.edit(|b| {
-                    b.key(winit::keyboard::KeyCode::Backspace, false, false);
-                }),
-            }
-            return;
-        }
-        let Some(o) = self.world_options.as_mut().filter(|o| o.port.focused) else {
-            return;
-        };
-        match text {
-            Some(text) => {
-                let digits: String = text.chars().filter(char::is_ascii_digit).collect();
-                if !digits.is_empty() {
-                    o.port.insert_text(&digits);
-                }
-            }
-            None => {
-                o.port
-                    .key(winit::keyboard::KeyCode::Backspace, false, false);
-            }
         }
     }
 }
