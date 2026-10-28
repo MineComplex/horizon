@@ -14,8 +14,7 @@ use horizon_world::blocking_rules::{BlockingRules, DamageReduction, ItemDamageFu
 /// `Inventory.SLOT_OFFHAND`: the `using` slot of an off-hand item.
 pub(super) const OFFHAND_SLOT: usize = 40;
 
-impl Game<'_> {}
-impl crate::game::Sim<'_> {
+impl Game<'_> {
     /// The stack in an inventory slot, the off hand at `OFFHAND_SLOT`.
     pub(super) fn stack_in(&self, slot: usize) -> Option<&ItemStack> {
         if slot == OFFHAND_SLOT {
@@ -229,6 +228,7 @@ impl crate::game::Sim<'_> {
         }
         self.blocked_by_attacker(&component, [mx, mz], fully, disable, at);
     }
+
     /// What a blocked melee hit does to the defender once the shield took
     /// it: `LivingEntity.blockedByItem` knocks them back unless fully
     /// blocked, then `Player.blockUsingItem` disables the shield.

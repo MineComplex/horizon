@@ -4,8 +4,7 @@ use horizon_client::{falling_block, items::ItemStack};
 use horizon_core::{geometry::Vec3, position::BlockPos, random::RandomSource};
 use horizon_world::level::LevelEvent;
 
-impl Game<'_> {}
-impl crate::game::Sim<'_> {
+impl Game<'_> {
     pub(super) fn finish_falling_block(&mut self, mut block: FallingBlock, pos: [i32; 3]) {
         let anvil = self.res.facts().get(block.state).name.ends_with("anvil");
         if let Some(impact) = block.damage.impact(block.fall_distance) {

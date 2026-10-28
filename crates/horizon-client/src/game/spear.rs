@@ -24,8 +24,7 @@ use horizon_core::{
 /// The key of this window's own player in `Game::kinetic_feedback`.
 pub(super) const OWN: i32 = i32::MIN;
 
-impl Game<'_> {}
-impl crate::game::Sim<'_> {
+impl Game<'_> {
     /// `Item.use` of a kinetic weapon: `startUsingItem` with a new
     /// `recentKineticEnemies`, and `KineticWeapon.makeSound` at the user.
     pub(super) fn use_spear(&mut self, stack: &ItemStack) -> bool {
@@ -43,6 +42,7 @@ impl crate::game::Sim<'_> {
         }
         true
     }
+
     /// `ServerPlayer.getKnownMovement` of the acting player: what they moved
     /// in the last tick. A guest's comes with their moves.
     fn known_player_movement(&self) -> Vec3 {
@@ -53,6 +53,7 @@ impl crate::game::Sim<'_> {
             .as_ref()
             .map_or(Vec3::ZERO, |p| p.position.subtract(self.previous_position))
     }
+
     /// `Entity.getKnownSpeed` of the mob at `index`, per second: its root
     /// vehicle's (`KineticWeapon.getMotion`).
     fn mob_speed(&self, index: usize) -> Vec3 {
@@ -66,6 +67,7 @@ impl crate::game::Sim<'_> {
         }
         mob.position.subtract(mob.previous).scale(20.0)
     }
+
     /// `Level.clip` with COLLIDER shapes and no fluids: where the segment
     /// first meets a block, if it does (tall grass lets a stab through).
     fn clip_collider(&self, from: Vec3, to: Vec3) -> Option<Vec3> {
@@ -88,6 +90,7 @@ impl crate::game::Sim<'_> {
         .ok()
         .flatten()
     }
+
     /// `ProjectileUtil.getHitEntitiesAlong` for the mobs: those whose box the
     /// segment `from`..`to` meets, or comes within the margin of with no
     /// block between.
@@ -114,6 +117,7 @@ impl crate::game::Sim<'_> {
         }
         hits
     }
+
     /// `ProjectileUtil.getHitEntitiesAlong` with the spear's `AttackRange`: the
     /// mobs along the view from the minimum reach to the maximum plus the
     /// attacker's own movement, none when a block is closer than the minimum.
@@ -135,6 +139,7 @@ impl crate::game::Sim<'_> {
         }
         self.mobs_along(from, to, f64::from(REACH.hitbox_margin))
     }
+
     /// `KineticWeapon.damageEntities`: one tick of the spear in use, `ticks`
     /// ticks into the use.
     pub(super) fn spear_tick(&mut self, stack: &ItemStack, ticks: u32) {
@@ -190,6 +195,7 @@ impl crate::game::Sim<'_> {
             self.kinetic_hit_feedback(who, &kinetic, [feet.x, feet.y, feet.z]);
         }
     }
+
     /// `Player.stabAttack` on the mob at `index`: whether it was affected.
     fn stab_mob(
         &mut self,
@@ -288,6 +294,7 @@ impl crate::game::Sim<'_> {
         }
         true
     }
+
     /// `Player.cannotAttackWithItem` for the held item: a spear needs its
     /// `minimum_attack_charge` of 1, counting `tolerance` ticks more than the
     /// `ticker` ticks charged.
@@ -295,6 +302,7 @@ impl crate::game::Sim<'_> {
         self.held().is_some_and(|s| Kinetic::of(&s.item).is_some())
             && (ticker + tolerance) as f32 / delay(self.main_hand_attack_speed()) < 1.0
     }
+
     /// `PiercingWeapon.attack` of the spear in the main hand, for a left
     /// click: every mob along the view is stabbed, then `postPiercingAttack`
     /// (Lunge), the hit sound and the swing. Gives the sound of the jab
@@ -329,6 +337,7 @@ impl crate::game::Sim<'_> {
         }
         Some(kinetic.attack_sound)
     }
+
     /// A sound at the player's feet.
     pub(super) fn play_at_feet(&mut self, sound: &str) {
         if let Some(p) = &self.player {
@@ -336,6 +345,7 @@ impl crate::game::Sim<'_> {
             self.sounds.play(sound, Some(at), 1.0, 1.0);
         }
     }
+
     /// `LivingEntity.onKineticHit` for `entity`: the hit feels (the spear
     /// moves back, `kinetic_hit_ticks`) and sounds, at most once every ten
     /// ticks.
@@ -351,12 +361,14 @@ impl crate::game::Sim<'_> {
                 .play_unshared(kinetic.hit_sound, Some(at), 1.0, 1.0);
         }
     }
+
     /// `getTicksSinceLastKineticHitFeedback` of this window's player.
     pub(super) fn kinetic_hit_ticks(&self, partial: f32) -> f32 {
         self.kinetic_feedback
             .get(&OWN)
             .map_or(0.0, |&t| (self.world.game_time - t) as f32 + partial)
     }
+
     /// `LivingEntity.handleEntityEvent(2)` on a server's client: the
     /// player `id` (this one, or another) was hit by the spear it uses.
     pub(super) fn remote_kinetic_hit(&mut self, id: i32) {

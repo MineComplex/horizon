@@ -87,9 +87,6 @@ pub(super) enum AnchorUse {
 }
 
 impl Game<'_> {
-    // ---- respawning -------------------------------------------------------
-}
-impl crate::game::Sim<'_> {
     pub(super) fn is_anchor(&self, state: BlockStateId) -> bool {
         &*self.res.facts().get(state).name == "minecraft:respawn_anchor"
     }
@@ -318,6 +315,9 @@ impl crate::game::Sim<'_> {
             water_at.map(|p| (p, 100.0)),
         )
     }
+
+    // ---- respawning -------------------------------------------------------
+
     /// `DismountHelper.nonClimbableShape`: the collision shape, empty for
     /// climbable blocks and open trapdoors.
     fn non_climbable_shape(&self, p: [i32; 3]) -> VoxelShape {

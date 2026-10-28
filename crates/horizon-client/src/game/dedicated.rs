@@ -318,8 +318,7 @@ fn parse_identifier(text: &str) -> Option<String> {
     (valid(namespace, &[]) && valid(path, &['/'])).then(|| format!("{namespace}:{path}"))
 }
 
-impl Game<'_> {}
-impl crate::game::Sim<'_> {
+impl Game<'_> {
     /// DedicatedServerProperties.createDimensions for a world that doesn't
     /// exist yet: `level-type`'s preset, a flat world's `generator-settings`
     /// and `generate-structures`, written before the world opens so that
@@ -755,8 +754,7 @@ impl Game<'_> {
         self.player = None;
         Ok(())
     }
-}
-impl crate::game::Sim<'_> {
+
     /// The chunks to keep loaded: the players' (lan_update_streaming), or
     /// the spawn chunk while nobody is online.
     pub(super) fn update_dedicated_streaming(&mut self) {
@@ -778,6 +776,7 @@ impl crate::game::Sim<'_> {
             self.streaming.center = c;
         }
     }
+
     /// ServerGamePacketListenerImpl.tick: players idle longer than the
     /// timeout are kicked.
     fn kick_idle(&mut self, minutes: i32) {
@@ -797,6 +796,7 @@ impl crate::game::Sim<'_> {
                 .kick(conn, translatable("multiplayer.disconnect.idling", &[]));
         }
     }
+
     /// Ops' permission levels for the hub (PlayerList.getProfilePermissions).
     fn sync_ops(&mut self, lists: &Arc<Mutex<Lists>>) {
         let Some(host) = self.lan.as_mut() else {
@@ -812,6 +812,7 @@ impl crate::game::Sim<'_> {
             .collect();
         host.hub.resend_commands();
     }
+
     /// A player on the server, by name.
     fn online_player(&self, name: &str) -> Option<NameAndId> {
         let hub = &self.lan.as_ref()?.hub;
@@ -824,6 +825,7 @@ impl crate::game::Sim<'_> {
             name: g.name.clone(),
         })
     }
+
     /// GameProfileArgument for a name: the user cache, else the offline
     /// player (no profile service is asked). None, told to the console: no
     /// such player.
@@ -839,6 +841,7 @@ impl crate::game::Sim<'_> {
         }
         found
     }
+
     /// MinecraftServer.sendSystemMessage: what the console is told; while
     /// the console runs a command, the replies vanilla broadcasts go to the
     /// operators too.
@@ -852,6 +855,7 @@ impl crate::game::Sim<'_> {
             self.broadcast_to_admins(text);
         }
     }
+
     /// One console line, then the operators' share of its feedback.
     fn console_line(&mut self, state: &mut ServerState, line: &str) {
         self.console_broadcast = Some(state.broadcast_console);
@@ -864,6 +868,7 @@ impl crate::game::Sim<'_> {
         }
         self.admin_feedback.clear();
     }
+
     /// DedicatedServer.handleConsoleInputs: one console line, run as the
     /// server (permission level 4). The dedicated-only commands are here;
     /// everything else goes to the game's dispatcher.
@@ -1176,6 +1181,7 @@ impl crate::game::Sim<'_> {
             }
         }
     }
+
     fn console_whitelist(&mut self, state: &mut ServerState, rest: &[&str]) {
         let lit = |s: &str| Text::literal(s.to_owned());
         match rest {
@@ -1255,6 +1261,7 @@ impl crate::game::Sim<'_> {
             _ => self.console_reply(Text::translate("command.unknown.argument", &[])),
         }
     }
+
     /// DedicatedServerSettings.update: change one key and store the file.
     fn store_property(&mut self, key: &str, value: String) {
         let path = PathBuf::from("server.properties");
@@ -1264,6 +1271,7 @@ impl crate::game::Sim<'_> {
             let _ = p.store(&path);
         }
     }
+
     /// MinecraftServer.kickUnlistedPlayers: with `enforce-whitelist` and the
     /// whitelist on, whoever is online and not on the whitelist file is
     /// disconnected (operators are not spared here).
@@ -1295,6 +1303,7 @@ impl crate::game::Sim<'_> {
             );
         }
     }
+
     fn kick_uuid(&mut self, uuid: u128, reason: Tag) {
         if let Some(h) = self.lan.as_mut() {
             let conns: Vec<u32> = h
@@ -1309,6 +1318,7 @@ impl crate::game::Sim<'_> {
             }
         }
     }
+
     /// MinecraftServer.stopServer: players saved and sent away, worlds saved.
     /// MinecraftServer.saveAllChunks, not silent: one line per level, in
     /// the server's level order.
@@ -1327,6 +1337,7 @@ impl crate::game::Sim<'_> {
             );
         }
     }
+
     fn stop_dedicated(&mut self) -> Result<()> {
         log("INFO", "Stopping server");
         log("INFO", "Saving players");

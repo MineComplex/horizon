@@ -97,8 +97,7 @@ pub(super) fn client_float() -> f32 {
     CLIENT_RANDOM.with(|r| r.borrow_mut().next_float())
 }
 
-impl Game<'_> {}
-impl crate::game::Sim<'_> {
+impl Game<'_> {
     /// `ServerExplosion.getSeenPercent` for an entity box.
     pub(super) fn seen_percent(&self, center: [f64; 3], min: [f64; 3], max: [f64; 3]) -> f32 {
         let xs = 1.0 / ((max[0] - min[0]) * 2.0 + 1.0);
@@ -327,6 +326,7 @@ impl crate::game::Sim<'_> {
             self.after_block(outcome, amount, None, false);
         }
     }
+
     fn explosion_hurt_entities(&mut self, center: [f64; 3], radius: f32, damage_type: &str) {
         if radius < 1.0e-5 {
             return;

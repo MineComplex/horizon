@@ -24,14 +24,6 @@ pub(super) struct GuestMount {
 }
 
 impl Game<'_> {
-    /// The engine menu's mount slots back on mount `index`.
-    fn lan_store_slots(menu: &Menu, columns: usize) -> Vec<Option<ItemStack>> {
-        (0..columns * 3)
-            .map(|k| menu.slot(2 + k).cloned())
-            .collect()
-    }
-}
-impl crate::game::Sim<'_> {
     /// `ServerPlayer.openHorseInventory` for mount `mob`: the open menu
     /// closes, the client gets the mount screen and the menu's slots.
     pub(super) fn lan_open_mount(&mut self, host: &mut LanHost, conn: u32, mob: u32) {
@@ -55,6 +47,7 @@ impl crate::game::Sim<'_> {
         });
         self.lan_send_mount(host, conn);
     }
+
     /// `HorseInventoryMenu` over mount `index`, with the player's inventory
     /// loaded by the caller.
     fn mount_engine_menu(&self, index: usize, columns: usize) -> Menu {
@@ -69,6 +62,7 @@ impl crate::game::Sim<'_> {
         }
         menu
     }
+
     /// The menu's slots (the mount's, then the inventory and the hotbar)
     /// and the carried stack, sent when they changed since the last time.
     fn lan_send_mount(&mut self, host: &mut LanHost, conn: u32) {
@@ -110,6 +104,7 @@ impl crate::game::Sim<'_> {
         });
         host.hub.send_to(conn, &content);
     }
+
     /// A click on the guest's mount window; false for other windows.
     pub(super) fn lan_mount_click(
         &mut self,
@@ -147,12 +142,20 @@ impl crate::game::Sim<'_> {
         self.lan_send_mount(host, conn);
         true
     }
+
+    /// The engine menu's mount slots back on mount `index`.
+    fn lan_store_slots(menu: &Menu, columns: usize) -> Vec<Option<ItemStack>> {
+        (0..columns * 3)
+            .map(|k| menu.slot(2 + k).cloned())
+            .collect()
+    }
     fn lan_mount_store(&mut self, index: usize, columns: usize, menu: &Menu) {
         let (_, body, _) = self.mount_contents(index);
         let body = body.map(|_| menu.slot(1).cloned());
-        let items = crate::game::Game::lan_store_slots(menu, columns);
+        let items = Self::lan_store_slots(menu, columns);
         self.mount_store(index, menu.slot(0).cloned(), body, items);
     }
+
     /// `AbstractContainerMenu.removed` of the guest's mount menu (`window`;
     /// None closes it whichever it is): the carried stack goes back to the
     /// inventory. False when no such window is open.
@@ -178,6 +181,7 @@ impl crate::game::Sim<'_> {
         }
         closed
     }
+
     /// Each tick: a mount menu whose mount died or is out of reach closes
     /// (`AbstractMountInventoryMenu.stillValid`: alive, within the entity
     /// interaction range plus 4 of the eyes), and the others follow the

@@ -79,26 +79,6 @@ fn duration(seconds: f64) -> String {
 }
 
 impl Game<'_> {
-    /// Keep the workers fed until `until`: collect what they finished and
-    /// hand them the next jobs as soon as each one is done, rather than once
-    /// a tick.
-    pub(in crate::game) fn pump_pregen(&mut self, until: Instant) {
-        // Force-loaded chunks too: decorating in vanilla's order, a chunk
-        // waits for its neighbours far more often than once a tick allows.
-        while self.pregen_runs_here()
-            || (!self.streaming.forced.is_empty() && self.streaming.busy())
-        {
-            let now = Instant::now();
-            if now >= until {
-                break;
-            }
-            self.streaming
-                .wait((until - now).min(Duration::from_millis(5)));
-            self.update_world();
-        }
-    }
-}
-impl crate::game::Sim<'_> {
     pub(super) fn cmd_pregen(&mut self, id: &str, ctx: &Context) -> R<i32> {
         match id {
             "pregen.start" => {
@@ -107,7 +87,7 @@ impl crate::game::Sim<'_> {
                         "Pregeneration is already running: /pregen cancel stops it",
                     ));
                 }
-                let radius = crate::game::Game::int(ctx, "radius").unwrap_or(0);
+                let radius = Self::int(ctx, "radius").unwrap_or(0);
                 let shape = if ctx.literals.iter().any(|l| l == "circle") {
                     Shape::Circle
                 } else {
@@ -191,6 +171,7 @@ impl crate::game::Sim<'_> {
             }
         }
     }
+
     /// Move the task's band past the rows that are lit and hand it to the
     /// level's streaming, and report the progress now and then. Runs before
     /// each streaming update of the level in place.
@@ -244,6 +225,7 @@ impl crate::game::Sim<'_> {
             self.pregen_report(owner, message);
         }
     }
+
     /// Whether the level in place has a running task, which the server pumps
     /// between its ticks (`pump_pregen`).
     pub(in crate::game) fn pregen_runs_here(&self) -> bool {
@@ -252,10 +234,31 @@ impl crate::game::Sim<'_> {
             .as_ref()
             .is_some_and(|t| t.dim == self.dim && !t.paused)
     }
+
     /// The level a running task needs ticked, whoever is in it.
     pub(in crate::game) fn pregen_level(&self) -> Option<Dim> {
         self.cmds.pregen.as_ref().map(|t| t.dim)
     }
+
+    /// Keep the workers fed until `until`: collect what they finished and
+    /// hand them the next jobs as soon as each one is done, rather than once
+    /// a tick.
+    pub(in crate::game) fn pump_pregen(&mut self, until: Instant) {
+        // Force-loaded chunks too: decorating in vanilla's order, a chunk
+        // waits for its neighbours far more often than once a tick allows.
+        while self.pregen_runs_here()
+            || (!self.streaming.forced.is_empty() && self.streaming.busy())
+        {
+            let now = Instant::now();
+            if now >= until {
+                break;
+            }
+            self.streaming
+                .wait((until - now).min(Duration::from_millis(5)));
+            self.update_world();
+        }
+    }
+
     /// The console and the player who started the task get the progress.
     fn pregen_report(&mut self, owner: Option<u32>, message: Text) {
         if self.options.dedicated.is_some() {

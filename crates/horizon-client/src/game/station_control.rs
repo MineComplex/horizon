@@ -45,8 +45,8 @@ fn stack_json(s: &ItemStack) -> Value {
 impl Game<'_> {
     fn click_at(&mut self, x: f32, y: f32, right: bool, shift: bool) {
         use winit::keyboard::KeyCode;
-        let saved = self.front.cursor;
-        self.front.cursor = (x, y);
+        let saved = self.cursor;
+        self.cursor = (x, y);
         let had_shift = self.physical_keys.contains(&KeyCode::ShiftLeft);
         if shift {
             self.physical_keys.insert(KeyCode::ShiftLeft);
@@ -55,11 +55,10 @@ impl Game<'_> {
         if shift && !had_shift {
             self.physical_keys.remove(&KeyCode::ShiftLeft);
         }
-        self.front.cursor = saved;
+        self.cursor = saved;
     }
     pub(super) fn gui_origin(&self) -> Result<(f32, f32)> {
         let size = self
-            .front
             .renderer
             .as_ref()
             .map(|r| [r.config.width, r.config.height])
@@ -128,10 +127,10 @@ impl Game<'_> {
             "enchant" => {
                 let e = id(arg(1)?);
                 let level: u32 = arg(2)?.parse()?;
-                if self.sim.res.stations().enchantments.get(&e).is_none() {
+                if self.res.stations().enchantments.get(&e).is_none() {
                     return Err(format!("unknown enchantment {e}").into());
                 }
-                let held = self.sim.inventory[self.sim.selected]
+                let held = self.inventory[self.selected]
                     .as_mut()
                     .ok_or("no held item")?;
                 held.enchant(&e, level);

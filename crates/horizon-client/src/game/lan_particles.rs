@@ -55,6 +55,139 @@ pub(super) fn send_soul_particle(host: &super::lan::LanHost, at: [f64; 3], veloc
 }
 
 impl Game<'_> {
+    /// `SonicBoom.tick` uses `ServerLevel.sendParticles` for each ray point.
+    /// Keep the local event's rendering; connected players receive one at rest.
+    pub(super) fn lan_sonic_boom(&self, options: &ParticleOptions, at: [f64; 3]) {
+        let (Some(host), Some(particle)) = (&self.lan, self.network_particle(options, None)) else {
+            return;
+        };
+        let packet = C::LevelParticles(play::LevelParticles {
+            particle,
+            override_limiter: false,
+            always_show: false,
+            pos: at,
+            dist: [0.0; 3],
+            max_speed: [0.0; 3],
+            count: 0,
+            randomization: 0,
+        });
+        for g in host.hub.guests.iter().filter(|g| host.hub.here(g)) {
+            // ServerLevel compares the player's block centre, strictly within 32.
+            let distance: f64 = (0..3)
+                .map(|k| (g.position[k].floor() + 0.5 - at[k]).powi(2))
+                .sum();
+            if distance < 32.0 * 32.0 {
+                g.send(&packet);
+            }
+        }
+    }
+
+    /// `ServerLevel.sendParticles` of a mob's particles: a packet to each
+    /// player within 32 blocks. The window draws its own copy.
+    pub(super) fn lan_level_particles(
+        &self,
+        options: &ParticleOptions,
+        at: [f64; 3],
+        spread: [f64; 3],
+        speed: f64,
+        count: u32,
+    ) {
+        let (Some(host), Some(particle)) = (&self.lan, self.network_particle(options, None)) else {
+            return;
+        };
+        let packet = C::LevelParticles(play::LevelParticles {
+            particle,
+            override_limiter: false,
+            always_show: false,
+            pos: at,
+            dist: spread.map(|d| d as f32),
+            max_speed: [speed as f32; 3],
+            count: count as i32,
+            randomization: 0,
+        });
+        for g in host.hub.guests.iter().filter(|g| host.hub.here(g)) {
+            // ServerLevel compares the player's block centre, strictly within 32.
+            let distance: f64 = (0..3)
+                .map(|k| (g.position[k].floor() + 0.5 - at[k]).powi(2))
+                .sum();
+            if distance < 32.0 * 32.0 {
+                g.send(&packet);
+            }
+        }
+    }
+
+    /// `LivingEntity.checkFallDamage`'s `ServerLevel.sendParticles` of the
+    /// landing block's crumbs: drawn in this window, when it has one, and
+    /// sent to each player within 32 blocks. `host` is the hub of a guest's
+    /// turn, which is out of `self.lan` meanwhile.
+    pub(super) fn landing_dust(
+        &mut self,
+        host: Option<&LanHost>,
+        state: BlockStateId,
+        at: Vec3,
+        count: i32,
+        speed: f64,
+    ) {
+        let at = [at.x, at.y, at.z];
+        if self.serving.is_none() && self.options.dedicated.is_none() {
+            let block = [
+                at[0].floor() as i32,
+                (at[1] - 0.2).floor() as i32,
+                at[2].floor() as i32,
+            ];
+            if let Some((sprite, tint)) = self.particle_sprite(state, block) {
+                self.particles.send_particles(
+                    &ParticleOptions::block(ParticleType::Block, sprite, tint),
+                    at,
+                    [0.0; 3],
+                    speed,
+                    count as u32,
+                );
+            }
+        }
+        let Some(hub) = host.or(self.lan.as_ref()).map(|h| &h.hub) else {
+            return;
+        };
+        let Some(particle) = Self::hub_particle(
+            hub,
+            &ParticleOptions::simple(ParticleType::Block),
+            Some(state),
+        ) else {
+            return;
+        };
+        let packet = C::LevelParticles(play::LevelParticles {
+            particle,
+            override_limiter: false,
+            always_show: false,
+            pos: at,
+            dist: [0.0; 3],
+            max_speed: [speed as f32; 3],
+            count,
+            randomization: 0,
+        });
+        for g in hub.guests.iter().filter(|g| hub.here(g)) {
+            // ServerLevel compares the player's block centre, strictly within 32.
+            let distance: f64 = (0..3)
+                .map(|k| (g.position[k].floor() + 0.5 - at[k]).powi(2))
+                .sum();
+            if distance < 32.0 * 32.0 {
+                g.send(&packet);
+            }
+        }
+    }
+
+    /// `ParticleTypes.STREAM_CODEC`'s value for `options`: the type's
+    /// network id and the data it carries (`state` for the block particles).
+    /// None while not serving, or for a particle whose data isn't sent from
+    /// here (items, vibrations, trails).
+    pub(super) fn network_particle(
+        &self,
+        options: &ParticleOptions,
+        state: Option<BlockStateId>,
+    ) -> Option<Particle> {
+        Self::hub_particle(&self.lan.as_ref()?.hub, options, state)
+    }
+
     /// `network_particle` for a hub that is out of `self.lan` meanwhile (a
     /// guest's turn).
     pub(super) fn hub_particle(
@@ -89,137 +222,7 @@ impl Game<'_> {
         };
         Some(Particle { id, data })
     }
-}
-impl crate::game::Sim<'_> {
-    /// `SonicBoom.tick` uses `ServerLevel.sendParticles` for each ray point.
-    /// Keep the local event's rendering; connected players receive one at rest.
-    pub(super) fn lan_sonic_boom(&self, options: &ParticleOptions, at: [f64; 3]) {
-        let (Some(host), Some(particle)) = (&self.lan, self.network_particle(options, None)) else {
-            return;
-        };
-        let packet = C::LevelParticles(play::LevelParticles {
-            particle,
-            override_limiter: false,
-            always_show: false,
-            pos: at,
-            dist: [0.0; 3],
-            max_speed: [0.0; 3],
-            count: 0,
-            randomization: 0,
-        });
-        for g in host.hub.guests.iter().filter(|g| host.hub.here(g)) {
-            // ServerLevel compares the player's block centre, strictly within 32.
-            let distance: f64 = (0..3)
-                .map(|k| (g.position[k].floor() + 0.5 - at[k]).powi(2))
-                .sum();
-            if distance < 32.0 * 32.0 {
-                g.send(&packet);
-            }
-        }
-    }
-    /// `ServerLevel.sendParticles` of a mob's particles: a packet to each
-    /// player within 32 blocks. The window draws its own copy.
-    pub(super) fn lan_level_particles(
-        &self,
-        options: &ParticleOptions,
-        at: [f64; 3],
-        spread: [f64; 3],
-        speed: f64,
-        count: u32,
-    ) {
-        let (Some(host), Some(particle)) = (&self.lan, self.network_particle(options, None)) else {
-            return;
-        };
-        let packet = C::LevelParticles(play::LevelParticles {
-            particle,
-            override_limiter: false,
-            always_show: false,
-            pos: at,
-            dist: spread.map(|d| d as f32),
-            max_speed: [speed as f32; 3],
-            count: count as i32,
-            randomization: 0,
-        });
-        for g in host.hub.guests.iter().filter(|g| host.hub.here(g)) {
-            // ServerLevel compares the player's block centre, strictly within 32.
-            let distance: f64 = (0..3)
-                .map(|k| (g.position[k].floor() + 0.5 - at[k]).powi(2))
-                .sum();
-            if distance < 32.0 * 32.0 {
-                g.send(&packet);
-            }
-        }
-    }
-    /// `LivingEntity.checkFallDamage`'s `ServerLevel.sendParticles` of the
-    /// landing block's crumbs: drawn in this window, when it has one, and
-    /// sent to each player within 32 blocks. `host` is the hub of a guest's
-    /// turn, which is out of `self.lan` meanwhile.
-    pub(super) fn landing_dust(
-        &mut self,
-        host: Option<&LanHost>,
-        state: BlockStateId,
-        at: Vec3,
-        count: i32,
-        speed: f64,
-    ) {
-        let at = [at.x, at.y, at.z];
-        if self.serving.is_none() && self.options.dedicated.is_none() {
-            let block = [
-                at[0].floor() as i32,
-                (at[1] - 0.2).floor() as i32,
-                at[2].floor() as i32,
-            ];
-            if let Some((sprite, tint)) = self.particle_sprite(state, block) {
-                self.particles.send_particles(
-                    &ParticleOptions::block(ParticleType::Block, sprite, tint),
-                    at,
-                    [0.0; 3],
-                    speed,
-                    count as u32,
-                );
-            }
-        }
-        let Some(hub) = host.or(self.lan.as_ref()).map(|h| &h.hub) else {
-            return;
-        };
-        let Some(particle) = crate::game::Game::hub_particle(
-            hub,
-            &ParticleOptions::simple(ParticleType::Block),
-            Some(state),
-        ) else {
-            return;
-        };
-        let packet = C::LevelParticles(play::LevelParticles {
-            particle,
-            override_limiter: false,
-            always_show: false,
-            pos: at,
-            dist: [0.0; 3],
-            max_speed: [speed as f32; 3],
-            count,
-            randomization: 0,
-        });
-        for g in hub.guests.iter().filter(|g| hub.here(g)) {
-            // ServerLevel compares the player's block centre, strictly within 32.
-            let distance: f64 = (0..3)
-                .map(|k| (g.position[k].floor() + 0.5 - at[k]).powi(2))
-                .sum();
-            if distance < 32.0 * 32.0 {
-                g.send(&packet);
-            }
-        }
-    }
-    /// `ParticleTypes.STREAM_CODEC`'s value for `options`: the type's
-    /// network id and the data it carries (`state` for the block particles).
-    /// None while not serving, or for a particle whose data isn't sent from
-    /// here (items, vibrations, trails).
-    pub(super) fn network_particle(
-        &self,
-        options: &ParticleOptions,
-        state: Option<BlockStateId>,
-    ) -> Option<Particle> {
-        crate::game::Game::hub_particle(&self.lan.as_ref()?.hub, options, state)
-    }
+
     /// The options a server's particle stands for (None for a type or data
     /// this client doesn't draw).
     pub(super) fn received_particle(
@@ -269,6 +272,7 @@ impl crate::game::Sim<'_> {
             Some(_) => return None,
         })
     }
+
     /// `ClientPacketListener.handleParticleEvent`: no count is one particle
     /// moving by speed times spread; otherwise each is spread and sped up by
     /// gaussians on each axis.
@@ -305,6 +309,7 @@ impl crate::game::Sim<'_> {
             add(&mut self.particles, at, v);
         }
     }
+
     /// `ClientPacketListener.handleExplosion`: the blast's particles (and its
     /// sound, when the packet carries it), then the player's push.
     pub(super) fn remote_explode(&mut self, p: &play::Explode) {
@@ -342,6 +347,7 @@ impl crate::game::Sim<'_> {
             );
         }
     }
+
     /// `ServerLevel.sendParticles` for the players a server serves: one
     /// `ClientboundLevelParticlesPacket` to each player in the level whose
     /// block is within 32 blocks of `at`. The window's own player is not
@@ -394,6 +400,7 @@ impl crate::game::Sim<'_> {
             }
         }
     }
+
     /// The particles guests' turns put off.
     pub(super) fn flush_lan_particles(&mut self) {
         for (options, at, spread, speed, count) in std::mem::take(&mut self.creatures.lan_particles)
@@ -401,6 +408,7 @@ impl crate::game::Sim<'_> {
             self.lan_send_particles(&options, at, spread, speed, count);
         }
     }
+
     /// `ServerLevel.explode`'s packet to each player within 64 blocks. The
     /// sound and the push reach them on their own (the level's sounds, the
     /// motion a hurt player is sent), so the packet carries neither.
@@ -432,6 +440,7 @@ impl crate::game::Sim<'_> {
             self.send_explosion(packet, &[]);
         }
     }
+
     /// The explosions guests' turns put off.
     pub(super) fn flush_lan_explosions(&mut self) {
         for (center, small, radius, block_count) in
@@ -440,6 +449,7 @@ impl crate::game::Sim<'_> {
             self.lan_explode(center, small, radius, block_count);
         }
     }
+
     /// A wind charge's burst (`AbstractWindCharge.explode`): gust emitters,
     /// no block particles, and for each player it pushed the push
     /// (`ServerExplosion.hitPlayers`), which only that client applies, as
@@ -463,6 +473,7 @@ impl crate::game::Sim<'_> {
             self.send_explosion(packet, pushed);
         }
     }
+
     /// `ClientboundExplodePacket` without a push, or None while not serving.
     /// The sound is the level's, which the players hear already, so it isn't
     /// played from the packet.
@@ -511,6 +522,7 @@ impl crate::game::Sim<'_> {
             play_sound: false,
         })
     }
+
     /// `packet` to each player within 64 blocks of its centre, with the push
     /// `pushed` holds for them.
     fn send_explosion(&self, mut packet: play::Explode, pushed: &[(u32, [f64; 3])]) {

@@ -26,12 +26,12 @@ fn mode_name(id: i32) -> &'static str {
     }
 }
 
-impl Game<'_> {}
-impl crate::game::Sim<'_> {
+impl Game<'_> {
     /// The guest `conn`, while the hub is in `self.lan`.
     pub(in crate::game) fn command_guest(&self, conn: u32) -> Option<&Guest> {
         self.lan.as_ref()?.hub.guest(conn)
     }
+
     /// `PlayerList.getPlayers` but the player in place: the guests who
     /// joined the world.
     fn command_players(&self) -> impl Iterator<Item = &Guest> {
@@ -41,6 +41,7 @@ impl crate::game::Sim<'_> {
             .flat_map(|h| h.hub.guests.iter())
             .filter(move |g| g.placed && Some(g.conn) != acting)
     }
+
     /// The entity the command runs as (`CommandSourceStack.getEntity`): a
     /// command typed by the player in place runs as them, the server
     /// console's as nobody.
@@ -50,6 +51,7 @@ impl crate::game::Sim<'_> {
             None => self.player.is_some().then_some(Target::Player),
         }
     }
+
     /// `CommandSourceStack.getPlayerOrException` for the commands whose
     /// player argument is optional: the source's player (the player in
     /// place when it has none, as before).
@@ -58,6 +60,7 @@ impl crate::game::Sim<'_> {
             .filter(|t| t.is_player())
             .unwrap_or(Target::Player)
     }
+
     /// `PlayerList.getPlayerByName`: names are not case sensitive.
     pub(super) fn player_named(&self, name: &str) -> Option<Target> {
         if self.player.is_some() && name.eq_ignore_ascii_case(self.acting_player_name()) {
@@ -67,6 +70,7 @@ impl crate::game::Sim<'_> {
             .find(|g| g.name.eq_ignore_ascii_case(name))
             .map(|g| Target::Guest(g.conn))
     }
+
     /// `EntitySelector.findEntities` with a UUID: the player with it, else
     /// the entity.
     pub(super) fn target_by_uuid(&self, uuid: u128) -> Option<Target> {
@@ -87,6 +91,7 @@ impl crate::game::Sim<'_> {
         let words = [96, 64, 32, 0].map(|shift| (uuid >> shift) as u32 as i32);
         self.target_with_uuid(words)
     }
+
     /// The guests a selector looks at, in join order (`PlayerList.getPlayers`),
     /// the one in place as `Target::Player`: all of them, or those in the
     /// source's level when it limits the search to a place
@@ -113,11 +118,13 @@ impl crate::game::Sim<'_> {
             })
             .collect()
     }
+
     /// A guest's experience level and game mode, for `level=` and `gamemode=`.
     pub(super) fn guest_level_and_mode(&self, conn: u32) -> Option<(i32, &'static str)> {
         self.command_guest(conn)
             .map(|g| (g.xp_level, mode_name(g.game_mode)))
     }
+
     /// `Player.getDisplayName`: the name as its team shows it, suggesting a
     /// `/tell`, showing the player on hover, inserting the name.
     pub(in crate::game) fn player_text(&self, name: &str, uuid: u128) -> Text {
@@ -138,6 +145,7 @@ impl crate::game::Sim<'_> {
             ("insertion".into(), name.into()),
         ])
     }
+
     /// Run `f` for the player `t` (None for anything else): in place, or
     /// with the guest's state swapped in, in their level, as their own turn.
     /// What `f` tells the player (`system_message`) goes to their chat; the

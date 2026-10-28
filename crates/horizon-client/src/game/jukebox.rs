@@ -17,8 +17,7 @@ use horizon_core::{
 };
 use horizon_world::level::flags as level_flags;
 
-impl Game<'_> {}
-impl crate::game::Sim<'_> {
+impl Game<'_> {
     fn jukebox(&self, pos: [i32; 3]) -> Option<&Jukebox> {
         match self.world.block_entities.get(&(pos[0], pos[1], pos[2])) {
             Some(BlockEntity::Jukebox(j)) => Some(j),

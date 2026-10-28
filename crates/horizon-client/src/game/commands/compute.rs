@@ -23,9 +23,6 @@ fn java_float(v: f32) -> String {
 }
 
 impl Game<'_> {
-    // ---- evaluation ---------------------------------------------------------------
-}
-impl crate::game::Sim<'_> {
     /// A provider argument: its registry id (None when inline) and value.
     pub(in crate::game) fn provider_arg(
         &self,
@@ -146,6 +143,9 @@ impl crate::game::Sim<'_> {
         }
         Ok(result)
     }
+
+    // ---- evaluation ---------------------------------------------------------------
+
     /// `ContextIntProvider.getIntUnsafe`.
     pub(in crate::game) fn provider_int(
         &mut self,

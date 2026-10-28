@@ -8,8 +8,7 @@ use horizon_client::{
 };
 use horizon_core::position::BlockPos;
 
-impl Game<'_> {}
-impl crate::game::Sim<'_> {
+impl Game<'_> {
     /// `LivingEntity.createWitherRose`: a mob a wither killed leaves a wither
     /// rose where it stood (with mobGriefing, on air that can hold it), else
     /// drops one.

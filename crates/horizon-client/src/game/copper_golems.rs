@@ -16,8 +16,7 @@ use horizon_world::chunk::BlockState;
 /// `ContainerOpenersCounter.CHECK_TICK_DELAY`.
 const RECHECK_TICKS: i64 = 5;
 
-impl Game<'_> {}
-impl crate::game::Sim<'_> {
+impl Game<'_> {
     /// A copper golem opened or closed a chest half: the counter changes and
     /// the clients see the block event (`openerCountChanged`).
     pub(super) fn golem_chest_open(&mut self, chest: [i32; 3], open: bool) {

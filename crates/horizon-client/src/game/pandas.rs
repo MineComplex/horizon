@@ -13,8 +13,7 @@ use horizon_client::{
 };
 use horizon_core::geometry::Vec3;
 
-impl Game<'_> {}
-impl crate::game::Sim<'_> {
+impl Game<'_> {
     /// `Panda.canPickUpAndEat`'s tag.
     fn panda_eats_from_ground(&self, item: &str) -> bool {
         self.res

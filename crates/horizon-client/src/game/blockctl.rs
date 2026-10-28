@@ -31,8 +31,7 @@ fn parse_state(text: &str) -> Result<BlockState> {
     Ok(BlockState { name, properties })
 }
 
-impl Game<'_> {}
-impl crate::game::Sim<'_> {
+impl Game<'_> {
     fn state_text(&self, state: BlockStateId) -> String {
         let Some(s) = self.pack.assets.registry.state(state) else {
             return "?".into();

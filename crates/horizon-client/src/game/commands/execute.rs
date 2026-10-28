@@ -70,11 +70,6 @@ fn java_int(v: f64) -> i32 {
 }
 
 impl Game<'_> {
-    // ---- running commands -----------------------------------------------
-
-    // ---- conditions ----------------------------------------------------------
-}
-impl crate::game::Sim<'_> {
     /// The source a command typed by the player starts from.
     pub(in crate::game) fn player_source(&self) -> Source {
         Source {
@@ -210,6 +205,9 @@ impl crate::game::Sim<'_> {
         self.command_source = previous;
         out
     }
+
+    // ---- running commands -----------------------------------------------
+
     /// Run one command line with `source` (no error reporting): the entry
     /// for functions and `execute run`.
     pub(in crate::game) fn execute_line(&mut self, line: &str, source: Source) -> R<i32> {
@@ -306,6 +304,7 @@ impl crate::game::Sim<'_> {
             }
         }
     }
+
     /// ExecuteCommand: `ctx` is the context holding the `execute` literal.
     pub(in crate::game) fn run_execute(&mut self, ctx: &Context) -> R<i32> {
         let mut sources = vec![self.command_source.unwrap_or_else(|| self.player_source())];
@@ -467,6 +466,7 @@ impl crate::game::Sim<'_> {
     pub(in crate::game) fn finish_return(&mut self, value: Option<i32>) {
         self.exec.returned = Some(value);
     }
+
     /// The sources one modifier produces from `s`.
     fn modify(&mut self, word: &str, c: &Context, s: Source) -> R<Vec<Source>> {
         let targets = |g: &mut Self| -> R<Vec<Target>> {
@@ -862,6 +862,9 @@ impl crate::game::Sim<'_> {
             ..s
         }
     }
+
+    // ---- conditions ----------------------------------------------------------
+
     /// Whether the source stays for `if`/`unless` (`want`), and the count the
     /// numeric conditions report.
     fn condition(&mut self, c: &Context, want: bool) -> R<(bool, i32)> {

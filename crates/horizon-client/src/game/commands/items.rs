@@ -54,8 +54,7 @@ fn matches_name(pattern: &str, name: &str) -> bool {
     }
 }
 
-impl Game<'_> {}
-impl crate::game::Sim<'_> {
+impl Game<'_> {
     fn owner_of(&mut self, ctx: &Context, prefix: &str, many: bool) -> R<Vec<Owner>> {
         let kind = ctx
             .literals
@@ -310,7 +309,7 @@ impl crate::game::Sim<'_> {
             Some(Err(e)) => return Err(CommandError::new(Text::literal(e))),
             None => (0, None),
         };
-        let count = crate::game::Game::int(ctx, "count").unwrap_or(1).max(1) as u32;
+        let count = Self::int(ctx, "count").unwrap_or(1).max(1) as u32;
         Ok(Some(ItemStack {
             item: id.as_str().into(),
             count,

@@ -40,8 +40,7 @@ impl Creatures {
         self.trader = Spawner::default();
     }
 }
-impl Game<'_> {}
-impl crate::game::Sim<'_> {
+impl Game<'_> {
     fn trader_path(&self) -> std::path::PathBuf {
         self.world_root
             .join("data")

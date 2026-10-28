@@ -84,204 +84,6 @@ fn average(a: u32, b: u32) -> u32 {
         .fold(0, |acc, &s| acc | ((ch(a, s) + ch(b, s)) / 2) << s)
 }
 impl Game<'_> {
-    /// `BeaconScreen`: background, labels, payment icons, power buttons.
-    pub(super) fn draw_beacon(&mut self, batch: &mut HudBatch) {
-        let (ox, oy) = self.inventory_origin(batch);
-        let (bx, by) = (ox + SHIFT, oy);
-        let local = (self.front.cursor.0 - bx, self.front.cursor.1 - by);
-        let levels = self.beacon_levels();
-        let sel = self.station.as_ref().map_or([None; 2], |s| s.beacon);
-        let paid = self.station.as_ref().is_some_and(|s| s.inputs[0].is_some());
-        let atlas = &self.front.gui.atlas;
-        batch.fill(
-            atlas,
-            0.0,
-            0.0,
-            batch.width,
-            batch.height,
-            rgba(16, 16, 16, 160),
-        );
-        if let Some(mut r) = atlas.sprites.get("gui/container/beacon").copied() {
-            let (du, dv) = ((r.u1 - r.u0) / r.w as f32, (r.v1 - r.v0) / r.h as f32);
-            r.u1 = r.u0 + 230.0 * du;
-            r.v1 = r.v0 + HEIGHT * dv;
-            batch.rect_uv(bx, by, 230.0, HEIGHT, r, u32::MAX);
-        }
-        let label = 0xFFE0_E0E0;
-        for (key, fallback, cx) in [
-            ("block.minecraft.beacon.primary", "Primary Power", 62.0),
-            ("block.minecraft.beacon.secondary", "Secondary Power", 169.0),
-        ] {
-            let text = self.translate(key, fallback);
-            let atlas = &self.front.gui.atlas;
-            let w = HudBatch::text_width(atlas, &text);
-            batch.text(
-                atlas,
-                &text,
-                bx + cx - (w / 2.0).floor(),
-                by + 10.0,
-                label,
-                false,
-            );
-        }
-        for (i, item) in PAYMENT.iter().rev().enumerate() {
-            let x = [20.0, 41.0, 63.0, 86.0, 108.0][i];
-            self.draw_item(batch, &ItemStack::new(item, 1), bx + x, by + 109.0);
-        }
-        let atlas = &self.front.gui.atlas;
-        let mut tooltip = None;
-        let button =
-            |batch: &mut HudBatch, x: f32, y: f32, active: bool, selected: bool, icon: &str| {
-                let hover = inside(local, x, y, 22.0, 22.0);
-                let sprite = if !active {
-                    "button_disabled"
-                } else if selected {
-                    "button_selected"
-                } else if hover {
-                    "button_highlighted"
-                } else {
-                    "button"
-                };
-                batch.sprite(
-                    atlas,
-                    &format!("gui/sprites/container/beacon/{sprite}"),
-                    bx + x,
-                    by + y,
-                );
-                batch.sprite_scaled(
-                    atlas,
-                    icon,
-                    bx + x + 2.0,
-                    by + y + 2.0,
-                    18.0,
-                    18.0,
-                    u32::MAX,
-                );
-                hover
-            };
-        for (e, x, y, primary) in buttons() {
-            let tier = EFFECTS[e].1;
-            let active = if primary {
-                tier <= levels && tier < 4
-            } else {
-                levels >= 4
-            };
-            let selected = if primary {
-                sel[0] == Some(e)
-            } else {
-                sel[1] == Some(e)
-            };
-            let icon = format!("mob_effect/{}", EFFECTS[e].0);
-            if button(batch, x, y, active, selected, &icon) {
-                tooltip = Some(format!("effect.minecraft.{}", EFFECTS[e].0));
-            }
-        }
-        if let Some(p) = sel[0] {
-            let (x, y) = upgrade_button();
-            let icon = format!("mob_effect/{}", EFFECTS[p].0);
-            if button(batch, x, y, levels >= 4, sel[1] == Some(p), &icon) {
-                tooltip = Some(format!("effect.minecraft.{}", EFFECTS[p].0));
-            }
-        }
-        button(
-            batch,
-            164.0,
-            107.0,
-            paid && sel[0].is_some(),
-            false,
-            "gui/sprites/container/beacon/confirm",
-        );
-        button(
-            batch,
-            190.0,
-            107.0,
-            true,
-            false,
-            "gui/sprites/container/beacon/cancel",
-        );
-        let slots: Vec<usize> = (0..36).chain([INPUT]).collect();
-        for i in slots {
-            let (sx, sy) = self.slot_position(i);
-            if let Some(stack) = self.slot_mut(i).clone() {
-                self.draw_item(batch, &stack, ox + sx, oy + sy);
-            }
-        }
-        let mut stack_tip = None;
-        if let Some(slot) = self.slot_at(batch, self.front.cursor.0, self.front.cursor.1) {
-            let (sx, sy) = self.slot_position(slot);
-            batch.fill(
-                &self.front.gui.atlas,
-                ox + sx,
-                oy + sy,
-                16.0,
-                16.0,
-                rgba(255, 255, 255, 128),
-            );
-            stack_tip = self.slot_mut(slot).clone();
-        }
-        if self.carried.is_some() {
-            self.draw_carried(batch);
-        } else if let Some(stack) = stack_tip {
-            self.draw_stack_tooltip(batch, &stack, self.front.cursor.0, self.front.cursor.1);
-        } else if let Some(key) = tooltip {
-            let text = self.translate(&key, &key);
-            self.draw_tooltip_lines(
-                batch,
-                &[(horizon_client::text::Text::literal(text), u32::MAX)],
-                self.front.cursor.0,
-                self.front.cursor.1,
-            );
-        }
-    }
-    /// `BeaconRenderer`: each section's rotating solid beam and its glow.
-    pub(super) fn beacon_geometry(&self, camera: glam::DVec3, alpha: f64, out: &mut Vec<Vertex>) {
-        let Some(s) = self
-            .front
-            .gui
-            .atlas
-            .sprites
-            .get("entity/beacon/beacon_beam")
-            .copied()
-        else {
-            return;
-        };
-        let time = (self.world.game_time.rem_euclid(40)) as f32 + alpha as f32;
-        let scoping = self.scoping();
-        let view = f64::from(self.settings.render_distance * 16);
-        for (k, e) in &self.world.block_entities {
-            let BlockEntity::Beacon(b) = e else { continue };
-            // `getBeamSections` is empty while Levels is 0.
-            if b.levels == 0 || b.sections.is_empty() {
-                continue;
-            }
-            let base = glam::DVec3::new(f64::from(k.0) + 0.5, f64::from(k.1), f64::from(k.2) + 0.5);
-            // `BeaconRenderer.shouldRender`: horizontal distance under render distance × 16.
-            let offset = base - camera;
-            let horizontal = glam::DVec2::new(offset.x, offset.z).length();
-            if horizontal >= view {
-                continue;
-            }
-            let distance = horizontal as f32;
-            let scale = if scoping {
-                1.0
-            } else {
-                (distance / 96.0).max(1.0)
-            };
-            let origin = (glam::DVec3::new(f64::from(k.0), f64::from(k.1), f64::from(k.2))
-                - camera)
-                .as_vec3();
-            horizon_client::block_entity_render::beacon_beam(
-                origin,
-                &b.sections,
-                time,
-                scale,
-                s,
-                out,
-            );
-        }
-    }
-}
-impl crate::game::Sim<'_> {
     /// The beam color of a `BeaconBeamBlock` (stained glass and panes, the beacon).
     fn beam_color(&self, name: &str) -> Option<u32> {
         if name == "minecraft:beacon" {
@@ -598,5 +400,200 @@ impl crate::game::Sim<'_> {
             self.beacon_sound(pos, "minecraft:block.beacon.power_select");
         }
         self.world.modified.insert((pos[0] >> 4, pos[2] >> 4));
+    }
+    /// `BeaconScreen`: background, labels, payment icons, power buttons.
+    pub(super) fn draw_beacon(&mut self, batch: &mut HudBatch) {
+        let (ox, oy) = self.inventory_origin(batch);
+        let (bx, by) = (ox + SHIFT, oy);
+        let local = (self.cursor.0 - bx, self.cursor.1 - by);
+        let levels = self.beacon_levels();
+        let sel = self.station.as_ref().map_or([None; 2], |s| s.beacon);
+        let paid = self.station.as_ref().is_some_and(|s| s.inputs[0].is_some());
+        let atlas = &self.gui.atlas;
+        batch.fill(
+            atlas,
+            0.0,
+            0.0,
+            batch.width,
+            batch.height,
+            rgba(16, 16, 16, 160),
+        );
+        if let Some(mut r) = atlas.sprites.get("gui/container/beacon").copied() {
+            let (du, dv) = ((r.u1 - r.u0) / r.w as f32, (r.v1 - r.v0) / r.h as f32);
+            r.u1 = r.u0 + 230.0 * du;
+            r.v1 = r.v0 + HEIGHT * dv;
+            batch.rect_uv(bx, by, 230.0, HEIGHT, r, u32::MAX);
+        }
+        let label = 0xFFE0_E0E0;
+        for (key, fallback, cx) in [
+            ("block.minecraft.beacon.primary", "Primary Power", 62.0),
+            ("block.minecraft.beacon.secondary", "Secondary Power", 169.0),
+        ] {
+            let text = self.translate(key, fallback);
+            let atlas = &self.gui.atlas;
+            let w = HudBatch::text_width(atlas, &text);
+            batch.text(
+                atlas,
+                &text,
+                bx + cx - (w / 2.0).floor(),
+                by + 10.0,
+                label,
+                false,
+            );
+        }
+        for (i, item) in PAYMENT.iter().rev().enumerate() {
+            let x = [20.0, 41.0, 63.0, 86.0, 108.0][i];
+            self.draw_item(batch, &ItemStack::new(item, 1), bx + x, by + 109.0);
+        }
+        let atlas = &self.gui.atlas;
+        let mut tooltip = None;
+        let button =
+            |batch: &mut HudBatch, x: f32, y: f32, active: bool, selected: bool, icon: &str| {
+                let hover = inside(local, x, y, 22.0, 22.0);
+                let sprite = if !active {
+                    "button_disabled"
+                } else if selected {
+                    "button_selected"
+                } else if hover {
+                    "button_highlighted"
+                } else {
+                    "button"
+                };
+                batch.sprite(
+                    atlas,
+                    &format!("gui/sprites/container/beacon/{sprite}"),
+                    bx + x,
+                    by + y,
+                );
+                batch.sprite_scaled(
+                    atlas,
+                    icon,
+                    bx + x + 2.0,
+                    by + y + 2.0,
+                    18.0,
+                    18.0,
+                    u32::MAX,
+                );
+                hover
+            };
+        for (e, x, y, primary) in buttons() {
+            let tier = EFFECTS[e].1;
+            let active = if primary {
+                tier <= levels && tier < 4
+            } else {
+                levels >= 4
+            };
+            let selected = if primary {
+                sel[0] == Some(e)
+            } else {
+                sel[1] == Some(e)
+            };
+            let icon = format!("mob_effect/{}", EFFECTS[e].0);
+            if button(batch, x, y, active, selected, &icon) {
+                tooltip = Some(format!("effect.minecraft.{}", EFFECTS[e].0));
+            }
+        }
+        if let Some(p) = sel[0] {
+            let (x, y) = upgrade_button();
+            let icon = format!("mob_effect/{}", EFFECTS[p].0);
+            if button(batch, x, y, levels >= 4, sel[1] == Some(p), &icon) {
+                tooltip = Some(format!("effect.minecraft.{}", EFFECTS[p].0));
+            }
+        }
+        button(
+            batch,
+            164.0,
+            107.0,
+            paid && sel[0].is_some(),
+            false,
+            "gui/sprites/container/beacon/confirm",
+        );
+        button(
+            batch,
+            190.0,
+            107.0,
+            true,
+            false,
+            "gui/sprites/container/beacon/cancel",
+        );
+        let slots: Vec<usize> = (0..36).chain([INPUT]).collect();
+        for i in slots {
+            let (sx, sy) = self.slot_position(i);
+            if let Some(stack) = self.slot_mut(i).clone() {
+                self.draw_item(batch, &stack, ox + sx, oy + sy);
+            }
+        }
+        let mut stack_tip = None;
+        if let Some(slot) = self.slot_at(batch, self.cursor.0, self.cursor.1) {
+            let (sx, sy) = self.slot_position(slot);
+            batch.fill(
+                &self.gui.atlas,
+                ox + sx,
+                oy + sy,
+                16.0,
+                16.0,
+                rgba(255, 255, 255, 128),
+            );
+            stack_tip = self.slot_mut(slot).clone();
+        }
+        if self.carried.is_some() {
+            self.draw_carried(batch);
+        } else if let Some(stack) = stack_tip {
+            self.draw_stack_tooltip(batch, &stack, self.cursor.0, self.cursor.1);
+        } else if let Some(key) = tooltip {
+            let text = self.translate(&key, &key);
+            self.draw_tooltip_lines(
+                batch,
+                &[(horizon_client::text::Text::literal(text), u32::MAX)],
+                self.cursor.0,
+                self.cursor.1,
+            );
+        }
+    }
+    /// `BeaconRenderer`: each section's rotating solid beam and its glow.
+    pub(super) fn beacon_geometry(&self, camera: glam::DVec3, alpha: f64, out: &mut Vec<Vertex>) {
+        let Some(s) = self
+            .gui
+            .atlas
+            .sprites
+            .get("entity/beacon/beacon_beam")
+            .copied()
+        else {
+            return;
+        };
+        let time = (self.world.game_time.rem_euclid(40)) as f32 + alpha as f32;
+        let scoping = self.scoping();
+        let view = f64::from(self.settings.render_distance * 16);
+        for (k, e) in &self.world.block_entities {
+            let BlockEntity::Beacon(b) = e else { continue };
+            // `getBeamSections` is empty while Levels is 0.
+            if b.levels == 0 || b.sections.is_empty() {
+                continue;
+            }
+            let base = glam::DVec3::new(f64::from(k.0) + 0.5, f64::from(k.1), f64::from(k.2) + 0.5);
+            // `BeaconRenderer.shouldRender`: horizontal distance under render distance × 16.
+            let offset = base - camera;
+            let horizontal = glam::DVec2::new(offset.x, offset.z).length();
+            if horizontal >= view {
+                continue;
+            }
+            let distance = horizontal as f32;
+            let scale = if scoping {
+                1.0
+            } else {
+                (distance / 96.0).max(1.0)
+            };
+            let origin = (glam::DVec3::new(f64::from(k.0), f64::from(k.1), f64::from(k.2))
+                - camera)
+                .as_vec3();
+            horizon_client::block_entity_render::beacon_beam(
+                origin,
+                &b.sections,
+                time,
+                scale,
+                s,
+                out,
+            );
+        }
     }
 }

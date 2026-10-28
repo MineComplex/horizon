@@ -153,13 +153,12 @@ const CLIENT_SOUNDS: &[&str] = &[
     "minecraft:entity.warden.heartbeat",
 ];
 
-impl Game<'_> {}
-impl crate::game::Sim<'_> {
+impl Game<'_> {
     /// Run every scenario of `spec` ("SCENARIOS,OUTPUT") and write the results.
     pub(super) fn sculk_fixture(&mut self, spec: &str) -> Result<()> {
         assert!(
             !self.options.execution_role.is_client(),
-            "fixture requires a server crate::game::Sim"
+            "fixture requires a server Game"
         );
         let (input, output) = spec
             .split_once(',')
@@ -175,6 +174,7 @@ impl crate::game::Sim<'_> {
         }
         Ok(())
     }
+
     /// `minecraft:name[key=value,...]` to a state.
     fn fixture_state(&self, text: &str) -> Result<BlockStateId> {
         let (name, props) = match text.split_once('[') {
@@ -198,6 +198,7 @@ impl crate::game::Sim<'_> {
             properties,
         })?)
     }
+
     /// `BlockStateParser.serialize`.
     fn fixture_state_text(&self, state: BlockStateId) -> String {
         let Some(s) = self.pack.assets.registry.state(state) else {
@@ -211,6 +212,7 @@ impl crate::game::Sim<'_> {
         let props: Vec<String> = sorted.iter().map(|(k, v)| format!("{k}={v}")).collect();
         format!("{}[{}]", s.name, props.join(","))
     }
+
     fn fixture_who(&self, who: Option<Who>, names: &HashMap<u32, String>) -> String {
         match who {
             None => "none".into(),
@@ -218,6 +220,7 @@ impl crate::game::Sim<'_> {
             Some(Who::Mob(id)) => names.get(&id).cloned().unwrap_or_else(|| format!("e{id}")),
         }
     }
+
     fn fixture_info(&self, info: Option<&Info>, names: &HashMap<u32, String>) -> String {
         let Some(i) = info else {
             return "-".into();
@@ -238,6 +241,7 @@ impl crate::game::Sim<'_> {
             self.fixture_who(alive(i.owner), names)
         )
     }
+
     fn sculk_describe(&self, p: [i32; 3], names: &HashMap<u32, String>) -> String {
         let state = self.world.block(p[0], p[1], p[2]);
         let mut line = self.fixture_state_text(state);
@@ -301,6 +305,7 @@ impl crate::game::Sim<'_> {
         }
         line
     }
+
     fn sculk_fixture_reset(&mut self, s: &Scenario) -> Result<()> {
         self.world = World::new(self.res.facts().air, 0);
         let plains = u32::from(self.res.biomes().id("minecraft:plains"));
@@ -380,6 +385,7 @@ impl crate::game::Sim<'_> {
         self.sculk_prepare();
         Ok(())
     }
+
     fn sculk_scenario(&mut self, s: &Scenario) -> Result<String> {
         self.sculk_fixture_reset(s)?;
         let at = s.player.unwrap_or([
@@ -605,6 +611,7 @@ impl crate::game::Sim<'_> {
         self.sounds.capture = None;
         Ok(out)
     }
+
     /// One `ServerLevel.tick` of a scenario.
     fn sculk_fixture_tick(
         &mut self,

@@ -19,8 +19,7 @@ pub(super) struct Bolt {
     /// Mooshrooms and copper golems change once per bolt.
     converted: Vec<u32>,
 }
-impl Game<'_> {}
-impl crate::game::Sim<'_> {
+impl Game<'_> {
     /// `ServerChunkCache.tickSpawningChunk`: one `tickThunder` roll per
     /// spawning chunk (within 128 blocks of a player) that is in entity
     /// ticking range.

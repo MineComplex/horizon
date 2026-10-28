@@ -11,8 +11,7 @@ use horizon_client::particles::{ParticleEngine, ParticleOptions, ParticleType};
 use horizon_client::pose::Pose;
 use horizon_core::{geometry::Vec3, random::RandomSource};
 
-impl Game<'_> {}
-impl crate::game::Sim<'_> {
+impl Game<'_> {
     pub(super) fn tick_client_ambient(&mut self) {
         if self.serving.is_some() || self.options.dedicated.is_some() {
             return;
@@ -44,6 +43,7 @@ impl crate::game::Sim<'_> {
         self.sprint_dust();
         self.effect_swirls();
     }
+
     /// `Entity.baseTick`'s `spawnSprintParticle` on a client: dust of the
     /// block under a sprinting player's feet streams back from them every
     /// tick, for the window's own player and for the other players it sees.
@@ -129,6 +129,7 @@ impl crate::game::Sim<'_> {
             );
         }
     }
+
     /// `LivingEntity.tickEffects` on a client: the swirls around an entity
     /// with visible effects, from the particles its synched data lists. The
     /// window's player has its own effects, a server's mobs and players the

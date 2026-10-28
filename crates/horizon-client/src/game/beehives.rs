@@ -16,7 +16,7 @@ use horizon_core::{
 use horizon_world::{nbt::Tag, registry::BlockStateId};
 
 struct GameHive<'g, 'a> {
-    game: &'g mut crate::game::Sim<'a>,
+    game: &'g mut Game<'a>,
 }
 impl HiveHost for GameHive<'_, '_> {
     fn random(&mut self) -> &mut LegacyRandom {
@@ -63,8 +63,7 @@ impl HiveHost for GameHive<'_, '_> {
     }
 }
 
-impl Game<'_> {}
-impl crate::game::Sim<'_> {
+impl Game<'_> {
     fn hive_with_honey(&self, state: BlockStateId, level: i32) -> Option<BlockStateId> {
         let registry = self.pack.assets.registry;
         let mut s = registry.state(state)?.clone();

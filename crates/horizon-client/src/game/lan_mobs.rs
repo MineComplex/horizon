@@ -123,8 +123,7 @@ pub(super) fn acts_on_player(e: &MobEvent) -> bool {
     )
 }
 
-impl Game<'_> {}
-impl crate::game::Sim<'_> {
+impl Game<'_> {
     /// How mobs see each guest in play (`player_view` with the guest swapped
     /// in; what the host alone tracks, such as its last attacker, stays out).
     pub(super) fn lan_guest_views(&mut self) -> GuestViews {
@@ -157,11 +156,13 @@ impl crate::game::Sim<'_> {
         self.lan = Some(host);
         views
     }
+
     /// Runs `f` as each guest in play here, for what strikes every player in
     /// an area (`Level.getEntities`), not only the window's own.
     pub(super) fn each_guest_hit(&mut self, f: impl FnMut(&mut Self)) {
         self.each_guest_hit_except(None, f);
     }
+
     /// [`Self::each_guest_hit`] leaving out the guest `except` (the one a
     /// firework rocket is attached to, which it hurts on its own).
     pub(super) fn each_guest_hit_except(
@@ -184,6 +185,7 @@ impl crate::game::Sim<'_> {
         }
         self.lan = Some(host);
     }
+
     /// Mob events aimed at a guest, run as that guest (`guest_hit_by`).
     pub(super) fn lan_guest_mob_events(&mut self, events: Vec<(u32, MobEvent)>) {
         if events.is_empty() {
@@ -199,6 +201,7 @@ impl crate::game::Sim<'_> {
         }
         self.lan = Some(host);
     }
+
     /// The guests' boxes for the blocks entities trigger (pressure plates,
     /// tripwires, detector rails): `Entity.checkInsideBlocks` and
     /// `Level.getEntities` see every player in the level, but not spectators
@@ -231,6 +234,7 @@ impl crate::game::Sim<'_> {
             .map(|g| (g.position, g.on_ground))
             .collect()
     }
+
     /// The guests a projectile can hit, under their entity ids.
     pub(super) fn lan_projectile_targets(&self) -> Vec<(Who, Aabb)> {
         let Some(host) = self.lan.as_ref() else {
@@ -243,6 +247,7 @@ impl crate::game::Sim<'_> {
             .map(|g| (Who::Mob(g.entity_id as u32), guest_bounds(g)))
             .collect()
     }
+
     /// A projectile that hit a guest: its hit runs as theirs. False when
     /// `id` is not a guest.
     pub(super) fn lan_projectile_hit(&mut self, p: &Projectile, id: u32, at: Vec3) -> bool {
@@ -269,8 +274,7 @@ impl crate::game::Sim<'_> {
     }
 }
 
-impl Game<'_> {}
-impl crate::game::Sim<'_> {
+impl Game<'_> {
     /// Hurt a guest: `f` runs as them, and the knockback it gave reaches
     /// their client. A hurt marks the velocity (Entity.markHurt), which goes
     /// out once the guest's server copy has travelled (`guest_server_tick`);
@@ -294,6 +298,7 @@ impl crate::game::Sim<'_> {
         self.send_guest_motion(host, conn, pushed);
         Some(result)
     }
+
     /// A player's melee hit on a guest (Player.causeExtraKnockback on a
     /// ServerPlayer): a hurt that marked the velocity sends it at once, and
     /// the server's copy goes back to the velocity it had before the hit.
@@ -315,6 +320,7 @@ impl crate::game::Sim<'_> {
         self.send_guest_motion(host, conn, sent);
         Some(result)
     }
+
     /// ClientboundSetEntityMotionPacket to a guest about themselves.
     pub(super) fn send_guest_motion(&self, host: &LanHost, conn: u32, velocity: Option<Vec3>) {
         if let (Some(v), Some(g)) = (velocity, host.hub.guest(conn)) {
@@ -338,8 +344,7 @@ pub(super) struct Present {
     pub alive: bool,
 }
 
-impl Game<'_> {}
-impl crate::game::Sim<'_> {
+impl Game<'_> {
     /// Every guest in the world (`ServerLevel.getPlayers` past the host).
     pub(super) fn lan_present(&self) -> Vec<Present> {
         let guests = self

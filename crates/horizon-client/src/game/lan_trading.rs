@@ -32,8 +32,7 @@ fn uuid_words(uuid: u128) -> [i32; 4] {
     ]
 }
 
-impl Game<'_> {}
-impl crate::game::Sim<'_> {
+impl Game<'_> {
     /// A trading screen the guest's interaction opened (it opened as a
     /// station while the guest acted): handed to the guest.
     pub(super) fn lan_open_merchant(
