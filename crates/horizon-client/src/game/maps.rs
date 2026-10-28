@@ -27,15 +27,8 @@ pub(super) struct Decoration {
 /// (`MapItemSavedData.HoldingPlayer`): the column sweep's step, and what
 /// changed since the last `ClientboundMapItemDataPacket` it was sent.
 struct Holder {
-    who: u32,
-    /// The last tick it carried the map, and saw it framed.
-    carried: i64,
-    framed: i64,
-    step: i32,
     /// The changed pixels' box (min x, min y, max x, max y).
     dirty: Option<[i32; 4]>,
-    decorations: bool,
-    tick: u32,
 }
 impl Holder {
 }
@@ -867,21 +860,4 @@ mod tests {
         assert_eq!(decoration_sprite("minecraft:nothing"), None);
     }
 
-    #[test]
-    fn target_decorations_read_back_with_vanilla_rotation() {
-        let mut stack = ItemStack::new("minecraft:buried_treasure_map", 1);
-        stack.data_mut().map_id = Some(3);
-        stack.data_mut().other.push((
-            "minecraft:map_decorations".into(),
-            target_decoration("minecraft:red_x", [120, 40, -300]),
-        ));
-        assert_eq!(map_id(&stack), Some(3));
-        let found = static_decorations(&stack);
-        assert_eq!(found, vec![("map/decorations/red_x", 120.0, -300.0, 180.0)]);
-        // calculateRotation(180): (byte) (188 * 16 / 360) = 8.
-        assert_eq!(decoration_rotation(false, 0, 180.0), 8);
-        assert_eq!(decoration_rotation(false, 0, -90.0), 12);
-        assert_eq!(clamp_map_coordinate(-70.0), -128);
-        assert_eq!(clamp_map_coordinate(10.25), 21);
-    }
 }

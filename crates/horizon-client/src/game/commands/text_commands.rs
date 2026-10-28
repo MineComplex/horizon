@@ -285,7 +285,7 @@ impl crate::game::Sim<'_> {
         let mut local = Some(local);
         for &t in players {
             match t {
-                Target::Player if self.lan_acting.is_some() => {
+                Target::Player if false => {
                     self.guest_packets.push(packet.clone());
                 }
                 Target::Player => {
@@ -294,9 +294,6 @@ impl crate::game::Sim<'_> {
                     }
                 }
                 Target::Guest(conn) => {
-                    if let Some(host) = self.lan.as_ref() {
-                        host.hub.send_to(conn, &packet);
-                    }
                 }
                 _ => {}
             }

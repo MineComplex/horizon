@@ -10,7 +10,7 @@ use horizon_client::{
     
     pose::Pose};
 use horizon_core::{
-    geometry::{Aabb, Vec3, trig},
+    geometry::{ Vec3, trig},
     random::RandomSource};
 use horizon_protocol::entity_data::Value;
 use std::sync::Arc;
@@ -27,25 +27,18 @@ pub(super) struct Hook {
     id: u32,
     pub(super) position: Vec3,
     pub(super) previous: Vec3,
-    velocity: Vec3,
     state: State,
-    life: i32,
     on_ground: bool,
     nibble: i32,
     time_until_lured: i32,
     time_until_hooked: i32,
-    fish_angle: f32,
-    out_of_water: i32,
     open_water: bool,
     luck: i32,
-    lure: i32,
 }
 /// A player a hook can catch (`canHitEntity`): their entity id, which
 /// guest they are (none: the host) and their box.
 pub(super) struct HookTarget {
     id: u32,
-    conn: Option<u32>,
-    bounds: Aabb,
 }
 const SIZE: f64 = 0.25;
 /// RandomSource.triangle(mode, deviation).
@@ -165,18 +158,13 @@ impl crate::game::Sim<'_> {
                 id: self.next_entity,
                 position: start,
                 previous: start,
-                velocity: v,
                 state: State::Flying,
-                life: 0,
                 on_ground: false,
                 nibble: 0,
                 time_until_lured: 0,
                 time_until_hooked: 0,
-                fish_angle: 0.0,
-                out_of_water: 0,
                 open_water: true,
                 luck,
-                lure,
             });
         }
         self.swing_arm();
@@ -481,18 +469,13 @@ impl Hook {
             id,
             position: at,
             previous: at,
-            velocity: Vec3::ZERO,
             state: State::Flying,
-            life: 0,
             on_ground: false,
             nibble: 0,
             time_until_lured: 0,
             time_until_hooked: 0,
-            fish_angle: 0.0,
-            out_of_water: 0,
             open_water: true,
             luck: 0,
-            lure: 0,
         }
     }
 }

@@ -38,9 +38,6 @@ pub(super) struct Fight {
     exit_portal: Option<[i32; 3]>,
     alive_crystals: i32,
     crystal_scan: i32,
-    /// `ticksSinceLastPlayerScan`, and whether the last scan found a player
-    /// for the fight (`dragonEvent.getPlayers()` is not empty).
-    player_scan: i32,
     players: bool,
     /// The spikes' crystals have been placed (worldgen does not place entities here).
     crystals_placed: bool,
@@ -94,8 +91,6 @@ pub(super) struct Crystal {
 }
 #[derive(Clone, Debug, Default)]
 struct Path {
-    nodes: Vec<[i32; 3]>,
-    next: usize,
 }
 impl Path {
 }
@@ -242,7 +237,6 @@ pub(super) struct Dragon {
     pub death_time: i32,
     pub flap: f32,
     pub old_flap: f32,
-    in_wall: bool,
     phase: Phase,
     flame_count: i32,
     sitting_damage: f32,
@@ -255,7 +249,6 @@ pub(super) struct Dragon {
     head: usize,
     /// head, neck, body, tail1-3, wing1-2.
     pub parts: [(Vec3, Vec3); 8],
-    nodes: Option<[[i32; 3]; 24]>,
     nearest_crystal: Option<usize>,
     /// A crystal destroyed while it held its pattern (taken on its next tick).
     strafe_request: Option<StrafeRequest>,
@@ -271,11 +264,7 @@ pub(super) enum FightWho {
 /// A player in the End as the dragon sees it.
 #[derive(Clone, Copy, Debug)]
 pub(super) struct FightPlayer {
-    pub(super) who: FightWho,
-    pub(super) position: Vec3,
     pub(super) bounds: Aabb,
-    pub(super) alive: bool,
-    creative: bool,
     spectator: bool,
 }
 impl FightPlayer {
@@ -335,7 +324,6 @@ impl Dragon {
             death_time: 0,
             flap: 0.0,
             old_flap: 0.0,
-            in_wall: false,
             phase: Phase::Holding {
                 path: None,
                 target: None,
@@ -349,7 +337,6 @@ impl Dragon {
             history: [(position.y, yaw); 64],
             head: 0,
             parts: [(position, position); 8],
-            nodes: None,
             nearest_crystal: None,
             strafe_request: None,
             random: LegacyRandom::new(seed),
@@ -582,7 +569,6 @@ impl crate::game::Sim<'_> {
                 _ => None,
             },
             // The first tick scans for players.
-            player_scan: 21,
             ..Default::default()
         };
         if fight.gateways.is_empty() {
@@ -654,7 +640,7 @@ impl crate::game::Sim<'_> {
     }
     /// The player acting now: the guest whose turn it is, else the host.
     fn acting_player(&self) -> FightWho {
-        self.lan_acting.map_or(FightWho::Host, FightWho::Guest)
+        None::<u32>.map_or(FightWho::Host, FightWho::Guest)
     }
     /// The players in the level the dragon sees (`level.players()`): the
     /// window's own, then every guest in the level.
@@ -662,26 +648,9 @@ impl crate::game::Sim<'_> {
         let mut out = Vec::new();
         if let Some(p) = self.player.as_ref() {
             out.push(FightPlayer {
-                who: FightWho::Host,
-                position: p.position,
                 bounds: p.bounds(),
-                alive: !p.health.dead_or_dying(),
-                creative: self.creative,
                 spectator: self.spectator(),
             });
-        }
-        if let Some(h) = self.lan.as_ref() {
-            for g in h.hub.guests.iter().filter(|g| h.hub.here(g) && g.loaded) {
-                let [x, y, z] = g.position;
-                out.push(FightPlayer {
-                    who: FightWho::Guest(g.conn),
-                    position: Vec3::new(x, y, z),
-                    bounds: super::lan_mobs::guest_bounds(g),
-                    alive: !g.dead,
-                    creative: g.creative(),
-                    spectator: g.spectator(),
-                });
-            }
         }
         out
     }
@@ -854,20 +823,10 @@ impl crate::game::Sim<'_> {
         };
         let id = d.id;
         let guest = match who {
-            FightWho::Guest(conn) if self.lan_acting.is_none() => Some(conn),
+            FightWho::Guest(conn) if true => Some(conn),
             _ => None,
         };
-        let credited = guest.is_some_and(|conn| {
-            let Some(mut host) = self.lan.take() else {
-                return false;
-            };
-            let done = self
-                .as_guest(&mut host, conn, |g| g.award_dragon_kill(id, &view))
-                .is_some();
-            self.lan = Some(host);
-            done
-        });
-        if !credited {
+        if guest.is_none() {
             self.award_dragon_kill(id, &view);
         }
     }
@@ -1065,15 +1024,6 @@ impl DragonFireball {
     }
 }
 pub(super) struct Breath {
-    /// Its entity id once a server's players track it (0 until then).
-    pub(super) id: u32,
-    pub(super) at: [f64; 3],
-    pub(super) radius: f32,
-    pub(super) age: i32,
-    pub(super) duration: i32,
-    pub(super) from_dragon: bool,
-    /// A lingering potion's cloud (`ThrownLingeringPotion`): what it applies.
-    pub(super) potion: Option<super::potions::PotionCloud>,
 }
 impl Breath {
 }
@@ -1560,9 +1510,6 @@ impl crate::game::Sim<'_> {
                 // The player it strafes: "host", or the guest's entity id.
                 "strafing": match &d.phase {
                     Phase::Strafe { player: Some(FightWho::Host), .. } => serde_json::json!("host"),
-                    Phase::Strafe { player: Some(FightWho::Guest(conn)), .. } => serde_json::json!(
-                        self.lan.as_ref().and_then(|h| h.hub.guest(*conn)).map(|g| g.entity_id)
-                    ),
                     _ => serde_json::Value::Null,
                 },
             })),
@@ -2078,42 +2025,5 @@ mod tests {
         assert_eq!(d.health, MAX_HEALTH - 85.0);
     }
 
-    fn player(who: FightWho, x: f64, creative: bool, spectator: bool) -> FightPlayer {
-        let position = Vec3::new(x, 64.0, 0.0);
-        FightPlayer {
-            who,
-            position,
-            bounds: Aabb::new(position, Vec3::new(x + 0.6, 65.8, 0.6)),
-            alive: true,
-            creative,
-            spectator,
-        }
-    }
 
-    #[test]
-    fn the_dragon_targets_any_player_it_can_attack() {
-        let at = Vec3::new(0.0, 64.0, 0.0);
-        // A spectating host and a creative guest are never targets: the
-        // survival guest further away is.
-        let players = [
-            player(FightWho::Host, 1.0, false, true),
-            player(FightWho::Guest(7), 2.0, true, false),
-            player(FightWho::Guest(8), 30.0, false, false),
-        ];
-        let t = nearest_enemy(&players, false, at, None, |_| true);
-        assert_eq!(t.map(|p| p.who), Some(FightWho::Guest(8)));
-        // Out of a 20-block range, or filtered out, or on Peaceful: none.
-        assert!(nearest_enemy(&players, false, at, Some((at, 20.0)), |_| true).is_none());
-        assert!(nearest_enemy(&players, false, at, None, |p| p.position.x < 10.0).is_none());
-        assert!(nearest_enemy(&players, true, at, None, |_| true).is_none());
-        // The nearest of several, measured from where it looks (the egg).
-        let players = [
-            player(FightWho::Host, 5.0, false, false),
-            player(FightWho::Guest(8), -3.0, false, false),
-        ];
-        let t = nearest_enemy(&players, false, at, None, |_| true);
-        assert_eq!(t.map(|p| p.who), Some(FightWho::Guest(8)));
-        let t = nearest_enemy(&players, false, Vec3::new(9.0, 64.0, 0.0), None, |_| true);
-        assert_eq!(t.map(|p| p.who), Some(FightWho::Host));
-    }
 }

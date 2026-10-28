@@ -90,7 +90,7 @@ impl crate::game::Sim<'_> {
     /// `Projectile.deflect(AIM_DEFLECT, player, player, true)`.
     pub(super) fn deflect(&mut self, i: usize) {
         let dir = view_vector(self.yaw, self.pitch);
-        let guest = self.lan_acting;
+        let guest = None::<u32>;
         let p = &mut self.creatures.projectiles[i];
         p.velocity = Vec3::new(dir[0], dir[1], dir[2]);
         p.yaw = dir[0].atan2(dir[2]).to_degrees() as f32;

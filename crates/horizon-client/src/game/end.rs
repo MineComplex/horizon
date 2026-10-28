@@ -12,31 +12,16 @@ use horizon_client::{
     particles::{ParticleOptions, ParticleType},
     vanillagen::VanillaTerrain};
 use horizon_core::random::RandomSource;
-use std::{collections::HashMap, sync::Arc};
+use std::sync::Arc;
 
 
-/// A gateway teleport waiting for its destination chunks.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(super) enum GatewayJob {
-    /// TheEndGatewayBlockEntity.findOrCreateValidTeleportPos from this gateway.
-    /// `exact` is the gateway's own `ExactTeleport`, read while its chunk is loaded.
-    Find { gateway: [i32; 3], exact: bool },
-    /// A known exit (exact, or findExitPosition around it).
-    Known { exit: [i32; 3], exact: bool },
-}
 
-impl GatewayJob {
-}
 
 
 
 
 #[derive(Default)]
 pub(super) struct EndState {
-    /// Gateway position -> (exit, exact teleport); loaded lazily from the save.
-    exits: Option<HashMap<[i32; 3], ([i32; 3], bool)>>,
-    /// Ticks until the player can use a gateway again (TheEndGatewayBlockEntity cooldown).
-    gateway_cooldown: u32,
     /// The Overworld generator, for stronghold positions (ServerLevel.findNearestMapStructure).
     locator: std::sync::Mutex<Option<Arc<VanillaTerrain>>>,
     /// Thrown eyes of ender in flight.
@@ -48,15 +33,10 @@ pub(super) struct EndState {
 /// lights the world (the lightmap's sky factor).
 #[derive(Default)]
 struct EndFlash {
-    seed: Option<i64>,
-    offset: i32,
-    duration: i32,
     intensity: f32,
     old_intensity: f32,
     x_angle: f32,
     y_angle: f32,
-    /// Ticks until the delayed weather.end_flash sound.
-    sound_in: Option<u32>,
 }
 impl EndFlash {
     fn intensity(&self, partial: f32) -> f32 {
@@ -66,9 +46,6 @@ impl EndFlash {
 impl EndState {
     pub(super) fn locator(&self) -> Option<Arc<VanillaTerrain>> {
         self.locator.lock().unwrap().clone()
-    }
-    pub(super) fn set_locator(&self, terrain: Option<Arc<VanillaTerrain>>) {
-        *self.locator.lock().unwrap() = terrain;
     }
 }
 
@@ -83,9 +60,7 @@ impl EndState {
             position: at,
             previous: at,
             velocity: glam::DVec3::from_array(velocity),
-            target: at,
             life: 0,
-            survive: false,
         });
     }
     /// `EyeOfEnder.tick` on a server's client: it moves by its last known
@@ -133,9 +108,7 @@ struct EyeOfEnder {
     position: glam::DVec3,
     previous: glam::DVec3,
     velocity: glam::DVec3,
-    target: glam::DVec3,
     life: u32,
-    survive: bool,
 }
 impl EyeOfEnder {
 }
@@ -587,9 +560,7 @@ impl crate::game::Sim<'_> {
             position: start,
             previous: start,
             velocity: glam::DVec3::ZERO,
-            target,
             life: 0,
-            survive,
         });
         let r = self.world.random.next_float();
         let pitch = 0.33 + r * (0.5 - 0.33);
@@ -663,90 +634,6 @@ mod tests {
     use super::*;
     use horizon_client::containers::EndGateway;
 
-    #[test]
-    fn a_saved_exit_moves_into_a_gateway_without_one() {
-        let saved = ([8, 100, 0], true);
-        let mut bare = EndGateway::default();
-        assert!(adopt_saved_exit(&mut bare, saved));
-        assert_eq!(bare.exit_portal, Some([8, 100, 0]));
-        assert!(bare.exact_teleport);
-        // The block entity's own exit wins over a stale entry.
-        let mut own = EndGateway {
-            exit_portal: Some([1, 2, 3]),
-            ..Default::default()
-        };
-        assert!(!adopt_saved_exit(&mut own, saved));
-        assert_eq!(own.exit_portal, Some([1, 2, 3]));
-        assert!(!own.exact_teleport);
-    }
 
-    #[test]
-    fn a_new_exit_keeps_the_gateways_exact_teleport() {
-        let exact = BlockEntity::EndGateway(EndGateway {
-            exact_teleport: true,
-            ..Default::default()
-        });
-        let plain = BlockEntity::EndGateway(EndGateway::default());
-        assert!(exact_teleport(Some(&exact)));
-        assert!(!exact_teleport(Some(&plain)));
-        assert!(!exact_teleport(None));
-        assert!(!exact_teleport(Some(&BlockEntity::DaylightDetector)));
-        let exit = [8, 100, 0];
-        // Exact: the exit itself, nothing is searched for.
-        assert_eq!(exit_target(exit, true, |_| panic!("searched")), exit);
-        assert_eq!(
-            exit_target(exit, false, |e| [e[0], e[1] + 11, e[2]]),
-            [8, 111, 0]
-        );
-    }
 
-    #[test]
-    fn end_gateway_job_prefers_block_entity_then_legacy_then_heuristic() {
-        let gateway = [702, 100, 0];
-        let exit = [8, 100, 0];
-        for exact in [true, false] {
-            let entity = BlockEntity::EndGateway(EndGateway {
-                exit_portal: Some(exit),
-                exact_teleport: exact,
-                ..Default::default()
-            });
-            assert_eq!(
-                GatewayJob::for_gateway(gateway, Some(&entity), Some((END_SPAWN, !exact))),
-                GatewayJob::Known { exit, exact },
-            );
-        }
-        let empty = BlockEntity::EndGateway(EndGateway::default());
-        for entity in [None, Some(&empty)] {
-            assert_eq!(
-                GatewayJob::for_gateway(gateway, entity, Some((exit, false))),
-                GatewayJob::Known { exit, exact: false }
-            );
-            assert_eq!(
-                GatewayJob::for_gateway(gateway, entity, None),
-                GatewayJob::Known {
-                    exit: END_SPAWN,
-                    exact: true
-                }
-            );
-            let nearby = [96, 75, 0];
-            let exact = BlockEntity::EndGateway(EndGateway {
-                exact_teleport: true,
-                ..Default::default()
-            });
-            assert_eq!(
-                GatewayJob::for_gateway(nearby, Some(&exact), None),
-                GatewayJob::Find {
-                    gateway: nearby,
-                    exact: true
-                }
-            );
-            assert_eq!(
-                GatewayJob::for_gateway(nearby, entity, None),
-                GatewayJob::Find {
-                    gateway: nearby,
-                    exact: false
-                }
-            );
-        }
-    }
 }

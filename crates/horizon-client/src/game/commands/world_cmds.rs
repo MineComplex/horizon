@@ -138,11 +138,6 @@ impl crate::game::Sim<'_> {
         let removed = self.level.recipe_book.remove_recipes(index, recipes);
         let count = removed.len() as i32;
         // A network player's client drops them from its book.
-        if self.lan_acting.is_some() && !removed.is_empty() {
-            self.guest_packets.push(C::RecipeBookRemove(
-                horizon_protocol::packets::recipes::RecipeBookRemove { ids: removed },
-            ));
-        }
         count
     }
     pub(super) fn cmd_damage(&mut self, ctx: &Context) -> R<i32> {
@@ -366,21 +361,10 @@ impl crate::game::Sim<'_> {
             // plays it.
             let guest = match t {
                 Target::Guest(conn) => Some(conn),
-                _ => self.lan_acting,
+                _ => None::<u32>,
             };
-            match guest.and_then(|conn| Some((conn, self.lan.as_ref()?))) {
-                Some((conn, host)) => {
-                    let packet = host
-                        .hub
-                        .sound_packet(&sound, at, v, pitch, source as i32, seed);
-                    if t == Target::Player {
-                        self.guest_packets.push(packet);
-                    } else {
-                        host.hub.send_to(conn, &packet);
-                    }
-                }
-                None => self.sounds.play_on(source, &sound, Some(at), v, pitch),
-            }
+            let _ = (guest, seed);
+            self.sounds.play_on(source, &sound, Some(at), v, pitch);
             tracker.mark(&holder(self.target_name(t)));
         }
         let name = Text::literal(sound.clone());
@@ -421,7 +405,7 @@ impl crate::game::Sim<'_> {
         });
         for &t in &targets {
             match t {
-                Target::Player if self.lan_acting.is_some() => {
+                Target::Player if false => {
                     self.guest_packets.push(packet.clone());
                 }
                 Target::Player => {
@@ -430,9 +414,6 @@ impl crate::game::Sim<'_> {
                     self.sounds.stop_sounds(sound.as_deref(), source, selection);
                 }
                 Target::Guest(conn) => {
-                    if let Some(host) = self.lan.as_ref() {
-                        host.hub.send_to(conn, &packet);
-                    }
                 }
                 _ => {}
             }
@@ -596,17 +577,11 @@ impl crate::game::Sim<'_> {
         let viewers = if ctx.get("viewers").is_some() {
             self.entities(ctx, "viewers", true)?
         } else {
-            let acting = self.lan_acting;
-            let guests = self.lan.iter().flat_map(|h| h.hub.guests.iter());
+            let acting = None::<u32>;
             self.player
                 .as_ref()
                 .map(|_| Target::Player)
                 .into_iter()
-                .chain(
-                    guests
-                        .filter(|g| g.placed && Some(g.conn) != acting)
-                        .map(|g| Target::Guest(g.conn)),
-                )
                 .collect()
         };
         let force = ctx.has("force");
@@ -644,14 +619,11 @@ impl crate::game::Sim<'_> {
         let mut local = false;
         for &t in &reached {
             match (t, &packet) {
-                (Target::Player, Some(p)) if self.lan_acting.is_some() => {
+                (Target::Player, Some(p)) if false => {
                     self.guest_packets.push(p.clone());
                 }
                 (Target::Player, _) => local = true,
                 (Target::Guest(conn), Some(p)) => {
-                    if let Some(host) = self.lan.as_ref() {
-                        host.hub.send_to(conn, p);
-                    }
                 }
                 _ => {}
             }

@@ -17,7 +17,7 @@ use horizon_core::{
     geometry::{Aabb, Vec3},
     random::RandomSource};
 use horizon_world::registry::BlockStateId;
-use std::{collections::HashMap, sync::Arc};
+use std::collections::HashMap;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub(super) enum CartKind {
@@ -71,8 +71,6 @@ pub(super) struct Minecart {
     pub previous_yaw: f32,
     pub flipped: bool,
     pub(super) on_ground: bool,
-    horizontal_collision: bool,
-    fall_distance: f64,
     pub hurt_time: i32,
     pub hurt_dir: i32,
     pub damage: f32,
@@ -154,9 +152,7 @@ impl Shape {
     }
 }
 pub(super) struct Rail {
-    name: Arc<str>,
     pub(super) shape: Shape,
-    powered: bool,
 }
 impl Minecart {
     pub fn new(id: u32, kind: CartKind, position: Vec3) -> Self {
@@ -170,8 +166,6 @@ impl Minecart {
             previous_yaw: 0.0,
             flipped: false,
             on_ground: false,
-            horizontal_collision: false,
-            fall_distance: 0.0,
             hurt_time: 0,
             hurt_dir: 1,
             damage: 0.0,
@@ -506,9 +500,7 @@ impl crate::game::Sim<'_> {
         let shape = Shape::parse(s.properties.get("shape").map_or("", String::as_str));
         let powered = s.properties.get("powered").is_some_and(|v| v == "true");
         Some(Rail {
-            name,
             shape,
-            powered,
         })
     }
     /// `getCurrentBlockPosOrRailBelow`.

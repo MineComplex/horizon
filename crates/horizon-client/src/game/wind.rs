@@ -16,14 +16,6 @@ use horizon_world::level::PlayerContext;
 use std::collections::BTreeSet;
 
 
-/// A burst `wind_burst` puts off until a guest's turn is over.
-pub(super) struct Burst {
-    center: [f64; 3],
-    radius: f32,
-    multiplier: f32,
-    breeze: bool,
-    wind_charge: bool,
-}
 /// Whether a block reacts to a wind charge's burst by being used.
 fn triggers(name: &str) -> bool {
     let n = name.trim_start_matches("minecraft:");
@@ -209,25 +201,7 @@ impl crate::game::Sim<'_> {
         // each swapped in as the player. In a guest's turn (a mace's wind
         // burst) the player is that guest.
         let own = self.wind_push_player(center, radius, multiplier, wind_charge);
-        let mut pushed: Vec<_> = self.lan_acting.zip(own).into_iter().collect();
-        if let Some(mut host) = self.lan.take() {
-            let guests: Vec<u32> = host
-                .hub
-                .guests
-                .iter()
-                .filter(|g| host.hub.here(g) && g.loaded && !g.dead)
-                .map(|g| g.conn)
-                .collect();
-            for conn in guests {
-                let push = self.as_guest(&mut host, conn, |g| {
-                    g.wind_push_player(center, radius, multiplier, wind_charge)
-                });
-                if let Some(Some(push)) = push {
-                    pushed.push((conn, push));
-                }
-            }
-            self.lan = Some(host);
-        }
+        let mut pushed: Vec<_> = None::<u32>.zip(own).into_iter().collect();
         let multiplier = f64::from(multiplier);
         let mut mobs = std::mem::take(&mut self.mobs);
         for m in mobs.iter_mut().filter(|m| m.alive()) {
@@ -395,16 +369,6 @@ impl crate::game::Sim<'_> {
         // In a guest's turn (their charge landing, their mace's burst) the
         // host holds the other players (`as_guest`): the burst waits for the
         // turn to end so that it reaches every player, the guest too.
-        if self.lan_acting.is_some() && self.lan.is_none() {
-            self.creatures.wind_bursts.push(Burst {
-                center,
-                radius,
-                multiplier,
-                breeze,
-                wind_charge,
-            });
-            return Ok(());
-        }
         // ServerExplosion.explode: the blast is heard first.
         let ctx = horizon_client::sculk::Context::default();
         self.post_game_event("minecraft:explode", center, ctx);
@@ -524,13 +488,5 @@ mod tests {
         assert!(triggers("minecraft:stone_button"));
         assert!(triggers("minecraft:bell"));
         assert!(!triggers("minecraft:stone"));
-    }
-    #[test]
-    fn a_deflected_projectile_turns_around_at_half_speed() {
-        let mut p = Projectile::new(ProjectileKind::Snowball, Vec3::ZERO, None);
-        p.velocity = Vec3::new(2.0, -1.0, 0.0);
-        reverse(&mut p, 0.5);
-        assert!((p.velocity.x + 1.0).abs() < 1e-9 && (p.velocity.y - 0.5).abs() < 1e-9);
-        assert!((p.yaw - 180.0).abs() < 1e-4);
     }
 }

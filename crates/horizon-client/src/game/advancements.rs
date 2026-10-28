@@ -11,10 +11,9 @@ use horizon_client::{
 };
 use serde_json::Value;
 use std::{
-    collections::{BTreeMap, BTreeSet, VecDeque},
+    collections::{BTreeMap, VecDeque},
     sync::Arc,
-    time::Instant,
-};
+    time::Instant};
 
 pub(super) struct Toast {
     icon: String,
@@ -86,13 +85,6 @@ pub(super) struct AdvState {
     pub(super) quiet: bool,
     /// The inventory last seen by `inventory_changed`.
     pub(super) last_inventory: u64,
-    /// `ServerPlayer.levitationStartPos` and `levitationStartTime`.
-    pub(super) levitation: Option<([f64; 3], u64)>,
-    /// While the game acts for a network player (`as_guest`): the
-    /// advancements whose progress changed (`progressChanged`), the recipes
-    /// unlocked and the announcements, for their client and everyone's.
-    pub(super) changed: BTreeSet<usize>,
-    pub(super) unlocked: Vec<String>,
     pub(super) announced: Vec<Text>,
     /// The tree being read on another thread since the world opened
     /// (`prefetch_advancement_tree`), taken by the first `advancement_tree`.
@@ -343,7 +335,7 @@ impl crate::game::Sim<'_> {
     /// A server with no player of its own and nobody it acts for: there is
     /// no player for advancements and statistics.
     pub(super) fn no_player_here(&self) -> bool {
-        self.options.dedicated.is_some() && self.lan_acting.is_none()
+        false
     }
     /// The advancement tree, loaded once.
     pub(super) fn advancement_tree(&mut self) -> Arc<Tree> {
@@ -575,17 +567,11 @@ impl crate::game::Sim<'_> {
     }
     /// `PlayerAdvancements.progressChanged`, kept for a network player's client.
     fn progress_changed(&mut self, index: usize) {
-        if self.lan_acting.is_some() {
-            self.adv.changed.insert(index);
-        }
     }
     /// After `ServerRecipeBook.addRecipes`: the toast and the
     /// `recipe_unlocked` trigger of each recipe now known.
     pub(super) fn recipe_unlocked(&mut self, unlocked: &[String]) {
-        if self.lan_acting.is_some() {
-            // A network player's client gets them in ClientboundRecipeBookAddPacket.
-            self.adv.unlocked.extend_from_slice(unlocked);
-        } else {
+        {
             self.recipe_toast(unlocked);
         }
         if unlocked.is_empty() || self.remote.is_some() || self.no_player_here() {
@@ -635,7 +621,7 @@ impl crate::game::Sim<'_> {
         }
         if let Some(d) = &a.display {
             // A network player's client shows its own toast.
-            if d.show_toast && !self.adv.quiet && self.lan_acting.is_none() {
+            if d.show_toast && !self.adv.quiet {
                 self.adv.toasts.push_back(Toast {
                     icon: d.icon.clone(),
                     frame: d.frame,
@@ -656,7 +642,7 @@ impl crate::game::Sim<'_> {
                 let name = adv_name(a);
                 // PlayerList.broadcastSystemMessage: everyone hears of a
                 // network player's advancement.
-                match self.lan_acting_name.clone() {
+                match None::<String>.clone() {
                     // Player.getDisplayName.
                     Some(_) => {
                         let player = self.target_name(super::commands::Target::Player);

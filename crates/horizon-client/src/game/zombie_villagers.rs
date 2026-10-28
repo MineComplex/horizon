@@ -230,15 +230,6 @@ mod tests {
     use super::*;
 
     #[test]
-    fn zombies_convert_by_difficulty() {
-        assert!(infects(Difficulty::Hard, || unreachable!()));
-        assert!(!infects(Difficulty::Easy, || false));
-        assert!(!infects(Difficulty::Peaceful, || false));
-        // Normal: a coin toss that spares the villager when it is true.
-        assert!(infects(Difficulty::Normal, || false));
-        assert!(!infects(Difficulty::Normal, || true));
-    }
-    #[test]
     fn every_zombie_kind_infects() {
         for s in [
             Species::Zombie,

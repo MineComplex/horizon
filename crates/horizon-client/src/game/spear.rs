@@ -34,7 +34,7 @@ impl crate::game::Sim<'_> {
         };
         if self.using.is_none() {
             self.using = Some((self.held_slot(), 0));
-            let actor = self.lan_acting;
+            let actor = None::<u32>;
             self.stabbed.retain(|(who, _), _| *who != actor);
             if let Some(p) = &self.player {
                 let at = [p.position.x, p.position.y, p.position.z];
@@ -53,9 +53,6 @@ impl crate::game::Sim<'_> {
             .and_then(|v| self.mobs.iter().position(|m| m.id == v))
         {
             return self.mob_speed(i).scale(1.0 / 20.0);
-        }
-        if self.lan_acting.is_some() {
-            return self.known_movement;
         }
         self.player
             .as_ref()
@@ -204,7 +201,7 @@ impl crate::game::Sim<'_> {
         );
         // attackVisualEffects: no attack sound, the enchantments' magic crit.
         if magic_boost > 0.0 {
-            let acting = self.lan_acting;
+            let acting = None::<u32>;
             self.critical_hit(acting, id as i32, feet, width, height, true);
         }
         self.combat.last_hurt_mob = Some((id, self.world.game_time));
@@ -234,7 +231,7 @@ impl crate::game::Sim<'_> {
             );
         }
         if hurt {
-            self.last_hurt_by_player.insert(id, self.lan_acting);
+            self.last_hurt_by_player.insert(id, None::<u32>);
         }
         if let Some(p) = self.player.as_mut()
             && !self.creative

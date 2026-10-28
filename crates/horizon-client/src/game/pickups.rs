@@ -35,8 +35,6 @@ pub(super) enum Collector {
     Player,
     /// A mob, or another player on a server (both kept as mobs here).
     Mob(u32),
-    /// A LAN guest, by entity id (the host draws it as a model).
-    Guest(u32),
 }
 
 pub(super) struct Pickup {
@@ -73,12 +71,6 @@ pub(super) fn position(p: &Pickup, partial: f64) -> [f64; 3] {
     })
 }
 
-/// A LAN guest's target, from the model the host draws for it.
-pub(super) fn guest_target(host: &super::lan::LanHost, id: u32) -> Option<[f64; 3]> {
-    let m = host.models.values().find(|m| m.id == id)?;
-    let (p, eye) = (m.position, m.eye_height());
-    Some([p.x, (p.y + (p.y + eye)) / 2.0, p.z])
-}
 
 impl Game<'_> {}
 impl crate::game::Sim<'_> {
@@ -92,9 +84,6 @@ impl crate::game::Sim<'_> {
             Collector::Mob(id) => {
                 let m = self.mobs.iter().find(|m| m.id == id)?;
                 (m.position, m.eye_height())
-            }
-            Collector::Guest(id) => {
-                return guest_target(self.lan.as_ref()?, id);
             }
         };
         Some([p.x, (p.y + (p.y + eye)) / 2.0, p.z])

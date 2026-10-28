@@ -258,19 +258,4 @@ impl crate::game::Sim<'_> {
     }
 }
 
-/// What the creaking code remembers between ticks.
-#[derive(Default)]
-pub(super) struct CreakingState {
-    /// Chunks already scanned for heart blocks.
-    scanned: horizon_client::fast_hash::FxHashSet<(i32, i32)>,
-    /// Which block states are creaking hearts, by state id.
-    hearts: Vec<bool>,
-}
 
-impl CreakingState {
-    /// Exchange the chunks scanned for creaking hearts with another level's
-    /// (game/levels.rs).
-    pub(super) fn swap_level(&mut self, other: &mut Self) {
-        std::mem::swap(&mut self.scanned, &mut other.scanned);
-    }
-}

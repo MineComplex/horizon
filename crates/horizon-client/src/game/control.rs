@@ -1025,17 +1025,6 @@ impl crate::game::Sim<'_> {
         if let Some(p) = self.player.as_mut() {
             players.push(drain("host", &mut p.hurt_log, &mut p.attack_log));
         }
-        if let Some(host) = self.lan.as_mut() {
-            for g in &mut host.hub.guests {
-                let name = g.name.clone();
-                if let Some(m) = g.motion.as_mut() {
-                    players.push(drain(&name, &mut m.hurt_log, &mut m.attack_log));
-                } else if let Some((mut hurts, mut attacks)) = g.logs_kept.take() {
-                    // Dead, not yet respawned: what its last body logged.
-                    players.push(drain(&name, &mut hurts, &mut attacks));
-                }
-            }
-        }
         json!({ "ok": true, "players": players })
     }
 }

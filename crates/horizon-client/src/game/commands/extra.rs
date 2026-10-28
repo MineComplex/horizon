@@ -188,7 +188,7 @@ impl crate::game::Sim<'_> {
     /// must use its connection so the next server tick still finds that body.
     pub(super) fn waypoint_target(&self, t: Target) -> Target {
         match t {
-            Target::Player => self.lan_acting.map_or(t, Target::Guest),
+            Target::Player => None::<u32>.map_or(t, Target::Guest),
             _ => t,
         }
     }
@@ -242,7 +242,7 @@ impl crate::game::Sim<'_> {
         alive
             .into_iter()
             .map(|t| match t {
-                Target::Guest(conn) if self.lan_acting == Some(conn) => Target::Player,
+                Target::Guest(conn) if None::<u32> == Some(conn) => Target::Player,
                 _ => t,
             })
             .collect()
@@ -563,56 +563,12 @@ impl crate::game::Sim<'_> {
         };
         // EntityArgument.getPlayers runs before the published check.
         let host = self.entities(ctx, "targets", true).unwrap_or_default();
-        let guests: Vec<(u32, String)> = match (&self.lan, &selector) {
-            (Some(lan), Some(s)) => lan
-                .hub
-                .guests
-                .iter()
-                .filter(|g| lan.hub.singleplayer_owner != Some(g.uuid))
-                .filter(|g| match &s.player_name {
-                    Some(name) => g.name.eq_ignore_ascii_case(name),
-                    None => s.kind == 'a' || s.kind == 'e',
-                })
-                .map(|g| (g.conn, g.name.clone()))
-                .collect(),
-            _ => Vec::new(),
-        };
+        let _ = &selector;
+        let guests: Vec<(u32, String)> = Vec::new();
         if host.is_empty() && guests.is_empty() {
             return Err(err("argument.entity.notfound.player", &[]));
         }
-        if self.lan.is_none() {
-            return Err(err("commands.kick.singleplayer.failed", &[]));
-        }
-        let reason_raw = match ctx.get("reason") {
-            Some(Arg::Str(s)) => Some(s.clone()),
-            _ => None,
-        };
-        let reason = match &reason_raw {
-            Some(raw) => self.expand_selectors(raw),
-            None => Text::translate("multiplayer.disconnect.kicked", &[]),
-        };
-        let tag = match &reason_raw {
-            Some(_) => horizon_world::nbt::Tag::String(reason.plain().as_str().into()),
-            None => horizon_world::nbt::Tag::compound([(
-                "translate",
-                horizon_world::nbt::Tag::String("multiplayer.disconnect.kicked".into()),
-            )]),
-        };
-        let mut count = 0;
-        for (conn, name) in guests {
-            if let Some(lan) = self.lan.as_mut() {
-                lan.hub.kick(conn, tag.clone());
-            }
-            self.feedback(Text::translate(
-                "commands.kick.success",
-                &[Text::literal(name), reason.clone()],
-            ));
-            count += 1;
-        }
-        if count == 0 {
-            return Err(err("commands.kick.owner.failed", &[]));
-        }
-        Ok(count)
+        return Err(err("commands.kick.singleplayer.failed", &[]));
     }
     /// `FetchProfileCommand`: Horizon resolves no profiles over the network,
     /// so name and id lookups fail like an unreachable profile service; an

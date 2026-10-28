@@ -71,7 +71,7 @@ impl crate::game::Sim<'_> {
         self.level_event_at(1009, pos, 0);
         // CampfireBlock.douse: the acting client's own smoke (twenty puffs),
         // then the block change game event from the player.
-        if self.lan_acting.is_none() {
+        {
             let signal = state.properties.get("signal_fire").map(String::as_str) == Some("true");
             for _ in 0..20 {
                 make_campfire_smoke(&mut self.particles, pos, signal, true);

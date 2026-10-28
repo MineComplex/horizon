@@ -15,7 +15,6 @@ use horizon_core::geometry::Vec3;
 pub(super) struct ThrownTrident {
     /// The entity id a server tracks it by (0 until it is tracked).
     pub id: u32,
-    pub(super) stack: ItemStack,
     pub(super) position: Vec3,
     pub(super) previous: Vec3,
     pub(super) velocity: Vec3,
@@ -26,19 +25,14 @@ pub(super) struct ThrownTrident {
     dealt_damage: bool,
     pub(super) loyalty: u32,
     pub(super) no_physics: bool,
-    returning: u32,
-    creative_only: bool,
     /// The entity id a server sent as its owner (the one Loyalty returns it to).
     pub(super) owner: u32,
-    /// The guest that threw it (`Projectile.getOwner`); `None` for the host.
-    guest: Option<u32>,
 }
 impl ThrownTrident {
     /// A trident a server sent (`handleAddEntity`): placed and moved by it.
     pub(super) fn remote(id: u32, position: Vec3, yaw: f32, pitch: f32) -> Self {
         Self {
             id,
-            stack: ItemStack::new("minecraft:trident", 1),
             position,
             previous: position,
             velocity: Vec3::ZERO,
@@ -49,10 +43,7 @@ impl ThrownTrident {
             dealt_damage: false,
             loyalty: 0,
             no_physics: false,
-            returning: 0,
-            creative_only: false,
             owner: 0,
-            guest: None,
         }
     }
     /// `ThrownTrident.tick`'s Loyalty return: pulled up and towards the
@@ -314,7 +305,6 @@ impl crate::game::Sim<'_> {
         self.tridents.push(ThrownTrident {
             id: 0,
             loyalty: thrown.enchantment_level("minecraft:loyalty"),
-            stack: thrown,
             position: start,
             previous: start,
             velocity: projectile.velocity,
@@ -324,10 +314,7 @@ impl crate::game::Sim<'_> {
             in_ground_time: 0,
             dealt_damage: false,
             no_physics: false,
-            returning: 0,
-            creative_only: self.creative,
             owner: 0,
-            guest: self.lan_acting,
         });
         self.player_projectile_shot();
         self.sounds

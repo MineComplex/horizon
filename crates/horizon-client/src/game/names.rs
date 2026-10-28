@@ -193,13 +193,6 @@ impl crate::game::Sim<'_> {
     /// players a server sends on a client.
     fn other_players(&self) -> Vec<(&Mob, String)> {
         let mut out = Vec::new();
-        if let Some(host) = &self.lan {
-            for (conn, m) in &host.models {
-                if let Some(g) = host.hub.guest(*conn) {
-                    out.push((m, g.name.clone()));
-                }
-            }
-        }
         for (id, name) in self.remote_player_names() {
             if let Some(m) = self.mobs.iter().find(|m| m.id == id) {
                 out.push((m, name));

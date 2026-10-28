@@ -26,11 +26,8 @@ pub const HELP: &[&str] = &[
 #[derive(Default)]
 struct Tables {
     built: bool,
-    /// 0 none, 1 sensor, 2 calibrated sensor, 3 shrieker, 4 catalyst.
-    kinds: Vec<u8>,
     occludes: Vec<bool>,
     dampens: Vec<bool>,
-    resonator: Vec<bool>,
 }
 /// `SculkSensorBlock.getAnalogOutputSignal`: the last vibration's frequency
 /// while the sensor is active.
@@ -53,20 +50,6 @@ pub(super) fn sensor_signal(
         _ => None,
     }
 }
-/// `Entity.moveDist` / `nextStep` and the last state, per entity.
-#[derive(Clone, Copy, Debug)]
-struct Steps {
-    move_dist: f32,
-    next_step: f32,
-    last: [f64; 3],
-    on_ground: bool,
-    in_water: bool,
-}
-#[derive(Default)]
-pub(super) struct PlayerEvents {
-    steps: Option<Steps>,
-    last_health: Option<f32>,
-}
 
 #[derive(Default)]
 pub(super) struct SculkState {
@@ -76,36 +59,17 @@ pub(super) struct SculkState {
     /// The sculk block entities in the order they were added.
     index: Index,
     pub known: HashSet<(i32, i32)>,
-    /// The chunk map's membership revision `known` was taken at.
-    pub known_revision: Option<u64>,
     // Keyed by mob ids the server gives out: the fast hasher is safe.
-    steps: FxHashMap<Who, Steps>,
     damaged: FxHashMap<u32, i64>,
-    last_health: Option<f32>,
     /// The darkness effect's blend factor, previous and current tick.
     darkness: (f32, f32),
     /// Who causes the block changes being processed (the player's actions).
     pub actor: Option<Who>,
-    ticks: u32,
     pub tracker_loaded: bool,
 }
 
 impl SculkState {
-    pub(super) fn swap_player(&mut self, other: &mut PlayerEvents) {
-        let steps = self.steps.remove(&Who::Player);
-        if let Some(guest) = other.steps.take() {
-            self.steps.insert(Who::Player, guest);
-        }
-        other.steps = steps;
-        std::mem::swap(&mut self.last_health, &mut other.last_health);
-    }
 
-    /// Exchange the level-held parts (its sculk block entities and the
-    /// chunks scanned for them) with another level's (game/levels.rs).
-    pub(super) fn swap_level(&mut self, other: &mut Self) {
-        std::mem::swap(&mut self.index, &mut other.index);
-        std::mem::swap(&mut self.known, &mut other.known);
-    }
 }
 /// An insertion-ordered set of block positions (`Level.blockEntityTickers`
 /// keeps the order block entities were added in).
@@ -1040,20 +1004,6 @@ impl crate::game::Sim<'_> {
 mod tests {
     use super::*;
 
-    /// Retaining keeps the insertion order and the membership in step.
-    #[test]
-    fn the_index_retains_in_order() {
-        let mut index = Index::default();
-        for key in [(5, 0, 0), (40, 1, 0), (6, 2, 17), (-3, 3, 0), (41, 4, 0)] {
-            index.insert(key);
-        }
-        index.retain(|p| p.0 >> 4 != 2 && p.2 >> 4 != 1);
-        assert_eq!(index.order, [(5, 0, 0), (-3, 3, 0)]);
-        assert!(index.contains(&(5, 0, 0)) && !index.contains(&(41, 4, 0)));
-        assert_eq!(index.set.len(), 2);
-        index.insert((41, 4, 0));
-        assert_eq!(index.iter().last(), Some(&(41, 4, 0)));
-    }
 
     #[test]
     fn centres_and_blocks_agree() {

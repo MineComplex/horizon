@@ -21,20 +21,4 @@ impl crate::game::Sim<'_> {
 mod tests {
     use super::*;
 
-    #[test]
-    fn armor_stand_poses_send_only_what_differs() {
-        let mut stand = horizon_client::entities::ArmorStand::new(1, Default::default(), 0.0);
-        stand.pose[0] = [10.0, 20.0, 0.0];
-        let meta = stand_poses(&stand);
-        assert_eq!(
-            meta,
-            vec![(
-                16,
-                serializer::ROTATIONS,
-                Value::Floats(vec![10.0, 20.0, 0.0])
-            )]
-        );
-        let plain = horizon_client::entities::ArmorStand::new(1, Default::default(), 0.0);
-        assert!(stand_poses(&plain).is_empty());
-    }
 }

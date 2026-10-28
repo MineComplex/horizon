@@ -39,14 +39,6 @@ impl RespawnConfig {
             forced,
         }
     }
-    pub(super) fn from_saved((dim, pos, yaw, forced): &SavedRespawn) -> Self {
-        Self {
-            dim: Dim::from_id(dim),
-            pos: *pos,
-            yaw: *yaw,
-            forced: *forced,
-        }
-    }
     pub(super) fn saved(&self) -> SavedRespawn {
         (self.dim.id().to_owned(), self.pos, self.yaw, self.forced)
     }

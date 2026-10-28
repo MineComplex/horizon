@@ -206,7 +206,7 @@ use horizon_client::{
     chunk::{HEIGHT, MIN_Y},
     clock::FixedStep,
     collisions,
-    containers::{BlockEntity, Providers},
+    containers::BlockEntity,
     crafting::Recipes,
     creative::{Creative, Names},
     entities::{Experience, ExperienceOrb, ItemEntity},
@@ -226,19 +226,17 @@ use horizon_client::{
     mouse::{LookOptions, MouseLook, Rotation},
     particles::Particle,
     render_assets::RenderAssets,
-    save::{Level, Persistent, SaveDir},
+    save::{Level, SaveDir},
     settings::Settings,
     sprint::Keys,
     streaming::{Streaming, WorkerContext},
     testgen::TestTerrain,
     title::{Action, Title},
-    vanillagen::VanillaTerrain,
     world::World};
 use horizon_core::{
-    biome::{BiomeZoom, obfuscate_seed},
+    
     geometry::{Aabb, Direction},
-    position::BlockPos,
-};
+    position::BlockPos};
 use horizon_core::{geometry::Vec3, random::RandomSource};
 use horizon_world::{
     block_collision::BlockCollisionRegistry,
@@ -274,19 +272,12 @@ struct Options {
     resources: PathBuf,
     distance: i32,
     distance_override: Option<i32>,
-    /// The server's `--test-terrain`: simple terrain instead of vanilla generation.
-    test_terrain: bool,
     frames: Option<u64>,
     /// `--world-frames N`: exit after N frames drawn in the world (smoke runs; the world may load slowly).
     world_frames: Option<u64>,
     screenshot_after: Option<u64>,
     timeout: Duration,
     report: Option<PathBuf>,
-    /// The server's `--time`, `--weather` and `--dimension`: the world's at start
-    /// (a test's), the spawn dimension of its level.
-    time: Option<i64>,
-    weather: Option<String>,
-    dimension: Option<String>,
     /// Options.pauseOnLostFocus off (F3+P), for scripted testing.
     no_pause: bool,
     /// Control socket path (`--control`), for `horizon-ctl`.
@@ -304,11 +295,6 @@ struct Options {
     /// `--name`, `HORIZON_PLAYER_NAME` or the signed-in account's name; else
     /// [`Options::player_name`] uses the kept offline name.
     player_name: Option<String>,
-    /// `--dedicated`: run as a dedicated server; vanilla's server arguments
-    /// (`--nogui`, `--port`, `--world`, `--universe`, `--initSettings`) follow.
-    dedicated: Option<Vec<String>>,
-    /// What this Game executes; independent of its current server connection.
-    execution_role: execution_role::ExecutionRole,
     /// `--server-control PATH`: the control endpoint of the server this
     /// client joins (a test's `horizon-server --control-socket`), which
     /// `horizon-ctl` asks what only the server knows (game/server_control.rs).
@@ -416,15 +402,11 @@ impl Options {
             },
             distance: 12,
             distance_override: None,
-            test_terrain: false,
             frames: None,
             world_frames: None,
             screenshot_after: None,
             timeout: Duration::from_secs(120),
             report: None,
-            time: None,
-            weather: None,
-            dimension: None,
             no_pause: false,
             control: None,
             offscreen: false,
@@ -436,8 +418,6 @@ impl Options {
             player_name: std::env::var("HORIZON_PLAYER_NAME")
                 .ok()
                 .filter(|n| !n.is_empty()),
-            dedicated: None,
-            execution_role: execution_role::ExecutionRole::Client,
             server_control: None,
         };
         // The MineComplex launcher's identity, passed as vanilla's arguments.
@@ -625,7 +605,6 @@ struct GameLevel<'w> {
     spill: &'w mut spill::Spill,
     /// Where the chunk tickets let blocks tick.
     tickets: horizon_client::ticket_levels::Levels,
-    random_tick_sections: &'w mut horizon_client::random_tick_sections::RandomTickSections,
     /// Players with each chest open (a trapped chest's signal).
     lid_openers: &'w HashMap<(i32, i32, i32), i32>,
     /// `Level.isClientSide`: a client's copy of the level (a guest of a LAN
@@ -1199,7 +1178,6 @@ struct WorldRest {
     transformers: horizon_client::block_transform::Transformers,
     mob_types: HashMap<String, Arc<MobType>>,
     mob_data: horizon_client::mobs::MobData,
-    providers: Providers,
     block_entity_render: horizon_client::block_entity_render::BlockEntityRenderer,
     animate: horizon_client::animate_tick::AnimateTables,
     fog: horizon_client::fog::FogTables,
@@ -1467,7 +1445,6 @@ struct Sim<'a> {
     /// The other players' cracks (`LevelRenderer.destroyingBlocks`): breaker id to the block,
     /// the stage (0..=9) and the game time it last changed.
     destroying: HashMap<i32, ([i32; 3], u8, i64)>,
-    destroy_delay: u32,
     use_delay: u32,
     creative: bool,
     /// The game mode; `creative` mirrors `mode == Creative`.
@@ -1531,11 +1508,6 @@ struct Sim<'a> {
     lectern_pulses: Vec<((i32, i32, i32), i32)>,
     /// LevelLoadingScreen.smoothedProgress while the player is not placed yet.
     loading_progress: f32,
-    /// The world spawn search's origin chunk and fallback height, once known.
-    spawn_origin: Option<((i32, i32), i32)>,
-    spawn_spiral: horizon_client::world_spawn::ChunkSpiral,
-    /// A new player's spawn search, while its candidates' chunks load.
-    player_spawn: Option<horizon_client::world_spawn::PlayerSpawnFinder>,
     /// Chunks a respawn search waits for this tick, kept loading beside the
     /// player's own (taken by `update_world`).
     spawn_wait: Vec<(i32, i32)>,
@@ -1552,8 +1524,6 @@ struct Sim<'a> {
     /// Mobs a player hurt (`LivingEntity.lastHurtByPlayer`), with the guest
     /// it was by connection (None: the host).
     last_hurt_by_player: HashMap<u32, Option<u32>>,
-    /// Mobs whose death (`LivingEntity.die`) has been handled.
-    died: HashSet<u32>,
     /// Client-ticked block-entity animation state (`game/block_entity_anims.rs`).
     be_anims: horizon_client::block_entity_anim::BlockEntityAnims,
     /// Item being used (eaten): hotbar slot and ticks used.
@@ -1582,8 +1552,6 @@ struct Sim<'a> {
     applied_modifiers: Vec<(String, String)>,
     experience: Experience,
     orbs: Vec<ExperienceOrb>,
-    xp_delay: u32,
-    last_level_up: u64,
     /// The arm swing (`LivingEntity.SwingState`) and how many swings started.
     swing: horizon_client::first_person::SwingState,
     swings_started: u32,
@@ -1604,24 +1572,16 @@ struct Sim<'a> {
     /// The head of the bed while sleeping; the visual timer also survives waking.
     sleeping: Option<[i32; 3]>,
     sleep_timer: u32,
-    /// `SleepStatus`'s active and sleeping players at the last announcement.
-    sleep_seen: (i64, i64),
     dim: Dim,
     world_root: PathBuf,
     /// The world is superflat (`ServerLevel.isFlat`, for every dimension).
     world_flat: bool,
     /// A player carried through a portal, re-placed once the destination loads.
     travelling: Option<(PlayerMotion, Vec3)>,
-    /// A server's players on their way to another level, each waiting for
-    /// the destination to load around them.
-    server_trips: Vec<server_travel::Trip>,
     /// Players a command sends to another level, once it has run.
     level_teleports: Vec<server_travel::LevelTeleport>,
     /// A server's levels other than the one in place (game/levels.rs).
     levels: levels::Levels,
-    /// Which pass of a server tick runs (`tick_server`): the first one reads
-    /// the network, the last one ends the players' tick.
-    level_pass: levels::Pass,
     /// Nether portals: the player's, items' and mobs' (game/nether_portal.rs).
     portals: nether_portal::Portals,
     /// The pending travel goes through an End portal (EndPortalBlock destinations).
@@ -1631,13 +1591,10 @@ struct Sim<'a> {
     respawn_config: Option<respawn_anchor::RespawnConfig>,
     /// A respawn travelling to its anchor's dimension and chunks.
     respawn_travel: Option<respawn_anchor::RespawnConfig>,
-    /// The next enter_dimension call comes from an End portal.
-    end_portal_travel: bool,
     /// The open WinScreen (game/win.rs).
     win: Option<win::Win>,
     end: end::EndState,
     block_ticks: Ticks,
-    tick_chunks: horizon_client::tick_chunk_membership::TickChunkMembership,
     tickets: horizon_client::ticket_levels::ChunkTickets,
     random_tick_sections: horizon_client::random_tick_sections::RandomTickSections,
     level_events: Vec<LevelEvent>,
@@ -1682,9 +1639,6 @@ struct Sim<'a> {
     /// The fence knots a server tracks to this client, by entity id, at their
     /// block (`LeashFenceKnotEntity`).
     remote_knots: HashMap<u32, [i32; 3]>,
-    /// The entity ids a hosted server gives the knots its mobs hang on, by
-    /// block, while a lead is tied there.
-    knot_ids: HashMap<[i32; 3], u32>,
     /// Player skin downloads, and which skin each atlas skin slot holds
     /// (least recently shown first).
     skin_downloads: RefCell<horizon_client::skins::Downloader>,
@@ -1717,17 +1671,12 @@ struct Sim<'a> {
     rockets: Vec<fireworks::Rocket>,
     /// Ominous trial spawners' item spawners.
     ominous_spawners: Vec<ominous_item_spawner::OminousItemSpawner>,
-    creaking: creaking::CreakingState,
     /// Monster spawners' display mobs (`game/spawner.rs`).
     spawners: spawner::SpawnerState,
-    /// Reused candidate buffers for natural spawning.
-    spawn_scratch: natural_spawning::SpawnScratch,
     trident_model: Option<horizon_client::mobs::Part>,
     arrow_model: Option<horizon_client::mobs::Part>,
     tnts: Vec<tnt::PrimedTnt>,
     hoppers: HashMap<(i32, i32, i32), machines::HopperState>,
-    /// Where item entities are, while the block entities tick (hoppers).
-    item_columns: Option<machines::ItemColumns>,
     creative_screen: Creative,
     /// The Agent Control setting the socket was last opened or closed for (`agent_settings`).
     agent_control_on: bool,
@@ -1751,8 +1700,6 @@ struct Sim<'a> {
     persist: persist::EntityMemory,
     /// Connected to a server: the world comes from the network (game/remote.rs).
     remote: Option<remote::Remote>,
-    /// This world is open to the network (game/lan.rs).
-    lan: Option<lan::LanHost>,
     /// The server's world name (`--server-control`), once asked.
     server_world: std::cell::OnceCell<String>,
     /// horizon-server's plugins (game/plugin_host.rs), what they asked for
@@ -1760,8 +1707,6 @@ struct Sim<'a> {
     plugins: Option<Box<horizon_server_api::PluginHost>>,
     plugin_actions: Vec<horizon_server_api::Action>,
     plugin_seen: Vec<horizon_server_api::PlayerRef>,
-    /// Blocks a plugin kept from a player's break: the connection, where, the state.
-    plugin_resend: Vec<(u32, [i32; 3], i32)>,
     command_block_screen: Option<command_blocks::CommandBlockScreen>,
     show_hitboxes: bool,
     show_chunk_borders: bool,
@@ -1788,15 +1733,9 @@ struct Sim<'a> {
     lan_entity_events: Vec<(i32, i8, [f64; 3])>,
     /// Successful crits (attacking guest, hit entity), queued while the hub is taken.
     lan_critical_hits: Vec<(Option<u32>, i32, bool)>,
-    /// Spear stabs that landed (the stabbing guest), queued while the hub is
-    /// taken: `broadcastEntityEvent(player, 2)`.
-    lan_kinetic_hits: Vec<Option<u32>>,
     /// `LivingEntity.recentKineticEnemies`: when each player (a guest, or the
     /// window's own) last stabbed each entity this use.
     stabbed: HashMap<(Option<u32>, u32), i64>,
-    /// The movement a guest's client reported this tick
-    /// (`ServerPlayer.getKnownMovement`), for their turn.
-    known_movement: Vec3,
     /// `LivingEntity.lastKineticHitFeedbackTime` of the entities that felt a
     /// spear's hit (`spear::OWN` is this window's player), in game time.
     kinetic_feedback: HashMap<i32, i64>,
@@ -1805,21 +1744,10 @@ struct Sim<'a> {
     /// `ContainerOpenersCounter`: how many players (the host and the guests)
     /// have each chest open.
     lid_openers: HashMap<(i32, i32, i32), i32>,
-    lan_acting: Option<u32>,
-    /// The name of the guest `lan_acting` acts for (`Player.getName`).
-    lan_acting_name: Option<String>,
-    /// Their UUID (`Player.getUUID`).
-    lan_acting_uuid: Option<u128>,
     /// Command feedback to forward to a guest.
     chat_capture: Option<Vec<horizon_client::text::Text>>,
     /// Packets for the guest acting now, sent once its action returns.
     guest_packets: Vec<horizon_protocol::packets::play::Clientbound>,
-    /// The acting guest's cooldowns, as (item, ticks): their packet needs the
-    /// hub's item registry, which the guest's turn does not hold.
-    guest_cooldowns: Vec<(Arc<str>, i32)>,
-    /// The acting guest's own entity events (`ServerPlayer.connection.send`),
-    /// sent with their entity id, which the guest's turn does not hold.
-    guest_entity_events: Vec<i8>,
     /// `broadcastToAdmins` lines a guest's command queued, sent once it
     /// returns: the line, whether operators get it and whether the console
     /// logs it.
@@ -1834,8 +1762,6 @@ struct Sim<'a> {
     /// Game rules, difficulty, the clock and the command registries (vanilla's `ServerLevelData`).
     world_data: horizon_client::world_data::WorldData,
     combat: combat::CombatTracker,
-    /// Each guest's own `CombatTracker`, out of `combat` between turns.
-    guest_combat: std::collections::HashMap<u32, combat::CombatTracker>,
     mount: mounts::MountState,
     stats: stats::Stats,
     score: scoreboard::ScoreState,
@@ -1847,7 +1773,6 @@ struct Sim<'a> {
     brushing: brush::Brushing,
     border: horizon_client::worldborder::WorldBorder,
     adv: advancements::AdvState,
-    restore_player_state: bool,
     stats_ui: stats_screen::StatsUi,
     adv_ui: advancements_screen::AdvUi,
     /// The Server Links screens' state (game/server_links.rs).
@@ -5654,7 +5579,7 @@ impl Game<'_> {
         }
         // The loading screen's chunk map fills ring by ring, as vanilla's.
         self.sim.streaming.loading =
-            self.sim.options.execution_role.is_client() && self.loading_reason().is_some();
+            self.loading_reason().is_some();
         let (uploads, unloaded) = self.stream_world();
         if let Some(lod) = &mut self.front.lod {
             self.front
@@ -6346,7 +6271,7 @@ impl crate::game::Sim<'_> {
     }
     /// The UUID of the player acting: the guest whose turn it is, else the host.
     pub(super) fn acting_player_uuid(&mut self) -> [i32; 4] {
-        match self.lan_acting_uuid {
+        match None::<u128> {
             Some(guest) => horizon_client::lan::playerdata::uuid_ints(guest),
             None => self.level.ensure_player_uuid(),
         }
@@ -6422,13 +6347,7 @@ impl crate::game::Sim<'_> {
             .iter()
             .filter(|_| !spectator)
             .map(|p| [p.position.x, p.position.y, p.position.z])
-            .chain(self.lan.iter().flat_map(|h| {
-                h.hub
-                    .guests
-                    .iter()
-                    .filter(|g| h.hub.here(g) && !g.spectator())
-                    .map(|g| g.position)
-            }))
+            
             .collect();
         let blockers = Blockers {
             mobs: &self.mobs,
@@ -6484,7 +6403,6 @@ impl crate::game::Sim<'_> {
             pending: &mut self.pending,
             spill: &mut self.spill,
             tickets: self.tickets.levels(),
-            random_tick_sections: &mut self.random_tick_sections,
             lid_openers: &self.lid_openers,
             client_side: self.remote.is_some(),
             change_events,
@@ -7482,9 +7400,6 @@ impl crate::game::Sim<'_> {
         };
         let group = horizon_client::cooldowns::group(stack, default.as_ref());
         self.cooldowns.add(Arc::clone(&group), component.ticks());
-        if self.lan_acting.is_some() {
-            self.guest_cooldowns.push((group, component.ticks()));
-        }
     }
     /// One hand's turn in `startUseItem`: `useItemOn` the block aimed at,
     /// then `useItem`. Whether the click ends here (it acted or failed).
@@ -7897,9 +7812,6 @@ impl crate::game::Sim<'_> {
     fn capture(&mut self, capture: bool) {
         // A guest's action (`as_guest`) opens and closes screens on the
         // guest's own client: the window's pointer stays the host's (#687).
-        if self.lan_acting.is_some() {
-            return;
-        }
         // MouseHandler.grabMouse never captures an inactive window, and vanilla
         // grabs only on `setScreen(null)`: the pack prompt and server dialogs
         // are screens over the world that keep the pointer.
@@ -9093,7 +9005,7 @@ impl crate::game::Sim<'_> {
             if self.hurt_by_player(i, damage, source) {
                 self.mobs[i].knockback(0.4, xd, zd);
                 self.last_hurt_by_player
-                    .insert(self.mobs[i].id, self.lan_acting);
+                    .insert(self.mobs[i].id, None::<u32>);
             }
         }
         // `getEntitiesOfClass(LivingEntity.class)` takes the other players too.
@@ -9246,12 +9158,12 @@ impl crate::game::Sim<'_> {
             self.stats
                 .custom("damage_dealt", (actual * 10.0).round() as i32);
             if crit {
-                let (acting, target) = (self.lan_acting, self.mobs[index].id as i32);
+                let (acting, target) = (None::<u32>, self.mobs[index].id as i32);
                 self.critical_hit(acting, target, feet, width, height, false);
             }
             // Player.attackVisualEffects: magicCrit when the enchantments added damage.
             if magic {
-                let (acting, target) = (self.lan_acting, self.mobs[index].id as i32);
+                let (acting, target) = (None::<u32>, self.mobs[index].id as i32);
                 self.critical_hit(acting, target, feet, width, height, true);
             }
             if actual > 2.0 {
@@ -9275,7 +9187,7 @@ impl crate::game::Sim<'_> {
                 );
             }
             self.last_hurt_by_player
-                .insert(self.mobs[index].id, self.lan_acting);
+                .insert(self.mobs[index].id, None::<u32>);
             let sound = if crit {
                 "minecraft:entity.player.attack.crit"
             } else if scale > 0.9 {
@@ -10228,15 +10140,7 @@ impl crate::game::Sim<'_> {
     /// `sendOverlayMessage` (the action bar), else `sendSystemMessage` (chat).
     /// A guest gets a packet, so its own client translates it.
     fn tell_sleeper(&mut self, key: &str, fallback: &str, overlay: bool) {
-        if self.lan_acting.is_some() {
-            self.guest_packets
-                .push(horizon_protocol::packets::play::Clientbound::SystemChat(
-                    horizon_protocol::packets::play::SystemChat {
-                        content: horizon_protocol::text::translatable(key, &[]),
-                        overlay,
-                    },
-                ));
-        } else if overlay {
+        if overlay {
             self.message = Some((self.translate(key, fallback), Instant::now()));
         } else {
             self.system_message(horizon_client::text::Text::translate(key, &[]));
@@ -10317,9 +10221,7 @@ impl crate::game::Sim<'_> {
             }
             // The fallback becomes the world spawn: a guest's is none of its
             // own, so it follows `setworldspawn`.
-            self.spawn = if self.lan_acting.is_some() {
-                None
-            } else {
+            self.spawn = {
                 self.level
                     .world_spawn
                     .map(|[x, y, z]| {
@@ -10468,7 +10370,7 @@ impl crate::game::Sim<'_> {
         }
         // A server's main level is always the Overworld (MinecraftServer.overworld): the level
         // it happens to be in while saving is not the world's.
-        if self.options.dedicated.is_none() {
+        {
             level.dimension = self.dim.id().to_owned();
         }
         // An open ender chest holds the live copy.
@@ -11716,7 +11618,6 @@ impl<'a> Game<'a> {
                 scratch_slot: None,
                 mining: None,
                 destroying: HashMap::new(),
-                destroy_delay: 0,
                 use_delay: 0,
                 creative,
                 mode: if creative {
@@ -11760,9 +11661,6 @@ impl<'a> Game<'a> {
                 book: None,
                 lectern_pulses: Vec::new(),
                 loading_progress: 0.0,
-                spawn_origin: None,
-                spawn_spiral: Default::default(),
-                player_spawn: None,
                 spawn_wait: Vec::new(),
                 mobs: Vec::new(),
                 creatures: Default::default(),
@@ -11771,7 +11669,6 @@ impl<'a> Game<'a> {
                 attack_ticks: 100,
                 attack_item: None,
                 last_hurt_by_player: HashMap::new(),
-                died: HashSet::new(),
                 be_anims: {
                     let mut anims = horizon_client::block_entity_anim::BlockEntityAnims::default();
                     anims.classify(registry);
@@ -11790,8 +11687,6 @@ impl<'a> Game<'a> {
                 applied_modifiers: Vec::new(),
                 experience: Experience::default(),
                 orbs: Vec::new(),
-                xp_delay: 0,
-                last_level_up: 0,
                 swing: Default::default(),
                 swings_started: 0,
                 visible_hands: [(0, None), (0, None)],
@@ -11805,24 +11700,19 @@ impl<'a> Game<'a> {
                 lightning_seen: [0; 2],
                 sleeping: None,
                 sleep_timer: 0,
-                sleep_seen: (0, 0),
                 dim: Dim::Overworld,
                 world_root: PathBuf::new(),
                 world_flat: false,
                 travelling: None,
-                server_trips: Vec::new(),
                 level_teleports: Vec::new(),
                 levels: Default::default(),
-                level_pass: Default::default(),
                 portals: Default::default(),
                 end_travel: false,
                 respawn_config: None,
                 respawn_travel: None,
-                end_portal_travel: false,
                 win: None,
                 end: Default::default(),
                 block_ticks: Ticks::new(0),
-                tick_chunks: Default::default(),
                 tickets: Default::default(),
                 random_tick_sections: Default::default(),
                 level_events: Vec::new(),
@@ -11856,7 +11746,6 @@ impl<'a> Game<'a> {
                 dragon_model: prepared.dragon_model,
                 text_displays: Default::default(),
                 remote_knots: Default::default(),
-                knot_ids: Default::default(),
                 skin_downloads: RefCell::new(horizon_client::skins::Downloader::new(
                     std::env::current_dir()
                         .unwrap_or_default()
@@ -11878,14 +11767,11 @@ impl<'a> Game<'a> {
                 tridents: Vec::new(),
                 rockets: Vec::new(),
                 ominous_spawners: Vec::new(),
-                creaking: Default::default(),
                 spawners: Default::default(),
-                spawn_scratch: Default::default(),
                 trident_model: prepared.trident_model,
                 arrow_model: prepared.arrow_model,
                 tnts: Vec::new(),
                 hoppers: HashMap::new(),
-                item_columns: None,
                 creative_screen: prepared.creative_screen,
                 agent_control_on: false,
                 agent_last: None,
@@ -11899,12 +11785,10 @@ impl<'a> Game<'a> {
                 sky_darken_memo: Default::default(),
                 persist: Default::default(),
                 remote: None,
-                lan: None,
                 server_world: Default::default(),
                 plugins: None,
                 plugin_actions: Vec::new(),
                 plugin_seen: Vec::new(),
-                plugin_resend: Vec::new(),
                 command_block_screen: None,
                 show_hitboxes: false,
                 show_chunk_borders: false,
@@ -11920,18 +11804,11 @@ impl<'a> Game<'a> {
                 lan_block_events: Vec::new(),
                 lan_entity_events: Vec::new(),
                 lan_critical_hits: Vec::new(),
-                lan_kinetic_hits: Vec::new(),
                 stabbed: HashMap::new(),
-                known_movement: Vec3::ZERO,
                 kinetic_feedback: HashMap::new(),
                 lan_global_events: Vec::new(),
                 lid_openers: HashMap::new(),
-                lan_acting: None,
                 guest_packets: Vec::new(),
-                guest_cooldowns: Vec::new(),
-                guest_entity_events: Vec::new(),
-                lan_acting_name: None,
-                lan_acting_uuid: None,
                 chat_capture: None,
                 admin_feedback: Vec::new(),
                 console_broadcast: None,
@@ -11939,7 +11816,6 @@ impl<'a> Game<'a> {
                 ui: chat::UiState::new(),
                 world_data: Default::default(),
                 combat: Default::default(),
-                guest_combat: Default::default(),
                 mount: Default::default(),
                 stats: Default::default(),
                 score: Default::default(),
@@ -11950,7 +11826,6 @@ impl<'a> Game<'a> {
                 brushing: Default::default(),
                 border: Default::default(),
                 adv: Default::default(),
-                restore_player_state: true,
                 stats_ui: Default::default(),
                 adv_ui: Default::default(),
                 links_ui: Default::default(),
@@ -12279,7 +12154,6 @@ fn synchronous_startup(options: &Options) -> bool {
     options.frames.is_some()
         || options.world_frames.is_some()
         || options.control.is_some()
-        || !options.execution_role.is_client()
         || std::env::var_os("HORIZON_DISPENSE_FIXTURE").is_some()
         || std::env::var_os("HORIZON_SCULK_FIXTURE").is_some()
         || std::env::var_os("HORIZON_COMMAND_SCRIPT").is_some()
@@ -12552,7 +12426,6 @@ fn load_world_rest(
         items,
         recipes,
         transformers,
-        providers: Providers::load(root),
         block_entity_render: horizon_client::block_entity_render::BlockEntityRenderer::load(
             root,
             registry_owner.registry,
@@ -13067,9 +12940,7 @@ impl Loading {
         );
         let renderer_ms = renderer_at.elapsed().as_millis();
         // Audio is created on the main thread, after the core is ready.
-        let audio = if !options.execution_role.is_client() {
-            Audio::silent(&options.resources)
-        } else {
+        let audio = {
             Audio::new(&options.resources)
         };
         let pack_error = loaded.pack_error.or_else(|| self.pack_error.take());
@@ -13297,7 +13168,7 @@ pub fn run_with(program: Program, args: Vec<String>) -> Result<()> {
     // Before any worker starts: on Linux they go behind the server thread
     // and the render thread.
     horizon_threads::put_helpers_behind();
-    if options.execution_role.is_client() {
+    {
         // The render thread, like the server thread, ahead of the workers on
         // macOS and Windows. While terrain loads, the worker pools (two with
         // single player's server thread) and other programs outnumber the
@@ -13305,7 +13176,7 @@ pub fn run_with(program: Program, args: Vec<String>) -> Result<()> {
         // 10 to 200 ms to get one back.
         horizon_threads::favour_current();
     }
-    if options.execution_role.is_client() {
+    {
         horizon_threads::catch_stop_signals();
     }
     let started = Instant::now();
@@ -13313,7 +13184,7 @@ pub fn run_with(program: Program, args: Vec<String>) -> Result<()> {
     let vanilla_root = options.resources.clone();
     let early_settings = Settings::load(&std::env::current_dir()?.join("options.txt"));
     // "Playing Horizon" on Discord: never for a server; an automated run only talks to a test's fake Discord.
-    if options.dedicated.is_none() {
+    {
         let automated =
             options.offscreen || options.frames.is_some() || options.world_frames.is_some();
         horizon_client::discord_presence::start(early_settings.extras.discord_presence, automated);
@@ -13342,9 +13213,7 @@ pub fn run_with(program: Program, args: Vec<String>) -> Result<()> {
     )?;
     let gui = loaded.gui.ok_or("missing menu bundle")?;
     options.resources = loaded.root.clone();
-    let audio = if !options.execution_role.is_client() {
-        Audio::silent(&options.resources)
-    } else {
+    let audio = {
         Audio::new(&options.resources)
     };
     let resources = loaded.resources;
@@ -13429,21 +13298,6 @@ mod startup_cpu_tests {
 #[cfg(test)]
 mod runtime_reset_tests {
     use super::*;
-    #[test]
-    fn world_entry_invalidates_loaded_progress() {
-        let mut adv = advancements::AdvState::default();
-        let mut stats = stats::Stats::default();
-        adv.loaded = true;
-        stats.loaded = true;
-        adv.progress
-            .criteria
-            .insert("minecraft:story/root".into(), Default::default());
-        stats.add("mined", "minecraft:stone", 4);
-        reset_world_progress(&mut adv, &mut stats);
-        assert!(!adv.loaded && !stats.loaded);
-        assert!(adv.progress.criteria.is_empty());
-        assert!(stats.values.is_empty());
-    }
 }
 
 #[cfg(test)]

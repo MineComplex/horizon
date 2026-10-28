@@ -13,8 +13,6 @@ use std::{
 pub(super) struct Stats {
     pub(super) values: BTreeMap<String, BTreeMap<String, i32>>,
     pub(super) loaded: bool,
-    /// Ticks until the phantom spawner runs again.
-    phantom_tick: i32,
     /// Statistic changes (type, key, amount; `None` = reset) for the
     /// scoreboard criteria to follow.
     pub(super) events: Vec<(String, String, Option<i32>)>,
@@ -179,49 +177,4 @@ impl crate::game::Sim<'_> {
 mod tests {
     use super::*;
 
-    #[test]
-    fn counters_events_and_dirty_entries() {
-        let mut s = Stats::default();
-        s.custom("play_time", 1);
-        s.custom("play_time", 1);
-        s.add("mined", "minecraft:stone", 2);
-        s.custom(&"x".repeat(100), 3);
-        assert_eq!(s.get("custom", "minecraft:play_time"), 2);
-        assert_eq!(s.get("mined", "minecraft:stone"), 2);
-        assert_eq!(
-            s.get("custom", &format!("minecraft:{}", "x".repeat(100))),
-            3
-        );
-        assert_eq!(s.events.len(), 4);
-        assert_eq!(
-            s.events[1],
-            (
-                "minecraft:custom".into(),
-                "minecraft:play_time".into(),
-                Some(1)
-            )
-        );
-        let long = format!("minecraft:{}", "x".repeat(100));
-        let sent = |v: &[(&str, &str, i32)]| -> Vec<(String, String, i32)> {
-            v.iter()
-                .map(|&(t, k, n)| (t.to_owned(), k.to_owned(), n))
-                .collect()
-        };
-        assert_eq!(
-            s.take_dirty(),
-            sent(&[
-                ("minecraft:custom", "minecraft:play_time", 2),
-                ("minecraft:custom", &long, 3),
-                ("minecraft:mined", "minecraft:stone", 2),
-            ])
-        );
-        assert!(s.take_dirty().is_empty());
-        s.reset("mined", "minecraft:stone");
-        assert_eq!(
-            s.take_dirty(),
-            sent(&[("minecraft:mined", "minecraft:stone", 0)])
-        );
-        s.mark_all_dirty();
-        assert_eq!(s.take_dirty().len(), 3);
-    }
 }

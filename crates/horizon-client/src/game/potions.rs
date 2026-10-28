@@ -4,7 +4,6 @@
 //! effect attribute modifiers and the HUD effect icons (`Hud.extractEffects`).
 use super::{
     Game, Screen,
-    dragon::FightWho,
     item_draw::owner_at};
 use horizon_assets::item_model::DisplayContext;
 use horizon_client::{
@@ -32,29 +31,6 @@ pub(super) struct ThrownPotion {
     position: Vec3,
     velocity: Vec3,
     age: u32,
-    /// `Projectile.getOwner`'s display name: the player who threw it (none
-    /// for a dispenser's).
-    owner: Option<Text>,
-}
-/// An entity a cloud has affected (`AreaEffectCloud.victims`).
-#[derive(Clone, Copy, PartialEq)]
-enum Victim {
-    Mob(u32),
-    Player(FightWho),
-}
-/// What a lingering potion's `AreaEffectCloud` applies: the potion's effects
-/// (at the lingering item's 0.25 duration scale) and who it has affected.
-pub(super) struct PotionCloud {
-    effects: &'static [(&'static str, i32, i32)],
-    /// The potion's colour (`PotionContents.getColor`).
-    color: u32,
-    /// Each victim and the tick it can be affected again.
-    victims: Vec<(Victim, i32)>,
-    /// Who its instant damage names (`indirectMagic(cloud, owner)`): the
-    /// thrower, else the cloud.
-    source: Text,
-}
-impl PotionCloud {
 }
 /// A mob's effect ids carry the `minecraft:` namespace.
 pub(super) fn mob_effect_id(id: &str) -> Option<&'static str> {
@@ -128,17 +104,8 @@ impl crate::game::Sim<'_> {
             position,
             velocity,
             age: 0,
-            owner,
         });
     }
-}
-/// What a player's body was last given for its effects and enchantments:
-/// a guest keeps their own while the host's are in `PotionState`.
-#[derive(Default)]
-pub(super) struct BodyPotions {
-    applied: Vec<(&'static str, &'static str, f64, &'static str)>,
-    protection_for: Option<Vec<Option<ItemStack>>>,
-    enchant_modifiers: Vec<(String, String, f64, String)>,
 }
 /// Effects, thrown potions and the attribute modifiers last applied.
 #[derive(Default)]
@@ -156,14 +123,6 @@ pub(super) struct PotionState {
 }
 
 impl PotionState {
-    /// Trade the player's own state (effects and what their body was given)
-    /// with a guest's, around `as_guest`. Potions in flight stay.
-    pub(super) fn swap_player(&mut self, effects: &mut PlayerEffects, body: &mut BodyPotions) {
-        std::mem::swap(&mut self.effects, effects);
-        std::mem::swap(&mut self.applied, &mut body.applied);
-        std::mem::swap(&mut self.protection_for, &mut body.protection_for);
-        std::mem::swap(&mut self.enchant_modifiers, &mut body.enchant_modifiers);
-    }
     /// Thrown potions in flight as (entity type, position, motion), for the
     /// dispenser parity fixture.
     pub(super) fn thrown_entities(&self) -> Vec<(&'static str, Vec3, Vec3)> {
@@ -190,7 +149,6 @@ impl PotionState {
             position: at,
             velocity,
             age: 0,
-            owner: None,
         });
     }
     /// ThrowableItemProjectile.DATA_ITEM_STACK: the potion it shows.

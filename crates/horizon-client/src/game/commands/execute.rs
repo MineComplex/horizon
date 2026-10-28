@@ -661,7 +661,7 @@ impl crate::game::Sim<'_> {
                     .and_then(|p| match (p.owner?, p.guest) {
                         // A guest's shot: `Who::Player` is them.
                         (horizon_client::mobs::Who::Player, Some(conn))
-                            if self.lan_acting == Some(conn) =>
+                            if None::<u32> == Some(conn) =>
                         {
                             Some(Target::Player)
                         }

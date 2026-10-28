@@ -292,12 +292,10 @@ impl crate::game::Sim<'_> {
         let push = SmashPush {
             center,
             heavy,
-            attacker: self.lan_acting,
+            attacker: None::<u32>,
             team: self.player_team().cloned(),
         };
-        if self.lan_acting.is_some() {
-            self.creatures.smash_pushes.push(push);
-        } else {
+        {
             self.smash_push_players(&push);
         }
     }

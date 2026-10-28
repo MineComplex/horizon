@@ -20,17 +20,6 @@ use horizon_client::{
 use horizon_world::nbt::Tag;
 use std::collections::HashSet;
 
-/// What `ServerPlayer` last recorded for the criteria that follow the player.
-#[derive(Default)]
-pub(super) struct Recorded {
-    /// `lastRecordedHealthAndAbsorption` (compared as a float).
-    health_and_absorption: Option<f32>,
-    food: Option<i32>,
-    air: Option<i32>,
-    armor: Option<i32>,
-    xp: Option<i32>,
-    level: Option<i32>,
-}
 #[derive(Default)]
 pub(super) struct ScoreState {
     pub board: Scoreboard,
@@ -38,7 +27,6 @@ pub(super) struct ScoreState {
     pub storage: horizon_client::command_storage::CommandStorage,
     pub stopwatches: horizon_client::stopwatches::Stopwatches,
     loaded: bool,
-    recorded: Recorded,
 }
 
 fn in_range(v: i32, (lo, hi): IntRange) -> bool {
@@ -319,26 +307,6 @@ impl crate::game::Sim<'_> {
             }
         })
     }
-    /// `ServerStatsCounter.setValue`'s scoreboard side: the objectives of
-    /// each changed statistic's criteria follow it for the player `name`.
-    pub(super) fn stat_criteria_changed(
-        &mut self,
-        name: &str,
-        events: Vec<(String, String, Option<i32>)>,
-    ) {
-        let board = &mut self.score.board;
-        if board.objectives.is_empty() {
-            return;
-        }
-        for (ty, key, amount) in events {
-            let criteria = sb::stat_criteria(&ty, &key);
-            if board.has_objectives_for(&criteria) {
-                board.for_all_objectives(&criteria, name, |v| {
-                    amount.map_or(0, |n| v.wrapping_add(n))
-                });
-            }
-        }
-    }
     /// `ServerPlayer.awardKillScore`: total kills and the team kill counts.
     pub(super) fn score_player_killed(&mut self, victim: Target) {
         let victim_name = self.holder_name(victim);
@@ -555,7 +523,7 @@ impl Game<'_> {
                 let mut me = TabPlayer::new(uuid, PLAYER_NAME);
                 me.game_mode = self.mode_id();
                 me.skin = "entity/player/wide/steve".into();
-                let guests = self.lan.as_ref().map_or(&[][..], |h| &h.hub.guests);
+                let guests = &[][..];
                 let players = local_tab_players(me, guests);
                 let upside_down = players
                     .iter()

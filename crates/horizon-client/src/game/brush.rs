@@ -14,8 +14,6 @@ use std::collections::HashMap;
 pub(super) struct BrushState {
     count: i32,
     resets_at: i64,
-    cooldown_ends_at: i64,
-    hit_face: Option<[i32; 3]>,
 }
 
 /// `BrushableBlockEntity.getCompletionState`: the `dusted` property.

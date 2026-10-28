@@ -5,11 +5,8 @@
 //! chunk the players leave.
 use super::{CommandError, Context, Dim, Game, R};
 use horizon_client::{
-    lan::data::component_nbt,
     pregen::{Pregen, Shape},
-    text::{self, Text},
-};
-use horizon_protocol::packets::play::{self, Clientbound as C};
+    text::{self, Text}};
 use std::time::{Duration, Instant};
 
 /// How often the progress is reported.
@@ -120,7 +117,7 @@ impl crate::game::Sim<'_> {
                     resumed: now,
                     reported: now,
                     moved: now,
-                    owner: self.lan_acting,
+                    owner: None::<u32>,
                 });
                 Ok(total as i32)
             }
@@ -228,19 +225,10 @@ impl crate::game::Sim<'_> {
     }
     /// The console and the player who started the task get the progress.
     fn pregen_report(&mut self, owner: Option<u32>, message: Text) {
-        if self.options.dedicated.is_some() {
-            super::super::dedicated::log("INFO", &message.plain());
-        } else {
+        {
             log::info!("{}", message.plain());
         }
-        if let Some(host) = &self.lan {
-            if let Some(g) = owner.and_then(|c| host.hub.guest(c)) {
-                g.send(&C::SystemChat(play::SystemChat {
-                    content: component_nbt(&message.component()),
-                    overlay: false,
-                }));
-            }
-        } else if self.options.dedicated.is_none() {
+        {
             self.system_message(message);
         }
     }

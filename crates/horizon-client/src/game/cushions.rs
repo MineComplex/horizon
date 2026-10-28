@@ -321,11 +321,7 @@ impl crate::game::Sim<'_> {
             return false;
         }
         let id = self.cushions[i].id;
-        let occupied = self.riding == Some(id)
-            || self
-                .lan
-                .as_ref()
-                .is_some_and(|h| h.hub.guests.iter().any(|g| g.vehicle == Some(id)));
+        let occupied = self.riding == Some(id);
         // `Cushion.interact`: an occupied cushion (`isVehicle`) passes.
         if occupied {
             return false;

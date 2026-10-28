@@ -2,13 +2,11 @@
 //! `ClientboundLevelParticlesPacket` (`ServerLevel.sendParticles`, which
 //! `/particle` uses) and `ClientboundExplodePacket` (`ServerLevel.explode`).
 use super::Game;
-use horizon_client::lan::hub::Hub;
 use horizon_client::particles::{ParticleOptions, ParticleType};
 use horizon_core::{geometry::Vec3, random::RandomSource};
 use horizon_protocol::{
     entity_data::{Particle, ParticleData},
-    packets::play::{self, Clientbound as C},
-};
+    packets::play::self};
 use horizon_world::registry::BlockStateId;
 
 /// An ARGB colour as the options' RGBA.
@@ -16,78 +14,18 @@ fn rgba(argb: i32) -> [f32; 4] {
     let c = |shift: i32| ((argb >> shift) & 255) as f32 / 255.0;
     [c(16), c(8), c(0), c(24)]
 }
-/// The options' RGB as an RGB colour (`ARGB.colorFromFloat` without alpha).
-fn rgb_int(c: [f32; 3]) -> i32 {
-    let b = |v: f32| ((v.clamp(0.0, 1.0) * 255.0).round() as i32) & 255;
-    (b(c[0]) << 16) | (b(c[1]) << 8) | b(c[2])
-}
 fn rgb(c: [f32; 4]) -> [f32; 3] {
     [c[0], c[1], c[2]]
 }
 
 
 impl Game<'_> {
-    /// `network_particle` for a hub that is out of `self.lan` meanwhile (a
-    /// guest's turn).
-    pub(super) fn hub_particle(
-        hub: &Hub,
-        options: &ParticleOptions,
-        state: Option<BlockStateId>,
-    ) -> Option<Particle> {
-        let name = format!("minecraft:{}", options.ty.name());
-        let id = hub.registry_id("minecraft:particle_type", &name)?;
-        use ParticleType as T;
-        let c = options.color;
-        let data = match options.ty {
-            T::Block | T::BlockMarker | T::FallingDust | T::DustPillar | T::BlockCrumble => {
-                Some(ParticleData::State(state?.0 as i32))
-            }
-            T::Dust => Some(ParticleData::ColorScale(rgb_int(rgb(c)), options.scale)),
-            T::DustColorTransition => Some(ParticleData::ColorScale2(
-                rgb_int(rgb(c)),
-                rgb_int(options.to_color),
-                options.scale,
-            )),
-            T::Effect | T::InstantEffect => {
-                Some(ParticleData::ColorPower(rgb_int(rgb(c)), options.scale))
-            }
-            T::EntityEffect | T::TintedLeaves => Some(ParticleData::Color(
-                (((c[3].clamp(0.0, 1.0) * 255.0).round() as i32) << 24) | rgb_int(rgb(c)),
-            )),
-            T::DragonBreath | T::SculkCharge => Some(ParticleData::Scalar(options.scale)),
-            T::Shriek => Some(ParticleData::Delay(options.scale as i32)),
-            T::Item | T::Trail | T::Vibration => return None,
-            _ => None,
-        };
-        Some(Particle { id, data })
-    }
 }
 impl crate::game::Sim<'_> {
     /// `SonicBoom.tick` uses `ServerLevel.sendParticles` for each ray point.
     /// Keep the local event's rendering; connected players receive one at rest.
     pub(super) fn lan_sonic_boom(&self, options: &ParticleOptions, at: [f64; 3]) {
-        let (Some(host), Some(particle)) = (&self.lan, self.network_particle(options, None)) else {
-            return;
-        };
-        let packet = C::LevelParticles(play::LevelParticles {
-            particle,
-            override_limiter: false,
-            always_show: false,
-            pos: at,
-            dist: [0.0; 3],
-            max_speed: [0.0; 3],
-            count: 0,
-            randomization: 0,
-        });
-        for g in host.hub.guests.iter().filter(|g| host.hub.here(g)) {
-            // ServerLevel compares the player's block centre, strictly within 32.
-            let distance: f64 = (0..3)
-                .map(|k| (g.position[k].floor() + 0.5 - at[k]).powi(2))
-                .sum();
-            if distance < 32.0 * 32.0 {
-                g.send(&packet);
-            }
-        }
+        return;
     }
     /// `ServerLevel.sendParticles` of a mob's particles: a packet to each
     /// player within 32 blocks. The window draws its own copy.
@@ -99,28 +37,7 @@ impl crate::game::Sim<'_> {
         speed: f64,
         count: u32,
     ) {
-        let (Some(host), Some(particle)) = (&self.lan, self.network_particle(options, None)) else {
-            return;
-        };
-        let packet = C::LevelParticles(play::LevelParticles {
-            particle,
-            override_limiter: false,
-            always_show: false,
-            pos: at,
-            dist: spread.map(|d| d as f32),
-            max_speed: [speed as f32; 3],
-            count: count as i32,
-            randomization: 0,
-        });
-        for g in host.hub.guests.iter().filter(|g| host.hub.here(g)) {
-            // ServerLevel compares the player's block centre, strictly within 32.
-            let distance: f64 = (0..3)
-                .map(|k| (g.position[k].floor() + 0.5 - at[k]).powi(2))
-                .sum();
-            if distance < 32.0 * 32.0 {
-                g.send(&packet);
-            }
-        }
+        return;
     }
     /// `ParticleTypes.STREAM_CODEC`'s value for `options`: the type's
     /// network id and the data it carries (`state` for the block particles).
@@ -131,8 +48,7 @@ impl crate::game::Sim<'_> {
         options: &ParticleOptions,
         state: Option<BlockStateId>,
     ) -> Option<Particle> {
-        crate::game::Game::hub_particle(&self.lan.as_ref()?.hub, options, state)
-    }
+        None}
     /// The options a server's particle stands for (None for a type or data
     /// this client doesn't draw).
     pub(super) fn received_particle(
@@ -270,7 +186,7 @@ impl crate::game::Sim<'_> {
         speed: f64,
         count: u32,
     ) {
-        if self.lan.is_none() {
+        {
             // The server is running (its sounds are captured for the guests).
             if self.sounds.capture.is_some() {
                 self.creatures
@@ -282,30 +198,7 @@ impl crate::game::Sim<'_> {
         let Some(particle) = self.network_particle(options, None) else {
             return;
         };
-        let Some(host) = self.lan.as_ref() else {
-            return;
-        };
-        let body = C::LevelParticles(play::LevelParticles {
-            particle,
-            override_limiter: false,
-            always_show: false,
-            pos: at,
-            dist: spread.map(|d| d as f32),
-            max_speed: [speed as f32; 3],
-            count: count as i32,
-            randomization: 0,
-        })
-        .encode();
-        for g in host.hub.guests.iter().filter(|g| host.hub.here(g)) {
-            // BlockPos.closerToCenterThan(at, 32): from the centre of the
-            // player's block.
-            let d: f64 = (0..3)
-                .map(|k| (g.position[k].floor() + 0.5 - at[k]).powi(2))
-                .sum();
-            if d < 32.0 * 32.0 {
-                g.sender.send(body.clone());
-            }
-        }
+        return;
     }
     /// `ServerLevel.explode`'s packet to each player within 64 blocks. The
     /// sound and the push reach them on their own (the level's sounds, the
@@ -320,12 +213,6 @@ impl crate::game::Sim<'_> {
         // In a guest's turn (their hit on an end crystal or a minecart) the
         // host holds the players (`as_guest`): the packet waits for the turn
         // to end so that it reaches every player, the guest too.
-        if self.lan_acting.is_some() && self.lan.is_none() {
-            self.creatures
-                .lan_explosions
-                .push((center, small, radius, block_count));
-            return;
-        }
         let emitter = if small {
             "minecraft:explosion"
         } else {
@@ -373,62 +260,11 @@ impl crate::game::Sim<'_> {
         sound: &str,
         block_particles: bool,
     ) -> Option<play::Explode> {
-        let hub = &self.lan.as_ref()?.hub;
-        let particle = |name: &str| {
-            Some(Particle {
-                id: hub.registry_id("minecraft:particle_type", name)?,
-                data: None,
-            })
-        };
-        // Level.DEFAULT_EXPLOSION_BLOCK_PARTICLES.
-        let info = |particle, scaling| play::ExplosionParticle {
-            particle,
-            scaling,
-            speed: 1.0,
-            weight: 1,
-        };
-        let block_particles = if block_particles {
-            vec![
-                info(particle("minecraft:poof")?, 0.5),
-                info(particle("minecraft:smoke")?, 1.0),
-            ]
-        } else {
-            Vec::new()
-        };
-        Some(play::Explode {
-            center,
-            radius,
-            block_count: block_count as i32,
-            knockback: None,
-            particle: particle(emitter)?,
-            sound: match hub.registry_id("minecraft:sound_event", sound) {
-                Some(id) => (id, None),
-                None => (-1, Some((sound.into(), None))),
-            },
-            block_particles,
-            play_sound: false,
-        })
+        return None;
     }
     /// `packet` to each player within 64 blocks of its centre, with the push
     /// `pushed` holds for them.
     fn send_explosion(&self, mut packet: play::Explode, pushed: &[(u32, [f64; 3])]) {
-        let Some(host) = self.lan.as_ref() else {
-            return;
-        };
-        let center = packet.center;
-        let plain = C::Explode(packet.clone()).encode();
-        for g in host.hub.guests.iter().filter(|g| host.hub.here(g)) {
-            let d: f64 = (0..3).map(|k| (g.position[k] - center[k]).powi(2)).sum();
-            if d >= 4096.0 {
-                continue;
-            }
-            match pushed.iter().find(|(conn, _)| *conn == g.conn) {
-                Some((_, push)) => {
-                    packet.knockback = Some(*push);
-                    g.send(&C::Explode(packet.clone()));
-                }
-                None => g.sender.send(plain.clone()),
-            }
-        }
+        return;
     }
 }

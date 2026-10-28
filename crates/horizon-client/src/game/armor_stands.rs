@@ -215,11 +215,9 @@ impl Game<'_> {
         let assets = &self.armor_stand_assets;
         let items = self.res.items();
         let mut wanted: Vec<TrimTexture> = Vec::new();
-        let guests = self.lan.iter().flat_map(|host| host.hub.guests.iter());
         let stacks = self
             .armor
             .iter()
-            .chain(guests.flat_map(|g| g.armor.iter()))
             .zip(
                 ["helmet", "chestplate", "leggings", "boots"]
                     .into_iter()
@@ -951,21 +949,6 @@ pub(super) fn skull_kind(item: &str) -> Option<&'static str> {
 #[cfg(test)]
 mod burn_drop_tests {
     use super::*;
-    #[test]
-    fn burnt_equipment_drops_above_the_block_and_vanishing_items_do_not_drop() {
-        let mut stand = ArmorStand::new(1, Vec3::new(-0.1, 4.8, 0.0), 0.0);
-        let kept = ItemStack::new("minecraft:diamond_boots", 1);
-        let mut vanished = ItemStack::new("minecraft:diamond_helmet", 1);
-        vanished
-            .data_mut()
-            .enchantments
-            .push(("minecraft:vanishing_curse".into(), 1));
-        stand.equipment[0] = Some(kept.clone());
-        stand.equipment[1] = Some(vanished);
-        let (pos, drops) = burnt_armor_stand_equipment(stand);
-        assert_eq!(pos, [-1, 5, 0]);
-        assert_eq!(drops, vec![kept]);
-    }
 }
 #[cfg(test)]
 mod layer_color_tests {

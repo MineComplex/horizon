@@ -1,7 +1,7 @@
 //! The sign editing screen (`SignEditScreen` / `HangingSignEditScreen`):
 //! opened when a sign is placed, four lines limited to the sign's line
 //! width, Up/Down/Enter move between lines, Escape or Done closes.
-use super::{Game, lan::LanHost};
+use super::Game;
 use horizon_client::{
     containers::BlockEntity,
     hud::{HudBatch, rgba},
@@ -9,7 +9,7 @@ use horizon_client::{
     signs::{DYE_TEXT, wood_type},
     ui::EditBox,
 };
-use horizon_protocol::packets::play::{self, Clientbound as C, Serverbound as S};
+use horizon_protocol::packets::play::{self, Serverbound as S};
 use winit::{
     event::{ElementState, KeyEvent},
     keyboard::{KeyCode, PhysicalKey},
@@ -545,22 +545,6 @@ impl crate::game::Sim<'_> {
             }
         }
         self.capture(true);
-    }
-    /// `ServerPlayer.openTextEdit` for the guest whose action opened a sign:
-    /// the block, then the editor, on its client, and the guest may write on it.
-    pub(super) fn lan_open_sign_editor(&mut self, host: &mut LanHost, conn: u32, edit: SignEditor) {
-        let pos = [edit.pos.0, edit.pos.1, edit.pos.2];
-        let state = self.world.block(pos[0], pos[1], pos[2]).0 as i32;
-        host.hub
-            .send_to(conn, &C::BlockUpdate(play::BlockUpdate { pos, state }));
-        host.hub.send_to(
-            conn,
-            &C::OpenSignEditor(play::OpenSignEditor {
-                pos,
-                front: edit.front,
-            }),
-        );
-        host.play.entry(conn).or_default().sign_editing = Some(pos);
     }
     /// `ClientPacketListener.handleOpenSignEditor`: the editor on a sign this
     /// client has.

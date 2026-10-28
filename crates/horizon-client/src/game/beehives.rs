@@ -287,16 +287,6 @@ impl crate::game::Sim<'_> {
         {
             players.push(None);
         }
-        if let Some(host) = self.lan.as_ref() {
-            players.extend(
-                host.hub
-                    .guests
-                    .iter()
-                    .filter(|g| host.hub.here(g) && g.loaded && !g.dead)
-                    .filter(|g| super::lan_mobs::guest_bounds(g).intersects(area))
-                    .map(|g| Some(g.conn)),
-            );
-        }
         if players.is_empty() {
             return;
         }
@@ -318,12 +308,6 @@ impl crate::game::Sim<'_> {
                 .unwrap_or(0) as usize;
             self.mobs[i].ai.target = Some(Who::Player);
             // The player a mob sees is its guest binding, else the window's.
-            if let Some(host) = self.lan.as_mut() {
-                match players[pick] {
-                    Some(conn) => host.mob_players.insert(self.mobs[i].id, conn),
-                    None => host.mob_players.remove(&self.mobs[i].id),
-                };
-            }
         }
     }
 }

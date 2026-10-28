@@ -388,27 +388,12 @@ impl crate::game::Sim<'_> {
         if self.player.is_some() {
             out.push((self.acting_uuid(), self.target_name(Target::Player)));
         }
-        if let Some(host) = &self.lan {
-            for g in host.hub.guests.iter().filter(|g| g.placed) {
-                let ints = horizon_client::lan::playerdata::uuid_ints(g.uuid);
-                if out.iter().any(|(uuid, _)| *uuid == ints) {
-                    continue;
-                }
-                out.push((ints, Text::literal(g.name.clone())));
-            }
-        }
         out
     }
     fn player_target_uuid(&self, target: Target) -> Option<[i32; 4]> {
         match target {
             Target::Player => Some(self.acting_uuid()),
-            Target::Guest(conn) => self.lan.as_ref().and_then(|h| {
-                h.hub
-                    .guests
-                    .iter()
-                    .find(|g| g.conn == conn)
-                    .map(|g| horizon_client::lan::playerdata::uuid_ints(g.uuid))
-            }),
+            Target::Guest(conn) => None,
             _ => None,
         }
     }
@@ -432,21 +417,13 @@ impl crate::game::Sim<'_> {
                 }
             }
         }
-        if packets.is_empty() {
-            return;
-        }
-        let Some(host) = self.lan.as_ref() else {
-            return;
-        };
-        for (conn, packet) in &packets {
-            host.hub.send_to(*conn, packet);
-        }
+        let _ = packets;
     }
     fn boss_viewers(&self) -> Vec<Viewer> {
         let mut out = Vec::new();
         // While `as_guest` has swapped a guest in, the host's own position
         // is not in place. Their overlay updates once the tick puts it back.
-        let local = self.options.dedicated.is_none() && self.lan_acting.is_none();
+        let local = true;
         if local && let Some(p) = &self.player {
             let ints = self.level.player_uuid.unwrap_or_else(|| self.acting_uuid());
             out.push(Viewer {
@@ -459,23 +436,6 @@ impl crate::game::Sim<'_> {
                 conn: None,
                 view_chunks: self.settings.render_distance,
             });
-        }
-        if let Some(host) = &self.lan {
-            for g in host.hub.guests.iter().filter(|g| g.placed) {
-                if out.iter().any(|v| v.uuid == g.uuid) {
-                    continue;
-                }
-                out.push(Viewer {
-                    uuid: g.uuid,
-                    ints: horizon_client::lan::playerdata::uuid_ints(g.uuid),
-                    at: g.position,
-                    alive: !g.dead,
-                    here: g.dimension == self.dim.id(),
-                    local: false,
-                    conn: Some(g.conn),
-                    view_chunks: g.view_distance,
-                });
-            }
         }
         out
     }

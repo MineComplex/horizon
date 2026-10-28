@@ -9,22 +9,8 @@ use horizon_core::random::RandomSource;
 /// `EntityEvent.DROWN_PARTICLES`: broadcast with the drowning damage.
 pub(super) const DROWN_EVENT: i8 = 67;
 
-struct Entry {
-    damage_type: String,
-    damage: f32,
-    fall_location: Option<&'static str>,
-    fall_distance: f32,
-    /// The causing entity: its id (for comparisons) and display name.
-    attacker: Option<(u32, Text)>,
-    /// The direct entity's display name when no entity caused the damage
-    /// (`DamageSource.directEntity`: a potion with no thrower, a cloud).
-    direct: Option<Text>,
-}
 #[derive(Default)]
 pub(super) struct CombatTracker {
-    entries: Vec<Entry>,
-    last_damage: i64,
-    in_combat: bool,
     /// Attackers of damage dealt this tick, claimed by the matching
     /// `RecordedDamage` event.
     pending: Vec<(String, (u32, Text))>,
@@ -62,9 +48,6 @@ pub(super) struct CombatTracker {
     /// a head yet (`Creeper.droppedSkulls`): they are gone from the mob list,
     /// but the mobs they killed still ask for their loot.
     pub(super) charged_exploders: Vec<u32>,
-    /// The player's fall distance before this tick's movement (as of the
-    /// end of the last one).
-    fall_before: f64,
 }
 impl Game<'_> {}
 impl crate::game::Sim<'_> {

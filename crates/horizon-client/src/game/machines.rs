@@ -320,19 +320,6 @@ impl Containers<'_> {
     }
 }
 
-/// The block columns any item entity's box reaches, so that a hopper with
-/// no item over it skips the scan of every item. Kept for one block-entity
-/// pass, in which items do not move: removing one leaves a superset, still
-/// right, and adding one (always pushed at the end, under a new id) or
-/// removing the last rebuilds the columns.
-#[derive(Default)]
-pub(super) struct ItemColumns {
-    /// The item count and last item id when last asked, if built.
-    seen: Option<(usize, Option<u32>)>,
-    cells: horizon_client::fast_hash::FxHashSet<(i32, i32)>,
-}
-impl ItemColumns {
-}
 
 fn bone_meal() -> ItemStack {
     ItemStack {
@@ -747,7 +734,6 @@ impl crate::game::Sim<'_> {
 
 #[cfg(test)]
 mod item_column_tests {
-    use super::ItemColumns;
     use horizon_client::{entities::ItemEntity, items::ItemStack};
     use horizon_core::geometry::Vec3;
 
@@ -788,79 +774,5 @@ mod item_column_tests {
         })
     }
 
-    /// One tick of empty hoppers looking for items: each scans every item
-    /// (before) or asks the columns first (after, build included).
-    #[test]
-    #[ignore]
-    fn hopper_suck_cost() {
-        for (hoppers, count) in [(500i32, 200u32), (2000, 500), (2000, 2000)] {
-            let mut seed = 99u64;
-            let mut next = |range: f64| {
-                seed = seed.wrapping_mul(6_364_136_223_846_793_005).wrapping_add(1);
-                (seed >> 11) as f64 / (1u64 << 53) as f64 * range
-            };
-            let items: Vec<ItemEntity> = (0..count)
-                .map(|id| item(id, next(160.0), 64.0, next(160.0)))
-                .collect();
-            let at: Vec<(i32, i32, i32)> = (0..hoppers)
-                .map(|_| (next(160.0) as i32, 63, next(160.0) as i32))
-                .collect();
-            let t = std::time::Instant::now();
-            let a: Vec<bool> = at.iter().map(|&h| scan(&items, h)).collect();
-            let before = t.elapsed().as_secs_f64() * 1e3;
-            let t = std::time::Instant::now();
-            let mut columns = ItemColumns::default();
-            let b: Vec<bool> = at
-                .iter()
-                .map(|&h| columns.may_reach(&items, h.0, h.2) && scan(&items, h))
-                .collect();
-            let after = t.elapsed().as_secs_f64() * 1e3;
-            assert_eq!(a, b);
-            println!("{hoppers} hoppers, {count} items: {before:.3} ms -> {after:.3} ms");
-        }
-    }
 
-    #[test]
-    fn no_hopper_with_an_item_over_it_is_skipped() {
-        let mut seed = 0x1234_5678_9abc_def1u64;
-        let mut next = |range: f64| {
-            seed = seed.wrapping_mul(6_364_136_223_846_793_005).wrapping_add(1);
-            (seed >> 11) as f64 / (1u64 << 53) as f64 * range
-        };
-        let mut items: Vec<ItemEntity> = Vec::new();
-        let mut columns = ItemColumns::default();
-        let mut next_id = 0;
-        let mut skipped = 0;
-        for round in 0..3000 {
-            // Items come and go as hoppers take them and crafters drop them.
-            match round % 5 {
-                0 | 1 => {
-                    next_id += 1;
-                    // On edges too: a quarter of them sit on a block line.
-                    let snap = |v: f64, edge: bool| if edge { v.floor() + 0.125 } else { v };
-                    let edge = round % 4 == 0;
-                    items.push(item(
-                        next_id,
-                        snap(next(24.0) - 12.0, edge),
-                        64.0,
-                        snap(next(24.0) - 12.0, edge),
-                    ));
-                }
-                2 if !items.is_empty() => {
-                    let i = next(items.len() as f64) as usize;
-                    items.remove(i);
-                }
-                _ => {}
-            }
-            let hopper = (next(26.0) as i32 - 13, 63, next(26.0) as i32 - 13);
-            let reach = columns.may_reach(&items, hopper.0, hopper.2);
-            let found = scan(&items, hopper);
-            assert!(
-                reach || !found,
-                "round {round}: skipped a hopper with an item over it"
-            );
-            skipped += usize::from(!reach);
-        }
-        assert!(skipped > 1000, "skipped only {skipped}");
-    }
 }

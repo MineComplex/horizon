@@ -9,9 +9,7 @@ pub(super) struct Fangs {
     pub id: u32,
     pub pos: [f64; 3],
     pub yaw: f32,
-    warmup: i32,
     pub life: i32,
-    owner: u32,
     pub started: bool,
 }
 #[derive(Default)]
@@ -109,9 +107,7 @@ impl crate::game::Sim<'_> {
             id,
             pos: at,
             yaw,
-            warmup: delay,
             life: 22,
-            owner,
             started: false,
         });
     }

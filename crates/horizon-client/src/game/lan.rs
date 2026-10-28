@@ -5,100 +5,22 @@
 use super::Game;
 use horizon_client::{
     Result,
-    lan::{
-        self,
-        
-        hub::Hub,
-        playerdata},
-    mobs::Mob,
-    text::Text};
+    lan::hub::Hub,
+    mobs::Mob};
 use horizon_protocol::{
     entity_data::{Value, serializer}};
-use std::collections::HashMap;
 
 
 
-/// The settings of the open world (WorldOptionsScreen's multiplayer section).
-#[derive(Clone, Copy, Debug)]
-pub struct LanSettings {
-    pub port: u16,
-    pub guest_commands: bool,
-    pub force_game_mode: bool,
-}
 
 pub(super) struct LanHost {
     pub hub: Hub,
-    pub settings: LanSettings,
-    pub host_entity: i32,
-    /// The host's swings the guests were told of (`Game::swings_started`).
-    pub host_swings: u32,
-    /// The host's crack the guests were told of: the block and its stage.
-    pub host_crack: Option<([i32; 3], i32)>,
-    pub host_uuid: u128,
-    /// The host's profile name (the account's, or the offline name).
-    pub host_name: String,
-    /// The guests' models in the host's world.
-    pub models: HashMap<u32, Mob>,
-    host_mode: i32,
-    pub play: HashMap<u32, super::lan_actions::GuestPlay>,
-    /// Blocks broken this tick (their sound is a level event for the guests).
-    pub broken: Vec<[f64; 3]>,
-    /// Hurt time, death and swing time (while swinging) of the mobs guests see.
-    mob_state: HashMap<super::Dim, HashMap<u32, (i32, bool, Option<i32>)>>,
-    /// The guest each mob sees as its player, when not the host (game/lan_mobs.rs).
-    pub mob_players: HashMap<u32, u32>,
-    /// An integrated server's owner (game/integrated.rs).
-    pub owner: Option<Owner>,
-    /// The players' locator bars, one waypoint manager per level by
-    /// dimension id (game/lan_waypoints.rs), and the guests who are dead,
-    /// whose respawn replaces their waypoint.
-    pub waypoints: std::collections::HashMap<String, lan::waypoints::Waypoints>,
-    pub waypoint_dead: std::collections::HashSet<u128>,
-    /// The world border as the guests were last told of it (lan/border.rs).
-    pub border_sent: Option<lan::border::Sent>,
-    /// Guests' commands waiting for the hub to be back in `self.lan`, where
-    /// a command can reach every player (game/lan_actions.rs).
-    pub commands: Vec<super::lan_actions::GuestCommand>,
-    /// The entities the guests track, described again every tick
-    /// (`lan_entities`) over last tick's states.
-    states: lan::entity::States,
 }
 
 impl LanHost {
-    /// `PlayerList.remove`: `player.awardStat(Stats.LEAVE_GAME)` before the
-    /// player is saved. Once per guest, however often they are saved.
-    pub(super) fn award_leave_game(&mut self, conn: u32) {
-        if let Some(play) = self.play.get_mut(&conn)
-            && !play.left_game
-        {
-            play.left_game = true;
-            play.stats.custom("leave_game", 1);
-        }
-    }
 
-    /// `PlayerList.removeAll`: every player who joined leaves with the world.
-    pub(super) fn award_leave_game_to_all(&mut self) {
-        let conns: Vec<u32> = self
-            .hub
-            .guests
-            .iter()
-            .filter(|g| g.placed)
-            .map(|g| g.conn)
-            .collect();
-        for conn in conns {
-            self.award_leave_game(conn);
-        }
-    }
 }
 
-/// The player who owns an integrated server's world: a guest whose state is
-/// the world's own player (`players/data/<singleplayer_uuid>.dat`), as in
-/// single player.
-pub(super) struct Owner {
-    pub uuid: u128,
-    /// The world's player as loaded, until the owner joins.
-    pub saved: Option<Box<horizon_client::save::Level>>,
-}
 
 /// A stable UUID for an entity that has none.
 pub(super) fn entity_uuid(id: u32) -> u128 {
@@ -301,51 +223,7 @@ impl Game<'_> {
         alpha: f64,
         out: &mut Vec<horizon_client::mesher::Vertex>,
     ) {
-        let Some(host) = &self.lan else {
-            return;
-        };
-        let atlas = &self.front.gui.atlas;
-        let lookup = |name: &str| atlas.sprites.get(name).map(|r| [r.u0, r.v0, r.u1, r.v1]);
-        for (conn, m) in &host.models {
-            let entity_start = out.len();
-            let light = self.world.light(
-                m.position.x.floor() as i32,
-                (m.position.y + 1.62).floor() as i32,
-                m.position.z.floor() as i32,
-            );
-            let packed = (u32::from(light >> 4) * 16) | ((u32::from(light & 15) * 16) << 8);
-            horizon_client::mobs::render::render_with(
-                m,
-                alpha as f32,
-                camera,
-                &lookup,
-                packed,
-                self.res.mob_data(),
-                &host.hub.guest(*conn).map_or_else(
-                    || self.worn_armor_layers(m),
-                    |g| self.stack_armor_layers(&g.armor),
-                ),
-                out,
-            );
-            self.player_elytra_geometry(
-                m,
-                m.extra.chest.as_deref(),
-                camera,
-                alpha as f32,
-                packed,
-                out,
-            );
-            self.spin_attack_geometry(m, camera, alpha as f32, packed, out);
-            self.held_item_geometry(m, camera, alpha, packed, true, out);
-            // LivingEntity.isCurrentlyGlowing: the guest's Glowing effect.
-            let guest = host.hub.guest(*conn);
-            if m.glowing || guest.is_some_and(|g| g.effects.get("glowing").is_some()) {
-                let team = guest.and_then(|g| self.score.board.players_team(&g.name));
-                self.mark_outline(&out[entity_start..], super::glowing::team_color(team));
-            } else {
-                self.cull_entity_vertices(out, entity_start);
-            }
-        }
+        return;
     }
 }
 impl crate::game::Sim<'_> {
@@ -364,99 +242,16 @@ impl crate::game::Sim<'_> {
     }
     /// IntegratedServer.unpublishServer: the guests are sent away.
     pub(super) fn lan_close(&mut self, announce: bool) {
-        let Some(mut host) = self.lan.take() else {
-            return;
-        };
-        host.award_leave_game_to_all();
-        for g in &host.hub.guests {
-            self.save_guest(&host, g);
-        }
-        host.hub.disconnect_all();
-        // Give the writer threads a moment to flush the disconnect packets.
-        std::thread::sleep(std::time::Duration::from_millis(100));
-        self.world.block_log = None;
-        self.world.light_log = None;
-        self.sounds.capture = None;
-        self.lan_events.clear();
-        self.lan_songs.clear();
-        self.lan_critical_hits.clear();
-        self.lan_cushion_breaks.clear();
-        self.streaming.extra.clear();
-        if announce {
-            self.system_message(Text::translate(
-                "menu.multiplayerOptions.publish.stopped",
-                &[],
-            ));
-        }
-    }
-    /// Save a guest when they leave or the world closes: an integrated
-    /// server's owner with the world (`save_game`), anyone else in their file.
-    pub(super) fn save_guest(&mut self, host: &LanHost, guest: &horizon_client::lan::guest::Guest) {
-        if host.owner.as_ref().is_some_and(|o| o.uuid == guest.uuid) {
-            if guest.placed {
-                playerdata::store(guest, &mut self.level);
-            }
-        } else {
-            playerdata::save(guest, &self.world_root);
-        }
-        self.save_guest_records(host, guest);
-    }
-    /// The file name of a player's advancements and statistics: an
-    /// integrated server's owner keeps single player's.
-    fn records_uuid(&self, host: &LanHost, uuid: u128) -> Option<[i32; 4]> {
-        if host.owner.as_ref().is_some_and(|o| o.uuid == uuid) {
-            self.level.player_uuid
-        } else {
-            Some(playerdata::uuid_ints(uuid))
-        }
-    }
-    /// `PlayerAdvancements.save` and `ServerStatsCounter.save` of a network player.
-    pub(super) fn save_guest_records(
-        &self,
-        host: &LanHost,
-        guest: &horizon_client::lan::guest::Guest,
-    ) {
-        if !guest.placed || self.adv.tree.list.is_empty() {
-            return;
-        }
-        let Some(uuid) = self.records_uuid(host, guest.uuid) else {
-            return;
-        };
-        let path = super::stats::player_json(&self.world_root, "advancements", uuid);
-        let json = guest
-            .advancements
-            .to_json(&self.adv.tree, horizon_world::DATA_VERSION);
-        if let Some(dir) = path.parent() {
-            let _ = std::fs::create_dir_all(dir);
-        }
-        if let Ok(text) = serde_json::to_string_pretty(&json) {
-            let _ = std::fs::write(path, text);
-        }
-        if let Some(play) = host.play.get(&guest.conn) {
-            play.stats
-                .write(&super::stats::player_json(&self.world_root, "stats", uuid));
-        }
+        return;
     }
     /// The integrated server's owner into the world's player, for `Level::write`.
     pub(super) fn store_owner(&mut self) {
-        let Some(host) = &self.lan else {
-            return;
-        };
-        let Some(uuid) = host.owner.as_ref().map(|o| o.uuid) else {
-            return;
-        };
-        if let Some(g) = host.hub.guests.iter().find(|g| g.uuid == uuid && g.placed) {
-            playerdata::store(g, &mut self.level);
-            self.save_guest_records(host, g);
-        }
+        return;
     }
     /// The world's default game mode (`defaultgamemode`).
     pub(super) fn set_default_game_mode(&mut self, mode: i32) {
         self.level.game_mode = mode;
         self.level.creative = mode == 1;
-        if let Some(host) = self.lan.as_mut() {
-            host.hub.config.default_game_mode = mode;
-        }
     }
     /// Level events the game queued, for the guests (`process_level_events`).
     pub(super) fn lan_record_events(&mut self, events: &[horizon_world::level::LevelEvent]) {
@@ -474,7 +269,7 @@ impl crate::game::Sim<'_> {
                     let except = if matches!(*id, 2015 | 1505 | 1029 | 1030 | 2019 | 2020 | 3008) {
                         None
                     } else {
-                        self.lan_acting
+                        None::<u32>
                     };
                     self.lan_events
                         .push((*id, [pos.x, pos.y, pos.z], *data, except));
@@ -544,9 +339,6 @@ impl crate::game::Sim<'_> {
     }
     /// A chat line the host typed, for the guests.
     pub(super) fn lan_host_chat(&mut self, message: &str) {
-        if let Some(host) = &self.lan {
-            host.hub.chat(&host.host_name, message);
-        }
     }
 }
 

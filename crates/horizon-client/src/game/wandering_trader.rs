@@ -5,13 +5,11 @@ use super::{ Game, creatures::Creatures};
 use horizon_client::save::write_dat;
 use horizon_world::nbt::Tag;
 
-const TICK_DELAY: i32 = 1200;
 const SPAWN_DELAY: i32 = 24000;
 const MIN_CHANCE: i32 = 25;
 
 /// The spawner's clock and the `WanderingTraderData` saved with the world.
 pub(super) struct Spawner {
-    tick_delay: i32,
     spawn_delay: i32,
     chance: i32,
     loaded: bool,
@@ -20,7 +18,6 @@ pub(super) struct Spawner {
 impl Default for Spawner {
     fn default() -> Self {
         Self {
-            tick_delay: TICK_DELAY,
             spawn_delay: SPAWN_DELAY,
             chance: MIN_CHANCE,
             loaded: false,

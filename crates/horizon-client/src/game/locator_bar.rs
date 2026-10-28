@@ -10,8 +10,6 @@ use horizon_client::{
 };
 use horizon_protocol::packets::play::TrackedWaypoint;
 
-/// `Player.getEyeHeight` while standing.
-const PLAYER_EYES: f64 = 1.62;
 
 fn uuid(ints: [i32; 4]) -> u128 {
     ints.iter()
@@ -121,8 +119,6 @@ impl crate::game::Sim<'_> {
             let v = |v: horizon_core::geometry::Vec3| [v.x, v.y, v.z];
             return Some(at(v(m.position), v(m.previous), m.eye_height()));
         }
-        let host = self.lan.as_ref()?;
-        let g = host.hub.guests.iter().find(|g| g.uuid == id && g.placed)?;
-        Some(at(g.position, g.previous_position, PLAYER_EYES))
+        None
     }
 }

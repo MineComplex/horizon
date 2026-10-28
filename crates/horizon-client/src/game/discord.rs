@@ -14,11 +14,7 @@ impl Game<'_> {
         if self.front.title.is_some() {
             return Status::Menus;
         }
-        let play = if let Some(host) = &self.lan {
-            Play::Hosting {
-                players: 1 + host.hub.guests.len(),
-            }
-        } else if self.remote.is_some() {
+        let play = if self.remote.is_some() {
             Play::Multiplayer
         } else {
             Play::Singleplayer

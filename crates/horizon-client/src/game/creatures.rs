@@ -27,29 +27,16 @@ use std::sync::Arc;
 #[derive(Default)]
 pub(super) struct Creatures {
     pub projectiles: Vec<Projectile>,
-    /// Wind bursts from a guest's turn, waiting for it to end (game/wind.rs).
-    pub wind_bursts: Vec<super::wind::Burst>,
     /// The players a fishing hook can catch, taken as the hooks tick, and
     /// the pulls on them waiting for the hub (game/fishing.rs).
     pub hook_targets: Vec<super::fishing::HookTarget>,
     pub hook_pulls: Vec<(u32, horizon_core::geometry::Vec3)>,
-    /// Mace smash knockback on the other players from a guest's turn, waiting
-    /// for it to end (game/mace.rs).
-    pub smash_pushes: Vec<super::mace::SmashPush>,
-    /// Sweep attacks from a guest's turn, waiting for it to end
-    /// (game/lan_pvp.rs).
-    pub sweeps: Vec<super::lan_pvp::Sweep>,
-    /// Explosion packets from a guest's turn, waiting for it to end
-    /// (centre, small, radius, blocks hit; game/lan_particles.rs).
-    pub lan_explosions: Vec<([f64; 3], bool, f32, usize)>,
     /// Ticks left of the elder guardian's apparition (MobAppearanceParticle).
     pub elder_apparition: i32,
     /// The wandering trader spawner's clock.
     pub trader: super::wandering_trader::Spawner,
     /// When each player last put a parrot on a shoulder (`timeEntitySatOnShoulder`).
     pub shoulder_time: std::collections::HashMap<[i32; 4], i64>,
-    /// The cat spawner's countdown (`CatSpawner.nextTick`).
-    pub cat_tick: i32,
     /// Particles from a guest's turn, waiting for it to end
     /// (`lan_send_particles`: options, centre, spread, speed, count).
     pub lan_particles: Vec<(
@@ -813,12 +800,6 @@ impl crate::game::Sim<'_> {
             ),
         }
     }
-    /// What the generator finalizes this level's structure mobs with.
-    pub(super) fn share_spawn_conditions(&self) {
-        if let Some(terrain) = self.end.locator() {
-            terrain.set_spawn_conditions(self.difficulty_id() as u8, self.world.day_time);
-        }
-    }
     /// `ServerLevel.getCurrentDifficultyAt`.
     pub(super) fn local_difficulty(&self, at: [f64; 3]) -> spawning::LocalDifficulty {
         use horizon_world::food::Difficulty;
@@ -1335,24 +1316,6 @@ impl crate::game::Sim<'_> {
                 MobEvent::DestroyProgress { mob, pos, progress } => {
                     self.destroy_block_progress(mob as i32, pos, progress);
                     // ServerLevel.destroyBlockProgress: every player nearby sees it.
-                    if let Some(host) = self.lan.as_ref() {
-                        host.hub.broadcast_near(
-                            [f64::from(pos[0]), f64::from(pos[1]), f64::from(pos[2])],
-                            64.0,
-                            &horizon_protocol::packets::play::Clientbound::BlockDestruction(
-                                horizon_protocol::packets::play::BlockDestruction {
-                                    id: mob as i32,
-                                    pos,
-                                    progress: if (0..10).contains(&progress) {
-                                        progress as u8
-                                    } else {
-                                        255
-                                    },
-                                },
-                            ),
-                            None,
-                        );
-                    }
                 }
                 MobEvent::LevelEvent { id, pos, data } => self.level_event_at(id, pos, data),
                 MobEvent::SetBlockName { pos, name, effect } => {
@@ -1912,24 +1875,11 @@ impl crate::game::Sim<'_> {
         let mut cursed = Vec::new();
         self.for_each_player(|g| {
             if g.elder_curse_player(at) {
-                cursed.push(g.lan_acting);
+                cursed.push(None::<u32>);
             }
         });
         // A guest's client shows the apparition and plays the curse itself
         // (ClientboundGameEventPacket.GUARDIAN_ELDER_EFFECT).
-        if let Some(host) = self.lan.as_ref() {
-            for conn in cursed.into_iter().flatten() {
-                host.hub.send_to(
-                    conn,
-                    &horizon_protocol::packets::play::Clientbound::GameEvent(
-                        horizon_protocol::packets::play::GameEvent {
-                            event: horizon_client::lan::hub::game_event::GUARDIAN_ELDER_EFFECT,
-                            param: 1.0,
-                        },
-                    ),
-                );
-            }
-        }
     }
     /// The curse on the player in place; whether it took.
     fn elder_curse_player(&mut self, at: [f64; 3]) -> bool {
@@ -1949,7 +1899,7 @@ impl crate::game::Sim<'_> {
         }
         let at = [p.position.x, p.position.y, p.position.z];
         self.give_player_effect("minecraft:mining_fatigue", 6000, 2);
-        if self.lan_acting.is_none() {
+        {
             self.sounds
                 .play("minecraft:entity.elder_guardian.curse", Some(at), 1.0, 1.0);
             self.creatures.elder_apparition = super::mob_blocks::APPARITION_TICKS;
@@ -2669,7 +2619,7 @@ impl crate::game::Sim<'_> {
                 );
                 // The feeder gets the kill, as for a normal player attack.
                 if hurt {
-                    self.last_hurt_by_player.insert(id, self.lan_acting);
+                    self.last_hurt_by_player.insert(id, None::<u32>);
                 }
             }
             // Parrot.mobInteract: parrot food may tame a wild one (one time in

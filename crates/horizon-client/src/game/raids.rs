@@ -7,7 +7,7 @@ use horizon_client::{
     
     mobs::{
         Mob, Species, raider},
-    patrol::{GameplayAttributes, PatrolSpawner},
+    patrol::GameplayAttributes,
     raid::{self, BarName, Raids}};
 use horizon_core::{geometry::Vec3, random::RandomSource};
 use horizon_world::nbt::Tag;
@@ -16,8 +16,6 @@ use std::collections::HashMap;
 /// Patrol and raid state owned by the game.
 #[derive(Default)]
 pub(super) struct Raiding {
-    patrol: PatrolSpawner,
-    siege: Siege,
     /// The raids of the dimension the player is in, and that dimension.
     raids: Raids,
     loaded: Option<Dim>,
@@ -33,26 +31,8 @@ pub(super) struct Raiding {
     homes: HashMap<i32, (i64, std::sync::Arc<Vec<[i32; 3]>>)>,
 }
 
-/// `VillageSiege`: whether tonight is a siege, whether the spot is chosen,
-/// and the zombies still to spawn there.
-#[derive(Default)]
-struct Siege {
-    tonight: bool,
-    set_up: bool,
-    zombies_to_spawn: i32,
-    next_spawn_time: i32,
-    spot: [i32; 3],
-}
 
 impl Raiding {
-    /// Exchange the level-held parts (`ServerLevel.getRaids`) with another
-    /// level's (game/levels.rs).
-    pub(super) fn swap_level(&mut self, other: &mut Self) {
-        std::mem::swap(&mut self.raids, &mut other.raids);
-        std::mem::swap(&mut self.loaded, &mut other.loaded);
-        std::mem::swap(&mut self.bar_hurts, &mut other.bar_hurts);
-        std::mem::swap(&mut self.homes, &mut other.homes);
-    }
 }
 
 
@@ -349,14 +329,4 @@ fn raid_name_tag(name: BarName) -> Tag {
 mod tests {
     use super::*;
 
-    #[test]
-    fn sections_to_village_is_a_chebyshev_distance_capped_at_seven() {
-        let mut centers = HashSet::new();
-        assert_eq!(sections_to_village(&centers, (0, 0, 0)), 7);
-        centers.insert(section([40, 64, 40]));
-        assert_eq!(sections_to_village(&centers, (2, 4, 2)), 0);
-        assert_eq!(sections_to_village(&centers, (4, 4, 2)), 2);
-        assert_eq!(sections_to_village(&centers, (-10, 4, 2)), 7);
-        assert_eq!(section([-1, -17, 15]), (-1, -2, 0));
-    }
 }

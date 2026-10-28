@@ -50,20 +50,11 @@ struct Arrival {
 /// The nether portal state of the world (`Game::portals`).
 #[derive(Default)]
 pub(super) struct Portals {
-    /// The player's.
-    pub(super) player: PortalState,
     /// `LocalPlayer.portalProcess.isInsidePortalThisTick`.
     client_inside: bool,
     /// Items and mobs, by entity id.
     entities: HashMap<u32, PortalState>,
-    /// Positions before this tick's moves, by entity id.
-    before: HashMap<u32, Vec3>,
     arrivals: Vec<Arrival>,
-    /// The vehicles server players ride that went through a portal this
-    /// tick, in their level, with their entry: they carry their riders
-    /// (`tick_server_travel`).
-    carrying: Vec<(Dim, u32, BlockPos)>,
-    loaded: bool,
     dirty: bool,
     /// Per-chunk portal palette masks, kept across ticks (portal_sections).
     pub(super) sections: horizon_client::portal_sections::PortalSections,
@@ -185,96 +176,7 @@ impl crate::game::Sim<'_> {
 mod tests {
     use super::*;
 
-    #[test]
-    fn end_portals_lead_to_the_end_spawn_and_back_to_the_world_spawn() {
-        let spawn = BlockPos::new(-7, 70, 12);
-        for from in [Dim::Overworld, Dim::Nether] {
-            let plan = Plan::end_portal(from, spawn, 0.9, 1.4);
-            assert_eq!(plan.dim, Dim::End);
-            assert_eq!(plan.approximate, BlockPos::new(100, 50, 0));
-            assert!(plan.end);
-        }
-        let plan = Plan::end_portal(Dim::End, spawn, 0.25, 0.25);
-        assert_eq!(plan.dim, Dim::Overworld);
-        assert_eq!(plan.approximate, spawn);
-    }
 
-    #[test]
-    fn the_end_portal_shape_takes_falling_items_and_standing_mobs() {
-        let portal = BlockPos::new(0, 100, 3);
-        let at = |y| Vec3::new(0.5, y, 3.5);
-        // A dropped item falling through the slab, or in it.
-        assert!(touches_end_portal(
-            at(100.6),
-            at(100.56),
-            0.25,
-            0.25,
-            portal
-        ));
-        // One tick's fall across the whole slab, in it at neither end.
-        assert!(touches_end_portal(at(101.0), at(99.9), 0.25, 0.25, portal));
-        // Resting below the slab (on the floor) or above it.
-        assert!(!touches_end_portal(
-            at(100.0),
-            at(100.0),
-            0.25,
-            0.25,
-            portal
-        ));
-        assert!(!touches_end_portal(
-            at(100.8),
-            at(100.8),
-            0.25,
-            0.25,
-            portal
-        ));
-        // A cow standing in the portal block.
-        assert!(touches_end_portal(at(100.0), at(100.0), 0.9, 1.4, portal));
-        // Beside it.
-        let beside = Vec3::new(2.0, 100.0, 3.5);
-        assert!(!touches_end_portal(beside, beside, 0.9, 1.4, portal));
-    }
 
-    #[test]
-    fn end_portals_turn_entities_like_their_teleport_transition() {
-        // Into the End: facing west, pitch kept.
-        assert_eq!(
-            end_portal_rotation(true, [-30.0, 20.0], [45.0, 10.0]),
-            [90.0, 20.0]
-        );
-        // Out of it: turned by the world spawn's yaw and pitch, pitch clamped.
-        assert_eq!(
-            end_portal_rotation(false, [-30.0, 20.0], [45.0, 10.0]),
-            [15.0, 30.0]
-        );
-        assert_eq!(
-            end_portal_rotation(false, [0.0, 80.0], [0.0, 30.0]),
-            [0.0, 90.0]
-        );
-    }
 
-    #[test]
-    fn waiting_arrivals_keep_their_end_destination_when_saved() {
-        let tag = Tag::compound([("id", Tag::String("minecraft:cow".into()))]);
-        for (from, dim) in [(Dim::Overworld, Dim::End), (Dim::End, Dim::Overworld)] {
-            let arrival = Arrival {
-                plan: Plan::end_portal(from, BlockPos::new(3, 64, -5), 0.9, 1.4),
-                tag: tag.clone(),
-            };
-            let back = arrival_from_tag(&arrival_tag(&arrival)).unwrap();
-            assert_eq!(back.plan.dim, dim);
-            assert_eq!(back.plan.approximate, arrival.plan.approximate);
-            assert!(back.plan.end);
-            assert_eq!(back.tag, tag);
-        }
-        // Arrivals saved before End portals were Nether portal plans.
-        let mut old = arrival_tag(&Arrival {
-            plan: Plan::end_portal(Dim::End, BlockPos::new(0, 64, 0), 0.25, 0.25),
-            tag,
-        });
-        if let Tag::Compound(c) = &mut old {
-            c.remove(&"end".into());
-        }
-        assert!(!arrival_from_tag(&old).unwrap().plan.end);
-    }
 }

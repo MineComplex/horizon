@@ -36,7 +36,6 @@ enum Target {
 /// `Entity.getStepHeight` of each body, read before the push.
 struct StepHeights {
     player: f32,
-    guests: std::collections::HashMap<u32, f32>,
 }
 
 /// What the push needs from one entity.
@@ -210,18 +209,7 @@ impl crate::game::Sim<'_> {
             .as_mut()
             .and_then(|p| p.attribute("minecraft:step_height").ok())
             .map_or(0.6, |v| v as f32);
-        let mut guests = std::collections::HashMap::new();
-        if let Some(host) = self.lan.as_mut() {
-            for g in &mut host.hub.guests {
-                let step = g
-                    .motion
-                    .as_mut()
-                    .and_then(|m| m.attribute("minecraft:step_height").ok())
-                    .map_or(0.6, |v| v as f32);
-                guests.insert(g.conn, step);
-            }
-        }
-        StepHeights { player, guests }
+        StepHeights { player }
     }
     /// The entities a moving block can run into: the window's player, the LAN
     /// guests in the level, then the mobs.
@@ -229,15 +217,6 @@ impl crate::game::Sim<'_> {
         let mut targets = Vec::new();
         if self.player.is_some() {
             targets.push(Target::Player);
-        }
-        if let Some(host) = self.lan.as_ref() {
-            targets.extend(
-                host.hub
-                    .guests
-                    .iter()
-                    .filter(|g| host.hub.here(g) && g.loaded && !g.dead)
-                    .map(|g| Target::Guest(g.conn)),
-            );
         }
         targets.extend((0..self.mobs.len()).map(Target::Mob));
         targets.extend((0..self.dropped.len()).map(Target::Item));
@@ -264,27 +243,7 @@ impl crate::game::Sim<'_> {
                     supported: p.ground.supporting_block == Some(pos),
                 })
             }
-            Target::Guest(conn) => {
-                let host = self.lan.as_ref()?;
-                let g = host.hub.guests.iter().find(|g| g.conn == conn)?;
-                if g.dead || g.game_mode == 3 {
-                    return None;
-                }
-                let p = g.position;
-                Some(Body {
-                    bounds: Aabb::new(
-                        Vec3::new(p[0] - 0.3, p[1], p[2] - 0.3),
-                        Vec3::new(p[0] + 0.3, p[1] + 1.8, p[2] + 0.3),
-                    ),
-                    position: Vec3::new(p[0], p[1], p[2]),
-                    on_ground: g.on_ground,
-                    step_height: steps.guests.get(&conn).copied().unwrap_or(0.6),
-                    supported: g
-                        .motion
-                        .as_ref()
-                        .is_some_and(|m| m.ground.supporting_block == Some(pos)),
-                })
-            }
+            Target::Guest(_) => None,
             Target::Mob(i) => {
                 let m = &self.mobs[i];
                 if m.removed || !m.alive() {
@@ -401,11 +360,7 @@ impl crate::game::Sim<'_> {
                 let p = self.player.as_mut()?;
                 limit(&mut p.piston)
             }
-            Target::Guest(conn) => {
-                let host = self.lan.as_mut()?;
-                let g = host.hub.guests.iter_mut().find(|g| g.conn == conn)?;
-                limit(&mut g.motion.as_deref_mut()?.piston)
-            }
+            Target::Guest(_) => None,
             Target::Mob(i) => limit(&mut self.mobs[i].piston),
             _ => limit(accumulators.entry(target).or_default()),
         }
@@ -418,18 +373,6 @@ impl crate::game::Sim<'_> {
                 }
             }
             Target::Guest(conn) => {
-                if let Some(host) = self.lan.as_mut()
-                    && let Some(g) = host.hub.guests.iter_mut().find(|g| g.conn == conn)
-                {
-                    // The body and the hub's copy of its position move together:
-                    // `leave_guest` writes the body back over the hub's.
-                    for (slot, delta) in g.position.iter_mut().zip(movement.components()) {
-                        *slot += delta;
-                    }
-                    if let Some(m) = g.motion.as_deref_mut() {
-                        m.position = m.position.add_vector(movement);
-                    }
-                }
             }
             Target::Mob(i) => {
                 let m = &mut self.mobs[i];
@@ -458,12 +401,6 @@ impl crate::game::Sim<'_> {
                 m.velocity = piston_push::bounce_velocity(movement, m.velocity);
             }
             Target::Guest(conn) => {
-                if let Some(host) = self.lan.as_mut()
-                    && let Some(guest) = host.hub.guests.iter_mut().find(|g| g.conn == conn)
-                    && let Some(motion) = guest.motion.as_deref_mut()
-                {
-                    motion.velocity = piston_push::bounce_velocity(movement, motion.velocity);
-                }
             }
             Target::Item(i) => {
                 self.dropped[i].velocity =

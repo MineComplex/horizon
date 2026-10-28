@@ -25,7 +25,6 @@ pub(super) struct Rocket {
     pub(super) previous: Vec3,
     pub(super) velocity: Vec3,
     life: i32,
-    lifetime: i32,
     pub(super) explosions: Vec<FireworkExplosion>,
     /// Boosting the player (attachedToEntity).
     pub(super) attached: bool,
@@ -52,7 +51,6 @@ impl Rocket {
             previous: position,
             velocity,
             life: 0,
-            lifetime: i32::MAX,
             explosions,
             attached: false,
             guest: None,
@@ -188,7 +186,6 @@ impl crate::game::Sim<'_> {
             previous: at,
             velocity,
             life: 0,
-            lifetime,
             explosions,
             attached,
             guest: None,
@@ -232,7 +229,7 @@ impl crate::game::Sim<'_> {
         }
         let at = self.player.as_ref().map_or(Vec3::ZERO, |p| p.position);
         let mut rocket = self.new_rocket(at, stack, true);
-        rocket.guest = self.lan_acting;
+        rocket.guest = None::<u32>;
         self.rockets.push(rocket);
         if !self.creative {
             self.consume_held();

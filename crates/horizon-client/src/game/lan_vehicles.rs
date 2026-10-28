@@ -18,11 +18,6 @@ impl crate::game::Sim<'_> {
     /// Whether a server player other than the one acting rides `vehicle`
     /// (`Entity.canAddPassenger`: a boat or minecart seats one player here).
     pub(super) fn ridden_by_guest(&self, vehicle: u32) -> bool {
-        self.lan.as_ref().is_some_and(|h| {
-            h.hub
-                .guests
-                .iter()
-                .any(|g| Some(g.conn) != self.lan_acting && g.vehicle == Some(vehicle))
-        })
+        false
     }
 }

@@ -207,13 +207,7 @@ impl crate::game::Sim<'_> {
             .as_ref()
             .filter(|p| !p.health.dead_or_dying() && !self.spectator())
             .map(|p| [p.position.x, p.position.y, p.position.z]);
-        let guests = self.lan.iter().flat_map(|h| {
-            h.hub
-                .guests
-                .iter()
-                .filter(|g| h.hub.here(g) && g.loaded && !g.dead && !g.spectator())
-                .map(|g| g.position)
-        });
+        let guests = std::iter::empty();
         let d = |p: &[f64; 3]| at.distance_squared(Vec3::new(p[0], p[1], p[2]));
         let target = host
             .into_iter()

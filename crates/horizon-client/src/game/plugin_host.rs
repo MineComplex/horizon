@@ -47,10 +47,7 @@ impl api::server::View for View<'_> {
         self.game.level.name.clone()
     }
     fn max_players(&self) -> usize {
-        self.game
-            .lan
-            .as_ref()
-            .map_or(0, |h| h.hub.lan.shared.max_players())
+        0
     }
     fn time(&self) -> i64 {
         self.game.world.day_time.rem_euclid(24000)
@@ -91,7 +88,7 @@ impl crate::game::Sim<'_> {
     /// The online players, from the hub in hand or in place, else the last
     /// ones seen (the hub is out of its place during a player's turn).
     fn plugin_players(&mut self, host: Option<&LanHost>) -> Vec<PlayerRef> {
-        if let Some(h) = host.or(self.lan.as_ref()) {
+        if let Some(h) = host {
             let players: Vec<PlayerRef> = h
                 .hub
                 .guests
@@ -106,21 +103,7 @@ impl crate::game::Sim<'_> {
     }
     /// The player whose turn it is (`as_guest`).
     fn plugin_acting(&self) -> Option<PlayerRef> {
-        let uuid = self.lan_acting_uuid?;
-        let mut p = self.plugin_seen.iter().find(|p| p.uuid == uuid)?.clone();
-        // The turn's own state is in the game.
-        if let Some(m) = self.player.as_ref() {
-            p.location = Location {
-                world: self.dim.id().to_owned(),
-                x: m.position.x,
-                y: m.position.y,
-                z: m.position.z,
-                yaw: self.yaw,
-                pitch: self.pitch,
-            };
-            p.health = m.health.health();
-        }
-        Some(p)
+        return None;
     }
     fn plugins_listen<E: Event>(&self) -> bool {
         self.plugins.as_ref().is_some_and(|h| h.listens::<E>())
@@ -163,9 +146,6 @@ impl crate::game::Sim<'_> {
         };
         self.plugin_fire(None, &mut event);
         if event.cancelled {
-            if let Some(conn) = self.lan_acting {
-                self.plugin_resend.push((conn, pos, state.0 as i32));
-            }
             return None;
         }
         Some(event.drop_items)

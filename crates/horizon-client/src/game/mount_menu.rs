@@ -52,10 +52,6 @@ pub(super) struct MountMenu {
     open: Option<Open>,
 }
 impl MountMenu {
-    /// The mount whose menu is open.
-    pub(super) fn opened_mob(&self) -> Option<u32> {
-        self.open.as_ref().map(|o| o.mob)
-    }
 }
 struct Open {
     mob: u32,
@@ -318,7 +314,7 @@ impl crate::game::Sim<'_> {
         true
     }
     fn show_mount_menu(&mut self) {
-        if self.remote.is_none() && self.lan_acting.is_none() {
+        if self.remote.is_none() {
             self.carried = None;
         }
         self.station = None;
@@ -383,24 +379,6 @@ impl crate::game::Sim<'_> {
         let body = open.show_armor.then_some(armor);
         let items = open.items.clone();
         self.mount_store(index, saddle, body, items);
-    }
-    /// The slots of mount `index` as its menu shows them: the saddle, the
-    /// body item (None when the slot isn't active), the chest.
-    pub(super) fn mount_contents(
-        &self,
-        index: usize,
-    ) -> (
-        Option<ItemStack>,
-        Option<Option<ItemStack>>,
-        Vec<Option<ItemStack>>,
-    ) {
-        let m = &self.mobs[index];
-        let species = m.species();
-        let body =
-            shows_body(species).then(|| m.extra.head.as_deref().map(|i| ItemStack::new(i, 1)));
-        let mut items = m.extra.items.clone();
-        items.resize(mount_columns(m) * 3, None);
-        (m.saddle_item(), body, items)
     }
     /// The menu's slots back on mount `index` (`body` None: not its slot),
     /// with the equip sound of what was put on (`Equippable.equipSound`).

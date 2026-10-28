@@ -15,7 +15,7 @@ use horizon_client::{
     ui,
 };
 use horizon_core::position::BlockPos;
-use horizon_protocol::packets::play::{self, Clientbound as C, Serverbound as S};
+use horizon_protocol::packets::play::{self, Serverbound as S};
 use horizon_world::level::flags as level_flags;
 use winit::{
     event::{ElementState, KeyEvent},
@@ -788,13 +788,7 @@ impl crate::game::Sim<'_> {
             "minecraft:written_book" => true,
             _ => return false,
         };
-        if self.lan_acting.is_some() {
-            if written {
-                let hand = i32::from(self.hand == Hand::Off);
-                self.guest_packets
-                    .push(C::OpenBook(play::OpenBook { hand }));
-            }
-        } else if let Some(screen) = self.book_screen(stack) {
+        if let Some(screen) = self.book_screen(stack) {
             self.open_book(screen);
         }
         self.swing_arm();
@@ -903,8 +897,7 @@ impl crate::game::Sim<'_> {
     /// The book and quill at `slot` takes the pages, or with a title becomes
     /// the written book its writer signed.
     fn write_book(&mut self, slot: usize, pages: Vec<String>, title: Option<String>) {
-        let author = self
-            .lan_acting_name
+        let author = None::<String>
             .clone()
             .unwrap_or_else(|| super::chat::PLAYER_NAME.to_owned());
         let Some(stack) = self

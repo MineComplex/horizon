@@ -14,9 +14,6 @@ use horizon_core::{geometry::Vec3, random::RandomSource};
 impl Game<'_> {}
 impl crate::game::Sim<'_> {
     pub(super) fn tick_client_ambient(&mut self) {
-        if self.options.dedicated.is_some() {
-            return;
-        }
         let mut events = Vec::new();
         let random = self.particles.level_random();
         for m in self.mobs.iter_mut().filter(|m| !m.removed) {
@@ -64,8 +61,7 @@ impl crate::game::Sim<'_> {
             let support = p.ground.supporting_block.map(|b| [b.x, b.y, b.z]);
             runners.push((p.position, p.velocity, support));
         }
-        let guests = self.lan.iter().flat_map(|host| host.models.values());
-        for m in self.mobs.iter().chain(guests) {
+        for m in self.mobs.iter() {
             // Another player's fluids aren't known here: none where they stand.
             let feet = [
                 m.position.x.floor() as i32,
@@ -157,8 +153,7 @@ impl crate::game::Sim<'_> {
                 invisible,
             );
         }
-        let guests = self.lan.iter().flat_map(|host| host.models.values());
-        for m in self.mobs.iter().chain(guests) {
+        for m in self.mobs.iter() {
             if !m.alive() {
                 continue;
             }

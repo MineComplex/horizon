@@ -4,7 +4,7 @@
 //! it picks up (the end of `AbstractBoat.tick`), where they sit
 //! (`positionRider`, `clampRotation`) and how they get out.
 //! Saving them under the boat's `Passengers` lives in `persist.rs`.
-use super::{Game, boats::Boat, lan_mobs::guest_bounds};
+use super::{Game, boats::Boat};
 use horizon_client::{
     camera::wrap_degrees,
     mobs::{Mob, Species, drops::is_animal, equine, riders}};
@@ -58,13 +58,7 @@ impl crate::game::Sim<'_> {
     /// The players in boat `id`: the window's player (or the server player
     /// acting as it) and the server's other players.
     pub(super) fn boat_players(&self, id: u32) -> usize {
-        let guests = self.lan.as_ref().map_or(0, |h| {
-            h.hub
-                .guests
-                .iter()
-                .filter(|g| Some(g.conn) != self.lan_acting && g.vehicle == Some(id))
-                .count()
-        });
+        let guests = 0;
         usize::from(self.riding == Some(id)) + guests
     }
     /// The mobs in boat `id`, in their seat order after the players
@@ -120,18 +114,6 @@ impl crate::game::Sim<'_> {
             && !p.health.dead_or_dying()
         {
             out.push((p.bounds(), true));
-        }
-        if let Some(host) = self.lan.as_ref() {
-            for g in host.hub.guests.iter().filter(|g| {
-                Some(g.conn) != self.lan_acting
-                    && host.hub.here(g)
-                    && g.loaded
-                    && !g.dead
-                    && !g.spectator()
-                    && g.vehicle != Some(id)
-            }) {
-                out.push((guest_bounds(g), false));
-            }
         }
         out
     }

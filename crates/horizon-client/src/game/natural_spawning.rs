@@ -18,14 +18,6 @@ use horizon_core::{
 use horizon_world::registry::BlockStateId;
 use std::collections::HashMap;
 
-/// Reused buffers for one pass over the spawning chunks: the candidate chunks
-/// and the set that keeps each one once. The buffers keep their capacity
-/// between ticks.
-#[derive(Default)]
-pub(super) struct SpawnScratch {
-    pub(super) candidates: Vec<(i32, i32)>,
-    pub(super) seen: horizon_client::fast_hash::FxHashSet<(i32, i32)>,
-}
 
 /// A player in the level in place, as spawning and despawning see it.
 pub(super) struct LevelPlayer {
@@ -357,20 +349,7 @@ impl<'a> crate::game::Sim<'a> {
     /// Every player in the level in place: the local player, and the LAN
     /// guests or server players in it.
     pub(super) fn level_players(&self) -> Vec<LevelPlayer> {
-        let mut players: Vec<LevelPlayer> = self.lan.as_ref().map_or_else(Vec::new, |h| {
-            h.hub
-                .guests
-                .iter()
-                .filter(|g| h.hub.here(g))
-                .map(|g| LevelPlayer {
-                    position: Vec3::new(g.position[0], g.position[1], g.position[2]),
-                    bounds: super::lan_mobs::guest_bounds(g),
-                    alive: !g.dead,
-                    creative: g.creative(),
-                    spectator: g.spectator(),
-                })
-                .collect()
-        });
+        let mut players: Vec<LevelPlayer> = (Vec::new)();
         if let Some(p) = self.player_view() {
             players.insert(
                 0,

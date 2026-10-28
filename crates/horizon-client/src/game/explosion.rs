@@ -365,21 +365,6 @@ impl crate::game::Sim<'_> {
         // The player, then every other player in the level (LAN guests),
         // each swapped in as the player.
         self.explosion_hurt_player(center, radius, damage_type, exploding);
-        if let Some(mut host) = self.lan.take() {
-            let guests: Vec<u32> = host
-                .hub
-                .guests
-                .iter()
-                .filter(|g| host.hub.here(g) && g.loaded && !g.dead)
-                .map(|g| g.conn)
-                .collect();
-            for conn in guests {
-                self.guest_hit_by(&mut host, conn, |g| {
-                    g.explosion_hurt_player(center, radius, damage_type, exploding);
-                });
-            }
-            self.lan = Some(host);
-        }
         // Mobs.
         let mut mobs = std::mem::take(&mut self.mobs);
         for m in mobs.iter_mut().filter(|m| m.alive()) {
