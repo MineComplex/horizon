@@ -110,6 +110,10 @@ impl WorldRequest {
         if let Some(d) = &options.dimension {
             level.dimension = d.clone();
             level.position = None;
+        } else if options.dedicated.is_some() {
+            // A server opens on the Overworld (MinecraftServer.overworld), whatever level a
+            // single-player save or an older Horizon server wrote into level.dat.
+            level.dimension = "minecraft:overworld".to_owned();
         }
         let dim = Dim::from_id(&level.dimension);
         let (mut streaming, save, locator) =

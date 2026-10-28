@@ -610,3 +610,43 @@ fn horizon_commands_are_off_unless_the_server_turns_them_on() {
         );
     }
 }
+
+#[test]
+fn a_dedicated_servers_help_lists_its_own_commands_last() {
+    let usage: Vec<String> = vanilla::dedicated_help_dispatcher()
+        .smart_usage(0, 4)
+        .into_iter()
+        .map(|(_, line)| line)
+        .collect();
+    let tail: Vec<&str> = usage[usage.len() - 15..]
+        .iter()
+        .map(String::as_str)
+        .collect();
+    assert_eq!(
+        tail,
+        [
+            "ban-ip <target> [<reason>]",
+            "banlist [ips|players]",
+            "ban <targets> [<reason>]",
+            "deop <targets>",
+            "op <targets>",
+            "pardon <targets>",
+            "pardon-ip <target>",
+            "perf (start|stop)",
+            "save-all [flush]",
+            "save-off",
+            "save-on",
+            "setidletimeout <minutes>",
+            "stop",
+            "transfer <hostname> [<port>]",
+            "whitelist (on|off|list|add|remove|reload)",
+        ]
+    );
+    // An operator below the owners' level lists none of the owners' commands.
+    let admin: Vec<String> = vanilla::dedicated_help_dispatcher()
+        .smart_usage(0, 3)
+        .into_iter()
+        .map(|(_, line)| line)
+        .collect();
+    assert!(admin.iter().any(|l| l.starts_with("op ")) && !admin.iter().any(|l| l == "stop"));
+}

@@ -942,7 +942,12 @@ impl Game<'_> {
         }
     }
     fn cmd_help(&mut self, ctx: &Context) -> R<i32> {
-        let d = vanilla::game_dispatcher();
+        // A dedicated server lists its own commands too (Commands.CommandSelection.DEDICATED).
+        let d = if self.options.dedicated.is_some() {
+            vanilla::dedicated_help_dispatcher()
+        } else {
+            vanilla::game_dispatcher()
+        };
         let level = self.world_data.registries.permission;
         match ctx.get("command") {
             None => {

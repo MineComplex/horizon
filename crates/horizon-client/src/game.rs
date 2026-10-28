@@ -10937,7 +10937,11 @@ impl Game<'_> {
                 }
             }
         }
-        level.dimension = self.dim.id().to_owned();
+        // A server's main level is always the Overworld (MinecraftServer.overworld): the level
+        // it happens to be in while saving is not the world's.
+        if self.options.dedicated.is_none() {
+            level.dimension = self.dim.id().to_owned();
+        }
         // An open ender chest holds the live copy.
         if let Some(key) = self.ender_open
             && let Some(BlockEntity::Chest(items)) = self.world.block_entities.get(&key)

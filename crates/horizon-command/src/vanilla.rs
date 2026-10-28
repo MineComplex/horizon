@@ -607,6 +607,105 @@ pub fn dispatcher() -> &'static Dispatcher {
     static TREE: std::sync::OnceLock<Dispatcher> = std::sync::OnceLock::new();
     TREE.get_or_init(build)
 }
+/// Commands.CommandSelection.DEDICATED's own commands (BanIpCommands,
+/// BanListCommands, BanPlayerCommands, DeOpCommands, OpCommand,
+/// PardonCommand, PardonIpCommand, PerfCommand, SaveAllCommand,
+/// SaveOffCommand, SaveOnCommand, SetPlayerIdleTimeoutCommand, StopCommand,
+/// TransferCommand, WhitelistCommand), registered after the shared ones in
+/// vanilla's order. The dedicated server runs them itself
+/// (game/dedicated.rs); this tree lists them (`/help`).
+fn dedicated_commands(d: &mut Dispatcher, root: usize) {
+    const ADMINS: u8 = 3;
+    const OWNERS: u8 = 4;
+    let literal = |d: &mut Dispatcher, name: &str, level: u8| {
+        let n = d.literal(root, name);
+        d.requires(n, level);
+        n
+    };
+    let ban_ip = literal(d, "ban-ip", ADMINS);
+    let target = d.argument(ban_ip, "target", ArgType::Word);
+    d.executes(target, "ban-ip");
+    let reason = d.argument(target, "reason", ArgType::Message);
+    d.executes(reason, "ban-ip");
+    let banlist = literal(d, "banlist", ADMINS);
+    d.executes(banlist, "banlist");
+    for kind in ["ips", "players"] {
+        let k = d.literal(banlist, kind);
+        d.executes(k, "banlist");
+    }
+    let ban = literal(d, "ban", ADMINS);
+    let targets = d.argument(ban, "targets", ArgType::GameProfile);
+    d.executes(targets, "ban");
+    let reason = d.argument(targets, "reason", ArgType::Message);
+    d.executes(reason, "ban");
+    for name in ["deop", "op", "pardon"] {
+        let n = literal(d, name, ADMINS);
+        let targets = d.argument(n, "targets", ArgType::GameProfile);
+        d.executes(targets, name);
+    }
+    let pardon_ip = literal(d, "pardon-ip", ADMINS);
+    let target = d.argument(pardon_ip, "target", ArgType::Word);
+    d.executes(target, "pardon-ip");
+    let perf = literal(d, "perf", OWNERS);
+    for action in ["start", "stop"] {
+        let a = d.literal(perf, action);
+        d.executes(a, "perf");
+    }
+    let save_all = literal(d, "save-all", OWNERS);
+    d.executes(save_all, "save-all");
+    let flush = d.literal(save_all, "flush");
+    d.executes(flush, "save-all");
+    for name in ["save-off", "save-on"] {
+        let n = literal(d, name, OWNERS);
+        d.executes(n, name);
+    }
+    let idle = literal(d, "setidletimeout", ADMINS);
+    let minutes = d.argument(
+        idle,
+        "minutes",
+        ArgType::Integer {
+            min: 0,
+            max: i32::MAX,
+        },
+    );
+    d.executes(minutes, "setidletimeout");
+    let stop = literal(d, "stop", OWNERS);
+    d.executes(stop, "stop");
+    let transfer = literal(d, "transfer", ADMINS);
+    let host = d.argument(transfer, "hostname", ArgType::Str);
+    d.executes(host, "transfer");
+    let port = d.argument(host, "port", ArgType::Integer { min: 1, max: 65535 });
+    d.executes(port, "transfer");
+    let players = d.argument(
+        port,
+        "players",
+        ArgType::Entity {
+            single: false,
+            players: true,
+        },
+    );
+    d.executes(players, "transfer");
+    let whitelist = literal(d, "whitelist", ADMINS);
+    for action in ["on", "off", "list", "add", "remove", "reload"] {
+        let a = d.literal(whitelist, action);
+        if matches!(action, "add" | "remove") {
+            let targets = d.argument(a, "targets", ArgType::GameProfile);
+            d.executes(targets, "whitelist");
+        } else {
+            d.executes(a, "whitelist");
+        }
+    }
+}
+/// The tree `/help` lists on a dedicated server: the game's
+/// ([`game_dispatcher`]) with the dedicated server's own commands.
+pub fn dedicated_help_dispatcher() -> &'static Dispatcher {
+    static TREE: std::sync::OnceLock<Dispatcher> = std::sync::OnceLock::new();
+    TREE.get_or_init(|| {
+        let mut d = game_dispatcher().clone();
+        dedicated_commands(&mut d, 0);
+        d
+    })
+}
 /// The tree of a release integrated server (no development commands).
 pub fn release_dispatcher() -> &'static Dispatcher {
     static TREE: std::sync::OnceLock<Dispatcher> = std::sync::OnceLock::new();
