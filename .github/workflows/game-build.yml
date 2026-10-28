@@ -260,17 +260,17 @@ jobs:
           path: dist/${{ matrix.asset }}
           if-no-files-found: error
           retention-days: 3
-      - name: The server build (the game without sound or controllers, as horizon-engine)
+      - name: The server build (horizon-server: the game without sound or controllers)
         if: matrix.server_asset
         run: |
           set -euo pipefail
-          # After the client is packaged: target/release/horizon-client is rebuilt without the audio and
-          # controllers features, so it needs neither libasound nor libudev (minimal server images lack them).
-          cargo build --release --locked -p horizon-client --no-default-features --bin horizon-client
-          cargo run --locked -p xtask -- package-server target/release/horizon-client "dist/${{ matrix.server_dir }}"
+          # horizon-server links the game without the audio and controllers features, so it needs neither
+          # libasound nor libudev (minimal server images lack them).
+          cargo build --release --locked -p horizon-server --bin horizon-server
+          cargo run --locked -p xtask -- package-server target/release/horizon-server "dist/${{ matrix.server_dir }}"
           folder="dist/${{ matrix.server_dir }}"
-          python3 tools/check_imports.py --server "$folder/horizon-engine" "$folder/horizon-prepare"
-          "$folder/horizon-engine" --help | grep -q -- '--resources'
+          python3 tools/check_imports.py --server "$folder/horizon-server" "$folder/horizon-prepare"
+          "$folder/horizon-server" --help | grep -q -- '--nogui'
           cd dist
           rm -f "${{ matrix.server_asset }}"
           tar czf "${{ matrix.server_asset }}" "${{ matrix.server_dir }}"

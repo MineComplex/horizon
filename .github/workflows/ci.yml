@@ -63,7 +63,7 @@ jobs:
         run: |
           cargo +stable fmt --all -- --check
           cargo +stable clippy --workspace --all-targets -- -D warnings
-          # The server build (released as horizon-engine): the game without sound or controllers.
+          # The game without sound or controllers, as horizon-server links it.
           cargo +stable clippy -p horizon-client --all-targets --no-default-features -- -D warnings
       # Libraries, binaries and integration tests, then doc tests: not the ~275 examples, which clippy above already
       # type-checks and the parity job builds and runs (they were most of this step's build and link time).

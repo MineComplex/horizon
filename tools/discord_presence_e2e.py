@@ -136,8 +136,8 @@ class Game:
             self.discord.start()
         extra = {'HORIZON_HOME': self.home, 'HORIZON_TELEMETRY_URL': 'off', 'HORIZON_DISCORD_IPC_DIR': self.discord.dir}
         self.env = lab.game_env(**extra)
-        self.ctl_run('launch', '--offscreen', '--game', str(bins / 'horizon-client'), '--resources',
-                     str(lab.RESOURCES.resolve()), *args)
+        self.ctl_run('launch', '--offscreen', '--game', str(bins / ('horizon-dev' if '--world' in args else 'horizon-client')),
+                     '--resources', str(lab.RESOURCES.resolve()), *args)
 
     def ctl_run(self, *words, timeout=600):
         r = subprocess.run([str(self.ctl), '--socket', str(self.socket), *words], cwd=self.home, env=self.env,

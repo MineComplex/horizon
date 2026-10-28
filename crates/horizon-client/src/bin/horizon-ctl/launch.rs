@@ -17,6 +17,21 @@ use serde_json::{Value, json};
 const CLIENT: &str = "horizon-client.exe";
 #[cfg(not(windows))]
 const CLIENT: &str = "horizon-client";
+#[cfg(windows)]
+const DEV: &str = "horizon-dev.exe";
+#[cfg(not(windows))]
+const DEV: &str = "horizon-dev";
+
+/// The game's options that open a world of its own: horizon-client only joins
+/// servers, so these need the development build (`horizon-dev`).
+pub fn needs_dev(game_args: &[String]) -> bool {
+    game_args.iter().any(|a| {
+        matches!(
+            a.as_str(),
+            "--world" | "--seed" | "--creative" | "--test-terrain" | "--benchmark" | "--dedicated"
+        )
+    })
+}
 
 pub fn launcher_home() -> PathBuf {
     match std::env::var_os("HORIZON_LAUNCHER_HOME").filter(|h| !h.is_empty()) {
@@ -182,13 +197,23 @@ pub fn launch(socket: &Path, args: &[String]) -> Result<Value, Value> {
     }
     let exe = std::env::current_exe().ok();
     let beside = exe.as_deref().and_then(Path::parent);
-    let install = find(
+    let mut install = find(
         o.game.as_deref(),
         o.version.as_deref(),
         beside,
         &launcher_home(),
     )
     .map_err(|e| json!({ "error": e, "kind": "launch" }))?;
+    if o.game.is_none() && needs_dev(&o.game_args) {
+        let dev = install.game.with_file_name(DEV);
+        if !dev.is_file() {
+            return Err(json!({
+                "error": format!("horizon-client only joins servers: a world of its own (--world) needs {DEV}, a development build, beside {}", install.game.display()),
+                "kind": "launch",
+            }));
+        }
+        install.game = dev;
+    }
     let log = socket.with_extension("log");
     let file = std::fs::File::create(&log)
         .map_err(|e| json!({ "error": format!("{}: {e}", log.display()), "kind": "launch" }))?;
@@ -353,5 +378,7 @@ mod tests {
         assert!(o.wait);
         assert_eq!(o.game_args, ["--world", "A", "--seed", "3"]);
         assert!(parse(&["--game".to_owned()]).is_err());
+        assert!(needs_dev(&o.game_args));
+        assert!(!needs_dev(&["--server".to_owned(), "h:1".to_owned()]));
     }
 }

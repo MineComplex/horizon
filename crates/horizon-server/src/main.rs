@@ -55,7 +55,10 @@ fn main() {
         log::info!("Horizon server {}", crash::version());
         crash::install(home.clone(), "server");
     }
-    if let Err(error) = horizon_client::game::run_with(game_args(resources, server)) {
+    if let Err(error) = horizon_client::game::run_with(
+        horizon_client::game::Program::Server,
+        game_args(resources, server),
+    ) {
         log::error!("{error}");
         if !help {
             crash::report_error(&home, "server", &*error);

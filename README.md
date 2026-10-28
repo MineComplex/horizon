@@ -79,7 +79,7 @@ The launcher's **Modpacks** page imports a Modrinth or CurseForge pack, shows wh
 AI agents and scripts can play Horizon. `horizon-ctl`, shipped beside the game in every release folder, is a command line that reads the game as JSON and acts like a player; `horizon-ctl mcp` serves the same commands as an MCP server (one tool per command, screenshots returned as images).
 
 ```sh
-horizon-ctl launch --world Survival --seed 5 --wait   # finds the version the launcher installed
+horizon-ctl launch --server play.example.net --wait  # join a server (a --world needs the horizon-dev build)
 horizon-ctl state                                       # position, health, food, target, screen...
 horizon-ctl find-block birch_log                        # the nearest logs
 horizon-ctl goto -0.5 65 -2.5 --near 2.5                # walks there along a path
@@ -108,7 +108,7 @@ cargo run --release -p horizon-client
 
 Everything prepared lands in the gitignored `.local/`. It is derived from the game: never commit it or share it.
 
-The client starts on the title screen. Command-line options (`--world`, `--seed`, `--creative`, `--render-distance`, `--dedicated`), controls, scripting through `horizon-ctl` and the architecture are described in [the native client guide](docs/native-client.md). The rest of the developer documentation is indexed in [docs/README.md](docs/README.md), including [the parity workflow](docs/parity-workflow.md).
+The client starts on the title screen and only joins servers: worlds run on `horizon-server` ([docs/server.md](docs/server.md)); `horizon-dev`, the development build, also opens its own (`--world`). Command-line options, controls, scripting through `horizon-ctl` and the architecture are described in [the native client guide](docs/native-client.md). The rest of the developer documentation is indexed in [docs/README.md](docs/README.md), including [the parity workflow](docs/parity-workflow.md).
 
 ## Roadmap
 

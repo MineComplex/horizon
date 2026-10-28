@@ -655,7 +655,7 @@ def no_ai_check(mode, ctl, resources):
                 reply = json.loads(r.stdout.strip().splitlines()[-1])
                 log(mode, words, reply)
                 assert r.returncode == 4 and reply == {'error': REFUSAL, 'kind': 'denied'}, (r.returncode, reply)
-            client = ctl.with_name('horizon-client')
+            client = ctl.with_name('horizon-dev')
             args = [str(client), '--control-socket', str(socket), '--world', 'NoAi', '--world-frames', '30']
             if sys.platform == 'darwin':
                 args.append('--offscreen')

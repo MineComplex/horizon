@@ -312,7 +312,112 @@ struct Options {
     benchmark: Option<String>,
     /// What this Game executes; independent of its current server connection.
     execution_role: execution_role::ExecutionRole,
+    /// The program that started the game.
+    program: Program,
 }
+
+/// The program the game runs as. Players get two: `horizon-client`, which only
+/// joins servers (no single player, no LAN, no world of its own), and
+/// `horizon-server`. `horizon-dev` is for development and the test harnesses:
+/// everything, including `--world` on a server thread inside the window.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Program {
+    Client,
+    Server,
+    Dev,
+}
+impl Program {
+    fn name(self) -> &'static str {
+        match self {
+            Self::Client => "horizon-client",
+            Self::Server => "horizon-server",
+            Self::Dev => "horizon-dev",
+        }
+    }
+}
+
+/// The client's options that start a world of its own.
+const WORLD_OPTIONS: &[&str] = &[
+    "--world",
+    "--seed",
+    "--creative",
+    "--test-terrain",
+    "--benchmark",
+    "--dedicated",
+];
+/// The environment of the test fixtures that run a world.
+const WORLD_FIXTURES: &[&str] = &[
+    "HORIZON_DISPENSE_FIXTURE",
+    "HORIZON_SCULK_FIXTURE",
+    "HORIZON_COMMAND_SCRIPT",
+];
+
+/// Why `program` may not run with these arguments: a client has no world of
+/// its own, a server always runs dedicated.
+fn refusal(program: Program, args: &[String], fixture: impl Fn(&str) -> bool) -> Option<String> {
+    match program {
+        Program::Client => {
+            if let Some(arg) = args.iter().find(|a| WORLD_OPTIONS.contains(&a.as_str())) {
+                return Some(format!(
+                    "{arg}: horizon-client has no single player and no LAN, it only joins servers \
+                     (--server HOST[:PORT]). Worlds run on horizon-server."
+                ));
+            }
+            WORLD_FIXTURES
+                .iter()
+                .find(|v| fixture(v))
+                .map(|v| format!("{v} runs a world: use horizon-dev"))
+        }
+        Program::Server => (!args.iter().any(|a| a == "--dedicated"))
+            .then(|| "horizon-server runs dedicated (--dedicated)".to_owned()),
+        Program::Dev => None,
+    }
+}
+
+#[cfg(test)]
+mod program_tests {
+    use super::*;
+
+    fn args(a: &[&str]) -> Vec<String> {
+        a.iter().map(|s| (*s).to_owned()).collect()
+    }
+
+    #[test]
+    fn the_client_only_joins_servers() {
+        let none = |_: &str| false;
+        assert_eq!(
+            refusal(Program::Client, &args(&["--server", "h:25565"]), none),
+            None
+        );
+        for world in [
+            &["--world", "W"][..],
+            &["--seed", "1"],
+            &["--benchmark", "standard"],
+            &["--dedicated", "--nogui"],
+        ] {
+            assert!(refusal(Program::Client, &args(world), none).is_some());
+            assert_eq!(refusal(Program::Dev, &args(world), none), None);
+        }
+        let fixture = |v: &str| v == "HORIZON_COMMAND_SCRIPT";
+        assert!(refusal(Program::Client, &[], fixture).is_some());
+        assert_eq!(refusal(Program::Dev, &[], fixture), None);
+    }
+
+    #[test]
+    fn the_server_runs_dedicated() {
+        let none = |_: &str| false;
+        assert!(refusal(Program::Server, &args(&["--world", "W"]), none).is_some());
+        assert_eq!(
+            refusal(
+                Program::Server,
+                &args(&["--dedicated", "--world", "W"]),
+                none
+            ),
+            None
+        );
+    }
+}
+
 impl Options {
     /// The name to join servers with: the one given, else the offline name kept
     /// next to options.txt (created on first use).
@@ -324,7 +429,12 @@ impl Options {
             )
         })
     }
-    fn read(args: Vec<String>) -> Result<Option<Self>> {
+    fn read(program: Program, args: Vec<String>) -> Result<Option<Self>> {
+        if !args.iter().any(|a| a == "--help" || a == "-h")
+            && let Some(why) = refusal(program, &args, |v| std::env::var_os(v).is_some())
+        {
+            return Err(why.into());
+        }
         let sibling = std::env::current_exe()?
             .parent()
             .ok_or("missing executable directory")?
@@ -364,6 +474,7 @@ impl Options {
             dedicated: None,
             benchmark: None,
             execution_role: execution_role::ExecutionRole::Client,
+            program,
         };
         // The MineComplex launcher's identity, passed as vanilla's arguments.
         let (mut launcher_uuid, mut launcher_token) = (None::<String>, None::<String>);
@@ -371,10 +482,15 @@ impl Options {
         while let Some(arg) = args.next() {
             match arg.as_str() {
                 "--help" | "-h" => {
-                    println!(
-                        "Horizon — Minecraft Java Edition {} in Rust\n\n  --resources PATH        Prepared resources (horizon-prepare)\n  --render-distance N     Chunks, 2..64 (default 12)\n  --world NAME            World folder under saves/ (default \"New World\")\n  --seed N                World seed for new worlds (default 0)\n  --width N, --height N   Window size (default 1280 x 720)\n  --creative              Creative mode (default survival)\n  --test-terrain          Simple test terrain instead of vanilla generation\n  --frames N              Exit after N frames (testing)\n  --world-frames N        Exit after N frames drawn in the world (testing)\n  --smoke-report PATH     Write a JSON report on exit\n  --benchmark SCENARIO    Run a benchmark (standard, village, forest, ocean, mountain), write its report to benchmarks/ and quit\n  --control               Accept horizon-ctl commands on a local socket\n  --control-socket PATH   Control socket path (default $XDG_RUNTIME_DIR/horizon-control.sock)\n  --server HOST[:PORT]    Join a multiplayer server (offline mode) at start\n  --quickPlaySingleplayer WORLD  Open this world of saves/ at start, only if it exists (vanilla's)\n  --quickPlayMultiplayer HOST[:PORT]  The same as --server (vanilla's name)\n  --name NAME             Player name for multiplayer (default: generated once, kept in horizon-player.txt)\n  --pregen                Add Horizon's /pregen command (docs/pregeneration.md)\n\nControls: mouse look, WASD move, Space jump, Left Shift sneak, Left Ctrl sprint,\nleft click break, right click place/use, 1-9/scroll hotbar, E inventory,\nQ drop, F3 debug, Esc pause.",
-                        horizon_core::VANILLA_VERSION
-                    );
+                    let usage = match program {
+                        Program::Client => {
+                            "Horizon — Minecraft Java Edition {} in Rust\n\n  --resources PATH        Prepared resources (horizon-prepare)\n  --render-distance N     Chunks, 2..64 (default 12)\n  --width N, --height N   Window size (default 1280 x 720)\n  --frames N              Exit after N frames (testing)\n  --world-frames N        Exit after N frames drawn in the world (testing)\n  --smoke-report PATH     Write a JSON report on exit\n  --control               Accept horizon-ctl commands on a local socket\n  --control-socket PATH   Control socket path (default $XDG_RUNTIME_DIR/horizon-control.sock)\n  --server HOST[:PORT]    Join a multiplayer server (offline mode) at start\n  --quickPlayMultiplayer HOST[:PORT]  The same as --server (vanilla's name)\n  --name NAME             Player name for multiplayer (default: generated once, kept in horizon-player.txt)\n  --pregen                Add Horizon's /pregen command (docs/pregeneration.md)\n\nControls: mouse look, WASD move, Space jump, Left Shift sneak, Left Ctrl sprint,\nleft click break, right click place/use, 1-9/scroll hotbar, E inventory,\nQ drop, F3 debug, Esc pause."
+                        }
+                        _ => {
+                            "Horizon — Minecraft Java Edition {} in Rust\n\n  --resources PATH        Prepared resources (horizon-prepare)\n  --render-distance N     Chunks, 2..64 (default 12)\n  --world NAME            World folder under saves/ (default \"New World\")\n  --seed N                World seed for new worlds (default 0)\n  --width N, --height N   Window size (default 1280 x 720)\n  --creative              Creative mode (default survival)\n  --test-terrain          Simple test terrain instead of vanilla generation\n  --frames N              Exit after N frames (testing)\n  --world-frames N        Exit after N frames drawn in the world (testing)\n  --smoke-report PATH     Write a JSON report on exit\n  --benchmark SCENARIO    Run a benchmark (standard, village, forest, ocean, mountain), write its report to benchmarks/ and quit\n  --control               Accept horizon-ctl commands on a local socket\n  --control-socket PATH   Control socket path (default $XDG_RUNTIME_DIR/horizon-control.sock)\n  --server HOST[:PORT]    Join a multiplayer server (offline mode) at start\n  --quickPlaySingleplayer WORLD  Open this world of saves/ at start, only if it exists (vanilla's)\n  --quickPlayMultiplayer HOST[:PORT]  The same as --server (vanilla's name)\n  --name NAME             Player name for multiplayer (default: generated once, kept in horizon-player.txt)\n  --pregen                Add Horizon's /pregen command (docs/pregeneration.md)\n\nControls: mouse look, WASD move, Space jump, Left Shift sneak, Left Ctrl sprint,\nleft click break, right click place/use, 1-9/scroll hotbar, E inventory,\nQ drop, F3 debug, Esc pause."
+                        }
+                    };
+                    println!("{}", usage.replacen("{}", horizon_core::VANILLA_VERSION, 1));
                     return Ok(None);
                 }
                 "--dedicated" => {
@@ -427,6 +543,11 @@ impl Options {
                         "--world" => o.world = Some(value),
                         // Vanilla's quick play (Main, QuickPlay.joinSingleplayerWorld): only a
                         // world that exists opens; else the title screen. --world also creates one.
+                        "--quickPlaySingleplayer" if program == Program::Client => {
+                            eprintln!(
+                                "Quick play: horizon-client has no single player ({value} not opened)"
+                            );
+                        }
                         "--quickPlaySingleplayer" => {
                             let folder = std::env::current_dir()?.join("saves").join(&value);
                             if folder.join("level.dat").is_file() {
@@ -8566,6 +8687,9 @@ impl Game<'_> {
         creative: bool,
         create: Option<&horizon_client::title::WorldOptions>,
     ) -> Result<()> {
+        if self.options.program == Program::Client {
+            return Err("horizon-client has no single player: it only joins servers".into());
+        }
         world_loading::world_data_used();
         if self.defer_world_entry(PendingWorldEntry::Local {
             folder: folder.to_owned(),
@@ -14791,13 +14915,59 @@ fn run_loading(
     Ok(())
 }
 
-pub fn run() -> Result<()> {
-    run_with(std::env::args().skip(1).collect())
+/// A program's `main`: logs, crash reports, then the game with the
+/// command line's arguments.
+pub fn main(program: Program) {
+    let args: Vec<String> = std::env::args().skip(1).collect();
+    let game_args = args.iter().take_while(|a| *a != "--dedicated");
+    let help = game_args.clone().any(|a| a == "--help" || a == "-h");
+    // A usage error, not a crash: no log, no crash report.
+    if !help && let Some(why) = refusal(program, &args, |v| std::env::var_os(v).is_some()) {
+        eprintln!("{}: {why}", program.name());
+        std::process::exit(2);
+    }
+    // The dedicated server logs in its own folder, as vanilla's does; the game in its home.
+    let (home, side, thread) = if args.iter().any(|a| a == "--dedicated") {
+        (std::path::PathBuf::from("."), "server", "Server thread")
+    } else {
+        (
+            horizon_client::logging::game_home(),
+            "client",
+            "Render thread",
+        )
+    };
+    if !help {
+        horizon_client::logging::init(&home, thread);
+        // The log's first line names the build, so a bug report that carries the log says which one it was.
+        log::info!(
+            "Horizon {} ({})",
+            horizon_client::crash::version(),
+            program.name()
+        );
+        horizon_client::crash::install(home.clone(), side);
+    }
+    if let Err(error) = run_with(program, args) {
+        log::error!("Horizon: {error}");
+        if !help {
+            horizon_client::crash::report_error(&home, side, &*error);
+        }
+        horizon_client::logging::flush();
+        // Started from Explorer, the console window closes with the game:
+        // keep the message on screen until it is read.
+        #[cfg(windows)]
+        if std::io::IsTerminal::is_terminal(&std::io::stdin()) {
+            eprintln!("Press Enter to close.");
+            let _ = std::io::stdin().read_line(&mut String::new());
+        }
+        std::process::exit(1);
+    }
+    horizon_client::logging::flush();
 }
 
-/// [`run`] with these arguments: the client's, or a server's after `--dedicated`.
-pub fn run_with(args: Vec<String>) -> Result<()> {
-    let Some(mut options) = Options::read(args)? else {
+/// The game as `program`, with these arguments: the client's, or a server's
+/// after `--dedicated`.
+pub fn run_with(program: Program, args: Vec<String>) -> Result<()> {
+    let Some(mut options) = Options::read(program, args)? else {
         return Ok(());
     };
     if options.execution_role == execution_role::ExecutionRole::DedicatedServer

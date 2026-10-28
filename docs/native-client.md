@@ -43,13 +43,20 @@ cargo run --release -p horizon-client -- --render-distance 12
 
 Development builds that link quickly: `cargo build --profile fast -p horizon-client`.
 
+The build makes three programs. `horizon-client` is what players run: it only joins servers (`--server
+HOST[:PORT]`, or the multiplayer screen), with no single player, no LAN and no world of its own; worlds run on
+`horizon-server` ([server.md](server.md)). `horizon-dev` is the same game for development and the harnesses,
+never shipped: it also takes the world options below (the world runs on a server thread inside the window), the
+headless fixtures and `--dedicated`. `horizon-ctl launch` starts `horizon-dev` when it is given a world option.
+
 | Option | Meaning |
 | --- | --- |
-| `--world NAME` | World folder under `saves/` (default "New World"); reopened if it exists |
-| `--seed N` | Seed for a new world (numbers or text, like vanilla) |
-| `--creative` | Creative mode (instant breaking, pick block) |
+| `--server HOST[:PORT]` | Join this server at start |
 | `--render-distance N` | Chunks, 2..64 (default 12) |
 | `--resources PATH` | Prepared resource directory |
+| `--world NAME` | `horizon-dev` only: world folder under `saves/` (default "New World"); reopened if it exists |
+| `--seed N` | `horizon-dev` only: seed for a new world (numbers or text, like vanilla) |
+| `--creative` | `horizon-dev` only: creative mode (instant breaking, pick block) |
 
 | Control | Action |
 | --- | --- |

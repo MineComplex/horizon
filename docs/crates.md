@@ -33,17 +33,25 @@ Velocity analog.
    git commit -am "Split Game into Sim + Frontend (generated: python3 tools/split_game.py)"
    ```
 
-There is no single player in this fork: the client only joins servers. Once the server binary stands on
-its own, the integrated server thread, in-frame play, world select and create, Open to LAN and Play with
-Friends leave the client.
+There is no single player in this fork: the client only joins servers. The programs:
+
+- `horizon-client` (players): joins servers only. It refuses `--world`, `--seed`, `--creative`,
+  `--test-terrain`, `--benchmark`, `--dedicated` and the world fixtures (`game::Program::Client`), and
+  `open_world` fails in it, so no path (title screen, horizon-ctl, quick play) opens a world of its own.
+  Open to LAN and `/publish` exist only on an integrated server, which it never starts.
+- `horizon-server` (`crates/horizon-server`): the dedicated server, Leaf-style.
+- `horizon-dev` (`crates/horizon-client/src/bin/horizon-dev.rs`, never shipped): everything, for the
+  harnesses: `--world` on the integrated server thread, the fixtures, `--dedicated`. The tools run it.
+
+The integrated server's code still lives in the shared library for `horizon-dev`; it leaves with step 7.
 
 ## Next
 
 6. Move the server half of `Game` and its `impl` blocks into a crate without the window: the methods that
    touch `self.front` stay in the client, and the calls server code makes into it (sounds, particles,
    screens) go through a trait.
-7. A dedicated server binary, and the game-binary fixtures (`dispense_fixture`, `sculk_fixture`,
-   `command_harness`, `net_harness`) and `horizon-ctl launch --world` on it; then single player out of the
-   client.
+7. The game-binary fixtures (`dispense_fixture`, `sculk_fixture`, `command_harness`, `net_harness`) and
+   `horizon-ctl launch --world` on `horizon-server` (a server subprocess plus a client), then `horizon-dev`
+   and the integrated server thread go.
 8. `horizon-server-api`: the Bukkit-like API as native Rust plugins (traits, dynamic libraries), the way
    `horizon-proxy` loads its plugins.

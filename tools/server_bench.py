@@ -24,9 +24,9 @@ count: chunks sent and new chunks generated a second, against the busiest server
 than 10 % apart isn't a fair comparison of its tick times.
 
 The vanilla side runs the pinned server jar from tools/lab.py prepare (your own copy). It needs Java 25. The
-Horizon side runs target/release/horizon-client as the dedicated server (`--dedicated --nogui`, the way a
+Horizon side runs target/release/horizon-dev as the dedicated server (`--dedicated --nogui`, the way a
 server runs: console on stdin, logs/latest.log); build it and the bots first:
-    cargo build --release -p horizon-client --bin horizon-client -p horizon-bots
+    cargo build --release -p horizon-client --bin horizon-dev -p horizon-bots
 
 Two more Java servers, both dev-only downloads into .local/server-bench/jars (never committed or shipped):
 - `paper`: Paper's newest build for the pinned version, from PaperMC's download API, checked against the
@@ -256,7 +256,7 @@ def server_command(kind, directory, args):
         return [*java, '-Dfabric.log.disableAnsi=true', '-cp', classpath,
                 'net.fabricmc.loader.impl.launch.knot.KnotServer', 'nogui']
     # The server reads server.properties from its folder (the process's working directory).
-    return [BIN / f'horizon-client{EXE}', '--resources', lab.LOCAL / 'horizon-client/26.3', '--dedicated', '--nogui']
+    return [BIN / f'horizon-dev{EXE}', '--resources', lab.LOCAL / 'horizon-client/26.3', '--dedicated', '--nogui']
 
 
 def bots_command(args):

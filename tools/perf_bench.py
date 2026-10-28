@@ -14,7 +14,7 @@ for every game. RSS is sampled from outside the process for every game too.
     python3 tools/perf_bench.py --table horizon-m4 vanilla-m4 mods-m4
 
 Games:
-  horizon       target/release/horizon-client, driven over its control socket
+  horizon       target/release/horizon-dev, driven over its control socket
   vanilla       your own 26.3 client.jar + Fabric Loader + a dev-only driver
                 mod (mods/horizon/src/bench), built here; nothing of the game
                 is redistributed
@@ -381,7 +381,7 @@ def run_horizon(args, distance):
     options = write_options(game_dir, distance)
     sock = Path("/tmp") / f"horizon-bench-{os.getpid()}.sock"
     sock.unlink(missing_ok=True)
-    client = Path(args.build).resolve() / "horizon-client"
+    client = Path(args.build).resolve() / "horizon-dev"
     command = [str(client), "--resources", str(Path(args.resources).resolve()),
                "--control-socket", str(sock), "--no-pause", "--weather", "clear", "--time", "6000"]
     if (args.width, args.height) != SIZES[0]:

@@ -86,7 +86,9 @@ python3 tools/agent_control_e2e.py         # horizon-ctl / MCP end to end
   ~25, a file of the client lib ~103, of `horizon-world` ~103–109, of `horizon-core` ~119. Plan for it.
 - Rust integration tests: `crates/horizon-client/tests/` (`lan_bot.rs`, `generation_saves.rs`, `streaming_meshes.rs`).
 - Linux needs `libasound2-dev libudev-dev`; `--no-default-features` drops audio and controllers (the server build).
-- Run and drive the game (starts the `horizon-client` beside `horizon-ctl`; other arguments go to the game):
+- Three programs: `horizon-client` (players; only joins servers, refuses `--world`), `horizon-server`, and
+  `horizon-dev` (development and harnesses only: `--world`, fixtures, `--dedicated`; docs/crates.md).
+- Run and drive the game (starts the `horizon-dev` beside `horizon-ctl` for a world; other arguments go to the game):
   `target/fast/horizon-ctl --socket $PWD/ctl.sock launch --world W --creative --offscreen --wait --resources $PWD/.local/horizon-client/26.3`,
   then `horizon-ctl --socket … state|keys|turn|command|screenshot|quit`
   ([docs/horizon-ctl-commands.md](docs/horizon-ctl-commands.md)).
@@ -151,13 +153,13 @@ python3 tools/agent_control_e2e.py         # horizon-ctl / MCP end to end
 
 ## Where a world runs
 
-The window never simulates a world (this fork only joins servers; docs/crates.md). `--world` (development and
-tests) runs the world on the integrated server thread: `game/integrated.rs` runs a second `Game` (`serving`)
+The window never simulates a world (this fork only joins servers; docs/crates.md). `horizon-client` refuses
+`--world`; `horizon-dev --world` (development and tests) runs the world on the integrated server thread: `game/integrated.rs` runs a second `Game` (`serving`)
 with one level per dimension, and the window joins it as a client through memory (`remote`), exactly as a
 dedicated server's player does. Server code serves both.
 
 ```sh
-cargo run --profile fast -p horizon-client -- --resources .local/horizon-client/26.3 --world T   # dev world
+cargo run --profile fast -p horizon-client --bin horizon-dev -- --resources .local/horizon-client/26.3 --world T
 python3 tools/lan_e2e.py --check <name>                  # host on its server thread, guest is a server client
 python3 tools/parity.py dedicated_server server_entities server_player_damage
 ```

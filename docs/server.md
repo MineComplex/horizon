@@ -23,8 +23,8 @@ horizon-server --resources /path/to/prepared/26.3 --nogui
 - **No Mojang**: the server never asks Mojang's services (no `online-mode` session checks, no profile lookups for
   `op`/`whitelist`/`ban`, no chat-signing keys): the proxy authenticates players. `online-mode` in
   `server.properties` is read and ignored.
-- **Release build**: `cargo run -p xtask -- package-server ENGINE OUTDIR` packs the engine (built with
-  `--no-default-features --features mods`: no sound or controllers) as `horizon-engine`, with `horizon-prepare`.
+- **Release build**: `cargo run -p xtask -- package-server target/release/horizon-server OUTDIR` packs
+  `horizon-server` (no sound or controllers) with `horizon-prepare`.
 
 `horizon-server` is its own crate (`crates/horizon-server`), built without sound or controllers. The server half of
 the game still lives in `horizon-client`'s library (`horizon_client::game`) and moves into `horizon-server` step by

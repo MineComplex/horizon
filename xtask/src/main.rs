@@ -6,9 +6,9 @@
 //! them to its own), and PLAY.txt. It holds none of Minecraft's files: players prepare those
 //! from their own copy. .github/workflows/release.yml makes the release folders with it.
 //!
-//! `package-server ENGINE OUTDIR`: a server folder (docs/server.md): the server build of the game
-//! (`cargo build --release -p horizon-client --no-default-features`, without sound or controllers)
-//! as horizon-engine, with horizon-prepare from beside it and the same sources.
+//! `package-server SERVER OUTDIR`: a server folder (docs/server.md): the horizon-server binary
+//! (`cargo build --release -p horizon-server`, without sound or controllers)
+//! with horizon-prepare from beside it and the same sources.
 //!
 //! `tokens`: writes `crates/horizon-theme/tokens.css`, the design tokens of `crates/horizon-theme` as CSS
 //! custom properties (a horizon-theme test fails when the file is out of date).
@@ -21,7 +21,7 @@ use std::fs;
 use std::path::{Component, Path, PathBuf};
 use std::process::{Command, ExitCode};
 
-const USAGE: &str = "usage: cargo run -p xtask -- package BINARY OUTDIR | package-server ENGINE OUTDIR | tokens | icons";
+const USAGE: &str = "usage: cargo run -p xtask -- package BINARY OUTDIR | package-server SERVER OUTDIR | tokens | icons";
 
 /// What the release folder takes from the repository at HEAD, as `git archive` writes it.
 const ARCHIVED: [&str; 5] = [
@@ -229,7 +229,7 @@ fn package(binary: &Path, out: &Path) -> Result<(), String> {
 fn package_server(engine: &Path, out: &Path) -> Result<(), String> {
     let repo = new_folder(out)?;
     copy_exporters(&repo.join("exporters"), &out.join("exporters"))?;
-    copy(engine, &out.join(program_name(engine, "horizon-engine")))?;
+    copy(engine, &out.join(program_name(engine, "horizon-server")))?;
     copy_beside(engine, &SERVER_TOOLS, out)
 }
 
