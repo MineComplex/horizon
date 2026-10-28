@@ -102,7 +102,7 @@ public final class VanillaCommandExecOracle {
             WorldDataConfiguration config = WorldDataConfiguration.DEFAULT;
             LevelSettings settings = new LevelSettings("Harness", GameType.SURVIVAL, LevelSettings.DifficultySettings.DEFAULT, true, config);
             WorldLoader.PackConfig packConfig = new WorldLoader.PackConfig(packs, config, false, true);
-            WorldLoader.InitConfig init = new WorldLoader.InitConfig(packConfig, Commands.CommandSelection.INTEGRATED, LevelBasedPermissionSet.OWNER);
+            WorldLoader.InitConfig init = new WorldLoader.InitConfig(packConfig, Commands.CommandSelection.DEDICATED, LevelBasedPermissionSet.OWNER);
             WorldOptions options = new WorldOptions(seed, true, false);
             WorldStem stem = Util.<WorldStem>blockUntilDone(executor -> WorldLoader.load(init, context -> {
                 Registry<LevelStem> noDatapackDimensions = new MappedRegistry<>(Registries.LEVEL_STEM, Lifecycle.stable()).freeze();
@@ -373,14 +373,14 @@ public final class VanillaCommandExecOracle {
         @Override public LevelBasedPermissionSet operatorUserPermissions() { return LevelBasedPermissionSet.GAMEMASTER; }
         @Override public PermissionSet getFunctionCompilationPermissions() { return LevelBasedPermissionSet.GAMEMASTER; }
         @Override public boolean shouldRconBroadcast() { return true; }
-        @Override public boolean isDedicatedServer() { return false; }
+        @Override public boolean isDedicatedServer() { return true; }
         @Override public int getRateLimitPacketsPerSecond() { return 0; }
         @Override public int getCommandSpamThresholdSeconds() { return 0; }
         @Override public int getChatSpamThresholdSeconds() { return 0; }
         @Override public boolean useNativeTransport() { return false; }
         @Override public boolean isPublished() { return false; }
         @Override public boolean shouldInformAdmins() { return true; }
-        @Override public boolean isSingleplayerOwner(NameAndId nameAndId) { return nameAndId.name().equalsIgnoreCase("Player"); }
+        @Override public boolean isSingleplayerOwner(NameAndId nameAndId) { return false; }
         @Override public int getMaxPlayers() { return 8; }
     }
 
