@@ -5,8 +5,9 @@ A Horizon server is the game without a window, run as one process the way Paper 
 supervisor; use the console, the logs, and the tools a host already has (systemd, tmux, Docker).
 
 ```sh
-# In the server's folder (server.properties, eula.txt, the world, plugins/):
-horizon-client --resources /path/to/prepared/26.3 --dedicated --nogui
+# In the server's folder (server.properties, eula.txt, config/, the worlds, logs/):
+horizon-server --resources /path/to/prepared/26.3 --nogui
+# the same game, the old way: horizon-client --resources ... --dedicated --nogui
 ```
 
 - **Console**: type commands on standard input (`stop`, `say`, `op`, `whitelist`, `plugins`...), as on a vanilla
@@ -25,5 +26,8 @@ horizon-client --resources /path/to/prepared/26.3 --dedicated --nogui
 - **Release build**: `cargo run -p xtask -- package-server ENGINE OUTDIR` packs the engine (built with
   `--no-default-features --features mods`: no sound or controllers) as `horizon-engine`, with `horizon-prepare`.
 
-The server half of the game is moving into its own crate (docs/crates.md); the dedicated binary will come from
-there, without the client's window code.
+`horizon-server` is its own crate (`crates/horizon-server`), built without sound or controllers. The server half of
+the game still lives in `horizon-client`'s library (`horizon_client::game`) and moves into `horizon-server` step by
+step, until the server links no window code (docs/crates.md). Arguments: vanilla's (`--nogui`, `--port`, `--world`,
+`--universe`, `--initSettings`), plus `--resources DIR` (or `HORIZON_RESOURCES`) for the prepared 26.3 data,
+`resources/` beside the program by default.

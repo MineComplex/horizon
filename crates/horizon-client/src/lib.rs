@@ -1,6 +1,12 @@
 //! Horizon native client: resources, world streaming, rendering and the
 //! bindings between the validated simulation pieces and the game loop.
 #![forbid(unsafe_code)]
+// The game's own modules name the library `horizon_client`, as when they were the binary's.
+extern crate self as horizon_client;
+/// The game itself (`Game`: the window, the client and the server it runs),
+/// shared by the `horizon-client` and `horizon-server` programs.
+#[doc(hidden)]
+pub mod game;
 pub use horizon_game::advancements;
 pub mod ambience;
 pub mod animate_tick;

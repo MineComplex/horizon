@@ -1,6 +1,5 @@
 //! Horizon: native Rust client for Minecraft Java Edition 26.3 gameplay.
 #![forbid(unsafe_code)]
-mod game;
 
 use horizon_client::{crash, logging};
 
@@ -20,7 +19,7 @@ fn main() {
         log::info!("Horizon {}", crash::version());
         crash::install(home.clone(), side);
     }
-    if let Err(error) = game::run() {
+    if let Err(error) = horizon_client::game::run() {
         log::error!("Horizon: {error}");
         if !help {
             crash::report_error(&home, side, &*error);

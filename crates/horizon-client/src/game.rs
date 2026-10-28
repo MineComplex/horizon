@@ -323,7 +323,7 @@ impl Options {
             )
         })
     }
-    fn read() -> Result<Option<Self>> {
+    fn read(args: Vec<String>) -> Result<Option<Self>> {
         let sibling = std::env::current_exe()?
             .parent()
             .ok_or("missing executable directory")?
@@ -366,7 +366,7 @@ impl Options {
         };
         // The MineComplex launcher's identity, passed as vanilla's arguments.
         let (mut launcher_uuid, mut launcher_token) = (None::<String>, None::<String>);
-        let mut args = std::env::args().skip(1);
+        let mut args = args.into_iter();
         while let Some(arg) = args.next() {
             match arg.as_str() {
                 "--help" | "-h" => {
@@ -14787,7 +14787,12 @@ fn run_loading(
 }
 
 pub fn run() -> Result<()> {
-    let Some(mut options) = Options::read()? else {
+    run_with(std::env::args().skip(1).collect())
+}
+
+/// [`run`] with these arguments: the client's, or a server's after `--dedicated`.
+pub fn run_with(args: Vec<String>) -> Result<()> {
+    let Some(mut options) = Options::read(args)? else {
         return Ok(());
     };
     if options.execution_role == execution_role::ExecutionRole::DedicatedServer

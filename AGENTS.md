@@ -35,7 +35,7 @@ Game workspace (root `Cargo.toml`). This fork has no launcher (MineComplex's own
 
 | Crate | Owns |
 |---|---|
-| `horizon-client` | The game: a lib (`src/lib.rs`: window, rendering, audio, input, screens, ~100 flat modules, plus the `horizon-game` modules re-exported) and the bin (`src/main.rs` → `game.rs` + `game/`), plus `horizon-ctl` (`src/bin/horizon-ctl/`). Also the dedicated server (`--dedicated`) |
+| `horizon-client` | The game: a lib (`src/lib.rs`: window, rendering, audio, input, screens, ~100 flat modules, the `horizon-game` modules re-exported, and `game` = `game.rs` + `game/`, shared with `horizon-server`) and the bin (`src/main.rs`), plus `horizon-ctl` (`src/bin/horizon-ctl/`). Also the dedicated server (`--dedicated`) |
 | `horizon-game` | The game without a window: chunks, world, streaming and generation binding, blocks, items, menus, mobs, motion, saves, the LAN/server side (`lan/`). No wgpu, winit, audio or controllers. `horizon-client`'s lib re-exports every module under its old path (`horizon_client::mobs`...). Streaming is generic over `streaming::MeshContext`: the client's `WorkerContext` (`horizon-client/src/streaming.rs`) builds section meshes; mob and particle vertices are still built here on the CPU |
 | `horizon-items` | Blocks and items below gameplay: `blocks.rs` (block facts), `items.rs`, `item_data.rs` (components), `enchant.rs`, `cooldowns.rs`, `bundle.rs`, `item_nbt.rs`. Re-exported as `horizon_client::items`... |
 | `horizon-command` | Command parsing (Brigadier): the vanilla tree, argument types, selectors, suggestions, the tree's network form. Re-exported as `horizon_client::command` |
@@ -46,6 +46,7 @@ Game workspace (root `Cargo.toml`). This fork has no launcher (MineComplex's own
 | `horizon-protocol` | Network protocol 777: codecs, framing, encryption, `packets/{handshake,status,login,configuration,play}.rs`, `entity_data.rs` |
 | `horizon-assets` | Resource decoding: block-state and item models, baking, atlases |
 | `horizon-prepare` | Builds `.local/horizon-client/26.3` from the player's own Minecraft install (runs the Java exporters) |
+| `horizon-server` | The server program, Leaf-style (`horizon-server --nogui`): server.properties, `config/paper-global.yml` (Velocity forwarding), console, `logs/` ([docs/server.md](docs/server.md)). For now it runs `horizon_client::game` without sound or controllers |
 | `horizon-server-files` | `server.properties`, eula, ops/whitelist/bans, usercache |
 | `horizon-proxy` | MineComplex's Velocity fork in Rust on tokio: `velocity.toml`, launcher-token login, modern forwarding, server switching, plugins, the Network plugin on Core gRPC ([docs/proxy.md](docs/proxy.md)) |
 | `horizon-shader-api` | Horizon's own WGSL shader packs ([docs/api/shaders.md](docs/api/shaders.md)): `horizon-shaders.toml`, the `.hshader` package; shared by the game, the launcher and the registry |
