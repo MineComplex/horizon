@@ -39,6 +39,7 @@ border_renderer border_state text_display_vertices world_renderer_ready frame_st
 debug_charts debug_keys heights sway scope_scale audio music ambience sound_paused cart_sounds
 riding_cart_sounds subtitles gui health_hud tool_highlight saving_indicator boss_overlay tab_list
 waypoint_styles waypoints clipboard text_selection gamemode_switcher map_patches bundle_mouse
+title creative_screen clicks inv_clicks spectator_gui control
 """.split())
 
 BORROW_CODES = ("E0502", "E0499", "E0503", "E0506", "E0505", "E0500", "E0501", "E0597", "E0716")

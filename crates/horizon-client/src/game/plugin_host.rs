@@ -103,7 +103,7 @@ impl PluginHost for PluginCtx<'_, '_> {
                 h.hub.lan.shared.motd(),
                 h.hub.lan.shared.max_players() as u32,
                 u32::from(h.hub.lan.port),
-                h.hub.lan.shared.config.online.is_some(),
+                h.hub.lan.shared.config.velocity.is_some(),
                 h.hub.config.dedicated && !h.hub.config.integrated,
             ),
             None => (String::new(), 0, 0, false, false),

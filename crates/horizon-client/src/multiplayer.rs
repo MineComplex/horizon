@@ -3,7 +3,6 @@
 //! Disconnected screen. Entries are pinged in the background like
 //! ServerStatusPinger to show the MOTD, player count and latency.
 use crate::hud::{HudAtlas, HudBatch, rgba};
-use crate::lan::discovery::Scanner;
 use crate::text::{DARK_GRAY, GRAY, Text, format_translation};
 use crate::title::confirm_top;
 use horizon_protocol::servers::{self, ServerEntry};
@@ -61,8 +60,6 @@ pub enum Screen {
         selected: Option<usize>,
         pings: Pings,
         icons: Icons,
-        /// Worlds announced on the local network, listed after the servers.
-        lan: Scanner,
         scroll: crate::ui::Scroll,
     },
     /// Add (index None) or edit a server entry.
@@ -211,16 +208,9 @@ pub fn save_server_icon(saves: &Path, address: &str, png: &[u8]) {
     }
 }
 
-/// The address of list row `index`: the saved servers, then the LAN games.
-fn entry_address(servers: &[ServerEntry], lan: &Scanner, index: usize) -> Option<String> {
-    match servers.get(index) {
-        Some(s) => Some(s.ip.clone()),
-        None => lan
-            .games()
-            .into_iter()
-            .nth(index - servers.len())
-            .map(|g| g.address),
-    }
+/// The address of list row `index`.
+fn entry_address(servers: &[ServerEntry], index: usize) -> Option<String> {
+    servers.get(index).map(|s| s.ip.clone())
 }
 
 /// The Server Resource Packs button's label: `CommonComponents.optionNameValue`.
@@ -242,12 +232,10 @@ const FOOTER: f32 = 60.0;
 /// ServerSelectionList: rows 305 wide and 36 high.
 const ROW_WIDTH: f32 = 305.0;
 const ROW_HEIGHT: f32 = 36.0;
-/// One row of the list: the saved servers, the LAN header, the LAN games.
+/// One row of the list: a saved server (this client lists no LAN worlds).
 #[derive(Clone, Copy, Debug, PartialEq)]
 enum Row {
     Server(usize),
-    LanHeader,
-    Lan(usize),
 }
 /// The list's top and bottom and its rows' left edge (`getRowLeft`).
 fn list_area(w: f32, h: f32) -> (f32, f32, f32) {
@@ -257,24 +245,15 @@ fn list_area(w: f32, h: f32) -> (f32, f32, f32) {
         (w / 2.0).floor() - (ROW_WIDTH / 2.0).floor(),
     )
 }
-fn rows(servers: usize, lan: usize) -> impl Iterator<Item = Row> {
-    (0..servers)
-        .map(Row::Server)
-        .chain(std::iter::once(Row::LanHeader))
-        .chain((0..lan).map(Row::Lan))
+fn rows(servers: usize) -> impl Iterator<Item = Row> {
+    (0..servers).map(Row::Server)
 }
 /// `contentHeight`: the rows and 4 pixels of padding.
-fn content_height(servers: usize, lan: usize) -> f32 {
-    (servers + 1 + lan) as f32 * ROW_HEIGHT + 4.0
+fn content_height(servers: usize) -> f32 {
+    servers as f32 * ROW_HEIGHT + 4.0
 }
 /// The row under `(x, y)` (`getEntryAtPosition`), scrolled by `scroll`.
-fn row_at(
-    servers: usize,
-    lan: usize,
-    (x, y): (f32, f32),
-    size: (f32, f32),
-    scroll: f32,
-) -> Option<Row> {
+fn row_at(servers: usize, (x, y): (f32, f32), size: (f32, f32), scroll: f32) -> Option<Row> {
     let (top, bottom, left) = list_area(size.0, size.1);
     if y < top || y >= bottom || x < left || x >= left + ROW_WIDTH {
         return None;
@@ -283,7 +262,7 @@ fn row_at(
     if index < 0.0 {
         return None;
     }
-    rows(servers, lan).nth(index as usize)
+    rows(servers).nth(index as usize)
 }
 /// SelectableEntry's hover areas over the 32-pixel icon, relative to it.
 fn over_right_half(x: f32, y: f32) -> bool {
@@ -320,10 +299,6 @@ fn draw_server_icon(
         batch.sprite_scaled(atlas, "misc/unknown_server", x, y, 32.0, 32.0, u32::MAX);
     }
 }
-/// `LoadingDotsText.get`.
-fn loading_dots(millis: u128) -> &'static str {
-    ["O o o", "o O o", "o o O", "o O o"][(millis / 300 % 4) as usize]
-}
 
 fn ping_tooltip(
     servers: &[ServerEntry],
@@ -332,9 +307,7 @@ fn ping_tooltip(
     scroll: f32,
     cursor: (f32, f32),
 ) -> Option<Text> {
-    let Row::Server(i) = row_at(servers.len(), 0, cursor, size, scroll)? else {
-        return None;
-    };
+    let Row::Server(i) = row_at(servers.len(), cursor, size, scroll)?;
     let (top, _, left) = list_area(size.0, size.1);
     let x = left + 2.0 + ROW_WIDTH - 4.0 - 15.0;
     let y = top + 4.0 - scroll.trunc() + i as f32 * ROW_HEIGHT;
@@ -363,7 +336,6 @@ impl Screen {
         let Self::List {
             servers,
             pings,
-            lan,
             scroll,
             ..
         } = self
@@ -373,11 +345,7 @@ impl Screen {
         let size = (batch.width.ceil(), batch.height.ceil());
         let (top, bottom, _) = list_area(size.0, size.1);
         let mut scroll = *scroll;
-        scroll.clamp(
-            top,
-            bottom,
-            content_height(servers.len(), lan.games().len()),
-        );
+        scroll.clamp(top, bottom, content_height(servers.len()));
         if let Some(text) =
             ping_tooltip(servers, &pings.lock().unwrap(), size, scroll.amount, cursor)
         {
@@ -395,7 +363,6 @@ impl Screen {
             selected: None,
             pings,
             icons,
-            lan: Scanner::start(),
             scroll: crate::ui::Scroll::default(),
         }
     }
@@ -618,7 +585,6 @@ impl Screen {
                 selected,
                 pings,
                 icons,
-                lan,
                 scroll,
             } => {
                 let (w, h) = (w.ceil(), h.ceil());
@@ -634,9 +600,8 @@ impl Screen {
                     u32::MAX,
                     true,
                 );
-                let games = lan.games();
                 let (top, bottom, left) = list_area(w, h);
-                let content = content_height(servers.len(), games.len());
+                let content = content_height(servers.len());
                 let mut scroll = *scroll;
                 scroll.clamp(top, bottom, content);
                 // AbstractSelectionList.extractWidgetRenderState: background,
@@ -646,32 +611,25 @@ impl Screen {
                 let pings = pings.lock().unwrap();
                 let icons = icons.lock().unwrap();
                 // The row under the pointer (`isHovered`).
-                let hovered = row_at(servers.len(), games.len(), cursor, (w, h), scroll.amount);
+                let hovered = row_at(servers.len(), cursor, (w, h), scroll.amount);
                 let millis = std::time::SystemTime::now()
                     .duration_since(std::time::UNIX_EPOCH)
                     .map_or(0, |d| d.as_millis());
                 let gray = rgba(128, 128, 128, 255);
-                for (i, row) in rows(servers.len(), games.len()).enumerate() {
+                for (i, row) in rows(servers.len()).enumerate() {
                     let y = top + 2.0 - scroll.amount.trunc() + i as f32 * ROW_HEIGHT;
                     if y + ROW_HEIGHT < top || y > bottom {
                         continue;
                     }
-                    let index = match row {
-                        Row::Server(k) => Some(k),
-                        Row::Lan(k) => Some(servers.len() + k),
-                        Row::LanHeader => None,
-                    };
+                    let Row::Server(k) = row;
+                    let index = Some(k);
                     if index.is_some()
                         && y + ROW_HEIGHT / 2.0 > top
                         && y + ROW_HEIGHT / 2.0 < bottom
                     {
                         let rect = [left, y, ROW_WIDTH, ROW_HEIGHT];
                         // The control socket's widget tree names the row.
-                        let name = match row {
-                            Row::Server(k) => servers[k].name.as_str(),
-                            Row::Lan(k) => games[k].motd.as_str(),
-                            Row::LanHeader => "",
-                        };
+                        let name = servers[k].name.as_str();
                         crate::widgets::record_as(name, rect, true, crate::widgets::Kind::Row);
                         crate::widgets::target_as(rect, crate::widgets::Kind::Row);
                     }
@@ -793,36 +751,6 @@ impl Screen {
                                     }
                                 }
                             }
-                        }
-                        Row::LanHeader => {
-                            // LANHeader's LoadingDotsWidget: the label, then
-                            // the dots on its last line, both centred.
-                            let label = crate::lang::get_or(
-                                "lanServer.scanning",
-                                "Scanning for games on your local network",
-                            );
-                            let middle = cx + ((ROW_WIDTH - 4.0) / 2.0).floor();
-                            let lw = HudBatch::text_width(atlas, &label).ceil();
-                            let lx = middle - (lw / 2.0).floor();
-                            let centre = lx + (lw / 2.0).floor();
-                            batch.text(atlas, &label, lx, cy + 2.0, u32::MAX, false);
-                            let dots = loading_dots(millis);
-                            let dw = HudBatch::text_width(atlas, dots).ceil();
-                            batch.text(
-                                atlas,
-                                dots,
-                                centre - (dw / 2.0).floor(),
-                                cy + 28.0 - 9.0 - 2.0,
-                                gray,
-                                false,
-                            );
-                        }
-                        Row::Lan(k) => {
-                            let game = &games[k];
-                            let header = crate::lang::get_or("lanServer.title", "LAN World");
-                            batch.text(atlas, &header, cx + 35.0, cy + 1.0, u32::MAX, false);
-                            batch.text(atlas, &game.motd, cx + 35.0, cy + 12.0, gray, false);
-                            batch.text(atlas, &game.address, cx + 35.0, cy + 23.0, gray, false);
                         }
                     }
                 }
@@ -958,14 +886,11 @@ impl Screen {
         match (&mut *self, id) {
             (
                 Self::List {
-                    servers,
-                    selected,
-                    lan,
-                    ..
+                    servers, selected, ..
                 },
                 Some(40),
             ) => {
-                if let Some(address) = selected.and_then(|i| entry_address(servers, lan, i)) {
+                if let Some(address) = selected.and_then(|i| entry_address(servers, i)) {
                     return Outcome::Connect(address);
                 }
             }
@@ -1053,20 +978,18 @@ impl Screen {
                 Self::List {
                     servers,
                     selected,
-                    lan,
                     scroll,
                     ..
                 },
                 None,
             ) => {
                 let (w, h) = (w.ceil(), h.ceil());
-                let games = lan.games().len();
                 let (top, bottom, left) = list_area(w, h);
-                let content = content_height(servers.len(), games);
+                let content = content_height(servers.len());
                 if scroll.press((x, y), left + ROW_WIDTH + 8.0, top, bottom, content) {
                     return Outcome::None;
                 }
-                let row = row_at(servers.len(), games, (x, y), (w, h), scroll.amount);
+                let row = row_at(servers.len(), (x, y), (w, h), scroll.amount);
                 // OnlineServerEntry.mouseClicked: the icon's right half joins,
                 // its left quarters move the server up or down (and keep it
                 // selected).
@@ -1091,19 +1014,10 @@ impl Screen {
                         return Outcome::None;
                     }
                 }
-                // Clicking a selected row again joins it; the LAN header
-                // takes the click without anything to join.
-                let index = match row {
-                    Some(Row::Server(k)) => Some(k),
-                    Some(Row::Lan(k)) => Some(servers.len() + k),
-                    Some(Row::LanHeader) => {
-                        *selected = None;
-                        None
-                    }
-                    None => None,
-                };
+                // Clicking a selected row again joins it.
+                let index = row.map(|Row::Server(k)| k);
                 if let Some(index) = index
-                    && let Some(address) = entry_address(servers, lan, index)
+                    && let Some(address) = entry_address(servers, index)
                 {
                     if *selected == Some(index) {
                         return Outcome::Connect(address);
@@ -1166,15 +1080,12 @@ impl Screen {
     /// The mouse wheel over the server list (`scrollRate`: half a row).
     pub fn wheel(&mut self, delta: f32, cursor: (f32, f32), size: (f32, f32)) {
         if let Self::List {
-            servers,
-            lan,
-            scroll,
-            ..
+            servers, scroll, ..
         } = self
         {
             let (top, bottom, _) = list_area(size.0.ceil(), size.1.ceil());
             if cursor.1 >= top && cursor.1 < bottom {
-                let content = content_height(servers.len(), lan.games().len());
+                let content = content_height(servers.len());
                 scroll.wheel(delta, ROW_HEIGHT / 2.0, top, bottom, content);
             }
         }
@@ -1182,19 +1093,11 @@ impl Screen {
     /// The pointer moved: a held scrollbar follows it.
     pub fn drag(&mut self, y: f32, size: (f32, f32)) {
         if let Self::List {
-            servers,
-            lan,
-            scroll,
-            ..
+            servers, scroll, ..
         } = self
         {
             let (top, bottom, _) = list_area(size.0.ceil(), size.1.ceil());
-            scroll.drag(
-                y,
-                top,
-                bottom,
-                content_height(servers.len(), lan.games().len()),
-            );
+            scroll.drag(y, top, bottom, content_height(servers.len()));
         }
     }
     pub fn release(&mut self) {
@@ -1356,7 +1259,6 @@ mod tests {
         assert_eq!(hover(&pings, 5.0, (349.0, 34.0)).as_deref(), Some("42 ms"));
         assert!(hover(&pings, 36.0, (349.0, 33.0)).is_none());
         assert!(hover(&pings, 0.0, (349.0, 179.0)).is_none());
-        assert!(hover(&pings, 216.0, (349.0, 37.0)).is_none()); // LAN header
         pings.insert(
             "server0".into(),
             Ping::Failed("private connection error".into()),
@@ -1368,15 +1270,11 @@ mod tests {
     }
 
     #[test]
-    fn the_lan_header_follows_the_saved_servers() {
-        let all: Vec<Row> = rows(2, 1).collect();
-        assert_eq!(
-            all,
-            [Row::Server(0), Row::Server(1), Row::LanHeader, Row::Lan(0)]
-        );
-        // No saved servers: the list is the scanning header alone.
-        assert_eq!(rows(0, 0).collect::<Vec<_>>(), [Row::LanHeader]);
-        assert_eq!(content_height(0, 0), 40.0);
+    fn the_list_is_the_saved_servers_alone() {
+        let all: Vec<Row> = rows(2).collect();
+        assert_eq!(all, [Row::Server(0), Row::Server(1)]);
+        assert_eq!(rows(0).count(), 0);
+        assert_eq!(content_height(0), 4.0);
     }
 
     #[test]
@@ -1384,28 +1282,13 @@ mod tests {
         // 427x240 GUI: the list spans 33..180, rows 305 wide from x 61.
         let size = (427.0, 240.0);
         assert_eq!(list_area(size.0, size.1), (33.0, 180.0, 61.0));
-        assert_eq!(row_at(3, 0, (100.0, 35.0), size, 0.0), Some(Row::Server(0)));
-        assert_eq!(row_at(3, 0, (100.0, 70.9), size, 0.0), Some(Row::Server(0)));
-        assert_eq!(row_at(3, 0, (100.0, 71.0), size, 0.0), Some(Row::Server(1)));
-        assert_eq!(
-            row_at(3, 0, (100.0, 35.0), size, 36.0),
-            Some(Row::Server(1))
-        );
-        assert_eq!(
-            row_at(3, 0, (100.0, 143.0), size, 0.0),
-            Some(Row::LanHeader)
-        );
-        assert_eq!(row_at(3, 0, (60.0, 40.0), size, 0.0), None);
-        assert_eq!(row_at(3, 0, (100.0, 32.0), size, 0.0), None);
-    }
-
-    #[test]
-    fn loading_dots_step_every_300_ms() {
-        let frames: Vec<&str> = [0, 299, 300, 600, 900, 1200].map(loading_dots).to_vec();
-        assert_eq!(
-            frames,
-            ["O o o", "O o o", "o O o", "o o O", "o O o", "O o o"]
-        );
+        assert_eq!(row_at(3, (100.0, 35.0), size, 0.0), Some(Row::Server(0)));
+        assert_eq!(row_at(3, (100.0, 70.9), size, 0.0), Some(Row::Server(0)));
+        assert_eq!(row_at(3, (100.0, 71.0), size, 0.0), Some(Row::Server(1)));
+        assert_eq!(row_at(3, (100.0, 35.0), size, 36.0), Some(Row::Server(1)));
+        assert_eq!(row_at(3, (100.0, 143.0), size, 0.0), None);
+        assert_eq!(row_at(3, (60.0, 40.0), size, 0.0), None);
+        assert_eq!(row_at(3, (100.0, 32.0), size, 0.0), None);
     }
 
     #[test]

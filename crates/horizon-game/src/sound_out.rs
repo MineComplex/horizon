@@ -23,8 +23,12 @@ pub enum SoundCmd {
         event: Option<String>,
         source: Option<usize>,
     },
-    /// Stop and drop a held instance (a jukebox's song).
+    /// Stop and drop a held instance.
     Release(u64),
+    /// `LevelRenderer.playJukeboxSong`: the song of the jukebox at a block, held until it stops.
+    JukeboxSong { event: String, pos: [i32; 3] },
+    /// The song of the jukebox at a block stops.
+    StopJukebox([i32; 3]),
 }
 
 pub struct SoundOut {
@@ -108,6 +112,17 @@ impl SoundOut {
     pub fn release(&mut self, instance: u64) {
         self.queue.push(SoundCmd::Release(instance));
     }
+    /// Play a jukebox's song at its block (`playJukeboxSong`), until `stop_jukebox`.
+    pub fn play_jukebox(&mut self, event: &str, pos: [i32; 3]) {
+        self.queue.push(SoundCmd::JukeboxSong {
+            event: event.to_owned(),
+            pos,
+        });
+    }
+    /// Stop the song of the jukebox at `pos`.
+    pub fn stop_jukebox(&mut self, pos: [i32; 3]) {
+        self.queue.push(SoundCmd::StopJukebox(pos));
+    }
     /// `ClientboundStopSoundPacket`: stop the playing sounds of an event and/or a source.
     /// `selection` is how the control socket counts it ("<source or *> <event or *>").
     pub fn stop_sounds(&mut self, event: Option<&str>, source: Option<usize>, selection: String) {
@@ -141,7 +156,7 @@ mod tests {
             .iter()
             .filter_map(|c| match c {
                 SoundCmd::Play { seed, .. } => Some(*seed),
-                SoundCmd::Stop { .. } | SoundCmd::Release(_) => None,
+                _ => None,
             })
             .collect();
         assert_eq!(

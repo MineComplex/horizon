@@ -107,8 +107,8 @@ impl Game<'_> {
             return;
         };
         // LevelRenderer.playJukeboxSong: SimpleSoundInstance.forJukeboxSong.
-        let id = self.audio.play_jukebox_song(&s.sound, pos);
-        self.jukebox_sounds.insert((pos[0], pos[1], pos[2]), id);
+        self.sounds.play_jukebox(&s.sound, pos);
+        self.jukebox_sounds.insert((pos[0], pos[1], pos[2]));
         let description =
             horizon_client::component::to_text(&s.description, &mut |k| Text::literal(k));
         self.titles
@@ -120,8 +120,8 @@ impl Game<'_> {
         }
     }
     fn stop_sound(&mut self, pos: [i32; 3]) {
-        if let Some(id) = self.jukebox_sounds.remove(&(pos[0], pos[1], pos[2])) {
-            self.sounds.release(id);
+        if self.jukebox_sounds.remove(&(pos[0], pos[1], pos[2])) {
+            self.sounds.stop_jukebox(pos);
         }
     }
     /// Level event 1011: the song ends, here and for the guests.
@@ -199,7 +199,7 @@ impl Game<'_> {
             self.jukebox_changed(pos);
             return;
         }
-        if !self.jukebox_sounds.contains_key(&key) && ticks == 0 {
+        if !self.jukebox_sounds.contains(&key) && ticks == 0 {
             self.start_song(pos, &song);
         }
         if ticks % 20 == 0 {
@@ -219,20 +219,17 @@ impl Game<'_> {
             j.ticks += 1;
         }
     }
-    /// Let go of songs that ended or whose jukebox stopped.
+    /// Let go of songs whose jukebox stopped.
     pub(super) fn update_song_volumes(&mut self) {
-        let sounds: Vec<_> = self
+        let stopped: Vec<_> = self
             .jukebox_sounds
             .iter()
-            .map(|(k, id)| (*k, *id))
+            .copied()
+            .filter(|k| !matches!(self.world.block_entities.get(k), Some(BlockEntity::Jukebox(j)) if j.playing))
             .collect();
-        for (k, id) in sounds {
-            if !self.audio.engine.is_active(id)
-                || !matches!(self.world.block_entities.get(&k), Some(BlockEntity::Jukebox(j)) if j.playing)
-            {
-                self.audio.stop_and_release(id);
-                self.jukebox_sounds.remove(&k);
-            }
+        for k in stopped {
+            self.jukebox_sounds.remove(&k);
+            self.sounds.stop_jukebox([k.0, k.1, k.2]);
         }
     }
 }

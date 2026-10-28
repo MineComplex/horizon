@@ -383,7 +383,6 @@ impl Options {
             dev_mods: Vec::new(),
             execution_role: execution_role::ExecutionRole::Client,
         };
-        let mut session_file = std::env::var("HORIZON_SESSION_FILE").ok();
         // The MineComplex launcher's identity, passed as vanilla's arguments.
         let (mut launcher_uuid, mut launcher_token) = (None::<String>, None::<String>);
         let mut args = std::env::args().skip(1);
@@ -391,7 +390,7 @@ impl Options {
             match arg.as_str() {
                 "--help" | "-h" => {
                     println!(
-                        "Horizon — Minecraft Java Edition {} in Rust\n\n  --resources PATH        Prepared resources (horizon-prepare)\n  --render-distance N     Chunks, 2..64 (default 12)\n  --world NAME            World folder under saves/ (default \"New World\")\n  --seed N                World seed for new worlds (default 0)\n  --width N, --height N   Window size (default 1280 x 720)\n  --creative              Creative mode (default survival)\n  --test-terrain          Simple test terrain instead of vanilla generation\n  --frames N              Exit after N frames (testing)\n  --world-frames N        Exit after N frames drawn in the world (testing)\n  --smoke-report PATH     Write a JSON report on exit\n  --benchmark SCENARIO    Run a benchmark (standard, village, forest, ocean, mountain), write its report to benchmarks/ and quit\n  --control               Accept horizon-ctl commands on a local socket\n  --control-socket PATH   Control socket path (default $XDG_RUNTIME_DIR/horizon-control.sock)\n  --server HOST[:PORT]    Join a multiplayer server (offline mode) at start\n  --quickPlaySingleplayer WORLD  Open this world of saves/ at start, only if it exists (vanilla's)\n  --quickPlayMultiplayer HOST[:PORT]  The same as --server (vanilla's name)\n  --name NAME             Player name for multiplayer (default: generated once, kept in horizon-player.txt)\n  --session-file PATH     Signed-in account from the launcher (read once, then deleted)\n  --dev-mod PATH          A Horizon mod (.hmod or folder) to develop: always on, reloaded when rebuilt\n  --pregen                Add Horizon's /pregen command (docs/pregeneration.md)\n\nControls: mouse look, WASD move, Space jump, Left Shift sneak, Left Ctrl sprint,\nleft click break, right click place/use, 1-9/scroll hotbar, E inventory,\nQ drop, F3 debug, Esc pause.",
+                        "Horizon — Minecraft Java Edition {} in Rust\n\n  --resources PATH        Prepared resources (horizon-prepare)\n  --render-distance N     Chunks, 2..64 (default 12)\n  --world NAME            World folder under saves/ (default \"New World\")\n  --seed N                World seed for new worlds (default 0)\n  --width N, --height N   Window size (default 1280 x 720)\n  --creative              Creative mode (default survival)\n  --test-terrain          Simple test terrain instead of vanilla generation\n  --frames N              Exit after N frames (testing)\n  --world-frames N        Exit after N frames drawn in the world (testing)\n  --smoke-report PATH     Write a JSON report on exit\n  --benchmark SCENARIO    Run a benchmark (standard, village, forest, ocean, mountain), write its report to benchmarks/ and quit\n  --control               Accept horizon-ctl commands on a local socket\n  --control-socket PATH   Control socket path (default $XDG_RUNTIME_DIR/horizon-control.sock)\n  --server HOST[:PORT]    Join a multiplayer server (offline mode) at start\n  --quickPlaySingleplayer WORLD  Open this world of saves/ at start, only if it exists (vanilla's)\n  --quickPlayMultiplayer HOST[:PORT]  The same as --server (vanilla's name)\n  --name NAME             Player name for multiplayer (default: generated once, kept in horizon-player.txt)\n  --dev-mod PATH          A Horizon mod (.hmod or folder) to develop: always on, reloaded when rebuilt\n  --pregen                Add Horizon's /pregen command (docs/pregeneration.md)\n\nControls: mouse look, WASD move, Space jump, Left Shift sneak, Left Ctrl sprint,\nleft click break, right click place/use, 1-9/scroll hotbar, E inventory,\nQ drop, F3 debug, Esc pause.",
                         horizon_core::VANILLA_VERSION
                     );
                     return Ok(None);
@@ -468,7 +467,6 @@ impl Options {
                         "--name" | "--username" => o.player_name = Some(value),
                         "--uuid" => launcher_uuid = Some(value),
                         "--accessToken" => launcher_token = Some(value),
-                        "--session-file" => session_file = Some(value),
                         "--control-socket" => o.control = Some(value.into()),
                         "--time" => o.time = Some(value.parse()?),
                         "--weather" => o.weather = Some(value),
@@ -488,21 +486,10 @@ impl Options {
                 }
             }
         }
-        // The launcher's account: online-mode servers need it. A bad file
-        // only leaves the game offline.
-        if let Some(path) = session_file.filter(|p| !p.is_empty()) {
-            match horizon_client::auth::AuthSession::load(path.as_ref()) {
-                Ok(session) => {
-                    o.player_name = Some(session.name.clone());
-                    horizon_client::auth::set_current(session);
-                }
-                Err(e) => eprintln!("Horizon: not signed in: {e}"),
-            }
-        }
         // The MineComplex launcher: its access token in MINECOMPLEX_GAME_TOKEN
         // or --accessToken, checked by the proxy on login.
         let token = horizon_client::minecomplex::game_token(launcher_token.as_deref());
-        if let (None, Some(token)) = (horizon_client::auth::current(), token) {
+        if let Some(token) = token {
             let name = o.player_name.as_deref().unwrap_or_default();
             let uuid = launcher_uuid
                 .as_deref()
@@ -1766,7 +1753,7 @@ struct Game<'a> {
     cushion_model: Option<horizon_client::mobs::Part>,
     carts: Vec<minecarts::Minecart>,
     /// Songs playing from jukeboxes (tracked sound handles).
-    jukebox_sounds: HashMap<(i32, i32, i32), u64>,
+    jukebox_sounds: HashSet<(i32, i32, i32)>,
     bolts: Vec<lightning::Bolt>,
     maps: maps::Maps,
     /// The ender dragon fight (game/dragon.rs).
@@ -5051,9 +5038,6 @@ impl Game<'_> {
             return Ok(());
         }
         if let Some((_, target)) = &self.travelling {
-            if self.win_screen_holds_arrival() {
-                return Ok(());
-            }
             let (cx, cz) = (
                 (target.x.floor() as i32) >> 4,
                 (target.z.floor() as i32) >> 4,
@@ -5210,12 +5194,22 @@ impl Game<'_> {
             ),
             None => 0.0,
         };
+        // Past `remote`, only a server's world runs (dedicated, or a client's server thread):
+        // a window has no world of its own.
+        if self.options.dedicated.is_none() {
+            return Ok(());
+        }
+        self.tick_level()
+    }
+    /// A server's tick in its first level (`MinecraftServer.tickServer`'s shared parts): the
+    /// clock, the weather, the autosave, mods, then the level itself (`tick_world`). A server
+    /// has no player of its own: its players are connections (`tick_guests`).
+    fn tick_level(&mut self) -> Result<()> {
+        self.drop_window_output();
         self.ticks += 1;
         self.track_experience_display();
         // `/tick freeze` stops the world but not the player.
         let running = self.clock.world_runs();
-        // GameRenderer.tick: a wither's bar darkens the world, then fades.
-        self.boss_overlay.tick_darken(running);
         if running {
             self.world.game_time += 1;
             if self.world_data.rules.bool("advance_weather") {
@@ -5242,12 +5236,6 @@ impl Game<'_> {
         self.tick_command_extras();
         self.tick_mods();
         self.tick_server_mods();
-        // Past `remote`, only a server's world runs (dedicated, or a client's server thread): it
-        // has no player of its own, its players are connections (`tick_guests`). A window ticks
-        // through `tick_remote`, or has no world yet.
-        if self.options.dedicated.is_none() {
-            return Ok(());
-        }
         self.tick_world(running)
     }
     /// What a server tick runs in each level: effects, the
@@ -5261,13 +5249,10 @@ impl Game<'_> {
         self.shield_cooldown = self.shield_cooldown.saturating_sub(1);
         self.cooldowns.tick();
         horizon_client::spans::time("tick_using", || self.tick_using());
-        self.tick_bundle_hover();
-        horizon_client::spans::time("tick_hud", || self.tick_hud());
-        // The player's digging comes in with its packets, before the level
+        // The players' digging came in with their packets, before the level
         // ticks; ServerLevel.tick then runs the scheduled and random block
         // ticks before any entity, so what they drop or spawn (dispensed
         // items, popped crops) moves on the tick it appears, as in vanilla.
-        horizon_client::spans::time("tick_local_hand", || self.tick_local_hand())?;
         horizon_client::spans::time("postprocess_chunks", || self.postprocess_chunks())?;
         if running {
             horizon_client::spans::time("tick_blocks", || self.tick_blocks())?;
@@ -5307,7 +5292,6 @@ impl Game<'_> {
             });
         }
         horizon_client::spans::time("tick_lan", || self.tick_lan(false));
-        horizon_client::spans::time("tick_hand", || self.tick_hand());
         horizon_client::spans::time("tick_sleep", || self.tick_sleep());
         self.announce_sleep_status();
         horizon_client::spans::time("tick_portal", || self.tick_nether_portal())?;
@@ -5324,27 +5308,12 @@ impl Game<'_> {
             horizon_client::spans::time("tick_sculk_blocks", || self.tick_sculk_blocks())?;
         }
         if running {
-            // ClientLevel.tickBlockEntities (not while paused or frozen):
-            // chest lids, books, shulker boxes, bells, conduits, heads.
-            horizon_client::spans::time("tick_block_entity_anims", || {
-                self.tick_block_entity_anims()
-            });
-            horizon_client::spans::time("tick_particles", || self.tick_particles());
-            self.tick_client_ambient();
+            // The server tickers of conduits and end gateways (a client animates the rest).
+            self.tick_conduit_servers();
+            self.tick_gateway_servers();
         }
         // ServerBossEvent broadcasts, after this level's entities have ticked.
         self.publish_boss_bars();
-        // Minecraft.handleKeybinds: held use repeats only while no item is in
-        // use (a raised shield or a drawn bow places and uses nothing).
-        if self.right
-            && self.use_delay == 0
-            && self.using.is_none()
-            && self.screen == Screen::Playing
-            && self.sleeping.is_none()
-        {
-            self.use_with_hand()?;
-            self.use_delay = 4;
-        }
         Ok(())
     }
     /// Keep the held-key state of toggled sneak and sprint in step with their mapping.
@@ -8648,10 +8617,8 @@ impl Game<'_> {
         self.load_bossbars();
         self.tick_functions();
         self.tick_worldborder();
-        self.tick_subtitles();
         self.spawn_phantoms();
         self.tick_advancements();
-        self.tick_player_model();
         Ok(())
     }
     /// SkyRenderer.renderSunMoonAndStars: bodies on a frame rotated Y -90 then X by angle.
@@ -10497,6 +10464,16 @@ impl Game<'_> {
         // LocalPlayer.refreshChatAbilities: the chat shows what the Chat option allows.
         let abilities = self.chat_abilities();
         self.ui.chat.set_abilities(&self.gui.atlas.font, abilities);
+        self.apply_streaming_settings();
+        self.audio.master = self.settings.master_volume;
+        horizon_client::hud::GUI_SCALE.store(
+            self.settings.gui_scale,
+            std::sync::atomic::Ordering::Relaxed,
+        );
+        self.apply_ui_settings();
+    }
+    /// The streaming's radius and meshing options from the settings.
+    fn apply_streaming_settings(&mut self) {
         self.streaming.radius = self.settings.render_distance;
         // Options.biomeBlendRadius, ambientOcclusion and cutoutLeaves:
         // LevelExtractor.allChanged when they change.
@@ -10509,12 +10486,6 @@ impl Game<'_> {
         if remesh {
             self.all_sections_changed();
         }
-        self.audio.master = self.settings.master_volume;
-        horizon_client::hud::GUI_SCALE.store(
-            self.settings.gui_scale,
-            std::sync::atomic::Ordering::Relaxed,
-        );
-        self.apply_ui_settings();
     }
     /// `LevelExtractor.allChanged`: every loaded section is rebuilt.
     fn all_sections_changed(&mut self) {
@@ -12171,25 +12142,21 @@ impl Game<'_> {
             self.lod_observe.extend(self.world.chunks.keys().copied());
         }
     }
-    fn update_world(&mut self) {
-        if let Err(e) = self.poll_remote() {
-            log::warn!("Horizon: {e}");
-        }
-        self.prepare_lod();
-        if self.lod.is_some() {
-            for &((x, _, z), _, _) in &self.world.light_edits {
-                self.lod_observe.insert((x >> 4, z >> 4));
-            }
-        }
+    /// The world's chunks as a server streams them (`ChunkMap`): the area around its players and
+    /// forced chunks loads and generates, what falls out unloads with its entities and saves.
+    /// Returns the section meshes the window draws and the chunks that unloaded.
+    fn stream_world(
+        &mut self,
+    ) -> (
+        Vec<((i32, i32, i32), horizon_client::mesher::SectionMesh)>,
+        Vec<std::sync::Arc<horizon_client::chunk::Chunk>>,
+    ) {
         if let Some(p) = &self.player {
             self.streaming.center = (
                 (p.position.x.floor() as i32) >> 4,
                 (p.position.z.floor() as i32) >> 4,
             );
         }
-        // The loading screen's chunk map fills ring by ring, as vanilla's.
-        self.streaming.loading =
-            self.options.execution_role.is_client() && self.loading_reason().is_some();
         self.tick_pregen();
         let areas = self.streaming.extra.len();
         let waiting = std::mem::take(&mut self.spawn_wait);
@@ -12199,29 +12166,6 @@ impl Game<'_> {
         let (uploads, unloaded) =
             horizon_client::spans::time("streaming", || self.streaming.update(&mut self.world));
         self.streaming.extra.truncate(areas);
-        if let Some(lod) = &mut self.lod {
-            self.lod_observe
-                .extend(uploads.iter().map(|(key, _)| (key.0, key.2)));
-            for chunk in &unloaded {
-                self.lod_observe.remove(&(chunk.x, chunk.z));
-            }
-            // Unloaded columns first (their summaries are all that remains),
-            // then a few resident ones (an edit copies a chunk the worker
-            // still holds). The worker summarizes them.
-            horizon_client::spans::time("lod_observe", || {
-                for chunk in &unloaded {
-                    lod.observe(chunk.clone(), self.res.facts());
-                }
-                while lod.observing() < horizon_client::lod::OBSERVE_AHEAD
-                    && let Some(&key) = self.lod_observe.iter().next()
-                {
-                    self.lod_observe.remove(&key);
-                    if let Some(chunk) = self.world.chunks.get(&key) {
-                        lod.observe(chunk.clone(), self.res.facts());
-                    }
-                }
-            });
-        }
         let dirty: Vec<_> = unloaded
             .iter()
             .filter(|c| self.world.modified.remove(&(c.x, c.z)))
@@ -12246,6 +12190,45 @@ impl Game<'_> {
             })
         {
             log::warn!("Horizon: failed to save unloaded chunks: {e}");
+        }
+        (uploads, unloaded)
+    }
+    fn update_world(&mut self) {
+        if let Err(e) = self.poll_remote() {
+            log::warn!("Horizon: {e}");
+        }
+        self.prepare_lod();
+        if self.lod.is_some() {
+            for &((x, _, z), _, _) in &self.world.light_edits {
+                self.lod_observe.insert((x >> 4, z >> 4));
+            }
+        }
+        // The loading screen's chunk map fills ring by ring, as vanilla's.
+        self.streaming.loading =
+            self.options.execution_role.is_client() && self.loading_reason().is_some();
+        let (uploads, unloaded) = self.stream_world();
+        if let Some(lod) = &mut self.lod {
+            self.lod_observe
+                .extend(uploads.iter().map(|(key, _)| (key.0, key.2)));
+            for chunk in &unloaded {
+                self.lod_observe.remove(&(chunk.x, chunk.z));
+            }
+            // Unloaded columns first (their summaries are all that remains),
+            // then a few resident ones (an edit copies a chunk the worker
+            // still holds). The worker summarizes them.
+            horizon_client::spans::time("lod_observe", || {
+                for chunk in &unloaded {
+                    lod.observe(chunk.clone(), self.res.facts());
+                }
+                while lod.observing() < horizon_client::lod::OBSERVE_AHEAD
+                    && let Some(&key) = self.lod_observe.iter().next()
+                {
+                    self.lod_observe.remove(&key);
+                    if let Some(chunk) = self.world.chunks.get(&key) {
+                        lod.observe(chunk.clone(), self.res.facts());
+                    }
+                }
+            });
         }
         let (far_distance, far_reduced) = self.far_terrain_choice();
         if let Some(renderer) = self.renderer.as_mut() {
@@ -13649,7 +13632,7 @@ impl<'a> Game<'a> {
             crystal_model: prepared.crystal_model,
             cushion_model: prepared.cushion_model,
             carts: Vec::new(),
-            jukebox_sounds: HashMap::new(),
+            jukebox_sounds: HashSet::new(),
             bolts: Vec::new(),
             maps: maps::Maps::default(),
             fight: dragon::Fight::default(),

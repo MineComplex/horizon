@@ -60,6 +60,13 @@ impl Game<'_> {
             self.grab_pointer(capture);
         }
     }
+    /// A server's `flush_to_window`: it has no window, so what the game queued for one goes.
+    pub(super) fn drop_window_output(&mut self) {
+        self.sounds.queue.clear();
+        self.ui.chat.drop_unwrapped();
+        self.rumbles.clear();
+        self.pointer_grab = None;
+    }
     /// `getSituationalMusic` and `getMusicVolume`.
     fn situational_music(&self) -> (Option<Music>, f32) {
         let empty = BackgroundMusic::default();

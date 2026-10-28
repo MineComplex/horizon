@@ -13,7 +13,7 @@ use super::{
 use horizon_protocol::{
     PROTOCOL_VERSION,
     connection::{ConnReader, ConnWriter, Connection},
-    crypto::{offline_uuid, server_hash, uuid_string},
+    crypto::{offline_uuid, uuid_string},
     packets::{
         Empty,
         configuration::{self as cfg, ClientInformation, KnownPack},
@@ -573,95 +573,49 @@ fn lost(shared: &Shared, user: &str, text: &str) {
 /// UNIQUE_THREAD_ID: the User Authenticator threads are numbered from 1.
 static AUTHENTICATORS: AtomicU32 = AtomicU32::new(0);
 
-/// ServerLoginPacketListenerImpl.handleKey and the User Authenticator
-/// thread: check the client's answer to the encryption request, encrypt the
-/// connection, and ask the session service whether the player joined with
-/// this server's hash. The profile, or the text of the refusal.
-fn authenticate(
+/// Paper's `ServerLoginPacketListenerImpl.handleHello` behind Velocity: ask the
+/// proxy for the player (`velocity:player_info`), check its signature, and take
+/// its address and profile. The profile and address, or the text of the refusal.
+#[allow(clippy::type_complexity)]
+fn forwarded(
     c: &mut Connection,
     shared: &Shared,
-    online: &super::OnlineMode,
-    name: &str,
-    address: std::net::SocketAddr,
+    velocity: &super::velocity::Velocity,
     user: &str,
-) -> Result<Result<(u128, Vec<login::Property>), String>, String> {
+) -> Result<Result<(u128, String, Vec<login::Property>, std::net::IpAddr), String>, String> {
     let e = |e: horizon_protocol::Error| e.to_string();
-    let mut challenge = [0u8; 4];
-    horizon_protocol::crypto::random_bytes(&mut challenge).map_err(e)?;
-    c.send(
-        &login::Clientbound::Hello(login::Hello {
-            server_id: String::new(),
-            public_key: online.public_der.clone(),
-            challenge: challenge.to_vec(),
-            should_authenticate: true,
-        })
-        .encode(),
-    )
-    .map_err(e)?;
+    let mut id = [0u8; 4];
+    horizon_protocol::crypto::random_bytes(&mut id).map_err(e)?;
+    let transaction = i32::from_le_bytes(id) & i32::MAX;
+    c.send(&super::velocity::Velocity::query(transaction).encode())
+        .map_err(e)?;
     let (id, payload) = c.recv().map_err(e)?;
-    let key = match login::Serverbound::decode(id, &payload).map_err(e)? {
-        login::Serverbound::Key(k) => k,
+    let payload = match login::Serverbound::decode(id, &payload).map_err(e)? {
+        login::Serverbound::CustomQueryAnswer(a) if a.transaction == transaction => a.payload,
         _ => return Err("Unexpected packet during login".into()),
     };
-    // ServerboundKeyPacket.isChallengeValid and getSecretKey.
-    let protocol_error = || "Protocol error".to_owned();
-    if online.key.decrypt(&key.challenge).ok().as_deref() != Some(&challenge[..]) {
-        return Err(protocol_error());
-    }
-    let secret: [u8; 16] = online
-        .key
-        .decrypt(&key.key)
-        .ok()
-        .and_then(|s| s.try_into().ok())
-        .ok_or_else(protocol_error)?;
-    let digest = server_hash("", &secret, &online.public_der);
-    c.enable_encryption(&secret);
     let thread = format!(
         "User Authenticator #{}",
         AUTHENTICATORS.fetch_add(1, Ordering::Relaxed) + 1
     );
-    let log = |level: &str, line: &str| {
-        if let Some(log) = &shared.config.log {
-            (log.write)(&thread, level, line);
+    match velocity.read(payload.as_deref()) {
+        Ok(f) => {
+            if let Some(log) = &shared.config.log {
+                (log.write)(
+                    &thread,
+                    "INFO",
+                    &format!("UUID of player {} is {}", f.name, uuid_string(f.uuid)),
+                );
+            }
+            Ok(Ok((f.uuid, f.name, f.properties, f.address)))
         }
-    };
-    let ip = online.prevent_proxy.then(|| address.ip());
-    match crate::auth::has_joined(name, &digest, ip) {
-        Ok(Some(profile)) => {
-            log(
-                "INFO",
-                &format!("UUID of player {name} is {}", uuid_string(profile.uuid)),
-            );
-            Ok(Ok((profile.uuid, profile.properties)))
-        }
-        Ok(None) => {
-            let text = refuse(
-                c,
-                shared,
-                &thread,
-                user,
-                &translatable("multiplayer.disconnect.unverified_username", &[]),
-            );
-            log(
-                "ERROR",
-                &format!("Username '{name}' tried to join with an invalid session"),
-            );
-            Ok(Err(text))
-        }
-        Err(_) => {
-            let text = refuse(
-                c,
-                shared,
-                &thread,
-                user,
-                &translatable("multiplayer.disconnect.authservers_down", &[]),
-            );
-            log(
-                "ERROR",
-                "Couldn't verify username because servers are unavailable",
-            );
-            Ok(Err(text))
-        }
+        Err(reason) => Ok(Err(refuse(
+            c,
+            shared,
+            &thread,
+            user,
+            &horizon_world::nbt::Tag::String(reason.into()),
+        ))),
     }
 }
 
@@ -689,11 +643,15 @@ fn serve_login(
         .as_ref()
         .map(|log| user_name(&hello.name, address, log))
         .unwrap_or_default();
-    // handleHello: online mode authenticates first; offline mode derives the
-    // profile from the name.
-    let (uuid, properties) = match &shared.config.online {
-        Some(online) => match authenticate(&mut c, shared, online, &hello.name, address, &user) {
-            Ok(Ok(profile)) => profile,
+    // handleHello: behind Velocity the proxy's forwarded profile and address;
+    // otherwise (offline) the profile from the name.
+    let mut address = address;
+    let (uuid, name, properties) = match &shared.config.velocity {
+        Some(velocity) => match forwarded(&mut c, shared, velocity, &user) {
+            Ok(Ok((uuid, name, properties, ip))) => {
+                address.set_ip(ip);
+                (uuid, name, properties)
+            }
             Ok(Err(refused)) => {
                 lost(shared, &user, &refused);
                 return Ok(());
@@ -703,16 +661,16 @@ fn serve_login(
                 return Err(err);
             }
         },
-        None => (offline_uuid(&hello.name), Vec::new()),
+        None => (offline_uuid(&hello.name), hello.name.clone(), Vec::new()),
     };
     // verifyLoginAndFinishConnectionSetup: PlayerList.canPlayerLogin, then
     // duplicates and a full server.
-    if let Some(reason) = shared.try_admit(address, uuid, &hello.name) {
+    if let Some(reason) = shared.try_admit(address, uuid, &name) {
         let text = refuse(&mut c, shared, "Server thread", &user, &reason);
         lost(shared, &user, &text);
         return Ok(());
     }
-    let result = login_and_configure(&mut c, shared, uuid, &hello.name, properties);
+    let result = login_and_configure(&mut c, shared, uuid, &name, properties);
     match result {
         Ok(Some(parts)) => {
             play(c, shared, parts, address);
@@ -725,7 +683,7 @@ fn serve_login(
         Err(err) => {
             shared.release(uuid);
             // ServerConfigurationPacketListenerImpl.onDisconnect.
-            let profile = format!("{} ({})", hello.name, uuid_string(uuid));
+            let profile = format!("{name} ({})", uuid_string(uuid));
             lost(shared, &profile, "Disconnected");
             Err(err)
         }

@@ -413,7 +413,6 @@ impl Game<'_> {
             return;
         }
         self.load_bossbars();
-        let now = boss_overlay::now_millis();
         let viewers = self.boss_viewers();
         let live: HashSet<u128> = viewers.iter().map(|v| v.uuid).collect();
         self.bosses.sent.retain(|id, _| live.contains(id));
@@ -421,9 +420,7 @@ impl Game<'_> {
         for viewer in &viewers {
             let desired = self.boss_events_for(viewer);
             for event in self.diff_boss_events(viewer, desired) {
-                if viewer.local {
-                    self.boss_overlay.apply(&event, now);
-                } else if let Some(conn) = viewer.conn {
+                if let Some(conn) = viewer.conn {
                     packets.push((conn, C::BossEvent(event)));
                 }
             }

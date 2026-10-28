@@ -1424,6 +1424,7 @@ dependencies = [
  "chrono",
  "flate2",
  "glam",
+ "hmac",
  "horizon-assets",
  "horizon-client-core",
  "horizon-command",
@@ -1568,12 +1569,10 @@ dependencies = [
 name = "horizon-server-files"
 version = "0.1.0"
 dependencies = [
- "base64",
  "horizon-core",
  "horizon-protocol",
  "horizon-world",
  "log",
- "ureq",
 ]
 
 [[package]]

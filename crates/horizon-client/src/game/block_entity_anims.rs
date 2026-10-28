@@ -229,15 +229,9 @@ impl Game<'_> {
     /// The client tickers of the loaded animated block entities, once per
     /// client tick (`ClientLevel.tickBlockEntities`).
     pub(super) fn tick_block_entity_anims(&mut self) {
-        // A server has no window, but its gateways and conduits still run
-        // their server tickers; a client of one only animates what it is sent.
-        if self.remote.is_none() {
-            self.tick_conduit_servers();
-        }
+        // A client of a server only animates what it is sent (the server
+        // runs the conduit and gateway tickers in `tick_world`).
         let Some(r) = &self.renderer else {
-            if self.remote.is_none() {
-                self.tick_gateway_servers();
-            }
             return;
         };
         // Sorted by position: the order they tick in, and a quick lookup.
@@ -402,7 +396,7 @@ impl Game<'_> {
     /// tick blocks, with or without a renderer. The conduits are looked for
     /// when the shape is checked, every 40 ticks (they have no block entity
     /// of their own here).
-    fn tick_conduit_servers(&mut self) {
+    pub(super) fn tick_conduit_servers(&mut self) {
         if self.world.game_time % 40 == 0 {
             self.find_conduits();
         }
@@ -644,7 +638,7 @@ impl Game<'_> {
     /// gateways a server keeps a copy of, in block-ticking chunks
     /// (`Level.tickBlockEntities`): the cooldown an entry started runs out,
     /// and every 2400 ticks `triggerCooldown` sends its block event.
-    fn tick_gateway_servers(&mut self) {
+    pub(super) fn tick_gateway_servers(&mut self) {
         let levels = self.tickets.levels();
         let mut positions: Vec<[i32; 3]> = self
             .be_anims

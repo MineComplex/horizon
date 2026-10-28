@@ -244,14 +244,14 @@ fn resolve_profile(key: &NameOrId, doc: &serde_json::Value) -> Option<ResolvedPr
     let id = match key {
         NameOrId::Id(id) => *id,
         NameOrId::Name(name) => {
-            let url = crate::auth::endpoint(doc, "profiles", "getByName")?
+            let url = services_endpoint(doc, "profiles", "getByName")?
                 .replace("{name}", &name.to_lowercase());
             let body = http_get(&url)?;
             let v: serde_json::Value = serde_json::from_slice(&body).ok()?;
             crate::auth::parse_uuid(v.get("id")?.as_str()?)?
         }
     };
-    let url = crate::auth::endpoint(doc, "session", "getProfileById")?
+    let url = services_endpoint(doc, "session", "getProfileById")?
         .replace("{profileId}", &format!("{id:032x}"));
     let separator = if url.contains('?') { '&' } else { '?' };
     let body = http_get(&format!("{url}{separator}unsigned=false"))?;
@@ -343,9 +343,7 @@ impl Resolver {
         }
         let (key, send) = (key.clone(), self.send.clone());
         std::thread::spawn(move || {
-            let resolved = crate::auth::discovery()
-                .ok()
-                .and_then(|doc| resolve_profile(&key, &doc));
+            let resolved = services_discovery().and_then(|doc| resolve_profile(&key, &doc));
             let _ = send.send((key, resolved));
         });
         Resolve::Pending
@@ -748,6 +746,36 @@ impl Downloader {
 
 /// A GET over HTTP or HTTPS (textures.minecraft.net serves both; vanilla
 /// uses https): the body of a 2xx answer, 16 MiB at most, after redirects.
+/// Mojang's services discovery document (`MinecraftServicesEnvironment.PROD`):
+/// only skins use it, for the profiles of name- or id-only heads.
+const SERVICES_DISCOVERY: &str = "https://discovery.minecraftservices.com/minecraft/client";
+
+/// The discovery document, fetched once per game (a failure is retried next
+/// time). `HORIZON_API_DISCOVERY` overrides its URL, like authlib's
+/// `-Dminecraft.api.discovery.host`.
+fn services_discovery() -> Option<std::sync::Arc<serde_json::Value>> {
+    static CACHE: std::sync::Mutex<Option<std::sync::Arc<serde_json::Value>>> =
+        std::sync::Mutex::new(None);
+    if let Some(d) = CACHE.lock().unwrap().clone() {
+        return Some(d);
+    }
+    let url = std::env::var("HORIZON_API_DISCOVERY")
+        .ok()
+        .filter(|u| !u.is_empty())
+        .unwrap_or_else(|| SERVICES_DISCOVERY.to_owned());
+    let doc: serde_json::Value = serde_json::from_slice(&http_get(&url)?).ok()?;
+    let doc = std::sync::Arc::new(doc);
+    *CACHE.lock().unwrap() = Some(doc.clone());
+    Some(doc)
+}
+
+/// MinecraftServicesDiscoveryService.getUrl(service, endpoint).
+fn services_endpoint(doc: &serde_json::Value, service: &str, name: &str) -> Option<String> {
+    doc.pointer(&format!("/discovery/{service}/endpoints/{name}/uri"))
+        .and_then(|u| u.as_str())
+        .map(str::to_owned)
+}
+
 fn http_get(url: &str) -> Option<Vec<u8>> {
     use std::io::Read;
     let response = ureq::AgentBuilder::new()

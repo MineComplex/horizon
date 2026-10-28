@@ -152,6 +152,8 @@ pub struct Audio {
     pub listener: [f64; 3],
     pub listener_yaw: f32,
     pub master: f32,
+    /// The jukeboxes' songs playing, by block.
+    jukeboxes: std::collections::HashMap<[i32; 3], InstanceId>,
 }
 fn decode(path: &Path) -> Option<(Vec<f32>, u32)> {
     use symphonia::core::{
@@ -582,6 +584,7 @@ impl Audio {
             listener: [0.0; 3],
             listener_yaw: 0.0,
             master: 1.0,
+            jukeboxes: std::collections::HashMap::new(),
         }
     }
     #[cfg(not(feature = "audio"))]
@@ -701,6 +704,18 @@ impl Audio {
             } => self.play_now(&event, at, volume, pitch, seed, source),
             SoundCmd::Stop { event, source } => self.stop_now(event.as_deref(), source),
             SoundCmd::Release(id) => self.stop_and_release(id),
+            SoundCmd::JukeboxSong { event, pos } => {
+                if let Some(old) = self.jukeboxes.remove(&pos) {
+                    self.stop_and_release(old);
+                }
+                let id = self.play_jukebox_song(&event, pos);
+                self.jukeboxes.insert(pos, id);
+            }
+            SoundCmd::StopJukebox(pos) => {
+                if let Some(id) = self.jukeboxes.remove(&pos) {
+                    self.stop_and_release(id);
+                }
+            }
         }
     }
     /// `AbstractWidget.playButtonClickSound`: an unseeded, relative UI sound.

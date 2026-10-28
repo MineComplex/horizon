@@ -14,7 +14,6 @@ pub mod commands;
 pub mod conn;
 pub mod containers;
 pub mod data;
-pub mod discovery;
 pub mod entity;
 pub mod guest;
 pub mod hub;
@@ -23,6 +22,7 @@ pub mod playerdata;
 mod recipes;
 pub mod scoreboard;
 pub mod tracking;
+pub mod velocity;
 pub mod waypoints;
 
 pub use conn::{Holding, PlayerSender, flush_all};
@@ -87,16 +87,6 @@ pub enum Out {
 pub type LoginGate =
     Arc<dyn Fn(SocketAddr, u128, &str) -> Option<horizon_world::nbt::Tag> + Send + Sync>;
 
-/// online-mode=true: the key pair the server made at startup
-/// (MinecraftServer.initializeKeyPair) and how players are verified.
-pub struct OnlineMode {
-    pub key: horizon_protocol::rsa::RsaPrivateKey,
-    /// The public key as X.509 (PublicKey.getEncoded), sent in the hello.
-    pub public_der: Vec<u8>,
-    /// prevent-proxy-connections: the session service also checks the address.
-    pub prevent_proxy: bool,
-}
-
 /// The dedicated server's log for the login phase: (thread, level, line)
 /// written as vanilla's Log4j would, and the language that turns a
 /// disconnect reason into its text (Component.getString).
@@ -128,16 +118,16 @@ pub struct NetConfig {
     /// Secure chat (a dedicated server; none on a LAN world).
     pub secure_chat: Option<Arc<SecureChat>>,
     pub accepts_transfers: bool,
-    /// LanServerPinger: announce the world on the local network.
-    pub announce: bool,
     /// Accept connections from the network. Without it only local ones
     /// (`Lan::connect_local`): an integrated server not open to the LAN.
     pub listen: bool,
     /// Ops bypass a full server (ServerOpList.canBypassPlayerLimit).
     pub bypasses_limit: Option<Arc<dyn Fn(u128) -> bool + Send + Sync>>,
     pub gate: Option<LoginGate>,
-    /// Online mode: players are authenticated (none on a LAN world).
-    pub online: Option<Arc<OnlineMode>>,
+    /// Behind a Velocity proxy: players come with the proxy's forwarded
+    /// profile (`config/paper-global.yml` `proxies.velocity`). Without it the
+    /// server is offline: nobody is authenticated (this server never asks Mojang).
+    pub velocity: Option<Arc<velocity::Velocity>>,
     pub log: Option<NetLog>,
     /// server.properties `resource-pack`: offered to every player during
     /// configuration (a dedicated server's; MinecraftServer.getServerResourcePack).
@@ -165,11 +155,10 @@ impl NetConfig {
             favicon: None,
             secure_chat: None,
             accepts_transfers: false,
-            announce: true,
             listen: true,
             bypasses_limit: None,
             gate: None,
-            online: None,
+            velocity: None,
             log: None,
             resource_pack: None,
             server_links: Vec::new(),
@@ -404,8 +393,6 @@ pub struct Lan {
     listener: Option<JoinHandle<()>>,
     /// Stops the accept loop alone: local connections stay.
     listener_stop: Arc<AtomicBool>,
-    /// The multicast announcement (LanServerPinger); absent when the socket failed.
-    _pinger: Option<discovery::Pinger>,
 }
 impl Lan {
     /// Listen on `port` (0 picks a free one).
@@ -420,7 +407,7 @@ impl Lan {
     /// ServerConnectionListener.startTcpServerListener with a configuration.
     pub fn start_with(sync: Arc<data::SyncData>, config: NetConfig) -> io::Result<Self> {
         let (tx, events) = channel();
-        let (listen, port, announce) = (config.listen, config.port, config.announce);
+        let (listen, port) = (config.listen, config.port);
         let shared = Arc::new(Shared {
             sync,
             events: tx,
@@ -439,17 +426,15 @@ impl Lan {
             port: 0,
             listener: None,
             listener_stop: Arc::new(AtomicBool::new(false)),
-            _pinger: None,
         };
         if listen {
-            lan.listen(port, announce)?;
+            lan.listen(port)?;
         }
         Ok(lan)
     }
-    /// Start accepting connections on `port` (0 picks a free one), and
-    /// announce the world on the local network when `announce`
-    /// (`IntegratedServer.publishServer`'s LanServerPinger). Returns the port.
-    pub fn listen(&mut self, port: u16, announce: bool) -> io::Result<u16> {
+    /// Start accepting connections on `port` (0 picks a free one). Returns
+    /// the port. Nothing is announced on the local network (no LanServerPinger).
+    pub fn listen(&mut self, port: u16) -> io::Result<u16> {
         if self.listener.is_some() {
             return Err(io::Error::new(
                 io::ErrorKind::AlreadyExists,
@@ -457,7 +442,7 @@ impl Lan {
             ));
         }
         let listener = Self::bind(self.shared.config.bind, port)?;
-        self.listen_on(listener, announce)
+        self.listen_on(listener)
     }
     /// The socket [`Lan::listen`] accepts on, bound ahead so that a failure
     /// can be reported before the hub is at hand.
@@ -468,7 +453,7 @@ impl Lan {
         Ok(listener)
     }
     /// [`Lan::listen`] on a socket already bound.
-    pub fn listen_on(&mut self, listener: TcpListener, announce: bool) -> io::Result<u16> {
+    pub fn listen_on(&mut self, listener: TcpListener) -> io::Result<u16> {
         if self.listener.is_some() {
             return Err(io::Error::new(
                 io::ErrorKind::AlreadyExists,
@@ -481,24 +466,18 @@ impl Lan {
         let thread = std::thread::Builder::new()
             .name("horizon-lan-accept".into())
             .spawn(move || accept_loop(listener, accept_shared, &accept_stop))?;
-        self._pinger = if announce {
-            discovery::Pinger::start(self.shared.motd(), port).ok()
-        } else {
-            None
-        };
         self.listener = Some(thread);
         self.listener_stop = stop;
         self.port = port;
         Ok(port)
     }
-    /// Stop accepting connections and announcing; connections already in
+    /// Stop accepting connections; connections already in
     /// (the local one included) stay.
     pub fn stop_listening(&mut self) {
         self.listener_stop.store(true, Ordering::Relaxed);
         if let Some(t) = self.listener.take() {
             let _ = t.join();
         }
-        self._pinger = None;
         self.port = 0;
     }
     /// Whether connections from the network are accepted.

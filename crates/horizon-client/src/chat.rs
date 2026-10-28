@@ -251,6 +251,10 @@ impl Chat {
             self.add_lines(font, &message, focused);
         }
     }
+    /// Drop what `add_unwrapped` kept for a window: a server has none to show it in.
+    pub fn drop_unwrapped(&mut self) {
+        self.unwrapped.clear();
+    }
     fn add_message(
         &mut self,
         font: &crate::font::Font,

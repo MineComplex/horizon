@@ -542,7 +542,7 @@ Coming soon: sign in with your Microsoft account to play on online-mode servers.
 
 <details><summary>Technical</summary>
 
-Device-code sign-in in the launcher and online-mode login in the client ([docs/microsoft-account.md](docs/microsoft-account.md)). It is turned on by setting the app's client id once Minecraft API access is approved; until then the launcher shows "Coming soon".
+Device-code sign-in in the launcher and online-mode login in the client. It is turned on by setting the app's client id once Minecraft API access is approved; until then the launcher shows "Coming soon".
 
 More: [#1270](https://github.com/horizon-rust/horizon/issues/1270)
 
@@ -704,7 +704,7 @@ Sign in with other account providers, such as Ely.by or any Yggdrasil-compatible
 
 <details><summary>Technical</summary>
 
-Issue [#1270](https://github.com/horizon-rust/horizon/issues/1270) asks for Ely.by and Yggdrasil-compatible servers with an account selector in the launcher. It builds on the Microsoft sign-in ([docs/microsoft-account.md](docs/microsoft-account.md)).
+Issue [#1270](https://github.com/horizon-rust/horizon/issues/1270) asks for Ely.by and Yggdrasil-compatible servers with an account selector in the launcher.
 
 </details>
 

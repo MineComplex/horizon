@@ -728,7 +728,7 @@ impl Hub {
             limited_crafting: false,
             spawn: self.spawn_info(i),
             // MinecraftServer.usesAuthentication, enforceSecureProfile.
-            online_mode: self.lan.shared.config.online.is_some(),
+            online_mode: self.lan.shared.config.velocity.is_some(),
             enforces_secure_chat: self.enforces_secure_chat(),
         }));
         g.send(&C::ChangeDifficulty(play::ChangeDifficulty {

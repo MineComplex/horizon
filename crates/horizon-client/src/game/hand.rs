@@ -3,7 +3,7 @@
 //! `continueAttack`, `MultiPlayerGameMode` block breaking), the arm swing
 //! (`LivingEntity.SwingState`) and the first-person equip heights
 //! (`FirstPersonHandsAndItems`) with the item swap ticker they read.
-use super::{Game, Mining, Screen, minecarts::CartKind};
+use super::{Game, minecarts::CartKind};
 use horizon_client::{
     Result,
     attack_strength::HeldStack,
@@ -63,57 +63,6 @@ impl Game<'_> {
     pub(super) fn reset_attack_strength(&mut self) {
         self.attack_ticks = 0;
         self.hand_strength.reset();
-    }
-    /// The attack and use part of `Minecraft.tick` for the local player:
-    /// attack clicks since the last tick and the held attack button.
-    pub(super) fn tick_local_hand(&mut self) -> Result<()> {
-        let attack_clicks = std::mem::take(&mut self.attack_clicks);
-        if self.screen == Screen::Playing && self.title.is_none() && self.sleeping.is_none() {
-            let mut clicks = std::mem::take(&mut self.clicks);
-            // keyAttack.isDown(); playing implies the grabbed mouse here
-            // (scripts under --control hold buttons without grabbing it).
-            let down = self.left;
-            let ticks = self.clicks.destroying.ticks;
-            let mut world = GameHands {
-                game: self,
-                error: None,
-            };
-            clicks.tick(&mut world, attack_clicks, 0, down, false);
-            let error = world.error.take();
-            self.clicks = clicks;
-            if let Some(e) = error {
-                return Err(e);
-            }
-            // A tick of breaking: the hit sound every fourth tick and the
-            // cracking particles.
-            let d = &self.clicks.destroying;
-            if d.active && d.ticks > ticks {
-                let (pos, first) = (d.pos, (d.ticks as u32 - 1).is_multiple_of(4));
-                let state = self.world.block(pos[0], pos[1], pos[2]);
-                if first {
-                    let sounds = self.res.facts().get(state).sounds.clone();
-                    self.sounds.play(
-                        &sounds.hit,
-                        Some(pos.map(|v| f64::from(v) + 0.5)),
-                        (sounds.volume + 1.0) / 8.0,
-                        sounds.pitch * 0.5,
-                    );
-                }
-                if let Some(hit) = self.pick() {
-                    self.crack_particle(pos, hit.face, state);
-                }
-            }
-        } else {
-            // Minecraft.tick: a screen keeps the attack from starting.
-            self.clicks.miss_time = 10000;
-        }
-        let d = &self.clicks.destroying;
-        self.mining = d.active.then_some(Mining {
-            pos: d.pos,
-            progress: d.progress,
-            ticks: d.ticks as u32,
-        });
-        Ok(())
     }
     /// `BlockBehaviour.getDestroyProgress` with `Player.getDestroySpeed`.
     pub(super) fn destroy_progress(&self, pos: [i32; 3]) -> f32 {

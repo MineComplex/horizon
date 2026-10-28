@@ -127,12 +127,11 @@ impl Game<'_> {
             }
         }
         for (conn, packet) in out {
+            // A server has no host connection of its own: its windows are guests.
             if conn == HOST_CONN {
-                // The host's own connection: its locator bar.
-                if let horizon_protocol::packets::play::Clientbound::TrackedWaypoint(w) = &packet {
-                    self.handle_waypoint(w);
-                }
-            } else if let Some(g) = host.hub.guest(conn) {
+                continue;
+            }
+            if let Some(g) = host.hub.guest(conn) {
                 g.send(&packet);
             }
         }

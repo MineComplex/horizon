@@ -25,6 +25,8 @@ bytemuck = { version = "1.24", features = ["derive"] }
 glam = "0.30"
 png = "0.18"
 sha2 = "0.10.9"
+# Velocity modern forwarding (lan::velocity).
+hmac = "0.12"
 # HTTPS to the Minecraft services (online-mode session checks, profiles).
 ureq = { version = "2", default-features = false, features = ["tls"] }
 chrono = { version = "0.4.42", default-features = false, features = ["clock", "std"] }

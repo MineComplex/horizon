@@ -6,16 +6,16 @@
 //! Online-mode servers need the Microsoft account the launcher signed in
 //! (crate::auth): the login joins the server through the session service and
 //! encrypts the connection (ClientHandshakePacketListenerImpl.handleHello).
-use crate::auth::{AuthSession, Issuer};
+use crate::auth::AuthSession;
 use horizon_protocol::{
     PROTOCOL_VERSION,
     connection::{ConnReader, ConnWriter, Connection, Counters},
-    crypto::{generate_secret, offline_uuid, server_hash},
+    crypto::{generate_secret, offline_uuid},
     packets::{Empty, configuration as cfg, handshake, login, play},
     registry::Dynamic,
     rsa::RsaPublicKey,
     servers::parse_address,
-    text::{Language, plain, translatable},
+    text::{Language, plain},
 };
 use std::{
     collections::HashMap,
@@ -287,7 +287,7 @@ fn status(send: &Sender<Event>, text: &str) {
 }
 
 /// Shown when an online-mode server asks a client without an account to authenticate.
-pub const NOT_SIGNED_IN: &str = "This server is in online mode. Sign in with your Microsoft account in the Horizon launcher to join it.";
+pub const NOT_SIGNED_IN: &str = "This server is in online mode. Horizon joins servers through the MineComplex proxy only: start the game from the MineComplex launcher.";
 
 /// A translation, or the key itself (Language.getOrDefault).
 fn tr(lang: &Language, key: &str) -> String {
@@ -368,26 +368,11 @@ fn run(
                 let key = RsaPublicKey::from_der(&hello.public_key)
                     .map_err(|err| format!("Protocol error: {err}"))?;
                 let secret = generate_secret().map_err(e)?;
-                let account = match auth {
-                    _ if !hello.should_authenticate => None,
-                    None => return Err(NOT_SIGNED_IN.to_owned()),
-                    // MineComplex: no session service, the proxy asks for the
-                    // launcher's token below and checks it itself.
-                    Some(a) if a.issuer == Issuer::MineComplex => None,
-                    Some(a) => Some(a),
-                };
-                if let Some(account) = account {
-                    let hash = server_hash(&hello.server_id, &secret, &hello.public_key);
-                    if let Err(err) = crate::auth::join_server(account, &hash) {
-                        let reason = match err.reason() {
-                            Ok(key) => tr(lang, key),
-                            Err(message) => message.to_owned(),
-                        };
-                        return Err(plain(
-                            &translatable("disconnect.loginFailedInfo", &[&reason]),
-                            lang,
-                        ));
-                    }
+                // No session service: the MineComplex proxy asks for the
+                // launcher's token below and checks it itself. A server that
+                // wants Mojang's authentication can't be joined.
+                if hello.should_authenticate && auth.is_none() {
+                    return Err(NOT_SIGNED_IN.to_owned());
                 }
                 status(send, &tr(lang, "connect.encrypting"));
                 c.send(

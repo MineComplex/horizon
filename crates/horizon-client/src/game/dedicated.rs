@@ -9,9 +9,9 @@
 use super::{Game, Options, lan::LanSettings, world_loading::WorldRequest};
 use horizon_client::{
     Result,
-    lan::{LoginGate, NetConfig, NetLog, OnlineMode, hub::HubConfig},
+    lan::{LoginGate, NetConfig, NetLog, hub::HubConfig, velocity::Velocity},
     server::{
-        eula, profiles,
+        eula, paper_global,
         properties::{GAME_MODES, ServerProperties, SystemEntropy},
         user_cache::UserCache,
         user_lists::{
@@ -504,21 +504,16 @@ impl Game<'_> {
         for warning in warnings {
             log_from("main", "WARN", &warning);
         }
-        // DedicatedServer.initServer: names nobody has resolve offline only without authentication.
-        cache.resolve_offline_users = !props.online_mode;
+        // Nobody is looked up at Mojang: names nobody has resolve offline.
+        cache.resolve_offline_users = true;
         *USER_CACHE.lock().unwrap() = Some(cache);
-        // Services.create: the services' public keys, fetched in the
-        // background (they check players' chat keys).
-        let secure_chat = Arc::new(horizon_client::lan::SecureChat::new(
-            props.enforce_secure_profile && props.online_mode,
-            || {
-                let discovery = profiles::discovery_url();
-                profiles::fetch_profile_key_keys(&discovery).unwrap_or_else(|e| {
-                    ::log::error!("{e}");
-                    Vec::new()
-                })
-            },
-        ));
+        // No chat keys are checked: this server never fetches Mojang's
+        // services' public keys (Services.create), so chat is not enforced.
+        let secure_chat = Arc::new(horizon_client::lan::SecureChat::new(false, Vec::new));
+        // Paper's config/paper-global.yml: proxies.velocity puts the server
+        // behind a Velocity proxy, which authenticates the players.
+        let velocity_settings = paper_global::load(std::path::Path::new("config/paper-global.yml"))
+            .map_err(|e| format!("config/paper-global.yml: {e}"))?;
         log(
             "INFO",
             &format!(
@@ -536,15 +531,12 @@ impl Game<'_> {
             ),
         );
         let port = port.unwrap_or(props.server_port as u16);
-        // MinecraftServer.initializeKeyPair (only online mode uses it).
-        log("INFO", "Generating keypair");
-        let online = if props.online_mode {
-            let key = horizon_protocol::rsa::RsaPrivateKey::generate(1024)
-                .map_err(|e| format!("Failed to generate key pair: {e}"))?;
-            Some(Arc::new(OnlineMode {
-                public_der: key.public_der(),
-                key,
-                prevent_proxy: props.prevent_proxy_connections,
+        let velocity = if velocity_settings.enabled {
+            if velocity_settings.secret.is_empty() {
+                return Err("config/paper-global.yml: proxies.velocity.secret is empty".into());
+            }
+            Some(Arc::new(Velocity {
+                secret: velocity_settings.secret.clone().into_bytes(),
             }))
         } else {
             None
@@ -560,7 +552,7 @@ impl Game<'_> {
                 }
             ),
         );
-        if online.is_none() {
+        if velocity.is_none() {
             log("WARN", "**** SERVER IS RUNNING IN OFFLINE/INSECURE MODE!");
             log(
                 "WARN",
@@ -572,7 +564,7 @@ impl Game<'_> {
             );
             log(
                 "WARN",
-                "To change this, set \"online-mode\" to \"true\" in the server.properties file.",
+                "To change this, put the server behind Velocity: proxies.velocity in config/paper-global.yml.",
             );
         }
         let mut lists = Lists::load();
@@ -633,7 +625,6 @@ impl Game<'_> {
             favicon,
             secure_chat: Some(secure_chat),
             accepts_transfers: props.accepts_transfers,
-            announce: false,
             listen: true,
             bypasses_limit: Some(Arc::new(move |uuid| {
                 bypass_lists
@@ -645,7 +636,7 @@ impl Game<'_> {
                     .any(|e| e.user.id == uuid && e.bypasses_player_limit)
             })),
             gate: Some(gate),
-            online,
+            velocity,
             log: Some(NetLog {
                 write: Arc::new(log_from),
                 lang: Arc::new(horizon_client::net::load_language(&self.options.resources)),
@@ -790,7 +781,7 @@ impl Game<'_> {
     pub(super) fn settle_spawn(&mut self) -> Result<()> {
         let deadline = Instant::now() + Duration::from_secs(600);
         while self.player.is_none() {
-            self.update_world();
+            self.stream_world();
             self.spawn_player()?;
             if Instant::now() > deadline {
                 return Err("the spawn area did not load".into());
@@ -872,19 +863,15 @@ impl Game<'_> {
         })
     }
 
-    /// GameProfileArgument for a name: the user cache, else the profile
-    /// service, else (offline) the offline player. None, told to the console:
-    /// no such player.
+    /// GameProfileArgument for a name: the user cache, else the offline
+    /// player (no profile service is asked). None, told to the console: no
+    /// such player.
     fn resolve(&self, name: &str) -> Option<NameAndId> {
-        let found = USER_CACHE.lock().unwrap().as_mut().and_then(|cache| {
-            cache.get_by_name(name, |lower| {
-                let found = profiles::find_by_name(&profiles::discovery_url(), lower);
-                if found.is_none() {
-                    log("WARN", &format!("Couldn't find profile with name: {lower}"));
-                }
-                found
-            })
-        });
+        let found = USER_CACHE
+            .lock()
+            .unwrap()
+            .as_mut()
+            .and_then(|cache| cache.get_by_name(name, |_| None));
         if found.is_none() {
             let unknown = Text::translate("argument.player.unknown", &[]);
             log("INFO", &format!("System chat: {}", unknown.plain()));

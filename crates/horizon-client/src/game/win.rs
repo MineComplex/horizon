@@ -1,7 +1,6 @@
-//! `WinScreen` in the game: the poem and credits after leaving the End for
-//! the first time (`EndPortalBlock.entityInside` -> `ServerPlayer.showEndCredits`,
-//! or a server's `WIN_GAME` event), and the credits from Credits &
-//! Attribution.
+//! `WinScreen` in the game: the credits from Credits & Attribution (and
+//! `horizon-ctl credits`). A server's `WIN_GAME` shows nothing here: the
+//! client respawns at once (game/remote.rs).
 use super::{Game, Screen};
 use horizon_client::{
     Result,
@@ -17,11 +16,6 @@ use winit::{
 /// What closing the screen does (`WinScreen.onFinished`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum Finish {
-    /// `PERFORM_RESPAWN` in single player: the player, out of the End since
-    /// the credits began, arrives in the Overworld.
-    Respawn,
-    /// `PERFORM_RESPAWN` sent to the server.
-    RemoteRespawn,
     /// Back to Credits & Attribution.
     Options,
     /// Back to the game (`horizon-ctl credits`).
@@ -50,16 +44,6 @@ impl Game<'_> {
         self.screen = Screen::Win;
         self.capture(false);
     }
-    /// `ServerPlayer.showEndCredits`: the player leaves the End now (no
-    /// longer in any level until the credits end) and has seen the credits.
-    pub(super) fn show_end_credits(&mut self) -> Result<()> {
-        self.level.seen_credits = true;
-        self.open_win_screen(true, Finish::Respawn);
-        self.end_portal_travel = true;
-        let result = self.enter_dimension(super::Dim::Overworld);
-        self.end_portal_travel = false;
-        result
-    }
     /// Stop the scroll `scroll` pixels in (`horizon-ctl credits ... SCROLL`).
     pub(super) fn hold_win_screen(&mut self, scroll: f32) {
         if let Some(win) = self.win.as_mut() {
@@ -69,12 +53,6 @@ impl Game<'_> {
     /// `WinScreen.isPauseScreen`: only the credits without the poem pause.
     pub(super) fn win_screen_pauses(&self) -> bool {
         self.win.as_ref().is_some_and(|w| !w.screen.poem)
-    }
-    /// The player waits out of the world while the poem rolls.
-    pub(super) fn win_screen_holds_arrival(&self) -> bool {
-        self.win
-            .as_ref()
-            .is_some_and(|w| w.finish == Finish::Respawn)
     }
     pub(super) fn draw_win_screen(&mut self, batch: &mut HudBatch) {
         let Some(win) = self.win.as_mut() else {
@@ -137,10 +115,7 @@ impl Game<'_> {
         match win.finish {
             Finish::Options => self.screen = Screen::Options,
             Finish::Closed if self.title.is_some() => self.screen = Screen::Playing,
-            Finish::Respawn | Finish::RemoteRespawn | Finish::Closed => {
-                if win.finish == Finish::RemoteRespawn {
-                    self.remote_respawn();
-                }
+            Finish::Closed => {
                 self.screen = Screen::Playing;
                 self.capture(true);
             }

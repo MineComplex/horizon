@@ -54,7 +54,7 @@ pub(super) struct Parked {
     others: Vec<commands::OtherEntity>,
     boats: Vec<boats::Boat>,
     carts: Vec<minecarts::Minecart>,
-    jukebox_sounds: HashMap<(i32, i32, i32), u64>,
+    jukebox_sounds: std::collections::HashSet<(i32, i32, i32)>,
     bolts: Vec<lightning::Bolt>,
     crystals: Vec<dragon::Crystal>,
     dragon: Option<dragon::Dragon>,
@@ -160,7 +160,7 @@ impl Game<'_> {
             others: Vec::new(),
             boats: Vec::new(),
             carts: Vec::new(),
-            jukebox_sounds: HashMap::new(),
+            jukebox_sounds: std::collections::HashSet::new(),
             bolts: Vec::new(),
             crystals: Vec::new(),
             dragon: None,
@@ -284,7 +284,7 @@ impl Game<'_> {
             self.levels.parked.insert(left, p);
             if opened {
                 // The new streaming's radius and meshing options.
-                self.apply_settings();
+                self.apply_streaming_settings();
             }
         }
         let host = match host {
@@ -335,14 +335,18 @@ impl Game<'_> {
                 last: k + 1 == n,
             };
             self.update_dedicated_streaming();
-            self.update_world();
+            self.stream_world();
             // What server mods set in this level since its last tick.
             self.apply_mod_block_writes();
             result = if paused {
                 self.tick_lan(true);
                 Ok(())
             } else if k == 0 {
-                self.tick()
+                if self.agent.hold_server {
+                    Ok(())
+                } else {
+                    self.tick_level()
+                }
             } else {
                 let running = self.clock.world_runs();
                 if running {

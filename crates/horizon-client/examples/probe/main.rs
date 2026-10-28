@@ -49,7 +49,6 @@ mod hotbar_fixture;
 mod hud_fixture;
 mod input_probe;
 mod interaction_input_fixture;
-mod lan_probe;
 mod light_parity;
 mod lore_tooltip_fixture;
 mod marker_particles_probe;
@@ -138,7 +137,6 @@ probes! {
     hud_fixture,
     input_probe,
     interaction_input_fixture,
-    lan_probe,
     light_parity,
     lore_tooltip_fixture,
     marker_particles_probe,

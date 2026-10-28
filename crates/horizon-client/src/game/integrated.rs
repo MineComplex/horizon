@@ -615,7 +615,7 @@ impl Game<'_> {
         };
         match pending {
             Publish::Open(listener, settings) => {
-                if let Err(e) = host.hub.lan.listen_on(listener, true) {
+                if let Err(e) = host.hub.lan.listen_on(listener) {
                     log::error!("Horizon: Open to LAN: {e}");
                 }
                 host.settings = settings;
