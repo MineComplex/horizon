@@ -7099,7 +7099,8 @@ impl Game<'_> {
     }
     /// Mouse movement while a quick craft drag is running.
     fn inventory_drag_move(&mut self) {
-        if self.tweaks_on() && self.tweak_drag_move(self.inventory_target().0) {
+        let target = self.inventory_target().0;
+        if self.tweaks_on() && self.tweak_drag_move(target) {
             return;
         }
         let Some((ty, slots)) = self.inv_drag.clone() else {
@@ -12371,10 +12372,11 @@ impl ApplicationHandler for Game<'_> {
                     if self.screen == Screen::Creative && d != 0.0 {
                         self.creative_screen.wheel(f64::from(d), &self.pack.names);
                     }
+                    let target = self.inventory_target().0;
                     if self.screen == Screen::Inventory
                         && d != 0.0
                         && !self.bundle_scroll(scaled(raw_x), scaled(raw_y))
-                        && !self.tweak_scroll(d, self.inventory_target().0)
+                        && !self.tweak_scroll(d, target)
                     {
                         self.station_scroll(d);
                     }

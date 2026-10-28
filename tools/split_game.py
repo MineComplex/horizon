@@ -4,7 +4,8 @@ its window, mechanically and repeatably (docs/crates.md):
 
 1. `Frontend`: the fields only a window uses (FRONT below) move into `Game::front`; every access the
    compiler then rejects gets `front.`. The acting player's input (`keys`, `left`, `right`, `clicks`,
-   `inv_clicks`) stays in `Sim`: `as_guest` swaps a guest's in (a sneaking guest holds Shift).
+   `inv_clicks`) stays in `Sim`: `as_guest` swaps a guest's in (a sneaking guest holds Shift). So do
+   `physical_keys`, which item models read (`has_shift_down`) and a server leaves empty.
 2. `Sim`: every other field moves into `Game::sim`; `Game` derefs to `Sim`. Where two borrows of
    `Game` must stay disjoint, the access names `self.sim` explicitly.
 3. `impl Sim`: methods that touch neither the window nor a window-only method, and are not named as
@@ -30,7 +31,7 @@ SRC = os.path.join(ROOT, "crates/horizon-client/src")
 GAME_RS = os.path.join(SRC, "game.rs")
 
 FRONT = set("""
-window renderer physical_keys cursor cursor_icon captured modifiers fullscreen mouse smooth_camera
+window renderer cursor cursor_icon captured modifiers fullscreen mouse smooth_camera
 toggles pad fps fps_frames fps_at world_frames last_input limiter frame_clock frame_ticks dragging fog
 screen_fx weather_parameters panorama_rotation lod lod_source_attempted lod_observe lod_covered_at
 entity_vertices dynamic_lights luminance see_through_vertices entity_spans glowing_vertices pack_ids
@@ -315,6 +316,7 @@ def classify(extra):
 ASSOCIATED = set()
 # Why each method the compiler sent back stays on `Game` (`--why FILE` writes it).
 WHY = {}
+ROUND = [0]
 # Methods whose signature names `Game` (they take closures over it).
 WRAPPERS = set()
 # Structs over `&Game` that `move_methods` points at `Sim`.
@@ -334,7 +336,8 @@ def as_sim(line):
 
 
 def adapters(lines):
-    """Top-level structs over `&Game` / `&mut Game` (a trait's view of the world): (name, first, last line)."""
+    """Top-level structs whose fields name `Game` (a trait's view of the world, callbacks over it):
+    (name, first, last line)."""
     out, i = [], 0
     while i < len(lines):
         m = re.match(r"^(?:pub(?:\([\w: ]+\))? )?struct (\w+)<", lines[i])
@@ -342,7 +345,7 @@ def adapters(lines):
             j = i
             while not (lines[j].rstrip().endswith(");") or lines[j].startswith("}")):
                 j += 1
-            if any(re.search(r"&'\w+ (?:mut )?Game<", l) for l in lines[i:j + 1]):
+            if m.group(1) not in ("Game", "Sim", "Frontend") and any(re.search(r"\bGame\b(?!::)", l) for l in lines[i:j + 1] if not l.lstrip().startswith("//")):
                 out.append((m.group(1), i, j))
             i = j
         i += 1
@@ -357,7 +360,8 @@ def move_methods(game):
         for name, a, b in adapters(lines):
             if name not in game:
                 for k in range(a, b + 1):
-                    lines[k] = re.sub(r"(&'\w+ (?:mut )?)Game<", r"\1crate::game::Sim<", lines[k])
+                    if not lines[k].lstrip().startswith("//"):
+                        lines[k] = re.sub(r"\bGame\b(?!::)", "crate::game::Sim", lines[k])
         blocks = parse_blocks(lines)
         out, last = [], 0
         for b in blocks:
@@ -412,17 +416,17 @@ def failing_sim_methods(messages):
         adapter = adapter and next(g for g in adapter.groups() if g)
         if adapter in ADAPTERS:
             names.add(adapter)
-            WHY.setdefault(adapter, f"adapter: {m['message']} ({sp['file_name']}:{sp['line_start']})")
+            WHY.setdefault(adapter, f"r{ROUND[0]}: adapter: {m['message']} ({sp['file_name']}:{sp['line_start']})")
         elif name and j >= 0 and "Sim" in src[j]:
             names.add(name)
-            WHY.setdefault(name, f"{m['message']} ({sp['file_name']}:{sp['line_start']})")
+            WHY.setdefault(name, f"r{ROUND[0]}: {m['message']} ({sp['file_name']}:{sp['line_start']})")
         elif name and j >= 0:
             # A `Game` method's closure handed to a wrapper now in `Sim` (its closure takes
             # `&mut Sim`) calls what stays on `Game`: the wrapper stays too.
             near = " ".join(src[max(i, sp["line_start"] - 15):sp["line_start"]])
             for w in set(re.findall(r"\.\s*(\w+)\s*\(", near)) & WRAPPERS:
                 names.add(w)
-                WHY.setdefault(w, f"its closure in {name}: {m['message']} ({sp['file_name']}:{sp['line_start']})")
+                WHY.setdefault(w, f"r{ROUND[0]}: its closure in {name}: {m['message']} ({sp['file_name']}:{sp['line_start']})")
     return names
 
 
@@ -433,6 +437,7 @@ def step_methods():
         _, game = classify(extra)
         moved = move_methods(game)
         messages = check()
+        ROUND[0] = round_ + 1
         failing = failing_sim_methods(messages) - extra
         print(f"methods: round {round_ + 1}, {moved} in impl Sim, {len(failing)} to keep on Game")
         if not failing:
