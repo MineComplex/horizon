@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
-"""LAN multiplayer end to end: a host opens its world to LAN and a guest joins, both real games.
+"""Multiplayer end to end: two real clients on one horizon-server.
 
-The host uses its integrated server thread by default; --in-frame compares the fallback, and
---server-thread remains accepted. Two Horizon clients run under horizon-ctl in scratch folders. The host
-creates a survival world and opens it to LAN with commands allowed; the guest connects to it by
-address. The script then checks, from both sides, what a guest's game used to get wrong (#366):
+Two horizon-clients run under horizon-ctl in scratch folders. The host's `launch --world` starts a
+horizon-server on the world (the client has none of its own) and joins it as an operator; `lan open
+commands` gives every player commands, and the guest connects to the server's port by address. The script then checks, from both sides, what a guest's game used to get wrong (#366):
 
 - tab:       the guest's player list holds the host and the guest, under their own names;
 - self:      the guest's own model exists (third person, inventory preview);
@@ -311,6 +310,17 @@ CHECKS = ['tab', 'self', 'armour', 'nametags', 'walls', 'chest', 'crafting', 'sp
           'breath', 'lava', 'levels', 'drops', 'underwater', 'fireworks']
 
 
+def alive(pid):
+    """Whether the process still runs."""
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    return True
+
+
 class Game:
     """One client: its scratch folder, its socket and a CLI driver."""
 
@@ -369,6 +379,25 @@ class Game:
             last = observe()
         assert predicate(last), f'{self.name}: state did not arrive within {ticks} ticks: {last}'
         return last
+
+    def launch(self, *words):
+        """`horizon-ctl launch`; with a world, its server's pid is kept for `reopen`."""
+        self.launch_words = list(words)
+        reply = self.raw(*words)
+        self.pid = reply['pid']
+        self.server_pid = (reply.get('server') or {}).get('pid')
+        return reply
+
+    def reopen(self):
+        """Quit and launch again: the server stops with its client (saving the world), and the same
+        world opens on a new server."""
+        self.raw('quit')
+        deadline = time.time() + 120
+        for pid in (self.pid, self.server_pid):
+            while pid and alive(pid) and time.time() < deadline:
+                time.sleep(0.5)
+        self.launch(*self.launch_words)
+        self('wait_ready', seconds=400)
 
     def close(self):
         try:
@@ -1000,17 +1029,8 @@ def level_reload(host, guest, out):
     x, z = (int(v // 1) for v in pos_of(guest)[::2])
     into_level(guest, NETHER, x, 100, z)
     before = pos_of(guest)
-    host.raw('disconnect')
-    # The world saves on its server thread before the title screen shows.
-    for attempt in range(60):
-        time.sleep(1)
-        try:
-            host.raw('open', 'Lan')
-            break
-        except Failed:
-            if attempt == 59:
-                raise
-    host('wait_ready', seconds=400)
+    # The server saves as it stops with the host's client; the world opens on a new one.
+    host.reopen()
     port = host.raw('lan', 'open', 0, 'commands')['port']
     back_to_game(guest)
     guest.raw('connect', f'127.0.0.1:{port}', GUEST_NAME)
@@ -4992,10 +5012,8 @@ def run(ctl, out, resources, checks):
         launch.append('--no-pause')
     results = {}
     try:
-        host.pid = host.raw(*launch)['pid']
-        # Guests' commands need the world's Allow Commands as well as the LAN's (#372): a creative
-        # world has them; everyone plays in survival.
-        host.raw('open', 'Lan', 5, 'creative')
+        # The host's world runs on a horizon-server; the host is its operator, everyone plays in survival.
+        host.launch(*launch, '--world', 'Lan', '--seed', 5, '--creative', '--name', 'Player')
         host('wait_ready', seconds=400)
         host('command', command='defaultgamemode survival')
         host('command', command='gamemode survival')
@@ -5005,8 +5023,8 @@ def run(ctl, out, resources, checks):
         host('command', command='fill ~-8 ~ ~-8 ~8 ~6 ~8 minecraft:air')
         host('command', command='gamerule spawn_mobs false')
         port = host.raw('lan', 'open', 0, 'commands')['port']
-        host.player = host.raw('lan', 'status').get('host', 'Player')  # the host's profile name
-        guest.pid = guest.raw(*launch)['pid']
+        host.player = 'Player'  # the host's profile name
+        guest.launch(*launch)
         guest.raw('connect', f'127.0.0.1:{port}', GUEST_NAME)
         guest.raw('wait-for', 'loaded', '--timeout', 300)
         guest.wait(40)
@@ -5048,7 +5066,7 @@ def run(ctl, out, resources, checks):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument('--bin-dir', help='prebuilt horizon-client and horizon-ctl (default: build with the fast profile)')
+    parser.add_argument('--bin-dir', help='prebuilt horizon-client, horizon-server and horizon-ctl (default: build with the fast profile)')
     parser.add_argument('--check', action='append', choices=CHECKS, help='run only these checks (repeatable)')
     parser.add_argument('--out', default=str(ROOT / '.local/lan-e2e'), help='screenshots and game logs go here')
     # The host's world always runs on its server thread: the window never simulates a world.
@@ -5061,7 +5079,7 @@ def main():
         bins = Path(args.bin_dir).resolve()
     else:
         subprocess.run(['cargo', 'build', '--locked', '--profile', 'fast', '-p', 'horizon-client',
-                        '--bin', 'horizon-client', '--bin', 'horizon-dev', '--bin', 'horizon-ctl'],
+                        '--bin', 'horizon-client', '--bin', 'horizon-ctl', '-p', 'horizon-server', '--bin', 'horizon-server'],
                        cwd=ROOT, check=True)
         meta = json.loads(subprocess.run(['cargo', 'metadata', '--format-version', '1', '--no-deps'], cwd=ROOT,
                                          capture_output=True, text=True, check=True).stdout)
@@ -6614,11 +6632,7 @@ def check_recipe_settings(host, guest, out):
               guest.name: set_flags(guest, False, True)}
     host.wait(20)
     guest.raw('disconnect')
-    host.raw('pause')
-    host.raw('click-button', 'Save and Quit to Title')
-    host.raw('wait-for', 'screen', 'title', '--timeout', 120)
-    host.raw('open', 'Lan')
-    host('wait_ready', seconds=400)
+    host.reopen()
     port = host.raw('lan', 'open', 0, 'commands')['port']
     guest.raw('connect', f'127.0.0.1:{port}', GUEST_NAME)
     guest.raw('wait-for', 'loaded', '--timeout', 300)
@@ -6642,7 +6656,7 @@ def check_recipe_targets(host, guest, out):
     not the book of the player who typed it. An in-frame host isn't one of the players a guest's
     command can name (`command_players` lists the guests), so the guest gives the host a recipe
     only when the host is a client of its server thread."""
-    host_name = host.raw('lan', 'status').get('host', 'Player')
+    host_name = host.player
     books = {}
     for game in (host, guest):
         back_to_game(game)

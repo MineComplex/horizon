@@ -68,11 +68,11 @@ def main():
     build = lab.LOCAL / NAME
     build.mkdir(parents=True, exist_ok=True)
     dependencies = os.pathsep.join(map(str, [jars['server'], *libraries]))
-    subprocess.run(['cargo', 'build', '--release', '-p', 'horizon-client', '--bin', 'horizon-dev'], cwd=lab.ROOT,
+    subprocess.run(['cargo', 'build', '--release', '-p', 'horizon-server', '--bin', 'horizon-server'], cwd=lab.ROOT,
                    check=True, capture_output=True)
-    binary = lab.cargo_target() / 'release' / ('horizon-dev.exe' if os.name == 'nt' else 'horizon-dev')
+    binary = lab.cargo_target() / 'release' / ('horizon-server.exe' if os.name == 'nt' else 'horizon-server')
     vanilla_server = ['java', '-Xmx2g', '-Duser.timezone=UTC', '-cp', dependencies, 'net.minecraft.server.Main', 'nogui']
-    horizon_server = [binary, '--resources', lab.LOCAL / 'horizon-client/26.3', '--dedicated', '--nogui']
+    horizon_server = [binary, '--resources', lab.LOCAL / 'horizon-client/26.3', '--nogui']
     world = generate_world(vanilla_server, build)
     vanilla = run_side('vanilla', vanilla_server, build, world)
     horizon = run_side('horizon', horizon_server, build, world)

@@ -13,7 +13,7 @@ use horizon_core::{geometry::Vec3, random::RandomSource};
 
 impl Game<'_> {
     pub(super) fn tick_client_ambient(&mut self) {
-        if self.serving.is_some() || self.options.dedicated.is_some() {
+        if self.options.dedicated.is_some() {
             return;
         }
         let mut events = Vec::new();

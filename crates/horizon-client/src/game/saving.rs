@@ -19,7 +19,6 @@ enum Stage {
     Chunks(VecDeque<(i32, i32)>),
     Entities(VecDeque<(i32, i32)>),
     Writes,
-    Server,
 }
 
 // Bound the work in both sparse and block-entity-heavy worlds. A single chunk
@@ -44,16 +43,7 @@ impl Game<'_> {
             });
             return Ok(());
         }
-        if let Some(integrated) = &self.integrated {
-            integrated.request_stop();
-            self.pending_save = Some(ClosingSave {
-                quit,
-                close: true,
-                reply: None,
-                started: Instant::now(),
-                stage: Stage::Server,
-            });
-        } else if self.remote.is_some() {
+        if self.remote.is_some() {
             if !quit {
                 return self.leave_server(None);
             }
@@ -117,23 +107,6 @@ impl Game<'_> {
         };
         let result = (|| -> Result<bool> {
             match &mut save.stage {
-                Stage::Server => {
-                    let server = self
-                        .integrated
-                        .as_ref()
-                        .ok_or("the integrated server stopped with an error")?;
-                    if !server.stopped() {
-                        return Ok(false);
-                    }
-                    // Drop/join only after completion; leave_server's teardown
-                    // can then run without blocking on the server's writes.
-                    if save.quit {
-                        self.integrated.take().unwrap().stop()?;
-                    } else {
-                        self.leave_server(None)?;
-                    }
-                    Ok(true)
-                }
                 Stage::Generation => {
                     if save.started.elapsed() > Duration::from_secs(30) {
                         return Err("chunk generation did not finish before saving".into());

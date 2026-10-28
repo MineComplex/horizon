@@ -7,7 +7,7 @@ use horizon_client::{
     Result,
     items::ItemStack,
     lan::{
-        self, Lan, MAX_PLAYERS, NetConfig,
+        self, Lan, NetConfig,
         chunks::ChunkEncoder,
         data::SyncData,
         entity::{EntityState, States},
@@ -19,7 +19,6 @@ use horizon_client::{
 };
 use horizon_core::geometry::Vec3;
 use horizon_protocol::{
-    crypto::offline_uuid,
     entity_data::{Value, serializer},
     packets::play::{self, Clientbound as C},
 };
@@ -36,12 +35,6 @@ pub(super) fn sync_data(root: &std::path::Path) -> std::result::Result<Arc<SyncD
     let mut sync = SYNC.lock().unwrap_or_else(|e| e.into_inner());
     sync.get_or_insert_with(|| SyncData::load(root).map(Arc::new))
         .clone()
-}
-
-/// Let go of what `sync_data` loaded: for a preload no world used
-/// (game/world_loading.rs).
-pub(super) fn forget_sync_data() {
-    *SYNC.lock().unwrap_or_else(|e| e.into_inner()) = None;
 }
 
 /// The settings of the open world (WorldOptionsScreen's multiplayer section).
@@ -946,58 +939,30 @@ fn mob_equipment(
 }
 
 pub const HELP: &[&str] = &[
-    "lan open [PORT] [commands] [force]  open the world to the network (PORT 0 picks one)",
-    "lan close                      stop hosting",
-    "lan status                     the hosting state and the guests",
+    "lan open [PORT] [commands] [force]  the test server's port; commands lets every player run commands",
+    "lan status                     the test server's port and players",
 ];
 
 impl Game<'_> {
-    /// `horizon-ctl lan ...`.
+    /// `horizon-ctl lan ...`: a test's client asks its server
+    /// (`--server-control`), which is always open, on its own port.
     pub(super) fn lan_control(&mut self, words: &[&str]) -> Result<Option<serde_json::Value>> {
-        use serde_json::json;
         if words[0] != "lan" {
             return Ok(None);
         }
-        if let Some(server) = &self.integrated
-            && words.get(1) == Some(&"status")
-        {
-            // The hub is the server thread's.
-            let status = server
-                .call(|g| g.lan_status())
-                .ok_or("the integrated server stopped")?;
-            return Ok(Some(status));
-        }
-        match words.get(1).copied() {
-            Some("open") => {
-                if self.title.is_some() {
-                    return Err("open a world first".into());
-                }
-                let port = words.get(2).map_or(Ok(0), |p| p.parse::<u16>())?;
-                self.lan_open(LanSettings {
-                    port: if port == 0 {
-                        lan::available_port()
-                    } else {
-                        port
-                    },
-                    guest_commands: words.contains(&"commands"),
-                    force_game_mode: words.contains(&"force"),
-                })?;
-                Ok(Some(json!({ "ok": true, "port": self.lan_port() })))
+        match self.ask_server(&words.join(" ")) {
+            Some(reply) => reply.map(Some),
+            None => {
+                Err("lan: this client has no server control endpoint (--server-control)".into())
             }
-            Some("close") => {
-                self.lan_close(true);
-                Ok(Some(json!({ "ok": true })))
-            }
-            Some("status") => Ok(Some(self.lan_status())),
-            _ => Err("lan open|close|status".into()),
         }
     }
 
     /// `horizon-ctl lan status`.
-    fn lan_status(&self) -> serde_json::Value {
+    pub(super) fn lan_status(&self) -> serde_json::Value {
         use serde_json::json;
         match &self.lan {
-            Some(h) if !self.serving() || self.published_port().is_some() => json!({
+            Some(h) => json!({
                 "open": true,
                 "host": h.host_name,
                 "port": h.settings.port,
@@ -1051,57 +1016,6 @@ impl Game<'_> {
         }
     }
 
-    pub(super) fn lan_open(&mut self, settings: LanSettings) -> Result<()> {
-        let port = if let Some(server) = &self.integrated {
-            // ShareToLanScreen: IntegratedServer.publishServer.
-            server
-                .call(move |g| g.publish(settings))
-                .ok_or("the integrated server stopped")??
-        } else if self.serving() {
-            return self.publish(settings).map(drop).map_err(Into::into);
-        } else {
-            self.lan_start(settings)?;
-            self.lan.as_ref().map_or(0, |l| l.settings.port)
-        };
-        self.system_message(Text::translate(
-            "menu.multiplayerOptions.publish.started.lan",
-            &[Text::literal(port.to_string())],
-        ));
-        Ok(())
-    }
-    /// IntegratedServer.publishServer without the screen's announcement.
-    pub(super) fn lan_start(&mut self, settings: LanSettings) -> Result<()> {
-        if self.lan.is_some() || self.remote.is_some() {
-            return Err("already open".into());
-        }
-        // IntegratedServer.publishServer: the MOTD names the host's profile.
-        let name = self.options.player_name();
-        let motd = format!("{name} - {}", self.level.name);
-        let host_uuid = self.level.player_uuid.map_or_else(
-            || offline_uuid(&name),
-            |u| {
-                u128::from(u[0] as u32) << 96
-                    | u128::from(u[1] as u32) << 64
-                    | u128::from(u[2] as u32) << 32
-                    | u128::from(u[3] as u32)
-            },
-        );
-        let config = HubConfig {
-            default_game_mode: self.level.mode(),
-            guest_commands: settings.guest_commands,
-            force_game_mode: settings.force_game_mode,
-            hardcore: self.level.hardcore,
-            view_distance: self.settings.render_distance.clamp(2, 32),
-            simulation_distance: self.settings.render_distance.clamp(2, 32),
-            dimension: self.dim.id().to_owned(),
-            seed: self.level.seed,
-            max_players: MAX_PLAYERS,
-            dedicated: false,
-            integrated: false,
-        };
-        let net = NetConfig::lan(settings.port, motd, MAX_PLAYERS);
-        self.lan_host(settings, net, config, Some(host_uuid))
-    }
     /// Start the network side and the play-state hub: for the LAN (with the
     /// host's own profile reserved) or for a dedicated server (no host).
     pub(super) fn lan_host(
@@ -1180,19 +1094,6 @@ impl Game<'_> {
 
     /// IntegratedServer.unpublishServer: the guests are sent away.
     pub(super) fn lan_close(&mut self, announce: bool) {
-        if self.integrated.is_some() || self.serving() {
-            let closed = match &self.integrated {
-                Some(server) => server.call(|g| g.unpublish()).unwrap_or(false),
-                None => self.unpublish(),
-            };
-            if closed && announce && self.integrated.is_some() {
-                self.system_message(Text::translate(
-                    "menu.multiplayerOptions.publish.stopped",
-                    &[],
-                ));
-            }
-            return;
-        }
         let Some(mut host) = self.lan.take() else {
             return;
         };
@@ -1320,34 +1221,6 @@ impl Game<'_> {
         if let Some(host) = self.lan.as_mut() {
             host.hub.config.default_game_mode = mode;
         }
-    }
-
-    /// New command access and game mode forcing settings of the open world.
-    pub(super) fn lan_apply_settings(&mut self, guest_commands: bool, force: bool) {
-        if let Some(server) = &self.integrated {
-            server.call(move |g| g.lan_apply_settings(guest_commands, force));
-            return;
-        }
-        // An integrated server gives guests commands only where the world
-        // allows them (IntegratedServer.getCustomPermissionLevel).
-        let effective = guest_commands && (!self.serving() || self.allow_commands());
-        if let Some(host) = self.lan.as_mut() {
-            host.settings.guest_commands = guest_commands;
-            host.settings.force_game_mode = force;
-            host.hub.config.guest_commands = effective;
-            host.hub.config.force_game_mode = force;
-            host.hub.resend_commands();
-        }
-    }
-
-    pub(super) fn lan_port(&self) -> Option<u16> {
-        if let Some(server) = &self.integrated {
-            return server.published();
-        }
-        if self.serving() {
-            return self.published_port();
-        }
-        self.lan.as_ref().map(|h| h.settings.port)
     }
 
     /// The host as the guests see them.

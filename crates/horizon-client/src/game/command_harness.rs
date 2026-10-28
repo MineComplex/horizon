@@ -1,7 +1,8 @@
 //! Headless command runner for `tools/test_command_exec_parity.py`: with
-//! `HORIZON_COMMAND_SCRIPT` and `HORIZON_COMMAND_OUTPUT` set, the opened world
-//! runs on its server thread with a connected, headless client. Each script
-//! line is a JSON operation: `cmd` runs a
+//! `HORIZON_COMMAND_SCRIPT` and `HORIZON_COMMAND_OUTPUT` set, `horizon-server`
+//! runs the script once a player is on (a headless `horizon-client` with
+//! `HORIZON_STATIONARY_CLIENT`), then stops. Each script line is a JSON
+//! operation: `cmd` runs a
 //! command as the player (Commands.performPrefixedCommand) and records every
 //! system message it produced, as styled spans, with the results reported to
 //! the player's `CommandResultCallback`; `tick` advances the game; `settle`
@@ -42,27 +43,23 @@ pub(super) fn spans(text: &Text) -> Value {
 }
 
 impl Game<'_> {
-    /// Pump the real client's connection, without predicting movement: the
-    /// oracle's player stays where commands put it. Errors cross the server
-    /// boundary through Integrated::stop, including script and save failures.
-    pub(super) fn wait_command_harness(&mut self) -> Result<()> {
-        let server = self.integrated.take().ok_or("command harness: no server")?;
-        while !server.stopped() {
+    /// The command harness's player (`HORIZON_STATIONARY_CLIENT`): pump the
+    /// connection without predicting movement, so the player stays where
+    /// commands put it, until the server ends the connection.
+    pub(super) fn run_stationary_client(&mut self) -> Result<()> {
+        while self.remote.is_some() {
             self.poll_stationary_client()?;
             std::thread::sleep(Duration::from_millis(2));
         }
-        server.stop()
+        Ok(())
     }
 
     /// The owner's authoritative body and level, using the same swaps as a
     /// server command. Always put them back, also when a script operation fails.
     fn harness_owner<T>(&mut self, f: impl FnOnce(&mut Self) -> Result<T>) -> Result<T> {
-        let owner = self
-            .serving
-            .as_ref()
-            .ok_or("command harness: not a server")?
-            .owner;
         let mut host = self.lan.take().ok_or("command harness: no hub")?;
+        // The script's player: the first on the server.
+        let owner = host.hub.guests.first().map_or(0, |g| g.uuid);
         let guest = host.hub.guests.iter().find(|g| g.uuid == owner && g.placed);
         let Some(guest) = guest else {
             self.lan = Some(host);
@@ -115,7 +112,12 @@ impl Game<'_> {
         })?;
         // Start travel after restoring the owner's body: change_level updates
         // its hub record, which leave_guest would otherwise overwrite.
-        self.in_owner_level(|g| {
+        let owner = self
+            .lan
+            .as_ref()
+            .and_then(|h| h.hub.guests.first())
+            .map_or(0, |g| g.uuid);
+        self.in_player_level(owner, |g| {
             let mut host = g.lan.take().ok_or("command harness: no hub")?;
             g.start_server_trip(&mut host, conn, plan.dim, Some(plan));
             g.lan = Some(host);

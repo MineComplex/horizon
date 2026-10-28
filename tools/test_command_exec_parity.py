@@ -14,14 +14,18 @@ changes are observed through probe commands whose feedback reports them
 Messages that depend on time or a random UUID are compared after masking.
 """
 import argparse
+import hashlib
 import json
 import os
 from pathlib import Path
 import platform
 import re
 import shutil
+import socket
 import subprocess
 import sys
+import time
+import uuid
 
 try:
     from . import lab, test_rust_parity as base
@@ -34,6 +38,51 @@ except ImportError:
     import command_exec_corpus as corpus_module
 
 SEED = 1
+
+
+def run_rust(server_bin, client_bin, rust_dir, script_path, build):
+    """The script on horizon-server (HORIZON_COMMAND_SCRIPT), as the vanilla oracle's dedicated server runs it,
+    with a headless horizon-client as its player (HORIZON_STATIONARY_CLIENT): it stays where commands put it."""
+    with socket.socket() as s:
+        s.bind(('127.0.0.1', 0))
+        port = s.getsockname()[1]
+    (rust_dir / 'eula.txt').write_text('eula=true\n')
+    (rust_dir / 'server.properties').write_text(
+        f'server-port={port}\nlevel-name=harness\nlevel-seed={SEED}\ngamemode=survival\ndifficulty=normal\n'
+        'online-mode=false\nwhite-list=false\nenforce-secure-profile=false\nspawn-protection=0\n'
+        'allow-flight=true\nview-distance=4\nsimulation-distance=4\npause-when-empty-seconds=0\n')
+    (rust_dir / 'ops.json').write_text(json.dumps([{
+        'uuid': str(uuid.UUID(bytes=offline_uuid('Player'))), 'name': 'Player', 'level': 4, 'bypassesPlayerLimit': False}]))
+    server_env = lab.game_env(HORIZON_COMMAND_SCRIPT=script_path, HORIZON_COMMAND_OUTPUT=build / 'rust.jsonl')
+    client_env = lab.game_env(HORIZON_STATIONARY_CLIENT=1, HORIZON_PLAYER_NAME='Player')
+    with (build / 'rust.log').open('w', encoding='utf-8') as log, (build / 'rust-client.log').open('w', encoding='utf-8') as client_log:
+        server = subprocess.Popen([str(server_bin), '--resources', str(lab.RESOURCES), '--nogui'], cwd=rust_dir,
+                                  env=server_env, stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT)
+        client = None
+        try:
+            deadline = time.time() + 600
+            while 'Done (' not in (build / 'rust.log').read_text(errors='replace'):
+                if server.poll() is not None or time.time() > deadline:
+                    sys.exit('horizon-server did not start:\n' + (build / 'rust.log').read_text(errors='replace')[-3000:])
+                time.sleep(0.2)
+            client = subprocess.Popen([str(client_bin), '--resources', str(lab.RESOURCES), '--server', f'127.0.0.1:{port}',
+                                       '--name', 'Player', '--render-distance', '4'], cwd=rust_dir / 'client', env=client_env,
+                                      stdin=subprocess.DEVNULL, stdout=client_log, stderr=subprocess.STDOUT)
+            code = server.wait(timeout=int(os.environ.get('HORIZON_HARNESS_TIMEOUT', '600')) + 120)
+        finally:
+            for p in (server, client):
+                if p and p.poll() is None:
+                    p.kill()
+    if code:
+        sys.exit(f'horizon-server failed ({code}):\n' + (build / 'rust.log').read_text(errors='replace')[-3000:])
+
+
+def offline_uuid(name):
+    """UUIDUtil.createOfflinePlayerUUID: a name-based (version 3) MD5 UUID."""
+    digest = bytearray(hashlib.md5(f'OfflinePlayer:{name}'.encode()).digest())
+    digest[6] = digest[6] & 0x0f | 0x30
+    digest[8] = digest[8] & 0x3f | 0x80
+    return bytes(digest)
 
 
 def main():
@@ -57,7 +106,7 @@ def main():
 
     def run(command, name, **kw):
         with (build / (name + '.log')).open('w', encoding='utf-8') as log:
-            runner = run_game if Path(command[0]).name == 'horizon-dev' else subprocess.run
+            runner = subprocess.run
             result = runner(list(map(str, command)), stdout=log, stderr=subprocess.STDOUT, **kw)
         if result.returncode:
             tail = (build / (name + '.log')).read_text(errors='replace')[-3000:]
@@ -79,14 +128,15 @@ def main():
     run(['java', '-Xmx3G', '-Duser.timezone=UTC', '-cp', os.pathsep.join([str(classes), str(jars['server']), dependency_path]),
          'dev.horizonlab.parity.VanillaCommandExecOracle', vanilla_dir / 'universe', script_path, build / 'vanilla.jsonl', SEED], 'java', cwd=vanilla_dir)
 
-    run(['cargo', 'build', '--profile', 'fast', '-p', 'horizon-client', '--bin', 'horizon-dev'], 'compile-rust', cwd=lab.ROOT)
+    run(['cargo', 'build', '--profile', 'fast', '-p', 'horizon-server', '--bin', 'horizon-server',
+         '-p', 'horizon-client', '--bin', 'horizon-client'], 'compile-rust', cwd=lab.ROOT)
     metadata = json.loads(subprocess.check_output(['cargo', 'metadata', '--no-deps', '--format-version', '1'], cwd=lab.ROOT, text=True))
-    binary = Path(metadata['target_directory']) / 'fast' / ('horizon-dev.exe' if os.name == 'nt' else 'horizon-dev')
+    exe = '.exe' if os.name == 'nt' else ''
+    target = Path(metadata['target_directory']) / 'fast'
     rust_dir = build / 'rust'
     shutil.rmtree(rust_dir, ignore_errors=True)
-    rust_dir.mkdir()
-    env = lab.game_env(HORIZON_SERVER_THREAD=1, HORIZON_PLAYER_NAME="Player", HORIZON_COMMAND_SCRIPT=script_path, HORIZON_COMMAND_OUTPUT=build / 'rust.jsonl')
-    run([binary, '--resources', lab.RESOURCES, '--world', 'harness', '--seed', SEED, '--radius', 4], 'rust', cwd=rust_dir, env=env)
+    (rust_dir / 'client').mkdir(parents=True)
+    run_rust(target / f'horizon-server{exe}', target / f'horizon-client{exe}', rust_dir, script_path, build)
 
     vanilla = [json.loads(l) for l in (build / 'vanilla.jsonl').open(encoding='utf-8')]
     rust = [json.loads(l) for l in (build / 'rust.jsonl').open(encoding='utf-8')]

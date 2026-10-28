@@ -324,14 +324,6 @@ impl Game<'_> {
         }
         Ok(())
     }
-    /// Join single player's integrated server through memory.
-    pub(super) fn connect_local(
-        &mut self,
-        pipe: horizon_protocol::connection::Pipe,
-        name: &str,
-    ) -> Result<()> {
-        self.join_server("local", name, Some(pipe), None)
-    }
     fn join_server(
         &mut self,
         address: &str,
@@ -529,9 +521,6 @@ impl Game<'_> {
 
     /// Disconnect and return to the multiplayer screen (DisconnectedScreen).
     pub(super) fn leave_server(&mut self, reason: Option<String>) -> Result<()> {
-        if reason.is_none() && self.integrated.as_ref().is_some_and(|s| !s.stopped()) {
-            return self.begin_closing_save(false);
-        }
         if reason.is_none() {
             // Leaving on purpose: nothing for auto-reconnect to retry.
             self.extras_left();
@@ -543,14 +532,6 @@ impl Game<'_> {
         }
         self.server_packs_disconnect();
         self.close_dialogs();
-        // Single player's server thread saves the world before the title shows.
-        let single_player = match self.integrated.take() {
-            Some(server) => {
-                server.stop()?;
-                true
-            }
-            None => false,
-        };
         horizon_client::crash::clear_detail("Server");
         self.clock = Default::default();
         self.adv = Default::default();
@@ -581,11 +562,6 @@ impl Game<'_> {
         let saves = std::env::current_dir()?.join("saves");
         let mut title = horizon_client::title::Title::new(saves.clone(), &self.options.resources);
         title.last_server = self.settings.file.string("lastServer");
-        if single_player && reason.is_none() {
-            self.title = Some(title);
-            self.capture(false);
-            return Ok(());
-        }
         title.mode = horizon_client::title::Mode::Multiplayer(match reason {
             Some(reason) => horizon_client::multiplayer::Screen::Disconnected {
                 reason,
@@ -1204,9 +1180,6 @@ impl Game<'_> {
         let (Some(r), Some(png)) = (self.remote.as_ref(), icon) else {
             return;
         };
-        if self.integrated.is_some() {
-            return;
-        }
         if let Ok(dir) = std::env::current_dir() {
             horizon_client::multiplayer::save_server_icon(
                 &dir.join("saves"),
@@ -2307,12 +2280,11 @@ impl Game<'_> {
                 if p.event == 2 {
                     self.remote_kinetic_hit(p.id);
                 }
-                // LocalPlayer.setPermissions also refreshes an open World Options screen.
+                // LocalPlayer.setPermissions.
                 if (24..=28).contains(&p.event)
                     && self.remote.as_ref().is_some_and(|r| r.entity_id == p.id)
                 {
                     self.world_data.registries.permission = (p.event - 24) as u8;
-                    self.remote_world_options_permission(p.event >= 26);
                 }
                 // Ravager.handleEntityEvent 69: the roar's puff and push.
                 if p.event == 69 {
@@ -2446,10 +2418,9 @@ impl Game<'_> {
             C::ChangeDifficulty(p) => {
                 self.world_data.difficulty = p.difficulty.clamp(0, 3) as u8;
                 self.level.difficulty_locked = p.locked;
-                let difficulty = self.world_data.difficulty;
-                self.remote_world_options_difficulty(difficulty, p.locked);
             }
-            C::GameRuleValues(p) => self.remote_world_options_rules(p.entries),
+            // Only World Options asks for the rules' values (it is not in this client).
+            C::GameRuleValues(_) => {}
             // ClientPacketListener.handleSetHealth: LocalPlayer.hurtTo.
             C::SetHealth(p) => {
                 let flash = self.remote.as_mut().is_some_and(|r| {
@@ -6349,10 +6320,6 @@ impl horizon_client::interaction_input::InteractionWorld for RemoteInputWorld<'_
 }
 
 impl Remote {
-    /// Players in the server's player list, this one included.
-    pub(super) fn player_count(&self) -> usize {
-        self.players.len()
-    }
     /// The local player's profile UUID.
     pub(super) fn profile(&self) -> u128 {
         self.profile

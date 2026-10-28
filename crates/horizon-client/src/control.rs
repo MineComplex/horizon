@@ -113,6 +113,17 @@ pub fn connect(path: &Path) -> io::Result<Stream> {
     Ok(Stream::Tcp(stream))
 }
 
+/// One request to a control endpoint and its one-line JSON reply.
+pub fn request(path: &Path, line: &str) -> io::Result<String> {
+    let stream = connect(path)?;
+    stream.set_read_timeout(Some(std::time::Duration::from_secs(60)))?;
+    let mut writer = stream.try_clone()?;
+    writeln!(writer, "{line}")?;
+    let mut reply = String::new();
+    BufReader::new(stream).read_line(&mut reply)?;
+    Ok(reply)
+}
+
 /// 128 random bits as hex, from the standard library's OS-seeded hasher keys.
 fn random_token() -> String {
     use std::hash::{BuildHasher, Hasher};

@@ -12,7 +12,7 @@ import lan_e2e as lan
 
 def main():
     subprocess.run(['cargo', 'build', '--locked', '--profile', 'fast', '-p', 'horizon-client',
-                    '--bin', 'horizon-client', '--bin', 'horizon-dev', '--bin', 'horizon-ctl'], cwd=lab.ROOT, check=True)
+                    '--bin', 'horizon-client', '--bin', 'horizon-ctl', '-p', 'horizon-server', '--bin', 'horizon-server'], cwd=lab.ROOT, check=True)
     metadata = json.loads(subprocess.check_output(
         ['cargo', 'metadata', '--format-version', '1', '--no-deps'], cwd=lab.ROOT, text=True))
     ctl = lab.ROOT / metadata['target_directory'] / 'fast' / 'horizon-ctl'

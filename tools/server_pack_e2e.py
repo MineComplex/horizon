@@ -291,7 +291,7 @@ class Run:
                                                      encoding='iso-8859-1')
         (directory / 'eula.txt').write_text('eula=true\n')
         if self.args.horizon_server:
-            command = [self.args.horizon_server, '--resources', self.resources, '--dedicated', '--nogui']
+            command = [self.args.horizon_server, '--resources', self.resources, '--nogui']
         else:
             command = self.vanilla
         server = Server(command, directory, f'server-{kind}')

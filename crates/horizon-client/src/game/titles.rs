@@ -63,12 +63,7 @@ impl Game<'_> {
     pub(super) fn tick_hud(&mut self) {
         self.titles.tick();
         self.tick_in_bed_chat();
-        // `MinecraftServer.isCurrentlySaving` of single player's server.
-        let saving = self
-            .integrated
-            .as_ref()
-            .map_or(self.autosaving, |server| server.is_saving());
-        self.saving_indicator.tick(saving);
+        self.saving_indicator.tick(self.autosaving);
         let held = self.held_name();
         self.tool_highlight
             .tick(held, f64::from(self.settings.notification_display_time));

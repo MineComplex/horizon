@@ -28,24 +28,14 @@ pub(super) struct StartupMenu {
 
 impl StartupMenu {
     pub fn new(options: &Options, pack_error: Option<&str>) -> Result<Self> {
-        let pending = if let Some(address) = &options.server {
-            Some(PendingWorldEntry::Server {
+        let pending = options
+            .server
+            .as_ref()
+            .map(|address| PendingWorldEntry::Server {
                 address: address.clone(),
                 name: options.player_name(),
                 cookies: None,
-            })
-        } else {
-            options
-                .world
-                .as_ref()
-                .map(|folder| PendingWorldEntry::Local {
-                    folder: folder.clone(),
-                    name: None,
-                    seed: Some(options.seed),
-                    creative: options.creative,
-                    create: None,
-                })
-        };
+            });
         let mut menu = Self {
             pending,
             ..Default::default()

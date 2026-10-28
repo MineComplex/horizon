@@ -18,13 +18,6 @@ impl Game<'_> {
             Play::Hosting {
                 players: 1 + host.hub.guests.len(),
             }
-        } else if let Some(server) = &self.integrated {
-            match (server.published(), &self.remote) {
-                (Some(_), Some(remote)) => Play::Hosting {
-                    players: remote.player_count(),
-                },
-                _ => Play::Singleplayer,
-            }
         } else if self.remote.is_some() {
             Play::Multiplayer
         } else {

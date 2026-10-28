@@ -858,8 +858,6 @@ impl Game<'_> {
             id if id.starts_with("posteffect.") => self.cmd_posteffect(id, ctx),
             "kick" => self.cmd_kick(ctx),
             "fetchprofile" => self.cmd_fetchprofile(ctx),
-            "publish" => self.cmd_publish(ctx),
-            "unpublish" => self.cmd_unpublish(),
             "debug" => self.cmd_debug(ctx),
             "jfr" => self.cmd_jfr(ctx),
             "version" => self.cmd_version(),

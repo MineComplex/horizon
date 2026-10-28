@@ -424,13 +424,15 @@ def main():
     oh.run_logged(['javac', '--release', lock['minecraft']['java_major'], '-proc:none', '-nowarn', '-sourcepath',
                    lab.ROOT / 'mods/horizon/src/test/java', '-cp', dependencies, '-d', classes, oracle],
                   build, 'compile-java')
-    oh.run_logged(['cargo', 'build', '--profile', 'fast', '-p', 'horizon-client', '--bin', 'horizon-dev'], build,
+    oh.run_logged(['cargo', 'build', '--profile', 'fast', '-p', 'horizon-server', '--bin', 'horizon-server',
+                   '-p', 'horizon-client', '--bin', 'horizon-client'], build,
                   'compile-rust')
     metadata = json.loads(subprocess.check_output(['cargo', 'metadata', '--no-deps', '--format-version', '1'],
                                                   cwd=lab.ROOT, text=True))
-    binary = Path(metadata['target_directory']) / 'fast' / ('horizon-dev.exe' if os.name == 'nt' else 'horizon-dev')
+    binary = Path(metadata['target_directory']) / 'fast' / ('horizon-server.exe' if os.name == 'nt' else 'horizon-server')
+    client = binary.with_name('horizon-client.exe' if os.name == 'nt' else 'horizon-client')
     vanilla_server = ['java', '-Xmx2g', '-Duser.timezone=UTC', '-cp', dependencies, 'net.minecraft.server.Main', 'nogui']
-    horizon_server = [binary, '--resources', lab.RESOURCES, '--dedicated', '--nogui']
+    horizon_server = [binary, '--resources', lab.RESOURCES, '--nogui']
 
     # The world, generated once by vanilla.
     generate = build / 'generate'
@@ -475,7 +477,7 @@ def main():
         write_server_dir(directory, PROPERTIES_PORTS[label], world)
         results[label] = run_side(label, command, directory, client)
         (build / f'{label}.txt').write_text('\n'.join(results[label]) + '\n', encoding='utf-8')
-    client_checks = horizon_client_joins(vanilla_server, binary, world, build, results['vanilla'])
+    client_checks = horizon_client_joins(vanilla_server, client, world, build, results['vanilla'])
     vanilla, horizon = results['vanilla'], results['horizon']
     errors = [l for l in vanilla + horizon if l.startswith('error')] + [l for l in client_checks if not l.endswith(': ok')]
     for line in client_checks:

@@ -38,7 +38,7 @@ impl DebugHost for Host<'_, '_> {
         // the menu as it always has (key_pressed).
         let g = &mut *self.game;
         if without_menu && g.screen == Screen::Playing {
-            g.pause_menu = !g.has_singleplayer_server() || g.is_published();
+            g.pause_menu = true;
             g.screen = Screen::Paused;
             g.capture(false);
             g.mining = None;
@@ -88,7 +88,7 @@ impl Game<'_> {
         // releases still reach KeyboardHandler.
         let typing = matches!(
             self.screen,
-            Screen::Chat | Screen::Options | Screen::WorldOptions | Screen::CommandBlock
+            Screen::Chat | Screen::Options | Screen::CommandBlock
         ) || self.sign_edit.is_some()
             || self.book.is_some()
             || (self.screen == Screen::Creative && self.creative_screen.tab().search)
@@ -245,7 +245,7 @@ impl Game<'_> {
             )
         };
         // `DebugScreenOverlay`: the single-player variants for a local server.
-        let remote = !self.has_singleplayer_server();
+        let remote = self.remote.is_some();
         let c = &self.debug_charts;
         [
             format!(
@@ -438,13 +438,8 @@ impl Game<'_> {
             } else {
                 (format!("{:.1}", 1000.0 / self.clock.rate()), "")
             };
-            if self.remote.is_none() || self.integrated.is_some() {
-                let tick_ms = self
-                    .integrated
-                    .as_ref()
-                    .map_or(self.debug_charts.smoothed_tick_ms, |server| {
-                        server.smoothed_tick_ms()
-                    });
+            if self.remote.is_none() {
+                let tick_ms = self.debug_charts.smoothed_tick_ms;
                 d.line(format!(
                     "Integrated server @ {tick_ms:.1}/{target} ms{status}, {tx} tx, {rx} rx",
                 ));
@@ -464,7 +459,7 @@ impl Game<'_> {
             height,
             self.settings.max_fps,
             1000.0 / self.clock.rate(),
-            !self.has_singleplayer_server(),
+            self.remote.is_some(),
         );
         draws.push(hud_layout::GuiDraw::Push(vec![hud_layout::PoseOp::Scale(
             scale, scale,

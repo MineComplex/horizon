@@ -95,9 +95,9 @@ On ludodesktop, source `~/code/horizon-parity/env.sh` first: it sets the ALSA bu
 
 ## Server execution in game fixtures
 
-`HORIZON_COMMAND_SCRIPT` runs on the integrated server's `Server thread`, with the
-headless client joined through the normal memory connection. Commands use the connected
-owner's body and dimension. The script owns the clock: each `tick` calls `tick_server`,
+`HORIZON_COMMAND_SCRIPT` runs on `horizon-server` (a dedicated server, as the oracle's),
+with a headless `horizon-client` (`HORIZON_STATIONARY_CLIENT`) joined over the network. Commands
+use the first player's body and dimension. The script owns the clock: each `tick` calls `tick_server`,
 while login and portal arrival pump connection-only passes. The client acknowledges
 terrain and teleports without predicting movement, matching the command oracle's stationary
 player. Script and save errors return through server shutdown; output keeps the existing
@@ -127,8 +127,8 @@ Besides the Vineflower sources in `.local/minecraft/<version>/sources/`, `tools/
 
 ## Player-facing integration and deterministic fixtures
 
-`python3 tools/lan_e2e.py` runs every LAN check with an integrated server thread,
-the same path as normal single player. `python3 tools/test_friends.py --client
+`python3 tools/lan_e2e.py` runs every multiplayer check with two clients on one
+`horizon-server` (`horizon-ctl launch --world`). `python3 tools/test_friends.py --client
 target/fast/horizon-client --relay target/fast/horizon-relay --baseline` covers
 plain LAN, direct invitations, a local relay and ended invitations in that mode.
 Both accept `--in-frame` for comparison and retain `--server-thread` for existing

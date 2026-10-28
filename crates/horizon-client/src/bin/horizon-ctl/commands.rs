@@ -151,17 +151,8 @@ const PAGES: Ty = Ty::Enum(&[
     "agent",
 ]);
 
-/// `--confirm`, required by destructive commands: the player agreed.
-const CONFIRM: Param = Param {
-    name: "confirm",
-    ty: Ty::Bool,
-    required: true,
-    flag: true,
-    help: "true once the player agreed: it cannot be undone",
-};
-
 /// MCP tools that delete or overwrite the player's things (`destructiveHint`).
-pub const DESTRUCTIVE: &[&str] = &["world-delete", "fill", "setblock"];
+pub const DESTRUCTIVE: &[&str] = &["fill", "setblock"];
 /// MCP tools that reach other players or the network (`openWorldHint`): only when the player asks.
 pub const OPEN_WORLD: &[&str] = &["connect", "lan", "friends", "chat", "command"];
 
@@ -186,11 +177,11 @@ macro_rules! cmd {
 
 pub const COMMANDS: &[Cmd] = &[
     // Session
-    cmd!("launch", Session, "launch [--world NAME] [--seed N] [--creative] [--version TAG] [--game PATH] [--wait] [GAME ARGS...]",
+    cmd!("launch", Session, "launch [--world NAME] [--seed N] [--creative] [--level-type TYPE] [--version TAG] [--game PATH] [--wait] [GAME ARGS...]",
         "start Horizon with the control socket and wait until it answers",
         "Finds the game in this order: --game PATH; a horizon-client next to horizon-ctl (a build folder, a release folder or a launcher install); the newest version installed by the Horizon launcher (--version TAG picks one). Launcher installs run with their prepared resources and keep saves in the game home ($HORIZON_HOME, else ~/.local/share/horizon). --wait also waits until the player has spawned and chunks are loaded. Other arguments go to the game (horizon-client --help lists them). The game's output goes to a .log file beside the socket.",
         ["horizon-ctl launch --world Survival --seed 42 --wait", "horizon-ctl launch --world Flat --creative --render-distance 8"],
-        &[flag("world", Ty::Str, "world folder to open or create"), flag("seed", Ty::Str, "seed for a new world"), flag("creative", Ty::Bool, "creative mode for a new world"),
+        &[flag("world", Ty::Str, "world folder to open or create"), flag("seed", Ty::Str, "seed for a new world"), flag("creative", Ty::Bool, "creative mode for a new world"), flag("level-type", Ty::Str, "a new world's type, such as minecraft:flat"),
           flag("version", Ty::Str, "an installed launcher version tag such as v2026.10.13"), flag("game", Ty::Str, "path to a horizon-client binary"),
           flag("wait", Ty::Bool, "also wait until the world is ready (default in MCP)"),
           flag("offscreen", Ty::Bool, "render without showing a window (screenshots still work): locked or headless sessions")],
@@ -212,22 +203,6 @@ pub const COMMANDS: &[Cmd] = &[
         mcp: true, local: true),
     cmd!("status", Session, "status", "game, renderer and streaming state (the scripting socket's original summary)",
         "Also what F3 shows: the overlay flags, the renderer, chunk streaming and memory.", ["horizon-ctl status"], &[], mcp: true, local: false),
-    cmd!("worlds", Session, "worlds", "the saved worlds, newest first: folder, name, mode, last played, version",
-        "folder is what open, world-rename, world-backup and world-delete take.", ["horizon-ctl worlds"], &[], mcp: true, local: false),
-    cmd!("world-rename", Session, "world-rename FOLDER NAME", "rename a world, as Edit World does (its folder stays)",
-        "Needs the title screen (no world open).", ["horizon-ctl world-rename Test \"My Base\""],
-        &[p("folder", Ty::Str, "world folder from worlds"), p("name", Ty::Rest, "the new name")], mcp: true, local: false),
-    cmd!("world-backup", Session, "world-backup FOLDER", "zip a world into backups/, as Edit World's Make Backup does",
-        "Needs the title screen. Replies once the zip is written, with its size.", ["horizon-ctl world-backup Test"],
-        &[p("folder", Ty::Str, "world folder from worlds")], mcp: true, local: false),
-    cmd!("world-delete", Session, "world-delete FOLDER --confirm", "delete a world for good, as Select World's Delete does",
-        "Needs the title screen and --confirm: ask the player first, it cannot be undone (world-backup keeps a copy).",
-        ["horizon-ctl world-delete Test --confirm"],
-        &[p("folder", Ty::Str, "world folder from worlds"), CONFIRM], mcp: true, local: false),
-    cmd!("open", Session, "open WORLD [SEED] [creative]", "open or create a world from the title screen",
-        "Opens saves/WORLD, creating it with SEED (and creative mode) when it doesn't exist.",
-        ["horizon-ctl open Test 12345", "horizon-ctl open Build 0 creative"],
-        &[p("world", Ty::Str, "world folder"), opt("seed", Ty::Int, "seed for a new world"), opt("mode", Ty::Enum(&["creative"]), "creative for a creative world")], mcp: true, local: false),
     cmd!("save", Session, "save", "save the world", "", ["horizon-ctl save"], &[], mcp: true, local: false),
     cmd!("quit", Session, "quit", "save and exit the game", "", ["horizon-ctl quit"], &[], mcp: true, local: false),
     cmd!("screenshot", Session, "screenshot PATH", "write the next rendered frame as a PNG",
@@ -397,9 +372,9 @@ pub const COMMANDS: &[Cmd] = &[
     cmd!("disconnect", Multiplayer, "disconnect", "leave the server, back to the server list", "", ["horizon-ctl disconnect"], &[], mcp: true, local: false),
     cmd!("servers", Multiplayer, "servers", "the Multiplayer screen's server list: name and address",
         "Add, edit and remove them on the Multiplayer screen (click-button Multiplayer, then ui).", ["horizon-ctl servers"], &[], mcp: true, local: false),
-    cmd!("lan", Multiplayer, "lan open [PORT] [commands] [force] | lan close | lan status", "open the world to LAN (Open to LAN), stop, or see the guests",
-        "PORT 0 or none picks one; commands lets guests use cheats; force forces the game mode. Only when the player asks.",
-        ["horizon-ctl lan open", "horizon-ctl lan status", "horizon-ctl lan close"],
+    cmd!("lan", Multiplayer, "lan open [PORT] [commands] [force] | lan status", "the test server's port and players (launch --world)",
+        "open answers with the port the server listens on; commands lets every player use commands; force forces the game mode.",
+        ["horizon-ctl lan open", "horizon-ctl lan status"],
         &[p("action", Ty::Enum(&["open", "close", "status"]), "what to do"), opt("port", Ty::Int, "port for open"), opt("commands", Ty::Bool, "allow cheats"), opt("force", Ty::Bool, "force the game mode")], mcp: true, local: false),
     cmd!("friends", Multiplayer, "friends host|stop|status", "Play with Friends: share the open world behind an invite code, stop, or see who joined",
         "status gives the code: share it only when the player asks. Friends join with connect friend:CODE.",
@@ -790,12 +765,6 @@ mod tests {
             line_for(slot, &json!({ "slot": 200, "shift": true })).unwrap(),
             ["click-slot", "200", "shift"]
         );
-        let open = find("open").unwrap();
-        assert!(
-            line_for(open, &json!({ "world": "A", "mode": "creative" }))
-                .unwrap_err()
-                .contains("seed")
-        );
     }
 
     #[test]
@@ -831,11 +800,6 @@ mod tests {
         for name in DESTRUCTIVE.iter().chain(OPEN_WORLD) {
             assert!(find(name).is_some_and(|c| c.mcp), "{name}");
         }
-        let delete = find("world-delete").unwrap();
-        assert_eq!(
-            line_for(delete, &json!({ "folder": "A", "confirm": true })).unwrap(),
-            ["world-delete", "A", "--confirm"]
-        );
         let lan = find("lan").unwrap();
         assert_eq!(
             line_for(lan, &json!({ "action": "open", "commands": true })).unwrap(),

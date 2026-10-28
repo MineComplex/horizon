@@ -62,6 +62,7 @@ mod falling_damage;
 mod fangs;
 mod fireworks;
 mod fishing;
+mod fixtures;
 mod fov;
 mod frames;
 mod functions;
@@ -73,7 +74,6 @@ mod golems;
 mod growth;
 mod hand;
 mod initial_spawn;
-mod integrated;
 mod item_draw;
 mod item_particles;
 mod jukebox;
@@ -87,7 +87,6 @@ mod lan_mobs;
 mod lan_mount_menu;
 mod lan_particles;
 mod lan_pvp;
-mod lan_screen;
 mod lan_stations;
 mod lan_trading;
 mod lan_vehicles;
@@ -155,6 +154,7 @@ mod scoreboard;
 mod screens;
 mod sculk;
 mod sculk_fixture;
+mod server_control;
 mod server_links;
 mod server_packs;
 mod server_travel;
@@ -275,8 +275,7 @@ struct Options {
     resources: PathBuf,
     distance: i32,
     distance_override: Option<i32>,
-    seed: i64,
-    creative: bool,
+    /// The server's `--test-terrain`: simple terrain instead of vanilla generation.
     test_terrain: bool,
     frames: Option<u64>,
     /// `--world-frames N`: exit after N frames drawn in the world (smoke runs; the world may load slowly).
@@ -284,8 +283,8 @@ struct Options {
     screenshot_after: Option<u64>,
     timeout: Duration,
     report: Option<PathBuf>,
-    world: Option<String>,
-    look: Option<(f32, f32)>,
+    /// The server's `--time`, `--weather` and `--dimension`: the world's at start
+    /// (a test's), the spawn dimension of its level.
     time: Option<i64>,
     weather: Option<String>,
     dimension: Option<String>,
@@ -309,69 +308,53 @@ struct Options {
     /// `--dedicated`: run as a dedicated server; vanilla's server arguments
     /// (`--nogui`, `--port`, `--world`, `--universe`, `--initSettings`) follow.
     dedicated: Option<Vec<String>>,
-    /// `--benchmark SCENARIO`: run the benchmark, write its report and quit.
-    benchmark: Option<String>,
     /// What this Game executes; independent of its current server connection.
     execution_role: execution_role::ExecutionRole,
-    /// The program that started the game.
-    program: Program,
+    /// `--server-control PATH`: the control endpoint of the server this
+    /// client joins (a test's `horizon-server --control-socket`), which
+    /// `horizon-ctl` asks what only the server knows (game/server_control.rs).
+    server_control: Option<std::path::PathBuf>,
 }
 
-/// The program the game runs as. Players get two: `horizon-client`, which only
-/// joins servers (no single player, no LAN, no world of its own), and
-/// `horizon-server`. `horizon-dev` is for development and the test harnesses:
-/// everything, including `--world` on a server thread inside the window.
+/// The program the game runs as: `horizon-client`, which only joins servers
+/// (no single player, no LAN, no world of its own), or `horizon-server`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Program {
     Client,
     Server,
-    Dev,
 }
 impl Program {
     fn name(self) -> &'static str {
         match self {
             Self::Client => "horizon-client",
             Self::Server => "horizon-server",
-            Self::Dev => "horizon-dev",
         }
     }
 }
 
-/// The client's options that start a world of its own.
-const WORLD_OPTIONS: &[&str] = &[
-    "--world",
-    "--seed",
-    "--creative",
-    "--test-terrain",
-    "--benchmark",
-    "--dedicated",
-];
-/// The environment of the test fixtures that run a world.
-const WORLD_FIXTURES: &[&str] = &[
-    "HORIZON_DISPENSE_FIXTURE",
-    "HORIZON_SCULK_FIXTURE",
-    "HORIZON_COMMAND_SCRIPT",
-];
+/// The server's test fixtures that run without `--dedicated`: synthetic
+/// levels, no players (game/fixtures.rs).
+const COMPONENT_FIXTURES: &[&str] = &["HORIZON_DISPENSE_FIXTURE", "HORIZON_SCULK_FIXTURE"];
 
-/// Why `program` may not run with these arguments: a client has no world of
-/// its own, a server always runs dedicated.
+/// Why `program` may not run with these arguments: a client runs no server
+/// and no fixture; a server runs dedicated, or one of its fixtures.
 fn refusal(program: Program, args: &[String], fixture: impl Fn(&str) -> bool) -> Option<String> {
     match program {
         Program::Client => {
-            if let Some(arg) = args.iter().find(|a| WORLD_OPTIONS.contains(&a.as_str())) {
-                return Some(format!(
-                    "{arg}: horizon-client has no single player and no LAN, it only joins servers \
-                     (--server HOST[:PORT]). Worlds run on horizon-server."
-                ));
+            if args.iter().any(|a| a == "--dedicated") {
+                return Some(
+                    "--dedicated: horizon-client only joins servers; run horizon-server".to_owned(),
+                );
             }
-            WORLD_FIXTURES
+            COMPONENT_FIXTURES
                 .iter()
+                .chain(&["HORIZON_COMMAND_SCRIPT"])
                 .find(|v| fixture(v))
-                .map(|v| format!("{v} runs a world: use horizon-dev"))
+                .map(|v| format!("{v} is a server fixture: run horizon-server"))
         }
-        Program::Server => (!args.iter().any(|a| a == "--dedicated"))
-            .then(|| "horizon-server runs dedicated (--dedicated)".to_owned()),
-        Program::Dev => None,
+        Program::Server => (!args.iter().any(|a| a == "--dedicated")
+            && !COMPONENT_FIXTURES.iter().any(|v| fixture(v)))
+        .then(|| "horizon-server runs dedicated (--dedicated)".to_owned()),
     }
 }
 
@@ -390,22 +373,26 @@ mod program_tests {
             refusal(Program::Client, &args(&["--server", "h:25565"]), none),
             None
         );
-        for world in [
-            &["--world", "W"][..],
-            &["--seed", "1"],
-            &["--benchmark", "standard"],
-            &["--dedicated", "--nogui"],
-        ] {
-            assert!(refusal(Program::Client, &args(world), none).is_some());
-            assert_eq!(refusal(Program::Dev, &args(world), none), None);
-        }
+        assert!(refusal(Program::Client, &args(&["--dedicated", "--nogui"]), none).is_some());
         let fixture = |v: &str| v == "HORIZON_COMMAND_SCRIPT";
         assert!(refusal(Program::Client, &[], fixture).is_some());
-        assert_eq!(refusal(Program::Dev, &[], fixture), None);
+        // The world options are gone from the client: unknown options.
+        for option in [
+            "--world",
+            "--seed",
+            "--creative",
+            "--benchmark",
+            "--quickPlaySingleplayer",
+        ] {
+            assert!(
+                Options::read(Program::Client, args(&[option, "x"])).is_err(),
+                "{option}"
+            );
+        }
     }
 
     #[test]
-    fn the_server_runs_dedicated() {
+    fn the_server_runs_dedicated_or_a_fixture() {
         let none = |_: &str| false;
         assert!(refusal(Program::Server, &args(&["--world", "W"]), none).is_some());
         assert_eq!(
@@ -416,6 +403,8 @@ mod program_tests {
             ),
             None
         );
+        let fixture = |v: &str| v == "HORIZON_SCULK_FIXTURE";
+        assert_eq!(refusal(Program::Server, &[], fixture), None);
     }
 }
 
@@ -448,16 +437,12 @@ impl Options {
             },
             distance: 12,
             distance_override: None,
-            seed: 0,
-            creative: false,
             test_terrain: false,
             frames: None,
             world_frames: None,
             screenshot_after: None,
             timeout: Duration::from_secs(120),
             report: None,
-            world: None,
-            look: None,
             time: None,
             weather: None,
             dimension: None,
@@ -473,9 +458,8 @@ impl Options {
                 .ok()
                 .filter(|n| !n.is_empty()),
             dedicated: None,
-            benchmark: None,
             execution_role: execution_role::ExecutionRole::Client,
-            program,
+            server_control: None,
         };
         // The MineComplex launcher's identity, passed as vanilla's arguments.
         let (mut launcher_uuid, mut launcher_token) = (None::<String>, None::<String>);
@@ -485,10 +469,10 @@ impl Options {
                 "--help" | "-h" => {
                     let usage = match program {
                         Program::Client => {
-                            "Horizon — Minecraft Java Edition {} in Rust\n\n  --resources PATH        Prepared resources (horizon-prepare)\n  --render-distance N     Chunks, 2..64 (default 12)\n  --width N, --height N   Window size (default 1280 x 720)\n  --frames N              Exit after N frames (testing)\n  --world-frames N        Exit after N frames drawn in the world (testing)\n  --smoke-report PATH     Write a JSON report on exit\n  --control               Accept horizon-ctl commands on a local socket\n  --control-socket PATH   Control socket path (default $XDG_RUNTIME_DIR/horizon-control.sock)\n  --server HOST[:PORT]    Join a multiplayer server (offline mode) at start\n  --quickPlayMultiplayer HOST[:PORT]  The same as --server (vanilla's name)\n  --name NAME             Player name for multiplayer (default: generated once, kept in horizon-player.txt)\n  --pregen                Add Horizon's /pregen command (docs/pregeneration.md)\n\nControls: mouse look, WASD move, Space jump, Left Shift sneak, Left Ctrl sprint,\nleft click break, right click place/use, 1-9/scroll hotbar, E inventory,\nQ drop, F3 debug, Esc pause."
+                            "Horizon — Minecraft Java Edition {} in Rust\n\n  --resources PATH        Prepared resources (horizon-prepare)\n  --render-distance N     Chunks, 2..64 (default 12)\n  --width N, --height N   Window size (default 1280 x 720)\n  --frames N              Exit after N frames (testing)\n  --world-frames N        Exit after N frames drawn in the world (testing)\n  --smoke-report PATH     Write a JSON report on exit\n  --control               Accept horizon-ctl commands on a local socket\n  --control-socket PATH   Control socket path (default $XDG_RUNTIME_DIR/horizon-control.sock)\n  --server HOST[:PORT]    Join a server at start\n  --server-control PATH   The server's control endpoint, for horizon-ctl (tests)\n  --quickPlayMultiplayer HOST[:PORT]  The same as --server (vanilla's name)\n  --name NAME             Player name for multiplayer (default: generated once, kept in horizon-player.txt)\n  --pregen                Add Horizon's /pregen command (docs/pregeneration.md)\n\nControls: mouse look, WASD move, Space jump, Left Shift sneak, Left Ctrl sprint,\nleft click break, right click place/use, 1-9/scroll hotbar, E inventory,\nQ drop, F3 debug, Esc pause."
                         }
-                        _ => {
-                            "Horizon — Minecraft Java Edition {} in Rust\n\n  --resources PATH        Prepared resources (horizon-prepare)\n  --render-distance N     Chunks, 2..64 (default 12)\n  --world NAME            World folder under saves/ (default \"New World\")\n  --seed N                World seed for new worlds (default 0)\n  --width N, --height N   Window size (default 1280 x 720)\n  --creative              Creative mode (default survival)\n  --test-terrain          Simple test terrain instead of vanilla generation\n  --frames N              Exit after N frames (testing)\n  --world-frames N        Exit after N frames drawn in the world (testing)\n  --smoke-report PATH     Write a JSON report on exit\n  --benchmark SCENARIO    Run a benchmark (standard, village, forest, ocean, mountain), write its report to benchmarks/ and quit\n  --control               Accept horizon-ctl commands on a local socket\n  --control-socket PATH   Control socket path (default $XDG_RUNTIME_DIR/horizon-control.sock)\n  --server HOST[:PORT]    Join a multiplayer server (offline mode) at start\n  --quickPlaySingleplayer WORLD  Open this world of saves/ at start, only if it exists (vanilla's)\n  --quickPlayMultiplayer HOST[:PORT]  The same as --server (vanilla's name)\n  --name NAME             Player name for multiplayer (default: generated once, kept in horizon-player.txt)\n  --pregen                Add Horizon's /pregen command (docs/pregeneration.md)\n\nControls: mouse look, WASD move, Space jump, Left Shift sneak, Left Ctrl sprint,\nleft click break, right click place/use, 1-9/scroll hotbar, E inventory,\nQ drop, F3 debug, Esc pause."
+                        Program::Server => {
+                            "Horizon server — Minecraft Java Edition {} in Rust\n\n  --resources PATH        Prepared resources (horizon-prepare)\n  --control-socket PATH   Accept control requests (tests, horizon-ctl)\n  --test-terrain          Simple test terrain instead of vanilla generation\n  --time TICKS            The time of day at start\n  --weather clear|rain|thunder  The weather at start\n  --dimension DIM         The level a new world's player starts in\n\nThen vanilla's server options (--nogui, --port, --world, --universe, --initSettings)."
                         }
                     };
                     println!("{}", usage.replacen("{}", horizon_core::VANILLA_VERSION, 1));
@@ -499,8 +483,7 @@ impl Options {
                     o.dedicated = Some(args.by_ref().collect());
                     break;
                 }
-                "--creative" => o.creative = true,
-                "--test-terrain" => o.test_terrain = true,
+                "--test-terrain" if program == Program::Server => o.test_terrain = true,
                 "--no-pause" => o.no_pause = true,
                 "--offscreen" => o.offscreen = true,
                 "--control" => o.control = Some(horizon_client::control::default_path()),
@@ -519,17 +502,6 @@ impl Options {
                                 return Err("render distance must be 2..64".into());
                             }
                         }
-                        "--seed" => {
-                            o.seed = value.parse().unwrap_or_else(|_| {
-                                // Text seeds hash like String.hashCode.
-                                value
-                                    .encode_utf16()
-                                    .fold(0i32, |h, c| {
-                                        h.wrapping_mul(31).wrapping_add(i32::from(c))
-                                    })
-                                    .into()
-                            })
-                        }
                         "--frames" => o.frames = Some(value.parse()?),
                         "--world-frames" => {
                             o.world_frames = Some(value.parse()?);
@@ -541,48 +513,20 @@ impl Options {
                         "--screenshot-after" => o.screenshot_after = Some(value.parse()?),
                         "--width" => o.window_size[0] = value.parse::<u32>()?.max(1),
                         "--height" => o.window_size[1] = value.parse::<u32>()?.max(1),
-                        "--world" => o.world = Some(value),
-                        // Vanilla's quick play (Main, QuickPlay.joinSingleplayerWorld): only a
-                        // world that exists opens; else the title screen. --world also creates one.
-                        "--quickPlaySingleplayer" if program == Program::Client => {
-                            eprintln!(
-                                "Quick play: horizon-client has no single player ({value} not opened)"
-                            );
-                        }
-                        "--quickPlaySingleplayer" => {
-                            let folder = std::env::current_dir()?.join("saves").join(&value);
-                            if folder.join("level.dat").is_file() {
-                                o.world = Some(value);
-                            } else {
-                                eprintln!("Quick play: there is no world {value} in saves/");
-                            }
-                        }
-                        "--benchmark" => {
-                            if horizon_client::benchmark::scenes(&value).is_none() {
-                                return Err(format!(
-                                    "unknown benchmark {value}: standard, village, forest, ocean or mountain"
-                                )
-                                .into());
-                            }
-                            o.benchmark = Some(value);
-                        }
                         "--server" | "--quickPlayMultiplayer" => o.server = Some(value),
                         "--name" | "--username" => o.player_name = Some(value),
                         "--uuid" => launcher_uuid = Some(value),
                         "--accessToken" => launcher_token = Some(value),
                         "--control-socket" => o.control = Some(value.into()),
-                        "--time" => o.time = Some(value.parse()?),
-                        "--weather" => o.weather = Some(value),
-                        "--dimension" => {
+                        "--server-control" => o.server_control = Some(value.into()),
+                        "--time" if program == Program::Server => o.time = Some(value.parse()?),
+                        "--weather" if program == Program::Server => o.weather = Some(value),
+                        "--dimension" if program == Program::Server => {
                             o.dimension = Some(if value.contains(':') {
                                 value
                             } else {
                                 format!("minecraft:{value}")
                             })
-                        }
-                        "--look" => {
-                            let (y, p) = value.split_once(',').ok_or("--look takes YAW,PITCH")?;
-                            o.look = Some((y.parse()?, p.parse()?));
                         }
                         _ => return Err(format!("unknown option {arg}").into()),
                     }
@@ -625,8 +569,6 @@ enum Screen {
     Stats,
     /// The Advancements screen.
     Advancements,
-    /// WorldOptionsScreen (game/lan_screen.rs).
-    WorldOptions,
     /// CommandBlockEditScreen (game/command_blocks.rs).
     CommandBlock,
     /// ServerLinksDialogScreen: a server's links (game/server_links.rs).
@@ -1509,7 +1451,6 @@ struct Game<'a> {
     res: Arc<Resources>,
     rest_loader: Option<WorldRestLoader>,
     pending_entry: Option<PendingWorldEntry>,
-    world_loader: Option<world_loading::WorldLoader>,
     pending_pack_reload: bool,
     /// A server's resource packs (game/server_packs.rs).
     server_packs: server_packs::ServerPackState,
@@ -1956,13 +1897,8 @@ struct Game<'a> {
     remote: Option<remote::Remote>,
     /// This world is open to the network (game/lan.rs).
     lan: Option<lan::LanHost>,
-    /// Single player's server thread, which `remote` is connected to.
-    integrated: Option<integrated::Integrated>,
-    /// This game is that server thread's (game/integrated.rs).
-    serving: Option<integrated::Serving>,
-    world_options: Option<lan_screen::WorldOptions>,
-    /// Chat Settings opened from RestrictionsScreen: Done returns to World Options.
-    options_to_world_options: bool,
+    /// The server's world name (`--server-control`), once asked.
+    server_world: std::cell::OnceCell<String>,
     command_block_screen: Option<command_blocks::CommandBlockScreen>,
     /// KeyboardHandler's debug key state (game/debug_keys.rs), the physical
     /// keys held, and the debug renderers F3+B and F3+G switch on.
@@ -5223,9 +5159,6 @@ impl Game<'_> {
             self.tick_weather_effects();
         }
         self.autosaving = self.ticks.is_multiple_of(6000);
-        if let Some(serving) = &self.serving {
-            serving.set_saving(self.autosaving);
-        }
         if self.autosaving {
             self.save_game_with(false)?;
         }
@@ -5421,25 +5354,6 @@ impl Game<'_> {
             self.yaw = rotation.y_rot;
             self.pitch = rotation.x_rot;
         }
-    }
-    /// `Minecraft.pause`: a single-player game with a pausing screen open.
-    fn pauses_game(&self) -> bool {
-        self.has_singleplayer_server()
-            && !self.is_published()
-            && self.title.is_none()
-            && (matches!(
-                self.screen,
-                Screen::Paused
-                    | Screen::Options
-                    | Screen::Stats
-                    | Screen::Advancements
-                    | Screen::WorldOptions
-                    | Screen::ServerLinks
-                    | Screen::ConfirmLink
-                    | Screen::DialogWarning
-                    | Screen::CommandBlock
-            ) || self.book.is_some()
-                || self.win_screen_pauses())
     }
     /// `MouseHandler.grabMouse` / `releaseMouse`. Both put the pointer at
     /// the window's centre, so a screen opened from gameplay (inventory,
@@ -5973,7 +5887,6 @@ impl Game<'_> {
             Screen::Dead => self.draw_death_screen(&mut batch),
             Screen::Stats => self.draw_stats(&mut batch),
             Screen::Advancements => self.draw_advancements(&mut batch),
-            Screen::WorldOptions => self.draw_world_options(&mut batch),
             Screen::ServerLinks => self.draw_server_links(&mut batch),
             Screen::ConfirmLink => self.draw_confirm_link(&mut batch),
             Screen::DialogWarning => self.draw_dialog_warning(&mut batch),
@@ -8691,52 +8604,6 @@ impl Game<'_> {
             (sky.star_brightness > 0.0).then(|| (frame(sky.star_angle), sky.star_brightness));
         (out, stars)
     }
-    /// Enter a local world from the client, selecting its simulation mode.
-    fn open_world(
-        &mut self,
-        folder: &str,
-        name: Option<&str>,
-        seed: Option<i64>,
-        creative: bool,
-        create: Option<&horizon_client::title::WorldOptions>,
-    ) -> Result<()> {
-        if self.options.program == Program::Client {
-            return Err("horizon-client has no single player: it only joins servers".into());
-        }
-        world_loading::world_data_used();
-        if self.defer_world_entry(PendingWorldEntry::Local {
-            folder: folder.to_owned(),
-            name: name.map(str::to_owned),
-            seed,
-            creative,
-            create: create.cloned().map(Box::new),
-        })? {
-            return Ok(());
-        }
-        self.join_world_rest()?;
-        if self.options.execution_role.starts_integrated_server() {
-            return self.open_integrated(folder, name, seed, creative, create);
-        }
-        let request = world_loading::WorldRequest::new(folder, name, seed, creative, create)?;
-        if self.window.is_some() {
-            if self.title.is_none() {
-                self.title = Some(Title::new(
-                    std::env::current_dir()?.join("saves"),
-                    &self.options.resources,
-                ));
-            }
-            self.world_loader = Some(world_loading::WorldLoader::start(
-                request,
-                self.res.clone(),
-                self.pack.clone(),
-                self.options.clone(),
-                self.settings.clone(),
-            )?);
-            return Ok(());
-        }
-        self.load_world(request)
-    }
-
     /// Load authoritative world state synchronously, without client entry or
     /// integrated-server selection. Server startup must use this entry point.
     fn load_world(&mut self, request: world_loading::WorldRequest) -> Result<()> {
@@ -8819,10 +8686,7 @@ impl Game<'_> {
                 });
             }
         }
-        let (yaw, pitch) = self
-            .options
-            .look
-            .unwrap_or((level.rotation[0], level.rotation[1]));
+        let (yaw, pitch) = (level.rotation[0], level.rotation[1]);
         self.yaw = yaw;
         self.pitch = pitch;
         self.selected = level.selected_slot.clamp(0, 8) as usize;
@@ -9005,12 +8869,6 @@ impl Game<'_> {
             }
         }
         if self.title.is_some() || self.saved_for_exit {
-            return Ok(());
-        }
-        if let Some(server) = self.integrated.take() {
-            // The server thread saves the world.
-            server.stop()?;
-            self.saved_for_exit = true;
             return Ok(());
         }
         self.close_container();
@@ -11139,23 +10997,6 @@ impl Game<'_> {
         Ok(())
     }
     fn render(&mut self) -> Result<bool> {
-        if let Some(loader) = &self.world_loader {
-            if let Some(renderer) = &mut self.renderer {
-                let mut hud = HudBatch::new([renderer.config.width, renderer.config.height]);
-                horizon_client::level_loading::draw_progress(
-                    &mut hud,
-                    &self.gui.atlas,
-                    if loader.cancelled {
-                        "Cancelling world"
-                    } else {
-                        "Opening world"
-                    },
-                    0.0,
-                );
-                return renderer.render(&loading_frame(&hud));
-            }
-            return Ok(false);
-        }
         if self.pending_entry.is_some() {
             if let (Some(renderer), Some(loader)) = (&mut self.renderer, &self.rest_loader) {
                 let mut hud = HudBatch::new([renderer.config.width, renderer.config.height]);
@@ -11763,7 +11604,6 @@ impl Game<'_> {
                 // the Server Links screen they came from.
                 Screen::ConfirmLink | Screen::DialogWarning => self.screen = Screen::ServerLinks,
                 Screen::Advancements => self.close_advancements(),
-                Screen::WorldOptions => self.world_options_escape(),
                 Screen::CommandBlock => self.close_command_block(),
                 Screen::Chat => self.close_chat(),
                 Screen::Win => self.close_win_screen()?,
@@ -12002,7 +11842,7 @@ impl Game<'_> {
             && self.renderer.is_some()
             && self.player.is_some()
             && self.title.is_none()
-            && (self.remote.is_none() || self.integrated.is_some());
+            && self.remote.is_none();
         if !enabled {
             if self.lod.is_some() || self.lod_source_attempted {
                 self.clear_lod();
@@ -12013,11 +11853,8 @@ impl Game<'_> {
             return;
         }
         self.lod_source_attempted = true;
-        let source = match &self.integrated {
-            Some(server) => server.call(|game| game.streaming.lod_source()),
-            None => Some(self.streaming.lod_source()),
-        };
-        if let Some(source) = source {
+        {
+            let source = self.streaming.lod_source();
             self.lod = Some(horizon_client::lod::Lod::new(
                 source,
                 self.pack.context.clone(),
@@ -12311,22 +12148,15 @@ impl ApplicationHandler for Game<'_> {
         ) {
             self.last_input = Instant::now();
         }
-        if (self.pending_entry.is_some() || self.world_loader.is_some())
+        if self.pending_entry.is_some()
             && matches!(&event, WindowEvent::KeyboardInput { event, .. }
                 if event.state == ElementState::Pressed
                     && event.physical_key == PhysicalKey::Code(KeyCode::Escape))
         {
             self.pending_entry = None;
-            if let Some(loader) = self.world_loader.take() {
-                self.world_loader = Some(if loader.cancelled {
-                    loader
-                } else {
-                    loader.cancel()
-                });
-            }
             return;
         }
-        if (self.pending_entry.is_some() || self.world_loader.is_some())
+        if self.pending_entry.is_some()
             && !matches!(
                 &event,
                 WindowEvent::CloseRequested
@@ -12417,9 +12247,6 @@ impl ApplicationHandler for Game<'_> {
                         }
                         if self.screen == Screen::Stats {
                             self.stats_drag();
-                        }
-                        if self.screen == Screen::WorldOptions {
-                            self.world_options_drag();
                         }
                         if self.screen == Screen::Creative {
                             let (_, oy) = Self::creative_origin(&b);
@@ -12515,9 +12342,6 @@ impl ApplicationHandler for Game<'_> {
                     }
                     if self.screen == Screen::Stats && d != 0.0 {
                         self.stats_scroll(d);
-                    }
-                    if self.screen == Screen::WorldOptions && d != 0.0 {
-                        self.world_options_scroll(d);
                     }
                     if self.screen == Screen::ServerLinks && d != 0.0 {
                         self.server_links_scroll(d);
@@ -12702,9 +12526,6 @@ impl ApplicationHandler for Game<'_> {
                         {
                             self.pause_click()?
                         }
-                        Screen::WorldOptions if pressed && button == MouseButton::Left => {
-                            self.world_options_click()
-                        }
                         Screen::ServerLinks if pressed && button == MouseButton::Left => {
                             self.server_links_click()?
                         }
@@ -12713,9 +12534,6 @@ impl ApplicationHandler for Game<'_> {
                         }
                         Screen::DialogWarning if pressed && button == MouseButton::Left => {
                             self.dialog_warning_click()?
-                        }
-                        Screen::WorldOptions if button == MouseButton::Left => {
-                            self.world_options_release()
                         }
                         Screen::CommandBlock if pressed && button == MouseButton::Left => {
                             self.command_block_click()
@@ -12846,12 +12664,6 @@ impl ApplicationHandler for Game<'_> {
                         let backspace = event.physical_key == PhysicalKey::Code(KeyCode::Backspace);
                         self.station_text(event.text.as_deref(), backspace);
                     }
-                }
-                WindowEvent::KeyboardInput { event, .. }
-                    if self.screen == Screen::WorldOptions
-                        && !matches!(event.physical_key, PhysicalKey::Code(KeyCode::Escape)) =>
-                {
-                    self.world_options_key(&event)
                 }
                 WindowEvent::KeyboardInput { event, .. } if self.screen == Screen::Win => {
                     self.win_key(&event)?
@@ -12990,7 +12802,6 @@ impl ApplicationHandler for Game<'_> {
                         if self.title.is_none() && !self.pause {
                             let tick = Instant::now();
                             horizon_client::spans::time("tick", || self.tick())?;
-                            // In single player the tick is the integrated server's.
                             if self.remote.is_none() {
                                 self.debug_charts.log_tick(tick, tick.elapsed());
                             }
@@ -13055,14 +12866,7 @@ impl ApplicationHandler for Game<'_> {
                         r.gpu_times.clear();
                     }
                     self.limit_frame();
-                    self.pause = self.pauses_game();
-                    if let Some(server) = &self.integrated {
-                        server.set_paused(self.pause);
-                        server.set_distances(
-                            self.settings.render_distance,
-                            self.settings.simulation_distance,
-                        );
-                    }
+                    self.pause = false;
                     self.clock.end_frame(self.pause);
                     let finished = self
                         .renderer
@@ -13261,10 +13065,9 @@ impl<'a> Game<'a> {
             .map(Ok)
             .unwrap_or_else(|| GameCpuResources::load(&root))?;
         let world = World::new(res.facts().air, 0);
-        let creative = options.creative;
+        let creative = false;
         let inventory = vec![None; 36];
         let now = Instant::now();
-        let look = options.look;
         // The manager starts with the saved option (MusicManager's constructor).
         let mut music = horizon_client::music::MusicManager::default();
         music.frequency =
@@ -13278,7 +13081,6 @@ impl<'a> Game<'a> {
             res: res.clone(),
             rest_loader: None,
             pending_entry: None,
-            world_loader: None,
             pending_pack_reload: false,
             server_packs: Default::default(),
             link_prompt: None,
@@ -13305,8 +13107,8 @@ impl<'a> Game<'a> {
             previous_position: Vec3::ZERO,
             eye: 1.62,
             previous_eye: 1.62,
-            yaw: look.map_or(level.rotation[0], |l| l.0),
-            pitch: look.map_or(level.rotation[1], |l| l.1),
+            yaw: level.rotation[0],
+            pitch: level.rotation[1],
             inventory,
             selected: 0,
             carried: None,
@@ -13563,10 +13365,7 @@ impl<'a> Game<'a> {
             persist: Default::default(),
             remote: None,
             lan: None,
-            integrated: None,
-            serving: None,
-            world_options: None,
-            options_to_world_options: false,
+            server_world: Default::default(),
             command_block_screen: None,
             debug_keys: Default::default(),
             debug_charts: Default::default(),
@@ -13698,13 +13497,6 @@ enum LoaderMsg {
 }
 
 enum PendingWorldEntry {
-    Local {
-        folder: String,
-        name: Option<String>,
-        seed: Option<i64>,
-        creative: bool,
-        create: Option<Box<horizon_client::title::WorldOptions>>,
-    },
     Server {
         address: String,
         name: String,
@@ -13737,7 +13529,7 @@ impl WorldRestLoader {
 impl Game<'_> {
     fn defer_world_entry(&mut self, entry: PendingWorldEntry) -> Result<bool> {
         self.poll_world_rest()?;
-        if self.rest_loader.is_none() && self.world_loader.is_none() {
+        if self.rest_loader.is_none() {
             return Ok(false);
         }
         if self.title.is_none() {
@@ -13753,47 +13545,13 @@ impl Game<'_> {
 
     fn resume_world_entry(&mut self) -> Result<()> {
         self.poll_world_rest()?;
-        if let Some(loader) = &self.world_loader {
-            if !loader.ready() {
-                return Ok(());
-            }
-            let loader = self
-                .world_loader
-                .take()
-                .ok_or("missing world initialization worker")?;
-            let cancelled = loader.cancelled;
-            let prepared = loader.finish();
-            if !cancelled {
-                self.finish_open_world(prepared?)?;
-            }
-        }
         if self.rest_loader.is_some() {
             return Ok(());
         }
-        let on_world_screens = self.title.as_ref().is_some_and(|title| {
-            !matches!(
-                title.mode,
-                horizon_client::title::Mode::Main | horizon_client::title::Mode::Multiplayer(_)
-            )
-        });
-        world_loading::preload_world_data(
-            on_world_screens,
-            &self.options.resources,
-            self.pack.assets.registry,
-        );
         if std::mem::take(&mut self.pending_pack_reload) {
             self.reload_packs();
         }
         match self.pending_entry.take() {
-            Some(PendingWorldEntry::Local {
-                folder,
-                name,
-                seed,
-                creative,
-                create,
-            }) => {
-                self.open_world(&folder, name.as_deref(), seed, creative, create.as_deref())?;
-            }
             Some(PendingWorldEntry::Server {
                 address,
                 name,
@@ -13912,7 +13670,6 @@ impl Progress {
 fn synchronous_startup(options: &Options) -> bool {
     options.frames.is_some()
         || options.world_frames.is_some()
-        || options.benchmark.is_some()
         || options.control.is_some()
         || !options.execution_role.is_client()
         || std::env::var_os("HORIZON_DISPENSE_FIXTURE").is_some()
@@ -14419,7 +14176,7 @@ fn start_game<'a>(
     pack_error: Option<String>,
     audio: Audio,
     vanilla_root: PathBuf,
-    started: Instant,
+    _started: Instant,
     rest_loader: Option<WorldRestLoader>,
     settings: Option<Settings>,
     prepared: Option<GameCpuResources>,
@@ -14443,99 +14200,40 @@ fn start_game<'a>(
         game.open_options_at(true, horizon_client::options_ui::Page::Packs);
         game.ui.options.resource_error = Some(error);
     }
-    if game.options.benchmark.is_some() {
-        // The same conditions on every machine: no VSync, no frame cap, no
-        // pause or idle limit without focus. In memory only, never saved.
-        game.settings.vsync = false;
-        game.settings.max_fps = 260;
-        game.settings.inactivity_fps_limit = "minimized".into();
-        game.options.no_pause = true;
-    }
     game.apply_settings();
     game.start_agent_control()?;
-    if let Some(scenario) = game.options.benchmark.clone() {
-        let control = game
-            .control
-            .get_or_insert_with(horizon_client::control::Server::local);
-        horizon_client::benchmark::start(
-            control.sender(),
-            horizon_client::benchmark::Setup {
-                scenario,
-                started,
-                app: horizon_bench::App {
-                    name: "horizon-client".into(),
-                    version: horizon_client::crash::version(),
-                    commit: option_env!("HORIZON_COMMIT").map(str::to_owned),
-                    mods: Vec::new(),
-                },
-                simulation_distance: game.settings.simulation_distance as u32,
-                vsync: false,
-                fps_cap: None,
-                offscreen: game.options.offscreen,
-                game_dir: std::env::current_dir()?,
-            },
-        );
-    }
     if let Ok(spec) = std::env::var("HORIZON_DISPENSE_FIXTURE") {
-        game.run_component_harness(integrated::ComponentHarness::Dispenser(spec))?;
+        game.run_component_harness(fixtures::ComponentHarness::Dispenser(spec))?;
         return Ok(None);
     }
     if let Ok(spec) = std::env::var("HORIZON_SCULK_FIXTURE") {
-        game.run_component_harness(integrated::ComponentHarness::Sculk(spec))?;
+        game.run_component_harness(fixtures::ComponentHarness::Sculk(spec))?;
         return Ok(None);
     }
     if game.options.execution_role == execution_role::ExecutionRole::DedicatedServer {
         game.run_dedicated()?;
         return Ok(None);
     }
-    match game.options.world.clone() {
-        _ if game.options.server.is_some() => {
-            let (address, name) = (
-                game.options.server.clone().unwrap_or_default(),
-                game.options.player_name(),
-            );
-            game.connect_server(&address, &name)?;
-            if let Some(report) = std::env::var_os("HORIZON_NET_REPORT") {
-                game.run_net_harness(report.as_ref())?;
-                return Ok(None);
-            }
+    if let Some(address) = game.options.server.clone() {
+        let name = game.options.player_name();
+        game.connect_server(&address, &name)?;
+        if let Some(report) = std::env::var_os("HORIZON_NET_REPORT") {
+            game.run_net_harness(report.as_ref())?;
+            return Ok(None);
         }
-        Some(folder) => {
-            let (seed, creative) = (game.options.seed, game.options.creative);
-            if std::env::var_os("HORIZON_COMMAND_SCRIPT").is_some() {
-                // Headless, but with the same server and memory connection as play.
-                game.open_integrated(&folder, None, Some(seed), creative, None)?;
-            } else {
-                // Start after the window is handed over, so --world uses the
-                // same responsive initialization path as the title screen.
-                game.title = Some(Title::new(
-                    std::env::current_dir()?.join("saves"),
-                    &game.options.resources,
-                ));
-                game.pending_entry = Some(PendingWorldEntry::Local {
-                    folder,
-                    name: None,
-                    seed: Some(seed),
-                    creative,
-                    create: None,
-                });
-            }
+        if std::env::var_os("HORIZON_STATIONARY_CLIENT").is_some() {
+            // The command harness's player: headless, it stays where the
+            // server's commands put it until the server ends.
+            game.run_stationary_client()?;
+            return Ok(None);
         }
-        None if handoff => {}
-        None => {
-            let mut title = Title::new(
-                std::env::current_dir()?.join("saves"),
-                &game.options.resources,
-            );
-            title.last_server = game.settings.file.string("lastServer");
-            game.title = Some(title);
-        }
-    }
-    if std::env::var_os("HORIZON_COMMAND_SCRIPT").is_some()
-        && std::env::var_os("HORIZON_COMMAND_OUTPUT").is_some()
-    {
-        game.wait_command_harness()?;
-        return Ok(None);
+    } else if !handoff {
+        let mut title = Title::new(
+            std::env::current_dir()?.join("saves"),
+            &game.options.resources,
+        );
+        title.last_server = game.settings.file.string("lastServer");
+        game.title = Some(title);
     }
     Ok(Some(game))
 }
@@ -14749,8 +14447,7 @@ impl Loading {
         let handoff_at = Instant::now();
         let mut options = self.options.take().ok_or("loading already finished")?;
         options.resources = loaded.root.clone();
-        // StartupMenu owns world selection until it can hand it to Game.
-        options.world = None;
+        // StartupMenu owns the server to join until it can hand it to Game.
         options.server = None;
         let gui = self.gui.take().ok_or("missing menu bundle")?;
         let window = self.window.clone().ok_or("window closed")?;
@@ -15031,10 +14728,8 @@ pub fn run_with(program: Program, args: Vec<String>) -> Result<()> {
     let early_settings = Settings::load(&std::env::current_dir()?.join("options.txt"));
     // "Playing Horizon" on Discord: never for a server; an automated run only talks to a test's fake Discord.
     if options.dedicated.is_none() {
-        let automated = options.benchmark.is_some()
-            || options.offscreen
-            || options.frames.is_some()
-            || options.world_frames.is_some();
+        let automated =
+            options.offscreen || options.frames.is_some() || options.world_frames.is_some();
         horizon_client::discord_presence::start(early_settings.extras.discord_presence, automated);
     }
     // Snapshots of derived tables live in the game folder, never beside the

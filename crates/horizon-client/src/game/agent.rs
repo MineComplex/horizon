@@ -417,7 +417,6 @@ impl Game<'_> {
             Screen::Chat => "chat",
             Screen::Stats => "stats",
             Screen::Advancements => "advancements",
-            Screen::WorldOptions => "world-options",
             Screen::ServerLinks => "server-links",
             Screen::ConfirmLink => "confirm-link",
             Screen::DialogWarning => "dialog-warning",
@@ -496,10 +495,8 @@ impl Game<'_> {
             "dialog": self.dialog_status(),
             "screen": self.screen_label(),
             "menu": self.title.as_ref().map(|_| self.title_value()),
-            "world": (self.title.is_none()).then(|| match &self.integrated {
-                Some(server) => server.world_name.clone(),
-                None => self.level.name.clone(),
-            }),
+            "world": (self.title.is_none())
+                .then(|| self.server_world_name().unwrap_or_else(|| self.level.name.clone())),
             "dimension": self.dim.id(),
             "gamemode": format!("{:?}", self.mode).to_lowercase(),
             // The bed (its head) the player sleeps in.
@@ -1532,12 +1529,9 @@ impl Game<'_> {
                     return Err("command TEXT".into());
                 }
                 let command = format!("/{text}");
-                // Single player's console is its server thread's.
-                if let Some(server) = &self.integrated {
-                    let chat = server
-                        .call(move |g| g.owner_console_command(&command))
-                        .ok_or("the integrated server stopped")?;
-                    return ok(json!({ "ok": true, "chat": chat }));
+                // A test's client runs it on its server, at the console's permission.
+                if let Some(reply) = self.ask_server(&format!("command {}", &command[1..])) {
+                    return ok(json!({ "ok": true, "chat": reply?["chat"] }));
                 }
                 if self.remote.is_some() {
                     self.send_chat(&command);

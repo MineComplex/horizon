@@ -10,45 +10,84 @@
 //!
 //! `--resources` (or `HORIZON_RESOURCES`) names the prepared 26.3 data
 //! (`horizon-prepare`); without it the `resources/` folder beside the program
-//! is used. Every other argument is vanilla's (`net.minecraft.server.Main`).
+//! is used. For tests: `--control-socket PATH` (what `horizon-ctl` and a
+//! client's `--server-control` ask, game/server_control.rs), `--time`,
+//! `--weather`, `--dimension`, `--test-terrain`, and the component fixtures
+//! (`HORIZON_DISPENSE_FIXTURE`, `HORIZON_SCULK_FIXTURE`). Every other argument
+//! is vanilla's (`net.minecraft.server.Main`).
 #![forbid(unsafe_code)]
 
 use horizon_client::{crash, logging};
 use std::path::PathBuf;
 
-/// Split `--resources DIR` from the server's own arguments.
-fn split_resources(args: Vec<String>) -> (Option<String>, Vec<String>) {
-    let mut resources = None;
+/// Horizon's own options, which go before vanilla's: they take a value,
+/// except `--test-terrain`.
+const HORIZON_OPTIONS: &[&str] = &[
+    "--resources",
+    "--control-socket",
+    "--time",
+    "--weather",
+    "--dimension",
+    "--render-distance",
+];
+
+/// Split Horizon's options (`--resources DIR`, `--control-socket PATH`...)
+/// from vanilla's server arguments. A `--dedicated` is dropped: the server
+/// always is.
+fn split_options(args: Vec<String>) -> (Vec<String>, Vec<String>) {
+    let mut horizon = Vec::new();
     let mut rest = Vec::new();
+    let mut resources = false;
     let mut it = args.into_iter();
     while let Some(arg) = it.next() {
-        match arg.as_str() {
-            "--resources" | "-resources" => resources = it.next(),
-            _ => match arg.strip_prefix("--resources=") {
-                Some(dir) => resources = Some(dir.to_owned()),
-                None => rest.push(arg),
-            },
+        let (name, inline) = match arg.split_once('=') {
+            Some((n, v)) if n.starts_with("--") => (n.to_owned(), Some(v.to_owned())),
+            _ => (arg.clone(), None),
+        };
+        let name = if name == "-resources" {
+            "--resources".to_owned()
+        } else {
+            name
+        };
+        if HORIZON_OPTIONS.contains(&name.as_str()) {
+            resources |= name == "--resources";
+            horizon.push(name);
+            if let Some(value) = inline.or_else(|| it.next()) {
+                horizon.push(value);
+            }
+        } else if name == "--test-terrain" {
+            horizon.push(name);
+        } else if name != "--dedicated" {
+            rest.push(arg);
         }
     }
-    let resources = resources.or_else(|| std::env::var("HORIZON_RESOURCES").ok());
-    (resources.filter(|r| !r.is_empty()), rest)
+    if !resources
+        && let Ok(dir) = std::env::var("HORIZON_RESOURCES")
+        && !dir.is_empty()
+    {
+        horizon.push("--resources".to_owned());
+        horizon.push(dir);
+    }
+    (horizon, rest)
 }
 
-/// The arguments the game takes for a dedicated server.
-fn game_args(resources: Option<String>, server: Vec<String>) -> Vec<String> {
-    let mut args = Vec::new();
-    if let Some(dir) = resources {
-        args.push("--resources".to_owned());
-        args.push(dir);
+/// The arguments the game takes: Horizon's, then the dedicated server's.
+/// A component fixture (game/fixtures.rs) runs without `--dedicated`.
+fn game_args(horizon: Vec<String>, server: Vec<String>, fixture: bool) -> Vec<String> {
+    let mut args = horizon;
+    if !fixture {
+        args.push("--dedicated".to_owned());
     }
-    args.push("--dedicated".to_owned());
     args.extend(server);
     args
 }
 
 fn main() {
-    let (resources, server) = split_resources(std::env::args().skip(1).collect());
+    let (horizon, server) = split_options(std::env::args().skip(1).collect());
     let help = server.iter().any(|a| a == "--help" || a == "-help");
+    let fixture = ["HORIZON_DISPENSE_FIXTURE", "HORIZON_SCULK_FIXTURE"]
+        .iter()
+        .any(|v| std::env::var_os(v).is_some());
     let home = PathBuf::from(".");
     if !help {
         logging::init(&home, "Server thread");
@@ -57,7 +96,7 @@ fn main() {
     }
     if let Err(error) = horizon_client::game::run_with(
         horizon_client::game::Program::Server,
-        game_args(resources, server),
+        game_args(horizon, server, fixture),
     ) {
         log::error!("{error}");
         if !help {
@@ -78,29 +117,32 @@ mod tests {
     }
 
     #[test]
-    fn the_resources_are_taken_out_and_the_rest_go_to_the_server() {
-        let (resources, rest) = split_resources(strings(&[
+    fn horizon_options_go_first_and_the_rest_to_the_server() {
+        let (horizon, rest) = split_options(strings(&[
             "--nogui",
             "--resources",
             "/r",
+            "--control-socket=/c.sock",
+            "--test-terrain",
+            "--dedicated",
             "--port",
             "25566",
         ]));
-        assert_eq!(resources.as_deref(), Some("/r"));
-        assert_eq!(rest, strings(&["--nogui", "--port", "25566"]));
         assert_eq!(
-            game_args(resources, rest),
+            horizon,
             strings(&[
                 "--resources",
                 "/r",
-                "--dedicated",
-                "--nogui",
-                "--port",
-                "25566"
+                "--control-socket",
+                "/c.sock",
+                "--test-terrain"
             ])
         );
-        let (resources, rest) = split_resources(strings(&["--resources=/x", "--initSettings"]));
-        assert_eq!(resources.as_deref(), Some("/x"));
-        assert_eq!(rest, strings(&["--initSettings"]));
+        assert_eq!(rest, strings(&["--nogui", "--port", "25566"]));
+        assert_eq!(
+            game_args(horizon.clone(), rest.clone(), false)[5..],
+            strings(&["--dedicated", "--nogui", "--port", "25566"])
+        );
+        assert!(!game_args(horizon, rest, true).contains(&"--dedicated".to_owned()));
     }
 }

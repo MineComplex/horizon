@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """Check #1527: per-dimension /forceload add/remove across normal restarts.
 
-Build horizon-client and horizon-ctl with the fast profile first, then run:
+Build horizon-client, horizon-server and horizon-ctl with the fast profile first, then run:
   python3 tools/singleplayer_forced_chunks_audit.py --case force-save
-Runs single player on its server thread, using scratch homes.
+The world runs on a horizon-server the client joins (horizon-ctl launch --world), in scratch homes.
 """
 import argparse
+import json
 import os
 from pathlib import Path
 import shutil
@@ -18,6 +19,14 @@ import lab
 
 
 DIMENSIONS = ('the_nether', 'the_end', 'overworld')
+
+
+def alive(pid):
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    return True
 
 
 def query(cli, dimension, expected):
@@ -52,17 +61,17 @@ def run(bin_dir, resources):
                 shutil.copytree(previous, home / 'saves')
             socket = work / f'{stage}.sock'
             cli = Cli(bin_dir / 'horizon-ctl', socket, home, env)
-            args = [str(bin_dir / 'horizon-dev'), '--resources', str(resources),
-                    '--world', 'forced', '--creative', '--seed', '4242', '--offscreen',
-                    '--render-distance', '4', '--control', '--control-socket', str(socket)]
+            # horizon-ctl starts a horizon-server on the world and the client joins it.
+            launch = subprocess.run(
+                [str(bin_dir / 'horizon-ctl'), '--socket', str(socket), 'launch', '--resources', str(resources),
+                 '--world', 'forced', '--creative', '--seed', '4242', '--offscreen', '--render-distance', '4'],
+                cwd=home, env=env, capture_output=True, text=True, timeout=900)
+            reply = json.loads(launch.stdout.strip().splitlines()[-1])
+            if launch.returncode or 'error' in reply:
+                raise RuntimeError(f'launch: {reply}')
+            pids = [reply['pid'], reply['server']['pid']]
             with (work / f'{stage}.log').open('w') as log:
-                process = subprocess.Popen(args, cwd=home, env=env, stdout=log, stderr=log)
                 try:
-                    deadline = time.monotonic() + 120
-                    while not socket.exists():
-                        if process.poll() is not None or time.monotonic() > deadline:
-                            raise RuntimeError('game did not open its control socket')
-                        time.sleep(0.1)
                     cli('wait_ready', seconds=240)
                     for i, dim in enumerate(DIMENSIONS):
                         cli('command', command=f'execute in minecraft:{dim} run tp @s 0 100 0')
@@ -82,17 +91,23 @@ def run(bin_dir, resources):
                             cli('command', command=f'forceload remove {(i - 1) * 16} -1')
                             query(cli, dim, [])
                     cli('quit')
-                    assert process.wait(timeout=120) == 0
+                    # The server saves the world as it stops with its client.
+                    deadline = time.monotonic() + 120
+                    while any(alive(pid) for pid in pids):
+                        if time.monotonic() > deadline:
+                            raise AssertionError('the game or its server did not exit')
+                        time.sleep(0.2)
                 except Exception:
+                    log.write(socket.with_name(socket.name + '.server.log').read_text(errors='replace'))
                     log.flush()
                     print((work / f'{stage}.log').read_text(errors='replace')[-6000:])
                     raise
                 finally:
-                    if process.poll() is None:
-                        process.terminate()
-                        process.wait(timeout=30)
+                    for pid in pids:
+                        if alive(pid):
+                            os.kill(pid, 15)
             previous = home / 'saves'
-        print('PASS force-save: server-thread, three dimensions, add/remove/restart')
+        print('PASS force-save: server, three dimensions, add/remove/restart')
 
 
 def main():

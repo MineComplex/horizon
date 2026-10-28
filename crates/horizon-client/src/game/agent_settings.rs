@@ -19,9 +19,6 @@ impl Game<'_> {
     /// At startup: open the socket if the game was started for an agent or Agent Control is on.
     pub(super) fn start_agent_control(&mut self) -> Result<()> {
         self.agent_control_on = self.settings.extras.agent_control;
-        if self.options.benchmark.is_some() && self.options.control.is_none() {
-            return Ok(());
-        }
         if self.settings.extras.no_ai {
             if self.options.control.is_some() {
                 log::warn!(

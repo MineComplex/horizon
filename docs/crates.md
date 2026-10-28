@@ -33,25 +33,26 @@ Velocity analog.
    git commit -am "Split Game into Sim + Frontend (generated: python3 tools/split_game.py)"
    ```
 
-There is no single player in this fork: the client only joins servers. The programs:
+There is no single player in this fork. Two programs:
 
-- `horizon-client` (players): joins servers only. It refuses `--world`, `--seed`, `--creative`,
-  `--test-terrain`, `--benchmark`, `--dedicated` and the world fixtures (`game::Program::Client`), and
-  `open_world` fails in it, so no path (title screen, horizon-ctl, quick play) opens a world of its own.
-  Open to LAN and `/publish` exist only on an integrated server, which it never starts.
-- `horizon-server` (`crates/horizon-server`): the dedicated server, Leaf-style.
-- `horizon-dev` (`crates/horizon-client/src/bin/horizon-dev.rs`, never shipped): everything, for the
-  harnesses: `--world` on the integrated server thread, the fixtures, `--dedicated`. The tools run it.
+- `horizon-client`: joins servers only. No single player, no Open to LAN, no `/publish`, no world options
+  (`--world`, `--seed`, `--creative`, `--benchmark` are unknown to it), no integrated server: `open_world`,
+  `game/integrated.rs` and `game/lan_screen.rs` are gone.
+- `horizon-server` (`crates/horizon-server`): the dedicated server, Leaf-style. For tests it also takes
+  `--control-socket PATH` (game/server_control.rs: what a client's `--server-control` and `horizon-ctl`
+  ask), `--time`, `--weather`, `--dimension`, `--test-terrain`, and runs the fixtures (`HORIZON_DISPENSE_FIXTURE`,
+  `HORIZON_SCULK_FIXTURE`, `HORIZON_COMMAND_SCRIPT` with a headless client, `HORIZON_STATIONARY_CLIENT`).
 
-The integrated server's code still lives in the shared library for `horizon-dev`; it leaves with step 7.
+Tests run the two together: `horizon-ctl launch --world W` writes a scratch `server.properties` (offline,
+the player in `ops.json`), starts `horizon-server` on `saves/W`, then the client with `--server` and
+`--server-control`; the server stops with the client (`exit-with`). `tools/test_server.py` does the same for
+scripts that start the client themselves.
 
 ## Next
 
 6. Move the server half of `Game` and its `impl` blocks into a crate without the window: the methods that
    touch `self.front` stay in the client, and the calls server code makes into it (sounds, particles,
    screens) go through a trait.
-7. The game-binary fixtures (`dispense_fixture`, `sculk_fixture`, `command_harness`, `net_harness`) and
-   `horizon-ctl launch --world` on `horizon-server` (a server subprocess plus a client), then `horizon-dev`
-   and the integrated server thread go.
+7. Done: tests run `horizon-server` plus `horizon-client` (above).
 8. `horizon-server-api`: the Bukkit-like API as native Rust plugins (traits, dynamic libraries), the way
    `horizon-proxy` loads its plugins.

@@ -98,7 +98,7 @@ passes on without checking it).
 | Worlds: delete | Select World | part | part | yes | yes | `world-delete FOLDER --confirm`; it was possible through `click` without any confirm |
 | Servers list | Multiplayer | part | part | yes | yes | `servers` (names and addresses; reads servers.dat) |
 | Join a server or an invite code, leave | Multiplayer | part | no | yes | yes | `connect`, `disconnect` |
-| Open to LAN | Pause > Open to LAN | part | no | yes | yes | `lan open\|close\|status` |
+| A test server's port and players | none | part | no | yes | yes | `lan open\|status` |
 | Play with Friends: host, stop, status | Pause | part | no | yes | yes | `friends host\|stop\|status` |
 | Vanilla options, every page | Options | yes | part | yes | yes | `options-get`, `options-set` (all of options.txt, typed); `options PAGE` was socket-only |
 | Horizon Settings: Graphics, Controller, Extras, Mods, AI Agent | Horizon Settings | part | part | yes | yes | `options horizon\|graphics\|extras\|agent...`, then `ui`/`click`/`set` |

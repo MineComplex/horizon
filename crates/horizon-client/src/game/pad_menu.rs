@@ -934,10 +934,6 @@ impl Game<'_> {
             if key != Some(KeyCode::Enter) {
                 self.station_text(text, backspace);
             }
-        } else if self.screen == Screen::WorldOptions {
-            if key != Some(KeyCode::Enter) {
-                self.world_options_text(text);
-            }
         } else if self.screen == Screen::Options {
             let result = match text {
                 Some(t) => {
@@ -957,9 +953,7 @@ impl Game<'_> {
         }
         // Enter ends the typing; a field that closed with it closes the keyboard.
         if key == Some(KeyCode::Enter)
-            || (!self.pad_typing()
-                && self.title.is_none()
-                && !matches!(self.screen, Screen::Options | Screen::WorldOptions))
+            || (!self.pad_typing() && self.title.is_none() && self.screen != Screen::Options)
         {
             self.pad.menu.osk = None;
         }

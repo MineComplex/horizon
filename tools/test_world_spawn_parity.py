@@ -134,12 +134,12 @@ def main():
     if args.origins_only:
         sys.exit(1 if origin_diffs else 0)
 
-    oh.run_logged(['cargo', 'build', '--profile', 'fast', '-p', 'horizon-client', '--bin', 'horizon-dev'], build,
+    oh.run_logged(['cargo', 'build', '--profile', 'fast', '-p', 'horizon-server', '--bin', 'horizon-server'], build,
                   'compile-rust', timeout=3600)
-    binary = target_dir('fast') / ('horizon-dev.exe' if os.name == 'nt' else 'horizon-dev')
+    binary = target_dir('fast') / ('horizon-server.exe' if os.name == 'nt' else 'horizon-server')
     # One worker thread: the chunks decorated in a fixed order (see above).
     vanilla_server = ['java', '-Xmx2g', '-Dmax.bg.threads=1', '-cp', dependencies, 'net.minecraft.server.Main', 'nogui']
-    horizon_server = [binary, '--resources', RESOURCES, '--dedicated', '--nogui']
+    horizon_server = [binary, '--resources', RESOURCES, '--nogui']
     os.environ.update(lab.game_env())
 
     def one(seed):

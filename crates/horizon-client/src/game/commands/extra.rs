@@ -637,7 +637,7 @@ impl Game<'_> {
         if host.is_empty() && guests.is_empty() {
             return Err(err("argument.entity.notfound.player", &[]));
         }
-        if self.lan.is_none() || (self.serving() && self.published_port().is_none()) {
+        if self.lan.is_none() {
             return Err(err("commands.kick.singleplayer.failed", &[]));
         }
         let reason_raw = match ctx.get("reason") {
@@ -759,67 +759,6 @@ impl Game<'_> {
             "{{id:[I;{a},{b},{c},{d}],name:\"{}\",properties:[]}}",
             super::super::chat::PLAYER_NAME
         )
-    }
-
-    // ---- /publish, /unpublish -------------------------------------------
-
-    /// `PublishCommand.publish` with `IntegratedServer.publishServer`.
-    pub(super) fn cmd_publish(&mut self, ctx: &Context) -> R<i32> {
-        let allow = matches!(ctx.get("allowCommands"), Some(Arg::Bool(true)));
-        let port = match ctx.get("port") {
-            Some(Arg::Int(p)) => *p,
-            // HttpUtil.getAvailablePort.
-            _ => std::net::TcpListener::bind(("0.0.0.0", 0))
-                .and_then(|l| l.local_addr())
-                .map_or(25564, |a| i32::from(a.port())),
-        };
-        let published = if self.serving() {
-            self.published_port()
-        } else {
-            self.lan.as_ref().map(|l| l.settings.port)
-        };
-        if let Some(port) = published {
-            return Err(err("commands.publish.alreadyPublished.lan", &[&port]));
-        }
-        let settings = super::super::lan::LanSettings {
-            port: port as u16,
-            guest_commands: allow,
-            force_game_mode: false,
-        };
-        let started = if self.serving() {
-            self.publish(settings).is_ok()
-        } else {
-            self.lan_start(settings).is_ok()
-        };
-        if !started {
-            return Err(err("commands.publish.failed", &[]));
-        }
-        let port_text = port.to_string();
-        let link = Text::literal(port_text.clone()).with_style(&Style {
-            color: Some(text::GREEN),
-            hover: Some(Box::new(Text::translate("chat.copy.click", &[]))),
-            ..Style::default()
-        });
-        self.feedback(Text::translate(
-            "commands.publish.started.lan",
-            &[Text::translate("chat.square_brackets", &[link])],
-        ));
-        Ok(port)
-    }
-    pub(super) fn cmd_unpublish(&mut self) -> R<i32> {
-        if self.serving() {
-            if !self.unpublish() {
-                return Err(err("commands.unpublish.notPublished", &[]));
-            }
-            self.feedback(Text::translate("commands.unpublish.success", &[]));
-            return Ok(1);
-        }
-        if self.lan.is_none() {
-            return Err(err("commands.unpublish.notPublished", &[]));
-        }
-        self.lan_close(false);
-        self.feedback(Text::translate("commands.unpublish.success", &[]));
-        Ok(1)
     }
 
     // ---- /debug, /jfr, /version -----------------------------------------

@@ -31,6 +31,7 @@ EXEMPT = {
     "pr_ready.py": "runs cargo checks and parity.py",
     "test_friends_integration_parity.py": "builds binaries; test_friends.Game isolates every game through integration_env",
     "port_harness.py": "ports Java code, starts no game",
+    "oracle_harness.py": "starts the game through integration_env.run_game, which gives it lab.game_env",
 }
 
 

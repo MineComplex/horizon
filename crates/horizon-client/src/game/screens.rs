@@ -17,7 +17,6 @@ impl Screen {
             Self::Options
             | Self::Stats
             | Self::Advancements
-            | Self::WorldOptions
             | Self::ServerLinks
             | Self::ConfirmLink
             | Self::DialogWarning => true,
@@ -106,9 +105,9 @@ fn death_buttons(w: f32, h: f32, hardcore: bool) -> [(f32, f32, &'static str, u8
     ]
 }
 impl Game<'_> {
-    /// Singleplayer also has a connection, backed by the integrated server.
+    /// The window plays on a server (it has no world of its own).
     pub(super) fn external_server(&self) -> bool {
-        self.remote.is_some() && self.integrated.is_none()
+        self.remote.is_some()
     }
     pub(super) fn draw_pause_menu(&mut self, batch: &mut HudBatch) {
         let atlas = &self.gui.atlas;
@@ -365,12 +364,7 @@ mod tests {
 
     #[test]
     fn menu_blur_matches_vanilla_screen_backgrounds() {
-        for screen in [
-            Screen::Options,
-            Screen::Stats,
-            Screen::Advancements,
-            Screen::WorldOptions,
-        ] {
+        for screen in [Screen::Options, Screen::Stats, Screen::Advancements] {
             assert!(screen.blurs_background(false));
             assert!(screen.blurs_background(true));
         }

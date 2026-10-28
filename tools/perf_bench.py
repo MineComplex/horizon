@@ -14,7 +14,7 @@ for every game. RSS is sampled from outside the process for every game too.
     python3 tools/perf_bench.py --table horizon-m4 vanilla-m4 mods-m4
 
 Games:
-  horizon       target/release/horizon-dev, driven over its control socket
+  horizon       target/release/horizon-client on a horizon-server, driven over its control socket
   vanilla       your own 26.3 client.jar + Fabric Loader + a dev-only driver
                 mod (mods/horizon/src/bench), built here; nothing of the game
                 is redistributed
@@ -48,10 +48,11 @@ import zipfile
 from pathlib import Path
 
 try:
-    from . import lab, runtime
+    from . import lab, runtime, test_server
 except ImportError:
     import lab
     import runtime
+    import test_server
 
 ROOT = lab.ROOT
 WORK = ROOT / ".local/perf-bench"
@@ -381,9 +382,9 @@ def run_horizon(args, distance):
     options = write_options(game_dir, distance)
     sock = Path("/tmp") / f"horizon-bench-{os.getpid()}.sock"
     sock.unlink(missing_ok=True)
-    client = Path(args.build).resolve() / "horizon-dev"
-    command = [str(client), "--resources", str(Path(args.resources).resolve()),
-               "--control-socket", str(sock), "--no-pause", "--weather", "clear", "--time", "6000"]
+    client = Path(args.build).resolve() / "horizon-client"
+    resources = Path(args.resources).resolve()
+    command = [str(client), "--resources", str(resources), "--control-socket", str(sock), "--no-pause"]
     if (args.width, args.height) != SIZES[0]:
         # 1280x720 is Horizon's own window; builds before --width open only that one.
         command += ["--width", str(args.width), "--height", str(args.height)]
@@ -405,6 +406,12 @@ def run_horizon(args, distance):
             finally:
                 stop(proc)
                 sock.unlink(missing_ok=True)
+    # The world runs on a horizon-server (the client has none of its own), joined after the title.
+    server = test_server.Server(client.with_name("horizon-server"), game_dir / "server", resources,
+                                world=WORLD, universe=game_dir / "saves", seed=SEED, creative=True,
+                                distance=distance, extra=["--weather", "clear", "--time", "6000"], env=env)
+    server.wait_started()
+    command += ["--server-control", str(server.control), "--name", "Player"]
     log = (WORK / f"horizon-rd{distance}.log").open("w")
     started = time.time()
     proc = subprocess.Popen(command, cwd=game_dir, env=env, stdout=log, stderr=subprocess.STDOUT)
@@ -417,7 +424,7 @@ def run_horizon(args, distance):
         title, at = poll(control, lambda s: s.get("screen") == "title" and s.get("renderer"), 300)
         result["renderer"] = title["renderer"]
         result["startup"] = {"title_s": at - started}
-        control(f"open {WORLD} {SEED} creative")
+        control(f"connect 127.0.0.1:{server.port} Player")
         result["startup"]["world_s"] = wait_loaded(control, lambda p: True, args.timeout, view_chunks(distance)) - started
         for name, start, end, pitch in scene_list(args):
             control("time 6000")
@@ -450,6 +457,7 @@ def run_horizon(args, distance):
         except (OSError, ValueError, RuntimeError):
             pass
         stop(proc)
+        server.stop()
         sampler.stop.set()
         sock.unlink(missing_ok=True)
     result["memory"] = sampler.summary(windows)

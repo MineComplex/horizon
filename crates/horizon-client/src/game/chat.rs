@@ -77,11 +77,6 @@ impl Game<'_> {
     pub(super) fn allow_commands(&self) -> bool {
         self.level.allow_commands == Some(true)
     }
-    /// `IntegratedServer.setWorldAllowCommands`, then `updatePermissions`.
-    pub(super) fn set_allow_commands(&mut self, allow: bool) {
-        self.level.allow_commands = Some(allow);
-        self.world_data.registries.permission = owner_permission(allow);
-    }
     /// Commands the game issues itself (the server console, harnesses, the
     /// control socket) run at the owner's level whatever Allow Commands says.
     pub(super) fn as_console<T>(&mut self, f: impl FnOnce(&mut Self) -> T) -> T {

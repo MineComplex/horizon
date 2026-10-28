@@ -47,7 +47,7 @@ The [documentation](https://playhorizon.dev/docs/) covers each of these.
 - **The game:** singleplayer with vanilla's world generation, mobs, villagers, raids, redstone, every command, the HUD and the recipe book, on saves in vanilla's format. Worlds from 1.8 to 26.2 are upgraded as vanilla does. [Status table](#project-status).
 - **Horizon's own extras:** new menus (vanilla's are one setting away), graphics presets, distant terrain up to 1024 chunks, controller support, optional zoom, minimap and more, all off by default where they would change the vanilla look. See [Settings](https://playhorizon.dev/docs/settings).
 - **Resource packs and data packs:** resource packs work, and data packs load functions, predicates and item modifiers.
-- **Playing with others:** invite friends from the pause menu's Friends button with a code, Open to LAN, and joining servers, online-mode ones with the Microsoft account the launcher signs in with. See [Multiplayer](https://playhorizon.dev/docs/multiplayer).
+- **Playing with others:** joining servers (`horizon-server`, behind the proxy or not); the client has no single player or LAN of its own. See [Multiplayer](https://playhorizon.dev/docs/multiplayer).
 - **Mods:** Horizon has its own mod system (Rust compiled to WebAssembly). Java mod jars do not run. See [Mods and data packs](https://playhorizon.dev/docs/mods).
 
 Screenshots, captured in the Rust client itself with vanilla assets and no mods or shaders:
@@ -79,7 +79,7 @@ The launcher's **Modpacks** page imports a Modrinth or CurseForge pack, shows wh
 AI agents and scripts can play Horizon. `horizon-ctl`, shipped beside the game in every release folder, is a command line that reads the game as JSON and acts like a player; `horizon-ctl mcp` serves the same commands as an MCP server (one tool per command, screenshots returned as images).
 
 ```sh
-horizon-ctl launch --server play.example.net --wait  # join a server (a --world needs the horizon-dev build)
+horizon-ctl launch --world Survival --seed 5 --wait  # a horizon-server on the world, and the client joined to it
 horizon-ctl state                                       # position, health, food, target, screen...
 horizon-ctl find-block birch_log                        # the nearest logs
 horizon-ctl goto -0.5 65 -2.5 --near 2.5                # walks there along a path
@@ -108,7 +108,7 @@ cargo run --release -p horizon-client
 
 Everything prepared lands in the gitignored `.local/`. It is derived from the game: never commit it or share it.
 
-The client starts on the title screen and only joins servers: worlds run on `horizon-server` ([docs/server.md](docs/server.md)); `horizon-dev`, the development build, also opens its own (`--world`). Command-line options, controls, scripting through `horizon-ctl` and the architecture are described in [the native client guide](docs/native-client.md). The rest of the developer documentation is indexed in [docs/README.md](docs/README.md), including [the parity workflow](docs/parity-workflow.md).
+The client starts on the title screen and only joins servers: worlds run on `horizon-server` ([docs/server.md](docs/server.md)). Command-line options, controls, scripting through `horizon-ctl` and the architecture are described in [the native client guide](docs/native-client.md). The rest of the developer documentation is indexed in [docs/README.md](docs/README.md), including [the parity workflow](docs/parity-workflow.md).
 
 ## Roadmap
 

@@ -538,7 +538,7 @@ EXTRA = [
     'place template minecraft:igloo/top', 'place template minecraft:igloo/top ~ ~ ~ clockwise_90 front_back 0.5 5', 'place template minecraft:igloo/top ~ ~ ~ nope', 'raid start 5', 'compute',
     'stopwatch create foo:bar', 'stopwatch query foo:bar', 'stopwatch query foo:bar 1.5', 'stopwatch restart foo:bar', 'stopwatch remove foo:bar', 'spectate', 'spectate @e[limit=1]', 'spectate @e[limit=1] @s', 'spectate @e[limit=1] nope',
     'waypoint list', 'waypoint modify @s color red', 'waypoint modify @s color hex ff0000', 'waypoint modify @s style default', 'waypoint modify @s style reset', 'waypoint modify @s color reset', 'waypoint modify @s style nope',
-    'dialog show @s foo:bar', 'dialog clear @s', 'dialog show @s {type:"minecraft:notice",title:"x"}', 'publish', 'publish true', 'publish true survival 25565', 'publish false creative', 'publish nope', 'unpublish',
+    'dialog show @s foo:bar', 'dialog clear @s', 'dialog show @s {type:"minecraft:notice",title:"x"}',
     'version', 'help execute', 'help execute run', 'help nope', 'help give', 'help tp', 'kick @s', 'kick @s "reason"', 'fetchprofile name Notch', 'fetchprofile id 00000000-0000-0000-0000-000000000001',
     'posteffect @s minecraft:x', 'posteffect', 'ban Player', 'op Player', 'whitelist add Player', 'stop', 'save-all', 'debug start', 'debug stop', 'debug report', 'debug function foo:bar',
     'time set 1', 'time set  1', ' time set 1', 'time\tset 1', 'say \u00e9\u00e9', 'say \U0001f600', 'tp \u00e9 1 2 3', 'give \U0001f600 stone', 'execute as @e[name="\u00e9"] run say \u00e9',

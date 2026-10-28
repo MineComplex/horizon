@@ -1,5 +1,5 @@
 //! Commands of the hosted game rather than the world: `/dialog`, `/kick`,
-//! `/posteffect`, `/fetchprofile`, `/spectate`, `/publish`, `/unpublish`,
+//! `/posteffect`, `/fetchprofile`, `/spectate`,
 //! `/waypoint`, `/debug`, `/jfr` and `/test`.
 use super::{
     Dispatcher,
@@ -69,18 +69,6 @@ pub fn register(d: &mut Dispatcher, root: usize) {
     d.executes(target, "spectate");
     let player = d.argument(target, "player", PLAYER);
     d.executes(player, "spectate");
-
-    // PublishCommand / UnpublishCommand
-    let publish = d.literal(root, "publish");
-    d.requires(publish, OWNERS);
-    d.executes(publish, "publish");
-    let allow = d.argument(publish, "allowCommands", ArgType::Bool);
-    d.executes(allow, "publish");
-    let port = d.argument(allow, "port", ArgType::Integer { min: 0, max: 65535 });
-    d.executes(port, "publish");
-    let unpublish = d.literal(root, "unpublish");
-    d.requires(unpublish, OWNERS);
-    d.executes(unpublish, "unpublish");
 
     // WaypointCommand
     let wp = d.literal(root, "waypoint");

@@ -363,6 +363,8 @@ def horizon_resave(source, destination, bin_dir):
     print(launch.stdout.strip())
     if launch.returncode:
         sys.exit('horizon failed to launch: ' + launch.stdout + launch.stderr)
+    launched = json.loads(launch.stdout.strip().splitlines()[-1])
+    server_pid = (launched.get('server') or {}).get('pid')
     steps = [['wait-ready', '240']]
     steps += [['command', f'gamerule {rule} {new}'] for rule, (_, new) in HORIZON_RULES.items()]
     steps += [['save-all'], ['quit']]
@@ -371,7 +373,15 @@ def horizon_resave(source, destination, bin_dir):
         print(' '.join(step), '->', result.stdout.strip() or result.stderr.strip())
         if step[0] != 'quit' and result.returncode:
             sys.exit('horizon-ctl failed: ' + result.stdout)
-    time.sleep(3)
+    # The world's server saves as it stops with its client.
+    deadline = time.time() + 120
+    while server_pid and time.time() < deadline:
+        try:
+            os.kill(server_pid, 0)
+        except ProcessLookupError:
+            break
+        time.sleep(0.2)
+    time.sleep(1)
     return saves / 'world'
 
 
@@ -652,7 +662,7 @@ def main():
     else:
         bin_dir = Path(args.bin_dir).resolve() if args.bin_dir else None
         if bin_dir is None:
-            subprocess.run(['cargo', 'build', '--locked', '--profile', 'fast', '-p', 'horizon-client', '--bins'], cwd=ROOT, check=True)
+            subprocess.run(['cargo', 'build', '--locked', '--profile', 'fast', '-p', 'horizon-client', '--bins', '-p', 'horizon-server'], cwd=ROOT, check=True)
             bin_dir = ROOT / os.environ.get('CARGO_TARGET_DIR', 'target') / 'fast'
         h = horizon_resave(v0, RUN / 'h', bin_dir)
     print('comparing', v0, 'with', h)

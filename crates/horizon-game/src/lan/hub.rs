@@ -217,6 +217,10 @@ pub struct Hub {
     /// `spawn-protection` (dedicated servers): the radius around the world
     /// spawn that only operators may change.
     pub spawn_protection: i32,
+    /// A dedicated server's level for players who are not operators: 0, or 2
+    /// while a test lets every player run commands (`lan open commands` on
+    /// its control endpoint).
+    pub everyone_level: u8,
     chat_type: i32,
     dimension_type: i32,
     clock_ids: Vec<i32>,
@@ -392,6 +396,7 @@ impl Hub {
             ops: Default::default(),
             entity_range_percent: 100,
             spawn_protection: 0,
+            everyone_level: 0,
             weather: (false, 0.0, 0.0),
             level_sync: Default::default(),
             chat_type,
@@ -691,7 +696,7 @@ impl Hub {
             let guests = if self.config.guest_commands { 2 } else { 0 };
             self.ops.get(&uuid).copied().unwrap_or(guests)
         } else if self.config.dedicated {
-            self.ops.get(&uuid).copied().unwrap_or(0)
+            self.ops.get(&uuid).copied().unwrap_or(self.everyone_level)
         } else if self.config.guest_commands {
             2
         } else {

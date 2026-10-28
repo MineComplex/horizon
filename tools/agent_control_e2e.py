@@ -54,10 +54,9 @@ POSITIONAL = {
     'click_button': ['label'], 'type': ['text'], 'wait': ['ticks'], 'wait_ready': ['seconds'],
     'command': ['command'], 'look_at_block': ['x', 'y', 'z'], 'click': ['id'], 'set': ['id', 'value'],
     'give': ['item', 'count'], 'options_get': ['keys'], 'options_set': ['key', 'value'],
-    'wait_for': ['condition', 'value'], 'open': ['world', 'seed', 'mode'], 'select': ['slot'],
+    'wait_for': ['condition', 'value'], 'select': ['slot'],
     'summon': ['kind', 'x', 'y', 'z'], 'interact_entity': ['id'], 'effect': ['id', 'seconds', 'amplifier'],
-    'xp': ['levels'], 'options': ['page'], 'lan': ['action'], 'world_backup': ['folder'],
-    'world_rename': ['folder', 'name'], 'world_delete': ['folder'],
+    'xp': ['levels'], 'options': ['page'], 'lan': ['action'],
 }
 # Booleans the game takes as bare words.
 BARE = {'click_slot': ['right', 'shift'], 'click': ['right', 'middle', 'shift'], 'summon': ['baby']}
@@ -191,18 +190,7 @@ def trunk_bases(d):
 
 
 def scenario(d, out):
-    # 1. A world, made through the title screen's menus.
-    screen = d('screen')
-    assert screen['screen'] == 'title', screen
-    assert any(b['label'] == 'Singleplayer' for b in screen['buttons']), screen
-    d('click_button', label='Singleplayer')
-    if d('screen')['menu'].get('mode') != 'create-world':  # with no worlds, Singleplayer opens it itself
-        d('click_button', label='Create New World')
-    d('type', field='name', replace=True, text='Agent World')
-    d('type', field='seed', text='5')  # spawn near a walkable oak
-    d('click_button', label='Create New World')
-    # The world opens a few frames later: in the frame it is prepared off the UI thread behind the
-    # title screen (world_loading.rs), on the server thread once the server has it.
+    # 1. The world (seed 5: spawn near a walkable oak) runs on the horizon-server launch started.
     d('wait_for', condition='loaded', timeout=400)
     d('wait_ready', seconds=400)
     state = d('state')
@@ -314,17 +302,8 @@ def widgets(d):
 
 
 def ui_scenario(d, out):
-    # 1. Create a world through the title menus, by widget id.
-    tree = widgets(d)
-    assert tree['singleplayer']['kind'] == 'button', tree
-    d('click', id='singleplayer')
-    if 'game' not in widgets(d):  # with no worlds, Singleplayer opens Create New World itself
-        d('click', id='create-new-world')
-    tree = widgets(d)
-    assert tree['game']['kind'] == 'button' and any(w['kind'] == 'field' for w in tree.values()), tree
-    d('type', field='name', replace=True, text='UI World')
-    d('click', id='create-new-world')
-    d('wait_for', condition='loaded', timeout=400)  # a few frames later, as in the survival scenario
+    # 1. The world launch started a horizon-server on.
+    d('wait_for', condition='loaded', timeout=400)
     d('wait_ready', seconds=400)
 
     # 2. Options from the pause menu: a slider set by id moves its value and label.
@@ -399,11 +378,6 @@ def options_scenario(d, out):
 def events_scenario(d, out):
     # Waits instead of polling, and the event log of what happened meanwhile.
     start = d('events')['last']
-    d('click', id='singleplayer')
-    if 'game' not in widgets(d):
-        d('click', id='create-new-world')
-    d('type', field='name', replace=True, text='Events')
-    d('click', id='create-new-world')
     d('wait_for', condition='loaded', timeout=400)
     seq = d('events')['last']  # an event can happen before the wait starts
     d('give', item='oak_log', count=3)
@@ -439,11 +413,6 @@ def consume_scenario(d, out):
     # Consumables finish as vanilla's Consumable.onConsume: always-edible food at full hunger with its
     # effects, milk and honey (no food or drink sounds) with their effects and use remainders, and
     # chorus fruit's random teleport.
-    d('click', id='singleplayer')
-    if 'game' not in widgets(d):
-        d('click', id='create-new-world')
-    d('type', field='name', replace=True, text='Consume')
-    d('click', id='create-new-world')
     d('wait_for', condition='loaded', timeout=400)
 
     def consume(item, seconds):
@@ -483,11 +452,6 @@ def pick_scenario(d, out):
     # The pick block button (middle) over a container screen clones only with infinite materials:
     # AbstractContainerScreen.mouseClicked sends CLONE, which fills the empty hand with a full stack
     # of the slot's item (#1048: it clicked like the left button and took the slot's stack).
-    d('click', id='singleplayer')
-    if 'game' not in widgets(d):
-        d('click', id='create-new-world')
-    d('type', field='name', replace=True, text='Pick')
-    d('click', id='create-new-world')
     d('wait_for', condition='loaded', timeout=400)
     d('command', command='gamemode creative')
     d('command', command='clear @s')
@@ -536,18 +500,7 @@ def pick_scenario(d, out):
 
 
 def suggestions_scenario(d, out):
-    # Start from the title screen: single player's client joins through memory,
-    # without opening a server world and building its command registries.
-    d('click', id='singleplayer')
-    if 'game' not in widgets(d):
-        d('click', id='create-new-world')
-    d('type', field='name', replace=True, text='Suggestions')
-    d('click', id='game-mode')  # survival -> hardcore -> creative (commands on)
-    d('click', id='game-mode')
-    d('type', field='seed', text='5')
-    d('click', id='world')
-    d('click', id='world-type')  # superflat: this checks chat, without a spawn search
-    d('click', id='create-new-world')
+    # A creative superflat world: this checks chat, without a spawn search.
     d('wait_for', condition='loaded', timeout=400)
     d('wait_ready', seconds=400)
 
@@ -581,7 +534,6 @@ def manage_scenario(d, out):
     # The commands that close the audit's gaps: status (F3), entities by right-click, effects and xp,
     # LAN status, options pages by name, then from the title screen the worlds list, Make Backup,
     # rename and a delete that needs the player's confirmation.
-    d('open', world='Manage', seed=7)
     d('wait_for', condition='loaded', timeout=400)
     assert d('status')['player'] is not None
     d('give', item='bucket')
@@ -600,27 +552,15 @@ def manage_scenario(d, out):
     d('options', page='horizon')
     assert 'graphics' in widgets(d), widgets(d).keys()
     d('close')
-    d('pause')
-    d('click', id='save-and-quit-to-title')
-    d('wait_for', condition='screen', value='title', timeout=60)
-    worlds = {w['folder']: w for w in d('worlds')['worlds']}
-    assert worlds['Manage']['mode'] == 'survival', worlds
-    assert d('world_backup', folder='Manage')['bytes'] > 0
-    assert (d.cwd / 'backups').is_dir() and any((d.cwd / 'backups').glob('*_Manage.zip'))
-    d('world_rename', folder='Manage', name='Renamed Base')
-    assert {w['folder']: w for w in d('worlds')['worlds']}['Manage']['name'] == 'Renamed Base'
-    try:
-        d('world_delete', folder='Manage')
-        raise AssertionError('deleted without --confirm')
-    except Failed as e:
-        assert 'confirm' in str(e), e
-    assert (d.cwd / 'saves/Manage').is_dir()
-    d('world_delete', folder='Manage', confirm=True)
-    assert not (d.cwd / 'saves/Manage').exists()
-    assert 'Manage' not in {w['folder'] for w in d('worlds')['worlds']}
     assert d('servers')['servers'] == []
-    return {'worlds': len(worlds)}
+    return {'lan': d('lan', action='status')['port']}
 
+
+# The world each scenario plays in, on the horizon-server `launch --world` starts (the client has none).
+WORLDS = {'survival': dict(world='Agent World', seed=5), 'ui': dict(world='UI World'), 'events': dict(world='Events'),
+          'consume': dict(world='Consume'), 'pick': dict(world='Pick'),
+          'suggestions': {'world': 'Suggestions', 'seed': 5, 'creative': True, 'level-type': 'minecraft:flat'},
+          'manage': dict(world='Manage', seed=7)}
 
 SCENARIOS = {'survival': scenario, 'ui': ui_scenario, 'options': options_scenario, 'events': events_scenario,
              'consume': consume_scenario, 'pick': pick_scenario, 'suggestions': suggestions_scenario,
@@ -655,8 +595,8 @@ def no_ai_check(mode, ctl, resources):
                 reply = json.loads(r.stdout.strip().splitlines()[-1])
                 log(mode, words, reply)
                 assert r.returncode == 4 and reply == {'error': REFUSAL, 'kind': 'denied'}, (r.returncode, reply)
-            client = ctl.with_name('horizon-dev')
-            args = [str(client), '--control-socket', str(socket), '--world', 'NoAi', '--world-frames', '30']
+            client = ctl.with_name('horizon-client')
+            args = [str(client), '--control-socket', str(socket), '--frames', '30']
             if sys.platform == 'darwin':
                 args.append('--offscreen')
             r = subprocess.run(args, cwd=work, env=env, capture_output=True, text=True, timeout=600)
@@ -761,7 +701,7 @@ def run(mode, ctl, out, resources, which='survival'):
     driver = (Cli if mode == 'cli' else Mcp)(ctl, socket, work, env)
     started = time.time()
     try:
-        driver('launch', wait=False, offscreen=sys.platform == 'darwin')
+        driver('launch', wait=False, offscreen=sys.platform == 'darwin', **WORLDS.get(which, {}))
         summary = SCENARIOS[which](driver, out)
         print(f'[{mode}] PASS in {time.time() - started:.0f} s: {summary}')
         return True
@@ -791,7 +731,7 @@ def main():
     if args.bin_dir:
         bins = Path(args.bin_dir).resolve()
     else:
-        subprocess.run(['cargo', 'build', '--locked', '--profile', 'fast', '-p', 'horizon-client', '--bins'],
+        subprocess.run(['cargo', 'build', '--locked', '--profile', 'fast', '-p', 'horizon-client', '--bins', '-p', 'horizon-server'],
                        cwd=ROOT, check=True)
         meta = json.loads(subprocess.run(['cargo', 'metadata', '--format-version', '1', '--no-deps'], cwd=ROOT,
                                          capture_output=True, text=True, check=True).stdout)

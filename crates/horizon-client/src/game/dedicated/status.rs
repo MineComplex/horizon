@@ -12,6 +12,25 @@ use std::{
 /// The window the tick rate is measured over.
 const TPS_WINDOW: Duration = Duration::from_secs(5);
 
+/// Whether the process `pid` still runs.
+fn process_alive(pid: u32) -> bool {
+    #[cfg(windows)]
+    {
+        std::process::Command::new("tasklist")
+            .args(["/FI", &format!("PID eq {pid}"), "/NH"])
+            .output()
+            .is_ok_and(|o| String::from_utf8_lossy(&o.stdout).contains(&pid.to_string()))
+    }
+    #[cfg(not(windows))]
+    {
+        std::process::Command::new("kill")
+            .args(["-0", &pid.to_string()])
+            .stderr(std::process::Stdio::null())
+            .status()
+            .is_ok_and(|s| s.success())
+    }
+}
+
 impl ServerState {
     /// One pass of the server loop ended.
     pub(super) fn ticked(&mut self, at: Instant) {
@@ -23,6 +42,19 @@ impl ServerState {
         {
             self.ticks.pop_front();
         }
+    }
+    /// `exit-with PID`: the process the server lives for has ended (checked
+    /// every two seconds).
+    pub(super) fn owner_gone(&mut self) -> bool {
+        let Some(pid) = self.exit_with else {
+            return false;
+        };
+        if self.ticks_since_check < 40 {
+            self.ticks_since_check += 1;
+            return false;
+        }
+        self.ticks_since_check = 0;
+        !process_alive(pid)
     }
     /// Ticks per second over the last few seconds.
     fn tps(&self) -> f64 {
@@ -52,7 +84,16 @@ impl Game<'_> {
                         .collect();
                     json!({ "output": output })
                 }
-                _ => json!({ "error": format!("unknown request {:?}", request.line) }),
+                Some(("exit-with", pid)) => match pid.trim().parse() {
+                    Ok(pid) => {
+                        state.exit_with = Some(pid);
+                        json!({ "ok": true })
+                    }
+                    Err(_) => json!({ "error": "exit-with PID" }),
+                },
+                _ => self.server_control(request.line.trim()).unwrap_or_else(
+                    || json!({ "error": format!("unknown request {:?}", request.line) }),
+                ),
             };
             let _ = request.reply.send(reply.to_string());
         }

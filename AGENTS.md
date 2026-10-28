@@ -79,16 +79,18 @@ python3 tools/agent_control_e2e.py         # horizon-ctl / MCP end to end
   harnesses for CI.
 - A harness = `tools/test_<name>_parity.py` (324 of them) + a Java oracle (`mods/horizon/src/test/java/dev/horizonlab/parity/Vanilla*Oracle.java`)
   + a Rust probe: `crates/<crate>/examples/<name>_{probe,fixture}.rs` (horizon-world 175, horizon-client 104),
-  or the game binary with a fixture env var (`game/dispense_fixture.rs`, `game/sculk_fixture.rs`,
-  `game/command_harness.rs`, `game/net_harness.rs`). Copy a nearby harness for a new one.
+  or a program with a fixture env var: `horizon-server` for `game/dispense_fixture.rs`, `game/sculk_fixture.rs`
+  and `game/command_harness.rs` (with a headless `horizon-client`, `HORIZON_STATIONARY_CLIENT`), `horizon-client`
+  for `game/net_harness.rs`. Copy a nearby harness for a new one.
 - Probes build into `.local/parity-target/`; harnesses find binaries via `lab.cargo_target()`, never `target/`.
 - What a change reruns (of 329 harnesses, measured 2026-10-23): a file of the game binary (`game.rs`, `game/`)
   ~25, a file of the client lib ~103, of `horizon-world` ~103–109, of `horizon-core` ~119. Plan for it.
 - Rust integration tests: `crates/horizon-client/tests/` (`lan_bot.rs`, `generation_saves.rs`, `streaming_meshes.rs`).
 - Linux needs `libasound2-dev libudev-dev`; `--no-default-features` drops audio and controllers (the server build).
-- Three programs: `horizon-client` (players; only joins servers, refuses `--world`), `horizon-server`, and
-  `horizon-dev` (development and harnesses only: `--world`, fixtures, `--dedicated`; docs/crates.md).
-- Run and drive the game (starts the `horizon-dev` beside `horizon-ctl` for a world; other arguments go to the game):
+- Two programs: `horizon-client` (only joins servers: no single player, no LAN, no world of its own) and
+  `horizon-server`. Tests run both (docs/crates.md).
+- Run and drive the game (`launch --world` starts a `horizon-server` beside `horizon-ctl` on the world, then the
+  `horizon-client`, which joins it as an operator; other arguments go to the client):
   `target/fast/horizon-ctl --socket $PWD/ctl.sock launch --world W --creative --offscreen --wait --resources $PWD/.local/horizon-client/26.3`,
   then `horizon-ctl --socket … state|keys|turn|command|screenshot|quit`
   ([docs/horizon-ctl-commands.md](docs/horizon-ctl-commands.md)).
@@ -121,10 +123,10 @@ python3 tools/agent_control_e2e.py         # horizon-ctl / MCP end to end
 | Player actions | game.rs (`fn use_hand`, `fn use_item`, `fn attack`, `fn tick_mining`, `fn break_block`); G: `hand.rs`, `combat.rs`, `consume.rs`, `potions.rs`, `shield.rs`, `crossbow.rs`, `trident.rs`, `fishing.rs`; L: `motion.rs` + `motion/` (movement), `collisions.rs`; crate `horizon-items`: `items.rs`, `item_data.rs`, `enchant.rs`, `blocks.rs` |
 | Inventory and containers | L: `menu.rs` (`AbstractContainerMenu.clicked`), `container_screen.rs`, `containers.rs`, `creative.rs`, `crafting.rs`, `recipe_book*.rs`, `stations.rs`, `merchant.rs`; game.rs `fn menu_ops`, `fn click_inventory`; G: `stations.rs`, `trading.rs`, `recipe_book.rs`, `machines.rs` |
 | Commands | parse: crate `horizon-command` (`args.rs`, `selector.rs`, `tree_*.rs`, `vanilla.rs`); run: G: `commands.rs` (dispatch) + `commands/*.rs` (`admin`, `execute`, `items`, `players`, `world_cmds`...); L: `scoreboard_cmd.rs`, `data_cmd.rs`; `horizon-client-core`: `nbt_path.rs`, `scoreboard.rs`; G: `functions.rs`, `command_blocks.rs` |
-| UI screens | `Screen` enum in game.rs; L: `title.rs` + `title/`, `options_ui.rs`, `multiplayer.rs`, `pack_screen.rs`, `graphics_ui.rs`, `screen_draw.rs`, `ui.rs` (widgets), `hud.rs`, `hud_layout.rs`, `hud_overlays.rs`, `chat.rs`, `tab_list.rs`; G: `startup_menu.rs`, `screens.rs` (pause, death), `options.rs`, `lan_screen.rs`, `chat.rs`, `sign_edit.rs`, `books.rs` |
+| UI screens | `Screen` enum in game.rs; L: `title.rs` + `title/`, `options_ui.rs`, `multiplayer.rs`, `pack_screen.rs`, `graphics_ui.rs`, `screen_draw.rs`, `ui.rs` (widgets), `hud.rs`, `hud_layout.rs`, `hud_overlays.rs`, `chat.rs`, `tab_list.rs`; G: `startup_menu.rs`, `screens.rs` (pause, death), `options.rs`, `chat.rs`, `sign_edit.rs`, `books.rs` |
 | Multiplayer client | L: `net.rs` (network thread); G: `remote.rs` (`fn handle_packet`, `fn tick_remote`), `remote_*.rs` (mob data, objects, projectiles, vehicles, stations) |
 | LAN host / server side | L: `lan/` (`conn.rs` handshake + login threads, `hub.rs` + `hub/` play state, `chunks.rs`, `entity.rs`, `tracking.rs`, `guest.rs`, `playerdata.rs`); G: `lan.rs` (`LanHost`), `lan_actions.rs` (`fn as_guest`, `fn tick_guests`), `lan_*.rs` per feature, `lan_entities.rs` (tracked entities) |
-| Integrated server | G: `integrated.rs` (the server thread), `levels.rs` (one level per dimension, `fn tick_server`), `server_travel.rs` |
+| Server levels, test control | G: `levels.rs` (one level per dimension, `fn tick_server`), `server_travel.rs`, `server_control.rs` (the control socket's requests), `fixtures.rs` |
 | Dedicated server | G: `dedicated.rs`, `dedicated/status.rs`; crate `horizon-server-files` ([docs/server.md](docs/server.md)) |
 | Save and load | L: `save.rs` (level.dat, regions, playerdata), `entity_nbt.rs`, `options_file.rs`; `horizon-client-core/src/block_entity_nbt.rs`; G: `saving.rs`, `persist.rs` (entities); `crates/horizon-world/src/{region.rs,nbt.rs}` |
 | Input | game.rs `fn window_event`, `fn key_pressed`, `fn play_mouse`; crate `horizon-client-input` (`keybinds.rs`, `keymapping.rs`, `key_names.rs`, `mouse.rs`, `input.rs`, `interaction_input.rs`, `gamepad.rs`, `clipboard.rs`); L: `osk.rs`; G: `pad.rs`, `pad_menu.rs` |
@@ -140,9 +142,8 @@ python3 tools/agent_control_e2e.py         # horizon-ctl / MCP end to end
   `impl Game<'_>` block for one feature, with its own state types. Fields are private to the bin.
 - Find a feature's code: `grep -rn "fn tick_<thing>\|fn <verb>_<thing>" crates/horizon-client/src/game*`;
   the file is usually `game/<thing>s.rs`. Who calls it: grep the name in game.rs's `fn tick` / `fn tick_world`.
-- Fields that say which mode runs: `remote` (this window is a client of a server: multiplayer, LAN guest, or
-  single player on its server thread), `lan` (`LanHost`: this world is open to the network), `integrated`
-  (the window's own server thread), `serving` (this `Game` *is* that server thread), `options.dedicated`.
+- Fields that say which mode runs: `remote` (this window is a client of a server), `lan` (`LanHost`: the
+  server's network side and players), `options.dedicated` (this `Game` is a server).
   `fn tick` returns `tick_remote()` when `remote` is set; nothing else of the local simulation runs.
 - A server's players run through the same gameplay code as the local player: `as_guest` swaps the guest's
   state (position, inventory, mode, mining, item use) into `Game` for one call (`game/lan_actions.rs`), and
@@ -153,14 +154,14 @@ python3 tools/agent_control_e2e.py         # horizon-ctl / MCP end to end
 
 ## Where a world runs
 
-The window never simulates a world (this fork only joins servers; docs/crates.md). `horizon-client` refuses
-`--world`; `horizon-dev --world` (development and tests) runs the world on the integrated server thread: `game/integrated.rs` runs a second `Game` (`serving`)
-with one level per dimension, and the window joins it as a client through memory (`remote`), exactly as a
-dedicated server's player does. Server code serves both.
+Worlds run only on `horizon-server` (one level per dimension, `levels.rs`); the client has none of its own
+(docs/crates.md). A test's client gets the server's control socket (`--server-control`), through which
+`horizon-ctl` asks what only the server knows: `give`, `time`, `mobs`, the block commands, `command`
+(game/server_control.rs).
 
 ```sh
-cargo run --profile fast -p horizon-client --bin horizon-dev -- --resources .local/horizon-client/26.3 --world T
-python3 tools/lan_e2e.py --check <name>                  # host on its server thread, guest is a server client
+target/fast/horizon-ctl --socket $PWD/c.sock launch --world T --resources $PWD/.local/horizon-client/26.3 --wait
+python3 tools/lan_e2e.py --check <name>                  # two clients on one horizon-server
 python3 tools/parity.py dedicated_server server_entities server_player_damage
 ```
 

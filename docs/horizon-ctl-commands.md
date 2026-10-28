@@ -7,16 +7,11 @@ Every command `horizon-ctl` takes, its MCP tool in `horizon-ctl mcp` (the launch
 
 | Command | MCP tool | What it does | Arguments |
 | --- | --- | --- | --- |
-| `launch [--world NAME] [--seed N] [--creative] [--version TAG] [--game PATH] [--wait] [GAME ARGS...]` | `launch` | Start Horizon with the control socket and wait until it answers | `--world` (string): world folder to open or create<br>`--seed` (string): seed for a new world<br>`--creative` (boolean): creative mode for a new world<br>`--version` (string): an installed launcher version tag such as v2026.10.13<br>`--game` (string): path to a horizon-client binary<br>`--wait` (boolean): also wait until the world is ready (default in MCP)<br>`--offscreen` (boolean): render without showing a window (screenshots still work): locked or headless sessions |
+| `launch [--world NAME] [--seed N] [--creative] [--level-type TYPE] [--version TAG] [--game PATH] [--wait] [GAME ARGS...]` | `launch` | Start Horizon with the control socket and wait until it answers | `--world` (string): world folder to open or create<br>`--seed` (string): seed for a new world<br>`--creative` (boolean): creative mode for a new world<br>`--level-type` (string): a new world's type, such as minecraft:flat<br>`--version` (string): an installed launcher version tag such as v2026.10.13<br>`--game` (string): path to a horizon-client binary<br>`--wait` (boolean): also wait until the world is ready (default in MCP)<br>`--offscreen` (boolean): render without showing a window (screenshots still work): locked or headless sessions |
 | `wait-for screen NAME\|widget ID\|loaded\|chat TEXT\|event KIND [--timeout S] [--since SEQ]` | `wait_for` | Wait until the game reaches a state, then reply | `--timeout` (number): seconds (default 30)<br>`--since` (integer): chat and event: count from this event seq<br>`condition` (screen, widget, loaded, chat, event, required): what to wait for<br>`value` (text): the screen name, widget id, chat text or event kind |
 | `wait-ready [SECONDS]` | `wait_ready` | Wait until the player has spawned and no chunks are pending | `seconds` (number): how long to wait (default 120) |
 | `logs [--lines N] [--crash]` | `logs` | The end of the game's log, or its newest crash report | `--lines` (integer): how many lines of latest.log (default 100)<br>`--crash` (boolean): the newest crash report instead |
 | `status` | `status` | Game, renderer and streaming state (the scripting socket's original summary) | none |
-| `worlds` | `worlds` | The saved worlds, newest first: folder, name, mode, last played, version | none |
-| `world-rename FOLDER NAME` | `world_rename` | Rename a world, as Edit World does (its folder stays) | `folder` (string, required): world folder from worlds<br>`name` (text, required): the new name |
-| `world-backup FOLDER` | `world_backup` | Zip a world into backups/, as Edit World's Make Backup does | `folder` (string, required): world folder from worlds |
-| `world-delete FOLDER --confirm` | `world_delete` (destructive) | Delete a world for good, as Select World's Delete does | `folder` (string, required): world folder from worlds<br>`--confirm` (boolean, required): true once the player agreed: it cannot be undone |
-| `open WORLD [SEED] [creative]` | `open` | Open or create a world from the title screen | `world` (string, required): world folder<br>`seed` (integer): seed for a new world<br>`mode` (creative): creative for a creative world |
 | `save` | `save` | Save the world | none |
 | `quit` | `quit` | Save and exit the game | none |
 | `screenshot PATH` | `screenshot` | Write the next rendered frame as a PNG | none |
@@ -107,7 +102,7 @@ Every command `horizon-ctl` takes, its MCP tool in `horizon-ctl mcp` (the launch
 | `connect ADDRESS [NAME]` | `connect` (network) | Join a multiplayer server, or a friend's world by its invite code, from the title screen | `address` (string, required): HOST[:PORT] or friend:CODE<br>`name` (string): player name when offline |
 | `disconnect` | `disconnect` | Leave the server, back to the server list | none |
 | `servers` | `servers` | The Multiplayer screen's server list: name and address | none |
-| `lan open [PORT] [commands] [force] \| lan close \| lan status` | `lan` (network) | Open the world to LAN (Open to LAN), stop, or see the guests | `action` (open, close, status, required): what to do<br>`port` (integer): port for open<br>`commands` (boolean): allow cheats<br>`force` (boolean): force the game mode |
+| `lan open [PORT] [commands] [force] \| lan status` | `lan` (network) | The test server's port and players (launch --world) | `action` (open, close, status, required): what to do<br>`port` (integer): port for open<br>`commands` (boolean): allow cheats<br>`force` (boolean): force the game mode |
 | `friends host\|stop\|status` | `friends` (network) | Play with Friends: share the open world behind an invite code, stop, or see who joined | `action` (host, stop, status, required): what to do |
 
 ## World and cheats

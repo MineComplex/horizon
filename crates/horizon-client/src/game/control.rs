@@ -38,7 +38,6 @@ const HELP: &[&str] = &[
     "stats [reset]                  frame-time summary since the last reset",
     "bench SECONDS                  reset stats, wait, then reply with the summary",
     "fly X1 Y1 Z1 X2 Y2 Z2 SECONDS [PITCH [raw]]  fly the camera along a line at constant speed, then reply with the frame summary (raw: every frame time too)",
-    "open WORLD [SEED] [creative]   open or create a world from the title screen",
     "save                           save the world",
     "save-all                       save the world, rewriting every resident chunk",
     "connect HOST[:PORT] [NAME]     join a multiplayer server (offline mode) from the title screen",
@@ -68,10 +67,7 @@ pub struct Flight {
 impl Game<'_> {
     /// Move the camera along the running flight; reply when it ends.
     pub(super) fn advance_flight(&mut self) {
-        let tick_ms = self
-            .integrated
-            .as_ref()
-            .map_or(self.debug_charts.smoothed_tick_ms, |s| s.smoothed_tick_ms());
+        let tick_ms = self.debug_charts.smoothed_tick_ms;
         let Some(flight) = self.flight.as_mut() else {
             return;
         };
@@ -247,14 +243,8 @@ impl Game<'_> {
             }
             "simulation" => {
                 self.require_world()?;
-                let value = if let Some(server) = &self.integrated {
-                    server
-                        .call(|g| {
-                            g.in_owner_level(|g| {
-                                json!({ "game_time": g.world.game_time, "projectiles": g.projectiles_status() })
-                            })
-                        })
-                        .ok_or("the integrated server stopped")?
+                let value = if let Some(reply) = self.ask_server("simulation") {
+                    reply?
                 } else {
                     json!({ "game_time": self.world.game_time, "projectiles": self.projectiles_status() })
                 };
@@ -267,10 +257,8 @@ impl Game<'_> {
                     "off" => false,
                     _ => return Err("server-hold on|off".into()),
                 };
-                if let Some(server) = &self.integrated {
-                    server
-                        .call(move |g| g.agent.hold_server = held)
-                        .ok_or("the integrated server stopped")?;
+                if let Some(reply) = self.ask_server(&format!("server-hold {}", words[1])) {
+                    reply?;
                 } else if self.remote.is_some() {
                     return Err("server-hold requires the world's host".into());
                 } else {
@@ -469,13 +457,9 @@ impl Game<'_> {
                     .get(&item)
                     .ok_or_else(|| format!("unknown item {item}"))?;
                 let count: u32 = words.get(2).map_or(Ok(1), |c| c.parse())?;
-                // Single player's inventory is its server thread's player's.
-                if let Some(server) = &self.integrated {
-                    let command = format!("give @s {item} {count}");
-                    server
-                        .call(move |g| g.owner_console_command(&command))
-                        .ok_or("the integrated server stopped")?;
-                    return Ok(Some(json!({ "ok": true, "given": count })));
+                // The inventory is the server's player's.
+                if let Some(reply) = self.ask_server(&format!("give {item} {count}")) {
+                    return Ok(Some(reply?));
                 }
                 let max = info.max_stack;
                 let mut given = 0;
@@ -518,11 +502,9 @@ impl Game<'_> {
             "time" => {
                 let time: i64 = arg(1)?.parse()?;
                 self.world.day_time = time;
-                // Single player's clock is its server thread's.
-                if let Some(server) = &self.integrated {
-                    server
-                        .call(move |g| g.world.day_time = time)
-                        .ok_or("the integrated server stopped")?;
+                // The clock is the server's.
+                if let Some(reply) = self.ask_server(&format!("time {time}")) {
+                    reply?;
                 }
                 ok()
             }
@@ -537,22 +519,15 @@ impl Game<'_> {
             "mobs" => {
                 self.require_world()?;
                 let radius: f64 = words.get(1).map_or(Ok(64.0), |r| r.parse())?;
-                if let Some(server) = &self.integrated {
-                    let center = self.player.as_ref().map_or(Vec3::ZERO, |p| p.position);
-                    let value = server
-                        .call(move |g| g.in_owner_level(|g| g.control_mobs_at(radius, center)))
-                        .ok_or("the integrated server stopped")?;
-                    return Ok(Some(value));
+                if let Some(reply) = self.ask_server(&format!("mobs {radius}")) {
+                    return Ok(Some(reply?));
                 }
                 Ok(Some(self.control_mobs(radius)))
             }
             "hurtlog" => {
                 self.require_world()?;
-                if let Some(server) = &self.integrated {
-                    let value = server
-                        .call(|g| g.control_hurt_log())
-                        .ok_or("the integrated server stopped")?;
-                    return Ok(Some(value));
+                if let Some(reply) = self.ask_server("hurtlog") {
+                    return Ok(Some(reply?));
                 }
                 Ok(Some(self.control_hurt_log()))
             }
@@ -611,8 +586,6 @@ impl Game<'_> {
                     Screen::CommandBlock => self.command_block_type(text),
                     Screen::Options => self.ui.options.type_text(&self.gui.atlas, text),
                     // The port, or the game rules' search and number boxes.
-                    Screen::WorldOptions if text == "\\b" => self.world_options_text(None),
-                    Screen::WorldOptions => self.world_options_text(Some(text)),
                     Screen::Inventory if self.recipe_search_focused() => {
                         self.recipe_text(Some(text), false)
                     }
@@ -720,16 +693,6 @@ impl Game<'_> {
                 });
                 Ok(None)
             }
-            "open" => {
-                if self.title.is_none() {
-                    return Err("a world is already open".into());
-                }
-                let folder = arg(1)?;
-                let seed = words.get(2).map(|s| s.parse::<i64>()).transpose()?;
-                let creative = words.get(3) == Some(&"creative");
-                self.open_world(folder, Some(folder), seed, creative, None)?;
-                ok()
-            }
             "connect" => {
                 if self.title.is_none() {
                     return Err("leave the current world first".into());
@@ -779,11 +742,9 @@ impl Game<'_> {
                 // that were not modified (the save round-trip harness compares
                 // them with vanilla's files).
                 let all = words[0] == "save-all";
-                // Single player's world is its server thread's.
-                if let Some(server) = &self.integrated {
-                    server
-                        .call(move |g| g.control_save(all).map_err(|e| e.to_string()))
-                        .ok_or("the integrated server stopped")??;
+                // The world is the server's.
+                if let Some(reply) = self.ask_server(words[0]) {
+                    reply?;
                 } else if self.remote.is_none() {
                     self.begin_control_save(all, reply.clone())?;
                     return Ok(None);
@@ -810,7 +771,7 @@ impl Game<'_> {
     }
 
     /// `horizon-ctl save` and `save-all`.
-    fn control_save(&mut self, all: bool) -> Result<()> {
+    pub(super) fn control_save(&mut self, all: bool) -> Result<()> {
         if all {
             let keys: Vec<_> = self.world.chunks.keys().copied().collect();
             self.world.modified.extend(keys);
@@ -858,7 +819,6 @@ impl Game<'_> {
             Screen::Chat => "chat",
             Screen::Stats => "stats",
             Screen::Advancements => "advancements",
-            Screen::WorldOptions => "world-options",
             Screen::ServerLinks => "server-links",
             Screen::ConfirmLink => "confirm-link",
             Screen::DialogWarning => "dialog-warning",
@@ -869,7 +829,7 @@ impl Game<'_> {
 
     /// The hurts and melee attacks each player logged since the last call
     /// (`PlayerMotion::hurt_log`, `attack_log`), taken out.
-    fn control_hurt_log(&mut self) -> Value {
+    pub(super) fn control_hurt_log(&mut self) -> Value {
         fn drain(
             name: &str,
             hurt_log: &mut Vec<horizon_client::health::HurtRecord>,
@@ -976,7 +936,7 @@ impl Game<'_> {
             "distance": self.settings.horizon.lod_distance,
             "effective_distance": self.lod_distance(),
             "terrain_distance": self.terrain_distance(),
-            "source": if self.lod.is_none() { "none" } else if self.integrated.is_some() { "integrated" } else { "local" },
+            "source": if self.lod.is_none() { "none" } else if self.remote.is_some() { "server" } else { "local" },
             "source_attempted": self.lod_source_attempted,
             "active_tiles": self.lod.as_ref().map_or(0, |lod| lod.stats().0),
             "cached_tiles": self.lod.as_ref().map_or(0, |lod| lod.stats().1),

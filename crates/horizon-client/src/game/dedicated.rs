@@ -414,6 +414,9 @@ struct ServerState {
     broadcast_console: bool,
     /// `op-permission-level`: what `/op` grants (operatorUserPermissions).
     op_level: i32,
+    /// `exit-with PID` on the control endpoint: stop once that process ends.
+    exit_with: Option<u32>,
+    ticks_since_check: u32,
 }
 
 /// The dedicated-only commands' replies vanilla sends with `broadcast`
@@ -690,9 +693,20 @@ impl Game<'_> {
             paused: false,
             broadcast_console: props.broadcast_console_to_ops,
             op_level: props.op_permission_level,
+            exit_with: None,
+            ticks_since_check: 0,
         };
         let pause_after = props.pause_when_empty_seconds * 20;
         let idle_timeout = props.player_idle_timeout;
+        if let (Some(script), Some(output)) = (
+            std::env::var_os("HORIZON_COMMAND_SCRIPT"),
+            std::env::var_os("HORIZON_COMMAND_OUTPUT"),
+        ) {
+            // The command harness instead of the loop: it ticks the server itself.
+            let result = self.run_command_harness(script.as_ref(), output.as_ref());
+            self.stop_dedicated()?;
+            return result;
+        }
         let mut next = Instant::now();
         while !state.stop {
             let tick_start = Instant::now();
@@ -700,6 +714,10 @@ impl Game<'_> {
                 self.console_line(&mut state, &line);
             }
             self.poll_server_control(&mut state);
+            if state.owner_gone() {
+                log("INFO", "The process the server ran for has ended: stopping");
+                state.stop = true;
+            }
             let players = self.lan.as_ref().map_or(0, |h| h.hub.guests.len());
             if pause_after > 0 {
                 // A `/pregen` task keeps the server busy as a player would:

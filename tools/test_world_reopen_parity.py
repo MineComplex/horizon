@@ -22,6 +22,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -54,7 +55,7 @@ def main():
     args = parser.parse_args()
     bin_dir = Path(args.bin_dir).resolve() if args.bin_dir else None
     if bin_dir is None:
-        subprocess.run(['cargo', 'build', '--locked', '--profile', 'fast', '-p', 'horizon-client', '--bins'], cwd=ROOT, check=True)
+        subprocess.run(['cargo', 'build', '--locked', '--profile', 'fast', '-p', 'horizon-client', '--bins', '-p', 'horizon-server'], cwd=ROOT, check=True)
         bin_dir = ROOT / os.environ.get('CARGO_TARGET_DIR', 'target') / 'fast'
     shutil.rmtree(RUN, ignore_errors=True)
     RUN.mkdir(parents=True)
@@ -68,6 +69,19 @@ def main():
             sys.exit(f'horizon-ctl {" ".join(words)} failed: {result.stdout}{result.stderr}')
         return json.loads(result.stdout) if result.stdout.strip().startswith('{') else result.stdout
 
+    def launched(reply):
+        return [reply['pid'], (reply.get('server') or {}).get('pid')]
+
+    def wait_exit(pids):
+        deadline = time.time() + 120
+        for pid in filter(None, pids):
+            while time.time() < deadline:
+                try:
+                    os.kill(pid, 0)
+                except ProcessLookupError:
+                    break
+                time.sleep(0.2)
+
     def carts():
         """The loaded minecarts once their list stops changing: on a loaded runner the mineshaft's chunks and their
         entities keep arriving after the world counts as loaded, so one reading can be short of a cart."""
@@ -80,8 +94,9 @@ def main():
             ctl('wait', '40')
         return last
 
-    ctl('launch', '--resources', str(RESOURCES), '--world', 'reopen', '--seed', '7', '--creative',
-        '--render-distance', '4', *extra)
+    launch = ['launch', '--resources', str(RESOURCES), '--world', 'reopen', '--seed', '7', '--creative',
+              '--render-distance', '4', *extra]
+    pids = launched(ctl(*launch))
     failures = 0
     try:
         ctl('wait-ready', '300')
@@ -93,10 +108,11 @@ def main():
         if not any(kind == 'minecraft:minecart' for kind, *_ in expected):
             sys.exit(f'the summoned minecart is not there: {expected}')
         for cycle in range(1, CYCLES + 1):
-            ctl('pause')
-            ctl('click-button', 'Save and Quit to Title')
-            ctl('wait-for', 'screen', 'title', '--timeout', '120')
-            ctl('open', 'reopen')
+            # The world runs on a horizon-server, which saves as it stops with its client; it opens
+            # again on a new one.
+            ctl('quit', check=False)
+            wait_exit(pids)
+            pids = launched(ctl(*launch))
             ctl('wait-for', 'loaded', '--timeout', '300')
             ctl('wait', '20')
             got = carts()

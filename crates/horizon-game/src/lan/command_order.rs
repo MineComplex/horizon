@@ -6,7 +6,7 @@
 pub const ORDER: &[(&str, &str)] = &[
     (
         "",
-        "advancement attribute execute bossbar clear clone compute damage data datapack debug defaultgamemode dialog difficulty effect me enchant experience xp fill fillbiome forceload function gamemode gamerule give help item kick kill list locate loot msg tell w swing particle place playsound posteffect random reload recipe fetchprofile return ride rotate say schedule scoreboard seed version setblock spawnpoint setworldspawn spectate spreadplayers stopsound stopwatch summon tag team teammsg tm teleport tp tellraw test tick time title trigger waypoint weather worldborder jfr ban-ip banlist ban deop op pardon pardon-ip perf save-all save-off save-on setidletimeout stop transfer whitelist publish unpublish",
+        "advancement attribute execute bossbar clear clone compute damage data datapack debug defaultgamemode dialog difficulty effect me enchant experience xp fill fillbiome forceload function gamemode gamerule give help item kick kill list locate loot msg tell w swing particle place playsound posteffect random reload recipe fetchprofile return ride rotate say schedule scoreboard seed version setblock spawnpoint setworldspawn spectate spreadplayers stopsound stopwatch summon tag team teammsg tm teleport tp tellraw test tick time title trigger waypoint weather worldborder jfr ban-ip banlist ban deop op pardon pardon-ip perf save-all save-off save-on setidletimeout stop transfer whitelist",
     ),
     ("advancement", "grant revoke"),
     (

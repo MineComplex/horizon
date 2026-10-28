@@ -17,7 +17,7 @@ except ImportError:
 
 def run_logged(command, build, name, timeout=900, **kwargs):
     with (build / (name + '.log')).open('w') as log:
-        runner = run_game if Path(command[0]).name == 'horizon-dev' else subprocess.run
+        runner = run_game if Path(command[0]).name in ('horizon-server', 'horizon-client') else subprocess.run
         runner([str(c) for c in command], cwd=lab.ROOT, check=True, timeout=timeout,
                        stdout=log, stderr=subprocess.STDOUT, **kwargs)
 

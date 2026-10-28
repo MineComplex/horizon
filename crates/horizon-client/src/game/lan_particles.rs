@@ -129,7 +129,7 @@ impl Game<'_> {
         speed: f64,
     ) {
         let at = [at.x, at.y, at.z];
-        if self.serving.is_none() && self.options.dedicated.is_none() {
+        if self.options.dedicated.is_none() {
             let block = [
                 at[0].floor() as i32,
                 (at[1] - 0.2).floor() as i32,
