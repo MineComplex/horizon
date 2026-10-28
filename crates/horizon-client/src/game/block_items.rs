@@ -20,7 +20,8 @@ fn components(stack: &ItemStack) -> Compound {
     }
 }
 
-impl Game<'_> {
+impl Game<'_> {}
+impl crate::game::Sim<'_> {
     /// The block entity at `key` as vanilla saves it, with its custom name.
     fn saved_block_entity(&self, key: (i32, i32, i32)) -> Option<Tag> {
         let entity = self.world.block_entities.get(&key)?;
@@ -35,7 +36,6 @@ impl Game<'_> {
         }
         block_entity_nbt::canonical(&tag)
     }
-
     /// `BlockState.getCloneItemStack` of the block at `pos`, then, with
     /// `include_data`, `ServerGamePacketListenerImpl.addBlockDataToItem`.
     pub(super) fn picked_stack(&self, pos: [i32; 3], include_data: bool) -> Option<ItemStack> {
@@ -80,7 +80,6 @@ impl Game<'_> {
         }
         Some(stack)
     }
-
     /// `BlockItem.updateBlockStateFromTag`: the properties of the item's
     /// `block_state` component (a hive's honey level, a statue's pose) set on
     /// the block just placed at `pos`. Returns the state it has now.
@@ -116,7 +115,6 @@ impl Game<'_> {
             _ => Ok(state),
         }
     }
-
     /// `BlockItem.updateCustomBlockEntityTag` and `updateBlockEntityComponents`
     /// for the block entity just placed at `pos` from `stack`; `game_master`:
     /// the placer can use game master blocks (a dispenser can't).

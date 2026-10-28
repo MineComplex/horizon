@@ -184,19 +184,6 @@ struct Launch {
 }
 
 impl Game<'_> {
-    /// `Minecraft.hasSingleplayerServer`: a world of this window's own, run
-    /// in the frame or on its server thread.
-    pub(super) fn has_singleplayer_server(&self) -> bool {
-        self.remote.is_none() || self.integrated.is_some()
-    }
-    /// `IntegratedServer.isPublished`: the world is open to the network.
-    pub(super) fn is_published(&self) -> bool {
-        self.lan.is_some()
-            || self
-                .integrated
-                .as_ref()
-                .is_some_and(|s| s.published().is_some())
-    }
     /// `Minecraft.doWorldLoad`: start the server thread on the world, wait
     /// until it can be joined, then join it through memory.
     pub(super) fn open_integrated(
@@ -396,9 +383,9 @@ impl Game<'_> {
                 self.tick_server_timed(false)?;
                 // MinecraftServer.tickServer's tick times, for /tick query.
                 self.clock.record(started.elapsed());
-                self.debug_charts.log_tick(started, started.elapsed());
+                self.front.debug_charts.log_tick(started, started.elapsed());
                 flags.smoothed_tick_ms.store(
-                    self.debug_charts.smoothed_tick_ms.to_bits(),
+                    self.front.debug_charts.smoothed_tick_ms.to_bits(),
                     Ordering::Relaxed,
                 );
             }
@@ -407,7 +394,21 @@ impl Game<'_> {
         }
         self.stop_integrated()
     }
-
+}
+impl crate::game::Sim<'_> {
+    /// `Minecraft.hasSingleplayerServer`: a world of this window's own, run
+    /// in the frame or on its server thread.
+    pub(super) fn has_singleplayer_server(&self) -> bool {
+        self.remote.is_none() || self.integrated.is_some()
+    }
+    /// `IntegratedServer.isPublished`: the world is open to the network.
+    pub(super) fn is_published(&self) -> bool {
+        self.lan.is_some()
+            || self
+                .integrated
+                .as_ref()
+                .is_some_and(|s| s.published().is_some())
+    }
     /// `MinecraftServer.stopServer`: the players are saved and sent away,
     /// then the world is saved.
     fn stop_integrated(&mut self) -> Result<()> {
@@ -441,6 +442,19 @@ impl Game<'_> {
 
 /// The server thread's side.
 impl Game<'_> {
+    /// The window's requests, between two ticks.
+    fn run_tasks(&mut self) {
+        let tasks: Vec<Task> = match &self.serving {
+            Some(s) => s.tasks.try_iter().collect(),
+            None => return,
+        };
+        for task in tasks {
+            task(self);
+            self.apply_publish();
+        }
+    }
+}
+impl crate::game::Sim<'_> {
     /// Whether this game is an integrated server's.
     pub(super) fn serving(&self) -> bool {
         self.serving.is_some()
@@ -505,7 +519,6 @@ impl Game<'_> {
         self.lan = Some(host);
         out
     }
-
     /// Run `f` with the owner's level in place (the server holds one per
     /// dimension), then put back the level that was.
     pub(super) fn in_owner_level<T>(&mut self, f: impl FnOnce(&mut Self) -> T) -> T {
@@ -520,18 +533,6 @@ impl Game<'_> {
             self.enter_command_level(back);
         }
         out
-    }
-
-    /// The window's requests, between two ticks.
-    fn run_tasks(&mut self) {
-        let tasks: Vec<Task> = match &self.serving {
-            Some(s) => s.tasks.try_iter().collect(),
-            None => return,
-        };
-        for task in tasks {
-            task(self);
-            self.apply_publish();
-        }
     }
     /// `IntegratedServer.getPort` while published.
     pub(super) fn published_port(&self) -> Option<u16> {
@@ -592,7 +593,6 @@ impl Game<'_> {
             self.settings.simulation_distance = simulation;
         }
     }
-
     fn apply_publish(&mut self) {
         if self.lan.is_none() {
             return;
@@ -696,7 +696,8 @@ pub(super) enum ComponentHarness {
     Sculk(String),
 }
 
-impl Game<'_> {
+impl Game<'_> {}
+impl crate::game::Sim<'_> {
     pub(super) fn run_component_harness(&self, fixture: ComponentHarness) -> Result<()> {
         let (res, pack, settings) = (self.res.clone(), self.pack.clone(), self.settings.clone());
         let mut options = self.options.clone();

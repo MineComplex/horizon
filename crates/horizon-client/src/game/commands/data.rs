@@ -31,6 +31,15 @@ fn set_key(tag: &mut Tag, key: &str, value: Tag) {
 impl Game<'_> {
     // ---- entity data ---------------------------------------------------
 
+    // ---- accessors -----------------------------------------------------
+
+    // ---- /data -----------------------------------------------------------
+
+    // ---- /tag ------------------------------------------------------------
+
+    // ---- /summon ---------------------------------------------------------
+}
+impl crate::game::Sim<'_> {
     /// `NbtPredicate.getEntityTagToCompare`: the entity as saved. An entity
     /// in another level is read in the level that holds it.
     pub(in crate::game) fn entity_nbt(&mut self, t: Target) -> Option<Tag> {
@@ -233,9 +242,6 @@ impl Game<'_> {
             set_key(raw, "Tags", Tag::List(list));
         }
     }
-
-    // ---- accessors -----------------------------------------------------
-
     /// The `role`th provider of the command (`entity`, `block` or `storage`).
     pub(in crate::game) fn data_ref(&mut self, ctx: &Context, role: usize) -> R<DataRef> {
         let prefix = if role == 0 { "target" } else { "source" };
@@ -403,9 +409,6 @@ impl Game<'_> {
             ),
         }
     }
-
-    // ---- /data -----------------------------------------------------------
-
     fn path_arg(&self, ctx: &Context, name: &str) -> R<NbtPath> {
         let Some(Arg::Str(text)) = ctx.get(name) else {
             return Err(err("command.failed", &[]));
@@ -559,9 +562,6 @@ impl Game<'_> {
         self.feedback(message);
         Ok(changed as i32)
     }
-
-    // ---- /tag ------------------------------------------------------------
-
     pub(super) fn cmd_tag(&mut self, id: &str, ctx: &Context) -> R<i32> {
         let targets = self.entities(ctx, "targets", false)?;
         let name = match ctx.get("name") {
@@ -694,9 +694,6 @@ impl Game<'_> {
         self.feedback(message);
         Ok(total)
     }
-
-    // ---- /summon ---------------------------------------------------------
-
     /// Spawn an entity from its compound (`EntityType.loadEntityRecursive`);
     /// returns what was created.
     pub(super) fn spawn_entity_from_nbt(&mut self, tag: Tag) -> Option<Target> {

@@ -84,7 +84,8 @@ fn place_back(menu: &mut Menu, env: &Env, stacks: Vec<ItemStack>) {
     }
 }
 
-impl Game<'_> {
+impl Game<'_> {}
+impl crate::game::Sim<'_> {
     pub(super) fn menu_env(&self) -> Env<'_> {
         Env {
             items: self.res.items(),
@@ -98,7 +99,6 @@ impl Game<'_> {
             maps: None,
         }
     }
-
     /// Runs `op` on the guest's menu with their inventory copied in and back.
     pub(super) fn guest_menu_op<R>(
         &mut self,
@@ -151,7 +151,6 @@ impl Game<'_> {
         self.drop_guest_items(host, gi, dropped);
         result
     }
-
     /// A click on the guest's inventory menu (window 0): `InventoryMenu`,
     /// crafting grid included. False for other windows.
     pub(super) fn lan_inventory_click(
@@ -197,7 +196,6 @@ impl Game<'_> {
         host.hub.inventory_clicked(conn, p, &self.world, &changed);
         true
     }
-
     /// A click on the guest's open furnace, blast furnace, smoker or brewing stand:
     /// the host's `AbstractFurnaceMenu` (fuel slot, take-only result, quick moves by
     /// recipe and fuel) or `BrewingStandMenu` (one bottle per slot, ingredient and
@@ -310,7 +308,6 @@ impl Game<'_> {
         host.hub.inventory_clicked(conn, p, &self.world, &changed);
         true
     }
-
     /// `ServerGamePacketListenerImpl.handleContainerSlotStateChanged`: a
     /// guest's crafter slot toggle (`CrafterBlockEntity.setSlotState`) in
     /// their open crafter window.
@@ -343,7 +340,6 @@ impl Game<'_> {
             self.world.modified.insert((pos.0 >> 4, pos.2 >> 4));
         }
     }
-
     /// ServerGamePacketListenerImpl.handlePlaceRecipe: the guest's recipe
     /// book places a known recipe in their inventory grid or crafting table
     /// (`ServerPlaceRecipe`), and answers with a ghost recipe when the items
@@ -423,7 +419,6 @@ impl Game<'_> {
             host.hub.send_ghost_recipe(conn, p.container, &id);
         }
     }
-
     /// The guest opened a crafting table (`CraftingTableBlock.getMenuProvider`).
     pub(super) fn lan_open_crafting(&mut self, host: &mut LanHost, conn: u32, pos: [i32; 3]) {
         // InventoryOpenEvent: cancelled, the table opens nothing.
@@ -439,7 +434,6 @@ impl Game<'_> {
         host.play.entry(conn).or_default().crafting.table = Some((window, 0, menu, pos));
         self.lan_send_table_content(host, conn);
     }
-
     /// A click on the guest's crafting table window; false for other windows.
     pub(super) fn lan_crafting_click(
         &mut self,
@@ -470,7 +464,6 @@ impl Game<'_> {
         self.lan_send_table_content(host, conn);
         true
     }
-
     /// `CraftingMenu.stillValid`: the block is still a crafting table and the
     /// guest is within reach of it.
     fn lan_table_valid(&self, g: &Guest, pos: [i32; 3]) -> bool {
@@ -481,7 +474,6 @@ impl Game<'_> {
             .name;
         &**name == "minecraft:crafting_table" && g.within_block_range(pos, 4.0)
     }
-
     /// `ServerPlayer.tick`'s `stillValid`: a guest's crafting table closes
     /// once it is gone or out of reach, giving its grid back.
     pub(super) fn lan_tables_tick(&mut self, host: &mut LanHost) {
@@ -509,7 +501,6 @@ impl Game<'_> {
             }
         }
     }
-
     /// The whole crafting table menu for the client (`sendAllDataToRemote`).
     fn lan_send_table_content(&mut self, host: &mut LanHost, conn: u32) {
         let Some(gi) = host.hub.guests.iter().position(|g| g.conn == conn) else {
@@ -540,7 +531,6 @@ impl Game<'_> {
             }),
         );
     }
-
     /// `AbstractContainerMenu.removed` of a crafting menu: the closed window
     /// (`window`; None closes the table whichever it is, and 0 the inventory
     /// menu) gives its grid back to the inventory, what doesn't fit is
@@ -574,7 +564,6 @@ impl Game<'_> {
         }
         true
     }
-
     /// `Inventory.placeItemBackInInventory` of `stacks` for guest `gi`, what
     /// doesn't fit dropped (`clearContainer`).
     pub(super) fn lan_place_back(&mut self, host: &mut LanHost, gi: usize, stacks: Vec<ItemStack>) {
@@ -583,7 +572,6 @@ impl Game<'_> {
             place_back(menu, env, stacks)
         });
     }
-
     /// A guest left: what their crafting grids and workstation held goes back into their
     /// inventory before it is saved (dropped where they stood if full).
     pub(super) fn lan_crafting_left(&mut self, host: &mut LanHost, g: &mut Guest) {

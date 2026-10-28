@@ -59,7 +59,8 @@ pub(super) fn boat_pushes(boat: Aabb, other: Aabb, other_is_boat: bool) -> bool 
     }
 }
 
-impl Game<'_> {
+impl Game<'_> {}
+impl crate::game::Sim<'_> {
     /// The players in boat `id`: the window's player (or the server player
     /// acting as it) and the server's other players.
     pub(super) fn boat_players(&self, id: u32) -> usize {
@@ -175,7 +176,6 @@ impl Game<'_> {
         let area = bb.inflate(Vec3::new(1.0e-7, 1.0e-7, 1.0e-7));
         !self.boat_obstacles(u32::MAX, area).is_empty()
     }
-
     /// The end of `AbstractBoat.tick` on the server for boat `i`: each
     /// entity it touches gets in (a mob, while no player steers) or is
     /// pushed apart from it, and `LivingEntity.pushEntities` of each mob and
@@ -334,7 +334,6 @@ impl Game<'_> {
             m.needs_sync = true;
         }
     }
-
     /// `positionRider` and `clampRotation` for the mobs in boats: each sits
     /// in its seat facing the way the boat does, an animal in a full boat
     /// sideways, its head kept within its reach of its body.

@@ -22,7 +22,8 @@ type ItemConsumable = Consumable<String, ConsumeEffect>;
 /// `EntityEvent.USE_ITEM_COMPLETE`: the server finished the player's use.
 pub(super) const USE_ITEM_COMPLETE_EVENT: i8 = 9;
 
-impl Game<'_> {
+impl Game<'_> {}
+impl crate::game::Sim<'_> {
     /// `ServerPlayer.completeUsingItem`: the player's own client is told
     /// first, and completes the use itself (eating the food there too).
     pub(super) fn send_use_item_complete(&mut self) {
@@ -236,7 +237,7 @@ impl Game<'_> {
 }
 
 /// `Consumable.emitParticlesAndSounds` against the local player.
-struct Emitter<'a, 'g>(&'a mut Game<'g>);
+struct Emitter<'a, 'g>(&'a mut crate::game::Sim<'g>);
 impl EmissionWorld for Emitter<'_, '_> {
     type Error = Infallible;
     type Stack = ItemStack;
@@ -266,7 +267,7 @@ impl EmissionWorld for Emitter<'_, '_> {
 }
 
 /// The local player as `TeleportRandomlyConsumeEffect`'s user.
-struct Teleporter<'a, 'g>(&'a mut Game<'g>);
+struct Teleporter<'a, 'g>(&'a mut crate::game::Sim<'g>);
 impl Teleporter<'_, '_> {
     fn at(&self) -> Vec3 {
         self.0.player.as_ref().map_or(Vec3::ZERO, |p| p.position)

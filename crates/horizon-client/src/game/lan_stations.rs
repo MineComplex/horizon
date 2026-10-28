@@ -57,7 +57,8 @@ fn menu_of(kind: StationKind) -> Option<(&'static str, Kind, std::ops::Range<usi
     })
 }
 
-impl Game<'_> {
+impl Game<'_> {}
+impl crate::game::Sim<'_> {
     /// A workstation a guest's use opened (`ServerPlayer.openMenu`); false
     /// when guests can't use that one yet.
     pub(super) fn lan_open_station(
@@ -103,7 +104,6 @@ impl Game<'_> {
         self.lan_send_station(host, conn);
         true
     }
-
     /// Runs `op` on the guest's open station (window `window`, any when
     /// None) with their inventory in it, then sends what changed. False when
     /// no such window is open.
@@ -141,7 +141,6 @@ impl Game<'_> {
         self.lan_send_station(host, conn);
         true
     }
-
     /// `LecternBlock.openScreen` for a guest: `minecraft:lectern` over the
     /// block entity, with its book and page.
     pub(super) fn lan_open_lectern(&mut self, host: &mut LanHost, conn: u32, key: (i32, i32, i32)) {
@@ -160,7 +159,6 @@ impl Game<'_> {
         });
         self.lan_send_lectern(host, conn, true);
     }
-
     /// The lectern's book and page for the client: everything (`all`), or
     /// what changed since it was last sent.
     fn lan_send_lectern(&mut self, host: &mut LanHost, conn: u32, all: bool) {
@@ -203,7 +201,6 @@ impl Game<'_> {
             );
         }
     }
-
     /// Runs `op` on the guest's lectern menu (window `window`) with their
     /// inventory, the block entity takes the book and page back, and the
     /// client gets what changed. False when no such window is open.
@@ -238,7 +235,6 @@ impl Game<'_> {
         self.lan_send_lectern(host, conn, true);
         true
     }
-
     /// A click on the guest's lectern window; false for other windows.
     pub(super) fn lan_lectern_click(
         &mut self,
@@ -250,7 +246,6 @@ impl Game<'_> {
             let _ = menu.click(env, i32::from(p.slot), i32::from(p.button), input(p.input));
         })
     }
-
     /// The rest of a taken anvil or smithing result's `onTake`: the guest
     /// pays the levels, the anvil wears (level event 1030 or 1029), the
     /// smithing table sounds (1044).
@@ -270,7 +265,6 @@ impl Game<'_> {
             self.anvil_used(gs.pos, creative);
         }
     }
-
     /// `EnchantmentMenu.slotsChanged` with a level: the costs and clues for
     /// the guest's seed and the bookshelves around the table.
     fn lan_enchant_offers(&mut self, host: &LanHost, gi: usize, gs: &mut GuestStation) {
@@ -293,7 +287,6 @@ impl Game<'_> {
         }
         gs.menu.data[3] = seed;
     }
-
     /// `EnchantmentMenu.clickMenuButton`'s `access.execute`: the item gets
     /// the offer's enchantments, the guest pays its levels and lapis and
     /// gets a new seed, the table sounds, and the offers are made again.
@@ -342,7 +335,6 @@ impl Game<'_> {
             pitch,
         );
     }
-
     /// `ServerGamePacketListenerImpl.handleRenameItem`: the guest's anvil
     /// takes the name (`AnvilMenu.setItemName`).
     pub(super) fn lan_station_rename(&mut self, host: &mut LanHost, conn: u32, name: &str) {
@@ -357,7 +349,6 @@ impl Game<'_> {
             });
         }
     }
-
     /// The sounds the menu played, at the station (heard by everyone around,
     /// as `level.playSound(null, pos, ...)`), once per tick.
     fn lan_station_sounds(&mut self, gs: &mut GuestStation) {
@@ -371,7 +362,6 @@ impl Game<'_> {
             self.sounds.play(sound, Some(at), 1.0, 1.0);
         }
     }
-
     /// A click on the guest's station window; false for other windows.
     pub(super) fn lan_station_click(
         &mut self,
@@ -383,7 +373,6 @@ impl Game<'_> {
             let _ = menu.click(env, i32::from(p.slot), i32::from(p.button), input(p.input));
         })
     }
-
     /// `ServerGamePacketListenerImpl.handleContainerButtonClick`:
     /// `clickMenuButton`, then `broadcastChanges` when the menu took it.
     pub(super) fn lan_station_button(
@@ -403,7 +392,6 @@ impl Game<'_> {
             menu.button(env, id);
         });
     }
-
     /// The whole station menu and its changed data slots for the client
     /// (`sendAllDataToRemote` / `broadcastChanges`).
     fn lan_send_station(&mut self, host: &mut LanHost, conn: u32) {
@@ -443,7 +431,6 @@ impl Game<'_> {
             host.hub.send_to(conn, &packet);
         }
     }
-
     /// `AbstractContainerMenu.removed` of the guest's station (`window`;
     /// None closes it whichever it is): the carried stack and the inputs go
     /// back to the inventory, what doesn't fit is dropped. False when no such
@@ -497,7 +484,6 @@ impl Game<'_> {
         }
         true
     }
-
     /// `BeaconBlockEntity.dataAccess`: the pyramid's levels and the powers
     /// (`BeaconMenu.encodeEffect`: the `mob_effect` id + 1, 0 for none).
     fn beacon_data(&self, host: &LanHost, pos: [i32; 3]) -> [i32; 3] {
@@ -512,7 +498,6 @@ impl Game<'_> {
         };
         [b.levels, encode(&b.primary), encode(&b.secondary)]
     }
-
     /// `ServerGamePacketListenerImpl.handleSetBeaconPacket`: the guest's
     /// beacon menu takes the powers (`BeaconMenu.updateEffects`), and they
     /// become the block entity's (`dataAccess.set`: the power_select sound
@@ -567,7 +552,6 @@ impl Game<'_> {
         }
         self.world.modified.insert((pos[0] >> 4, pos[2] >> 4));
     }
-
     /// `ServerPlayer.doTick`'s `stillValid`: a guest's station closes once its
     /// block is gone or the guest is out of reach (`isWithinBlockInteractionRange(pos, 4)`).
     pub(super) fn lan_stations_tick(&mut self, host: &mut LanHost) {
@@ -612,7 +596,8 @@ impl Game<'_> {
     }
 }
 
-impl Game<'_> {
+impl Game<'_> {}
+impl crate::game::Sim<'_> {
     /// The guests' lecterns each tick: `stillValid` (the block entity, its
     /// book, the reach) closes them, and `broadcastChanges` sends a book or
     /// page another player changed.

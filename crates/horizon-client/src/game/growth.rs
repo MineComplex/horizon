@@ -6,7 +6,8 @@ use horizon_core::{geometry::Direction, position::BlockPos};
 use horizon_world::worldgen::live::LiveFeatures;
 use std::sync::Arc;
 
-impl Game<'_> {
+impl Game<'_> {}
+impl crate::game::Sim<'_> {
     /// Load the configured/placed feature registry used by saplings, fungi
     /// and bone meal (once per process; shares the generator's bundle).
     pub(super) fn install_live_features(&self) {

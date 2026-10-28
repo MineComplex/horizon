@@ -39,6 +39,64 @@ pub(super) struct SpawnerState {
 }
 
 impl Game<'_> {
+    /// `SpawnerRenderer` and `TrialSpawnerRenderer`: the next mob of every
+    /// spawner near the camera, small and turning.
+    pub(super) fn spawner_geometry(
+        &self,
+        camera: glam::DVec3,
+        alpha: f64,
+        out: &mut Vec<horizon_client::mesher::Vertex>,
+    ) {
+        let atlas = &self.front.gui.atlas;
+        let lookup = |name: &str| atlas.sprites.get(name).map(|r| [r.u0, r.v0, r.u1, r.v1]);
+        for (key, (_, mob)) in &self.spawners.displays {
+            let at = glam::DVec3::new(f64::from(key.0), f64::from(key.1), f64::from(key.2));
+            if at.distance_squared(camera) >= 64.0 * 64.0 {
+                continue;
+            }
+            let (spin, scale) = match self.world.block_entities.get(key) {
+                Some(BlockEntity::Spawner(s)) => {
+                    s.display_pose(alpha as f32, mob.width(), mob.height())
+                }
+                Some(BlockEntity::TrialSpawner(s)) => horizon_client::mobs::spawner::display_pose(
+                    s.o_spin,
+                    s.spin,
+                    alpha as f32,
+                    mob.width(),
+                    mob.height(),
+                ),
+                _ => continue,
+            };
+            let origin = glam::Mat4::from_translation(
+                (at - camera).as_vec3() + glam::Vec3::new(0.5, 0.4, 0.5),
+            ) * glam::Mat4::from_rotation_y(spin.to_radians())
+                * glam::Mat4::from_translation(glam::Vec3::new(0.0, -0.2, 0.0))
+                * glam::Mat4::from_rotation_x((-30.0_f32).to_radians())
+                * glam::Mat4::from_scale(glam::Vec3::splat(scale));
+            let light = self.world.light(key.0, key.1, key.2);
+            let packed = (u32::from(light >> 4) * 16) | ((u32::from(light & 15) * 16) << 8);
+            if mob.species() == horizon_client::mobs::Species::SulfurCube {
+                self.sulfur_cube_body_geometry(
+                    mob,
+                    alpha as f32,
+                    horizon_client::mobs::render::base_transform_at(mob, alpha as f32, origin),
+                    packed,
+                    out,
+                );
+            }
+            horizon_client::mobs::render::render_posed(
+                mob,
+                alpha as f32,
+                origin,
+                &lookup,
+                packed,
+                self.res.mob_data(),
+                out,
+            );
+        }
+    }
+}
+impl crate::game::Sim<'_> {
     /// `EntityType.byString`: the type is in the registry.
     pub(super) fn entity_type_exists(&self, id: &str) -> bool {
         self.spawners
@@ -400,61 +458,5 @@ impl Game<'_> {
         self.spawner_block_updated(key);
         self.post_block_game_event("minecraft:block_change", pos, Some(Who::Player), None);
         Some(true)
-    }
-    /// `SpawnerRenderer` and `TrialSpawnerRenderer`: the next mob of every
-    /// spawner near the camera, small and turning.
-    pub(super) fn spawner_geometry(
-        &self,
-        camera: glam::DVec3,
-        alpha: f64,
-        out: &mut Vec<horizon_client::mesher::Vertex>,
-    ) {
-        let atlas = &self.gui.atlas;
-        let lookup = |name: &str| atlas.sprites.get(name).map(|r| [r.u0, r.v0, r.u1, r.v1]);
-        for (key, (_, mob)) in &self.spawners.displays {
-            let at = glam::DVec3::new(f64::from(key.0), f64::from(key.1), f64::from(key.2));
-            if at.distance_squared(camera) >= 64.0 * 64.0 {
-                continue;
-            }
-            let (spin, scale) = match self.world.block_entities.get(key) {
-                Some(BlockEntity::Spawner(s)) => {
-                    s.display_pose(alpha as f32, mob.width(), mob.height())
-                }
-                Some(BlockEntity::TrialSpawner(s)) => horizon_client::mobs::spawner::display_pose(
-                    s.o_spin,
-                    s.spin,
-                    alpha as f32,
-                    mob.width(),
-                    mob.height(),
-                ),
-                _ => continue,
-            };
-            let origin = glam::Mat4::from_translation(
-                (at - camera).as_vec3() + glam::Vec3::new(0.5, 0.4, 0.5),
-            ) * glam::Mat4::from_rotation_y(spin.to_radians())
-                * glam::Mat4::from_translation(glam::Vec3::new(0.0, -0.2, 0.0))
-                * glam::Mat4::from_rotation_x((-30.0_f32).to_radians())
-                * glam::Mat4::from_scale(glam::Vec3::splat(scale));
-            let light = self.world.light(key.0, key.1, key.2);
-            let packed = (u32::from(light >> 4) * 16) | ((u32::from(light & 15) * 16) << 8);
-            if mob.species() == horizon_client::mobs::Species::SulfurCube {
-                self.sulfur_cube_body_geometry(
-                    mob,
-                    alpha as f32,
-                    horizon_client::mobs::render::base_transform_at(mob, alpha as f32, origin),
-                    packed,
-                    out,
-                );
-            }
-            horizon_client::mobs::render::render_posed(
-                mob,
-                alpha as f32,
-                origin,
-                &lookup,
-                packed,
-                self.res.mob_data(),
-                out,
-            );
-        }
     }
 }

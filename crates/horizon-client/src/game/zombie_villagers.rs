@@ -32,7 +32,8 @@ fn infects(difficulty: Difficulty, coin: impl FnOnce() -> bool) -> bool {
     }
 }
 
-impl Game<'_> {
+impl Game<'_> {}
+impl crate::game::Sim<'_> {
     /// `Zombie.killedEntity`: a villager killed by a zombie may rise as a
     /// zombie villager keeping its profession, trades and gossip.
     pub(super) fn zombie_killed(&mut self, killer: u32, victim: u32) {
@@ -80,7 +81,6 @@ impl Game<'_> {
             pitch,
         );
     }
-
     /// `ZombieVillager.mobInteract`: a golden apple on a weakened zombie
     /// villager starts the cure and is eaten; without weakness it does
     /// nothing. Returns whether the click was used.
@@ -106,7 +106,6 @@ impl Game<'_> {
         self.swing_arm();
         true
     }
-
     /// `ZombieVillager.finishConversion`: the villager returns with its
     /// data, trades, experience and gossip, and the curing player earns the
     /// village's trust.
@@ -150,7 +149,6 @@ impl Game<'_> {
             pitch,
         );
     }
-
     /// `CuredZombieVillagerTrigger`.
     fn trigger_cured_zombie_villager(
         &mut self,
