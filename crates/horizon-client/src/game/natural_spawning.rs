@@ -77,7 +77,7 @@ pub(super) fn nearest_player(
 
 /// The game level as natural spawning reads it.
 pub(super) struct GameLevel<'g, 'a> {
-    pub(super) game: &'g Game<'a>,
+    pub(super) game: &'g crate::game::Sim<'a>,
     pub(super) w: MobWorld<'g>,
     /// Every player in the level ([`Game::level_players`]).
     pub(super) players: Vec<LevelPlayer>,
@@ -366,7 +366,8 @@ impl horizon_client::mobs::spawner::SpawnerLevel for GameLevel<'_, '_> {
         mobs + pending
     }
 }
-impl<'a> Game<'a> {
+impl<'a> Game<'a> {}
+impl<'a> crate::game::Sim<'a> {
     pub(super) fn natural_level(&self) -> GameLevel<'_, 'a> {
         let players = self.level_players();
         let nearest = players

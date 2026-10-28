@@ -22,7 +22,8 @@ use horizon_client::Result;
 use horizon_core::geometry::Vec3;
 use serde_json::{Value, json};
 
-impl Game<'_> {
+impl Game<'_> {}
+impl crate::game::Sim<'_> {
     /// One control request beyond `server-status` and `console`; None when
     /// it is not one of them.
     pub(super) fn server_control(&mut self, line: &str) -> Option<Value> {
@@ -37,7 +38,6 @@ impl Game<'_> {
         };
         Some(result.unwrap_or_else(|e| json!({ "error": e.to_string() })))
     }
-
     /// The guest called `name`: its profile.
     fn guest_uuid(&self, name: &str) -> Result<u128> {
         self.lan
@@ -46,7 +46,6 @@ impl Game<'_> {
             .map(|g| g.uuid)
             .ok_or_else(|| format!("{name} is not on this server").into())
     }
-
     fn player_control(&mut self, name: &str, line: &str, words: &[&str]) -> Result<Value> {
         let uuid = self.guest_uuid(name)?;
         let ok = || Ok(json!({ "ok": true }));
@@ -107,7 +106,6 @@ impl Game<'_> {
             _ => Err(format!("unknown request {line:?}").into()),
         }
     }
-
     /// `horizon-ctl lan` on a server: it is always open, on its own port.
     /// `commands` lets every player run commands, `force` forces the default
     /// game mode (Open to LAN's options).
@@ -127,7 +125,6 @@ impl Game<'_> {
             _ => Err("lan open|close|status".into()),
         }
     }
-
     /// Run `f` with the level of the player `uuid` in place (the server holds
     /// one per dimension), then put back the level that was.
     pub(super) fn in_player_level<T>(&mut self, uuid: u128, f: impl FnOnce(&mut Self) -> T) -> T {
@@ -142,7 +139,6 @@ impl Game<'_> {
         }
         out
     }
-
     /// A command as the player `uuid`, run as the console runs one (its
     /// permission), in the player's level: `execute as` the player. The
     /// feedback goes to the player's chat and is returned.
@@ -202,7 +198,8 @@ impl Game<'_> {
 }
 
 /// The client's side: a test's client asks its server (`--server-control`).
-impl Game<'_> {
+impl Game<'_> {}
+impl crate::game::Sim<'_> {
     /// Ask the server this client plays on `as NAME words`: None when the
     /// client was not given the server's control endpoint.
     pub(super) fn ask_server(&self, words: &str) -> Option<Result<Value>> {

@@ -163,7 +163,7 @@ fn parse_wait(words: &[&str]) -> Result<(Condition, Duration, Option<u64>)> {
 
 impl Game<'_> {
     fn snapshot(&self) -> Snapshot {
-        let world = self.title.is_none().then(|| self.level.name.clone());
+        let world = self.front.title.is_none().then(|| self.level.name.clone());
         Snapshot {
             screen: self.screen_label(),
             dimension: self.dim.id().to_string(),
@@ -182,9 +182,9 @@ impl Game<'_> {
     }
 
     fn loaded(&self) -> bool {
-        self.title.is_none()
+        self.front.title.is_none()
             && self.player.is_some()
-            && self.streaming.pending() + self.pending_uploads.len() == 0
+            && self.streaming.pending() + self.front.pending_uploads.len() == 0
     }
 
     /// Once per event loop turn: record what changed, answer the waits that hold.
@@ -204,13 +204,13 @@ impl Game<'_> {
                     .take(new_chat)
                     .map(|(t, _)| t.clone())
                     .collect(),
-                None => self.ui.chat.recent_lines(new_chat),
+                None => self.sim.ui.chat.recent_lines(new_chat),
             };
             for event in diff(before, &now, &lines) {
-                self.events.push(self.ticks, event);
+                self.sim.events.push(self.sim.ticks, event);
             }
         }
-        self.events.last = Some(now);
+        self.sim.events.last = Some(now);
         if self.events.waits.is_empty() {
             return;
         }
@@ -246,7 +246,8 @@ impl Game<'_> {
             let _ = wait.reply.send(reply.to_string());
         }
     }
-
+}
+impl crate::game::Sim<'_> {
     /// `events` and `wait-for`; None for other commands, Some(None) when deferred.
     pub(super) fn events_command(
         &mut self,

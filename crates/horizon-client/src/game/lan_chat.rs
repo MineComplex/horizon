@@ -17,7 +17,8 @@ use horizon_protocol::packets::play::{self, Clientbound as C};
 /// let it through, by argument name (CommandSigningContext.SignedArguments).
 type Signed = Vec<(String, ChatMessage)>;
 
-impl Game<'_> {
+impl Game<'_> {}
+impl crate::game::Sim<'_> {
     /// CommandDispatcher.parse with the guest's permission level.
     fn parse_as(&mut self, permission: u8, command: &str) -> ParseResults {
         let level = std::mem::replace(&mut self.world_data.registries.permission, permission);
@@ -25,7 +26,6 @@ impl Game<'_> {
         self.world_data.registries.permission = level;
         parse
     }
-
     /// SignableCommand.of: the command's message arguments, by name, with
     /// their text, not past a redirect to the root (`execute ... run`).
     pub(super) fn signable_arguments(
@@ -53,7 +53,6 @@ impl Game<'_> {
         }
         out
     }
-
     /// handleChatCommand (performUnsignedChatCommand): refused when the
     /// server enforces secure chat and the command has a message to sign.
     pub(super) fn guest_chat_command(&mut self, host: &mut LanHost, conn: u32, command: &str) {
@@ -81,7 +80,6 @@ impl Game<'_> {
         }
         self.guest_command(host, conn, command, None);
     }
-
     /// handleSignedChatCommand: the acknowledgements, then each message
     /// argument through the sender's chain, then the command with them.
     pub(super) fn guest_signed_command(
@@ -115,7 +113,6 @@ impl Game<'_> {
             self.guest_command(host, conn, &p.command, Some(signed));
         }
     }
-
     /// SayCommand, EmoteCommands and MsgCommand for a guest: chat to the
     /// players, signed when the guest signed it (a disguised chat after an
     /// unsigned command packet). False when the command is another one, or

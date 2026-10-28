@@ -251,26 +251,24 @@ impl EyeOfEnder {
 }
 
 impl Game<'_> {
-    /// The environment attributes of the current dimension.
-    pub(super) fn dim_environment(&self) -> &Environment {
-        match self.dim {
-            Dim::Overworld => self.res.environment(),
-            Dim::Nether => self.res.nether_environment(),
-            Dim::End => self.res.end_environment(),
-        }
-    }
-
     /// SkyRenderer.renderEndFlash, drawn after the renderer's resident sky mesh.
     pub(super) fn end_flash_geometry(&self) -> Vec<Vertex> {
         let mut out = Vec::new();
         // The old combined sky/flash draw also skipped the flash without a sky sprite.
-        if !self.gui.atlas.sprites.contains_key("environment/end_sky") {
+        if !self
+            .front
+            .gui
+            .atlas
+            .sprites
+            .contains_key("environment/end_sky")
+        {
             return out;
         }
         // SkyRenderer.renderEndFlash: the end_flash sprite at height 100, scale 60.
         let intensity = self.end.flash.intensity(self.clock.fraction() as f32);
         if intensity > 1e-5
             && let Some(r) = self
+                .front
                 .gui
                 .atlas
                 .sprites
@@ -311,7 +309,7 @@ impl Game<'_> {
     pub(super) fn end_flash_sky(&self, sky: &mut horizon_client::environment::Sky, partial: f64) {
         if self.dim == Dim::End && !self.settings.file.bool("hideLightningFlashes") {
             let intensity = self.end.flash.intensity(partial as f32);
-            sky.sky_light_factor += if self.boss_overlay.should_create_world_fog() {
+            sky.sky_light_factor += if self.front.boss_overlay.should_create_world_fog() {
                 intensity / 3.0
             } else {
                 intensity
@@ -319,6 +317,119 @@ impl Game<'_> {
         }
     }
 
+    /// End crystals (on the spikes, or placed in any dimension) and thrown
+    /// eyes of ender, as camera-relative entity geometry (End portals and
+    /// gateways are block entities).
+    pub(super) fn end_geometry(&self, camera: glam::DVec3, out: &mut Vec<Vertex>) {
+        self.end_crystal_geometry(camera, out);
+        self.eye_geometry(camera, out);
+    }
+
+    /// EndCrystalRenderer and EndCrystalModel for the end crystals, and the
+    /// beam to a crystal's target (the spikes being summoned back).
+    fn end_crystal_geometry(&self, camera: glam::DVec3, out: &mut Vec<Vertex>) {
+        let (Some(model), Some(r)) = (
+            self.crystal_model.as_ref(),
+            self.front
+                .gui
+                .atlas
+                .sprites
+                .get("entity/end_crystal/end_crystal")
+                .copied(),
+        ) else {
+            return;
+        };
+        let uv = [r.u0, r.v0, r.u1, r.v1];
+        let partial = self.clock.fraction() as f32;
+        for crystal in &self.crystals {
+            let feet = glam::DVec3::new(crystal.position.x, crystal.position.y, crystal.position.z);
+            let rel = feet - camera;
+            if rel.length_squared() > 256.0 * 256.0 {
+                continue;
+            }
+            let age = crystal.time as f32 + partial;
+            let light = self.world.light(
+                feet.x.floor() as i32,
+                feet.y.floor() as i32,
+                feet.z.floor() as i32,
+            );
+            let packed = (u32::from(light >> 4) * 16) | ((u32::from(light & 15) * 16) << 8);
+            let poses = horizon_client::end_crystal::poses(model, age, crystal.show_bottom);
+            // poseStack.scale(2) then translate(0, -0.5, 0), not flipped.
+            let base = glam::Mat4::from_translation(rel.as_vec3())
+                * glam::Mat4::from_scale(glam::Vec3::splat(2.0))
+                * glam::Mat4::from_translation(glam::Vec3::new(0.0, -0.5, 0.0));
+            horizon_client::mobs::render::draw(
+                model,
+                base,
+                &poses,
+                uv,
+                0xFFFF_FFFF,
+                packed,
+                0,
+                out,
+            );
+            if let Some(target) = crystal.beam {
+                // The beam from the target's centre up to the bobbing crystal.
+                let from = glam::DVec3::new(
+                    f64::from(target[0]) + 0.5,
+                    f64::from(target[1]) + 0.5,
+                    f64::from(target[2]) + 0.5,
+                );
+                let delta = feet - from
+                    + glam::DVec3::new(0.0, f64::from(horizon_client::end_crystal::y(age)), 0.0);
+                self.crystal_beam(from, delta, age, camera, out);
+            }
+        }
+    }
+
+    /// ThrownItemRenderer: the ender eye item facing the camera.
+    fn eye_geometry(&self, camera: glam::DVec3, out: &mut Vec<Vertex>) {
+        let Some(r) = self.front.gui.atlas.sprites.get("item/ender_eye").copied() else {
+            return;
+        };
+        let alpha = self.clock.fraction();
+        let (yaw, pitch) = (self.yaw.to_radians(), self.pitch.to_radians());
+        let right = glam::Vec3::new(-yaw.cos(), 0.0, -yaw.sin()) * 0.25;
+        let up = glam::Vec3::new(
+            -yaw.sin() * pitch.sin(),
+            pitch.cos(),
+            yaw.cos() * pitch.sin(),
+        ) * 0.25;
+        let full = (15 * 16) | ((15 * 16) << 8);
+        for eye in &self.end.eyes {
+            let p = eye.previous + (eye.position - eye.previous) * alpha - camera;
+            let c = p.as_vec3();
+            let corners = [
+                (c - right - up, [r.u0, r.v1]),
+                (c + right - up, [r.u1, r.v1]),
+                (c + right + up, [r.u1, r.v0]),
+                (c - right + up, [r.u0, r.v0]),
+            ];
+            for (pos, uv) in corners {
+                out.push(Vertex {
+                    normal: [0; 4],
+                    pos: pos.to_array(),
+                    uv,
+                    layer: 0,
+                    color: 0xFFFF_FFFF,
+                    light: full,
+
+                    glint_uv: [0.0, 0.0],
+                });
+            }
+        }
+    }
+}
+impl crate::game::Sim<'_> {
+    /// The environment attributes of the current dimension.
+    pub(super) fn dim_environment(&self) -> &Environment {
+        match self.dim {
+            Dim::Overworld => self.res.environment(),
+            Dim::Nether => self.res.nether_environment(),
+            Dim::End => self.res.end_environment(),
+        }
+    }
     pub(super) fn block_name(&self, p: [i32; 3]) -> std::sync::Arc<str> {
         self.res
             .facts()
@@ -326,7 +437,6 @@ impl Game<'_> {
             .name
             .clone()
     }
-
     /// EnderEyeItem.useOn: fill an empty End portal frame, then light the
     /// portal when the ring of twelve filled frames is complete.
     pub(super) fn use_ender_eye(&mut self, stack: &ItemStack, use_on_block: bool) -> Result<bool> {
@@ -399,7 +509,6 @@ impl Game<'_> {
         }
         Ok(true)
     }
-
     /// EndPortalFrameBlock.getOrCreatePortalShape matched around `frame`: a 5×5
     /// ring (corners free) of filled frames, all facing the centre or all
     /// facing away from it. Returns the centre of the 3×3 opening.
@@ -439,7 +548,6 @@ impl Game<'_> {
         }
         None
     }
-
     /// End portals, End gateways and the exit portal, once per tick.
     pub(super) fn tick_end(&mut self) -> Result<()> {
         self.end.gateway_cooldown = self.end.gateway_cooldown.saturating_sub(1);
@@ -466,7 +574,6 @@ impl Game<'_> {
         // A server's players go through end portals as connections (`tick_guests`).
         Ok(())
     }
-
     /// Whether a `width` by `height` box at `position` is inside an End
     /// portal (its entity-inside shape), and the End gateway it touches.
     pub(super) fn inside_end_portals(
@@ -498,7 +605,6 @@ impl Game<'_> {
         }
         (portal, gateway)
     }
-
     /// EndPortalBlock.getPortalDestination for the pending enter_dimension.
     pub(super) fn end_destination(&self, target: Dim) -> Option<Vec3> {
         if !self.end_portal_travel {
@@ -524,7 +630,6 @@ impl Game<'_> {
         let s = self.level.spawn.unwrap_or([0.0, 64.0, 0.0]);
         Some(Vec3::new(s[0].floor() + 0.5, s[1], s[2].floor() + 0.5))
     }
-
     /// Where an End portal's traveller lands once `target` has loaded, and
     /// the yaw it faces there: the platform below the End's spawn point,
     /// facing west, or the top of the Overworld's spawn column.
@@ -581,7 +686,6 @@ impl Game<'_> {
         let y = self.land_column(x, z).map_or(target.y, f64::from);
         Ok(Some((Vec3::new(target.x, y, target.z), None)))
     }
-
     /// EnderDragonFight without a dragon: once the centre of the main island
     /// is loaded, place the active exit portal (EndPodiumFeature) and the
     /// first gateway (spawnNewGateway) if the portal is not there yet. Like
@@ -675,7 +779,6 @@ impl Game<'_> {
     pub(super) fn place_gateway_at(&mut self, pos: [i32; 3]) -> Result<()> {
         self.place_gateway(pos)
     }
-
     /// The first gateway of the shuffled ring (EnderDragonFight constructor
     /// and spawnNewGateway).
     fn first_gateway(&self) -> [i32; 3] {
@@ -693,7 +796,6 @@ impl Game<'_> {
             (GATEWAY_RADIUS * angle.sin()).floor() as i32,
         ]
     }
-
     /// EndPodiumFeature(active).place at `origin` (the portal level).
     pub(super) fn place_podium(&mut self, origin: [i32; 3], active: bool) -> Result<()> {
         for y in origin[1] - 1..=origin[1] + 32 {
@@ -749,7 +851,6 @@ impl Game<'_> {
         }
         Ok(())
     }
-
     /// EndGatewayFeature.place: the gateway block in a bedrock cross.
     fn place_gateway(&mut self, origin: [i32; 3]) -> Result<()> {
         for y in -2i32..=2 {
@@ -777,7 +878,6 @@ impl Game<'_> {
             });
         Ok(())
     }
-
     fn gateway_exits(&mut self) -> &mut HashMap<[i32; 3], ([i32; 3], bool)> {
         if self.end.exits.is_none() {
             let path = horizon_client::save::dimension_dir(&self.world_root, "minecraft:the_end")
@@ -795,7 +895,6 @@ impl Game<'_> {
         }
         self.end.exits.as_mut().expect("loaded exits")
     }
-
     fn save_gateway_exits(&mut self) -> Result<()> {
         let list: Vec<_> = self
             .gateway_exits()
@@ -807,7 +906,6 @@ impl Game<'_> {
         std::fs::write(dir.join(GATEWAY_FILE), serde_json::to_vec(&list)?)?;
         Ok(())
     }
-
     /// Drops a gateway's entry from the side file: its block entity is the source of truth.
     fn forget_gateway_exit(&mut self, gateway: [i32; 3]) -> Result<()> {
         if self.gateway_exits().remove(&gateway).is_some() {
@@ -815,7 +913,6 @@ impl Game<'_> {
         }
         Ok(())
     }
-
     fn set_gateway_exit(&mut self, gateway: [i32; 3], exit: [i32; 3], exact: bool) -> Result<()> {
         // TheEndGatewayBlockEntity.setExitPosition (also EndGatewayFeature.knownExit).
         let key = (gateway[0], gateway[1], gateway[2]);
@@ -836,7 +933,6 @@ impl Game<'_> {
         self.gateway_exits().insert(gateway, (exit, exact));
         self.save_gateway_exits()
     }
-
     /// Where `gateway` leads (TheEndGatewayBlockEntity.getPortalPosition):
     /// its exit, or the search for one, and the spot to load before either
     /// is resolved ([`Game::resolve_gateway`]).
@@ -882,7 +978,6 @@ impl Game<'_> {
         };
         (job, destination)
     }
-
     fn chunk_empty(&self, x: f64, z: f64) -> Option<bool> {
         let chunk = self
             .world
@@ -890,7 +985,6 @@ impl Game<'_> {
             .get(&((x / 16.0).floor() as i32, (z / 16.0).floor() as i32))?;
         Some(chunk.sections.iter().all(|s| s.is_uniform(0)))
     }
-
     /// TheEndGatewayBlockEntity.findTallestBlock.
     fn tallest_block(&self, around: [i32; 3], dist: i32, allow_bedrock: bool) -> [i32; 3] {
         let mut tallest: Option<[i32; 3]> = None;
@@ -914,7 +1008,6 @@ impl Game<'_> {
         }
         tallest.unwrap_or(around)
     }
-
     /// The teleport position of a gateway job, creating the exit gateway (and
     /// an island when the chunk has no landing spot) for new destinations.
     pub(super) fn resolve_gateway(&mut self, job: GatewayJob, target: Vec3) -> Result<Vec3> {
@@ -1001,7 +1094,6 @@ impl Game<'_> {
             }
         }
     }
-
     /// EndIslandFeature with RandomSource.create(pos.asLong()).
     fn place_end_island(&mut self, origin: [i32; 3]) -> Result<()> {
         let packed = ((i64::from(origin[0]) & 0x3FF_FFFF) << 38)
@@ -1027,72 +1119,6 @@ impl Game<'_> {
         }
         Ok(())
     }
-
-    /// End crystals (on the spikes, or placed in any dimension) and thrown
-    /// eyes of ender, as camera-relative entity geometry (End portals and
-    /// gateways are block entities).
-    pub(super) fn end_geometry(&self, camera: glam::DVec3, out: &mut Vec<Vertex>) {
-        self.end_crystal_geometry(camera, out);
-        self.eye_geometry(camera, out);
-    }
-
-    /// EndCrystalRenderer and EndCrystalModel for the end crystals, and the
-    /// beam to a crystal's target (the spikes being summoned back).
-    fn end_crystal_geometry(&self, camera: glam::DVec3, out: &mut Vec<Vertex>) {
-        let (Some(model), Some(r)) = (
-            self.crystal_model.as_ref(),
-            self.gui
-                .atlas
-                .sprites
-                .get("entity/end_crystal/end_crystal")
-                .copied(),
-        ) else {
-            return;
-        };
-        let uv = [r.u0, r.v0, r.u1, r.v1];
-        let partial = self.clock.fraction() as f32;
-        for crystal in &self.crystals {
-            let feet = glam::DVec3::new(crystal.position.x, crystal.position.y, crystal.position.z);
-            let rel = feet - camera;
-            if rel.length_squared() > 256.0 * 256.0 {
-                continue;
-            }
-            let age = crystal.time as f32 + partial;
-            let light = self.world.light(
-                feet.x.floor() as i32,
-                feet.y.floor() as i32,
-                feet.z.floor() as i32,
-            );
-            let packed = (u32::from(light >> 4) * 16) | ((u32::from(light & 15) * 16) << 8);
-            let poses = horizon_client::end_crystal::poses(model, age, crystal.show_bottom);
-            // poseStack.scale(2) then translate(0, -0.5, 0), not flipped.
-            let base = glam::Mat4::from_translation(rel.as_vec3())
-                * glam::Mat4::from_scale(glam::Vec3::splat(2.0))
-                * glam::Mat4::from_translation(glam::Vec3::new(0.0, -0.5, 0.0));
-            horizon_client::mobs::render::draw(
-                model,
-                base,
-                &poses,
-                uv,
-                0xFFFF_FFFF,
-                packed,
-                0,
-                out,
-            );
-            if let Some(target) = crystal.beam {
-                // The beam from the target's centre up to the bobbing crystal.
-                let from = glam::DVec3::new(
-                    f64::from(target[0]) + 0.5,
-                    f64::from(target[1]) + 0.5,
-                    f64::from(target[2]) + 0.5,
-                );
-                let delta = feet - from
-                    + glam::DVec3::new(0.0, f64::from(horizon_client::end_crystal::y(age)), 0.0);
-                self.crystal_beam(from, delta, age, camera, out);
-            }
-        }
-    }
-
     /// EnderEyeItem.use: findNearestMapStructure over the stronghold rings,
     /// then an EyeOfEnder signalled towards it. Without a stronghold (other
     /// dimensions) nothing is thrown.
@@ -1161,7 +1187,6 @@ impl Game<'_> {
         self.consume_held();
         self.swing_arm();
     }
-
     /// EyeOfEnder.tick: fly, then drop (4 in 5) or shatter after 80 ticks.
     fn tick_eyes(&mut self) {
         let mut eyes = std::mem::take(&mut self.end.eyes);
@@ -1199,7 +1224,6 @@ impl Game<'_> {
             self.level_event_at(2003, pos, 0);
         }
     }
-
     /// `LevelEventHandler` 2003: a shattered eye's item crumbs and two rings
     /// of portal particles drawn in towards it.
     pub(super) fn eye_break_particles(&mut self, pos: [i32; 3]) {
@@ -1228,7 +1252,6 @@ impl Game<'_> {
             angle += std::f64::consts::PI / 20.0;
         }
     }
-
     /// `EyeOfEnder.tick` on a client: behind each eye (a quarter of its last
     /// move back), four bubbles in water, else a portal particle.
     pub(super) fn eye_particles(&mut self) {
@@ -1255,43 +1278,6 @@ impl Game<'_> {
                 let portal = ParticleOptions::simple(ParticleType::Portal);
                 self.particles
                     .add(&portal, [x, origin[1] - 0.5, z], movement);
-            }
-        }
-    }
-    /// ThrownItemRenderer: the ender eye item facing the camera.
-    fn eye_geometry(&self, camera: glam::DVec3, out: &mut Vec<Vertex>) {
-        let Some(r) = self.gui.atlas.sprites.get("item/ender_eye").copied() else {
-            return;
-        };
-        let alpha = self.clock.fraction();
-        let (yaw, pitch) = (self.yaw.to_radians(), self.pitch.to_radians());
-        let right = glam::Vec3::new(-yaw.cos(), 0.0, -yaw.sin()) * 0.25;
-        let up = glam::Vec3::new(
-            -yaw.sin() * pitch.sin(),
-            pitch.cos(),
-            yaw.cos() * pitch.sin(),
-        ) * 0.25;
-        let full = (15 * 16) | ((15 * 16) << 8);
-        for eye in &self.end.eyes {
-            let p = eye.previous + (eye.position - eye.previous) * alpha - camera;
-            let c = p.as_vec3();
-            let corners = [
-                (c - right - up, [r.u0, r.v1]),
-                (c + right - up, [r.u1, r.v1]),
-                (c + right + up, [r.u1, r.v0]),
-                (c - right + up, [r.u0, r.v0]),
-            ];
-            for (pos, uv) in corners {
-                out.push(Vertex {
-                    normal: [0; 4],
-                    pos: pos.to_array(),
-                    uv,
-                    layer: 0,
-                    color: 0xFFFF_FFFF,
-                    light: full,
-
-                    glint_uv: [0.0, 0.0],
-                });
             }
         }
     }

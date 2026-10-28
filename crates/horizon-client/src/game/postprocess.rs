@@ -11,7 +11,8 @@ use std::sync::Arc;
 /// Block.UPDATE_INVISIBLE | UPDATE_KNOWN_SHAPE | UPDATE_SKIP_BLOCK_ENTITY_SIDEEFFECTS.
 const POSTPROCESS_FLAGS: i32 = 276;
 
-impl Game<'_> {
+impl Game<'_> {}
+impl crate::game::Sim<'_> {
     pub(super) fn postprocess_chunks(&mut self) -> Result<()> {
         let ready: Vec<(i32, i32)> = self
             .world

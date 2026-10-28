@@ -69,6 +69,142 @@ fn overlaps(a: ([f64; 3], [f64; 3]), b: ([f64; 3], [f64; 3])) -> bool {
     (0..3).all(|i| a.0[i] < b.1[i] && b.0[i] < a.1[i])
 }
 impl Game<'_> {
+    /// PaintingRenderer: the variant on the front, the back texture behind and
+    /// on the edges.
+    pub(super) fn painting_geometry(&self, camera: glam::DVec3, out: &mut Vec<Vertex>) {
+        let sprites = &self.front.gui.atlas.sprites;
+        let Some(back) = sprites.get("painting/back").copied() else {
+            return;
+        };
+        for p in &self.paintings {
+            let entity_start = out.len();
+            // EntityRenderer.shouldRender: the default range and its box,
+            // measured from the box's centre (HangingEntity's position).
+            let (lo, hi) = p.bounds();
+            let (lo, hi) = (glam::DVec3::from(lo), glam::DVec3::from(hi));
+            let range = super::entity_culling::default_range(hi - lo, self.view_scale());
+            if !self.entity_in_view(camera, (lo + hi) / 2.0, range, lo, hi) {
+                continue;
+            }
+            let Some(v) = self.painting_variants.get(&p.variant) else {
+                continue;
+            };
+            let Some(front) = sprites.get(&format!("painting/{}", v.asset)).copied() else {
+                continue;
+            };
+            let (lo, hi) = p.bounds();
+            let c = glam::DVec3::new(
+                (lo[0] + hi[0]) / 2.0,
+                (lo[1] + hi[1]) / 2.0,
+                (lo[2] + hi[2]) / 2.0,
+            ) - camera;
+            let s = p.step().map(f64::from);
+            let l = p.left().map(f64::from);
+            let out_dir = glam::DVec3::new(s[0], 0.0, s[2]);
+            // The viewer's right is the painting's left.
+            let right = glam::DVec3::new(l[0], 0.0, l[2]);
+            let up = glam::DVec3::Y;
+            let (hw, hh, d) = (
+                f64::from(p.width) / 2.0,
+                f64::from(p.height) / 2.0,
+                1.0 / 32.0,
+            );
+            let light = self.world.light(p.pos[0], p.pos[1], p.pos[2]);
+            let packed = (u32::from(light >> 4) * 16) | ((u32::from(light & 15) * 16) << 8);
+            let mut quad = |corners: [glam::DVec3; 4], uv: [[f32; 2]; 4], shade: f32| {
+                let k = (255.0 * shade) as u32;
+                let color = 0xFF00_0000 | k << 16 | k << 8 | k;
+                for (p, uv) in corners.iter().zip(uv) {
+                    out.push(Vertex {
+                        normal: [0; 4],
+                        pos: p.as_vec3().to_array(),
+                        uv,
+                        layer: 0,
+                        color,
+                        light: packed,
+
+                        glint_uv: [0.0, 0.0],
+                    });
+                }
+            };
+            let full = |r: horizon_client::hud::Rect| {
+                [[r.u0, r.v1], [r.u1, r.v1], [r.u1, r.v0], [r.u0, r.v0]]
+            };
+            let f = c + out_dir * d;
+            quad(
+                [
+                    f - right * hw - up * hh,
+                    f + right * hw - up * hh,
+                    f + right * hw + up * hh,
+                    f - right * hw + up * hh,
+                ],
+                full(front),
+                1.0,
+            );
+            let b = c - out_dir * d;
+            quad(
+                [
+                    b + right * hw - up * hh,
+                    b - right * hw - up * hh,
+                    b - right * hw + up * hh,
+                    b + right * hw + up * hh,
+                ],
+                full(back),
+                0.8,
+            );
+            // Edges: a one-pixel strip of the back texture.
+            let strip = [
+                [back.u0, back.v0 + (back.v1 - back.v0) / 16.0],
+                [back.u1, back.v0 + (back.v1 - back.v0) / 16.0],
+                [back.u1, back.v0],
+                [back.u0, back.v0],
+            ];
+            let (t, bt) = (up * hh, -up * hh);
+            quad(
+                [
+                    b + t + right * hw,
+                    b + t - right * hw,
+                    f + t - right * hw,
+                    f + t + right * hw,
+                ],
+                strip,
+                1.0,
+            );
+            quad(
+                [
+                    f + bt + right * hw,
+                    f + bt - right * hw,
+                    b + bt - right * hw,
+                    b + bt + right * hw,
+                ],
+                strip,
+                0.5,
+            );
+            quad(
+                [
+                    b - right * hw - up * hh,
+                    f - right * hw - up * hh,
+                    f - right * hw + up * hh,
+                    b - right * hw + up * hh,
+                ],
+                strip,
+                0.6,
+            );
+            quad(
+                [
+                    f + right * hw - up * hh,
+                    b + right * hw - up * hh,
+                    b + right * hw + up * hh,
+                    f + right * hw + up * hh,
+                ],
+                strip,
+                0.6,
+            );
+            self.cull_entity_vertices(out, entity_start);
+        }
+    }
+}
+impl crate::game::Sim<'_> {
     /// `HangingEntity.survives`: no block collision in the box, solid blocks
     /// (or diodes) behind it and no other painting overlapping it.
     pub(super) fn painting_survives(&self, p: &Painting) -> bool {
@@ -252,140 +388,6 @@ impl Game<'_> {
                 }
             }
             i += 1;
-        }
-    }
-    /// PaintingRenderer: the variant on the front, the back texture behind and
-    /// on the edges.
-    pub(super) fn painting_geometry(&self, camera: glam::DVec3, out: &mut Vec<Vertex>) {
-        let sprites = &self.gui.atlas.sprites;
-        let Some(back) = sprites.get("painting/back").copied() else {
-            return;
-        };
-        for p in &self.paintings {
-            let entity_start = out.len();
-            // EntityRenderer.shouldRender: the default range and its box,
-            // measured from the box's centre (HangingEntity's position).
-            let (lo, hi) = p.bounds();
-            let (lo, hi) = (glam::DVec3::from(lo), glam::DVec3::from(hi));
-            let range = super::entity_culling::default_range(hi - lo, self.view_scale());
-            if !self.entity_in_view(camera, (lo + hi) / 2.0, range, lo, hi) {
-                continue;
-            }
-            let Some(v) = self.painting_variants.get(&p.variant) else {
-                continue;
-            };
-            let Some(front) = sprites.get(&format!("painting/{}", v.asset)).copied() else {
-                continue;
-            };
-            let (lo, hi) = p.bounds();
-            let c = glam::DVec3::new(
-                (lo[0] + hi[0]) / 2.0,
-                (lo[1] + hi[1]) / 2.0,
-                (lo[2] + hi[2]) / 2.0,
-            ) - camera;
-            let s = p.step().map(f64::from);
-            let l = p.left().map(f64::from);
-            let out_dir = glam::DVec3::new(s[0], 0.0, s[2]);
-            // The viewer's right is the painting's left.
-            let right = glam::DVec3::new(l[0], 0.0, l[2]);
-            let up = glam::DVec3::Y;
-            let (hw, hh, d) = (
-                f64::from(p.width) / 2.0,
-                f64::from(p.height) / 2.0,
-                1.0 / 32.0,
-            );
-            let light = self.world.light(p.pos[0], p.pos[1], p.pos[2]);
-            let packed = (u32::from(light >> 4) * 16) | ((u32::from(light & 15) * 16) << 8);
-            let mut quad = |corners: [glam::DVec3; 4], uv: [[f32; 2]; 4], shade: f32| {
-                let k = (255.0 * shade) as u32;
-                let color = 0xFF00_0000 | k << 16 | k << 8 | k;
-                for (p, uv) in corners.iter().zip(uv) {
-                    out.push(Vertex {
-                        normal: [0; 4],
-                        pos: p.as_vec3().to_array(),
-                        uv,
-                        layer: 0,
-                        color,
-                        light: packed,
-
-                        glint_uv: [0.0, 0.0],
-                    });
-                }
-            };
-            let full = |r: horizon_client::hud::Rect| {
-                [[r.u0, r.v1], [r.u1, r.v1], [r.u1, r.v0], [r.u0, r.v0]]
-            };
-            let f = c + out_dir * d;
-            quad(
-                [
-                    f - right * hw - up * hh,
-                    f + right * hw - up * hh,
-                    f + right * hw + up * hh,
-                    f - right * hw + up * hh,
-                ],
-                full(front),
-                1.0,
-            );
-            let b = c - out_dir * d;
-            quad(
-                [
-                    b + right * hw - up * hh,
-                    b - right * hw - up * hh,
-                    b - right * hw + up * hh,
-                    b + right * hw + up * hh,
-                ],
-                full(back),
-                0.8,
-            );
-            // Edges: a one-pixel strip of the back texture.
-            let strip = [
-                [back.u0, back.v0 + (back.v1 - back.v0) / 16.0],
-                [back.u1, back.v0 + (back.v1 - back.v0) / 16.0],
-                [back.u1, back.v0],
-                [back.u0, back.v0],
-            ];
-            let (t, bt) = (up * hh, -up * hh);
-            quad(
-                [
-                    b + t + right * hw,
-                    b + t - right * hw,
-                    f + t - right * hw,
-                    f + t + right * hw,
-                ],
-                strip,
-                1.0,
-            );
-            quad(
-                [
-                    f + bt + right * hw,
-                    f + bt - right * hw,
-                    b + bt - right * hw,
-                    b + bt + right * hw,
-                ],
-                strip,
-                0.5,
-            );
-            quad(
-                [
-                    b - right * hw - up * hh,
-                    f - right * hw - up * hh,
-                    f - right * hw + up * hh,
-                    b - right * hw + up * hh,
-                ],
-                strip,
-                0.6,
-            );
-            quad(
-                [
-                    f + right * hw - up * hh,
-                    b + right * hw - up * hh,
-                    b + right * hw + up * hh,
-                    f + right * hw + up * hh,
-                ],
-                strip,
-                0.6,
-            );
-            self.cull_entity_vertices(out, entity_start);
         }
     }
 }

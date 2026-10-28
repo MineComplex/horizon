@@ -34,7 +34,8 @@ fn completion_state(count: i32) -> i32 {
 
 pub(super) type Brushing = HashMap<[i32; 3], BrushState>;
 
-impl Game<'_> {
+impl Game<'_> {}
+impl crate::game::Sim<'_> {
     /// `BrushItem.onUseTick` for a brush used `ticks` ticks so far, the
     /// hand of `slot` acting.
     pub(super) fn tick_brush(&mut self, slot: usize, ticks: u32) {
@@ -51,7 +52,6 @@ impl Game<'_> {
         // The use ends after 200 ticks; the held button starts it again.
         self.using = (elapsed < USE_DURATION).then_some((slot, elapsed));
     }
-
     /// One stroke on the block aimed at: dust (this window only), the brush
     /// sound, and the block entity's count. The brush wears when the block
     /// changed state.
@@ -72,7 +72,6 @@ impl Game<'_> {
             self.damage_held(1);
         }
     }
-
     /// `BrushItem.spawnDustParticles`.
     pub(super) fn brush_dust(&mut self, hit: &Hit, off_hand: bool) {
         let state = self.world.block(hit.pos[0], hit.pos[1], hit.pos[2]);
@@ -108,7 +107,6 @@ impl Game<'_> {
             self.particles.add(&options, [x, hit.point[1], z], v);
         }
     }
-
     /// `BrushableBlockEntity.brush`: whether the block changed (the brush wears).
     fn brush_block(&mut self, pos: [i32; 3], face: [i32; 3]) -> bool {
         let time = self.world.game_time;
@@ -135,7 +133,6 @@ impl Game<'_> {
         }
         false
     }
-
     /// `BrushableBlockEntity.unpackLootTable`: the table's roll becomes the
     /// block entity's item.
     fn unpack_brush_loot(&mut self, pos: [i32; 3]) {
@@ -155,7 +152,6 @@ impl Game<'_> {
         );
         spill::put_saved_entity(&mut self.world, pos, tag);
     }
-
     /// `BrushableBlockEntity.brushingCompleted`: the item drops out of the
     /// brushed face and the block turns into its sand or gravel.
     fn brushing_completed(&mut self, pos: [i32; 3], face: Option<[i32; 3]>) {
@@ -185,7 +181,6 @@ impl Game<'_> {
             let _ = self.level_set(pos, base);
         }
     }
-
     fn set_dusted(&mut self, pos: [i32; 3], dusted: i32) {
         let registry = self.pack.assets.registry;
         let Some(mut state) = registry
@@ -199,12 +194,10 @@ impl Game<'_> {
             let _ = self.level_set(pos, state);
         }
     }
-
     fn schedule_brushable_tick(&mut self, pos: [i32; 3]) {
         let at = horizon_core::position::BlockPos::new(pos[0], pos[1], pos[2]);
         self.with_level(|b, level, ticks| b.schedule_tick(level, ticks, at, 2));
     }
-
     /// `BrushableBlockEntity.checkReset`, from `BrushableBlock.tick`: a block
     /// left alone loses two counts, again every four ticks.
     pub(super) fn brushable_tick(&mut self, pos: [i32; 3]) {
@@ -226,7 +219,6 @@ impl Game<'_> {
             self.set_dusted(pos, after);
         }
     }
-
     /// Level event 3008 (`LevelEventHandler`): the finished block's sound
     /// and break particles.
     pub(super) fn brush_complete_event(&mut self, pos: [i32; 3], data: i32) {

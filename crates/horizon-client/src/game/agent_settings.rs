@@ -8,14 +8,6 @@ use horizon_client::{Result, control};
 use std::path::PathBuf;
 
 impl Game<'_> {
-    /// The endpoint: the one the command line gave, else the default horizon-ctl looks for.
-    fn agent_socket_path(&self) -> PathBuf {
-        self.options
-            .control
-            .clone()
-            .unwrap_or_else(control::default_path)
-    }
-
     /// At startup: open the socket if the game was started for an agent or Agent Control is on.
     pub(super) fn start_agent_control(&mut self) -> Result<()> {
         self.agent_control_on = self.settings.extras.agent_control;
@@ -33,7 +25,7 @@ impl Game<'_> {
             let server = control::Server::start(path)
                 .map_err(|e| format!("control socket {}: {e}", path.display()))?;
             log::info!("Horizon: control socket {}", server.path().display());
-            self.control = Some(server);
+            self.front.control = Some(server);
         } else if self.agent_control_on {
             self.open_agent_socket();
         }
@@ -47,7 +39,7 @@ impl Game<'_> {
         match control::Server::start(&path) {
             Ok(server) => {
                 log::info!("Horizon: control socket {}", server.path().display());
-                self.control = Some(server);
+                self.front.control = Some(server);
             }
             Err(e) => log::warn!("Horizon: control socket {}: {e}", path.display()),
         }
@@ -60,27 +52,24 @@ impl Game<'_> {
         let changed = wanted != self.agent_control_on;
         self.agent_control_on = wanted;
         let open = self
+            .front
             .control
             .as_ref()
             .is_some_and(|c| !c.path().as_os_str().is_empty());
         if self.settings.extras.no_ai || (changed && !wanted) {
             if open {
                 log::info!("Horizon: control socket closed");
-                self.control = None;
+                self.front.control = None;
             }
-        } else if changed && wanted && self.control.is_none() {
+        } else if changed && wanted && self.front.control.is_none() {
             self.open_agent_socket();
         }
-    }
-
-    /// An agent's command arrived.
-    pub(super) fn agent_command_seen(&mut self) {
-        self.agent_last = Some(std::time::Instant::now());
     }
 
     /// The AI Agent page's lines: the state, then where agents connect.
     pub(super) fn agent_status_lines(&self) -> Vec<String> {
         let server = self
+            .front
             .control
             .as_ref()
             .filter(|c| !c.path().as_os_str().is_empty());
@@ -112,7 +101,19 @@ impl Game<'_> {
         lines.push("Local only: agents on this computer, never the network.".into());
         lines
     }
-
+}
+impl crate::game::Sim<'_> {
+    /// The endpoint: the one the command line gave, else the default horizon-ctl looks for.
+    fn agent_socket_path(&self) -> PathBuf {
+        self.options
+            .control
+            .clone()
+            .unwrap_or_else(control::default_path)
+    }
+    /// An agent's command arrived.
+    pub(super) fn agent_command_seen(&mut self) {
+        self.agent_last = Some(std::time::Instant::now());
+    }
     /// What Copy Connection Details puts on the clipboard: the socket, a horizon-ctl line to try,
     /// and an MCP client's config for this game.
     pub(super) fn agent_details(&self) -> String {

@@ -12,7 +12,8 @@ use horizon_core::geometry::Vec3;
 fn block_of(p: Vec3) -> [i32; 3] {
     [p.x.floor() as i32, p.y.floor() as i32, p.z.floor() as i32]
 }
-impl Game<'_> {
+impl Game<'_> {}
+impl crate::game::Sim<'_> {
     fn villager_index(&self, id: u32) -> Option<usize> {
         self.mobs
             .iter()
@@ -60,7 +61,6 @@ impl Game<'_> {
         let d = Vec3::new(to.x - from.x, to.y - from.y, to.z - from.z).normalize();
         self.spawn_item(stack, at, [d.x * 0.3, d.y * 0.3, d.z * 0.3], 10);
     }
-
     /// `TradeWithVillager.tick` for one pair: gossip (at most once in 1200
     /// ticks for both), then surplus food and wanted wares tossed over.
     pub(super) fn villager_meet(&mut self, a: u32, b: u32) {
@@ -79,7 +79,6 @@ impl Game<'_> {
             self.villager_golem_check(a, 5);
         }
     }
-
     /// `Villager.spawnGolemIfNeeded`: when enough villagers nearby that
     /// slept recently and saw no golem agree, an iron golem appears.
     pub(super) fn villager_golem_check(&mut self, id: u32, needed: usize) {
@@ -128,7 +127,6 @@ impl Game<'_> {
         self.mobs.push(golem);
         true
     }
-
     /// `VillagerMakeLove.tryToGiveBirth`: both eat, a free bed within 48
     /// blocks is taken for the child, who is a baby villager of one of
     /// three villager types.
@@ -239,7 +237,6 @@ impl Game<'_> {
             self.particles.add(&options, p, v);
         }
     }
-
     /// `NearestItemSensor.doTick` for the villagers whose sensor is due: the
     /// nearest dropped item within 32 blocks that `Villager.wantsToPickUp`
     /// accepts and the villager sees, or none.
@@ -363,7 +360,6 @@ impl Game<'_> {
             }
         }
     }
-
     /// `Villager.setLastHurtByMob` and `ServerLevel.onReputationEvent`: a hit
     /// from the player counts against it with the villager that was hit.
     pub(super) fn villager_reputation_tick(&mut self) {

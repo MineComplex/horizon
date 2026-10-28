@@ -23,14 +23,14 @@ fn transmit_range(crouching: bool, invisible: bool, head: Option<&ItemStack>) ->
     }
 }
 
-impl Game<'_> {
+impl Game<'_> {}
+impl crate::game::Sim<'_> {
     /// The player's team and its colour, as the locator bar shows it.
     fn waypoint_team(&self, name: &str) -> Option<(String, Option<i32>)> {
         let team = self.score.board.players_team(name)?;
         let color = team.color.as_deref().and_then(waypoints::team_rgb);
         Some((team.name.clone(), color))
     }
-
     /// Each level's `ServerWaypointManager` ticked with the players in that
     /// level: a player who changes level leaves the old one's manager
     /// (`ServerLevel.removePlayerImmediately`: untracked for everyone there)

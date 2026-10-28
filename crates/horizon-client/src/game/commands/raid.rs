@@ -2,7 +2,8 @@
 use super::{Game, R, Text, err};
 use horizon_client::{command::Context, mobs::raider};
 
-impl Game<'_> {
+impl Game<'_> {}
+impl crate::game::Sim<'_> {
     pub(in crate::game) fn cmd_raid(&mut self, id: &str, ctx: &Context) -> R<i32> {
         let Some(player) = self.player.as_ref().map(|p| p.position) else {
             return Ok(0);
@@ -21,7 +22,7 @@ impl Game<'_> {
                     fail(self, "Raid already started close by");
                     return Ok(-1);
                 }
-                let level = Self::int(ctx, "omenlvl").unwrap_or(0);
+                let level = crate::game::Game::int(ctx, "omenlvl").unwrap_or(0);
                 match self.raid_command_create(at, level) {
                     true => self.feedback(Text::literal("Created a raid in your local village")),
                     false => fail(self, "Failed to create a raid in your local village"),
@@ -69,7 +70,7 @@ impl Game<'_> {
                 }
             }
             "raid.setomen" => {
-                let level = Self::int(ctx, "level").unwrap_or(0);
+                let level = crate::game::Game::int(ctx, "level").unwrap_or(0);
                 let Some(raid) = self.raiding_nearby(at) else {
                     fail(self, "No raid found here");
                     return Ok(1);

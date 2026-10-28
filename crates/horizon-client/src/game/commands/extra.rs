@@ -98,6 +98,23 @@ fn civil(secs: i64) -> (i64, i64, i64, i64, i64, i64) {
 }
 
 impl Game<'_> {
+    // ---- /spectate ------------------------------------------------------
+
+    // ---- /waypoint ------------------------------------------------------
+
+    // ---- /dialog --------------------------------------------------------
+
+    // ---- /posteffect ----------------------------------------------------
+
+    // ---- /test ----------------------------------------------------------
+
+    // ---- /kick ----------------------------------------------------------
+
+    // ---- /fetchprofile --------------------------------------------------
+
+    // ---- /debug, /jfr, /version -----------------------------------------
+}
+impl crate::game::Sim<'_> {
     /// CommandSourceStack.getPlayerOrException.
     fn source_player(&self) -> R<Target> {
         match self.command_source.map(|s| s.entity) {
@@ -109,9 +126,6 @@ impl Game<'_> {
     fn one_entity(&mut self, ctx: &Context, name: &str, player: bool) -> R<Target> {
         Ok(self.entities(ctx, name, player)?[0])
     }
-
-    // ---- /spectate ------------------------------------------------------
-
     /// `SpectateCommand.spectate`.
     pub(super) fn cmd_spectate(&mut self, ctx: &Context) -> R<i32> {
         let target = if ctx.get("target").is_some() {
@@ -207,9 +221,6 @@ impl Game<'_> {
             _ => self.set_camera(None),
         }
     }
-
-    // ---- /waypoint ------------------------------------------------------
-
     /// A guest's body is only `Player` during its turn; retained command state
     /// must use its connection so the next server tick still finds that body.
     pub(super) fn waypoint_target(&self, t: Target) -> Target {
@@ -218,7 +229,6 @@ impl Game<'_> {
             _ => t,
         }
     }
-
     /// A living entity's `waypoint_transmit_range` (`isTransmittingWaypoint`).
     fn transmit_range(&mut self, t: Target) -> f64 {
         if matches!(t, Target::Guest(_)) {
@@ -416,9 +426,6 @@ impl Game<'_> {
         self.feedback(message);
         Ok(0)
     }
-
-    // ---- /dialog --------------------------------------------------------
-
     pub(super) fn cmd_dialog(&mut self, id: &str, ctx: &Context) -> R<i32> {
         let targets = self.entities(ctx, "targets", true)?;
         let n = targets.len() as i32;
@@ -449,9 +456,6 @@ impl Game<'_> {
         self.feedback(message);
         Ok(n)
     }
-
-    // ---- /posteffect ----------------------------------------------------
-
     pub(super) fn cmd_posteffect(&mut self, id: &str, ctx: &Context) -> R<i32> {
         if id == "posteffect.list" {
             let t = self.one_entity(ctx, "target", true)?;
@@ -522,9 +526,6 @@ impl Game<'_> {
         self.feedback(message);
         Ok(n)
     }
-
-    // ---- /test ----------------------------------------------------------
-
     /// `TestCommand`. Horizon has no game test instances or test runner: every
     /// finder comes back empty, as in a world without test instance blocks.
     pub(super) fn cmd_test(&mut self, id: &str, ctx: &Context) -> R<i32> {
@@ -608,9 +609,6 @@ impl Game<'_> {
             end.z.floor() as i32,
         ])
     }
-
-    // ---- /kick ----------------------------------------------------------
-
     /// `KickCommand.kickPlayers`: only guests of a published world can be
     /// kicked; the owner never.
     pub(super) fn cmd_kick(&mut self, ctx: &Context) -> R<i32> {
@@ -671,9 +669,6 @@ impl Game<'_> {
         }
         Ok(count)
     }
-
-    // ---- /fetchprofile --------------------------------------------------
-
     /// `FetchProfileCommand`: Horizon resolves no profiles over the network,
     /// so name and id lookups fail like an unreachable profile service; an
     /// entity with a profile (the player) prints its resolved profile.
@@ -760,9 +755,6 @@ impl Game<'_> {
             super::super::chat::PLAYER_NAME
         )
     }
-
-    // ---- /debug, /jfr, /version -----------------------------------------
-
     pub(super) fn cmd_debug(&mut self, ctx: &Context) -> R<i32> {
         if ctx.literals.iter().any(|l| l == "function") {
             return self.cmd_debug_function(ctx);
@@ -878,7 +870,6 @@ impl Game<'_> {
             }
         }
     }
-
     /// `/jfr start|stop` (JfrCommand). Horizon has no JVM flight recorder:
     /// the recording is its own tick timing, dumped as JSON.
     pub(super) fn cmd_jfr(&mut self, ctx: &Context) -> R<i32> {
@@ -921,7 +912,6 @@ impl Game<'_> {
         self.feedback(Text::translate("commands.jfr.stopped", &[file]));
         Ok(1)
     }
-
     /// `VersionCommand.dumpVersion`'s lines: Horizon reports the version it
     /// implements.
     pub(in crate::game) fn version_lines(&self) -> Vec<Text> {
@@ -973,7 +963,8 @@ impl Game<'_> {
     }
 }
 
-impl Game<'_> {
+impl Game<'_> {}
+impl crate::game::Sim<'_> {
     /// `ServerPlayer.openDialog`: the dialog screen for a dialog id or inline
     /// definition.
     pub(in crate::game) fn open_dialog(&mut self, dialog: &str) -> R<()> {
@@ -985,7 +976,8 @@ impl Game<'_> {
         self.cmds.dialog = None;
     }
 }
-impl Game<'_> {
+impl Game<'_> {}
+impl crate::game::Sim<'_> {
     /// The player's profile id as `UUID.toString()`: the saved id, else the
     /// offline id of the player's name.
     pub(in crate::game) fn player_uuid_string(&self) -> String {

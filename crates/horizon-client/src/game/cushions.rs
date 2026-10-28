@@ -30,7 +30,7 @@ fn overlaps(a: Aabb, b: Aabb) -> bool {
 }
 use horizon_client::cushion::blocks_in;
 
-struct PlacementWorld<'a, 'r>(&'a Game<'r>);
+struct PlacementWorld<'a, 'r>(&'a crate::game::Sim<'r>);
 impl horizon_client::cushion::World for PlacementWorld<'_, '_> {
     fn outline_bounds(&self, p: [i32; 3]) -> Option<Aabb> {
         let boxes = self.0.outline_boxes(p);
@@ -105,6 +105,62 @@ impl horizon_client::cushion::World for PlacementWorld<'_, '_> {
 }
 
 impl Game<'_> {
+    /// `CushionRenderer`: the coloured model, rotated to the nearest
+    /// direction, with its bottom on the cushion's position.
+    pub(super) fn cushion_geometry(
+        &self,
+        camera: glam::DVec3,
+        out: &mut Vec<horizon_client::mesher::Vertex>,
+    ) {
+        let Some(model) = self.cushion_model.as_ref() else {
+            return;
+        };
+        let sprites = &self.front.gui.atlas.sprites;
+        for c in &self.cushions {
+            let entity_start = out.len();
+            let a = aabb(c.bounds());
+            let (lo, hi) = (a.min_position(), a.max_position());
+            let (lo, hi) = (
+                glam::DVec3::new(lo.x, lo.y, lo.z),
+                glam::DVec3::new(hi.x, hi.y, hi.z),
+            );
+            let range = super::entity_culling::default_range(hi - lo, self.view_scale());
+            if !self.entity_in_view(camera, (lo + hi) / 2.0, range, lo, hi) {
+                continue;
+            }
+            let Some(uv) = sprites
+                .get(&format!("entity/cushion/{}_cushion", c.color_name()))
+                .map(|r| [r.u0, r.v0, r.u1, r.v1])
+            else {
+                continue;
+            };
+            let p = glam::DVec3::new(c.position.x, c.position.y, c.position.z) - camera;
+            let base = glam::Mat4::from_translation(p.as_vec3())
+                * glam::Mat4::from_rotation_y((180.0 - snap_yaw(c.yaw)).to_radians())
+                * glam::Mat4::from_rotation_x(std::f32::consts::PI)
+                * glam::Mat4::from_translation(glam::Vec3::new(0.0, -0.25, 0.0));
+            // `EntityRenderer.getPackedLightCoords` probes at the eye height.
+            let l = self.world.light(
+                c.position.x.floor() as i32,
+                (c.position.y + 0.2125).floor() as i32,
+                c.position.z.floor() as i32,
+            );
+            let packed = (u32::from(l >> 4) * 16) | ((u32::from(l & 15) * 16) << 8);
+            horizon_client::mobs::render::draw(
+                model,
+                base,
+                &Poses::new(model),
+                uv,
+                0xFFFF_FFFF,
+                packed,
+                0,
+                out,
+            );
+            self.cull_entity_vertices(out, entity_start);
+        }
+    }
+}
+impl crate::game::Sim<'_> {
     /// The cushion under the crosshair, its distance and the hit point.
     pub(super) fn cushion_hit(&self) -> Option<(usize, f64, [f64; 3])> {
         let eye = self.eye_position()?;
@@ -121,11 +177,9 @@ impl Game<'_> {
         }
         best
     }
-
     pub(super) fn cushion_survives(&self, c: &Cushion) -> bool {
         horizon_client::cushion::survives(&PlacementWorld(self), aabb(c.bounds()))
     }
-
     /// `Cushion.destroyIfInFire`: a fire-tagged block inside the deflated box.
     fn cushion_in_fire(&self, c: &Cushion) -> bool {
         let bounds = aabb(c.bounds()).next_deflated();
@@ -134,7 +188,6 @@ impl Game<'_> {
             self.res.items().block_in_tag("minecraft:fire", &facts.name)
         })
     }
-
     /// `CushionItem.useOn`: on the top face only, spawning at the click's
     /// height above the clicked block (or the replaceable block itself).
     pub(super) fn place_cushion(&mut self, hit: &Hit, stack: &ItemStack) -> bool {
@@ -258,7 +311,6 @@ impl Game<'_> {
         }
         true
     }
-
     /// `Cushion.interact`: sit down unless sneaking or already occupied.
     pub(super) fn interact_cushion(&mut self) -> bool {
         let Some((i, d, _)) = self.cushion_hit() else {
@@ -297,7 +349,6 @@ impl Game<'_> {
         self.swing_arm();
         true
     }
-
     /// `Cushion.hurtServer` from a player: killed, then the item dropped.
     pub(super) fn attack_cushion(&mut self) -> bool {
         let Some((i, d, _)) = self.cushion_hit() else {
@@ -313,7 +364,6 @@ impl Game<'_> {
         self.break_cushion(i, true);
         true
     }
-
     /// `Cushion.dropItem`: the break sound and particles, then the coloured
     /// item unless drops are off or the breaker has infinite materials.
     pub(super) fn break_cushion(&mut self, index: usize, by_player: bool) {
@@ -341,7 +391,6 @@ impl Game<'_> {
         };
         self.spawn_item(stack, [p.x, p.y, p.z], [0.0; 3], 10);
     }
-
     /// `Cushion.showBreakingParticles`: ten of the matching wool block.
     fn cushion_break_particles(&mut self, c: &Cushion) {
         let name = format!("minecraft:{}_wool", c.color_name());
@@ -368,7 +417,6 @@ impl Game<'_> {
         self.particles
             .send_particles(&options, particle_at, [0.25, 0.0625, 0.25], 0.05, 10);
     }
-
     /// `BlockAttachedEntity.tick`: survive and burn checks after the post-increment reaches 100.
     pub(super) fn tick_cushions(&mut self) {
         let ticking = self.entity_ticking_area();
@@ -394,7 +442,6 @@ impl Game<'_> {
             i += 1;
         }
     }
-
     /// `Player.rideTick` on a cushion: hold the seat, and get up on sneak.
     pub(super) fn tick_cushion_riding(&mut self, keys: super::Keys) -> bool {
         let Some(c) = self
@@ -432,60 +479,5 @@ impl Game<'_> {
             p.fall_distance = 0.0;
         }
         true
-    }
-
-    /// `CushionRenderer`: the coloured model, rotated to the nearest
-    /// direction, with its bottom on the cushion's position.
-    pub(super) fn cushion_geometry(
-        &self,
-        camera: glam::DVec3,
-        out: &mut Vec<horizon_client::mesher::Vertex>,
-    ) {
-        let Some(model) = self.cushion_model.as_ref() else {
-            return;
-        };
-        let sprites = &self.gui.atlas.sprites;
-        for c in &self.cushions {
-            let entity_start = out.len();
-            let a = aabb(c.bounds());
-            let (lo, hi) = (a.min_position(), a.max_position());
-            let (lo, hi) = (
-                glam::DVec3::new(lo.x, lo.y, lo.z),
-                glam::DVec3::new(hi.x, hi.y, hi.z),
-            );
-            let range = super::entity_culling::default_range(hi - lo, self.view_scale());
-            if !self.entity_in_view(camera, (lo + hi) / 2.0, range, lo, hi) {
-                continue;
-            }
-            let Some(uv) = sprites
-                .get(&format!("entity/cushion/{}_cushion", c.color_name()))
-                .map(|r| [r.u0, r.v0, r.u1, r.v1])
-            else {
-                continue;
-            };
-            let p = glam::DVec3::new(c.position.x, c.position.y, c.position.z) - camera;
-            let base = glam::Mat4::from_translation(p.as_vec3())
-                * glam::Mat4::from_rotation_y((180.0 - snap_yaw(c.yaw)).to_radians())
-                * glam::Mat4::from_rotation_x(std::f32::consts::PI)
-                * glam::Mat4::from_translation(glam::Vec3::new(0.0, -0.25, 0.0));
-            // `EntityRenderer.getPackedLightCoords` probes at the eye height.
-            let l = self.world.light(
-                c.position.x.floor() as i32,
-                (c.position.y + 0.2125).floor() as i32,
-                c.position.z.floor() as i32,
-            );
-            let packed = (u32::from(l >> 4) * 16) | ((u32::from(l & 15) * 16) << 8);
-            horizon_client::mobs::render::draw(
-                model,
-                base,
-                &Poses::new(model),
-                uv,
-                0xFFFF_FFFF,
-                packed,
-                0,
-                out,
-            );
-            self.cull_entity_vertices(out, entity_start);
-        }
     }
 }

@@ -153,7 +153,8 @@ pub(super) fn has_smoke_trail(kind: &ProjectileKind) -> bool {
     )
 }
 
-impl Game<'_> {
+impl Game<'_> {}
+impl crate::game::Sim<'_> {
     /// `AbstractHurtingProjectile.createParticleTrail`: one smoke puff half a
     /// block above each position.
     pub(super) fn smoke_trails(&mut self, at: impl IntoIterator<Item = Vec3>) {
@@ -162,7 +163,6 @@ impl Game<'_> {
             self.particles.add(&smoke, [p.x, p.y + 0.5, p.z], [0.0; 3]);
         }
     }
-
     /// `handleAddEntity` for these types; false when `kind` isn't one.
     pub(super) fn spawn_remote_projectile(
         &mut self,
@@ -262,7 +262,6 @@ impl Game<'_> {
         }
         true
     }
-
     /// `handleSetEntityData` for these types: what changes how they look.
     pub(super) fn remote_projectile_data(&mut self, id: i32, values: &[(u8, i32, Value)]) {
         let id = id as u32;
@@ -379,7 +378,6 @@ impl Game<'_> {
             }
         }
     }
-
     /// A move's rotation for a projectile or trident.
     pub(super) fn turn_remote_projectile(&mut self, id: i32, rotation: Option<(f32, f32)>) {
         let (id, Some((yaw, pitch))) = (id as u32, rotation) else {
@@ -393,7 +391,6 @@ impl Game<'_> {
             t.pitch = pitch;
         }
     }
-
     /// `Entity.getEyePosition` of a projectile's owner: this game's player or
     /// another player the server sent.
     fn remote_eye(&self, id: u32) -> Option<Vec3> {
@@ -412,7 +409,6 @@ impl Game<'_> {
             m.position.z,
         ))
     }
-
     /// One tick of interpolation, as `tick_remote_objects`.
     pub(super) fn tick_remote_projectiles(&mut self, mut step: impl FnMut(u32, Vec3) -> Vec3) {
         self.tick_remote_fangs();
@@ -559,14 +555,12 @@ impl Game<'_> {
             self.particles.add(&trail, [p.x, p.y + 0.5, p.z], [0.0; 3]);
         }
     }
-
     /// `AreaEffectCloud.clientTick` for each cloud a server tracks.
     fn tick_remote_clouds(&mut self) {
         for c in &self.potions.clouds {
             cloud_client_tick(&mut self.particles, c.at, c.radius, c.waiting, &c.particle);
         }
     }
-
     pub(super) fn remove_remote_projectile(&mut self, id: u32) {
         self.fangs.list.retain(|f| f.id != id);
         self.tnts.retain(|t| t.id != id);
@@ -581,7 +575,6 @@ impl Game<'_> {
         self.end.remove_remote_eye(id);
         self.remove_remote_hook(id);
     }
-
     /// Every one a server sent (a new connection, level or dimension).
     pub(super) fn clear_remote_projectiles(&mut self) {
         self.fangs.list.clear();
@@ -599,7 +592,6 @@ impl Game<'_> {
         self.end.clear_remote_eyes();
         self.clear_remote_hooks();
     }
-
     /// Their kind and place, for `status`.
     pub(super) fn projectiles_status(&self) -> Vec<serde_json::Value> {
         use serde_json::json;

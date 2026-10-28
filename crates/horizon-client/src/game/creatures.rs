@@ -187,6 +187,361 @@ pub(super) fn seen(m: &Mob, player: Option<[i32; 4]>) -> Seen {
     m.seen(player)
 }
 impl Game<'_> {
+    /// Mob models and projectiles for the entity pass.
+    pub(super) fn mob_geometry(&self, camera: glam::DVec3, alpha: f64, out: &mut Vec<Vertex>) {
+        let atlas = &self.front.gui.atlas;
+        let lookup = |name: &str| atlas.sprites.get(name).map(|r| [r.u0, r.v0, r.u1, r.v1]);
+        let scale = self.view_scale();
+        for mob in &self.mobs {
+            let entity_start = out.len();
+            let outline = self.mob_outline(mob);
+            // Entity.DATA_SHARED_FLAGS_ID invisible: only the name tag draws (and
+            // the outline of a glowing mob, LivingEntityRenderer.getRenderType).
+            if mob.invisible && outline.is_none() {
+                continue;
+            }
+            let d = glam::DVec3::new(mob.position.x, mob.position.y, mob.position.z) - camera;
+            // Entity.shouldRenderAtSqrDistance: 64 times the bounding box's
+            // mean edge, scaled by the view scale. RemotePlayer's box counts
+            // ten times.
+            let (w, h, _) = mob.dims();
+            let edge = (w + h + w) / 3.0
+                * if &*mob.kind.id == "minecraft:player" {
+                    10.0
+                } else {
+                    1.0
+                };
+            let range = edge * 64.0 * scale;
+            if d.length_squared() >= range * range {
+                continue;
+            }
+            // EntityRenderer.shouldRender: the culling box, grown by 0.5
+            // (GuardianRenderer also draws while its beam is out).
+            if let Some(view) = &self.front.view_frustum
+                && horizon_client::mobs::guardian::beam(mob, alpha as f32).is_none()
+            {
+                let lo =
+                    d.as_vec3() - glam::Vec3::new(w as f32 / 2.0 + 0.5, 0.5, w as f32 / 2.0 + 0.5);
+                let hi = d.as_vec3()
+                    + glam::Vec3::new(w as f32 / 2.0 + 0.5, h as f32 + 0.5, w as f32 / 2.0 + 0.5);
+                if !view.intersects(lo, hi) {
+                    continue;
+                }
+            }
+            self.mark_entity(entity_start, &mob.kind.id);
+            let light = self.world.light(
+                mob.position.x.floor() as i32,
+                (mob.position.y + mob.eye_height()).floor() as i32,
+                mob.position.z.floor() as i32,
+            );
+            let mut packed = (u32::from(light >> 4) * 16) | ((u32::from(light & 15) * 16) << 8);
+            if mob.fire_ticks > 0 || matches!(mob.species(), Species::Blaze | Species::MagmaCube) {
+                packed = (15 * 16) | ((15 * 16) << 8);
+            }
+            if mob.species() == Species::SulfurCube
+                && !horizon_client::mobs::trader::is_invisible(mob)
+            {
+                self.sulfur_cube_body_geometry(
+                    mob,
+                    alpha as f32,
+                    horizon_client::mobs::render::base_transform(mob, alpha as f32, camera),
+                    packed,
+                    out,
+                );
+            }
+            // Other players on a server: PlayerRenderer's HumanoidArmorLayer.
+            let armor = if &*mob.kind.id == "minecraft:player" {
+                self.worn_armor_layers(mob)
+            } else {
+                Vec::new()
+            };
+            horizon_client::mobs::render::render_with(
+                mob,
+                alpha as f32,
+                camera,
+                &lookup,
+                packed,
+                self.res.mob_data(),
+                &armor,
+                out,
+            );
+            if &*mob.kind.id == "minecraft:player" {
+                // PlayerRenderer's WingsLayer and SpinAttackEffectLayer.
+                self.player_elytra_geometry(
+                    mob,
+                    mob.extra.chest.as_deref(),
+                    camera,
+                    alpha as f32,
+                    packed,
+                    out,
+                );
+                self.spin_attack_geometry(mob, camera, alpha as f32, packed, out);
+            }
+            self.mob_block_geometry(mob, camera, alpha, packed, out);
+            if let Some(rgb) = outline {
+                self.mark_outline(&out[entity_start..], rgb);
+                if mob.invisible {
+                    out.truncate(entity_start);
+                    continue;
+                }
+            }
+            // Glowing outlines and a guardian's beam remain visible independently
+            // of whether the body is hidden behind terrain.
+            if outline.is_none()
+                && horizon_client::mobs::guardian::beam(mob, alpha as f32).is_none()
+            {
+                self.cull_entity_vertices(out, entity_start);
+            }
+            // GuardianRenderer: the laser to the locked target.
+            if let Some((time, scale)) = horizon_client::mobs::guardian::beam(mob, alpha as f32)
+                && let Some(target) = self.beam_target(mob.ai.target, alpha)
+                && let Some(uv) = lookup("entity/guardian/guardian_beam")
+            {
+                let a = alpha;
+                let eye = glam::DVec3::new(
+                    mob.previous.x + (mob.position.x - mob.previous.x) * a,
+                    mob.previous.y + (mob.position.y - mob.previous.y) * a + mob.eye_height(),
+                    mob.previous.z + (mob.position.z - mob.previous.z) * a,
+                ) - camera;
+                horizon_client::mobs::guardian::beam_geometry(
+                    eye.as_vec3(),
+                    (target - camera).as_vec3(),
+                    time,
+                    scale,
+                    uv,
+                    out,
+                );
+            }
+        }
+        self.elder_apparition_geometry(alpha, out);
+        self.spawner_geometry(camera, alpha, out);
+        // Projectiles: the baked vanilla arrow model, the rest as item billboards.
+        let (yaw, pitch) = (self.yaw.to_radians(), self.pitch.to_radians());
+        let forward = glam::Vec3::new(
+            -yaw.sin() * pitch.cos(),
+            -pitch.sin(),
+            yaw.cos() * pitch.cos(),
+        );
+        let right = forward.cross(glam::Vec3::Y).normalize_or_zero();
+        let up = right.cross(forward).normalize_or_zero();
+        let live = self.creatures.projectiles.iter().map(|a| {
+            let at = [
+                a.previous.x + (a.position.x - a.previous.x) * alpha,
+                a.previous.y + (a.position.y - a.previous.y) * alpha,
+                a.previous.z + (a.position.z - a.previous.z) * alpha,
+            ];
+            (a, at)
+        });
+        // ItemPickupParticle: a picked-up arrow flying to its collector.
+        let taken = self.pickups.live.iter().filter_map(|p| match &p.taken {
+            super::pickups::Taken::Arrow(a) => Some((&**a, super::pickups::position(p, alpha))),
+            _ => None,
+        });
+        // A glowing projectile's outline: what it drew up to the next one.
+        let mut glowing = None;
+        for (a, at) in live.chain(taken) {
+            if let Some((start, rgb)) = glowing.take() {
+                self.mark_outline(&out[start..], rgb);
+            }
+            if a.id != 0 && self.entity_glowing(a.id) {
+                glowing = Some((out.len(), super::glowing::team_color(self.mob_team(a.id))));
+            }
+            let p = glam::DVec3::from_array(at) - camera;
+            let c = p.as_vec3();
+            let light = self.world.light(
+                a.position.x.floor() as i32,
+                a.position.y.floor() as i32,
+                a.position.z.floor() as i32,
+            );
+            let mut packed = (u32::from(light >> 4) * 16) | ((u32::from(light & 15) * 16) << 8);
+            if a.is_fireball() {
+                packed = (15 * 16) | ((15 * 16) << 8);
+            }
+            if a.is_arrow() {
+                let Some(model) = self.arrow_model.as_ref() else {
+                    continue;
+                };
+                let Some(r) = atlas.sprites.get("entity/projectiles/arrow").copied() else {
+                    continue;
+                };
+                let m = glam::Mat4::from_translation(c)
+                    * glam::Mat4::from_rotation_y((a.yaw - 90.0).to_radians())
+                    * glam::Mat4::from_rotation_z(a.pitch.to_radians());
+                horizon_client::mobs::render_model(
+                    model,
+                    m,
+                    &|part| part.pose,
+                    [r.u0, r.v0, r.u1, r.v1],
+                    packed,
+                    0,
+                    out,
+                );
+                if a.arrow.as_ref().is_some_and(|s| s.on_fire()) {
+                    flame_geometry(atlas, c, 0.5, 0.5, self.yaw, light, out);
+                }
+                continue;
+            }
+            // ThrownTridentRenderer.
+            if matches!(a.kind, ProjectileKind::Trident) {
+                let Some(model) = self.trident_model.as_ref() else {
+                    continue;
+                };
+                let Some(r) = atlas.sprites.get("entity/trident/trident").copied() else {
+                    continue;
+                };
+                let m = glam::Mat4::from_translation(c)
+                    * glam::Mat4::from_rotation_y((a.yaw - 90.0).to_radians())
+                    * glam::Mat4::from_rotation_z((a.pitch + 90.0).to_radians());
+                let poses = horizon_client::mobs::anim::Poses::new(model);
+                horizon_client::mobs::render::draw(
+                    model,
+                    m,
+                    &poses,
+                    [r.u0, r.v0, r.u1, r.v1],
+                    0xFFFF_FFFF,
+                    packed,
+                    0,
+                    out,
+                );
+                continue;
+            }
+            // WindChargeRenderer.
+            if matches!(
+                a.kind,
+                ProjectileKind::WindCharge | ProjectileKind::BreezeWindCharge
+            ) {
+                self.wind_charge_geometry(a, c, packed, out);
+                continue;
+            }
+            // ShulkerBulletRenderer: the tumbling bullet model, then a larger
+            // translucent copy of it (colour 0x26FFFFFF); always 15 block light.
+            if matches!(a.kind, ProjectileKind::ShulkerBullet { .. }) {
+                static BULLET: std::sync::OnceLock<Option<horizon_client::mobs::Part>> =
+                    std::sync::OnceLock::new();
+                let model = BULLET.get_or_init(|| {
+                    horizon_client::mobs::load_model(
+                        &self.options.resources,
+                        "minecraft:shulker_bullet#main",
+                    )
+                });
+                if let (Some(model), Some(r)) =
+                    (model, atlas.sprites.get("entity/shulker/spark").copied())
+                {
+                    use horizon_core::geometry::trig;
+                    let tc = a.age as f32 + alpha as f32;
+                    let mut poses = horizon_client::mobs::anim::Poses::new(model);
+                    poses.yrot("main", a.yaw.to_radians());
+                    poses.xrot("main", a.pitch.to_radians());
+                    let light = (packed & 0xFF) | ((15 * 16) << 8);
+                    let base = glam::Mat4::from_translation(c)
+                        * glam::Mat4::from_translation(glam::Vec3::new(0.0, 0.15, 0.0))
+                        * glam::Mat4::from_rotation_y(
+                            (trig::sin(f64::from(tc * 0.1)) * 180.0).to_radians(),
+                        )
+                        * glam::Mat4::from_rotation_x(
+                            (trig::cos(f64::from(tc * 0.1)) * 180.0).to_radians(),
+                        )
+                        * glam::Mat4::from_rotation_z(
+                            (trig::sin(f64::from(tc * 0.15)) * 360.0).to_radians(),
+                        )
+                        * glam::Mat4::from_scale(glam::Vec3::new(-0.5, -0.5, 0.5));
+                    let uv = [r.u0, r.v0, r.u1, r.v1];
+                    horizon_client::mobs::render::draw(
+                        model,
+                        base,
+                        &poses,
+                        uv,
+                        0xFFFF_FFFF,
+                        light,
+                        0,
+                        out,
+                    );
+                    // The translucent shell blends over the opaque core.
+                    horizon_client::mobs::render::draw(
+                        model,
+                        base * glam::Mat4::from_scale(glam::Vec3::splat(1.5)),
+                        &poses,
+                        uv,
+                        0x26FF_FFFF,
+                        light,
+                        0,
+                        out,
+                    );
+                }
+                continue;
+            }
+            // WitherSkullRenderer: the skull model facing its flight.
+            if let Some(dangerous) = super::wither::skull_kind(a) {
+                static SKULL: std::sync::OnceLock<Option<horizon_client::mobs::Part>> =
+                    std::sync::OnceLock::new();
+                let model = SKULL.get_or_init(|| {
+                    horizon_client::mobs::load_model(
+                        &self.options.resources,
+                        "minecraft:wither_skull#main",
+                    )
+                });
+                let tex = if dangerous {
+                    "entity/wither/wither_invulnerable"
+                } else {
+                    "entity/wither/wither"
+                };
+                if let (Some(model), Some(r)) = (model, atlas.sprites.get(tex).copied()) {
+                    let mut poses = horizon_client::mobs::anim::Poses::new(model);
+                    poses.yrot("head", a.yaw.to_radians());
+                    poses.xrot("head", a.pitch.to_radians());
+                    let base = glam::Mat4::from_translation(c)
+                        * glam::Mat4::from_scale(glam::Vec3::new(-1.0, -1.0, 1.0));
+                    horizon_client::mobs::render::draw(
+                        model,
+                        base,
+                        &poses,
+                        [r.u0, r.v0, r.u1, r.v1],
+                        0xFFFF_FFFF,
+                        packed,
+                        0,
+                        out,
+                    );
+                }
+                continue;
+            }
+            if let Some(stack) = a.potion_item() {
+                let owner = super::item_draw::owner_at(at, 0.0, "minecraft:splash_potion");
+                let state = self.resolve_item(&stack, DisplayContext::Ground, Some(&owner), 0);
+                let pose = glam::Mat4::from_translation(c)
+                    * glam::Mat4::from_quat(self.camera_orientation());
+                self.submit_item_world(&state, pose, packed, out);
+                continue;
+            }
+            let Some(name) = a.item_sprite() else {
+                continue;
+            };
+            let Some(r) = atlas.sprites.get(name).copied() else {
+                continue;
+            };
+            let s = 0.25 * a.sprite_scale();
+            for (k, uv) in [(-1.0, -1.0), (1.0, -1.0), (1.0, 1.0), (-1.0, 1.0)]
+                .iter()
+                .zip([[r.u0, r.v1], [r.u1, r.v1], [r.u1, r.v0], [r.u0, r.v0]])
+            {
+                let v = c + right * k.0 * s + up * k.1 * s;
+                out.push(Vertex {
+                    normal: [0; 4],
+                    pos: v.to_array(),
+                    uv,
+                    layer: 0,
+                    color: 0xFFFF_FFFF,
+                    light: packed,
+
+                    glint_uv: [0.0, 0.0],
+                });
+            }
+        }
+        if let Some((start, rgb)) = glowing {
+            self.mark_outline(&out[start..], rgb);
+        }
+    }
+}
+impl crate::game::Sim<'_> {
     pub(super) fn player_view(&self) -> Option<PlayerView> {
         let p = self.player.as_ref()?;
         let w = f64::from(p.dimensions.width) / 2.0;
@@ -2384,7 +2739,6 @@ impl Game<'_> {
             );
         }
     }
-
     fn tick_projectiles(&mut self) -> Result<()> {
         let mut projectiles = std::mem::take(&mut self.creatures.projectiles);
         let mut hits = Vec::new();
@@ -4365,359 +4719,6 @@ impl Game<'_> {
             }
         }
     }
-    /// Mob models and projectiles for the entity pass.
-    pub(super) fn mob_geometry(&self, camera: glam::DVec3, alpha: f64, out: &mut Vec<Vertex>) {
-        let atlas = &self.gui.atlas;
-        let lookup = |name: &str| atlas.sprites.get(name).map(|r| [r.u0, r.v0, r.u1, r.v1]);
-        let scale = self.view_scale();
-        for mob in &self.mobs {
-            let entity_start = out.len();
-            let outline = self.mob_outline(mob);
-            // Entity.DATA_SHARED_FLAGS_ID invisible: only the name tag draws (and
-            // the outline of a glowing mob, LivingEntityRenderer.getRenderType).
-            if mob.invisible && outline.is_none() {
-                continue;
-            }
-            let d = glam::DVec3::new(mob.position.x, mob.position.y, mob.position.z) - camera;
-            // Entity.shouldRenderAtSqrDistance: 64 times the bounding box's
-            // mean edge, scaled by the view scale. RemotePlayer's box counts
-            // ten times.
-            let (w, h, _) = mob.dims();
-            let edge = (w + h + w) / 3.0
-                * if &*mob.kind.id == "minecraft:player" {
-                    10.0
-                } else {
-                    1.0
-                };
-            let range = edge * 64.0 * scale;
-            if d.length_squared() >= range * range {
-                continue;
-            }
-            // EntityRenderer.shouldRender: the culling box, grown by 0.5
-            // (GuardianRenderer also draws while its beam is out).
-            if let Some(view) = &self.view_frustum
-                && horizon_client::mobs::guardian::beam(mob, alpha as f32).is_none()
-            {
-                let lo =
-                    d.as_vec3() - glam::Vec3::new(w as f32 / 2.0 + 0.5, 0.5, w as f32 / 2.0 + 0.5);
-                let hi = d.as_vec3()
-                    + glam::Vec3::new(w as f32 / 2.0 + 0.5, h as f32 + 0.5, w as f32 / 2.0 + 0.5);
-                if !view.intersects(lo, hi) {
-                    continue;
-                }
-            }
-            self.mark_entity(entity_start, &mob.kind.id);
-            let light = self.world.light(
-                mob.position.x.floor() as i32,
-                (mob.position.y + mob.eye_height()).floor() as i32,
-                mob.position.z.floor() as i32,
-            );
-            let mut packed = (u32::from(light >> 4) * 16) | ((u32::from(light & 15) * 16) << 8);
-            if mob.fire_ticks > 0 || matches!(mob.species(), Species::Blaze | Species::MagmaCube) {
-                packed = (15 * 16) | ((15 * 16) << 8);
-            }
-            if mob.species() == Species::SulfurCube
-                && !horizon_client::mobs::trader::is_invisible(mob)
-            {
-                self.sulfur_cube_body_geometry(
-                    mob,
-                    alpha as f32,
-                    horizon_client::mobs::render::base_transform(mob, alpha as f32, camera),
-                    packed,
-                    out,
-                );
-            }
-            // Other players on a server: PlayerRenderer's HumanoidArmorLayer.
-            let armor = if &*mob.kind.id == "minecraft:player" {
-                self.worn_armor_layers(mob)
-            } else {
-                Vec::new()
-            };
-            horizon_client::mobs::render::render_with(
-                mob,
-                alpha as f32,
-                camera,
-                &lookup,
-                packed,
-                self.res.mob_data(),
-                &armor,
-                out,
-            );
-            if &*mob.kind.id == "minecraft:player" {
-                // PlayerRenderer's WingsLayer and SpinAttackEffectLayer.
-                self.player_elytra_geometry(
-                    mob,
-                    mob.extra.chest.as_deref(),
-                    camera,
-                    alpha as f32,
-                    packed,
-                    out,
-                );
-                self.spin_attack_geometry(mob, camera, alpha as f32, packed, out);
-            }
-            self.mob_block_geometry(mob, camera, alpha, packed, out);
-            if let Some(rgb) = outline {
-                self.mark_outline(&out[entity_start..], rgb);
-                if mob.invisible {
-                    out.truncate(entity_start);
-                    continue;
-                }
-            }
-            // Glowing outlines and a guardian's beam remain visible independently
-            // of whether the body is hidden behind terrain.
-            if outline.is_none()
-                && horizon_client::mobs::guardian::beam(mob, alpha as f32).is_none()
-            {
-                self.cull_entity_vertices(out, entity_start);
-            }
-            // GuardianRenderer: the laser to the locked target.
-            if let Some((time, scale)) = horizon_client::mobs::guardian::beam(mob, alpha as f32)
-                && let Some(target) = self.beam_target(mob.ai.target, alpha)
-                && let Some(uv) = lookup("entity/guardian/guardian_beam")
-            {
-                let a = alpha;
-                let eye = glam::DVec3::new(
-                    mob.previous.x + (mob.position.x - mob.previous.x) * a,
-                    mob.previous.y + (mob.position.y - mob.previous.y) * a + mob.eye_height(),
-                    mob.previous.z + (mob.position.z - mob.previous.z) * a,
-                ) - camera;
-                horizon_client::mobs::guardian::beam_geometry(
-                    eye.as_vec3(),
-                    (target - camera).as_vec3(),
-                    time,
-                    scale,
-                    uv,
-                    out,
-                );
-            }
-        }
-        self.elder_apparition_geometry(alpha, out);
-        self.spawner_geometry(camera, alpha, out);
-        // Projectiles: the baked vanilla arrow model, the rest as item billboards.
-        let (yaw, pitch) = (self.yaw.to_radians(), self.pitch.to_radians());
-        let forward = glam::Vec3::new(
-            -yaw.sin() * pitch.cos(),
-            -pitch.sin(),
-            yaw.cos() * pitch.cos(),
-        );
-        let right = forward.cross(glam::Vec3::Y).normalize_or_zero();
-        let up = right.cross(forward).normalize_or_zero();
-        let live = self.creatures.projectiles.iter().map(|a| {
-            let at = [
-                a.previous.x + (a.position.x - a.previous.x) * alpha,
-                a.previous.y + (a.position.y - a.previous.y) * alpha,
-                a.previous.z + (a.position.z - a.previous.z) * alpha,
-            ];
-            (a, at)
-        });
-        // ItemPickupParticle: a picked-up arrow flying to its collector.
-        let taken = self.pickups.live.iter().filter_map(|p| match &p.taken {
-            super::pickups::Taken::Arrow(a) => Some((&**a, super::pickups::position(p, alpha))),
-            _ => None,
-        });
-        // A glowing projectile's outline: what it drew up to the next one.
-        let mut glowing = None;
-        for (a, at) in live.chain(taken) {
-            if let Some((start, rgb)) = glowing.take() {
-                self.mark_outline(&out[start..], rgb);
-            }
-            if a.id != 0 && self.entity_glowing(a.id) {
-                glowing = Some((out.len(), super::glowing::team_color(self.mob_team(a.id))));
-            }
-            let p = glam::DVec3::from_array(at) - camera;
-            let c = p.as_vec3();
-            let light = self.world.light(
-                a.position.x.floor() as i32,
-                a.position.y.floor() as i32,
-                a.position.z.floor() as i32,
-            );
-            let mut packed = (u32::from(light >> 4) * 16) | ((u32::from(light & 15) * 16) << 8);
-            if a.is_fireball() {
-                packed = (15 * 16) | ((15 * 16) << 8);
-            }
-            if a.is_arrow() {
-                let Some(model) = self.arrow_model.as_ref() else {
-                    continue;
-                };
-                let Some(r) = atlas.sprites.get("entity/projectiles/arrow").copied() else {
-                    continue;
-                };
-                let m = glam::Mat4::from_translation(c)
-                    * glam::Mat4::from_rotation_y((a.yaw - 90.0).to_radians())
-                    * glam::Mat4::from_rotation_z(a.pitch.to_radians());
-                horizon_client::mobs::render_model(
-                    model,
-                    m,
-                    &|part| part.pose,
-                    [r.u0, r.v0, r.u1, r.v1],
-                    packed,
-                    0,
-                    out,
-                );
-                if a.arrow.as_ref().is_some_and(|s| s.on_fire()) {
-                    flame_geometry(atlas, c, 0.5, 0.5, self.yaw, light, out);
-                }
-                continue;
-            }
-            // ThrownTridentRenderer.
-            if matches!(a.kind, ProjectileKind::Trident) {
-                let Some(model) = self.trident_model.as_ref() else {
-                    continue;
-                };
-                let Some(r) = atlas.sprites.get("entity/trident/trident").copied() else {
-                    continue;
-                };
-                let m = glam::Mat4::from_translation(c)
-                    * glam::Mat4::from_rotation_y((a.yaw - 90.0).to_radians())
-                    * glam::Mat4::from_rotation_z((a.pitch + 90.0).to_radians());
-                let poses = horizon_client::mobs::anim::Poses::new(model);
-                horizon_client::mobs::render::draw(
-                    model,
-                    m,
-                    &poses,
-                    [r.u0, r.v0, r.u1, r.v1],
-                    0xFFFF_FFFF,
-                    packed,
-                    0,
-                    out,
-                );
-                continue;
-            }
-            // WindChargeRenderer.
-            if matches!(
-                a.kind,
-                ProjectileKind::WindCharge | ProjectileKind::BreezeWindCharge
-            ) {
-                self.wind_charge_geometry(a, c, packed, out);
-                continue;
-            }
-            // ShulkerBulletRenderer: the tumbling bullet model, then a larger
-            // translucent copy of it (colour 0x26FFFFFF); always 15 block light.
-            if matches!(a.kind, ProjectileKind::ShulkerBullet { .. }) {
-                static BULLET: std::sync::OnceLock<Option<horizon_client::mobs::Part>> =
-                    std::sync::OnceLock::new();
-                let model = BULLET.get_or_init(|| {
-                    horizon_client::mobs::load_model(
-                        &self.options.resources,
-                        "minecraft:shulker_bullet#main",
-                    )
-                });
-                if let (Some(model), Some(r)) =
-                    (model, atlas.sprites.get("entity/shulker/spark").copied())
-                {
-                    use horizon_core::geometry::trig;
-                    let tc = a.age as f32 + alpha as f32;
-                    let mut poses = horizon_client::mobs::anim::Poses::new(model);
-                    poses.yrot("main", a.yaw.to_radians());
-                    poses.xrot("main", a.pitch.to_radians());
-                    let light = (packed & 0xFF) | ((15 * 16) << 8);
-                    let base = glam::Mat4::from_translation(c)
-                        * glam::Mat4::from_translation(glam::Vec3::new(0.0, 0.15, 0.0))
-                        * glam::Mat4::from_rotation_y(
-                            (trig::sin(f64::from(tc * 0.1)) * 180.0).to_radians(),
-                        )
-                        * glam::Mat4::from_rotation_x(
-                            (trig::cos(f64::from(tc * 0.1)) * 180.0).to_radians(),
-                        )
-                        * glam::Mat4::from_rotation_z(
-                            (trig::sin(f64::from(tc * 0.15)) * 360.0).to_radians(),
-                        )
-                        * glam::Mat4::from_scale(glam::Vec3::new(-0.5, -0.5, 0.5));
-                    let uv = [r.u0, r.v0, r.u1, r.v1];
-                    horizon_client::mobs::render::draw(
-                        model,
-                        base,
-                        &poses,
-                        uv,
-                        0xFFFF_FFFF,
-                        light,
-                        0,
-                        out,
-                    );
-                    // The translucent shell blends over the opaque core.
-                    horizon_client::mobs::render::draw(
-                        model,
-                        base * glam::Mat4::from_scale(glam::Vec3::splat(1.5)),
-                        &poses,
-                        uv,
-                        0x26FF_FFFF,
-                        light,
-                        0,
-                        out,
-                    );
-                }
-                continue;
-            }
-            // WitherSkullRenderer: the skull model facing its flight.
-            if let Some(dangerous) = super::wither::skull_kind(a) {
-                static SKULL: std::sync::OnceLock<Option<horizon_client::mobs::Part>> =
-                    std::sync::OnceLock::new();
-                let model = SKULL.get_or_init(|| {
-                    horizon_client::mobs::load_model(
-                        &self.options.resources,
-                        "minecraft:wither_skull#main",
-                    )
-                });
-                let tex = if dangerous {
-                    "entity/wither/wither_invulnerable"
-                } else {
-                    "entity/wither/wither"
-                };
-                if let (Some(model), Some(r)) = (model, atlas.sprites.get(tex).copied()) {
-                    let mut poses = horizon_client::mobs::anim::Poses::new(model);
-                    poses.yrot("head", a.yaw.to_radians());
-                    poses.xrot("head", a.pitch.to_radians());
-                    let base = glam::Mat4::from_translation(c)
-                        * glam::Mat4::from_scale(glam::Vec3::new(-1.0, -1.0, 1.0));
-                    horizon_client::mobs::render::draw(
-                        model,
-                        base,
-                        &poses,
-                        [r.u0, r.v0, r.u1, r.v1],
-                        0xFFFF_FFFF,
-                        packed,
-                        0,
-                        out,
-                    );
-                }
-                continue;
-            }
-            if let Some(stack) = a.potion_item() {
-                let owner = super::item_draw::owner_at(at, 0.0, "minecraft:splash_potion");
-                let state = self.resolve_item(&stack, DisplayContext::Ground, Some(&owner), 0);
-                let pose = glam::Mat4::from_translation(c)
-                    * glam::Mat4::from_quat(self.camera_orientation());
-                self.submit_item_world(&state, pose, packed, out);
-                continue;
-            }
-            let Some(name) = a.item_sprite() else {
-                continue;
-            };
-            let Some(r) = atlas.sprites.get(name).copied() else {
-                continue;
-            };
-            let s = 0.25 * a.sprite_scale();
-            for (k, uv) in [(-1.0, -1.0), (1.0, -1.0), (1.0, 1.0), (-1.0, 1.0)]
-                .iter()
-                .zip([[r.u0, r.v1], [r.u1, r.v1], [r.u1, r.v0], [r.u0, r.v0]])
-            {
-                let v = c + right * k.0 * s + up * k.1 * s;
-                out.push(Vertex {
-                    normal: [0; 4],
-                    pos: v.to_array(),
-                    uv,
-                    layer: 0,
-                    color: 0xFFFF_FFFF,
-                    light: packed,
-
-                    glint_uv: [0.0, 0.0],
-                });
-            }
-        }
-        if let Some((start, rgb)) = glowing {
-            self.mark_outline(&out[start..], rgb);
-        }
-    }
 }
 /// `Bucketable.getBucketItemStack` and `getPickupSound` of a mob that a water
 /// bucket picks up.
@@ -4814,7 +4815,8 @@ fn from_loot(stack: &horizon_world::loot::LootStack) -> ItemStack {
     }
     item
 }
-impl Game<'_> {
+impl Game<'_> {}
+impl crate::game::Sim<'_> {
     /// The rest of `NetherPortalBlock.randomTick` after a won roll: with a
     /// player close enough for spawning, a zombified piglin spawns on the block
     /// under the portal column when it is a valid spawn.

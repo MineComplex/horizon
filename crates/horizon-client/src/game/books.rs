@@ -90,12 +90,12 @@ impl Game<'_> {
         self.page_lines(&Text::literal(page))
     }
     fn page_lines(&self, page: &Text) -> Vec<Text> {
-        self.gui.atlas.font.split(page, 114.0)
+        self.front.gui.atlas.font.split(page, 114.0)
     }
     /// `BookViewScreen.mouseClicked`: the click event of the text under the
     /// cursor on the page.
     fn book_link_at(&self, page: &Text, left: f32) -> Option<horizon_client::text::ClickEvent> {
-        let (mx, my) = self.cursor;
+        let (mx, my) = self.front.cursor;
         let row = ((my - 32.0) / 9.0).floor();
         if row < 0.0 || row >= LINES as f32 {
             return None;
@@ -107,7 +107,7 @@ impl Game<'_> {
             return None;
         }
         for (c, style) in line.chars() {
-            x -= self.gui.atlas.font.advance(c, style);
+            x -= self.front.gui.atlas.font.advance(c, style);
             if x < 0.0 {
                 return style.click.clone();
             }
@@ -149,7 +149,7 @@ impl Game<'_> {
             }
             ClickEvent::CopyToClipboard(value) => {
                 use horizon_client::clipboard::Clipboard;
-                self.clipboard.set(&value);
+                self.front.clipboard.set(&value);
             }
             // BookViewScreen.handleClickEvent: the rest is
             // Screen.defaultHandleGameClickEvent's.
@@ -157,6 +157,627 @@ impl Game<'_> {
             _ => {}
         }
     }
+    pub(super) fn book_key(&mut self, event: &KeyEvent) {
+        if event.state != ElementState::Pressed {
+            return;
+        }
+        if let Some(shortcut) = self.edit_shortcut(event) {
+            self.book_shortcut(shortcut);
+            return;
+        }
+        let key = match event.physical_key {
+            PhysicalKey::Code(k) => Some(k),
+            _ => None,
+        };
+        self.book_input(key, event.text.as_deref());
+    }
+    /// A key and the text it typed in the open book (the keyboard, or a
+    /// controller's on-screen keyboard).
+    pub(super) fn book_input(&mut self, key: Option<KeyCode>, text: Option<&str>) {
+        match self.book.as_mut() {
+            Some(BookScreen::View { .. }) => match key {
+                Some(KeyCode::Escape) => self.close_book(),
+                Some(KeyCode::PageUp) => self.turn_page(false),
+                Some(KeyCode::PageDown) => self.turn_page(true),
+                _ => {}
+            },
+            Some(BookScreen::Edit { signing: true, .. }) => match key {
+                Some(KeyCode::Escape) => {
+                    if let Some(BookScreen::Edit { signing, .. }) = self.book.as_mut() {
+                        *signing = false;
+                    }
+                }
+                Some(KeyCode::Enter | KeyCode::NumpadEnter) => {
+                    let blank = self.book.as_ref().is_some_and(
+                        |b| matches!(b, BookScreen::Edit { title, .. } if title.trim().is_empty()),
+                    );
+                    if !blank {
+                        self.save_book(true);
+                    }
+                }
+                Some(key) if self.book_title_key(key) => {}
+                _ => {
+                    if let Some(typed) = text {
+                        self.book_title_insert(typed);
+                    }
+                }
+            },
+            Some(BookScreen::Edit { .. }) => match key {
+                Some(KeyCode::Escape) => self.save_book(false),
+                Some(KeyCode::PageUp) => self.turn_page(false),
+                Some(KeyCode::PageDown) => self.turn_page(true),
+                Some(KeyCode::ArrowUp) => self.book_move_line(-1),
+                Some(KeyCode::ArrowDown) => self.book_move_line(1),
+                Some(KeyCode::Enter | KeyCode::NumpadEnter) => self.page_insert("\n"),
+                Some(key) if self.book_page_key(key) => {}
+                _ => {
+                    if let Some(typed) = text {
+                        self.page_insert(typed);
+                    }
+                }
+            },
+            None => {}
+        }
+    }
+    /// Typing for `horizon-ctl type` (`\n` is a line break).
+    pub(super) fn book_type(&mut self, text: &str) {
+        let text = text.replace("\\n", "\n");
+        match self.book.as_mut() {
+            Some(BookScreen::Edit { signing: true, .. }) => self.book_title_insert(&text),
+            Some(BookScreen::Edit { .. }) => self.page_insert(&text),
+            _ => {}
+        }
+    }
+    /// `BookEditScreen.keyPressed` on the page, apart from the line moves.
+    fn book_page_key(&mut self, key: KeyCode) -> bool {
+        let (ctrl, shift) = (self.has_control_down(), self.has_shift_down());
+        let before = match self.book.as_ref() {
+            Some(BookScreen::Edit { page_edit, .. }) => Some((
+                page_edit.value.clone(),
+                page_edit.cursor,
+                page_edit.highlight,
+            )),
+            _ => return false,
+        };
+        let handled = if let Some(BookScreen::Edit { page_edit, .. }) = self.book.as_mut() {
+            page_edit.key(key, ctrl, shift)
+        } else {
+            false
+        };
+        if handled {
+            self.page_keep(before);
+        }
+        handled
+    }
+    /// One character at a time, so a page stops at the last character that fits.
+    fn page_insert(&mut self, text: &str) {
+        for c in text.chars() {
+            self.page_change(|edit| edit.insert_text(&c.to_string()));
+        }
+    }
+    /// Ctrl+A/C/V/X: the title box while signing, else the page.
+    pub(super) fn book_shortcut(&mut self, shortcut: horizon_client::clipboard::EditShortcut) {
+        let signing = matches!(self.sim.book, Some(BookScreen::Edit { signing: true, .. }));
+        if signing {
+            if let Some(BookScreen::Edit {
+                title, title_edit, ..
+            }) = self.sim.book.as_mut()
+            {
+                title_edit.shortcut(shortcut, &mut self.front.clipboard);
+                title.clone_from(&title_edit.value);
+            }
+            return;
+        }
+        let before = match self.book.as_ref() {
+            Some(BookScreen::Edit { page_edit, .. }) => Some((
+                page_edit.value.clone(),
+                page_edit.cursor,
+                page_edit.highlight,
+            )),
+            _ => None,
+        };
+        if let Some(BookScreen::Edit { page_edit, .. }) = self.sim.book.as_mut() {
+            page_edit.shortcut(shortcut, &mut self.front.clipboard);
+        }
+        self.page_keep(before);
+    }
+    /// Edit the page box, then keep it only within 14 lines and 1024 characters.
+    fn page_change(&mut self, f: impl FnOnce(&mut ui::EditBox)) -> bool {
+        let before = match self.book.as_ref() {
+            Some(BookScreen::Edit { page_edit, .. }) => Some((
+                page_edit.value.clone(),
+                page_edit.cursor,
+                page_edit.highlight,
+            )),
+            _ => return false,
+        };
+        let ran = if let Some(BookScreen::Edit { page_edit, .. }) = self.book.as_mut() {
+            f(page_edit);
+            true
+        } else {
+            false
+        };
+        ran && self.page_keep(before)
+    }
+    /// Write the page, or put the previous text back when it no longer fits.
+    fn page_keep(&mut self, before: Option<(String, usize, usize)>) -> bool {
+        let next = match self.book.as_ref() {
+            Some(BookScreen::Edit { page_edit, .. }) => page_edit.value.clone(),
+            _ => return false,
+        };
+        let ok = next.chars().count() <= PAGE_CHARS && self.book_lines(&next).len() <= LINES;
+        let Some(BookScreen::Edit {
+            pages,
+            page,
+            page_edit,
+            ..
+        }) = self.book.as_mut()
+        else {
+            return false;
+        };
+        if ok {
+            pages[*page].clone_from(&page_edit.value);
+        } else if let Some((value, cursor, highlight)) = before {
+            page_edit.value = value;
+            page_edit.cursor = cursor;
+            page_edit.highlight = highlight;
+        }
+        ok
+    }
+    /// ArrowUp and ArrowDown move a visual line, keeping the column.
+    fn book_move_line(&mut self, dir: isize) {
+        let shift = self.has_shift_down();
+        let (text, cursor) = match self.book.as_ref() {
+            Some(BookScreen::Edit {
+                pages,
+                page,
+                page_edit,
+                ..
+            }) => (pages[*page].clone(), page_edit.cursor),
+            _ => return,
+        };
+        let rows = self.page_rows(&text);
+        let (x, line) = self.caret_on(&text, &rows, cursor);
+        let next = (line as isize + dir).clamp(0, rows.len() as isize - 1) as usize;
+        let (start, end) = rows[next];
+        let chars: Vec<char> = text.chars().collect();
+        let slice: String = chars[start..end].iter().collect();
+        let pos = start + self.front.gui.atlas.font.fit(&slice, x);
+        if let Some(BookScreen::Edit { page_edit, .. }) = self.book.as_mut() {
+            page_edit.set_cursor(pos, shift);
+        }
+    }
+    /// Wrapped rows of a page as character ranges, the same breaks as `font.split`.
+    fn page_rows(&self, page: &str) -> Vec<(usize, usize)> {
+        let font = &self.front.gui.atlas.font;
+        let chars: Vec<char> = page.chars().collect();
+        let mut rows = Vec::new();
+        let mut start = 0;
+        while start < chars.len() {
+            let mut end = chars.len();
+            let mut next = chars.len();
+            let mut last_space = None;
+            for i in start..chars.len() {
+                if chars[i] == '\n' {
+                    end = i;
+                    next = i + 1;
+                    break;
+                }
+                if chars[i] == ' ' {
+                    last_space = Some(i);
+                }
+                let slice: String = chars[start..=i].iter().collect();
+                if font.width(&slice) > 114.0 {
+                    match last_space {
+                        Some(s) if s > start => {
+                            end = s;
+                            next = s + 1;
+                        }
+                        _ => {
+                            end = i.max(start + 1);
+                            next = end;
+                        }
+                    }
+                    break;
+                }
+            }
+            rows.push((start, end));
+            start = next;
+            if start == chars.len() && chars.last() == Some(&'\n') {
+                rows.push((chars.len(), chars.len()));
+            }
+        }
+        if rows.is_empty() {
+            rows.push((0, 0));
+        }
+        rows
+    }
+    /// GUI x of the caret and the row it sits on.
+    fn caret_on(&self, page: &str, rows: &[(usize, usize)], cursor: usize) -> (f32, usize) {
+        let chars: Vec<char> = page.chars().collect();
+        for (i, &(start, end)) in rows.iter().enumerate() {
+            if cursor <= end || i + 1 == rows.len() {
+                let take = cursor.saturating_sub(start).min(end.saturating_sub(start));
+                let prefix: String = chars.iter().skip(start).take(take).collect();
+                return (self.front.gui.atlas.font.width(&prefix), i);
+            }
+        }
+        (0.0, 0)
+    }
+    fn page_index_at(&self, page: &str, local_x: f32, local_y: f32) -> usize {
+        let rows = self.page_rows(page);
+        let line = (local_y / 9.0).floor().max(0.0) as usize;
+        let line = line.min(rows.len().saturating_sub(1));
+        let (start, end) = rows[line];
+        let chars: Vec<char> = page.chars().collect();
+        let slice: String = chars[start..end].iter().collect();
+        start + self.front.gui.atlas.font.fit(&slice, local_x.max(0.0))
+    }
+    /// A click on the centred title (`EditBox.onClick`).
+    fn book_title_click(&mut self, field_x: f32, mx: f32) {
+        let shift = self.has_shift_down();
+        let Some(BookScreen::Edit {
+            title, title_edit, ..
+        }) = self.sim.book.as_mut()
+        else {
+            return;
+        };
+        let tx = field_x + ((114.0 - self.front.gui.atlas.font.width(title)) / 2.0).floor();
+        let rel = (mx - tx).max(0.0);
+        let pos = self.front.gui.atlas.font.fit(title, rel);
+        title_edit.set_cursor(pos, shift);
+    }
+    /// A click on the open page.
+    fn book_page_click(&mut self, origin_x: f32, origin_y: f32, mx: f32, my: f32) {
+        let shift = self.has_shift_down();
+        let text = match self.book.as_ref() {
+            Some(BookScreen::Edit { pages, page, .. }) => pages[*page].clone(),
+            _ => return,
+        };
+        let pos = self.page_index_at(&text, mx - origin_x, my - origin_y);
+        if let Some(BookScreen::Edit { page_edit, .. }) = self.book.as_mut() {
+            page_edit.set_cursor(pos, shift);
+        }
+    }
+    pub(super) fn book_click(&mut self, size: [u32; 2]) {
+        let b = HudBatch::new(size);
+        let (w, left) = (b.width, ((b.width - 192.0) / 2.0).floor());
+        let (mx, my) = self.front.cursor;
+        let inside =
+            |x: f32, y: f32, bw: f32, bh: f32| mx >= x && my >= y && mx < x + bw && my < y + bh;
+        let click = |game: &mut Self| {
+            game.sounds
+                .play("minecraft:ui.button.click", None, 0.25, 1.0)
+        };
+        match &self.book {
+            Some(BookScreen::Edit {
+                signing: true,
+                title,
+                ..
+            }) => {
+                let blank = title.trim().is_empty();
+                if inside(w / 2.0 - 100.0, 196.0, 98.0, 20.0) && !blank {
+                    click(self);
+                    self.save_book(true);
+                } else if inside(w / 2.0 + 2.0, 196.0, 98.0, 20.0) {
+                    click(self);
+                    if let Some(BookScreen::Edit { signing, .. }) = self.book.as_mut() {
+                        *signing = false;
+                    }
+                } else if inside(left + 36.0, 50.0, 114.0, 9.0) {
+                    self.book_title_click(left + 36.0, mx);
+                }
+            }
+            Some(BookScreen::Edit { page, .. }) => {
+                let page = *page;
+                if inside(left + 116.0, 159.0, 23.0, 13.0) {
+                    self.turn_page(true);
+                } else if page > 0 && inside(left + 43.0, 159.0, 23.0, 13.0) {
+                    self.turn_page(false);
+                } else if inside(w / 2.0 - 100.0, 196.0, 98.0, 20.0) {
+                    click(self);
+                    if let Some(BookScreen::Edit { signing, .. }) = self.book.as_mut() {
+                        *signing = true;
+                    }
+                } else if inside(w / 2.0 + 2.0, 196.0, 98.0, 20.0) {
+                    click(self);
+                    self.save_book(false);
+                } else if inside(left + 36.0, 32.0, 114.0, 14.0 * 9.0) {
+                    self.book_page_click(left + 36.0, 32.0, mx, my);
+                }
+            }
+            Some(BookScreen::View {
+                pages,
+                page,
+                lectern,
+            }) => {
+                let (page, count, lectern) = (*page, pages.len(), *lectern);
+                // The text's click event first, then the buttons.
+                if let Some(link) = pages.get(page).and_then(|t| self.book_link_at(t, left)) {
+                    self.book_follow_link(link, count, lectern);
+                } else if page + 1 < count && inside(left + 116.0, 159.0, 23.0, 13.0) {
+                    self.turn_page(true);
+                } else if page > 0 && inside(left + 43.0, 159.0, 23.0, 13.0) {
+                    self.turn_page(false);
+                } else if let Some(key) = lectern {
+                    if inside(w / 2.0 - 100.0, 196.0, 98.0, 20.0) {
+                        click(self);
+                        self.close_book();
+                    } else if inside(w / 2.0 + 2.0, 196.0, 98.0, 20.0) {
+                        click(self);
+                        // LecternScreen's Take Book: the menu's button 3.
+                        self.lectern_button(key, 3);
+                    }
+                } else if inside((w - 200.0) / 2.0, 196.0, 200.0, 20.0) {
+                    click(self);
+                    self.close_book();
+                }
+            }
+            None => {}
+        }
+    }
+    pub(super) fn draw_book(&self, batch: &mut HudBatch) {
+        let Some(book) = &self.book else { return };
+        let atlas = &self.front.gui.atlas;
+        let (w, h) = (batch.width, batch.height);
+        let (mx, my) = self.front.cursor;
+        let hover =
+            |x: f32, y: f32, bw: f32, bh: f32| mx >= x && my >= y && mx < x + bw && my < y + bh;
+        batch.fill(atlas, 0.0, 0.0, w, h, rgba(16, 16, 16, 160));
+        let left = ((w - 192.0) / 2.0).floor();
+        let top = 2.0;
+        if let Some(mut r) = atlas.sprites.get("gui/book").copied() {
+            let (du, dv) = ((r.u1 - r.u0) / r.w as f32, (r.v1 - r.v0) / r.h as f32);
+            r.u1 = r.u0 + 192.0 * du;
+            r.v1 = r.v0 + 192.0 * dv;
+            batch.rect_uv(left, top, 192.0, 192.0, r, u32::MAX);
+        }
+        let tr = |key: &str, fallback: &str| self.translate(key, fallback);
+        let page_buttons = |batch: &mut HudBatch, back: bool, forward: bool| {
+            for (show, x, name) in [
+                (forward, 116.0, "page_forward"),
+                (back, 43.0, "page_backward"),
+            ] {
+                if show {
+                    let sprite = if hover(left + x, top + 157.0, 23.0, 13.0) {
+                        format!("gui/sprites/widget/{name}_highlighted")
+                    } else {
+                        format!("gui/sprites/widget/{name}")
+                    };
+                    batch.sprite(atlas, &sprite, left + x, top + 157.0);
+                }
+            }
+        };
+        let indicator = |batch: &mut HudBatch, page: usize, count: usize| {
+            // BookViewScreen.getPageNumberMessage: 26.3's en_us template is
+            // positional ("Page %1$s of %2$s").
+            let text = horizon_protocol::text::format_java(
+                &tr("book.pageIndicator", "Page %1$s of %2$s"),
+                &[(page + 1).to_string(), count.max(1).to_string()],
+            );
+            let tw = HudBatch::text_width(atlas, &text);
+            batch.text(atlas, &text, left + 148.0 - tw, top + 16.0, BLACK, false);
+        };
+        let button = |batch: &mut HudBatch, x: f32, bw: f32, label: &str, active: bool| {
+            ui::button(
+                batch,
+                atlas,
+                x,
+                196.0,
+                bw,
+                20.0,
+                &Text::literal(label),
+                active,
+                hover(x, 196.0, bw, 20.0),
+            );
+        };
+        match book {
+            BookScreen::Edit {
+                signing: true,
+                title,
+                title_edit,
+                ..
+            } => {
+                let edit = tr("book.editTitle", "Enter Book Title:");
+                let tw = HudBatch::text_width(atlas, &edit);
+                batch.text(
+                    atlas,
+                    &edit,
+                    left + 36.0 + (114.0 - tw) / 2.0,
+                    34.0,
+                    BLACK,
+                    false,
+                );
+                // The title box: an unbordered, centred EditBox of 114 with
+                // black text and no shadow; the value alone is centred, the
+                // cursor follows it.
+                let value = &title_edit.value;
+                let x = left + 36.0;
+                let tx = x + ((114.0 - HudBatch::text_width(atlas, value)) / 2.0).floor();
+                batch.text(atlas, value, tx, 50.0, BLACK, false);
+                if title_edit.cursor != title_edit.highlight {
+                    let (a, b) = (
+                        title_edit.cursor.min(title_edit.highlight),
+                        title_edit.cursor.max(title_edit.highlight),
+                    );
+                    let pre: String = value.chars().take(a).collect();
+                    let sel: String = value.chars().skip(a).take(b - a).collect();
+                    let sx = tx + HudBatch::text_width(atlas, &pre);
+                    batch.text_highlight(
+                        atlas,
+                        (sx, 49.0, HudBatch::text_width(atlas, &sel), 11.0),
+                        true,
+                    );
+                }
+                if title_edit.cursor_visible() {
+                    let pre: String = value.chars().take(title_edit.cursor).collect();
+                    batch.fill(
+                        atlas,
+                        tx + HudBatch::text_width(atlas, &pre),
+                        49.0,
+                        1.0,
+                        9.0,
+                        BLACK,
+                    );
+                }
+                // BookSignScreen: `owner.getName()`, the account's name on a server.
+                let owner = self
+                    .remote
+                    .as_ref()
+                    .map_or(super::chat::PLAYER_NAME, |r| r.profile_name.as_str());
+                let by = tr("book.byAuthor", "by %1$s").replace("%1$s", owner);
+                let tw = HudBatch::text_width(atlas, &by);
+                batch.text(
+                    atlas,
+                    &by,
+                    left + 36.0 + (114.0 - tw) / 2.0,
+                    60.0,
+                    rgba(64, 64, 64, 255),
+                    false,
+                );
+                let warning = tr(
+                    "book.finalizeWarning",
+                    "Note! When you sign the book, it will no longer be editable.",
+                );
+                for (i, line) in atlas
+                    .font
+                    .split(&Text::literal(&warning), 114.0)
+                    .iter()
+                    .enumerate()
+                {
+                    batch.text_styled(
+                        atlas,
+                        line,
+                        left + 36.0,
+                        82.0 + i as f32 * 9.0,
+                        BLACK,
+                        false,
+                    );
+                }
+                button(
+                    batch,
+                    w / 2.0 - 100.0,
+                    98.0,
+                    &tr("book.finalizeButton", "Sign and Close"),
+                    !title.trim().is_empty(),
+                );
+                button(
+                    batch,
+                    w / 2.0 + 2.0,
+                    98.0,
+                    &tr("gui.cancel", "Cancel"),
+                    true,
+                );
+            }
+            BookScreen::Edit {
+                pages,
+                page,
+                page_edit,
+                ..
+            } => {
+                indicator(batch, *page, pages.len());
+                let text = &pages[*page];
+                let lines = self.book_lines(text);
+                for (i, line) in lines.iter().take(LINES).enumerate() {
+                    batch.text_styled(
+                        atlas,
+                        line,
+                        left + 36.0,
+                        top + 30.0 + i as f32 * 9.0,
+                        BLACK,
+                        false,
+                    );
+                }
+                let rows = self.page_rows(text);
+                let (sel_a, sel_b) = (
+                    page_edit.cursor.min(page_edit.highlight),
+                    page_edit.cursor.max(page_edit.highlight),
+                );
+                if sel_a != sel_b {
+                    let chars: Vec<char> = text.chars().collect();
+                    for (i, &(start, end)) in rows.iter().enumerate().take(LINES) {
+                        let from = sel_a.max(start);
+                        let to = sel_b.min(end);
+                        if from >= to {
+                            continue;
+                        }
+                        let pre: String = chars[start..from].iter().collect();
+                        let sel: String = chars[from..to].iter().collect();
+                        batch.text_highlight(
+                            atlas,
+                            (
+                                left + 36.0 + atlas.font.width(&pre),
+                                top + 29.0 + i as f32 * 9.0,
+                                atlas.font.width(&sel),
+                                9.0,
+                            ),
+                            true,
+                        );
+                    }
+                }
+                if page_edit.cursor_visible() {
+                    let (x, row) = self.caret_on(text, &rows, page_edit.cursor);
+                    batch.fill(
+                        atlas,
+                        left + 36.0 + x,
+                        top + 29.0 + row as f32 * 9.0,
+                        1.0,
+                        9.0,
+                        BLACK,
+                    );
+                }
+                page_buttons(batch, *page > 0, true);
+                button(
+                    batch,
+                    w / 2.0 - 100.0,
+                    98.0,
+                    &tr("book.signButton", "Sign"),
+                    true,
+                );
+                button(batch, w / 2.0 + 2.0, 98.0, &tr("gui.done", "Done"), true);
+            }
+            BookScreen::View {
+                pages,
+                page,
+                lectern,
+            } => {
+                indicator(batch, *page, pages.len());
+                if let Some(text) = pages.get(*page) {
+                    for (i, line) in self.page_lines(text).iter().take(LINES).enumerate() {
+                        batch.text_styled(
+                            atlas,
+                            line,
+                            left + 36.0,
+                            top + 30.0 + i as f32 * 9.0,
+                            BLACK,
+                            false,
+                        );
+                    }
+                }
+                page_buttons(batch, *page > 0, *page + 1 < pages.len());
+                if lectern.is_some() {
+                    button(batch, w / 2.0 - 100.0, 98.0, &tr("gui.done", "Done"), true);
+                    button(
+                        batch,
+                        w / 2.0 + 2.0,
+                        98.0,
+                        &tr("lectern.take_book", "Take Book"),
+                        true,
+                    );
+                } else {
+                    button(
+                        batch,
+                        (w - 200.0) / 2.0,
+                        200.0,
+                        &tr("gui.done", "Done"),
+                        true,
+                    );
+                }
+            }
+        }
+    }
+}
+impl crate::game::Sim<'_> {
     /// `WritableBookItem.use` / `WrittenBookItem.use` (`Player.openItemGui`).
     /// A server's player writes in its own client's editor
     /// (`LocalPlayer.openItemGui`), and reads on its own client once told to
@@ -322,77 +943,6 @@ impl Game<'_> {
             g.write_book(p.slot as usize, p.pages, p.title)
         });
     }
-    pub(super) fn book_key(&mut self, event: &KeyEvent) {
-        if event.state != ElementState::Pressed {
-            return;
-        }
-        if let Some(shortcut) = self.edit_shortcut(event) {
-            self.book_shortcut(shortcut);
-            return;
-        }
-        let key = match event.physical_key {
-            PhysicalKey::Code(k) => Some(k),
-            _ => None,
-        };
-        self.book_input(key, event.text.as_deref());
-    }
-    /// A key and the text it typed in the open book (the keyboard, or a
-    /// controller's on-screen keyboard).
-    pub(super) fn book_input(&mut self, key: Option<KeyCode>, text: Option<&str>) {
-        match self.book.as_mut() {
-            Some(BookScreen::View { .. }) => match key {
-                Some(KeyCode::Escape) => self.close_book(),
-                Some(KeyCode::PageUp) => self.turn_page(false),
-                Some(KeyCode::PageDown) => self.turn_page(true),
-                _ => {}
-            },
-            Some(BookScreen::Edit { signing: true, .. }) => match key {
-                Some(KeyCode::Escape) => {
-                    if let Some(BookScreen::Edit { signing, .. }) = self.book.as_mut() {
-                        *signing = false;
-                    }
-                }
-                Some(KeyCode::Enter | KeyCode::NumpadEnter) => {
-                    let blank = self.book.as_ref().is_some_and(
-                        |b| matches!(b, BookScreen::Edit { title, .. } if title.trim().is_empty()),
-                    );
-                    if !blank {
-                        self.save_book(true);
-                    }
-                }
-                Some(key) if self.book_title_key(key) => {}
-                _ => {
-                    if let Some(typed) = text {
-                        self.book_title_insert(typed);
-                    }
-                }
-            },
-            Some(BookScreen::Edit { .. }) => match key {
-                Some(KeyCode::Escape) => self.save_book(false),
-                Some(KeyCode::PageUp) => self.turn_page(false),
-                Some(KeyCode::PageDown) => self.turn_page(true),
-                Some(KeyCode::ArrowUp) => self.book_move_line(-1),
-                Some(KeyCode::ArrowDown) => self.book_move_line(1),
-                Some(KeyCode::Enter | KeyCode::NumpadEnter) => self.page_insert("\n"),
-                Some(key) if self.book_page_key(key) => {}
-                _ => {
-                    if let Some(typed) = text {
-                        self.page_insert(typed);
-                    }
-                }
-            },
-            None => {}
-        }
-    }
-    /// Typing for `horizon-ctl type` (`\n` is a line break).
-    pub(super) fn book_type(&mut self, text: &str) {
-        let text = text.replace("\\n", "\n");
-        match self.book.as_mut() {
-            Some(BookScreen::Edit { signing: true, .. }) => self.book_title_insert(&text),
-            Some(BookScreen::Edit { .. }) => self.page_insert(&text),
-            _ => {}
-        }
-    }
     /// `BookSignScreen.keyPressed` on the title box.
     fn book_title_key(&mut self, key: KeyCode) -> bool {
         let (ctrl, shift) = (self.has_control_down(), self.has_shift_down());
@@ -417,217 +967,6 @@ impl Game<'_> {
         };
         title_edit.insert_text(text);
         title.clone_from(&title_edit.value);
-    }
-    /// `BookEditScreen.keyPressed` on the page, apart from the line moves.
-    fn book_page_key(&mut self, key: KeyCode) -> bool {
-        let (ctrl, shift) = (self.has_control_down(), self.has_shift_down());
-        let before = match self.book.as_ref() {
-            Some(BookScreen::Edit { page_edit, .. }) => Some((
-                page_edit.value.clone(),
-                page_edit.cursor,
-                page_edit.highlight,
-            )),
-            _ => return false,
-        };
-        let handled = if let Some(BookScreen::Edit { page_edit, .. }) = self.book.as_mut() {
-            page_edit.key(key, ctrl, shift)
-        } else {
-            false
-        };
-        if handled {
-            self.page_keep(before);
-        }
-        handled
-    }
-    /// One character at a time, so a page stops at the last character that fits.
-    fn page_insert(&mut self, text: &str) {
-        for c in text.chars() {
-            self.page_change(|edit| edit.insert_text(&c.to_string()));
-        }
-    }
-    /// Ctrl+A/C/V/X: the title box while signing, else the page.
-    pub(super) fn book_shortcut(&mut self, shortcut: horizon_client::clipboard::EditShortcut) {
-        let signing = matches!(self.book, Some(BookScreen::Edit { signing: true, .. }));
-        if signing {
-            if let Some(BookScreen::Edit {
-                title, title_edit, ..
-            }) = self.book.as_mut()
-            {
-                title_edit.shortcut(shortcut, &mut self.clipboard);
-                title.clone_from(&title_edit.value);
-            }
-            return;
-        }
-        let before = match self.book.as_ref() {
-            Some(BookScreen::Edit { page_edit, .. }) => Some((
-                page_edit.value.clone(),
-                page_edit.cursor,
-                page_edit.highlight,
-            )),
-            _ => None,
-        };
-        if let Some(BookScreen::Edit { page_edit, .. }) = self.book.as_mut() {
-            page_edit.shortcut(shortcut, &mut self.clipboard);
-        }
-        self.page_keep(before);
-    }
-    /// Edit the page box, then keep it only within 14 lines and 1024 characters.
-    fn page_change(&mut self, f: impl FnOnce(&mut ui::EditBox)) -> bool {
-        let before = match self.book.as_ref() {
-            Some(BookScreen::Edit { page_edit, .. }) => Some((
-                page_edit.value.clone(),
-                page_edit.cursor,
-                page_edit.highlight,
-            )),
-            _ => return false,
-        };
-        let ran = if let Some(BookScreen::Edit { page_edit, .. }) = self.book.as_mut() {
-            f(page_edit);
-            true
-        } else {
-            false
-        };
-        ran && self.page_keep(before)
-    }
-    /// Write the page, or put the previous text back when it no longer fits.
-    fn page_keep(&mut self, before: Option<(String, usize, usize)>) -> bool {
-        let next = match self.book.as_ref() {
-            Some(BookScreen::Edit { page_edit, .. }) => page_edit.value.clone(),
-            _ => return false,
-        };
-        let ok = next.chars().count() <= PAGE_CHARS && self.book_lines(&next).len() <= LINES;
-        let Some(BookScreen::Edit {
-            pages,
-            page,
-            page_edit,
-            ..
-        }) = self.book.as_mut()
-        else {
-            return false;
-        };
-        if ok {
-            pages[*page].clone_from(&page_edit.value);
-        } else if let Some((value, cursor, highlight)) = before {
-            page_edit.value = value;
-            page_edit.cursor = cursor;
-            page_edit.highlight = highlight;
-        }
-        ok
-    }
-    /// ArrowUp and ArrowDown move a visual line, keeping the column.
-    fn book_move_line(&mut self, dir: isize) {
-        let shift = self.has_shift_down();
-        let (text, cursor) = match self.book.as_ref() {
-            Some(BookScreen::Edit {
-                pages,
-                page,
-                page_edit,
-                ..
-            }) => (pages[*page].clone(), page_edit.cursor),
-            _ => return,
-        };
-        let rows = self.page_rows(&text);
-        let (x, line) = self.caret_on(&text, &rows, cursor);
-        let next = (line as isize + dir).clamp(0, rows.len() as isize - 1) as usize;
-        let (start, end) = rows[next];
-        let chars: Vec<char> = text.chars().collect();
-        let slice: String = chars[start..end].iter().collect();
-        let pos = start + self.gui.atlas.font.fit(&slice, x);
-        if let Some(BookScreen::Edit { page_edit, .. }) = self.book.as_mut() {
-            page_edit.set_cursor(pos, shift);
-        }
-    }
-    /// Wrapped rows of a page as character ranges, the same breaks as `font.split`.
-    fn page_rows(&self, page: &str) -> Vec<(usize, usize)> {
-        let font = &self.gui.atlas.font;
-        let chars: Vec<char> = page.chars().collect();
-        let mut rows = Vec::new();
-        let mut start = 0;
-        while start < chars.len() {
-            let mut end = chars.len();
-            let mut next = chars.len();
-            let mut last_space = None;
-            for i in start..chars.len() {
-                if chars[i] == '\n' {
-                    end = i;
-                    next = i + 1;
-                    break;
-                }
-                if chars[i] == ' ' {
-                    last_space = Some(i);
-                }
-                let slice: String = chars[start..=i].iter().collect();
-                if font.width(&slice) > 114.0 {
-                    match last_space {
-                        Some(s) if s > start => {
-                            end = s;
-                            next = s + 1;
-                        }
-                        _ => {
-                            end = i.max(start + 1);
-                            next = end;
-                        }
-                    }
-                    break;
-                }
-            }
-            rows.push((start, end));
-            start = next;
-            if start == chars.len() && chars.last() == Some(&'\n') {
-                rows.push((chars.len(), chars.len()));
-            }
-        }
-        if rows.is_empty() {
-            rows.push((0, 0));
-        }
-        rows
-    }
-    /// GUI x of the caret and the row it sits on.
-    fn caret_on(&self, page: &str, rows: &[(usize, usize)], cursor: usize) -> (f32, usize) {
-        let chars: Vec<char> = page.chars().collect();
-        for (i, &(start, end)) in rows.iter().enumerate() {
-            if cursor <= end || i + 1 == rows.len() {
-                let take = cursor.saturating_sub(start).min(end.saturating_sub(start));
-                let prefix: String = chars.iter().skip(start).take(take).collect();
-                return (self.gui.atlas.font.width(&prefix), i);
-            }
-        }
-        (0.0, 0)
-    }
-    fn page_index_at(&self, page: &str, local_x: f32, local_y: f32) -> usize {
-        let rows = self.page_rows(page);
-        let line = (local_y / 9.0).floor().max(0.0) as usize;
-        let line = line.min(rows.len().saturating_sub(1));
-        let (start, end) = rows[line];
-        let chars: Vec<char> = page.chars().collect();
-        let slice: String = chars[start..end].iter().collect();
-        start + self.gui.atlas.font.fit(&slice, local_x.max(0.0))
-    }
-    /// A click on the centred title (`EditBox.onClick`).
-    fn book_title_click(&mut self, field_x: f32, mx: f32) {
-        let shift = self.has_shift_down();
-        let Some(BookScreen::Edit {
-            title, title_edit, ..
-        }) = self.book.as_mut()
-        else {
-            return;
-        };
-        let tx = field_x + ((114.0 - self.gui.atlas.font.width(title)) / 2.0).floor();
-        let rel = (mx - tx).max(0.0);
-        let pos = self.gui.atlas.font.fit(title, rel);
-        title_edit.set_cursor(pos, shift);
-    }
-    /// A click on the open page.
-    fn book_page_click(&mut self, origin_x: f32, origin_y: f32, mx: f32, my: f32) {
-        let shift = self.has_shift_down();
-        let text = match self.book.as_ref() {
-            Some(BookScreen::Edit { pages, page, .. }) => pages[*page].clone(),
-            _ => return,
-        };
-        let pos = self.page_index_at(&text, mx - origin_x, my - origin_y);
-        if let Some(BookScreen::Edit { page_edit, .. }) = self.book.as_mut() {
-            page_edit.set_cursor(pos, shift);
-        }
     }
     /// The page buttons (`pageForward` adds a page while editing).
     fn turn_page(&mut self, forward: bool) {
@@ -978,343 +1317,6 @@ impl Game<'_> {
                 *page = (l.page.max(0) as usize).min(pages.len().saturating_sub(1));
             }
             _ => self.close_book(),
-        }
-    }
-    pub(super) fn book_click(&mut self, size: [u32; 2]) {
-        let b = HudBatch::new(size);
-        let (w, left) = (b.width, ((b.width - 192.0) / 2.0).floor());
-        let (mx, my) = self.cursor;
-        let inside =
-            |x: f32, y: f32, bw: f32, bh: f32| mx >= x && my >= y && mx < x + bw && my < y + bh;
-        let click = |game: &mut Self| {
-            game.sounds
-                .play("minecraft:ui.button.click", None, 0.25, 1.0)
-        };
-        match &self.book {
-            Some(BookScreen::Edit {
-                signing: true,
-                title,
-                ..
-            }) => {
-                let blank = title.trim().is_empty();
-                if inside(w / 2.0 - 100.0, 196.0, 98.0, 20.0) && !blank {
-                    click(self);
-                    self.save_book(true);
-                } else if inside(w / 2.0 + 2.0, 196.0, 98.0, 20.0) {
-                    click(self);
-                    if let Some(BookScreen::Edit { signing, .. }) = self.book.as_mut() {
-                        *signing = false;
-                    }
-                } else if inside(left + 36.0, 50.0, 114.0, 9.0) {
-                    self.book_title_click(left + 36.0, mx);
-                }
-            }
-            Some(BookScreen::Edit { page, .. }) => {
-                let page = *page;
-                if inside(left + 116.0, 159.0, 23.0, 13.0) {
-                    self.turn_page(true);
-                } else if page > 0 && inside(left + 43.0, 159.0, 23.0, 13.0) {
-                    self.turn_page(false);
-                } else if inside(w / 2.0 - 100.0, 196.0, 98.0, 20.0) {
-                    click(self);
-                    if let Some(BookScreen::Edit { signing, .. }) = self.book.as_mut() {
-                        *signing = true;
-                    }
-                } else if inside(w / 2.0 + 2.0, 196.0, 98.0, 20.0) {
-                    click(self);
-                    self.save_book(false);
-                } else if inside(left + 36.0, 32.0, 114.0, 14.0 * 9.0) {
-                    self.book_page_click(left + 36.0, 32.0, mx, my);
-                }
-            }
-            Some(BookScreen::View {
-                pages,
-                page,
-                lectern,
-            }) => {
-                let (page, count, lectern) = (*page, pages.len(), *lectern);
-                // The text's click event first, then the buttons.
-                if let Some(link) = pages.get(page).and_then(|t| self.book_link_at(t, left)) {
-                    self.book_follow_link(link, count, lectern);
-                } else if page + 1 < count && inside(left + 116.0, 159.0, 23.0, 13.0) {
-                    self.turn_page(true);
-                } else if page > 0 && inside(left + 43.0, 159.0, 23.0, 13.0) {
-                    self.turn_page(false);
-                } else if let Some(key) = lectern {
-                    if inside(w / 2.0 - 100.0, 196.0, 98.0, 20.0) {
-                        click(self);
-                        self.close_book();
-                    } else if inside(w / 2.0 + 2.0, 196.0, 98.0, 20.0) {
-                        click(self);
-                        // LecternScreen's Take Book: the menu's button 3.
-                        self.lectern_button(key, 3);
-                    }
-                } else if inside((w - 200.0) / 2.0, 196.0, 200.0, 20.0) {
-                    click(self);
-                    self.close_book();
-                }
-            }
-            None => {}
-        }
-    }
-    pub(super) fn draw_book(&self, batch: &mut HudBatch) {
-        let Some(book) = &self.book else { return };
-        let atlas = &self.gui.atlas;
-        let (w, h) = (batch.width, batch.height);
-        let (mx, my) = self.cursor;
-        let hover =
-            |x: f32, y: f32, bw: f32, bh: f32| mx >= x && my >= y && mx < x + bw && my < y + bh;
-        batch.fill(atlas, 0.0, 0.0, w, h, rgba(16, 16, 16, 160));
-        let left = ((w - 192.0) / 2.0).floor();
-        let top = 2.0;
-        if let Some(mut r) = atlas.sprites.get("gui/book").copied() {
-            let (du, dv) = ((r.u1 - r.u0) / r.w as f32, (r.v1 - r.v0) / r.h as f32);
-            r.u1 = r.u0 + 192.0 * du;
-            r.v1 = r.v0 + 192.0 * dv;
-            batch.rect_uv(left, top, 192.0, 192.0, r, u32::MAX);
-        }
-        let tr = |key: &str, fallback: &str| self.translate(key, fallback);
-        let page_buttons = |batch: &mut HudBatch, back: bool, forward: bool| {
-            for (show, x, name) in [
-                (forward, 116.0, "page_forward"),
-                (back, 43.0, "page_backward"),
-            ] {
-                if show {
-                    let sprite = if hover(left + x, top + 157.0, 23.0, 13.0) {
-                        format!("gui/sprites/widget/{name}_highlighted")
-                    } else {
-                        format!("gui/sprites/widget/{name}")
-                    };
-                    batch.sprite(atlas, &sprite, left + x, top + 157.0);
-                }
-            }
-        };
-        let indicator = |batch: &mut HudBatch, page: usize, count: usize| {
-            // BookViewScreen.getPageNumberMessage: 26.3's en_us template is
-            // positional ("Page %1$s of %2$s").
-            let text = horizon_protocol::text::format_java(
-                &tr("book.pageIndicator", "Page %1$s of %2$s"),
-                &[(page + 1).to_string(), count.max(1).to_string()],
-            );
-            let tw = HudBatch::text_width(atlas, &text);
-            batch.text(atlas, &text, left + 148.0 - tw, top + 16.0, BLACK, false);
-        };
-        let button = |batch: &mut HudBatch, x: f32, bw: f32, label: &str, active: bool| {
-            ui::button(
-                batch,
-                atlas,
-                x,
-                196.0,
-                bw,
-                20.0,
-                &Text::literal(label),
-                active,
-                hover(x, 196.0, bw, 20.0),
-            );
-        };
-        match book {
-            BookScreen::Edit {
-                signing: true,
-                title,
-                title_edit,
-                ..
-            } => {
-                let edit = tr("book.editTitle", "Enter Book Title:");
-                let tw = HudBatch::text_width(atlas, &edit);
-                batch.text(
-                    atlas,
-                    &edit,
-                    left + 36.0 + (114.0 - tw) / 2.0,
-                    34.0,
-                    BLACK,
-                    false,
-                );
-                // The title box: an unbordered, centred EditBox of 114 with
-                // black text and no shadow; the value alone is centred, the
-                // cursor follows it.
-                let value = &title_edit.value;
-                let x = left + 36.0;
-                let tx = x + ((114.0 - HudBatch::text_width(atlas, value)) / 2.0).floor();
-                batch.text(atlas, value, tx, 50.0, BLACK, false);
-                if title_edit.cursor != title_edit.highlight {
-                    let (a, b) = (
-                        title_edit.cursor.min(title_edit.highlight),
-                        title_edit.cursor.max(title_edit.highlight),
-                    );
-                    let pre: String = value.chars().take(a).collect();
-                    let sel: String = value.chars().skip(a).take(b - a).collect();
-                    let sx = tx + HudBatch::text_width(atlas, &pre);
-                    batch.text_highlight(
-                        atlas,
-                        (sx, 49.0, HudBatch::text_width(atlas, &sel), 11.0),
-                        true,
-                    );
-                }
-                if title_edit.cursor_visible() {
-                    let pre: String = value.chars().take(title_edit.cursor).collect();
-                    batch.fill(
-                        atlas,
-                        tx + HudBatch::text_width(atlas, &pre),
-                        49.0,
-                        1.0,
-                        9.0,
-                        BLACK,
-                    );
-                }
-                // BookSignScreen: `owner.getName()`, the account's name on a server.
-                let owner = self
-                    .remote
-                    .as_ref()
-                    .map_or(super::chat::PLAYER_NAME, |r| r.profile_name.as_str());
-                let by = tr("book.byAuthor", "by %1$s").replace("%1$s", owner);
-                let tw = HudBatch::text_width(atlas, &by);
-                batch.text(
-                    atlas,
-                    &by,
-                    left + 36.0 + (114.0 - tw) / 2.0,
-                    60.0,
-                    rgba(64, 64, 64, 255),
-                    false,
-                );
-                let warning = tr(
-                    "book.finalizeWarning",
-                    "Note! When you sign the book, it will no longer be editable.",
-                );
-                for (i, line) in atlas
-                    .font
-                    .split(&Text::literal(&warning), 114.0)
-                    .iter()
-                    .enumerate()
-                {
-                    batch.text_styled(
-                        atlas,
-                        line,
-                        left + 36.0,
-                        82.0 + i as f32 * 9.0,
-                        BLACK,
-                        false,
-                    );
-                }
-                button(
-                    batch,
-                    w / 2.0 - 100.0,
-                    98.0,
-                    &tr("book.finalizeButton", "Sign and Close"),
-                    !title.trim().is_empty(),
-                );
-                button(
-                    batch,
-                    w / 2.0 + 2.0,
-                    98.0,
-                    &tr("gui.cancel", "Cancel"),
-                    true,
-                );
-            }
-            BookScreen::Edit {
-                pages,
-                page,
-                page_edit,
-                ..
-            } => {
-                indicator(batch, *page, pages.len());
-                let text = &pages[*page];
-                let lines = self.book_lines(text);
-                for (i, line) in lines.iter().take(LINES).enumerate() {
-                    batch.text_styled(
-                        atlas,
-                        line,
-                        left + 36.0,
-                        top + 30.0 + i as f32 * 9.0,
-                        BLACK,
-                        false,
-                    );
-                }
-                let rows = self.page_rows(text);
-                let (sel_a, sel_b) = (
-                    page_edit.cursor.min(page_edit.highlight),
-                    page_edit.cursor.max(page_edit.highlight),
-                );
-                if sel_a != sel_b {
-                    let chars: Vec<char> = text.chars().collect();
-                    for (i, &(start, end)) in rows.iter().enumerate().take(LINES) {
-                        let from = sel_a.max(start);
-                        let to = sel_b.min(end);
-                        if from >= to {
-                            continue;
-                        }
-                        let pre: String = chars[start..from].iter().collect();
-                        let sel: String = chars[from..to].iter().collect();
-                        batch.text_highlight(
-                            atlas,
-                            (
-                                left + 36.0 + atlas.font.width(&pre),
-                                top + 29.0 + i as f32 * 9.0,
-                                atlas.font.width(&sel),
-                                9.0,
-                            ),
-                            true,
-                        );
-                    }
-                }
-                if page_edit.cursor_visible() {
-                    let (x, row) = self.caret_on(text, &rows, page_edit.cursor);
-                    batch.fill(
-                        atlas,
-                        left + 36.0 + x,
-                        top + 29.0 + row as f32 * 9.0,
-                        1.0,
-                        9.0,
-                        BLACK,
-                    );
-                }
-                page_buttons(batch, *page > 0, true);
-                button(
-                    batch,
-                    w / 2.0 - 100.0,
-                    98.0,
-                    &tr("book.signButton", "Sign"),
-                    true,
-                );
-                button(batch, w / 2.0 + 2.0, 98.0, &tr("gui.done", "Done"), true);
-            }
-            BookScreen::View {
-                pages,
-                page,
-                lectern,
-            } => {
-                indicator(batch, *page, pages.len());
-                if let Some(text) = pages.get(*page) {
-                    for (i, line) in self.page_lines(text).iter().take(LINES).enumerate() {
-                        batch.text_styled(
-                            atlas,
-                            line,
-                            left + 36.0,
-                            top + 30.0 + i as f32 * 9.0,
-                            BLACK,
-                            false,
-                        );
-                    }
-                }
-                page_buttons(batch, *page > 0, *page + 1 < pages.len());
-                if lectern.is_some() {
-                    button(batch, w / 2.0 - 100.0, 98.0, &tr("gui.done", "Done"), true);
-                    button(
-                        batch,
-                        w / 2.0 + 2.0,
-                        98.0,
-                        &tr("lectern.take_book", "Take Book"),
-                        true,
-                    );
-                } else {
-                    button(
-                        batch,
-                        (w - 200.0) / 2.0,
-                        200.0,
-                        &tr("gui.done", "Done"),
-                        true,
-                    );
-                }
-            }
         }
     }
 }

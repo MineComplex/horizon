@@ -125,13 +125,13 @@ impl Trip {
     }
 }
 
-impl Game<'_> {
+impl Game<'_> {}
+impl crate::game::Sim<'_> {
     /// Whether `conn` is between two levels: the server leaves its body
     /// alone until it arrives.
     pub(super) fn on_server_trip(&self, conn: u32) -> bool {
         self.server_trips.iter().any(|t| t.conn == conn)
     }
-
     /// Whether a vehicle waits in `dim` for its rider to arrive elsewhere:
     /// that level stays open until it has moved.
     pub(super) fn vehicle_waits_in(&self, dim: Dim) -> bool {
@@ -139,7 +139,6 @@ impl Game<'_> {
             .iter()
             .any(|t| t.vehicle.is_some() && t.source == dim)
     }
-
     /// Per server tick in each level, after the guests' own: the arrivals of
     /// the trips into this level, then `Entity.handlePortal` for each player
     /// in it (Nether portals count up their transition time, End portals
@@ -170,7 +169,6 @@ impl Game<'_> {
             host.play.entry(conn).or_default().portal = portal;
         }
     }
-
     /// `Entity.handlePortal` for one player, whose portal state is in place.
     fn handle_server_portal(&mut self, host: &mut LanHost, conn: u32) {
         let Some(g) = host.hub.guest(conn) else {
@@ -261,7 +259,6 @@ impl Game<'_> {
         }
         self.start_server_trip(host, conn, plan.dim, Some(plan));
     }
-
     /// `Entity.handlePortal` of a vehicle server players ride, once through
     /// a portal (a vehicle's transition time is 0): the riders travel with
     /// it and ride it again on arrival (`Entity.teleportCrossDimension`), so
@@ -299,7 +296,6 @@ impl Game<'_> {
             }
         }
     }
-
     /// A Nether portal block a player's box is in.
     fn nether_portal_inside(&self, at: Vec3) -> Option<BlockPos> {
         let w = WIDTH / 2.0 - 1.0e-5;
@@ -316,7 +312,6 @@ impl Game<'_> {
         }
         None
     }
-
     /// The player moves to `target`'s level (opened if nobody was there)
     /// and is told it is there, at the approximate exit, while it loads. The
     /// level whose tick is running is put back in place afterwards.
@@ -394,7 +389,6 @@ impl Game<'_> {
             log::error!("could not reopen {}: {e}", source.id());
         }
     }
-
     /// A respawned player waits at its point outside the Overworld for the
     /// level to load around it.
     pub(super) fn respawn_trip(&mut self, conn: u32, config: RespawnConfig) {
@@ -414,7 +408,6 @@ impl Game<'_> {
             placed: false,
         });
     }
-
     /// `findRespawnAndUseSpawnBlock` for the player in place, at its point
     /// in the level in place: where it stands up, facing the anchor (with
     /// the deplete sound) or the bed; else the point is forgotten
@@ -442,7 +435,6 @@ impl Game<'_> {
             }
         }
     }
-
     /// TeleportTransition.createDefault and missingRespawnBlock: the player
     /// waits at the world spawn for its chunks, then PlayerSpawnFinder puts
     /// it on a free column within the respawn radius.
@@ -466,7 +458,6 @@ impl Game<'_> {
             placed: false,
         });
     }
-
     /// TeleportTransition.missingRespawnBlock: the world spawn, in the
     /// Overworld.
     fn respawn_at_world_spawn(&mut self, host: &mut LanHost, conn: u32) {
@@ -483,7 +474,6 @@ impl Game<'_> {
         self.run_level_teleports(host);
         self.world_spawn_trip(conn);
     }
-
     /// `TheEndGatewayBlockEntity.getPortalPosition` and the teleport within
     /// the End (keeping the player's motion and look): straight to an exact
     /// exit, else once the destination has loaded around the player, who
@@ -514,7 +504,6 @@ impl Game<'_> {
             placed: false,
         });
     }
-
     /// The trips into the level in place whose destination has loaded
     /// around their target: the exit (the Nether portal found or built, the
     /// End platform, the Overworld's spawn column) and the teleport there.
@@ -623,7 +612,6 @@ impl Game<'_> {
                 .teleport(i, Some([position.x, position.y, position.z]));
         }
     }
-
     /// The vehicle the player rode arrives with it, at the point the player
     /// arrives: it keeps its entity id, so the ride is never broken
     /// (`Entity.teleportCrossDimension` recreates the vehicle in the other
@@ -648,7 +636,6 @@ impl Game<'_> {
         // for a while (`Entity.setPortalCooldown`).
         self.set_portal_cooldown(id);
     }
-
     /// The players the command just run sends to another level
     /// (`ServerPlayer.teleport` from TeleportCommand): a Respawn packet
     /// keeping all data and the teleport, with no portal sound. The server
@@ -693,7 +680,6 @@ impl Game<'_> {
             }
         }
     }
-
     /// The hub's view of the server for packets sent outside its own tick.
     pub(super) fn server_ctx(&mut self) -> TickCtx<'_> {
         let spawn = self.spawn.map_or([0.5, 80.0, 0.5], |s| [s.x, s.y, s.z]);

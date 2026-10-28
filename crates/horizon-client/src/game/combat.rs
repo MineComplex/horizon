@@ -69,7 +69,8 @@ pub(super) struct CombatTracker {
     /// end of the last one).
     fall_before: f64,
 }
-impl Game<'_> {
+impl Game<'_> {}
+impl crate::game::Sim<'_> {
     /// `LivingEntity.makeDrownParticles`: eight bubbles around the entity,
     /// moving with it.
     pub(super) fn drown_particles(&mut self, at: [f64; 3], velocity: [f64; 3]) {

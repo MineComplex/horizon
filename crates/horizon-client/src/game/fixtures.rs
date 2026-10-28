@@ -10,7 +10,8 @@ pub(super) enum ComponentHarness {
     Sculk(String),
 }
 
-impl Game<'_> {
+impl Game<'_> {}
+impl crate::game::Sim<'_> {
     pub(super) fn run_component_harness(&self, fixture: ComponentHarness) -> Result<()> {
         let (res, pack, settings) = (self.res.clone(), self.pack.clone(), self.settings.clone());
         let mut options = self.options.clone();

@@ -27,7 +27,7 @@ pub fn set_plugins(plugins: Vec<Box<dyn Plugin>>) {
 
 /// What plugins read of the server.
 struct View<'a> {
-    game: &'a Game<'a>,
+    game: &'a crate::game::Sim<'a>,
     players: Vec<PlayerRef>,
 }
 impl api::server::View for View<'_> {
@@ -63,6 +63,28 @@ impl api::server::View for View<'_> {
 }
 
 impl Game<'_> {
+    /// A player as plugins see them.
+    fn plugin_player(g: &Guest) -> PlayerRef {
+        PlayerRef {
+            name: g.name.clone(),
+            uuid: g.uuid,
+            location: Location {
+                world: g.dimension.clone(),
+                x: g.position[0],
+                y: g.position[1],
+                z: g.position[2],
+                yaw: g.yaw,
+                pitch: g.pitch,
+            },
+            health: g.health,
+            game_mode: g.game_mode.clamp(0, 3) as u8,
+            op_level: g.permission,
+        }
+    }
+
+    // ---- The events -----------------------------------------------------
+}
+impl crate::game::Sim<'_> {
     /// `onLoad` of the plugins `horizon-server` was built with (before the worlds).
     pub(super) fn plugins_load(&mut self) {
         let Some(plugins) = PLUGINS.lock().unwrap_or_else(|e| e.into_inner()).take() else {
@@ -106,25 +128,6 @@ impl Game<'_> {
             super::dedicated::log("INFO", &line);
         }
     }
-
-    /// A player as plugins see them.
-    fn plugin_player(g: &Guest) -> PlayerRef {
-        PlayerRef {
-            name: g.name.clone(),
-            uuid: g.uuid,
-            location: Location {
-                world: g.dimension.clone(),
-                x: g.position[0],
-                y: g.position[1],
-                z: g.position[2],
-                yaw: g.yaw,
-                pitch: g.pitch,
-            },
-            health: g.health,
-            game_mode: g.game_mode.clamp(0, 3) as u8,
-            op_level: g.permission,
-        }
-    }
     /// The online players, from the hub in hand or in place, else the last
     /// ones seen (the hub is out of its place during a player's turn).
     fn plugin_players(&mut self, host: Option<&LanHost>) -> Vec<PlayerRef> {
@@ -134,7 +137,7 @@ impl Game<'_> {
                 .guests
                 .iter()
                 .filter(|g| g.placed)
-                .map(Self::plugin_player)
+                .map(crate::game::Game::plugin_player)
                 .collect();
             self.plugin_seen = players.clone();
             return players;
@@ -179,7 +182,6 @@ impl Game<'_> {
         self.plugin_actions.extend(actions);
         self.plugin_log();
     }
-
     /// The scheduler's tick (`CraftScheduler.mainThreadHeartbeat`).
     pub(super) fn plugins_tick(&mut self) {
         if self.plugins.is_none() {
@@ -200,7 +202,6 @@ impl Game<'_> {
         self.plugin_actions.extend(actions);
         self.plugin_log();
     }
-
     /// A plugin's command or `/plugins` (`line` without its slash); false
     /// when no plugin has it.
     fn plugin_command(
@@ -233,7 +234,6 @@ impl Game<'_> {
             None => false,
         }
     }
-
     /// What the plugins asked for, with the hub in place (between ticks and
     /// after a guest's packets): messages and kicks directly, the rest
     /// through the server's own commands, quietly, as the console.
@@ -339,9 +339,6 @@ impl Game<'_> {
         self.chat_capture = None;
         self.admin_feedback.clear();
     }
-
-    // ---- The events -----------------------------------------------------
-
     /// After a player joined and was placed: `PlayerJoinEvent`, and the join
     /// message it leaves (the hub left it to the plugins).
     /// Whether the player has no saved data on this server yet (checked before the join saves it).
@@ -358,7 +355,7 @@ impl Game<'_> {
         let Some(g) = host.hub.guest(conn).filter(|g| g.placed) else {
             return;
         };
-        let player = Self::plugin_player(g);
+        let player = crate::game::Game::plugin_player(g);
         let vanilla = format!("§e{} joined the game", g.name);
         let mut event = ev::PlayerJoinEvent {
             player,
@@ -382,7 +379,7 @@ impl Game<'_> {
         }
         let vanilla = format!("§e{} left the game", g.name);
         let mut event = ev::PlayerQuitEvent {
-            player: Self::plugin_player(g),
+            player: crate::game::Game::plugin_player(g),
             quit_message: Some(vanilla.clone()),
             reason: g.left_reason.clone(),
         };
@@ -407,7 +404,7 @@ impl Game<'_> {
         let Some(g) = host.hub.guests.iter().find(|g| g.uuid == message.sender) else {
             return host.hub.relay_chat(message);
         };
-        let player = Self::plugin_player(g);
+        let player = crate::game::Game::plugin_player(g);
         let everyone: Vec<u128> = host
             .hub
             .guests
@@ -463,7 +460,7 @@ impl Game<'_> {
         let Some(g) = host.hub.guest(conn) else {
             return Some(command.to_owned());
         };
-        let player = Self::plugin_player(g);
+        let player = crate::game::Game::plugin_player(g);
         let mut line = command.trim_start_matches('/').to_owned();
         if self.plugins_listen::<ev::PlayerCommandPreprocessEvent>() {
             let mut event = ev::PlayerCommandPreprocessEvent {
@@ -578,7 +575,7 @@ impl Game<'_> {
             return (None, keep_inventory);
         };
         let mut event = ev::PlayerDeathEvent {
-            player: Self::plugin_player(g),
+            player: crate::game::Game::plugin_player(g),
             death_message: message.clone(),
             keep_inventory,
         };

@@ -159,6 +159,70 @@ fn segment_box(from: Vec3, d: Vec3, b: Aabb) -> Option<f64> {
     (t0 <= t1).then_some(t0)
 }
 impl Game<'_> {
+    /// ThrownTridentRenderer.
+    pub(super) fn trident_geometry(&self, camera: glam::DVec3, alpha: f64, out: &mut Vec<Vertex>) {
+        let Some(model) = &self.trident_model else {
+            return;
+        };
+        let Some(uv) = self
+            .front
+            .gui
+            .atlas
+            .sprites
+            .get("entity/trident/trident")
+            .map(|r| [r.u0, r.v0, r.u1, r.v1])
+        else {
+            return;
+        };
+        // AbstractArrow.shouldRenderAtSqrDistance: ten times the default.
+        let range = 10.0
+            * super::entity_culling::default_range(
+                glam::DVec3::splat(2.0 * HALF),
+                self.view_scale(),
+            );
+        for t in &self.tridents {
+            // EntityRenderer.shouldRender; ThrownTridentRenderer grows the box by 1.5.
+            if !self.standing_entity_in_view(
+                camera,
+                super::entity_culling::at(t.previous),
+                super::entity_culling::at(t.position),
+                alpha,
+                2.0 * HALF,
+                2.0 * HALF,
+                range,
+                1.5,
+            ) {
+                continue;
+            }
+            let p = glam::DVec3::new(
+                t.previous.x + (t.position.x - t.previous.x) * alpha,
+                t.previous.y + (t.position.y - t.previous.y) * alpha,
+                t.previous.z + (t.position.z - t.previous.z) * alpha,
+            ) - camera;
+            let base = glam::Mat4::from_translation(p.as_vec3())
+                * glam::Mat4::from_rotation_y((t.yaw - 90.0).to_radians())
+                * glam::Mat4::from_rotation_z((t.pitch + 90.0).to_radians());
+            let l = self.world.light(
+                t.position.x.floor() as i32,
+                t.position.y.floor() as i32,
+                t.position.z.floor() as i32,
+            );
+            let packed = (u32::from(l >> 4) * 16) | ((u32::from(l & 15) * 16) << 8);
+            let poses = Poses::new(model);
+            horizon_client::mobs::render::draw(
+                model,
+                base,
+                &poses,
+                uv,
+                0xFFFF_FFFF,
+                packed,
+                0,
+                out,
+            );
+        }
+    }
+}
+impl crate::game::Sim<'_> {
     /// `TridentItem.use`: start the throw unless one more use would break it.
     pub(super) fn use_trident(&mut self, stack: &ItemStack) -> bool {
         if &*stack.item != "minecraft:trident" {
@@ -584,67 +648,6 @@ impl Game<'_> {
             }
             self.tridents.insert(i, t);
             i += 1;
-        }
-    }
-    /// ThrownTridentRenderer.
-    pub(super) fn trident_geometry(&self, camera: glam::DVec3, alpha: f64, out: &mut Vec<Vertex>) {
-        let Some(model) = &self.trident_model else {
-            return;
-        };
-        let Some(uv) = self
-            .gui
-            .atlas
-            .sprites
-            .get("entity/trident/trident")
-            .map(|r| [r.u0, r.v0, r.u1, r.v1])
-        else {
-            return;
-        };
-        // AbstractArrow.shouldRenderAtSqrDistance: ten times the default.
-        let range = 10.0
-            * super::entity_culling::default_range(
-                glam::DVec3::splat(2.0 * HALF),
-                self.view_scale(),
-            );
-        for t in &self.tridents {
-            // EntityRenderer.shouldRender; ThrownTridentRenderer grows the box by 1.5.
-            if !self.standing_entity_in_view(
-                camera,
-                super::entity_culling::at(t.previous),
-                super::entity_culling::at(t.position),
-                alpha,
-                2.0 * HALF,
-                2.0 * HALF,
-                range,
-                1.5,
-            ) {
-                continue;
-            }
-            let p = glam::DVec3::new(
-                t.previous.x + (t.position.x - t.previous.x) * alpha,
-                t.previous.y + (t.position.y - t.previous.y) * alpha,
-                t.previous.z + (t.position.z - t.previous.z) * alpha,
-            ) - camera;
-            let base = glam::Mat4::from_translation(p.as_vec3())
-                * glam::Mat4::from_rotation_y((t.yaw - 90.0).to_radians())
-                * glam::Mat4::from_rotation_z((t.pitch + 90.0).to_radians());
-            let l = self.world.light(
-                t.position.x.floor() as i32,
-                t.position.y.floor() as i32,
-                t.position.z.floor() as i32,
-            );
-            let packed = (u32::from(l >> 4) * 16) | ((u32::from(l & 15) * 16) << 8);
-            let poses = Poses::new(model);
-            horizon_client::mobs::render::draw(
-                model,
-                base,
-                &poses,
-                uv,
-                0xFFFF_FFFF,
-                packed,
-                0,
-                out,
-            );
         }
     }
 }

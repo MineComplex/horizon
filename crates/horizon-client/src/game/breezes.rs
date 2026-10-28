@@ -6,7 +6,8 @@ use horizon_client::{
     particles::Particle,
 };
 
-impl Game<'_> {
+impl Game<'_> {}
+impl crate::game::Sim<'_> {
     pub(super) fn tick_breeze_effects(&mut self) {
         let Some(camera) = self.player.as_ref().map(|p| p.position) else {
             return;

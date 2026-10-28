@@ -16,7 +16,8 @@ pub const HELP: &[&str] = &[
     "section-sides [on|off]         leave out solid quads facing away from the eye (A/B checks); replies the mode",
 ];
 
-impl Game<'_> {
+impl Game<'_> {}
+impl crate::game::Sim<'_> {
     /// Parse `name[k=v,...]` into a registry state (defaults for missing properties).
     fn parse_state(&self, text: &str) -> Result<BlockStateId> {
         parse_state(self.pack.assets.registry, text)

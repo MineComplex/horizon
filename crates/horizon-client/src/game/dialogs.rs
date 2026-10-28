@@ -48,50 +48,6 @@ fn warning_texts() -> (Text, Text, [Text; 2]) {
 }
 
 impl Game<'_> {
-    /// Whether a dialog screen takes the input.
-    pub(super) fn dialog_open(&self) -> bool {
-        let d = &self.dialogs;
-        d.open.is_some() || d.waiting.is_some() || d.warning
-    }
-
-    /// `showDialog`: the dialog replaces an open one (and a waiting screen);
-    /// under the warning screen, it is what Back returns to.
-    pub(super) fn show_dialog(&mut self, tag: &Tag) {
-        let Some(dialog) = Dialog::parse(tag) else {
-            log::warn!("Horizon: failed to show dialog for data {tag:?}");
-            return;
-        };
-        let values = dialog.inputs.iter().map(|i| i.control.initial()).collect();
-        let fields = dialog
-            .inputs
-            .iter()
-            .map(|i| match &i.control {
-                Control::Text {
-                    width,
-                    initial,
-                    max_length,
-                    ..
-                } => {
-                    let mut edit = ui::EditBox::new(0.0, 0.0, *width as f32, 20.0);
-                    edit.max_length = (*max_length).max(1) as usize;
-                    edit.set_value(initial);
-                    edit.focused = false;
-                    Some(edit)
-                }
-                _ => None,
-            })
-            .collect();
-        self.dialogs.open = Some(Open {
-            dialog,
-            values,
-            fields,
-            focus: None,
-            scroll: ui::Scroll::default(),
-        });
-        self.dialogs.waiting = None;
-        self.capture(false);
-    }
-
     /// `clearDialog`: the dialog closes (under the warning screen, Back then
     /// returns to what was open before it).
     pub(super) fn clear_dialog(&mut self) {
@@ -100,13 +56,11 @@ impl Game<'_> {
         }
     }
 
-    /// Every dialog screen goes (a disconnect, or the level loading screen).
-    pub(super) fn close_dialogs(&mut self) {
-        self.dialogs = DialogState::default();
-    }
-
     fn dialog_closed(&mut self) {
-        if self.player.is_some() && self.screen == super::Screen::Playing && self.title.is_none() {
+        if self.player.is_some()
+            && self.screen == super::Screen::Playing
+            && self.front.title.is_none()
+        {
             self.capture(true);
         }
     }
@@ -151,7 +105,7 @@ impl Game<'_> {
             Some(Click::ShowDialog(dialog)) => self.show_dialog_ref(&dialog),
             Some(Click::CopyToClipboard(value)) => {
                 use horizon_client::clipboard::Clipboard;
-                self.clipboard.set(&value);
+                self.front.clipboard.set(&value);
             }
             Some(other) => log::info!("Horizon: dialog action {other:?} is not supported yet"),
             None => {}
@@ -162,55 +116,11 @@ impl Game<'_> {
         Ok(())
     }
 
-    /// A `show_dialog` click event's dialog: a registry id or the dialog itself.
-    pub(super) fn show_dialog_ref(&mut self, dialog: &Tag) {
-        match dialog {
-            Tag::String(id) => {
-                let id = id.to_string_lossy();
-                let name = if id.contains(':') {
-                    id.clone()
-                } else {
-                    format!("minecraft:{id}")
-                };
-                let found = self.remote.as_ref().and_then(|r| {
-                    let entries = r.registries.registries.get("minecraft:dialog")?;
-                    entries.iter().find(|(n, _)| *n == name)?.1.clone()
-                });
-                match found {
-                    Some(tag) => self.show_dialog(&tag),
-                    None => log::warn!("Horizon: unknown dialog {id}"),
-                }
-            }
-            tag => self.show_dialog(tag),
-        }
-    }
-
-    /// `ClientboundShowDialogPacket` in play: a registry entry or the dialog.
-    pub(super) fn show_play_dialog(
-        &mut self,
-        dialog: &horizon_protocol::packets::play::DialogHolder,
-    ) {
-        use horizon_protocol::packets::play::DialogHolder;
-        match dialog {
-            DialogHolder::Direct(tag) => self.show_dialog(tag),
-            DialogHolder::Registry(id) => {
-                let tag = self
-                    .remote
-                    .as_ref()
-                    .and_then(|r| r.registries.data("minecraft:dialog", *id).cloned());
-                match tag {
-                    Some(tag) => self.show_dialog(&tag),
-                    None => log::warn!("Horizon: unknown dialog {id}"),
-                }
-            }
-        }
-    }
-
     fn dialog_layout(&self) -> Option<Layout> {
         let open = self.dialogs.open.as_ref()?;
         Some(Layout::new(
             &open.dialog,
-            &self.gui.atlas.font,
+            &self.front.gui.atlas.font,
             self.gui_size(),
         ))
     }
@@ -220,8 +130,8 @@ impl Game<'_> {
             return;
         }
         let (w, h) = (batch.width, batch.height);
-        let cursor = self.cursor;
-        let atlas = &self.gui.atlas;
+        let cursor = self.front.cursor;
+        let atlas = &self.front.gui.atlas;
         if self.player.is_none() {
             // In place of the connecting screen, on its background.
             batch.fill(atlas, 0.0, 0.0, w, h, rgba(20, 20, 20, 255));
@@ -262,10 +172,10 @@ impl Game<'_> {
         let Some(layout) = self.dialog_layout() else {
             return;
         };
-        let Some(open) = self.dialogs.open.as_mut() else {
+        let Some(open) = self.sim.dialogs.open.as_mut() else {
             return;
         };
-        let atlas = &self.gui.atlas;
+        let atlas = &self.front.gui.atlas;
         let [ax, ay, aw, ah] = layout.area;
         open.scroll.clamp(ay, ay + ah, layout.content);
         batch.text_styled(
@@ -375,19 +285,24 @@ impl Game<'_> {
 
     /// A left click on a dialog screen.
     pub(super) fn dialog_click(&mut self) -> Result<()> {
-        let cursor = self.cursor;
+        let cursor = self.front.cursor;
         if self.dialogs.warning {
             let (title, message, _) = warning_texts();
-            let answer = Confirm::new(&self.gui.atlas.font, self.gui_size(), &title, &message)
-                .answer_at(cursor);
+            let answer = Confirm::new(
+                &self.front.gui.atlas.font,
+                self.gui_size(),
+                &title,
+                &message,
+            )
+            .answer_at(cursor);
             match answer {
                 Some(true) => {
-                    self.audio.play_button_click();
+                    self.front.audio.play_button_click();
                     let reason = Text::translate("menu.custom_screen_info.disconnect", &[]);
                     return self.leave_server(Some(reason.plain()));
                 }
                 Some(false) => {
-                    self.audio.play_button_click();
+                    self.front.audio.play_button_click();
                     self.dialogs.warning = false;
                     if !self.dialog_open() {
                         self.dialog_closed();
@@ -405,7 +320,7 @@ impl Game<'_> {
                 ((h - 53.0) / 2.0).trunc() + 33.0,
             );
             if active && ui::hovered(cursor, bx, by, 200.0, 20.0) {
-                self.audio.play_button_click();
+                self.front.audio.play_button_click();
                 self.dialogs.waiting = None;
                 self.dialog_closed();
             }
@@ -416,11 +331,11 @@ impl Game<'_> {
         };
         let [wx, wy, ww, wh] = layout.warning;
         if ui::hovered(cursor, wx, wy, ww, wh) {
-            self.audio.play_button_click();
-            self.dialogs.warning = true;
+            self.front.audio.play_button_click();
+            self.sim.dialogs.warning = true;
             return Ok(());
         }
-        let Some(open) = self.dialogs.open.as_mut() else {
+        let Some(open) = self.sim.dialogs.open.as_mut() else {
             return Ok(());
         };
         let [_, ay, _, ah] = layout.area;
@@ -438,7 +353,7 @@ impl Game<'_> {
                     open.focus = Some(input);
                     if let Some(Some(edit)) = open.fields.get_mut(input) {
                         edit.focused = true;
-                        edit.click(&self.gui.atlas, cursor.0, false, false);
+                        edit.click(&self.front.gui.atlas, cursor.0, false, false);
                     }
                 }
                 Part::Check {
@@ -462,7 +377,7 @@ impl Game<'_> {
         let Some(action) = action else {
             return Ok(());
         };
-        self.audio.play_button_click();
+        self.front.audio.play_button_click();
         let Some(index) = action else {
             return Ok(());
         };
@@ -517,9 +432,9 @@ impl Game<'_> {
             }
             return Ok(());
         }
-        let ctrl = self.modifiers.control_key() || self.modifiers.super_key();
-        let shift = self.modifiers.shift_key();
-        let Some(open) = self.dialogs.open.as_mut() else {
+        let ctrl = self.front.modifiers.control_key() || self.front.modifiers.super_key();
+        let shift = self.front.modifiers.shift_key();
+        let Some(open) = self.sim.dialogs.open.as_mut() else {
             return Ok(());
         };
         if escape {
@@ -552,7 +467,7 @@ impl Game<'_> {
             return Ok(());
         };
         if let Some(shortcut) = shortcut {
-            edit.shortcut(shortcut, &mut self.clipboard);
+            edit.shortcut(shortcut, &mut self.front.clipboard);
             return Ok(());
         }
         if edit.key(key, ctrl, shift) {
@@ -568,7 +483,96 @@ impl Game<'_> {
         }
         Ok(())
     }
-
+}
+impl crate::game::Sim<'_> {
+    /// Whether a dialog screen takes the input.
+    pub(super) fn dialog_open(&self) -> bool {
+        let d = &self.dialogs;
+        d.open.is_some() || d.waiting.is_some() || d.warning
+    }
+    /// `showDialog`: the dialog replaces an open one (and a waiting screen);
+    /// under the warning screen, it is what Back returns to.
+    pub(super) fn show_dialog(&mut self, tag: &Tag) {
+        let Some(dialog) = Dialog::parse(tag) else {
+            log::warn!("Horizon: failed to show dialog for data {tag:?}");
+            return;
+        };
+        let values = dialog.inputs.iter().map(|i| i.control.initial()).collect();
+        let fields = dialog
+            .inputs
+            .iter()
+            .map(|i| match &i.control {
+                Control::Text {
+                    width,
+                    initial,
+                    max_length,
+                    ..
+                } => {
+                    let mut edit = ui::EditBox::new(0.0, 0.0, *width as f32, 20.0);
+                    edit.max_length = (*max_length).max(1) as usize;
+                    edit.set_value(initial);
+                    edit.focused = false;
+                    Some(edit)
+                }
+                _ => None,
+            })
+            .collect();
+        self.dialogs.open = Some(Open {
+            dialog,
+            values,
+            fields,
+            focus: None,
+            scroll: ui::Scroll::default(),
+        });
+        self.dialogs.waiting = None;
+        self.capture(false);
+    }
+    /// Every dialog screen goes (a disconnect, or the level loading screen).
+    pub(super) fn close_dialogs(&mut self) {
+        self.dialogs = DialogState::default();
+    }
+    /// A `show_dialog` click event's dialog: a registry id or the dialog itself.
+    pub(super) fn show_dialog_ref(&mut self, dialog: &Tag) {
+        match dialog {
+            Tag::String(id) => {
+                let id = id.to_string_lossy();
+                let name = if id.contains(':') {
+                    id.clone()
+                } else {
+                    format!("minecraft:{id}")
+                };
+                let found = self.remote.as_ref().and_then(|r| {
+                    let entries = r.registries.registries.get("minecraft:dialog")?;
+                    entries.iter().find(|(n, _)| *n == name)?.1.clone()
+                });
+                match found {
+                    Some(tag) => self.show_dialog(&tag),
+                    None => log::warn!("Horizon: unknown dialog {id}"),
+                }
+            }
+            tag => self.show_dialog(tag),
+        }
+    }
+    /// `ClientboundShowDialogPacket` in play: a registry entry or the dialog.
+    pub(super) fn show_play_dialog(
+        &mut self,
+        dialog: &horizon_protocol::packets::play::DialogHolder,
+    ) {
+        use horizon_protocol::packets::play::DialogHolder;
+        match dialog {
+            DialogHolder::Direct(tag) => self.show_dialog(tag),
+            DialogHolder::Registry(id) => {
+                let tag = self
+                    .remote
+                    .as_ref()
+                    .and_then(|r| r.registries.data("minecraft:dialog", *id).cloned());
+                match tag {
+                    Some(tag) => self.show_dialog(&tag),
+                    None => log::warn!("Horizon: unknown dialog {id}"),
+                }
+            }
+        }
+    }
     /// `type TEXT` with a dialog open: into the focused text input, or the
     /// first one.
     pub(super) fn dialog_type(&mut self, text: &str) -> bool {
@@ -585,7 +589,6 @@ impl Game<'_> {
         edit.insert_text(text);
         true
     }
-
     /// What `state` reports: the open dialog and its values, or the waiting
     /// and warning screens.
     pub(super) fn dialog_status(&self) -> serde_json::Value {

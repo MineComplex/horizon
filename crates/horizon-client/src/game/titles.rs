@@ -16,12 +16,12 @@ impl Game<'_> {
         let (w, h) = (batch.width as i32, batch.height as i32);
         let partial = self.clock.fraction() as f32;
         let background = self.settings.text_background(0.0);
-        let font = &self.gui.atlas.font;
+        let font = &self.front.gui.atlas.font;
         let mut draws = self
             .titles
             .overlay_message(w, h, bar_height, partial, font, background);
         draws.extend(self.titles.title(w, h, partial, font, background));
-        hud_layout::paint(batch, &self.gui.atlas, &draws);
+        hud_layout::paint(batch, &self.front.gui.atlas, &draws);
     }
     /// `Hud.extractSavingIndicator`, under the screens: the option, then the
     /// fading "Saving world" text.
@@ -29,16 +29,40 @@ impl Game<'_> {
         if !self.settings.autosave_indicator {
             return;
         }
-        let draws = self.saving_indicator.draw(
+        let draws = self.front.saving_indicator.draw(
             batch.width as i32,
             batch.height as i32,
             self.clock.fraction() as f32,
-            &self.gui.atlas.font,
+            &self.front.gui.atlas.font,
             Text::literal(self.translate("menu.savingLevel", "Saving world")),
             self.settings.text_background(0.0),
         );
-        hud_layout::paint(batch, &self.gui.atlas, &draws);
+        hud_layout::paint(batch, &self.front.gui.atlas, &draws);
     }
+    /// The title, action bar and selected-item parts of `Hud.tick`.
+    pub(super) fn tick_hud(&mut self) {
+        self.titles.tick();
+        self.tick_in_bed_chat();
+        self.front.saving_indicator.tick(self.autosaving);
+        let held = self.held_name();
+        self.front
+            .tool_highlight
+            .tick(held, f64::from(self.settings.notification_display_time));
+    }
+    /// `Hud.extractSelectedItemName`.
+    pub(super) fn draw_selected_name(&self, batch: &mut HudBatch, bar_height: i32, can_hurt: bool) {
+        let draws = self.front.tool_highlight.draw(
+            batch.width as i32,
+            batch.height as i32,
+            bar_height,
+            can_hurt,
+            &self.front.gui.atlas.font,
+            self.settings.text_background(0.0),
+        );
+        hud_layout::paint(batch, &self.front.gui.atlas, &draws);
+    }
+}
+impl crate::game::Sim<'_> {
     /// The selected stack as `Hud.tick` compares it for the name highlight.
     fn held_name(&self) -> Option<HeldName> {
         let stack = self.inventory.get(self.selected)?.as_ref()?;
@@ -58,26 +82,5 @@ impl Game<'_> {
             },
             custom_name: custom.is_some(),
         })
-    }
-    /// The title, action bar and selected-item parts of `Hud.tick`.
-    pub(super) fn tick_hud(&mut self) {
-        self.titles.tick();
-        self.tick_in_bed_chat();
-        self.saving_indicator.tick(self.autosaving);
-        let held = self.held_name();
-        self.tool_highlight
-            .tick(held, f64::from(self.settings.notification_display_time));
-    }
-    /// `Hud.extractSelectedItemName`.
-    pub(super) fn draw_selected_name(&self, batch: &mut HudBatch, bar_height: i32, can_hurt: bool) {
-        let draws = self.tool_highlight.draw(
-            batch.width as i32,
-            batch.height as i32,
-            bar_height,
-            can_hurt,
-            &self.gui.atlas.font,
-            self.settings.text_background(0.0),
-        );
-        hud_layout::paint(batch, &self.gui.atlas, &draws);
     }
 }
