@@ -4162,7 +4162,9 @@ impl Game<'_> {
         // sends one per hand and part of its click, and Interact for entities.
         let guest = self.guest_use;
         if let Some(GuestUse::Entity(hand)) = guest {
-            return Ok(self.with_hand(hand, Game::interact_entity)?.then_some(hand));
+            return Ok(self
+                .with_hand(hand, |g| g.interact_entity())?
+                .then_some(hand));
         }
         let on_block = matches!(guest, Some(GuestUse::OnBlock(_)));
         if !on_block
@@ -4190,7 +4192,7 @@ impl Game<'_> {
         let entity = guest.is_none() && self.entity_targeted();
         for hand in hands {
             // The off hand's turn starts on the entity too (Minecraft.startUseItem).
-            if entity && hand == Hand::Off && self.with_hand(hand, Game::interact_entity)? {
+            if entity && hand == Hand::Off && self.with_hand(hand, |g| g.interact_entity())? {
                 return Ok(Some(hand));
             }
             if self.with_hand(hand, |game| game.use_hand(block_hit.as_ref()))? {

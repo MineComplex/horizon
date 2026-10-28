@@ -1021,9 +1021,10 @@ impl Game<'_> {
                     &[mode_name],
                 ));
             } else {
+                let name = self.target_name(t);
                 self.feedback(Text::translate(
                     "commands.gamemode.success.other",
-                    &[self.target_name(t), mode_name],
+                    &[name, mode_name],
                 ));
             }
         }

@@ -4607,7 +4607,7 @@ impl Game<'_> {
                 .as_ref()
                 .is_some_and(|r| r.level_players.contains_key(&id));
             if !player && self.remote_mob_takes(i, hand) {
-                self.with_hand(hand, Game::swing_arm);
+                self.with_hand(hand, |g| g.swing_arm());
                 return true;
             }
         }
@@ -4655,7 +4655,7 @@ impl Game<'_> {
             } else if self.predict_campfire_douse(hit.pos, held.as_ref(), seq) {
                 // CampfireBlock.useItemOn succeeded: this hand swings and the
                 // click ends, so a shield in the other hand is not raised.
-                self.with_hand(hand, Game::swing_arm);
+                self.with_hand(hand, |g| g.swing_arm());
                 return true;
             } else if held.as_ref().is_some_and(|s| &*s.item == "minecraft:brush") {
                 // BrushItem.useOn: brushing starts here (CONSUME, no swing); the
@@ -4672,7 +4672,7 @@ impl Game<'_> {
                 // Item.useOn succeeded here (InteractionResult.SUCCESS):
                 // this hand swings and the click ends, so the other hand
                 // (a shield, a torch) is never tried.
-                self.with_hand(hand, Game::swing_arm);
+                self.with_hand(hand, |g| g.swing_arm());
                 return true;
             }
             if held_block {
@@ -4684,14 +4684,14 @@ impl Game<'_> {
                 };
                 if let Some(placed) = &placed {
                     self.predict_place(placed, seq);
-                    self.with_hand(hand, Game::consume_held);
+                    self.with_hand(hand, |g| g.consume_held());
                 } else if let Some(r) = self.remote.as_mut() {
                     // BlockItem.place plays its sound only once the block is set: the
                     // server's resend of the target it refused is no placement.
                     r.placing = None;
                 }
                 if reacts || placed.is_some() {
-                    self.with_hand(hand, Game::swing_arm);
+                    self.with_hand(hand, |g| g.swing_arm());
                 }
                 // BlockItem.place returns FAIL when placement is rejected:
                 // stop this click without trying the item or the other hand.

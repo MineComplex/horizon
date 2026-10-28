@@ -245,7 +245,7 @@ def step_sim():
 
 
 HDR = re.compile(r"^impl(?:<'a>)? (?:super::|crate::game::)?Game<'(?:_|a)> \{$")
-FN = re.compile(r"^    (?:pub(?:\([\w:]+\))? )?(?:const )?(?:async )?(?:unsafe )?fn (\w+)")
+FN = re.compile(r"^    (?:pub(?:\([\w: ]+\))? )?(?:const )?(?:async )?(?:unsafe )?fn (\w+)")
 
 
 def parse_blocks(lines):
@@ -285,14 +285,21 @@ def classify(extra):
                 methods[m["name"]].append(m)
     game = set(extra)
     for f in game_files():
-        game |= set(re.findall(r"\b(?:Game|Self)::(\w+)", read(f)))
+        code = "\n".join(l for l in read(f).split("\n") if not l.lstrip().startswith("//"))
+        game |= set(re.findall(r"\bGame::(\w+)", code))
     for name, ms in methods.items():
         for m in ms:
             body = m["body"]
-            if (not re.search(r"\bself\b", body.split("{", 1)[0]) or re.search(r"\b(?:self|game|g|this)\s*\.\s*front\b", body)
-                    or re.search(r"[(,]\s*(&mut \*)?self\s*[,)]", body) or re.search(r"\bGame\b", body)
-                    or re.search(r"\bSelf\b", body.split("\n", 1)[1] if "\n" in body else "")):
+            # `Self`, `Game` and `self` passed on are left to the compiler: `move_methods` names
+            # `Sim` for `Game`, and what then fails goes back to `Game` (`failing_sim_methods`).
+            if not re.search(r"\bself\b", body.split("{", 1)[0]):
                 game.add(name)
+                ASSOCIATED.add(name)
+            elif (re.search(r"\b(?:self|game|g|this)\s*\.\s*front\b", body)):
+                game.add(name)
+    for f in game_files():
+        ADAPTERS.update(n for n, _, _ in adapters(read(f).split("\n")))
+    WRAPPERS.update(n for n, ms in methods.items() for m in ms if re.search(r"\b(?:Game|Self)\b", m["body"].split("{", 1)[0]))
     calls = {n: set(re.findall(r"\bself\s*\.\s*(\w+)\s*(?:::<[^>]*>)?\s*\(", " ".join(m["body"] for m in ms)))
              for n, ms in methods.items()}
     changed = True
@@ -305,10 +312,52 @@ def classify(extra):
     return methods, game
 
 
+ASSOCIATED = set()
+# Why each method the compiler sent back stays on `Game` (`--why FILE` writes it).
+WHY = {}
+# Methods whose signature names `Game` (they take closures over it).
+WRAPPERS = set()
+# Structs over `&Game` that `move_methods` points at `Sim`.
+ADAPTERS = set()
+
+
+def as_sim(line):
+    """A line of a method moving into `impl Sim`: `self.sim.x` is `self.x` there, and the `Game` it
+    names (closures over `&mut Game`, `Game::f`) is the `Sim`."""
+    if line.lstrip().startswith("//"):
+        return line
+    # `Game::f` and `Self::f` of an associated function (no `self`) stay `Game`'s.
+    line = re.sub(r"\b(?:(?:super|crate::game)::)?(Game|Self)::(\w+)\b",
+                  lambda m: f"crate::game::Keep::{m.group(2)}" if m.group(2) in ASSOCIATED else m.group(0), line)
+    line = re.sub(r"\b(?:(?:super|crate::game)::)?Game\b", "crate::game::Sim", line)
+    return line.replace("crate::game::Keep::", "crate::game::Game::")
+
+
+def adapters(lines):
+    """Top-level structs over `&Game` / `&mut Game` (a trait's view of the world): (name, first, last line)."""
+    out, i = [], 0
+    while i < len(lines):
+        m = re.match(r"^(?:pub(?:\([\w: ]+\))? )?struct (\w+)<", lines[i])
+        if m:
+            j = i
+            while not (lines[j].rstrip().endswith(");") or lines[j].startswith("}")):
+                j += 1
+            if any(re.search(r"&'\w+ (?:mut )?Game<", l) for l in lines[i:j + 1]):
+                out.append((m.group(1), i, j))
+            i = j
+        i += 1
+    return out
+
+
 def move_methods(game):
     moved = 0
     for f in game_files():
         lines = read(f).split("\n")
+        # Adapters hold the `Sim`: `&Game` coerces to it, and what they call moves with it.
+        for name, a, b in adapters(lines):
+            if name not in game:
+                for k in range(a, b + 1):
+                    lines[k] = re.sub(r"(&'\w+ (?:mut )?)Game<", r"\1crate::game::Sim<", lines[k])
         blocks = parse_blocks(lines)
         out, last = [], 0
         for b in blocks:
@@ -320,9 +369,13 @@ def move_methods(game):
                 taken |= set(range(m["a"], m["b"]))
             out += lines[last:b["start"]]
             out += [l for idx, l in enumerate(lines[b["start"]:b["end"] + 1], start=b["start"]) if idx not in taken]
-            out += b["attrs"] + ["impl crate::game::Sim<'_> {"]
+            named = lines[b["start"]].startswith("impl<'a>")
+            out += b["attrs"] + ["impl<'a> crate::game::Sim<'a> {" if named else "impl crate::game::Sim<'_> {"]
             for m in sim:
-                out += [re.sub(r"\bself(\s*)\.sim\.", r"self\1.", l) for l in lines[m["a"]:m["b"]]]
+                # `self.sim.x` is `self.x` in `Sim`, also where formatting split it over lines.
+                text = re.sub(r"\b(self|g|game|this)(\s*)\.sim\b(?=\s*\.)", r"\1",
+                              "\n".join(lines[m["a"]:m["b"]]))
+                out += [as_sim(l) for l in text.split("\n")]
             out.append("}")
             last = b["end"] + 1
             moved += len(sim)
@@ -351,15 +404,32 @@ def failing_sim_methods(messages):
         j = i
         while j >= 0 and not src[j].startswith("impl"):
             j -= 1
-        if name and j >= 0 and "Sim" in src[j]:
+        top = sp["line_start"] - 1
+        while top > 0 and (not src[top] or src[top][0] in " \t}/#)"):
+            top -= 1
+        adapter = re.match(r"^(?:impl\b.*\bfor (\w+)|impl<[^>]*> (\w+)<|(?:pub(?:\([\w: ]+\))? )?struct (\w+))",
+                           src[top] if top >= 0 else "")
+        adapter = adapter and next(g for g in adapter.groups() if g)
+        if adapter in ADAPTERS:
+            names.add(adapter)
+            WHY.setdefault(adapter, f"adapter: {m['message']} ({sp['file_name']}:{sp['line_start']})")
+        elif name and j >= 0 and "Sim" in src[j]:
             names.add(name)
+            WHY.setdefault(name, f"{m['message']} ({sp['file_name']}:{sp['line_start']})")
+        elif name and j >= 0:
+            # A `Game` method's closure handed to a wrapper now in `Sim` (its closure takes
+            # `&mut Sim`) calls what stays on `Game`: the wrapper stays too.
+            near = " ".join(src[max(i, sp["line_start"] - 15):sp["line_start"]])
+            for w in set(re.findall(r"\.\s*(\w+)\s*\(", near)) & WRAPPERS:
+                names.add(w)
+                WHY.setdefault(w, f"its closure in {name}: {m['message']} ({sp['file_name']}:{sp['line_start']})")
     return names
 
 
 def step_methods():
     snapshot = {f: read(f) for f in game_files()}
     extra = set()
-    for round_ in range(12):
+    for round_ in range(40):
         _, game = classify(extra)
         moved = move_methods(game)
         messages = check()
@@ -381,10 +451,13 @@ def step_methods():
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--step", type=int, choices=[1, 2, 3])
+    parser.add_argument("--why", help="write the methods the compiler kept on Game, with its reason, here")
     args = parser.parse_args()
     steps = {1: step_front, 2: step_sim, 3: step_methods}
     for n in [args.step] if args.step else [1, 2, 3]:
         steps[n]()
+    if args.why:
+        write(args.why, "".join(f"{k}: {v}\n" for k, v in sorted(WHY.items())))
     subprocess.run(["cargo", "fmt", "-p", "horizon-client"], cwd=ROOT)
     left = check()
     for m in left[:20]:

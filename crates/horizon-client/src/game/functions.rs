@@ -670,10 +670,8 @@ impl Game<'_> {
                     };
                     self.fns.enabled.insert(position, name.clone());
                 }
-                self.feedback(Text::translate(
-                    "commands.datapack.modify.enable",
-                    &[self.pack_link(&name, true)],
-                ));
+                let link = self.pack_link(&name, true);
+                self.feedback(Text::translate("commands.datapack.modify.enable", &[link]));
                 self.apply_pack_change();
                 Ok(self.selected_packs().len() as i32)
             }
@@ -690,10 +688,8 @@ impl Game<'_> {
                 } else {
                     self.fns.enabled.retain(|p| p != &name);
                 }
-                self.feedback(Text::translate(
-                    "commands.datapack.modify.disable",
-                    &[self.pack_link(&name, true)],
-                ));
+                let link = self.pack_link(&name, true);
+                self.feedback(Text::translate("commands.datapack.modify.disable", &[link]));
                 self.apply_pack_change();
                 Ok(self.selected_packs().len() as i32)
             }
