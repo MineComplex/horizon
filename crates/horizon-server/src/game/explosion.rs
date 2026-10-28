@@ -356,9 +356,8 @@ impl crate::game::Sim<'_> {
         // team mates when its team has no friendly fire (they are still pushed).
         let exploding = self.combat.explosion_source;
         let teams_allow = |g: &Self, victim: Option<&crate::hc::scoreboard::Team>| {
-            exploding.is_none_or(|id| {
-                crate::hc::scoreboard::teams_allow_damage(g.mob_team(id), victim)
-            })
+            exploding
+                .is_none_or(|id| crate::hc::scoreboard::teams_allow_damage(g.mob_team(id), victim))
         };
         // The player, then every other player in the level (LAN guests),
         // each swapped in as the player.
@@ -710,4 +709,3 @@ fn add_or_append_stack(
     }
     stacks.push((pos, stack));
 }
-

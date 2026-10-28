@@ -1,6 +1,6 @@
 //! `/tellraw` (TellRawCommand) and `/title` (TitleCommand).
 use super::{Arg, Context, R, Target, err};
-use crate::hc::{hud_overlays::Titles, lan::data::component_nbt, text::Text};
+use crate::hc::{lan::data::component_nbt, text::Text};
 use horizon_protocol::packets::play::{self, Clientbound as C};
 
 impl crate::game::Sim<'_> {
@@ -177,9 +177,7 @@ impl crate::game::Sim<'_> {
                 }
                 first = false;
                 let piece = if interpret {
-                    crate::hc::scoreboard::comp_text(&crate::hc::scoreboard::tag_to_json(
-                        &tag,
-                    ))
+                    crate::hc::scoreboard::comp_text(&crate::hc::scoreboard::tag_to_json(&tag))
                 } else if plain {
                     Text::literal(crate::hc::snbt::pretty(&tag).plain())
                 } else {

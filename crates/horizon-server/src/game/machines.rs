@@ -4,12 +4,7 @@
 //! comparator signals (`AbstractContainerMenu.getRedstoneSignalFromContainer`).
 
 mod crafter;
-use crate::hc::{
-    Result,
-    containers::{BlockEntity, HOPPER_SLOTS},
-    items::{ItemStack, Items},
-    world::World,
-};
+use crate::hc::{Result, containers::{BlockEntity, HOPPER_SLOTS}, items::{ItemStack, Items}, world::World};
 use horizon_core::{geometry::Direction, position::BlockPos, random::RandomSource};
 use horizon_world::{level::Behaviours, registry::BlockStateId};
 
@@ -354,12 +349,7 @@ pub(super) struct ItemColumns {
 }
 impl ItemColumns {
     /// Whether an item's box may reach into column (x, z).
-    fn may_reach(
-        &mut self,
-        items: &[crate::hc::entities::ItemEntity],
-        x: i32,
-        z: i32,
-    ) -> bool {
+    fn may_reach(&mut self, items: &[crate::hc::entities::ItemEntity], x: i32, z: i32) -> bool {
         let (len, last) = (items.len(), items.last().map(|i| i.id));
         let stale = self
             .seen
@@ -1053,28 +1043,6 @@ enum Screen {
 }
 
 impl crate::game::Sim<'_> {
-    fn machine_screen(&self) -> Option<Screen> {
-        let key = self.container?;
-        // A server's menu shows by its type, whatever block (or minecart) holds it.
-        if let Some(menu) = self.remote_menu_type() {
-            return match menu {
-                "minecraft:hopper" => Some(Screen::Hopper),
-                "minecraft:generic_3x3" => Some(Screen::Dispenser),
-                _ => None,
-            };
-        }
-        if key.1 == super::minecarts::CART_KEY_Y {
-            return (self.open_cart_kind() == Some(super::minecarts::CartKind::Hopper))
-                .then_some(Screen::Hopper);
-        }
-        let state = self.world.block(key.0, key.1, key.2);
-        match &*self.res.facts().get(state).name {
-            "minecraft:hopper" => Some(Screen::Hopper),
-            "minecraft:dispenser" => Some(Screen::Dispenser),
-            "minecraft:dropper" => Some(Screen::Dropper),
-            _ => None,
-        }
-    }
     /// `imageHeight` of the open screen (HopperScreen is 133 tall).
     pub(super) fn screen_height(&self) -> f32 {
         if self
@@ -1116,4 +1084,3 @@ impl crate::game::Sim<'_> {
         })
     }
 }
-

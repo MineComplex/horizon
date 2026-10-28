@@ -4,11 +4,7 @@
 //! workers do the work; chunks behind the band unload and are saved as any
 //! chunk the players leave.
 use super::{CommandError, Context, Dim, R};
-use crate::hc::{
-    lan::data::component_nbt,
-    pregen::{Pregen, Shape},
-    text::{self, Text},
-};
+use crate::hc::{lan::data::component_nbt, pregen::{Pregen, Shape}, text::{self, Text}};
 use horizon_protocol::packets::play::{self, Clientbound as C};
 use std::time::{Duration, Instant};
 

@@ -3,14 +3,10 @@
 //! vanilla's `AttributeMap` would have created by then, since only those are
 //! sent, never the type's other defaults.
 use super::commands::Target;
-use crate::hc::{
-    effects,
-    lan::attributes::{add_modifier, generic_syncable, instance, operation_named},
-    mobs::{
+use crate::hc::{effects, lan::attributes::{add_modifier, generic_syncable, instance, operation_named}, mobs::{
         Mob,
         finalize::{self, Attr, Op},
-    },
-};
+    }};
 use horizon_protocol::packets::play::{AttributeModifier, AttributeSnapshot};
 use std::sync::Arc;
 
@@ -278,4 +274,3 @@ impl crate::game::Sim<'_> {
         }
     }
 }
-

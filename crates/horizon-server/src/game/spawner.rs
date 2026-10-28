@@ -2,17 +2,12 @@
 //! `clientTick` for every spawner (`mobs::spawner`), the mobs they add, a
 //! spawn egg used on one (`SpawnEggItem.useOn`), their events and the mob
 //! spinning inside (`SpawnerRenderer`).
-use crate::hc::{
-    Result,
-    containers::BlockEntity,
-    mobs::{
+use crate::hc::{Result, containers::BlockEntity, mobs::{
         Mob, Who,
         spawner::{Spawner, SpawnerAdded, SpawnerEvent, SpawnerSpawn},
         spawning,
         trial_spawner::TrialState,
-    },
-    particles::{ParticleOptions, ParticleType},
-};
+    }, particles::{ParticleOptions, ParticleType}};
 use horizon_core::{geometry::Vec3, random::RandomSource};
 use horizon_world::nbt::Tag;
 use std::collections::{HashMap, HashSet};
@@ -161,10 +156,7 @@ impl crate::game::Sim<'_> {
             spawning::finalize(&mut mob, &facts, &difficulty);
             // TrialSpawner.spawnMob: setPersistenceRequired.
             mob.persistent = r.trial;
-            crate::hc::mobs::raider::finalize(
-                &mut mob,
-                crate::hc::mobs::raider::Reason::Other,
-            );
+            crate::hc::mobs::raider::finalize(&mut mob, crate::hc::mobs::raider::Reason::Other);
             // Shulker.finalizeSpawn faces it south.
             if mob.species() == crate::hc::mobs::Species::Shulker {
                 mob.yaw = 0.0;

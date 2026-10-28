@@ -3,11 +3,8 @@
 //! player vanilla's `Level.getNearestPlayer` would give it, and keeps the
 //! guest it targets until it lets go. What it then does to `Who::Player`
 //! (hits, pushes, fire, its projectiles) runs with that guest swapped in.
-use super::{lan::LanHost};
-use crate::hc::{
-    mobs::{Mob, MobEvent, PlayerView, Species, Who},
-    projectiles::{Hit, Projectile},
-};
+use super::lan::LanHost;
+use crate::hc::{mobs::{Mob, MobEvent, PlayerView, Species, Who}, projectiles::{Hit, Projectile}};
 use horizon_core::geometry::{Aabb, Vec3};
 use horizon_protocol::packets::play::{self, Clientbound as C};
 
@@ -372,4 +369,3 @@ impl crate::game::Sim<'_> {
 pub(super) fn guest_bounds(g: &crate::hc::lan::guest::Guest) -> Aabb {
     g.bounds()
 }
-

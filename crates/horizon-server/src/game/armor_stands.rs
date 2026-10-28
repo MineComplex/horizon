@@ -3,13 +3,7 @@
 //! of `hurtServer` (creative breaks at once), and `ArmorStandRenderer` with
 //! the default pose, the hit wobble and humanoid armor layers.
 use super::view_vector;
-use crate::hc::{
-    entities::ArmorStand,
-    items::ItemStack,
-    mesher::Vertex,
-    mobs::{Mob, Part, anim::Poses},
-    trims::{TrimOverride, TrimRegistry, TrimTexture},
-};
+use crate::hc::{entities::ArmorStand, items::ItemStack, mobs::{Mob, Part, anim::Poses}, trims::{TrimOverride, TrimRegistry, TrimTexture}};
 use horizon_core::{
     geometry::{Aabb, Vec3},
     random::RandomSource,

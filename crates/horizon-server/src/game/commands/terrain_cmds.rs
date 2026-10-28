@@ -1,13 +1,6 @@
 //! `/forceload`, `/fillbiome`, `/worldborder` and `/loot`.
 use super::{Arg, Context, R, Target, err, items::Owner};
-use crate::hc::{
-    chunk::{HEIGHT, MIN_Y},
-    command::CommandError,
-    items::ItemStack,
-    scoreboard_cmd::{Holder, Tracker},
-    text::Text,
-    worldborder::MAX_SIZE,
-};
+use crate::hc::{chunk::{HEIGHT, MIN_Y}, command::CommandError, items::ItemStack, scoreboard_cmd::{Holder, Tracker}, text::Text, worldborder::MAX_SIZE};
 use horizon_core::random::RandomSource;
 
 fn num(n: impl std::fmt::Display) -> Text {

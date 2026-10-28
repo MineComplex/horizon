@@ -1,12 +1,7 @@
 //! `/recipe`, `/damage`, `/rotate`, `/swing`, `/playsound`, `/stopsound`,
 //! `/particle`, `/attribute`, `/ride` and `/spreadplayers`.
 use super::{Arg, Context, R, Target, err};
-use crate::hc::{
-    mobs::{Damage, DamageKind, Who},
-    scoreboard_cmd::{Holder, Tracker},
-    settings::SOUND_SOURCES,
-    text::Text,
-};
+use crate::hc::{mobs::{Damage, DamageKind, Who}, scoreboard_cmd::{Holder, Tracker}, text::Text};
 use horizon_core::random::RandomSource;
 use horizon_protocol::packets::play::{self, Clientbound as C};
 use horizon_world::attribute_map::ValueKind;
@@ -165,10 +160,7 @@ impl crate::game::Sim<'_> {
         let name = self.target_name(target);
         self.feedback(Text::translate(
             "commands.damage.success",
-            &[
-                Text::literal(crate::hc::snbt::java_float(amount)),
-                name,
-            ],
+            &[Text::literal(crate::hc::snbt::java_float(amount)), name],
         ));
         Ok(1)
     }

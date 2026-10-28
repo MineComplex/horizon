@@ -1,10 +1,5 @@
 //! Server text displays: metadata, interpolation, billboard transforms and world text.
-use crate::hc::{
-    hud::{HudBatch, rgba},
-    mesher::Vertex,
-    text::Text,
-    text_display::{Align, TextDisplayData},
-};
+use crate::hc::{text::Text, text_display::{Align, TextDisplayData}};
 use horizon_protocol::entity_data::Value;
 
 pub(super) struct RemoteTextDisplay {
@@ -149,4 +144,3 @@ impl crate::game::Sim<'_> {
         }
     }
 }
-

@@ -2,11 +2,7 @@
 //! block an enderman holds (`CarriedBlockLayer`), drawn as shaded cubes like
 //! dropped block items. Also the block models mobs wear (`SnowGolemHeadLayer`,
 //! `MushroomCowMushroomLayer`).
-use crate::hc::{
-    items::ItemStack,
-    mesher::Vertex,
-    mobs::{Mob, Species, render},
-};
+use crate::hc::{items::ItemStack, mobs::{Mob, Species, render}};
 
 /// The six faces of the unit cube with their shade: top, bottom, the two
 /// z faces, the two x faces.

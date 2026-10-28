@@ -2,15 +2,11 @@
 //! packets (ServerGamePacketListenerImpl.handleChatCommand and
 //! handleSignedChatCommand), and the message commands whose text they sign
 //! (SayCommand, EmoteCommands, MsgCommand), relayed by the hub as chat.
-use super::{lan::LanHost};
-use crate::hc::{
-    command::{Arg, ArgType, NodeKind, ParseResults, vanilla},
-    lan::{
+use super::lan::LanHost;
+use crate::hc::{command::{Arg, ArgType, NodeKind, ParseResults, vanilla}, lan::{
         data::component_nbt,
         hub::{HostEvent, chat::ChatMessage},
-    },
-    text::{self, Text},
-};
+    }, text::{self, Text}};
 use horizon_protocol::packets::play::{self, Clientbound as C};
 
 /// The signing context of a command: each message argument as the chain

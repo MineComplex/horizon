@@ -2,17 +2,10 @@
 //! setInitialSpawn walks a chunk spiral around NoiseBasedChunkGenerator.
 //! getOrigin, then PlayerSpawnFinder.findSpawn picks a free column around
 //! the world spawn within the respawn radius.
-use super::{dispenser::entity_random};
-use crate::hc::{
-    Result,
-    assets::Properties,
-    chunk::{HEIGHT, MIN_Y},
-    collisions::{SceneCollisions, no_collision_or_liquid},
-    world::World,
-    world_spawn::{
+use super::dispenser::entity_random;
+use crate::hc::{Result, assets::Properties, chunk::{HEIGHT, MIN_Y}, collisions::{SceneCollisions, no_collision_or_liquid}, world::World, world_spawn::{
         PlayerSpawnFinder, SpawnCandidate, SpawnLevel, level_respawn_pos, spawn_pos_in_chunk,
-    },
-};
+    }};
 use horizon_core::{
     geometry::{Aabb, Direction, ShapeOp, Vec3, VoxelShape},
     position::BlockPos,
@@ -79,15 +72,13 @@ impl crate::game::Sim<'_> {
     }
     /// ChunkGenerator.getOrigin and getSpawnHeight of the overworld.
     fn spawn_origin(&self) -> Result<((i32, i32), i32)> {
-        if let Some(flat) =
-            crate::hc::save::world_gen_settings(&self.world_root).and_then(|s| {
-                crate::hc::flatgen::FlatTerrain::from_settings(
-                    &s,
-                    self.pack.assets.registry,
-                    self.res.biomes(),
-                )
-            })
-        {
+        if let Some(flat) = crate::hc::save::world_gen_settings(&self.world_root).and_then(|s| {
+            crate::hc::flatgen::FlatTerrain::from_settings(
+                &s,
+                self.pack.assets.registry,
+                self.res.biomes(),
+            )
+        }) {
             return Ok(((0, 0), flat.spawn_height()));
         }
         if self.options.test_terrain {

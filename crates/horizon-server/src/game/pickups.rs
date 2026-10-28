@@ -2,10 +2,7 @@
 //! into whoever took it over three ticks (`ClientPacketListener.handleTakeItemEntity`
 //! adds one for every `ClientboundTakeItemEntityPacket`), drawn with the render
 //! state it had when it was taken (`extractEntity(from, 1.0F)`).
-use crate::hc::{
-    entities::{ExperienceOrb, ItemEntity},
-    projectiles::Projectile,
-};
+use crate::hc::{entities::{ExperienceOrb, ItemEntity}, projectiles::Projectile};
 
 /// `ItemPickupParticle.LIFE_TIME`.
 const LIFE_TIME: u32 = 3;
@@ -139,4 +136,3 @@ impl crate::game::Sim<'_> {
         self.pickups.live = live;
     }
 }
-

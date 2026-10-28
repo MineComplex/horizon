@@ -177,11 +177,7 @@ pub(super) fn make_streaming(
         .then(|| crate::hc::save::world_gen_settings(world_root))
         .flatten()
         .and_then(|s| {
-            crate::hc::flatgen::FlatTerrain::from_settings(
-                &s,
-                pack.assets.registry,
-                res.biomes(),
-            )
+            crate::hc::flatgen::FlatTerrain::from_settings(&s, pack.assets.registry, res.biomes())
         });
     let mut streaming = if let Some(inner) = flat {
         Streaming::new(
@@ -208,8 +204,7 @@ pub(super) fn make_streaming(
         )
     } else {
         // WorldOptions.generateStructures, from the world's settings.
-        let structures =
-            crate::hc::save::WorldGen::read(world_root).is_none_or(|w| w.structures);
+        let structures = crate::hc::save::WorldGen::read(world_root).is_none_or(|w| w.structures);
         let inner = Arc::new(VanillaTerrain::for_world(&options.resources.join("worldgen"), pack.assets.registry, res.biomes(), seed, dim.id(), structures).map_err(|e| {
                 format!("{e}\nPrepare the worldgen bundle with the launcher, or: horizon-prepare --prepare")
             })?);
@@ -241,4 +236,3 @@ pub(super) fn make_streaming(
     streaming.mesh = options.execution_role.is_client();
     Ok((streaming, save, locator))
 }
-

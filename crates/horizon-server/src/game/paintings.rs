@@ -2,7 +2,7 @@
 //! variant choice, `HangingEntity.survives` checks every 100 ticks,
 //! breaking by attack (`dropItem`), saving, and `PaintingRenderer` quads.
 use super::{Hit, view_vector};
-use crate::hc::{entities::Painting, items::ItemStack, mesher::Vertex};
+use crate::hc::{entities::Painting, items::ItemStack};
 use horizon_core::{
     geometry::{Aabb, Vec3},
     random::RandomSource,

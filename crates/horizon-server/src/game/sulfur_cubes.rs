@@ -2,11 +2,7 @@
 //! `remove`): feeding babies, swallowing a held block, shearing it back
 //! out, lighting an explosive one, swallowing blocks from the ground and
 //! splitting into two babies.
-use crate::hc::{
-    items::ItemStack,
-    mesher::Vertex,
-    mobs::{Mob, Species, sulfur_cube},
-};
+use crate::hc::{items::ItemStack, mobs::{Mob, Species, sulfur_cube}};
 use horizon_core::random::RandomSource;
 
 fn block_transform(base: glam::Mat4, baby: bool) -> glam::Mat4 {
@@ -204,4 +200,3 @@ impl crate::game::Sim<'_> {
         }
     }
 }
-

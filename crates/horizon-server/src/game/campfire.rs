@@ -2,11 +2,8 @@
 //! and the block entity's `cookTick` (lit) and `cooldownTick` (unlit). The
 //! items drawn on the fire are `campfire_geometry`'s; a server's clients get
 //! them through the block entity's update tag (`lan::chunks::entity_tag`).
+use crate::hc::{Result, block_entities::Pos, containers::BlockEntity, items::ItemStack, mobs::Who};
 use horizon_assets::item_model::DisplayContext;
-use crate::hc::{
-    Result, block_entities::Pos, block_entity_render::vertex_light, containers::BlockEntity,
-    items::ItemStack, mesher::Vertex, mobs::Who,
-};
 use horizon_core::position::BlockPos;
 
 /// The `campfire_cooking` recipe kind (`RecipeType.CAMPFIRE_COOKING`).
@@ -35,9 +32,7 @@ impl crate::game::Sim<'_> {
             return Ok(None);
         };
         // A client of a server predicts the placing; the server decides.
-        if self.remote.is_some() {
-            return Ok(Some(true));
-        }
+
         let key = (pos[0], pos[1], pos[2]);
         let placed = match self.world.block_entities.get_mut(&key) {
             Some(BlockEntity::Campfire(c)) => {

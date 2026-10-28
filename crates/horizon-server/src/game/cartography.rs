@@ -4,8 +4,8 @@
 //! maps through `LevelMaps`; the scaled and locked copies a take makes
 //! (`MapItem.scaleMap`, `lockMap`) are registered after the click. The
 //! screen draws the preview with its error and lock sprites.
-use super::{maps::{MapData, map_id}};
-use crate::hc::{hud::HudBatch, items::ItemStack, menu::Maps};
+use super::maps::{MapData, map_id};
+use crate::hc::{items::ItemStack, menu::Maps};
 use std::{
     cell::{Cell, RefCell},
     collections::HashMap,

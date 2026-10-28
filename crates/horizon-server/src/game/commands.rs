@@ -17,16 +17,11 @@ mod text_commands;
 mod world_cmds;
 
 use super::{Dim, Screen, chat::PLAYER_NAME};
-use crate::hc::{
-    command::{
+use crate::hc::{command::{
         Arg, CommandError, Context, Reader,
         args::{BlockInput, Coordinates, GameMode, ItemInput, Selector, Sort},
         vanilla::{self, DIFFICULTIES},
-    },
-    gamerules::{self, Value},
-    items::ItemStack,
-    text::{self, Style, Text},
-};
+    }, gamerules::{self, Value}, items::ItemStack, text::{self, Style, Text}};
 use horizon_core::{geometry::Vec3, random::RandomSource};
 use horizon_world::registry::BlockStateId;
 
@@ -496,9 +491,9 @@ impl crate::game::Sim<'_> {
                     _ => None,
                 };
                 if let Some(c) = custom {
-                    return crate::hc::scoreboard::comp_text(
-                        &crate::hc::scoreboard::tag_to_json(c),
-                    );
+                    return crate::hc::scoreboard::comp_text(&crate::hc::scoreboard::tag_to_json(
+                        c,
+                    ));
                 }
                 let ty = self.target_type(other);
                 Text::translate(&format!("entity.{}", ty.replace(':', ".")), &[])
@@ -1057,10 +1052,7 @@ impl crate::game::Sim<'_> {
                 | "minecraft:tipped_arrow"
         ) && s.potion().is_some()
         {
-            Text::translate(
-                &crate::hc::brewing::potion_name_key(item, s.potion()),
-                &[],
-            )
+            Text::translate(&crate::hc::brewing::potion_name_key(item, s.potion()), &[])
         } else {
             // Item.getDescriptionId: a block item's is the block's.
             let (namespace, path) = item.split_once(':').unwrap_or(("minecraft", item));
@@ -2722,9 +2714,8 @@ impl crate::game::Sim<'_> {
                                 _ => false,
                             }
                         }
-                        (_, Some(v)) => present.is_some_and(|have| {
-                            crate::hc::nbt_path::compare_nbt(&v, Some(have))
-                        }),
+                        (_, Some(v)) => present
+                            .is_some_and(|have| crate::hc::nbt_path::compare_nbt(&v, Some(have))),
                         _ => false,
                     }
                 }

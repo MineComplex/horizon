@@ -40,4 +40,3 @@ pub(super) fn spans(text: &Text) -> Value {
     }
     Value::Array(out.into_iter().map(|(t, s)| json!([t, s])).collect())
 }
-

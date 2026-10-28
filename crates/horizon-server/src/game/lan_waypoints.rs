@@ -1,13 +1,10 @@
 //! The locator bar of the players on a served world (lan/waypoints.rs): what
 //! each player looks like to their level's waypoint manager this tick.
-use super::{lan::LanHost};
-use crate::hc::{
-    items::ItemStack,
-    lan::{
+use super::lan::LanHost;
+use crate::hc::{items::ItemStack, lan::{
         hub::HostState,
         waypoints::{self, HIDING_HEADS, Icon, PLAYER_RANGE},
-    },
-};
+    }};
 
 /// The host player's connection id in the waypoint managers: its packets
 /// go to this client's locator bar rather than to a guest.

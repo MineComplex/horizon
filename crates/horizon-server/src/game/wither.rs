@@ -1,10 +1,6 @@
 //! The wither on the game side: building it (`WitherSkullBlock.checkSpawn`),
 //! its boss bar, and its skulls hitting and exploding.
-use crate::hc::{
-    items::ItemStack,
-    mobs::{Damage, DamageKind, Species, Who},
-    projectiles::{Projectile, ProjectileKind},
-};
+use crate::hc::{items::ItemStack, mobs::{Damage, DamageKind, Species, Who}, projectiles::{Projectile, ProjectileKind}};
 use horizon_core::position::BlockPos;
 
 impl crate::game::Sim<'_> {

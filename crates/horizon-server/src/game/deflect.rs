@@ -4,10 +4,7 @@
 //! along the player's view and is the player's now (`Projectile.deflect`
 //! sets the owner), so a ghast it meets dies of it (`Ghast.isReflectedFireball`).
 use super::{ray_box, view_vector};
-use crate::hc::{
-    mobs::Who,
-    projectiles::{Projectile, ProjectileKind},
-};
+use crate::hc::{mobs::Who, projectiles::{Projectile, ProjectileKind}};
 use horizon_core::geometry::{Aabb, Vec3};
 
 /// `AbstractHurtingProjectile.getPickRadius`: the crosshair finds it a block
@@ -132,4 +129,3 @@ impl crate::game::Sim<'_> {
             .play("minecraft:entity.player.attack.nodamage", from, 1.0, 1.0);
     }
 }
-

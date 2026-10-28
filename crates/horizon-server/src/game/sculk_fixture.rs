@@ -5,16 +5,7 @@
 //! headless world, ticking in `ServerLevel.tick`'s order, and prints what
 //! changed after every tick in the format of `VanillaSculkOracle`.
 use super::dispense_fixture;
-use crate::hc::{
-    Result,
-    chunk::{Chunk, MIN_Y},
-    command::args::GameMode,
-    containers::BlockEntity,
-    mobs::{Mob, Who},
-    motion::PlayerMotion,
-    sculk::{Info, SculkKind, WardenSpawnTracker},
-    world::World,
-};
+use crate::hc::{Result, chunk::{Chunk, MIN_Y}, command::args::GameMode, containers::BlockEntity, mobs::{Mob, Who}, motion::PlayerMotion, sculk::{Info, SculkKind, WardenSpawnTracker}, world::World};
 use horizon_core::{
     geometry::{Direction, Vec3},
     position::BlockPos,
@@ -354,10 +345,9 @@ impl crate::game::Sim<'_> {
                 .rules
                 .set(rule, crate::hc::gamerules::Value::Bool(value));
         }
-        self.world_data.rules.set(
-            "random_tick_speed",
-            crate::hc::gamerules::Value::Int(0),
-        );
+        self.world_data
+            .rules
+            .set("random_tick_speed", crate::hc::gamerules::Value::Int(0));
         use horizon_world::food::Difficulty;
         let difficulty = match s.difficulty.as_str() {
             "peaceful" => Difficulty::Peaceful,

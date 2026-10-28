@@ -3,16 +3,8 @@
 //! colours and sounds follow the vanilla screens (`EnchantmentScreen`,
 //! `AnvilScreen`, `GrindstoneScreen`, `SmithingScreen`, `StonecutterScreen`,
 //! `BrewingStandScreen`); item rules live in `crate::hc::stations`.
-use super::Screen;
-use crate::hc::{
-    block_entity_item, brewing,
-    containers::BlockEntity,
-    enchant::Enchantments,
-    hud::{HudBatch, rgba},
-    items::ItemStack,
-    stations::{self, AnvilResult, EnchantOffers},
-    text::Text,
-};
+use super::{Game, Screen};
+use crate::hc::{block_entity_item, brewing, containers::BlockEntity, enchant::Enchantments, items::ItemStack, stations::{self, AnvilResult, EnchantOffers}, text::Text};
 use horizon_core::random::{LegacyRandom, RandomSource};
 
 /// Slot ids of the open station: inputs from 600, the result at 650.
@@ -107,23 +99,6 @@ impl Kind {
             Self::Loom => &[(13.0, 26.0), (33.0, 26.0), (23.0, 45.0)],
         };
         table[i.min(table.len() - 1)]
-    }
-    /// Whether the menu has a result slot after its inputs.
-    pub(super) fn has_result(self) -> bool {
-        self.result_pos().is_some()
-    }
-    fn result_pos(self) -> Option<(f32, f32)> {
-        match self {
-            Self::Enchanting => None,
-            Self::Anvil => Some((134.0, 47.0)),
-            Self::Grindstone => Some((129.0, 34.0)),
-            Self::Smithing => Some((98.0, 48.0)),
-            Self::Stonecutter => Some((143.0, 33.0)),
-            Self::Merchant => Some((170.0, 37.0)),
-            Self::Beacon => None,
-            Self::Cartography => Some((145.0, 39.0)),
-            Self::Loom => Some((143.0, 57.0)),
-        }
     }
 }
 
@@ -267,15 +242,6 @@ const WORDS: &[&str] = &[
     "baguette",
 ];
 const GREY: u32 = 0xFF40_4040;
-fn argb(c: i32) -> u32 {
-    let c = c as u32;
-    rgba(
-        (c >> 16 & 255) as u8,
-        (c >> 8 & 255) as u8,
-        (c & 255) as u8,
-        (c >> 24 & 255) as u8,
-    )
-}
 
 /// A text style's `0xRRGGBB` colour from a HUD colour (`rgba`).
 fn rgb_of(rgba: u32) -> u32 {
@@ -338,7 +304,7 @@ impl crate::game::Sim<'_> {
         let Some(mut station) = self.station.take() else {
             return;
         };
-        if self.remote.is_some() && station.kind != Kind::Merchant {
+        if false && station.kind != Kind::Merchant {
             // A server's workstation: its removed() gives the inputs back.
             return;
         }
@@ -347,44 +313,6 @@ impl crate::game::Sim<'_> {
         }
         for stack in station.inputs.into_iter().flatten() {
             self.give_or_drop(stack);
-        }
-    }
-    pub(super) fn station_slots(&self) -> Option<Vec<usize>> {
-        let mut v: Vec<usize> = (0..36).collect();
-        if self.brewing_open() {
-            v.extend(300..305);
-            return Some(v);
-        }
-        let s = self.station.as_ref()?;
-        v.extend((0..s.inputs.len()).map(|i| INPUT + i));
-        if s.kind.result_pos().is_some() {
-            v.push(RESULT);
-        }
-        Some(v)
-    }
-    pub(super) fn station_slot_position(&self, i: usize) -> Option<(f32, f32)> {
-        if self.brewing_open() && (300..305).contains(&i) {
-            return Some(
-                [
-                    (56.0, 51.0),
-                    (79.0, 58.0),
-                    (102.0, 51.0),
-                    (79.0, 17.0),
-                    (17.0, 17.0),
-                ][i - 300],
-            );
-        }
-        let s = self.station.as_ref()?;
-        if s.kind == Kind::Merchant && i < 36 {
-            return Some(super::trading::inventory_slot(i));
-        }
-        if s.kind == Kind::Beacon {
-            return super::beacon::slot_position(i);
-        }
-        match i {
-            RESULT => s.kind.result_pos(),
-            _ if i >= INPUT && i < INPUT + s.inputs.len() => Some(s.kind.input_pos(i - INPUT)),
-            _ => None,
         }
     }
     pub(super) fn station_slot_mut(&mut self, i: usize) -> &mut Option<ItemStack> {
@@ -441,7 +369,7 @@ impl crate::game::Sim<'_> {
         match s.kind {
             // A server's table: its data slots carry the offers, and its
             // client menu only clears them without an enchantable item.
-            Kind::Enchanting if self.remote.is_some() => {
+            Kind::Enchanting if false => {
                 let enchantable = s.inputs[0].as_ref().is_some_and(|i| {
                     data.enchantments.enchantable(&i.item) > 0 && i.enchantments().is_empty()
                 });
@@ -743,96 +671,6 @@ impl crate::game::Sim<'_> {
             _ => true,
         }
     }
-    /// `EnchantmentMenu.clickMenuButton`.
-    fn click_enchant(&mut self, button: usize) {
-        let Some(s) = self.station.as_ref() else {
-            return;
-        };
-        let cost = s.offers.costs[button];
-        let lapis_needed = button as u32 + 1;
-        let Some(item) = s.inputs[0].clone() else {
-            return;
-        };
-        let lapis = s.inputs[1].as_ref().map_or(0, |l| l.count);
-        if lapis < lapis_needed && !self.creative {
-            return;
-        }
-        if cost <= 0
-            || (self.experience.level < lapis_needed as i32 || self.experience.level < cost)
-                && !self.creative
-        {
-            return;
-        }
-        if self.remote.is_some() {
-            // EnchantmentScreen.mouseClicked: the client menu took it, the server enchants.
-            self.remote_station_button(button as i32);
-            return;
-        }
-        let Some(enchanted) = stations::apply_enchantment(
-            &self.res.stations().enchantments,
-            self.res.items(),
-            self.level.xp_seed,
-            button,
-            cost,
-            &item,
-        ) else {
-            return;
-        };
-        let pos = s.pos;
-        let enchanted_item = enchanted.clone();
-        // Player.onEnchantmentPerformed
-        self.give_levels(-(lapis_needed as i32));
-        self.level.xp_seed = self.world.random.next_int();
-        if let Some(s) = self.station.as_mut() {
-            s.inputs[0] = Some(enchanted);
-            if !self.creative
-                && let Some(l) = s.inputs[1].as_mut()
-            {
-                l.count -= lapis_needed;
-                if l.count == 0 {
-                    s.inputs[1] = None;
-                }
-            }
-        }
-        let pitch = self.world.random.next_float() * 0.1 + 0.9;
-        self.stats.custom("enchant_item", 1);
-        self.trigger_enchanted_item(&enchanted_item, lapis_needed as i32);
-        self.play_at("minecraft:block.enchantment_table.use", pos, 1.0, pitch);
-        self.station_changed();
-    }
-    /// Mouse click while a station or the brewing stand is open. True when handled.
-    /// A station's own buttons a controller can focus besides its slots
-    /// (GUI origin relative): offers, patterns, effects, enchantments and
-    /// stonecutter recipes.
-    pub(super) fn station_targets(&self) -> Vec<[f32; 4]> {
-        let Some(s) = self.station.as_ref() else {
-            return Vec::new();
-        };
-        match s.kind {
-            Kind::Merchant => self.merchant_targets(),
-            Kind::Loom => self.loom_targets(),
-            Kind::Beacon => self.beacon_targets(),
-            Kind::Enchanting => (0..3)
-                .map(|i| {
-                    let (x, y, w, h) = enchant_button(i);
-                    [x, y, w, h]
-                })
-                .collect(),
-            Kind::Stonecutter if s.inputs[0].is_some() => (s.start
-                ..(s.start + 12).min(s.stone.recipes.len()))
-                .map(|index| {
-                    let p = index - s.start;
-                    [
-                        52.0 + (p % 4) as f32 * 16.0,
-                        14.0 + (p / 4) as f32 * 18.0,
-                        16.0,
-                        18.0,
-                    ]
-                })
-                .collect(),
-            _ => Vec::new(),
-        }
-    }
     /// Recompute after slot changes; the anvil box follows its input item.
     fn station_after_input(&mut self) {
         let Some(s) = self.station.as_mut() else {
@@ -850,52 +688,6 @@ impl crate::game::Sim<'_> {
         }
         self.station_changed();
     }
-    /// `StonecutterScreen.mouseClicked` on its recipe grid: `clickMenuButton`
-    /// with the cell's index (an empty cell's too), and the select sound when
-    /// the menu took it.
-    fn stonecutter_click(&mut self, local: (f32, f32)) -> bool {
-        let Some(start) = self
-            .station
-            .as_ref()
-            .filter(|s| s.inputs[0].is_some() && !s.stone.recipes.is_empty())
-            .map(|s| s.start)
-        else {
-            return false;
-        };
-        for index in start..start + 12 {
-            let p = index - start;
-            let (x, y) = (52.0 + (p % 4) as f32 * 16.0, 14.0 + (p / 4) as f32 * 18.0);
-            if !inside(local, x, y, 16.0, 18.0) {
-                continue;
-            }
-            let mut taken = false;
-            let flag = &mut taken;
-            self.menu_session(|menu, env, _| {
-                *flag = menu.button(env, index as i32);
-                Some(*flag)
-            });
-            if taken {
-                self.sounds
-                    .play("minecraft:ui.stonecutter.select_recipe", None, 1.0, 1.0);
-                self.remote_station_button(index as i32);
-                return true;
-            }
-        }
-        false
-    }
-    pub(super) fn station_scroll(&mut self, d: f32) {
-        self.merchant_scroll(d);
-        self.loom_scroll(d);
-        let Some(s) = self.station.as_mut() else {
-            return;
-        };
-        if s.kind != Kind::Stonecutter || s.stone.recipes.len() <= 12 {
-            return;
-        }
-        let rows = s.stone.recipes.len().div_ceil(4) - 3;
-        let first_row = (s.start / 4) as i32 - d.signum() as i32;
-        s.start = first_row.clamp(0, rows as i32) as usize * 4;
-    }
     /// Whether keyboard text goes to the anvil rename box.
     pub(super) fn station_typing(&self) -> bool {
         self.screen == Screen::Inventory
@@ -903,64 +695,6 @@ impl crate::game::Sim<'_> {
                 .station
                 .as_ref()
                 .is_some_and(|s| s.kind == Kind::Anvil && s.inputs[0].is_some())
-    }
-    pub(super) fn station_text(&mut self, text: Option<&str>, backspace: bool) {
-        // The recipe book's search box takes scripted typing too.
-        if self.recipe_search_focused() {
-            self.recipe_text(text, backspace);
-            return;
-        }
-        let Some(s) = self.station.as_mut() else {
-            return;
-        };
-        if backspace {
-            s.rename.delete_chars(-1);
-        } else if let Some(t) = text {
-            s.rename.insert_text(t);
-        }
-        s.name.clone_from(&s.rename.value);
-        self.station_changed();
-        self.remote_anvil_rename();
-    }
-    /// `AnvilScreen.keyPressed`: the rename box handles the key.
-    pub(super) fn station_key(&mut self, key: winit::keyboard::KeyCode) -> bool {
-        let (ctrl, shift) = (self.has_control_down(), self.has_shift_down());
-        let Some(s) = self.station.as_mut() else {
-            return false;
-        };
-        if !s.rename.key(key, ctrl, shift) {
-            return false;
-        }
-        s.name.clone_from(&s.rename.value);
-        self.station_changed();
-        self.remote_anvil_rename();
-        true
-    }
-    fn slot_position_any(&self, i: usize) -> Option<(f32, f32)> {
-        self.station_slot_position(i)
-            .or_else(|| (i < 36).then(|| self.slot_position(i)))
-    }
-    /// `ItemStack.getTooltipLines` subset: name in rarity colour, lore,
-    /// potion effects, enchantments (gray, curses red), stored enchantments, trims.
-    pub(super) fn stack_tooltip(
-        &self,
-        stack: &ItemStack,
-    ) -> Vec<(crate::hc::text::Text, u32)> {
-        self.stack_tooltip_lines(stack, false)
-    }
-    /// `ItemStack.getRarity`'s colour for the name line and a `[name]` link.
-    fn rarity_color(&self, stack: &ItemStack) -> u32 {
-        let props = self.res.stations().enchantments.props(&stack.item);
-        let rarity = crate::hc::item_tooltip::rarity(
-            stack,
-            props.map_or("common", |p| p.rarity.as_str()),
-        );
-        match rarity {
-            "uncommon" => rgba(255, 255, 85, 255),
-            "rare" => rgba(85, 255, 255, 255),
-            "epic" => rgba(255, 85, 255, 255),
-            _ => u32::MAX,
-        }
     }
     /// `ItemStack.getHoverName`: the custom name, a written book's title, the
     /// item name component, else the item's or potion's name.
@@ -990,356 +724,6 @@ impl crate::game::Sim<'_> {
         } else {
             self.pack.names.display_item(&stack.item)
         }
-    }
-    /// `ItemStack.getTooltipLines`. A `nested` stack is a crossbow's
-    /// projectile: `ChargedProjectiles.addProjectileTooltip` takes its details
-    /// without the name, the player and the advanced flag.
-    fn stack_tooltip_lines(
-        &self,
-        stack: &ItemStack,
-        nested: bool,
-    ) -> Vec<(crate::hc::text::Text, u32)> {
-        let e: &Enchantments = &self.res.stations().enchantments;
-        let color = self.rarity_color(stack);
-        let advanced = !nested && self.options_advanced_tooltips();
-        let display = crate::hc::item_tooltip::TooltipDisplay::for_stack(stack);
-        let mut lines = Vec::new();
-        if !nested && display.name_visible(self.screen == Screen::Creative) {
-            // `getStyledHoverName`: a custom name is italic.
-            let name = self.stack_hover_name(stack);
-            let name = if stack.custom_name().is_some() {
-                crate::hc::text::Text::literal(name).italic()
-            } else {
-                crate::hc::text::Text::legacy(&name)
-            };
-            lines.push((name, color));
-        }
-        let translate = |k: &str| self.pack.names.display_get(k);
-        let push = |lines: &mut Vec<(crate::hc::text::Text, u32)>, s: String, c: u32| {
-            lines.push((crate::hc::text::Text::legacy(&s), c));
-        };
-        let gray = rgba(170, 170, 170, 255);
-        let item_info = self.res.items().get(&stack.item);
-        // SmithingTemplateItem.appendHoverText: `Item.appendHoverText` comes
-        // before the components.
-        for (text, c) in crate::hc::item_tooltip::smithing_template_lines(stack, &translate) {
-            push(&mut lines, text, c);
-        }
-        // InstrumentComponent.addToTooltip.
-        if let Some(text) =
-            crate::hc::item_tooltip::instrument_line(stack, &display, &translate)
-        {
-            push(&mut lines, text, gray);
-        }
-        // Bees.addToTooltip.
-        if let Some(text) = crate::hc::item_tooltip::bees_line(stack, &display, &translate) {
-            push(&mut lines, text, gray);
-        }
-        // ItemContainerContents.addToTooltip.
-        let hover_name = |s: &ItemStack| {
-            s.custom_name()
-                .map(str::to_owned)
-                .or_else(|| s.item_name())
-                .unwrap_or_else(|| self.pack.names.display_item(&s.item))
-        };
-        if display.shows("minecraft:container") {
-            for text in
-                crate::hc::item_tooltip::container_lines(stack, &hover_name, &translate)
-            {
-                push(&mut lines, text, u32::MAX);
-            }
-        }
-        // BannerPatternLayers.addToTooltip: up to six layer names.
-        if display.shows("minecraft:banner_patterns") {
-            for layer in crate::hc::banner::tooltip_layers(stack).iter().take(6) {
-                let key = self.res.stations().banners.layer_key(layer);
-                push(
-                    &mut lines,
-                    self.translate(&key, &key),
-                    rgba(170, 170, 170, 255),
-                );
-            }
-        }
-        // WrittenBookContent.addToTooltip.
-        for text in crate::hc::item_tooltip::written_book_lines(stack, &display, &translate) {
-            push(&mut lines, text, gray);
-        }
-        // ChargedProjectiles.addToTooltip: each run of equal projectiles, then
-        // the projectile's own details indented under it.
-        if display.shows("minecraft:charged_projectiles") {
-            let charged = stack.data().map_or(&[][..], |d| &d.charged[..]);
-            for run in charged.chunk_by(|a, b| a.same_item_same_components(b)) {
-                let projectile = &run[0];
-                let name = self.stack_hover_name(projectile);
-                let line = if run.len() == 1 {
-                    // `getDisplayName`: `[name]` in the rarity colour.
-                    let mut shown = crate::hc::text::Text::literal(format!("[{name}]"))
-                        .with_color(rgb_of(self.rarity_color(projectile)));
-                    if projectile.custom_name().is_some() {
-                        shown = shown.italic();
-                    }
-                    crate::hc::text::format_translation(
-                        &self.translate(
-                            "item.minecraft.crossbow.projectile.single",
-                            "Projectile: %s",
-                        ),
-                        &[shown],
-                    )
-                } else {
-                    crate::hc::text::format_translation(
-                        &self.translate(
-                            "item.minecraft.crossbow.projectile.multiple",
-                            "Projectile: %s x %s",
-                        ),
-                        &[
-                            crate::hc::text::Text::literal(run.len().to_string()),
-                            crate::hc::text::Text::literal(name),
-                        ],
-                    )
-                };
-                lines.push((line, u32::MAX));
-                for (text, c) in self.stack_tooltip_lines(projectile, true) {
-                    // `literal("  ").append(line).withStyle(GRAY)`: the line's
-                    // own colours win over the gray.
-                    let rgb = if c == u32::MAX {
-                        crate::hc::text::GRAY
-                    } else {
-                        rgb_of(c)
-                    };
-                    let indented = crate::hc::text::Text::literal("  ")
-                        .append(text)
-                        .with_color(rgb);
-                    lines.push((indented, u32::MAX));
-                }
-            }
-        }
-        // Fireworks / FireworkExplosion.addToTooltip.
-        for text in crate::hc::item_tooltip::firework_lines(stack, &translate) {
-            push(&mut lines, text, rgba(170, 170, 170, 255));
-        }
-        if display.shows("minecraft:potion_contents")
-            && (stack.item.ends_with("potion") || &*stack.item == "minecraft:tipped_arrow")
-        {
-            let scale = match &*stack.item {
-                "minecraft:lingering_potion" => 0.25,
-                "minecraft:tipped_arrow" => 0.125,
-                _ => 1.0,
-            };
-            for (text, cat) in brewing::tooltip(stack.potion(), scale, &|k| {
-                e.translate(k).map(str::to_owned)
-            }) {
-                let c = match cat {
-                    brewing::Category::Beneficial => rgba(85, 85, 255, 255),
-                    brewing::Category::Harmful => rgba(255, 85, 85, 255),
-                    brewing::Category::Neutral => rgba(170, 170, 170, 255),
-                };
-                push(&mut lines, text, c);
-            }
-            // The attribute modifiers of the effects (`When Applied:`).
-            for (text, c) in crate::hc::item_tooltip::potion_modifier_lines(stack, &translate)
-            {
-                push(&mut lines, text, c);
-            }
-        }
-        // JukeboxPlayable.addToTooltip.
-        if let Some(text) =
-            crate::hc::item_tooltip::jukebox_line(stack, item_info, &display, &translate)
-        {
-            push(&mut lines, text, gray);
-        }
-        if display.shows("minecraft:trim")
-            && let Some((material, pattern)) = stack.data().and_then(|d| d.trim.clone())
-        {
-            push(
-                &mut lines,
-                e.translate("item.minecraft.smithing_template.upgrade")
-                    .unwrap_or("Upgrade:")
-                    .to_owned(),
-                rgba(170, 170, 170, 255),
-            );
-            let short = |s: &str| s.trim_start_matches("minecraft:").to_owned();
-            let p = e
-                .translate(&format!("trim_pattern.minecraft.{}", short(&pattern)))
-                .map_or_else(|| short(&pattern), str::to_owned);
-            let m = e
-                .translate(&format!("trim_material.minecraft.{}", short(&material)))
-                .map_or_else(|| short(&material), str::to_owned);
-            push(&mut lines, format!(" {p}"), rgba(170, 170, 170, 255));
-            push(&mut lines, format!(" {m}"), rgba(170, 170, 170, 255));
-        }
-        if display.shows("minecraft:stored_enchantments") {
-            for (text, curse) in e.tooltip(stack.stored_enchantments()) {
-                push(
-                    &mut lines,
-                    text,
-                    if curse {
-                        rgba(255, 85, 85, 255)
-                    } else {
-                        rgba(170, 170, 170, 255)
-                    },
-                );
-            }
-        }
-        if display.shows("minecraft:enchantments") {
-            for (text, curse) in e.tooltip(stack.enchantments()) {
-                push(
-                    &mut lines,
-                    text,
-                    if curse {
-                        rgba(255, 85, 85, 255)
-                    } else {
-                        rgba(170, 170, 170, 255)
-                    },
-                );
-            }
-        }
-        // DyedItemColor.addToTooltip.
-        if let Some((text, italic)) =
-            crate::hc::item_tooltip::dyed_line(stack, &display, advanced, &translate)
-        {
-            let text = crate::hc::text::Text::legacy(&text);
-            lines.push((if italic { text.italic() } else { text }, gray));
-        }
-        // ItemLore.addToTooltip: after the enchantments, before the attributes
-        // (ItemStack.addDetailsToTooltip).
-        if display.shows("minecraft:lore") {
-            for text in crate::hc::item_tooltip::lore_texts(stack) {
-                lines.push((text, u32::MAX));
-            }
-        }
-        if display.shows("minecraft:attribute_modifiers") {
-            // The item's own modifiers, then its enchantments' for each slot
-            // group (`ItemStack.forEachModifier`).
-            let mut modifiers = item_info.map(|i| i.modifiers.clone()).unwrap_or_default();
-            modifiers.extend(e.modifier_rows(stack));
-            let base = |name: &str, default| {
-                self.player
-                    .as_ref()
-                    .and_then(|player| {
-                        let key = player.attributes.key(name)?;
-                        let handle = player.attributes.lookup(Some(&key))?;
-                        player
-                            .attributes
-                            .instance(&handle)
-                            .ok()
-                            .map(|value| value.base_value())
-                    })
-                    .unwrap_or(default)
-            };
-            let player_base = (!nested).then(|| {
-                [
-                    base("minecraft:attack_damage", 1.0),
-                    base(
-                        "minecraft:attack_speed",
-                        crate::hc::attack_strength::BASE_ATTACK_SPEED,
-                    ),
-                ]
-            });
-            for (text, c) in
-                crate::hc::item_tooltip::attribute_lines(&modifiers, player_base, &translate)
-            {
-                push(&mut lines, text, c);
-            }
-        }
-        // ItemStack.UNBREAKABLE_TOOLTIP.
-        if let Some(text) =
-            crate::hc::item_tooltip::unbreakable_line(stack, &display, &translate)
-        {
-            push(&mut lines, text, rgba(85, 85, 255, 255));
-        }
-        // BlockItemStateProperties.addToTooltip.
-        if let Some(text) = crate::hc::item_tooltip::honey_line(stack, &display, &translate) {
-            push(&mut lines, text, gray);
-        }
-        // Spawner.appendHoverText: what a spawner or trial spawner item spawns.
-        if display.shows("minecraft:block_entity_data")
-            && matches!(
-                &*stack.item,
-                "minecraft:spawner" | "minecraft:trial_spawner"
-            )
-        {
-            let gray = rgba(170, 170, 170, 255);
-            match block_entity_item::spawner_entity(stack) {
-                Some(id) => {
-                    let key = format!("entity.{}", id.replacen(':', ".", 1));
-                    push(&mut lines, self.translate(&key, &id), gray);
-                }
-                None => {
-                    push(&mut lines, String::new(), u32::MAX);
-                    let desc1 =
-                        self.translate("block.minecraft.spawner.desc1", "Interact with Spawn Egg:");
-                    push(&mut lines, desc1, gray);
-                    let desc2 = self.translate("block.minecraft.spawner.desc2", "Sets Mob Type");
-                    push(&mut lines, format!(" {desc2}"), rgba(85, 85, 255, 255));
-                }
-            }
-        }
-        if display.shows("minecraft:damage")
-            && let Some(info) = item_info
-            && info.max_damage > 0
-            && stack.damage > 0
-            && advanced
-        {
-            // `item.durability`, in the selected language.
-            lines.push((
-                crate::hc::text::Text::translate(
-                    "item.durability",
-                    &[
-                        crate::hc::text::Text::literal(
-                            (info.max_damage - stack.damage).to_string(),
-                        ),
-                        crate::hc::text::Text::literal(info.max_damage.to_string()),
-                    ],
-                ),
-                u32::MAX,
-            ));
-        }
-        // ItemStack.addDetailsToTooltipTail: with advanced tooltips the item id
-        // and how many components the stack has.
-        if advanced {
-            let dark_gray = rgba(85, 85, 85, 255);
-            push(&mut lines, stack.item.to_string(), dark_gray);
-            let count = crate::hc::item_tooltip::component_count(stack, item_info);
-            if count > 0 {
-                let text = self.translate("item.components", "%s component(s)");
-                push(
-                    &mut lines,
-                    text.replacen("%s", &count.to_string(), 1),
-                    dark_gray,
-                );
-            }
-        }
-        // ItemStack.OP_NBT_WARNING: `BlockItem` and `SpawnEggItem`
-        // `.shouldPrintOpWarning` for a player with game master permission;
-        // a nested projectile has no player. The first line is bold.
-        if !nested
-            && self.world_data.registries.permission >= 2
-            && (item_info.is_some_and(|i| i.block.is_some())
-                && block_entity_item::op_warning(stack)
-                || block_entity_item::spawn_egg_op_warning(stack))
-        {
-            for (i, (key, fallback)) in [
-                ("item.op_warning.line1", "Warning:"),
-                (
-                    "item.op_warning.line2",
-                    "Use of this item might lead to command execution.",
-                ),
-                (
-                    "item.op_warning.line3",
-                    "Do not use unless you know the exact contents!",
-                ),
-            ]
-            .into_iter()
-            .enumerate()
-            {
-                let text = crate::hc::text::Text::legacy(&self.translate(key, fallback));
-                lines.push((
-                    if i == 0 { text.bold() } else { text },
-                    rgba(255, 85, 85, 255),
-                ));
-            }
-        }
-        lines
     }
     /// Menu state for the control socket.
     pub(super) fn station_info(&self) -> serde_json::Value {
@@ -1411,11 +795,3 @@ impl crate::game::Sim<'_> {
 /// The anvil's rename box (`AnvilScreen`: `setMaxLength(50)`).
 const ANVIL_NAME_CHARS: usize = 50;
 
-fn anvil_box() -> crate::hc::ui::EditBox {
-    let mut edit = crate::hc::ui::EditBox::new(0.0, 0.0, 103.0, 12.0);
-    edit.bordered = false;
-    edit.max_length = ANVIL_NAME_CHARS;
-    edit.text_color = u32::MAX;
-    edit.focused = true;
-    edit
-}

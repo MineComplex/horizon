@@ -2,12 +2,8 @@
 //! through its input container (hoppers, droppers, crafters above), and the
 //! fill feedback of level event 1500 (`handleFill`). Emptying a full
 //! composter by hand is `useWithoutItem` in horizon-world.
-use super::{commands::compute::ComputeContext};
-use crate::hc::{
-    items::ItemStack,
-    mobs::villager,
-    particles::{ParticleOptions, ParticleType},
-};
+use super::commands::compute::ComputeContext;
+use crate::hc::{items::ItemStack, mobs::villager, particles::{ParticleOptions, ParticleType}};
 use horizon_core::{position::BlockPos, random::RandomSource};
 
 impl crate::game::Sim<'_> {

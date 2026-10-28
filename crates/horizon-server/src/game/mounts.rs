@@ -2,12 +2,7 @@
 //! armour and chests, mounting, the rider's control and jump bar
 //! (`LocalPlayer.aiStep`'s riding jump), positioning, dismounting, and the
 //! mount's health and jump bar on the HUD.
-use crate::hc::{
-    hud::HudBatch,
-    items::ItemStack,
-    mobs::{MobEvent, Species, equine},
-    sprint::Keys,
-};
+use crate::hc::{items::ItemStack, mobs::{MobEvent, Species, equine}, sprint::Keys};
 use horizon_core::{geometry::Vec3, random::RandomSource};
 
 /// `passengerAttachments` minus the player's 0.6 vehicle attachment.
@@ -273,8 +268,7 @@ impl crate::game::Sim<'_> {
     /// `LocalPlayer.aiStep`'s riding jump: the bar charges while jump is
     /// held; on release, the jump's strength (0 when there is none).
     pub(super) fn charge_mount_jump(&mut self, i: usize, keys: Keys) -> f32 {
-        let saddled =
-            self.mobs[i].extra.saddled && crate::game::Sim::jumps(self.mobs[i].species());
+        let saddled = self.mobs[i].extra.saddled && crate::game::Sim::jumps(self.mobs[i].species());
         let mut jump = 0.0;
         if saddled {
             let st = &mut self.mount;

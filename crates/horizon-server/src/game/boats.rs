@@ -3,13 +3,7 @@
 //! dismounting), `BoatItem` placement, `VehicleEntity.hurtServer` breaking,
 //! saving and `AbstractBoatRenderer` with animated paddles.
 use super::{entity_culling::at, view_vector};
-use crate::hc::{
-    blocks::Fluid,
-    collisions::{EntityCollisions, SceneCollisions},
-    items::ItemStack,
-    mesher::Vertex,
-    mobs::{Part, anim::Poses, riders},
-};
+use crate::hc::{blocks::Fluid, collisions::{EntityCollisions, SceneCollisions}, items::ItemStack, mobs::{Part, anim::Poses, riders}};
 use horizon_core::{
     geometry::{Aabb, Vec3},
     random::RandomSource,

@@ -1,14 +1,8 @@
 //! The sign editing screen (`SignEditScreen` / `HangingSignEditScreen`):
 //! opened when a sign is placed, four lines limited to the sign's line
 //! width, Up/Down/Enter move between lines, Escape or Done closes.
-use super::{lan::LanHost};
-use crate::hc::{
-    containers::BlockEntity,
-    hud::{HudBatch, rgba},
-    items::ItemStack,
-    signs::{DYE_TEXT, wood_type},
-    ui::EditBox,
-};
+use super::lan::LanHost;
+use crate::hc::{containers::BlockEntity, items::ItemStack, signs::{DYE_TEXT, wood_type}};
 use horizon_protocol::packets::play::{self, Clientbound as C, Serverbound as S};
 use winit::{
     event::{ElementState, KeyEvent},
@@ -26,13 +20,6 @@ pub(super) struct SignEditor {
     lines: [String; 4],
 }
 
-fn sign_box() -> EditBox {
-    let mut edit = EditBox::new(0.0, 0.0, 90.0, 9.0);
-    edit.bordered = false;
-    edit.max_length = 384;
-    edit.focused = true;
-    edit
-}
 
 impl crate::game::Sim<'_> {
     /// `SignBlockEntity.getSlotPlayerIsFacing`: whether the player stands in
@@ -186,39 +173,12 @@ impl crate::game::Sim<'_> {
         self.trigger_block("minecraft:item_used_on_block", pos, stack);
         true
     }
-    /// `SignBlock.openTextEdit` for the front side after placement.
-    pub(super) fn open_sign_editor(&mut self, pos: (i32, i32, i32), front: bool) {
-        // Minecraft.setScreen: the editor already open is removed first.
-        self.close_sign_editor();
-        let lines = match self.world.block_entities.get(&pos) {
-            Some(BlockEntity::Sign(sign)) if front => sign.front.lines.clone(),
-            Some(BlockEntity::Sign(sign)) => sign.back.lines.clone(),
-            _ => Default::default(),
-        };
-        self.sign_edit = Some(SignEditor {
-            pos,
-            front,
-            line: 0,
-            edit: sign_box(),
-            lines,
-        });
-        self.sign_load();
-        self.keys.clear();
-        self.right = false;
-        self.capture(false);
-    }
     /// `AbstractSignEditScreen.removed`: a server's client sends what it
     /// wrote (ServerboundSignUpdatePacket); the window's own world keeps it
     /// and sends it to its guests (`sendBlockUpdated`).
     pub(super) fn close_sign_editor(&mut self) {
         if let Some(edit) = self.sign_edit.take() {
-            if self.remote.is_some() {
-                self.send(S::SignUpdate(play::SignUpdate {
-                    pos: [edit.pos.0, edit.pos.1, edit.pos.2],
-                    lines: edit.lines,
-                    front: edit.front,
-                }));
-            } else {
+            {
                 self.mark_block_entity_updated(edit.pos);
             }
         }
@@ -276,22 +236,6 @@ impl crate::game::Sim<'_> {
         }
         play.sign_editing = None;
         self.mark_block_entity_updated(key);
-    }
-    /// `ClientPacketListener.handleOpenSignEditor`: the editor on a sign this
-    /// client has.
-    pub(super) fn remote_open_sign_editor(&mut self, p: play::OpenSignEditor) {
-        let key = (p.pos[0], p.pos[1], p.pos[2]);
-        if matches!(
-            self.world.block_entities.get(&key),
-            Some(BlockEntity::Sign(_))
-        ) {
-            self.open_sign_editor(key, p.front);
-        } else {
-            log::warn!(
-                "ignoring openTextEdit on a block that is no sign at {:?}",
-                p.pos
-            );
-        }
     }
     /// The edited line's text.
     fn sign_current(&self) -> Option<String> {

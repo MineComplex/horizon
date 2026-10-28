@@ -1,12 +1,7 @@
 //! `/item` (ItemCommands) and `if items`/`if slots`: addressing the item
 //! slots of the player, mobs, armor stands, item frames and containers.
 use super::{Arg, Context, R, Target, err};
-use crate::hc::{
-    command::{CommandError, args::ItemInput},
-    items::ItemStack,
-    scoreboard_cmd::{Holder, Tracker},
-    text::Text,
-};
+use crate::hc::{command::{CommandError, args::ItemInput}, items::ItemStack, scoreboard_cmd::{Holder, Tracker}, text::Text};
 use horizon_world::nbt::Tag;
 
 /// One addressable slot.
@@ -131,10 +126,7 @@ impl crate::game::Sim<'_> {
                 }
             }
             Owner::Entity(Target::Stand(id)) => {
-                for (i, key) in crate::hc::entities::ArmorStand::SLOTS
-                    .iter()
-                    .enumerate()
-                {
+                for (i, key) in crate::hc::entities::ArmorStand::SLOTS.iter().enumerate() {
                     let aliases: &[&str] = match *key {
                         "mainhand" => &["weapon", "weapon.mainhand"],
                         "offhand" => &["weapon.offhand"],
@@ -267,15 +259,13 @@ impl crate::game::Sim<'_> {
                 None => false,
             },
             Slot::Block(p, i) => match self.world.block_entities.get_mut(&(p[0], p[1], p[2])) {
-                Some(crate::hc::containers::BlockEntity::Chest(items)) => {
-                    match items.get_mut(*i) {
-                        Some(slot) => {
-                            *slot = stack;
-                            true
-                        }
-                        None => false,
+                Some(crate::hc::containers::BlockEntity::Chest(items)) => match items.get_mut(*i) {
+                    Some(slot) => {
+                        *slot = stack;
+                        true
                     }
-                }
+                    None => false,
+                },
                 _ => false,
             },
         }

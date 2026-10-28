@@ -1,15 +1,10 @@
 //! Data packs in the game: functions (`/function`, `/return`, tick and load
 //! tags, `/schedule`), predicates, `/reload` and `/datapack`.
-use super::{commands::{
-        R, err, execute::{ExecState, Source},
-    }};
-use crate::hc::{
-    command::{Arg, Context},
-    datapack::{self, DataPack, DataStore, Function},
-    save,
-    scoreboard::bracketed,
-    text::{self, Text},
+use super::commands::{
+    R, err,
+    execute::{ExecState, Source},
 };
+use crate::hc::{command::{Arg, Context}, datapack::{self, DataPack, DataStore, Function}, save, scoreboard::bracketed, text::{self, Text}};
 use horizon_world::nbt::Tag;
 use std::collections::BTreeSet;
 
@@ -162,7 +157,7 @@ impl crate::game::Sim<'_> {
         }
     }
     pub(super) fn save_schedule(&self) {
-        if !self.fns.loaded || self.remote.is_some() {
+        if !self.fns.loaded || false {
             return;
         }
         let mut events = self.fns.schedule.clone();
@@ -201,9 +196,7 @@ impl crate::game::Sim<'_> {
     /// `ServerFunctionManager.tick` and the scheduled events.
     pub(super) fn tick_functions(&mut self) {
         self.ensure_datapacks();
-        if self.remote.is_some() {
-            return;
-        }
+
         self.exec = ExecState::default();
         let source = self.server_source();
         if self.fns.load_pending {

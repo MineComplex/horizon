@@ -2,19 +2,14 @@
 //! `Consumable`), throwing splash/lingering potions (`ThrownSplashPotion`),
 //! filling glass bottles (`BottleItem`), the per-tick effect application,
 //! effect attribute modifiers and the HUD effect icons (`Hud.extractEffects`).
-use super::{Screen, dragon::{Breath, FightPlayer, FightWho}, item_draw::owner_at, remote_projectiles::cloud_client_tick};
-use horizon_assets::item_model::DisplayContext;
-use crate::hc::{
-    block_entity_render::vertex_light,
-    brewing,
-    effects::{EffectAction, EffectInstance, PlayerEffects},
-    hud::HudBatch,
-    hud_layout, hud_overlays, inventory_effects,
-    items::ItemStack,
-    mesher::Vertex,
-    particles::{ParticleOptions, ParticleType},
-    text::Text,
+use super::{
+    Screen,
+    dragon::{Breath, FightPlayer, FightWho},
+    item_draw::owner_at,
+    remote_projectiles::cloud_client_tick,
 };
+use crate::hc::{brewing, effects::{EffectAction, EffectInstance, PlayerEffects}, items::ItemStack, particles::{ParticleOptions, ParticleType}, text::Text};
+use horizon_assets::item_model::DisplayContext;
 use horizon_core::{
     geometry::{Aabb, Direction, Vec3},
     random::{LegacyRandom, RandomSource},
@@ -1189,24 +1184,6 @@ impl crate::game::Sim<'_> {
                 }
             }
         }
-    }
-    /// `Screen.showsActiveEffects`: the survival and creative inventories
-    /// draw their own effect list when `EffectsInInventory.canSeeEffects`
-    /// (32 or more pixels right of the screen).
-    fn screen_shows_active_effects(&self, batch: &HudBatch) -> bool {
-        let (ox, image_width) = match self.screen {
-            Screen::Inventory
-                if self.container.is_none() && self.craft_size == 2 && !self.mount_active() =>
-            {
-                (self.inventory_origin(batch).0, 176)
-            }
-            Screen::Creative => (
-                crate::game::Sim::creative_origin(batch).0,
-                crate::hc::creative::Creative::WIDTH as i32,
-            ),
-            _ => return false,
-        };
-        batch.width as i32 - (ox as i32 + image_width + 2) >= 32
     }
     /// Effects saved in level.dat (`Player.active_effects`).
     pub(super) fn restore_effects(&mut self) {

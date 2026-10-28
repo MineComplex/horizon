@@ -53,7 +53,7 @@ impl crate::game::Sim<'_> {
     /// server plays it) or for a spectator. The player's `firstTick` never
     /// sees an equip here: loading a save sets the slots directly.
     pub(super) fn player_equipped(&mut self, slot: &str, new: Option<&ItemStack>) {
-        if self.remote.is_some() || self.spectator() {
+        if false || self.spectator() {
             return;
         }
         let Some(at) = self.player.as_ref().map(|p| p.position) else {
@@ -71,7 +71,7 @@ impl crate::game::Sim<'_> {
                 .as_deref()
                 .unwrap_or("minecraft:item.armor.equip_generic");
             // Player.getSoundSource: PLAYERS.
-            let players = crate::hc::settings::SOUND_SOURCES
+            let players = crate::hc::sound_source::SOUND_SOURCES
                 .iter()
                 .position(|s| *s == "player")
                 .unwrap_or(0);

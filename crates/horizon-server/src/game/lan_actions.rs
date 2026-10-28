@@ -6,19 +6,11 @@
 //! host, and every world change they cause reaches all players through the
 //! block log, the level events and the entity tracker.
 use super::{Dim, GuestUse, Hit, Mining, Screen, lan::LanHost, respawn_anchor::RespawnConfig};
-use crate::hc::{
-    command::vanilla,
-    containers::BlockEntity,
-    entities::Experience,
-    first_person::{Hand, SwingAnimation},
-    items::ItemStack,
-    lan::{
+use crate::hc::{command::vanilla, containers::BlockEntity, entities::Experience, first_person::{Hand, SwingAnimation}, items::ItemStack, lan::{
         guest::SPECTATOR,
         hub::TickCtx,
         menu::{Rules, Slots},
-    },
-    motion::{MotionEvent, MotionWorld, PlayerMotion},
-};
+    }, motion::{MotionEvent, MotionWorld, PlayerMotion}};
 use horizon_core::{geometry::Vec3, random::RandomSource};
 use horizon_protocol::{
     packets::play::{self, Clientbound as C, Serverbound as S},
@@ -1414,8 +1406,7 @@ impl crate::game::Sim<'_> {
                             "commands.gamerule.set",
                             &[&entry.name, &entry.value],
                         );
-                        let content =
-                            crate::hc::lan::data::component_nbt(&message.component());
+                        let content = crate::hc::lan::data::component_nbt(&message.component());
                         for g in &host.hub.guests {
                             if g.permission >= 2 {
                                 g.send(&C::SystemChat(play::SystemChat {
@@ -1527,12 +1518,7 @@ impl crate::game::Sim<'_> {
         let picked = self.as_guest(host, conn, |g| {
             let stack = stack(g)?;
             let infinite = g.creative;
-            crate::hc::pick_item::pick(
-                &mut g.inventory[..36],
-                &mut g.selected,
-                &stack,
-                infinite,
-            );
+            crate::hc::pick_item::pick(&mut g.inventory[..36], &mut g.selected, &stack, infinite);
             Some(())
         });
         if picked.flatten().is_some()
@@ -1738,7 +1724,7 @@ impl crate::game::Sim<'_> {
         // PiercingWeapon.makeSound: `playSound(causer, ...)`, so the guest's
         // own client plays it.
         if let Some(name) = sound {
-            let source = crate::hc::settings::sound_source(name) as i32;
+            let source = crate::hc::sound_source::sound_source(name) as i32;
             host.hub.sound(name, at, 1.0, 1.0, source, Some(conn));
         }
     }
@@ -2666,8 +2652,7 @@ impl crate::game::Sim<'_> {
             let velocity = marked.then_some(player.velocity);
             // Player.causeFallDamage: a fall of 2 blocks or more counts.
             for event in &events {
-                if let MotionEvent::Fall(crate::hc::landing::FallEvent::Statistic(cm)) = event
-                {
+                if let MotionEvent::Fall(crate::hc::landing::FallEvent::Statistic(cm)) = event {
                     game.stats.custom("fall_one_cm", *cm);
                 }
             }
@@ -2724,7 +2709,7 @@ impl crate::game::Sim<'_> {
                     };
                     if sound {
                         let name = "minecraft:block.honey_block.slide";
-                        let source = crate::hc::settings::sound_source(name) as i32;
+                        let source = crate::hc::sound_source::sound_source(name) as i32;
                         self.sounds.play_unshared(name, Some(at), 1.0, 1.0);
                         host.hub.sound(name, at, 1.0, 1.0, source, Some(conn));
                     }
@@ -3117,12 +3102,7 @@ impl crate::game::Sim<'_> {
         });
     }
     /// The host's own `ItemPickupParticle` toward the guest's model.
-    fn guest_pickup(
-        &mut self,
-        host: &LanHost,
-        id: i32,
-        item: crate::hc::entities::ItemEntity,
-    ) {
+    fn guest_pickup(&mut self, host: &LanHost, id: i32, item: crate::hc::entities::ItemEntity) {
         use super::pickups::{Collector, Taken, guest_target};
         if let Some(target) = guest_target(host, id as u32) {
             self.add_pickup_toward(
@@ -3161,7 +3141,7 @@ impl crate::game::Sim<'_> {
                     .any(|(p, n)| p == at && name.trim_start_matches("minecraft:") == n.as_str());
                 if place {
                     let (name, at, volume, pitch) = capture.remove(i);
-                    let source = crate::hc::settings::sound_source(&name) as i32;
+                    let source = crate::hc::sound_source::sound_source(&name) as i32;
                     host.hub.sound(&name, at, volume, pitch, source, Some(conn));
                 } else {
                     i += 1;
@@ -3170,7 +3150,7 @@ impl crate::game::Sim<'_> {
         }
         if changed.is_empty()
             || !changed.iter().all(|&(x, y, z)| {
-                super::remote::hand_operated(&facts.get(self.world.block(x, y, z)).name)
+                hand_operated(&facts.get(self.world.block(x, y, z)).name)
             })
         {
             return;
@@ -3180,7 +3160,7 @@ impl crate::game::Sim<'_> {
         };
         let sounds: Vec<_> = capture.drain(heard.min(capture.len())..).collect();
         for (name, at, volume, pitch) in sounds {
-            let source = crate::hc::settings::sound_source(&name) as i32;
+            let source = crate::hc::sound_source::sound_source(&name) as i32;
             host.hub.sound(&name, at, volume, pitch, source, Some(conn));
         }
     }
@@ -3197,7 +3177,7 @@ impl crate::game::Sim<'_> {
             {
                 continue;
             }
-            let source = crate::hc::settings::sound_source(&name) as i32;
+            let source = crate::hc::sound_source::sound_source(&name) as i32;
             host.hub.sound(&name, at, volume, pitch, source, None);
         }
     }
@@ -3302,4 +3282,14 @@ fn swing_packet(id: i32, hand: Hand, animation: SwingAnimation) -> C {
         kind: i32::from(animation.kind),
         duration: animation.duration,
     })
+}
+
+/// A block a hand opens or presses (`BlockBehaviour.useWithoutItem`'s sound
+/// a client predicts): doors and trapdoors but iron ones, gates, buttons, levers.
+fn hand_operated(name: &str) -> bool {
+    let name = name.trim_start_matches("minecraft:");
+    ((name.ends_with("_door") || name.ends_with("_trapdoor")) && !name.starts_with("iron_"))
+        || name.ends_with("_fence_gate")
+        || name.ends_with("_button")
+        || name == "lever"
 }

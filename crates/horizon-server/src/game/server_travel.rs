@@ -700,4 +700,3 @@ impl crate::game::Sim<'_> {
         }
     }
 }
-

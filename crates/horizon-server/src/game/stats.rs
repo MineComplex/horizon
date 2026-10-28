@@ -177,7 +177,7 @@ impl crate::game::Sim<'_> {
     }
     /// `ServerStatsCounter.parseLocal`.
     pub(super) fn load_stats(&mut self) {
-        if self.stats.loaded || self.remote.is_some() || self.no_player_here() {
+        if self.stats.loaded || false || self.no_player_here() {
             return;
         }
         self.stats.loaded = true;
@@ -187,7 +187,7 @@ impl crate::game::Sim<'_> {
     }
     /// `ServerStatsCounter.save`.
     pub(super) fn save_stats(&self) {
-        if !self.stats.loaded || self.remote.is_some() || self.no_player_here() {
+        if !self.stats.loaded || false || self.no_player_here() {
             return;
         }
         if let Some(path) = self.stats_path() {
@@ -282,9 +282,7 @@ impl crate::game::Sim<'_> {
                     Species::Nautilus | Species::ZombieNautilus => {
                         s.custom("nautilus_one_cm", total)
                     }
-                    sp if crate::hc::mobs::equine::is_equine(sp) => {
-                        s.custom("horse_one_cm", total)
-                    }
+                    sp if crate::hc::mobs::equine::is_equine(sp) => s.custom("horse_one_cm", total),
                     _ => {}
                 }
             }
@@ -353,9 +351,7 @@ impl crate::game::Sim<'_> {
         if let Some(host) = self.lan.as_ref() {
             let level = self.dim.id();
             for g in host.hub.guests.iter().filter(|g| {
-                g.placed
-                    && g.dimension == level
-                    && g.game_mode != crate::hc::lan::guest::SPECTATOR
+                g.placed && g.dimension == level && g.game_mode != crate::hc::lan::guest::SPECTATOR
             }) {
                 let since = host.play.get(&g.conn).map_or(0, |p| rest(&p.stats));
                 players.push((
@@ -420,4 +416,3 @@ impl crate::game::Sim<'_> {
         })
     }
 }
-

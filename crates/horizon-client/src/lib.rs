@@ -24,7 +24,7 @@ pub mod benchmark;
 pub mod bidi;
 pub use horizon_game::biome;
 pub use horizon_game::block_entities;
-pub mod block_entity_anim;
+pub use horizon_game::block_entity_anim;
 pub use horizon_game::block_entity_item;
 pub mod block_entity_render;
 pub use horizon_game::block_transform;

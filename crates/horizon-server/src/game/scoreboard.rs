@@ -3,20 +3,10 @@
 //! entities, the selector options `scores=`, `team=` and `tag=`, the
 //! commands' [`Env`] and the sidebar.
 use super::{chat::PLAYER_NAME, commands::Target};
-use crate::hc::{
-    command::{
+use crate::hc::{command::{
         Context,
         args::{IntRange, Selector},
-    },
-    hud::HudBatch,
-    hud_layout, hud_overlays,
-    lan::guest::Guest,
-    save::{self, uuid_from_text, uuid_text},
-    scoreboard::{self as sb, Comp, Scoreboard, literal},
-    scoreboard_cmd::{self, Env, Holder},
-    tab_list::TabPlayer,
-    text::Text,
-};
+    }, lan::guest::Guest, save::{self, uuid_from_text, uuid_text}, scoreboard::{self as sb, Comp, Scoreboard, literal}, scoreboard_cmd::{self, Env, Holder}, text::Text};
 use horizon_world::nbt::Tag;
 use std::collections::HashSet;
 
@@ -51,7 +41,7 @@ impl crate::game::Sim<'_> {
     }
     /// `ScoreboardSaveData` read from `data/minecraft/scoreboard.dat`.
     pub(super) fn load_scoreboard(&mut self) {
-        if self.score.loaded || self.remote.is_some() {
+        if self.score.loaded || false {
             return;
         }
         self.score.loaded = true;
@@ -60,8 +50,7 @@ impl crate::game::Sim<'_> {
         {
             self.score.board = Scoreboard::unpack(data);
         }
-        self.score.storage =
-            crate::hc::command_storage::CommandStorage::load(&self.world_root);
+        self.score.storage = crate::hc::command_storage::CommandStorage::load(&self.world_root);
         if let Some(root) = save::read_dat(&self.world_root.join("data/minecraft/world_border.dat"))
             && let Some(data) = root.get("data")
         {
@@ -71,7 +60,7 @@ impl crate::game::Sim<'_> {
         self.sync_score_registries();
     }
     pub(super) fn save_scoreboard(&mut self) {
-        if !self.score.loaded || self.remote.is_some() {
+        if !self.score.loaded || false {
             return;
         }
         self.score.storage.save(&self.world_root);
@@ -500,12 +489,8 @@ impl crate::game::Sim<'_> {
     }
     pub(super) fn cmd_scoreboard(&mut self, id: &str, ctx: &Context) -> super::commands::R<i32> {
         let mut env = GameEnv { g: self };
-        let result = scoreboard_cmd::execute(id, ctx, &mut env).unwrap_or_else(|| {
-            Err(crate::hc::command::CommandError::tr(
-                "command.failed",
-                &[],
-            ))
-        });
+        let result = scoreboard_cmd::execute(id, ctx, &mut env)
+            .unwrap_or_else(|| Err(crate::hc::command::CommandError::tr("command.failed", &[])));
         self.sync_score_registries();
         result
     }
@@ -567,51 +552,8 @@ impl crate::game::Sim<'_> {
             .collect();
         names.join(", ")
     }
-    /// The objective in the player's team's sidebar slot, else the sidebar's.
-    fn sidebar_objective(&self) -> Option<&sb::Objective> {
-        let board = &self.score.board;
-        if board.display.is_empty() {
-            return None;
-        }
-        // A server's client is in its team by its profile name.
-        let name = self
-            .remote
-            .as_ref()
-            .map_or(PLAYER_NAME, |r| r.profile_name.as_str());
-        let team_slot = board
-            .players_team(name)
-            .and_then(|t| t.color.as_ref())
-            .map(|c| format!("sidebar.team.{c}"))
-            .and_then(|slot| board.display_objective(&slot));
-        team_slot.or_else(|| board.display_objective(sb::SLOT_SIDEBAR))
-    }
-    /// The sidebar the HUD shows: its objective and its lines, for `status`.
-    pub(super) fn sidebar_status(&self) -> serde_json::Value {
-        let board = &self.score.board;
-        let Some(objective) = self.sidebar_objective() else {
-            return serde_json::Value::Null;
-        };
-        let scores: serde_json::Map<String, serde_json::Value> = board
-            .scores
-            .iter()
-            .filter_map(|(holder, s)| Some((holder.clone(), s.get(&objective.name)?.value.into())))
-            .collect();
-        serde_json::json!({ "objective": objective.name, "title": objective.display_text().plain(), "scores": scores })
-    }
 }
 
-
-/// The host and guests that have entered the world, rebuilt from live state.
-fn local_tab_players(me: TabPlayer, guests: &[Guest]) -> Vec<TabPlayer> {
-    let mut players = vec![me];
-    players.extend(guests.iter().filter(|g| g.placed).map(|g| {
-        let mut player = TabPlayer::new(g.uuid, &g.name);
-        player.game_mode = g.game_mode;
-        player.latency = g.latency.load(std::sync::atomic::Ordering::Relaxed);
-        player
-    }));
-    players
-}
 
 /// The commands' view of the game.
 struct GameEnv<'a, 'b> {
@@ -670,4 +612,3 @@ impl Env for GameEnv<'_, '_> {
         self.g.feedback(message);
     }
 }
-

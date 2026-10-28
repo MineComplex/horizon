@@ -4,12 +4,7 @@
 //! ticker, in vanilla's list order (`crate::hc::block_entities`), in
 //! chunks that tick blocks. Sculk, brewing stands and pistons tick in their
 //! own passes.
-use crate::hc::{
-    Result,
-    block_entities::{Pos, Ticking},
-    containers::{BlockEntity, FurnaceKind, HOPPER_SLOTS},
-    furnace::FurnaceCooking,
-};
+use crate::hc::{Result, block_entities::{Pos, Ticking}, containers::{BlockEntity, FurnaceKind, HOPPER_SLOTS}, furnace::FurnaceCooking};
 use horizon_core::position::BlockPos;
 use horizon_world::registry::BlockStateId;
 

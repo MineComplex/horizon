@@ -548,4 +548,3 @@ fn arrow_meta(
     }
     meta
 }
-

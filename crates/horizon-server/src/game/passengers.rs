@@ -151,9 +151,7 @@ impl crate::game::Sim<'_> {
             Species::ZombieHorse
                 if natural
                     && (self.world_data.difficulty != 0
-                        || crate::hc::mobs::spawn_rules::allowed_in_peaceful(
-                            Species::Zombie,
-                        )) =>
+                        || crate::hc::mobs::spawn_rules::allowed_in_peaceful(Species::Zombie)) =>
             {
                 if let Some(zombie) = self.spawn_mob("minecraft:zombie", at, false) {
                     if let Some(z) = self.mobs.iter_mut().find(|m| m.id == zombie) {

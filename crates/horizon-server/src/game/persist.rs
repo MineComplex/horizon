@@ -2,13 +2,7 @@
 //! entities (`entities/*.mca`, per chunk like vanilla's `EntityStorage`) and
 //! scheduled block/fluid ticks (chunk `block_ticks`/`fluid_ticks`).
 use super::FallingBlock;
-use crate::hc::{
-    Result,
-    chunk::Chunk,
-    entity_nbt,
-    mobs::Who,
-    save::{ChunkExtras, random_uuid},
-};
+use crate::hc::{Result, chunk::Chunk, entity_nbt, mobs::Who, save::{ChunkExtras, random_uuid}};
 use horizon_core::{geometry::Vec3, position::ChunkPos, random::RandomSource, ticks::ChunkTicks};
 use horizon_world::{chunk::BlockState, nbt::Tag, registry::BlockStateId};
 use std::{

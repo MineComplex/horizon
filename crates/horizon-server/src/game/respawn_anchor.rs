@@ -5,14 +5,7 @@
 //! using a charge.
 use super::Dim;
 use crate::hc::first_person::Hand;
-use crate::hc::{
-    Result,
-    blocks::Fluid,
-    collisions::{SceneCollisions, no_collision_empty},
-    items::ItemStack,
-    mobs::Who,
-    text::Text,
-};
+use crate::hc::{Result, blocks::Fluid, collisions::{SceneCollisions, no_collision_empty}, items::ItemStack, mobs::Who, text::Text};
 use horizon_core::{
     geometry::{Aabb, Axis, Vec3, VoxelShape},
     position::BlockPos,

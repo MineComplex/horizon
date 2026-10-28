@@ -1,15 +1,9 @@
 //! `/bossbar` (BossBarCommands) and drawing the custom boss bars.
-use super::{Dim, commands::{R, Target, err}};
-use crate::hc::{
-    boss_overlay,
-    bossbar::{self, BossBars},
-    command::{Arg, Context},
-    mobs::Species,
-    save,
-    scoreboard::{self as sb, Comp, json_to_tag},
-    scoreboard_cmd::format_list,
-    text::Text,
+use super::{
+    Dim,
+    commands::{R, Target, err},
 };
+use crate::hc::{bossbar::{self, BossBars}, command::{Arg, Context}, mobs::Species, save, scoreboard::{self as sb, Comp, json_to_tag}, scoreboard_cmd::format_list, text::Text};
 use horizon_core::random::RandomSource;
 use horizon_protocol::packets::play::{self, BossAction, Clientbound as C};
 use horizon_world::nbt::Tag;
@@ -33,7 +27,7 @@ impl crate::game::Sim<'_> {
             .join("data/minecraft/custom_boss_events.dat")
     }
     pub(super) fn load_bossbars(&mut self) {
-        if self.bosses.loaded || self.remote.is_some() {
+        if self.bosses.loaded || false {
             return;
         }
         self.bosses.loaded = true;
@@ -45,7 +39,7 @@ impl crate::game::Sim<'_> {
         self.world_data.registries.bossbars = self.bosses.bars.ids();
     }
     pub(super) fn save_bossbars(&self) {
-        if !self.bosses.loaded || self.remote.is_some() {
+        if !self.bosses.loaded || false {
             return;
         }
         if self.bosses.bars.bars.is_empty() && !self.bossbar_path().exists() {
@@ -150,9 +144,10 @@ impl crate::game::Sim<'_> {
                 Ok(self.bosses.bars.bars.len() as i32)
             }
             "bossbar.get" => {
-                let b = self.bosses.bars.get(&bar).cloned().unwrap_or_else(|| {
-                    crate::hc::bossbar::BossBar::new(&bar, sb::literal(&bar))
-                });
+                let b =
+                    self.bosses.bars.get(&bar).cloned().unwrap_or_else(|| {
+                        crate::hc::bossbar::BossBar::new(&bar, sb::literal(&bar))
+                    });
                 let s = b.display_name();
                 Ok(match last.as_str() {
                     "value" => {
@@ -396,9 +391,6 @@ impl crate::game::Sim<'_> {
     /// that simulates the world applies them to its own overlay; everyone
     /// else gets `ClientboundBossEventPacket`s.
     pub(super) fn publish_boss_bars(&mut self) {
-        if self.remote.is_some() {
-            return;
-        }
         self.load_bossbars();
         let viewers = self.boss_viewers();
         let live: HashSet<u128> = viewers.iter().map(|v| v.uuid).collect();

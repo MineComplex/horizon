@@ -3,13 +3,8 @@
 //! `continueAttack`, `MultiPlayerGameMode` block breaking), the arm swing
 //! (`LivingEntity.SwingState`) and the first-person equip heights
 //! (`FirstPersonHandsAndItems`) with the item swap ticker they read.
-use super::{minecarts::CartKind};
-use crate::hc::{
-    Result,
-    attack_strength::HeldStack,
-    first_person::{Hand, HandWorld, Hit, SwingAnimation, UseResult, swing_duration},
-    items::ItemStack,
-};
+use super::minecarts::CartKind;
+use crate::hc::{Result, attack_strength::HeldStack, first_person::{Hand, HandWorld, Hit, SwingAnimation, UseResult, swing_duration}, items::ItemStack};
 
 /// The off hand's place in `visible_hands` (the main hand uses its hotbar slot).
 const OFFHAND: usize = usize::MAX;
@@ -126,43 +121,6 @@ impl crate::game::Sim<'_> {
             ]
             .iter()
             .any(|k| self.keys.contains(k))
-    }
-    /// `Minecraft.crosshairPickEntity` when it is a `LivingEntity`: whether
-    /// it is alive (the nearest entity under the crosshair, before any block).
-    pub(super) fn crosshair_living(&self) -> Option<bool> {
-        let nearest = |hits: &[Option<f64>]| hits.iter().flatten().copied().reduce(f64::min);
-        let living = nearest(&[
-            self.mob_hit().map(|h| h.1),
-            self.armor_stand_hit().map(|h| h.1),
-        ])?;
-        let other = nearest(&[
-            self.painting_hit().map(|h| h.1),
-            self.frame_hit().map(|h| h.1),
-            self.boat_hit().map(|h| h.1),
-            self.cart_hit().map(|h| h.1),
-            self.dragon_hit().map(|h| h.1),
-        ]);
-        if !self.before_block(living) || other.is_some_and(|o| o <= living) {
-            return None;
-        }
-        let active = self
-            .using
-            .and_then(|(slot, _)| self.inventory.get(slot).and_then(Option::as_ref))
-            .or_else(|| self.held());
-        if let Some(stack) = active {
-            let components = self
-                .pack
-                .item_renderer
-                .models
-                .components(&crate::hc::item_render::stack_view(stack));
-            if let Some(range) = components.get("minecraft:attack_range")
-                && !attack_range_contains(range, living, self.creative)
-            {
-                return None;
-            }
-        }
-        // Only alive mobs are hit, so a picked living entity is alive.
-        Some(true)
     }
     /// `Hud.canRenderCrosshairForSpectator` for the nearest hit in reach: an
     /// entity that is a `MenuProvider` (a chest or hopper minecart, a chest
@@ -428,4 +386,3 @@ impl HandWorld for GameHands<'_, '_> {
     }
     fn release_using(&mut self) {}
 }
-

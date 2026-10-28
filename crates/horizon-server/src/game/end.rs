@@ -3,16 +3,7 @@
 //! sky. The dragon fight itself lives in game/dragon.rs: the podium is
 //! inactive until the dragon dies.
 use super::Dim;
-use crate::hc::{
-    Result,
-    containers::{BlockEntity, EndGateway},
-    environment::Environment,
-    items::ItemStack,
-    mesher::Vertex,
-    particles::{ParticleOptions, ParticleType},
-    vanillagen::VanillaTerrain,
-    world_spawn::PlayerSpawnFinder,
-};
+use crate::hc::{Result, containers::{BlockEntity, EndGateway}, environment::Environment, items::ItemStack, particles::{ParticleOptions, ParticleType}, vanillagen::VanillaTerrain, world_spawn::PlayerSpawnFinder};
 use horizon_core::{
     geometry::Vec3,
     random::{LegacyRandom, RandomSource},
@@ -1111,4 +1102,3 @@ impl crate::game::Sim<'_> {
         }
     }
 }
-

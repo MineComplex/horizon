@@ -4,17 +4,12 @@
 //! side of them.
 use super::Dim;
 use crate::hc::mobs::villager as mobs_villager;
-use crate::hc::{
-    effects::{EffectInstance, OmenTick},
-    mobs::{
+use crate::hc::{effects::{EffectInstance, OmenTick}, mobs::{
         Mob, Species, raider,
         spawn_rules::{self, SpawnLevel},
         spawn_selection::{Heightmap, NaturalLevel},
         spawning,
-    },
-    patrol::{GameplayAttributes, Member, PatrolLevel, PatrolSpawner},
-    raid::{self, Action, BarName, RaidLevel, RaidPlayer, RaiderInfo, RaiderType, Raids, Spawn},
-};
+    }, patrol::{GameplayAttributes, Member, PatrolLevel, PatrolSpawner}, raid::{self, Action, BarName, RaidLevel, RaidPlayer, RaiderInfo, RaiderType, Raids, Spawn}};
 use horizon_core::{geometry::Vec3, random::RandomSource};
 use horizon_world::nbt::Tag;
 use std::collections::{HashMap, HashSet};
@@ -264,8 +259,7 @@ impl crate::game::Sim<'_> {
     /// `dimensions/<dimension>/data/minecraft/raids.dat`: each dimension
     /// keeps its own raids.
     fn raids_path(&self, dim: Dim) -> std::path::PathBuf {
-        crate::hc::save::dimension_dir(&self.world_root, dim.id())
-            .join("data/minecraft/raids.dat")
+        crate::hc::save::dimension_dir(&self.world_root, dim.id()).join("data/minecraft/raids.dat")
     }
     /// The raids of the player's dimension (the previous one saved first).
     fn load_raids(&mut self) {
@@ -291,7 +285,7 @@ impl crate::game::Sim<'_> {
         let Some(dim) = self.raiding.loaded else {
             return;
         };
-        if !self.raiding.raids.dirty || self.remote.is_some() {
+        if !self.raiding.raids.dirty || false {
             return;
         }
         let tag = horizon_world::nbt::Tag::compound([
@@ -585,9 +579,6 @@ impl crate::game::Sim<'_> {
     }
     /// `ServerLevel.tick` for the raids and their raiders.
     pub(super) fn tick_raids(&mut self) {
-        if self.remote.is_some() {
-            return;
-        }
         self.load_raids();
         self.register_loaded_raiders();
         for id in self.raiding.raids.ids() {
@@ -800,7 +791,8 @@ impl crate::game::Sim<'_> {
             let block = block_of(position);
             let in_village = sections_to_village(centers, section(block)) <= 1;
             let has_rider = ridden.contains(&m.id);
-            let target_golem = matches!(m.ai.target, Some(crate::hc::mobs::Who::Mob(t)) if golems.contains(&t));
+            let target_golem =
+                matches!(m.ai.target, Some(crate::hc::mobs::Who::Mob(t)) if golems.contains(&t));
             let target_player = m.ai.target == Some(crate::hc::mobs::Who::Player);
             let (health, range) = (m.health, m.attrs.follow_range);
             let raids = &mut self.raiding.raids;

@@ -3,15 +3,8 @@
 //! acceleration and 0.04 lift, the flight-duration lifetime, explosion
 //! damage with line of sight, and the client explosion (`createFireworks`).
 use super::{Hit, item_draw::owner_at, view_vector};
+use crate::hc::{collisions::SceneCollisions, items::ItemStack, mobs::{Damage, DamageKind}, particles::{FireworkExplosion, ParticleOptions, ParticleType}};
 use horizon_assets::item_model::DisplayContext;
-use crate::hc::{
-    block_entity_render::vertex_light,
-    collisions::SceneCollisions,
-    items::ItemStack,
-    mesher::Vertex,
-    mobs::{Damage, DamageKind},
-    particles::{FireworkExplosion, ParticleOptions, ParticleType},
-};
 use horizon_core::{
     geometry::{Aabb, Vec3},
     random::RandomSource,

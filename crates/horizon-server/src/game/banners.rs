@@ -1,10 +1,7 @@
 //! Placed banners (`BannerBlockEntity`): the pattern layers move from the
 //! banner item to the block when placed and back to the dropped item when
 //! broken (`copy_components` in the banner loot tables).
-use crate::hc::{
-    banner::{self, BannerLayer},
-    containers::BlockEntity,
-};
+use crate::hc::{banner::{self, BannerLayer}, containers::BlockEntity};
 
 impl crate::game::Sim<'_> {
     /// The pattern textures and tints of the banner at `pos`, bottom first.

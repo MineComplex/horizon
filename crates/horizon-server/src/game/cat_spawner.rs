@@ -1,6 +1,9 @@
 //! `CatSpawner`: every 1200 ticks a cat may appear near a random player,
 //! in a village with enough occupied beds or inside a swamp hut.
-use super::{Dim, raids::{section, sections_to_village}};
+use super::{
+    Dim,
+    raids::{section, sections_to_village},
+};
 use crate::hc::mobs::{Species, spawn_rules};
 use horizon_core::{geometry::Vec3, random::RandomSource};
 

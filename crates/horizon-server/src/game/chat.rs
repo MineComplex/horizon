@@ -2,26 +2,9 @@
 //! (game rules, the world clock, difficulty), bound to the game.
 use super::Screen;
 pub use crate::hc::world_data::{TimeMarker, WorldClock};
-use crate::hc::{
-    chat::{
-        Chat, ChatAbilities, ChatAction, ChatScreen, ChatSource, ChatVisibility, Commands,
-        SYSTEM_INDICATOR,
-    },
-    gamerules::GameRules,
-    hud::HudBatch,
-    screen_draw::Measure,
-    text::{ClickEvent, Style, Text},
-};
+use crate::hc::{gamerules::GameRules, text::{ClickEvent, Style, Text}};
 use std::collections::BTreeMap;
 
-/// The tree the chat parses and completes with: a server's, once it has
-/// sent one (ClientPacketListener.commands), else the game's own.
-fn chat_tree(remote: &Option<super::remote::Remote>) -> &crate::hc::command::Dispatcher {
-    match remote.as_ref().and_then(|r| r.commands.as_ref()) {
-        Some(tree) => tree,
-        None => crate::hc::command::vanilla::game_dispatcher(),
-    }
-}
 use winit::{
     event::KeyEvent,
     keyboard::{KeyCode, PhysicalKey},
@@ -93,24 +76,6 @@ impl crate::game::Sim<'_> {
             self.world_data.registries.players = names;
         }
     }
-    pub(super) fn close_chat(&mut self) {
-        // InBedChatScreen.onClose: leaving the screen means getting up; the
-        // screen goes once the player has woken (`tick_in_bed_chat`).
-        if self.ui.in_bed_chat && self.sleeping.is_some() {
-            self.wake_up();
-            return;
-        }
-        self.ui.chat_screen = None;
-        self.ui.chat.reset_scroll();
-        if self.screen == Screen::Chat {
-            self.screen = Screen::Playing;
-            self.capture(true);
-        }
-    }
-    /// `Minecraft.computeChatAbilities` from the Chat option.
-    pub(super) fn chat_abilities(&self) -> ChatAbilities {
-        ChatAbilities::new(ChatVisibility::from_option(self.settings.chat_visibility))
-    }
     /// A chat message from the game (ChatComponent.addServerSystemMessage).
     pub(super) fn system_message(&mut self, text: Text) {
         if let Some(capture) = self.chat_capture.as_mut() {
@@ -119,10 +84,7 @@ impl crate::game::Sim<'_> {
         }
         // Connected to a server (single player's own included), the chat on
         // screen is the connection's: the game's own messages join it.
-        if self.remote.is_some() {
-            self.chat_line(text, ChatSource::Server);
-            return;
-        }
+
         // The Chat option's Hidden level takes the server's messages too.
         self.local_chat_line(text, Some(SYSTEM_INDICATOR), ChatSource::Server);
     }
@@ -138,67 +100,8 @@ impl crate::game::Sim<'_> {
         }
         // A server's client receives the line as a packet (PlayerChat or
         // DisguisedChat) and filters it there.
-        if self.remote.is_none() {
+        if true {
             self.local_chat_line(text, None, ChatSource::Player);
-        }
-    }
-    /// A line on the window's own chat when the Chat option lets `source`
-    /// through.
-    fn local_chat_line(&mut self, text: Text, indicator: Option<u32>, source: ChatSource) {
-        if !self.ui.chat.shows(source) {
-            return;
-        }
-        let focused = self.screen == Screen::Chat;
-        self.ui
-            .chat
-            .add_unwrapped(text, indicator, source, self.ticks, focused);
-    }
-    /// ChatScreen.handleChatInput: history, then a command or a chat line.
-    /// The Chat option's restrictions stop the message here too, so a
-    /// control-socket `chat` cannot send what the player's setting hides.
-    pub(super) fn handle_chat_input(&mut self, message: &str) {
-        if !self.chat_abilities().allows(message) {
-            return;
-        }
-        self.ui.chat.add_recent(message);
-        // On a server (single player's own included) the server runs it,
-        // unless a client mod owns the command.
-        if self.remote.is_some() {
-            self.send_chat(message);
-            return;
-        }
-        if let Some(command) = message.strip_prefix('/') {
-            self.run_command(command);
-        } else {
-            let line = Text::translate(
-                "chat.type.text",
-                &[self.player_display_name(), Text::literal(message)],
-            );
-            let focused = self.screen == Screen::Chat;
-            self.ui
-                .chat
-                .add_unwrapped(line, None, ChatSource::Player, self.ticks, focused);
-            self.lan_host_chat(message);
-        }
-    }
-    /// `Screen.clickUrlAction`: nothing with Web Links off, else the link
-    /// opens, after the confirmation unless Prompt on Links is off.
-    pub(super) fn click_url(&mut self, url: String) {
-        if !self.settings.chat_links {
-            return;
-        }
-        if self.settings.file.bool("chatLinksPrompt") {
-            self.link_prompt = Some(url);
-        } else {
-            super::packs::open_uri(&url);
-        }
-    }
-    /// The prompt's answer: the link opens on yes; either way the chat is back.
-    pub(super) fn answer_link_prompt(&mut self, yes: bool) {
-        if let Some(url) = self.link_prompt.take()
-            && yes
-        {
-            super::packs::open_uri(&url);
         }
     }
     /// `Screen.clickCommandAction`: run a clicked command as the player
@@ -208,9 +111,7 @@ impl crate::game::Sim<'_> {
     /// parse; here the server answers it.)
     pub(super) fn click_command(&mut self, command: &str) {
         let command = command.strip_prefix('/').unwrap_or(command);
-        if self.remote.is_some() {
-            self.send_chat(&format!("/{command}"));
-        } else {
+        {
             self.run_command(command);
         }
     }
@@ -323,31 +224,6 @@ impl crate::game::Sim<'_> {
     /// F1 hides the HUD (see `hud`); the screenshot key still works.
     pub(super) fn toggle_hide_gui(&mut self) {
         self.ui.hide_gui = !self.ui.hide_gui;
-    }
-    /// After a frame: report a finished F2 screenshot in chat.
-    pub(super) fn finish_screenshot(&mut self, result: &std::result::Result<[u32; 2], String>) {
-        let Some(path) = self.ui.screenshot_message.take() else {
-            return;
-        };
-        let message = match result {
-            Ok(_) => {
-                let name = path.file_name().unwrap_or_default().to_string_lossy();
-                let link = Text::styled(
-                    name,
-                    Style {
-                        underlined: Some(true),
-                        click: Some(ClickEvent::OpenFile(path.to_string_lossy().into_owned())),
-                        ..Style::default()
-                    },
-                );
-                Text::translate("screenshot.success", &[link])
-            }
-            Err(e) => Text::translate("screenshot.failure", &[Text::literal(e.clone())]),
-        };
-        let focused = self.screen == Screen::Chat;
-        self.ui
-            .chat
-            .add_unwrapped(message, None, ChatSource::Client, self.ticks, focused);
     }
 }
 /// `yyyy-MM-dd_HH.mm.ss[_n].png` (Util.getFilenameFormattedDateTime, local time

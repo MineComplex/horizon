@@ -1,11 +1,7 @@
 //! What villagers do with each other and with the player: gossip and
 //! reputation, sharing food and wares, picking up dropped items, making
 //! babies, calling iron golems and the prices they ask.
-use crate::hc::{
-    gossip::{self, GossipType},
-    items::ItemStack,
-    mobs::{Mob, Species, spawning, villager, villager_brain},
-};
+use crate::hc::{gossip::{self, GossipType}, items::ItemStack, mobs::{Mob, Species, spawning, villager, villager_brain}};
 use horizon_core::geometry::Vec3;
 
 fn block_of(p: Vec3) -> [i32; 3] {

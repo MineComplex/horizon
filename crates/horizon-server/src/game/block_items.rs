@@ -2,10 +2,7 @@
 //! (`crate::hc::block_entity_item`): the item Pick Block gives, with the
 //! block entity's data on Ctrl in creative, and the data and components a
 //! placed item gives its block entity.
-use crate::hc::{
-    Result, block_entity_item, block_entity_nbt, containers::BlockEntity, item_data,
-    items::ItemStack, save,
-};
+use crate::hc::{Result, block_entity_item, block_entity_nbt, containers::BlockEntity, item_data, items::ItemStack, save};
 use horizon_world::{
     nbt::{Compound, Tag},
     registry::BlockStateId,

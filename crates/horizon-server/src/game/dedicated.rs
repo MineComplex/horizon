@@ -7,10 +7,7 @@
 //! from server.properties, with the operator, whitelist and ban lists and a
 //! console on standard input.
 use super::{Options, lan::LanSettings, world_loading::WorldRequest};
-use crate::hc::{
-    Result,
-    lan::{LoginGate, NetConfig, NetLog, hub::HubConfig, velocity::Velocity},
-    server::{
+use crate::hc::{Result, lan::{LoginGate, NetConfig, NetLog, hub::HubConfig, velocity::Velocity}, server::{
         eula, paper_global,
         properties::{GAME_MODES, ServerProperties, SystemEntropy},
         user_cache::UserCache,
@@ -18,9 +15,7 @@ use crate::hc::{
             BanEntry, BanList, IpBanList, NameAndId, OpEntry, OpList, WhiteEntry, WhiteList,
             format_date,
         },
-    },
-    text::Text,
-};
+    }, text::Text};
 use horizon_protocol::text::translatable;
 use horizon_world::nbt::{JavaString, Tag};
 use std::{
@@ -1058,4 +1053,3 @@ fn png_size(bytes: &[u8]) -> Option<(u32, u32)> {
     let h = u32::from_be_bytes(bytes[20..24].try_into().ok()?);
     Some((w, h))
 }
-

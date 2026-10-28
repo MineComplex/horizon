@@ -1,8 +1,8 @@
 //! Primed TNT (`PrimedTnt`): 80-tick fuse, gravity and drag, explosion of
 //! power 4, `TntRenderer` swell and white flash, and `TntBlock.useItemOn`
 //! (flint and steel / fire charge).
-use super::{explosion::BlockInteraction};
-use crate::hc::{Result, collisions::SceneCollisions, items::ItemStack, mesher::Vertex};
+use super::explosion::BlockInteraction;
+use crate::hc::{Result, collisions::SceneCollisions, items::ItemStack};
 use horizon_core::{
     geometry::{Aabb, Vec3},
     position::BlockPos,
@@ -283,8 +283,7 @@ impl FluidInteractionWorld for TntFluidWorld<'_> {
         Ok(self.world.chunks.contains_key(&(x, z)).then_some((x, z)))
     }
     fn chunk_sections(&mut self, _: Self::Chunk) -> std::io::Result<FluidSections<'_>> {
-        static SECTIONS: [bool; crate::hc::chunk::SECTIONS] =
-            [true; crate::hc::chunk::SECTIONS];
+        static SECTIONS: [bool; crate::hc::chunk::SECTIONS] = [true; crate::hc::chunk::SECTIONS];
         Ok(FluidSections {
             minimum_section_y: crate::hc::chunk::MIN_Y / 16,
             has_fluid: &SECTIONS,
@@ -359,4 +358,3 @@ impl FluidFlowWorld for TntFluidWorld<'_> {
         Ok(self.facts.get(s).sturdy_full & (1 << d as u8) != 0)
     }
 }
-

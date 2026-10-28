@@ -1,7 +1,7 @@
 //! The save screen freezes simulation, but keeps pumping window events while
 //! snapshots are prepared in small batches and the region workers drain.
 use super::loading_frame;
-use crate::hc::{Result, hud::HudBatch};
+use crate::hc::Result;
 use std::{
     collections::{HashSet, VecDeque},
     time::{Duration, Instant},

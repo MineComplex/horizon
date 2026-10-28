@@ -7,13 +7,7 @@
 //! plus one), wing knockback, block breaking, the death flight and rays, the
 //! exit portal, the egg and the next gateway; and its rendering and boss bar.
 use super::Dim;
-use crate::hc::{
-    hud::HudBatch,
-    hud_layout, hud_overlays,
-    mesher::Vertex,
-    particles::{ParticleOptions, ParticleType},
-    text::Text,
-};
+use crate::hc::{particles::{ParticleOptions, ParticleType}, text::Text};
 use horizon_core::{
     geometry::{Aabb, Vec3},
     random::{LegacyRandom, RandomSource},
@@ -1170,9 +1164,7 @@ impl crate::game::Sim<'_> {
             .rev()
             .find(|&y| {
                 let f = self.res.facts().get(self.world.block(x, y, z));
-                (f.full_collision
-                    || f.legacy_solid
-                    || f.fluid != crate::hc::blocks::Fluid::None)
+                (f.full_collision || f.legacy_solid || f.fluid != crate::hc::blocks::Fluid::None)
                     && !f.name.ends_with("_leaves")
             })
             .map_or(0, |y| y + 1)
@@ -3191,4 +3183,3 @@ impl crate::game::Sim<'_> {
             .min_by(|a, b| a.1.total_cmp(&b.1))
     }
 }
-

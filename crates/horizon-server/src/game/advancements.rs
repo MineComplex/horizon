@@ -2,13 +2,7 @@
 //! events (`CriteriaTriggers`), awarding with rewards, the toast and the
 //! chat announcement, and `players/advancements/<uuid>.json`.
 use super::Dim;
-use crate::hc::{
-    advancements::{self as adv, EntityView, Frame, ItemView, Progress, Tree},
-    hud::HudBatch,
-    items::ItemStack,
-    text::{self, Style, Text},
-    toasts::Slide,
-};
+use crate::hc::{advancements::{self as adv, EntityView, Frame, ItemView, Progress, Tree}, items::ItemStack, text::{self, Style, Text}, toasts::Slide};
 use horizon_core::geometry::Vec3;
 use serde_json::Value;
 use std::{
@@ -285,7 +279,7 @@ impl crate::game::Sim<'_> {
             .ok();
     }
     pub(super) fn load_advancements(&mut self) {
-        if self.adv.loaded || self.remote.is_some() || self.no_player_here() {
+        if self.adv.loaded || false || self.no_player_here() {
             return;
         }
         self.adv.loaded = true;
@@ -303,7 +297,7 @@ impl crate::game::Sim<'_> {
         self.world_data.registries.advancements = tree.list.iter().map(|a| a.id.clone()).collect();
     }
     pub(super) fn save_advancements(&self) {
-        if !self.adv.loaded || self.remote.is_some() || self.no_player_here() {
+        if !self.adv.loaded || false || self.no_player_here() {
             return;
         }
         let Some(path) = self.adv_path() else {
@@ -433,7 +427,7 @@ impl crate::game::Sim<'_> {
     /// `SimpleCriterionTrigger.trigger`: test each open criterion of the
     /// trigger and award what it completes.
     pub(super) fn trigger(&mut self, name: &str, test: impl Fn(&Value, &dyn adv::World) -> bool) {
-        if self.remote.is_some() || self.no_player_here() {
+        if false || self.no_player_here() {
             return;
         }
         self.load_advancements();
@@ -494,7 +488,7 @@ impl crate::game::Sim<'_> {
         } else {
             self.recipe_toast(unlocked);
         }
-        if unlocked.is_empty() || self.remote.is_some() || self.no_player_here() {
+        if unlocked.is_empty() || false || self.no_player_here() {
             return;
         }
         self.load_advancements();
@@ -624,7 +618,7 @@ impl crate::game::Sim<'_> {
             })
             .count() as f64;
         // Only the criteria the items held could pass (`InventoryIndex`).
-        if self.remote.is_some() || self.no_player_here() {
+        if false || self.no_player_here() {
             return;
         }
         self.load_advancements();
@@ -656,7 +650,7 @@ impl crate::game::Sim<'_> {
     }
     /// `PlayerTrigger.LOCATION` every second, and the other per-tick checks.
     pub(super) fn tick_advancements(&mut self) {
-        if self.player.is_none() || self.remote.is_some() {
+        if self.player.is_none() || false {
             return;
         }
         self.check_inventory_trigger();
@@ -785,7 +779,7 @@ impl crate::game::Sim<'_> {
     /// `ServerPlayer.updateUsingItem`: USING_ITEM for the item in use, with
     /// what the player looks at (`PlayerPredicate.lookingAt`).
     pub(super) fn trigger_using_item(&mut self, stack: &ItemStack) {
-        if self.remote.is_some() || self.no_player_here() {
+        if false || self.no_player_here() {
             return;
         }
         let mut me = self.player_entity();
@@ -1216,16 +1210,6 @@ impl crate::game::Sim<'_> {
             c["from"].as_str().is_none_or(|f| f == from) && c["to"].as_str().is_none_or(|t| t == to)
         });
     }
-    /// The slots held by shown advancement, recipe and pack toasts, as bits.
-    pub(super) fn toast_slots_used(&self) -> u32 {
-        let packs = self.server_packs.toast_slots();
-        self.adv
-            .toasts
-            .iter()
-            .filter_map(|t| t.slot)
-            .chain(packs)
-            .fold(0, |used, slot| used | 1 << slot)
-    }
 }
 /// `Advancement.name`: the bracketed title in the frame's colour, with the
 /// description on hover; the id when there is no display.
@@ -1419,4 +1403,3 @@ impl crate::game::Sim<'_> {
 pub(super) fn text_of(v: &Value) -> Text {
     crate::hc::scoreboard::comp_text(v)
 }
-

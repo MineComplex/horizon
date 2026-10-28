@@ -456,9 +456,6 @@ impl crate::game::Sim<'_> {
     /// at the start of their tick: an item or mob that stayed in a portal
     /// goes through (transition time 0) and waits for its dimension.
     pub(super) fn handle_entity_portals(&mut self) {
-        if self.remote.is_some() {
-            return;
-        }
         self.load_portal_arrivals();
         let mut leaving: Vec<(u32, BlockPos)> = Vec::new();
         self.portals.before.clear();
@@ -599,9 +596,6 @@ impl crate::game::Sim<'_> {
     /// tick: the portal blocks their box swept through (an End portal's
     /// transition time is 0 too).
     pub(super) fn find_entity_portals(&mut self) {
-        if self.remote.is_some() {
-            return;
-        }
         let mut inside: Vec<(u32, BlockPos)> = Vec::new();
         let items: Vec<(u32, Vec3, f32, f32)> = self
             .dropped
@@ -829,9 +823,6 @@ impl crate::game::Sim<'_> {
     /// their exit portal (found or built) or End destination, position,
     /// turned yaw and motion, and portal cooldown; they join the world with the chunk entities.
     pub(super) fn resolve_arrivals(&mut self) {
-        if self.remote.is_some() {
-            return;
-        }
         let mut i = 0;
         while i < self.portals.arrivals.len() {
             let plan = self.portals.arrivals[i].plan;
@@ -889,7 +880,7 @@ impl crate::game::Sim<'_> {
     }
     /// The waiting entities of the open world (read once).
     pub(super) fn load_portal_arrivals(&mut self) {
-        if self.portals.loaded || self.remote.is_some() {
+        if self.portals.loaded || false {
             return;
         }
         self.portals.loaded = true;
@@ -905,7 +896,7 @@ impl crate::game::Sim<'_> {
     }
     /// Write the waiting entities when they changed.
     pub(super) fn save_portal_arrivals(&mut self) {
-        if !self.portals.dirty || self.remote.is_some() {
+        if !self.portals.dirty || false {
             return;
         }
         let list = self.portals.arrivals.iter().map(arrival_tag).collect();
@@ -915,4 +906,3 @@ impl crate::game::Sim<'_> {
         }
     }
 }
-

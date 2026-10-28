@@ -165,6 +165,19 @@ pub struct MeshSettings {
 /// What the workers share: the light tables, and how a section becomes a mesh. The client's
 /// `WorkerContext` builds section meshes from block models; a server without a window never
 /// asks for one (`Streaming::set_meshing`).
+/// A server's mesh context: it builds no meshes (the light tables are all it needs).
+pub struct NoMesh {
+    pub light: Arc<LightTables>,
+}
+impl MeshContext for NoMesh {
+    type Mesh = ();
+    type Scratch = ();
+    fn light(&self) -> &Arc<LightTables> {
+        &self.light
+    }
+    fn mesh(&self, _: &[[Option<&Chunk>; 3]; 3], _: i32, _: MeshSettings, _: &mut ()) {}
+}
+
 pub trait MeshContext: Send + Sync + 'static {
     /// A section's mesh, handed back by `Streaming::update`.
     type Mesh: Send + 'static;

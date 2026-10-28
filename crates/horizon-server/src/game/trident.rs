@@ -4,14 +4,7 @@
 //! return to the owner, pickup) with `ThrownTridentRenderer`, and Channeling's
 //! lightning on a hit (`channeling.json`).
 use super::view_vector;
-use crate::hc::{
-    collisions::SceneCollisions,
-    enchant::EffectContext,
-    items::ItemStack,
-    mesher::Vertex,
-    mobs::{Damage, DamageKind, Who, anim::Poses},
-    projectiles::ProjectileWorld,
-};
+use crate::hc::{collisions::SceneCollisions, enchant::EffectContext, items::ItemStack, mobs::{Damage, DamageKind, Who, anim::Poses}, projectiles::ProjectileWorld};
 use horizon_core::{
     geometry::{Aabb, Vec3, traverse_blocks},
     position::BlockPos,
@@ -283,7 +276,7 @@ impl crate::game::Sim<'_> {
             }
             // `hurtWithoutBreaking` and the sound belong to the server; a server's
             // client only launches.
-            let server_client = self.remote.is_some();
+            let server_client = false;
             if !server_client {
                 self.hurt_held_without_breaking(1);
             }
@@ -326,9 +319,7 @@ impl crate::game::Sim<'_> {
             return;
         }
         // The server throws the trident.
-        if self.remote.is_some() {
-            return;
-        }
+
         // hurtWithoutBreaking (Unbreaking applies), then the thrown copy.
         self.hurt_held_without_breaking(1);
         let thrown = self.held().cloned().unwrap_or(stack);

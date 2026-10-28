@@ -3,11 +3,7 @@
 //! the result and remainders into the container in front or as items, the
 //! crafting animation ticks, and the menu with its toggleable slots.
 use super::*;
-use crate::hc::{
-    advancements as adv,
-    containers::Crafter,
-    hud::{HudBatch, rgba},
-};
+use crate::hc::{advancements as adv, containers::Crafter};
 use horizon_protocol::packets::play::{self, Serverbound as S};
 use serde_json::Value;
 
@@ -284,18 +280,8 @@ impl crate::game::Sim<'_> {
             menu.set_slot_state(i, enabled);
             Some(true)
         });
-        if let Some((container, _)) = self.remote.as_ref().and_then(|r| r.menu.clone()) {
-            self.send(S::ContainerSlotStateChanged(
-                play::ContainerSlotStateChanged {
-                    slot: i as i32,
-                    container,
-                    enabled,
-                },
-            ));
-        }
         let pitch = if enabled { 1.0 } else { 0.75 };
         self.sounds
             .play("minecraft:ui.button.click", None, 0.4, pitch);
     }
 }
-

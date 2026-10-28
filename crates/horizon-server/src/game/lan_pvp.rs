@@ -7,11 +7,7 @@
 //! another player lands the same way.
 use super::{lan::LanHost, lan_mobs::guest_bounds, ray_box, view_vector};
 
-use crate::hc::{
-    Result,
-    mobs::Who,
-    projectiles::{Hit, Projectile, ProjectileKind},
-};
+use crate::hc::{Result, mobs::Who, projectiles::{Hit, Projectile, ProjectileKind}};
 use horizon_core::geometry::{Aabb, Vec3};
 
 /// The player projectiles that meet other players: arrows (their hurt), and

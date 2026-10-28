@@ -224,68 +224,6 @@ impl crate::game::Sim<'_> {
                 .and_then(|s| s.properties.get("vertical_direction"))
                 .is_some_and(|d| d == "down")
     }
-    /// `LevelEventHandler` 1504: `PointedDripstoneBlock.spawnDripParticle` at
-    /// the tip `pos`. The fluid above the stalactite's root picks the drip;
-    /// with none, the dimension's default (lava in the Nether).
-    pub(super) fn dripstone_drip_particle(&mut self, pos: BlockPos) {
-        let tip_state = self.world.block(pos.x, pos.y, pos.z);
-        if !self.is_stalactite(tip_state) {
-            return;
-        }
-        // findRootBlock: up through the same stalactite, at most 11 steps.
-        let tip_name = self.res.facts().get(tip_state).name.clone();
-        let mut root = None;
-        for step in 1..11 {
-            let y = pos.y + step;
-            if !(crate::hc::chunk::MIN_Y
-                ..crate::hc::chunk::MIN_Y + crate::hc::chunk::HEIGHT)
-                .contains(&y)
-            {
-                break;
-            }
-            let state = self.world.block(pos.x, y, pos.z);
-            if self.res.facts().get(state).name != tip_name {
-                root = Some(y);
-                break;
-            }
-            if !self.is_stalactite(state) {
-                break;
-            }
-        }
-        let Some(root_y) = root else {
-            return;
-        };
-        let above = self.world.block(pos.x, root_y + 1, pos.z);
-        let above_facts = self.res.facts().get(above);
-        let nether = self.dim == super::Dim::Nether;
-        let fluid = if &*above_facts.name == "minecraft:mud" && !nether {
-            crate::hc::blocks::Fluid::Water
-        } else {
-            above_facts.fluid
-        };
-        let ty = match fluid {
-            crate::hc::blocks::Fluid::Water => ParticleType::DrippingDripstoneWater,
-            crate::hc::blocks::Fluid::Lava => ParticleType::DrippingDripstoneLava,
-            crate::hc::blocks::Fluid::None if nether => ParticleType::DrippingDripstoneLava,
-            crate::hc::blocks::Fluid::None => ParticleType::DrippingDripstoneWater,
-        };
-        let offset = self
-            .pack
-            .context
-            .tables
-            .offset(tip_state, pos.x, pos.z)
-            .unwrap_or([0.0; 3]);
-        // The tip shape starts 5/16 up; the particle sits a pixel below that.
-        self.particles.add(
-            &ParticleOptions::simple(ty),
-            [
-                f64::from(pos.x) + 0.5 + offset[0],
-                f64::from(pos.y) + 5.0 / 16.0 - 0.0625,
-                f64::from(pos.z) + 0.5 + offset[2],
-            ],
-            [0.0; 3],
-        );
-    }
     /// `ServerLevel.globalLevelEvent`: heard by every player on the server
     /// (an end portal opening, the dragon's death roar): here, and sent to
     /// every guest whatever their dimension.

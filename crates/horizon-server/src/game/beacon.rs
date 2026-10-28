@@ -3,15 +3,8 @@
 //! levels every 80 ticks, the primary/secondary effects for players in
 //! range, the activate/ambient/deactivate sounds, the 230x219 menu with its
 //! power buttons and payment slot, and the rotating, scrolling beam.
-use super::{stations::{INPUT, Kind}};
-use crate::hc::{
-    containers::{Beacon, BlockEntity},
-    effects::EffectInstance,
-    hud::{HudBatch, rgba},
-    items::ItemStack,
-    mesher::Vertex,
-    mobs::render::{DYE, DYE_NAMES},
-};
+use super::stations::{INPUT, Kind};
+use crate::hc::{containers::{Beacon, BlockEntity}, effects::EffectInstance, items::ItemStack, mobs::render::{DYE, DYE_NAMES}};
 use horizon_protocol::packets::play::{self, Serverbound as S};
 
 /// The beacon screen is 54 px wider than the 176-px menus it shares an origin with.
@@ -373,12 +366,6 @@ impl crate::game::Sim<'_> {
     /// a server, `BeaconScreen`'s confirm button sends them
     /// (`ServerboundSetBeaconPacket`) and the server's menu does it.
     fn confirm_beacon(&mut self, sel: [Option<usize>; 2]) {
-        if self.remote.is_some() {
-            let id = |e: Option<usize>| e.and_then(|e| self.remote_effect_network_id(EFFECTS[e].0));
-            let (primary, secondary) = (id(sel[0]), id(sel[1]));
-            self.send(S::SetBeacon(play::SetBeacon { primary, secondary }));
-            return;
-        }
         let Some(s) = self.station.as_mut() else {
             return;
         };

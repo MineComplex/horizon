@@ -2,13 +2,7 @@
 //! inserting a `jukebox_playable` disc, ejecting it, the song with its
 //! "Now Playing" overlay, note particles every second, the redstone
 //! signal while playing, the comparator output, and saving.
-use crate::hc::{
-    containers::{BlockEntity, Jukebox},
-    items::ItemStack,
-    mobs::Species,
-    particles::{ParticleOptions, ParticleType},
-    text::Text,
-};
+use crate::hc::{containers::{BlockEntity, Jukebox}, items::ItemStack, mobs::Species, particles::{ParticleOptions, ParticleType}, text::Text};
 use horizon_core::{
     geometry::{Aabb, Vec3},
     position::BlockPos,
@@ -108,8 +102,7 @@ impl crate::game::Sim<'_> {
         // LevelRenderer.playJukeboxSong: SimpleSoundInstance.forJukeboxSong.
         self.sounds.play_jukebox(&s.sound, pos);
         self.jukebox_sounds.insert((pos[0], pos[1], pos[2]));
-        let description =
-            crate::hc::component::to_text(&s.description, &mut |k| Text::literal(k));
+        let description = crate::hc::component::to_text(&s.description, &mut |k| Text::literal(k));
         self.titles
             .set_overlay(Text::translate("record.nowPlaying", &[description]), true);
         self.update_song_volumes();

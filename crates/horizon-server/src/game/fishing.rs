@@ -4,15 +4,7 @@
 use super::{lan::LanHost, lan_mobs::guest_bounds, view_vector};
 use crate::hc::advancements::EntityView;
 use crate::hc::lan::{entity::States, hub::Hub};
-use crate::hc::{
-    blocks::Fluid,
-    collisions::SceneCollisions,
-    gizmos::Line,
-    items::ItemStack,
-    mesher::Vertex,
-    particles::{ParticleOptions, ParticleType},
-    pose::Pose,
-};
+use crate::hc::{blocks::Fluid, collisions::SceneCollisions, items::ItemStack, particles::{ParticleOptions, ParticleType}, pose::Pose};
 use horizon_core::{
     geometry::{Aabb, Vec3, trig},
     position::BlockPos,
@@ -194,8 +186,7 @@ impl crate::game::Sim<'_> {
             damage = if hooked_item { 3 } else { 5 };
         } else if hook.nibble > 0 {
             let biome = self.biome_name_at(hook.position);
-            let Some(loot) = crate::hc::structure_blocks::loot_data(&self.options.resources)
-            else {
+            let Some(loot) = crate::hc::structure_blocks::loot_data(&self.options.resources) else {
                 return damage;
             };
             // `withLuck(this.luck + owner.getLuck())`: the rod's Luck of the Sea
@@ -721,94 +712,6 @@ impl crate::game::Sim<'_> {
             lerp(h.previous.z, h.position.z),
         ))
     }
-    /// FishingHookRenderer: each line, 16 black `lines` segments sagging
-    /// from a quarter block above the hook to the rod in its owner's hand,
-    /// `width` pixels wide (`Window.getAppropriateLineWidth`).
-    pub(super) fn fishing_line(&self, alpha: f64, size: [u32; 2]) -> Vec<Line> {
-        let own = self
-            .hook_position(alpha)
-            .zip(self.rod_hand_position(alpha, size));
-        let width = crate::hc::gfx::outline_width(size[0]);
-        let mut lines = Vec::new();
-        for (hook, hand) in own.into_iter().chain(self.remote_hook_ends(alpha)) {
-            let offset = (hand - (hook + glam::DVec3::new(0.0, 0.25, 0.0))).as_vec3();
-            let point = |a: f32| {
-                let y = offset.y * (a * a + a) * 0.5 + 0.25;
-                hook + glam::Vec3::new(offset.x * a, y, offset.z * a).as_dvec3()
-            };
-            lines.extend((0..16).map(|i| Line {
-                start: point(i as f32 / 16.0).to_array(),
-                end: point((i + 1) as f32 / 16.0).to_array(),
-                color: 0xFF00_0000,
-                width,
-            }));
-        }
-        lines
-    }
-    /// `FishingHookRenderer.getPlayerHandPos`: on the near plane in first
-    /// person, beside the body otherwise.
-    fn rod_hand_position(&self, alpha: f64, size: [u32; 2]) -> Option<glam::DVec3> {
-        let p = self.player.as_ref()?;
-        let right_arm = self.main_hand_rod() != self.settings.main_hand_left;
-        let invert: f32 = if right_arm { 1.0 } else { -1.0 };
-        let swing = trig::sin(f64::from(
-            self.swing.animation(alpha as f32).sqrt() * std::f32::consts::PI,
-        ));
-        let feet = self.previous_position.lerp(p.position, alpha);
-        let eye = glam::DVec3::new(feet.x, feet.y + f64::from(p.dimensions.eye_height), feet.z);
-        if self.camera_type.first_person() {
-            let fov = self.settings.fov as i32 as f32;
-            // Camera.getNearPlane(fov).getPointOnPlane(invert * 0.525, -0.1).
-            let aspect = f64::from(size[0]) / f64::from(size[1].max(1));
-            let height =
-                (f64::from(fov * (std::f64::consts::PI / 180.0) as f32) / 2.0).tan() * 0.05;
-            let forward = glam::DVec3::from_array(view_vector(self.yaw, self.pitch));
-            let left = -forward.cross(glam::DVec3::Y).normalize_or_zero();
-            let up = forward.cross(left).normalize_or_zero();
-            let point = forward * 0.05 + up * (height * -0.1)
-                - left * (height * aspect * f64::from(invert * 0.525));
-            let point = point * (960.0 / f64::from(fov));
-            // Vec3.yRot(swing * 0.5), then xRot(-swing * 0.7).
-            let (s, c) = (
-                f64::from(trig::sin(f64::from(swing * 0.5))),
-                f64::from(trig::cos(f64::from(swing * 0.5))),
-            );
-            let point = glam::DVec3::new(
-                point.x * c + point.z * s,
-                point.y,
-                point.z * c - point.x * s,
-            );
-            let (s, c) = (
-                f64::from(trig::sin(f64::from(-swing * 0.7))),
-                f64::from(trig::cos(f64::from(-swing * 0.7))),
-            );
-            let point = glam::DVec3::new(
-                point.x,
-                point.y * c + point.z * s,
-                point.z * c - point.y * s,
-            );
-            Some(eye + point)
-        } else {
-            let model = self.player_model.as_ref()?;
-            let body =
-                crate::hc::camera::lerp(alpha as f32, model.previous_body_yaw, model.body_yaw);
-            let angle = f64::from(body * (std::f64::consts::PI / 180.0) as f32);
-            let (sin, cos) = (f64::from(trig::sin(angle)), f64::from(trig::cos(angle)));
-            let right = f64::from(invert) * 0.35;
-            let crouch = if p.pose == Pose::Crouching {
-                -0.1875
-            } else {
-                0.0
-            };
-            Some(
-                eye + glam::DVec3::new(
-                    -cos * right - sin * 0.8,
-                    crouch - 0.45,
-                    -sin * right + cos * 0.8,
-                ),
-            )
-        }
-    }
 }
 impl crate::game::Sim<'_> {
     /// The hooks drawn here, with their owners' ids (0 for this player's own).
@@ -910,24 +813,9 @@ impl crate::game::Sim<'_> {
             }
         }
     }
-    /// `handleAddEntity` for a fishing bobber: this player's own becomes its
-    /// hook (`Player.fishing`), another player's is drawn on its line to them.
-    pub(super) fn spawn_remote_hook(&mut self, id: u32, at: Vec3, owner: i32) {
-        let own = self.remote.as_ref().map(|r| r.entity_id);
-        if own == Some(owner) {
-            self.hook = Some(Hook::remote(id, at));
-        } else {
-            self.remote_hooks.push(RemoteHook {
-                id,
-                owner: owner as u32,
-                position: at,
-                previous: at,
-            });
-        }
-    }
     /// One tick of interpolation for the hooks a server tracks.
     pub(super) fn step_remote_hooks(&mut self, mut step: impl FnMut(u32, Vec3) -> Vec3) {
-        if self.remote.is_none() {
+        if true {
             return;
         }
         if let Some(h) = self.hook.as_mut() {
@@ -945,7 +833,7 @@ impl crate::game::Sim<'_> {
         let Some(h) = self
             .hook
             .as_mut()
-            .filter(|h| h.id == id && self.remote.is_some())
+            .filter(|h| h.id == id && false)
         else {
             return;
         };
@@ -956,15 +844,12 @@ impl crate::game::Sim<'_> {
         }
     }
     pub(super) fn remove_remote_hook(&mut self, id: u32) {
-        if self.remote.is_some() && self.hook.as_ref().is_some_and(|h| h.id == id) {
+        if false && self.hook.as_ref().is_some_and(|h| h.id == id) {
             self.hook = None;
         }
         self.remote_hooks.retain(|h| h.id != id);
     }
     pub(super) fn clear_remote_hooks(&mut self) {
-        if self.remote.is_some() {
-            self.hook = None;
-        }
         self.remote_hooks.clear();
     }
     /// Other players' hooks: the bobber and its line to the owner's hand
@@ -983,11 +868,8 @@ impl crate::game::Sim<'_> {
             .filter_map(|h| {
                 let owner = self.mobs.iter().find(|m| m.id == h.owner)?;
                 let feet = lerp(owner.previous, owner.position);
-                let body = crate::hc::camera::lerp(
-                    alpha as f32,
-                    owner.previous_body_yaw,
-                    owner.body_yaw,
-                );
+                let body =
+                    crate::hc::camera::lerp(alpha as f32, owner.previous_body_yaw, owner.body_yaw);
                 let angle = f64::from(body * (std::f64::consts::PI / 180.0) as f32);
                 let (sin, cos) = (f64::from(trig::sin(angle)), f64::from(trig::cos(angle)));
                 // The right arm; a crouching owner's eyes are lower.

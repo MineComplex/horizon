@@ -5,11 +5,7 @@
 //! (`positionRider`, `clampRotation`) and how they get out.
 //! Saving them under the boat's `Passengers` lives in `persist.rs`.
 use super::{boats::Boat, lan_mobs::guest_bounds};
-use crate::hc::{
-    camera::wrap_degrees,
-    mobs::{Mob, Species, Who, drops::is_animal, equine, riders},
-    scoreboard::pushable_by,
-};
+use crate::hc::{camera::wrap_degrees, mobs::{Mob, Species, Who, drops::is_animal, equine, riders}, scoreboard::pushable_by};
 use horizon_core::geometry::{Aabb, Vec3};
 
 /// `Entity.boardingCooldown` once a mob leaves its boat.
@@ -425,4 +421,3 @@ impl crate::game::Sim<'_> {
         }
     }
 }
-

@@ -7,10 +7,7 @@
 //! written back, and the slots go to the client after each change, as
 //! `broadcastChanges` does.
 use super::{lan::LanHost, lan_crafting::input};
-use crate::hc::{
-    items::ItemStack,
-    menu::{Kind, Menu},
-};
+use crate::hc::{items::ItemStack, menu::{Kind, Menu}};
 use horizon_protocol::packets::play::{self, Clientbound as C};
 
 /// A guest's open mount menu.

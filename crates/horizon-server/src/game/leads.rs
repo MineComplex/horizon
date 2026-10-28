@@ -2,11 +2,7 @@
 //! (`Entity.interact`'s leash part), fence knots (`LeadItem.useOn` and
 //! `LeashFenceKnotEntity.interact`), loading and saving who holds what,
 //! breaking, and drawing the rope (`LeashFeatureRenderer`) and the knot.
-use crate::hc::{
-    items::ItemStack,
-    mesher::Vertex,
-    mobs::leash::{self, Holder, Pending},
-};
+use crate::hc::{items::ItemStack, mobs::leash::{self, Holder, Pending}};
 use horizon_world::nbt::Tag;
 
 /// `Vec3.yRot(angle)`.
@@ -286,34 +282,5 @@ impl crate::game::Sim<'_> {
             self.swing_arm();
         }
         attached
-    }
-    /// `Player.getRopeHoldPosition` (and `LocalPlayer`'s in first person).
-    fn player_rope_hold(
-        &self,
-        p: &crate::hc::motion::PlayerMotion,
-        alpha: f64,
-    ) -> glam::DVec3 {
-        let pos = glam::DVec3::new(p.position.x, p.position.y, p.position.z);
-        let _ = alpha;
-        if self.camera_type.first_person() {
-            let (yaw, pitch) = (
-                f64::from(self.yaw.to_radians()),
-                f64::from(self.pitch.to_radians()),
-            );
-            let v = glam::DVec3::new(-0.39, -0.6, 0.3);
-            // Vec3.xRot(-pitch) then yRot(-yaw).
-            let (s, c) = ((-pitch).sin(), (-pitch).cos());
-            let v = glam::DVec3::new(v.x, v.y * c + v.z * s, v.z * c - v.y * s);
-            let eye = pos + glam::DVec3::new(0.0, f64::from(p.dimensions.eye_height), 0.0);
-            return rot_y(v, -yaw) + eye;
-        }
-        let yaw = f64::from(self.yaw.to_radians());
-        let crouching = self.keys.contains(&winit::keyboard::KeyCode::ShiftLeft);
-        let v = glam::DVec3::new(
-            -0.22,
-            f64::from(p.dimensions.height) - 1.0,
-            if crouching { -0.2 } else { 0.07 },
-        );
-        pos + rot_y(v, -yaw)
     }
 }

@@ -4,7 +4,7 @@
 //! `thunderHit` (damage and burning, charged creepers, zombified piglins,
 //! witches, mooshroom colours, turtles, burnt items), lightning rods, the sky
 //! flash, the sounds and the branching additive bolt.
-use super::{commands::Target};
+use super::commands::Target;
 use crate::hc::advancements::EntityView;
 use crate::hc::mobs::{Damage, DamageKind, MobEvent, SpawnSetup, Species};
 use horizon_core::{position::BlockPos, random::RandomSource};
@@ -308,7 +308,7 @@ impl crate::game::Sim<'_> {
                 // every server bolt, a skeleton trap's visual one included;
                 // a client's copy of a server bolt (spawn_remote_bolt) only
                 // flashes.
-                if self.remote.is_none() {
+                if true {
                     self.bolt_clear_copper(b.at);
                 }
             }
@@ -529,15 +529,5 @@ impl crate::game::Sim<'_> {
                 || e.stack.item.contains("netherite")
         });
         struck.into_iter().map(|(_, view)| view).collect()
-    }
-    /// Simulation-order render inputs; seeded geometry lives in the renderer.
-    pub(super) fn bolt_instances(&self) -> Vec<crate::hc::gfx::lightning::Bolt> {
-        self.bolts
-            .iter()
-            .map(|b| crate::hc::gfx::lightning::Bolt {
-                at: b.at,
-                seed: b.seed,
-            })
-            .collect()
     }
 }

@@ -1,16 +1,13 @@
 //! Enchanting what mobs spawn with (`Mob.populateDefaultEquipmentEnchantments`
 //! through the `mob_spawn_equipment` provider) and the raid buffs
 //! (`Raider.applyRaidBuffs`).
-use crate::hc::{
-    mobs::{
+use crate::hc::{mobs::{
         Species,
         drops::{self, SLOTS},
         finalize::equip_stack,
         gear::{self, ARMOR, MAIN},
         spawner::equipment_table,
-    },
-    raid::{self, RaiderType},
-};
+    }, raid::{self, RaiderType}};
 use horizon_core::random::RandomSource;
 use horizon_world::{loot::EntityLootParams, nbt::Tag};
 
@@ -58,8 +55,7 @@ impl crate::game::Sim<'_> {
         let Some((name, chances)) = equipment_table(table) else {
             return;
         };
-        let Some(loot) = crate::hc::structure_blocks::loot_data(&self.options.resources)
-        else {
+        let Some(loot) = crate::hc::structure_blocks::loot_data(&self.options.resources) else {
             return;
         };
         let Some(m) = self.mobs.iter().find(|m| m.id == id) else {
@@ -197,4 +193,3 @@ impl crate::game::Sim<'_> {
         }
     }
 }
-

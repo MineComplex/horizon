@@ -1,11 +1,7 @@
 //! `/random` (RandomCommand) and `/teammsg` (TeamMsgCommand).
 use super::{Arg, Context, R, Target, err};
 use crate::game::chat::PLAYER_NAME;
-use crate::hc::{
-    clock::SprintReport,
-    java_text::format_fixed,
-    text::{self, Text},
-};
+use crate::hc::{clock::SprintReport, java_text::format_fixed, text::{self, Text}};
 use horizon_core::random::RandomSource;
 
 fn millis(nanos: u64) -> String {

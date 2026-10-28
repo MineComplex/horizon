@@ -174,9 +174,7 @@ impl crate::game::Sim<'_> {
                         conn,
                         &horizon_protocol::packets::play::Clientbound::SystemChat(
                             horizon_protocol::packets::play::SystemChat {
-                                content: crate::hc::lan::data::component_nbt(
-                                    &line.component(),
-                                ),
+                                content: crate::hc::lan::data::component_nbt(&line.component()),
                                 overlay: false,
                             },
                         ),
@@ -196,34 +194,5 @@ impl crate::game::Sim<'_> {
 }
 
 impl crate::game::Sim<'_> {
-    /// Ask the server this client plays on `as NAME words`: None when the
-    /// client was not given the server's control endpoint.
-    pub(super) fn ask_server(&self, words: &str) -> Option<Result<Value>> {
-        let path = self.options.server_control.as_ref()?;
-        let name = self.remote.as_ref().map(|r| r.profile_name.as_str());
-        let Some(name) = name.filter(|n| !n.is_empty()) else {
-            return Some(Err("not on the server yet".into()));
-        };
-        Some(ask(path, &format!("as {name} {words}")))
-    }
-    /// The world's name on the server this client plays on, once asked.
-    pub(super) fn server_world_name(&self) -> Option<String> {
-        if let Some(name) = self.server_world.get() {
-            return Some(name.clone());
-        }
-        let path = self.options.server_control.as_ref()?;
-        let name = ask(path, "world").ok()?["world"].as_str()?.to_owned();
-        Some(self.server_world.get_or_init(|| name).clone())
-    }
 }
 
-/// One request to a server's control endpoint; its `error` as an error.
-fn ask(path: &std::path::Path, line: &str) -> Result<Value> {
-    let reply = crate::hc::control::request(path, line)
-        .map_err(|e| format!("the server's control endpoint {}: {e}", path.display()))?;
-    let value: Value = serde_json::from_str(reply.trim())?;
-    match value.get("error").and_then(Value::as_str) {
-        Some(error) => Err(error.to_owned().into()),
-        None => Ok(value),
-    }
-}

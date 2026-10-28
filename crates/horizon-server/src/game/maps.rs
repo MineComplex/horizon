@@ -4,13 +4,8 @@
 //! shading, the dithered edge), the player marker, `data/minecraft/maps/<id>.dat` and
 //! `maps/last_id.dat`, the 128x128 texture in an atlas slot, the two-handed
 //! first-person view and maps in item frames.
-use super::{lan::LanHost};
-use crate::hc::{
-    blocks::{Fluid, MAP_COLORS},
-    hud::{MAP_SLOTS, Rect},
-    items::ItemStack,
-    mesher::Vertex,
-};
+use super::lan::LanHost;
+use crate::hc::{blocks::{Fluid, MAP_COLORS}, items::ItemStack};
 use horizon_world::nbt::Tag;
 use std::collections::HashMap;
 
@@ -447,57 +442,6 @@ impl crate::game::Sim<'_> {
             }
         }
         self.maps.data.get_mut(&id)
-    }
-    /// `ClientboundMapItemDataPacket.handle`: the server's colours and
-    /// decorations for a map (one carried or framed on a server).
-    pub(super) fn remote_map_item_data(
-        &mut self,
-        p: &horizon_protocol::packets::play::MapItemData,
-    ) {
-        let decorations = p.decorations.as_ref().map(|list| {
-            let types = self
-                .remote
-                .as_ref()
-                .and_then(|r| r.builtin.get("minecraft:map_decoration_type"));
-            list.iter()
-                .filter_map(|d| {
-                    Some(Decoration {
-                        sprite: decoration_sprite(types?.name(d.kind)?)?,
-                        x: d.x,
-                        y: d.y,
-                        rot: (d.rot & 15) as u8,
-                        holder: None,
-                    })
-                })
-                .collect()
-        });
-        let dimension = self.dimension_id();
-        let map = self
-            .maps
-            .data
-            .entry(p.map_id)
-            .or_insert_with(|| MapData::fresh(0.0, 0.0, p.scale.max(0) as u8, dimension));
-        map.locked = p.locked;
-        if let Some(decorations) = decorations {
-            map.decorations = decorations;
-        }
-        let Some(patch) = &p.patch else {
-            map.dirty = false;
-            return;
-        };
-        for x in 0..patch.width {
-            for y in 0..patch.height {
-                let Some(&color) = patch.colors.get((x + y * patch.width) as usize) else {
-                    continue;
-                };
-                let (px, py) = (patch.start_x + x, patch.start_y + y);
-                if (0..128).contains(&px) && (0..128).contains(&py) {
-                    map.update_color(px, py, color);
-                }
-            }
-        }
-        // The server owns a remote map: only the texture has to change.
-        map.dirty = false;
     }
     fn next_map_id(&mut self) -> i32 {
         let last = *self.maps.last_id.get_or_insert_with(|| {
@@ -1166,4 +1110,3 @@ impl crate::game::Sim<'_> {
         }
     }
 }
-

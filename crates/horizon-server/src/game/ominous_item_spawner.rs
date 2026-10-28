@@ -2,14 +2,8 @@
 //! fight. It floats, growing and turning (`OminousItemSpawnerRenderer`), for
 //! 60 to 120 ticks, then falls as an item or is fired straight down as a
 //! projectile (`spawnItem`). Saved with its chunk's entities (persist.rs).
+use crate::hc::{items::ItemStack, particles::{ParticleOptions, ParticleType}};
 use horizon_assets::item_model::DisplayContext;
-use crate::hc::{
-    block_entity_render::vertex_light,
-    item_render,
-    items::ItemStack,
-    mesher::Vertex,
-    particles::{ParticleOptions, ParticleType},
-};
 use horizon_core::{geometry::Vec3, random::RandomSource};
 
 /// `TICKS_BEFORE_ABOUT_TO_SPAWN_SOUND`.
@@ -85,8 +79,7 @@ impl crate::game::Sim<'_> {
             position: [at.x, at.y, at.z],
             spawn_item_after,
             tick_count: 0,
-            uuid: crate::hc::entity_nbt::uuid(&tag)
-                .unwrap_or_else(crate::hc::save::random_uuid),
+            uuid: crate::hc::entity_nbt::uuid(&tag).unwrap_or_else(crate::hc::save::random_uuid),
             raw: Some(Box::new(tag)),
         });
     }

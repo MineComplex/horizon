@@ -3,20 +3,8 @@
 //! every case (a dispenser or dropper with items, blocks and target entities
 //! around it) through `dispense_from` on a fresh headless world and prints what
 //! changed in the format of `VanillaDispenserOracle`.
-use super::{dispenser::{Slot, body_in_head, mob_set_slot, mob_slot_item}};
-use crate::hc::{
-    Result,
-    chunk::Chunk,
-    command::args::GameMode,
-    containers::BlockEntity,
-    gamerules::Value as RuleValue,
-    item_data::{canon_stack, parse_stack},
-    items::ItemStack,
-    mobs::{Mob, Species},
-    motion::PlayerMotion,
-    projectiles::ProjectileKind,
-    world::World,
-};
+use super::dispenser::{Slot, body_in_head, mob_set_slot, mob_slot_item};
+use crate::hc::{Result, chunk::Chunk, command::args::GameMode, containers::BlockEntity, gamerules::Value as RuleValue, item_data::{canon_stack, parse_stack}, items::ItemStack, mobs::{Mob, Species}, motion::PlayerMotion, projectiles::ProjectileKind, world::World};
 use horizon_core::{
     position::BlockPos,
     random::{LegacyRandom, RandomSource},

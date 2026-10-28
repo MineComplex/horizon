@@ -2,13 +2,8 @@
 //! preview and the six-layer error. The menu itself (`LoomMenu`: slots,
 //! selectable patterns, the pattern buttons, quick moves, the result) runs on
 //! the verified engine, `crate::hc::menu`, through `crate::game::Sim::menu_session`.
-use super::{stations::Kind};
-use crate::hc::{
-    banner::{self, BannerLayer},
-    hud::{HudBatch, Rect, rgba},
-    items::ItemStack,
-    screen_layout::{self, LoomView, ScreenDraw},
-};
+use super::stations::Kind;
+use crate::hc::{banner::{self, BannerLayer}, items::ItemStack, screen_layout::{self, LoomView, ScreenDraw}};
 use std::sync::Arc;
 
 /// Per-menu loom state: `selectablePatterns`, the selected index and the
@@ -87,22 +82,6 @@ impl crate::game::Sim<'_> {
         ];
         self.sounds.play(sound, Some(at), 1.0, 1.0);
     }
-    /// `LoomScreen.mouseClicked` on a pattern button: `clickMenuButton`, and
-    /// the select sound when the menu took it.
-    fn loom_button(&mut self, index: usize) -> bool {
-        let mut taken = false;
-        let flag = &mut taken;
-        self.menu_session(|menu, env, _| {
-            *flag = menu.button(env, index as i32);
-            Some(*flag)
-        });
-        if taken {
-            self.sounds
-                .play("minecraft:ui.loom.select_pattern", None, 1.0, 1.0);
-            self.remote_station_button(index as i32);
-        }
-        taken
-    }
     /// A left click inside the loom's pattern grid or scroller.
     pub(super) fn loom_click(&mut self, local: (f32, f32)) -> bool {
         let Some(start_row) = self
@@ -165,4 +144,3 @@ impl crate::game::Sim<'_> {
         }
     }
 }
-

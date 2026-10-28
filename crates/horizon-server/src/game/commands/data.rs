@@ -1,15 +1,7 @@
 //! `/data` (DataCommands), `/tag` (TagCommand) and `/summon` with NBT: entity,
 //! block entity and storage data accessors over the game state.
 use super::{Arg, Context, R, Target, err};
-use crate::hc::{
-    data_cmd::{self, Op, path_error},
-    entity_nbt,
-    nbt_path::NbtPath,
-    save::{self, random_uuid},
-    scoreboard_cmd::{Holder, Tracker, format_list},
-    snbt,
-    text::Text,
-};
+use crate::hc::{data_cmd::{self, Op, path_error}, entity_nbt, nbt_path::NbtPath, save::{self, random_uuid}, scoreboard_cmd::{Holder, Tracker, format_list}, snbt, text::Text};
 use horizon_world::nbt::{Compound, JavaString, Tag, parse_snbt};
 
 /// A `DataAccessor`.

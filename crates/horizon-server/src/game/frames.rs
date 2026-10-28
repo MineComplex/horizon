@@ -3,8 +3,8 @@
 //! `hurtServer` (take the item out, then break the frame) and
 //! `ItemFrameRenderer` (the frame model and the item at a 45 degree step).
 use super::{Hit, view_vector};
+use crate::hc::{entities::ItemFrame, items::ItemStack};
 use horizon_assets::{bake::bake_model, model::CuboidModel, resolve::ModelLibrary};
-use crate::hc::{entities::ItemFrame, items::ItemStack, mesher::Vertex};
 use horizon_core::{
     geometry::{Aabb, Vec3},
     position::BlockPos,

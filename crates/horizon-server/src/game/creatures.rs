@@ -3,23 +3,13 @@
 //! breeding, conversions, drops), projectiles, player interactions
 //! (feeding, shearing, milking, spawn eggs, throwing) and rendering.
 use super::{Dim, view_vector};
-use horizon_assets::item_model::DisplayContext;
-use crate::hc::{
-    Result,
-    arrows::EntityHit,
-    blocks::Fluid,
-    collisions::SceneCollisions,
-    items::ItemStack,
-    mesher::Vertex,
-    mobs::{
+use crate::hc::{Result, arrows::EntityHit, blocks::Fluid, collisions::SceneCollisions, items::ItemStack, mobs::{
         Damage, DamageKind, Mob, MobEvent, MobWorld, PlayerView, Seen, SpawnSetup, Species, Who,
         ai::{eating_sound, feed_animal},
         farm::Climate,
         spawning::{self, BiomeFacts},
-    },
-    projectiles::{Hit, Projectile, ProjectileKind, ProjectileWorld},
-    text::Text,
-};
+    }, projectiles::{Hit, Projectile, ProjectileKind, ProjectileWorld}, text::Text};
+use horizon_assets::item_model::DisplayContext;
 use horizon_core::{
     geometry::{Aabb, Direction, Vec3, traverse_blocks},
     position::BlockPos,
@@ -125,62 +115,6 @@ impl ProjectileWorld for ProjWorld<'_, '_> {
             .facts
             .get(self.w.world.block(p[0], p[1], p[2]))
             .full_collision
-    }
-}
-/// `FlameFeatureRenderer`: fire quads stacked up a burning entity's box,
-/// turned to the camera around Y, at full block light. `at` is the entity's
-/// feet relative to the camera.
-fn flame_geometry(
-    atlas: &crate::hc::hud::HudAtlas,
-    at: glam::Vec3,
-    width: f32,
-    height: f32,
-    camera_yaw: f32,
-    light: u8,
-    out: &mut Vec<Vertex>,
-) {
-    let (Some(fire0), Some(fire1)) = (
-        atlas.sprites.get("block/fire_0").copied(),
-        atlas.sprites.get("block/fire_1").copied(),
-    ) else {
-        return;
-    };
-    let s = width * 1.4;
-    let mut h = height / s;
-    // Mth.rotationAroundAxis(Y, camera.orientation): the camera's turn about Y.
-    let turn = glam::Mat3::from_rotation_y(std::f32::consts::PI - camera_yaw.to_radians());
-    let lift = 0.3 - (h as i32) as f32 * 0.02;
-    let packed = (u32::from(light >> 4) * 16) | ((15 * 16) << 8);
-    let (mut r, mut yo, mut zo, mut ss) = (0.5f32, 0.0f32, 0.0f32, 0);
-    while h > 0.0 {
-        let tex = if ss % 2 == 0 { fire0 } else { fire1 };
-        let (mut u0, v0, mut u1, v1) = (tex.u0, tex.v0, tex.u1, tex.v1);
-        if ss / 2 % 2 == 0 {
-            std::mem::swap(&mut u0, &mut u1);
-        }
-        for (x, y, uv) in [
-            (-r, -yo, [u1, v1]),
-            (r, -yo, [u0, v1]),
-            (r, 1.4 - yo, [u0, v0]),
-            (-r, 1.4 - yo, [u1, v0]),
-        ] {
-            let p = at + turn * glam::Vec3::new(x, y, zo + lift) * s;
-            out.push(Vertex {
-                normal: [0; 4],
-                pos: p.to_array(),
-                uv,
-                layer: 0,
-                color: 0xFFFF_FFFF,
-                light: packed,
-
-                glint_uv: [0.0, 0.0],
-            });
-        }
-        h -= 0.45;
-        yo -= 0.45;
-        r *= 0.9;
-        zo -= 0.03;
-        ss += 1;
     }
 }
 pub(super) fn seen(m: &Mob, player: Option<[i32; 4]>) -> Seen {
@@ -729,8 +663,7 @@ impl crate::game::Sim<'_> {
         {
             // A set: a scan of every mob for each binding is quadratic, and a
             // server's loaded mobs run into the thousands.
-            let live: crate::hc::fast_hash::FxHashSet<u32> =
-                mobs.iter().map(|m| m.id).collect();
+            let live: crate::hc::fast_hash::FxHashSet<u32> = mobs.iter().map(|m| m.id).collect();
             bindings.retain(|id, _| live.contains(id));
             host.mob_players = bindings;
         }
@@ -785,9 +718,8 @@ impl crate::game::Sim<'_> {
     }
     /// `LivingEntity.makePoofParticles` (entity event 60) about a mob's box.
     pub(super) fn death_poof(&mut self, at: [f64; 3], width: f64, height: f64) {
-        let options = crate::hc::particles::ParticleOptions::simple(
-            crate::hc::particles::ParticleType::Poof,
-        );
+        let options =
+            crate::hc::particles::ParticleOptions::simple(crate::hc::particles::ParticleType::Poof);
         for _ in 0..20 {
             let r = self.particles.level_random();
             let xa = r.next_gaussian() * 0.02;
@@ -934,8 +866,7 @@ impl crate::game::Sim<'_> {
     fn drop_death_loot(&mut self, m: &mut Mob, by_player: bool, consumed: bool, pos: [f64; 3]) {
         use crate::hc::mobs::{DamageKind, Who, drops};
         use horizon_world::loot::{LootDamage, LootEntity};
-        let Some(loot) = crate::hc::structure_blocks::loot_data(&self.options.resources)
-        else {
+        let Some(loot) = crate::hc::structure_blocks::loot_data(&self.options.resources) else {
             return;
         };
         let player = || {
@@ -2305,7 +2236,7 @@ impl crate::game::Sim<'_> {
     /// player is invulnerable to wither damage (creative, spectator). A
     /// server's player gets it from the server.
     pub(super) fn wither_rose_contact(&mut self) {
-        if self.remote.is_some() || self.world_data.difficulty == 0 {
+        if false || self.world_data.difficulty == 0 {
             return;
         }
         self.give_player_effect("minecraft:wither", 40, 0);

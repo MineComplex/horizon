@@ -2,7 +2,7 @@
 //! run on `horizon-server`: their own synthetic levels and entity phases on a
 //! server Game, without a client.
 use super::{Options, PackResources, Resources, UiResources, execution_role::ExecutionRole};
-use crate::hc::{Result, audio::Audio, hud::HudAtlas, settings::Settings};
+use crate::hc::Result;
 use std::sync::Arc;
 
 pub(super) enum ComponentHarness {

@@ -2,21 +2,15 @@
 //! server threads and the play-state hub, feeds it the world's entities each
 //! tick and turns what the guests do into gameplay. A world that is not open
 //! costs one `Option` check per tick.
-use super::{shield::OFFHAND_SLOT};
-use crate::hc::{
-    Result,
-    items::ItemStack,
-    lan::{
+use super::shield::OFFHAND_SLOT;
+use crate::hc::{Result, items::ItemStack, lan::{
         self, Lan, NetConfig,
         chunks::ChunkEncoder,
         data::SyncData,
         entity::{EntityState, States},
         hub::{BodyFlags, HostEvent, HostState, Hub, HubConfig, TickCtx},
         playerdata,
-    },
-    mobs::{Mob, Species, Who, leash::Holder},
-    text::Text,
-};
+    }, mobs::{Mob, Species, Who, leash::Holder}, text::Text};
 use horizon_core::geometry::Vec3;
 use horizon_protocol::{
     entity_data::{Value, serializer},
@@ -944,19 +938,6 @@ pub const HELP: &[&str] = &[
 ];
 
 impl crate::game::Sim<'_> {
-    /// `horizon-ctl lan ...`: a test's client asks its server
-    /// (`--server-control`), which is always open, on its own port.
-    pub(super) fn lan_control(&mut self, words: &[&str]) -> Result<Option<serde_json::Value>> {
-        if words[0] != "lan" {
-            return Ok(None);
-        }
-        match self.ask_server(&words.join(" ")) {
-            Some(reply) => reply.map(Some),
-            None => {
-                Err("lan: this client has no server control endpoint (--server-control)".into())
-            }
-        }
-    }
     /// `horizon-ctl lan status`.
     pub(super) fn lan_status(&self) -> serde_json::Value {
         use serde_json::json;
@@ -1138,11 +1119,7 @@ impl crate::game::Sim<'_> {
         }
     }
     /// `PlayerAdvancements.save` and `ServerStatsCounter.save` of a network player.
-    pub(super) fn save_guest_records(
-        &self,
-        host: &LanHost,
-        guest: &crate::hc::lan::guest::Guest,
-    ) {
+    pub(super) fn save_guest_records(&self, host: &LanHost, guest: &crate::hc::lan::guest::Guest) {
         if !guest.placed || self.adv.tree.list.is_empty() {
             return;
         }
@@ -1895,137 +1872,6 @@ impl crate::game::Sim<'_> {
             .filter(|g| host.hub.here(g))
             .map(|g| (g.chunk(), radius))
             .collect();
-    }
-    /// The guests' models, for the host to see them.
-    fn lan_update_models(&mut self, host: &mut LanHost) {
-        let Some(kind) = self.res.player_type().clone() else {
-            return;
-        };
-        host.models
-            .retain(|conn, _| host.hub.guest(*conn).is_some_and(|g| g.placed));
-        for g in host.hub.guests.iter().filter(|g| g.placed) {
-            let at = Vec3::new(
-                g.position[0],
-                g.position[1] - if g.sneaking { 0.125 } else { 0.0 },
-                g.position[2],
-            );
-            let m = host
-                .models
-                .entry(g.conn)
-                .or_insert_with(|| Mob::new(g.entity_id as u32, kind.clone(), at, g.yaw));
-            let (dx, dy, dz) = (
-                at.x - m.position.x,
-                at.y - m.position.y,
-                at.z - m.position.z,
-            );
-            m.previous = m.position;
-            m.position = at;
-            if dx * dx + dy * dy + dz * dz > 100.0 {
-                m.previous = at;
-            }
-            m.previous_yaw = m.yaw;
-            m.previous_body_yaw = m.body_yaw;
-            m.previous_head_yaw = m.head_yaw;
-            m.previous_head_pitch = m.head_pitch;
-            m.yaw = g.yaw;
-            m.head_yaw = g.head_yaw;
-            m.head_pitch = g.pitch;
-            let mut target = m.body_yaw;
-            let wrap = |a: f32| (a + 180.0).rem_euclid(360.0) - 180.0;
-            if dx * dx + dz * dz > 0.002_500_000_2 {
-                // LivingEntity.tick: walking backwards the body faces away
-                // from the walk direction, not along it.
-                let walk = (dz.atan2(dx) as f32).to_degrees() - 90.0;
-                let facing = (wrap(g.yaw) - walk).abs();
-                target = if 95.0 < facing && facing < 265.0 {
-                    walk - 180.0
-                } else {
-                    walk
-                };
-            }
-            m.body_yaw += wrap(target - m.body_yaw) * 0.3;
-            let diff = wrap(g.yaw - m.body_yaw);
-            if diff.abs() > 50.0 {
-                m.body_yaw += diff - diff.signum() * 50.0;
-            }
-            let dist = (dx * dx + dz * dz).sqrt() as f32;
-            m.previous_limb_speed = m.limb_speed;
-            m.limb_speed += ((dist * 4.0).min(1.0) - m.limb_speed) * 0.4;
-            m.limb_position += m.limb_speed;
-            m.age = m.age.wrapping_add(1);
-            m.extra.main_hand = g
-                .inventory
-                .get(g.selected)
-                .and_then(|s| s.as_ref())
-                .map(|s| s.item.clone());
-            m.extra.off_hand = g.offhand.as_ref().map(|s| s.item.clone());
-            [m.extra.head, m.extra.chest, m.extra.legs, m.extra.feet] = g
-                .armor
-                .each_ref()
-                .map(|s| s.as_ref().map(|s| s.item.clone()));
-            m.extra.crouching = g.sneaking;
-            m.extra.avatar_pose = g.pose();
-            m.extra.sprinting = g.sprinting;
-            // Entity.DATA_POSE and the shared and living flags the others
-            // get (hub::guest_body): gliding, swimming, Riptide's spin.
-            let body = lan::hub::guest_body(g);
-            m.extra.fall_flying = body.gliding;
-            m.extra.synced_pose = if body.swimming || body.crawling { 3 } else { 0 };
-            m.extra.auto_spin_attack = body.spin_attack;
-            m.velocity = g
-                .motion
-                .as_ref()
-                .map_or(Vec3::new(dx, dy, dz), |motion| motion.velocity);
-            m.tick_avatar_pose(
-                g.motion
-                    .as_ref()
-                    .is_some_and(|motion| motion.fluids.was_touching_water),
-            );
-            // CrossbowItem.isCharged: the held crossbow's projectiles.
-            m.extra.charged = g
-                .inventory
-                .get(g.selected)
-                .and_then(|s| s.as_ref())
-                .is_some_and(|s| s.data().is_some_and(|d| !d.charged.is_empty()));
-            // ClientInformation.mainHand (HumanoidArm: 0 left, 1 right).
-            m.extra.main_hand_left = g.info.main_hand == 0;
-            // LivingEntity.DATA_EFFECT_PARTICLES: the swirls of its visible effects.
-            let visible = || g.effects.list.iter().filter(|e| e.visible);
-            m.extra.effect_particles = visible()
-                .filter_map(|e| super::client_ambient::effect_particle(e.id, e.ambient))
-                .collect();
-            m.extra.effect_ambient = visible().all(|e| e.ambient);
-            // Entity.isInvisible: the invisibility effect hides the body (the
-            // model pass, the name tag rules and `trader::is_invisible` read it).
-            m.extra.effects.retain(|e| e.0 != "minecraft:invisibility");
-            if let Some(e) = g.effects.get("invisibility") {
-                m.extra
-                    .effects
-                    .push(("minecraft:invisibility", e.duration, e.amplifier));
-            }
-            // Lying in its bed (LivingEntity.getBedOrientation).
-            m.extra.ints[1] = g.bed.map_or(0, |b| self.bed_facing(b));
-            // LivingEntity.updateSwingTime: the arm swing lan_swings started.
-            m.anim.attack_anim_o = m.anim.attack_anim;
-            crate::hc::mobs::ai::tick_swing(m);
-            // LivingEntity.onSyncedDataUpdated(DATA_LIVING_ENTITY_FLAGS): the
-            // item in use and its hand (the arm poses of a bow, a shield...).
-            let using = host.play.get(&g.conn).and_then(|p| p.using());
-            m.extra.using_item = using.map_or(0, |(_, ticks)| ticks as i32 + 1);
-            m.extra.using_off_hand = using.is_some_and(|(slot, _)| slot == OFFHAND_SLOT);
-            // AvatarRenderer.getArmPose: the used item's BLOCK animation (an
-            // item with `blocks_attacks`) raises the arm.
-            m.extra.blocking = using
-                .and_then(|(slot, _)| {
-                    if slot == OFFHAND_SLOT {
-                        m.extra.off_hand.as_ref()
-                    } else {
-                        m.extra.main_hand.as_ref()
-                    }
-                })
-                .and_then(|i| self.res.items().get(i))
-                .is_some_and(|i| i.blocks_attacks.is_some());
-        }
     }
     /// The bed at `head` as a sleeping model lies in it (`ints[1]`,
     /// `villager::sleep_pose`): its `facing`.

@@ -1,6 +1,8 @@
 //! The playable game loop: streaming world, player simulation at 20 ticks/s,
 //! block interaction, inventory and HUD.
-mod remnants;
+mod shared;
+mod block_entity_anims;
+mod trading;
 mod advancements;
 mod allays;
 mod armor_stands;
@@ -31,7 +33,6 @@ mod composter;
 mod consume;
 mod copper_golems;
 mod creaking;
-mod creative_hotbar;
 mod creatures;
 mod crossbow;
 pub(crate) mod cushions;
@@ -94,7 +95,6 @@ mod natural_spawning;
 mod nautili;
 mod nether_portal;
 mod ominous_item_spawner;
-mod packs;
 mod paintings;
 mod pandas;
 mod passengers;
@@ -110,6 +110,9 @@ mod potions;
 mod powder_snow;
 mod pumpkin;
 mod raids;
+mod presentation;
+mod mount_menu;
+mod stations;
 mod respawn_anchor;
 mod saving;
 mod scoreboard;
@@ -124,9 +127,7 @@ mod sign_edit;
 mod sniffers;
 mod spawner;
 mod spear;
-mod spectator;
 mod spill;
-mod stations;
 mod stats;
 mod storage;
 mod structures;
@@ -144,44 +145,7 @@ mod wither;
 mod world_loading;
 mod zombie_reinforcements;
 mod zombie_villagers;
-use crate::hc::{
-    Result,
-    assets::Assets,
-    audio::Audio,
-    biome::Biomes,
-    blocks::{BlockFacts, Fluid},
-    chunk::{HEIGHT, MIN_Y},
-    clock::FixedStep,
-    collisions,
-    containers::{BlockEntity, Providers},
-    crafting::Recipes,
-    creative::{Creative, Names},
-    entities::{Experience, ExperienceOrb, ItemEntity},
-    environment::Environment,
-    first_person::{Hand, SwingAnimation},
-    furnace::FurnaceCooking,
-    gfx::{Frame, Renderer},
-    hud::{HudAtlas, HudBatch, rgba},
-    hud_layout, hud_overlays,
-    items::{ItemStack, Items},
-    keymapping::KeyAction,
-    light::LightTables,
-    mesher::{MeshTables, Vertex},
-    mobs::{Mob, MobType, MobTypes},
-    models,
-    motion::{MotionEvent, MotionResources, PlayerMotion},
-    mouse::{LookOptions, MouseLook, Rotation},
-    particles::Particle,
-    render_assets::RenderAssets,
-    save::{Level, Persistent, SaveDir},
-    settings::Settings,
-    sprint::Keys,
-    streaming::{Streaming, WorkerContext},
-    testgen::TestTerrain,
-    title::{Action, Title},
-    vanillagen::VanillaTerrain,
-    world::World,
-};
+use crate::hc::{Result, assets::Assets, biome::Biomes, blocks::{BlockFacts, Fluid}, chunk::{HEIGHT, MIN_Y}, clock::FixedStep, collisions, containers::{BlockEntity, Providers}, crafting::Recipes, entities::{Experience, ExperienceOrb, ItemEntity}, environment::Environment, first_person::{Hand, SwingAnimation}, furnace::FurnaceCooking, items::{ItemStack, Items}, light::LightTables, mobs::{Mob, MobType, MobTypes}, motion::{MotionEvent, MotionResources, PlayerMotion}, mouse::{LookOptions, MouseLook, Rotation}, particles::Particle, save::{Level, Persistent, SaveDir}, sprint::Keys, streaming::{Streaming, WorkerContext}, testgen::TestTerrain, vanillagen::VanillaTerrain, world::World};
 use horizon_core::{
     biome::{BiomeZoom, obfuscate_seed},
     geometry::{Aabb, Direction},
@@ -306,7 +270,6 @@ fn refusal(program: Program, args: &[String], fixture: impl Fn(&str) -> bool) ->
         .then(|| "horizon-server runs dedicated (--dedicated)".to_owned()),
     }
 }
-
 
 impl Options {
     /// The name to join servers with: the one given, else the offline name kept
@@ -443,9 +406,9 @@ impl Options {
                 .and_then(crate::hc::auth::parse_uuid);
             match uuid {
                 Some(uuid) if crate::hc::minecomplex::is_player_name(name) => {
-                    crate::hc::auth::set_current(
-                        crate::hc::auth::AuthSession::minecomplex(name, uuid, &token),
-                    );
+                    crate::hc::auth::set_current(crate::hc::auth::AuthSession::minecomplex(
+                        name, uuid, &token,
+                    ));
                 }
                 _ => eprintln!(
                     "Horizon: not signed in: the launcher passed no valid --username and --uuid"
@@ -1081,8 +1044,7 @@ impl LevelAccess for GameLevel<'_> {
         for (k, v) in [("x", pos.x), ("y", pos.y), ("z", pos.z)] {
             nbt.insert(k.into(), Tag::Int(v));
         }
-        if let Some((key, entity)) = crate::hc::save::decode_block_entity(&Tag::Compound(nbt))
-        {
+        if let Some((key, entity)) = crate::hc::save::decode_block_entity(&Tag::Compound(nbt)) {
             self.world.block_entities.insert(key, entity);
         }
     }
@@ -1139,20 +1101,11 @@ struct WorldRest {
     mob_types: HashMap<String, Arc<MobType>>,
     mob_data: crate::hc::mobs::MobData,
     providers: Providers,
-    block_entity_render: crate::hc::block_entity_render::BlockEntityRenderer,
     animate: crate::hc::animate_tick::AnimateTables,
-    fog: crate::hc::fog::FogTables,
-    music: crate::hc::music::MusicTables,
-    ambient: crate::hc::ambience::AmbientTables,
     nether_environment: Environment,
     end_environment: Environment,
     behaviours: Behaviours,
-    player_arm: Option<crate::hc::mobs::Part>,
-    /// The slim model's right arm (3 pixels wide).
-    player_arm_slim: Option<crate::hc::mobs::Part>,
     player_type: Option<Arc<crate::hc::mobs::MobType>>,
-    /// `SpinAttackEffectModel` (Riptide's spinning boxes).
-    spin_attack: Option<crate::hc::mobs::Part>,
     stations: crate::hc::stations::StationData,
 }
 
@@ -1189,20 +1142,8 @@ impl Resources {
     fn providers(&self) -> &Providers {
         &self.rest().providers
     }
-    fn block_entity_render(&self) -> &crate::hc::block_entity_render::BlockEntityRenderer {
-        &self.rest().block_entity_render
-    }
     fn animate(&self) -> &crate::hc::animate_tick::AnimateTables {
         &self.rest().animate
-    }
-    fn fog(&self) -> &crate::hc::fog::FogTables {
-        &self.rest().fog
-    }
-    fn music(&self) -> &crate::hc::music::MusicTables {
-        &self.rest().music
-    }
-    fn ambient(&self) -> &crate::hc::ambience::AmbientTables {
-        &self.rest().ambient
     }
     fn nether_environment(&self) -> &Environment {
         &self.rest().nether_environment
@@ -1222,81 +1163,30 @@ impl Resources {
     fn threads(&self) -> usize {
         self.core.threads
     }
-    fn player_arm(&self, slim: bool) -> &Option<crate::hc::mobs::Part> {
-        if slim {
-            &self.rest().player_arm_slim
-        } else {
-            &self.rest().player_arm
-        }
-    }
     fn player_type(&self) -> &Option<Arc<crate::hc::mobs::MobType>> {
         &self.rest().player_type
-    }
-    fn spin_attack(&self) -> &Option<crate::hc::mobs::Part> {
-        &self.rest().spin_attack
     }
     fn stations(&self) -> &crate::hc::stations::StationData {
         &self.rest().stations
     }
 }
 
-/// What a resource pack reload replaces (`Minecraft.reloadResourcePacks`):
-/// block models and sprites with their meshing tables, item models,
-/// translations and the textures read on the CPU. Each game holds its own;
-/// cloning shares the loaded data.
+/// What the server reads of the resources: the block registry and models'
+/// facts (`Assets`) and the translated names. Cloning shares them.
 #[derive(Clone)]
 pub struct PackResources {
     assets: Arc<Assets>,
-    render: Arc<RenderAssets>,
-    context: Arc<WorkerContext>,
-    layer_names: Arc<HashMap<u32, String>>,
-    /// Item definitions, baked item models and special renderers.
-    item_renderer: Arc<crate::hc::item_render::ItemRenderer>,
     names: Arc<Names>,
-    /// clouds.png: (width, height, filled cells).
-    clouds: Arc<(u32, u32, Vec<bool>)>,
-    /// misc/forcefield.png: (width, height, RGBA) for the world border wall.
-    forcefield: Arc<(u32, u32, Vec<u8>)>,
+    /// The streamer's (meshless) context: the light tables.
+    context: Arc<crate::hc::streaming::NoMesh>,
 }
 impl PackResources {
-    /// Everything a pack overlay at `root` provides, over `assets` and `render`
-    /// loaded from it.
-    fn load(
-        root: &std::path::Path,
-        assets: Arc<Assets>,
-        render: Arc<RenderAssets>,
-        facts: &BlockFacts,
-        biomes: Arc<Biomes>,
-        light: Arc<LightTables>,
-    ) -> Result<Self> {
-        let visibility = models::load_visibility(root, assets.registry)?;
-        let tables = Arc::new(MeshTables::new(&assets, &render, facts, visibility)?);
-        let item_renderer = crate::hc::item_render::ItemRenderer::load_with_library(
-            root,
-            render.model_library.clone(),
-        )?;
-        Ok(Self {
-            layer_names: Arc::new(
-                render
-                    .sprite_layers
-                    .iter()
-                    .map(|(name, layer)| (*layer, name.trim_start_matches("minecraft:").to_owned()))
-                    .collect(),
-            ),
-            context: Arc::new(WorkerContext {
-                assets: assets.clone(),
-                render: render.clone(),
-                tables,
-                biomes,
-                light,
-            }),
+    fn load(root: &std::path::Path, assets: Arc<Assets>, light: Arc<LightTables>) -> Self {
+        Self {
             assets,
-            render,
-            item_renderer: Arc::new(item_renderer),
             names: Arc::new(Names::load(root)),
-            clouds: Arc::new(load_clouds(root)),
-            forcefield: Arc::new(load_forcefield(root)),
-        })
+            context: Arc::new(crate::hc::streaming::NoMesh { light }),
+        }
     }
 }
 /// Ctrl+Q reads the physical keyboard, independently of sprint key mappings.
@@ -1310,26 +1200,14 @@ fn drop_whole_stack(physical_keys: &HashSet<KeyCode>) -> bool {
     physical_keys.contains(&KeyCode::ControlLeft) || physical_keys.contains(&KeyCode::ControlRight)
 }
 
-fn select_creative_tab(
-    creative: &mut Creative,
-    clicks: &mut crate::hc::container_screen::Clicks,
-    tab: usize,
-) {
-    creative.select(tab);
-    *clicks = Default::default();
-    // Tabs are outside the panel; their release must not drop a carried stack.
-    clicks.skip_release();
-}
 
 /// Everything of `Game` but the window (`Frontend`): what a server runs.
 struct Sim<'a> {
+    /// Block entities' ticking fields (lids, bells, shulker boxes, gateways, conduits).
+    be_anims: crate::hc::block_entity_anim::BlockEntityAnims,
     /// Shared with an integrated server; `collision` and `motion` borrow from it.
     res: Arc<Resources>,
-    rest_loader: Option<WorldRestLoader>,
-    pending_entry: Option<PendingWorldEntry>,
     pending_pack_reload: bool,
-    /// A server's resource packs (game/server_packs.rs).
-    server_packs: server_packs::ServerPackState,
     /// The link a chat click asks to open (`ConfirmLinkScreen`).
     link_prompt: Option<String>,
     dialogs: dialogs::DialogState,
@@ -1359,8 +1237,6 @@ struct Sim<'a> {
     inv_drag: Option<(i32, Vec<usize>)>,
     /// `AbstractContainerScreen`'s quick craft and skip-release state.
     inv_clicks: crate::hc::container_screen::Clicks,
-    /// The Mouse Tweaks extra's drag and wheel (`tweaks`).
-    tweaks: tweaks::Tweaks,
     /// The last inventory click, for the double click that gathers a stack.
     last_inv_click: Option<(std::time::Instant, usize, bool)>,
     /// `lastQuickMoved`: what the last Shift click moved, which a Shift
@@ -1417,8 +1293,6 @@ struct Sim<'a> {
     /// The sounds the game decided to play (seeds, the guests' capture, the control socket's
     /// counts); `flush_sounds` hands them to `audio`.
     sounds: crate::hc::sound_out::SoundOut,
-    /// Vibrations the game asked of the pad, for the window to play (`flush_to_window`).
-    rumbles: Vec<crate::hc::gamepad::Rumble>,
     /// `LocalPlayer.itemUsed` for the first-person hand heights, applied by the window
     /// before it ticks them.
     hands_used: Vec<crate::hc::first_person::Hand>,
@@ -1464,8 +1338,6 @@ struct Sim<'a> {
     last_hurt_by_player: HashMap<u32, Option<u32>>,
     /// Mobs whose death (`LivingEntity.die`) has been handled.
     died: HashSet<u32>,
-    /// Client-ticked block-entity animation state (`game/block_entity_anims.rs`).
-    be_anims: crate::hc::block_entity_anim::BlockEntityAnims,
     /// Item being used (eaten): hotbar slot and ticks used.
     using: Option<(usize, u32)>,
     /// Armor slots: head, chest, legs, feet.
@@ -1486,7 +1358,6 @@ struct Sim<'a> {
     cooldowns: crate::hc::cooldowns::Cooldowns,
     /// The source of a command run through /execute (the player otherwise).
     command_source: Option<commands::execute::Source>,
-    titles: titles::Titles,
     /// This game's world is autosaving this tick (`MinecraftServer.isSaving`).
     autosaving: bool,
     applied_modifiers: Vec<(String, String)>,
@@ -1543,8 +1414,6 @@ struct Sim<'a> {
     respawn_travel: Option<respawn_anchor::RespawnConfig>,
     /// The next enter_dimension call comes from an End portal.
     end_portal_travel: bool,
-    /// The open WinScreen (game/win.rs).
-    win: Option<win::Win>,
     end: end::EndState,
     block_ticks: Ticks,
     tick_chunks: crate::hc::tick_chunk_membership::TickChunkMembership,
@@ -1615,8 +1484,6 @@ struct Sim<'a> {
     /// Item entities spawned and block entities removed while the block
     /// behaviour ran (spilled contents, popped resources).
     spill: spill::Spill,
-    /// The recipe book of the open screen (game/recipe_book.rs).
-    recipe_ui: recipe_book::RecipeUi,
     /// The horse inventory (game/mount_menu.rs).
     mount_menu: mount_menu::MountMenu,
     /// The player's fishing hook.
@@ -1638,7 +1505,6 @@ struct Sim<'a> {
     hoppers: HashMap<(i32, i32, i32), machines::HopperState>,
     /// Where item entities are, while the block entities tick (hoppers).
     item_columns: Option<machines::ItemColumns>,
-    creative_screen: Creative,
     /// The Agent Control setting the socket was last opened or closed for (`agent_settings`).
     agent_control_on: bool,
     /// When an agent's last command came.
@@ -1646,21 +1512,11 @@ struct Sim<'a> {
     /// Control replies waiting for a rendered frame or a benchmark deadline.
     pending_screenshot: Option<std::sync::mpsc::Sender<String>>,
     pending_bench: Option<(Instant, std::sync::mpsc::Sender<String>)>,
-    /// Horizon's extras (minimap, auto-reconnect; mods' counters): `game/extras.rs`.
-    extras: extras::ExtrasState,
-    /// A scripted flight from the control socket (`fly`).
-    flight: Option<control::Flight>,
     /// The running agent action from the control socket (game/agent.rs).
     agent: agent::Agent,
-    /// Widget commands waiting for the frame after a click (game/ui_control.rs).
-    ui_wait: ui_control::UiWait,
-    /// What happened, for `events` and `wait-for` (game/events.rs).
-    events: events::Events,
     /// The overworld's last `sky_darken` and its inputs (time, rain, thunder).
     sky_darken_memo: std::cell::Cell<Option<((i64, u32, u32), i32)>>,
     persist: persist::EntityMemory,
-    /// Connected to a server: the world comes from the network (game/remote.rs).
-    remote: Option<remote::Remote>,
     /// This world is open to the network (game/lan.rs).
     lan: Option<lan::LanHost>,
     /// The server's world name (`--server-control`), once asked.
@@ -1758,11 +1614,6 @@ struct Sim<'a> {
     border: crate::hc::worldborder::WorldBorder,
     adv: advancements::AdvState,
     restore_player_state: bool,
-    stats_ui: stats_screen::StatsUi,
-    adv_ui: advancements_screen::AdvUi,
-    /// The Server Links screens' state (game/server_links.rs).
-    links_ui: server_links::LinksUi,
-    camera_type: perspective::CameraType,
     fangs: fangs::FangState,
     /// The local player as a model (third person, the inventory).
     player_model: Option<Mob>,
@@ -1858,66 +1709,6 @@ impl crate::game::Sim<'_> {
     }
     fn reach(&self) -> f64 {
         if self.creative { 5.0 } else { 4.5 }
-    }
-    /// Outline shapes that depend on more than the block state, as one box
-    /// in block space: `LightBlock` and `ScaffoldingBlock.getShape` are a full
-    /// block while the main hand holds the block's own item
-    /// (`CollisionContext.isHoldingItem`), and `ShulkerBoxBlock.getShape`
-    /// grows with the lid (`ShulkerBoxBlockEntity.getBoundingBox`).
-    fn context_outline(&self, pos: [i32; 3], state: BlockStateId) -> Option<[f64; 6]> {
-        let name = &self.res.facts().get(state).name;
-        if matches!(&**name, "minecraft:light" | "minecraft:scaffolding") {
-            return self
-                .held()
-                .is_some_and(|s| *s.item == **name)
-                .then_some([0.0, 0.0, 0.0, 1.0, 1.0, 1.0]);
-        }
-        if !name.ends_with("shulker_box") {
-            return None;
-        }
-        let progress = self.be_anims.shulkers.get(&pos).map_or(0.0, |s| s.progress);
-        let facing = self
-            .pack
-            .assets
-            .registry
-            .state(state)
-            .and_then(|s| s.properties.get("facing").cloned());
-        let d = facing_offset(facing.as_deref().unwrap_or("up"));
-        let mut b = [0.0, 0.0, 0.0, 1.0, 1.0, 1.0];
-        for a in 0..3 {
-            match d[a] {
-                1 => b[a + 3] += 0.5 * f64::from(progress),
-                -1 => b[a] -= 0.5 * f64::from(progress),
-                _ => {}
-            }
-        }
-        Some(b)
-    }
-    /// A block's outline boxes in world space (`getShape` plus the random offset).
-    fn outline_boxes(&self, pos: [i32; 3]) -> Vec<[f64; 6]> {
-        let state = self.world.block(pos[0], pos[1], pos[2]);
-        if let Some(b) = self.context_outline(pos, state) {
-            return vec![std::array::from_fn(|i| f64::from(pos[i % 3]) + b[i])];
-        }
-        let f = self.res.facts().get(state);
-        let o = if f.outline_offset {
-            self.pack
-                .context
-                .tables
-                .offset(state, pos[0], pos[2])
-                .unwrap_or([0.0; 3])
-        } else {
-            [0.0; 3]
-        };
-        let base = [
-            f64::from(pos[0]) + o[0],
-            f64::from(pos[1]) + o[1],
-            f64::from(pos[2]) + o[2],
-        ];
-        f.outline
-            .iter()
-            .map(|b| std::array::from_fn(|i| base[i % 3] + b[i]))
-            .collect()
     }
     /// Voxel traversal against non-air, non-fluid blocks, clipped against
     /// each block's outline shape (`BlockGetter.clip` with `ClipContext.Block.OUTLINE`).
@@ -2176,33 +1967,6 @@ impl crate::game::Sim<'_> {
         }
         Some(stack)
     }
-    /// The block's first up face (or any face) and its fixed tint, for block
-    /// models drawn as entities (falling blocks, carried blocks).
-    fn block_face_sprite(&self, state: BlockStateId) -> Option<(String, u32)> {
-        let pack = &self.pack;
-        let models = pack
-            .render
-            .model_catalog
-            .collect(state, horizon_core::position::BlockPos::new(0, 0, 0))
-            .ok()?;
-        let face = models
-            .iter()
-            .flat_map(|(_, m)| m.faces.iter())
-            .find(|f| f.quad.facing == horizon_assets::model::Direction::Up)
-            .or_else(|| models.iter().flat_map(|(_, m)| m.faces.iter()).next())?;
-        let name = pack.layer_names.get(&face.layer)?.clone();
-        let tint = if face.quad.tint_index >= 0 {
-            let n = &self.res.facts().get(state).name;
-            if n.contains("leaves") || n.contains("vine") {
-                0x48B518
-            } else {
-                0x91BD59
-            }
-        } else {
-            0xFFFFFF
-        };
-        Some((name, tint))
-    }
     /// `TerrainParticle` at `pos`: the model's particle sprite and tint source
     /// 0's `colorAsTerrainParticle` (white when the block has none).
     /// `HoneyBlock.showSlideParticles` (entity event 53): five honey block
@@ -2231,32 +1995,6 @@ impl crate::game::Sim<'_> {
                 );
             }
         }
-    }
-    fn particle_sprite(&self, state: BlockStateId, pos: [i32; 3]) -> Option<(String, u32)> {
-        let sprite = crate::game::Sim::block_particle_sprite(&self.pack, state)?;
-        let chunks = &self.world.chunks;
-        let (cx, cz) = (pos[0] >> 4, pos[2] >> 4);
-        let region: [[Option<&crate::hc::chunk::Chunk>; 3]; 3] = std::array::from_fn(|dz| {
-            std::array::from_fn(|dx| {
-                chunks
-                    .get(&(cx + dx as i32 - 1, cz + dz as i32 - 1))
-                    .map(|c| &**c)
-            })
-        });
-        let tint = self
-            .pack
-            .context
-            .tables
-            .terrain_particle_tint(
-                state,
-                pos,
-                &region,
-                self.res.biomes(),
-                self.streaming.biome_zoom,
-                self.streaming.biome_blend,
-            )
-            .unwrap_or(0xFFFFFF);
-        Some((sprite, tint))
     }
     fn particle_shape(&self, pos: [i32; 3], state: BlockStateId) -> Vec<[f64; 6]> {
         let f = self.res.facts().get(state);
@@ -2393,11 +2131,9 @@ impl crate::game::Sim<'_> {
             return;
         }
         let spectator = self.spectator();
-        let Some(thrown) = crate::hc::items::take_held_drop(
-            &mut self.inventory[self.selected],
-            all,
-            spectator,
-        ) else {
+        let Some(thrown) =
+            crate::hc::items::take_held_drop(&mut self.inventory[self.selected], all, spectator)
+        else {
             return;
         };
         self.player_drop(thrown);
@@ -2455,7 +2191,7 @@ impl crate::game::Sim<'_> {
         let max_stack =
             |stack: &ItemStack| catalog.get(&stack.item).map_or(64, |i| i.max_stack).max(1);
         // A LAN or server guest only shows the host's items.
-        let merging = self.remote.is_none();
+        let merging = true;
         for i in 0..items.len() {
             if removed[i] {
                 continue;
@@ -2741,11 +2477,7 @@ impl crate::game::Sim<'_> {
             recipes: self.res.recipes(),
             // A client rolls no loot (LootTable.getRandomItems needs a
             // ServerLevel): it doesn't load the tables on its game thread.
-            loot: if self.remote.is_some() {
-                None
-            } else {
-                crate::hc::structure_blocks::loot_data(&self.options.resources)
-            },
+            loot: { crate::hc::structure_blocks::loot_data(&self.options.resources) },
             registry: self.pack.assets.registry,
             rules,
             difficulty: i32::from(self.world_data.difficulty),
@@ -2756,7 +2488,7 @@ impl crate::game::Sim<'_> {
             tickets: self.tickets.levels(),
             random_tick_sections: &mut self.random_tick_sections,
             lid_openers: &self.lid_openers,
-            client_side: self.remote.is_some(),
+            client_side: false,
             change_events,
         };
         let result = f(self.res.behaviours(), &mut level, &mut self.block_ticks);
@@ -2940,14 +2672,10 @@ impl crate::game::Sim<'_> {
             .iter()
             .filter(|p| p.arrow.is_some())
         {
-            inside.extend(crate::hc::arrows::blocks_inside(
-                p.previous, p.position,
-            ));
+            inside.extend(crate::hc::arrows::blocks_inside(p.previous, p.position));
         }
         for t in &self.tridents {
-            inside.extend(crate::hc::arrows::blocks_inside(
-                t.position, t.position,
-            ));
+            inside.extend(crate::hc::arrows::blocks_inside(t.position, t.position));
         }
         // BigDripleafBlock.entityInside also asks whether the player stands on
         // the ground and how high its feet are: the leaves its box's feet
@@ -3304,10 +3032,8 @@ impl crate::game::Sim<'_> {
                     }
                     // LevelEventHandler 1501 and 1502 draw their smoke after the sound.
                     match id {
-                        1501 => self.puffs_above_block(
-                            pos,
-                            crate::hc::particles::ParticleType::LargeSmoke,
-                        ),
+                        1501 => self
+                            .puffs_above_block(pos, crate::hc::particles::ParticleType::LargeSmoke),
                         1502 => self.torch_burnout_smoke(pos),
                         _ => {}
                     }
@@ -3859,8 +3585,7 @@ impl crate::game::Sim<'_> {
     }
     /// ServerPlayerGameMode.destroyBlock once the block may go.
     fn destroy_block_as_player(&mut self, pos: [i32; 3]) -> Result<()> {
-        self.rumbles
-            .push(crate::hc::gamepad::Rumble::BlockBroken);
+        self.rumbles.push(crate::hc::gamepad::Rumble::BlockBroken);
         // ServerPlayerGameMode.destroyBlock.
         let state = self.world.block(pos[0], pos[1], pos[2]);
         let broken = state;
@@ -4233,13 +3958,10 @@ impl crate::game::Sim<'_> {
         };
         // ServerPlayerGameMode.useItem and useItemOn: an item on cooldown is
         // not used (PASS, so the other hand may still act).
-        if self
-            .cooldowns
-            .is_on_cooldown(&crate::hc::cooldowns::group(
-                &stack,
-                info.use_cooldown.as_ref(),
-            ))
-        {
+        if self.cooldowns.is_on_cooldown(&crate::hc::cooldowns::group(
+            &stack,
+            info.use_cooldown.as_ref(),
+        )) {
             return Ok(false);
         }
         if block_hit.is_some() && (self.use_bone_meal(&stack)? || self.ignite_tnt(&stack)?) {
@@ -4495,13 +4217,11 @@ impl crate::game::Sim<'_> {
                                     self.apply_effect_action(a);
                                 }
                             } else {
-                                self.add_player_effect(
-                                    crate::hc::effects::EffectInstance::new(
-                                        def.id,
-                                        eff.duration,
-                                        eff.amplifier,
-                                    ),
-                                );
+                                self.add_player_effect(crate::hc::effects::EffectInstance::new(
+                                    def.id,
+                                    eff.duration,
+                                    eff.amplifier,
+                                ));
                             }
                         }
                     }
@@ -4960,63 +4680,6 @@ impl crate::game::Sim<'_> {
         self.publish_boss_bars();
         Ok(())
     }
-    /// `MouseHandler.grabMouse` / `releaseMouse`. Both put the pointer at
-    /// the window's centre, so a screen opened from gameplay (inventory,
-    /// chest, pause, chat, sign, book, death) starts with the cursor in the
-    /// middle instead of wherever the system last left it. Releasing when
-    /// already released does nothing, so moving from screen to screen keeps
-    /// the cursor where it is. Like GLFW's `glfwSetCursorPos`, nothing warps
-    /// while the window is unfocused (losing focus releases the pointer).
-    fn capture(&mut self, capture: bool) {
-        // A guest's action (`as_guest`) opens and closes screens on the
-        // guest's own client: the window's pointer stays the host's (#687).
-        if self.lan_acting.is_some() {
-            return;
-        }
-        // MouseHandler.grabMouse never captures an inactive window, and vanilla
-        // grabs only on `setScreen(null)`: the pack prompt and server dialogs
-        // are screens over the world that keep the pointer.
-        if capture && (!self.focused || self.server_packs.prompt.is_some() || self.dialog_open()) {
-            return;
-        }
-        // The container screen's press state belongs to the screen: a screen
-        // that takes the pointer over starts with its own state, as
-        // `AbstractContainerScreen` does, so a press whose release never
-        // arrived (the pointer left the window) cannot wedge the next
-        // screen's quick move and clicks.
-        self.reset_inventory_clicks();
-        if !capture {
-            self.stop_mining();
-        }
-        // The real pointer takes over from an agent's.
-        self.agent_pointer = false;
-        self.pointer_grab = Some(capture);
-    }
-    /// The quick craft drag in progress, as the menu engine previews it.
-    fn drag_view(&mut self) -> Option<DragView> {
-        let (ty, slots) = self.inv_drag.clone()?;
-        let mut view = None;
-        self.menu_session(|menu, env, to_menu| {
-            let menu_slots: Option<Vec<usize>> = slots.iter().map(|&g| to_menu(g)).collect();
-            let shown = match menu.quick_craft_preview(env, ty, &menu_slots?) {
-                Some((shown, left)) => {
-                    let slots = slots.iter().copied().zip(shown).collect();
-                    DragView {
-                        slots,
-                        left: Some(left),
-                    }
-                }
-                // A single dragged slot is hidden.
-                None => DragView {
-                    slots: slots.iter().map(|&g| (g, None)).collect(),
-                    left: None,
-                },
-            };
-            view = Some(shown);
-            Some(false)
-        });
-        view
-    }
     /// Whether a quick craft drag takes `slot`
     /// (`shouldAddSlotToQuickCraft`); screens the menu engine doesn't
     /// model take every slot.
@@ -5027,20 +4690,6 @@ impl crate::game::Sim<'_> {
             Some(false)
         });
         accepts
-    }
-    fn creative_inventory_open(&self) -> bool {
-        self.screen == Screen::Creative && self.creative_screen.tab().inventory
-    }
-    /// An item tab of the creative screen (its ItemPickerMenu).
-    fn creative_tab_open(&self) -> bool {
-        self.screen == Screen::Creative && !self.creative_screen.tab().inventory
-    }
-    fn inventory_origin(&self, batch: &HudBatch) -> (f32, f32) {
-        if self.screen == Screen::Creative {
-            return crate::game::Sim::creative_origin(batch);
-        }
-        let (x, y) = batch.centered_origin(176.0, self.screen_height());
-        (x + self.recipe_book_shift(batch.width), y)
     }
     /// Slot ids: 0..36 player inventory, 100..109 crafting grid, 200 result.
     fn container_kind(&self) -> Option<&BlockEntity> {
@@ -5157,13 +4806,6 @@ impl crate::game::Sim<'_> {
             }
         }
     }
-    fn slot_at(&self, batch: &HudBatch, x: f32, y: f32) -> Option<usize> {
-        let (ox, oy) = self.inventory_origin(batch);
-        self.slots().into_iter().find(|&i| {
-            let (sx, sy) = self.slot_position(i);
-            x >= ox + sx && x < ox + sx + 16.0 && y >= oy + sy && y < oy + sy + 16.0
-        })
-    }
     fn slot_mut(&mut self, i: usize) -> &mut Option<ItemStack> {
         if i >= mount_menu::SADDLE {
             return self.mount_slot_mut(i);
@@ -5233,9 +4875,7 @@ impl crate::game::Sim<'_> {
         self.close_station();
         self.mount_closed();
         self.recipe_ui.reset_screen();
-        if self.remote.is_some() {
-            return self.remote_close_container();
-        }
+
         let mut returned: Vec<ItemStack> = self.carried.take().into_iter().collect();
         returned.extend(self.craft_grid.iter_mut().filter_map(Option::take));
         for stack in returned {
@@ -5288,36 +4928,6 @@ impl crate::game::Sim<'_> {
         }
         self.menu_ops(&[(slot, button, input)])
     }
-    /// A click on an item tab's display slot: the screen's own handling
-    /// (`creative::click_display`), never the menu's.
-    fn creative_display_click(
-        &mut self,
-        slot: usize,
-        button: i32,
-        input: crate::hc::menu::Input,
-    ) {
-        use crate::hc::creative::{DisplayClick, click_display};
-        if self.creative_screen.tab().search {
-            // CreativeModeInventoryScreen.slotClicked: moveCursorToEnd, then
-            // setHighlightPos(0), so typing replaces the whole query.
-            let search = &mut self.creative_screen.search;
-            search.move_cursor_to_end(false);
-            search.highlight = 0;
-        }
-        let items = self.creative_screen.items(&self.pack.names);
-        let first = self.creative_screen.first_row(&self.pack.names);
-        let shown = items.get(first * 9 + slot - Creative::DISPLAY);
-        let catalog = self.res.items();
-        let max = |s: &ItemStack| catalog.get(&s.item).map_or(64, |i| i.max_stack);
-        match click_display(&mut self.carried, shown, max, button, input) {
-            DisplayClick::Hotbar(i, stack) if i < self.inventory.len() => {
-                self.inventory[i] = Some(stack);
-            }
-            DisplayClick::Offhand(stack) => self.offhand = Some(stack),
-            DisplayClick::Drop(stack) => self.player_drop(stack),
-            _ => {}
-        }
-    }
     /// Several clicks on one menu instance (a quick craft drag is three).
     fn menu_ops(&mut self, ops: &[(Option<usize>, i32, crate::hc::menu::Input)]) -> bool {
         use crate::hc::menu::Input;
@@ -5327,7 +4937,7 @@ impl crate::game::Sim<'_> {
                 self.unselect_bundle(slot);
             }
         }
-        if self.remote.is_some() && self.screen == Screen::Inventory {
+        if false && self.screen == Screen::Inventory {
             // On a server the clicks are the server's: predicted and sent.
             return self.remote_menu_ops(ops);
         }
@@ -5475,7 +5085,7 @@ impl crate::game::Sim<'_> {
             (Kind::ItemPicker, v)
         } else if let Some(columns) = self
             .mount_menu_columns()
-            .filter(|_| self.remote.is_some() && self.mount_active())
+            .filter(|_| false && self.mount_active())
         {
             // A server's HorseInventoryMenu: the saddle, the body armour,
             // the chest, then the inventory.
@@ -5653,7 +5263,7 @@ impl crate::game::Sim<'_> {
         }
         // The cartography table reads and makes the level's maps; a
         // server's (the client menu's ContainerLevelAccess.NULL) doesn't.
-        let level_maps = (kind == Kind::Cartography && self.remote.is_none()).then(|| {
+        let level_maps = (kind == Kind::Cartography).then(|| {
             let held: Vec<ItemStack> = before
                 .iter()
                 .flatten()
@@ -5685,9 +5295,7 @@ impl crate::game::Sim<'_> {
             enchantments: &self.res.stations().enchantments,
             names: &self.pack.names,
             trade: Some(&trade_env),
-            maps: level_maps
-                .as_ref()
-                .map(|m| m as &dyn crate::hc::menu::Maps),
+            maps: level_maps.as_ref().map(|m| m as &dyn crate::hc::menu::Maps),
         };
         menu.creative = creative;
         menu.selected = self.selected;
@@ -5759,7 +5367,7 @@ impl crate::game::Sim<'_> {
         }
         // On a server the clicks only predict: the server drops, crafts and
         // makes maps itself.
-        let predicting = self.remote.is_some();
+        let predicting = false;
         if !predicting {
             self.register_exploration_maps(made);
         }
@@ -5802,7 +5410,6 @@ impl crate::game::Sim<'_> {
                 self.trigger_brewed_potion(stack);
             }
             if furnace_before > furnace_after
-                && self.remote.is_none()
                 && let (Some(pos), Some(p)) = (self.container, self.player.as_ref())
             {
                 let at = [p.position.x, p.position.y, p.position.z];
@@ -5889,40 +5496,13 @@ impl crate::game::Sim<'_> {
         self.physical_keys.contains(&KeyCode::ControlLeft)
             || self.physical_keys.contains(&KeyCode::ControlRight)
     }
-    /// The open container screen's window: its place and size.
-    fn container_image(&self, batch: &HudBatch) -> crate::hc::container_screen::Image {
-        let (ox, oy) = self.inventory_origin(batch);
-        let (shift, width, height) = if self.screen == Screen::Creative {
-            (0.0, Creative::WIDTH as i32, Creative::HEIGHT as i32)
-        } else {
-            let (shift, width) = match self.station.as_ref().map(|s| s.kind) {
-                Some(stations::Kind::Merchant) => (-50.0, 276),
-                Some(stations::Kind::Beacon) => (beacon::SHIFT, 230),
-                _ => (0.0, 176),
-            };
-            (shift, width, self.screen_height() as i32)
-        };
-        crate::hc::container_screen::Image {
-            left: (ox + shift) as i32,
-            top: oy as i32,
-            width,
-            height,
-        }
-    }
     /// A click outside the window (slot id -999): `THROW` does nothing; a
     /// `PICKUP` drops the carried stack (left) or one of it (right), thrown
     /// from the hand (`AbstractContainerMenu.doClick`, `LivingEntity.drop`).
     fn throw_click(&mut self, right: bool, input: crate::hc::menu::Input) {
         use crate::hc::menu::Input;
         let button = i32::from(right);
-        if self.remote.is_some() {
-            if self.screen == Screen::Creative {
-                self.remote_creative_drop(right);
-            } else {
-                self.remote_throw(right, input);
-            }
-            return;
-        }
+
         let before = self.carried.clone();
         if !self.menu_click(None, button, input) && input == Input::Pickup {
             // A screen the menu engine doesn't model: the same doClick.
@@ -5949,22 +5529,6 @@ impl crate::game::Sim<'_> {
         if let Some(key) = self.container {
             self.container_changed(key);
         }
-    }
-    /// `Camera.setRotation`: the camera's orientation, turned round in
-    /// third-person front view.
-    pub(super) fn camera_orientation(&self) -> glam::Quat {
-        let (view_yaw, view_pitch) =
-            if self.camera_type == perspective::CameraType::ThirdPersonFront {
-                (self.yaw + 180.0, -self.pitch)
-            } else {
-                (self.yaw, self.pitch)
-            };
-        glam::Quat::from_euler(
-            glam::EulerRot::YXZ,
-            std::f32::consts::PI - view_yaw.to_radians(),
-            -view_pitch.to_radians(),
-            0.0,
-        )
     }
     /// `LevelRenderer.destroyBlockProgress`: a player's crack on a block (0..=9), or none
     /// (any other progress). Cracks not updated for 400 ticks are dropped.
@@ -6944,9 +6508,6 @@ impl crate::game::Sim<'_> {
     /// level drops (`lowerFillLevel`, a `block_change` with no source). A
     /// server's cauldron is the server's.
     pub(super) fn cauldron_extinguish(&mut self, pos: BlockPos) {
-        if self.remote.is_some() {
-            return;
-        }
         let at = [pos.x, pos.y, pos.z];
         let registry = self.pack.assets.registry;
         let Some(old) = registry
@@ -7273,7 +6834,7 @@ impl crate::game::Sim<'_> {
         let half = Vec3::new(0.5, 0.5, 0.5);
         let area = Aabb::new(centre.subtract(half), centre.add_vector(half));
         // A server's orbs are its own; a LAN or server guest only shows them.
-        let target = self.remote.is_none().then(|| {
+        let target = true.then(|| {
             self.orbs
                 .iter_mut()
                 .find(|o| o.can_merge(merge_id as u32, value) && o.bounds().intersects(area))
@@ -7427,7 +6988,7 @@ impl crate::game::Sim<'_> {
             )
         });
         // ExperienceOrb.scanForMerges runs on the server only.
-        if self.remote.is_none() {
+        if true {
             crate::hc::entities::merge_orbs(&mut orbs);
         }
         let mut gained = 0;
@@ -7481,11 +7042,8 @@ impl crate::game::Sim<'_> {
             _ => return,
         };
         for (count, experience) in used {
-            let xp = crate::hc::containers::create_experience(
-                count,
-                experience,
-                &mut self.world.random,
-            );
+            let xp =
+                crate::hc::containers::create_experience(count, experience, &mut self.world.random);
             self.spawn_orbs(at, xp);
         }
     }
@@ -7529,11 +7087,8 @@ impl crate::game::Sim<'_> {
             critical: power >= 1.0,
             effect: None,
         };
-        let mut arrow = crate::hc::projectiles::Projectile::new(
-            kind,
-            p,
-            Some(crate::hc::mobs::Who::Player),
-        );
+        let mut arrow =
+            crate::hc::projectiles::Projectile::new(kind, p, Some(crate::hc::mobs::Who::Player));
         // ProjectileWeaponItem.useAmmo: creative and Infinity draw without
         // using the ammo, so the arrow is CREATIVE_ONLY; else setOwner(player)
         // lets it be picked up.
@@ -7790,11 +7345,6 @@ impl crate::game::Sim<'_> {
         self.stats.reset("custom", "minecraft:time_since_rest");
     }
     fn wake_up(&mut self) {
-        if self.remote.is_some() {
-            // InBedChatScreen.sendWakeUp: the server wakes the player.
-            self.remote_stop_sleeping();
-            return;
-        }
         self.sleeping = None;
         self.sleep_timer = 100;
     }
@@ -7845,11 +7395,6 @@ impl crate::game::Sim<'_> {
             // SleepStatus.removeAllSleepers: waking everyone is not announced.
             self.sleep_seen.1 = 0;
         }
-    }
-    /// A creative tab's title: `itemGroup.*`, else the export's English title.
-    fn creative_tab_title(&self, tab: &crate::hc::creative::Tab) -> String {
-        crate::hc::creative::item_group_key(&tab.id)
-            .map_or_else(|| tab.title.clone(), |key| self.translate(key, &tab.title))
     }
     /// Copy the live player and world state into the `Level` that gets saved.
     pub(super) fn sync_level(&mut self) {
@@ -7949,9 +7494,6 @@ impl crate::game::Sim<'_> {
     /// generated chunk is saved, hundreds at a time, encoded and written on
     /// the region writer meanwhile.
     fn save_game_with(&mut self, wait: bool) -> Result<()> {
-        if self.remote.is_some() {
-            return Ok(());
-        }
         self.save_level(wait)?;
         self.save_parked_levels(wait)?;
         self.save_game_metadata()
@@ -7990,26 +7532,6 @@ impl crate::game::Sim<'_> {
             self.save.flush()?;
         }
         Ok(())
-    }
-    /// `LevelLoadTracker.serverProgress`: the player's 7x7 chunks loaded.
-    fn level_load_progress(&self) -> f32 {
-        let (cx, cz) = self.streaming.center;
-        let ready = (-3..=3)
-            .flat_map(|dz| (-3..=3).map(move |dx| (cx + dx, cz + dz)))
-            .filter(|&(x, z)| self.streaming.is_lit(x, z))
-            .count();
-        crate::hc::level_loading::progress(ready)
-    }
-    /// LOD Distance and Far Detail Reduced as chosen: the player's LOD
-    /// Distance when it is on, else a mod's far terrain
-    /// (`render.set-far-terrain`).
-    fn far_terrain_choice(&self) -> (u32, bool) {
-        let g = &self.settings.horizon;
-        let reduced = g.far_detail == crate::hc::graphics::FarDetail::Reduced;
-        if g.lod_distance > 0 {
-            return (g.lod_distance, reduced);
-        }
-        (0, reduced)
     }
     /// The world's chunks as a server streams them (`ChunkMap`): the area around its players and
     /// forced chunks loads and generates, what falls out unloads with its entities and saves.
@@ -8064,24 +7586,7 @@ impl crate::game::Sim<'_> {
     }
 }
 
-
-
-
-
-
-
 impl crate::game::Sim<'_> {
-    fn poll_world_rest(&mut self) -> Result<()> {
-        if let Some(loader) = &self.rest_loader
-            && loader.ready()?
-        {
-            self.rest_loader
-                .take()
-                .ok_or("missing world loader")?
-                .finish()?;
-        }
-        Ok(())
-    }
     fn join_world_rest(&mut self) -> Result<()> {
         if self.rest_loader.is_some() {
             let waited = Instant::now();
@@ -8130,9 +7635,6 @@ const NUMERIC_KEYS: [KeyCode; 11] = [
     KeyCode::Numpad8,
     KeyCode::Numpad9,
 ];
-
-
-
 
 /// The synchronous launch loads both phases; an ordinary launch returns the
 /// core bundle while the rest worker keeps loading.
@@ -8360,20 +7862,6 @@ fn load_resources(
     })
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 // Player.tick: cap the sleeping fade at 100, then fade out over 10 waking ticks.
 fn tick_sleep_timer(timer: u32, sleeping: bool) -> u32 {
     if sleeping {
@@ -8391,29 +7879,9 @@ fn reset_world_progress(adv: &mut advancements::AdvState, stats: &mut stats::Sta
 }
 
 impl crate::game::Sim<'_> {
-    pub(crate) fn creative_origin(batch: &HudBatch) -> (f32, f32) {
-        batch.centered_origin(Creative::WIDTH, Creative::HEIGHT)
-    }
 }
 
 impl crate::game::Sim<'_> {
-    /// `BlockStateModelSet.getParticleMaterial`: the sprite of the model's
-    /// `particle` texture, else its first face (entity-rendered blocks may
-    /// have a particle texture without faces, and faces without one).
-    pub(crate) fn block_particle_sprite(pack: &PackResources, state: BlockStateId) -> Option<String> {
-        let catalog = &pack.render.model_catalog;
-        let layer = catalog.particle(state).or_else(|| {
-            let models = catalog
-                .collect(state, horizon_core::position::BlockPos::new(0, 0, 0))
-                .ok()?;
-            models
-                .iter()
-                .flat_map(|(_, m)| m.faces.iter())
-                .next()
-                .map(|f| f.layer)
-        })?;
-        pack.layer_names.get(&layer).cloned()
-    }
 }
 
 impl<'a> Sim<'a> {
@@ -8459,285 +7927,265 @@ impl<'a> Sim<'a> {
             &gui.atlas.translucent,
         );
         Ok(Sim {
-                res: res.clone(),
-                rest_loader: None,
-                pending_entry: None,
-                pending_pack_reload: false,
-                server_packs: Default::default(),
-                link_prompt: None,
-                dialogs: Default::default(),
-                collision: res.collision(),
-                motion: res.motion(),
-                pack,
-                world,
-                streaming,
-                options,
-                player: None,
-                spawn: None,
-                clock: FixedStep::default(),
-                previous_position: Vec3::ZERO,
-                eye: 1.62,
-                previous_eye: 1.62,
-                yaw: level.rotation[0],
-                pitch: level.rotation[1],
-                inventory,
-                selected: 0,
-                carried: None,
-                craft_grid: vec![None; 9],
-                craft_size: 2,
-                craft_table: None,
-                inv_drag: None,
-                tweaks: Default::default(),
-                inv_clicks: Default::default(),
-                last_inv_click: None,
-                last_quick_moved: None,
-                container: None,
-                station: None,
-                potions: Default::default(),
-                scratch_slot: None,
-                mining: None,
-                destroying: HashMap::new(),
-                destroy_delay: 0,
-                use_delay: 0,
-                creative,
-                mode: if creative {
-                    crate::hc::command::args::GameMode::Creative
-                } else {
-                    crate::hc::command::args::GameMode::Survival
-                },
-                keys: HashSet::new(),
-                physical_keys: HashSet::new(),
-                left: false,
-                right: false,
-                focused: true,
-                agent_pointer: false,
-                was_playing: false,
-                pause: false,
-                debug: false,
-                screen: Screen::Playing,
-                started: now,
-                previous: now,
-                frames: 0,
-                item_level_cache: Default::default(),
-                ticks: 0,
-                error: None,
-                message: None,
-                save,
-                level,
-                session_lock: None,
-                sounds: crate::hc::sound_out::SoundOut::new(
-                    crate::hc::sound_engine::unique_seed(),
-                ),
-                rumbles: Vec::new(),
-                hands_used: Vec::new(),
-                pointer_grab: None,
-                bee_sounds: HashMap::new(),
-                guardian_sounds: HashSet::new(),
-                dropped: Vec::new(),
-                next_entity: 0,
-                particles,
-                pickups: Default::default(),
-                sign_edit: None,
-                book: None,
-                lectern_pulses: Vec::new(),
-                loading_progress: 0.0,
-                spawn_origin: None,
-                spawn_spiral: Default::default(),
-                player_spawn: None,
-                spawn_wait: Vec::new(),
-                mobs: Vec::new(),
-                creatures: Default::default(),
-                sculk: Default::default(),
-                raiding: Default::default(),
-                attack_ticks: 100,
-                attack_item: None,
-                last_hurt_by_player: HashMap::new(),
-                died: HashSet::new(),
-                be_anims: {
-                    let mut anims = crate::hc::block_entity_anim::BlockEntityAnims::default();
-                    anims.classify(registry);
-                    anims
-                },
-                using: None,
-                armor: [None, None, None, None],
-                offhand: None,
-                hotbar_pop: [0; 10],
-                hand: Hand::Main,
-                shield_cooldown: 0,
-                cooldowns: Default::default(),
-                command_source: None,
-                titles: Default::default(),
-                autosaving: false,
-                applied_modifiers: Vec::new(),
-                experience: Experience::default(),
-                orbs: Vec::new(),
-                xp_delay: 0,
-                last_level_up: 0,
-                swing: Default::default(),
-                swings_started: 0,
-                visible_hands: [(0, None), (0, None)],
-                clicks: Default::default(),
-                attack_clicks: 0,
-                hand_strength: Default::default(),
-                settings,
-                options_from_title: false,
-                flash: 0,
-                rain_sound_time: 0,
-                lightning_seen: [0; 2],
-                sleeping: None,
-                sleep_timer: 0,
-                sleep_seen: (0, 0),
-                dim: Dim::Overworld,
-                world_root: PathBuf::new(),
-                world_flat: false,
-                travelling: None,
-                server_trips: Vec::new(),
-                level_teleports: Vec::new(),
-                levels: Default::default(),
-                level_pass: Default::default(),
-                portals: Default::default(),
-                end_travel: false,
-                respawn_config: None,
-                respawn_travel: None,
-                end_portal_travel: false,
-                win: None,
-                end: Default::default(),
-                block_ticks: Ticks::new(0),
-                tick_chunks: Default::default(),
-                tickets: Default::default(),
-                random_tick_sections: Default::default(),
-                level_events: Vec::new(),
-                falling: Vec::new(),
-                paintings: Vec::new(),
-                painting_variants: prepared.painting_variants,
-                item_frames: Vec::new(),
-                frame_model: prepared.frame_model,
-                glow_frame_model: prepared.glow_frame_model,
-                map_frame_model: prepared.map_frame_model,
-                glow_map_frame_model: prepared.glow_map_frame_model,
-                armor_stands: Vec::new(),
-                cushions: Vec::new(),
-                others: Vec::new(),
-                armor_stand_assets: prepared.armor_stand_assets,
-                locator_camera: None,
-                experience_display: Default::default(),
-                boats: Vec::new(),
-                boat_models: prepared.boat_models,
-                crystal_model: prepared.crystal_model,
-                cushion_model: prepared.cushion_model,
-                carts: Vec::new(),
-                jukebox_sounds: HashSet::new(),
-                bolts: Vec::new(),
-                maps: maps::Maps::default(),
-                fight: dragon::Fight::default(),
-                dragon: None,
-                crystals: Vec::new(),
-                dragon_fireballs: Vec::new(),
-                breath_clouds: Vec::new(),
-                dragon_model: prepared.dragon_model,
-                text_displays: Default::default(),
-                remote_knots: Default::default(),
-                knot_ids: Default::default(),
-                skin_downloads: RefCell::new(crate::hc::skins::Downloader::new(
-                    std::env::current_dir()
-                        .unwrap_or_default()
-                        .join("assets/skins"),
-                )),
-                skin_profiles: RefCell::new(crate::hc::skins::Resolver::new()),
-                skin_slots: Vec::new(),
-                trim_slots: Vec::new(),
-                cart_models: prepared.cart_models,
-                riding: None,
-                ender_items: vec![None; 27],
-                ender_open: None,
-                pending: Default::default(),
-                spill: Default::default(),
-                recipe_ui: Default::default(),
-                mount_menu: Default::default(),
-                hook: None,
-                remote_hooks: Vec::new(),
-                tridents: Vec::new(),
-                rockets: Vec::new(),
-                ominous_spawners: Vec::new(),
-                creaking: Default::default(),
-                spawners: Default::default(),
-                spawn_scratch: Default::default(),
-                trident_model: prepared.trident_model,
-                arrow_model: prepared.arrow_model,
-                tnts: Vec::new(),
-                hoppers: HashMap::new(),
-                item_columns: None,
-                creative_screen: prepared.creative_screen,
-                agent_control_on: false,
-                agent_last: None,
-                pending_screenshot: None,
-                pending_bench: None,
-                flight: None,
-                ui_wait: Default::default(),
-                events: Default::default(),
-                agent: agent::Agent::default(),
-                extras: Default::default(),
-                sky_darken_memo: Default::default(),
-                persist: Default::default(),
-                remote: None,
-                lan: None,
-                server_world: Default::default(),
-                plugins: None,
-                plugin_actions: Vec::new(),
-                plugin_seen: Vec::new(),
-                plugin_resend: Vec::new(),
-                command_block_screen: None,
-                show_hitboxes: false,
-                show_chunk_borders: false,
-                pause_menu: true,
-                previous_mode: None,
-                saved_for_exit: false,
-                pending_save: None,
-                forced_hit: None,
-                guest_use: None,
-                lan_events: Vec::new(),
-                lan_songs: Vec::new(),
-                lan_cushion_breaks: Vec::new(),
-                lan_block_events: Vec::new(),
-                lan_entity_events: Vec::new(),
-                lan_critical_hits: Vec::new(),
-                lan_kinetic_hits: Vec::new(),
-                stabbed: HashMap::new(),
-                known_movement: Vec3::ZERO,
-                kinetic_feedback: HashMap::new(),
-                lan_global_events: Vec::new(),
-                lid_openers: HashMap::new(),
-                lan_acting: None,
-                guest_packets: Vec::new(),
-                guest_cooldowns: Vec::new(),
-                guest_entity_events: Vec::new(),
-                lan_acting_name: None,
-                lan_acting_uuid: None,
-                chat_capture: None,
-                admin_feedback: Vec::new(),
-                console_broadcast: None,
-                cmds: Default::default(),
-                ui: chat::UiState::new(),
-                world_data: Default::default(),
-                combat: Default::default(),
-                guest_combat: Default::default(),
-                mount: Default::default(),
-                stats: Default::default(),
-                score: Default::default(),
-                fns: Default::default(),
-                bosses: Default::default(),
-                exec: Default::default(),
-                rand_sequences: Default::default(),
-                brushing: Default::default(),
-                border: Default::default(),
-                adv: Default::default(),
-                restore_player_state: true,
-                stats_ui: Default::default(),
-                adv_ui: Default::default(),
-                links_ui: Default::default(),
-                camera_type: Default::default(),
-                fangs: Default::default(),
-                player_model: None,
-            })
+            be_anims: {
+                let mut anims = crate::hc::block_entity_anim::BlockEntityAnims::default();
+                anims.classify(registry);
+                anims
+            },
+            res: res.clone(),
+            pending_pack_reload: false,
+            link_prompt: None,
+            dialogs: Default::default(),
+            collision: res.collision(),
+            motion: res.motion(),
+            pack,
+            world,
+            streaming,
+            options,
+            player: None,
+            spawn: None,
+            clock: FixedStep::default(),
+            previous_position: Vec3::ZERO,
+            eye: 1.62,
+            previous_eye: 1.62,
+            yaw: level.rotation[0],
+            pitch: level.rotation[1],
+            inventory,
+            selected: 0,
+            carried: None,
+            craft_grid: vec![None; 9],
+            craft_size: 2,
+            craft_table: None,
+            inv_drag: None,
+            inv_clicks: Default::default(),
+            last_inv_click: None,
+            last_quick_moved: None,
+            container: None,
+            station: None,
+            potions: Default::default(),
+            scratch_slot: None,
+            mining: None,
+            destroying: HashMap::new(),
+            destroy_delay: 0,
+            use_delay: 0,
+            creative,
+            mode: if creative {
+                crate::hc::command::args::GameMode::Creative
+            } else {
+                crate::hc::command::args::GameMode::Survival
+            },
+            keys: HashSet::new(),
+            physical_keys: HashSet::new(),
+            left: false,
+            right: false,
+            focused: true,
+            agent_pointer: false,
+            was_playing: false,
+            pause: false,
+            debug: false,
+            screen: Screen::Playing,
+            started: now,
+            previous: now,
+            frames: 0,
+            item_level_cache: Default::default(),
+            ticks: 0,
+            error: None,
+            message: None,
+            save,
+            level,
+            session_lock: None,
+            sounds: crate::hc::sound_out::SoundOut::new(crate::hc::sound_engine::unique_seed()),
+            hands_used: Vec::new(),
+            pointer_grab: None,
+            bee_sounds: HashMap::new(),
+            guardian_sounds: HashSet::new(),
+            dropped: Vec::new(),
+            next_entity: 0,
+            particles,
+            pickups: Default::default(),
+            sign_edit: None,
+            book: None,
+            lectern_pulses: Vec::new(),
+            loading_progress: 0.0,
+            spawn_origin: None,
+            spawn_spiral: Default::default(),
+            player_spawn: None,
+            spawn_wait: Vec::new(),
+            mobs: Vec::new(),
+            creatures: Default::default(),
+            sculk: Default::default(),
+            raiding: Default::default(),
+            attack_ticks: 100,
+            attack_item: None,
+            last_hurt_by_player: HashMap::new(),
+            died: HashSet::new(),
+            using: None,
+            armor: [None, None, None, None],
+            offhand: None,
+            hotbar_pop: [0; 10],
+            hand: Hand::Main,
+            shield_cooldown: 0,
+            cooldowns: Default::default(),
+            command_source: None,
+            autosaving: false,
+            applied_modifiers: Vec::new(),
+            experience: Experience::default(),
+            orbs: Vec::new(),
+            xp_delay: 0,
+            last_level_up: 0,
+            swing: Default::default(),
+            swings_started: 0,
+            visible_hands: [(0, None), (0, None)],
+            clicks: Default::default(),
+            attack_clicks: 0,
+            hand_strength: Default::default(),
+            settings,
+            options_from_title: false,
+            flash: 0,
+            rain_sound_time: 0,
+            lightning_seen: [0; 2],
+            sleeping: None,
+            sleep_timer: 0,
+            sleep_seen: (0, 0),
+            dim: Dim::Overworld,
+            world_root: PathBuf::new(),
+            world_flat: false,
+            travelling: None,
+            server_trips: Vec::new(),
+            level_teleports: Vec::new(),
+            levels: Default::default(),
+            level_pass: Default::default(),
+            portals: Default::default(),
+            end_travel: false,
+            respawn_config: None,
+            respawn_travel: None,
+            end_portal_travel: false,
+            end: Default::default(),
+            block_ticks: Ticks::new(0),
+            tick_chunks: Default::default(),
+            tickets: Default::default(),
+            random_tick_sections: Default::default(),
+            level_events: Vec::new(),
+            falling: Vec::new(),
+            paintings: Vec::new(),
+            painting_variants: prepared.painting_variants,
+            item_frames: Vec::new(),
+            frame_model: prepared.frame_model,
+            glow_frame_model: prepared.glow_frame_model,
+            map_frame_model: prepared.map_frame_model,
+            glow_map_frame_model: prepared.glow_map_frame_model,
+            armor_stands: Vec::new(),
+            cushions: Vec::new(),
+            others: Vec::new(),
+            armor_stand_assets: prepared.armor_stand_assets,
+            locator_camera: None,
+            experience_display: Default::default(),
+            boats: Vec::new(),
+            boat_models: prepared.boat_models,
+            crystal_model: prepared.crystal_model,
+            cushion_model: prepared.cushion_model,
+            carts: Vec::new(),
+            jukebox_sounds: HashSet::new(),
+            bolts: Vec::new(),
+            maps: maps::Maps::default(),
+            fight: dragon::Fight::default(),
+            dragon: None,
+            crystals: Vec::new(),
+            dragon_fireballs: Vec::new(),
+            breath_clouds: Vec::new(),
+            dragon_model: prepared.dragon_model,
+            text_displays: Default::default(),
+            remote_knots: Default::default(),
+            knot_ids: Default::default(),
+            skin_downloads: RefCell::new(crate::hc::skins::Downloader::new(
+                std::env::current_dir()
+                    .unwrap_or_default()
+                    .join("assets/skins"),
+            )),
+            skin_profiles: RefCell::new(crate::hc::skins::Resolver::new()),
+            skin_slots: Vec::new(),
+            trim_slots: Vec::new(),
+            cart_models: prepared.cart_models,
+            riding: None,
+            ender_items: vec![None; 27],
+            ender_open: None,
+            pending: Default::default(),
+            spill: Default::default(),
+            mount_menu: Default::default(),
+            hook: None,
+            remote_hooks: Vec::new(),
+            tridents: Vec::new(),
+            rockets: Vec::new(),
+            ominous_spawners: Vec::new(),
+            creaking: Default::default(),
+            spawners: Default::default(),
+            spawn_scratch: Default::default(),
+            trident_model: prepared.trident_model,
+            arrow_model: prepared.arrow_model,
+            tnts: Vec::new(),
+            hoppers: HashMap::new(),
+            item_columns: None,
+            agent_control_on: false,
+            agent_last: None,
+            pending_screenshot: None,
+            pending_bench: None,
+            agent: agent::Agent::default(),
+            sky_darken_memo: Default::default(),
+            persist: Default::default(),
+            lan: None,
+            server_world: Default::default(),
+            plugins: None,
+            plugin_actions: Vec::new(),
+            plugin_seen: Vec::new(),
+            plugin_resend: Vec::new(),
+            command_block_screen: None,
+            show_hitboxes: false,
+            show_chunk_borders: false,
+            pause_menu: true,
+            previous_mode: None,
+            saved_for_exit: false,
+            pending_save: None,
+            forced_hit: None,
+            guest_use: None,
+            lan_events: Vec::new(),
+            lan_songs: Vec::new(),
+            lan_cushion_breaks: Vec::new(),
+            lan_block_events: Vec::new(),
+            lan_entity_events: Vec::new(),
+            lan_critical_hits: Vec::new(),
+            lan_kinetic_hits: Vec::new(),
+            stabbed: HashMap::new(),
+            known_movement: Vec3::ZERO,
+            kinetic_feedback: HashMap::new(),
+            lan_global_events: Vec::new(),
+            lid_openers: HashMap::new(),
+            lan_acting: None,
+            guest_packets: Vec::new(),
+            guest_cooldowns: Vec::new(),
+            guest_entity_events: Vec::new(),
+            lan_acting_name: None,
+            lan_acting_uuid: None,
+            chat_capture: None,
+            admin_feedback: Vec::new(),
+            console_broadcast: None,
+            cmds: Default::default(),
+            ui: chat::UiState::new(),
+            world_data: Default::default(),
+            combat: Default::default(),
+            guest_combat: Default::default(),
+            mount: Default::default(),
+            stats: Default::default(),
+            score: Default::default(),
+            fns: Default::default(),
+            bosses: Default::default(),
+            exec: Default::default(),
+            rand_sequences: Default::default(),
+            brushing: Default::default(),
+            border: Default::default(),
+            adv: Default::default(),
+            restore_player_state: true,
+            fangs: Default::default(),
+            player_model: None,
+        })
     }
 }

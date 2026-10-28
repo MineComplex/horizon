@@ -4,14 +4,8 @@
 //! guest's inventory, with vanilla's packets: OpenScreen, container clicks
 //! and their corrections, and the grid back into the inventory when the menu
 //! closes (`AbstractContainerMenu.clearContainer`).
-use super::{lan::LanHost};
-use crate::hc::{
-    containers::BlockEntity,
-    furnace::FurnaceCooking,
-    items::ItemStack,
-    lan::{guest::Guest, menu::Slots},
-    menu::{Env, Input, Kind, Menu},
-};
+use super::lan::LanHost;
+use crate::hc::{containers::BlockEntity, furnace::FurnaceCooking, items::ItemStack, lan::{guest::Guest, menu::Slots}, menu::{Env, Input, Kind, Menu}};
 use horizon_protocol::packets::play::{self, Clientbound as C};
 
 /// The guest's menus the game runs: kept between clicks, so a drag (quick

@@ -3,11 +3,7 @@
 //! with vanilla's packets: OpenScreen (`minecraft:merchant`), MerchantOffers,
 //! the select trade packet, container clicks and the content sync after each.
 use super::{lan::LanHost, stations::Kind as StationKind, trading::MerchantState};
-use crate::hc::{
-    items::ItemStack,
-    menu::{Env, Input, Kind, Menu},
-    merchant,
-};
+use crate::hc::{items::ItemStack, menu::{Env, Input, Kind, Menu}, merchant};
 use horizon_protocol::packets::play::{self, Clientbound as C};
 
 /// A guest's open trading screen.

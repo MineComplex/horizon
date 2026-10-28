@@ -3,7 +3,6 @@
 //! client's library (`horizon_client`) re-exports the same modules for the
 //! client; the server links none of its window code.
 #![allow(unused_imports)]
-pub use horizon_server_files as server;
 pub use horizon_client_core::Result;
 pub use horizon_client_core::block_entity_nbt;
 pub use horizon_client_core::bossbar;
@@ -16,13 +15,6 @@ pub use horizon_client_core::scoreboard;
 pub use horizon_client_core::snbt;
 pub use horizon_client_core::text;
 pub use horizon_command as command;
-pub use horizon_game::{
-    chunk_status, creative_menu, face_visibility, gallery, image, lod_column, vertex, world_data,
-};
-pub use horizon_items::{
-    banner_layer, blocks, bundle, content_namespaces, cooldowns, enchant, firework, item_data,
-    item_nbt, items, random_sequences, use_animation,
-};
 pub use horizon_game::advancements;
 pub use horizon_game::animate_tick;
 pub use horizon_game::arrows;
@@ -48,6 +40,7 @@ pub use horizon_game::command_block;
 pub use horizon_game::command_storage;
 pub use horizon_game::containers;
 pub use horizon_game::crafting;
+pub use horizon_game::crash;
 pub use horizon_game::cushion;
 pub use horizon_game::data_cmd;
 pub use horizon_game::datapack;
@@ -106,10 +99,10 @@ pub use horizon_game::sound_out;
 pub use horizon_game::spans;
 pub use horizon_game::spear;
 pub use horizon_game::sprint;
-pub use horizon_game::swing;
 pub use horizon_game::stations;
 pub use horizon_game::stopwatches;
 pub use horizon_game::structure_blocks;
+pub use horizon_game::swing;
 pub use horizon_game::testgen;
 pub use horizon_game::text_display;
 pub use horizon_game::tick_chunk_membership;
@@ -120,4 +113,18 @@ pub use horizon_game::world;
 pub use horizon_game::world_spawn;
 pub use horizon_game::worldborder;
 pub use horizon_game::zip;
-pub use horizon_game::crash;
+pub use horizon_game::{
+    chunk_status, creative_menu, face_visibility, gallery, image, lod_column, vertex, world_data,
+};
+pub use horizon_items::{
+    banner_layer, blocks, bundle, content_namespaces, cooldowns, enchant, firework, item_data,
+    item_nbt, items, random_sequences, use_animation,
+};
+pub use horizon_server_files as server;
+/// The server streams chunks without meshing them.
+pub mod streaming {
+    pub use horizon_game::streaming::*;
+    pub type Streaming = horizon_game::streaming::Streaming<NoMesh>;
+}
+pub use horizon_client_core::sound_source;
+pub use horizon_game::block_entity_anim;

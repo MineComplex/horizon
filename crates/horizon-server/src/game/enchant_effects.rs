@@ -6,11 +6,7 @@
 //! the armor attribute effects (respiration, depth strider, ...), Soul
 //! Speed's `location_changed` and `tick` effects and the
 //! `minecraft:location_changed` disk effect (frost walker).
-use crate::hc::{
-    enchant::{EffectContext, Enchantments, level_value},
-    items::ItemStack,
-    mobs::Who,
-};
+use crate::hc::{enchant::{EffectContext, Enchantments, level_value}, items::ItemStack, mobs::Who};
 use horizon_core::{position::BlockPos, random::RandomSource};
 use horizon_world::{fluid::FluidKind, level::LevelAccess, registry::BlockStateId};
 use serde_json::Value;
@@ -196,8 +192,7 @@ impl crate::game::Sim<'_> {
                     continue;
                 }
                 if kind_of == Some("minecraft:ignite") {
-                    ignite =
-                        ignite.max(crate::hc::enchant::level_value(&e["duration"], *level));
+                    ignite = ignite.max(crate::hc::enchant::level_value(&e["duration"], *level));
                 } else {
                     mob_effects.push((e.clone(), *level));
                 }

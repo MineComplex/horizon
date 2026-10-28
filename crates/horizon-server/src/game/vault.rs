@@ -2,16 +2,8 @@
 //! (`vault`), the block's state as it changes, the rewards it ejects, the
 //! keys players insert (`VaultBlock.useItemOn`) and the display item spinning
 //! inside (`VaultRenderer`).
+use crate::hc::{Result, containers::BlockEntity, items::ItemStack, vault::{Vault, VaultEvent, VaultLevel, VaultPlayer, VaultState}};
 use horizon_assets::item_model::DisplayContext;
-use crate::hc::{
-    Result,
-    block_entity_render::vertex_light,
-    containers::BlockEntity,
-    item_render,
-    items::ItemStack,
-    mesher::Vertex,
-    vault::{Vault, VaultEvent, VaultLevel, VaultPlayer, VaultState},
-};
 use horizon_core::random::LegacyRandom;
 
 type Pos = (i32, i32, i32);

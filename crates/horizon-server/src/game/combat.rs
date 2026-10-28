@@ -1,11 +1,6 @@
 //! The player's `CombatTracker`: the damage taken lately, who dealt it and
 //! where the player fell from, turned into the vanilla death message.
-use crate::hc::{
-    health::HealthEvent,
-    motion::MotionEvent,
-    particles::{ParticleOptions, ParticleType},
-    text::Text,
-};
+use crate::hc::{health::HealthEvent, motion::MotionEvent, particles::{ParticleOptions, ParticleType}, text::Text};
 use horizon_core::random::RandomSource;
 
 /// `EntityEvent.DROWN_PARTICLES`: broadcast with the drowning damage.
@@ -85,7 +80,7 @@ impl crate::game::Sim<'_> {
     /// Entity event 67 from a server, for this client's own player or an
     /// entity it draws.
     pub(super) fn remote_drown(&mut self, id: i32) {
-        let own = self.remote.as_ref().is_some_and(|r| r.entity_id == id);
+        let own = false;
         let body = if own {
             self.player.as_ref().map(|p| {
                 let (at, v) = (p.position, p.velocity);

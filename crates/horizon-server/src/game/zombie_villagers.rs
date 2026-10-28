@@ -2,11 +2,7 @@
 //! into zombie villagers (`Zombie.killedEntity`), the golden apple that starts
 //! a cure (`ZombieVillager.mobInteract`), and the cured villager that
 //! remembers who saved it (`ZombieVillager.finishConversion`).
-use crate::hc::{
-    advancements as adv,
-    gossip::GossipType,
-    mobs::{Mob, Species, villager, zombie_villager},
-};
+use crate::hc::{advancements as adv, gossip::GossipType, mobs::{Mob, Species, villager, zombie_villager}};
 use horizon_core::random::RandomSource;
 use horizon_world::food::Difficulty;
 
@@ -222,4 +218,3 @@ pub(super) fn convert_to_villager(from: &Mob, to: &mut Mob) {
     to.extra.age = if from.is_baby() { -24000 } else { 0 };
     to.add_effect("minecraft:nausea", 200, 0);
 }
-

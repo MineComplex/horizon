@@ -2,12 +2,8 @@
 //! (`Mob.aiStep`, `Panda.pickUpItem`), the bamboo a player gives them
 //! (`Panda.mobInteract`), the start a sneeze gives the grown pandas about,
 //! and the crumbs and the sneeze a window draws.
-use super::{pickups::{Collector, Taken}};
-use crate::hc::{
-    items::ItemStack,
-    mobs::{Species, panda},
-    particles::{ParticleOptions, ParticleType},
-};
+use super::pickups::{Collector, Taken};
+use crate::hc::{items::ItemStack, mobs::{Species, panda}, particles::{ParticleOptions, ParticleType}};
 use horizon_core::geometry::Vec3;
 
 impl crate::game::Sim<'_> {

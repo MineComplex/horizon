@@ -6,10 +6,7 @@
 //! objective displayed below names. Other players' names (on a LAN host
 //! or a server) show whenever `LivingEntityRenderer.shouldShowName` allows.
 use super::view_vector;
-use crate::hc::{
-    block_entity_render::vertex_light, mesher::Vertex, mobs::Mob, save::uuid_text,
-    scoreboard as sb, text::Text,
-};
+use crate::hc::{mobs::Mob, save::uuid_text, scoreboard as sb, text::Text};
 
 impl crate::game::Sim<'_> {
     /// A named name tag names the mob under the crosshair.

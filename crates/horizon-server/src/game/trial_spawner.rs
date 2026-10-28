@@ -2,19 +2,14 @@
 //! spawner (`mobs::trial_spawner`), the block's state as it changes, the mobs
 //! it adds and the rewards it ejects.
 use super::{natural_spawning::GameLevel, spawner::Planned};
-use crate::hc::{
-    Result,
-    containers::BlockEntity,
-    items::ItemStack,
-    mobs::{
+use crate::hc::{Result, containers::BlockEntity, items::ItemStack, mobs::{
         Who,
         spawner::SpawnerSpawn,
         trial_spawner::{
             Omen, TRIAL_OMEN_TICKS_PER_LEVEL, TrialEvent, TrialPlayer, TrialSpawner,
             TrialSpawnerLevel, TrialState, Uuid,
         },
-    },
-};
+    }};
 use horizon_core::{
     geometry::Vec3,
     random::{LegacyRandom, RandomSource},
@@ -164,8 +159,7 @@ impl crate::game::Sim<'_> {
                 let added = l.game.plan_spawner_mob(l, r, &mut planned)?;
                 let uuid = match planned.last_mut() {
                     Some(Planned::Loaded(Tag::Compound(tag), _)) => {
-                        let tag_uuid =
-                            crate::hc::entity_nbt::uuid(&Tag::Compound(tag.clone()));
+                        let tag_uuid = crate::hc::entity_nbt::uuid(&Tag::Compound(tag.clone()));
                         tag_uuid.unwrap_or_else(|| {
                             let uuid = crate::hc::save::random_uuid();
                             tag.insert("UUID".into(), Tag::IntArray(uuid.to_vec()));

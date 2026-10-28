@@ -1,10 +1,7 @@
 //! Nautili on the game side (`AbstractNautilus.mobInteract`): taming with
 //! pufferfish, feeding, the saddle and armour, riding, and the zombie
 //! nautilus a drowned with a trident sometimes rides.
-use crate::hc::{
-    items::ItemStack,
-    mobs::{Species, nautilus},
-};
+use crate::hc::{items::ItemStack, mobs::{Species, nautilus}};
 use horizon_core::random::RandomSource;
 
 impl crate::game::Sim<'_> {

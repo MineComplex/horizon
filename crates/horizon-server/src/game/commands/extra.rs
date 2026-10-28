@@ -4,10 +4,7 @@
 //! `/fetchprofile`, `/publish`, `/unpublish`, `/debug`, `/jfr` and
 //! `/version`, with vanilla's feedback and failures.
 use super::{Arg, Context, R, Target, err};
-use crate::hc::{
-    command::CommandError,
-    text::{self, Style, Text},
-};
+use crate::hc::{command::CommandError, text::{self, Style, Text}};
 use std::{collections::HashMap, time::Instant};
 
 /// Waypoint.Icon: the locator bar style and colour of a transmitter.

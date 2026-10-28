@@ -3,14 +3,7 @@
 //! through the command system with the block's output, and
 //! `CommandBlockEditScreen` with what `handleSetCommandBlock` does with it.
 use super::{Screen, commands::execute::Source, lan::LanHost};
-use crate::hc::{
-    command_block::{self, CommandBlock, Mode},
-    containers::BlockEntity,
-    hud::{HudBatch, rgba},
-    text::{self, Text},
-    ui::{self, EditBox},
-    world::World,
-};
+use crate::hc::{command_block::{self, CommandBlock, Mode}, containers::BlockEntity, text::{self, Text}, world::World};
 use horizon_core::position::BlockPos;
 use horizon_protocol::packets::play::{self, Serverbound as S};
 use horizon_world::{
@@ -196,18 +189,6 @@ impl crate::game::Sim<'_> {
     /// `Player.canUseGameMasterBlocks`: creative with game master commands.
     pub(super) fn can_use_game_master_blocks(&self) -> bool {
         self.creative && self.world_data.registries.permission >= 2
-    }
-    /// `CommandBlock.useWithoutItem` on a server's client, which opens the
-    /// screen itself (`Player.openCommandBlock`) while the server only
-    /// answers the click: the block at `pos`, when it is a command block the
-    /// player may edit.
-    pub(super) fn open_command_block_if_editable(&mut self, pos: Pos) {
-        let is_command_block = self
-            .block_state_at(pos)
-            .is_some_and(|state| Mode::of_block(&state.name).is_some());
-        if is_command_block && self.can_use_game_master_blocks() {
-            self.open_command_block(pos);
-        }
     }
     fn command_block(&self, pos: Pos) -> Option<&CommandBlock> {
         match self.world.block_entities.get(&pos)? {
@@ -435,36 +416,6 @@ impl crate::game::Sim<'_> {
             self.system_message(broadcast);
         }
     }
-    /// `LocalPlayer.openCommandBlock`.
-    pub(super) fn open_command_block(&mut self, pos: Pos) {
-        let Some(block) = self.command_block(pos).cloned() else {
-            return;
-        };
-        let Some(state) = self.block_state_at(pos) else {
-            return;
-        };
-        let mut command = EditBox::new(0.0, 50.0, 300.0, 20.0);
-        command.max_length = 32500;
-        command.set_value(&block.command);
-        command.focused = true;
-        let mut previous = EditBox::new(0.0, 135.0, 276.0, 20.0);
-        previous.max_length = 32500;
-        previous.text_color = UNEDITABLE;
-        previous.focused = false;
-        let mut screen = CommandBlockScreen {
-            pos,
-            command,
-            previous,
-            track_output: block.track_output,
-            mode: Mode::of_block(&state.name).unwrap_or(Mode::Redstone),
-            conditional: conditional(state),
-            auto: block.auto,
-        };
-        screen.show_previous(&block);
-        self.command_block_screen = Some(screen);
-        self.screen = Screen::CommandBlock;
-        self.capture(false);
-    }
     pub(super) fn close_command_block(&mut self) {
         self.command_block_screen = None;
         self.screen = Screen::Playing;
@@ -497,16 +448,7 @@ impl crate::game::Sim<'_> {
             conditional: s.conditional,
             auto: s.auto,
         };
-        if self.remote.is_some() {
-            self.send(S::SetCommandBlock(play::SetCommandBlock {
-                pos: [edit.pos.0, edit.pos.1, edit.pos.2],
-                command: edit.command,
-                mode: edit.mode.ordinal(),
-                flags: i8::from(edit.track_output)
-                    | (i8::from(edit.conditional) << 1)
-                    | (i8::from(edit.auto) << 2),
-            }));
-        } else {
+        {
             self.apply_command_block(&edit);
         }
     }

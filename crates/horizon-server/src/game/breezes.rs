@@ -1,9 +1,6 @@
 //! Breeze particles (`Breeze.tick`): block dust at its feet while it stands,
 //! a burst of twenty while it slides and a short trail along a long jump.
-use crate::hc::{
-    mobs::{Species, breeze},
-    particles::Particle,
-};
+use crate::hc::{mobs::{Species, breeze}, particles::Particle};
 
 impl crate::game::Sim<'_> {
     pub(super) fn tick_breeze_effects(&mut self) {

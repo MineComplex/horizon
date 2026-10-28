@@ -506,4 +506,3 @@ where
         on_ground,
     )
 }
-

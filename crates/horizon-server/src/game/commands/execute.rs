@@ -2,11 +2,7 @@
 //! filtering command sources, then run the final command once per source,
 //! reporting each result to the `store` callbacks of its source.
 use super::{Arg, Context, Dim, R, Target, data::DataRef, err};
-use crate::hc::{
-    command::{CommandError, vanilla},
-    nbt_path::NbtPath,
-    text::Text,
-};
+use crate::hc::{command::{CommandError, vanilla}, nbt_path::NbtPath, text::Text};
 use horizon_world::nbt::Tag;
 
 /// `CommandSourceStack` fields Horizon models: the executing entity (None for
@@ -674,9 +670,7 @@ impl crate::game::Sim<'_> {
                         {
                             Some(Target::Player)
                         }
-                        (crate::hc::mobs::Who::Player, Some(conn)) => {
-                            Some(Target::Guest(conn))
-                        }
+                        (crate::hc::mobs::Who::Player, Some(conn)) => Some(Target::Guest(conn)),
                         (crate::hc::mobs::Who::Player, None) => Some(Target::Player),
                         (crate::hc::mobs::Who::Mob(id), _) => Some(Target::Mob(id)),
                     })
@@ -813,9 +807,7 @@ impl crate::game::Sim<'_> {
         } else {
             let r = self.data_ref(c, 0)?;
             let path = match c.get("path") {
-                Some(Arg::Str(p)) => {
-                    NbtPath::parse(p).map_err(crate::hc::data_cmd::path_error)?
-                }
+                Some(Arg::Str(p)) => NbtPath::parse(p).map_err(crate::hc::data_cmd::path_error)?,
                 _ => return Err(err("command.failed", &[])),
             };
             let kind = c

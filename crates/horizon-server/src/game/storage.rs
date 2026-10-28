@@ -253,9 +253,7 @@ impl crate::game::Sim<'_> {
     /// the player's eyes are out of reach of any of its blocks (a 4-block buffer).
     pub(super) fn tick_container_reach(&mut self) {
         // A server's menu ends when the server closes it.
-        if self.remote.is_some() {
-            return;
-        }
+
         let Some(eye) = self.eye_position() else {
             return;
         };
@@ -280,7 +278,7 @@ impl crate::game::Sim<'_> {
     /// reach (a 4-block buffer).
     pub(super) fn tick_craft_table(&mut self) {
         // A server's menu ends when the server closes it.
-        if self.remote.is_some() || self.craft_size != 3 {
+        if false || self.craft_size != 3 {
             return;
         }
         let (Some(pos), Some(eye)) = (self.craft_table, self.eye_position()) else {
@@ -334,42 +332,6 @@ impl crate::game::Sim<'_> {
                 .clone(),
         )
     }
-    /// Rows of the open generic 9-wide container (`ChestMenu`), or None for
-    /// the other menus (hoppers, dispensers, shulker boxes, furnaces...).
-    pub(super) fn chest_rows(&self) -> Option<usize> {
-        if let Some((rows, _)) = self.remote_chest_menu() {
-            return Some(rows);
-        }
-        if !matches!(self.container_kind()?, BlockEntity::Chest(_)) {
-            return None;
-        }
-        let generic = match self.container_block().as_deref() {
-            Some(
-                "minecraft:chest"
-                | "minecraft:trapped_chest"
-                | "minecraft:barrel"
-                | "minecraft:ender_chest",
-            ) => true,
-            _ => self.open_cart_kind() == Some(super::minecarts::CartKind::Chest),
-        };
-        generic.then(|| self.container_size() / 9)
-    }
-    /// The title of the open chest-like menu.
-    fn chest_title(&self, rows: usize) -> Text {
-        if let Some((_, title)) = self.remote_chest_menu() {
-            return title;
-        }
-        let (key, fallback) = match self.container_block().as_deref() {
-            Some("minecraft:barrel") => ("container.barrel", "Barrel"),
-            Some("minecraft:ender_chest") => ("container.enderchest", "Ender Chest"),
-            _ if self.open_cart_kind().is_some() => {
-                ("entity.minecraft.chest_minecart", "Minecart with Chest")
-            }
-            _ if rows > 3 => ("container.chestDouble", "Large Chest"),
-            _ => ("container.chest", "Chest"),
-        };
-        Text::literal(self.container_title(self.translate(key, fallback))).resolve_legacy()
-    }
 }
 
 impl crate::game::Sim<'_> {
@@ -380,4 +342,3 @@ impl crate::game::Sim<'_> {
         self.menu_click(Some(slot), 0, crate::hc::menu::Input::QuickMove)
     }
 }
-

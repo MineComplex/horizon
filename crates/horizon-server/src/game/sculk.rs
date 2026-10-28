@@ -4,13 +4,7 @@
 //! (`SculkShriekerBlockEntity`, `SpawnUtil`), catalysts feeding the sculk
 //! spreader from deaths, and the darkness wardens and shriekers cast.
 use super::Result;
-use crate::hc::{
-    containers::BlockEntity,
-    fast_hash::{FxHashMap, FxHashSet},
-    mobs::{Mob, Species, Who, warden},
-    particles::{ParticleOptions, ParticleType},
-    sculk::{self, Context, Info, SculkEntity, SculkKind, WardenSpawnTracker},
-};
+use crate::hc::{containers::BlockEntity, fast_hash::{FxHashMap, FxHashSet}, mobs::{Mob, Species, Who, warden}, particles::{ParticleOptions, ParticleType}, sculk::{self, Context, Info, SculkEntity, SculkKind, WardenSpawnTracker}};
 use horizon_core::{geometry::Direction, position::BlockPos, random::RandomSource};
 use horizon_world::registry::BlockStateId;
 use std::collections::HashSet;
@@ -497,7 +491,7 @@ impl crate::game::Sim<'_> {
                 pos[2].floor() as i32
             )
         });
-        if self.remote.is_some() || !self.sculk.tables.built {
+        if false || !self.sculk.tables.built {
             return;
         }
         let at = block_of(pos);
@@ -1588,8 +1582,7 @@ impl crate::game::Sim<'_> {
             at[1].floor() as i32,
             at[2].floor() as i32,
         );
-        self.res.facts().get(self.world.block(x, y, z)).fluid
-            == crate::hc::blocks::Fluid::Water
+        self.res.facts().get(self.world.block(x, y, z)).fluid == crate::hc::blocks::Fluid::Water
     }
     /// `Entity.move`'s emission: footsteps, swimming, landing and splashes.
     fn entity_motion_events(

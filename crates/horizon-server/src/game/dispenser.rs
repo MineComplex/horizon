@@ -3,15 +3,7 @@
 //! entities for. A behaviour returns what is left in the slot and the level
 //! event it plays (`DefaultDispenseItemBehavior.dispense` then plays that
 //! event and the smoke animation, event 2000).
-use crate::hc::{
-    Result,
-    collisions::SceneCollisions,
-    containers::BlockEntity,
-    items::ItemStack,
-    mobs::{Mob, Species, sulfur_cube},
-    particles::{ParticleOptions, ParticleType},
-    projectiles::{Projectile, ProjectileKind},
-};
+use crate::hc::{Result, collisions::SceneCollisions, containers::BlockEntity, items::ItemStack, mobs::{Mob, Species, sulfur_cube}, particles::{ParticleOptions, ParticleType}, projectiles::{Projectile, ProjectileKind}};
 use horizon_core::{
     geometry::{Aabb, Direction, Vec3},
     position::BlockPos,
@@ -887,12 +879,7 @@ impl crate::game::Sim<'_> {
         // ProjectileItem.DispenseConfig per item: position, uncertainty, power, event.
         let (at, uncertainty, power, event) = match item.as_str() {
             "minecraft:firework_rocket" => (
-                crate::game::Sim::dispense_position(
-                    pos,
-                    facing,
-                    0.500_009_999_999_747_4,
-                    [0.0; 3],
-                ),
+                crate::game::Sim::dispense_position(pos, facing, 0.500_009_999_999_747_4, [0.0; 3]),
                 1.0,
                 0.5,
                 1004,
@@ -1016,8 +1003,7 @@ impl crate::game::Sim<'_> {
         // EntityType.create rolls a yaw from the level random before the stack config turns it.
         let _ = self.world.random.next_float();
         self.next_entity += 1;
-        let stand =
-            crate::hc::entities::ArmorStand::new(self.next_entity, foot, y_rot(facing));
+        let stand = crate::hc::entities::ArmorStand::new(self.next_entity, foot, y_rot(facing));
         self.world.modified.insert((front.0 >> 4, front.2 >> 4));
         self.armor_stands.push(stand);
         (shrink(stack), CLICK)
@@ -1749,8 +1735,7 @@ impl crate::game::Sim<'_> {
                         .play("minecraft:entity.sulfur_cube.eject", sound_at, 1.0, 1.0);
                 }
                 Species::Sheep if !m.extra.sheared && !m.is_baby() => {
-                    let color =
-                        crate::hc::mobs::render::DYE_NAMES[m.extra.color as usize & 15];
+                    let color = crate::hc::mobs::render::DYE_NAMES[m.extra.color as usize & 15];
                     self.sounds
                         .play("minecraft:entity.sheep.shear", sound_at, 1.0, 1.0);
                     let drops = self.sequence_loot(
@@ -2100,7 +2085,6 @@ pub(super) fn tipped_effect(stack: &ItemStack) -> Option<(&'static str, i32)> {
         })
 }
 
-
 impl crate::game::Sim<'_> {
     pub(crate) fn pos_of(p: Pos) -> BlockPos {
         BlockPos::new(p.0, p.1, p.2)
@@ -2119,7 +2103,12 @@ impl crate::game::Sim<'_> {
 
 impl crate::game::Sim<'_> {
     /// `DispenserBlock.getDispensePosition(source, scale, offset)`.
-    pub(crate) fn dispense_position(pos: Pos, facing: Direction, scale: f64, offset: [f64; 3]) -> Vec3 {
+    pub(crate) fn dispense_position(
+        pos: Pos,
+        facing: Direction,
+        scale: f64,
+        offset: [f64; 3],
+    ) -> Vec3 {
         let s = step(facing);
         let c = Self::center(pos);
         Vec3::new(

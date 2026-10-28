@@ -2,11 +2,7 @@
 //! it reads, the spawning chunks and caps of `ServerChunkCache.tickChunks`,
 //! and the mobs it adds (finalized with the game's `finalizeSpawn`).
 use super::Dim;
-use crate::hc::{
-    biome::{BiomeInfo, SpawnEntry},
-    blocks::BlockFacts,
-    collisions::{SceneCollisions, no_collision_empty},
-    mobs::{
+use crate::hc::{biome::{BiomeInfo, SpawnEntry}, blocks::BlockFacts, collisions::{SceneCollisions, no_collision_empty}, mobs::{
         Mob, MobWorld, Species,
         data::{self, MobData},
         seen_grid::SeenGrid,
@@ -15,8 +11,7 @@ use crate::hc::{
             self, Category, Counted, Heightmap, NaturalLevel, SpawnCost, SpawnPlayer, SpawnRequest,
             SpawnState, Spawned, StructureAt, StructureSpawns,
         },
-    },
-};
+    }};
 use horizon_core::{
     geometry::{Aabb, Vec3},
     random::{LegacyRandom, RandomSource, WorldgenRandom},
@@ -394,10 +389,7 @@ impl<'a> crate::game::Sim<'a> {
         let facts = self.biome_facts(x.floor() as i32, y.floor() as i32, z.floor() as i32);
         let difficulty = self.local_difficulty(r.position);
         crate::hc::mobs::spawning::finalize(&mut mob, &facts, &difficulty);
-        crate::hc::mobs::raider::finalize(
-            &mut mob,
-            crate::hc::mobs::raider::Reason::Natural,
-        );
+        crate::hc::mobs::raider::finalize(&mut mob, crate::hc::mobs::raider::Reason::Natural);
         let bounds = mob.bounds();
         pending.push(mob);
         Some(Spawned {
@@ -522,8 +514,7 @@ impl<'a> crate::game::Sim<'a> {
                         m.position.z.floor() as i32,
                     ],
                     is_mob: true,
-                    persistent: m.persistent
-                        || crate::hc::mobs::ai::requires_custom_persistence(m),
+                    persistent: m.persistent || crate::hc::mobs::ai::requires_custom_persistence(m),
                 })
                 .collect();
             let players = players

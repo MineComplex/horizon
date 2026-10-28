@@ -21,7 +21,7 @@ mod game;
 mod hc;
 mod plugins;
 
-use horizon_client::{crash, logging};
+use horizon_game::{crash, logging};
 use std::path::PathBuf;
 
 /// Horizon's own options, which go before vanilla's: they take a value,
@@ -98,11 +98,8 @@ fn main() {
         log::info!("Horizon server {}", crash::version());
         crash::install(home.clone(), "server");
     }
-    horizon_client::game::set_plugins(plugins::installed());
-    if let Err(error) = horizon_client::game::run_with(
-        horizon_client::game::Program::Server,
-        game_args(horizon, server, fixture),
-    ) {
+    game::set_plugins(plugins::installed());
+    if let Err(error) = game::run_with(game::Program::Server, game_args(horizon, server, fixture)) {
         log::error!("{error}");
         if !help {
             crash::report_error(&home, "server", &*error);

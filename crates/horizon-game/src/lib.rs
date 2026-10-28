@@ -22,6 +22,7 @@ pub mod cauldron;
 pub mod chunk;
 pub mod chunk_map;
 pub mod chunk_status;
+pub mod block_entity_anim;
 pub mod clock;
 pub mod crash;
 pub mod collisions;
