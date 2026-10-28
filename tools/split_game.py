@@ -63,11 +63,14 @@ def game_files():
 
 
 def check():
-    """`cargo check` of the game binary (and its tests), as compiler messages."""
-    out = subprocess.run(
-        ["cargo", "check", "-p", "horizon-client", "--bins", "--tests", "--features", "mods",
-         "--message-format", "json"],
-        cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True).stdout
+    """`cargo check` of the game (horizon-client's library and its tests), as compiler messages."""
+    run = subprocess.run(
+        ["cargo", "check", "-p", "horizon-client", "--lib", "--tests", "--message-format", "json"],
+        cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    out = run.stdout
+    if run.returncode != 0 and '"compiler-message"' not in out:
+        # Cargo itself failed (a bad flag, a manifest error): no messages would read as "all good".
+        raise SystemExit(f"cargo check failed before compiling:\n{run.stderr[-2000:]}")
     messages = []
     for line in out.splitlines():
         try:

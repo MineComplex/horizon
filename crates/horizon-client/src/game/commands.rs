@@ -2423,9 +2423,10 @@ impl Game<'_> {
                     }
                 })
                 .unwrap_or(0);
+            let name = self.target_name(target);
             self.system_message(Text::translate(
                 &format!("commands.experience.query.{unit}"),
-                &[self.target_name(target), Text::literal(value.to_string())],
+                &[name, Text::literal(value.to_string())],
             ));
             return Ok(value);
         }

@@ -540,11 +540,12 @@ impl Game<'_> {
             }
             DebugAction::ShowHitboxes if player => {
                 self.show_hitboxes = !self.show_hitboxes;
-                self.debug_translated(if self.show_hitboxes {
+                let key = if self.show_hitboxes {
                     "debug.show_hitboxes.on"
                 } else {
                     "debug.show_hitboxes.off"
-                });
+                };
+                self.debug_translated(key);
                 true
             }
             DebugAction::ClearChat => {
@@ -554,11 +555,12 @@ impl Game<'_> {
             }
             DebugAction::ShowChunkBorders if player => {
                 self.show_chunk_borders = !self.show_chunk_borders;
-                self.debug_translated(if self.show_chunk_borders {
+                let key = if self.show_chunk_borders {
                     "debug.chunk_boundaries.on"
                 } else {
                     "debug.chunk_boundaries.off"
-                });
+                };
+                self.debug_translated(key);
                 true
             }
             DebugAction::AdvancedTooltips => {
@@ -639,11 +641,12 @@ impl Game<'_> {
                 self.settings.improved_transparency = !self.settings.improved_transparency;
                 self.settings.save(&Self::options_path());
                 self.apply_settings();
-                self.debug_translated(if self.settings.improved_transparency {
+                let key = if self.settings.improved_transparency {
                     "debug.improvedTransparency.on"
                 } else {
                     "debug.improvedTransparency.off"
-                });
+                };
+                self.debug_translated(key);
                 true
             }
             DebugAction::FpsCharts => {
