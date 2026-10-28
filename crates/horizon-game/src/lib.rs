@@ -23,6 +23,7 @@ pub mod chunk;
 pub mod chunk_map;
 pub mod chunk_status;
 pub mod clock;
+pub mod crash;
 pub mod collisions;
 pub mod command_block;
 pub mod command_storage;

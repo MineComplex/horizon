@@ -1240,25 +1240,6 @@ impl Resources {
     }
 }
 
-/// Everything the title and menus draw: the GUI atlas with its font and the
-/// title panorama. Kept apart from the world bundle so the title can appear
-/// before the block sprites, models and gameplay tables are ready.
-pub struct UiResources {
-    /// The GUI, font, particle, map and skin atlas.
-    pub atlas: HudAtlas,
-    /// The title screen's panorama faces.
-    pub panorama: Arc<crate::hc::gfx::panorama::Faces>,
-}
-impl UiResources {
-    /// From a resource root layering packs over `defaults`, the game's own
-    /// resources (`root` itself when no pack is on).
-    pub fn load(root: &std::path::Path, defaults: &std::path::Path) -> Result<Self> {
-        Ok(Self {
-            atlas: HudAtlas::build_over(root, defaults)?,
-            panorama: Arc::new(crate::hc::gfx::panorama::Faces::load(root)),
-        })
-    }
-}
 /// What a resource pack reload replaces (`Minecraft.reloadResourcePacks`):
 /// block models and sprites with their meshing tables, item models,
 /// translations and the textures read on the CPU. Each game holds its own;
@@ -1317,12 +1298,6 @@ impl PackResources {
             forcefield: Arc::new(load_forcefield(root)),
         })
     }
-}
-/// A quick craft drag as the screen draws it: each dragged slot's count and
-/// whether the slot caps it (None: hidden), and what stays in hand.
-struct DragView {
-    slots: HashMap<usize, Option<(u32, bool)>>,
-    left: Option<u32>,
 }
 /// Ctrl+Q reads the physical keyboard, independently of sprint key mappings.
 /// A chunk whose ticking future can complete (`ChunkMap.prepareTickingChunk`):
@@ -8088,119 +8063,12 @@ impl crate::game::Sim<'_> {
         (uploads, unloaded)
     }
 }
-/// clouds.png as filled cells (`CloudRenderer.prepare`: alpha 10 or more).
-fn load_clouds(root: &std::path::Path) -> (u32, u32, Vec<bool>) {
-    crate::hc::hud::decode(&root.join("assets/minecraft/textures/environment/clouds.png"))
-        .map(|(w, h, px)| {
-            (
-                w,
-                h,
-                px.as_chunks::<4>().0.iter().map(|p| p[3] >= 10).collect(),
-            )
-        })
-        .unwrap_or((1, 1, vec![false]))
-}
-/// misc/forcefield.png for the world border wall (square, power of two).
-fn load_forcefield(root: &std::path::Path) -> (u32, u32, Vec<u8>) {
-    crate::hc::hud::decode(&root.join("assets/minecraft/textures/misc/forcefield.png"))
-        .ok()
-        .filter(|(w, h, _)| w == h && w.is_power_of_two())
-        .unwrap_or((1, 1, vec![0; 4]))
-}
 
-/// CPU-only startup data, owned by one loader generation. No file reads or
-/// model baking are needed when the event loop installs this bundle.
-struct GameCpuResources {
-    painting_variants: paintings::PaintingVariants,
-    frame_model: frames::FrameModel,
-    glow_frame_model: frames::FrameModel,
-    map_frame_model: frames::FrameModel,
-    glow_map_frame_model: frames::FrameModel,
-    armor_stand_assets: armor_stands::ArmorStandAssets,
-    waypoint_styles: crate::hc::locator_bar::WaypointStyles,
-    boat_models: boats::BoatModels,
-    cart_models: minecarts::CartModels,
-    crystal_model: Option<crate::hc::mobs::Part>,
-    cushion_model: Option<crate::hc::mobs::Part>,
-    dragon_model: Option<crate::hc::mobs::Part>,
-    arrow_model: Option<crate::hc::mobs::Part>,
-    trident_model: Option<crate::hc::mobs::Part>,
-    creative_screen: Creative,
-}
-impl GameCpuResources {
-    fn load(root: &std::path::Path) -> Result<Self> {
-        let document = crate::hc::mobs::EntityModelDocument::load(root).ok();
-        let model = |key| document.as_ref().and_then(|document| document.model(key));
-        Ok(Self {
-            painting_variants: paintings::PaintingVariants::load(root),
-            frame_model: frames::bake_frame(root, "item_frame"),
-            glow_frame_model: frames::bake_frame(root, "glow_item_frame"),
-            map_frame_model: frames::bake_frame(root, "item_frame_map"),
-            glow_map_frame_model: frames::bake_frame(root, "glow_item_frame_map"),
-            armor_stand_assets: armor_stands::ArmorStandAssets::load(root, document.as_ref()),
-            waypoint_styles: crate::hc::locator_bar::WaypointStyles::load(root),
-            boat_models: boats::BoatModels::load(document.as_ref()),
-            cart_models: minecarts::CartModels::load(document.as_ref()),
-            crystal_model: model("minecraft:end_crystal#main"),
-            cushion_model: model("minecraft:cushion#main"),
-            dragon_model: model("minecraft:ender_dragon#main"),
-            arrow_model: model("minecraft:arrow#main"),
-            trident_model: model("minecraft:trident#main"),
-            creative_screen: Creative::load(root)?,
-        })
-    }
-}
 
-/// The data the background loader produces for `crate::game::Sim::new`.
-struct Loaded {
-    game_cpu: Option<GameCpuResources>,
-    renderer_cpu: Option<crate::hc::gfx::PreparedTextures>,
-    root: PathBuf,
-    pack_error: Option<String>,
-    resources: Arc<Resources>,
-    rest_loader: Option<WorldRestLoader>,
-    pack: PackResources,
-    /// The menu bundle, for the synchronous launch; the loading screen receives
-    /// it earlier through its own channel.
-    gui: Option<UiResources>,
-}
 
-/// What the background loader publishes: the menu bundle as soon as it is
-/// ready, then the core bundle with a handle to the rest worker.
-enum LoaderMsg {
-    Ui(UiResources, PathBuf),
-    Done(std::result::Result<Loaded, String>),
-}
 
-enum PendingWorldEntry {
-    Server {
-        address: String,
-        name: String,
-        /// A transfer's carried-over server cookies (`TransferState`).
-        cookies: Option<crate::hc::net::Cookies>,
-    },
-}
 
-struct WorldRestLoader {
-    progress: Progress,
-    handle: JoinHandle<std::result::Result<(), String>>,
-}
 
-impl WorldRestLoader {
-    fn ready(&self) -> Result<bool> {
-        // No time limit: the title stays usable while this loads, and a slow
-        // disk or a debug build can take minutes. A failure ends the thread
-        // and is reported by `finish`.
-        Ok(self.handle.is_finished())
-    }
-
-    fn finish(self) -> Result<()> {
-        self.handle
-            .join()
-            .map_err(|_| "world resource loader panicked")?
-            .map_err(Into::into)
-    }
-}
 
 impl crate::game::Sim<'_> {
     fn poll_world_rest(&mut self) -> Result<()> {
@@ -8263,58 +8131,8 @@ const NUMERIC_KEYS: [KeyCode; 11] = [
     KeyCode::Numpad9,
 ];
 
-const STAGE_LINES: [&str; 10] = [
-    "Loading menu",
-    "Loading assets",
-    "Loading block facts",
-    "Loading biomes",
-    "Loading pack tables",
-    "Loading collision",
-    "Loading items",
-    "Loading recipes",
-    "Loading world resources",
-    "World resources ready",
-];
 
-/// The background loader's checkpoint, read by the loading screen each frame.
-#[derive(Clone)]
-struct Progress {
-    value: Arc<AtomicU32>,
-    lines: &'static [&'static str],
-}
-impl Progress {
-    fn new() -> Self {
-        Self::with(&STAGE_LINES)
-    }
-    fn with(lines: &'static [&'static str]) -> Self {
-        Self {
-            value: Arc::new(AtomicU32::new(0)),
-            lines,
-        }
-    }
-    fn set(&self, stage: u32) {
-        self.value.store(stage, Ordering::Relaxed);
-    }
-    fn fraction(&self) -> f32 {
-        self.value.load(Ordering::Relaxed) as f32 / (self.lines.len() - 1) as f32
-    }
-    fn line(&self) -> &'static str {
-        self.lines[(self.value.load(Ordering::Relaxed) as usize).min(self.lines.len() - 1)]
-    }
-}
 
-/// Harness and dedicated runs keep the fully-synchronous startup so their
-/// output stays byte-identical; only an ordinary launch shows the window first.
-fn synchronous_startup(options: &Options) -> bool {
-    options.frames.is_some()
-        || options.world_frames.is_some()
-        || options.control.is_some()
-        || !options.execution_role.is_client()
-        || std::env::var_os("HORIZON_DISPENSE_FIXTURE").is_some()
-        || std::env::var_os("HORIZON_SCULK_FIXTURE").is_some()
-        || std::env::var_os("HORIZON_COMMAND_SCRIPT").is_some()
-        || std::env::var_os("HORIZON_NET_REPORT").is_some()
-}
 
 /// The synchronous launch loads both phases; an ordinary launch returns the
 /// core bundle while the rest worker keeps loading.
@@ -8542,882 +8360,19 @@ fn load_resources(
     })
 }
 
-fn load_world_rest(
-    root: &std::path::Path,
-    resources: &Resources,
-    assets: &Assets,
-    behaviour_json: &serde_json::Value,
-    gameplay_projection: &[crate::hc::blocks::GameplayProjection],
-    progress: &Progress,
-    started: Instant,
-) -> Result<WorldRest> {
-    let facts = resources.facts();
-    let biomes = resources.biomes();
-    let threads = resources.threads();
-    let registry_owner = assets;
-    progress.set(6);
-    let mob_data = crate::hc::mobs::MobData::load(root, facts);
-    crate::hc::mobs::trial_spawner::load_registry(root);
 
-    let items = Items::load(root, assets.registry, facts)?;
-    log::info!("load items: {:.2}s", started.elapsed().as_secs_f32());
-    progress.set(7);
-    let recipes = Recipes::load(root, &items)?;
-    let transformers = crate::hc::block_transform::Transformers::load(root, assets.registry)?;
-    log::info!(
-        "Horizon: resources loaded in {:.1}s; {} block states, {} items, {} biomes; {} worker threads",
-        started.elapsed().as_secs_f32(),
-        facts.states.len(),
-        items.items.len(),
-        biomes.list.len(),
-        threads
-    );
-    progress.set(8);
-    let stations = crate::hc::stations::StationData::load(root, &items);
-    let animate =
-        crate::hc::animate_tick::AnimateTables::load(root, registry_owner.registry, biomes)?;
-    let fog = crate::hc::fog::FogTables::load(root, biomes);
-    Ok(WorldRest {
-        stations,
-        items,
-        recipes,
-        transformers,
-        providers: Providers::load(root),
-        block_entity_render: crate::hc::block_entity_render::BlockEntityRenderer::load(
-            root,
-            registry_owner.registry,
-        )?,
-        animate,
-        fog,
-        music: crate::hc::music::MusicTables::load(root),
-        ambient: crate::hc::ambience::AmbientTables::load(root),
-        nether_environment: Environment::load_dimension(root, "the_nether", false)?,
-        end_environment: Environment::load_dimension(root, "the_end", false)?,
-        behaviours: Behaviours::load_with_gameplay(
-            registry_owner.registry,
-            root,
-            behaviour_json,
-            gameplay_projection,
-        )?,
-        mob_types: MobTypes::load(root)?
-            .types
-            .into_iter()
-            .map(|(k, v)| (k, Arc::new(v)))
-            .collect(),
-        mob_data,
-        player_type: perspective::player_type(root),
-        player_arm: crate::hc::mobs::load_model(root, "minecraft:player#main")
-            .and_then(|m| m.children.into_iter().find(|c| c.name == "right_arm")),
-        player_arm_slim: crate::hc::mobs::load_model(root, "minecraft:player_slim#main")
-            .and_then(|m| m.children.into_iter().find(|c| c.name == "right_arm")),
-        spin_attack: crate::hc::mobs::load_model(root, "minecraft:spin_attack#main"),
-    })
-}
 
-/// CPU mip chains for the block sprites and world border.
-fn prepare_renderer_textures(pack: &PackResources) -> crate::hc::gfx::PreparedTextures {
-    let assets = &pack.render;
-    crate::hc::gfx::PreparedTextures::new(
-        &assets.pixels,
-        assets.sprite_size,
-        assets.texture_layers,
-        &assets.sprite_mips,
-        (&pack.forcefield.2, pack.forcefield.0),
-    )
-}
 
-/// Upload pack textures and create the renderer on the window's device.
-fn build_renderer(
-    window: Arc<Window>,
-    offscreen: bool,
-    pack: &PackResources,
-    gui: &UiResources,
-    previous: Option<&Renderer>,
-    prepared: Option<crate::hc::gfx::PreparedTextures>,
-    api: crate::hc::graphics::GraphicsApi,
-) -> Result<Renderer> {
-    let assets = &pack.render;
-    let atlas = &gui.atlas;
-    // The new renderer's atlas texture starts from `HudAtlas.pixels`, which
-    // holds the textures but never a glyph rasterized at run time. The font's
-    // cache still answers with the rects it drew into the previous renderer's
-    // texture, so forget them: the glyphs that are drawn again are placed into
-    // this texture (as `ui_theme` does when its atlas changes). Without this,
-    // Chinese and Japanese menu labels go blank when the loading screen hands
-    // over to the game.
-    atlas.font.reset_cache();
-    let mut renderer = pollster::block_on(Renderer::new(
-        window,
-        offscreen,
-        &assets.pixels,
-        assets.sprite_size,
-        assets.sprite_minimum_size,
-        assets.texture_layers,
-        &assets.sprite_mips,
-        &assets.animations,
-        (&atlas.pixels, atlas.width, atlas.height),
-        (&atlas.glint.0, atlas.glint.1, atlas.glint.2),
-        (
-            &atlas.glint_armor.0,
-            atlas.glint_armor.1,
-            atlas.glint_armor.2,
-        ),
-        (&pack.forcefield.2, pack.forcefield.0),
-        &gui.panorama,
-        prepared,
-        previous,
-        api,
-    ))?;
-    renderer.hud.sprite_animations = atlas
-        .sprite_animations
-        .iter()
-        .map(|(rect, animation)| (*rect, animation.clone(), (usize::MAX, 0, 0)))
-        .collect();
-    Ok(renderer)
-}
 
-/// The loading screen's renderer: the real HUD atlas and font over one opaque
-/// white block-sprite layer, an empty border texture and the title panorama
-/// once the menu bundle is ready.
-fn loading_renderer(
-    window: Arc<Window>,
-    offscreen: bool,
-    gui: Option<&UiResources>,
-    previous: Option<&Renderer>,
-    api: crate::hc::graphics::GraphicsApi,
-) -> Result<Renderer> {
-    static FORCEFIELD: [u8; 4] = [0; 4];
-    static EMPTY_HUD: [u8; 4] = [0, 0, 0, 255];
-    static EMPTY_GLINT: [u8; 4] = [0; 4];
-    let empty_panorama = crate::hc::gfx::panorama::Faces {
-        size: 1,
-        pixels: [0u8; 4].repeat(6),
-    };
-    let panorama = gui.map_or(&empty_panorama, |gui| gui.panorama.as_ref());
-    let atlas = gui.map(|gui| &gui.atlas);
-    let (pixels, width, height) = match atlas {
-        Some(atlas) => (atlas.pixels.as_slice(), atlas.width, atlas.height),
-        None => (EMPTY_HUD.as_slice(), 1, 1),
-    };
-    let (glint_pixels, glint_width, glint_height) = match atlas {
-        Some(atlas) => (atlas.glint.0.as_slice(), atlas.glint.1, atlas.glint.2),
-        None => (EMPTY_GLINT.as_slice(), 1, 1),
-    };
-    // A glyph rasterized into an earlier texture is not in these pixels; the
-    // new texture gets it again when the character is drawn (see
-    // `build_renderer`).
-    if let Some(atlas) = atlas {
-        atlas.font.reset_cache();
-    }
-    let mut renderer = pollster::block_on(Renderer::new(
-        window,
-        offscreen,
-        &[255, 255, 255, 255],
-        1,
-        1,
-        1,
-        &[],
-        &[],
-        (pixels, width, height),
-        (glint_pixels, glint_width, glint_height),
-        (glint_pixels, glint_width, glint_height),
-        (&FORCEFIELD[..], 1),
-        panorama,
-        None,
-        previous,
-        api,
-    ))?;
-    if let Some(atlas) = atlas {
-        renderer.hud.sprite_animations = atlas
-            .sprite_animations
-            .iter()
-            .map(|(rect, animation)| (*rect, animation.clone(), (usize::MAX, 0, 0)))
-            .collect();
-    }
-    Ok(renderer)
-}
 
-/// A title-shaped frame: black clear and panorama, only the HUD is drawn.
-fn loading_frame(hud: &HudBatch) -> Frame<'_> {
-    Frame {
-        weather: &[],
-        weather_time: crate::hc::weather::Time::new(0, 0.0),
-        camera: glam::DVec3::new(0.5, 100.0, 0.5),
-        yaw: 0.0,
-        pitch: 10.0,
-        fov_degrees: 85.0,
-        bob: glam::Mat4::IDENTITY,
-        spin: glam::Mat4::IDENTITY,
-        sky: crate::hc::environment::Sky::default(),
-        distance: 12.0,
-        detail_distance: 12.0,
-        depth_far: 1000.0,
-        underwater: false,
-        cave_culling: false,
-        title: true,
-        sky_blocked: false,
-        skybox: false,
-        end_sky: false,
-        end_sky_sprite: None,
-        environment_fog: None,
-        water_fog: [0.0; 3],
-        fog: None,
-        dark_disc: false,
-        outline: Vec::new(),
-        outline_after_terrain: false,
-        outline_high_contrast: false,
-        debug_lines: &[],
-        debug_lines_on_top: &[],
-        debug_crosshair: &[],
-        hud,
-        glint_alpha: 0.75,
-        glint_ticks: 0.0,
-        nether_lighting: false,
-        entities: &[],
-        entity_spans: &[],
-        glowing: &[],
-        dynamic_lights: &[],
-        clouds: None,
-        lightning: Default::default(),
-        additive: &[],
-        see_through: &[],
-        celestial: &[],
-        stars: None,
-        hand: &[],
-        hand_fov_degrees: 70.0,
-        screen: &[],
-        pack: Default::default(),
-        border: None,
-        game_time: 0.0,
-        shader_game_time: 0.0,
-        end_portal_sprites: [[0.0; 4]; 2],
-        crumbling_sprite: [0.0; 4],
-        ticks: 0,
-        darkness: (0.0, 0.0),
-        night_vision: 0.0,
-        block_flicker: 0.0,
-        boss_darken: 0.0,
-        menu_blur: None,
-    }
-}
 
-/// The post-load setup once the resources are ready: `crate::game::Sim::new` and the
-/// options, packs, mods, control socket, benchmark and world selection the
-/// old `run` did after loading. `None` means a harness or dedicated run
-/// finished here instead.
-#[allow(clippy::too_many_arguments)]
-fn start_game<'a>(
-    res: &'a Arc<Resources>,
-    pack: PackResources,
-    gui: UiResources,
-    options: Options,
-    pack_error: Option<String>,
-    audio: Audio,
-    vanilla_root: PathBuf,
-    _started: Instant,
-    rest_loader: Option<WorldRestLoader>,
-    settings: Option<Settings>,
-    prepared: Option<GameCpuResources>,
-) -> Result<Option<Game<'a>>> {
-    let handoff = prepared.is_some();
-    let mut settings = match settings {
-        Some(settings) => settings,
-        None => Settings::load(&std::env::current_dir()?.join("options.txt")),
-    };
-    if let Some(d) = options.distance_override {
-        settings.render_distance = d;
-    }
-    let mut game = crate::game::Sim::new(res, pack, gui, options, settings, audio, prepared)?;
-    game.rest_loader = rest_loader;
-    game.ui.vanilla_root = vanilla_root;
-    if let Some(error) = pack_error {
-        // Minecraft.clearResourcePacksOnError: the selection is cleared and
-        // saved, so the next launch starts without the packs.
-        game.settings.resource_packs.clear();
-        game.settings.save(&crate::game::Sim::options_path());
-        game.open_options_at(true, crate::hc::options_ui::Page::Packs);
-        game.ui.options.resource_error = Some(error);
-    }
-    game.apply_settings();
-    game.start_agent_control()?;
-    if let Ok(spec) = std::env::var("HORIZON_DISPENSE_FIXTURE") {
-        game.run_component_harness(fixtures::ComponentHarness::Dispenser(spec))?;
-        return Ok(None);
-    }
-    if let Ok(spec) = std::env::var("HORIZON_SCULK_FIXTURE") {
-        game.run_component_harness(fixtures::ComponentHarness::Sculk(spec))?;
-        return Ok(None);
-    }
-    if game.options.execution_role == execution_role::ExecutionRole::DedicatedServer {
-        game.run_dedicated()?;
-        return Ok(None);
-    }
-    if let Some(address) = game.options.server.clone() {
-        let name = game.options.player_name();
-        game.connect_server(&address, &name)?;
-        if let Some(report) = std::env::var_os("HORIZON_NET_REPORT") {
-            game.run_net_harness(report.as_ref())?;
-            return Ok(None);
-        }
-        if std::env::var_os("HORIZON_STATIONARY_CLIENT").is_some() {
-            // The command harness's player: headless, it stays where the
-            // server's commands put it until the server ends.
-            game.run_stationary_client()?;
-            return Ok(None);
-        }
-    } else if !handoff {
-        let mut title = Title::new(
-            std::env::current_dir()?.join("saves"),
-            &game.options.resources,
-        );
-        title.last_server = game.settings.file.string("lastServer");
-        game.front.title = Some(title);
-    }
-    Ok(Some(game))
-}
 
-fn write_report(game: &Game<'_>) -> Result<()> {
-    if let Some(path) = &game.options.report {
-        let report = serde_json::json!({
-            "frames": game.frames,
-            "elapsed_seconds": game.started.elapsed().as_secs_f64(),
-            "chunks": game.world.chunks.len(),
-            "generated": game.streaming.generated_total,
-            "meshed_sections": game.streaming.meshed_total,
-            "player": game.player.as_ref().map(|p| [p.position.x, p.position.y, p.position.z]),
-            "error": game.error.as_ref().map(|e| e.to_string()),
-        });
-        std::fs::write(path, serde_json::to_vec_pretty(&report)?)?;
-    }
-    Ok(())
-}
 
-/// The window system ended the event loop with a failure (on Linux, a compositor dropping the
-/// connection after a protocol error) while fullscreen was on: the next start opens windowed, so a
-/// fullscreen the system can't show doesn't crash every launch (#2904).
-fn leave_fullscreen_after(
-    result: &std::result::Result<(), EventLoopError>,
-    settings: &mut Settings,
-) {
-    if matches!(result, Err(EventLoopError::ExitFailure(_))) && settings.fullscreen {
-        settings.fullscreen = false;
-        settings.save(&crate::game::Sim::options_path());
-        log::warn!(
-            "the window system closed the game in fullscreen; the next start opens windowed"
-        );
-    }
-}
 
-fn run_event_loop(mut game: Game<'_>) -> Result<()> {
-    let result = EventLoop::new()?.run_app(&mut game);
-    leave_fullscreen_after(&result, &mut game.settings);
-    result?;
-    crate::hc::discord_presence::stop();
-    write_report(&game)?;
-    if let Some(e) = game.error.take() {
-        return Err(e);
-    }
-    Ok(())
-}
 
-/// The loading screen's state while the worker loads the resources.
-struct Loading {
-    window: Option<Arc<Window>>,
-    renderer: Option<Renderer>,
-    gui: Option<UiResources>,
-    settings: Settings,
-    fullscreen: crate::hc::window::FullscreenState,
-    options: Option<Options>,
-    vanilla_root: PathBuf,
-    pack_error: Option<String>,
-    started: Instant,
-    panorama_rotation: crate::hc::gfx::panorama::Rotation,
-    progress: Progress,
-    receiver: Receiver<LoaderMsg>,
-    loaded: Option<std::result::Result<Loaded, String>>,
-    handle: Option<JoinHandle<()>>,
-    shown: bool,
-    menu: startup_menu::StartupMenu,
-    error: Option<Box<dyn std::error::Error>>,
-}
-impl Loading {
-    fn resumed(&mut self, event_loop: &ActiveEventLoop) {
-        if self.window.is_some() {
-            return;
-        }
-        // The Window constructor: created fullscreen when options.txt says so.
-        let fullscreen = self.settings.fullscreen;
-        let size = self
-            .options
-            .as_ref()
-            .map_or([1280, 720], |o| o.window_size)
-            .map(f64::from);
-        self.fullscreen = crate::hc::window::FullscreenState::new(fullscreen);
-        let attributes = Window::default_attributes()
-            .with_title("Horizon")
-            .with_window_icon(crate::hc::window::icon());
-        // Wayland names the window by its app id, which the horizon.desktop entry matches.
-        #[cfg(target_os = "linux")]
-        let attributes = winit::platform::wayland::WindowAttributesExtWayland::with_name(
-            attributes, "horizon", "horizon",
-        );
-        let window = match event_loop.create_window(
-            attributes
-                .with_inner_size(winit::dpi::LogicalSize::new(size[0], size[1]))
-                .with_fullscreen(fullscreen.then_some(winit::window::Fullscreen::Borderless(None))),
-        ) {
-            Ok(w) => Arc::new(w),
-            Err(e) => {
-                self.error = Some(e.into());
-                event_loop.exit();
-                return;
-            }
-        };
-        let offscreen = self.options.as_ref().is_some_and(|o| o.offscreen);
-        match loading_renderer(
-            window.clone(),
-            offscreen,
-            self.gui.as_ref(),
-            None,
-            self.settings.horizon.api,
-        ) {
-            Ok(r) => self.renderer = Some(r),
-            Err(e) => {
-                self.error = Some(e);
-                event_loop.exit();
-                return;
-            }
-        }
-        crate::hc::hud::GUI_SCALE.store(self.settings.gui_scale, Ordering::Relaxed);
-        self.window = Some(window);
-    }
-    fn window_event(&mut self, event_loop: &ActiveEventLoop, id: WindowId, event: WindowEvent) {
-        if self.window.as_ref().is_none_or(|w| w.id() != id) {
-            return;
-        }
-        if let Err(error) = self.menu_event(event_loop, event) {
-            self.error = Some(error);
-            event_loop.exit();
-        }
-    }
-    /// The menu bundle arrived: rebuild the loading screen with the real atlas
-    /// and title panorama.
-    fn set_ui(&mut self, gui: UiResources, root: PathBuf) {
-        log::info!(
-            "Horizon: loading the title artwork after {} ms",
-            self.started.elapsed().as_millis()
-        );
-        self.menu.set_root(root, &self.settings);
-        self.gui = Some(gui);
-        crate::hc::ui_theme::reset_atlas();
-        self.apply_menu_settings();
-        let Some(window) = self.window.clone() else {
-            return;
-        };
-        let offscreen = self.options.as_ref().is_some_and(|o| o.offscreen);
-        if let Some(renderer) = &mut self.renderer {
-            renderer.release_surface();
-        }
-        match loading_renderer(
-            window,
-            offscreen,
-            self.gui.as_ref(),
-            self.renderer.as_ref(),
-            self.settings.horizon.api,
-        ) {
-            Ok(r) => {
-                crate::hc::hud::GUI_SCALE.store(self.settings.gui_scale, Ordering::Relaxed);
-                self.renderer = Some(r);
-            }
-            Err(e) => self.error = Some(e),
-        }
-    }
-    fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
-        if horizon_threads::stop_requests() > 0 {
-            // No world is open yet: nothing to save.
-            event_loop.exit();
-            return;
-        }
-        if let Err(error) = self.poll_menu_resources() {
-            self.error = Some(error);
-            event_loop.exit();
-            return;
-        }
-        if let Some(w) = &self.window {
-            if self.options.as_ref().is_some_and(|o| o.offscreen) {
-                self.draw();
-            } else {
-                w.request_redraw();
-            }
-        }
-        event_loop.set_control_flow(ControlFlow::Poll);
-    }
-    fn draw(&mut self) {
-        let Some(size) = self
-            .renderer
-            .as_ref()
-            .map(|r| [r.config.width, r.config.height])
-        else {
-            return;
-        };
-        let mut batch = HudBatch::new(size);
-        self.draw_menu(&mut batch);
-        let mut frame = loading_frame(&batch);
-        frame.yaw = self.panorama_rotation.update(
-            self.started.elapsed().as_secs_f32(),
-            self.settings.file.double("panoramaScrollSpeed") as f32,
-        );
-        if let Some(renderer) = &mut self.renderer {
-            match renderer.render(&frame) {
-                Ok(_) => {}
-                Err(e) => log::warn!("Horizon: loading screen frame failed: {e}"),
-            }
-        }
-        if !self.shown {
-            self.shown = true;
-            log::info!(
-                "Horizon: loading screen shown after {} ms",
-                self.started.elapsed().as_millis()
-            );
-        }
-    }
-    fn finish(&mut self, loaded: Loaded) -> Result<Option<Game<'static>>> {
-        let handoff_at = Instant::now();
-        let mut options = self.options.take().ok_or("loading already finished")?;
-        options.resources = loaded.root.clone();
-        // StartupMenu owns the server to join until it can hand it to Game.
-        options.server = None;
-        let gui = self.gui.take().ok_or("missing menu bundle")?;
-        let window = self.window.clone().ok_or("window closed")?;
-        // Keep the loader's device and swap in the real textures in one step.
-        if let Some(renderer) = &mut self.renderer {
-            renderer.release_surface();
-        }
-        let renderer_at = Instant::now();
-        let renderer = build_renderer(
-            window.clone(),
-            options.offscreen,
-            &loaded.pack,
-            &gui,
-            self.renderer.as_ref(),
-            loaded.renderer_cpu,
-            self.settings.horizon.api,
-        )?;
-        log::info!(
-            "Horizon: world renderer ready after {} ms",
-            self.started.elapsed().as_millis()
-        );
-        let renderer_ms = renderer_at.elapsed().as_millis();
-        // Audio is created on the main thread, after the core is ready.
-        let audio = if !options.execution_role.is_client() {
-            Audio::silent(&options.resources)
-        } else {
-            Audio::new(&options.resources)
-        };
-        let pack_error = loaded.pack_error.or_else(|| self.pack_error.take());
-        // The game borrows its shared resources for the process's lifetime,
-        // like the single copy an integrated server would share.
-        let res: &'static Arc<Resources> = Box::leak(Box::new(loaded.resources));
-        let game_at = Instant::now();
-        let Some(mut game) = start_game(
-            res,
-            loaded.pack,
-            gui,
-            options,
-            pack_error,
-            audio,
-            self.vanilla_root.clone(),
-            self.started,
-            loaded.rest_loader,
-            Some(self.settings.clone()),
-            loaded.game_cpu,
-        )?
-        else {
-            return Ok(None);
-        };
-        let game_ms = game_at.elapsed().as_millis();
-        game.front.window = Some(window);
-        game.front.renderer = Some(renderer);
-        game.front.world_renderer_ready = true;
-        game.front.fullscreen = self.fullscreen;
-        game.front.panorama_rotation = self.panorama_rotation;
-        self.menu.handoff(&mut game);
-        game.apply_settings();
-        game.previous = Instant::now();
-        log::info!(
-            "Horizon: startup handoff {} ms (renderer {} ms, start_game {} ms)",
-            handoff_at.elapsed().as_millis(),
-            renderer_ms,
-            game_ms
-        );
-        Ok(Some(game))
-    }
-}
 
-/// The application: the loading screen until the resources are ready, then
-/// the game itself, on the same event loop and window.
-enum App {
-    Loading(Box<Loading>),
-    Ready(Box<Game<'static>>),
-}
-impl ApplicationHandler for App {
-    fn resumed(&mut self, event_loop: &ActiveEventLoop) {
-        match self {
-            App::Loading(loading) => loading.resumed(event_loop),
-            App::Ready(game) => game.resumed(event_loop),
-        }
-    }
-    fn window_event(&mut self, event_loop: &ActiveEventLoop, id: WindowId, event: WindowEvent) {
-        match self {
-            App::Loading(loading) => loading.window_event(event_loop, id, event),
-            App::Ready(game) => game.window_event(event_loop, id, event),
-        }
-    }
-    fn device_event(&mut self, event_loop: &ActiveEventLoop, id: DeviceId, event: DeviceEvent) {
-        if let App::Ready(game) = self {
-            game.device_event(event_loop, id, event);
-        }
-    }
-    fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
-        enum Step {
-            Waiting,
-            Ready(Box<Game<'static>>),
-            Done,
-            Failed(Box<dyn std::error::Error>),
-        }
-        let step = match self {
-            App::Ready(game) => {
-                game.about_to_wait(event_loop);
-                return;
-            }
-            App::Loading(loading) => {
-                loading.about_to_wait(event_loop);
-                if loading.error.is_some() {
-                    event_loop.exit();
-                    return;
-                }
-                match if loading.menu.reload_packs {
-                    None
-                } else {
-                    loading.loaded.take()
-                } {
-                    None => Step::Waiting,
-                    Some(Err(e)) => Step::Failed(e.into()),
-                    Some(Ok(loaded)) => match loading.finish(loaded) {
-                        Ok(Some(game)) => Step::Ready(Box::new(game)),
-                        Ok(None) => Step::Done,
-                        Err(e) => Step::Failed(e),
-                    },
-                }
-            }
-        };
-        match step {
-            Step::Waiting => {}
-            Step::Ready(game) => *self = App::Ready(game),
-            Step::Done => event_loop.exit(),
-            Step::Failed(e) => {
-                if let App::Loading(loading) = self {
-                    loading.error = Some(e);
-                }
-                event_loop.exit();
-            }
-        }
-    }
-    fn exiting(&mut self, event_loop: &ActiveEventLoop) {
-        if let App::Ready(game) = self {
-            game.exiting(event_loop);
-        }
-    }
-}
 
-/// The ordinary launch: load the resources on a worker while the window shows
-/// the loading screen, then swap in the game on the main thread.
-fn run_loading(
-    options: Options,
-    settings: Settings,
-    vanilla_root: PathBuf,
-    pack_error: Option<String>,
-    started: Instant,
-) -> Result<()> {
-    let progress = Progress::new();
-    let (receiver, loader) =
-        startup_menu::spawn_loader(&settings, &vanilla_root, started, &progress)?;
-    let menu = startup_menu::StartupMenu::new(&options, pack_error.as_deref())?;
-    let loading = Loading {
-        window: None,
-        renderer: None,
-        gui: None,
-        settings,
-        fullscreen: crate::hc::window::FullscreenState::new(false),
-        options: Some(options),
-        vanilla_root,
-        pack_error,
-        started,
-        panorama_rotation: Default::default(),
-        progress,
-        receiver,
-        loaded: None,
-        handle: Some(loader),
-        shown: false,
-        menu,
-        error: None,
-    };
-    let mut app = App::Loading(Box::new(loading));
-    let result = EventLoop::new()?.run_app(&mut app);
-    match &mut app {
-        App::Ready(game) => leave_fullscreen_after(&result, &mut game.settings),
-        App::Loading(loading) => leave_fullscreen_after(&result, &mut loading.settings),
-    }
-    result?;
-    crate::hc::discord_presence::stop();
-    match app {
-        App::Ready(mut game) => {
-            write_report(&game)?;
-            if let Some(e) = game.error.take() {
-                return Err(e);
-            }
-        }
-        App::Loading(loading) => {
-            if let Some(e) = loading.error {
-                return Err(e);
-            }
-        }
-    }
-    Ok(())
-}
 
-/// A program's `main`: logs, crash reports, then the game with the
-/// command line's arguments.
-pub fn main(program: Program) {
-    let args: Vec<String> = std::env::args().skip(1).collect();
-    let game_args = args.iter().take_while(|a| *a != "--dedicated");
-    let help = game_args.clone().any(|a| a == "--help" || a == "-h");
-    // A usage error, not a crash: no log, no crash report.
-    if !help && let Some(why) = refusal(program, &args, |v| std::env::var_os(v).is_some()) {
-        eprintln!("{}: {why}", program.name());
-        std::process::exit(2);
-    }
-    // The dedicated server logs in its own folder, as vanilla's does; the game in its home.
-    let (home, side, thread) = if args.iter().any(|a| a == "--dedicated") {
-        (std::path::PathBuf::from("."), "server", "Server thread")
-    } else {
-        (
-            crate::hc::logging::game_home(),
-            "client",
-            "Render thread",
-        )
-    };
-    if !help {
-        crate::hc::logging::init(&home, thread);
-        // The log's first line names the build, so a bug report that carries the log says which one it was.
-        log::info!(
-            "Horizon {} ({})",
-            crate::hc::crash::version(),
-            program.name()
-        );
-        crate::hc::crash::install(home.clone(), side);
-    }
-    if let Err(error) = run_with(program, args) {
-        log::error!("Horizon: {error}");
-        if !help {
-            crate::hc::crash::report_error(&home, side, &*error);
-        }
-        crate::hc::logging::flush();
-        // Started from Explorer, the console window closes with the game:
-        // keep the message on screen until it is read.
-        #[cfg(windows)]
-        if std::io::IsTerminal::is_terminal(&std::io::stdin()) {
-            eprintln!("Press Enter to close.");
-            let _ = std::io::stdin().read_line(&mut String::new());
-        }
-        std::process::exit(1);
-    }
-    crate::hc::logging::flush();
-}
-
-/// The game as `program`, with these arguments: the client's, or a server's
-/// after `--dedicated`.
-pub fn run_with(program: Program, args: Vec<String>) -> Result<()> {
-    let Some(mut options) = Options::read(program, args)? else {
-        return Ok(());
-    };
-    if options.execution_role == execution_role::ExecutionRole::DedicatedServer
-        && !dedicated::preflight(&mut options)?
-    {
-        return Ok(());
-    }
-    // Before any worker starts: on Linux they go behind the server thread
-    // and the render thread.
-    horizon_threads::put_helpers_behind();
-    if options.execution_role.is_client() {
-        // The render thread, like the server thread, ahead of the workers on
-        // macOS and Windows. While terrain loads, the worker pools (two with
-        // single player's server thread) and other programs outnumber the
-        // cores, and a frame that gave its core up (in a GPU submit) waited
-        // 10 to 200 ms to get one back.
-        horizon_threads::favour_current();
-    }
-    if options.execution_role.is_client() {
-        horizon_threads::catch_stop_signals();
-    }
-    let started = Instant::now();
-    crate::hc::spans::enable(options.spikes.is_some());
-    let vanilla_root = options.resources.clone();
-    let early_settings = Settings::load(&std::env::current_dir()?.join("options.txt"));
-    // "Playing Horizon" on Discord: never for a server; an automated run only talks to a test's fake Discord.
-    if options.dedicated.is_none() {
-        let automated =
-            options.offscreen || options.frames.is_some() || options.world_frames.is_some();
-        crate::hc::discord_presence::start(early_settings.extras.discord_presence, automated);
-    }
-    // Snapshots of derived tables live in the game folder, never beside the
-    // shared resources.
-    Behaviours::set_cache_dir(std::env::current_dir()?.join(".horizon-cache"));
-    if !synchronous_startup(&options) {
-        return run_loading(options, early_settings, vanilla_root, None, started);
-    }
-    let mut pack_error = None;
-    options.resources = packs::startup_root(&vanilla_root, &early_settings.resource_packs, &[])
-        .unwrap_or_else(|e| {
-            log::warn!("Horizon: resource packs not applied: {e}");
-            pack_error = Some(e.to_string());
-            vanilla_root.clone()
-        });
-    let loaded = load_resources(
-        options.resources.clone(),
-        &vanilla_root,
-        &early_settings,
-        started,
-        false,
-        &Progress::new(),
-        &mut |_, _| {},
-    )?;
-    let gui = loaded.gui.ok_or("missing menu bundle")?;
-    options.resources = loaded.root.clone();
-    let audio = if !options.execution_role.is_client() {
-        Audio::silent(&options.resources)
-    } else {
-        Audio::new(&options.resources)
-    };
-    let resources = loaded.resources;
-    let game = start_game(
-        &resources,
-        loaded.pack,
-        gui,
-        options,
-        loaded.pack_error.or(pack_error),
-        audio,
-        vanilla_root,
-        started,
-        loaded.rest_loader,
-        None,
-        None,
-    )?;
-    if let Some(game) = game {
-        run_event_loop(game)?;
-    }
-    Ok(())
-}
 
 // Player.tick: cap the sleeping fade at 100, then fade out over 10 waking ticks.
 fn tick_sleep_timer(timer: u32, sleeping: bool) -> u32 {
@@ -9458,5 +8413,331 @@ impl crate::game::Sim<'_> {
                 .map(|f| f.layer)
         })?;
         pack.layer_names.get(&layer).cloned()
+    }
+}
+
+impl<'a> Sim<'a> {
+    /// The server's game: its state, before a world opens (`run_dedicated` loads it).
+    pub(crate) fn new(
+        res: &'a Arc<Resources>,
+        pack: PackResources,
+        gui: UiResources,
+        options: Options,
+        settings: Settings,
+        audio: Audio,
+        prepared: Option<GameCpuResources>,
+    ) -> Result<Self> {
+        let root = options.resources.clone();
+        let registry = pack.assets.registry;
+        // Until a world is opened the streamer is idle.
+        let mut streaming = Streaming::new(
+            Arc::new(TestTerrain::new(registry, res.biomes())?),
+            pack.context.clone(),
+            1,
+        );
+        streaming.paused = true;
+        let level = Level::default();
+        let save = Arc::new(SaveDir::new(
+            std::env::current_dir()?
+                .join("saves")
+                .join(".horizon-title"),
+        ));
+        let prepared = prepared
+            .map(Ok)
+            .unwrap_or_else(|| GameCpuResources::load(&root))?;
+        let world = World::new(res.facts().air, 0);
+        let creative = false;
+        let inventory = vec![None; 36];
+        let now = Instant::now();
+        // The manager starts with the saved option (MusicManager's constructor).
+        let mut music = crate::hc::music::MusicManager::default();
+        music.frequency =
+            crate::hc::music::MusicFrequency::parse(&settings.file.name("musicFrequency"));
+        let particles = crate::hc::particles::ParticleEngine::new(
+            &root,
+            &gui.atlas.sprites,
+            &gui.atlas.translucent,
+        );
+        Ok(Sim {
+                res: res.clone(),
+                rest_loader: None,
+                pending_entry: None,
+                pending_pack_reload: false,
+                server_packs: Default::default(),
+                link_prompt: None,
+                dialogs: Default::default(),
+                collision: res.collision(),
+                motion: res.motion(),
+                pack,
+                world,
+                streaming,
+                options,
+                player: None,
+                spawn: None,
+                clock: FixedStep::default(),
+                previous_position: Vec3::ZERO,
+                eye: 1.62,
+                previous_eye: 1.62,
+                yaw: level.rotation[0],
+                pitch: level.rotation[1],
+                inventory,
+                selected: 0,
+                carried: None,
+                craft_grid: vec![None; 9],
+                craft_size: 2,
+                craft_table: None,
+                inv_drag: None,
+                tweaks: Default::default(),
+                inv_clicks: Default::default(),
+                last_inv_click: None,
+                last_quick_moved: None,
+                container: None,
+                station: None,
+                potions: Default::default(),
+                scratch_slot: None,
+                mining: None,
+                destroying: HashMap::new(),
+                destroy_delay: 0,
+                use_delay: 0,
+                creative,
+                mode: if creative {
+                    crate::hc::command::args::GameMode::Creative
+                } else {
+                    crate::hc::command::args::GameMode::Survival
+                },
+                keys: HashSet::new(),
+                physical_keys: HashSet::new(),
+                left: false,
+                right: false,
+                focused: true,
+                agent_pointer: false,
+                was_playing: false,
+                pause: false,
+                debug: false,
+                screen: Screen::Playing,
+                started: now,
+                previous: now,
+                frames: 0,
+                item_level_cache: Default::default(),
+                ticks: 0,
+                error: None,
+                message: None,
+                save,
+                level,
+                session_lock: None,
+                sounds: crate::hc::sound_out::SoundOut::new(
+                    crate::hc::sound_engine::unique_seed(),
+                ),
+                rumbles: Vec::new(),
+                hands_used: Vec::new(),
+                pointer_grab: None,
+                bee_sounds: HashMap::new(),
+                guardian_sounds: HashSet::new(),
+                dropped: Vec::new(),
+                next_entity: 0,
+                particles,
+                pickups: Default::default(),
+                sign_edit: None,
+                book: None,
+                lectern_pulses: Vec::new(),
+                loading_progress: 0.0,
+                spawn_origin: None,
+                spawn_spiral: Default::default(),
+                player_spawn: None,
+                spawn_wait: Vec::new(),
+                mobs: Vec::new(),
+                creatures: Default::default(),
+                sculk: Default::default(),
+                raiding: Default::default(),
+                attack_ticks: 100,
+                attack_item: None,
+                last_hurt_by_player: HashMap::new(),
+                died: HashSet::new(),
+                be_anims: {
+                    let mut anims = crate::hc::block_entity_anim::BlockEntityAnims::default();
+                    anims.classify(registry);
+                    anims
+                },
+                using: None,
+                armor: [None, None, None, None],
+                offhand: None,
+                hotbar_pop: [0; 10],
+                hand: Hand::Main,
+                shield_cooldown: 0,
+                cooldowns: Default::default(),
+                command_source: None,
+                titles: Default::default(),
+                autosaving: false,
+                applied_modifiers: Vec::new(),
+                experience: Experience::default(),
+                orbs: Vec::new(),
+                xp_delay: 0,
+                last_level_up: 0,
+                swing: Default::default(),
+                swings_started: 0,
+                visible_hands: [(0, None), (0, None)],
+                clicks: Default::default(),
+                attack_clicks: 0,
+                hand_strength: Default::default(),
+                settings,
+                options_from_title: false,
+                flash: 0,
+                rain_sound_time: 0,
+                lightning_seen: [0; 2],
+                sleeping: None,
+                sleep_timer: 0,
+                sleep_seen: (0, 0),
+                dim: Dim::Overworld,
+                world_root: PathBuf::new(),
+                world_flat: false,
+                travelling: None,
+                server_trips: Vec::new(),
+                level_teleports: Vec::new(),
+                levels: Default::default(),
+                level_pass: Default::default(),
+                portals: Default::default(),
+                end_travel: false,
+                respawn_config: None,
+                respawn_travel: None,
+                end_portal_travel: false,
+                win: None,
+                end: Default::default(),
+                block_ticks: Ticks::new(0),
+                tick_chunks: Default::default(),
+                tickets: Default::default(),
+                random_tick_sections: Default::default(),
+                level_events: Vec::new(),
+                falling: Vec::new(),
+                paintings: Vec::new(),
+                painting_variants: prepared.painting_variants,
+                item_frames: Vec::new(),
+                frame_model: prepared.frame_model,
+                glow_frame_model: prepared.glow_frame_model,
+                map_frame_model: prepared.map_frame_model,
+                glow_map_frame_model: prepared.glow_map_frame_model,
+                armor_stands: Vec::new(),
+                cushions: Vec::new(),
+                others: Vec::new(),
+                armor_stand_assets: prepared.armor_stand_assets,
+                locator_camera: None,
+                experience_display: Default::default(),
+                boats: Vec::new(),
+                boat_models: prepared.boat_models,
+                crystal_model: prepared.crystal_model,
+                cushion_model: prepared.cushion_model,
+                carts: Vec::new(),
+                jukebox_sounds: HashSet::new(),
+                bolts: Vec::new(),
+                maps: maps::Maps::default(),
+                fight: dragon::Fight::default(),
+                dragon: None,
+                crystals: Vec::new(),
+                dragon_fireballs: Vec::new(),
+                breath_clouds: Vec::new(),
+                dragon_model: prepared.dragon_model,
+                text_displays: Default::default(),
+                remote_knots: Default::default(),
+                knot_ids: Default::default(),
+                skin_downloads: RefCell::new(crate::hc::skins::Downloader::new(
+                    std::env::current_dir()
+                        .unwrap_or_default()
+                        .join("assets/skins"),
+                )),
+                skin_profiles: RefCell::new(crate::hc::skins::Resolver::new()),
+                skin_slots: Vec::new(),
+                trim_slots: Vec::new(),
+                cart_models: prepared.cart_models,
+                riding: None,
+                ender_items: vec![None; 27],
+                ender_open: None,
+                pending: Default::default(),
+                spill: Default::default(),
+                recipe_ui: Default::default(),
+                mount_menu: Default::default(),
+                hook: None,
+                remote_hooks: Vec::new(),
+                tridents: Vec::new(),
+                rockets: Vec::new(),
+                ominous_spawners: Vec::new(),
+                creaking: Default::default(),
+                spawners: Default::default(),
+                spawn_scratch: Default::default(),
+                trident_model: prepared.trident_model,
+                arrow_model: prepared.arrow_model,
+                tnts: Vec::new(),
+                hoppers: HashMap::new(),
+                item_columns: None,
+                creative_screen: prepared.creative_screen,
+                agent_control_on: false,
+                agent_last: None,
+                pending_screenshot: None,
+                pending_bench: None,
+                flight: None,
+                ui_wait: Default::default(),
+                events: Default::default(),
+                agent: agent::Agent::default(),
+                extras: Default::default(),
+                sky_darken_memo: Default::default(),
+                persist: Default::default(),
+                remote: None,
+                lan: None,
+                server_world: Default::default(),
+                plugins: None,
+                plugin_actions: Vec::new(),
+                plugin_seen: Vec::new(),
+                plugin_resend: Vec::new(),
+                command_block_screen: None,
+                show_hitboxes: false,
+                show_chunk_borders: false,
+                pause_menu: true,
+                previous_mode: None,
+                saved_for_exit: false,
+                pending_save: None,
+                forced_hit: None,
+                guest_use: None,
+                lan_events: Vec::new(),
+                lan_songs: Vec::new(),
+                lan_cushion_breaks: Vec::new(),
+                lan_block_events: Vec::new(),
+                lan_entity_events: Vec::new(),
+                lan_critical_hits: Vec::new(),
+                lan_kinetic_hits: Vec::new(),
+                stabbed: HashMap::new(),
+                known_movement: Vec3::ZERO,
+                kinetic_feedback: HashMap::new(),
+                lan_global_events: Vec::new(),
+                lid_openers: HashMap::new(),
+                lan_acting: None,
+                guest_packets: Vec::new(),
+                guest_cooldowns: Vec::new(),
+                guest_entity_events: Vec::new(),
+                lan_acting_name: None,
+                lan_acting_uuid: None,
+                chat_capture: None,
+                admin_feedback: Vec::new(),
+                console_broadcast: None,
+                cmds: Default::default(),
+                ui: chat::UiState::new(),
+                world_data: Default::default(),
+                combat: Default::default(),
+                guest_combat: Default::default(),
+                mount: Default::default(),
+                stats: Default::default(),
+                score: Default::default(),
+                fns: Default::default(),
+                bosses: Default::default(),
+                exec: Default::default(),
+                rand_sequences: Default::default(),
+                brushing: Default::default(),
+                border: Default::default(),
+                adv: Default::default(),
+                restore_player_state: true,
+                stats_ui: Default::default(),
+                adv_ui: Default::default(),
+                links_ui: Default::default(),
+                camera_type: Default::default(),
+                fangs: Default::default(),
+                player_model: None,
+            })
     }
 }

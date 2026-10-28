@@ -120,3 +120,4 @@ pub use horizon_game::world;
 pub use horizon_game::world_spawn;
 pub use horizon_game::worldborder;
 pub use horizon_game::zip;
+pub use horizon_game::crash;

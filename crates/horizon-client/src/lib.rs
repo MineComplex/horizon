@@ -47,7 +47,7 @@ pub mod container_screen;
 pub use horizon_game::containers;
 pub mod control;
 pub use horizon_game::crafting;
-pub mod crash;
+pub use horizon_game::crash;
 pub mod creative;
 pub use horizon_game::cushion;
 pub use horizon_game::data_cmd;
