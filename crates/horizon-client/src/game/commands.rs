@@ -130,19 +130,6 @@ impl crate::game::Sim<'_> {
         }
         ok
     }
-    /// `run_command` with its output suppressed
-    /// (`CommandSourceStack.withSuppressedOutput`): the player's own source,
-    /// rights and checks, no feedback and no failure in the chat.
-    pub(super) fn run_command_quietly(&mut self, command: &str) -> bool {
-        let quiet = execute::Source {
-            silent: true,
-            ..self.player_source()
-        };
-        let outer = self.command_source.replace(quiet);
-        let ok = self.run_command(command);
-        self.command_source = outer;
-        ok
-    }
     fn syntax_failure(&mut self, e: &CommandError, command: &str) {
         self.command_failure(e.message.clone());
         let Some(input) = &e.input else { return };

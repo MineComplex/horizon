@@ -12,15 +12,9 @@ use horizon_client::{
         seen_grid::SeenGrid,
         spawn_rules::{Dimension, SpawnLevel},
         spawn_selection::{
-            self, Category, Counted, Heightmap, NaturalLevel, SpawnCost, SpawnPlayer, SpawnRequest,
-            SpawnState, Spawned, StructureAt, StructureSpawns,
-        },
-    },
-};
+            self, Category, Heightmap, NaturalLevel, SpawnCost, StructureAt, StructureSpawns}}};
 use horizon_core::{
-    geometry::{Aabb, Vec3},
-    random::{LegacyRandom, RandomSource, WorldgenRandom},
-};
+    geometry::{Aabb, Vec3}};
 use horizon_world::registry::BlockStateId;
 use std::collections::HashMap;
 
@@ -47,32 +41,6 @@ impl LevelPlayer {
             + (self.position.y - y).powi(2)
             + (self.position.z - z).powi(2)
     }
-}
-/// `ChunkMap.euclideanDistanceSquared` below 128 blocks
-/// (`playerIsCloseEnoughForSpawning`).
-fn close_enough_for_spawning(p: &LevelPlayer, (cx, cz): (i32, i32)) -> bool {
-    let (x, z) = (
-        f64::from(cx * 16 + 8) - p.position.x,
-        f64::from(cz * 16 + 8) - p.position.z,
-    );
-    !p.spectator && x * x + z * z < 16384.0
-}
-/// `EntityGetter.getNearestPlayer(x, y, z, -1, false)`: the nearest
-/// non-spectator, alive or not.
-pub(super) fn nearest_player(
-    players: &[LevelPlayer],
-    x: f64,
-    y: f64,
-    z: f64,
-) -> Option<&LevelPlayer> {
-    let mut best: Option<(&LevelPlayer, f64)> = None;
-    for p in players.iter().filter(|p| !p.spectator) {
-        let d = p.distance_sqr(x, y, z);
-        if best.is_none_or(|(_, b)| d < b) {
-            best = Some((p, d));
-        }
-    }
-    best.map(|(p, _)| p)
 }
 
 /// The game level as natural spawning reads it.
@@ -386,40 +354,6 @@ impl<'a> crate::game::Sim<'a> {
             box_queries: Default::default(),
         }
     }
-    /// Creates a mob the spawner accepted, finalized the game's way; the
-    /// caller adds it with [`Game::add_spawned`].
-    fn finalize_spawned(&self, r: &SpawnRequest, pending: &mut Vec<Mob>) -> Option<Spawned> {
-        let kind = self.res.mob_types().get(r.entity)?.clone();
-        let [x, y, z] = r.position;
-        let mut mob = Mob::new(0, kind, Vec3::new(x, y, z), r.yaw);
-        let facts = self.biome_facts(x.floor() as i32, y.floor() as i32, z.floor() as i32);
-        let difficulty = self.local_difficulty(r.position);
-        horizon_client::mobs::spawning::finalize(&mut mob, &facts, &difficulty);
-        horizon_client::mobs::raider::finalize(
-            &mut mob,
-            horizon_client::mobs::raider::Reason::Natural,
-        );
-        let bounds = mob.bounds();
-        pending.push(mob);
-        Some(Spawned {
-            bounds,
-            school: true,
-        })
-    }
-    /// Adds the mobs a spawn pass created: ids, enchanted gear and jockeys.
-    fn add_spawned(&mut self, pending: Vec<Mob>, persistent: bool) {
-        for mut mob in pending {
-            self.next_entity += 1;
-            mob.id = self.next_entity;
-            mob.persistent = persistent;
-            let id = mob.id;
-            self.mobs.push(mob);
-            self.enchant_spawn_equipment(id);
-            if !persistent {
-                self.spawn_jockeys(id, true);
-            }
-        }
-    }
     /// Every player in the level in place: the local player, and the LAN
     /// guests or server players in it.
     pub(super) fn level_players(&self) -> Vec<LevelPlayer> {
@@ -450,161 +384,5 @@ impl<'a> crate::game::Sim<'a> {
             );
         }
         players
-    }
-    /// `ChunkMap.collectSpawningChunks`: the natural spawn chunk tracker's
-    /// chunks (within 8 chunks of a player, `getSpawnCandidateChunks`) that
-    /// are ticking and within 128 blocks of a non-spectator. Also returns how
-    /// many chunks the tracker holds (`getNaturalSpawnChunkCount`).
-    pub(super) fn spawning_chunks(
-        &self,
-        players: &[LevelPlayer],
-        scratch: &mut SpawnScratch,
-    ) -> i32 {
-        let candidates = &mut scratch.candidates;
-        candidates.clear();
-        candidates.reserve(289 * players.len());
-        let seen = &mut scratch.seen;
-        seen.clear();
-        seen.reserve(289 * players.len());
-        for p in players {
-            let (pcx, pcz) = (
-                p.position.x.floor() as i32 >> 4,
-                p.position.z.floor() as i32 >> 4,
-            );
-            for dx in -8..=8 {
-                for dz in -8..=8 {
-                    let key = (pcx + dx, pcz + dz);
-                    if seen.insert(key) {
-                        candidates.push(key);
-                    }
-                }
-            }
-        }
-        let count = candidates.len() as i32;
-        let levels = self.tickets.levels();
-        candidates.retain(|&(cx, cz)| {
-            levels.loaded_ticking(cx, cz)
-                && super::ticking_chunk(&self.world, cx, cz)
-                && players
-                    .iter()
-                    .any(|p| close_enough_for_spawning(p, (cx, cz)))
-        });
-        count
-    }
-    /// `ServerChunkCache.tickChunks`: the spawn state over the loaded mobs,
-    /// the categories under their global caps (creatures every 400 ticks),
-    /// then `tickSpawningChunk` in the shuffled spawning chunks of every
-    /// player: inhabited time, then `spawnForChunk`.
-    pub(super) fn spawn_natural(&mut self) {
-        let players = self.level_players();
-        if players.is_empty() {
-            return;
-        }
-        let mut scratch = std::mem::take(&mut self.spawn_scratch);
-        let spawnable = self.spawning_chunks(&players, &mut scratch);
-        for &key in &scratch.candidates {
-            *self.world.inhabited.entry(key).or_insert(0) += 1;
-        }
-        let spawn_mobs = self.world_data.rules.bool("spawn_mobs");
-        let spawn_enemies = self.world_data.rules.bool("spawn_monsters");
-        let mut random = std::mem::replace(&mut self.world.random, LegacyRandom::new(0));
-        let mut pending = Vec::new();
-        {
-            let level = self.natural_level();
-            let counted: Vec<Counted> = self
-                .mobs
-                .iter()
-                .map(|m| Counted {
-                    entity: &m.kind.id,
-                    category: Category::from_name(&m.kind.category),
-                    block: [
-                        m.position.x.floor() as i32,
-                        m.position.y.floor() as i32,
-                        m.position.z.floor() as i32,
-                    ],
-                    is_mob: true,
-                    persistent: m.persistent
-                        || horizon_client::mobs::ai::requires_custom_persistence(m),
-                })
-                .collect();
-            let players = players
-                .iter()
-                .map(|p| SpawnPlayer {
-                    position: [p.position.x, p.position.y, p.position.z],
-                    spectator: p.spectator,
-                })
-                .collect();
-            let mut state = SpawnState::new(&level, spawnable, players, &counted, |cx, cz| {
-                self.world.chunks.contains_key(&(cx, cz))
-            });
-            let categories = if spawn_mobs {
-                state.filtered_categories(spawn_enemies, self.world.game_time % 400 == 0)
-            } else {
-                Vec::new()
-            };
-            // Util.shuffle.
-            for i in (1..scratch.candidates.len()).rev() {
-                let j = random.next_int_bound(i as i32 + 1).unwrap_or(0) as usize;
-                scratch.candidates.swap(i, j);
-            }
-            if !categories.is_empty() {
-                for chunk in scratch.candidates.drain(..) {
-                    let mut spawn = |l: &GameLevel, r: &SpawnRequest| {
-                        let spawned = l.game.finalize_spawned(r, &mut pending);
-                        if let Some(s) = &spawned {
-                            l.pending.borrow_mut().push(s.bounds);
-                        }
-                        spawned
-                    };
-                    spawn_selection::spawn_for_chunk(
-                        &level,
-                        &mut random,
-                        &mut state,
-                        &categories,
-                        chunk,
-                        &mut spawn,
-                        &mut |_| {},
-                    );
-                }
-            }
-        }
-        self.world.random = random;
-        self.add_spawned(pending, false);
-        self.spawn_scratch = scratch;
-    }
-    /// `NoiseBasedChunkGenerator.spawnOriginalMobs`: creature packs for a
-    /// freshly generated chunk, from the biome at its corner column's top,
-    /// with the chunk's decoration-seeded random (mobs are not generated in
-    /// the End).
-    pub(super) fn spawn_generation_creatures(&mut self, cx: i32, cz: i32) {
-        if !self.world.chunks.contains_key(&(cx, cz)) || self.dim == Dim::End {
-            return;
-        }
-        let mut random = WorldgenRandom::new(LegacyRandom::new(0));
-        random.set_decoration_seed(self.level.seed, cx * 16, cz * 16);
-        // The region's own random: no creature's spawn predicate draws from it.
-        let mut rules = LegacyRandom::new(self.level.seed ^ (i64::from(cx) << 32 | i64::from(cz)));
-        let mut pending = Vec::new();
-        {
-            let level = self.natural_level();
-            let source = [cx * 16, level.max_y(), cz * 16];
-            let mut spawn = |l: &GameLevel, r: &SpawnRequest| {
-                let spawned = l.game.finalize_spawned(r, &mut pending);
-                if let Some(s) = &spawned {
-                    l.pending.borrow_mut().push(s.bounds);
-                }
-                spawned
-            };
-            spawn_selection::spawn_mobs_for_chunk_generation(
-                &level,
-                source,
-                (cx, cz),
-                &mut random,
-                &mut rules,
-                &mut spawn,
-                &mut |_| {},
-            );
-        }
-        self.add_spawned(pending, true);
     }
 }

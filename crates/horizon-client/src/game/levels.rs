@@ -26,14 +26,8 @@ use horizon_client::{
 use horizon_world::level::{LevelEvent, Ticks};
 use std::{
     collections::HashMap,
-    sync::Arc,
-    time::{Duration, Instant},
-};
+    sync::Arc};
 
-/// Server ticks a level other than the Overworld stays loaded with no player
-/// in it, before it is saved and closed (vanilla unloads a level's chunks
-/// once no ticket holds them; the Overworld stays loaded).
-const IDLE_TICKS: u32 = 300;
 
 /// A level that is not in place: every per-level field of `Game`.
 pub(super) struct Parked {
@@ -112,10 +106,6 @@ pub(super) struct Levels {
 }
 
 impl Levels {
-    /// The level not in place, in `dim`.
-    pub(super) fn parked_mut(&mut self, dim: Dim) -> Option<&mut Parked> {
-        self.parked.get_mut(&dim)
-    }
 
     /// The levels that are not in place, by dimension.
     pub(super) fn parked_dims(&self) -> Vec<Dim> {
@@ -124,40 +114,6 @@ impl Levels {
 }
 
 impl Game<'_> {
-    /// The end of `MinecraftServer.runServer`'s loop for a server thread: a
-    /// finished `/tick sprint` reports to the operators as the server, then
-    /// the next tick starts one tick length after this one, or straight away
-    /// while the sprint runs (`checkShouldSprintThisTick`).
-    pub(super) fn wait_for_next_server_tick(&mut self, next: &mut Instant, paused: bool) {
-        if let Some(report) = self.clock.take_sprint_report() {
-            // ServerTickRateManager.finishTickSprint: the server's sendSuccess.
-            self.console_broadcast = Some(true);
-            self.sprint_report(&report);
-            self.console_broadcast = None;
-            if let Some(mut host) = self.lan.take() {
-                self.send_admin_feedback(&mut host, None);
-                self.lan = Some(host);
-            }
-            self.admin_feedback.clear();
-        }
-        let now = Instant::now();
-        if !paused && self.clock.sprinting() {
-            *next = now;
-            return;
-        }
-        *next += self.clock.tick_duration();
-        if *next > now {
-            // The chunks loading (the players', force-loaded ones, a
-            // `/pregen` task) keep the workers fed until the next tick.
-            self.pump_chunks(*next, paused);
-            let now = Instant::now();
-            if *next > now {
-                std::thread::sleep(*next - now);
-            }
-        } else if now - *next > Duration::from_secs(2) {
-            *next = now;
-        }
-    }
 }
 impl crate::game::Sim<'_> {
     /// A new level for `dim`, opened from the save (`MinecraftServer.createLevels`).
@@ -325,22 +281,6 @@ impl crate::game::Sim<'_> {
         }
         Ok(())
     }
-    /// The entity's memory (its UUID and the compound it was loaded with)
-    /// moves with it from the level not in place to the level in place, so
-    /// it is saved in the other level as it was.
-    pub(super) fn move_entity_memory(&mut self, from: Dim, id: u32) {
-        let Some(p) = self.levels.parked.get_mut(&from) else {
-            return;
-        };
-        let uuid = p.persist.uuids.remove(&id);
-        let raw = p.persist.raw.remove(&id);
-        if let Some(u) = uuid {
-            self.persist.uuids.insert(id, u);
-        }
-        if let Some(r) = raw {
-            self.persist.raw.insert(id, r);
-        }
-    }
     /// Put `dim`'s level in place for a command whose source is there
     /// (`execute in`, `execute at` a player in another level), opening it if
     /// nobody is in it; returns the level to put back afterwards. Only a
@@ -357,140 +297,6 @@ impl crate::game::Sim<'_> {
                 None
             }
         }
-    }
-    /// One server tick (`MinecraftServer.tickServer`): each level with
-    /// players or forced chunks in turn (`tickChildren`), its chunks streamed
-    /// and loaded and its world ticked. The first pass reads the network and runs the
-    /// tick's shared parts (the clock, the weather, functions, the autosave);
-    /// the next ones only their level. While `paused`, only the connections
-    /// run.
-    pub(super) fn tick_server(&mut self, paused: bool) -> Result<()> {
-        let dims = self.levels_to_tick();
-        let n = dims.len();
-        let mut result = Ok(());
-        for (k, dim) in dims.into_iter().enumerate() {
-            if let Err(e) = self.enter_level(None, dim) {
-                result = Err(e);
-                break;
-            }
-            self.level_pass = Pass {
-                first: k == 0,
-                last: k + 1 == n,
-            };
-            self.update_dedicated_streaming();
-            self.stream_world();
-            result = if paused {
-                self.tick_lan(true);
-                Ok(())
-            } else if k == 0 {
-                if self.agent.hold_server {
-                    Ok(())
-                } else {
-                    self.tick_level()
-                }
-            } else {
-                let running = self.clock.world_runs();
-                if running {
-                    self.tick_weather_effects();
-                }
-                self.tick_world(running)
-            };
-            if result.is_err() {
-                break;
-            }
-        }
-        self.level_pass = Pass::default();
-        result?;
-        self.close_idle_levels()
-    }
-    /// `tick_server` as a server thread runs it. With `HORIZON_SPIKES=MS`, a
-    /// tick longer than MS is logged with its thread CPU time and spans.
-    pub(super) fn tick_server_timed(&mut self, paused: bool) -> Result<()> {
-        let Some(threshold) = self.options.spikes else {
-            return self.tick_server(paused);
-        };
-        let (started, cpu) = (Instant::now(), horizon_client::spans::thread_cpu());
-        let result = self.tick_server(paused);
-        let wall = started.elapsed().as_secs_f32() * 1000.0;
-        // Taken every tick: nothing else takes this thread's spans.
-        let spans = horizon_client::spans::take();
-        if wall > threshold {
-            let cpu = horizon_client::spans::thread_cpu()
-                .zip(cpu)
-                .map_or_else(String::new, |(end, start)| {
-                    format!(", cpu {:.1} ms", (end - start).as_secs_f32() * 1000.0)
-                });
-            log::info!(
-                "Horizon: slow tick {wall:.1} ms{cpu} ({} mobs): {}",
-                self.mobs.len(),
-                horizon_client::spans::describe(&spans)
-            );
-        }
-        result
-    }
-    /// The levels this server tick runs, in `MinecraftServer.levels` order
-    /// (the Overworld, the Nether, the End): every level with a player in
-    /// it, forced chunks or a `/pregen` task, or the Overworld while idle.
-    pub(super) fn levels_to_tick(&self) -> Vec<Dim> {
-        let guests = self
-            .lan
-            .as_ref()
-            .map_or(&[][..], |h| h.hub.guests.as_slice());
-        let mut dims: Vec<Dim> = [Dim::Overworld, Dim::Nether, Dim::End]
-            .into_iter()
-            .filter(|d| {
-                let forced = if *d == self.dim {
-                    !self.streaming.forced.is_empty()
-                } else {
-                    self.levels
-                        .parked
-                        .get(d)
-                        .is_some_and(|p| !p.streaming.forced.is_empty())
-                };
-                guests.iter().any(|g| g.dimension == d.id())
-                    || forced
-                    || self.pregen_level() == Some(*d)
-            })
-            .collect();
-        if dims.is_empty() {
-            dims.push(Dim::Overworld);
-        }
-        dims
-    }
-    /// Count the parked levels' empty ticks, and save and close the ones
-    /// (other than the Overworld) nobody has been in for a while.
-    pub(super) fn close_idle_levels(&mut self) -> Result<()> {
-        let occupied = self.levels_to_tick();
-        // A vehicle waiting there for its rider's arrival in another level.
-        let waiting: Vec<Dim> = self
-            .levels
-            .parked
-            .keys()
-            .copied()
-            .filter(|d| self.vehicle_waits_in(*d))
-            .collect();
-        let mut closing = Vec::new();
-        for (dim, p) in &mut self.levels.parked {
-            if occupied.contains(dim) || waiting.contains(dim) {
-                p.idle = 0;
-                continue;
-            }
-            p.idle += 1;
-            if *dim != Dim::Overworld && p.idle >= IDLE_TICKS {
-                closing.push(*dim);
-            }
-        }
-        if closing.is_empty() {
-            return Ok(());
-        }
-        let back = self.dim;
-        for dim in closing {
-            self.enter_level(None, dim)?;
-            self.save_level(true)?;
-            self.enter_level(None, back)?;
-            self.levels.parked.remove(&dim);
-        }
-        Ok(())
     }
     /// Save every parked level (`MinecraftServer.saveAllChunks`); the level
     /// in place is the caller's to save.

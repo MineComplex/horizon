@@ -10,12 +10,6 @@ use std::collections::HashMap;
 /// `Zombie.finalizeSpawn`: a baby zombie takes a chicken one time in twenty,
 /// and another one time in twenty of the rest.
 const CHICKEN_JOCKEY_ODDS: f32 = 0.05;
-/// The seconds a skeleton horse trap waits for a player: 15 minutes.
-const TRAP_LIFETIME: i32 = 18000;
-/// `SkeletonTrapGoal`: a player this close springs the trap.
-const TRAP_RANGE: f64 = 10.0;
-/// Ticks of invulnerability the trap's riders and horses start with.
-const TRAP_INVULNERABLE: i32 = 60;
 
 fn zombie_kind(s: Species) -> bool {
     matches!(
@@ -38,46 +32,6 @@ impl crate::game::Sim<'_> {
         if let Some(m) = self.mobs.iter_mut().find(|m| m.id == vehicle) {
             m.extra.rider = Some(rider);
         }
-    }
-    /// Riders sit on their vehicles (`Entity.positionRider`), mobs or boats,
-    /// and let go when the vehicle dies or is gone.
-    pub(super) fn sync_riders(&mut self) {
-        // Entity.baseTick.
-        for m in &mut self.mobs {
-            if m.extra.boarding_cooldown > 0 {
-                m.extra.boarding_cooldown -= 1;
-            }
-        }
-        let boats: std::collections::HashSet<u32> = self.boats.iter().map(|b| b.id).collect();
-        let index: HashMap<u32, usize> = self
-            .mobs
-            .iter()
-            .enumerate()
-            .map(|(i, m)| (m.id, i))
-            .collect();
-        let mut riding: HashMap<u32, u32> = HashMap::new();
-        for i in 0..self.mobs.len() {
-            let Some(v) = self.mobs[i].extra.mount else {
-                continue;
-            };
-            let valid = self.mobs[i].alive()
-                && !self.mobs[i].removed
-                && (boats.contains(&v)
-                    || index
-                        .get(&v)
-                        .is_some_and(|&j| self.mobs[j].alive() && !self.mobs[j].removed));
-            if valid {
-                riding.insert(v, self.mobs[i].id);
-            } else {
-                let m = &mut self.mobs[i];
-                m.extra.mount = None;
-                m.extra.passenger = false;
-            }
-        }
-        for m in &mut self.mobs {
-            m.extra.rider = riding.get(&m.id).copied();
-        }
-        self.position_riders();
     }
     /// `Entity.positionRider` for every mob passenger: in its boat, then on
     /// its mob. A server's client places them itself too, as the server sends
@@ -273,93 +227,5 @@ impl crate::game::Sim<'_> {
             }
             self.mount_mob(baby, id);
         }
-    }
-    /// `SkeletonHorse.customServerAiStep` and `SkeletonTrapGoal`: a trap
-    /// horse is a trap for fifteen minutes; a player within ten blocks springs
-    /// it.
-    pub(super) fn tick_skeleton_traps(&mut self) {
-        // `Level.hasNearbyAlivePlayer`: alive, not a spectator, in the level.
-        let players: Vec<_> = self
-            .level_players()
-            .into_iter()
-            .filter(|p| p.alive && !p.spectator)
-            .map(|p| p.position)
-            .collect();
-        let mut sprung = Vec::new();
-        for m in &mut self.mobs {
-            if m.species() != Species::SkeletonHorse || !m.extra.trap || !m.alive() {
-                continue;
-            }
-            if !m.persistent {
-                m.extra.trap_time += 1;
-                if m.extra.trap_time > TRAP_LIFETIME {
-                    m.removed = true;
-                    continue;
-                }
-            }
-            if players
-                .iter()
-                .any(|&p| m.distance_sqr(p) < TRAP_RANGE * TRAP_RANGE)
-            {
-                sprung.push(m.id);
-            }
-        }
-        for id in sprung {
-            self.spring_skeleton_trap(id);
-        }
-    }
-    fn spring_skeleton_trap(&mut self, id: u32) {
-        let Some(horse) = self.mobs.iter_mut().find(|m| m.id == id) else {
-            return;
-        };
-        horse.extra.trap = false;
-        horse.extra.tame = true;
-        horse.extra.age = 0;
-        let at = [horse.position.x, horse.position.y, horse.position.z];
-        self.spawn_bolt(at, true);
-        let Some(skeleton) = self.trap_skeleton(at) else {
-            return;
-        };
-        self.mount_mob(skeleton, id);
-        for _ in 0..3 {
-            let Some(other) = self.spawn_mob("minecraft:skeleton_horse", at, true) else {
-                continue;
-            };
-            let (dx, dz) = (
-                self.world.random.triangle(0.0, 1.1485),
-                self.world.random.triangle(0.0, 1.1485),
-            );
-            if let Some(h) = self.mobs.iter_mut().find(|m| m.id == other) {
-                h.invulnerable = TRAP_INVULNERABLE;
-                h.extra.tame = true;
-                h.extra.age = 0;
-                h.velocity = Vec3::new(h.velocity.x + dx, h.velocity.y, h.velocity.z + dz);
-            }
-            if let Some(rider) = self.trap_skeleton(at) {
-                self.mount_mob(rider, other);
-            }
-        }
-    }
-    /// `SkeletonTrapGoal.createSkeleton`: an iron helmet unless it already
-    /// has a helm.
-    fn trap_skeleton(&mut self, at: [f64; 3]) -> Option<u32> {
-        let id = self.spawn_mob("minecraft:skeleton", at, true)?;
-        let m = self.mobs.iter_mut().find(|m| m.id == id)?;
-        m.invulnerable = TRAP_INVULNERABLE;
-        if m.extra.head.is_none() {
-            m.extra.head = Some("minecraft:iron_helmet".into());
-        }
-        let (weapon, helmet) = (m.extra.main_hand.clone(), m.extra.head.clone());
-        let special = self.local_difficulty(at).special();
-        // `SkeletonTrapGoal.enchant`: the weapon and the helmet, always.
-        for (slot, item) in [
-            (horizon_client::mobs::gear::MAIN, weapon),
-            (horizon_client::mobs::gear::HEAD, helmet),
-        ] {
-            if let Some(item) = item {
-                self.enchant_item(id, slot, &item, special);
-            }
-        }
-        Some(id)
     }
 }

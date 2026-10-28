@@ -2395,46 +2395,6 @@ impl crate::game::Sim<'_> {
     fn options_advanced_tooltips(&self) -> bool {
         self.settings.file.bool("advancedItemTooltips")
     }
-    /// `BrewingStandBlockEntity.serverTick` of the brewing stand at `pos`, in
-    /// its place among the level's block entity tickers.
-    pub(super) fn tick_brewing_stand(
-        &mut self,
-        pos: (i32, i32, i32),
-    ) -> horizon_client::Result<()> {
-        let Some(BlockEntity::Brewing(b)) = self.world.block_entities.get_mut(&pos) else {
-            return Ok(());
-        };
-        let out = b.tick(
-            &self.res.stations().brewing,
-            self.res.items(),
-            self.res.providers(),
-        );
-        if out != brewing::BrewTick::default() {
-            let (x, y, z) = pos;
-            self.world.modified.insert((x >> 4, z >> 4));
-            if out.brewed {
-                self.play_at("minecraft:block.brewing_stand.brew", [x, y, z], 1.0, 1.0);
-            }
-            for d in out.drops {
-                self.pop_resource([x, y, z], d);
-            }
-            if let Some(bottles) = out.bottles {
-                let state = self.world.block(x, y, z);
-                if let Some(mut s) = self.pack.assets.registry.state(state).cloned()
-                    && AsRef::<str>::as_ref(&s.name) == "minecraft:brewing_stand"
-                {
-                    for (i, has) in bottles.iter().enumerate() {
-                        s.properties
-                            .insert(format!("has_bottle_{i}"), has.to_string());
-                    }
-                    if let Ok(id) = self.pack.assets.registry.resolve(&s) {
-                        self.world.set(x, y, z, id)?;
-                    }
-                }
-            }
-        }
-        Ok(())
-    }
 }
 
 /// The anvil's rename box (`AnvilScreen`: `setMaxLength(50)`).

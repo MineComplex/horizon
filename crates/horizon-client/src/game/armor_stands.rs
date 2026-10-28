@@ -732,36 +732,6 @@ impl crate::game::Sim<'_> {
             .insert(((at[0].floor() as i32) >> 4, (at[2].floor() as i32) >> 4));
         true
     }
-    pub(super) fn tick_armor_stands(&mut self) {
-        let mut scene = horizon_client::collisions::SceneCollisions {
-            world: &self.world,
-            binding: self.collision,
-            subject: None,
-        };
-        let mut dead = Vec::new();
-        // ServerLevel.tick: only entities in entity-ticking chunks tick.
-        let ticking = self.entity_ticking_area();
-        for (i, a) in self.armor_stands.iter_mut().enumerate() {
-            if !ticking(a.position.x.floor() as i32, a.position.z.floor() as i32) {
-                continue;
-            }
-            a.tick(&mut scene);
-            if !a.environment_tick(&self.world, self.res.facts(), self.pack.assets.registry) {
-                dead.push(i);
-            }
-        }
-        for i in dead.into_iter().rev() {
-            let a = self.armor_stands.remove(i);
-            let at = [a.position.x, a.position.y, a.position.z];
-            let (pos, drops) = burnt_armor_stand_equipment(a);
-            for stack in drops {
-                self.pop_resource(pos, stack);
-            }
-            self.sounds
-                .play("minecraft:entity.armor_stand.break", Some(at), 1.0, 1.0);
-            self.world.modified.insert((pos[0] >> 4, pos[2] >> 4));
-        }
-    }
 }
 /// The `Pose` rotations on the parts of an armor stand model or its armor
 /// (`ArmorStandArmorModel.setupAnim`); the body also turns the sticks.
@@ -978,20 +948,6 @@ pub(super) fn skull_kind(item: &str) -> Option<&'static str> {
     })
 }
 
-fn burnt_armor_stand_equipment(a: ArmorStand) -> ([i32; 3], Vec<ItemStack>) {
-    let pos = [
-        a.position.x.floor() as i32,
-        a.position.y.floor() as i32 + 1,
-        a.position.z.floor() as i32,
-    ];
-    let drops = a
-        .equipment
-        .into_iter()
-        .flatten()
-        .filter(|stack| stack.enchantment_level("minecraft:vanishing_curse") == 0)
-        .collect();
-    (pos, drops)
-}
 #[cfg(test)]
 mod burn_drop_tests {
     use super::*;

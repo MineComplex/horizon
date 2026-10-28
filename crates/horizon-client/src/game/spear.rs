@@ -143,64 +143,6 @@ impl crate::game::Sim<'_> {
         }
         self.mobs_along(from, to, f64::from(REACH.hitbox_margin))
     }
-    /// `KineticWeapon.damageEntities`: one tick of the spear in use, `ticks`
-    /// ticks into the use.
-    pub(super) fn spear_tick(&mut self, stack: &ItemStack, ticks: u32) {
-        let Some(kinetic) = Kinetic::of(&stack.item) else {
-            return;
-        };
-        let used = ticks as i32 - kinetic.delay_ticks;
-        let (Some(eye), Some(feet)) = (
-            self.eye_position(),
-            self.player.as_ref().map(|p| p.position),
-        ) else {
-            return;
-        };
-        if used < 0 || self.spectator() {
-            return;
-        }
-        let eye = Vec3::new(eye[0], eye[1], eye[2]);
-        let look = view_vector(self.yaw, self.pitch);
-        let look = Vec3::new(look[0], look[1], look[2]);
-        let movement = self.known_player_movement();
-        let attacker_speed = look.dot(movement.scale(20.0));
-        let now = self.world.game_time;
-        let actor = self.lan_acting;
-        let mut affected = false;
-        for i in self.stab_targets(eye, look, movement) {
-            let key = (actor, self.mobs[i].id);
-            let recent = self
-                .stabbed
-                .get(&key)
-                .is_some_and(|&t| now - t < i64::from(kinetic.contact_cooldown_ticks));
-            if recent {
-                continue;
-            }
-            self.stabbed.insert(key, now);
-            let target_speed = look.dot(self.mob_speed(i));
-            let relative = (attacker_speed - target_speed).max(0.0);
-            // An entity factor of 1 for a player.
-            let dismounts = kinetic.dismount.test(used, attacker_speed, relative, 1.0);
-            let pushes = kinetic.knockback.test(used, attacker_speed, relative, 1.0);
-            let damages = kinetic.damage.test(used, attacker_speed, relative, 1.0);
-            if dismounts || pushes || damages {
-                // The attack damage attribute's base value (1) and the speed.
-                let amount = 1.0 + (relative * f64::from(kinetic.damage_multiplier)).floor() as f32;
-                affected |= self.stab_mob(i, amount, damages, pushes, dismounts);
-            }
-        }
-        if affected {
-            // Level.broadcastEntityEvent(player, 2), felt by the player too.
-            if self.sounds.capture.is_some() {
-                self.lan_kinetic_hits.push(actor);
-            }
-            let who = actor.map_or(OWN, |conn| conn as i32);
-            self.kinetic_hit_feedback(who, &kinetic, [feet.x, feet.y, feet.z]);
-            // SPEAR_MOBS_TRIGGER: the living entities stabbed in this use.
-            let stabbed = self.stabbed.keys().filter(|(who, _)| *who == actor).count();
-            self.trigger_spear_mobs(stabbed);
-        }
-    }
     /// `Player.stabAttack` on the mob at `index`: whether it was affected.
     fn stab_mob(
         &mut self,

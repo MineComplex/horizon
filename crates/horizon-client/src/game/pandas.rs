@@ -2,10 +2,7 @@
 //! (`Mob.aiStep`, `Panda.pickUpItem`), the bamboo a player gives them
 //! (`Panda.mobInteract`), the start a sneeze gives the grown pandas about,
 //! and the crumbs and the sneeze a window draws.
-use super::{
-    Game,
-    pickups::{Collector, Taken},
-};
+use super::Game;
 use horizon_client::{
     items::ItemStack,
     mobs::{Species, panda},
@@ -15,55 +12,6 @@ use horizon_core::geometry::Vec3;
 
 impl Game<'_> {}
 impl crate::game::Sim<'_> {
-    /// `Panda.canPickUpAndEat`'s tag.
-    fn panda_eats_from_ground(&self, item: &str) -> bool {
-        self.res
-            .items()
-            .item_tags
-            .get("minecraft:panda_eats_from_ground")
-            .is_some_and(|tag| tag.contains(item))
-    }
-    /// A panda takes what lies at its feet when its mouth is free, and
-    /// looks for food within 6 and 8 blocks for `PandaSitGoal`.
-    pub(super) fn tick_pandas(&mut self) {
-        let griefing = self.world_data.rules.bool("mob_griefing");
-        for i in 0..self.mobs.len() {
-            let m = &self.mobs[i];
-            if m.species() != Species::Panda || !m.alive() {
-                continue;
-            }
-            let id = m.id;
-            let wants = |g: &Self, e: &horizon_client::entities::ItemEntity| {
-                e.pickup_delay == 0 && g.panda_eats_from_ground(&e.stack.item)
-            };
-            // Mob.aiStep: the items within the box grown by (1, 0, 1).
-            if griefing && m.can_pick_up_loot() && m.extra.main_hand.is_none() {
-                let reach = m.bounds().inflate(Vec3::new(1.0, 0.0, 1.0));
-                let taken = self
-                    .dropped
-                    .iter()
-                    .position(|e| wants(self, e) && reach.intersects(e.bounds()));
-                if let Some(j) = taken {
-                    let e = self.dropped.remove(j);
-                    self.add_pickup(Taken::Item(Box::new(e.clone())), Collector::Mob(id));
-                    panda::hold(&mut self.mobs[i], &e.stack.item, e.stack.count, true);
-                }
-            }
-            let m = &self.mobs[i];
-            let area = |r: f64| m.bounds().inflate(Vec3::new(r, r, r));
-            let (near, wide) = (area(6.0), area(8.0));
-            let food_near = self
-                .dropped
-                .iter()
-                .any(|e| wants(self, e) && near.intersects(e.bounds()));
-            let food_at = self
-                .dropped
-                .iter()
-                .find(|e| wants(self, e) && wide.intersects(e.bounds()))
-                .map(|e| [e.position.x, e.position.y, e.position.z]);
-            panda::set_food(&mut self.mobs[i], food_near, food_at);
-        }
-    }
     /// `Panda.mobInteract` for a click with `item`; whether the click is taken.
     pub(super) fn interact_panda(&mut self, index: usize, item: &str) -> bool {
         let creative = self.creative;

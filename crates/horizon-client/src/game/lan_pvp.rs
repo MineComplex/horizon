@@ -7,22 +7,8 @@
 //! another player lands the same way.
 use super::{Game, lan::LanHost, lan_mobs::guest_bounds, ray_box, view_vector};
 
-use horizon_client::{
-    Result,
-    mobs::Who,
-    projectiles::{Hit, Projectile, ProjectileKind},
-};
 use horizon_core::geometry::{Aabb, Vec3};
 
-/// The player projectiles that meet other players: arrows (their hurt), and
-/// snowballs and eggs, which break on them (`Player.hurtServer` takes no 0
-/// damage). Pearls, potions and wind charges fly past players as before.
-pub(super) fn meets_players(kind: &ProjectileKind) -> bool {
-    matches!(
-        kind,
-        ProjectileKind::Arrow { .. } | ProjectileKind::Snowball | ProjectileKind::Egg
-    )
-}
 
 /// Who a player's attack lands on.
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -81,17 +67,6 @@ impl Strike {
 }
 
 impl Game<'_> {
-    /// The player `id` that guest `conn` attacks, if it is one.
-    pub(super) fn pvp_victim(host: &LanHost, conn: u32, id: i32) -> Option<Victim> {
-        if id == host.host_entity {
-            return Some(Victim::Host);
-        }
-        host.hub
-            .guests
-            .iter()
-            .find(|g| g.entity_id == id && g.conn != conn && host.hub.here(g) && !g.dead)
-            .map(|g| Victim::Guest(g.conn))
-    }
 }
 impl crate::game::Sim<'_> {
     /// The guest on the host's crosshair and how far, within reach.
@@ -176,86 +151,6 @@ impl crate::game::Sim<'_> {
             team: self.player_team().cloned(),
             sweep_hit,
         })
-    }
-    /// The guests by connection, with their entity ids.
-    pub(super) fn lan_guest_entities(&self) -> Vec<(u32, u32)> {
-        self.lan.as_ref().map_or_else(Vec::new, |host| {
-            host.hub
-                .guests
-                .iter()
-                .map(|g| (g.conn, g.entity_id as u32))
-                .collect()
-        })
-    }
-    /// The player a player's projectile hit, when it hit one: the host for a
-    /// guest's shot, or a guest.
-    pub(super) fn projectile_pvp_victim(&self, p: &Projectile, hit: Hit) -> Option<Victim> {
-        if p.owner != Some(Who::Player) || !meets_players(&p.kind) {
-            return None;
-        }
-        let Hit::Entity { who, .. } = hit else {
-            return None;
-        };
-        match who {
-            Who::Player => p.guest.map(|_| Victim::Host),
-            Who::Mob(id) => self
-                .lan
-                .as_ref()?
-                .hub
-                .guests
-                .iter()
-                .find(|g| g.entity_id as u32 == id)
-                .map(|g| Victim::Guest(g.conn)),
-        }
-    }
-    /// A player's projectile on a player: the hit runs as the victim, whose
-    /// hurt refuses it when the `pvp` game rule or their teams forbid it
-    /// (`ServerPlayer.canHarmPlayer`; `AbstractArrow.onHitEntity` then turns
-    /// the arrow back).
-    pub(super) fn projectile_hits_player(
-        &mut self,
-        p: &Projectile,
-        hit: Hit,
-        victim: Victim,
-    ) -> Result<()> {
-        let Hit::Entity { at, .. } = hit else {
-            return Ok(());
-        };
-        let Some(mut host) = self.lan.take() else {
-            return self.projectile_hit(p, hit);
-        };
-        let team_of = |game: &Self, name: &str| game.score.board.players_team(name).cloned();
-        let attacker = match p.guest {
-            Some(conn) => host.hub.guest(conn).and_then(|g| team_of(self, &g.name)),
-            None => self.player_team().cloned(),
-        };
-        let target = match victim {
-            Victim::Host => self.player_team().cloned(),
-            Victim::Guest(conn) => host.hub.guest(conn).and_then(|g| team_of(self, &g.name)),
-        };
-        let refused = !(self.world_data.rules.bool("pvp")
-            && horizon_client::scoreboard::teams_allow_damage(target.as_ref(), attacker.as_ref()));
-        let on_player = Hit::Entity {
-            who: Who::Player,
-            at,
-        };
-        let result = match victim {
-            Victim::Host => {
-                self.lan = Some(host);
-                self.combat.refuse_player_hit = refused;
-                let r = self.projectile_hit(p, on_player);
-                self.combat.refuse_player_hit = false;
-                return r;
-            }
-            Victim::Guest(conn) => self.guest_hit_by(&mut host, conn, |g| {
-                g.combat.refuse_player_hit = refused;
-                let r = g.projectile_hit(p, on_player);
-                g.combat.refuse_player_hit = false;
-                r
-            }),
-        };
-        self.lan = Some(host);
-        result.unwrap_or(Ok(()))
     }
     /// The hit landing on the victim with its extra knockback, then the
     /// attacker's attack sound. Whether the victim was hurt.
@@ -413,12 +308,6 @@ impl crate::game::Sim<'_> {
         } else if let Some(mut host) = self.lan.take() {
             self.sweep_players(&mut host, &sweep);
             self.lan = Some(host);
-        }
-    }
-    /// The sweeps guests' turns put off.
-    pub(super) fn flush_sweeps(&mut self) {
-        for sweep in std::mem::take(&mut self.creatures.sweeps) {
-            self.sweep_other_players(sweep);
         }
     }
     /// `Player.doSweepAttack` on the players: each other player in the box,

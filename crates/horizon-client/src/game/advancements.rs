@@ -1,7 +1,7 @@
 //! The player's advancements in the game: criteria triggered from game
 //! events (`CriteriaTriggers`), awarding with rewards, the toast and the
 //! chat announcement, and `players/advancements/<uuid>.json`.
-use super::{Dim, Game};
+use super::Game;
 use horizon_client::{
     advancements::{self as adv, EntityView, Frame, ItemView, Progress, Tree},
     hud::HudBatch,
@@ -9,7 +9,6 @@ use horizon_client::{
     text::{self, Style, Text},
     toasts::Slide,
 };
-use horizon_core::geometry::Vec3;
 use serde_json::Value;
 use std::{
     collections::{BTreeMap, BTreeSet, VecDeque},
@@ -378,19 +377,6 @@ impl crate::game::Sim<'_> {
         }));
         self.adv.inventory_index = Some((tree, index.clone()));
         index
-    }
-    /// Start reading the advancement files on another thread while the world
-    /// loads. The first tick's first criterion trigger used to read and parse
-    /// all of them on the game thread (about 60 ms).
-    pub(super) fn prefetch_advancement_tree(&mut self) {
-        if !self.adv.tree.list.is_empty() || self.adv.pending_tree.is_some() {
-            return;
-        }
-        let data = self.options.resources.join("data");
-        self.adv.pending_tree = std::thread::Builder::new()
-            .name("horizon-advancements".into())
-            .spawn(move || Tree::load(&data))
-            .ok();
     }
     pub(super) fn load_advancements(&mut self) {
         if self.adv.loaded || self.remote.is_some() || self.no_player_here() {
@@ -762,58 +748,6 @@ impl crate::game::Sim<'_> {
             wanted.is_empty()
         });
     }
-    /// `PlayerTrigger.LOCATION` every second, and the other per-tick checks.
-    pub(super) fn tick_advancements(&mut self) {
-        if self.player.is_none() || self.remote.is_some() {
-            return;
-        }
-        self.check_inventory_trigger();
-        // ServerPlayer.tick: PlayerTrigger.TICK every tick.
-        let me = self.player_entity();
-        self.trigger("minecraft:tick", |c, w| {
-            let ctx = adv::Entities {
-                this: Some(&me),
-                origin: me.position,
-                tool: None,
-                block_pos: None,
-            };
-            adv::conditions(&c["player"], &ctx, w)
-        });
-        // ServerPlayer.onEffectAdded and onEffectsRemoved keep the start of a
-        // levitation; tick fires LEVITATION while there is one.
-        let levitating = self
-            .potions
-            .effects
-            .list
-            .iter()
-            .any(|e| e.id == "levitation");
-        match (levitating, self.adv.levitation) {
-            (true, None) => {
-                let at = self
-                    .player
-                    .as_ref()
-                    .map(|p| [p.position.x, p.position.y, p.position.z]);
-                self.adv.levitation = at.map(|at| (at, self.ticks));
-            }
-            (false, Some(_)) => self.adv.levitation = None,
-            _ => {}
-        }
-        if let Some((start, since)) = self.adv.levitation {
-            self.trigger_levitation(start, (self.ticks - since) as i64);
-        }
-        if self.ticks.is_multiple_of(20) {
-            let me = self.player_entity();
-            self.trigger("minecraft:location", |c, w| {
-                let ctx = adv::Entities {
-                    this: Some(&me),
-                    origin: me.position,
-                    tool: None,
-                    block_pos: None,
-                };
-                adv::conditions(&c["player"], &ctx, w)
-            });
-        }
-    }
     /// A player condition plus one entity (`player`, `entity` keys).
     pub(super) fn trigger_entity(&mut self, name: &str, key: &str, target: &EntityView) {
         let me = self.player_entity();
@@ -860,73 +794,6 @@ impl crate::game::Sim<'_> {
                 && adv::conditions(&c["entity"], &ectx, w)
                 && blow_ok
         });
-    }
-    /// `KilledByArrowTrigger`: what the arrow killed and the weapon it came from.
-    pub(super) fn trigger_killed_by_arrow(
-        &mut self,
-        victims: &[EntityView],
-        weapon: Option<&ItemStack>,
-    ) {
-        let me = self.player_entity();
-        let victims = victims.to_vec();
-        let weapon = weapon.map(item_view);
-        self.trigger("minecraft:killed_by_arrow", move |c, w| {
-            adv::killed_by_arrow(c, &me, &victims, weapon.as_ref(), w)
-        });
-    }
-    /// `LevitationTrigger`: how far the player rose from where it started
-    /// levitating, and for how long.
-    fn trigger_levitation(&mut self, start: [f64; 3], duration: i64) {
-        let me = self.player_entity();
-        self.trigger("minecraft:levitation", move |c, w| {
-            let pctx = adv::Entities {
-                this: Some(&me),
-                origin: me.position,
-                tool: None,
-                block_pos: None,
-            };
-            adv::conditions(&c["player"], &pctx, w)
-                && (c["distance"].is_null() || adv::distance(&c["distance"], start, me.position))
-                && adv::range_i(&c["duration"], duration)
-        });
-    }
-    /// `ServerPlayer.updateUsingItem`: USING_ITEM for the item in use, with
-    /// what the player looks at (`PlayerPredicate.lookingAt`).
-    pub(super) fn trigger_using_item(&mut self, stack: &ItemStack) {
-        if self.remote.is_some() || self.no_player_here() {
-            return;
-        }
-        let mut me = self.player_entity();
-        me.looking_at = self.looking_at_entity().map(Box::new);
-        let it = item_view(stack);
-        self.trigger("minecraft:using_item", move |c, w| {
-            let pctx = adv::Entities {
-                this: Some(&me),
-                origin: me.position,
-                tool: None,
-                block_pos: None,
-            };
-            adv::conditions(&c["player"], &pctx, w) && adv::item(&c["item"], &it, w)
-        });
-    }
-    /// The mob a 100 block ray from the eyes meets first, if no block is in
-    /// the way (`ProjectileUtil.getEntityHitResult` and `hasLineOfSight`).
-    fn looking_at_entity(&self) -> Option<EntityView> {
-        let eye = self.eye_position()?;
-        let dir = super::view_vector(self.yaw, self.pitch);
-        let (m, _) = self
-            .mobs
-            .iter()
-            .filter(|m| m.alive())
-            .filter_map(|m| Some((m, super::ray_box(eye, dir, 100.0, m.bounds())?)))
-            .min_by(|a, b| a.1.total_cmp(&b.1))?;
-        // `LivingEntity.hasLineOfSight`: eye to the target's eye height,
-        // `ClipContext.Block.COLLIDER`, no fluids, within 128 blocks.
-        let from = Vec3::new(eye[0], eye[1], eye[2]);
-        let to = Vec3::new(m.position.x, m.eye_y(), m.position.z);
-        let world = self.mob_world_base(&[]);
-        let clear = to.distance(from) <= 128.0 && world.clear_between(from, to, false);
-        clear.then(|| self.mob_entity(m))
     }
     /// `PlayerHurtEntityTrigger`: the player, the damage and the victim.
     pub(super) fn trigger_player_hurt_entity(
@@ -1015,19 +882,6 @@ impl crate::game::Sim<'_> {
         let it = item_view(stack);
         self.trigger(name, |c, w| adv::item_entity(c, &me, target, &it, w));
     }
-    /// `ConstructBeaconTrigger`: the pyramid levels of the new beacon.
-    pub(super) fn trigger_construct_beacon(&mut self, levels: i32) {
-        let me = self.player_entity();
-        self.trigger("minecraft:construct_beacon", move |c, w| {
-            let pctx = adv::Entities {
-                this: Some(&me),
-                origin: me.position,
-                tool: None,
-                block_pos: None,
-            };
-            adv::conditions(&c["player"], &pctx, w) && adv::range_i(&c["level"], i64::from(levels))
-        });
-    }
     /// `EnchantedItemTrigger`: the enchanted item and the levels it cost.
     pub(super) fn trigger_enchanted_item(&mut self, stack: &ItemStack, levels: i32) {
         let me = self.player_entity();
@@ -1110,40 +964,6 @@ impl crate::game::Sim<'_> {
                 && (c["item"].is_null() || items.iter().any(|i| adv::item(&c["item"], i, w)))
         });
     }
-    /// `SlideDownBlockTrigger`: match the actual block and its state.
-    pub(super) fn trigger_honey_slide(&mut self, pos: [i32; 3]) {
-        let me = self.player_entity();
-        self.trigger("minecraft:slide_down_block", move |c, w| {
-            let ctx = adv::Entities {
-                this: Some(&me),
-                origin: me.position,
-                tool: None,
-                block_pos: None,
-            };
-            adv::conditions(&c["player"], &ctx, w) && adv::block(c, pos, w)
-        });
-    }
-    /// `TargetBlockTrigger`: signal and projectile conditions are evaluated in
-    /// the shooter's context, including distance from the shooter.
-    pub(super) fn trigger_target_hit(&mut self, projectile: &EntityView, strength: i32) {
-        let me = self.player_entity();
-        let projectile = projectile.clone();
-        self.trigger("minecraft:target_hit", move |c, w| {
-            let player = adv::Entities {
-                this: Some(&me),
-                origin: me.position,
-                tool: None,
-                block_pos: None,
-            };
-            let target = adv::Entities {
-                this: Some(&projectile),
-                ..player
-            };
-            adv::conditions(&c["player"], &player, w)
-                && adv::range_i(&c["signal_strength"], i64::from(strength))
-                && adv::conditions(&c["projectile"], &target, w)
-        });
-    }
     /// `ItemUsedOnLocationTrigger` (placed_block, item_used_on_block).
     pub(super) fn trigger_block(&mut self, name: &str, pos: [i32; 3], stack: &ItemStack) {
         let me = self.player_entity();
@@ -1214,20 +1034,6 @@ impl crate::game::Sim<'_> {
                         )
                     })
                 })
-        });
-    }
-    /// `SpearMobsTrigger`: the living entities the spear stabbed in this use.
-    pub(super) fn trigger_spear_mobs(&mut self, stabbed: usize) {
-        let me = self.player_entity();
-        self.trigger("minecraft:spear_mobs", move |c, w| {
-            let pctx = adv::Entities {
-                this: Some(&me),
-                origin: me.position,
-                tool: None,
-                block_pos: None,
-            };
-            adv::conditions(&c["player"], &pctx, w)
-                && c["count"].as_u64().is_none_or(|n| stabbed as u64 >= n)
         });
     }
     /// `BeeNestDestroyedTrigger`: the nest's block state, the tool that broke
@@ -1315,13 +1121,6 @@ impl crate::game::Sim<'_> {
             (test("parent", Some(&parent)) && test("partner", Some(&partner))
                 || test("parent", Some(&partner)) && test("partner", Some(&parent)))
                 && test("child", child.as_ref())
-        });
-    }
-    /// `ChangeDimensionTrigger`.
-    pub(super) fn trigger_dimension(&mut self, from: Dim, to: Dim) {
-        let (from, to) = (from.id().to_owned(), to.id().to_owned());
-        self.trigger("minecraft:changed_dimension", move |c, _| {
-            c["from"].as_str().is_none_or(|f| f == from) && c["to"].as_str().is_none_or(|t| t == to)
         });
     }
     /// The slots held by shown advancement, recipe and pack toasts, as bits.

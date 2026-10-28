@@ -4,9 +4,7 @@ use super::{
     Game,
     commands::{
         R, err,
-        execute::{ExecState, Source},
-    },
-};
+        execute::Source}};
 use horizon_client::{
     command::{Arg, Context},
     datapack::{self, DataPack, DataStore, Function},
@@ -214,51 +212,6 @@ impl crate::game::Sim<'_> {
                 ("DataVersion", Tag::Int(horizon_world::DATA_VERSION)),
             ]),
         );
-    }
-    /// `ServerFunctionManager.tick` and the scheduled events.
-    pub(super) fn tick_functions(&mut self) {
-        self.ensure_datapacks();
-        if self.remote.is_some() {
-            return;
-        }
-        self.exec = ExecState::default();
-        let source = self.server_source();
-        if self.fns.load_pending {
-            self.fns.load_pending = false;
-            for f in self.fns.store.tag_functions("minecraft:load") {
-                self.run_function_by_id(&f, None, source);
-            }
-        }
-        let now = self.world.game_time;
-        loop {
-            let due = self
-                .fns
-                .schedule
-                .iter()
-                .enumerate()
-                .filter(|(_, e)| e.time <= now)
-                .min_by_key(|(_, e)| (e.time, e.seq))
-                .map(|(i, _)| i);
-            let Some(i) = due else { break };
-            let event = self.fns.schedule.remove(i);
-            match event.id.strip_prefix('#') {
-                Some(tag) => {
-                    for f in self.fns.store.tag_functions(tag) {
-                        self.run_function_by_id(&f, None, source);
-                    }
-                }
-                None => self.run_function_by_id(&event.id, None, source),
-            }
-        }
-        for f in self.fns.store.tag_functions("minecraft:tick") {
-            self.run_function_by_id(&f, None, source);
-        }
-    }
-    fn run_function_by_id(&mut self, id: &str, args: Option<&Tag>, source: Source) {
-        self.exec.commands = 0;
-        if let Some(f) = self.fns.store.functions.get(id).cloned() {
-            let _ = self.run_function(&f, args, source);
-        }
     }
     /// Run one function with `source`: its commands in order, until a `return`.
     pub(in crate::game) fn run_function(

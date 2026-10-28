@@ -8,11 +8,8 @@ use horizon_client::{
         Mob, Species, Who,
         finalize::{
             SLOT_NAMES, set_drop_chance, set_item, set_slot_enchantments, slot_enchantments,
-            stored_drop_chance,
-        },
-        piglin::{ADMIRE, ATE_RECENTLY},
-    },
-};
+            stored_drop_chance},
+        piglin::ADMIRE}};
 use horizon_core::{geometry::Vec3, random::RandomSource};
 
 impl Game<'_> {}
@@ -53,41 +50,8 @@ impl crate::game::Sim<'_> {
         };
         self.piglin_wanted(item) && !self.piglin_wanted(&current)
     }
-    /// `SimpleContainer.canAddItem` on the piglin's eight slots.
-    fn piglin_can_add(&self, m: &Mob, stack: &ItemStack) -> bool {
-        m.extra.inventory.len() < 8
-            || m.extra.inventory.iter().any(|s| {
-                s.same_item_same_components(stack) && s.count < self.piglin_max_stack(&s.item)
-            })
-    }
     fn piglin_max_stack(&self, item: &str) -> u32 {
         self.res.items().get(item).map_or(64, |i| i.max_stack)
-    }
-    /// `PiglinAi.wantsToPickup` (an adult that is not hurt-shy), without
-    /// the baby rule, which babies skip entirely here.
-    fn piglin_wants(&self, m: &Mob, stack: &ItemStack) -> bool {
-        let item = &*stack.item;
-        if self.item_in_tag("minecraft:piglin_repellents", item) {
-            return false;
-        }
-        let holds_loved = m
-            .extra
-            .off_hand
-            .as_deref()
-            .is_some_and(|o| self.piglin_loved(o));
-        if item == "minecraft:gold_ingot" {
-            return !holds_loved;
-        }
-        let space = self.piglin_can_add(m, stack);
-        if item == "minecraft:gold_nugget" {
-            space
-        } else if self.item_in_tag("minecraft:piglin_food", item) {
-            m.extra.ints[0] <= 0 && space
-        } else if !self.piglin_loved(item) {
-            self.piglin_can_replace(m, item, self.piglin_slot(item))
-        } else {
-            !holds_loved && space
-        }
     }
     /// `Mob.equipItemIfPossible` for a piglin: put it in its slot when that
     /// slot takes it (an armour piece that cannot replace what is worn goes
@@ -182,79 +146,6 @@ impl crate::game::Sim<'_> {
             .iter()
             .flatten()
             .any(|s| tag.is_some_and(|t| t.contains(&*s.item)))
-    }
-    /// Piglins notice wanted items on the ground within 9 blocks (`PiglinAi.wantsToPickup`:
-    /// gold and other loved items, nuggets, food, gear), walk to them and
-    /// take them (`GoToWantedItem`, `Piglin.pickUpItem`).
-    pub(super) fn piglin_pickups(&mut self) {
-        if !self.world_data.rules.bool("mob_griefing") {
-            return;
-        }
-        for i in 0..self.mobs.len() {
-            let m = &self.mobs[i];
-            if m.species() != Species::Piglin
-                || !m.alive()
-                || m.is_baby()
-                || m.extra.using_item > 0
-                || m.extra.egg_time > 0
-            {
-                continue;
-            }
-            let pos = m.position;
-            let best = self
-                .dropped
-                .iter()
-                .enumerate()
-                .map(|(j, e)| (j, e.position.distance_squared(pos)))
-                .filter(|(_, d)| *d <= 81.0)
-                .filter(|&(j, _)| self.piglin_wants(m, &self.dropped[j].stack))
-                .min_by(|a, b| a.1.total_cmp(&b.1));
-            let Some((j, _)) = best else {
-                self.mobs[i].extra.point = None;
-                continue;
-            };
-            let e = &self.dropped[j];
-            let close = (e.position.x - pos.x).abs() <= 1.3
-                && (e.position.z - pos.z).abs() <= 1.3
-                && (e.position.y - pos.y).abs() <= 1.0;
-            if !close || e.pickup_delay > 0 {
-                self.mobs[i].extra.point = Some([e.position.x, e.position.y, e.position.z]);
-                continue;
-            }
-            // Nuggets come whole, anything else one at a time.
-            let (taken_item, id) = (e.clone(), self.mobs[i].id);
-            let item = e.stack.item.clone();
-            self.add_pickup(
-                super::pickups::Taken::Item(Box::new(taken_item)),
-                super::pickups::Collector::Mob(id),
-            );
-            let stack = if &*item == "minecraft:gold_nugget" {
-                self.dropped.remove(j).stack
-            } else {
-                let e = &mut self.dropped[j];
-                e.stack.count -= 1;
-                let one = ItemStack {
-                    count: 1,
-                    ..e.stack.clone()
-                };
-                if e.stack.count == 0 {
-                    self.dropped.remove(j);
-                }
-                one
-            };
-            if self.piglin_loved(&item) {
-                self.start_admiring(i, item);
-            } else if self.item_in_tag("minecraft:piglin_food", &item)
-                && self.mobs[i].extra.ints[0] <= 0
-            {
-                // PiglinAi.eat: the food is gone and it will not eat for a while.
-                self.mobs[i].extra.ints[0] = ATE_RECENTLY;
-                self.mobs[i].nav_stop();
-            } else {
-                self.mobs[i].nav_stop();
-                self.piglin_keep(i, stack);
-            }
-        }
     }
     fn start_admiring(&mut self, index: usize, item: std::sync::Arc<str>) {
         let m = &mut self.mobs[index];

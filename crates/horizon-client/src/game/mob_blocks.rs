@@ -408,8 +408,4 @@ impl Game<'_> {
     }
 }
 impl crate::game::Sim<'_> {
-    /// Count the elder guardian's apparition down.
-    pub(super) fn tick_apparition(&mut self) {
-        self.creatures.elder_apparition = (self.creatures.elder_apparition - 1).max(0);
-    }
 }

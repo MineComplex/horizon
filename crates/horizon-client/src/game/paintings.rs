@@ -366,28 +366,4 @@ impl crate::game::Sim<'_> {
             10,
         );
     }
-    /// BlockAttachedEntity.tick: check survival every 100 ticks.
-    pub(super) fn tick_paintings(&mut self) {
-        // ServerLevel.tick: only entities in entity-ticking chunks tick.
-        let ticking = self.entity_ticking_area();
-        let mut i = 0;
-        while i < self.paintings.len() {
-            let (lo, hi) = self.paintings[i].bounds();
-            let centre = [0, 2].map(|k| ((lo[k] + hi[k]) / 2.0).floor() as i32);
-            if !ticking(centre[0], centre[1]) {
-                i += 1;
-                continue;
-            }
-            self.paintings[i].check_interval += 1;
-            if self.paintings[i].check_interval >= 100 {
-                self.paintings[i].check_interval = 0;
-                let p = self.paintings[i].clone();
-                if !self.painting_survives(&p) {
-                    self.break_painting(i, false);
-                    continue;
-                }
-            }
-            i += 1;
-        }
-    }
 }

@@ -66,32 +66,4 @@ impl crate::game::Sim<'_> {
         };
         Some(ItemStack::new(&item, 1))
     }
-    /// `Player.isWithinEntityInteractionRange(entity, 3.0)`: the entity's box
-    /// within the interaction range plus 3 of the eyes.
-    pub(super) fn within_entity_range(&self, id: i32) -> bool {
-        let Some(eye) = self.eye_position() else {
-            return false;
-        };
-        let mob = u32::try_from(id)
-            .ok()
-            .and_then(|id| self.mobs.iter().find(|m| m.id == id))
-            .map(|m| m.bounds());
-        let Some(b) = self
-            .object_target(id)
-            .map(|(lo, hi, _)| (lo, hi))
-            .or_else(|| {
-                mob.or_else(|| self.tracked_special_box(id)).map(|b| {
-                    let (lo, hi) = (b.min_position(), b.max_position());
-                    ([lo.x, lo.y, lo.z], [hi.x, hi.y, hi.z])
-                })
-            })
-        else {
-            return false;
-        };
-        let d2: f64 = (0..3)
-            .map(|a| (eye[a] - eye[a].clamp(b.0[a], b.1[a])).powi(2))
-            .sum();
-        let range = if self.creative { 5.0 } else { 3.0 } + 3.0;
-        d2 < range * range
-    }
 }

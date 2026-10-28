@@ -4,13 +4,12 @@
 //! shading, the dithered edge), the player marker, `data/minecraft/maps/<id>.dat` and
 //! `maps/last_id.dat`, the 128x128 texture in an atlas slot, the two-handed
 //! first-person view and maps in item frames.
-use super::{Game, lan::LanHost};
+use super::Game;
 use horizon_client::{
-    blocks::{Fluid, MAP_COLORS},
+    blocks::MAP_COLORS,
     hud::{MAP_SLOTS, Rect},
     items::ItemStack,
-    mesher::Vertex,
-};
+    mesher::Vertex};
 use horizon_world::nbt::Tag;
 use std::collections::HashMap;
 
@@ -24,8 +23,6 @@ pub(super) struct Decoration {
     pub rot: u8,
     pub holder: Option<u32>,
 }
-/// The host among a map's holders (the guests are their connections).
-const HOST: u32 = u32::MAX;
 /// A player carrying a map, or seeing it framed
 /// (`MapItemSavedData.HoldingPlayer`): the column sweep's step, and what
 /// changed since the last `ClientboundMapItemDataPacket` it was sent.
@@ -41,21 +38,6 @@ struct Holder {
     tick: u32,
 }
 impl Holder {
-    fn new(who: u32) -> Self {
-        Self {
-            who,
-            carried: 0,
-            framed: 0,
-            step: 0,
-            dirty: Some([0, 0, 127, 127]),
-            decorations: true,
-            tick: 0,
-        }
-    }
-    /// Still carrying the map, or seeing it framed (frames tick every 10).
-    fn holds(&self, now: i64) -> bool {
-        self.carried + 1 >= now || self.framed + 10 >= now
-    }
 }
 pub(super) struct MapData {
     pub center: [i32; 2],
@@ -106,119 +88,6 @@ impl MapData {
             });
         }
         true
-    }
-    /// `tickCarriedBy`'s holder for `who`, added when new.
-    fn holder(&mut self, who: u32) -> &mut Holder {
-        let i = match self.holders.iter().position(|h| h.who == who) {
-            Some(i) => i,
-            None => {
-                self.holders.push(Holder::new(who));
-                self.holders.len() - 1
-            }
-        };
-        &mut self.holders[i]
-    }
-    /// The holders that no longer carry the map nor see it framed go, and
-    /// their markers with them (`tickCarriedBy`'s removeDecoration).
-    fn drop_holders(&mut self, now: i64) {
-        self.holders.retain(|h| h.holds(now));
-        let holders = &self.holders;
-        let before = self.decorations.len();
-        self.decorations
-            .retain(|d| d.holder.is_none_or(|w| holders.iter().any(|h| h.who == w)));
-        if self.decorations.len() != before {
-            self.decorations_changed();
-        }
-    }
-    /// setDecorationsDirty.
-    fn decorations_changed(&mut self) {
-        for h in &mut self.holders {
-            h.decorations = true;
-        }
-    }
-    /// `addDecoration` / `removeDecoration` for `holder`'s marker: in place,
-    /// so that the order (the drawing order) stays.
-    fn set_marker(&mut self, holder: u32, marker: Option<Decoration>) {
-        let i = self
-            .decorations
-            .iter()
-            .position(|d| d.holder == Some(holder));
-        let changed = match (i, marker) {
-            (Some(i), Some(d)) if self.decorations[i] == d => false,
-            (Some(i), Some(d)) => {
-                self.decorations[i] = d;
-                true
-            }
-            (Some(i), None) => {
-                self.decorations.remove(i);
-                true
-            }
-            (None, Some(d)) => {
-                self.decorations.push(d);
-                true
-            }
-            (None, None) => false,
-        };
-        if changed {
-            self.decorations_changed();
-        }
-    }
-    /// `HoldingPlayer.nextUpdatePacket` for `who`: the changed pixels, and
-    /// the decorations (at most every 5th call while they changed).
-    fn update_packet(
-        &mut self,
-        id: i32,
-        who: u32,
-        kind: impl Fn(&str) -> Option<i32>,
-    ) -> Option<horizon_protocol::packets::play::MapItemData> {
-        use horizon_protocol::packets::play::{MapDecoration, MapItemData, MapPatch};
-        let h = self.holders.iter_mut().find(|h| h.who == who)?;
-        let patch = h.dirty.take().map(|[x0, y0, x1, y1]| {
-            let (width, height) = (x1 + 1 - x0, y1 + 1 - y0);
-            let mut colors = Vec::with_capacity((width * height) as usize);
-            for y in 0..height {
-                for x in 0..width {
-                    colors.push(self.colors[(x0 + x + (y0 + y) * 128) as usize]);
-                }
-            }
-            MapPatch {
-                start_x: x0,
-                start_y: y0,
-                width,
-                height,
-                colors,
-            }
-        });
-        let decorations = if h.decorations && {
-            let due = h.tick % 5 == 0;
-            h.tick += 1;
-            due
-        } {
-            h.decorations = false;
-            Some(
-                self.decorations
-                    .iter()
-                    .filter_map(|d| {
-                        Some(MapDecoration {
-                            kind: kind(decoration_type(d.sprite)?)?,
-                            x: d.x,
-                            y: d.y,
-                            rot: d.rot as i8,
-                            name: None,
-                        })
-                    })
-                    .collect(),
-            )
-        } else {
-            None
-        };
-        (patch.is_some() || decorations.is_some()).then_some(MapItemData {
-            map_id: id,
-            scale: self.scale as i8,
-            locked: self.locked,
-            decorations,
-            patch,
-        })
     }
     fn to_nbt(&self) -> Tag {
         let flag = |b: bool| Tag::Byte(i8::from(b));
@@ -347,39 +216,6 @@ fn decoration_type(sprite: &str) -> Option<&'static str> {
         .find(|(_, s)| *s == sprite)
         .map(|(name, _)| *name)
 }
-/// `minecraft:map_decorations` of a map item: (sprite, x, z, rotation), in
-/// the component's order.
-fn static_decorations(stack: &ItemStack) -> Vec<(&'static str, f64, f64, f32)> {
-    let Some(Tag::Compound(entries)) = stack.data().and_then(|d| {
-        d.other
-            .iter()
-            .find(|(k, _)| k == "minecraft:map_decorations")
-            .map(|(_, t)| t)
-    }) else {
-        return Vec::new();
-    };
-    let number = |t: Option<&Tag>| match t {
-        Some(Tag::Double(b)) => Some(f64::from_bits(*b)),
-        Some(Tag::Float(b)) => Some(f64::from(f32::from_bits(*b))),
-        Some(Tag::Int(v)) => Some(f64::from(*v)),
-        _ => None,
-    };
-    entries
-        .values()
-        .filter_map(|e| {
-            let sprite = match e.get("type") {
-                Some(Tag::String(s)) => decoration_sprite(&s.to_string_lossy())?,
-                _ => return None,
-            };
-            Some((
-                sprite,
-                number(e.get("x"))?,
-                number(e.get("z"))?,
-                number(e.get("rotation")).unwrap_or(0.0) as f32,
-            ))
-        })
-        .collect()
-}
 /// `MapItemSavedData.addTargetDecoration`: the `"+"` entry of
 /// `minecraft:map_decorations`, rotation 180.
 fn target_decoration(decoration: &str, at: [i32; 3]) -> Tag {
@@ -392,34 +228,6 @@ fn target_decoration(decoration: &str, at: [i32; 3]) -> Tag {
             ("rotation", Tag::Float(180.0f32.to_bits())),
         ]),
     )])
-}
-/// `MapItemSavedData.clampMapCoordinate`.
-fn clamp_map_coordinate(d: f32) -> i8 {
-    if d <= -63.0 {
-        -128
-    } else if d >= 63.0 {
-        127
-    } else {
-        (d * 2.0 + 0.5) as i8
-    }
-}
-/// `MapItemSavedData.calculateRotation`: spinning in the Nether.
-fn decoration_rotation(nether: bool, game_time: i64, y_rot: f64) -> u8 {
-    if nether {
-        let s = (game_time / 10) as i32;
-        (s.wrapping_mul(s)
-            .wrapping_mul(34_187_121)
-            .wrapping_add(s.wrapping_mul(121))
-            >> 15
-            & 15) as u8
-    } else {
-        let adjusted = if y_rot < 0.0 {
-            y_rot - 8.0
-        } else {
-            y_rot + 8.0
-        };
-        ((adjusted * 16.0 / 360.0) as i32 & 15) as u8
-    }
 }
 impl Game<'_> {
     /// The atlas slot showing map `id`, its texture uploaded when it changed.
@@ -974,163 +782,11 @@ impl crate::game::Sim<'_> {
         self.swing_arm();
         true
     }
-    /// `CompassItem.inventoryTick` / `LodestoneTracker.tick`: a compass whose
-    /// lodestone is gone loses its target. A target in an unloaded chunk waits.
-    pub(super) fn tick_lodestone_compasses(&mut self) {
-        let dim = self.dimension_id();
-        let gone = |game: &Self, stack: &ItemStack| -> bool {
-            let Some(tracker) = stack
-                .data()
-                .and_then(|d| d.other("minecraft:lodestone_tracker"))
-            else {
-                return false;
-            };
-            let (Some(target), true) = (
-                tracker.get("target"),
-                horizon_client::save::number(tracker.get("tracked")).is_none_or(|v| v != 0),
-            ) else {
-                return false;
-            };
-            let Some(Tag::IntArray(pos)) = target.get("pos") else {
-                return false;
-            };
-            let [x, y, z] = [pos[0], pos[1], pos[2]];
-            horizon_client::save::text(target.get("dimension")).as_deref() == Some(dim)
-                && game.world.chunks.contains_key(&(x >> 4, z >> 4))
-                && game
-                    .res
-                    .facts()
-                    .get(game.world.block(x, y, z))
-                    .name
-                    .as_ref()
-                    != "minecraft:lodestone"
-        };
-        for slot in (0..self.inventory.len()).chain([super::shield::OFFHAND_SLOT]) {
-            if self.stack_in(slot).is_some_and(|s| gone(self, s))
-                && let Some(s) = self.stack_in_mut(slot)
-            {
-                s.data_mut().set_other(
-                    "minecraft:lodestone_tracker",
-                    Some(Tag::Compound(Default::default())),
-                );
-            }
-        }
-    }
     fn give_or_drop_stack(&mut self, stack: ItemStack) {
         if let Some(rest) = self.give(stack)
             && let Some(eye) = self.eye_position()
         {
             self.spawn_item(rest, [eye[0], eye[1] - 0.3, eye[2]], [0.0, 0.1, 0.0], 40);
-        }
-    }
-    /// Held maps update; every carried map tracks the player marker.
-    pub(super) fn tick_maps(&mut self) {
-        let Some(p) = self.player.as_ref().map(|p| p.position) else {
-            return;
-        };
-        // A generated exploration map that reached the inventory unsearched
-        // (moved out of its chest by a hopper): searched from here.
-        for i in 0..self.inventory.len() {
-            if self.inventory[i]
-                .as_ref()
-                .is_some_and(horizon_client::structure_blocks::has_pending_map)
-                && let Some(mut item) = self.inventory[i].take()
-            {
-                let keep = self.resolve_pending_map(&mut item, [p.x, p.y, p.z]);
-                self.inventory[i] = keep.then_some(item);
-            }
-        }
-        let held: Vec<i32> = [Some(self.selected), Some(super::shield::OFFHAND_SLOT)]
-            .into_iter()
-            .flatten()
-            .filter_map(|i| self.stack_in(i).and_then(map_id))
-            .collect();
-        let carried: Vec<(i32, Vec<(&'static str, f64, f64, f32)>)> = self
-            .inventory
-            .iter()
-            .chain(std::iter::once(&self.offhand))
-            .flatten()
-            .filter_map(|s| Some((map_id(s)?, static_decorations(s))))
-            .collect();
-        let (yaw, dim) = (self.yaw, self.dimension_id());
-        let (nether, game_time) = (self.dim == super::Dim::Nether, self.world.game_time);
-        // The guest whose turn it is, else the host.
-        let me = self.lan_acting.unwrap_or(HOST);
-        for (id, targets) in carried {
-            let Some(m) = self.map(id) else { continue };
-            m.holder(me).carried = game_time;
-            m.drop_holders(game_time);
-            // tickCarriedBy: the player marker while tracking in this dimension.
-            let mut marker = None;
-            if m.tracking && m.dimension == dim {
-                let s = f64::from(1 << m.scale);
-                let dx = ((p.x - f64::from(m.center[0])) / s) as f32;
-                let dz = ((p.z - f64::from(m.center[1])) / s) as f32;
-                let inside = (-63.0..=63.0).contains(&dx) && (-63.0..=63.0).contains(&dz);
-                let clamp = |d: f32| {
-                    if d <= -63.0 {
-                        -128
-                    } else if d >= 63.0 {
-                        127
-                    } else {
-                        (d * 2.0 + 0.5) as i8
-                    }
-                };
-                // calculateRotation: the arrow spins in the Nether.
-                let rot = decoration_rotation(nether, game_time, f64::from(yaw));
-                let sprite = if inside {
-                    Some("map/decorations/player")
-                } else if dx.abs() < 320.0 && dz.abs() < 320.0 {
-                    Some("map/decorations/player_off_map")
-                } else if m.unlimited {
-                    Some("map/decorations/player_off_limits")
-                } else {
-                    None
-                };
-                marker = sprite.map(|sprite| Decoration {
-                    sprite,
-                    x: clamp(dx),
-                    y: clamp(dz),
-                    rot,
-                    holder: Some(me),
-                });
-            }
-            m.set_marker(me, marker);
-            // The item's MAP_DECORATIONS (an explorer map's target), added
-            // after the players as addDecoration would.
-            let s = (1 << m.scale) as f32;
-            let mut items: Vec<Decoration> = Vec::new();
-            for (sprite, x, z, rotation) in targets {
-                let dx = (x - f64::from(m.center[0])) as f32 / s;
-                let dz = (z - f64::from(m.center[1])) as f32 / s;
-                let inside = (-63.0..=63.0).contains(&dx) && (-63.0..=63.0).contains(&dz);
-                if !inside && !m.unlimited {
-                    continue;
-                }
-                let d = Decoration {
-                    sprite,
-                    x: clamp_map_coordinate(dx),
-                    y: clamp_map_coordinate(dz),
-                    rot: decoration_rotation(nether, game_time, f64::from(rotation)),
-                    holder: None,
-                };
-                if !items.contains(&d) {
-                    items.push(d);
-                }
-            }
-            if !m
-                .decorations
-                .iter()
-                .filter(|d| d.holder.is_none())
-                .eq(items.iter())
-            {
-                m.decorations.retain(|d| d.holder.is_some());
-                m.decorations.extend(items);
-                m.decorations_changed();
-            }
-        }
-        for id in held {
-            self.update_map(id);
         }
     }
     /// The maps the player carries, for `status`: how many of their pixels
@@ -1150,203 +806,6 @@ impl crate::game::Sim<'_> {
                 }))
             })
             .collect()
-    }
-    /// `ServerPlayer.synchronizeSpecialItemUpdates` for each map the guest
-    /// carries, and every 10 ticks (`ServerEntity.sendChanges`) for each map
-    /// framed in the level: a `ClientboundMapItemDataPacket` when something
-    /// changed since the guest's last one.
-    pub(super) fn lan_map_updates(&mut self, host: &LanHost, conn: u32) {
-        let Some(g) = host.hub.guest(conn) else {
-            return;
-        };
-        let mut ids: Vec<i32> = g
-            .inventory
-            .iter()
-            .chain(std::iter::once(&g.offhand))
-            .flatten()
-            .filter_map(map_id)
-            .collect();
-        let now = self.world.game_time;
-        if now % 10 == 0 && host.hub.here(g) {
-            let framed: Vec<i32> = self
-                .item_frames
-                .iter()
-                .filter_map(|f| f.item.as_ref().and_then(map_id))
-                .collect();
-            for id in framed {
-                if let Some(m) = self.map(id) {
-                    m.holder(conn).framed = now;
-                    ids.push(id);
-                }
-            }
-        }
-        ids.sort_unstable();
-        ids.dedup();
-        let kind = |name: &str| {
-            host.hub.registry_id(
-                "minecraft:map_decoration_type",
-                &format!("minecraft:{name}"),
-            )
-        };
-        for id in ids {
-            if let Some(p) = self
-                .maps
-                .data
-                .get_mut(&id)
-                .and_then(|m| m.update_packet(id, conn, kind))
-            {
-                g.send(&horizon_protocol::packets::play::Clientbound::MapItemData(
-                    p,
-                ));
-            }
-        }
-    }
-    /// `MapItem.update` for the player holding map `id`.
-    fn update_map(&mut self, id: i32) {
-        let dim = self.dimension_id();
-        let Some(p) = self.player.as_ref().map(|p| p.position) else {
-            return;
-        };
-        let nether = self.dim == super::Dim::Nether;
-        let Some(m) = self.maps.data.get_mut(&id) else {
-            return;
-        };
-        if m.locked || m.dimension != dim {
-            return;
-        }
-        let scale = 1i32 << m.scale;
-        let [cx, cz] = m.center;
-        let px = (p.x - f64::from(cx)).floor() as i32 / scale + 64;
-        let pz = (p.z - f64::from(cz)).floor() as i32 / scale + 64;
-        let mut radius = 128 / scale;
-        if nether {
-            radius /= 2;
-        }
-        let h = m.holder(self.lan_acting.unwrap_or(HOST));
-        h.step += 1;
-        let step = h.step;
-        let mut changes: Vec<(i32, i32, u8)> = Vec::new();
-        let mut consecutive = false;
-        for img_x in px - radius + 1..px + radius {
-            if (img_x & 15) != (step & 15) && !consecutive {
-                continue;
-            }
-            consecutive = false;
-            let mut previous_height = 0.0f64;
-            for img_y in pz - radius - 1..pz + radius {
-                if !(0..128).contains(&img_x) || !(-1..128).contains(&img_y) {
-                    continue;
-                }
-                let d2 = (img_x - px).pow(2) + (img_y - pz).pow(2);
-                let dither_black = d2 > (radius - 2) * (radius - 2);
-                let min_x = (cx / scale + img_x - 64) * scale;
-                let min_z = (cz / scale + img_y - 64) * scale;
-                if !self.world.chunks.contains_key(&(min_x >> 4, min_z >> 4)) {
-                    continue;
-                }
-                let mut counts: Vec<(u8, u32)> = Vec::new();
-                let mut add = |c: u8, n: u32| match counts.iter_mut().find(|e| e.0 == c) {
-                    Some(e) => e.1 += n,
-                    None => counts.push((c, n)),
-                };
-                let mut water_depth = 0i32;
-                let mut height = 0.0f64;
-                if nether {
-                    let mut noise = min_x.wrapping_add(min_z.wrapping_mul(231_871));
-                    noise = noise
-                        .wrapping_mul(noise)
-                        .wrapping_mul(31_287_121)
-                        .wrapping_add(noise.wrapping_mul(11));
-                    // Dirt (10) or stone (11) noise under a ceiling.
-                    if noise >> 20 & 1 == 0 {
-                        add(10, 10);
-                    } else {
-                        add(11, 100);
-                    }
-                    height = 100.0;
-                } else {
-                    for dx in 0..scale {
-                        for dz in 0..scale {
-                            let (x, z) = (min_x + dx, min_z + dz);
-                            let mut y = self.world_surface(x, z);
-                            let min_y = super::MIN_Y;
-                            let mut color;
-                            if y <= min_y {
-                                color = 11;
-                            } else {
-                                loop {
-                                    y -= 1;
-                                    color =
-                                        self.res.facts().get(self.world.block(x, y, z)).map_color;
-                                    if color != 0 || y <= min_y {
-                                        break;
-                                    }
-                                }
-                                let f = self.res.facts().get(self.world.block(x, y, z));
-                                if y > min_y && f.fluid != Fluid::None {
-                                    let mut solid = y - 1;
-                                    loop {
-                                        let below =
-                                            self.res.facts().get(self.world.block(x, solid, z));
-                                        solid -= 1;
-                                        water_depth += 1;
-                                        if solid <= min_y || below.fluid == Fluid::None {
-                                            break;
-                                        }
-                                    }
-                                    // getCorrectStateForFluidBlock: the fluid unless sturdy on top.
-                                    if f.sturdy_full >> 1 & 1 == 0 {
-                                        color = if f.fluid == Fluid::Lava { 4 } else { 12 };
-                                    }
-                                }
-                            }
-                            height += f64::from(y) / f64::from(scale * scale);
-                            add(color, 1);
-                        }
-                    }
-                }
-                water_depth /= scale * scale;
-                // Multisets.copyHighestCountFirst: the most common, first seen on ties.
-                let best = counts
-                    .iter()
-                    .fold(None::<(u8, u32)>, |acc, &(c, n)| match acc {
-                        Some((_, bn)) if bn >= n => acc,
-                        _ => Some((c, n)),
-                    })
-                    .map_or(0, |e| e.0);
-                let parity = f64::from((img_x + img_y) & 1);
-                let brightness = if best == 12 {
-                    let diff = f64::from(water_depth) * 0.1 + parity * 0.2;
-                    if diff < 0.5 {
-                        2
-                    } else if diff > 0.9 {
-                        0
-                    } else {
-                        1
-                    }
-                } else {
-                    let diff = (height - previous_height) * 4.0 / f64::from(scale + 4)
-                        + (parity - 0.5) * 0.4;
-                    if diff > 0.6 {
-                        2
-                    } else if diff < -0.6 {
-                        0
-                    } else {
-                        1
-                    }
-                };
-                previous_height = height;
-                if img_y >= 0 && d2 < radius * radius && (!dither_black || (img_x + img_y) & 1 != 0)
-                {
-                    changes.push((img_x, img_y, best << 2 | brightness));
-                }
-            }
-            if let Some(m) = self.maps.data.get_mut(&id) {
-                for (x, y, c) in changes.drain(..) {
-                    consecutive |= m.update_color(x, y, c);
-                }
-            }
-        }
     }
     /// Writes changed maps and the id counter (`MapItemSavedData`, `MapIndex`).
     pub(super) fn save_maps(&mut self) {

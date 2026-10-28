@@ -1,16 +1,12 @@
 //! Brushing suspicious sand and gravel: `BrushItem.onUseTick` and
 //! `BrushableBlockEntity`. The block's loot table stays in its saved block
 //! entity (like a decorated pot's) until the first counted stroke rolls it.
-use super::{Game, Hit, decorated_pot, spill, view_vector};
+use super::{Game, Hit, view_vector};
 use horizon_client::{
-    particles::{ParticleOptions, ParticleType},
-    save,
-};
+    particles::{ParticleOptions, ParticleType}};
 use horizon_core::random::RandomSource;
 use std::collections::HashMap;
 
-/// `BrushItem.USE_DURATION`.
-const USE_DURATION: u32 = 200;
 
 /// A brushable block's counters. Vanilla never saves them: the block's
 /// `dusted` state is all that is left after a reload.
@@ -36,42 +32,6 @@ pub(super) type Brushing = HashMap<[i32; 3], BrushState>;
 
 impl Game<'_> {}
 impl crate::game::Sim<'_> {
-    /// `BrushItem.onUseTick` for a brush used `ticks` ticks so far, the
-    /// hand of `slot` acting.
-    pub(super) fn tick_brush(&mut self, slot: usize, ticks: u32) {
-        // No block under the crosshair: releaseUsingItem.
-        let Some(hit) = self.pick() else {
-            self.using = None;
-            return;
-        };
-        let elapsed = ticks + 1;
-        // The last tick before the backswing.
-        if elapsed % 10 == 5 {
-            self.brush_stroke(&hit, slot);
-        }
-        // The use ends after 200 ticks; the held button starts it again.
-        self.using = (elapsed < USE_DURATION).then_some((slot, elapsed));
-    }
-    /// One stroke on the block aimed at: dust (this window only), the brush
-    /// sound, and the block entity's count. The brush wears when the block
-    /// changed state.
-    fn brush_stroke(&mut self, hit: &Hit, slot: usize) {
-        let state = self.world.block(hit.pos[0], hit.pos[1], hit.pos[2]);
-        let name = self.res.facts().get(state).name.clone();
-        let (sound, brushable) = match &*name {
-            "minecraft:suspicious_sand" => ("minecraft:item.brush.brushing.sand", true),
-            "minecraft:suspicious_gravel" => ("minecraft:item.brush.brushing.gravel", true),
-            _ => ("minecraft:item.brush.brushing.generic", false),
-        };
-        if self.lan_acting.is_none() {
-            self.brush_dust(hit, slot == super::shield::OFFHAND_SLOT);
-        }
-        let at = hit.pos.map(|v| f64::from(v) + 0.5);
-        self.sounds.play(sound, Some(at), 1.0, 1.0);
-        if brushable && self.brush_block(hit.pos, hit.face) {
-            self.damage_held(1);
-        }
-    }
     /// `BrushItem.spawnDustParticles`.
     pub(super) fn brush_dust(&mut self, hit: &Hit, off_hand: bool) {
         let state = self.world.block(hit.pos[0], hit.pos[1], hit.pos[2]);
@@ -105,80 +65,6 @@ impl crate::game::Sim<'_> {
                 dz * flip * 3.0 * random.next_double(),
             ];
             self.particles.add(&options, [x, hit.point[1], z], v);
-        }
-    }
-    /// `BrushableBlockEntity.brush`: whether the block changed (the brush wears).
-    fn brush_block(&mut self, pos: [i32; 3], face: [i32; 3]) -> bool {
-        let time = self.world.game_time;
-        let mut brush = self.brushing.remove(&pos).unwrap_or_default();
-        brush.hit_face.get_or_insert(face);
-        brush.resets_at = time + 40;
-        if time < brush.cooldown_ends_at {
-            self.brushing.insert(pos, brush);
-            return false;
-        }
-        brush.cooldown_ends_at = time + 10;
-        self.unpack_brush_loot(pos);
-        let before = completion_state(brush.count);
-        brush.count += 1;
-        if brush.count >= 10 {
-            self.brushing_completed(pos, brush.hit_face);
-            return true;
-        }
-        self.schedule_brushable_tick(pos);
-        let after = completion_state(brush.count);
-        self.brushing.insert(pos, brush);
-        if before != after {
-            self.set_dusted(pos, after);
-        }
-        false
-    }
-    /// `BrushableBlockEntity.unpackLootTable`: the table's roll becomes the
-    /// block entity's item.
-    fn unpack_brush_loot(&mut self, pos: [i32; 3]) {
-        let Some(mut tag) = spill::saved_entity(&self.world, pos) else {
-            return;
-        };
-        if tag.get("LootTable").is_none() {
-            return;
-        }
-        let loot = horizon_client::structure_blocks::loot_data(&self.options.resources);
-        decorated_pot::unpack_loot(
-            &mut tag,
-            loot.as_deref(),
-            &mut self.world.random,
-            &mut self.rand_sequences,
-            self.level.seed,
-        );
-        spill::put_saved_entity(&mut self.world, pos, tag);
-    }
-    /// `BrushableBlockEntity.brushingCompleted`: the item drops out of the
-    /// brushed face and the block turns into its sand or gravel.
-    fn brushing_completed(&mut self, pos: [i32; 3], face: Option<[i32; 3]>) {
-        let state = self.world.block(pos[0], pos[1], pos[2]);
-        let turns_into = match &*self.res.facts().get(state).name {
-            "minecraft:suspicious_sand" => "minecraft:sand",
-            "minecraft:suspicious_gravel" => "minecraft:gravel",
-            _ => "minecraft:air",
-        };
-        // dropContent: the item at the middle of the block beside that face.
-        let item = spill::saved_entity(&self.world, pos)
-            .and_then(|tag| tag.get("item").and_then(save::item_from_nbt));
-        if let Some(mut item) = item {
-            let face = face.unwrap_or([0, 1, 0]);
-            let take = 10 + self.world.random.next_int_bound(21).unwrap_or(0);
-            item.count = item.count.min(take as u32);
-            let at = [
-                f64::from(pos[0] + face[0]) + 0.5,
-                f64::from(pos[1] + face[1]) + 0.625,
-                f64::from(pos[2] + face[2]) + 0.5,
-            ];
-            self.spawn_item(item, at, [0.0; 3], 0);
-        }
-        // Level event 3008 for every player, then the block change.
-        self.level_event_at(3008, pos, state.0 as i32);
-        if let Some(base) = self.pack.assets.registry.default_state(turns_into) {
-            let _ = self.level_set(pos, base);
         }
     }
     fn set_dusted(&mut self, pos: [i32; 3], dusted: i32) {

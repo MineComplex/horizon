@@ -158,21 +158,6 @@ impl crate::game::Sim<'_> {
             .put(key, BlockEntity::Vault(vault));
         Some(self.vault_events(key, events).map(|()| out))
     }
-    /// The server tick of the vault at `key`, then its client tick when there
-    /// is a window.
-    pub(super) fn tick_vault(&mut self, key: Pos) -> Result<()> {
-        let pos = [key.0, key.1, key.2];
-        let ticked = self.with_vault(key, |v, l, random, state, ominous, roll, events| {
-            v.server_tick(l, random, pos, state, ominous, roll, events);
-        });
-        if let Some(result) = ticked {
-            result?;
-        }
-        if self.options.dedicated.is_none() {
-            self.client_tick_vault(key);
-        }
-        Ok(())
-    }
     /// `VaultBlock.useItemOn` with `held` in the hand that acts: true when the
     /// vault took the click (an active vault, with anything in the hand).
     pub(super) fn use_vault(&mut self, pos: [i32; 3], held: Option<&ItemStack>) -> Result<bool> {

@@ -87,24 +87,6 @@ impl crate::game::Sim<'_> {
         self.deflect(i);
         true
     }
-    /// `Player.canInteractWithEntity(box, 3.0)` as the server checks an
-    /// attack packet: the projectile's box within the reach plus 3 of the eyes.
-    pub(super) fn within_interaction_range(&self, i: usize) -> bool {
-        let (Some(eye), Some(p)) = (self.eye_position(), self.creatures.projectiles.get(i)) else {
-            return false;
-        };
-        let b = pick_box(p);
-        let (lo, hi) = (b.min_position(), b.max_position());
-        let (lo, hi) = (
-            [lo.x + PICK_RADIUS, lo.y + PICK_RADIUS, lo.z + PICK_RADIUS],
-            [hi.x - PICK_RADIUS, hi.y - PICK_RADIUS, hi.z - PICK_RADIUS],
-        );
-        let d2: f64 = (0..3)
-            .map(|a| (eye[a] - eye[a].clamp(lo[a], hi[a])).powi(2))
-            .sum();
-        let range = if self.creative { 5.0 } else { 3.0 } + 3.0;
-        d2 < range * range
-    }
     /// `Projectile.deflect(AIM_DEFLECT, player, player, true)`.
     pub(super) fn deflect(&mut self, i: usize) {
         let dir = view_vector(self.yaw, self.pitch);

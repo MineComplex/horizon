@@ -90,20 +90,6 @@ impl crate::game::Sim<'_> {
             block: None,
         }
     }
-    /// The server as a source (function ticks and schedules): the world spawn.
-    pub(in crate::game) fn server_source(&self) -> Source {
-        Source {
-            entity: None,
-            pos: self.server_position(),
-            rot: [0.0, 0.0],
-            eyes: false,
-            silent: true,
-            store: None,
-            dimension: self.dim,
-            level: None,
-            block: None,
-        }
-    }
     pub(super) fn target_rotation(&self, t: Target) -> [f32; 2] {
         match t {
             Target::Player => [self.yaw, self.pitch],

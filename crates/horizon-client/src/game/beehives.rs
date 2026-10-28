@@ -90,38 +90,6 @@ impl crate::game::Sim<'_> {
         let facing = beehive::facing_step(props.get("facing").map(String::as_str));
         Some((honey, facing))
     }
-    /// `BeehiveBlockEntity.serverTick` of the hive at `key`, after an
-    /// emergency exit if fire is beside it (`BeehiveBlock.updateShape`).
-    pub(super) fn tick_beehive(&mut self, key: (i32, i32, i32)) {
-        let at = [key.0, key.1, key.2];
-        let Some((honey, facing)) = self.hive_state(at) else {
-            return;
-        };
-        let Some(BlockEntity::Beehive(mut hive)) = self.world.block_entities.take(&key) else {
-            return;
-        };
-        let fire = [
-            [1, 0, 0],
-            [-1, 0, 0],
-            [0, 1, 0],
-            [0, -1, 0],
-            [0, 0, 1],
-            [0, 0, -1],
-        ]
-        .iter()
-        .any(|d| {
-            let state = self.world.block(at[0] + d[0], at[1] + d[1], at[2] + d[2]);
-            &*self.res.facts().get(state).name == "minecraft:fire"
-        });
-        let mut host = GameHive { game: self };
-        if fire && !hive.bees.is_empty() {
-            hive.release_all(at, facing, honey, Release::Emergency, &mut host);
-        }
-        hive.server_tick(at, facing, honey, &mut host);
-        self.world
-            .block_entities
-            .put(key, BlockEntity::Beehive(hive));
-    }
     /// `BeehiveBlockEntity.addOccupant` for a bee its `BeeEnterHiveGoal`
     /// sent in: off its lead, its tag stored, the bee gone.
     pub(super) fn bee_enter_hive(&mut self, mob: u32, at: [i32; 3]) {

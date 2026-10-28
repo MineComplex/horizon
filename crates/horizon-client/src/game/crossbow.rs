@@ -46,30 +46,6 @@ impl Game<'_> {
         let seconds = 1.25 - 0.25 * stack.enchantment_level("minecraft:quick_charge") as f32;
         (seconds.max(0.0) * 20.0).floor() as u32
     }
-    fn charging_sounds(stack: &ItemStack) -> [&'static str; 3] {
-        match stack.enchantment_level("minecraft:quick_charge") {
-            0 => [
-                "minecraft:item.crossbow.loading_start",
-                "minecraft:item.crossbow.loading_middle",
-                "minecraft:item.crossbow.loading_end",
-            ],
-            1 => [
-                "minecraft:item.crossbow.quick_charge_1",
-                "",
-                "minecraft:item.crossbow.loading_end",
-            ],
-            2 => [
-                "minecraft:item.crossbow.quick_charge_2",
-                "",
-                "minecraft:item.crossbow.loading_end",
-            ],
-            _ => [
-                "minecraft:item.crossbow.quick_charge_3",
-                "",
-                "minecraft:item.crossbow.loading_end",
-            ],
-        }
-    }
 }
 impl crate::game::Sim<'_> {
     /// `Player.getProjectile` for `weapon` (`projectile_slot`).
@@ -94,56 +70,6 @@ impl crate::game::Sim<'_> {
             self.using = Some((self.held_slot(), 0));
         }
         true
-    }
-    /// `CrossbowItem.onUseTick` for the charge in progress.
-    pub(super) fn tick_crossbow(&mut self, slot: usize, ticks: u32, stack: &ItemStack) {
-        let ticks = ticks + 1;
-        self.using = Some((slot, ticks));
-        let charge = crate::game::Game::charge_ticks(stack).max(1) as f32;
-        let (before, now) = ((ticks - 1) as f32 / charge, ticks as f32 / charge);
-        let sounds = crate::game::Game::charging_sounds(stack);
-        let at = self
-            .player
-            .as_ref()
-            .map(|p| [p.position.x, p.position.y, p.position.z]);
-        if before < 0.2 && now >= 0.2 && !sounds[0].is_empty() {
-            self.sounds.play(sounds[0], at, 0.5, 1.0);
-        }
-        if before < 0.5 && now >= 0.5 && !sounds[1].is_empty() {
-            self.sounds.play(sounds[1], at, 0.5, 1.0);
-        }
-        let charged = stack.data().is_some_and(|d| !d.charged.is_empty());
-        if now >= 1.0 && !charged {
-            // tryLoadProjectiles / ProjectileWeaponItem.draw.
-            let shots = if stack.enchantment_level("minecraft:multishot") > 0 {
-                3
-            } else {
-                1
-            };
-            let slot_ammo = self.projectile_slot(CROSSBOW);
-            let ammo = slot_ammo
-                .and_then(|i| self.stack_in(i).cloned())
-                .unwrap_or_else(|| ItemStack::new("minecraft:arrow", 1));
-            if !self.creative {
-                let Some(i) = slot_ammo else { return };
-                let cell = self.stack_in_mut(i);
-                if let Some(s) = cell.as_mut() {
-                    s.count -= 1;
-                    if s.count == 0 {
-                        *cell = None;
-                    }
-                }
-            }
-            // useAmmo: the extra multishot arrows and creative's are intangible.
-            let drawn = (0..shots)
-                .map(|i| horizon_client::arrows::drawn_ammo(&ammo, self.creative || i > 0))
-                .collect();
-            if let Some(bow) = self.stack_in_mut(slot).as_mut() {
-                bow.data_mut().charged = drawn;
-            }
-            let pitch = 1.0 / (self.world.random.next_float() * 0.5 + 1.0) + 0.2;
-            self.sounds.play(sounds[2], at, 1.0, pitch);
-        }
     }
     /// `CrossbowItem.performShooting`.
     fn shoot_crossbow(&mut self) {

@@ -1,18 +1,11 @@
 //! Client glue for sapling growth and bone meal: installs the live feature
 //! registry and routes `BoneMealItem.useOn` through the behaviour library.
 use super::Game;
-use horizon_client::{Result, items::ItemStack, vanillagen};
+use horizon_client::{Result, items::ItemStack};
 use horizon_core::{geometry::Direction, position::BlockPos};
-use horizon_world::worldgen::live::LiveFeatures;
-use std::sync::Arc;
 
 impl Game<'_> {}
 impl crate::game::Sim<'_> {
-    /// Load the configured/placed feature registry used by saplings, fungi
-    /// and bone meal (once per process; shares the generator's bundle).
-    pub(super) fn install_live_features(&self) {
-        install_live_features(&self.res, &self.pack, &self.options);
-    }
     /// `BoneMealItem.useOn` for the targeted block.
     pub(super) fn use_bone_meal(&mut self, stack: &ItemStack) -> Result<bool> {
         if &*stack.item != "minecraft:bone_meal" {
@@ -52,28 +45,3 @@ impl crate::game::Sim<'_> {
     }
 }
 
-/// Shared by the initialization worker and fixture setup.
-pub(super) fn install_live_features(
-    res: &super::Resources,
-    pack: &super::PackResources,
-    options: &super::Options,
-) {
-    if res.behaviours().live_features().is_some() {
-        return;
-    }
-    let dir = options.resources.join("worldgen");
-    let started = std::time::Instant::now();
-    let features = vanillagen::shared_data(&dir, pack.assets.registry)
-        .map_err(|e| e.to_string())
-        .and_then(|data| LiveFeatures::new(&data).map_err(|e| e.to_string()));
-    match features {
-        Ok(Some(features)) => {
-            res.behaviours().set_live_features(Arc::new(features));
-            log::info!("Horizon: live features ready in {:?}", started.elapsed());
-        }
-        Ok(None) => {
-            log::warn!("Horizon: the worldgen bundle has no features; saplings will not grow")
-        }
-        Err(e) => log::warn!("Horizon: live features unavailable: {e}"),
-    }
-}

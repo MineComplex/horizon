@@ -4,10 +4,9 @@
 use super::Game;
 use horizon_client::{
     Result,
-    mobs::{Damage, DamageKind, Species, Who},
+    mobs::Who,
     particles::{ParticleOptions, ParticleType},
-    projectiles::{Hit, Projectile, ProjectileKind},
-};
+    projectiles::{ Projectile, ProjectileKind}};
 use horizon_core::{
     geometry::{Direction, Vec3},
     position::BlockPos,
@@ -16,11 +15,6 @@ use horizon_core::{
 use horizon_world::level::PlayerContext;
 use std::collections::BTreeSet;
 
-/// `WindCharge.RADIUS` and the knockback multiplier of its damage calculator.
-const PLAYER_RADIUS: f32 = 1.2;
-const PLAYER_KNOCKBACK: f32 = 1.22;
-/// `BreezeWindCharge.RADIUS`.
-const BREEZE_RADIUS: f32 = 3.0;
 
 /// A burst `wind_burst` puts off until a guest's turn is over.
 pub(super) struct Burst {
@@ -29,15 +23,6 @@ pub(super) struct Burst {
     multiplier: f32,
     breeze: bool,
     wind_charge: bool,
-}
-/// `Projectile.deflect` with `ProjectileDeflection.REVERSE`.
-pub(super) fn reverse(p: &mut Projectile, jitter: f32) {
-    p.velocity = Vec3::new(
-        p.velocity.x * -0.5,
-        p.velocity.y * -0.5,
-        p.velocity.z * -0.5,
-    );
-    p.yaw += 170.0 + jitter * 20.0;
 }
 /// Whether a block reacts to a wind charge's burst by being used.
 fn triggers(name: &str) -> bool {
@@ -130,69 +115,6 @@ impl crate::game::Sim<'_> {
             }
         }
         Ok(true)
-    }
-    /// A wind charge meeting an entity or a block (or flying too high).
-    pub(super) fn wind_charge_hit(&mut self, p: &Projectile, hit: Hit) -> Result<()> {
-        let breeze = p.kind == ProjectileKind::BreezeWindCharge;
-        let (radius, knockback) = if breeze {
-            (BREEZE_RADIUS, 1.0)
-        } else {
-            (PLAYER_RADIUS, PLAYER_KNOCKBACK)
-        };
-        let center = match hit {
-            Hit::Entity { who, at } => {
-                self.wind_charge_damage(p, who);
-                [at.x, at.y, at.z]
-            }
-            // onHitBlock: a quarter of a block out along the face.
-            Hit::Block { at, face, .. } => [
-                at.x + f64::from(face[0]) * 0.25,
-                at.y + f64::from(face[1]) * 0.25,
-                at.z + f64::from(face[2]) * 0.25,
-            ],
-            Hit::None => return Ok(()),
-        };
-        self.wind_burst(center, radius, knockback, breeze, !breeze)
-    }
-    /// `AbstractWindCharge.onHitEntity`: one point of damage.
-    fn wind_charge_damage(&mut self, p: &Projectile, who: Who) {
-        let owner_breeze = matches!(p.owner, Some(Who::Mob(id))
-            if self.mobs.iter().any(|m| m.id == id && m.species() == Species::Breeze));
-        match who {
-            Who::Player => {
-                if !self.creative {
-                    self.mob_hits_player_kind(
-                        1.0,
-                        [p.previous.x, p.previous.y, p.previous.z],
-                        "minecraft:wind_charge",
-                    );
-                }
-            }
-            // An ender dragon part takes the point of damage too; a crystal is
-            // not hit (`AbstractWindCharge.canHitEntity`).
-            Who::Mob(id) if id >= super::dragon::SPECIAL => {
-                if id < super::dragon::SPECIAL + 8 {
-                    self.hit_special(id, 1.0, p.owner == Some(Who::Player), false);
-                }
-            }
-            Who::Mob(id) => {
-                let source = Damage {
-                    kind: DamageKind::Thrown,
-                    attacker: p.owner,
-                    from: Some([p.previous.x, p.previous.y, p.previous.z]),
-                };
-                if let Some(m) = self.mobs.iter_mut().find(|m| m.id == id) {
-                    // Breeze.isInvulnerableTo: its own kind's charges.
-                    if owner_breeze && m.species() == Species::Breeze {
-                        return;
-                    }
-                    m.damage(1.0, source);
-                }
-                if p.owner == Some(Who::Player) {
-                    self.last_hurt_by_player.insert(id, self.lan_acting);
-                }
-            }
-        }
     }
     /// The exploded positions: rays through everything but the blocks that
     /// stop wind (`blocks_wind_charge_explosions`).
@@ -520,14 +442,6 @@ impl crate::game::Sim<'_> {
         self.particles
             .add(&ParticleOptions::simple(ty), center, [1.0, 0.0, 0.0]);
         self.lan_wind_burst(center, radius, sound, block_count, &pushed);
-        Ok(())
-    }
-    /// The bursts guests' turns put off.
-    pub(super) fn flush_wind_bursts(&mut self) -> Result<()> {
-        self.flush_smash_pushes();
-        for b in std::mem::take(&mut self.creatures.wind_bursts) {
-            self.wind_burst(b.center, b.radius, b.multiplier, b.breeze, b.wind_charge)?;
-        }
         Ok(())
     }
     /// `BlockBehaviour.onExplosionHit` for `TRIGGER_BLOCK`: doors, gates,

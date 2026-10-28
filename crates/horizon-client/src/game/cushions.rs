@@ -177,9 +177,6 @@ impl crate::game::Sim<'_> {
         }
         best
     }
-    pub(super) fn cushion_survives(&self, c: &Cushion) -> bool {
-        horizon_client::cushion::survives(&PlacementWorld(self), aabb(c.bounds()))
-    }
     /// `Cushion.destroyIfInFire`: a fire-tagged block inside the deflated box.
     fn cushion_in_fire(&self, c: &Cushion) -> bool {
         let bounds = aabb(c.bounds()).next_deflated();
@@ -416,68 +413,5 @@ impl crate::game::Sim<'_> {
         );
         self.particles
             .send_particles(&options, particle_at, [0.25, 0.0625, 0.25], 0.05, 10);
-    }
-    /// `BlockAttachedEntity.tick`: survive and burn checks after the post-increment reaches 100.
-    pub(super) fn tick_cushions(&mut self) {
-        let ticking = self.entity_ticking_area();
-        let mut i = 0;
-        while i < self.cushions.len() {
-            let p = self.cushions[i].position;
-            if !ticking(p.x.floor() as i32, p.z.floor() as i32) {
-                i += 1;
-                continue;
-            }
-            let previous = self.cushions[i].check_interval;
-            self.cushions[i].check_interval += 1;
-            if previous < 100 {
-                i += 1;
-                continue;
-            }
-            self.cushions[i].check_interval = 0;
-            let c = self.cushions[i].clone();
-            if self.cushion_in_fire(&c) || !self.cushion_survives(&c) {
-                self.break_cushion(i, false);
-                continue;
-            }
-            i += 1;
-        }
-    }
-    /// `Player.rideTick` on a cushion: hold the seat, and get up on sneak.
-    pub(super) fn tick_cushion_riding(&mut self, keys: super::Keys) -> bool {
-        let Some(c) = self
-            .cushions
-            .iter()
-            .find(|c| Some(c.id) == self.riding)
-            .cloned()
-        else {
-            return false;
-        };
-        if keys.shift {
-            let at = c.dismount();
-            self.riding = None;
-            if let Some(p) = self.player.as_mut() {
-                self.previous_position = p.position;
-                p.position = at;
-                p.velocity = Vec3::ZERO;
-                p.fall_distance = 0.0;
-            }
-            // `Cushion.removePassenger`: the get-up sound for a rider that
-            // left rather than one whose cushion was killed.
-            self.sounds.play(
-                "minecraft:entity.cushion.get_up",
-                Some([c.position.x, c.position.y, c.position.z]),
-                1.0,
-                1.0,
-            );
-            return true;
-        }
-        let seat = c.seat();
-        if let Some(p) = self.player.as_mut() {
-            self.previous_position = p.position;
-            p.position = seat;
-            p.velocity = Vec3::ZERO;
-            p.fall_distance = 0.0;
-        }
-        true
     }
 }

@@ -6,12 +6,9 @@
 use super::Game;
 use horizon_client::{
     containers::BlockEntity,
-    mobs::trial_spawner::TrialState,
-    particles::{ParticleOptions, ParticleType as T},
-};
+    particles::{ParticleOptions, ParticleType as T}};
 use horizon_core::random::{LegacyRandom, RandomSource};
 
-type Pos = (i32, i32, i32);
 
 /// `Mth.nextDouble`.
 fn next_double(random: &mut LegacyRandom, min: f64, max: f64) -> f64 {
@@ -166,100 +163,6 @@ impl crate::game::Sim<'_> {
             let v = [0; 3].map(|_| random.next_gaussian() * 0.02);
             self.particle(T::SmallFlame, at, [v[0], v[1], v[2] * 0.25]);
             self.particle(T::Smoke, at, v);
-        }
-    }
-    /// `TrialSpawner.tickClient`: the state's particles, the spin of the
-    /// mob shown inside and the ambient sound.
-    pub(super) fn client_tick_trial_spawner(&mut self, key: Pos) {
-        let Some((state, ominous)) = self.trial_spawner_block(key) else {
-            return;
-        };
-        let pos = [key.0, key.1, key.2];
-        let time = self.world.game_time;
-        let c = center(pos);
-        let random = self.particles.level_random();
-        // TrialSpawnerState.ParticleEmission.
-        let mut emitted: Vec<(T, [f64; 3])> = Vec::new();
-        match state {
-            TrialState::WaitingForPlayers
-            | TrialState::WaitingForRewardEjection
-            | TrialState::EjectingReward => {
-                if random.next_int_bound(2) == Ok(0) {
-                    emitted.push((flame(ominous), offset_random(c, random, 0.9)));
-                }
-            }
-            TrialState::Active => {
-                let at = offset_random(c, random, 1.0);
-                let ty = if ominous { T::SoulFireFlame } else { T::Flame };
-                emitted.extend([(T::Smoke, at), (ty, at)]);
-            }
-            TrialState::Cooldown => {
-                let at = offset_random(c, random, 0.9);
-                if random.next_int_bound(3) == Ok(0) {
-                    emitted.push((T::Smoke, at));
-                }
-                if time % 20 == 0 {
-                    let top = [c[0], c[1] + 0.5, c[2]];
-                    let count = random.next_int_bound(4).unwrap_or(0) + 20;
-                    emitted.extend((0..count).map(|_| (T::Smoke, top)));
-                }
-            }
-            TrialState::Inactive => {}
-        }
-        let ambient = state.capable_of_spawning() && random.next_float() <= 0.02;
-        let ambient =
-            ambient.then(|| (random.next_float() * 0.25 + 0.75, random.next_float() + 0.5));
-        for (ty, at) in emitted {
-            self.particle(ty, at, [0.0; 3]);
-        }
-        if let Some(BlockEntity::TrialSpawner(s)) = self.world.block_entities.get_mut(&key)
-            && let Some(speed) = state.spinning_mob_speed()
-        {
-            let delay = (s.next_mob_spawns_at - time).max(0) as f64;
-            s.o_spin = s.spin;
-            s.spin = (s.spin + speed / (delay + 200.0)) % 360.0;
-        }
-        if let Some((volume, pitch)) = ambient {
-            let name = if ominous {
-                "block.trial_spawner.ambient_ominous"
-            } else {
-                "block.trial_spawner.ambient"
-            };
-            self.local_sound(name, pos, volume, pitch);
-        }
-        self.update_spawner_display(key);
-    }
-    /// `VaultBlockEntity.Client.tick`.
-    pub(super) fn client_tick_vault(&mut self, key: Pos) {
-        let Some((mut vault, _, ominous)) = self.take_vault(key) else {
-            return;
-        };
-        vault.update_display_item_spin();
-        let shows = vault.display_item.is_some();
-        self.world
-            .block_entities
-            .put(key, BlockEntity::Vault(vault));
-        let pos = [key.0, key.1, key.2];
-        if self.world.game_time % 20 == 0 {
-            self.vault_connection_particles(pos);
-        }
-        // emitIdleParticles.
-        let random = self.particles.level_random();
-        if random.next_float() <= 0.5 {
-            let at = cage_point(pos, random);
-            self.particle(T::Smoke, at, [0.0; 3]);
-            if shows {
-                self.particle(flame(ominous), at, [0.0; 3]);
-            }
-        }
-        // playIdleSounds.
-        if shows {
-            let random = self.particles.level_random();
-            if random.next_float() <= 0.02 {
-                let volume = random.next_float() * 0.25 + 0.75;
-                let pitch = random.next_float() + 0.5;
-                self.local_sound("block.vault.ambient", pos, volume, pitch);
-            }
         }
     }
     /// `VaultBlockEntity.Client.emitActivationParticles`.

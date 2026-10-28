@@ -99,14 +99,6 @@ impl Game<'_> {
     }
 }
 impl crate::game::Sim<'_> {
-    /// A server's `flush_to_window`: it has no window, so what the game queued for one goes.
-    pub(super) fn drop_window_output(&mut self) {
-        self.sounds.queue.clear();
-        self.ui.chat.drop_unwrapped();
-        self.rumbles.clear();
-        self.hands_used.clear();
-        self.pointer_grab = None;
-    }
     /// `BiomeManager.getNoiseBiomeAtPosition`: the quart cell holding a position.
     fn biome_at(&self, p: [f64; 3]) -> &str {
         let (x, y, z) = (

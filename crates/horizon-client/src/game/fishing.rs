@@ -1,27 +1,20 @@
 //! Fishing: `FishingRodItem.use` (cast / reel in), the `FishingHook` (flight,
 //! bobbing, lure and bite timers, open water, hooking mobs, retrieving the
 //! `gameplay/fishing` loot) and `FishingHookRenderer` (bobber and line).
-use super::{Game, lan::LanHost, lan_mobs::guest_bounds, view_vector};
+use super::{Game, view_vector};
 use horizon_client::advancements::EntityView;
-use horizon_client::lan::{entity::States, hub::Hub};
 use horizon_client::{
-    blocks::Fluid,
-    collisions::SceneCollisions,
     gizmos::Line,
     items::ItemStack,
     mesher::Vertex,
-    particles::{ParticleOptions, ParticleType},
-    pose::Pose,
-};
+    
+    pose::Pose};
 use horizon_core::{
     geometry::{Aabb, Vec3, trig},
-    position::BlockPos,
-    random::RandomSource,
-};
-use horizon_protocol::entity_data::{Value, serializer};
-use std::{collections::HashMap, sync::Arc};
+    random::RandomSource};
+use horizon_protocol::entity_data::Value;
+use std::sync::Arc;
 
-use super::lan_actions::GuestPlay;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 enum State {
@@ -55,13 +48,6 @@ pub(super) struct HookTarget {
     bounds: Aabb,
 }
 const SIZE: f64 = 0.25;
-fn bounds(p: Vec3) -> Aabb {
-    let h = SIZE / 2.0;
-    Aabb::new(
-        Vec3::new(p.x - h, p.y, p.z - h),
-        Vec3::new(p.x + h, p.y + SIZE, p.z + h),
-    )
-}
 /// RandomSource.triangle(mode, deviation).
 fn triangle(r: &mut impl RandomSource, mode: f64, deviation: f64) -> f64 {
     mode + deviation * (f64::from(r.next_float()) - f64::from(r.next_float()))
@@ -120,14 +106,6 @@ impl Game<'_> {
     }
 }
 impl crate::game::Sim<'_> {
-    fn holds_rod(&self) -> bool {
-        self.held()
-            .is_some_and(|s| &*s.item == "minecraft:fishing_rod")
-            || self
-                .offhand
-                .as_ref()
-                .is_some_and(|s| &*s.item == "minecraft:fishing_rod")
-    }
     /// `FishingRodItem.use`.
     pub(super) fn use_fishing_rod(&mut self, stack: &ItemStack) -> bool {
         if &*stack.item != "minecraft:fishing_rod" {
@@ -344,412 +322,6 @@ impl crate::game::Sim<'_> {
                 .clone(),
         )
     }
-    fn water_height(&self, x: i32, y: i32, z: i32) -> Option<(f32, bool)> {
-        let f = self.res.facts().get(self.world.block(x, y, z));
-        if f.fluid != Fluid::Water {
-            return None;
-        }
-        let above = self.res.facts().get(self.world.block(x, y + 1, z));
-        let h = if above.fluid == Fluid::Water {
-            1.0
-        } else {
-            f32::from(f.fluid_level) / 9.0
-        };
-        Some((h, f.fluid_level == 8 && !f.fluid_falling))
-    }
-    /// getOpenWaterTypeForBlock: 0 above water, 1 inside water, 2 invalid.
-    fn open_water_type(&self, x: i32, y: i32, z: i32) -> u8 {
-        let f = self.res.facts().get(self.world.block(x, y, z));
-        if self.world.is_air(self.world.block(x, y, z)) || &*f.name == "minecraft:lily_pad" {
-            return 0;
-        }
-        if f.fluid == Fluid::Water
-            && f.fluid_level == 8
-            && !f.fluid_falling
-            && !f.full_collision
-            && !f.legacy_solid
-        {
-            1
-        } else {
-            2
-        }
-    }
-    /// calculateOpenWater over the 5x4x5 area around the hook.
-    fn calculate_open_water(&self, b: [i32; 3]) -> bool {
-        let mut previous = 2u8;
-        for dy in -1..=2 {
-            let mut layer = None;
-            for dx in -2..=2 {
-                for dz in -2..=2 {
-                    let t = self.open_water_type(b[0] + dx, b[1] + dy, b[2] + dz);
-                    layer = Some(match layer {
-                        None => t,
-                        Some(l) if l == t => l,
-                        Some(_) => 2,
-                    });
-                }
-            }
-            let layer = layer.unwrap_or(2);
-            match layer {
-                0 if previous == 2 => return false,
-                1 if previous == 0 => return false,
-                2 => return false,
-                _ => {}
-            }
-            previous = layer;
-        }
-        true
-    }
-    /// `FishingHook.catchingFish`.
-    fn catching_fish(&mut self, h: &mut Hook, b: [i32; 3]) {
-        let mut speed = 1;
-        let above = [b[0], b[1] + 1, b[2]];
-        let sky = self.world.light(above[0], above[1], above[2]) >> 4 == 15;
-        // Level.isRainingAt: rain (not snow) reaches the position.
-        if self.world.random.next_float() < 0.25
-            && self.with_level(|b, level, _| {
-                b.is_raining_at(level, BlockPos::new(above[0], above[1], above[2]))
-            })
-        {
-            speed += 1;
-        }
-        let r = &mut self.world.random;
-        if r.next_float() < 0.5 && !sky {
-            speed -= 1;
-        }
-        let at = [h.position.x, h.position.y, h.position.z];
-        if h.nibble > 0 {
-            h.nibble -= 1;
-            if h.nibble <= 0 {
-                h.time_until_lured = 0;
-                h.time_until_hooked = 0;
-            }
-        } else if h.time_until_hooked > 0 {
-            h.time_until_hooked -= speed;
-            if h.time_until_hooked > 0 {
-                // The fish swimming up: a bubble now and then, and a fishing
-                // particle to each side of its path.
-                h.fish_angle += triangle(&mut self.world.random, 0.0, 9.188) as f32;
-                let angle = h.fish_angle * (std::f64::consts::PI / 180.0) as f32;
-                let (sin, cos) = (trig::sin(f64::from(angle)), trig::cos(f64::from(angle)));
-                let distance = h.time_until_hooked as f32 * 0.1;
-                let fish = [
-                    h.position.x + f64::from(sin * distance),
-                    f64::from(h.position.y.floor() as f32 + 1.0),
-                    h.position.z + f64::from(cos * distance),
-                ];
-                if self.water_block(fish) {
-                    if self.world.random.next_float() < 0.15 {
-                        let spread = [f64::from(sin), 0.1, f64::from(cos)];
-                        let at = [fish[0], fish[1] - f64::from(0.1f32), fish[2]];
-                        self.send_particles(ParticleType::Bubble, at, spread, 0.0, 1);
-                    }
-                    let (x, z) = (sin * 0.04, cos * 0.04);
-                    for side in [1.0f32, -1.0] {
-                        let spread = [f64::from(z * side), 0.01, f64::from(-x * side)];
-                        self.send_particles(ParticleType::Fishing, fish, spread, 1.0, 0);
-                    }
-                }
-            } else {
-                let pitch =
-                    1.0 + (self.world.random.next_float() - self.world.random.next_float()) * 0.4;
-                self.sounds.play(
-                    "minecraft:entity.fishing_bobber.splash",
-                    Some(at),
-                    0.25,
-                    pitch,
-                );
-                // The bite: bubbles and fishing particles around the bobber.
-                let at = [h.position.x, h.position.y + 0.5, h.position.z];
-                let count = (1.0 + SIZE as f32 * 20.0) as u32;
-                let spread = [SIZE, 0.0, SIZE];
-                for kind in [ParticleType::Bubble, ParticleType::Fishing] {
-                    self.send_particles(kind, at, spread, f64::from(0.2f32), count);
-                }
-                h.nibble = 20 + self.world.random.next_int_bound(21).unwrap_or(0);
-            }
-        } else if h.time_until_lured > 0 {
-            h.time_until_lured -= speed;
-            let mut tease = 0.15f32;
-            if h.time_until_lured < 20 {
-                tease += (20 - h.time_until_lured) as f32 * 0.05;
-            } else if h.time_until_lured < 40 {
-                tease += (40 - h.time_until_lured) as f32 * 0.02;
-            } else if h.time_until_lured < 60 {
-                tease += (60 - h.time_until_lured) as f32 * 0.01;
-            }
-            let r = &mut self.world.random;
-            if r.next_float() < tease {
-                // A splash where a fish is teasing the bait.
-                let angle = (r.next_float() * 360.0) * (std::f64::consts::PI / 180.0) as f32;
-                let distance = r.next_float() * 35.0 + 25.0;
-                let fish = [
-                    h.position.x + f64::from(trig::sin(f64::from(angle)) * distance) * 0.1,
-                    f64::from(h.position.y.floor() as f32 + 1.0),
-                    h.position.z + f64::from(trig::cos(f64::from(angle)) * distance) * 0.1,
-                ];
-                if self.water_block(fish) {
-                    let count = 2 + self.world.random.next_int_bound(2).unwrap_or(0) as u32;
-                    let spread = [f64::from(0.1f32), 0.0, f64::from(0.1f32)];
-                    self.send_particles(ParticleType::Splash, fish, spread, 0.0, count);
-                }
-            }
-            if h.time_until_lured <= 0 {
-                h.fish_angle = self.world.random.next_float() * 360.0;
-                h.time_until_hooked = 20 + self.world.random.next_int_bound(61).unwrap_or(0);
-            }
-        } else {
-            h.time_until_lured = 100 + self.world.random.next_int_bound(501).unwrap_or(0) - h.lure;
-        }
-    }
-    /// `catchingFish`'s check below a fish: the block under it is water.
-    fn water_block(&self, fish: [f64; 3]) -> bool {
-        let state = self.world.block(
-            fish[0].floor() as i32,
-            (fish[1] - 1.0).floor() as i32,
-            fish[2].floor() as i32,
-        );
-        &*self.res.facts().get(state).name == "minecraft:water"
-    }
-    /// `ServerLevel.sendParticles` of a simple particle.
-    fn send_particles(
-        &mut self,
-        kind: ParticleType,
-        at: [f64; 3],
-        spread: [f64; 3],
-        speed: f64,
-        count: u32,
-    ) {
-        let options = ParticleOptions::simple(kind);
-        self.particles
-            .send_particles(&options, at, spread, speed, count);
-        // The players a server serves are sent them too.
-        self.lan_send_particles(&options, at, spread, speed, count);
-    }
-    /// `FishingHook.tick`.
-    pub(super) fn tick_fishing(&mut self) {
-        let Some(mut h) = self.hook.take() else {
-            return;
-        };
-        let Some(owner) = self.player.as_ref().map(|p| p.position) else {
-            return;
-        };
-        // shouldStopFishing: a rod in either hand, within 32 blocks.
-        let d2 = (h.position.x - owner.x).powi(2)
-            + (h.position.y - owner.y).powi(2)
-            + (h.position.z - owner.z).powi(2);
-        if !self.holds_rod() || d2 > 1024.0 {
-            return;
-        }
-        // The players it can catch, as they stand now (the host's own hook;
-        // guests' hooks use the ones taken as their turns start).
-        if self.lan_acting.is_none()
-            && matches!(h.state, State::Flying | State::Hooked(_))
-            && let Some(host) = self.lan.take()
-        {
-            self.refresh_hook_targets(&host);
-            self.lan = Some(host);
-        }
-        h.previous = h.position;
-        if h.on_ground {
-            h.life += 1;
-            if h.life >= 1200 {
-                return;
-            }
-        } else {
-            h.life = 0;
-        }
-        let b = [
-            h.position.x.floor() as i32,
-            h.position.y.floor() as i32,
-            h.position.z.floor() as i32,
-        ];
-        let liquid = self.water_height(b[0], b[1], b[2]).map_or(0.0, |w| w.0);
-        let in_water = liquid > 0.0;
-        match h.state {
-            State::Flying => {
-                if in_water {
-                    h.velocity =
-                        Vec3::new(h.velocity.x * 0.3, h.velocity.y * 0.2, h.velocity.z * 0.3);
-                    h.state = State::Bobbing;
-                    self.hook = Some(h);
-                    return;
-                }
-                // checkCollision: hook the first living mob or other player it
-                // touches, or (via `canHitEntity`) a dropped item.
-                let bb = bounds(h.position);
-                let (lo, hi) = (bb.min_position(), bb.max_position());
-                let touches = |b: Aabb| {
-                    let (a, z) = (b.min_position(), b.max_position());
-                    a.x < hi.x && lo.x < z.x && a.y < hi.y && lo.y < z.y && a.z < hi.z && lo.z < z.z
-                };
-                let hit = self
-                    .mobs
-                    .iter()
-                    .find(|m| m.alive() && touches(m.bounds()))
-                    .map(|m| m.id)
-                    .or_else(|| {
-                        let owner = self.lan_acting;
-                        self.creatures
-                            .hook_targets
-                            .iter()
-                            .find(|t| t.conn != owner && touches(t.bounds))
-                            .map(|t| t.id)
-                    })
-                    .or_else(|| {
-                        self.dropped
-                            .iter()
-                            .find(|i| touches(i.bounds()))
-                            .map(|i| i.id)
-                    });
-                if let Some(id) = hit {
-                    h.state = State::Hooked(id);
-                    h.velocity = Vec3::ZERO;
-                    self.hook = Some(h);
-                    return;
-                }
-            }
-            State::Hooked(id) => {
-                // updateHookedEntity: ride the hooked mob, player or item at 0.8 of its height.
-                let hooked = self
-                    .mobs
-                    .iter()
-                    .find(|m| m.id == id && m.alive())
-                    .map(|m| (m.position, f64::from(m.height())))
-                    .or_else(|| {
-                        self.creatures
-                            .hook_targets
-                            .iter()
-                            .find(|t| t.id == id)
-                            .map(|t| {
-                                let (lo, hi) = (t.bounds.min_position(), t.bounds.max_position());
-                                (
-                                    Vec3::new((lo.x + hi.x) / 2.0, lo.y, (lo.z + hi.z) / 2.0),
-                                    hi.y - lo.y,
-                                )
-                            })
-                    })
-                    .or_else(|| {
-                        self.dropped
-                            .iter()
-                            .find(|i| i.id == id)
-                            .map(|i| (i.position, horizon_client::entities::ItemEntity::WIDTH))
-                    });
-                match hooked {
-                    Some((at, height)) => h.position = Vec3::new(at.x, at.y + height * 0.8, at.z),
-                    None => h.state = State::Flying,
-                }
-                self.hook = Some(h);
-                return;
-            }
-            State::Bobbing => {
-                let v = h.velocity;
-                let mut force = h.position.y + v.y - f64::from(b[1]) - f64::from(liquid);
-                if force.abs() < 0.01 {
-                    force += force.signum() * 0.1;
-                }
-                let r = f64::from(self.world.random.next_float());
-                h.velocity = Vec3::new(v.x * 0.9, v.y - force * r * 0.2, v.z * 0.9);
-                if h.nibble <= 0 && h.time_until_hooked <= 0 {
-                    h.open_water = true;
-                } else {
-                    h.open_water =
-                        h.open_water && h.out_of_water < 10 && self.calculate_open_water(b);
-                }
-                if in_water {
-                    h.out_of_water = (h.out_of_water - 1).max(0);
-                    if h.nibble > 0 {
-                        let r = &mut self.world.random;
-                        let dip = -0.1 * f64::from(r.next_float()) * f64::from(r.next_float());
-                        h.velocity.y += dip;
-                    }
-                    self.catching_fish(&mut h, b);
-                } else {
-                    h.out_of_water = (h.out_of_water + 1).min(10);
-                }
-            }
-        }
-        if !in_water && !h.on_ground {
-            h.velocity.y -= 0.03;
-        }
-        let mut scene = SceneCollisions {
-            world: &self.world,
-            binding: self.collision,
-            subject: None,
-        };
-        if let Ok(moved) = scene.resolve(bounds(h.position), h.velocity, 0.0, h.on_ground) {
-            let horizontal =
-                (moved.x - h.velocity.x).abs() > 1.0e-7 || (moved.z - h.velocity.z).abs() > 1.0e-7;
-            h.on_ground = h.velocity.y < 0.0 && moved.y > h.velocity.y;
-            h.position = Vec3::new(
-                h.position.x + moved.x,
-                h.position.y + moved.y,
-                h.position.z + moved.z,
-            );
-            if h.state == State::Flying && (h.on_ground || horizontal) {
-                h.velocity = Vec3::ZERO;
-            }
-        }
-        h.velocity = Vec3::new(
-            h.velocity.x * 0.92,
-            h.velocity.y * 0.92,
-            h.velocity.z * 0.92,
-        );
-        self.hook = Some(h);
-    }
-    /// The players a hook can catch: everyone but spectators and the dead
-    /// (`Projectile.canHitEntity`), the host and the guests in the level.
-    pub(super) fn refresh_hook_targets(&mut self, host: &LanHost) {
-        let mut targets = Vec::new();
-        if self.options.dedicated.is_none()
-            && !self.spectator()
-            && let Some(p) = self.player.as_ref()
-            && !p.health.dead_or_dying()
-        {
-            targets.push(HookTarget {
-                id: host.host_entity as u32,
-                conn: None,
-                bounds: p.bounds(),
-            });
-        }
-        for g in &host.hub.guests {
-            if host.hub.here(g) && g.loaded && !g.dead && !g.spectator() {
-                targets.push(HookTarget {
-                    id: g.entity_id as u32,
-                    conn: Some(g.conn),
-                    bounds: guest_bounds(g),
-                });
-            }
-        }
-        self.creatures.hook_targets = targets;
-    }
-    /// `FishingHook.pullEntity` on the players the hooks reeled in this tick
-    /// pulled: their velocity moves, and a guest's reaches their client.
-    pub(super) fn flush_hook_pulls(&mut self) {
-        let pulls = std::mem::take(&mut self.creatures.hook_pulls);
-        let Some(mut host) = self.lan.take() else {
-            return;
-        };
-        for (id, delta) in pulls {
-            let push = |g: &mut Self| {
-                if let Some(p) = g.player.as_mut() {
-                    p.velocity = p.velocity.add_vector(delta);
-                }
-            };
-            if id == host.host_entity as u32 {
-                push(self);
-            } else if let Some(conn) = host
-                .hub
-                .guests
-                .iter()
-                .find(|g| g.entity_id as u32 == id)
-                .map(|g| g.conn)
-            {
-                self.guest_hit_by(&mut host, conn, push);
-            }
-        }
-        self.lan = Some(host);
-    }
     /// `FishingRodCast`: the stack in the arm holding the rod
     /// (`FishingHookRenderer.getHoldingArm`) while the hook is out.
     pub(super) fn cast_rod(&self) -> Option<&ItemStack> {
@@ -923,48 +495,10 @@ impl Hook {
             lure: 0,
         }
     }
-    /// `FishingHook`'s entity for the players tracking it: the owner's id in
-    /// its add packet, DATA_HOOKED_ENTITY (the hooked id plus one) and
-    /// DATA_BITING when they differ from their defaults.
-    fn track(&self, owner: i32, out: &mut States) {
-        let p = self.position;
-        let e = out.add(
-            self.id as i32,
-            super::lan::entity_uuid(self.id),
-            "minecraft:fishing_bobber",
-        );
-        e.position = [p.x, p.y, p.z];
-        e.velocity = [self.velocity.x, self.velocity.y, self.velocity.z];
-        e.on_ground = self.on_ground;
-        e.data = owner;
-        if let State::Hooked(id) = self.state {
-            e.meta.push((8, serializer::INT, Value::Int(id as i32 + 1)));
-        }
-        if self.nibble > 0 {
-            e.meta.push((9, serializer::BOOLEAN, Value::Bool(true)));
-        }
-    }
 }
 
 impl Game<'_> {}
 impl crate::game::Sim<'_> {
-    /// The hooks guests track: the host's and each guest's in the level.
-    pub(super) fn lan_hook_states(
-        &self,
-        host_entity: Option<i32>,
-        play: &HashMap<u32, GuestPlay>,
-        hub: &Hub,
-        out: &mut States,
-    ) {
-        if let (Some(h), Some(owner)) = (&self.hook, host_entity) {
-            h.track(owner, out);
-        }
-        for g in hub.guests.iter().filter(|g| hub.here(g)) {
-            if let Some(h) = play.get(&g.conn).and_then(|p| p.hook.as_ref()) {
-                h.track(g.entity_id, out);
-            }
-        }
-    }
     /// `handleAddEntity` for a fishing bobber: this player's own becomes its
     /// hook (`Player.fishing`), another player's is drawn on its line to them.
     pub(super) fn spawn_remote_hook(&mut self, id: u32, at: Vec3, owner: i32) {

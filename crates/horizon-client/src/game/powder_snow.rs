@@ -4,37 +4,10 @@
 //! (`crate::motion`); placing it is the powder snow bucket's `BlockItem.place`.
 use super::Game;
 use horizon_client::{Result, items::ItemStack, mobs::Who};
-use horizon_core::{position::BlockPos, random::RandomSource};
+use horizon_core::position::BlockPos;
 
 impl Game<'_> {}
 impl crate::game::Sim<'_> {
-    /// Entity.playEntityOnFireExtinguishedSound
-    fn extinguish_sound(&mut self, at: [f64; 3]) {
-        let r = self.particles.random();
-        let pitch = 1.6 + (r.next_float() - r.next_float()) * 0.4;
-        self.sounds.play(
-            "minecraft:entity.generic.extinguish_fire",
-            Some(at),
-            0.7,
-            pitch,
-        );
-    }
-    /// `Entity.applyEffectsFromBlocks`: a burning player in the rain
-    /// (`isInRain`) has the fire put out (`clearFire`), with the extinguish
-    /// sound that everyone near hears.
-    pub(super) fn rain_extinguish_player(&mut self) {
-        let Some(player) = self.player.as_ref() else {
-            return;
-        };
-        let (at, top) = (player.position, player.bounds().max_position().y);
-        if player.fire_ticks <= 0 || !self.in_rain(at, top) {
-            return;
-        }
-        if let Some(player) = self.player.as_mut() {
-            player.fire_ticks = 0;
-        }
-        self.extinguish_sound([at.x, at.y, at.z]);
-    }
     /// Whether the block at `pos` is powder snow.
     pub(super) fn is_powder_snow(&self, pos: [i32; 3]) -> bool {
         &*self

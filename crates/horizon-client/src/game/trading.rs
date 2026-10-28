@@ -747,27 +747,6 @@ impl crate::game::Sim<'_> {
             }
         }
     }
-    /// `Villager.customServerAiStep`: the TRADE reputation event of the last
-    /// trade, a tick later; the prices follow the new reputation.
-    pub(super) fn merchant_tick(&mut self) {
-        let Some(m) = self.station.as_mut().and_then(|s| s.merchant.as_mut()) else {
-            return;
-        };
-        if !m.session.villager || !m.session.last_traded {
-            return;
-        }
-        m.session.last_traded = false;
-        let Some(id) = m.mob else { return };
-        self.villager_traded(id);
-        let reputation = self.villager_reputation(id);
-        self.menu_session(|menu, env, _| {
-            let s = menu.merchant.as_mut()?;
-            s.reputation = reputation;
-            s.update_special_prices();
-            menu.merchant_update(env);
-            Some(true)
-        });
-    }
     /// `MerchantMenu.tryMoveItems` for the selected offer (the select trade packet).
     fn try_move_items(&mut self, index: usize) {
         if self.remote.is_some() {

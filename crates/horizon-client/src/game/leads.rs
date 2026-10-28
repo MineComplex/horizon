@@ -227,33 +227,6 @@ impl crate::game::Sim<'_> {
             self.drop_lead_item(at);
         }
     }
-    /// Holders read from a save become real once the entity is found; a
-    /// holder that never shows up drops the lead after 100 ticks.
-    pub(super) fn tick_leads(&mut self) {
-        let player_uuid = self.level.player_uuid.unwrap_or([0, 0, 0, 1]);
-        for i in 0..self.mobs.len() {
-            let Some(pending) = self.mobs[i].extra.leash_pending else {
-                continue;
-            };
-            let holder = match pending {
-                Pending::Knot(p) => Some(Holder::Knot(p)),
-                Pending::Uuid(u) if u == player_uuid => Some(Holder::Player),
-                Pending::Uuid(u) => self.mob_by_uuid(u).map(Holder::Mob),
-            };
-            let m = &mut self.mobs[i];
-            if let Some(h) = holder {
-                if h == Holder::Player {
-                    m.extra.leash_player = Some(player_uuid);
-                }
-                m.extra.leash = Some(h);
-                m.extra.leash_pending = None;
-            } else if m.age > 100 {
-                m.extra.leash_pending = None;
-                let at = [m.position.x, m.position.y, m.position.z];
-                self.drop_lead_item(at);
-            }
-        }
-    }
     /// The `leash` tag of a mob about to be saved.
     pub(super) fn write_leash(&mut self, tag: &mut Tag, index: usize) {
         let Tag::Compound(map) = tag else { return };

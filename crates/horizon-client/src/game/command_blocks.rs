@@ -2,7 +2,7 @@
 //! tick (`execute`, `executeChain`), `BaseCommandBlock.performCommand`
 //! through the command system with the block's output, and
 //! `CommandBlockEditScreen` with what `handleSetCommandBlock` does with it.
-use super::{Game, Screen, commands::execute::Source, lan::LanHost};
+use super::{Game, Screen, commands::execute::Source};
 use horizon_client::{
     command_block::{self, CommandBlock, Mode},
     containers::BlockEntity,
@@ -622,36 +622,6 @@ impl crate::game::Sim<'_> {
         } else {
             self.apply_command_block(&edit);
         }
-    }
-    /// `ServerGamePacketListenerImpl.handleSetCommandBlock` for a guest: the
-    /// block is edited only by a creative player with game master commands.
-    pub(super) fn lan_set_command_block(
-        &mut self,
-        host: &mut LanHost,
-        conn: u32,
-        p: play::SetCommandBlock,
-    ) {
-        let Some(g) = host.hub.guest(conn) else {
-            return;
-        };
-        let allowed = g.creative() && g.permission >= 2;
-        let edit = CommandBlockEdit {
-            pos: (p.pos[0], p.pos[1], p.pos[2]),
-            command: p.command,
-            track_output: p.flags & 1 != 0,
-            mode: Mode::from_ordinal(p.mode),
-            conditional: p.flags & 2 != 0,
-            auto: p.flags & 4 != 0,
-        };
-        self.as_guest(host, conn, |game| {
-            if allowed {
-                game.apply_command_block(&edit);
-                // BaseCommandBlock.onUpdated: the clients get the new command.
-                game.mark_block_entity_updated(edit.pos);
-            } else {
-                game.system_message(Text::translate("advMode.notAllowed", &[]));
-            }
-        });
     }
     /// What `handleSetCommandBlock` does once the player may edit the block.
     fn apply_command_block(&mut self, s: &CommandBlockEdit) {

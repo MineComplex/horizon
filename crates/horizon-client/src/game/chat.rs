@@ -1,17 +1,14 @@
 //! Chat, the command registries and the per-world state behind commands
 //! (game rules, the world clock, difficulty), bound to the game.
 use super::{Game, Screen};
-pub use horizon_client::world_data::{TimeMarker, WorldClock};
+pub use horizon_client::world_data::TimeMarker;
 use horizon_client::{
     chat::{
         Chat, ChatAbilities, ChatAction, ChatScreen, ChatSource, ChatVisibility, Commands,
-        SYSTEM_INDICATOR,
-    },
-    gamerules::GameRules,
+        SYSTEM_INDICATOR},
     hud::HudBatch,
     screen_draw::Measure,
-    text::{ClickEvent, Style, Text},
-};
+    text::{ClickEvent, Style, Text}};
 use std::collections::BTreeMap;
 
 /// The tree the chat parses and completes with: a server's, once it has
@@ -764,39 +761,6 @@ impl Game<'_> {
             .split(&text.resolve_legacy(), width as f32);
         split.into_iter().map(|row| (row, u32::MAX)).collect()
     }
-    /// Load per-world command state when a world opens.
-    pub(super) fn load_world_state(&mut self) {
-        self.world_data.rules = GameRules::load(&self.world_root);
-        self.world_data.clock = WorldClock::default();
-        // PrimaryLevelData: the difficulty comes back from level.dat's difficulty_settings.
-        self.world_data.difficulty = horizon_client::title::DIFFICULTIES
-            .iter()
-            .position(|d| *d == self.level.difficulty)
-            .map_or(2, |i| i as u8);
-        if let Ok(bytes) = std::fs::read(self.world_root.join("data/minecraft/world_clocks.dat"))
-            && let Ok(raw) = horizon_world::compression::Compression::Gzip.decode(&bytes, 1 << 20)
-            && let Ok((root, _)) =
-                horizon_world::nbt::read_named(&raw, horizon_world::nbt::Limits::default())
-            && let Some(c) = root
-                .tag
-                .get("data")
-                .and_then(|d| d.get("minecraft:overworld"))
-        {
-            use horizon_world::nbt::Tag;
-            if let Some(Tag::Float(r)) = c.get("rate") {
-                self.world_data.clock.rate = f32::from_bits(*r);
-            }
-            if let Some(Tag::Float(p)) = c.get("partial_tick") {
-                self.world_data.clock.partial = f32::from_bits(*p);
-            }
-            if let Some(Tag::Byte(p)) = c.get("paused") {
-                self.world_data.clock.paused = *p != 0;
-            }
-        }
-        self.ui.chat.clear();
-        self.build_registries();
-        self.sync_rules();
-    }
     /// F2: ScreenShot.grab into `screenshots/` with vanilla's file name.
     pub(super) fn take_screenshot(&mut self) {
         let dir = std::env::current_dir()
@@ -868,22 +832,6 @@ impl crate::game::Sim<'_> {
         // The Chat option's Hidden level takes the server's messages too.
         self.local_chat_line(text, Some(SYSTEM_INDICATOR), ChatSource::Server);
     }
-    /// A player's chat line on the window's own chat: a LAN guest's message
-    /// while the host runs in-frame (`HostEvent::Chat`). `ChatListener`
-    /// checks `canReceivePlayerMessages` for these, so Commands Only and
-    /// Hidden drop them; command feedback (`/list`, `/tp`) is a system
-    /// message and takes the system-message permission instead.
-    pub(super) fn player_message(&mut self, text: Text) {
-        if let Some(capture) = self.chat_capture.as_mut() {
-            capture.push(text);
-            return;
-        }
-        // A server's client receives the line as a packet (PlayerChat or
-        // DisguisedChat) and filters it there.
-        if self.remote.is_none() {
-            self.local_chat_line(text, None, ChatSource::Player);
-        }
-    }
     /// A line on the window's own chat when the Chat option lets `source`
     /// through.
     fn local_chat_line(&mut self, text: Text, indicator: Option<u32>, source: ChatSource) {
@@ -954,28 +902,6 @@ impl crate::game::Sim<'_> {
             self.send_chat(&format!("/{command}"));
         } else {
             self.run_command(command);
-        }
-    }
-    /// Advance the overworld clock (ServerClockManager.tick) when
-    /// `advance_time` allows it.
-    pub(super) fn advance_clock(&mut self) {
-        if !self.world_data.rules.bool("advance_time") || self.world_data.clock.paused {
-            return;
-        }
-        let c = &mut self.world_data.clock;
-        c.partial += c.rate;
-        let whole = c.partial.floor();
-        c.partial -= whole;
-        self.world.day_time += whole as i64;
-    }
-    /// `ServerClockInstance.packNetworkState`: the rate players' clients
-    /// advance the overworld clock at, 0 while it is paused (`/time pause`)
-    /// or `advance_time` is off.
-    pub(super) fn network_clock_rate(&self) -> f32 {
-        if self.world_data.rules.bool("advance_time") && !self.world_data.clock.paused {
-            self.world_data.clock.rate
-        } else {
-            0.0
         }
     }
     /// The engine-side rule values (block behaviour and health).

@@ -7,14 +7,11 @@ use horizon_client::{
     containers::{BlockEntity, Jukebox},
     items::ItemStack,
     mobs::Species,
-    particles::{ParticleOptions, ParticleType},
-    text::Text,
-};
+    
+    text::Text};
 use horizon_core::{
     geometry::{Aabb, Vec3},
-    position::BlockPos,
-    random::RandomSource,
-};
+    position::BlockPos};
 use horizon_world::level::flags as level_flags;
 
 impl Game<'_> {}
@@ -174,51 +171,6 @@ impl crate::game::Sim<'_> {
     /// A broken jukebox stops its song (its disc drops with the contents).
     pub(super) fn jukebox_removed(&mut self, pos: [i32; 3]) {
         self.stop_song(pos);
-    }
-    /// `JukeboxSongPlayer.tick` of the jukebox at `key`, while it plays.
-    pub(super) fn tick_jukebox(&mut self, key: (i32, i32, i32)) {
-        let playing = match self.world.block_entities.get(&key) {
-            Some(BlockEntity::Jukebox(j)) if j.playing => j.record.as_ref().and_then(|r| {
-                let song = self.res.items().get(&r.item)?.jukebox_song.clone()?;
-                Some((song, j.ticks))
-            }),
-            _ => None,
-        };
-        let Some((song, ticks)) = playing else {
-            return;
-        };
-        let pos = [key.0, key.1, key.2];
-        let Some(s) = self.res.items().songs.get(&song).cloned() else {
-            return;
-        };
-        if s.finished(ticks) {
-            if let Some(BlockEntity::Jukebox(j)) = self.world.block_entities.get_mut(&key) {
-                j.playing = false;
-                j.ticks = 0;
-            }
-            self.stop_song(pos);
-            self.jukebox_changed(pos);
-            return;
-        }
-        if !self.jukebox_sounds.contains(&key) && ticks == 0 {
-            self.start_song(pos, &song);
-        }
-        if ticks % 20 == 0 {
-            let color = f64::from(self.world.random.next_int_bound(4).unwrap_or(0)) / 24.0;
-            let at = [
-                f64::from(pos[0]) + 0.5,
-                f64::from(pos[1]) + 1.2,
-                f64::from(pos[2]) + 0.5,
-            ];
-            self.particles.add(
-                &ParticleOptions::simple(ParticleType::Note),
-                at,
-                [color, 0.0, 0.0],
-            );
-        }
-        if let Some(BlockEntity::Jukebox(j)) = self.world.block_entities.get_mut(&key) {
-            j.ticks += 1;
-        }
     }
     /// Let go of songs whose jukebox stopped.
     pub(super) fn update_song_volumes(&mut self) {

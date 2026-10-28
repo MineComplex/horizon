@@ -1,7 +1,7 @@
 //! Primed TNT (`PrimedTnt`): 80-tick fuse, gravity and drag, explosion of
 //! power 4, `TntRenderer` swell and white flash, and `TntBlock.useItemOn`
 //! (flint and steel / fire charge).
-use super::{Game, explosion::BlockInteraction};
+use super::Game;
 use horizon_client::{Result, collisions::SceneCollisions, items::ItemStack, mesher::Vertex};
 use horizon_core::{
     geometry::{Aabb, Vec3},
@@ -277,43 +277,6 @@ impl crate::game::Sim<'_> {
             fuse,
             on_ground: false,
         });
-    }
-    /// `PrimedTnt.tick` for every primed TNT, in order; an expired fuse
-    /// explodes immediately (later TNT in the list feel its knockback this
-    /// tick). TNT primed by an explosion starts ticking next tick.
-    pub(super) fn tick_tnt(&mut self) -> Result<()> {
-        let mut count = self.tnts.len();
-        let mut i = 0;
-        // ServerLevel.tick: only entities in entity-ticking chunks tick.
-        let ticking = self.entity_ticking_area();
-        while i < count {
-            let t = &mut self.tnts[i];
-            if !ticking(t.position.x.floor() as i32, t.position.z.floor() as i32) {
-                i += 1;
-                continue;
-            }
-            t.tick(
-                &self.world,
-                self.collision,
-                &self.pack.assets,
-                self.res.facts(),
-            )?;
-            if t.fuse <= 0 {
-                let center = [
-                    t.position.x,
-                    t.position.y + PrimedTnt::SIZE * 0.0625,
-                    t.position.z,
-                ];
-                self.tnts.remove(i);
-                count -= 1;
-                self.with_hive_emptying_blast(|g| {
-                    g.server_explode(center, 4.0, BlockInteraction::Destroy, false)
-                })?;
-            } else {
-                i += 1;
-            }
-        }
-        Ok(())
     }
     /// `TntBlock.useItemOn`: flint and steel or a fire charge primes TNT.
     pub(super) fn ignite_tnt(&mut self, stack: &ItemStack) -> Result<bool> {

@@ -78,27 +78,6 @@ impl crate::game::Sim<'_> {
     fn scoreboard_path(&self) -> std::path::PathBuf {
         self.world_root.join("data/minecraft/scoreboard.dat")
     }
-    /// `ScoreboardSaveData` read from `data/minecraft/scoreboard.dat`.
-    pub(super) fn load_scoreboard(&mut self) {
-        if self.score.loaded || self.remote.is_some() {
-            return;
-        }
-        self.score.loaded = true;
-        if let Some(root) = save::read_dat(&self.scoreboard_path())
-            && let Some(data) = root.get("data")
-        {
-            self.score.board = Scoreboard::unpack(data);
-        }
-        self.score.storage =
-            horizon_client::command_storage::CommandStorage::load(&self.world_root);
-        if let Some(root) = save::read_dat(&self.world_root.join("data/minecraft/world_border.dat"))
-            && let Some(data) = root.get("data")
-        {
-            self.border = horizon_client::worldborder::WorldBorder::unpack(data);
-        }
-        self.score.stopwatches = horizon_client::stopwatches::Stopwatches::load(&self.world_root);
-        self.sync_score_registries();
-    }
     pub(super) fn save_scoreboard(&mut self) {
         if !self.score.loaded || self.remote.is_some() {
             return;
@@ -360,76 +339,6 @@ impl crate::game::Sim<'_> {
             }
         }
     }
-    /// `ServerScoreboard`'s packets: each placed player's client is sent
-    /// what changed on the board since it was last sent it (all of it on
-    /// joining), lan/scoreboard.rs.
-    pub(super) fn lan_sync_scoreboard(&mut self, host: &mut super::lan::LanHost) {
-        if host.hub.guests.iter().all(|g| !g.placed) {
-            return;
-        }
-        self.load_scoreboard();
-        host.hub.teams.clone_from(&self.score.board.teams);
-        let view = horizon_client::lan::scoreboard::View::of(&self.score.board);
-        for g in host.hub.guests.iter_mut().filter(|g| g.placed) {
-            if g.scoreboard != view {
-                g.send_all(&g.scoreboard.changes(&view));
-                g.scoreboard = view.clone();
-            }
-        }
-    }
-    /// `ServerPlayer.doTick` score updates and the statistic criteria.
-    pub(super) fn tick_scoreboard(&mut self) {
-        self.load_scoreboard();
-        let events = std::mem::take(&mut self.stats.events);
-        self.stat_criteria_changed(PLAYER_NAME, events);
-        let board = &mut self.score.board;
-        if !board.objectives.is_empty() {
-            let display = self.player_display_comp();
-            if let Some(p) = self.player.as_mut() {
-                let health_and_absorption = p.health.health() + p.health.absorption();
-                let food = p.health.food.food;
-                // getArmorValue: the armor attribute rounded down.
-                let armor = p
-                    .attribute("minecraft:armor")
-                    .or_else(|_| p.attribute("armor"))
-                    .unwrap_or(0.0)
-                    .floor() as i32;
-                let rec = &mut self.score.recorded;
-                let board = &mut self.score.board;
-                if rec.health_and_absorption != Some(health_and_absorption) {
-                    rec.health_and_absorption = Some(health_and_absorption);
-                    let value = health_and_absorption.ceil() as i32;
-                    board.for_all_objectives_with(
-                        sb::CRITERIA_HEALTH,
-                        PLAYER_NAME,
-                        Some(&display),
-                        |_| value,
-                    );
-                }
-                for (criteria, last, value) in [
-                    (sb::CRITERIA_FOOD, &mut rec.food, food),
-                    // The air supply is full unless the player is drowning.
-                    (sb::CRITERIA_AIR, &mut rec.air, 300),
-                    (sb::CRITERIA_ARMOR, &mut rec.armor, armor),
-                    (sb::CRITERIA_XP, &mut rec.xp, self.experience.total),
-                    (sb::CRITERIA_LEVEL, &mut rec.level, self.experience.level),
-                ] {
-                    if *last != Some(value) {
-                        *last = Some(value);
-                        board.for_all_objectives_with(
-                            criteria,
-                            PLAYER_NAME,
-                            Some(&display),
-                            |_| value,
-                        );
-                    }
-                }
-            }
-        }
-        if self.ticks.is_multiple_of(20) {
-            self.sync_score_registries();
-        }
-    }
     /// `ServerPlayer.awardKillScore`: total kills and the team kill counts.
     pub(super) fn score_player_killed(&mut self, victim: Target) {
         let victim_name = self.holder_name(victim);
@@ -453,13 +362,6 @@ impl crate::game::Sim<'_> {
                 board.for_all_objectives(&criteria, &victim_name, inc);
             }
         }
-    }
-    /// `Scoreboard.entityRemoved`: a dead non-player entity leaves the board.
-    pub(super) fn score_entity_removed(&mut self, id: u32) {
-        let Some(uuid) = self.persist.uuids.get(&id).copied() else {
-            return;
-        };
-        self.score.board.entity_removed(&uuid_text(uuid));
     }
     /// `Entity.getTeam` of a mob (a mob joins a team by its UUID).
     pub(super) fn mob_team(&self, id: u32) -> Option<&sb::Team> {

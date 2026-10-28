@@ -1,26 +1,17 @@
 //! Trial spawners in the game: `TrialSpawner.tickServer` for every trial
 //! spawner (`mobs::trial_spawner`), the block's state as it changes, the mobs
 //! it adds and the rewards it ejects.
-use super::{Game, natural_spawning::GameLevel, spawner::Planned};
+use super::{Game, natural_spawning::GameLevel};
 use horizon_client::{
     Result,
-    containers::BlockEntity,
     items::ItemStack,
     mobs::{
-        Who,
-        spawner::SpawnerSpawn,
         trial_spawner::{
-            Omen, TRIAL_OMEN_TICKS_PER_LEVEL, TrialEvent, TrialPlayer, TrialSpawner,
-            TrialSpawnerLevel, TrialState, Uuid,
-        },
-    },
-};
+            Omen, TrialPlayer,
+            TrialSpawnerLevel, TrialState, Uuid}}};
 use horizon_core::{
     geometry::Vec3,
-    random::{LegacyRandom, RandomSource},
-};
-use horizon_world::nbt::Tag;
-use std::collections::HashMap;
+    random::LegacyRandom};
 
 type Pos = (i32, i32, i32);
 
@@ -107,22 +98,6 @@ impl TrialSpawnerLevel for GameLevel<'_, '_> {
 
 impl Game<'_> {}
 impl crate::game::Sim<'_> {
-    /// The server tick of the trial spawner at `key`. Its client tick comes
-    /// after every block entity's.
-    pub(super) fn tick_trial_spawner(&mut self, key: Pos) -> Result<()> {
-        let Some((current, ominous)) = self.trial_spawner_block(key) else {
-            return Ok(());
-        };
-        let Some(BlockEntity::TrialSpawner(mut spawner)) = self.world.block_entities.take(&key)
-        else {
-            return Ok(());
-        };
-        let result = self.server_tick_trial_spawner(key, &mut spawner, current, ominous);
-        self.world
-            .block_entities
-            .put(key, BlockEntity::TrialSpawner(spawner));
-        result
-    }
     /// The trial spawner block at `key`: its state and ominous flag.
     pub(super) fn trial_spawner_block(&self, key: Pos) -> Option<(TrialState, bool)> {
         let block = self
@@ -143,135 +118,6 @@ impl crate::game::Sim<'_> {
             block.properties.get("ominous").is_some_and(|v| v == "true"),
         ))
     }
-    fn server_tick_trial_spawner(
-        &mut self,
-        key: Pos,
-        spawner: &mut TrialSpawner,
-        current: TrialState,
-        ominous: bool,
-    ) -> Result<()> {
-        let pos = [key.0, key.1, key.2];
-        let mut random = std::mem::replace(&mut self.world.random, LegacyRandom::new(0));
-        let mut sequences = std::mem::take(&mut self.rand_sequences);
-        let mut events = Vec::new();
-        let mut planned: Vec<Planned> = Vec::new();
-        let mut uuids: Vec<(u32, Uuid)> = Vec::new();
-        let mut ejected: Vec<(ItemStack, [f64; 3])> = Vec::new();
-        let next = {
-            let level = self.natural_level();
-            let loot = horizon_client::structure_blocks::loot_data(&self.options.resources);
-            let seed = self.level.seed;
-            let mut spawn = |l: &GameLevel, r: &SpawnerSpawn| {
-                let added = l.game.plan_spawner_mob(l, r, &mut planned)?;
-                let uuid = match planned.last_mut() {
-                    Some(Planned::Loaded(Tag::Compound(tag), _)) => {
-                        let tag_uuid =
-                            horizon_client::entity_nbt::uuid(&Tag::Compound(tag.clone()));
-                        tag_uuid.unwrap_or_else(|| {
-                            let uuid = horizon_client::save::random_uuid();
-                            tag.insert("UUID".into(), Tag::IntArray(uuid.to_vec()));
-                            uuid
-                        })
-                    }
-                    _ => horizon_client::save::random_uuid(),
-                };
-                uuids.push((added.id, uuid));
-                Some(uuid)
-            };
-            // TrialSpawner.ejectReward: the table's items, each thrown up out
-            // of the spawner (DefaultDispenseItemBehavior.spawnItem, accuracy 2).
-            let mut eject = |table: &str, random: &mut LegacyRandom| {
-                let Some(loot) = &loot else {
-                    return false;
-                };
-                let drops = match loot.random_sequence(table) {
-                    Some(s) => loot.roll_split(table, sequences.get(s, seed)),
-                    None => loot.roll_split(table, random),
-                };
-                for stack in &drops {
-                    // The power, which only scales the direction's x and z (0 going up).
-                    random.next_double();
-                    let spread = 0.017_227_5 * 2.0;
-                    let v = [
-                        random.triangle(0.0, spread),
-                        random.triangle(0.2, spread),
-                        random.triangle(0.0, spread),
-                    ];
-                    ejected.push((
-                        horizon_client::structure_blocks::loot_item_with_components(stack),
-                        v,
-                    ));
-                }
-                !drops.is_empty()
-            };
-            spawner.server_tick(
-                &level,
-                &mut random,
-                pos,
-                current,
-                ominous,
-                &mut spawn,
-                &mut eject,
-                &mut events,
-            )
-        };
-        self.world.random = random;
-        self.rand_sequences = sequences;
-        let ids = self.add_planned(planned);
-        let mut by_uuid = HashMap::new();
-        for (provisional, uuid) in uuids {
-            if let Some(id) = ids.get(&provisional) {
-                self.persist.uuids.insert(*id, uuid);
-                by_uuid.insert(uuid, *id);
-            }
-        }
-        let center = pos.map(|v| f64::from(v) + 0.5);
-        // Vec3.atBottomCenterOf(pos).relative(UP, 1.2), lowered by spawnItem.
-        let above = [center[0], center[1] + 0.7 - 0.125, center[2]];
-        for (stack, v) in ejected {
-            self.spawn_item(stack, above, v, 0);
-        }
-        if next != current || ominous != spawner.is_ominous {
-            self.set_trial_spawner_state(key, next, spawner.is_ominous)?;
-        }
-        for event in events {
-            match event {
-                TrialEvent::BlockUpdated => self.mark_block_entity_updated(key),
-                TrialEvent::LevelEvent(id, at, data) => self.level_event_at(id, at, data),
-                TrialEvent::Sound(name) => {
-                    self.sounds
-                        .play(&format!("minecraft:{name}"), Some(center), 1.0, 1.0)
-                }
-                // Written with the state above.
-                TrialEvent::OminousSet(_) => {}
-                TrialEvent::EntityPlace(uuid, at) => {
-                    let who = by_uuid.get(&uuid).map(|id| Who::Mob(*id));
-                    self.post_block_game_event("minecraft:entity_place", at, who, None);
-                }
-                TrialEvent::TrialOmen(_) => self.bad_omen_to_trial_omen(),
-                TrialEvent::Discard(uuid) => {
-                    let id = self.persist.uuids.iter().find(|(_, u)| **u == uuid);
-                    if let Some((id, _)) = id
-                        && let Some(m) = self.mobs.iter_mut().find(|m| m.id == *id)
-                    {
-                        m.removed = true;
-                    }
-                }
-                TrialEvent::SoundAt(name, at, pitch) => self.sounds.play(
-                    &format!("minecraft:{name}"),
-                    Some(at.map(|v| f64::from(v) + 0.5)),
-                    1.0,
-                    pitch,
-                ),
-                TrialEvent::ItemSpawner {
-                    item,
-                    position,
-                    delay,
-                } => self.add_ominous_item_spawner(item, position, delay),
-            }
-        }
-        Ok(())
-    }
     /// `setState` (and `removeOminous`): the block's state and ominous flag.
     pub(super) fn set_trial_spawner_state(
         &mut self,
@@ -291,27 +137,6 @@ impl crate::game::Sim<'_> {
             .insert("ominous".into(), ominous.to_string());
         let id = self.pack.assets.registry.resolve(&block)?;
         self.level_set([key.0, key.1, key.2], id)
-    }
-    /// `transformBadOmenIntoTrialOmen`: Bad Omen becomes Trial Omen, 15
-    /// minutes per level, with Trial Omen's sound when it is new.
-    fn bad_omen_to_trial_omen(&mut self) {
-        let Some(amplifier) = self.potions.effects.amplifier("bad_omen") else {
-            return;
-        };
-        self.potions.effects.list.retain(|e| e.id != "bad_omen");
-        let new = self.potions.effects.get("trial_omen").is_none();
-        self.potions
-            .effects
-            .add(horizon_client::effects::EffectInstance::new(
-                "trial_omen",
-                TRIAL_OMEN_TICKS_PER_LEVEL * (amplifier + 1),
-                0,
-            ));
-        if new {
-            let eye = self.eye_position().unwrap_or_default();
-            self.sounds
-                .play("minecraft:event.mob_effect.trial_omen", Some(eye), 1.0, 1.0);
-        }
     }
     /// `sendBlockUpdated` of a block entity: the clients load its new update tag.
     pub(super) fn mark_block_entity_updated(&mut self, key: Pos) {

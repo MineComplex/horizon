@@ -562,43 +562,6 @@ impl crate::game::Sim<'_> {
         );
         host.play.entry(conn).or_default().sign_editing = Some(pos);
     }
-    /// `ServerGamePacketListenerImpl.handleSignUpdate`: the lines, formatting
-    /// codes stripped, go on the sign the guest may write on unless it is
-    /// waxed (`SignBlockEntity.updateSignText`); a guest gone out of reach
-    /// may no longer write (`playerIsTooFarAwayToEdit`).
-    pub(super) fn lan_sign_update(&mut self, host: &mut LanHost, conn: u32, p: play::SignUpdate) {
-        let Some(g) = host.hub.guest(conn) else {
-            return;
-        };
-        let near = g.within_block_range(p.pos, 4.0);
-        let Some(play) = host.play.get_mut(&conn) else {
-            return;
-        };
-        if !near {
-            play.sign_editing = None;
-        }
-        if play.sign_editing != Some(p.pos) {
-            log::warn!("{} just tried to change non-editable sign", g.name);
-            return;
-        }
-        let key = (p.pos[0], p.pos[1], p.pos[2]);
-        let Some(BlockEntity::Sign(sign)) = self.world.block_entities.get_mut(&key) else {
-            return;
-        };
-        if sign.waxed {
-            return;
-        }
-        let side = if p.front {
-            &mut sign.front
-        } else {
-            &mut sign.back
-        };
-        for (line, new) in side.lines.iter_mut().zip(&p.lines) {
-            *line = horizon_client::clipboard::strip_formatting(new);
-        }
-        play.sign_editing = None;
-        self.mark_block_entity_updated(key);
-    }
     /// `ClientPacketListener.handleOpenSignEditor`: the editor on a sign this
     /// client has.
     pub(super) fn remote_open_sign_editor(&mut self, p: play::OpenSignEditor) {

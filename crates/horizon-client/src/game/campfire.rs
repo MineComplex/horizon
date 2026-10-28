@@ -5,9 +5,7 @@
 use super::Game;
 use horizon_assets::item_model::DisplayContext;
 use horizon_client::{
-    Result, block_entities::Pos, block_entity_render::vertex_light, containers::BlockEntity,
-    items::ItemStack, mesher::Vertex, mobs::Who,
-};
+    Result, block_entity_render::vertex_light, containers::BlockEntity, mesher::Vertex, mobs::Who};
 use horizon_core::position::BlockPos;
 
 /// The `campfire_cooking` recipe kind (`RecipeType.CAMPFIRE_COOKING`).
@@ -116,74 +114,5 @@ impl crate::game::Sim<'_> {
             self.mark_block_entity_updated(key);
         }
         Ok(Some(placed))
-    }
-    /// `CampfireBlockEntity.cookTick` of a lit campfire, `cooldownTick` of an
-    /// unlit one. A finished item's result (the recipe's, or the item itself
-    /// when no recipe takes it any more) drops at the block's corner
-    /// (`Containers.dropItemStack` at its integer position), then the clients
-    /// see the slot empty and a `block_change` goes out.
-    pub(super) fn tick_campfire(&mut self, pos: Pos) -> Result<()> {
-        let state = self.world.block(pos.0, pos.1, pos.2);
-        let lit = self
-            .pack
-            .assets
-            .registry
-            .state(state)
-            .and_then(|s| s.properties.get("lit"))
-            .is_some_and(|v| v == "true");
-        let Some(BlockEntity::Campfire(c)) = self.world.block_entities.get_mut(&pos) else {
-            return Ok(());
-        };
-        // BlockEntity.setChanged: a timer that moved is saved with the
-        // chunk (no update to the clients, who don't see the timers).
-        let changed = if lit {
-            c.items.iter().any(Option::is_some)
-        } else {
-            c.cooldown_tick()
-        };
-        if changed {
-            self.world.modified.insert((pos.0 >> 4, pos.2 >> 4));
-        }
-        if !lit {
-            return Ok(());
-        }
-        let Some(BlockEntity::Campfire(c)) = self.world.block_entities.get_mut(&pos) else {
-            return Ok(());
-        };
-        let done = c.cook_tick();
-        for (_, item) in done {
-            let result = self
-                .res
-                .recipes()
-                .cook(KIND, &item)
-                .map_or_else(|| item.clone(), |r| r.result.clone());
-            self.campfire_drop(pos, result);
-            self.mark_block_entity_updated(pos);
-            self.post_block_game_event(
-                "minecraft:block_change",
-                [pos.0, pos.1, pos.2],
-                None,
-                Some(state),
-            );
-        }
-        Ok(())
-    }
-    /// `Containers.dropItemStack(level, x, y, z, stack)` at the block's
-    /// integer position.
-    fn campfire_drop(&mut self, pos: Pos, stack: ItemStack) {
-        let at = BlockPos::new(pos.0, pos.1, pos.2);
-        for piece in
-            horizon_world::level::removal::drop_item_stack(&mut self.world.random, at, stack.count)
-        {
-            self.spawn_item(
-                ItemStack {
-                    count: piece.count,
-                    ..stack.clone()
-                },
-                piece.pos,
-                piece.motion,
-                0,
-            );
-        }
     }
 }

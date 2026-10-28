@@ -184,43 +184,6 @@ impl crate::game::Sim<'_> {
             self.previous_position = player.position;
         }
     }
-    /// Per-tick server work of these commands: the delayed tick profiler
-    /// start, queued messages and the spectator camera.
-    pub(in crate::game) fn tick_command_extras(&mut self) {
-        if self.cmds.profiler_delay {
-            self.cmds.profiler_delay = false;
-            self.cmds.profiler = Some((Instant::now(), self.ticks));
-        }
-        for message in std::mem::take(&mut self.cmds.pending) {
-            self.system_message(message);
-        }
-        self.tick_camera();
-        self.tick_waypoints();
-    }
-    /// The camera part of `ServerPlayer.tick`: follow a living camera, drop a
-    /// removed one, and stop when the player sneaks or leaves spectator mode.
-    fn tick_camera(&mut self) {
-        let Some(t) = self.cmds.camera else {
-            return;
-        };
-        if !self.spectator() {
-            self.set_camera(None);
-            return;
-        }
-        let sneaking = self.keys.contains(&winit::keyboard::KeyCode::ShiftLeft)
-            && self.screen == super::Screen::Playing;
-        match self.target_position(t) {
-            Some(p) if !sneaking => {
-                let rot = self.target_rotation(t);
-                if let Some(player) = self.player.as_mut() {
-                    player.position = horizon_core::geometry::Vec3::new(p[0], p[1], p[2]);
-                }
-                self.yaw = rot[0];
-                self.pitch = rot[1];
-            }
-            _ => self.set_camera(None),
-        }
-    }
     /// A guest's body is only `Player` during its turn; retained command state
     /// must use its connection so the next server tick still finds that body.
     pub(super) fn waypoint_target(&self, t: Target) -> Target {
@@ -283,24 +246,6 @@ impl crate::game::Sim<'_> {
                 _ => t,
             })
             .collect()
-    }
-    /// The waypoint part of a living entity's tick: dirty transmit ranges
-    /// track or untrack it.
-    pub(in crate::game) fn tick_waypoints(&mut self) {
-        let dirty = std::mem::take(&mut self.cmds.waypoint_dirty);
-        if dirty.is_empty() {
-            return;
-        }
-        self.waypoint_transmitters();
-        for t in dirty {
-            let on = self.transmit_range(t) > 0.0;
-            if let Some(tracked) = self.cmds.waypoints.as_mut() {
-                tracked.retain(|x| *x != t);
-                if on {
-                    tracked.push(t);
-                }
-            }
-        }
     }
     fn waypoint_icon(&self, t: Target) -> WaypointIcon {
         self.cmds

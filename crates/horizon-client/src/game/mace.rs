@@ -309,12 +309,6 @@ impl crate::game::Sim<'_> {
         }
         self.each_guest_hit_except(push.attacker, |g| g.smash_push_player(push));
     }
-    /// The pushes guests' smashes put off.
-    pub(super) fn flush_smash_pushes(&mut self) {
-        for push in std::mem::take(&mut self.creatures.smash_pushes) {
-            self.smash_push_players(&push);
-        }
-    }
     /// `MaceItem.knockback` on the player here (the host, or the guest swapped
     /// in): not a spectator, an ally of the attacker (`isAlliedTo`: the same
     /// team) or a creative player flying.

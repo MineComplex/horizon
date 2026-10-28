@@ -452,33 +452,4 @@ impl crate::game::Sim<'_> {
             self.spawn_item(item, at, [0.0; 3], 10);
         }
     }
-    /// BlockAttachedEntity.tick for frames.
-    pub(super) fn tick_item_frames(&mut self) {
-        // ServerLevel.tick: only entities in entity-ticking chunks tick.
-        let ticking = self.entity_ticking_area();
-        let mut i = 0;
-        while i < self.item_frames.len() {
-            let at = center(&self.item_frames[i]);
-            if !ticking(at[0].floor() as i32, at[2].floor() as i32) {
-                i += 1;
-                continue;
-            }
-            self.item_frames[i].check_interval += 1;
-            if self.item_frames[i].check_interval >= 100 {
-                self.item_frames[i].check_interval = 0;
-                let f = self.item_frames[i].clone();
-                if !self.frame_survives(&f) {
-                    self.item_frames.remove(i);
-                    self.sounds
-                        .play(&sound(&f, "break"), Some(center(&f)), 1.0, 1.0);
-                    self.drop_frame_items(&f, true, false);
-                    if f.item.is_some() {
-                        self.frame_output_changed(f.pos);
-                    }
-                    continue;
-                }
-            }
-            i += 1;
-        }
-    }
 }

@@ -3,7 +3,7 @@
 //! pixels, 1024 characters, 100 pages), signing it into a written book,
 //! reading written books, and lecterns (placing a book, turning its pages
 //! with a redstone pulse, the comparator output and taking the book).
-use super::{Game, lan::LanHost};
+use super::Game;
 use horizon_client::{
     containers::{BlockEntity, Lectern},
     first_person::Hand,
@@ -933,16 +933,6 @@ impl crate::game::Sim<'_> {
             stack.tidy();
         }
     }
-    /// `ServerGamePacketListenerImpl.handleEditBook`: a guest's book in a
-    /// hotbar slot or its off hand (`updateBookContents`, `signBook`).
-    pub(super) fn lan_edit_book(&mut self, host: &mut LanHost, conn: u32, p: play::EditBook) {
-        if !((0..9).contains(&p.slot) || p.slot == super::shield::OFFHAND_SLOT as i32) {
-            return;
-        }
-        self.as_guest(host, conn, |g| {
-            g.write_book(p.slot as usize, p.pages, p.title)
-        });
-    }
     /// `BookSignScreen.keyPressed` on the title box.
     fn book_title_key(&mut self, key: KeyCode) -> bool {
         let (ctrl, shift) = (self.has_control_down(), self.has_shift_down());
@@ -1039,21 +1029,6 @@ impl crate::game::Sim<'_> {
             self.with_level(|b, level, ticks| {
                 b.set_block(level, ticks, p, new, level_flags::UPDATE_ALL)
             });
-        }
-    }
-    /// The 2-tick pulses of turned lecterns.
-    pub(super) fn tick_lecterns(&mut self) {
-        self.follow_lectern();
-        let mut done = Vec::new();
-        for (key, left) in &mut self.lectern_pulses {
-            *left -= 1;
-            if *left <= 0 {
-                done.push(*key);
-            }
-        }
-        self.lectern_pulses.retain(|(_, left)| *left > 0);
-        for key in done {
-            self.set_lectern_powered(key, false);
         }
     }
     /// `LecternBlock.useItemOn`: a book goes onto an empty lectern.

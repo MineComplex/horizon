@@ -8,7 +8,6 @@ use horizon_client::{
     mesher::Vertex,
     mobs::{Mob, Species, sulfur_cube},
 };
-use horizon_core::random::RandomSource;
 
 fn block_transform(base: glam::Mat4, baby: bool) -> glam::Mat4 {
     base * glam::Mat4::from_scale(glam::Vec3::new(1.0, -1.0, -1.0))
@@ -149,102 +148,6 @@ impl crate::game::Sim<'_> {
             return true;
         }
         false
-    }
-    /// `SulfurCubeSearchForItemsGoal` and `pickUpItem`: an adult with nothing
-    /// inside hops to a block it can swallow within 8 and takes it in.
-    pub(super) fn sulfur_cube_pickups(&mut self) {
-        let griefing = self.world_data.rules.bool("mob_griefing");
-        for i in 0..self.mobs.len() {
-            let m = &self.mobs[i];
-            if m.species() != Species::SulfurCube {
-                continue;
-            }
-            if !m.alive() || m.is_baby() || sulfur_cube::has_body(m) || m.extra.ints[3] > 0 {
-                self.mobs[i].extra.point = None;
-                continue;
-            }
-            let reach = m
-                .bounds()
-                .inflate(horizon_core::geometry::Vec3::new(8.0, 8.0, 8.0));
-            let pos = m.position;
-            let best = self
-                .dropped
-                .iter()
-                .enumerate()
-                .filter(|(_, e)| {
-                    e.pickup_delay == 0
-                        && reach.contains(e.position)
-                        && sulfur_cube::swallowable(m, &e.stack.item)
-                })
-                .map(|(j, e)| (j, e.position.distance_squared(pos)))
-                .min_by(|a, b| a.1.total_cmp(&b.1));
-            let Some((j, _)) = best else {
-                self.mobs[i].extra.point = None;
-                continue;
-            };
-            // Mob.aiStep: items within the box grown by (1, 0, 1).
-            let touch = m
-                .bounds()
-                .inflate(horizon_core::geometry::Vec3::new(1.0, 0.0, 1.0));
-            let e = &self.dropped[j];
-            let close = touch.contains(e.position);
-            self.mobs[i].extra.point = Some([e.position.x, e.position.y, e.position.z]);
-            if !griefing || !close {
-                continue;
-            }
-            let item = e.stack.item.clone();
-            let thrown_by_player = e
-                .thrower
-                .is_some_and(|uuid| Some(uuid) == self.level.player_uuid);
-            let mut swallowed = e.stack.clone();
-            swallowed.count = 1;
-            let (taken_item, id) = (e.clone(), self.mobs[i].id);
-            self.add_pickup(
-                super::pickups::Taken::Item(Box::new(taken_item)),
-                super::pickups::Collector::Mob(id),
-            );
-            let e = &mut self.dropped[j];
-            e.stack.count -= 1;
-            if e.stack.count == 0 {
-                self.dropped.remove(j);
-            }
-            let m = &mut self.mobs[i];
-            m.extra.head = Some(item);
-            m.extra.point = None;
-            self.sulfur_sound(i, "entity.sulfur_cube.absorb");
-            if thrown_by_player {
-                let target = self.mob_entity(&self.mobs[i]);
-                self.trigger_item_entity(
-                    "minecraft:thrown_item_picked_up_by_entity",
-                    &swallowed,
-                    &target,
-                );
-            }
-        }
-    }
-    /// `AbstractCubeMob.remove`: a dead adult splits into two babies (none
-    /// when it was primed).
-    pub(super) fn split_sulfur_cube(&mut self, m: &Mob) {
-        let size = m.extra.size;
-        if size <= 1 {
-            return;
-        }
-        let offset = f64::from(m.width()) / 2.0;
-        for i in 0..sulfur_cube::split_count(m) {
-            let xd = (f64::from(i % 2) - 0.5) * offset;
-            let zd = (f64::from(i / 2) - 0.5) * offset;
-            let at = [m.position.x + xd, m.position.y + 0.5, m.position.z + zd];
-            let yaw = self.world.random.next_float() * 360.0;
-            if let Some(id) = self.spawn_mob(&m.kind.id, at, m.persistent)
-                && let Some(c) = self.mobs.iter_mut().find(|c| c.id == id)
-            {
-                c.extra.age = -24000;
-                sulfur_cube::set_size(c, size / 2, true);
-                c.yaw = yaw;
-                c.body_yaw = yaw;
-                c.head_yaw = yaw;
-            }
-        }
     }
 }
 

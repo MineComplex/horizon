@@ -79,32 +79,6 @@ fn duration(seconds: f64) -> String {
 }
 
 impl Game<'_> {
-    /// Keep the workers fed until `until`: collect what they finished and
-    /// hand them the next jobs as soon as each one is done, rather than once
-    /// a tick.
-    pub(in crate::game) fn pump_chunks(&mut self, until: Instant, paused: bool) {
-        // Force-loaded chunks too: decorating in vanilla's order, a chunk
-        // waits for its neighbours far more often than once a tick allows.
-        // And the players' chunks while they load, as vanilla's server runs
-        // its chunk tasks while it waits for the next tick
-        // (`MinecraftServer.waitUntilNextTick`): once a tick, a few jobs per
-        // worker (`schedule_generation`) capped joining a world at about 120
-        // columns a second with two workers, the workers idle most of the
-        // time. Not while a respawn search waits for a chunk: its area is
-        // only asked for by the tick's own `update_world`.
-        let players = !paused && self.spawn_wait.is_empty();
-        while self.pregen_runs_here()
-            || ((players || !self.streaming.forced.is_empty()) && self.streaming.busy())
-        {
-            let now = Instant::now();
-            if now >= until {
-                break;
-            }
-            self.streaming
-                .wait((until - now).min(Duration::from_millis(5)));
-            self.update_world();
-        }
-    }
 }
 impl crate::game::Sim<'_> {
     pub(super) fn cmd_pregen(&mut self, id: &str, ctx: &Context) -> R<i32> {
@@ -251,18 +225,6 @@ impl crate::game::Sim<'_> {
             }
             self.pregen_report(owner, message);
         }
-    }
-    /// Whether the level in place has a running task, which the server pumps
-    /// between its ticks (`pump_chunks`).
-    pub(in crate::game) fn pregen_runs_here(&self) -> bool {
-        self.cmds
-            .pregen
-            .as_ref()
-            .is_some_and(|t| t.dim == self.dim && !t.paused)
-    }
-    /// The level a running task needs ticked, whoever is in it.
-    pub(in crate::game) fn pregen_level(&self) -> Option<Dim> {
-        self.cmds.pregen.as_ref().map(|t| t.dim)
     }
     /// The console and the player who started the task get the progress.
     fn pregen_report(&mut self, owner: Option<u32>, message: Text) {

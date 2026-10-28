@@ -9,7 +9,7 @@ use horizon_client::{
     mobs::Who,
     save::{ChunkExtras, random_uuid},
 };
-use horizon_core::{geometry::Vec3, position::ChunkPos, random::RandomSource, ticks::ChunkTicks};
+use horizon_core::{geometry::Vec3, position::ChunkPos, random::RandomSource};
 use horizon_world::{chunk::BlockState, nbt::Tag, registry::BlockStateId};
 use std::{
     collections::{HashMap, HashSet},
@@ -103,46 +103,6 @@ impl crate::game::Sim<'_> {
                 .insert("InhabitedTime".into(), horizon_world::nbt::Tag::Long(*t));
         }
         chunk.saved = Some(Arc::new(extras));
-    }
-    /// Register a newly resident chunk with the tick scheduler, with the
-    /// block and fluid ticks it was saved with (`LevelChunk.registerTickContainerInLevel`
-    /// at FULL). They are unpacked when the chunk starts ticking
-    /// (`start_ticking_chunks`).
-    pub(super) fn register_chunk_ticks(&mut self, key: (i32, i32)) {
-        let pos = ChunkPos::new(key.0, key.1);
-        let saved = self.world.chunks.get(&key).and_then(|c| c.saved.clone());
-        // ChunkAccess.inhabitedTime as saved.
-        if let Some(Tag::Long(t)) = saved
-            .as_deref()
-            .and_then(|s| s.root.get(&"InhabitedTime".into()))
-        {
-            self.world.inhabited.insert(key, *t);
-        }
-        let (blocks, fluids) = saved.as_deref().map_or((Vec::new(), Vec::new()), |s| {
-            (s.block_ticks.clone(), s.fluid_ticks.clone())
-        });
-        let loaded = !blocks.is_empty() || !fluids.is_empty();
-        if self
-            .block_ticks
-            .add_chunk(
-                pos,
-                ChunkTicks::from_saved(blocks),
-                ChunkTicks::from_saved(fluids),
-            )
-            .is_ok()
-            && loaded
-        {
-            self.tick_chunks.wait(key);
-        }
-        // The saved list is consumed: later saves take the scheduler's ticks.
-        if loaded && let Some(c) = self.world.chunks.get_mut(&key) {
-            let c = Arc::make_mut(c);
-            if let Some(s) = c.saved.as_mut() {
-                let s = Arc::make_mut(s);
-                s.block_ticks.clear();
-                s.fluid_ticks.clear();
-            }
-        }
     }
     /// Spawn the entities of chunks that finished loading.
     pub(super) fn spawn_loaded_entities(&mut self) {
@@ -537,11 +497,6 @@ impl crate::game::Sim<'_> {
         self.put_mob_passengers(&mut tag, id);
         tag
     }
-    /// Forget an entity that left the world (its UUID and loaded compound).
-    pub(super) fn forget_entity(&mut self, id: u32) {
-        self.persist.uuids.remove(&id);
-        self.persist.raw.remove(&id);
-    }
     /// The compound an entity without a Horizon entity ID was loaded with
     /// (the crystals and the dragon), found again by type and position.
     pub(super) fn persist_anon(&self, kind: &str, p: Vec3) -> (Option<[i32; 4]>, Option<&Tag>) {
@@ -584,14 +539,6 @@ impl crate::game::Sim<'_> {
             self.persist.uuids.insert(id, u);
         }
         self.persist.raw.insert(id, tag);
-    }
-    /// The mob that was loaded or saved with a UUID.
-    pub(super) fn mob_by_uuid(&self, uuid: [i32; 4]) -> Option<u32> {
-        self.persist
-            .uuids
-            .iter()
-            .find(|(id, u)| **u == uuid && self.mobs.iter().any(|m| m.id == **id))
-            .map(|(id, _)| *id)
     }
     /// A mob's UUID, made up for new ones.
     pub(super) fn mob_uuid(&mut self, id: u32) -> [i32; 4] {
