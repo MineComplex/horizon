@@ -57,7 +57,7 @@ impl Game<'_> {
         let size = self.gui_scale().map(|b| [b.width, b.height]);
         let mut nodes = widgets::tree(&widgets::last_labelled(), &widgets::last_targets(), size);
         if matches!(self.screen, Screen::Inventory | Screen::Creative)
-            && self.title.is_none()
+            && self.front.title.is_none()
             && let Ok((ox, oy)) = self.gui_origin()
         {
             nodes.extend(self.slots().into_iter().map(|i| {
@@ -93,8 +93,8 @@ impl Game<'_> {
                         self.craft_result()
                     } else if slot >= Creative::DISPLAY {
                         // An item tab's display slot shows the tab's list.
-                        let first = self.creative_screen.first_row(&self.pack.names);
-                        let items = self.creative_screen.items(&self.pack.names);
+                        let first = self.front.creative_screen.first_row(&self.pack.names);
+                        let items = self.front.creative_screen.items(&self.pack.names);
                         items.get(first * 9 + slot - Creative::DISPLAY).cloned()
                     } else {
                         self.slot_mut(slot).clone()

@@ -376,26 +376,6 @@ impl<'a> Game<'a> {
             box_queries: Default::default(),
         }
     }
-    /// Creates a mob the spawner accepted, finalized the game's way; the
-    /// caller adds it with [`Game::add_spawned`].
-    fn finalize_spawned(&self, r: &SpawnRequest, pending: &mut Vec<Mob>) -> Option<Spawned> {
-        let kind = self.res.mob_types().get(r.entity)?.clone();
-        let [x, y, z] = r.position;
-        let mut mob = Mob::new(0, kind, Vec3::new(x, y, z), r.yaw);
-        let facts = self.biome_facts(x.floor() as i32, y.floor() as i32, z.floor() as i32);
-        let difficulty = self.local_difficulty(r.position);
-        horizon_client::mobs::spawning::finalize(&mut mob, &facts, &difficulty);
-        horizon_client::mobs::raider::finalize(
-            &mut mob,
-            horizon_client::mobs::raider::Reason::Natural,
-        );
-        let bounds = mob.bounds();
-        pending.push(mob);
-        Some(Spawned {
-            bounds,
-            school: true,
-        })
-    }
     /// Adds the mobs a spawn pass created: ids, enchanted gear and jockeys.
     fn add_spawned(&mut self, pending: Vec<Mob>, persistent: bool) {
         for mut mob in pending {
@@ -443,38 +423,6 @@ impl<'a> Game<'a> {
             );
         }
         players
-    }
-    /// `ChunkMap.collectSpawningChunks`: the natural spawn chunk tracker's
-    /// chunks (within 8 chunks of a player, `getSpawnCandidateChunks`) that
-    /// are ticking and within 128 blocks of a non-spectator. Also returns how
-    /// many chunks the tracker holds (`getNaturalSpawnChunkCount`).
-    pub(super) fn spawning_chunks(&self, players: &[LevelPlayer]) -> (i32, Vec<(i32, i32)>) {
-        let mut candidates: Vec<(i32, i32)> = Vec::with_capacity(289 * players.len());
-        let mut seen = horizon_client::fast_hash::FxHashSet::default();
-        for p in players {
-            let (pcx, pcz) = (
-                p.position.x.floor() as i32 >> 4,
-                p.position.z.floor() as i32 >> 4,
-            );
-            for dx in -8..=8 {
-                for dz in -8..=8 {
-                    let key = (pcx + dx, pcz + dz);
-                    if seen.insert(key) {
-                        candidates.push(key);
-                    }
-                }
-            }
-        }
-        let count = candidates.len() as i32;
-        let levels = self.tickets.levels();
-        candidates.retain(|&(cx, cz)| {
-            levels.loaded_ticking(cx, cz)
-                && super::ticking_chunk(&self.world, cx, cz)
-                && players
-                    .iter()
-                    .any(|p| close_enough_for_spawning(p, (cx, cz)))
-        });
-        (count, candidates)
     }
     /// `ServerChunkCache.tickChunks`: the spawn state over the loaded mobs,
     /// the categories under their global caps (creatures every 400 ticks),
@@ -589,5 +537,59 @@ impl<'a> Game<'a> {
             );
         }
         self.add_spawned(pending, true);
+    }
+}
+impl crate::game::Sim<'_> {
+    /// Creates a mob the spawner accepted, finalized the game's way; the
+    /// caller adds it with [`Game::add_spawned`].
+    fn finalize_spawned(&self, r: &SpawnRequest, pending: &mut Vec<Mob>) -> Option<Spawned> {
+        let kind = self.res.mob_types().get(r.entity)?.clone();
+        let [x, y, z] = r.position;
+        let mut mob = Mob::new(0, kind, Vec3::new(x, y, z), r.yaw);
+        let facts = self.biome_facts(x.floor() as i32, y.floor() as i32, z.floor() as i32);
+        let difficulty = self.local_difficulty(r.position);
+        horizon_client::mobs::spawning::finalize(&mut mob, &facts, &difficulty);
+        horizon_client::mobs::raider::finalize(
+            &mut mob,
+            horizon_client::mobs::raider::Reason::Natural,
+        );
+        let bounds = mob.bounds();
+        pending.push(mob);
+        Some(Spawned {
+            bounds,
+            school: true,
+        })
+    }
+    /// `ChunkMap.collectSpawningChunks`: the natural spawn chunk tracker's
+    /// chunks (within 8 chunks of a player, `getSpawnCandidateChunks`) that
+    /// are ticking and within 128 blocks of a non-spectator. Also returns how
+    /// many chunks the tracker holds (`getNaturalSpawnChunkCount`).
+    pub(super) fn spawning_chunks(&self, players: &[LevelPlayer]) -> (i32, Vec<(i32, i32)>) {
+        let mut candidates: Vec<(i32, i32)> = Vec::with_capacity(289 * players.len());
+        let mut seen = horizon_client::fast_hash::FxHashSet::default();
+        for p in players {
+            let (pcx, pcz) = (
+                p.position.x.floor() as i32 >> 4,
+                p.position.z.floor() as i32 >> 4,
+            );
+            for dx in -8..=8 {
+                for dz in -8..=8 {
+                    let key = (pcx + dx, pcz + dz);
+                    if seen.insert(key) {
+                        candidates.push(key);
+                    }
+                }
+            }
+        }
+        let count = candidates.len() as i32;
+        let levels = self.tickets.levels();
+        candidates.retain(|&(cx, cz)| {
+            levels.loaded_ticking(cx, cz)
+                && super::ticking_chunk(&self.world, cx, cz)
+                && players
+                    .iter()
+                    .any(|p| close_enough_for_spawning(p, (cx, cz)))
+        });
+        (count, candidates)
     }
 }

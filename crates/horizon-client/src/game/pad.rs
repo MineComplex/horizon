@@ -95,45 +95,49 @@ impl Game<'_> {
         let settings = &self.settings.controller;
         if !settings.enabled {
             self.pad_output_off();
-            if self.pad.state != PadState::default() {
-                self.pad.state = PadState::default();
-                for (button, down) in self.pad.edges.release_all() {
+            if self.front.pad.state != PadState::default() {
+                self.front.pad.state = PadState::default();
+                for (button, down) in self.front.pad.edges.release_all() {
                     self.pad_edge(event_loop, button, down);
                 }
             }
             return;
         }
-        let hardware = self.pad.read();
-        self.ui.options.pad_style = self.settings.controller.glyphs.resolve(self.pad.style);
-        let state = hardware.merge(&self.pad.injected);
-        self.pad.virtual_input = self.pad.injected != PadState::default();
-        for button in std::mem::take(&mut self.pad.taps) {
-            self.pad.injected.set(button, false);
+        let hardware = self.front.pad.read();
+        self.ui.options.pad_style = self
+            .settings
+            .controller
+            .glyphs
+            .resolve(self.front.pad.style);
+        let state = hardware.merge(&self.front.pad.injected);
+        self.front.pad.virtual_input = self.front.pad.injected != PadState::default();
+        for button in std::mem::take(&mut self.front.pad.taps) {
+            self.front.pad.injected.set(button, false);
         }
         let threshold = self.settings.controller.trigger_threshold;
-        let edges = self.pad.edges.update(&state, threshold);
+        let edges = self.front.pad.edges.update(&state, threshold);
         if state.active(&self.settings.controller) {
-            self.last_input = Instant::now();
-            self.pad.in_use = true;
+            self.front.last_input = Instant::now();
+            self.front.pad.in_use = true;
         }
-        self.pad.state = state;
+        self.front.pad.state = state;
         self.pad_output_frame();
         // Damage from any source, here or on a server; nothing counts on
         // the title screen.
         let health = self
             .player
             .as_ref()
-            .filter(|_| self.title.is_none())
+            .filter(|_| self.front.title.is_none())
             .map(|p| p.health.health());
-        if let Some(damage) = self.pad.health.observe(health) {
+        if let Some(damage) = self.front.pad.health.observe(health) {
             self.rumbles.push(Rumble::Hurt(damage));
         }
-        let ticking = self.title.is_none() && self.screen == Screen::Playing && !self.pause;
-        for button in std::mem::take(&mut self.pad.late_releases) {
-            if !ticking || self.pad.pressed_at[button as usize] != Some(self.ticks) {
+        let ticking = self.front.title.is_none() && self.screen == Screen::Playing && !self.pause;
+        for button in std::mem::take(&mut self.front.pad.late_releases) {
+            if !ticking || self.front.pad.pressed_at[button as usize] != Some(self.ticks) {
                 self.pad_button_logged(event_loop, button, false);
             } else {
-                self.pad.late_releases.push(button);
+                self.front.pad.late_releases.push(button);
             }
         }
         for (button, down) in edges {
@@ -143,16 +147,22 @@ impl Game<'_> {
     }
 
     fn pad_edge(&mut self, event_loop: &ActiveEventLoop, button: Button, down: bool) {
-        let ticking = self.title.is_none() && self.screen == Screen::Playing && !self.pause;
+        let ticking = self.front.title.is_none() && self.screen == Screen::Playing && !self.pause;
         if down {
             // Pressed again before its held-back release went out.
-            if let Some(i) = self.pad.late_releases.iter().position(|b| *b == button) {
-                self.pad.late_releases.remove(i);
+            if let Some(i) = self
+                .front
+                .pad
+                .late_releases
+                .iter()
+                .position(|b| *b == button)
+            {
+                self.front.pad.late_releases.remove(i);
                 self.pad_button_logged(event_loop, button, false);
             }
-            self.pad.pressed_at[button as usize] = Some(self.ticks);
-        } else if ticking && self.pad.pressed_at[button as usize] == Some(self.ticks) {
-            self.pad.late_releases.push(button);
+            self.front.pad.pressed_at[button as usize] = Some(self.ticks);
+        } else if ticking && self.front.pad.pressed_at[button as usize] == Some(self.ticks) {
+            self.front.pad.late_releases.push(button);
             return;
         }
         self.pad_button_logged(event_loop, button, down);
@@ -167,7 +177,7 @@ impl Game<'_> {
     /// Input from the pad counts while the window has focus, or always for
     /// the virtual pad (a script can't focus the window).
     fn pad_focused(&self) -> bool {
-        self.focused || self.pad.virtual_input
+        self.focused || self.front.pad.virtual_input
     }
 
     fn pad_button(
@@ -180,7 +190,7 @@ impl Game<'_> {
             return Ok(());
         }
         let playing = !self.pad_in_menu();
-        if down && playing && !self.captured && self.focused {
+        if down && playing && !self.front.captured && self.focused {
             // Like a click into the window: take the pointer.
             self.capture(true);
         }
@@ -224,7 +234,7 @@ impl Game<'_> {
             _ => {
                 let default = KeyBinds::default_of(action);
                 if let Some(button) = mouse_button(default) {
-                    if self.title.is_none() && self.screen == Screen::Playing {
+                    if self.front.title.is_none() && self.screen == Screen::Playing {
                         self.play_mouse(button, down)?;
                     }
                     Ok(())
@@ -244,7 +254,7 @@ impl Game<'_> {
         if self.screen == Screen::Options {
             return self.options_key(KeyCode::Escape, None);
         }
-        if let Some(title) = self.title.as_mut() {
+        if let Some(title) = self.front.title.as_mut() {
             title.escape();
             self.save_title_options();
             return Ok(());
@@ -266,7 +276,7 @@ impl Game<'_> {
         if !settings.enabled || self.pad_in_menu() || !self.pad_focused() {
             return None;
         }
-        gamepad::move_vector(self.pad.state.left, settings.move_deadzone)
+        gamepad::move_vector(self.front.pad.state.left, settings.move_deadzone)
     }
 
     /// The right stick turns the view, once per frame (`Entity.turn`).
@@ -277,7 +287,7 @@ impl Game<'_> {
         }
         // A long frame (a hitch) must not spin the view.
         let (yaw, pitch) = gamepad::look_delta(
-            self.pad.state.right,
+            self.front.pad.state.right,
             settings,
             seconds.min(0.1),
             self.scoping(),
@@ -300,13 +310,13 @@ impl Game<'_> {
     /// playing (a pad lying idle while the mouse plays stays still).
     pub(super) fn pad_rumble(&mut self, rumble: Rumble) {
         let settings = &self.settings.controller;
-        if !settings.enabled || !settings.vibration || !self.pad.in_use {
+        if !settings.enabled || !settings.vibration || !self.front.pad.in_use {
             return;
         }
         let Some(pulse) = rumble.pulse() else {
             return;
         };
-        self.pad.last_rumble = Some((rumble.name(), pulse));
+        self.front.pad.last_rumble = Some((rumble.name(), pulse));
         self.pad_vibrate(rumble, pulse);
     }
 
@@ -328,19 +338,19 @@ impl Game<'_> {
         };
         match arg(1)? {
             "status" => {
-                let s = &self.pad.state;
+                let s = &self.front.pad.state;
                 let held: Vec<&str> = Button::ALL
                     .into_iter()
-                    .filter(|b| self.pad.edges.is_held(*b))
+                    .filter(|b| self.front.pad.edges.is_held(*b))
                     .map(Button::name)
                     .collect();
                 let mut status = json!({
                     "enabled": self.settings.controller.enabled,
-                    "glyphs": self.pad.style.name(),
-                    "last_rumble": self.pad.last_rumble.map(|(why, p)| json!({
+                    "glyphs": self.front.pad.style.name(),
+                    "last_rumble": self.front.pad.last_rumble.map(|(why, p)| json!({
                         "reason": why, "strong": p.strong, "weak": p.weak, "ms": p.millis,
                     })),
-                    "in_use": self.pad.in_use,
+                    "in_use": self.front.pad.in_use,
                     "menu": self.pad_menu_status(),
                     "held": held,
                     "left": s.left,
@@ -355,15 +365,15 @@ impl Game<'_> {
                 Ok(status)
             }
             "release" => {
-                self.pad.injected = PadState::default();
-                self.pad.taps.clear();
+                self.front.pad.injected = PadState::default();
+                self.front.pad.taps.clear();
                 Ok(json!({ "ok": true }))
             }
             "stick" => {
                 let v = [number(3)?.clamp(-1.0, 1.0), number(4)?.clamp(-1.0, 1.0)];
                 match arg(2)? {
-                    "left" => self.pad.injected.left = v,
-                    "right" => self.pad.injected.right = v,
+                    "left" => self.front.pad.injected.left = v,
+                    "right" => self.front.pad.injected.right = v,
                     other => return Err(format!("stick must be left or right, not {other}").into()),
                 }
                 Ok(json!({ "ok": true }))
@@ -371,8 +381,8 @@ impl Game<'_> {
             "trigger" => {
                 let v = number(3)?.clamp(0.0, 1.0);
                 match arg(2)? {
-                    "left" => self.pad.injected.triggers[0] = v,
-                    "right" => self.pad.injected.triggers[1] = v,
+                    "left" => self.front.pad.injected.triggers[0] = v,
+                    "right" => self.front.pad.injected.triggers[1] = v,
                     other => {
                         return Err(format!("trigger must be left or right, not {other}").into());
                     }
@@ -383,11 +393,11 @@ impl Game<'_> {
                 let button = Button::parse(name)
                     .ok_or_else(|| format!("unknown pad button {name}; {}", HELP[0]))?;
                 match arg(2)? {
-                    "down" => self.pad.injected.set(button, true),
-                    "up" => self.pad.injected.set(button, false),
+                    "down" => self.front.pad.injected.set(button, true),
+                    "up" => self.front.pad.injected.set(button, false),
                     "tap" => {
-                        self.pad.injected.set(button, true);
-                        self.pad.taps.push(button);
+                        self.front.pad.injected.set(button, true);
+                        self.front.pad.taps.push(button);
                     }
                     other => {
                         return Err(

@@ -13,30 +13,31 @@ impl Game<'_> {
         let (music, volume) = self.situational_music();
         // Options.musicFrequency's listener: MusicManager.setMinutesBetweenSongs.
         let frequency = MusicFrequency::parse(&self.settings.file.name("musicFrequency"));
-        if frequency != self.music.frequency {
-            self.music.set_frequency(frequency, music.as_ref());
+        if frequency != self.front.music.frequency {
+            self.front.music.set_frequency(frequency, music.as_ref());
         }
         // LevelLoadingScreen: no new track before the player is in the world.
-        let loading = self.title.is_none() && self.player.is_none() && self.win.is_none();
-        self.music
-            .tick(music.as_ref(), volume, loading, &mut self.audio);
+        let loading = self.front.title.is_none() && self.player.is_none() && self.win.is_none();
+        self.front
+            .music
+            .tick(music.as_ref(), volume, loading, &mut self.front.audio);
     }
     /// `Minecraft.tick` -> `SoundManager.tick(pause)`, after the music, with
     /// `pauseAllExcept(MUSIC, UI)` when the game pauses and `resume` when it
     /// carries on.
     pub(super) fn tick_sound_engine(&mut self) {
-        if self.pause != self.sound_paused {
+        if self.pause != self.front.sound_paused {
             if self.pause {
-                self.audio.pause();
+                self.front.audio.pause();
             } else {
-                self.audio.resume();
+                self.front.audio.resume();
             }
-            self.sound_paused = self.pause;
+            self.front.sound_paused = self.pause;
         }
         let (vehicle, carts) = self.start_cart_sounds();
         let mobs = self.start_mob_sounds();
         let ctx = TickContext {
-            player_underwater: self.ambience.was_underwater(),
+            player_underwater: self.front.ambience.was_underwater(),
             player_removed: self.player.is_none(),
             vehicle,
             carts,
@@ -44,34 +45,27 @@ impl Game<'_> {
             frozen: !self.clock.runs_normally(),
         };
         self.flush_to_window();
-        self.audio.tick(self.pause, &ctx);
+        self.front.audio.tick(self.pause, &ctx);
     }
     /// Hand the window what the game queued for it: sounds (`SoundOut`) to the mixer, chat
     /// messages to their lines, vibrations to the pad and the pointer grab a screen asked for.
     pub(super) fn flush_to_window(&mut self) {
-        for cmd in std::mem::take(&mut self.sounds.queue) {
-            self.audio.apply(cmd);
+        for cmd in std::mem::take(&mut self.sim.sounds.queue) {
+            self.front.audio.apply(cmd);
         }
-        self.ui.chat.wrap_pending(&self.gui.atlas.font);
-        for rumble in std::mem::take(&mut self.rumbles) {
+        self.sim.ui.chat.wrap_pending(&self.front.gui.atlas.font);
+        for rumble in std::mem::take(&mut self.sim.rumbles) {
             self.pad_rumble(rumble);
         }
         if let Some(capture) = self.pointer_grab.take() {
             self.grab_pointer(capture);
         }
     }
-    /// A server's `flush_to_window`: it has no window, so what the game queued for one goes.
-    pub(super) fn drop_window_output(&mut self) {
-        self.sounds.queue.clear();
-        self.ui.chat.drop_unwrapped();
-        self.rumbles.clear();
-        self.pointer_grab = None;
-    }
     /// `getSituationalMusic` and `getMusicVolume`.
     fn situational_music(&self) -> (Option<Music>, f32) {
         let empty = BackgroundMusic::default();
         // The title screen has no player (and no level for the camera probe).
-        let eye = if self.title.is_some() {
+        let eye = if self.front.title.is_some() {
             None
         } else {
             self.eye_position()
@@ -99,9 +93,18 @@ impl Game<'_> {
             background: &background,
             probe_volume,
             creative: self.creative,
-            underwater: self.ambience.was_underwater(),
+            underwater: self.front.ambience.was_underwater(),
         };
         (situation.music(), situation.volume())
+    }
+}
+impl crate::game::Sim<'_> {
+    /// A server's `flush_to_window`: it has no window, so what the game queued for one goes.
+    pub(super) fn drop_window_output(&mut self) {
+        self.sounds.queue.clear();
+        self.ui.chat.drop_unwrapped();
+        self.rumbles.clear();
+        self.pointer_grab = None;
     }
     /// `BiomeManager.getNoiseBiomeAtPosition`: the quart cell holding a position.
     fn biome_at(&self, p: [f64; 3]) -> &str {
@@ -144,9 +147,13 @@ impl Game<'_> {
         };
         let feet = [p.position.x, p.position.y, p.position.z];
         let eye_y = feet[1] + f64::from(p.dimensions.eye_height);
-        let sounds = self.res.ambient().get(self.dim.id(), self.biome_at(feet));
+        let sounds = self
+            .sim
+            .res
+            .ambient()
+            .get(self.sim.dim.id(), self.biome_at(feet));
         let underwater = self.eye_in_water(feet[0], eye_y, feet[2]);
-        let world = &self.world;
+        let world = &self.sim.world;
         let light = |b: [i32; 3]| {
             let l = world.light(b[0], b[1], b[2]);
             (l >> 4, l & 15)
@@ -185,6 +192,6 @@ impl Game<'_> {
             light: &light,
             bubble_column,
         };
-        self.ambience.tick(&ctx, &mut self.audio);
+        self.front.ambience.tick(&ctx, &mut self.front.audio);
     }
 }

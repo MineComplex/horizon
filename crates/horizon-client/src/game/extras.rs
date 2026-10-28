@@ -31,28 +31,11 @@ pub(super) struct ExtrasState {
 const MINIMAP_BUDGET: Duration = Duration::from_micros(300);
 
 impl Game<'_> {
-    fn extras_now(&self) -> f64 {
-        self.started.elapsed().as_secs_f64()
-    }
-    /// Mouse buttons while playing, for mods' clicks.
-    pub(super) fn extras_mouse(&mut self, button: MouseButton, pressed: bool) {
-        let i = match button {
-            MouseButton::Left => 0,
-            MouseButton::Right => 1,
-            _ => return,
-        };
-        self.extras.mouse[i] = pressed;
-        // For mods (`input.clicks-per-second`).
-        if pressed && self.mods.running() {
-            let now = self.extras_now();
-            self.extras.cps[i].click(now);
-        }
-    }
     /// Once per frame: the frame's time, and keys let go behind screens.
     pub(super) fn extras_frame(&mut self, elapsed: Duration) {
         // Under agent control the window may lack focus without pausing.
-        let focused = self.focused || self.control.is_some();
-        let playing = self.screen == Screen::Playing && self.title.is_none() && focused;
+        let focused = self.focused || self.front.control.is_some();
+        let playing = self.screen == Screen::Playing && self.front.title.is_none() && focused;
         if !playing {
             self.extras.mouse = [false; 2];
         }
@@ -65,48 +48,12 @@ impl Game<'_> {
             self.extras.fps.clear();
         }
     }
-    /// The frame counter for mods: fps, min, 1% low.
-    #[cfg(feature = "mods")]
-    pub(super) fn frame_reading(&self) -> (u32, u32, u32) {
-        let r = self.extras.fps.reading();
-        (r.fps, r.min, r.low)
-    }
-    /// Attack and use clicks in the last second, and whether each is held.
-    #[cfg(feature = "mods")]
-    pub(super) fn mouse_reading(&mut self) -> ((u32, u32), [bool; 2]) {
-        let now = self.extras_now();
-        let [l, r] = &mut self.extras.cps;
-        let cps = (l.per_second(now) as u32, r.per_second(now) as u32);
-        (cps, self.extras.mouse)
-    }
-    /// Auto-reconnect: a connection to `address` as `name` starts.
-    pub(super) fn extras_connecting(&mut self, address: &str, name: &str) {
-        self.extras.reconnect.connecting(address, name);
-    }
-    /// Auto-reconnect: the server let the player in.
-    pub(super) fn extras_joined(&mut self) {
-        self.extras.reconnect.joined(std::time::Instant::now());
-    }
-    /// Auto-reconnect: the player left the server on purpose.
-    pub(super) fn extras_left(&mut self) {
-        self.extras.reconnect.reset();
-    }
-    /// Auto-reconnect's next attempt after a disconnect, when it is on and
-    /// the reason allows one.
-    pub(super) fn reconnect_after(&mut self, reason: &str, from_server: bool) -> Option<Retry> {
-        if !self.settings.extras.auto_reconnect {
-            self.extras.reconnect.reset();
-            return None;
-        }
-        let now = std::time::Instant::now();
-        self.extras.reconnect.ended(reason, from_server, now)
-    }
     /// Show the attempt's countdown on the Disconnected screen.
     pub(super) fn offer_reconnect(&mut self, retry: Option<Retry>) {
         let Some(retry) = retry else {
             return;
         };
-        if let Some(title) = self.title.as_mut()
+        if let Some(title) = self.front.title.as_mut()
             && let Mode::Multiplayer(multiplayer::Screen::Disconnected { retry: slot, .. }) =
                 &mut title.mode
         {
@@ -123,7 +70,7 @@ impl Game<'_> {
     /// takes it from `auth::current()`, held in memory for the whole run
     /// (the launcher's session file is gone after the first read).
     pub(super) fn extras_retry(&mut self) -> horizon_client::Result<()> {
-        if let Some(retry) = self.title.as_mut().and_then(|t| t.due_retry()) {
+        if let Some(retry) = self.front.title.as_mut().and_then(|t| t.due_retry()) {
             self.connect_server(&retry.address, &retry.name)?;
         }
         Ok(())
@@ -132,7 +79,7 @@ impl Game<'_> {
     /// in GUI pixels and its view of the player.
     fn minimap_shown(&self) -> Option<(Corner, f32, View)> {
         let p = self.player.as_ref()?;
-        if self.title.is_some() || self.ui.hide_gui {
+        if self.front.title.is_some() || self.ui.hide_gui {
             return None;
         }
         let m = self.mod_minimap()?;
@@ -174,10 +121,11 @@ impl Game<'_> {
         };
         // The chunks the image can reach (its corners when it turns).
         let reach = minimap::SIZE as f32 / 2.0 * view.blocks_per_pixel * std::f32::consts::SQRT_2;
-        let radius = ((reach / 16.0).ceil() as i32 + 1).min(self.settings.render_distance.max(2));
-        self.extras.minimap.update(
-            &self.world,
-            self.res.facts(),
+        let radius =
+            ((reach / 16.0).ceil() as i32 + 1).min(self.sim.settings.render_distance.max(2));
+        self.sim.extras.minimap.update(
+            &self.sim.world,
+            self.sim.res.facts(),
             (bx >> 4, bz >> 4),
             radius,
             layer,
@@ -186,11 +134,14 @@ impl Game<'_> {
         if !self.extras.minimap.compose(view) {
             return;
         }
-        let Some(rect) = self.gui.atlas.sprites.get(MINIMAP_SPRITE).copied() else {
+        let Some(rect) = self.front.gui.atlas.sprites.get(MINIMAP_SPRITE).copied() else {
             return;
         };
-        let (w, h) = (self.gui.atlas.width as f32, self.gui.atlas.height as f32);
-        self.map_patches.push(horizon_client::font::Patch {
+        let (w, h) = (
+            self.front.gui.atlas.width as f32,
+            self.front.gui.atlas.height as f32,
+        );
+        self.front.map_patches.push(horizon_client::font::Patch {
             x: (rect.u0 * w).round() as u32,
             y: (rect.v0 * h).round() as u32,
             width: minimap::SIZE as u32,
@@ -233,7 +184,7 @@ impl Game<'_> {
         }
         let visible = |corner| !(self.debug && corner == Corner::TopLeft);
         let mut corners = Corners::new(batch.width, batch.height, self.effect_rows_height());
-        let atlas = &self.gui.atlas;
+        let atlas = &self.front.gui.atlas;
         if let Some((map_corner, map_size, view)) = map
             && visible(map_corner)
             && !self.extras.minimap.image.is_empty()
@@ -256,6 +207,61 @@ impl Game<'_> {
         if mod_panels {
             self.draw_mod_panels(batch, &mut corners);
         }
+    }
+}
+impl crate::game::Sim<'_> {
+    fn extras_now(&self) -> f64 {
+        self.started.elapsed().as_secs_f64()
+    }
+    /// Mouse buttons while playing, for mods' clicks.
+    pub(super) fn extras_mouse(&mut self, button: MouseButton, pressed: bool) {
+        let i = match button {
+            MouseButton::Left => 0,
+            MouseButton::Right => 1,
+            _ => return,
+        };
+        self.extras.mouse[i] = pressed;
+        // For mods (`input.clicks-per-second`).
+        if pressed && self.mods.running() {
+            let now = self.extras_now();
+            self.extras.cps[i].click(now);
+        }
+    }
+    /// The frame counter for mods: fps, min, 1% low.
+    #[cfg(feature = "mods")]
+    pub(super) fn frame_reading(&self) -> (u32, u32, u32) {
+        let r = self.extras.fps.reading();
+        (r.fps, r.min, r.low)
+    }
+    /// Attack and use clicks in the last second, and whether each is held.
+    #[cfg(feature = "mods")]
+    pub(super) fn mouse_reading(&mut self) -> ((u32, u32), [bool; 2]) {
+        let now = self.extras_now();
+        let [l, r] = &mut self.extras.cps;
+        let cps = (l.per_second(now) as u32, r.per_second(now) as u32);
+        (cps, self.extras.mouse)
+    }
+    /// Auto-reconnect: a connection to `address` as `name` starts.
+    pub(super) fn extras_connecting(&mut self, address: &str, name: &str) {
+        self.extras.reconnect.connecting(address, name);
+    }
+    /// Auto-reconnect: the server let the player in.
+    pub(super) fn extras_joined(&mut self) {
+        self.extras.reconnect.joined(std::time::Instant::now());
+    }
+    /// Auto-reconnect: the player left the server on purpose.
+    pub(super) fn extras_left(&mut self) {
+        self.extras.reconnect.reset();
+    }
+    /// Auto-reconnect's next attempt after a disconnect, when it is on and
+    /// the reason allows one.
+    pub(super) fn reconnect_after(&mut self, reason: &str, from_server: bool) -> Option<Retry> {
+        if !self.settings.extras.auto_reconnect {
+            self.extras.reconnect.reset();
+            return None;
+        }
+        let now = std::time::Instant::now();
+        self.extras.reconnect.ended(reason, from_server, now)
     }
     /// The height the status effect icons take at the top right
     /// (`Hud.extractEffects`: beneficial at y 1, harmful at y 26).

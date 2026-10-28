@@ -12,15 +12,6 @@ const TOTEM: &str = "minecraft:totem_of_undying";
 pub(super) const TOTEM_EVENT: i8 = 35;
 
 impl Game<'_> {
-    /// Whether either hand holds a totem, for the next hurt: the window's
-    /// player once a tick, a server's player for each of its turns.
-    pub(super) fn update_totem_ready(&mut self) {
-        let ready = self.held().is_some_and(|s| &*s.item == TOTEM)
-            || self.offhand.as_ref().is_some_and(|s| &*s.item == TOTEM);
-        if let Some(p) = self.player.as_mut() {
-            p.health.totem_ready = ready;
-        }
-    }
     /// The server's half once a totem fired: use it up (main hand first),
     /// count it, set health to 1, then clear and apply its effects. Returns
     /// the player's body, for entity event 35, which the caller broadcasts.
@@ -83,6 +74,17 @@ impl Game<'_> {
                 .entity_event(host.host_entity, TOTEM_EVENT, body.at);
         }
         self.totem_event(body, true);
+    }
+}
+impl crate::game::Sim<'_> {
+    /// Whether either hand holds a totem, for the next hurt: the window's
+    /// player once a tick, a server's player for each of its turns.
+    pub(super) fn update_totem_ready(&mut self) {
+        let ready = self.held().is_some_and(|s| &*s.item == TOTEM)
+            || self.offhand.as_ref().is_some_and(|s| &*s.item == TOTEM);
+        if let Some(p) = self.player.as_mut() {
+            p.health.totem_ready = ready;
+        }
     }
     /// Entity event 35 from a server, for this client's own player or an
     /// entity it draws.

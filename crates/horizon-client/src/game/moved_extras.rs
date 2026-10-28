@@ -5,7 +5,9 @@
 //! it fails (offline), the game tries again at the next start.
 
 #[cfg(not(feature = "mods"))]
-impl super::Game<'_> {
+impl super::Game<'_> {}
+#[cfg(not(feature = "mods"))]
+impl crate::game::Sim<'_> {
     pub(super) fn start_moved_extras(&mut self) {}
     pub(super) fn poll_moved_extras(&mut self) {}
 }
@@ -80,16 +82,22 @@ mod with_mods {
                 for (m, result) in done {
                     match result {
                         Ok(()) => {
-                            self.settings.extras.moved.push(m.id.to_owned());
-                            self.settings.mods.enabled.insert(m.id.to_owned());
+                            self.sim.settings.extras.moved.push(m.id.to_owned());
+                            self.sim.settings.mods.enabled.insert(m.id.to_owned());
                             // The install wrote the key to horizon-mods.txt;
                             // the settings save below must keep it.
-                            let keys = self.settings.mods.keys.entry(m.id.to_owned()).or_default();
-                            for (name, key) in m.keys(&self.settings.extras) {
+                            let keys = self
+                                .sim
+                                .settings
+                                .mods
+                                .keys
+                                .entry(m.id.to_owned())
+                                .or_default();
+                            for (name, key) in m.keys(&self.sim.settings.extras) {
                                 keys.entry(name.to_owned()).or_insert(key);
                             }
-                            self.settings.mods.keys.retain(|_, k| !k.is_empty());
-                            self.mods.moved.notices.push(Text::literal(m.notice()));
+                            self.sim.settings.mods.keys.retain(|_, k| !k.is_empty());
+                            self.sim.mods.moved.notices.push(Text::literal(m.notice()));
                             installed = true;
                         }
                         Err(e) => {
@@ -109,7 +117,9 @@ mod with_mods {
                     self.start_mods();
                 }
             }
-            if !self.mods.moved.notices.is_empty() && self.player.is_some() && self.title.is_none()
+            if !self.mods.moved.notices.is_empty()
+                && self.player.is_some()
+                && self.front.title.is_none()
             {
                 for line in std::mem::take(&mut self.mods.moved.notices) {
                     self.system_message(line);

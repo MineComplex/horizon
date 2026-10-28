@@ -17,16 +17,19 @@ pub(super) struct ModUse {
 
 #[cfg(not(feature = "mods"))]
 impl Game<'_> {
+    pub(super) fn mod_key(&mut self, _key: KeyCode, _pressed: bool, _repeat: bool) {}
+    pub(super) fn mod_zoom(&self) -> Option<ModZoom> {
+        None
+    }
+}
+#[cfg(not(feature = "mods"))]
+impl crate::game::Sim<'_> {
     pub(super) fn mod_use(&mut self, _button: MouseButton, _pressed: bool) -> bool {
         false
     }
-    pub(super) fn mod_key(&mut self, _key: KeyCode, _pressed: bool, _repeat: bool) {}
     pub(super) fn mod_mouse_key(&mut self, _button: MouseButton, _pressed: bool) {}
     pub(super) fn mod_wheel(&mut self, _steps: f32) -> bool {
         false
-    }
-    pub(super) fn mod_zoom(&self) -> Option<ModZoom> {
-        None
     }
     pub(super) fn mod_minimap(&self) -> Option<ModMinimap> {
         None
@@ -63,6 +66,64 @@ pub(super) struct ModFarTerrain {
 
 #[cfg(feature = "mods")]
 impl Game<'_> {
+    /// A key went down or up: a mod's registered key while playing (no
+    /// screen) is its `key-down` / `key-up`. Vanilla's mapping on the same
+    /// key still runs.
+    pub(super) fn mod_key(&mut self, key: KeyCode, pressed: bool, repeat: bool) {
+        if repeat || !self.mods.mods.has_keys() {
+            return;
+        }
+        // Over an item on a container screen, the mods' keys are `browser`
+        // events (a recipe viewer's R and U).
+        if pressed
+            && self.screen == Screen::Inventory
+            && self.front.title.is_none()
+            && !self.mod_browser_typing()
+            && let Some(name) = horizon_client::keybinds::key_name(key)
+            && let Some(stack) = self.mod_browser_pointed()
+        {
+            self.mods.mods.browser_key(name, &stack);
+            return;
+        }
+        if pressed && (self.screen != Screen::Playing || self.front.title.is_some()) {
+            return;
+        }
+        if let Some(name) = horizon_client::keybinds::key_name(key) {
+            self.mods.mods.key(name, pressed);
+        }
+    }
+    /// Playing, with nothing over the world: mods' keys and zoom apply.
+    fn mod_playing(&self) -> bool {
+        self.screen == Screen::Playing
+            && self.front.title.is_none()
+            && self.sign_edit.is_none()
+            && self.book.is_none()
+    }
+    /// Once a frame, before the mods run: a screen that opened lets their
+    /// held keys up.
+    pub(super) fn mod_input_frame(&mut self) {
+        let playing = self.mod_playing();
+        if self.mods.playing && !playing {
+            self.mods.mods.release_keys();
+        }
+        self.mods.playing = playing;
+    }
+    /// The strongest zoom a mod asks for, while playing; the spyglass's
+    /// own view wins.
+    pub(super) fn mod_zoom(&self) -> Option<ModZoom> {
+        if !self.mod_playing() || self.scoping() {
+            return None;
+        }
+        let z = self.mods.mods.zoom()?;
+        Some(ModZoom {
+            factor: z.factor,
+            smooth: z.smooth,
+            turn: z.turn,
+        })
+    }
+}
+#[cfg(feature = "mods")]
+impl crate::game::Sim<'_> {
     /// The main hand's stack as `input` shows it; none when it is empty.
     pub(super) fn mod_held(&self) -> Option<HeldItem> {
         let stack = self.inventory.get(self.selected)?.as_ref()?;
@@ -114,32 +175,6 @@ impl Game<'_> {
             self.stop_mod_use();
         }
     }
-    /// A key went down or up: a mod's registered key while playing (no
-    /// screen) is its `key-down` / `key-up`. Vanilla's mapping on the same
-    /// key still runs.
-    pub(super) fn mod_key(&mut self, key: KeyCode, pressed: bool, repeat: bool) {
-        if repeat || !self.mods.mods.has_keys() {
-            return;
-        }
-        // Over an item on a container screen, the mods' keys are `browser`
-        // events (a recipe viewer's R and U).
-        if pressed
-            && self.screen == Screen::Inventory
-            && self.title.is_none()
-            && !self.mod_browser_typing()
-            && let Some(name) = horizon_client::keybinds::key_name(key)
-            && let Some(stack) = self.mod_browser_pointed()
-        {
-            self.mods.mods.browser_key(name, &stack);
-            return;
-        }
-        if pressed && (self.screen != Screen::Playing || self.title.is_some()) {
-            return;
-        }
-        if let Some(name) = horizon_client::keybinds::key_name(key) {
-            self.mods.mods.key(name, pressed);
-        }
-    }
     /// A mouse button while playing: a mod's key bound to it
     /// (`key.mouse.4`...), as `mod_key`.
     pub(super) fn mod_mouse_key(&mut self, button: MouseButton, pressed: bool) {
@@ -152,35 +187,6 @@ impl Game<'_> {
     /// hotbar doesn't move.
     pub(super) fn mod_wheel(&mut self, steps: f32) -> bool {
         self.mods.mods.wheel(steps)
-    }
-    /// Playing, with nothing over the world: mods' keys and zoom apply.
-    fn mod_playing(&self) -> bool {
-        self.screen == Screen::Playing
-            && self.title.is_none()
-            && self.sign_edit.is_none()
-            && self.book.is_none()
-    }
-    /// Once a frame, before the mods run: a screen that opened lets their
-    /// held keys up.
-    pub(super) fn mod_input_frame(&mut self) {
-        let playing = self.mod_playing();
-        if self.mods.playing && !playing {
-            self.mods.mods.release_keys();
-        }
-        self.mods.playing = playing;
-    }
-    /// The strongest zoom a mod asks for, while playing; the spyglass's
-    /// own view wins.
-    pub(super) fn mod_zoom(&self) -> Option<ModZoom> {
-        if !self.mod_playing() || self.scoping() {
-            return None;
-        }
-        let z = self.mods.mods.zoom()?;
-        Some(ModZoom {
-            factor: z.factor,
-            smooth: z.smooth,
-            turn: z.turn,
-        })
     }
     /// The minimap the first mod showing one asks for.
     pub(super) fn mod_minimap(&self) -> Option<ModMinimap> {

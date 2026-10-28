@@ -52,21 +52,6 @@ struct Drag {
 }
 
 impl Game<'_> {
-    /// The open screen is one the tweaks run in, with the extra on.
-    pub(super) fn tweaks_on(&self) -> bool {
-        if !self.settings.extras.mouse_tweaks
-            || self.screen != Screen::Inventory
-            || self.station.is_some()
-            || self.mount_active()
-        {
-            return false;
-        }
-        if self.remote.is_some() {
-            self.remote_storage_open()
-        } else {
-            matches!(self.container_kind(), None | Some(BlockEntity::Chest(_)))
-        }
-    }
     /// One ordinary click on a game slot. False when nothing took it.
     pub(super) fn tweak_click(&mut self, slot: usize, button: i32, input: Input) -> bool {
         if self.remote.is_some() {
@@ -104,7 +89,7 @@ impl Game<'_> {
             };
             self.tweak_place(&mut drag, slot);
             self.inv_drag = None;
-            self.inv_clicks.skip_release();
+            self.front.inv_clicks.skip_release();
             self.tweaks.drag = Some(drag);
             return true;
         }
@@ -159,7 +144,7 @@ impl Game<'_> {
                     if !drag.active {
                         drag.active = true;
                         self.inv_drag = None;
-                        self.inv_clicks.skip_release();
+                        self.front.inv_clicks.skip_release();
                     }
                     if shift {
                         self.tweak_click(slot, 0, Input::QuickMove);
@@ -182,10 +167,6 @@ impl Game<'_> {
         let owned = drag.active || active;
         self.tweaks.drag = Some(drag);
         owned
-    }
-    /// The button went up: the drag ends.
-    pub(super) fn tweak_release(&mut self) {
-        self.tweaks.drag = None;
     }
     /// The wheel over an inventory screen: true when the tweaks used it.
     pub(super) fn tweak_scroll(&mut self, delta: f32, slot: Option<usize>) -> bool {
@@ -279,6 +260,27 @@ impl Game<'_> {
         }
     }
 }
+impl crate::game::Sim<'_> {
+    /// The open screen is one the tweaks run in, with the extra on.
+    pub(super) fn tweaks_on(&self) -> bool {
+        if !self.settings.extras.mouse_tweaks
+            || self.screen != Screen::Inventory
+            || self.station.is_some()
+            || self.mount_active()
+        {
+            return false;
+        }
+        if self.remote.is_some() {
+            self.remote_storage_open()
+        } else {
+            matches!(self.container_kind(), None | Some(BlockEntity::Chest(_)))
+        }
+    }
+    /// The button went up: the drag ends.
+    pub(super) fn tweak_release(&mut self) {
+        self.tweaks.drag = None;
+    }
+}
 
 impl Game<'_> {
     /// The sort buttons of the open screen, with the extra on: their
@@ -322,10 +324,10 @@ impl Game<'_> {
     /// The sort buttons: a bordered square with three bars, lighter under
     /// the cursor.
     pub(super) fn draw_sort_buttons(&self, batch: &mut HudBatch, ox: f32, oy: f32) {
-        let atlas = &self.gui.atlas;
+        let atlas = &self.front.gui.atlas;
         for ((x, y), _) in self.sort_buttons() {
             let (x, y) = (ox + x, oy + y);
-            let (cx, cy) = self.cursor;
+            let (cx, cy) = self.front.cursor;
             let hovered = cx >= x && cx < x + SORT_BUTTON && cy >= y && cy < y + SORT_BUTTON;
             let face = if hovered {
                 rgba(220, 220, 220, 255)
@@ -349,12 +351,12 @@ impl Game<'_> {
     }
     /// A left press on a sort button sorts its slots (true).
     pub(super) fn sort_press(&mut self) -> bool {
-        let Some(r) = self.renderer.as_ref() else {
+        let Some(r) = self.front.renderer.as_ref() else {
             return false;
         };
         let batch = HudBatch::new([r.config.width, r.config.height]);
         let (ox, oy) = self.inventory_origin(&batch);
-        let (cx, cy) = self.cursor;
+        let (cx, cy) = self.front.cursor;
         let hit = self.sort_buttons().into_iter().find(|((x, y), _)| {
             let (x, y) = (ox + x, oy + y);
             cx >= x && cx < x + SORT_BUTTON && cy >= y && cy < y + SORT_BUTTON
@@ -400,7 +402,7 @@ impl Game<'_> {
         let clicks = {
             let names = |id: &str| self.pack.names.display_item(id);
             let rank = |s: &ItemStack| {
-                let order = self.creative_screen.order_of(s).unwrap_or(usize::MAX);
+                let order = self.front.creative_screen.order_of(s).unwrap_or(usize::MAX);
                 (order, hover_name(&names, s))
             };
             let max = |s: &ItemStack| self.max_stack(s);

@@ -1291,67 +1291,6 @@ impl worlds::Host for PluginCtx<'_, '_> {
 // Entities.
 
 impl Game<'_> {
-    /// Every entity of the level in place a plugin may name.
-    pub(super) fn plugin_targets(&self) -> Vec<Target> {
-        let mut out = Vec::new();
-        if let Some(h) = self.lan.as_ref() {
-            out.extend(
-                h.hub
-                    .guests
-                    .iter()
-                    .filter(|g| g.placed && g.dimension == self.dim.id())
-                    .map(|g| Target::Guest(g.conn)),
-            );
-        }
-        out.extend(self.mobs.iter().map(|m| Target::Mob(m.id)));
-        out.extend(self.dropped.iter().map(|i| Target::Item(i.id)));
-        out.extend(self.orbs.iter().map(|o| Target::Orb(o.id)));
-        out.extend(
-            self.creatures
-                .projectiles
-                .iter()
-                .map(|p| Target::Projectile(p.id)),
-        );
-        out.extend(self.armor_stands.iter().map(|a| Target::Stand(a.id)));
-        out.extend(self.item_frames.iter().map(|f| Target::Frame(f.id)));
-        out.extend(self.paintings.iter().map(|p| Target::Painting(p.id)));
-        out.extend(self.crystals.iter().map(|c| Target::Crystal(c.id)));
-        if let Some(d) = &self.dragon {
-            out.push(Target::Dragon(d.id));
-        }
-        out.extend(self.boats.iter().map(|b| Target::Boat(b.id)));
-        out.extend(self.carts.iter().map(|c| Target::Cart(c.id)));
-        out.extend(self.others.iter().map(|o| Target::Other(o.id)));
-        out
-    }
-    /// The network id plugins know a target by.
-    pub(super) fn plugin_target_id(&self, t: Target) -> Option<i32> {
-        Some(match t {
-            Target::Player => {
-                let conn = self.lan_acting?;
-                self.lan.as_ref()?.hub.guest(conn)?.entity_id
-            }
-            Target::Guest(conn) => self.lan.as_ref()?.hub.guest(conn)?.entity_id,
-            Target::Mob(id)
-            | Target::Item(id)
-            | Target::Stand(id)
-            | Target::Frame(id)
-            | Target::Painting(id)
-            | Target::Boat(id)
-            | Target::Cart(id)
-            | Target::Other(id)
-            | Target::Crystal(id)
-            | Target::Dragon(id) => id as i32,
-            Target::Orb(id) => id as i32,
-            Target::Projectile(id) => id as i32,
-        })
-    }
-    /// The target with a network id, in the level in place.
-    pub(super) fn plugin_target(&self, id: i32) -> Option<Target> {
-        self.plugin_targets()
-            .into_iter()
-            .find(|t| self.plugin_target_id(*t) == Some(id))
-    }
     /// An entity as a plugin reads it.
     pub(super) fn plugin_entity(&mut self, t: Target) -> Option<entities::Entity> {
         let id = self.plugin_target_id(t)?;
@@ -1447,6 +1386,69 @@ impl Game<'_> {
             tags,
             player: player.map(uuid_str),
         })
+    }
+}
+impl crate::game::Sim<'_> {
+    /// Every entity of the level in place a plugin may name.
+    pub(super) fn plugin_targets(&self) -> Vec<Target> {
+        let mut out = Vec::new();
+        if let Some(h) = self.lan.as_ref() {
+            out.extend(
+                h.hub
+                    .guests
+                    .iter()
+                    .filter(|g| g.placed && g.dimension == self.dim.id())
+                    .map(|g| Target::Guest(g.conn)),
+            );
+        }
+        out.extend(self.mobs.iter().map(|m| Target::Mob(m.id)));
+        out.extend(self.dropped.iter().map(|i| Target::Item(i.id)));
+        out.extend(self.orbs.iter().map(|o| Target::Orb(o.id)));
+        out.extend(
+            self.creatures
+                .projectiles
+                .iter()
+                .map(|p| Target::Projectile(p.id)),
+        );
+        out.extend(self.armor_stands.iter().map(|a| Target::Stand(a.id)));
+        out.extend(self.item_frames.iter().map(|f| Target::Frame(f.id)));
+        out.extend(self.paintings.iter().map(|p| Target::Painting(p.id)));
+        out.extend(self.crystals.iter().map(|c| Target::Crystal(c.id)));
+        if let Some(d) = &self.dragon {
+            out.push(Target::Dragon(d.id));
+        }
+        out.extend(self.boats.iter().map(|b| Target::Boat(b.id)));
+        out.extend(self.carts.iter().map(|c| Target::Cart(c.id)));
+        out.extend(self.others.iter().map(|o| Target::Other(o.id)));
+        out
+    }
+    /// The network id plugins know a target by.
+    pub(super) fn plugin_target_id(&self, t: Target) -> Option<i32> {
+        Some(match t {
+            Target::Player => {
+                let conn = self.lan_acting?;
+                self.lan.as_ref()?.hub.guest(conn)?.entity_id
+            }
+            Target::Guest(conn) => self.lan.as_ref()?.hub.guest(conn)?.entity_id,
+            Target::Mob(id)
+            | Target::Item(id)
+            | Target::Stand(id)
+            | Target::Frame(id)
+            | Target::Painting(id)
+            | Target::Boat(id)
+            | Target::Cart(id)
+            | Target::Other(id)
+            | Target::Crystal(id)
+            | Target::Dragon(id) => id as i32,
+            Target::Orb(id) => id as i32,
+            Target::Projectile(id) => id as i32,
+        })
+    }
+    /// The target with a network id, in the level in place.
+    pub(super) fn plugin_target(&self, id: i32) -> Option<Target> {
+        self.plugin_targets()
+            .into_iter()
+            .find(|t| self.plugin_target_id(*t) == Some(id))
     }
 }
 

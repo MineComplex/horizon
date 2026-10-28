@@ -43,7 +43,7 @@ impl Game<'_> {
         if shown == 0 {
             return false;
         }
-        let (wheel_x, wheel_y) = self.bundle_mouse.wheel.on_mouse_scroll(x, y);
+        let (wheel_x, wheel_y) = self.front.bundle_mouse.wheel.on_mouse_scroll(x, y);
         let wheel = if wheel_y == 0 { -wheel_x } else { wheel_y };
         if wheel != 0 {
             let selected = bundle.data().map_or(-1, |d| d.bundle_selected.0);
@@ -94,7 +94,7 @@ impl Game<'_> {
         } else {
             None
         };
-        if let Some(left) = std::mem::replace(&mut self.bundle_mouse.hovered, now)
+        if let Some(left) = std::mem::replace(&mut self.front.bundle_mouse.hovered, now)
             && Some(left) != now
         {
             self.unselect_bundle(left);
