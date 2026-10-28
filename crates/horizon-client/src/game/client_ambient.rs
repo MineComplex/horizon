@@ -13,12 +13,12 @@ use horizon_core::{geometry::Vec3, random::RandomSource};
 
 impl Game<'_> {
     pub(super) fn tick_client_ambient(&mut self) {
-        if self.sim.serving.is_some() || self.sim.options.dedicated.is_some() {
+        if self.serving.is_some() || self.options.dedicated.is_some() {
             return;
         }
         let mut events = Vec::new();
-        let random = self.sim.particles.level_random();
-        for m in self.sim.mobs.iter_mut().filter(|m| !m.removed) {
+        let random = self.particles.level_random();
+        for m in self.mobs.iter_mut().filter(|m| !m.removed) {
             ambient::client_ai_step(m, &mut events);
             ambient::client_particles(m, random, &mut events);
         }
@@ -129,8 +129,7 @@ impl Game<'_> {
             );
         }
     }
-}
-impl crate::game::Sim<'_> {
+
     /// `LivingEntity.tickEffects` on a client: the swirls around an entity
     /// with visible effects, from the particles its synched data lists. The
     /// window's player has its own effects, a server's mobs and players the

@@ -440,11 +440,11 @@ impl Game<'_> {
     /// and the held stack, as `VanillaDispenserOracle.use` prints them.
     fn fixture_use(&mut self, pos: BlockPos, op: &Value) -> Result<Vec<String>> {
         let stack = parse_stack(op["item"].as_str().unwrap_or("-"))?;
-        self.sim.creative = op["creative"].as_bool().unwrap_or(false);
-        self.sim.inventory[self.sim.selected] = stack.clone();
+        self.creative = op["creative"].as_bool().unwrap_or(false);
+        self.inventory[self.selected] = stack.clone();
         let used_before = stack
             .as_ref()
-            .map_or(0, |s| self.sim.stats.get("used", &s.item));
+            .map_or(0, |s| self.stats.get("used", &s.item));
         let at = [pos.x, pos.y, pos.z];
         let mut consumed = self.use_composter(at, stack.as_ref());
         if !consumed {
@@ -522,16 +522,16 @@ impl Game<'_> {
         player.health.food.food = op["food"].as_i64().unwrap_or(20) as i32;
         self.player = Some(player);
         self.yaw = op["yaw"].as_f64().unwrap_or(0.0) as f32;
-        self.sim.pitch = 90.0;
-        self.sim.keys.clear();
+        self.pitch = 90.0;
+        self.keys.clear();
         if op["sneaking"].as_bool().unwrap_or(false) {
-            self.sim.keys.insert(KeyCode::ShiftLeft);
+            self.keys.insert(KeyCode::ShiftLeft);
         }
-        self.sim.using = None;
-        self.sim.inventory[self.sim.selected] = stack.clone();
-        self.sim.offhand = parse_stack(op["offhand"].as_str().unwrap_or("-"))?;
+        self.using = None;
+        self.inventory[self.selected] = stack.clone();
+        self.offhand = parse_stack(op["offhand"].as_str().unwrap_or("-"))?;
         // The used statistic of each item held, once.
-        let mut items: Vec<_> = [stack.as_ref(), self.sim.offhand.as_ref()]
+        let mut items: Vec<_> = [stack.as_ref(), self.offhand.as_ref()]
             .into_iter()
             .flatten()
             .map(|s| s.item.clone())
@@ -629,16 +629,16 @@ impl Game<'_> {
         player.fall_distance = op["fall"].as_f64().unwrap_or(0.0);
         player.fall_flying = op["fall_flying"].as_bool().unwrap_or(false);
         player.flying = op["flying"].as_bool().unwrap_or(false);
-        player.may_fly = self.sim.creative;
+        player.may_fly = self.creative;
         if !op["impact"].is_null() {
             player.impulse.impact_position = Some(v3(&op["impact"]));
         }
         let feet = [player.position.x, player.position.y, player.position.z];
-        self.sim.player = Some(player);
-        self.sim.inventory[self.sim.selected] = stack.clone();
+        self.player = Some(player);
+        self.inventory[self.selected] = stack.clone();
         let used_before = stack
             .as_ref()
-            .map_or(0, |s| self.sim.stats.get("used", &s.item));
+            .map_or(0, |s| self.stats.get("used", &s.item));
         let Some(&Target::Mob(id)) = targets.first() else {
             return Err("an attack case hits a mob".into());
         };
@@ -718,80 +718,6 @@ impl Game<'_> {
         Ok(out)
     }
 
-    /// `Level.setBlock`, `destroyBlock` or `removeBlock` on the case's block, or
-    /// a player mining it (`fixture_mine`).
-    fn fixture_remove(&mut self, origin: BlockPos, op: &Value) -> Result<Vec<String>> {
-        match op["op"].as_str().unwrap_or("") {
-            "set" => {
-                let state = BlockStateId(op["state"].as_u64().unwrap_or(0) as u32);
-                let flags = op["flags"].as_i64().unwrap_or(3) as i32;
-                self.with_level(|b, level, ticks| b.set_block(level, ticks, origin, state, flags));
-            }
-            "destroy" => {
-                let drop = op["drop"].as_bool().unwrap_or(true);
-                self.with_level(|b, level, ticks| b.destroy_block(level, ticks, origin, drop));
-            }
-            "remove" => {
-                self.with_level(|b, level, ticks| b.remove_block(level, ticks, origin, false));
-            }
-            "mine" => return self.fixture_mine(origin, op),
-            other => return Err(format!("unknown removal {other}").into()),
-        }
-        self.process_level_events()?;
-        Ok(Vec::new())
-    }
-
-    /// A survival player three blocks south of `pos` mines it holding the
-    /// case's item (`break_block`, which every player's mining goes through):
-    /// the statistics and the held stack, as `VanillaDispenserOracle.mine`
-    /// prints them.
-    fn fixture_mine(&mut self, pos: BlockPos, op: &Value) -> Result<Vec<String>> {
-        let stack = parse_stack(op["item"].as_str().unwrap_or("-"))?;
-        self.mode = GameMode::Survival;
-        self.creative = false;
-        self.player = Some(PlayerMotion::new(
-            self.motion,
-            horizon_core::geometry::Vec3::new(
-                f64::from(pos.x) + 0.5,
-                f64::from(pos.y) + 1.0,
-                f64::from(pos.z) + 3.5,
-            ),
-        )?);
-        self.sim.yaw = 0.0;
-        self.sim.pitch = 90.0;
-        self.sim.keys.clear();
-        self.sim.inventory[self.sim.selected] = stack.clone();
-        self.sim.offhand = None;
-        let state = self.sim.world.block(pos.x, pos.y, pos.z);
-        let block = self.sim.res.facts().get(state).name.clone();
-        let item = stack.as_ref().map(|s| s.item.clone());
-        let before = |game: &Self| {
-            let used = item.as_ref().map_or(0, |i| game.stats.get("used", i));
-            (used, game.stats.get("mined", &block))
-        };
-        let (used, mined) = before(self);
-        self.break_block([pos.x, pos.y, pos.z])?;
-        let (used_after, mined_after) = before(self);
-        let mut out = Vec::new();
-        if let Some(item) = &item
-            && used_after != used
-        {
-            out.push(format!("stat {item} minecraft:used {}", used_after - used));
-        }
-        if mined_after != mined {
-            out.push(format!(
-                "stat {block} minecraft:mined {}",
-                mined_after - mined
-            ));
-        }
-        out.push(format!(
-            "mine held {}",
-            canon_stack(self.inventory[self.selected].as_ref())
-        ));
-        Ok(out)
-    }
-}
-impl crate::game::Sim<'_> {
     /// A stack in a block entity's slot: a container's, a jukebox's record, a
     /// lectern's book, or the items of a block entity Horizon keeps as saved.
     fn fixture_fill(&mut self, p: (i32, i32, i32), slot: usize, stack: Option<ItemStack>) {
@@ -883,6 +809,79 @@ impl crate::game::Sim<'_> {
             other => *other = Tag::List(vec![item]),
         }
     }
+    /// `Level.setBlock`, `destroyBlock` or `removeBlock` on the case's block, or
+    /// a player mining it (`fixture_mine`).
+    fn fixture_remove(&mut self, origin: BlockPos, op: &Value) -> Result<Vec<String>> {
+        match op["op"].as_str().unwrap_or("") {
+            "set" => {
+                let state = BlockStateId(op["state"].as_u64().unwrap_or(0) as u32);
+                let flags = op["flags"].as_i64().unwrap_or(3) as i32;
+                self.with_level(|b, level, ticks| b.set_block(level, ticks, origin, state, flags));
+            }
+            "destroy" => {
+                let drop = op["drop"].as_bool().unwrap_or(true);
+                self.with_level(|b, level, ticks| b.destroy_block(level, ticks, origin, drop));
+            }
+            "remove" => {
+                self.with_level(|b, level, ticks| b.remove_block(level, ticks, origin, false));
+            }
+            "mine" => return self.fixture_mine(origin, op),
+            other => return Err(format!("unknown removal {other}").into()),
+        }
+        self.process_level_events()?;
+        Ok(Vec::new())
+    }
+
+    /// A survival player three blocks south of `pos` mines it holding the
+    /// case's item (`break_block`, which every player's mining goes through):
+    /// the statistics and the held stack, as `VanillaDispenserOracle.mine`
+    /// prints them.
+    fn fixture_mine(&mut self, pos: BlockPos, op: &Value) -> Result<Vec<String>> {
+        let stack = parse_stack(op["item"].as_str().unwrap_or("-"))?;
+        self.mode = GameMode::Survival;
+        self.creative = false;
+        self.player = Some(PlayerMotion::new(
+            self.motion,
+            horizon_core::geometry::Vec3::new(
+                f64::from(pos.x) + 0.5,
+                f64::from(pos.y) + 1.0,
+                f64::from(pos.z) + 3.5,
+            ),
+        )?);
+        self.yaw = 0.0;
+        self.pitch = 90.0;
+        self.keys.clear();
+        self.inventory[self.selected] = stack.clone();
+        self.offhand = None;
+        let state = self.world.block(pos.x, pos.y, pos.z);
+        let block = self.res.facts().get(state).name.clone();
+        let item = stack.as_ref().map(|s| s.item.clone());
+        let before = |game: &Self| {
+            let used = item.as_ref().map_or(0, |i| game.stats.get("used", i));
+            (used, game.stats.get("mined", &block))
+        };
+        let (used, mined) = before(self);
+        self.break_block([pos.x, pos.y, pos.z])?;
+        let (used_after, mined_after) = before(self);
+        let mut out = Vec::new();
+        if let Some(item) = &item
+            && used_after != used
+        {
+            out.push(format!("stat {item} minecraft:used {}", used_after - used));
+        }
+        if mined_after != mined {
+            out.push(format!(
+                "stat {block} minecraft:mined {}",
+                mined_after - mined
+            ));
+        }
+        out.push(format!(
+            "mine held {}",
+            canon_stack(self.inventory[self.selected].as_ref())
+        ));
+        Ok(out)
+    }
+
     /// `EntityType.create` and `snapTo` for one target: no spawn finalization.
     fn fixture_target(&mut self, e: &Value) -> Result<Target> {
         let kind = e["type"].as_str().unwrap_or("minecraft:pig");
@@ -970,6 +969,7 @@ impl crate::game::Sim<'_> {
         self.mobs.push(mob);
         Ok(Target::Mob(id))
     }
+
     /// `T` lines: removal, equipment by `EquipmentSlot`, shearing readiness, chests.
     fn fixture_describe(&self, index: usize, target: &Target) -> String {
         let mut line = format!("T {index} ");
@@ -1046,6 +1046,7 @@ impl crate::game::Sim<'_> {
         }
         line
     }
+
     /// `N` lines for every entity the dispenser added.
     fn fixture_entities(&self, old_mobs: &[u32], old_stands: &[u32], out: &mut Vec<String>) {
         let line = |kind: &str, p: [f64; 3], v: [f64; 3], extra: &str| {

@@ -202,32 +202,6 @@ impl Game<'_> {
         self.lan = Some(host);
     }
 
-    /// A projectile that hit a guest: its hit runs as theirs. False when
-    /// `id` is not a guest.
-    pub(super) fn lan_projectile_hit(&mut self, p: &Projectile, id: u32, at: Vec3) -> bool {
-        let Some(mut host) = self.lan.take() else {
-            return false;
-        };
-        let conn = host
-            .hub
-            .guests
-            .iter()
-            .find(|g| g.entity_id as u32 == id)
-            .map(|g| g.conn);
-        if let Some(conn) = conn {
-            self.guest_hit_by(&mut host, conn, |g| {
-                let hit = Hit::Entity {
-                    who: Who::Player,
-                    at,
-                };
-                let _ = g.projectile_hit(p, hit);
-            });
-        }
-        self.lan = Some(host);
-        conn.is_some()
-    }
-}
-impl crate::game::Sim<'_> {
     /// The guests' boxes for the blocks entities trigger (pressure plates,
     /// tripwires, detector rails): `Entity.checkInsideBlocks` and
     /// `Level.getEntities` see every player in the level, but not spectators
@@ -260,6 +234,7 @@ impl crate::game::Sim<'_> {
             .map(|g| (g.position, g.on_ground))
             .collect()
     }
+
     /// The guests a projectile can hit, under their entity ids.
     pub(super) fn lan_projectile_targets(&self) -> Vec<(Who, Aabb)> {
         let Some(host) = self.lan.as_ref() else {
@@ -271,6 +246,31 @@ impl crate::game::Sim<'_> {
             .filter(|g| host.hub.here(g) && g.loaded && !g.dead && !g.spectator())
             .map(|g| (Who::Mob(g.entity_id as u32), guest_bounds(g)))
             .collect()
+    }
+
+    /// A projectile that hit a guest: its hit runs as theirs. False when
+    /// `id` is not a guest.
+    pub(super) fn lan_projectile_hit(&mut self, p: &Projectile, id: u32, at: Vec3) -> bool {
+        let Some(mut host) = self.lan.take() else {
+            return false;
+        };
+        let conn = host
+            .hub
+            .guests
+            .iter()
+            .find(|g| g.entity_id as u32 == id)
+            .map(|g| g.conn);
+        if let Some(conn) = conn {
+            self.guest_hit_by(&mut host, conn, |g| {
+                let hit = Hit::Entity {
+                    who: Who::Player,
+                    at,
+                };
+                let _ = g.projectile_hit(p, hit);
+            });
+        }
+        self.lan = Some(host);
+        conn.is_some()
     }
 }
 
@@ -320,8 +320,7 @@ impl Game<'_> {
         self.send_guest_motion(host, conn, sent);
         Some(result)
     }
-}
-impl crate::game::Sim<'_> {
+
     /// ClientboundSetEntityMotionPacket to a guest about themselves.
     pub(super) fn send_guest_motion(&self, host: &LanHost, conn: u32, velocity: Option<Vec3>) {
         if let (Some(v), Some(g)) = (velocity, host.hub.guest(conn)) {
@@ -345,8 +344,7 @@ pub(super) struct Present {
     pub alive: bool,
 }
 
-impl Game<'_> {}
-impl crate::game::Sim<'_> {
+impl Game<'_> {
     /// Every guest in the world (`ServerLevel.getPlayers` past the host).
     pub(super) fn lan_present(&self) -> Vec<Present> {
         let guests = self

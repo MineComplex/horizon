@@ -31,6 +31,39 @@ fn num(n: impl std::fmt::Display) -> Text {
 }
 
 impl Game<'_> {
+    fn bossbar_path(&self) -> std::path::PathBuf {
+        self.world_root
+            .join("data/minecraft/custom_boss_events.dat")
+    }
+    pub(super) fn load_bossbars(&mut self) {
+        if self.bosses.loaded || self.remote.is_some() {
+            return;
+        }
+        self.bosses.loaded = true;
+        if let Some(root) = save::read_dat(&self.bossbar_path())
+            && let Some(data) = root.get("data")
+        {
+            self.bosses.bars = BossBars::unpack(data);
+        }
+        self.world_data.registries.bossbars = self.bosses.bars.ids();
+    }
+    pub(super) fn save_bossbars(&self) {
+        if !self.bosses.loaded || self.remote.is_some() {
+            return;
+        }
+        if self.bosses.bars.bars.is_empty() && !self.bossbar_path().exists() {
+            return;
+        }
+        if let Err(e) = save::write_dat(
+            &self.bossbar_path(),
+            Tag::compound([
+                ("data", self.bosses.bars.pack()),
+                ("DataVersion", Tag::Int(horizon_world::DATA_VERSION)),
+            ]),
+        ) {
+            log::warn!("boss bars were not written: {e}");
+        }
+    }
     pub(in crate::game) fn bossbar_exists(&self, id: &str) -> bool {
         self.bosses.bars.get(id).is_some()
     }
@@ -70,17 +103,16 @@ impl Game<'_> {
         match id {
             "bossbar.add" => {
                 let bar = Self::bar_id(ctx);
-                if self.sim.bosses.bars.get(&bar).is_some() {
+                if self.bosses.bars.get(&bar).is_some() {
                     return Err(err("commands.bossbar.create.failed", &[&bar]));
                 }
                 let name = self.component_json(ctx, "name")?;
-                self.sim.bosses.bars.add(&bar, name);
-                if let Some(b) = self.sim.bosses.bars.get_mut(&bar) {
+                self.bosses.bars.add(&bar, name);
+                if let Some(b) = self.bosses.bars.get_mut(&bar) {
                     // CustomBossEvents.create: Mth.createInsecureUUID(level.random).
-                    b.uuid = insecure_uuid(&mut self.sim.world.random);
+                    b.uuid = insecure_uuid(&mut self.world.random);
                 }
                 let shown = self
-                    .sim
                     .bosses
                     .bars
                     .get(&bar)
@@ -357,50 +389,6 @@ impl Game<'_> {
         }
         out
     }
-
-    // ---- ServerBossEvent delivery ------------------------------------------------
-
-    /// `ClientPacketListener.handleBossUpdate`.
-    pub(super) fn apply_boss_event(&mut self, packet: &play::BossEvent) {
-        self.front
-            .boss_overlay
-            .apply(packet, boss_overlay::now_millis());
-    }
-}
-impl crate::game::Sim<'_> {
-    fn bossbar_path(&self) -> std::path::PathBuf {
-        self.world_root
-            .join("data/minecraft/custom_boss_events.dat")
-    }
-    pub(super) fn load_bossbars(&mut self) {
-        if self.bosses.loaded || self.remote.is_some() {
-            return;
-        }
-        self.bosses.loaded = true;
-        if let Some(root) = save::read_dat(&self.bossbar_path())
-            && let Some(data) = root.get("data")
-        {
-            self.bosses.bars = BossBars::unpack(data);
-        }
-        self.world_data.registries.bossbars = self.bosses.bars.ids();
-    }
-    pub(super) fn save_bossbars(&self) {
-        if !self.bosses.loaded || self.remote.is_some() {
-            return;
-        }
-        if self.bosses.bars.bars.is_empty() && !self.bossbar_path().exists() {
-            return;
-        }
-        if let Err(e) = save::write_dat(
-            &self.bossbar_path(),
-            Tag::compound([
-                ("data", self.bosses.bars.pack()),
-                ("DataVersion", Tag::Int(horizon_world::DATA_VERSION)),
-            ]),
-        ) {
-            log::warn!("boss bars were not written: {e}");
-        }
-    }
     fn player_target_uuid(&self, target: Target) -> Option<[i32; 4]> {
         match target {
             Target::Player => Some(self.acting_uuid()),
@@ -414,6 +402,9 @@ impl crate::game::Sim<'_> {
             _ => None,
         }
     }
+
+    // ---- ServerBossEvent delivery ------------------------------------------------
+
     /// Tell every viewer the boss events they should be seeing. The window
     /// that simulates the world applies them to its own overlay; everyone
     /// else gets `ClientboundBossEventPacket`s.
@@ -626,6 +617,10 @@ impl crate::game::Sim<'_> {
             sent.insert(id, offer);
         }
         out
+    }
+    /// `ClientPacketListener.handleBossUpdate`.
+    pub(super) fn apply_boss_event(&mut self, packet: &play::BossEvent) {
+        self.boss_overlay.apply(packet, boss_overlay::now_millis());
     }
 }
 

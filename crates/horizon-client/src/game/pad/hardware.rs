@@ -155,43 +155,42 @@ impl Pads {
 impl Game<'_> {
     /// Controllers are turned off: dropping the DualSense's output frees its triggers.
     pub(super) fn pad_output_off(&mut self) {
-        self.front.pad.devices.output = None;
-        self.front.pad.devices.shown = None;
+        self.pad.devices.output = None;
+        self.pad.devices.shown = None;
     }
 
     /// After each poll: the DualSense's output opens once this window has the pad in hand, then
     /// shows what the game is doing; vibrations that are over stop.
     pub(super) fn pad_output_frame(&mut self) {
-        if self.front.pad.devices.dualsense
-            && self.front.pad.in_use
+        if self.pad.devices.dualsense
+            && self.pad.in_use
             && self.focused
-            && self.front.pad.devices.output.is_none()
+            && self.pad.devices.output.is_none()
         {
-            self.front.pad.devices.output = Some(horizon_dualsense::Link::start());
+            self.pad.devices.output = Some(horizon_dualsense::Link::start());
         }
         self.pad_haptics();
         self.pad_show();
         let now = Instant::now();
-        self.front.pad.devices.rumbles.retain(|(_, end)| *end > now);
+        self.pad.devices.rumbles.retain(|(_, end)| *end > now);
     }
 
     /// The DualSense's HID output, while it is the active pad, open, and this window has focus
     /// (another game on the same pad keeps it otherwise).
     fn pad_output(&self) -> Option<&horizon_dualsense::Link> {
-        let output = self.front.pad.devices.output.as_ref()?;
-        (self.front.pad.devices.dualsense && self.focused && output.open().is_some())
-            .then_some(output)
+        let output = self.pad.devices.output.as_ref()?;
+        (self.pad.devices.dualsense && self.focused && output.open().is_some()).then_some(output)
     }
 
     /// What the DualSense shows: while playing, its triggers feel what their actions do; in
     /// menus, paused, unfocused or with another pad active, they are free.
     fn pad_show(&mut self) {
-        if self.front.pad.devices.output.is_none() {
+        if self.pad.devices.output.is_none() {
             return;
         }
-        let playing = self.front.pad.devices.dualsense
+        let playing = self.pad.devices.dualsense
             && self.focused
-            && self.front.title.is_none()
+            && self.title.is_none()
             && self.screen == Screen::Playing
             && !self.pause;
         let (using, attacking) = if playing {
@@ -200,7 +199,7 @@ impl Game<'_> {
             (TriggerFeel::Free, TriggerFeel::Free)
         };
         // The lightbar follows the player; menus keep the last colour.
-        let in_world = self.front.title.is_none();
+        let in_world = self.title.is_none();
         let lightbar = match self.player.as_mut().filter(|_| in_world) {
             Some(p) => {
                 let max = p.attribute("minecraft:max_health").unwrap_or(20.0) as f32;
@@ -210,7 +209,7 @@ impl Game<'_> {
                     .lightbar
                     .colour(health, self.dim.id())
             }
-            None => self.front.pad.devices.shown.and_then(|s| s.lightbar),
+            None => self.pad.devices.shown.and_then(|s| s.lightbar),
         };
         let lights = self.settings.controller.lightbar != gamepad::Lightbar::Off;
         let state = horizon_dualsense::device::State {
@@ -218,11 +217,11 @@ impl Game<'_> {
             lightbar: lightbar.filter(|_| lights),
             player_leds: lights.then_some(horizon_dualsense::PLAYER_1),
         };
-        if self.front.pad.devices.shown != Some(state)
-            && let Some(output) = &self.front.pad.devices.output
+        if self.pad.devices.shown != Some(state)
+            && let Some(output) = &self.pad.devices.output
         {
             output.set(state);
-            self.front.pad.devices.shown = Some(state);
+            self.pad.devices.shown = Some(state);
         }
     }
 
@@ -256,133 +255,6 @@ impl Game<'_> {
         (using, attacking)
     }
 
-    /// Open the pad's haptics once its output is open over USB (its audio device is there
-    /// only then); close them when it goes. Opt-in with `HORIZON_DUALSENSE_HAPTICS=1` until
-    /// they are proven on a pad (docs/controllers.md); never for games without sound (tests).
-    fn pad_haptics(&mut self) {
-        let usb = self
-            .front
-            .pad
-            .devices
-            .output
-            .as_ref()
-            .and_then(|o| o.open())
-            == Some(horizon_dualsense::Transport::Usb);
-        if !usb {
-            self.front.pad.devices.haptics = None;
-            self.front.pad.devices.haptics_tried = false;
-        } else if !self.front.pad.devices.haptics_tried {
-            self.front.pad.devices.haptics_tried = true;
-            if std::env::var_os("HORIZON_DUALSENSE_HAPTICS").is_some_and(|v| v == "1")
-                && std::env::var_os("HORIZON_NO_AUDIO").is_none()
-            {
-                self.front.pad.devices.haptics = horizon_dualsense::haptics::Haptics::open();
-            }
-        }
-    }
-
-    /// Release the DualSense's output (the game is quitting).
-    pub(in crate::game) fn pad_close_output(&mut self) {
-        self.front.pad.devices.haptics = None;
-        self.front.pad.devices.output = None;
-    }
-
-    /// Play a vibration on the active pad: a DualSense through its own report, else gilrs' force
-    /// feedback, which platforms without it (gilrs on macOS) skip.
-    pub(super) fn pad_vibrate(&mut self, rumble: Rumble, pulse: gamepad::Pulse) {
-        let level = |v: f32| (v.clamp(0.0, 1.0) * 255.0).round() as u8;
-        if let Some(haptics) = self
-            .front
-            .pad
-            .devices
-            .haptics
-            .as_ref()
-            .filter(|_| self.pad_output().is_some())
-        {
-            let steps = rumble.shape().into_iter().map(|step| {
-                (
-                    step.strong,
-                    step.weak,
-                    Duration::from_millis(u64::from(step.millis)),
-                )
-            });
-            haptics.play(&steps.collect::<Vec<_>>());
-            return;
-        }
-        if let Some(output) = self.pad_output() {
-            let steps = rumble.shape().into_iter().map(|step| {
-                let length = Duration::from_millis(u64::from(step.millis));
-                ([level(step.strong), level(step.weak)], length)
-            });
-            output.rumble(steps.collect());
-            return;
-        }
-        let (Some(gilrs), Some(id)) = (
-            self.front.pad.devices.gilrs.as_mut(),
-            self.front.pad.devices.active,
-        ) else {
-            return;
-        };
-        if !gilrs
-            .connected_gamepad(id)
-            .is_some_and(|g| g.is_ff_supported())
-        {
-            return;
-        }
-        use gilrs::ff::{BaseEffect, BaseEffectType, EffectBuilder, Repeat, Replay, Ticks};
-        let length = Ticks::from_ms(pulse.millis);
-        let motor = |kind| BaseEffect {
-            kind,
-            scheduling: Replay {
-                play_for: length,
-                ..Default::default()
-            },
-            envelope: Default::default(),
-        };
-        let magnitude = |v: f32| (v.clamp(0.0, 1.0) * f32::from(u16::MAX)) as u16;
-        let effect = EffectBuilder::new()
-            .add_effect(motor(BaseEffectType::Strong {
-                magnitude: magnitude(pulse.strong),
-            }))
-            .add_effect(motor(BaseEffectType::Weak {
-                magnitude: magnitude(pulse.weak),
-            }))
-            .repeat(Repeat::For(length))
-            .gamepads(&[id])
-            .finish(gilrs);
-        match effect.and_then(|e| e.play().map(|()| e)) {
-            Ok(effect) => {
-                let end = Instant::now() + Duration::from_millis(u64::from(pulse.millis) + 50);
-                self.front.pad.devices.rumbles.push((effect, end));
-            }
-            Err(e) => log::debug!("Horizon: controller vibration: {e}"),
-        }
-    }
-
-    /// The hardware part of `pad status`.
-    pub(super) fn pad_devices_status(&self) -> Value {
-        let devices = &self.front.pad.devices;
-        let pads: Vec<Value> = devices.gilrs.as_ref().map_or(Vec::new(), |g| {
-            g.gamepads()
-                .map(|(id, p)| {
-                    json!({
-                        "name": p.name(),
-                        "vendor": p.vendor_id(),
-                        "product": p.product_id(),
-                        "active": devices.active == Some(id),
-                    })
-                })
-                .collect()
-        });
-        json!({
-            "backend": devices.gilrs.is_some(),
-            "controllers": pads,
-            "dualsense_output": devices.output.as_ref().and_then(|o| o.open()).map(|t| format!("{t:?}")),
-            "trigger_effects": devices.shown.map(|s| s.triggers),
-        })
-    }
-}
-impl crate::game::Sim<'_> {
     /// The use trigger while nothing is in use: a loaded crossbow clicks, an item that boosts (a
     /// rocket while gliding, the stick of the mount being ridden) catches, a shield weighs, and
     /// locks while an axe has disabled it.
@@ -416,5 +288,122 @@ impl crate::game::Sim<'_> {
             TriggerFeel::Free => feel(self.offhand.as_ref()),
             main => main,
         }
+    }
+
+    /// Open the pad's haptics once its output is open over USB (its audio device is there
+    /// only then); close them when it goes. Opt-in with `HORIZON_DUALSENSE_HAPTICS=1` until
+    /// they are proven on a pad (docs/controllers.md); never for games without sound (tests).
+    fn pad_haptics(&mut self) {
+        let usb = self.pad.devices.output.as_ref().and_then(|o| o.open())
+            == Some(horizon_dualsense::Transport::Usb);
+        if !usb {
+            self.pad.devices.haptics = None;
+            self.pad.devices.haptics_tried = false;
+        } else if !self.pad.devices.haptics_tried {
+            self.pad.devices.haptics_tried = true;
+            if std::env::var_os("HORIZON_DUALSENSE_HAPTICS").is_some_and(|v| v == "1")
+                && std::env::var_os("HORIZON_NO_AUDIO").is_none()
+            {
+                self.pad.devices.haptics = horizon_dualsense::haptics::Haptics::open();
+            }
+        }
+    }
+
+    /// Release the DualSense's output (the game is quitting).
+    pub(in crate::game) fn pad_close_output(&mut self) {
+        self.pad.devices.haptics = None;
+        self.pad.devices.output = None;
+    }
+
+    /// Play a vibration on the active pad: a DualSense through its own report, else gilrs' force
+    /// feedback, which platforms without it (gilrs on macOS) skip.
+    pub(super) fn pad_vibrate(&mut self, rumble: Rumble, pulse: gamepad::Pulse) {
+        let level = |v: f32| (v.clamp(0.0, 1.0) * 255.0).round() as u8;
+        if let Some(haptics) = self
+            .pad
+            .devices
+            .haptics
+            .as_ref()
+            .filter(|_| self.pad_output().is_some())
+        {
+            let steps = rumble.shape().into_iter().map(|step| {
+                (
+                    step.strong,
+                    step.weak,
+                    Duration::from_millis(u64::from(step.millis)),
+                )
+            });
+            haptics.play(&steps.collect::<Vec<_>>());
+            return;
+        }
+        if let Some(output) = self.pad_output() {
+            let steps = rumble.shape().into_iter().map(|step| {
+                let length = Duration::from_millis(u64::from(step.millis));
+                ([level(step.strong), level(step.weak)], length)
+            });
+            output.rumble(steps.collect());
+            return;
+        }
+        let (Some(gilrs), Some(id)) = (self.pad.devices.gilrs.as_mut(), self.pad.devices.active)
+        else {
+            return;
+        };
+        if !gilrs
+            .connected_gamepad(id)
+            .is_some_and(|g| g.is_ff_supported())
+        {
+            return;
+        }
+        use gilrs::ff::{BaseEffect, BaseEffectType, EffectBuilder, Repeat, Replay, Ticks};
+        let length = Ticks::from_ms(pulse.millis);
+        let motor = |kind| BaseEffect {
+            kind,
+            scheduling: Replay {
+                play_for: length,
+                ..Default::default()
+            },
+            envelope: Default::default(),
+        };
+        let magnitude = |v: f32| (v.clamp(0.0, 1.0) * f32::from(u16::MAX)) as u16;
+        let effect = EffectBuilder::new()
+            .add_effect(motor(BaseEffectType::Strong {
+                magnitude: magnitude(pulse.strong),
+            }))
+            .add_effect(motor(BaseEffectType::Weak {
+                magnitude: magnitude(pulse.weak),
+            }))
+            .repeat(Repeat::For(length))
+            .gamepads(&[id])
+            .finish(gilrs);
+        match effect.and_then(|e| e.play().map(|()| e)) {
+            Ok(effect) => {
+                let end = Instant::now() + Duration::from_millis(u64::from(pulse.millis) + 50);
+                self.pad.devices.rumbles.push((effect, end));
+            }
+            Err(e) => log::debug!("Horizon: controller vibration: {e}"),
+        }
+    }
+
+    /// The hardware part of `pad status`.
+    pub(super) fn pad_devices_status(&self) -> Value {
+        let devices = &self.pad.devices;
+        let pads: Vec<Value> = devices.gilrs.as_ref().map_or(Vec::new(), |g| {
+            g.gamepads()
+                .map(|(id, p)| {
+                    json!({
+                        "name": p.name(),
+                        "vendor": p.vendor_id(),
+                        "product": p.product_id(),
+                        "active": devices.active == Some(id),
+                    })
+                })
+                .collect()
+        });
+        json!({
+            "backend": devices.gilrs.is_some(),
+            "controllers": pads,
+            "dualsense_output": devices.output.as_ref().and_then(|o| o.open()).map(|t| format!("{t:?}")),
+            "trigger_effects": devices.shown.map(|s| s.triggers),
+        })
     }
 }

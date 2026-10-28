@@ -234,581 +234,6 @@ impl CartModels {
     }
 }
 impl Game<'_> {
-    /// `AbstractMinecart.tick` for one cart; returns false once it is gone.
-    fn tick_cart(&mut self, c: &mut Minecart, intent: [f64; 2]) -> bool {
-        c.first_tick = false;
-        c.previous = c.position;
-        c.previous_yaw = c.yaw;
-        c.hurt_time = (c.hurt_time - 1).max(0);
-        c.damage = (c.damage - 1.0).max(0.0);
-        // applyGravity
-        c.velocity.y -= if self.cart_in_water(c) { 0.005 } else { 0.04 };
-        let pos = self.rail_block(c.position);
-        if let Some(rail) = self.rail(pos[0], pos[1], pos[2]) {
-            self.move_along_track(c, pos, &rail, intent);
-            if &*rail.name == "minecraft:activator_rail" {
-                self.activate_cart(c, rail.powered);
-            }
-        } else {
-            self.come_off_track(c);
-        }
-        // Yaw from the movement, flipped when it turns around.
-        let (xd, zd) = (c.previous.x - c.position.x, c.previous.z - c.position.z);
-        if xd * xd + zd * zd > 0.001 {
-            c.yaw = zd.atan2(xd).to_degrees() as f32;
-            if c.flipped {
-                c.yaw += 180.0;
-            }
-        }
-        let diff = (c.yaw - c.previous_yaw + 180.0).rem_euclid(360.0) - 180.0;
-        if !(-170.0..170.0).contains(&diff) {
-            c.yaw += 180.0;
-            c.flipped = !c.flipped;
-        }
-        c.yaw %= 360.0;
-        // Variants.
-        match c.kind {
-            CartKind::Furnace => {
-                if c.fuel > 0 {
-                    c.fuel -= 1;
-                }
-                if c.fuel <= 0 {
-                    c.push = [0.0; 2];
-                }
-                if c.fuel > 0 && self.world.random.next_int_bound(4).unwrap_or(1) == 0 {
-                    let at = [c.position.x, c.position.y + 0.8, c.position.z];
-                    self.particles.add(
-                        &ParticleOptions::simple(ParticleType::LargeSmoke),
-                        at,
-                        [0.0; 3],
-                    );
-                }
-            }
-            CartKind::Tnt => {
-                // MinecartTNT.tick: the fuse and the collision check are separate.
-                if c.fuse > 0 {
-                    c.fuse -= 1;
-                    let at = [c.position.x, c.position.y + 0.5, c.position.z];
-                    self.particles
-                        .add(&ParticleOptions::simple(ParticleType::Smoke), at, [0.0; 3]);
-                } else if c.fuse == 0 {
-                    // explode(horizontalDistanceSqr()): a rising cart's
-                    // vertical speed adds nothing.
-                    let speed = c.velocity.x * c.velocity.x + c.velocity.z * c.velocity.z;
-                    self.explode_cart(c, speed);
-                    return false;
-                }
-                if c.horizontal_collision {
-                    let speed = c.velocity.x * c.velocity.x + c.velocity.z * c.velocity.z;
-                    if speed >= f64::from(0.01_f32) {
-                        self.explode_cart(c, speed);
-                        return false;
-                    }
-                }
-            }
-            _ => {}
-        }
-        true
-    }
-    fn explode_cart(&mut self, c: &Minecart, speed_sqr: f64) {
-        if !self.world_data.rules.bool("tnt_explodes") {
-            return;
-        }
-        let speed = speed_sqr.sqrt().min(5.0);
-        let r = self.world.random.next_double();
-        let power = (4.0 + r * 1.5 * speed) as f32;
-        let at = [c.position.x, c.position.y, c.position.z];
-        // The cart is the explosion's source: it is gone before the blast
-        // looks for entities, so it can't hit itself.
-        self.carts.retain(|x| x.id != c.id);
-        let _ = self.with_hive_emptying_blast(|g| {
-            g.server_explode(at, power, BlockInteraction::Destroy, false)
-        });
-    }
-    /// Every cart but the ridden one (which ticks with its rider).
-    pub(super) fn tick_carts(&mut self) {
-        self.push_carts();
-        // ServerLevel.tick: only entities in entity-ticking chunks tick.
-        let ticking = self.entity_ticking_area();
-        // A server player's minecart moves with its rider (lan_vehicles.rs).
-        let ridden = self.guest_vehicles();
-        // By id: an exploding cart can destroy or prime others mid-loop.
-        let ids: Vec<u32> = self.carts.iter().map(|c| c.id).collect();
-        for &id in &ids {
-            let Some(i) = self.carts.iter().position(|c| c.id == id) else {
-                continue;
-            };
-            let p = self.carts[i].position;
-            if Some(id) == self.riding
-                || ridden.contains(&id)
-                || !ticking(p.x.floor() as i32, p.z.floor() as i32)
-            {
-                continue;
-            }
-            let mut c = self.carts[i].clone();
-            let alive = self.tick_cart(&mut c, [0.0; 2]);
-            if c.kind == CartKind::Hopper && c.enabled {
-                self.hopper_cart_suck(&mut c);
-            }
-            let Some(i) = self.carts.iter().position(|c| c.id == id) else {
-                continue;
-            };
-            if alive {
-                self.carts[i] = c;
-                self.push_from_cart(i);
-            } else {
-                self.carts.remove(i);
-            }
-        }
-        // On the server for every cart, the ridden ones too.
-        for id in ids {
-            if let Some(i) = self.carts.iter().position(|c| c.id == id) {
-                let p = self.carts[i].position;
-                if ticking(p.x.floor() as i32, p.z.floor() as i32) {
-                    self.cart_lava_tick(id);
-                }
-            }
-        }
-    }
-    /// `ClientPacketListener.postAddEntitySoundInstance` for the carts that
-    /// joined the level since the last tick, and `LocalPlayer.startRiding`'s
-    /// two inside sounds when the player got in one; then what the sound
-    /// instances read this tick (the ridden cart and every cart).
-    pub(super) fn start_cart_sounds(&mut self) -> (Option<u32>, Vec<CartSound>) {
-        let carts: Vec<CartSound> = self
-            .carts
-            .iter()
-            .map(|c| CartSound {
-                id: c.id,
-                position: [c.position.x, c.position.y, c.position.z],
-                // Vec3.horizontalDistance.
-                speed: (c.velocity.x * c.velocity.x + c.velocity.z * c.velocity.z).sqrt(),
-            })
-            .collect();
-        self.front
-            .cart_sounds
-            .retain(|id| carts.iter().any(|c| c.id == *id));
-        for cart in &carts {
-            if self.front.cart_sounds.insert(cart.id) {
-                let instance = SoundInstance::minecart(cart, SoundEngine::unseeded());
-                self.front.audio.play_instance(instance, false);
-            }
-        }
-        let vehicle = self.riding.filter(|id| carts.iter().any(|c| c.id == *id));
-        if vehicle != self.front.riding_cart_sounds
-            && let Some(cart) = carts.iter().find(|c| Some(c.id) == vehicle)
-        {
-            for underwater in [true, false] {
-                let instance =
-                    SoundInstance::riding_minecart(cart, underwater, SoundEngine::unseeded());
-                self.front.audio.play_instance(instance, false);
-            }
-        }
-        self.front.riding_cart_sounds = vehicle;
-        (vehicle, carts)
-    }
-    /// The rider's tick: the cart moves with the rider's input as its push.
-    pub(super) fn tick_cart_riding(&mut self, keys: Keys) -> bool {
-        let Some(i) = self.carts.iter().position(|c| Some(c.id) == self.riding) else {
-            return false;
-        };
-        if keys.shift {
-            self.dismount_cart(i);
-            return true;
-        }
-        // ServerPlayer.getLastClientMoveIntent: getInputVector((left, 0, forward), 1, yRot).
-        let left = f64::from(i8::from(keys.left) - i8::from(keys.right));
-        let forward = f64::from(i8::from(keys.forward) - i8::from(keys.backward));
-        let len = left.hypot(forward);
-        let (left, forward) = if len > 1.0 {
-            (left / len, forward / len)
-        } else {
-            (left, forward)
-        };
-        let r = self.sim.yaw.to_radians();
-        let (s, co) = (f64::from(r.sin()), f64::from(r.cos()));
-        let intent = [left * co - forward * s, forward * co + left * s];
-        let mut c = self.sim.carts[i].clone();
-        let alive = self.tick_cart(&mut c, intent);
-        if let Some(p) = self.sim.player.as_mut() {
-            self.sim.previous_position = p.position;
-            p.position = Vec3::new(c.position.x, c.position.y + SEAT, c.position.z);
-            p.velocity = Vec3::ZERO;
-            p.fall_distance = 0.0;
-        }
-        let Some(i) = self.carts.iter().position(|x| x.id == c.id) else {
-            self.riding = None;
-            return true;
-        };
-        if alive {
-            self.carts[i] = c;
-            self.push_from_cart(i);
-        } else {
-            self.carts.remove(i);
-            self.riding = None;
-        }
-        true
-    }
-    /// `MinecartItem.useOn`: a cart on the clicked rail.
-    pub(super) fn place_minecart(&mut self, hit: &Hit, stack: &ItemStack) -> bool {
-        let Some(kind) = CartKind::from_id(&stack.item) else {
-            return false;
-        };
-        let Some(rail) = self.rail(hit.pos[0], hit.pos[1], hit.pos[2]) else {
-            return false;
-        };
-        let offset = if rail.shape.is_slope() { 0.5 } else { 0.0 };
-        let at = Vec3::new(
-            f64::from(hit.pos[0]) + 0.5,
-            f64::from(hit.pos[1]) + 0.0625 + offset,
-            f64::from(hit.pos[2]) + 0.5,
-        );
-        self.next_entity += 1;
-        let cart = Minecart::new(self.next_entity, kind, at);
-        self.world
-            .modified
-            .insert((hit.pos[0] >> 4, hit.pos[2] >> 4));
-        self.carts.push(cart);
-        if !self.creative {
-            self.consume_held();
-        }
-        self.swing_arm();
-        true
-    }
-    /// `interact`: ride, open, fuel or ignite the cart under the crosshair.
-    pub(super) fn interact_cart(&mut self) -> bool {
-        let Some((i, d)) = self.cart_hit() else {
-            return false;
-        };
-        if !self.before_block(d) {
-            return false;
-        }
-        let sneaking = self.keys.contains(&winit::keyboard::KeyCode::ShiftLeft);
-        let held = self.held().cloned();
-        match self.carts[i].kind {
-            CartKind::Rideable => {
-                if sneaking || self.riding.is_some() || self.ridden_by_guest(self.carts[i].id) {
-                    return false;
-                }
-                self.riding = Some(self.carts[i].id);
-            }
-            // AbstractMinecartContainer.interact: no sneak check.
-            CartKind::Chest | CartKind::Hopper => {
-                let c = self.carts[i].clone();
-                let key = (i32::MAX - 15, CART_KEY_Y, c.id as i32);
-                self.world
-                    .block_entities
-                    .insert(key, BlockEntity::Chest(c.items.clone()));
-                self.container = Some(key);
-                self.screen = super::Screen::Inventory;
-                self.capture(false);
-                self.right = false;
-                if c.kind == CartKind::Chest {
-                    let at = [c.position.x, c.position.y, c.position.z];
-                    let pitch = self.world.random.next_float() * 0.1 + 0.9;
-                    self.sounds
-                        .play("minecraft:block.chest.open", Some(at), 0.5, pitch);
-                }
-            }
-            CartKind::Furnace => {
-                let fuel = held
-                    .as_ref()
-                    .is_some_and(|s| matches!(&*s.item, "minecraft:coal" | "minecraft:charcoal"));
-                let c = &mut self.sim.carts[i];
-                if fuel && c.fuel + 3600 <= 32000 {
-                    c.fuel += 3600;
-                    let p = self.sim.player.as_ref().map_or(c.position, |p| p.position);
-                    c.push = [c.position.x - p.x, c.position.z - p.z];
-                    if !self.sim.creative {
-                        self.consume_held();
-                    }
-                }
-            }
-            CartKind::Tnt => {
-                let lighter = held.as_ref().is_some_and(|s| {
-                    matches!(
-                        &*s.item,
-                        "minecraft:flint_and_steel" | "minecraft:fire_charge"
-                    )
-                });
-                if !lighter || self.carts[i].fuse >= 0 {
-                    return false;
-                }
-                let mut c = self.carts[i].clone();
-                self.prime_cart(&mut c);
-                self.carts[i] = c;
-            }
-            // BaseCommandBlock.usedBy: only an operator in creative opens it.
-            CartKind::CommandBlock => return false,
-        }
-        self.swing_arm();
-        true
-    }
-    /// `VehicleEntity.hurtServer` from the player's attack.
-    pub(super) fn attack_cart(&mut self, damage: f32) -> bool {
-        let Some((i, d)) = self.cart_hit() else {
-            return false;
-        };
-        if !self.before_block(d) || self.mob_hit().is_some_and(|m| m.1 < d) {
-            return false;
-        }
-        let burning = self
-            .held()
-            .is_some_and(|s| s.enchantment_level("minecraft:fire_aspect") > 0);
-        self.vehicle_attack_sounds();
-        let creative = self.creative;
-        self.hurt_cart(i, damage, creative, burning);
-        self.swing_arm();
-        true
-    }
-    /// An arrow hit cart `i` (`MinecartTNT.hurtServer`, then
-    /// `VehicleEntity.hurtServer`): a burning arrow sets off a TNT minecart.
-    pub(super) fn arrow_hits_cart(
-        &mut self,
-        i: usize,
-        damage: f32,
-        arrow_velocity: Vec3,
-        burning: bool,
-        creative: bool,
-    ) {
-        if i >= self.carts.len() {
-            return;
-        }
-        if burning && self.carts[i].kind == CartKind::Tnt {
-            let c = self.carts.remove(i);
-            self.explode_cart(&c, arrow_velocity.length_squared());
-            return;
-        }
-        self.hurt_cart(i, damage, creative, false);
-    }
-    /// Baked block faces with terrain shade or block-item diffuse lighting.
-    pub(super) fn block_model_vertices(
-        &self,
-        state: BlockStateId,
-        seed: i64,
-        m: glam::Mat4,
-        light: u32,
-        diffuse: bool,
-        out: &mut Vec<Vertex>,
-    ) {
-        let Ok(models) = self.pack.render.model_catalog.collect_seeded(state, seed) else {
-            return;
-        };
-        for (_, model) in &models {
-            for face in &model.faces {
-                let Some(s) = self
-                    .pack
-                    .layer_names
-                    .get(&face.layer)
-                    .and_then(|n| self.front.gui.atlas.sprites.get(n))
-                else {
-                    continue;
-                };
-                use horizon_assets::model::Direction as D;
-                let shade: u32 = match face.quad.facing {
-                    D::Up => 255,
-                    D::Down => 127,
-                    D::North | D::South => 204,
-                    D::West | D::East => 153,
-                };
-                let color = if diffuse {
-                    u32::MAX
-                } else {
-                    0xFF00_0000 | shade << 16 | shade << 8 | shade
-                };
-                let normal = if diffuse {
-                    use horizon_client::item_render::{direction_vector, transform_normal};
-                    let n = transform_normal(m, direction_vector(face.quad.facing));
-                    let n = n.to_array().map(|v| (v.clamp(-1.0, 1.0) * 127.0) as i8);
-                    [n[0], n[1], n[2], 127]
-                } else {
-                    [0; 4]
-                };
-                let light = if diffuse {
-                    let emission = u32::from(face.quad.light_emission) * 16;
-                    (light & 0xFF) | (light >> 8 & 0xFF).max(emission) << 8
-                } else {
-                    light
-                };
-                for k in 0..4 {
-                    let p = face.quad.positions[k];
-                    let uv = face.quad.uv[k];
-                    out.push(Vertex {
-                        normal,
-                        pos: m.transform_point3(glam::Vec3::from_array(p)).to_array(),
-                        uv: [s.u0 + uv[0] * (s.u1 - s.u0), s.v0 + uv[1] * (s.v1 - s.v0)],
-                        layer: 0,
-                        color,
-                        light,
-                        glint_uv: [0.0, 0.0],
-                    });
-                }
-            }
-        }
-    }
-    /// `AbstractMinecartRenderer` (old render): on the rail between the
-    /// front and back points, pitched on slopes, with the display block.
-    pub(super) fn cart_geometry(&self, camera: glam::DVec3, alpha: f64, out: &mut Vec<Vertex>) {
-        let a = alpha as f32;
-        let Some(uv) = self
-            .front
-            .gui
-            .atlas
-            .sprites
-            .get("entity/minecart/minecart")
-            .map(|r| [r.u0, r.v0, r.u1, r.v1])
-        else {
-            return;
-        };
-        // Entity.shouldRenderAtSqrDistance: 64 times the bounding box's mean
-        // edge, scaled by the view scale.
-        let range = (WIDTH + HEIGHT + WIDTH) / 3.0 * 64.0 * self.view_scale();
-        for c in &self.carts {
-            let entity_start = out.len();
-            let Some(model) = self.cart_models.models.get(&c.kind) else {
-                continue;
-            };
-            let (x, y, z) = (
-                c.previous.x + (c.position.x - c.previous.x) * alpha,
-                c.previous.y + (c.position.y - c.previous.y) * alpha,
-                c.previous.z + (c.position.z - c.previous.z) * alpha,
-            );
-            // LevelExtractor.isEntityVisible: the cart the player rides always draws.
-            if self.riding != Some(c.id) {
-                let d = glam::DVec3::new(c.position.x, c.position.y, c.position.z) - camera;
-                if d.length_squared() >= range * range {
-                    continue;
-                }
-                // EntityRenderer.shouldRender: the interpolated box grown by 0.5;
-                // AbstractMinecartRenderer.getBoundingBoxForCulling stretches it
-                // up by the display block's offset.
-                if let Some(view) = &self.front.view_frustum {
-                    let top = HEIGHT
-                        + if c.kind == CartKind::Rideable {
-                            0.0
-                        } else {
-                            display_offset(c.kind) * 0.75 / 16.0
-                        };
-                    let p = glam::DVec3::new(x, y, z) - camera;
-                    let lo = p - glam::DVec3::new(WIDTH / 2.0 + 0.5, 0.5, WIDTH / 2.0 + 0.5);
-                    let hi = p + glam::DVec3::new(WIDTH / 2.0 + 0.5, top + 0.5, WIDTH / 2.0 + 0.5);
-                    if !view.intersects(lo.as_vec3(), hi.as_vec3()) {
-                        continue;
-                    }
-                }
-            }
-            let mut yaw =
-                c.previous_yaw + ((c.yaw - c.previous_yaw + 180.0).rem_euclid(360.0) - 180.0) * a;
-            let mut pitch = 0.0f32;
-            let mut offset = glam::DVec3::ZERO;
-            if let Some(on) = self.rail_pos(x, y, z) {
-                let front = self.rail_pos_offs(x, y, z, 0.3).unwrap_or(on);
-                let back = self.rail_pos_offs(x, y, z, -0.3).unwrap_or(on);
-                offset = glam::DVec3::new(on[0] - x, (front[1] + back[1]) / 2.0 - y, on[2] - z);
-                let d =
-                    glam::DVec3::new(back[0] - front[0], back[1] - front[1], back[2] - front[2]);
-                if d.length() != 0.0 {
-                    let d = d.normalize();
-                    yaw = d.z.atan2(d.x).to_degrees() as f32;
-                    pitch = (d.y.atan() * 73.0) as f32;
-                }
-            }
-            // The per-entity jitter (offsetSeed) that keeps stacked carts from z-fighting.
-            let seed = i64::from(c.id).wrapping_mul(493_286_711);
-            let seed = seed
-                .wrapping_mul(seed)
-                .wrapping_mul(4_392_167_121)
-                .wrapping_add(seed.wrapping_mul(98_761));
-            let jitter = |shift: i64| (((seed >> shift & 7) as f32 + 0.5) / 8.0 - 0.5) * 0.004;
-            let p = glam::DVec3::new(x, y, z) + offset - camera;
-            let mut base = glam::Mat4::from_translation(
-                p.as_vec3() + glam::Vec3::new(jitter(16), jitter(20) + 0.375, jitter(24)),
-            ) * glam::Mat4::from_rotation_y((180.0 - yaw).to_radians())
-                * glam::Mat4::from_rotation_z((-pitch).to_radians());
-            let hurt = c.hurt_time as f32 - a;
-            if hurt > 0.0 {
-                let damage = (c.damage - a).max(0.0);
-                base *= glam::Mat4::from_rotation_x(
-                    (hurt.sin() * hurt * damage / 10.0 * c.hurt_dir as f32).to_radians(),
-                );
-            }
-            let l = self.world.light(
-                c.position.x.floor() as i32,
-                (c.position.y + 0.35).floor() as i32,
-                c.position.z.floor() as i32,
-            );
-            let packed = (u32::from(l >> 4) * 16) | ((u32::from(l & 15) * 16) << 8);
-            if let Some(state) = self.display_state(c) {
-                let display = base
-                    * glam::Mat4::from_scale(glam::Vec3::splat(0.75))
-                    * glam::Mat4::from_translation(glam::Vec3::new(
-                        -0.5,
-                        (display_offset(c.kind) as f32 - 8.0) / 16.0,
-                        0.5,
-                    ))
-                    * glam::Mat4::from_rotation_y(90f32.to_radians());
-                if c.kind == CartKind::Chest {
-                    self.cart_chest(state, display, l, out);
-                } else {
-                    // TNT minecarts flash white as the fuse runs out (TntMinecartRenderer).
-                    let swell = if c.kind == CartKind::Tnt && c.fuse > -1 {
-                        let fuse = c.fuse as f32 - a + 1.0;
-                        if fuse < 10.0 {
-                            let g = (1.0 - fuse / 10.0).clamp(0.0, 1.0);
-                            1.0 + g * g * g * g * 0.3
-                        } else {
-                            1.0
-                        }
-                    } else {
-                        1.0
-                    };
-                    let m = display
-                        * glam::Mat4::from_translation(glam::Vec3::splat(0.5))
-                        * glam::Mat4::from_scale(glam::Vec3::splat(swell))
-                        * glam::Mat4::from_translation(glam::Vec3::splat(-0.5));
-                    let flash = c.kind == CartKind::Tnt && c.fuse > -1 && (c.fuse / 5) % 2 == 0;
-                    let start = out.len();
-                    self.block_model_vertices(state, 0, m, packed, false, out);
-                    if flash {
-                        // submitWhiteSolidBlock: OverlayTexture.u(1.0) on the cart's own light.
-                        for v in &mut out[start..] {
-                            v.layer = 5;
-                        }
-                    }
-                }
-            }
-            let m = base * glam::Mat4::from_scale(glam::Vec3::new(-1.0, -1.0, 1.0));
-            let poses = Poses::new(model);
-            horizon_client::mobs::render::draw(model, m, &poses, uv, 0xFFFF_FFFF, packed, 0, out);
-            self.cull_entity_vertices(out, entity_start);
-        }
-    }
-    /// The chest inside a chest minecart, drawn by the chest block-entity renderer.
-    fn cart_chest(&self, state: BlockStateId, m: glam::Mat4, light: u8, out: &mut Vec<Vertex>) {
-        let lid = |_: [i32; 3]| 0.0;
-        let scene = horizon_client::block_entity_render::Scene {
-            camera: glam::DVec3::ZERO,
-            orientation: glam::Quat::IDENTITY,
-            anim: &|_| horizon_client::block_entity_render::BlockAnim::default(),
-            texts: None,
-            partial: 0.0,
-            game_time: self.world.game_time,
-            max_y: self.dim.max_y(),
-            world: &self.world,
-            sprites: &self.front.gui.atlas.sprites,
-            nether: self.dim == super::Dim::Nether,
-            lid: &lid,
-            sign: &|_| None,
-            banner: &|_| Vec::new(),
-            skull: &|_| None,
-            glyph: &|c| self.front.gui.atlas.glyph_cell(c),
-        };
-        self.res
-            .block_entity_render()
-            .render_state(&scene, state.0, m, light, out);
-    }
-}
-impl crate::game::Sim<'_> {
     pub(super) fn rail(&self, x: i32, y: i32, z: i32) -> Option<Rail> {
         let state = self.world.block(x, y, z);
         let name = self.res.facts().get(state).name.clone();
@@ -1123,6 +548,82 @@ impl crate::game::Sim<'_> {
             c.velocity = Vec3::new(c.velocity.x, fall / 10.0, c.velocity.z);
         }
     }
+    /// `AbstractMinecart.tick` for one cart; returns false once it is gone.
+    fn tick_cart(&mut self, c: &mut Minecart, intent: [f64; 2]) -> bool {
+        c.first_tick = false;
+        c.previous = c.position;
+        c.previous_yaw = c.yaw;
+        c.hurt_time = (c.hurt_time - 1).max(0);
+        c.damage = (c.damage - 1.0).max(0.0);
+        // applyGravity
+        c.velocity.y -= if self.cart_in_water(c) { 0.005 } else { 0.04 };
+        let pos = self.rail_block(c.position);
+        if let Some(rail) = self.rail(pos[0], pos[1], pos[2]) {
+            self.move_along_track(c, pos, &rail, intent);
+            if &*rail.name == "minecraft:activator_rail" {
+                self.activate_cart(c, rail.powered);
+            }
+        } else {
+            self.come_off_track(c);
+        }
+        // Yaw from the movement, flipped when it turns around.
+        let (xd, zd) = (c.previous.x - c.position.x, c.previous.z - c.position.z);
+        if xd * xd + zd * zd > 0.001 {
+            c.yaw = zd.atan2(xd).to_degrees() as f32;
+            if c.flipped {
+                c.yaw += 180.0;
+            }
+        }
+        let diff = (c.yaw - c.previous_yaw + 180.0).rem_euclid(360.0) - 180.0;
+        if !(-170.0..170.0).contains(&diff) {
+            c.yaw += 180.0;
+            c.flipped = !c.flipped;
+        }
+        c.yaw %= 360.0;
+        // Variants.
+        match c.kind {
+            CartKind::Furnace => {
+                if c.fuel > 0 {
+                    c.fuel -= 1;
+                }
+                if c.fuel <= 0 {
+                    c.push = [0.0; 2];
+                }
+                if c.fuel > 0 && self.world.random.next_int_bound(4).unwrap_or(1) == 0 {
+                    let at = [c.position.x, c.position.y + 0.8, c.position.z];
+                    self.particles.add(
+                        &ParticleOptions::simple(ParticleType::LargeSmoke),
+                        at,
+                        [0.0; 3],
+                    );
+                }
+            }
+            CartKind::Tnt => {
+                // MinecartTNT.tick: the fuse and the collision check are separate.
+                if c.fuse > 0 {
+                    c.fuse -= 1;
+                    let at = [c.position.x, c.position.y + 0.5, c.position.z];
+                    self.particles
+                        .add(&ParticleOptions::simple(ParticleType::Smoke), at, [0.0; 3]);
+                } else if c.fuse == 0 {
+                    // explode(horizontalDistanceSqr()): a rising cart's
+                    // vertical speed adds nothing.
+                    let speed = c.velocity.x * c.velocity.x + c.velocity.z * c.velocity.z;
+                    self.explode_cart(c, speed);
+                    return false;
+                }
+                if c.horizontal_collision {
+                    let speed = c.velocity.x * c.velocity.x + c.velocity.z * c.velocity.z;
+                    if speed >= f64::from(0.01_f32) {
+                        self.explode_cart(c, speed);
+                        return false;
+                    }
+                }
+            }
+            _ => {}
+        }
+        true
+    }
     /// `activateMinecart` on an activator rail.
     fn activate_cart(&mut self, c: &mut Minecart, powered: bool) {
         match c.kind {
@@ -1149,6 +650,21 @@ impl crate::game::Sim<'_> {
         let at = [c.position.x, c.position.y, c.position.z];
         self.sounds
             .play("minecraft:entity.tnt.primed", Some(at), 1.0, 1.0);
+    }
+    fn explode_cart(&mut self, c: &Minecart, speed_sqr: f64) {
+        if !self.world_data.rules.bool("tnt_explodes") {
+            return;
+        }
+        let speed = speed_sqr.sqrt().min(5.0);
+        let r = self.world.random.next_double();
+        let power = (4.0 + r * 1.5 * speed) as f32;
+        let at = [c.position.x, c.position.y, c.position.z];
+        // The cart is the explosion's source: it is gone before the blast
+        // looks for entities, so it can't hit itself.
+        self.carts.retain(|x| x.id != c.id);
+        let _ = self.with_hive_emptying_blast(|g| {
+            g.server_explode(at, power, BlockInteraction::Destroy, false)
+        });
     }
     /// `AbstractMinecart.push` from each player walking into a cart
     /// (`LivingEntity.pushEntities`): the window's player and every server
@@ -1260,6 +776,51 @@ impl crate::game::Sim<'_> {
             self.carts[i].velocity = no;
         }
     }
+    /// Every cart but the ridden one (which ticks with its rider).
+    pub(super) fn tick_carts(&mut self) {
+        self.push_carts();
+        // ServerLevel.tick: only entities in entity-ticking chunks tick.
+        let ticking = self.entity_ticking_area();
+        // A server player's minecart moves with its rider (lan_vehicles.rs).
+        let ridden = self.guest_vehicles();
+        // By id: an exploding cart can destroy or prime others mid-loop.
+        let ids: Vec<u32> = self.carts.iter().map(|c| c.id).collect();
+        for &id in &ids {
+            let Some(i) = self.carts.iter().position(|c| c.id == id) else {
+                continue;
+            };
+            let p = self.carts[i].position;
+            if Some(id) == self.riding
+                || ridden.contains(&id)
+                || !ticking(p.x.floor() as i32, p.z.floor() as i32)
+            {
+                continue;
+            }
+            let mut c = self.carts[i].clone();
+            let alive = self.tick_cart(&mut c, [0.0; 2]);
+            if c.kind == CartKind::Hopper && c.enabled {
+                self.hopper_cart_suck(&mut c);
+            }
+            let Some(i) = self.carts.iter().position(|c| c.id == id) else {
+                continue;
+            };
+            if alive {
+                self.carts[i] = c;
+                self.push_from_cart(i);
+            } else {
+                self.carts.remove(i);
+            }
+        }
+        // On the server for every cart, the ridden ones too.
+        for id in ids {
+            if let Some(i) = self.carts.iter().position(|c| c.id == id) {
+                let p = self.carts[i].position;
+                if ticking(p.x.floor() as i32, p.z.floor() as i32) {
+                    self.cart_lava_tick(id);
+                }
+            }
+        }
+    }
     /// `lavaHurt` twice a tick in lava: from `LavaFluid.entityInside` in the
     /// behaviour's `applyEffectsFromBlocks`, then from `AbstractMinecart.tick`'s
     /// own `isInLava`. The second breaks the cart, or primes a TNT minecart
@@ -1277,6 +838,84 @@ impl crate::game::Sim<'_> {
             self.hurt_cart(i, 4.0, false, true);
             self.lava_hurt_sound([p.x, p.y, p.z]);
         }
+    }
+    /// `ClientPacketListener.postAddEntitySoundInstance` for the carts that
+    /// joined the level since the last tick, and `LocalPlayer.startRiding`'s
+    /// two inside sounds when the player got in one; then what the sound
+    /// instances read this tick (the ridden cart and every cart).
+    pub(super) fn start_cart_sounds(&mut self) -> (Option<u32>, Vec<CartSound>) {
+        let carts: Vec<CartSound> = self
+            .carts
+            .iter()
+            .map(|c| CartSound {
+                id: c.id,
+                position: [c.position.x, c.position.y, c.position.z],
+                // Vec3.horizontalDistance.
+                speed: (c.velocity.x * c.velocity.x + c.velocity.z * c.velocity.z).sqrt(),
+            })
+            .collect();
+        self.cart_sounds
+            .retain(|id| carts.iter().any(|c| c.id == *id));
+        for cart in &carts {
+            if self.cart_sounds.insert(cart.id) {
+                let instance = SoundInstance::minecart(cart, SoundEngine::unseeded());
+                self.audio.play_instance(instance, false);
+            }
+        }
+        let vehicle = self.riding.filter(|id| carts.iter().any(|c| c.id == *id));
+        if vehicle != self.riding_cart_sounds
+            && let Some(cart) = carts.iter().find(|c| Some(c.id) == vehicle)
+        {
+            for underwater in [true, false] {
+                let instance =
+                    SoundInstance::riding_minecart(cart, underwater, SoundEngine::unseeded());
+                self.audio.play_instance(instance, false);
+            }
+        }
+        self.riding_cart_sounds = vehicle;
+        (vehicle, carts)
+    }
+    /// The rider's tick: the cart moves with the rider's input as its push.
+    pub(super) fn tick_cart_riding(&mut self, keys: Keys) -> bool {
+        let Some(i) = self.carts.iter().position(|c| Some(c.id) == self.riding) else {
+            return false;
+        };
+        if keys.shift {
+            self.dismount_cart(i);
+            return true;
+        }
+        // ServerPlayer.getLastClientMoveIntent: getInputVector((left, 0, forward), 1, yRot).
+        let left = f64::from(i8::from(keys.left) - i8::from(keys.right));
+        let forward = f64::from(i8::from(keys.forward) - i8::from(keys.backward));
+        let len = left.hypot(forward);
+        let (left, forward) = if len > 1.0 {
+            (left / len, forward / len)
+        } else {
+            (left, forward)
+        };
+        let r = self.yaw.to_radians();
+        let (s, co) = (f64::from(r.sin()), f64::from(r.cos()));
+        let intent = [left * co - forward * s, forward * co + left * s];
+        let mut c = self.carts[i].clone();
+        let alive = self.tick_cart(&mut c, intent);
+        if let Some(p) = self.player.as_mut() {
+            self.previous_position = p.position;
+            p.position = Vec3::new(c.position.x, c.position.y + SEAT, c.position.z);
+            p.velocity = Vec3::ZERO;
+            p.fall_distance = 0.0;
+        }
+        let Some(i) = self.carts.iter().position(|x| x.id == c.id) else {
+            self.riding = None;
+            return true;
+        };
+        if alive {
+            self.carts[i] = c;
+            self.push_from_cart(i);
+        } else {
+            self.carts.remove(i);
+            self.riding = None;
+        }
+        true
     }
     /// `getDismountLocationForPassenger`: beside the cart (across its facing), else on top.
     pub(super) fn dismount_cart(&mut self, i: usize) {
@@ -1332,6 +971,32 @@ impl crate::game::Sim<'_> {
             p.velocity = Vec3::ZERO;
         }
     }
+    /// `MinecartItem.useOn`: a cart on the clicked rail.
+    pub(super) fn place_minecart(&mut self, hit: &Hit, stack: &ItemStack) -> bool {
+        let Some(kind) = CartKind::from_id(&stack.item) else {
+            return false;
+        };
+        let Some(rail) = self.rail(hit.pos[0], hit.pos[1], hit.pos[2]) else {
+            return false;
+        };
+        let offset = if rail.shape.is_slope() { 0.5 } else { 0.0 };
+        let at = Vec3::new(
+            f64::from(hit.pos[0]) + 0.5,
+            f64::from(hit.pos[1]) + 0.0625 + offset,
+            f64::from(hit.pos[2]) + 0.5,
+        );
+        self.next_entity += 1;
+        let cart = Minecart::new(self.next_entity, kind, at);
+        self.world
+            .modified
+            .insert((hit.pos[0] >> 4, hit.pos[2] >> 4));
+        self.carts.push(cart);
+        if !self.creative {
+            self.consume_held();
+        }
+        self.swing_arm();
+        true
+    }
     pub(super) fn cart_hit(&self) -> Option<(usize, f64)> {
         let eye = self.eye_position()?;
         let dir = view_vector(self.yaw, self.pitch);
@@ -1363,6 +1028,75 @@ impl crate::game::Sim<'_> {
             }
         }
         best
+    }
+    /// `interact`: ride, open, fuel or ignite the cart under the crosshair.
+    pub(super) fn interact_cart(&mut self) -> bool {
+        let Some((i, d)) = self.cart_hit() else {
+            return false;
+        };
+        if !self.before_block(d) {
+            return false;
+        }
+        let sneaking = self.keys.contains(&winit::keyboard::KeyCode::ShiftLeft);
+        let held = self.held().cloned();
+        match self.carts[i].kind {
+            CartKind::Rideable => {
+                if sneaking || self.riding.is_some() || self.ridden_by_guest(self.carts[i].id) {
+                    return false;
+                }
+                self.riding = Some(self.carts[i].id);
+            }
+            // AbstractMinecartContainer.interact: no sneak check.
+            CartKind::Chest | CartKind::Hopper => {
+                let c = self.carts[i].clone();
+                let key = (i32::MAX - 15, CART_KEY_Y, c.id as i32);
+                self.world
+                    .block_entities
+                    .insert(key, BlockEntity::Chest(c.items.clone()));
+                self.container = Some(key);
+                self.screen = super::Screen::Inventory;
+                self.capture(false);
+                self.right = false;
+                if c.kind == CartKind::Chest {
+                    let at = [c.position.x, c.position.y, c.position.z];
+                    let pitch = self.world.random.next_float() * 0.1 + 0.9;
+                    self.sounds
+                        .play("minecraft:block.chest.open", Some(at), 0.5, pitch);
+                }
+            }
+            CartKind::Furnace => {
+                let fuel = held
+                    .as_ref()
+                    .is_some_and(|s| matches!(&*s.item, "minecraft:coal" | "minecraft:charcoal"));
+                let c = &mut self.carts[i];
+                if fuel && c.fuel + 3600 <= 32000 {
+                    c.fuel += 3600;
+                    let p = self.player.as_ref().map_or(c.position, |p| p.position);
+                    c.push = [c.position.x - p.x, c.position.z - p.z];
+                    if !self.creative {
+                        self.consume_held();
+                    }
+                }
+            }
+            CartKind::Tnt => {
+                let lighter = held.as_ref().is_some_and(|s| {
+                    matches!(
+                        &*s.item,
+                        "minecraft:flint_and_steel" | "minecraft:fire_charge"
+                    )
+                });
+                if !lighter || self.carts[i].fuse >= 0 {
+                    return false;
+                }
+                let mut c = self.carts[i].clone();
+                self.prime_cart(&mut c);
+                self.carts[i] = c;
+            }
+            // BaseCommandBlock.usedBy: only an operator in creative opens it.
+            CartKind::CommandBlock => return false,
+        }
+        self.swing_arm();
+        true
     }
     /// Closing the cart's container open under `key` copies the items back.
     pub(super) fn close_cart_container(&mut self, key: (i32, i32, i32)) {
@@ -1412,6 +1146,43 @@ impl crate::game::Sim<'_> {
                     .then_some(CartKind::Chest)
             })
     }
+    /// `VehicleEntity.hurtServer` from the player's attack.
+    pub(super) fn attack_cart(&mut self, damage: f32) -> bool {
+        let Some((i, d)) = self.cart_hit() else {
+            return false;
+        };
+        if !self.before_block(d) || self.mob_hit().is_some_and(|m| m.1 < d) {
+            return false;
+        }
+        let burning = self
+            .held()
+            .is_some_and(|s| s.enchantment_level("minecraft:fire_aspect") > 0);
+        self.vehicle_attack_sounds();
+        let creative = self.creative;
+        self.hurt_cart(i, damage, creative, burning);
+        self.swing_arm();
+        true
+    }
+    /// An arrow hit cart `i` (`MinecartTNT.hurtServer`, then
+    /// `VehicleEntity.hurtServer`): a burning arrow sets off a TNT minecart.
+    pub(super) fn arrow_hits_cart(
+        &mut self,
+        i: usize,
+        damage: f32,
+        arrow_velocity: Vec3,
+        burning: bool,
+        creative: bool,
+    ) {
+        if i >= self.carts.len() {
+            return;
+        }
+        if burning && self.carts[i].kind == CartKind::Tnt {
+            let c = self.carts.remove(i);
+            self.explode_cart(&c, arrow_velocity.length_squared());
+            return;
+        }
+        self.hurt_cart(i, damage, creative, false);
+    }
     /// `VehicleEntity.hurtServer`: shake, add the damage, break past 40 (at
     /// once for creative players); TNT minecarts prime instead when moving
     /// or hurt by fire or an explosion (`damageSourceIgnitesTnt`).
@@ -1445,6 +1216,71 @@ impl crate::game::Sim<'_> {
             }
         }
     }
+    /// Baked block faces with terrain shade or block-item diffuse lighting.
+    pub(super) fn block_model_vertices(
+        &self,
+        state: BlockStateId,
+        seed: i64,
+        m: glam::Mat4,
+        light: u32,
+        diffuse: bool,
+        out: &mut Vec<Vertex>,
+    ) {
+        let Ok(models) = self.pack.render.model_catalog.collect_seeded(state, seed) else {
+            return;
+        };
+        for (_, model) in &models {
+            for face in &model.faces {
+                let Some(s) = self
+                    .pack
+                    .layer_names
+                    .get(&face.layer)
+                    .and_then(|n| self.gui.atlas.sprites.get(n))
+                else {
+                    continue;
+                };
+                use horizon_assets::model::Direction as D;
+                let shade: u32 = match face.quad.facing {
+                    D::Up => 255,
+                    D::Down => 127,
+                    D::North | D::South => 204,
+                    D::West | D::East => 153,
+                };
+                let color = if diffuse {
+                    u32::MAX
+                } else {
+                    0xFF00_0000 | shade << 16 | shade << 8 | shade
+                };
+                let normal = if diffuse {
+                    use horizon_client::item_render::{direction_vector, transform_normal};
+                    let n = transform_normal(m, direction_vector(face.quad.facing));
+                    let n = n.to_array().map(|v| (v.clamp(-1.0, 1.0) * 127.0) as i8);
+                    [n[0], n[1], n[2], 127]
+                } else {
+                    [0; 4]
+                };
+                let light = if diffuse {
+                    let emission = u32::from(face.quad.light_emission) * 16;
+                    (light & 0xFF) | (light >> 8 & 0xFF).max(emission) << 8
+                } else {
+                    light
+                };
+                for k in 0..4 {
+                    let p = face.quad.positions[k];
+                    let uv = face.quad.uv[k];
+                    out.push(Vertex {
+                        normal,
+                        pos: m.transform_point3(glam::Vec3::from_array(p)).to_array(),
+                        uv: [s.u0 + uv[0] * (s.u1 - s.u0), s.v0 + uv[1] * (s.v1 - s.v0)],
+                        layer: 0,
+                        color,
+                        light,
+                        glint_uv: [0.0, 0.0],
+                    });
+                }
+            }
+        }
+    }
     fn display_state(&self, c: &Minecart) -> Option<BlockStateId> {
         let registry = &self.pack.assets.registry;
         let with = |name: &str, props: &[(&str, &str)]| {
@@ -1468,6 +1304,166 @@ impl crate::game::Sim<'_> {
             CartKind::Tnt => registry.default_state("minecraft:tnt"),
             CartKind::CommandBlock => registry.default_state("minecraft:command_block"),
         }
+    }
+    /// `AbstractMinecartRenderer` (old render): on the rail between the
+    /// front and back points, pitched on slopes, with the display block.
+    pub(super) fn cart_geometry(&self, camera: glam::DVec3, alpha: f64, out: &mut Vec<Vertex>) {
+        let a = alpha as f32;
+        let Some(uv) = self
+            .gui
+            .atlas
+            .sprites
+            .get("entity/minecart/minecart")
+            .map(|r| [r.u0, r.v0, r.u1, r.v1])
+        else {
+            return;
+        };
+        // Entity.shouldRenderAtSqrDistance: 64 times the bounding box's mean
+        // edge, scaled by the view scale.
+        let range = (WIDTH + HEIGHT + WIDTH) / 3.0 * 64.0 * self.view_scale();
+        for c in &self.carts {
+            let entity_start = out.len();
+            let Some(model) = self.cart_models.models.get(&c.kind) else {
+                continue;
+            };
+            let (x, y, z) = (
+                c.previous.x + (c.position.x - c.previous.x) * alpha,
+                c.previous.y + (c.position.y - c.previous.y) * alpha,
+                c.previous.z + (c.position.z - c.previous.z) * alpha,
+            );
+            // LevelExtractor.isEntityVisible: the cart the player rides always draws.
+            if self.riding != Some(c.id) {
+                let d = glam::DVec3::new(c.position.x, c.position.y, c.position.z) - camera;
+                if d.length_squared() >= range * range {
+                    continue;
+                }
+                // EntityRenderer.shouldRender: the interpolated box grown by 0.5;
+                // AbstractMinecartRenderer.getBoundingBoxForCulling stretches it
+                // up by the display block's offset.
+                if let Some(view) = &self.view_frustum {
+                    let top = HEIGHT
+                        + if c.kind == CartKind::Rideable {
+                            0.0
+                        } else {
+                            display_offset(c.kind) * 0.75 / 16.0
+                        };
+                    let p = glam::DVec3::new(x, y, z) - camera;
+                    let lo = p - glam::DVec3::new(WIDTH / 2.0 + 0.5, 0.5, WIDTH / 2.0 + 0.5);
+                    let hi = p + glam::DVec3::new(WIDTH / 2.0 + 0.5, top + 0.5, WIDTH / 2.0 + 0.5);
+                    if !view.intersects(lo.as_vec3(), hi.as_vec3()) {
+                        continue;
+                    }
+                }
+            }
+            let mut yaw =
+                c.previous_yaw + ((c.yaw - c.previous_yaw + 180.0).rem_euclid(360.0) - 180.0) * a;
+            let mut pitch = 0.0f32;
+            let mut offset = glam::DVec3::ZERO;
+            if let Some(on) = self.rail_pos(x, y, z) {
+                let front = self.rail_pos_offs(x, y, z, 0.3).unwrap_or(on);
+                let back = self.rail_pos_offs(x, y, z, -0.3).unwrap_or(on);
+                offset = glam::DVec3::new(on[0] - x, (front[1] + back[1]) / 2.0 - y, on[2] - z);
+                let d =
+                    glam::DVec3::new(back[0] - front[0], back[1] - front[1], back[2] - front[2]);
+                if d.length() != 0.0 {
+                    let d = d.normalize();
+                    yaw = d.z.atan2(d.x).to_degrees() as f32;
+                    pitch = (d.y.atan() * 73.0) as f32;
+                }
+            }
+            // The per-entity jitter (offsetSeed) that keeps stacked carts from z-fighting.
+            let seed = i64::from(c.id).wrapping_mul(493_286_711);
+            let seed = seed
+                .wrapping_mul(seed)
+                .wrapping_mul(4_392_167_121)
+                .wrapping_add(seed.wrapping_mul(98_761));
+            let jitter = |shift: i64| (((seed >> shift & 7) as f32 + 0.5) / 8.0 - 0.5) * 0.004;
+            let p = glam::DVec3::new(x, y, z) + offset - camera;
+            let mut base = glam::Mat4::from_translation(
+                p.as_vec3() + glam::Vec3::new(jitter(16), jitter(20) + 0.375, jitter(24)),
+            ) * glam::Mat4::from_rotation_y((180.0 - yaw).to_radians())
+                * glam::Mat4::from_rotation_z((-pitch).to_radians());
+            let hurt = c.hurt_time as f32 - a;
+            if hurt > 0.0 {
+                let damage = (c.damage - a).max(0.0);
+                base *= glam::Mat4::from_rotation_x(
+                    (hurt.sin() * hurt * damage / 10.0 * c.hurt_dir as f32).to_radians(),
+                );
+            }
+            let l = self.world.light(
+                c.position.x.floor() as i32,
+                (c.position.y + 0.35).floor() as i32,
+                c.position.z.floor() as i32,
+            );
+            let packed = (u32::from(l >> 4) * 16) | ((u32::from(l & 15) * 16) << 8);
+            if let Some(state) = self.display_state(c) {
+                let display = base
+                    * glam::Mat4::from_scale(glam::Vec3::splat(0.75))
+                    * glam::Mat4::from_translation(glam::Vec3::new(
+                        -0.5,
+                        (display_offset(c.kind) as f32 - 8.0) / 16.0,
+                        0.5,
+                    ))
+                    * glam::Mat4::from_rotation_y(90f32.to_radians());
+                if c.kind == CartKind::Chest {
+                    self.cart_chest(state, display, l, out);
+                } else {
+                    // TNT minecarts flash white as the fuse runs out (TntMinecartRenderer).
+                    let swell = if c.kind == CartKind::Tnt && c.fuse > -1 {
+                        let fuse = c.fuse as f32 - a + 1.0;
+                        if fuse < 10.0 {
+                            let g = (1.0 - fuse / 10.0).clamp(0.0, 1.0);
+                            1.0 + g * g * g * g * 0.3
+                        } else {
+                            1.0
+                        }
+                    } else {
+                        1.0
+                    };
+                    let m = display
+                        * glam::Mat4::from_translation(glam::Vec3::splat(0.5))
+                        * glam::Mat4::from_scale(glam::Vec3::splat(swell))
+                        * glam::Mat4::from_translation(glam::Vec3::splat(-0.5));
+                    let flash = c.kind == CartKind::Tnt && c.fuse > -1 && (c.fuse / 5) % 2 == 0;
+                    let start = out.len();
+                    self.block_model_vertices(state, 0, m, packed, false, out);
+                    if flash {
+                        // submitWhiteSolidBlock: OverlayTexture.u(1.0) on the cart's own light.
+                        for v in &mut out[start..] {
+                            v.layer = 5;
+                        }
+                    }
+                }
+            }
+            let m = base * glam::Mat4::from_scale(glam::Vec3::new(-1.0, -1.0, 1.0));
+            let poses = Poses::new(model);
+            horizon_client::mobs::render::draw(model, m, &poses, uv, 0xFFFF_FFFF, packed, 0, out);
+            self.cull_entity_vertices(out, entity_start);
+        }
+    }
+    /// The chest inside a chest minecart, drawn by the chest block-entity renderer.
+    fn cart_chest(&self, state: BlockStateId, m: glam::Mat4, light: u8, out: &mut Vec<Vertex>) {
+        let lid = |_: [i32; 3]| 0.0;
+        let scene = horizon_client::block_entity_render::Scene {
+            camera: glam::DVec3::ZERO,
+            orientation: glam::Quat::IDENTITY,
+            anim: &|_| horizon_client::block_entity_render::BlockAnim::default(),
+            texts: None,
+            partial: 0.0,
+            game_time: self.world.game_time,
+            max_y: self.dim.max_y(),
+            world: &self.world,
+            sprites: &self.gui.atlas.sprites,
+            nether: self.dim == super::Dim::Nether,
+            lid: &lid,
+            sign: &|_| None,
+            banner: &|_| Vec::new(),
+            skull: &|_| None,
+            glyph: &|c| self.gui.atlas.glyph_cell(c),
+        };
+        self.res
+            .block_entity_render()
+            .render_state(&scene, state.0, m, light, out);
     }
 }
 /// Saving and loading.

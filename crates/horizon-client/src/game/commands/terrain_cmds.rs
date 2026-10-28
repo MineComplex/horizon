@@ -269,8 +269,8 @@ impl Game<'_> {
     /// The player's movement collides with the border as it is now
     /// (`CollisionGetter.borderCollision`): from inside, its walls stop it.
     pub(in crate::game) fn player_border(&mut self) {
-        if let Some(p) = self.sim.player.as_mut() {
-            p.border = Some(self.sim.border.geometry().clone());
+        if let Some(p) = self.player.as_mut() {
+            p.border = Some(self.border.geometry().clone());
         }
     }
     /// `LivingEntity.baseTick`: a player outside the border, further than
@@ -486,13 +486,12 @@ impl Game<'_> {
                         .map_err(|e| err("argument.nbt.invalid", &[&e]))?;
                     let json = horizon_client::scoreboard::tag_to_json(&tag);
                     let drops = self
-                        .sim
                         .res
                         .items()
-                        .inline_loot_table(&json, &mut self.sim.world.random);
+                        .inline_loot_table(&json, &mut self.world.random);
                     (drops, None)
                 } else {
-                    if !self.sim.res.items().has_loot_table(&table) {
+                    if !self.res.items().has_loot_table(&table) {
                         return Err(err("argument.resource_or_id.failed_to_parse", &[&table]));
                     }
                     let held = if id == "loot.fish" {
@@ -500,19 +499,18 @@ impl Game<'_> {
                     } else {
                         None
                     };
-                    let drops = match self.sim.res.items().loot_sequence(&table) {
+                    let drops = match self.res.items().loot_sequence(&table) {
                         Some(seq) => {
-                            let random = self.sim.rand_sequences.get(&seq, self.sim.level.seed);
-                            self.sim
-                                .res
+                            let random = self.rand_sequences.get(&seq, self.level.seed);
+                            self.res
                                 .items()
                                 .loot_table(&table, false, held.as_ref(), random)
                         }
-                        None => self.sim.res.items().loot_table(
+                        None => self.res.items().loot_table(
                             &table,
                             false,
                             held.as_ref(),
-                            &mut self.sim.world.random,
+                            &mut self.world.random,
                         ),
                     };
                     (drops, None)
@@ -532,23 +530,22 @@ impl Game<'_> {
                     ));
                 }
                 let by_player = matches!(
-                    self.sim.command_source.map(|s| s.entity),
+                    self.command_source.map(|s| s.entity),
                     None | Some(Some(Target::Player))
                 );
-                let held = self.slot_get(&super::items::Slot::Inv(self.sim.selected));
-                let drops = match self.sim.res.items().loot_sequence(&table) {
+                let held = self.slot_get(&super::items::Slot::Inv(self.selected));
+                let drops = match self.res.items().loot_sequence(&table) {
                     Some(seq) => {
-                        let random = self.sim.rand_sequences.get(&seq, self.sim.level.seed);
-                        self.sim
-                            .res
+                        let random = self.rand_sequences.get(&seq, self.level.seed);
+                        self.res
                             .items()
                             .entity_drops(&ty, by_player, held.as_ref(), random)
                     }
-                    None => self.sim.res.items().entity_drops(
+                    None => self.res.items().entity_drops(
                         &ty,
                         by_player,
                         held.as_ref(),
-                        &mut self.sim.world.random,
+                        &mut self.world.random,
                     ),
                 };
                 (drops, Some(table))
@@ -559,25 +556,25 @@ impl Game<'_> {
                 let state = self.world.block(p[0], p[1], p[2]);
                 let name = self.data_block_name(p);
                 let table = format!("minecraft:blocks/{}", name.trim_start_matches("minecraft:"));
-                if !self.sim.res.items().has_loot_table(&table) {
+                if !self.res.items().has_loot_table(&table) {
                     return Err(err("commands.drop.no_loot_table.block", &[&name]));
                 }
                 let tool = self.tool_stack(ctx)?;
-                let drops = match self.sim.res.items().loot_sequence(&table) {
+                let drops = match self.res.items().loot_sequence(&table) {
                     Some(seq) => {
-                        let random = self.sim.rand_sequences.get(&seq, self.sim.level.seed);
-                        self.sim.res.items().block_drops(
-                            self.sim.pack.assets.registry,
+                        let random = self.rand_sequences.get(&seq, self.level.seed);
+                        self.res.items().block_drops(
+                            self.pack.assets.registry,
                             state,
                             tool.as_ref(),
                             random,
                         )
                     }
-                    None => self.sim.res.items().block_drops(
-                        self.sim.pack.assets.registry,
+                    None => self.res.items().block_drops(
+                        self.pack.assets.registry,
                         state,
                         tool.as_ref(),
-                        &mut self.sim.world.random,
+                        &mut self.world.random,
                     ),
                 };
                 (drops, Some(table))

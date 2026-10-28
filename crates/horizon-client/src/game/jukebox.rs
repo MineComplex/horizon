@@ -18,6 +18,12 @@ use horizon_core::{
 use horizon_world::level::flags as level_flags;
 
 impl Game<'_> {
+    fn jukebox(&self, pos: [i32; 3]) -> Option<&Jukebox> {
+        match self.world.block_entities.get(&(pos[0], pos[1], pos[2])) {
+            Some(BlockEntity::Jukebox(j)) => Some(j),
+            _ => None,
+        }
+    }
     fn set_has_record(&mut self, pos: [i32; 3], has: bool) {
         let state = self.world.block(pos[0], pos[1], pos[2]);
         let registry = self.pack.assets.registry;
@@ -94,83 +100,6 @@ impl Game<'_> {
         self.trigger_block("minecraft:item_used_on_block", pos, stack);
         true
     }
-    /// `popOutTheItem`: the disc above the jukebox, and the song stops.
-    fn eject_record(&mut self, pos: [i32; 3]) {
-        let key = (pos[0], pos[1], pos[2]);
-        let record = match self.world.block_entities.get_mut(&key) {
-            Some(BlockEntity::Jukebox(j)) => {
-                j.playing = false;
-                j.ticks = 0;
-                j.record.take()
-            }
-            _ => None,
-        };
-        self.stop_song(pos);
-        if let Some(record) = record {
-            // atLowerCornerWithOffset(pos, 0.5, 1.01, 0.5).offsetRandomXZ(random, 0.7);
-            // `new ItemEntity` moves it with its own random.
-            let at = horizon_world::level::removal::jukebox_pop_position(
-                &mut self.world.random,
-                horizon_core::position::BlockPos::new(pos[0], pos[1], pos[2]),
-            );
-            self.spawn_item(record, at, super::dispenser::new_item_motion(), 10);
-        }
-        self.set_has_record(pos, false);
-        self.jukebox_changed(pos);
-    }
-    /// `JukeboxSongPlayer.tick` of the jukebox at `key`, while it plays.
-    pub(super) fn tick_jukebox(&mut self, key: (i32, i32, i32)) {
-        let playing = match self.world.block_entities.get(&key) {
-            Some(BlockEntity::Jukebox(j)) if j.playing => j.record.as_ref().and_then(|r| {
-                let song = self.res.items().get(&r.item)?.jukebox_song.clone()?;
-                Some((song, j.ticks))
-            }),
-            _ => None,
-        };
-        let Some((song, ticks)) = playing else {
-            return;
-        };
-        let pos = [key.0, key.1, key.2];
-        let Some(s) = self.res.items().songs.get(&song).cloned() else {
-            return;
-        };
-        if s.finished(ticks) {
-            if let Some(BlockEntity::Jukebox(j)) = self.world.block_entities.get_mut(&key) {
-                j.playing = false;
-                j.ticks = 0;
-            }
-            self.stop_song(pos);
-            self.jukebox_changed(pos);
-            return;
-        }
-        if !self.jukebox_sounds.contains(&key) && ticks == 0 {
-            self.start_song(pos, &song);
-        }
-        if ticks % 20 == 0 {
-            let color = f64::from(self.world.random.next_int_bound(4).unwrap_or(0)) / 24.0;
-            let at = [
-                f64::from(pos[0]) + 0.5,
-                f64::from(pos[1]) + 1.2,
-                f64::from(pos[2]) + 0.5,
-            ];
-            self.particles.add(
-                &ParticleOptions::simple(ParticleType::Note),
-                at,
-                [color, 0.0, 0.0],
-            );
-        }
-        if let Some(BlockEntity::Jukebox(j)) = self.world.block_entities.get_mut(&key) {
-            j.ticks += 1;
-        }
-    }
-}
-impl crate::game::Sim<'_> {
-    fn jukebox(&self, pos: [i32; 3]) -> Option<&Jukebox> {
-        match self.world.block_entities.get(&(pos[0], pos[1], pos[2])) {
-            Some(BlockEntity::Jukebox(j)) => Some(j),
-            _ => None,
-        }
-    }
     /// Level event 1010: the song from the jukebox, and the "Now Playing" overlay.
     fn start_song(&mut self, pos: [i32; 3], song: &str) {
         self.stop_sound(pos);
@@ -217,9 +146,78 @@ impl crate::game::Sim<'_> {
             m.extra.party_jukebox = playing.then_some(pos);
         }
     }
+    /// `popOutTheItem`: the disc above the jukebox, and the song stops.
+    fn eject_record(&mut self, pos: [i32; 3]) {
+        let key = (pos[0], pos[1], pos[2]);
+        let record = match self.world.block_entities.get_mut(&key) {
+            Some(BlockEntity::Jukebox(j)) => {
+                j.playing = false;
+                j.ticks = 0;
+                j.record.take()
+            }
+            _ => None,
+        };
+        self.stop_song(pos);
+        if let Some(record) = record {
+            // atLowerCornerWithOffset(pos, 0.5, 1.01, 0.5).offsetRandomXZ(random, 0.7);
+            // `new ItemEntity` moves it with its own random.
+            let at = horizon_world::level::removal::jukebox_pop_position(
+                &mut self.world.random,
+                horizon_core::position::BlockPos::new(pos[0], pos[1], pos[2]),
+            );
+            self.spawn_item(record, at, super::dispenser::new_item_motion(), 10);
+        }
+        self.set_has_record(pos, false);
+        self.jukebox_changed(pos);
+    }
     /// A broken jukebox stops its song (its disc drops with the contents).
     pub(super) fn jukebox_removed(&mut self, pos: [i32; 3]) {
         self.stop_song(pos);
+    }
+    /// `JukeboxSongPlayer.tick` of the jukebox at `key`, while it plays.
+    pub(super) fn tick_jukebox(&mut self, key: (i32, i32, i32)) {
+        let playing = match self.world.block_entities.get(&key) {
+            Some(BlockEntity::Jukebox(j)) if j.playing => j.record.as_ref().and_then(|r| {
+                let song = self.res.items().get(&r.item)?.jukebox_song.clone()?;
+                Some((song, j.ticks))
+            }),
+            _ => None,
+        };
+        let Some((song, ticks)) = playing else {
+            return;
+        };
+        let pos = [key.0, key.1, key.2];
+        let Some(s) = self.res.items().songs.get(&song).cloned() else {
+            return;
+        };
+        if s.finished(ticks) {
+            if let Some(BlockEntity::Jukebox(j)) = self.world.block_entities.get_mut(&key) {
+                j.playing = false;
+                j.ticks = 0;
+            }
+            self.stop_song(pos);
+            self.jukebox_changed(pos);
+            return;
+        }
+        if !self.jukebox_sounds.contains(&key) && ticks == 0 {
+            self.start_song(pos, &song);
+        }
+        if ticks % 20 == 0 {
+            let color = f64::from(self.world.random.next_int_bound(4).unwrap_or(0)) / 24.0;
+            let at = [
+                f64::from(pos[0]) + 0.5,
+                f64::from(pos[1]) + 1.2,
+                f64::from(pos[2]) + 0.5,
+            ];
+            self.particles.add(
+                &ParticleOptions::simple(ParticleType::Note),
+                at,
+                [color, 0.0, 0.0],
+            );
+        }
+        if let Some(BlockEntity::Jukebox(j)) = self.world.block_entities.get_mut(&key) {
+            j.ticks += 1;
+        }
     }
     /// Let go of songs whose jukebox stopped.
     pub(super) fn update_song_volumes(&mut self) {
