@@ -21,6 +21,53 @@ pub(super) struct FangState {
     model: Option<Arc<Part>>,
 }
 impl Game<'_> {
+    pub(super) fn add_fangs(&mut self, at: [f64; 3], yaw: f32, delay: i32, owner: u32) {
+        self.next_entity += 1;
+        self.insert_fangs(self.next_entity, at, yaw, delay, owner);
+    }
+
+    pub(super) fn insert_fangs(&mut self, id: u32, at: [f64; 3], yaw: f32, delay: i32, owner: u32) {
+        if self.fangs.model.is_none() {
+            self.fangs.model = horizon_client::mobs::load_model(
+                &self.options.resources,
+                "minecraft:evoker_fangs#main",
+            )
+            .map(Arc::new);
+        }
+        self.fangs.list.push(Fangs {
+            id,
+            pos: at,
+            yaw,
+            warmup: delay,
+            life: 22,
+            owner,
+            started: false,
+        });
+    }
+    /// `EvokerFangs.handleEntityEvent`: only event 4 starts a client attack.
+    pub(super) fn remote_fangs_event(&mut self, id: u32, event: i8) {
+        if event == 4
+            && let Some(f) = self.fangs.list.iter_mut().find(|f| f.id == id)
+        {
+            f.started = true;
+            self.sounds.play_unshared(
+                "minecraft:entity.evoker_fangs.attack",
+                Some(f.pos),
+                1.0,
+                1.0,
+            );
+        }
+    }
+
+    /// `EvokerFangs.tick`: clients only advance animation, never damage or discard.
+    pub(super) fn tick_remote_fangs(&mut self) {
+        for f in &mut self.fangs.list {
+            if f.started {
+                f.life -= 1;
+            }
+        }
+    }
+
     /// `EvokerFangs.tick`.
     pub(super) fn tick_fangs(&mut self) {
         let mut list = std::mem::take(&mut self.fangs.list);
@@ -122,7 +169,6 @@ impl Game<'_> {
             return;
         };
         let Some(r) = self
-            .front
             .gui
             .atlas
             .sprites
@@ -180,52 +226,6 @@ impl Game<'_> {
                 0,
                 out,
             );
-        }
-    }
-}
-impl crate::game::Sim<'_> {
-    pub(super) fn add_fangs(&mut self, at: [f64; 3], yaw: f32, delay: i32, owner: u32) {
-        self.next_entity += 1;
-        self.insert_fangs(self.next_entity, at, yaw, delay, owner);
-    }
-    pub(super) fn insert_fangs(&mut self, id: u32, at: [f64; 3], yaw: f32, delay: i32, owner: u32) {
-        if self.fangs.model.is_none() {
-            self.fangs.model = horizon_client::mobs::load_model(
-                &self.options.resources,
-                "minecraft:evoker_fangs#main",
-            )
-            .map(Arc::new);
-        }
-        self.fangs.list.push(Fangs {
-            id,
-            pos: at,
-            yaw,
-            warmup: delay,
-            life: 22,
-            owner,
-            started: false,
-        });
-    }
-    /// `EvokerFangs.handleEntityEvent`: only event 4 starts a client attack.
-    pub(super) fn remote_fangs_event(&mut self, id: u32, event: i8) {
-        if event == 4
-            && let Some(f) = self.fangs.list.iter_mut().find(|f| f.id == id)
-        {
-            f.started = true;
-            self.sounds.play_unshared(
-                "minecraft:entity.evoker_fangs.attack",
-                Some(f.pos),
-                1.0,
-                1.0,
-            );
-        }
-    }
-    /// `EvokerFangs.tick`: clients only advance animation, never damage or discard.
-    pub(super) fn tick_remote_fangs(&mut self) {
-        for f in &mut self.fangs.list {
-            if f.started {
-                f.life -= 1;
-            }
         }
     }
 }

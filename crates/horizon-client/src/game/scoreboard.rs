@@ -46,6 +46,85 @@ fn in_range(v: i32, (lo, hi): IntRange) -> bool {
 }
 
 impl Game<'_> {
+    fn scoreboard_path(&self) -> std::path::PathBuf {
+        self.world_root.join("data/minecraft/scoreboard.dat")
+    }
+    /// `ScoreboardSaveData` read from `data/minecraft/scoreboard.dat`.
+    pub(super) fn load_scoreboard(&mut self) {
+        if self.score.loaded || self.remote.is_some() {
+            return;
+        }
+        self.score.loaded = true;
+        if let Some(root) = save::read_dat(&self.scoreboard_path())
+            && let Some(data) = root.get("data")
+        {
+            self.score.board = Scoreboard::unpack(data);
+        }
+        self.score.storage =
+            horizon_client::command_storage::CommandStorage::load(&self.world_root);
+        if let Some(root) = save::read_dat(&self.world_root.join("data/minecraft/world_border.dat"))
+            && let Some(data) = root.get("data")
+        {
+            self.border = horizon_client::worldborder::WorldBorder::unpack(data);
+        }
+        self.score.stopwatches = horizon_client::stopwatches::Stopwatches::load(&self.world_root);
+        self.sync_score_registries();
+    }
+    pub(super) fn save_scoreboard(&mut self) {
+        if !self.score.loaded || self.remote.is_some() {
+            return;
+        }
+        self.score.storage.save(&self.world_root);
+        self.score.stopwatches.save(&self.world_root);
+        if self.border != horizon_client::worldborder::WorldBorder::default() {
+            let _ = save::write_dat(
+                &self.world_root.join("data/minecraft/world_border.dat"),
+                Tag::compound([
+                    ("data", self.border.pack()),
+                    ("DataVersion", Tag::Int(horizon_world::DATA_VERSION)),
+                ]),
+            );
+        }
+        let path = self.scoreboard_path();
+        let board = &self.score.board;
+        if board == &Scoreboard::default() && !path.exists() {
+            return;
+        }
+        let _ = save::write_dat(
+            &path,
+            Tag::compound([
+                ("data", board.pack()),
+                ("DataVersion", Tag::Int(horizon_world::DATA_VERSION)),
+            ]),
+        );
+    }
+    /// The names commands complete: objectives, teams and tracked holders.
+    pub(super) fn sync_score_registries(&mut self) {
+        let board = &self.score.board;
+        let reg = &mut self.world_data.registries;
+        reg.objectives = board.objectives.iter().map(|o| o.name.clone()).collect();
+        // Trigger objectives: the locks `/trigger` and `scoreboard players enable` complete from.
+        reg.trigger_scores.clear();
+        for o in board.objectives.iter().filter(|o| o.criteria == "trigger") {
+            let locks = board
+                .scores
+                .iter()
+                .filter_map(|(holder, s)| s.get(&o.name).map(|s| (holder.clone(), s.locked)))
+                .collect();
+            reg.trigger_scores.insert(o.name.clone(), locks);
+        }
+        reg.trigger_objectives = reg
+            .trigger_scores
+            .iter()
+            .filter(|(_, locks)| locks.get(PLAYER_NAME) == Some(&false))
+            .map(|(o, _)| o.clone())
+            .collect();
+        reg.teams = board.teams.iter().map(|t| t.name.clone()).collect();
+        reg.tracked = board.tracked();
+        reg.storages = self.score.storage.keys();
+        reg.stopwatches = self.score.stopwatches.ids();
+    }
+
     // ---- score holders ---------------------------------------------------
 
     /// `ScoreHolder.getScoreboardName`: the player's name, an entity's UUID.
@@ -75,6 +154,58 @@ impl Game<'_> {
             text: shown,
             name,
         })
+    }
+    /// The entity with the given scoreboard name.
+    fn target_of_holder(&self, name: &str) -> Option<Target> {
+        if name == self.acting_player_name() {
+            return Some(Target::Player);
+        }
+        let uuid = uuid_from_text(name).filter(|_| name.len() == 36)?;
+        if Some(uuid) == self.level.player_uuid {
+            return Some(Target::Player);
+        }
+        let id = self
+            .persist
+            .uuids
+            .iter()
+            .find(|(_, u)| **u == uuid)
+            .map(|(id, _)| *id)?;
+        if self.mobs.iter().any(|m| m.id == id) {
+            Some(Target::Mob(id))
+        } else if self.dropped.iter().any(|i| i.id == id) {
+            Some(Target::Item(id))
+        } else {
+            None
+        }
+    }
+    /// `Entity.getTags` (the `Tags` list of the saved entity).
+    pub(super) fn tags_of(&self, t: Target) -> Vec<String> {
+        let raw = match t {
+            Target::Mob(id)
+            | Target::Item(id)
+            | Target::Stand(id)
+            | Target::Frame(id)
+            | Target::Painting(id)
+            | Target::Boat(id)
+            | Target::Cart(id)
+            | Target::Other(id) => self.persist.raw.get(&id),
+            Target::Player => self.level.player_extra.as_ref(),
+            Target::Guest(_)
+            | Target::Orb(_)
+            | Target::Projectile(_)
+            | Target::Crystal(_)
+            | Target::Dragon(_) => None,
+        };
+        match raw.and_then(|r| r.get("Tags")) {
+            Some(Tag::List(l)) => l
+                .iter()
+                .filter_map(|t| match t {
+                    Tag::String(s) => Some(s.to_string_lossy()),
+                    _ => None,
+                })
+                .collect(),
+            _ => Vec::new(),
+        }
     }
     /// The selector options that need the scoreboard or entity data: which
     /// of `candidates` pass `scores=`, `team=` and `tag=`.
@@ -166,273 +297,6 @@ impl Game<'_> {
         pass
     }
 
-    // ---- criteria ----------------------------------------------------------
-
-    /// `ServerPlayer.awardKillScore`: total kills and the team kill counts.
-    pub(super) fn score_player_killed(&mut self, victim: Target) {
-        let victim_name = self.holder_name(victim);
-        let display = self.player_display_comp();
-        let me = self.acting_player_name().to_owned();
-        let board = &mut self.score.board;
-        let inc = |v: i32| v.wrapping_add(1);
-        board.for_all_objectives_with(sb::CRITERIA_TOTAL_KILLS, &me, Some(&display), inc);
-        if victim == Target::Player {
-            board.for_all_objectives_with(sb::CRITERIA_PLAYER_KILLS, &me, Some(&display), inc);
-        }
-        let color_of =
-            |board: &Scoreboard, name: &str| board.players_team(name).and_then(|t| t.color.clone());
-        if let Some(victim_name) = victim_name {
-            if let Some(color) = color_of(board, &victim_name) {
-                let criteria = format!("teamkill.{color}");
-                board.for_all_objectives_with(&criteria, &me, Some(&display), inc);
-            }
-            if let Some(color) = color_of(board, &me) {
-                let criteria = format!("killedByTeam.{color}");
-                board.for_all_objectives(&criteria, &victim_name, inc);
-            }
-        }
-    }
-
-    // ---- teams in gameplay -----------------------------------------------------
-
-    // ---- commands ------------------------------------------------------------
-
-    /// The scoreboard names a score holder argument resolves to.
-    pub(super) fn score_holder_names(
-        &mut self,
-        ctx: &Context,
-        name: &str,
-        default_wildcard: bool,
-    ) -> super::commands::R<Vec<String>> {
-        let mut env = GameEnv { g: self };
-        Ok(
-            scoreboard_cmd::holders(ctx, name, &mut env, default_wildcard)?
-                .into_iter()
-                .map(|h| h.name)
-                .collect(),
-        )
-    }
-    pub(super) fn cmd_scoreboard(&mut self, id: &str, ctx: &Context) -> super::commands::R<i32> {
-        let mut env = GameEnv { g: self };
-        let result = scoreboard_cmd::execute(id, ctx, &mut env).unwrap_or_else(|| {
-            Err(horizon_client::command::CommandError::tr(
-                "command.failed",
-                &[],
-            ))
-        });
-        self.sync_score_registries();
-        result
-    }
-    /// ComponentUtils.updateForEntity for the pieces scoreboards store:
-    /// `selector` and `score` components become their text.
-    pub(super) fn resolve_component(&mut self, c: Comp) -> Comp {
-        match c {
-            Comp::Object(mut o) => {
-                if let Some(sel) = o.get("selector").and_then(Comp::as_str).map(str::to_owned) {
-                    let text = self.resolve_selector_text(&sel);
-                    o.remove("selector");
-                    o.insert("text".into(), Comp::String(text));
-                } else if let Some(score) = o.get("score").cloned() {
-                    let name = score.get("name").and_then(Comp::as_str).unwrap_or("");
-                    let objective = score.get("objective").and_then(Comp::as_str).unwrap_or("");
-                    let name = if name == "*" { PLAYER_NAME } else { name };
-                    let text = self
-                        .score
-                        .board
-                        .score(name, objective)
-                        .map_or_else(String::new, |s| s.value.to_string());
-                    o.remove("score");
-                    o.insert("text".into(), Comp::String(text));
-                }
-                for key in ["extra", "with"] {
-                    if let Some(Comp::Array(list)) = o.remove(key) {
-                        let list = list
-                            .into_iter()
-                            .map(|c| self.resolve_component(c))
-                            .collect();
-                        o.insert(key.into(), Comp::Array(list));
-                    }
-                }
-                Comp::Object(o)
-            }
-            Comp::Array(list) => Comp::Array(
-                list.into_iter()
-                    .map(|c| self.resolve_component(c))
-                    .collect(),
-            ),
-            other => other,
-        }
-    }
-    fn resolve_selector_text(&mut self, raw: &str) -> String {
-        let mut reader = horizon_client::command::Reader::new(raw);
-        let ty = horizon_client::command::args::ArgType::Entity {
-            single: false,
-            players: false,
-        };
-        let Ok(horizon_client::command::Arg::Entity(sel)) =
-            ty.parse(&mut reader, &self.world_data.registries)
-        else {
-            return raw.to_owned();
-        };
-        let names: Vec<String> = self
-            .select(&sel)
-            .into_iter()
-            .map(|t| self.target_name(t).plain())
-            .collect();
-        names.join(", ")
-    }
-
-    // ---- the sidebar -----------------------------------------------------------
-
-    /// `Hud.extractScoreboardSidebar` / `displayScoreboardSidebar`.
-    pub(super) fn draw_scoreboard(&self, batch: &mut HudBatch) {
-        let board = &self.score.board;
-        let Some(objective) = self.sidebar_objective() else {
-            return;
-        };
-        let draws = hud_overlays::sidebar(
-            batch.width as i32,
-            batch.height as i32,
-            board,
-            objective,
-            &self.front.gui.atlas.font,
-            self.settings.text_background(0.3),
-            self.settings.text_background(0.4),
-        );
-        hud_layout::paint(batch, &self.front.gui.atlas, &draws);
-    }
-}
-impl crate::game::Sim<'_> {
-    fn scoreboard_path(&self) -> std::path::PathBuf {
-        self.world_root.join("data/minecraft/scoreboard.dat")
-    }
-    /// `ScoreboardSaveData` read from `data/minecraft/scoreboard.dat`.
-    pub(super) fn load_scoreboard(&mut self) {
-        if self.score.loaded || self.remote.is_some() {
-            return;
-        }
-        self.score.loaded = true;
-        if let Some(root) = save::read_dat(&self.scoreboard_path())
-            && let Some(data) = root.get("data")
-        {
-            self.score.board = Scoreboard::unpack(data);
-        }
-        self.score.storage =
-            horizon_client::command_storage::CommandStorage::load(&self.world_root);
-        if let Some(root) = save::read_dat(&self.world_root.join("data/minecraft/world_border.dat"))
-            && let Some(data) = root.get("data")
-        {
-            self.border = horizon_client::worldborder::WorldBorder::unpack(data);
-        }
-        self.score.stopwatches = horizon_client::stopwatches::Stopwatches::load(&self.world_root);
-        self.sync_score_registries();
-    }
-    pub(super) fn save_scoreboard(&mut self) {
-        if !self.score.loaded || self.remote.is_some() {
-            return;
-        }
-        self.score.storage.save(&self.world_root);
-        self.score.stopwatches.save(&self.world_root);
-        if self.border != horizon_client::worldborder::WorldBorder::default() {
-            let _ = save::write_dat(
-                &self.world_root.join("data/minecraft/world_border.dat"),
-                Tag::compound([
-                    ("data", self.border.pack()),
-                    ("DataVersion", Tag::Int(horizon_world::DATA_VERSION)),
-                ]),
-            );
-        }
-        let path = self.scoreboard_path();
-        let board = &self.score.board;
-        if board == &Scoreboard::default() && !path.exists() {
-            return;
-        }
-        let _ = save::write_dat(
-            &path,
-            Tag::compound([
-                ("data", board.pack()),
-                ("DataVersion", Tag::Int(horizon_world::DATA_VERSION)),
-            ]),
-        );
-    }
-    /// The names commands complete: objectives, teams and tracked holders.
-    pub(super) fn sync_score_registries(&mut self) {
-        let board = &self.score.board;
-        let reg = &mut self.world_data.registries;
-        reg.objectives = board.objectives.iter().map(|o| o.name.clone()).collect();
-        // Trigger objectives: the locks `/trigger` and `scoreboard players enable` complete from.
-        reg.trigger_scores.clear();
-        for o in board.objectives.iter().filter(|o| o.criteria == "trigger") {
-            let locks = board
-                .scores
-                .iter()
-                .filter_map(|(holder, s)| s.get(&o.name).map(|s| (holder.clone(), s.locked)))
-                .collect();
-            reg.trigger_scores.insert(o.name.clone(), locks);
-        }
-        reg.trigger_objectives = reg
-            .trigger_scores
-            .iter()
-            .filter(|(_, locks)| locks.get(PLAYER_NAME) == Some(&false))
-            .map(|(o, _)| o.clone())
-            .collect();
-        reg.teams = board.teams.iter().map(|t| t.name.clone()).collect();
-        reg.tracked = board.tracked();
-        reg.storages = self.score.storage.keys();
-        reg.stopwatches = self.score.stopwatches.ids();
-    }
-    /// The entity with the given scoreboard name.
-    fn target_of_holder(&self, name: &str) -> Option<Target> {
-        if name == self.acting_player_name() {
-            return Some(Target::Player);
-        }
-        let uuid = uuid_from_text(name).filter(|_| name.len() == 36)?;
-        if Some(uuid) == self.level.player_uuid {
-            return Some(Target::Player);
-        }
-        let id = self
-            .persist
-            .uuids
-            .iter()
-            .find(|(_, u)| **u == uuid)
-            .map(|(id, _)| *id)?;
-        if self.mobs.iter().any(|m| m.id == id) {
-            Some(Target::Mob(id))
-        } else if self.dropped.iter().any(|i| i.id == id) {
-            Some(Target::Item(id))
-        } else {
-            None
-        }
-    }
-    /// `Entity.getTags` (the `Tags` list of the saved entity).
-    pub(super) fn tags_of(&self, t: Target) -> Vec<String> {
-        let raw = match t {
-            Target::Mob(id)
-            | Target::Item(id)
-            | Target::Stand(id)
-            | Target::Frame(id)
-            | Target::Painting(id)
-            | Target::Boat(id)
-            | Target::Cart(id)
-            | Target::Other(id) => self.persist.raw.get(&id),
-            Target::Player => self.level.player_extra.as_ref(),
-            Target::Guest(_)
-            | Target::Orb(_)
-            | Target::Projectile(_)
-            | Target::Crystal(_)
-            | Target::Dragon(_) => None,
-        };
-        match raw.and_then(|r| r.get("Tags")) {
-            Some(Tag::List(l)) => l
-                .iter()
-                .filter_map(|t| match t {
-                    Tag::String(s) => Some(s.to_string_lossy()),
-                    _ => None,
-                })
-                .collect(),
-            _ => Vec::new(),
-        }
-    }
     /// `advancements=` of a selector, against the player's progress.
     fn advancements_match(
         &self,
@@ -451,6 +315,9 @@ impl crate::game::Sim<'_> {
             }
         })
     }
+
+    // ---- criteria ----------------------------------------------------------
+
     /// `ServerStatsCounter.setValue`'s scoreboard side: the objectives of
     /// each changed statistic's criteria follow it for the player `name`.
     pub(super) fn stat_criteria_changed(
@@ -541,6 +408,30 @@ impl crate::game::Sim<'_> {
             self.sync_score_registries();
         }
     }
+    /// `ServerPlayer.awardKillScore`: total kills and the team kill counts.
+    pub(super) fn score_player_killed(&mut self, victim: Target) {
+        let victim_name = self.holder_name(victim);
+        let display = self.player_display_comp();
+        let me = self.acting_player_name().to_owned();
+        let board = &mut self.score.board;
+        let inc = |v: i32| v.wrapping_add(1);
+        board.for_all_objectives_with(sb::CRITERIA_TOTAL_KILLS, &me, Some(&display), inc);
+        if victim == Target::Player {
+            board.for_all_objectives_with(sb::CRITERIA_PLAYER_KILLS, &me, Some(&display), inc);
+        }
+        let color_of =
+            |board: &Scoreboard, name: &str| board.players_team(name).and_then(|t| t.color.clone());
+        if let Some(victim_name) = victim_name {
+            if let Some(color) = color_of(board, &victim_name) {
+                let criteria = format!("teamkill.{color}");
+                board.for_all_objectives_with(&criteria, &me, Some(&display), inc);
+            }
+            if let Some(color) = color_of(board, &me) {
+                let criteria = format!("killedByTeam.{color}");
+                board.for_all_objectives(&criteria, &victim_name, inc);
+            }
+        }
+    }
     /// `Scoreboard.entityRemoved`: a dead non-player entity leaves the board.
     pub(super) fn score_entity_removed(&mut self, id: u32) {
         let Some(uuid) = self.persist.uuids.get(&id).copied() else {
@@ -548,6 +439,9 @@ impl crate::game::Sim<'_> {
         };
         self.score.board.entity_removed(&uuid_text(uuid));
     }
+
+    // ---- teams in gameplay -----------------------------------------------------
+
     /// `Entity.getTeam` of a mob (a mob joins a team by its UUID).
     pub(super) fn mob_team(&self, id: u32) -> Option<&sb::Team> {
         let uuid = self.persist.uuids.get(&id)?;
@@ -599,6 +493,96 @@ impl crate::game::Sim<'_> {
             None => name,
         }
     }
+
+    // ---- commands ------------------------------------------------------------
+
+    /// The scoreboard names a score holder argument resolves to.
+    pub(super) fn score_holder_names(
+        &mut self,
+        ctx: &Context,
+        name: &str,
+        default_wildcard: bool,
+    ) -> super::commands::R<Vec<String>> {
+        let mut env = GameEnv { g: self };
+        Ok(
+            scoreboard_cmd::holders(ctx, name, &mut env, default_wildcard)?
+                .into_iter()
+                .map(|h| h.name)
+                .collect(),
+        )
+    }
+    pub(super) fn cmd_scoreboard(&mut self, id: &str, ctx: &Context) -> super::commands::R<i32> {
+        let mut env = GameEnv { g: self };
+        let result = scoreboard_cmd::execute(id, ctx, &mut env).unwrap_or_else(|| {
+            Err(horizon_client::command::CommandError::tr(
+                "command.failed",
+                &[],
+            ))
+        });
+        self.sync_score_registries();
+        result
+    }
+    /// ComponentUtils.updateForEntity for the pieces scoreboards store:
+    /// `selector` and `score` components become their text.
+    pub(super) fn resolve_component(&mut self, c: Comp) -> Comp {
+        match c {
+            Comp::Object(mut o) => {
+                if let Some(sel) = o.get("selector").and_then(Comp::as_str).map(str::to_owned) {
+                    let text = self.resolve_selector_text(&sel);
+                    o.remove("selector");
+                    o.insert("text".into(), Comp::String(text));
+                } else if let Some(score) = o.get("score").cloned() {
+                    let name = score.get("name").and_then(Comp::as_str).unwrap_or("");
+                    let objective = score.get("objective").and_then(Comp::as_str).unwrap_or("");
+                    let name = if name == "*" { PLAYER_NAME } else { name };
+                    let text = self
+                        .score
+                        .board
+                        .score(name, objective)
+                        .map_or_else(String::new, |s| s.value.to_string());
+                    o.remove("score");
+                    o.insert("text".into(), Comp::String(text));
+                }
+                for key in ["extra", "with"] {
+                    if let Some(Comp::Array(list)) = o.remove(key) {
+                        let list = list
+                            .into_iter()
+                            .map(|c| self.resolve_component(c))
+                            .collect();
+                        o.insert(key.into(), Comp::Array(list));
+                    }
+                }
+                Comp::Object(o)
+            }
+            Comp::Array(list) => Comp::Array(
+                list.into_iter()
+                    .map(|c| self.resolve_component(c))
+                    .collect(),
+            ),
+            other => other,
+        }
+    }
+    fn resolve_selector_text(&mut self, raw: &str) -> String {
+        let mut reader = horizon_client::command::Reader::new(raw);
+        let ty = horizon_client::command::args::ArgType::Entity {
+            single: false,
+            players: false,
+        };
+        let Ok(horizon_client::command::Arg::Entity(sel)) =
+            ty.parse(&mut reader, &self.world_data.registries)
+        else {
+            return raw.to_owned();
+        };
+        let names: Vec<String> = self
+            .select(&sel)
+            .into_iter()
+            .map(|t| self.target_name(t).plain())
+            .collect();
+        names.join(", ")
+    }
+
+    // ---- the sidebar -----------------------------------------------------------
+
     /// The objective in the player's team's sidebar slot, else the sidebar's.
     fn sidebar_objective(&self) -> Option<&sb::Objective> {
         let board = &self.score.board;
@@ -629,6 +613,24 @@ impl crate::game::Sim<'_> {
             .filter_map(|(holder, s)| Some((holder.clone(), s.get(&objective.name)?.value.into())))
             .collect();
         serde_json::json!({ "objective": objective.name, "title": objective.display_text().plain(), "scores": scores })
+    }
+
+    /// `Hud.extractScoreboardSidebar` / `displayScoreboardSidebar`.
+    pub(super) fn draw_scoreboard(&self, batch: &mut HudBatch) {
+        let board = &self.score.board;
+        let Some(objective) = self.sidebar_objective() else {
+            return;
+        };
+        let draws = hud_overlays::sidebar(
+            batch.width as i32,
+            batch.height as i32,
+            board,
+            objective,
+            &self.gui.atlas.font,
+            self.settings.text_background(0.3),
+            self.settings.text_background(0.4),
+        );
+        hud_layout::paint(batch, &self.gui.atlas, &draws);
     }
 }
 
@@ -666,7 +668,7 @@ impl Game<'_> {
                 (players, true, upside_down)
             }
         };
-        let board = &self.sim.score.board;
+        let board = &self.score.board;
         let objective = board.display_objective(sb::SLOT_LIST);
         let shown = tab_list::visible(
             key,
@@ -674,7 +676,7 @@ impl Game<'_> {
             players.len(),
             objective.is_some(),
         );
-        self.front.tab_list.set_visible(shown);
+        self.tab_list.set_visible(shown);
         if !shown {
             return;
         }
@@ -689,15 +691,12 @@ impl Game<'_> {
             // Horizon has no "chat background only" option: vanilla's default (on).
             background: tab_list::row_background(
                 true,
-                f64::from(self.sim.settings.text_background_opacity),
+                f64::from(self.settings.text_background_opacity),
             ),
             upside_down: &up,
         };
-        let draws = self
-            .front
-            .tab_list
-            .layout(&inputs, &self.front.gui.atlas.font);
-        horizon_client::hud_layout::paint(batch, &self.front.gui.atlas, &draws);
+        let draws = self.tab_list.layout(&inputs, &self.gui.atlas.font);
+        horizon_client::hud_layout::paint(batch, &self.gui.atlas, &draws);
     }
 }
 

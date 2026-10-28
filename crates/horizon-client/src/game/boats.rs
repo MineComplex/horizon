@@ -228,250 +228,6 @@ impl BoatModels {
     }
 }
 impl Game<'_> {
-    /// `BoatItem.use`: aim at a block or the water surface.
-    pub(super) fn place_boat(&mut self, stack: &ItemStack) -> bool {
-        let Some((wood, chest)) = any_boat_wood(&stack.item) else {
-            return false;
-        };
-        if !self.boat_models.has(wood, chest) {
-            return false;
-        }
-        let Some(eye) = self.eye_position() else {
-            return false;
-        };
-        let dir = view_vector(self.yaw, self.pitch);
-        let reach = self.reach();
-        // ClipContext.Fluid.ANY: the first fluid surface (water or lava) or
-        // block along the ray.
-        let block = self.pick().map(|h| {
-            (
-                h.point,
-                (0..3)
-                    .map(|a| (h.point[a] - eye[a]).powi(2))
-                    .sum::<f64>()
-                    .sqrt(),
-            )
-        });
-        let mut fluid = None;
-        let mut t = 0.0;
-        while t < reach {
-            let p: [f64; 3] = std::array::from_fn(|a| eye[a] + dir[a] * t);
-            let (x, y, z) = (
-                p[0].floor() as i32,
-                p[1].floor() as i32,
-                p[2].floor() as i32,
-            );
-            if let Some((h, _)) = self.fluid_height_of(x, y, z, None)
-                && p[1] <= f64::from(y) + f64::from(h)
-            {
-                fluid = Some(([p[0], f64::from(y) + f64::from(h), p[2]], t));
-                break;
-            }
-            t += 0.05;
-        }
-        let hit = match (block, fluid) {
-            (Some(b), Some(w)) => {
-                if w.1 < b.1 {
-                    w.0
-                } else {
-                    b.0
-                }
-            }
-            (Some(b), None) => b.0,
-            (None, Some(w)) => w.0,
-            (None, None) => return false,
-        };
-        let mut boat = Boat::new(
-            self.next_entity + 1,
-            Arc::from(wood),
-            Vec3::new(hit[0], hit[1], hit[2]),
-            self.yaw,
-        );
-        if chest {
-            boat = boat.with_chest();
-        }
-        let bb = boat.bounds();
-        let (lo, hi) = (bb.min_position(), bb.max_position());
-        let e = 1.0e-7;
-        let inner = Aabb::new(
-            Vec3::new(lo.x + e, lo.y + e, lo.z + e),
-            Vec3::new(hi.x - e, hi.y - e, hi.z - e),
-        );
-        let mut scene = SceneCollisions {
-            world: &self.world,
-            binding: self.collision,
-            subject: None,
-        };
-        if !scene.unobstructed(inner).unwrap_or(false) || self.boat_entity_collision(bb) {
-            return false;
-        }
-        self.next_entity += 1;
-        let key = (hit[0].floor() as i32 >> 4, hit[2].floor() as i32 >> 4);
-        self.world.modified.insert(key);
-        self.boats.push(boat);
-        if !self.creative {
-            self.consume_held();
-        }
-        self.swing_arm();
-        true
-    }
-    /// `AbstractBoat.interact`: board the boat under the crosshair.
-    pub(super) fn interact_boat(&mut self) -> bool {
-        let Some((i, d)) = self.boat_hit() else {
-            return false;
-        };
-        let sneaking = self.sim.keys.contains(&winit::keyboard::KeyCode::ShiftLeft);
-        if !self.before_block(d) {
-            return false;
-        }
-        // ChestBoat.interact: sneaking (or a full seat) opens the chest.
-        if self.sim.boats[i].chest
-            && (sneaking || self.sim.riding.is_some() || !self.boat_has_room(i))
-        {
-            let b = &self.sim.boats[i];
-            let key = (i32::MAX - 15, super::minecarts::CART_KEY_Y, b.id as i32);
-            self.sim.world.block_entities.insert(
-                key,
-                horizon_client::containers::BlockEntity::Chest(b.items.clone()),
-            );
-            self.sim.container = Some(key);
-            self.sim.screen = super::Screen::Inventory;
-            self.capture(false);
-            self.right = false;
-            return true;
-        }
-        if sneaking
-            || self.boats[i].out_of_control >= 60.0
-            || self.riding.is_some()
-            || self.ridden_by_guest(self.boats[i].id)
-            || !self.boat_has_room(i)
-        {
-            return false;
-        }
-        self.riding = Some(self.boats[i].id);
-        self.yaw = self.boats[i].yaw;
-        true
-    }
-    /// `VehicleEntity.hurtServer` from the player's attack.
-    pub(super) fn attack_boat(&mut self, damage: f32) -> bool {
-        let Some((i, d)) = self.boat_hit() else {
-            return false;
-        };
-        if !self.before_block(d) || self.mob_hit().is_some_and(|m| m.1 < d) {
-            return false;
-        }
-        self.vehicle_attack_sounds();
-        let creative = self.creative;
-        self.hurt_boat(i, damage, creative);
-        self.swing_arm();
-        true
-    }
-    /// AbstractBoatRenderer.
-    pub(super) fn boat_geometry(&self, camera: glam::DVec3, alpha: f64, out: &mut Vec<Vertex>) {
-        let a = alpha as f32;
-        let range = super::entity_culling::default_range(
-            glam::DVec3::new(WIDTH, HEIGHT, WIDTH),
-            self.view_scale(),
-        );
-        for b in &self.boats {
-            let entity_start = out.len();
-            // EntityRenderer.shouldRender.
-            let (previous, position) = (at(b.previous), at(b.position));
-            if !self.standing_entity_in_view(
-                camera, previous, position, alpha, WIDTH, HEIGHT, range, 0.0,
-            ) {
-                continue;
-            }
-            let models = if b.chest {
-                &self.boat_models.chest_models
-            } else {
-                &self.boat_models.models
-            };
-            let Some(model) = models.get(&*b.wood) else {
-                continue;
-            };
-            let folder = if b.chest { "chest_boat" } else { "boat" };
-            let Some(uv) = self
-                .front
-                .gui
-                .atlas
-                .sprites
-                .get(&format!("entity/{folder}/{}", b.wood))
-                .map(|r| [r.u0, r.v0, r.u1, r.v1])
-            else {
-                continue;
-            };
-            let p = glam::DVec3::new(
-                b.previous.x + (b.position.x - b.previous.x) * alpha,
-                b.previous.y + (b.position.y - b.previous.y) * alpha,
-                b.previous.z + (b.position.z - b.previous.z) * alpha,
-            ) - camera;
-            let yaw = b.previous_yaw + (b.yaw - b.previous_yaw) * a;
-            let hurt = b.hurt_time as f32 - a;
-            let damage = (b.damage - a).max(0.0);
-            let mut base =
-                glam::Mat4::from_translation(p.as_vec3() + glam::Vec3::new(0.0, 0.375, 0.0))
-                    * glam::Mat4::from_rotation_y((180.0 - yaw).to_radians());
-            if hurt > 0.0 {
-                base *= glam::Mat4::from_rotation_x(
-                    (hurt.sin() * hurt * damage / 10.0 * b.hurt_dir as f32).to_radians(),
-                );
-            }
-            base *= glam::Mat4::from_scale(glam::Vec3::new(-1.0, -1.0, 1.0))
-                * glam::Mat4::from_rotation_y(90f32.to_radians());
-            let mut poses = Poses::new(model);
-            // AbstractBoatModel.animatePaddle
-            for (side, name) in [(0usize, "left_paddle"), (1, "right_paddle")] {
-                if !poses.has(name) {
-                    continue;
-                }
-                let t = b.rowing_time(side, a);
-                let lerp = |f: f32, lo: f32, hi: f32| lo + f.clamp(0.0, 1.0) * (hi - lo);
-                let pose = poses.get(name);
-                pose[3] = lerp(((-t).sin() + 1.0) / 2.0, -PI / 3.0, -PI / 12.0);
-                pose[4] = lerp(((-t + 1.0).sin() + 1.0) / 2.0, -PI / 4.0, PI / 4.0);
-                if side == 1 {
-                    pose[4] = PI - pose[4];
-                }
-            }
-            let l = self.world.light(
-                b.position.x.floor() as i32,
-                (b.position.y + 0.3).floor() as i32,
-                b.position.z.floor() as i32,
-            );
-            let packed = (u32::from(l >> 4) * 16) | ((u32::from(l & 15) * 16) << 8);
-            horizon_client::mobs::render::draw(
-                model,
-                base,
-                &poses,
-                uv,
-                0xFFFF_FFFF,
-                packed,
-                0,
-                out,
-            );
-            // BoatRenderer.submitTypeAdditions: the water patch hides the water
-            // inside the hull unless the boat is under water (RaftRenderer has none).
-            if let Some(patch) = self.boat_models.water_patch.as_ref()
-                && &*b.wood != "bamboo"
-                && !matches!(b.status, Status::UnderWater | Status::UnderFlowingWater)
-            {
-                horizon_client::mobs::render::draw(
-                    patch,
-                    base,
-                    &Poses::new(patch),
-                    uv,
-                    0xFFFF_FFFF,
-                    packed,
-                    horizon_client::gfx::WATER_MASK_OVERLAY,
-                    out,
-                );
-            }
-            self.cull_entity_vertices(out, entity_start);
-        }
-    }
-}
-impl crate::game::Sim<'_> {
     fn fluid_height(&self, x: i32, y: i32, z: i32) -> Option<(f32, bool)> {
         self.fluid_height_of(x, y, z, Some(Fluid::Water))
     }
@@ -864,6 +620,93 @@ impl crate::game::Sim<'_> {
             Vec3::new(b.position.x, top, b.position.z)
         }
     }
+    /// `BoatItem.use`: aim at a block or the water surface.
+    pub(super) fn place_boat(&mut self, stack: &ItemStack) -> bool {
+        let Some((wood, chest)) = any_boat_wood(&stack.item) else {
+            return false;
+        };
+        if !self.boat_models.has(wood, chest) {
+            return false;
+        }
+        let Some(eye) = self.eye_position() else {
+            return false;
+        };
+        let dir = view_vector(self.yaw, self.pitch);
+        let reach = self.reach();
+        // ClipContext.Fluid.ANY: the first fluid surface (water or lava) or
+        // block along the ray.
+        let block = self.pick().map(|h| {
+            (
+                h.point,
+                (0..3)
+                    .map(|a| (h.point[a] - eye[a]).powi(2))
+                    .sum::<f64>()
+                    .sqrt(),
+            )
+        });
+        let mut fluid = None;
+        let mut t = 0.0;
+        while t < reach {
+            let p: [f64; 3] = std::array::from_fn(|a| eye[a] + dir[a] * t);
+            let (x, y, z) = (
+                p[0].floor() as i32,
+                p[1].floor() as i32,
+                p[2].floor() as i32,
+            );
+            if let Some((h, _)) = self.fluid_height_of(x, y, z, None)
+                && p[1] <= f64::from(y) + f64::from(h)
+            {
+                fluid = Some(([p[0], f64::from(y) + f64::from(h), p[2]], t));
+                break;
+            }
+            t += 0.05;
+        }
+        let hit = match (block, fluid) {
+            (Some(b), Some(w)) => {
+                if w.1 < b.1 {
+                    w.0
+                } else {
+                    b.0
+                }
+            }
+            (Some(b), None) => b.0,
+            (None, Some(w)) => w.0,
+            (None, None) => return false,
+        };
+        let mut boat = Boat::new(
+            self.next_entity + 1,
+            Arc::from(wood),
+            Vec3::new(hit[0], hit[1], hit[2]),
+            self.yaw,
+        );
+        if chest {
+            boat = boat.with_chest();
+        }
+        let bb = boat.bounds();
+        let (lo, hi) = (bb.min_position(), bb.max_position());
+        let e = 1.0e-7;
+        let inner = Aabb::new(
+            Vec3::new(lo.x + e, lo.y + e, lo.z + e),
+            Vec3::new(hi.x - e, hi.y - e, hi.z - e),
+        );
+        let mut scene = SceneCollisions {
+            world: &self.world,
+            binding: self.collision,
+            subject: None,
+        };
+        if !scene.unobstructed(inner).unwrap_or(false) || self.boat_entity_collision(bb) {
+            return false;
+        }
+        self.next_entity += 1;
+        let key = (hit[0].floor() as i32 >> 4, hit[2].floor() as i32 >> 4);
+        self.world.modified.insert(key);
+        self.boats.push(boat);
+        if !self.creative {
+            self.consume_held();
+        }
+        self.swing_arm();
+        true
+    }
     pub(super) fn boat_hit(&self) -> Option<(usize, f64)> {
         let eye = self.eye_position()?;
         let dir = view_vector(self.yaw, self.pitch);
@@ -895,6 +738,55 @@ impl crate::game::Sim<'_> {
             }
         }
         best
+    }
+    /// `AbstractBoat.interact`: board the boat under the crosshair.
+    pub(super) fn interact_boat(&mut self) -> bool {
+        let Some((i, d)) = self.boat_hit() else {
+            return false;
+        };
+        let sneaking = self.keys.contains(&winit::keyboard::KeyCode::ShiftLeft);
+        if !self.before_block(d) {
+            return false;
+        }
+        // ChestBoat.interact: sneaking (or a full seat) opens the chest.
+        if self.boats[i].chest && (sneaking || self.riding.is_some() || !self.boat_has_room(i)) {
+            let b = &self.boats[i];
+            let key = (i32::MAX - 15, super::minecarts::CART_KEY_Y, b.id as i32);
+            self.world.block_entities.insert(
+                key,
+                horizon_client::containers::BlockEntity::Chest(b.items.clone()),
+            );
+            self.container = Some(key);
+            self.screen = super::Screen::Inventory;
+            self.capture(false);
+            self.right = false;
+            return true;
+        }
+        if sneaking
+            || self.boats[i].out_of_control >= 60.0
+            || self.riding.is_some()
+            || self.ridden_by_guest(self.boats[i].id)
+            || !self.boat_has_room(i)
+        {
+            return false;
+        }
+        self.riding = Some(self.boats[i].id);
+        self.yaw = self.boats[i].yaw;
+        true
+    }
+    /// `VehicleEntity.hurtServer` from the player's attack.
+    pub(super) fn attack_boat(&mut self, damage: f32) -> bool {
+        let Some((i, d)) = self.boat_hit() else {
+            return false;
+        };
+        if !self.before_block(d) || self.mob_hit().is_some_and(|m| m.1 < d) {
+            return false;
+        }
+        self.vehicle_attack_sounds();
+        let creative = self.creative;
+        self.hurt_boat(i, damage, creative);
+        self.swing_arm();
+        true
     }
     /// `VehicleEntity.hurtServer`: wobble, add the damage and break past 40
     /// (`creative`: a creative player's hit removes it without drops).
@@ -929,5 +821,108 @@ impl crate::game::Sim<'_> {
             }
         }
         destroyed
+    }
+    /// AbstractBoatRenderer.
+    pub(super) fn boat_geometry(&self, camera: glam::DVec3, alpha: f64, out: &mut Vec<Vertex>) {
+        let a = alpha as f32;
+        let range = super::entity_culling::default_range(
+            glam::DVec3::new(WIDTH, HEIGHT, WIDTH),
+            self.view_scale(),
+        );
+        for b in &self.boats {
+            let entity_start = out.len();
+            // EntityRenderer.shouldRender.
+            let (previous, position) = (at(b.previous), at(b.position));
+            if !self.standing_entity_in_view(
+                camera, previous, position, alpha, WIDTH, HEIGHT, range, 0.0,
+            ) {
+                continue;
+            }
+            let models = if b.chest {
+                &self.boat_models.chest_models
+            } else {
+                &self.boat_models.models
+            };
+            let Some(model) = models.get(&*b.wood) else {
+                continue;
+            };
+            let folder = if b.chest { "chest_boat" } else { "boat" };
+            let Some(uv) = self
+                .gui
+                .atlas
+                .sprites
+                .get(&format!("entity/{folder}/{}", b.wood))
+                .map(|r| [r.u0, r.v0, r.u1, r.v1])
+            else {
+                continue;
+            };
+            let p = glam::DVec3::new(
+                b.previous.x + (b.position.x - b.previous.x) * alpha,
+                b.previous.y + (b.position.y - b.previous.y) * alpha,
+                b.previous.z + (b.position.z - b.previous.z) * alpha,
+            ) - camera;
+            let yaw = b.previous_yaw + (b.yaw - b.previous_yaw) * a;
+            let hurt = b.hurt_time as f32 - a;
+            let damage = (b.damage - a).max(0.0);
+            let mut base =
+                glam::Mat4::from_translation(p.as_vec3() + glam::Vec3::new(0.0, 0.375, 0.0))
+                    * glam::Mat4::from_rotation_y((180.0 - yaw).to_radians());
+            if hurt > 0.0 {
+                base *= glam::Mat4::from_rotation_x(
+                    (hurt.sin() * hurt * damage / 10.0 * b.hurt_dir as f32).to_radians(),
+                );
+            }
+            base *= glam::Mat4::from_scale(glam::Vec3::new(-1.0, -1.0, 1.0))
+                * glam::Mat4::from_rotation_y(90f32.to_radians());
+            let mut poses = Poses::new(model);
+            // AbstractBoatModel.animatePaddle
+            for (side, name) in [(0usize, "left_paddle"), (1, "right_paddle")] {
+                if !poses.has(name) {
+                    continue;
+                }
+                let t = b.rowing_time(side, a);
+                let lerp = |f: f32, lo: f32, hi: f32| lo + f.clamp(0.0, 1.0) * (hi - lo);
+                let pose = poses.get(name);
+                pose[3] = lerp(((-t).sin() + 1.0) / 2.0, -PI / 3.0, -PI / 12.0);
+                pose[4] = lerp(((-t + 1.0).sin() + 1.0) / 2.0, -PI / 4.0, PI / 4.0);
+                if side == 1 {
+                    pose[4] = PI - pose[4];
+                }
+            }
+            let l = self.world.light(
+                b.position.x.floor() as i32,
+                (b.position.y + 0.3).floor() as i32,
+                b.position.z.floor() as i32,
+            );
+            let packed = (u32::from(l >> 4) * 16) | ((u32::from(l & 15) * 16) << 8);
+            horizon_client::mobs::render::draw(
+                model,
+                base,
+                &poses,
+                uv,
+                0xFFFF_FFFF,
+                packed,
+                0,
+                out,
+            );
+            // BoatRenderer.submitTypeAdditions: the water patch hides the water
+            // inside the hull unless the boat is under water (RaftRenderer has none).
+            if let Some(patch) = self.boat_models.water_patch.as_ref()
+                && &*b.wood != "bamboo"
+                && !matches!(b.status, Status::UnderWater | Status::UnderFlowingWater)
+            {
+                horizon_client::mobs::render::draw(
+                    patch,
+                    base,
+                    &Poses::new(patch),
+                    uv,
+                    0xFFFF_FFFF,
+                    packed,
+                    horizon_client::gfx::WATER_MASK_OVERLAY,
+                    out,
+                );
+            }
+            self.cull_entity_vertices(out, entity_start);
+        }
     }
 }

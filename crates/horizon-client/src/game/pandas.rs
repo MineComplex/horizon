@@ -14,6 +14,14 @@ use horizon_client::{
 use horizon_core::geometry::Vec3;
 
 impl Game<'_> {
+    /// `Panda.canPickUpAndEat`'s tag.
+    fn panda_eats_from_ground(&self, item: &str) -> bool {
+        self.res
+            .items()
+            .item_tags
+            .get("minecraft:panda_eats_from_ground")
+            .is_some_and(|tag| tag.contains(item))
+    }
     /// A panda takes what lies at its feet when its mouth is free, and
     /// looks for food within 6 and 8 blocks for `PandaSitGoal`.
     pub(super) fn tick_pandas(&mut self) {
@@ -100,43 +108,6 @@ impl Game<'_> {
         }
         true
     }
-    /// What a window draws of its pandas: the crumbs of a bite
-    /// (`addEatingParticles`) and the sneeze's particle.
-    pub(super) fn panda_effects(&mut self) {
-        let mut bites = Vec::new();
-        let mut sneezes = Vec::new();
-        for m in self
-            .mobs
-            .iter_mut()
-            .filter(|m| m.species() == Species::Panda)
-        {
-            let (crumbs, sneeze) = panda::effects(m);
-            if let (Some(crumbs), Some(item)) = (crumbs, m.extra.main_hand.clone()) {
-                bites.push((item, crumbs));
-            }
-            sneezes.extend(sneeze);
-        }
-        for (item, crumbs) in bites {
-            let options = self.item_particle(&ItemStack::new(&item, 1));
-            for (at, velocity) in crumbs {
-                self.particles.add(&options, at, velocity);
-            }
-        }
-        let options = ParticleOptions::simple(ParticleType::Sneeze);
-        for (at, velocity) in sneezes {
-            self.particles.add(&options, at, velocity);
-        }
-    }
-}
-impl crate::game::Sim<'_> {
-    /// `Panda.canPickUpAndEat`'s tag.
-    fn panda_eats_from_ground(&self, item: &str) -> bool {
-        self.res
-            .items()
-            .item_tags
-            .get("minecraft:panda_eats_from_ground")
-            .is_some_and(|tag| tag.contains(item))
-    }
     /// `Panda.afterSneeze`: the grown pandas within 10 blocks of a cub jump.
     pub(super) fn panda_sneezed(&mut self, id: u32) {
         let Some(area) = self
@@ -162,6 +133,33 @@ impl crate::game::Sim<'_> {
                     m.velocity.y = power.max(m.velocity.y);
                 }
             }
+        }
+    }
+    /// What a window draws of its pandas: the crumbs of a bite
+    /// (`addEatingParticles`) and the sneeze's particle.
+    pub(super) fn panda_effects(&mut self) {
+        let mut bites = Vec::new();
+        let mut sneezes = Vec::new();
+        for m in self
+            .mobs
+            .iter_mut()
+            .filter(|m| m.species() == Species::Panda)
+        {
+            let (crumbs, sneeze) = panda::effects(m);
+            if let (Some(crumbs), Some(item)) = (crumbs, m.extra.main_hand.clone()) {
+                bites.push((item, crumbs));
+            }
+            sneezes.extend(sneeze);
+        }
+        for (item, crumbs) in bites {
+            let options = self.item_particle(&ItemStack::new(&item, 1));
+            for (at, velocity) in crumbs {
+                self.particles.add(&options, at, velocity);
+            }
+        }
+        let options = ParticleOptions::simple(ParticleType::Sneeze);
+        for (at, velocity) in sneezes {
+            self.particles.add(&options, at, velocity);
         }
     }
 }

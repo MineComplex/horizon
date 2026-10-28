@@ -39,6 +39,31 @@ pub(super) struct SpawnerState {
 }
 
 impl Game<'_> {
+    /// `EntityType.byString`: the type is in the registry.
+    pub(super) fn entity_type_exists(&self, id: &str) -> bool {
+        self.spawners
+            .entity_types
+            .as_ref()
+            .is_some_and(|t| t.contains(id))
+    }
+    pub(super) fn load_entity_types(&mut self) {
+        if self.spawners.entity_types.is_some() {
+            return;
+        }
+        let path = self.options.resources.join("entity-types.json");
+        let types = std::fs::read(path)
+            .ok()
+            .and_then(|b| serde_json::from_slice::<serde_json::Value>(&b).ok())
+            .and_then(|v| {
+                v.as_object().map(|o| {
+                    o.keys()
+                        .map(|k| horizon_client::command::args::normalize(k))
+                        .collect()
+                })
+            })
+            .unwrap_or_default();
+        self.spawners.entity_types = Some(types);
+    }
     /// The server tick of the spawner at `key`, if its block is still a
     /// spawner. Its client tick comes after every block entity's
     /// (`client_tick_spawners`).
@@ -55,6 +80,20 @@ impl Game<'_> {
             .block_entities
             .put(key, BlockEntity::Spawner(spawner));
         result
+    }
+    /// The client ticks of these spawners, then the shown mobs of spawners
+    /// that are gone go.
+    pub(super) fn client_tick_spawners(&mut self, keys: &[Pos]) {
+        for &key in keys {
+            self.client_tick_spawner(key);
+        }
+        let entities = &self.world.block_entities;
+        self.spawners.displays.retain(|k, _| {
+            matches!(
+                entities.get(k),
+                Some(BlockEntity::Spawner(_) | BlockEntity::TrialSpawner(_))
+            )
+        });
     }
     fn server_tick_spawner(&mut self, key: Pos, spawner: &mut Spawner) -> Result<()> {
         let pos = [key.0, key.1, key.2];
@@ -104,167 +143,6 @@ impl Game<'_> {
             }
         }
         ids
-    }
-    /// What a spawner's tick or a spawn egg did, shown and sent.
-    fn apply_spawner_events(
-        &mut self,
-        key: Pos,
-        events: Vec<SpawnerEvent>,
-        ids: &HashMap<u32, u32>,
-    ) -> Result<()> {
-        let pos = [key.0, key.1, key.2];
-        for event in events {
-            match event {
-                SpawnerEvent::BlockUpdated => self.spawner_block_updated(key),
-                SpawnerEvent::BlockEvent(id) => {
-                    self.lan_block_event(pos, id, 0);
-                    // The client copy's onEventTriggered.
-                    if let Some(BlockEntity::Spawner(s)) = self.world.block_entities.get_mut(&key) {
-                        s.client_event(id);
-                    }
-                }
-                SpawnerEvent::LevelEvent(id) => self.level_event_at(id, pos, 0),
-                SpawnerEvent::EntityPlace(mob, at) => {
-                    let who = ids.get(&mob).map(|id| Who::Mob(*id));
-                    self.post_block_game_event("minecraft:entity_place", at, who, None);
-                }
-                SpawnerEvent::SpawnAnim(mob) => {
-                    if let Some(id) = ids.get(&mob) {
-                        self.mob_poof(*id);
-                    }
-                }
-            }
-        }
-        Ok(())
-    }
-    /// `SpawnEggItem.useOn` on a spawner: the egg sets its mob. None when the
-    /// clicked block has no spawner.
-    pub(super) fn use_spawn_egg_on_spawner(&mut self, pos: [i32; 3], kind: &str) -> Option<bool> {
-        let key = (pos[0], pos[1], pos[2]);
-        if !matches!(
-            self.world.block_entities.get(&key),
-            Some(BlockEntity::Spawner(_))
-        ) {
-            return None;
-        }
-        if !self.world_data.rules.bool("spawner_blocks_work") {
-            self.system_message(horizon_client::text::Text::translate(
-                "advMode.notEnabled.spawner",
-                &[],
-            ));
-            return Some(false);
-        }
-        let mut events = Vec::new();
-        let mut random = std::mem::replace(
-            &mut self.world.random,
-            horizon_core::random::LegacyRandom::new(0),
-        );
-        if let Some(BlockEntity::Spawner(s)) = self.world.block_entities.get_mut(&key) {
-            s.set_entity_id(kind, &mut random, &mut events);
-        }
-        self.world.random = random;
-        let _ = self.apply_spawner_events(key, events, &HashMap::new());
-        // sendBlockUpdated(3) and the player's block_change game event.
-        self.spawner_block_updated(key);
-        self.post_block_game_event("minecraft:block_change", pos, Some(Who::Player), None);
-        Some(true)
-    }
-    /// `SpawnerRenderer` and `TrialSpawnerRenderer`: the next mob of every
-    /// spawner near the camera, small and turning.
-    pub(super) fn spawner_geometry(
-        &self,
-        camera: glam::DVec3,
-        alpha: f64,
-        out: &mut Vec<horizon_client::mesher::Vertex>,
-    ) {
-        let atlas = &self.front.gui.atlas;
-        let lookup = |name: &str| atlas.sprites.get(name).map(|r| [r.u0, r.v0, r.u1, r.v1]);
-        for (key, (_, mob)) in &self.spawners.displays {
-            let at = glam::DVec3::new(f64::from(key.0), f64::from(key.1), f64::from(key.2));
-            if at.distance_squared(camera) >= 64.0 * 64.0 {
-                continue;
-            }
-            let (spin, scale) = match self.world.block_entities.get(key) {
-                Some(BlockEntity::Spawner(s)) => {
-                    s.display_pose(alpha as f32, mob.width(), mob.height())
-                }
-                Some(BlockEntity::TrialSpawner(s)) => horizon_client::mobs::spawner::display_pose(
-                    s.o_spin,
-                    s.spin,
-                    alpha as f32,
-                    mob.width(),
-                    mob.height(),
-                ),
-                _ => continue,
-            };
-            let origin = glam::Mat4::from_translation(
-                (at - camera).as_vec3() + glam::Vec3::new(0.5, 0.4, 0.5),
-            ) * glam::Mat4::from_rotation_y(spin.to_radians())
-                * glam::Mat4::from_translation(glam::Vec3::new(0.0, -0.2, 0.0))
-                * glam::Mat4::from_rotation_x((-30.0_f32).to_radians())
-                * glam::Mat4::from_scale(glam::Vec3::splat(scale));
-            let light = self.world.light(key.0, key.1, key.2);
-            let packed = (u32::from(light >> 4) * 16) | ((u32::from(light & 15) * 16) << 8);
-            if mob.species() == horizon_client::mobs::Species::SulfurCube {
-                self.sulfur_cube_body_geometry(
-                    mob,
-                    alpha as f32,
-                    horizon_client::mobs::render::base_transform_at(mob, alpha as f32, origin),
-                    packed,
-                    out,
-                );
-            }
-            horizon_client::mobs::render::render_posed(
-                mob,
-                alpha as f32,
-                origin,
-                &lookup,
-                packed,
-                self.res.mob_data(),
-                out,
-            );
-        }
-    }
-}
-impl crate::game::Sim<'_> {
-    /// `EntityType.byString`: the type is in the registry.
-    pub(super) fn entity_type_exists(&self, id: &str) -> bool {
-        self.spawners
-            .entity_types
-            .as_ref()
-            .is_some_and(|t| t.contains(id))
-    }
-    pub(super) fn load_entity_types(&mut self) {
-        if self.spawners.entity_types.is_some() {
-            return;
-        }
-        let path = self.options.resources.join("entity-types.json");
-        let types = std::fs::read(path)
-            .ok()
-            .and_then(|b| serde_json::from_slice::<serde_json::Value>(&b).ok())
-            .and_then(|v| {
-                v.as_object().map(|o| {
-                    o.keys()
-                        .map(|k| horizon_client::command::args::normalize(k))
-                        .collect()
-                })
-            })
-            .unwrap_or_default();
-        self.spawners.entity_types = Some(types);
-    }
-    /// The client ticks of these spawners, then the shown mobs of spawners
-    /// that are gone go.
-    pub(super) fn client_tick_spawners(&mut self, keys: &[Pos]) {
-        for &key in keys {
-            self.client_tick_spawner(key);
-        }
-        let entities = &self.world.block_entities;
-        self.spawners.displays.retain(|k, _| {
-            matches!(
-                entities.get(k),
-                Some(BlockEntity::Spawner(_) | BlockEntity::TrialSpawner(_))
-            )
-        });
     }
     /// The spawner's `loadEntityRecursive` and `tryAddFreshEntityWithPassengers`:
     /// the mob it will add (created after the tick) and its box.
@@ -336,6 +214,38 @@ impl crate::game::Sim<'_> {
             bounds,
             mob: true,
         })
+    }
+    /// What a spawner's tick or a spawn egg did, shown and sent.
+    fn apply_spawner_events(
+        &mut self,
+        key: Pos,
+        events: Vec<SpawnerEvent>,
+        ids: &HashMap<u32, u32>,
+    ) -> Result<()> {
+        let pos = [key.0, key.1, key.2];
+        for event in events {
+            match event {
+                SpawnerEvent::BlockUpdated => self.spawner_block_updated(key),
+                SpawnerEvent::BlockEvent(id) => {
+                    self.lan_block_event(pos, id, 0);
+                    // The client copy's onEventTriggered.
+                    if let Some(BlockEntity::Spawner(s)) = self.world.block_entities.get_mut(&key) {
+                        s.client_event(id);
+                    }
+                }
+                SpawnerEvent::LevelEvent(id) => self.level_event_at(id, pos, 0),
+                SpawnerEvent::EntityPlace(mob, at) => {
+                    let who = ids.get(&mob).map(|id| Who::Mob(*id));
+                    self.post_block_game_event("minecraft:entity_place", at, who, None);
+                }
+                SpawnerEvent::SpawnAnim(mob) => {
+                    if let Some(id) = ids.get(&mob) {
+                        self.mob_poof(*id);
+                    }
+                }
+            }
+        }
+        Ok(())
     }
     /// `sendBlockUpdated`: the clients load the new update tag (the client
     /// copy's delay follows it, its display mob is made again).
@@ -458,5 +368,93 @@ impl crate::game::Sim<'_> {
             _ => return None,
         };
         self.res.mob_types().contains_key(&id).then_some(id)
+    }
+    /// `SpawnEggItem.useOn` on a spawner: the egg sets its mob. None when the
+    /// clicked block has no spawner.
+    pub(super) fn use_spawn_egg_on_spawner(&mut self, pos: [i32; 3], kind: &str) -> Option<bool> {
+        let key = (pos[0], pos[1], pos[2]);
+        if !matches!(
+            self.world.block_entities.get(&key),
+            Some(BlockEntity::Spawner(_))
+        ) {
+            return None;
+        }
+        if !self.world_data.rules.bool("spawner_blocks_work") {
+            self.system_message(horizon_client::text::Text::translate(
+                "advMode.notEnabled.spawner",
+                &[],
+            ));
+            return Some(false);
+        }
+        let mut events = Vec::new();
+        let mut random = std::mem::replace(
+            &mut self.world.random,
+            horizon_core::random::LegacyRandom::new(0),
+        );
+        if let Some(BlockEntity::Spawner(s)) = self.world.block_entities.get_mut(&key) {
+            s.set_entity_id(kind, &mut random, &mut events);
+        }
+        self.world.random = random;
+        let _ = self.apply_spawner_events(key, events, &HashMap::new());
+        // sendBlockUpdated(3) and the player's block_change game event.
+        self.spawner_block_updated(key);
+        self.post_block_game_event("minecraft:block_change", pos, Some(Who::Player), None);
+        Some(true)
+    }
+    /// `SpawnerRenderer` and `TrialSpawnerRenderer`: the next mob of every
+    /// spawner near the camera, small and turning.
+    pub(super) fn spawner_geometry(
+        &self,
+        camera: glam::DVec3,
+        alpha: f64,
+        out: &mut Vec<horizon_client::mesher::Vertex>,
+    ) {
+        let atlas = &self.gui.atlas;
+        let lookup = |name: &str| atlas.sprites.get(name).map(|r| [r.u0, r.v0, r.u1, r.v1]);
+        for (key, (_, mob)) in &self.spawners.displays {
+            let at = glam::DVec3::new(f64::from(key.0), f64::from(key.1), f64::from(key.2));
+            if at.distance_squared(camera) >= 64.0 * 64.0 {
+                continue;
+            }
+            let (spin, scale) = match self.world.block_entities.get(key) {
+                Some(BlockEntity::Spawner(s)) => {
+                    s.display_pose(alpha as f32, mob.width(), mob.height())
+                }
+                Some(BlockEntity::TrialSpawner(s)) => horizon_client::mobs::spawner::display_pose(
+                    s.o_spin,
+                    s.spin,
+                    alpha as f32,
+                    mob.width(),
+                    mob.height(),
+                ),
+                _ => continue,
+            };
+            let origin = glam::Mat4::from_translation(
+                (at - camera).as_vec3() + glam::Vec3::new(0.5, 0.4, 0.5),
+            ) * glam::Mat4::from_rotation_y(spin.to_radians())
+                * glam::Mat4::from_translation(glam::Vec3::new(0.0, -0.2, 0.0))
+                * glam::Mat4::from_rotation_x((-30.0_f32).to_radians())
+                * glam::Mat4::from_scale(glam::Vec3::splat(scale));
+            let light = self.world.light(key.0, key.1, key.2);
+            let packed = (u32::from(light >> 4) * 16) | ((u32::from(light & 15) * 16) << 8);
+            if mob.species() == horizon_client::mobs::Species::SulfurCube {
+                self.sulfur_cube_body_geometry(
+                    mob,
+                    alpha as f32,
+                    horizon_client::mobs::render::base_transform_at(mob, alpha as f32, origin),
+                    packed,
+                    out,
+                );
+            }
+            horizon_client::mobs::render::render_posed(
+                mob,
+                alpha as f32,
+                origin,
+                &lookup,
+                packed,
+                self.res.mob_data(),
+                out,
+            );
+        }
     }
 }

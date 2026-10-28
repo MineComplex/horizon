@@ -168,8 +168,7 @@ impl Game<'_> {
             }
         }
     }
-}
-impl crate::game::Sim<'_> {
+
     /// `Containers.dropItemStack(level, x, y, z, stack)` at the block's
     /// integer position.
     fn campfire_drop(&mut self, pos: Pos, stack: ItemStack) {

@@ -8,8 +8,7 @@ use horizon_core::random::RandomSource;
 pub(super) fn is_shulker_box(name: &str) -> bool {
     name.ends_with("shulker_box")
 }
-impl Game<'_> {}
-impl crate::game::Sim<'_> {
+impl Game<'_> {
     /// The custom name of the open container, or its default title
     /// (a double chest is named by whichever half has a name).
     pub(super) fn container_title(&self, default: String) -> String {
@@ -124,118 +123,6 @@ fn facing_step(facing: &str) -> (i32, i32) {
 }
 
 impl Game<'_> {
-    /// `Container.stillValidBlockEntity`: the open block container closes once
-    /// the player's eyes are out of reach of any of its blocks (a 4-block buffer).
-    pub(super) fn tick_container_reach(&mut self) {
-        // A server's menu ends when the server closes it.
-        if self.remote.is_some() {
-            return;
-        }
-        let Some(eye) = self.eye_position() else {
-            return;
-        };
-        if self
-            .container
-            .is_none_or(|k| k.1 == super::minecarts::CART_KEY_Y)
-        {
-            return;
-        }
-        let range = self.reach() + 4.0;
-        let near = self.container_parts().iter().all(|&((x, y, z), _)| {
-            horizon_client::lan::guest::within_block_range(eye, range, [x, y, z])
-        });
-        if !near {
-            self.close_container();
-            self.screen = super::Screen::Playing;
-            self.capture(true);
-        }
-    }
-    /// `CraftingMenu.stillValid`: the open crafting table closes once its
-    /// block is no longer a crafting table or the player's eyes are out of
-    /// reach (a 4-block buffer).
-    pub(super) fn tick_craft_table(&mut self) {
-        // A server's menu ends when the server closes it.
-        if self.remote.is_some() || self.craft_size != 3 {
-            return;
-        }
-        let (Some(pos), Some(eye)) = (self.craft_table, self.eye_position()) else {
-            return;
-        };
-        let state = self.world.block(pos[0], pos[1], pos[2]);
-        let table = &*self.res.facts().get(state).name == "minecraft:crafting_table";
-        let range = self.reach() + 4.0;
-        if !(table && horizon_client::lan::guest::within_block_range(eye, range, pos)) {
-            self.close_container();
-            self.screen = super::Screen::Playing;
-            self.capture(true);
-        }
-    }
-    /// `ContainerScreen` / `ShulkerBoxScreen`: the background with its
-    /// container rows, the title and the inventory label.
-    pub(super) fn draw_chest_screen(
-        &self,
-        batch: &mut horizon_client::hud::HudBatch,
-        ox: f32,
-        oy: f32,
-    ) {
-        use horizon_client::hud::rgba;
-        let atlas = &self.front.gui.atlas;
-        let grey = rgba(64, 64, 64, 255);
-        if self
-            .container_block()
-            .as_deref()
-            .is_some_and(is_shulker_box)
-        {
-            batch.sprite_region(
-                atlas,
-                "gui/container/shulker_box",
-                [ox, oy, 176.0, 167.0],
-                256.0,
-                256.0,
-            );
-            let title = self.translate("container.shulkerBox", "Shulker Box");
-            batch.text(atlas, &title, ox + 8.0, oy + 6.0, grey, false);
-            let inventory = self.translate("container.inventory", "Inventory");
-            batch.text(atlas, &inventory, ox + 8.0, oy + 73.0, grey, false);
-            return;
-        }
-        let rows = self.chest_rows().unwrap_or(3);
-        let top = rows as f32 * 18.0 + 17.0;
-        batch.sprite_region(
-            atlas,
-            "gui/container/generic_54",
-            [ox, oy, 176.0, top],
-            256.0,
-            256.0,
-        );
-        // The player half of the texture starts at v = 126.
-        if let Some(mut r) = atlas.sprites.get("gui/container/generic_54").copied() {
-            let (du, dv) = ((r.u1 - r.u0) / r.w as f32, (r.v1 - r.v0) / r.h as f32);
-            r.v0 += 126.0 * dv;
-            r.v1 = r.v0 + 96.0 * dv;
-            r.u1 = r.u0 + 176.0 * du;
-            batch.rect_uv(ox, oy + top, 176.0, 96.0, r, u32::MAX);
-        }
-        batch.text_styled(
-            atlas,
-            &self.chest_title(rows),
-            ox + 8.0,
-            oy + 6.0,
-            grey,
-            false,
-        );
-        let inventory = self.translate("container.inventory", "Inventory");
-        batch.text(
-            atlas,
-            &inventory,
-            ox + 8.0,
-            oy + 114.0 + rows as f32 * 18.0 - 94.0,
-            grey,
-            false,
-        );
-    }
-}
-impl crate::game::Sim<'_> {
     /// The other half of the open double chest and whether the open one is
     /// the right half (`ChestBlock.getConnectedDirection`).
     pub(super) fn chest_partner(&self, key: (i32, i32, i32)) -> Option<((i32, i32, i32), bool)> {
@@ -363,6 +250,52 @@ impl crate::game::Sim<'_> {
             None => vec![own],
         }
     }
+    /// `Container.stillValidBlockEntity`: the open block container closes once
+    /// the player's eyes are out of reach of any of its blocks (a 4-block buffer).
+    pub(super) fn tick_container_reach(&mut self) {
+        // A server's menu ends when the server closes it.
+        if self.remote.is_some() {
+            return;
+        }
+        let Some(eye) = self.eye_position() else {
+            return;
+        };
+        if self
+            .container
+            .is_none_or(|k| k.1 == super::minecarts::CART_KEY_Y)
+        {
+            return;
+        }
+        let range = self.reach() + 4.0;
+        let near = self.container_parts().iter().all(|&((x, y, z), _)| {
+            horizon_client::lan::guest::within_block_range(eye, range, [x, y, z])
+        });
+        if !near {
+            self.close_container();
+            self.screen = super::Screen::Playing;
+            self.capture(true);
+        }
+    }
+    /// `CraftingMenu.stillValid`: the open crafting table closes once its
+    /// block is no longer a crafting table or the player's eyes are out of
+    /// reach (a 4-block buffer).
+    pub(super) fn tick_craft_table(&mut self) {
+        // A server's menu ends when the server closes it.
+        if self.remote.is_some() || self.craft_size != 3 {
+            return;
+        }
+        let (Some(pos), Some(eye)) = (self.craft_table, self.eye_position()) else {
+            return;
+        };
+        let state = self.world.block(pos[0], pos[1], pos[2]);
+        let table = &*self.res.facts().get(state).name == "minecraft:crafting_table";
+        let range = self.reach() + 4.0;
+        if !(table && horizon_client::lan::guest::within_block_range(eye, range, pos)) {
+            self.close_container();
+            self.screen = super::Screen::Playing;
+            self.capture(true);
+        }
+    }
     /// The number of slots of the open container.
     pub(super) fn container_size(&self) -> usize {
         self.container_parts().iter().map(|p| p.1).sum()
@@ -437,6 +370,70 @@ impl crate::game::Sim<'_> {
             _ => ("container.chest", "Chest"),
         };
         Text::literal(self.container_title(self.translate(key, fallback))).resolve_legacy()
+    }
+    /// `ContainerScreen` / `ShulkerBoxScreen`: the background with its
+    /// container rows, the title and the inventory label.
+    pub(super) fn draw_chest_screen(
+        &self,
+        batch: &mut horizon_client::hud::HudBatch,
+        ox: f32,
+        oy: f32,
+    ) {
+        use horizon_client::hud::rgba;
+        let atlas = &self.gui.atlas;
+        let grey = rgba(64, 64, 64, 255);
+        if self
+            .container_block()
+            .as_deref()
+            .is_some_and(is_shulker_box)
+        {
+            batch.sprite_region(
+                atlas,
+                "gui/container/shulker_box",
+                [ox, oy, 176.0, 167.0],
+                256.0,
+                256.0,
+            );
+            let title = self.translate("container.shulkerBox", "Shulker Box");
+            batch.text(atlas, &title, ox + 8.0, oy + 6.0, grey, false);
+            let inventory = self.translate("container.inventory", "Inventory");
+            batch.text(atlas, &inventory, ox + 8.0, oy + 73.0, grey, false);
+            return;
+        }
+        let rows = self.chest_rows().unwrap_or(3);
+        let top = rows as f32 * 18.0 + 17.0;
+        batch.sprite_region(
+            atlas,
+            "gui/container/generic_54",
+            [ox, oy, 176.0, top],
+            256.0,
+            256.0,
+        );
+        // The player half of the texture starts at v = 126.
+        if let Some(mut r) = atlas.sprites.get("gui/container/generic_54").copied() {
+            let (du, dv) = ((r.u1 - r.u0) / r.w as f32, (r.v1 - r.v0) / r.h as f32);
+            r.v0 += 126.0 * dv;
+            r.v1 = r.v0 + 96.0 * dv;
+            r.u1 = r.u0 + 176.0 * du;
+            batch.rect_uv(ox, oy + top, 176.0, 96.0, r, u32::MAX);
+        }
+        batch.text_styled(
+            atlas,
+            &self.chest_title(rows),
+            ox + 8.0,
+            oy + 6.0,
+            grey,
+            false,
+        );
+        let inventory = self.translate("container.inventory", "Inventory");
+        batch.text(
+            atlas,
+            &inventory,
+            ox + 8.0,
+            oy + 114.0 + rows as f32 * 18.0 - 94.0,
+            grey,
+            false,
+        );
     }
 }
 

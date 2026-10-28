@@ -246,6 +246,13 @@ impl Game<'_> {
             self.infested_hurt(at, look, None);
         }
     }
+    /// A living mob's own random (`Entity.random`), else the world's.
+    fn bearer_random(&mut self, bearer: Option<u32>) -> &mut LegacyRandom {
+        match bearer.and_then(|id| self.mobs.iter().position(|m| m.id == id)) {
+            Some(i) => &mut self.mobs[i].random,
+            None => &mut self.world.random,
+        }
+    }
     /// `InfestedMobEffect.onMobHurt`: a 10% chance of one or two silverfish at
     /// `at` (half the bearer's height up), thrown along its look direction.
     /// The draws are the bearer's (`mob.getRandom()`): `bearer` is the mob,
@@ -274,15 +281,6 @@ impl Game<'_> {
             }
             self.sounds
                 .play("minecraft:entity.silverfish.hurt", Some(at), 1.0, 1.0);
-        }
-    }
-}
-impl crate::game::Sim<'_> {
-    /// A living mob's own random (`Entity.random`), else the world's.
-    fn bearer_random(&mut self, bearer: Option<u32>) -> &mut LegacyRandom {
-        match bearer.and_then(|id| self.mobs.iter().position(|m| m.id == id)) {
-            Some(i) => &mut self.mobs[i].random,
-            None => &mut self.world.random,
         }
     }
     /// A splash potion, lingering potion or experience bottle in flight (the
@@ -579,6 +577,48 @@ impl Game<'_> {
         }
         true
     }
+    pub(super) fn apply_effect_action(&mut self, action: EffectAction) {
+        // EntityDamageEvent for the effects that hurt.
+        let creative = self.creative;
+        let rules = self.world.health_rules;
+        let Some(p) = self.player.as_mut() else {
+            return;
+        };
+        match action {
+            EffectAction::Heal(amount) => {
+                let max = p.attribute("minecraft:max_health").unwrap_or(20.0) as f32;
+                let h = p.health.health();
+                if h > 0.0 {
+                    let _ = p.set_health((h + amount).min(max), false);
+                }
+            }
+            EffectAction::Hurt(source, amount) => {
+                if creative {
+                    return;
+                }
+                if let Some(id) = self.motion.health.damage.id(source) {
+                    let _ = p.hurt(&self.motion.health, rules, id, amount);
+                }
+            }
+            EffectAction::Poison => {
+                if !creative
+                    && p.health.health() > 1.0
+                    && let Some(id) = self.motion.health.damage.id("minecraft:magic")
+                {
+                    let _ = p.hurt(&self.motion.health, rules, id, 1.0);
+                }
+            }
+            EffectAction::Exhaust(amount) => {
+                p.cause_food_exhaustion(amount);
+            }
+            EffectAction::Eat(nutrition, saturation) => {
+                let food = &mut p.health.food;
+                food.food = (food.food + nutrition).clamp(0, 20);
+                food.saturation = (food.saturation + nutrition as f32 * saturation * 2.0)
+                    .clamp(0.0, food.food as f32);
+            }
+        }
+    }
     /// The local player's effects (`tick_mob_effects`), then the potions
     /// in flight, which a server without a local player still has. A frozen
     /// tick (`/tick freeze`) leaves the potions where they are
@@ -638,6 +678,111 @@ impl Game<'_> {
         }
         self.turtle_helmet_tick();
         self.apply_effect_status();
+    }
+    /// `Player.tick` -> `turtleHelmetTick`: with a turtle helmet on the head
+    /// and the eyes out of the water, Water Breathing for 200 ticks (no
+    /// particles, an icon).
+    fn turtle_helmet_tick(&mut self) {
+        let Some(p) = self.player.as_ref() else {
+            return;
+        };
+        let eye_y = p.position.y + f64::from(p.dimensions.eye_height);
+        if !p.health.dead_or_dying()
+            && self.armor[0]
+                .as_ref()
+                .is_some_and(|s| &*s.item == "minecraft:turtle_helmet")
+            && !self.eye_in_water(p.position.x, eye_y, p.position.z)
+        {
+            let mut effect = EffectInstance::new("water_breathing", 200, 0);
+            effect.visible = false;
+            self.potions.effects.add(effect);
+        }
+    }
+    /// A client's own effects (`LivingEntity.tickEffects` on the client,
+    /// `MobEffectInstance.tickClient`): they count down, and the server
+    /// removes them. Their modifiers and flags move the predicted player.
+    pub(super) fn tick_client_effects(&mut self) {
+        for e in &mut self.potions.effects.list {
+            e.tick_client();
+        }
+        self.apply_effect_status();
+    }
+    /// Add an active effect to the player and update attributes / absorption.
+    pub(super) fn add_player_effect(&mut self, effect: EffectInstance) -> bool {
+        let id = effect.id;
+        let amp = effect.amplifier;
+        let changed = self.potions.effects.add(effect);
+        self.apply_effect_status();
+        if id == "absorption"
+            && let Some(p) = self.player.as_mut()
+        {
+            let target = 4.0 * (amp + 1) as f32;
+            let current = p.health.absorption();
+            let _ = p.set_health(current.max(target), true);
+        }
+        changed
+    }
+    /// The effects' attribute modifiers, armor protection and status flags
+    /// on `self.player`.
+    pub(super) fn apply_effect_status(&mut self) {
+        let modifiers = self.potions.effects.modifiers();
+        if modifiers != self.potions.applied
+            && let Some(p) = self.player.as_mut()
+        {
+            for (attr, id, _, op) in &self.potions.applied {
+                let _ = p.set_modifier(attr, id, 0.0, op, false);
+            }
+            for (attr, id, amount, op) in &modifiers {
+                let _ = p.set_modifier(attr, id, *amount, op, true);
+            }
+            self.potions.applied = modifiers;
+        }
+        if let Some(p) = self.player.as_mut()
+            && self.potions.effects.amplifier("absorption").is_none()
+            && p.health.absorption() > 0.0
+        {
+            let _ = p.set_health(0.0, true);
+        }
+        // EnchantmentHelper.getDamageProtection per damage type, recomputed on armor change.
+        let armor: Vec<Option<ItemStack>> = self.armor.to_vec();
+        if self.potions.protection_for.as_ref() != Some(&armor) {
+            let mut table = Vec::new();
+            let e = &self.res.stations().enchantments;
+            let mut random = horizon_core::random::LegacyRandom::new(0);
+            for (_, def) in self.motion.health.damage.entries() {
+                let ctx = horizon_client::enchant::EffectContext {
+                    items: Some(self.res.items()),
+                    damage_type: Some(&def.name),
+                    this: Some("minecraft:player"),
+                    ..Default::default()
+                };
+                let total: f32 = armor
+                    .iter()
+                    .flatten()
+                    .map(|s| {
+                        e.modify_value(
+                            Some(s),
+                            "minecraft:damage_protection",
+                            &ctx,
+                            &mut random,
+                            0.0,
+                        )
+                    })
+                    .sum();
+                if total > 0.0 {
+                    table.push((def.name.clone(), total));
+                }
+            }
+            self.potions.protection_for = Some(armor);
+            if let Some(p) = self.player.as_mut() {
+                p.status.protection = table;
+            }
+        }
+        let mut status = self.potions.effects.status();
+        if let Some(p) = self.player.as_mut() {
+            status.protection = std::mem::take(&mut p.status.protection);
+            p.status = status;
+        }
     }
     fn tick_thrown_potions(&mut self) {
         let mut thrown = std::mem::take(&mut self.potions.thrown);
@@ -802,22 +947,22 @@ impl Game<'_> {
                 }
             }),
             Victim::Mob(mob) => {
-                let Some(i) = self.sim.mobs.iter().position(|m| m.id == mob) else {
+                let Some(i) = self.mobs.iter().position(|m| m.id == mob) else {
                     return;
                 };
                 // Undead invert healing and harming.
-                let tags = &self.sim.res.stations().enchantments.entity_tags;
+                let tags = &self.res.stations().enchantments.entity_tags;
                 let inverted = tags
                     .get("minecraft:inverted_healing_and_harm")
-                    .is_some_and(|t| t.contains(&self.sim.mobs[i].kind.id));
+                    .is_some_and(|t| t.contains(&self.mobs[i].kind.id));
                 for (id, duration, amp) in effects {
-                    let m = &mut self.sim.mobs[i];
+                    let m = &mut self.mobs[i];
                     match *id {
                         "instant_damage" | "instant_health" => {
                             let amount =
                                 |base: i32| (0.5 * f64::from(base << amp) + 0.5) as i32 as f32;
                             if (*id == "instant_damage") != inverted {
-                                m.hurt(amount(6), Some(at), &mut self.sim.world.random);
+                                m.hurt(amount(6), Some(at), &mut self.world.random);
                             } else {
                                 m.health = (m.health + amount(4)).min(m.kind.max_health);
                             }
@@ -835,6 +980,60 @@ impl Game<'_> {
                 }
             }
         }
+    }
+    /// `ThrowableProjectile.tick`'s `applyGravity` and `applyInertia`, which
+    /// come before the move: gravity 0.05 (0.07 for an experience bottle),
+    /// then drag 0.99 (0.8 in water).
+    fn thrown_potion_motion(&self, t: &mut ThrownPotion) {
+        let gravity = if &*t.stack.item == "minecraft:experience_bottle" {
+            0.07
+        } else {
+            0.05
+        };
+        let at = t.position;
+        let water = self
+            .res
+            .facts()
+            .get(self.world.block(
+                at.x.floor() as i32,
+                at.y.floor() as i32,
+                at.z.floor() as i32,
+            ))
+            .fluid
+            == horizon_client::blocks::Fluid::Water;
+        let inertia = if water { 0.8 } else { 0.99 };
+        t.velocity = Vec3::new(
+            t.velocity.x * inertia,
+            (t.velocity.y - gravity) * inertia,
+            t.velocity.z * inertia,
+        );
+    }
+    /// `ThrowableProjectile.tick` on a server's client: it falls and moves
+    /// by itself between the server's updates and stops at a block; only
+    /// the server breaks it.
+    pub(super) fn step_remote_thrown(&mut self) {
+        let mut thrown = std::mem::take(&mut self.potions.thrown);
+        for t in &mut thrown {
+            t.previous = t.position;
+            t.age += 1;
+            self.thrown_potion_motion(t);
+            let next = Vec3::new(
+                t.position.x + t.velocity.x,
+                t.position.y + t.velocity.y,
+                t.position.z + t.velocity.z,
+            );
+            let state = self.world.block(
+                next.x.floor() as i32,
+                next.y.floor() as i32,
+                next.z.floor() as i32,
+            );
+            if self.res.facts().get(state).full_collision {
+                t.velocity = Vec3::ZERO;
+            } else {
+                t.position = next;
+            }
+        }
+        self.potions.thrown = thrown;
     }
     /// `ThrownItemRenderer` for thrown splash and lingering potions and
     /// experience bottles: the item (GROUND) facing the camera at scale 1,
@@ -879,6 +1078,56 @@ impl Game<'_> {
                 p.z.floor() as i32,
             );
             self.submit_item_world(&state, pose, vertex_light(light), out);
+        }
+    }
+    /// `HealOrHarmMobEffect.applyInstantaneousEffect` with a source (a
+    /// potion or a cloud): indirectMagic, not plain magic.
+    fn apply_indirect_effect_action(&mut self, a: EffectAction, source: &Text) {
+        let a = match a {
+            EffectAction::Hurt("minecraft:magic", amount) => {
+                self.note_direct_entity("minecraft:indirect_magic", source.clone());
+                EffectAction::Hurt("minecraft:indirect_magic", amount)
+            }
+            a => a,
+        };
+        self.apply_effect_action(a);
+    }
+    /// A splash potion's effects on the player in place, by their distance.
+    fn splash_on_player(
+        &mut self,
+        effects: &'static [(&'static str, i32, i32)],
+        at: Vec3,
+        age: u32,
+        source: &Text,
+    ) {
+        if let Some(p) = self.player.as_ref() {
+            let w = f64::from(p.dimensions.width) / 2.0;
+            let bounds = Aabb::new(
+                Vec3::new(p.position.x - w, p.position.y, p.position.z - w),
+                Vec3::new(
+                    p.position.x + w,
+                    p.position.y + f64::from(p.dimensions.height),
+                    p.position.z + w,
+                ),
+            );
+            if let Some(d2) = splash_distance_sqr(at, age, bounds) {
+                let intensity = 1.0 - d2.sqrt() / 4.0;
+                for (id, duration, amp) in effects {
+                    let instant = brewing::effect(id).is_some_and(|e| e.instant);
+                    if instant {
+                        if let Some(a) = horizon_client::effects::instant(id, *amp, intensity) {
+                            self.apply_indirect_effect_action(a, source);
+                        }
+                    } else {
+                        let d = (intensity * f64::from(*duration) + 0.5) as i32;
+                        if d > 20
+                            && let Some(e) = brewing::effect(id)
+                        {
+                            self.add_player_effect(EffectInstance::new(e.id, d, *amp));
+                        }
+                    }
+                }
+            }
         }
     }
     /// `ThrownSplashPotion.onHitAsPotion`, or `ThrownLingeringPotion.onHitAsPotion`
@@ -974,17 +1223,17 @@ impl Game<'_> {
                         if d > 20
                             && let Some(name) = mob_effect_id(id)
                         {
-                            self.sim.mobs[i].add_effect(name, d, *amp);
+                            self.mobs[i].add_effect(name, d, *amp);
                         }
                         continue;
                     }
                 };
-                let m = &mut self.sim.mobs[i];
+                let m = &mut self.mobs[i];
                 if harm {
                     m.hurt(
                         (intensity * f64::from(6 << amp) + 0.5) as i32 as f32,
                         Some([at.x, at.y, at.z]),
-                        &mut self.sim.world.random,
+                        &mut self.world.random,
                     );
                 } else {
                     m.health = (m.health + (intensity * f64::from(4 << amp) + 0.5) as i32 as f32)
@@ -1025,7 +1274,7 @@ impl Game<'_> {
             .map(hud_overlays::EffectIcon::from)
             .collect();
         let draws = hud_overlays::effects(batch.width as i32, false, &icons);
-        hud_layout::paint(batch, &self.front.gui.atlas, &draws);
+        hud_layout::paint(batch, &self.gui.atlas, &draws);
     }
     /// `EffectsInInventory`: panels to the right of survival/creative inventory.
     pub(super) fn draw_inventory_effects(
@@ -1041,268 +1290,15 @@ impl Game<'_> {
             &self.potions.effects.list,
             self.clock.rate(),
             &|key| self.pack.names.display_get(key),
-            &|text| self.front.gui.atlas.font.width(text).ceil() as i32,
+            &|text| self.gui.atlas.font.width(text).ceil() as i32,
         );
         if let Some(lines) = inventory_effects::paint(
             batch,
-            &self.front.gui.atlas,
+            &self.gui.atlas,
             &panels,
-            [self.front.cursor.0 as i32, self.front.cursor.1 as i32],
+            [self.cursor.0 as i32, self.cursor.1 as i32],
         ) {
-            self.draw_tooltip_lines(batch, &lines, self.front.cursor.0, self.front.cursor.1);
-        }
-    }
-}
-impl crate::game::Sim<'_> {
-    pub(super) fn apply_effect_action(&mut self, action: EffectAction) {
-        // EntityDamageEvent for the effects that hurt.
-        let creative = self.creative;
-        let rules = self.world.health_rules;
-        let Some(p) = self.player.as_mut() else {
-            return;
-        };
-        match action {
-            EffectAction::Heal(amount) => {
-                let max = p.attribute("minecraft:max_health").unwrap_or(20.0) as f32;
-                let h = p.health.health();
-                if h > 0.0 {
-                    let _ = p.set_health((h + amount).min(max), false);
-                }
-            }
-            EffectAction::Hurt(source, amount) => {
-                if creative {
-                    return;
-                }
-                if let Some(id) = self.motion.health.damage.id(source) {
-                    let _ = p.hurt(&self.motion.health, rules, id, amount);
-                }
-            }
-            EffectAction::Poison => {
-                if !creative
-                    && p.health.health() > 1.0
-                    && let Some(id) = self.motion.health.damage.id("minecraft:magic")
-                {
-                    let _ = p.hurt(&self.motion.health, rules, id, 1.0);
-                }
-            }
-            EffectAction::Exhaust(amount) => {
-                p.cause_food_exhaustion(amount);
-            }
-            EffectAction::Eat(nutrition, saturation) => {
-                let food = &mut p.health.food;
-                food.food = (food.food + nutrition).clamp(0, 20);
-                food.saturation = (food.saturation + nutrition as f32 * saturation * 2.0)
-                    .clamp(0.0, food.food as f32);
-            }
-        }
-    }
-    /// `Player.tick` -> `turtleHelmetTick`: with a turtle helmet on the head
-    /// and the eyes out of the water, Water Breathing for 200 ticks (no
-    /// particles, an icon).
-    fn turtle_helmet_tick(&mut self) {
-        let Some(p) = self.player.as_ref() else {
-            return;
-        };
-        let eye_y = p.position.y + f64::from(p.dimensions.eye_height);
-        if !p.health.dead_or_dying()
-            && self.armor[0]
-                .as_ref()
-                .is_some_and(|s| &*s.item == "minecraft:turtle_helmet")
-            && !self.eye_in_water(p.position.x, eye_y, p.position.z)
-        {
-            let mut effect = EffectInstance::new("water_breathing", 200, 0);
-            effect.visible = false;
-            self.potions.effects.add(effect);
-        }
-    }
-    /// A client's own effects (`LivingEntity.tickEffects` on the client,
-    /// `MobEffectInstance.tickClient`): they count down, and the server
-    /// removes them. Their modifiers and flags move the predicted player.
-    pub(super) fn tick_client_effects(&mut self) {
-        for e in &mut self.potions.effects.list {
-            e.tick_client();
-        }
-        self.apply_effect_status();
-    }
-    /// Add an active effect to the player and update attributes / absorption.
-    pub(super) fn add_player_effect(&mut self, effect: EffectInstance) -> bool {
-        let id = effect.id;
-        let amp = effect.amplifier;
-        let changed = self.potions.effects.add(effect);
-        self.apply_effect_status();
-        if id == "absorption"
-            && let Some(p) = self.player.as_mut()
-        {
-            let target = 4.0 * (amp + 1) as f32;
-            let current = p.health.absorption();
-            let _ = p.set_health(current.max(target), true);
-        }
-        changed
-    }
-    /// The effects' attribute modifiers, armor protection and status flags
-    /// on `self.player`.
-    pub(super) fn apply_effect_status(&mut self) {
-        let modifiers = self.potions.effects.modifiers();
-        if modifiers != self.potions.applied
-            && let Some(p) = self.player.as_mut()
-        {
-            for (attr, id, _, op) in &self.potions.applied {
-                let _ = p.set_modifier(attr, id, 0.0, op, false);
-            }
-            for (attr, id, amount, op) in &modifiers {
-                let _ = p.set_modifier(attr, id, *amount, op, true);
-            }
-            self.potions.applied = modifiers;
-        }
-        if let Some(p) = self.player.as_mut()
-            && self.potions.effects.amplifier("absorption").is_none()
-            && p.health.absorption() > 0.0
-        {
-            let _ = p.set_health(0.0, true);
-        }
-        // EnchantmentHelper.getDamageProtection per damage type, recomputed on armor change.
-        let armor: Vec<Option<ItemStack>> = self.armor.to_vec();
-        if self.potions.protection_for.as_ref() != Some(&armor) {
-            let mut table = Vec::new();
-            let e = &self.res.stations().enchantments;
-            let mut random = horizon_core::random::LegacyRandom::new(0);
-            for (_, def) in self.motion.health.damage.entries() {
-                let ctx = horizon_client::enchant::EffectContext {
-                    items: Some(self.res.items()),
-                    damage_type: Some(&def.name),
-                    this: Some("minecraft:player"),
-                    ..Default::default()
-                };
-                let total: f32 = armor
-                    .iter()
-                    .flatten()
-                    .map(|s| {
-                        e.modify_value(
-                            Some(s),
-                            "minecraft:damage_protection",
-                            &ctx,
-                            &mut random,
-                            0.0,
-                        )
-                    })
-                    .sum();
-                if total > 0.0 {
-                    table.push((def.name.clone(), total));
-                }
-            }
-            self.potions.protection_for = Some(armor);
-            if let Some(p) = self.player.as_mut() {
-                p.status.protection = table;
-            }
-        }
-        let mut status = self.potions.effects.status();
-        if let Some(p) = self.player.as_mut() {
-            status.protection = std::mem::take(&mut p.status.protection);
-            p.status = status;
-        }
-    }
-    /// `ThrowableProjectile.tick`'s `applyGravity` and `applyInertia`, which
-    /// come before the move: gravity 0.05 (0.07 for an experience bottle),
-    /// then drag 0.99 (0.8 in water).
-    fn thrown_potion_motion(&self, t: &mut ThrownPotion) {
-        let gravity = if &*t.stack.item == "minecraft:experience_bottle" {
-            0.07
-        } else {
-            0.05
-        };
-        let at = t.position;
-        let water = self
-            .res
-            .facts()
-            .get(self.world.block(
-                at.x.floor() as i32,
-                at.y.floor() as i32,
-                at.z.floor() as i32,
-            ))
-            .fluid
-            == horizon_client::blocks::Fluid::Water;
-        let inertia = if water { 0.8 } else { 0.99 };
-        t.velocity = Vec3::new(
-            t.velocity.x * inertia,
-            (t.velocity.y - gravity) * inertia,
-            t.velocity.z * inertia,
-        );
-    }
-    /// `ThrowableProjectile.tick` on a server's client: it falls and moves
-    /// by itself between the server's updates and stops at a block; only
-    /// the server breaks it.
-    pub(super) fn step_remote_thrown(&mut self) {
-        let mut thrown = std::mem::take(&mut self.potions.thrown);
-        for t in &mut thrown {
-            t.previous = t.position;
-            t.age += 1;
-            self.thrown_potion_motion(t);
-            let next = Vec3::new(
-                t.position.x + t.velocity.x,
-                t.position.y + t.velocity.y,
-                t.position.z + t.velocity.z,
-            );
-            let state = self.world.block(
-                next.x.floor() as i32,
-                next.y.floor() as i32,
-                next.z.floor() as i32,
-            );
-            if self.res.facts().get(state).full_collision {
-                t.velocity = Vec3::ZERO;
-            } else {
-                t.position = next;
-            }
-        }
-        self.potions.thrown = thrown;
-    }
-    /// `HealOrHarmMobEffect.applyInstantaneousEffect` with a source (a
-    /// potion or a cloud): indirectMagic, not plain magic.
-    fn apply_indirect_effect_action(&mut self, a: EffectAction, source: &Text) {
-        let a = match a {
-            EffectAction::Hurt("minecraft:magic", amount) => {
-                self.note_direct_entity("minecraft:indirect_magic", source.clone());
-                EffectAction::Hurt("minecraft:indirect_magic", amount)
-            }
-            a => a,
-        };
-        self.apply_effect_action(a);
-    }
-    /// A splash potion's effects on the player in place, by their distance.
-    fn splash_on_player(
-        &mut self,
-        effects: &'static [(&'static str, i32, i32)],
-        at: Vec3,
-        age: u32,
-        source: &Text,
-    ) {
-        if let Some(p) = self.player.as_ref() {
-            let w = f64::from(p.dimensions.width) / 2.0;
-            let bounds = Aabb::new(
-                Vec3::new(p.position.x - w, p.position.y, p.position.z - w),
-                Vec3::new(
-                    p.position.x + w,
-                    p.position.y + f64::from(p.dimensions.height),
-                    p.position.z + w,
-                ),
-            );
-            if let Some(d2) = splash_distance_sqr(at, age, bounds) {
-                let intensity = 1.0 - d2.sqrt() / 4.0;
-                for (id, duration, amp) in effects {
-                    let instant = brewing::effect(id).is_some_and(|e| e.instant);
-                    if instant {
-                        if let Some(a) = horizon_client::effects::instant(id, *amp, intensity) {
-                            self.apply_indirect_effect_action(a, source);
-                        }
-                    } else {
-                        let d = (intensity * f64::from(*duration) + 0.5) as i32;
-                        if d > 20
-                            && let Some(e) = brewing::effect(id)
-                        {
-                            self.add_player_effect(EffectInstance::new(e.id, d, *amp));
-                        }
-                    }
-                }
-            }
+            self.draw_tooltip_lines(batch, &lines, self.cursor.0, self.cursor.1);
         }
     }
     /// Effects saved in level.dat (`Player.active_effects`).

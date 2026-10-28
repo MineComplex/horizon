@@ -84,6 +84,20 @@ fn place_back(menu: &mut Menu, env: &Env, stacks: Vec<ItemStack>) {
 }
 
 impl Game<'_> {
+    pub(super) fn menu_env(&self) -> Env<'_> {
+        Env {
+            items: self.res.items(),
+            recipes: self.res.recipes(),
+            brewing: &self.res.stations().brewing,
+            banners: &self.res.stations().banners,
+            station_recipes: &self.res.stations().recipes,
+            enchantments: &self.res.stations().enchantments,
+            names: &self.pack.names,
+            trade: None,
+            maps: None,
+        }
+    }
+
     /// Runs `op` on the guest's menu with their inventory copied in and back.
     pub(super) fn guest_menu_op<R>(
         &mut self,
@@ -257,13 +271,13 @@ impl Game<'_> {
                 .filter(|&s| menu.slot(s) != before[s].as_ref())
                 .collect::<Vec<_>>()
         });
-        match self.sim.world.block_entities.get_mut(&pos) {
+        match self.world.block_entities.get_mut(&pos) {
             Some(BlockEntity::Furnace(f)) => {
                 for k in 0..3 {
                     f.items[k] = menu.slot(k).cloned();
                 }
                 // AbstractFurnaceBlockEntity.setItem: only a new input restarts cooking.
-                f.input_clicked(self.sim.res.recipes(), items[0].clone());
+                f.input_clicked(self.res.recipes(), items[0].clone());
             }
             // BrewingStandBlockEntity.serverTick notices a new ingredient itself.
             Some(BlockEntity::Brewing(b)) => {
@@ -294,6 +308,39 @@ impl Game<'_> {
         host.play.entry(conn).or_default().crafting.machine = Some((p.container, menu));
         host.hub.inventory_clicked(conn, p, &self.world, &changed);
         true
+    }
+
+    /// `ServerGamePacketListenerImpl.handleContainerSlotStateChanged`: a
+    /// guest's crafter slot toggle (`CrafterBlockEntity.setSlotState`) in
+    /// their open crafter window.
+    pub(super) fn lan_crafter_slot_state(
+        &mut self,
+        host: &mut LanHost,
+        conn: u32,
+        window: i32,
+        slot: i32,
+        enabled: bool,
+    ) {
+        let Some(pos) = host
+            .hub
+            .guest(conn)
+            .filter(|g| !g.spectator())
+            .and_then(|g| g.menu.as_ref())
+            .filter(|m| window != 0 && m.window == window)
+            .and_then(|m| match m.slots {
+                Slots::Block(pos) => Some(pos),
+                _ => None,
+            })
+        else {
+            return;
+        };
+        if let (Some(BlockEntity::Crafter(c)), Ok(slot)) = (
+            self.world.block_entities.get_mut(&pos),
+            usize::try_from(slot),
+        ) {
+            c.set_slot_state(slot, enabled);
+            self.world.modified.insert((pos.0 >> 4, pos.2 >> 4));
+        }
     }
 
     /// ServerGamePacketListenerImpl.handlePlaceRecipe: the guest's recipe
@@ -423,6 +470,17 @@ impl Game<'_> {
         true
     }
 
+    /// `CraftingMenu.stillValid`: the block is still a crafting table and the
+    /// guest is within reach of it.
+    fn lan_table_valid(&self, g: &Guest, pos: [i32; 3]) -> bool {
+        let name = &self
+            .res
+            .facts()
+            .get(self.world.block(pos[0], pos[1], pos[2]))
+            .name;
+        &**name == "minecraft:crafting_table" && g.within_block_range(pos, 4.0)
+    }
+
     /// `ServerPlayer.tick`'s `stillValid`: a guest's crafting table closes
     /// once it is gone or out of reach, giving its grid back.
     pub(super) fn lan_tables_tick(&mut self, host: &mut LanHost) {
@@ -449,6 +507,37 @@ impl Game<'_> {
                 self.guest_carried_back(host, gi);
             }
         }
+    }
+
+    /// The whole crafting table menu for the client (`sendAllDataToRemote`).
+    fn lan_send_table_content(&mut self, host: &mut LanHost, conn: u32) {
+        let Some(gi) = host.hub.guests.iter().position(|g| g.conn == conn) else {
+            return;
+        };
+        let Some((window, state, menu, _)) = host
+            .play
+            .get_mut(&conn)
+            .and_then(|p| p.crafting.table.as_mut())
+        else {
+            return;
+        };
+        *state = (*state + 1) & 0x7FFF;
+        let (window, state) = (*window, *state);
+        let mut items: Vec<Option<ItemStack>> = (0..10).map(|s| menu.slot(s).cloned()).collect();
+        let g = &host.hub.guests[gi];
+        items.extend((9..36).chain(0..9).map(|i| g.inventory[i].clone()));
+        let carried = g.carried.clone();
+        let items = items.iter().map(|s| host.hub.stack(s)).collect();
+        let carried = host.hub.stack(&carried);
+        host.hub.send_to(
+            conn,
+            &C::ContainerSetContent(play::ContainerSetContent {
+                container: window,
+                state,
+                items,
+                carried,
+            }),
+        );
     }
 
     /// `AbstractContainerMenu.removed` of a crafting menu: the closed window
@@ -493,93 +582,7 @@ impl Game<'_> {
             place_back(menu, env, stacks)
         });
     }
-}
-impl crate::game::Sim<'_> {
-    pub(super) fn menu_env(&self) -> Env<'_> {
-        Env {
-            items: self.res.items(),
-            recipes: self.res.recipes(),
-            brewing: &self.res.stations().brewing,
-            banners: &self.res.stations().banners,
-            station_recipes: &self.res.stations().recipes,
-            enchantments: &self.res.stations().enchantments,
-            names: &self.pack.names,
-            trade: None,
-            maps: None,
-        }
-    }
-    /// `ServerGamePacketListenerImpl.handleContainerSlotStateChanged`: a
-    /// guest's crafter slot toggle (`CrafterBlockEntity.setSlotState`) in
-    /// their open crafter window.
-    pub(super) fn lan_crafter_slot_state(
-        &mut self,
-        host: &mut LanHost,
-        conn: u32,
-        window: i32,
-        slot: i32,
-        enabled: bool,
-    ) {
-        let Some(pos) = host
-            .hub
-            .guest(conn)
-            .filter(|g| !g.spectator())
-            .and_then(|g| g.menu.as_ref())
-            .filter(|m| window != 0 && m.window == window)
-            .and_then(|m| match m.slots {
-                Slots::Block(pos) => Some(pos),
-                _ => None,
-            })
-        else {
-            return;
-        };
-        if let (Some(BlockEntity::Crafter(c)), Ok(slot)) = (
-            self.world.block_entities.get_mut(&pos),
-            usize::try_from(slot),
-        ) {
-            c.set_slot_state(slot, enabled);
-            self.world.modified.insert((pos.0 >> 4, pos.2 >> 4));
-        }
-    }
-    /// `CraftingMenu.stillValid`: the block is still a crafting table and the
-    /// guest is within reach of it.
-    fn lan_table_valid(&self, g: &Guest, pos: [i32; 3]) -> bool {
-        let name = &self
-            .res
-            .facts()
-            .get(self.world.block(pos[0], pos[1], pos[2]))
-            .name;
-        &**name == "minecraft:crafting_table" && g.within_block_range(pos, 4.0)
-    }
-    /// The whole crafting table menu for the client (`sendAllDataToRemote`).
-    fn lan_send_table_content(&mut self, host: &mut LanHost, conn: u32) {
-        let Some(gi) = host.hub.guests.iter().position(|g| g.conn == conn) else {
-            return;
-        };
-        let Some((window, state, menu, _)) = host
-            .play
-            .get_mut(&conn)
-            .and_then(|p| p.crafting.table.as_mut())
-        else {
-            return;
-        };
-        *state = (*state + 1) & 0x7FFF;
-        let (window, state) = (*window, *state);
-        let mut items: Vec<Option<ItemStack>> = (0..10).map(|s| menu.slot(s).cloned()).collect();
-        let g = &host.hub.guests[gi];
-        items.extend((9..36).chain(0..9).map(|i| g.inventory[i].clone()));
-        let carried = g.carried.clone();
-        let items = items.iter().map(|s| host.hub.stack(s)).collect();
-        let carried = host.hub.stack(&carried);
-        host.hub.send_to(
-            conn,
-            &C::ContainerSetContent(play::ContainerSetContent {
-                container: window,
-                state,
-                items,
-                carried,
-            }),
-        );
-    }
+
     /// A guest left: what their crafting grids and workstation held goes back into their
     /// inventory before it is saved (dropped where they stood if full).
     pub(super) fn lan_crafting_left(&mut self, host: &mut LanHost, g: &mut Guest) {

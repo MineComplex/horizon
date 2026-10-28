@@ -17,6 +17,26 @@ use horizon_world::chunk::BlockState;
 const RECHECK_TICKS: i64 = 5;
 
 impl Game<'_> {
+    /// A copper golem opened or closed a chest half: the counter changes and
+    /// the clients see the block event (`openerCountChanged`).
+    pub(super) fn golem_chest_open(&mut self, chest: [i32; 3], open: bool) {
+        let key = (chest[0], chest[1], chest[2]);
+        let entry = self.world.chest_openers.entry(key).or_insert((0, 0.0));
+        if open {
+            entry.0 += 1;
+            entry.1 = entry.1.max(3.0);
+        } else {
+            entry.0 -= 1;
+            if entry.0 == 0 {
+                entry.1 = 0.0;
+            }
+        }
+        let count = entry.0;
+        if count <= 0 {
+            self.world.chest_openers.remove(&key);
+        }
+        self.block_entity_event(chest, 1, count.max(0));
+    }
     /// A copper golem took from or filled a chest slot.
     pub(super) fn golem_chest_slot(
         &mut self,
@@ -32,6 +52,89 @@ impl Game<'_> {
             // TransportItemsBetweenContainers calls Container.setChanged.
             self.container_changed(key);
         }
+    }
+    /// `ContainerOpenersCounter.recheckOpeners` every five ticks: the golems
+    /// whose opened chest is this one, within its range plus 4; when none
+    /// is left the chest closes (a double chest the golem left open).
+    pub(super) fn recheck_golem_openers(&mut self) {
+        if self.world.game_time % RECHECK_TICKS != 0 {
+            return;
+        }
+        let open: Vec<(i32, i32, i32)> = self.world.chest_openers.keys().copied().collect();
+        for key in open {
+            let p = [key.0, key.1, key.2];
+            let other = self.chest_other_half(key).map(|o| [o.0, o.1, o.2]);
+            let range = self.world.chest_openers.get(&key).map_or(0.0, |o| o.1) + 4.0;
+            let area = horizon_core::geometry::Aabb::new(
+                horizon_core::geometry::Vec3::new(
+                    f64::from(p[0]) - range,
+                    f64::from(p[1]) - range,
+                    f64::from(p[2]) - range,
+                ),
+                horizon_core::geometry::Vec3::new(
+                    f64::from(p[0]) + 1.0 + range,
+                    f64::from(p[1]) + 1.0 + range,
+                    f64::from(p[2]) + 1.0 + range,
+                ),
+            );
+            let count = self
+                .mobs
+                .iter()
+                .filter(|m| {
+                    m.species() == Species::CopperGolem
+                        && !m.removed
+                        && m.extra
+                            .opened_chest
+                            .is_some_and(|o| o == p || Some(o) == other)
+                        && m.bounds().intersects(area)
+                })
+                .count() as i32;
+            let before = self.world.chest_openers.get(&key).map_or(0, |o| o.0);
+            if count == before {
+                continue;
+            }
+            if count == 0 {
+                self.world.chest_openers.remove(&key);
+                self.golem_chest_sound(p, false);
+            } else if let Some(o) = self.world.chest_openers.get_mut(&key) {
+                o.0 = count;
+            }
+            self.block_entity_event(p, 1, count);
+        }
+    }
+    /// `ChestBlockEntity.playSound` for a chest the recheck closed.
+    fn golem_chest_sound(&mut self, p: [i32; 3], open: bool) {
+        let name = self
+            .res
+            .facts()
+            .get(self.world.block(p[0], p[1], p[2]))
+            .name
+            .clone();
+        let base = name
+            .trim_start_matches("minecraft:")
+            .trim_start_matches("waxed_");
+        let kind = if !base.ends_with("copper_chest") {
+            "chest"
+        } else if base.starts_with("weathered") {
+            "copper_chest_weathered"
+        } else if base.starts_with("oxidized") {
+            "copper_chest_oxidized"
+        } else {
+            "copper_chest"
+        };
+        let side = if open { "open" } else { "close" };
+        let at = [
+            f64::from(p[0]) + 0.5,
+            f64::from(p[1]) + 0.5,
+            f64::from(p[2]) + 0.5,
+        ];
+        let pitch = self.world.random.next_float() * 0.1 + 0.9;
+        self.sounds.play(
+            &format!("minecraft:block.{kind}.{side}"),
+            Some(at),
+            0.5,
+            pitch,
+        );
     }
     /// `CopperGolem.turnToStatue`, which its weathering asked for.
     pub(super) fn golem_become_statue(&mut self, id: u32) {
@@ -85,6 +188,20 @@ impl Game<'_> {
             1.0,
             1.0,
         );
+    }
+    /// `Mob.dropPreservedEquipment`: the guaranteed drops in `EquipmentSlot`
+    /// order, the carried stack (main hand) then the antenna flower (saddle),
+    /// each `spawnAtLocation` at the golem's feet.
+    pub(super) fn golem_drop_equipment(&mut self, m: &mut Mob) {
+        let at = m.position;
+        if let Some(stack) = held(m).cloned() {
+            set_held(m, None);
+            self.spawn_at_location(at, 0.0, stack);
+        }
+        if let Some(antenna) = m.saddle_item() {
+            m.set_saddle(None);
+            self.spawn_at_location(at, 0.0, antenna);
+        }
     }
     // ---- interactions -----------------------------------------------------
     /// `WeatheringCopperGolemStatueBlock.useItemOn`: an axe on an unoxidized
@@ -228,125 +345,6 @@ impl Game<'_> {
             return true;
         }
         false
-    }
-}
-impl crate::game::Sim<'_> {
-    /// A copper golem opened or closed a chest half: the counter changes and
-    /// the clients see the block event (`openerCountChanged`).
-    pub(super) fn golem_chest_open(&mut self, chest: [i32; 3], open: bool) {
-        let key = (chest[0], chest[1], chest[2]);
-        let entry = self.world.chest_openers.entry(key).or_insert((0, 0.0));
-        if open {
-            entry.0 += 1;
-            entry.1 = entry.1.max(3.0);
-        } else {
-            entry.0 -= 1;
-            if entry.0 == 0 {
-                entry.1 = 0.0;
-            }
-        }
-        let count = entry.0;
-        if count <= 0 {
-            self.world.chest_openers.remove(&key);
-        }
-        self.block_entity_event(chest, 1, count.max(0));
-    }
-    /// `ContainerOpenersCounter.recheckOpeners` every five ticks: the golems
-    /// whose opened chest is this one, within its range plus 4; when none
-    /// is left the chest closes (a double chest the golem left open).
-    pub(super) fn recheck_golem_openers(&mut self) {
-        if self.world.game_time % RECHECK_TICKS != 0 {
-            return;
-        }
-        let open: Vec<(i32, i32, i32)> = self.world.chest_openers.keys().copied().collect();
-        for key in open {
-            let p = [key.0, key.1, key.2];
-            let other = self.chest_other_half(key).map(|o| [o.0, o.1, o.2]);
-            let range = self.world.chest_openers.get(&key).map_or(0.0, |o| o.1) + 4.0;
-            let area = horizon_core::geometry::Aabb::new(
-                horizon_core::geometry::Vec3::new(
-                    f64::from(p[0]) - range,
-                    f64::from(p[1]) - range,
-                    f64::from(p[2]) - range,
-                ),
-                horizon_core::geometry::Vec3::new(
-                    f64::from(p[0]) + 1.0 + range,
-                    f64::from(p[1]) + 1.0 + range,
-                    f64::from(p[2]) + 1.0 + range,
-                ),
-            );
-            let count = self
-                .mobs
-                .iter()
-                .filter(|m| {
-                    m.species() == Species::CopperGolem
-                        && !m.removed
-                        && m.extra
-                            .opened_chest
-                            .is_some_and(|o| o == p || Some(o) == other)
-                        && m.bounds().intersects(area)
-                })
-                .count() as i32;
-            let before = self.world.chest_openers.get(&key).map_or(0, |o| o.0);
-            if count == before {
-                continue;
-            }
-            if count == 0 {
-                self.world.chest_openers.remove(&key);
-                self.golem_chest_sound(p, false);
-            } else if let Some(o) = self.world.chest_openers.get_mut(&key) {
-                o.0 = count;
-            }
-            self.block_entity_event(p, 1, count);
-        }
-    }
-    /// `ChestBlockEntity.playSound` for a chest the recheck closed.
-    fn golem_chest_sound(&mut self, p: [i32; 3], open: bool) {
-        let name = self
-            .res
-            .facts()
-            .get(self.world.block(p[0], p[1], p[2]))
-            .name
-            .clone();
-        let base = name
-            .trim_start_matches("minecraft:")
-            .trim_start_matches("waxed_");
-        let kind = if !base.ends_with("copper_chest") {
-            "chest"
-        } else if base.starts_with("weathered") {
-            "copper_chest_weathered"
-        } else if base.starts_with("oxidized") {
-            "copper_chest_oxidized"
-        } else {
-            "copper_chest"
-        };
-        let side = if open { "open" } else { "close" };
-        let at = [
-            f64::from(p[0]) + 0.5,
-            f64::from(p[1]) + 0.5,
-            f64::from(p[2]) + 0.5,
-        ];
-        let pitch = self.world.random.next_float() * 0.1 + 0.9;
-        self.sounds.play(
-            &format!("minecraft:block.{kind}.{side}"),
-            Some(at),
-            0.5,
-            pitch,
-        );
-    }
-    /// `Mob.dropPreservedEquipment`: the guaranteed drops in `EquipmentSlot`
-    /// order, the carried stack (main hand) then the antenna flower (saddle),
-    /// each `spawnAtLocation` at the golem's feet.
-    pub(super) fn golem_drop_equipment(&mut self, m: &mut Mob) {
-        let at = m.position;
-        if let Some(stack) = held(m).cloned() {
-            set_held(m, None);
-            self.spawn_at_location(at, 0.0, stack);
-        }
-        if let Some(antenna) = m.saddle_item() {
-            m.set_saddle(None);
-            self.spawn_at_location(at, 0.0, antenna);
-        }
     }
     /// `readyForShearing`: the antenna holds a flower shears take.
     pub(super) fn golem_shearable(&self, index: usize) -> bool {

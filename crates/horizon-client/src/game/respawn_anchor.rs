@@ -87,6 +87,28 @@ pub(super) enum AnchorUse {
 }
 
 impl Game<'_> {
+    pub(super) fn is_anchor(&self, state: BlockStateId) -> bool {
+        &*self.res.facts().get(state).name == "minecraft:respawn_anchor"
+    }
+    fn anchor_charges(&self, state: BlockStateId) -> i32 {
+        self.pack
+            .assets
+            .registry
+            .state(state)
+            .and_then(|s| s.properties.get("charges"))
+            .and_then(|c| c.parse().ok())
+            .unwrap_or(0)
+    }
+    fn anchor_with_charges(&self, state: BlockStateId, charges: i32) -> Option<BlockStateId> {
+        let mut s = self.pack.assets.registry.state(state)?.clone();
+        s.properties.insert("charges".into(), charges.to_string());
+        self.pack.assets.registry.resolve(&s).ok()
+    }
+    /// `RespawnAnchorBlock.canSetSpawn`: the `respawn_anchor_works` attribute
+    /// (only the Nether's dimension type sets it).
+    pub(super) fn anchor_works(&self) -> bool {
+        self.dim == Dim::Nether
+    }
     /// `RespawnAnchorBlock.charge`: one more charge, the block change and the sound.
     fn charge_anchor(
         &mut self,
@@ -178,6 +200,24 @@ impl Game<'_> {
         }
         Ok(())
     }
+    /// `RespawnAnchorBlock.isWaterThatWouldFlow`.
+    fn water_would_flow(&self, p: [i32; 3]) -> bool {
+        let f = self.res.facts().get(self.world.block(p[0], p[1], p[2]));
+        if f.fluid != Fluid::Water {
+            return false;
+        }
+        if f.fluid_level == 8 && !f.fluid_falling {
+            return true;
+        }
+        if f.fluid_level < 2 {
+            return false;
+        }
+        self.res
+            .facts()
+            .get(self.world.block(p[0], p[1] - 1, p[2]))
+            .fluid
+            != Fluid::Water
+    }
     /// `RespawnAnchorBlock.explode`: the anchor goes, then a power 5 fiery
     /// explosion (`badRespawnPointExplosion`, `ExplosionInteraction.BLOCK`)
     /// whose centre resists like water when water would flow into it.
@@ -199,6 +239,11 @@ impl Game<'_> {
             f64::from(pos[2]) + 0.5,
         ];
         self.block_explosion(center, in_water.then_some(pos))
+    }
+    /// `BedRule.destroyOnUse` of the dimension's `bed_rule` and
+    /// `straw_bed_rule`: true in the Nether and the End.
+    pub(super) fn beds_destroy_on_use(&self) -> bool {
+        self.dim != Dim::Overworld
     }
     /// `AbstractBedBlock.useWithoutItem` where the bed rule destroys on use
     /// (the bed's head at `head`): `BedBlock.destroyOnUse` removes both
@@ -273,91 +318,6 @@ impl Game<'_> {
 
     // ---- respawning -------------------------------------------------------
 
-    /// `ServerPlayer.findRespawnAndUseSpawnBlock` for a config in the loaded
-    /// dimension: the position and yaw, using an anchor's charge; a bed's
-    /// stand-up spot. A forced point (`spawnpoint`) that is no anchor or bed
-    /// holds if a player fits in it; anything else is gone.
-    pub(super) fn find_respawn_and_use(
-        &mut self,
-        c: RespawnConfig,
-        consume: bool,
-    ) -> Result<Option<(Vec3, f32)>> {
-        let state = self.world.block(c.pos[0], c.pos[1], c.pos[2]);
-        if !(self.is_anchor(state)
-            && (c.forced || self.anchor_charges(state) > 0)
-            && self.anchor_works())
-        {
-            // A bed where its bed rule lets it set the spawn.
-            if self.is_bed(state) && self.bed_sets_spawn(state) {
-                let facing = self.bed_forward(state);
-                let stand = self.bed_stand_up(c.pos, facing, c.yaw);
-                return Ok(stand.map(|p| (p, look_at_yaw(p, c.pos))));
-            }
-            let [x, y, z] = c.pos;
-            let free = c.forced
-                && !self.is_anchor(state)
-                && self.possible_to_respawn_in(state)
-                && self.possible_to_respawn_in(self.world.block(x, y + 1, z));
-            let at = Vec3::new(f64::from(x) + 0.5, f64::from(y) + 0.1, f64::from(z) + 0.5);
-            return Ok(free.then_some((at, c.yaw)));
-        }
-        let stand = self.anchor_stand_up(c.pos);
-        if !c.forced
-            && consume
-            && stand.is_some()
-            && let Some(next) = self.anchor_with_charges(state, self.anchor_charges(state) - 1)
-        {
-            self.level_set(c.pos, next)?;
-        }
-        Ok(stand.map(|p| (p, look_at_yaw(p, c.pos))))
-    }
-}
-impl crate::game::Sim<'_> {
-    pub(super) fn is_anchor(&self, state: BlockStateId) -> bool {
-        &*self.res.facts().get(state).name == "minecraft:respawn_anchor"
-    }
-    fn anchor_charges(&self, state: BlockStateId) -> i32 {
-        self.pack
-            .assets
-            .registry
-            .state(state)
-            .and_then(|s| s.properties.get("charges"))
-            .and_then(|c| c.parse().ok())
-            .unwrap_or(0)
-    }
-    fn anchor_with_charges(&self, state: BlockStateId, charges: i32) -> Option<BlockStateId> {
-        let mut s = self.pack.assets.registry.state(state)?.clone();
-        s.properties.insert("charges".into(), charges.to_string());
-        self.pack.assets.registry.resolve(&s).ok()
-    }
-    /// `RespawnAnchorBlock.canSetSpawn`: the `respawn_anchor_works` attribute
-    /// (only the Nether's dimension type sets it).
-    pub(super) fn anchor_works(&self) -> bool {
-        self.dim == Dim::Nether
-    }
-    /// `RespawnAnchorBlock.isWaterThatWouldFlow`.
-    fn water_would_flow(&self, p: [i32; 3]) -> bool {
-        let f = self.res.facts().get(self.world.block(p[0], p[1], p[2]));
-        if f.fluid != Fluid::Water {
-            return false;
-        }
-        if f.fluid_level == 8 && !f.fluid_falling {
-            return true;
-        }
-        if f.fluid_level < 2 {
-            return false;
-        }
-        self.res
-            .facts()
-            .get(self.world.block(p[0], p[1] - 1, p[2]))
-            .fluid
-            != Fluid::Water
-    }
-    /// `BedRule.destroyOnUse` of the dimension's `bed_rule` and
-    /// `straw_bed_rule`: true in the Nether and the End.
-    pub(super) fn beds_destroy_on_use(&self) -> bool {
-        self.dim != Dim::Overworld
-    }
     /// `DismountHelper.nonClimbableShape`: the collision shape, empty for
     /// climbable blocks and open trapdoors.
     fn non_climbable_shape(&self, p: [i32; 3]) -> VoxelShape {
@@ -579,6 +539,44 @@ impl crate::game::Sim<'_> {
     /// beds never.
     pub(super) fn bed_sets_spawn(&self, state: BlockStateId) -> bool {
         self.dim == Dim::Overworld && &*self.res.facts().get(state).name != "minecraft:straw_bed"
+    }
+    /// `ServerPlayer.findRespawnAndUseSpawnBlock` for a config in the loaded
+    /// dimension: the position and yaw, using an anchor's charge; a bed's
+    /// stand-up spot. A forced point (`spawnpoint`) that is no anchor or bed
+    /// holds if a player fits in it; anything else is gone.
+    pub(super) fn find_respawn_and_use(
+        &mut self,
+        c: RespawnConfig,
+        consume: bool,
+    ) -> Result<Option<(Vec3, f32)>> {
+        let state = self.world.block(c.pos[0], c.pos[1], c.pos[2]);
+        if !(self.is_anchor(state)
+            && (c.forced || self.anchor_charges(state) > 0)
+            && self.anchor_works())
+        {
+            // A bed where its bed rule lets it set the spawn.
+            if self.is_bed(state) && self.bed_sets_spawn(state) {
+                let facing = self.bed_forward(state);
+                let stand = self.bed_stand_up(c.pos, facing, c.yaw);
+                return Ok(stand.map(|p| (p, look_at_yaw(p, c.pos))));
+            }
+            let [x, y, z] = c.pos;
+            let free = c.forced
+                && !self.is_anchor(state)
+                && self.possible_to_respawn_in(state)
+                && self.possible_to_respawn_in(self.world.block(x, y + 1, z));
+            let at = Vec3::new(f64::from(x) + 0.5, f64::from(y) + 0.1, f64::from(z) + 0.5);
+            return Ok(free.then_some((at, c.yaw)));
+        }
+        let stand = self.anchor_stand_up(c.pos);
+        if !c.forced
+            && consume
+            && stand.is_some()
+            && let Some(next) = self.anchor_with_charges(state, self.anchor_charges(state) - 1)
+        {
+            self.level_set(c.pos, next)?;
+        }
+        Ok(stand.map(|p| (p, look_at_yaw(p, c.pos))))
     }
 }
 

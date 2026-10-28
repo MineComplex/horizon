@@ -176,16 +176,16 @@ impl Game<'_> {
     /// level's streaming, and report the progress now and then. Runs before
     /// each streaming update of the level in place.
     pub(in crate::game) fn tick_pregen(&mut self) {
-        let Some(task) = self.sim.cmds.pregen.as_mut() else {
+        let Some(task) = self.cmds.pregen.as_mut() else {
             return;
         };
-        if task.dim != self.sim.dim || task.paused {
+        if task.dim != self.dim || task.paused {
             return;
         }
         // A row is done once its chunks are lit and post-processed
         // (`postprocess_chunks`, on the tick), as vanilla's are by the time
         // they are FULL: then they may unload and be saved.
-        let (streaming, chunks) = (&mut self.sim.streaming, &self.sim.world.chunks);
+        let (streaming, chunks) = (&mut self.streaming, &self.world.chunks);
         if task.pregen.advance(|x, z| {
             streaming.is_lit(x, z)
                 && chunks
@@ -204,7 +204,7 @@ impl Game<'_> {
                 .iter()
                 .filter(|k| chunks.get(k).is_some_and(|c| !c.postprocess.is_empty()))
                 .count();
-            let [missing, lighting, unlit] = streaming.unstick_light(&mut self.sim.world, &row);
+            let [missing, lighting, unlit] = streaming.unstick_light(&mut self.world, &row);
             log::warn!(
                 "Horizon: pregeneration waits on row {:?}: {missing} not loaded, {lighting} being lit, \
                  {unlit} unlit with no light job (queued again), {waiting} not post-processed; {:?}",
@@ -258,8 +258,7 @@ impl Game<'_> {
             self.update_world();
         }
     }
-}
-impl crate::game::Sim<'_> {
+
     /// The console and the player who started the task get the progress.
     fn pregen_report(&mut self, owner: Option<u32>, message: Text) {
         if self.options.dedicated.is_some() {

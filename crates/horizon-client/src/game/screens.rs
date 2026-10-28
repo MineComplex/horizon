@@ -106,8 +106,12 @@ fn death_buttons(w: f32, h: f32, hardcore: bool) -> [(f32, f32, &'static str, u8
     ]
 }
 impl Game<'_> {
+    /// Singleplayer also has a connection, backed by the integrated server.
+    pub(super) fn external_server(&self) -> bool {
+        self.remote.is_some() && self.integrated.is_none()
+    }
     pub(super) fn draw_pause_menu(&mut self, batch: &mut HudBatch) {
-        let atlas = &self.front.gui.atlas;
+        let atlas = &self.gui.atlas;
         let (w, h) = (batch.width, batch.height);
         ui::menu_background(batch, atlas, 0.0, 0.0, w, h, true);
         let title = Text::translate("menu.game", &[]);
@@ -123,7 +127,7 @@ impl Game<'_> {
         let links = !self.server_links().is_empty();
         let mut tooltip = None;
         for (x, y, bw, key, id, active) in pause_buttons(w, h, self.external_server(), links) {
-            let hover = active && ui::hovered(self.front.cursor, x, y, bw, 20.0);
+            let hover = active && ui::hovered(self.cursor, x, y, bw, 20.0);
             ui::button(
                 batch,
                 atlas,
@@ -148,13 +152,12 @@ impl Game<'_> {
                 .into_iter()
                 .map(|(line, _)| line)
                 .collect();
-            ui::tooltip(batch, atlas, &lines, self.front.cursor);
+            ui::tooltip(batch, atlas, &lines, self.cursor);
         }
     }
     pub(super) fn pause_click(&mut self) -> Result<()> {
         let (w, h) = {
             let size = self
-                .front
                 .renderer
                 .as_ref()
                 .map_or([1, 1], |r| [r.config.width, r.config.height]);
@@ -164,7 +167,7 @@ impl Game<'_> {
         let links = !self.server_links().is_empty();
         let hit = pause_buttons(w, h, self.external_server(), links)
             .into_iter()
-            .find(|b| b.5 && ui::hovered(self.front.cursor, b.0, b.1, b.2, 20.0))
+            .find(|b| b.5 && ui::hovered(self.cursor, b.0, b.1, b.2, 20.0))
             .map(|b| b.4);
         match hit {
             Some(0) => {
@@ -183,13 +186,13 @@ impl Game<'_> {
             _ => {}
         }
         if hit.is_some() {
-            self.front.audio.play_button_click();
+            self.audio.play_button_click();
         }
         Ok(())
     }
     /// DeathScreen: gradient, the title at double size, the cause and score.
     pub(super) fn draw_death_screen(&mut self, batch: &mut HudBatch) {
-        let atlas = &self.front.gui.atlas;
+        let atlas = &self.gui.atlas;
         let (w, h) = (batch.width, batch.height);
         // fillGradient(0x60500000 -> 0xA0803030).
         let rows = h.ceil() as i32;
@@ -218,7 +221,7 @@ impl Game<'_> {
             Confirm::new(&atlas.font, size, &title, &Text::literal("")).draw_active(
                 batch,
                 atlas,
-                self.front.cursor,
+                self.cursor,
                 [&labels[0], &labels[1]],
                 opened.elapsed().as_millis() >= 1000,
             );
@@ -265,7 +268,7 @@ impl Game<'_> {
             .died_at
             .is_none_or(|t| t.elapsed().as_millis() >= 1000);
         for (x, y, key, _) in death_buttons(w, h, self.level.hardcore) {
-            let hover = active && ui::hovered(self.front.cursor, x, y, 200.0, 20.0);
+            let hover = active && ui::hovered(self.cursor, x, y, 200.0, 20.0);
             ui::button(
                 batch,
                 atlas,
@@ -285,7 +288,7 @@ impl Game<'_> {
         // ClientCommand PERFORM_RESPAWN: the server respawns the player
         // (this window is always a server's client).
         self.ui.death_text = None;
-        self.front.toggles.respawn();
+        self.toggles.respawn();
         self.remote_respawn();
         Ok(())
     }
@@ -304,30 +307,29 @@ impl Game<'_> {
             }
             let (title, _) = death_confirm_texts();
             let confirm = Confirm::new(
-                &self.front.gui.atlas.font,
+                &self.gui.atlas.font,
                 self.gui_size(),
                 &title,
                 &Text::literal(""),
             );
-            if let Some(yes) = confirm.answer_at(self.front.cursor) {
+            if let Some(yes) = confirm.answer_at(self.cursor) {
                 self.death_confirm_answer(yes)?;
             }
             return Ok(());
         }
         let size = self
-            .front
             .renderer
             .as_ref()
             .map_or([1, 1], |r| [r.config.width, r.config.height]);
         let b = HudBatch::new(size);
         let hit = death_buttons(b.width, b.height, self.level.hardcore)
             .into_iter()
-            .find(|d| ui::hovered(self.front.cursor, d.0, d.1, 200.0, 20.0))
+            .find(|d| ui::hovered(self.cursor, d.0, d.1, 200.0, 20.0))
             .map(|d| d.3);
         // handleExitToTitleScreen: outside hardcore, Title Screen asks first.
         if hit == Some(1) && !self.level.hardcore {
             self.ui.death_confirm = Some(std::time::Instant::now());
-            self.front.audio.play_button_click();
+            self.audio.play_button_click();
             return Ok(());
         }
         self.death_action(hit)
@@ -337,7 +339,7 @@ impl Game<'_> {
     pub(super) fn death_confirm_answer(&mut self, yes: bool) -> Result<()> {
         self.ui.death_confirm = None;
         if yes {
-            self.front.audio.play_button_click();
+            self.audio.play_button_click();
             self.close_world()
         } else {
             self.death_action(Some(0))
@@ -351,15 +353,9 @@ impl Game<'_> {
             _ => {}
         }
         if hit.is_some() {
-            self.front.audio.play_button_click();
+            self.audio.play_button_click();
         }
         Ok(())
-    }
-}
-impl crate::game::Sim<'_> {
-    /// Singleplayer also has a connection, backed by the integrated server.
-    pub(super) fn external_server(&self) -> bool {
-        self.remote.is_some() && self.integrated.is_none()
     }
 }
 

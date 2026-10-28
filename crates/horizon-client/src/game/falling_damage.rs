@@ -113,8 +113,6 @@ impl Game<'_> {
             }
         }
     }
-}
-impl crate::game::Sim<'_> {
     fn falling_hurt_player(&mut self, position: Vec3, amount: f32, kind: &str) {
         if self.creative || self.spectator() {
             return;
