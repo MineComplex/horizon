@@ -9,15 +9,13 @@ use horizon_client::{
     containers::{BlockEntity, FurnaceKind},
     hud::{HudBatch, Rect, rgba},
     items::ItemStack,
-    menu::place::{PostPlace, Stacked},
+    menu::place::Stacked,
     recipe_book::{Book, BookType, ClientBook, Collection, Entry, GhostTarget, Tab},
     recipe_book_screen::{
         self as screen, ButtonView, Call, Drawn, GhostView, ItemCall, OverlayRecipe, OverlayView,
-        Screen as Layout, Search, TabView,
-    },
+        Screen as Layout, Search, TabView},
     text::{Style, Text},
-    ui::EditBox,
-};
+    ui::EditBox};
 use std::{
     collections::BTreeSet,
     hash::{Hash, Hasher},
@@ -810,7 +808,7 @@ impl crate::game::Sim<'_> {
     /// The items the book counts (`RecipeBookComponent.updateStackedContents`):
     /// the inventory and the menu's crafting slots, as the menu engine counts them.
     fn book_available(&mut self, _book: BookType) -> Stacked {
-        if self.remote.is_some() {
+        {
             // A server's menu: the slots it last sent, counted the same way.
             use horizon_client::menu::{Env, Kind, Menu};
             let table = self.craft_size == 3;
@@ -854,37 +852,7 @@ impl crate::game::Sim<'_> {
     /// one goes in id order), then each unlock and removal.
     fn sync_client_book(&mut self) {
         // On a server the book is the server's packets' (remote_recipe_book_*).
-        if self.remote.is_some() {
-            return;
-        }
-        let known = &self.level.recipe_book.recipes;
-        let index = &self.res.stations().recipe_index;
-        let ui = &mut self.recipe_ui;
-        match ui.client_known.as_ref() {
-            Some(previous) if previous == known => return,
-            Some(previous) => {
-                for id in previous.difference(known) {
-                    for d in index.display_ids(id) {
-                        ui.client.remove(d);
-                    }
-                }
-                for id in known.difference(previous) {
-                    for d in index.display_ids(id) {
-                        ui.client.add(d);
-                    }
-                }
-            }
-            None => {
-                ui.client.clear();
-                for id in known {
-                    for d in index.display_ids(id) {
-                        ui.client.add(d);
-                    }
-                }
-            }
-        }
-        ui.client_known = Some(known.clone());
-        ui.client_version += 1;
+        return;
     }
     fn ensure_book(&mut self) {
         if self.recipe_ui.book.is_none() {
@@ -1180,44 +1148,17 @@ impl crate::game::Sim<'_> {
         else {
             return;
         };
-        if self.remote.is_some() {
-            // The server places it and answers with the slots, or a ghost.
-            let container = self.remote_menu_id();
-            self.send(horizon_protocol::packets::play::Serverbound::PlaceRecipe(
-                horizon_protocol::packets::recipes::PlaceRecipe {
-                    container,
-                    recipe: entry.display_id,
-                    use_max,
-                },
-            ));
-            return;
-        }
-        let creative = self.creative;
-        let mut post = None;
-        let answer = &mut post;
-        self.menu_session(|menu, env, _| {
-            // handlePlaceRecipe: an impossible recipe is refused outright.
-            if env
-                .recipes
-                .placement(&entry.id)
-                .is_none_or(|p| p.impossible())
-            {
-                return Some(false);
-            }
-            *answer = Some(menu.place_recipe(env, &entry.id, use_max, creative, None));
-            Some(true)
-        });
-        if post == Some(PostPlace::Ghost) {
-            self.fill_ghost(book_type, &entry);
-        }
-        self.recipe_book_changed();
-    }
-    /// The container changed under the book: comparators and saving.
-    fn recipe_book_changed(&mut self) {
-        if let Some(key) = self.container {
-            self.world.modified.insert((key.0 >> 4, key.2 >> 4));
-            self.container_changed(key);
-        }
+        // The server places it and answers with the slots, or a ghost.
+        let container = self.remote_menu_id();
+        self.send(horizon_protocol::packets::play::Serverbound::PlaceRecipe(
+            horizon_protocol::packets::recipes::PlaceRecipe {
+                container,
+                recipe: entry.display_id,
+                use_max,
+            },
+        ));
+        return;
+        
     }
     /// ClientboundRecipeBookAddPacket (`ClientRecipeBook.add`): the
     /// displays join the book, highlighted when new, and the recipes whose

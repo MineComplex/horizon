@@ -5,15 +5,14 @@
 //! with a redstone pulse, the comparator output and taking the book).
 use super::Game;
 use horizon_client::{
-    containers::{BlockEntity, Lectern},
+    containers::BlockEntity,
     first_person::Hand,
     hud::{HudBatch, rgba},
     item_data::{StackData, WrittenBook},
     items::ItemStack,
     menu::{Kind, Menu},
     text::Text,
-    ui,
-};
+    ui};
 use horizon_core::position::BlockPos;
 use horizon_protocol::packets::play::{self, Serverbound as S};
 use horizon_world::level::flags as level_flags;
@@ -778,22 +777,6 @@ impl Game<'_> {
     }
 }
 impl crate::game::Sim<'_> {
-    /// `WritableBookItem.use` / `WrittenBookItem.use` (`Player.openItemGui`).
-    /// A server's player writes in its own client's editor
-    /// (`LocalPlayer.openItemGui`), and reads on its own client once told to
-    /// (`ServerPlayer.openItemGui`'s ClientboundOpenBookPacket).
-    pub(super) fn use_book(&mut self, stack: &ItemStack) -> bool {
-        let written = match &*stack.item {
-            "minecraft:writable_book" => false,
-            "minecraft:written_book" => true,
-            _ => return false,
-        };
-        if let Some(screen) = self.book_screen(stack) {
-            self.open_book(screen);
-        }
-        self.swing_arm();
-        true
-    }
     /// The screen a book in hand opens: `BookEditScreen` for a book and
     /// quill, `BookViewScreen` for a written book.
     fn book_screen(&self, stack: &ItemStack) -> Option<BookScreen> {
@@ -862,7 +845,7 @@ impl crate::game::Sim<'_> {
                 lectern: Some(_),
                 ..
             })
-        ) && self.remote.is_some()
+        )
         {
             self.remote_close_container();
         }
@@ -884,7 +867,7 @@ impl crate::game::Sim<'_> {
             pages.pop();
         }
         let title = sign.then(|| title.trim().to_owned());
-        if self.remote.is_some() {
+        {
             self.send(S::EditBook(play::EditBook {
                 slot: slot as i32,
                 pages: pages.clone(),
@@ -1024,53 +1007,6 @@ impl crate::game::Sim<'_> {
             });
         }
     }
-    /// `LecternBlock.useItemOn`: a book goes onto an empty lectern.
-    pub(super) fn use_lectern(&mut self, pos: [i32; 3], held: Option<&ItemStack>) -> bool {
-        let key = (pos[0], pos[1], pos[2]);
-        if &*self
-            .res
-            .facts()
-            .get(self.world.block(pos[0], pos[1], pos[2]))
-            .name
-            != "minecraft:lectern"
-        {
-            return false;
-        }
-        let has_book = matches!(self.world.block_entities.get(&key), Some(BlockEntity::Lectern(l)) if l.book.is_some());
-        let Some(book) = held.filter(|h| {
-            matches!(
-                &*h.item,
-                "minecraft:writable_book" | "minecraft:written_book"
-            )
-        }) else {
-            return false;
-        };
-        if has_book {
-            return false;
-        }
-        let mut one = book.clone();
-        one.count = 1;
-        self.world.block_entities.insert(
-            key,
-            BlockEntity::Lectern(Lectern {
-                book: Some(one),
-                page: 0,
-            }),
-        );
-        self.set_lectern_property(key, "has_book", true);
-        if !self.creative {
-            self.consume_held();
-        }
-        let at = [
-            f64::from(pos[0]) + 0.5,
-            f64::from(pos[1]) + 0.5,
-            f64::from(pos[2]) + 0.5,
-        ];
-        self.sounds
-            .play("minecraft:item.book.put", Some(at), 1.0, 1.0);
-        self.container_changed(key);
-        true
-    }
     /// `LecternBlock.openScreen`: reading the lectern's book.
     pub(super) fn open_lectern(&mut self, pos: [i32; 3]) -> bool {
         let key = (pos[0], pos[1], pos[2]);
@@ -1092,7 +1028,7 @@ impl crate::game::Sim<'_> {
     /// sent (`handleInventoryButtonClick`); here the lectern's menu takes it
     /// with the player's inventory, and the screen follows the block entity.
     fn lectern_button(&mut self, key: (i32, i32, i32), id: i32) {
-        if self.remote.is_some() {
+        {
             if let Some((container, _)) = self.remote.as_ref().and_then(|r| r.menu.as_ref()) {
                 self.send(
                     horizon_protocol::packets::play::Serverbound::ContainerButtonClick(
@@ -1277,15 +1213,7 @@ impl crate::game::Sim<'_> {
         else {
             return;
         };
-        if self.remote.is_some() {
-            return;
-        }
-        match self.world.block_entities.get(key) {
-            Some(BlockEntity::Lectern(l)) if l.book.is_some() => {
-                *page = (l.page.max(0) as usize).min(pages.len().saturating_sub(1));
-            }
-            _ => self.close_book(),
-        }
+        return;
     }
 }
 /// `LecternBlockEntity.getRedstoneSignal`.

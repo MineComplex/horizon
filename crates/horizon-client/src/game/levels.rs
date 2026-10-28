@@ -67,18 +67,4 @@ impl crate::game::Sim<'_> {
             }
         }
     }
-    /// Save every parked level (`MinecraftServer.saveAllChunks`); the level
-    /// in place is the caller's to save.
-    pub(super) fn save_parked_levels(&mut self, wait: bool) -> Result<()> {
-        if self.levels.parked.is_empty() {
-            return Ok(());
-        }
-        let back = self.dim;
-        let dims: Vec<Dim> = self.levels.parked.keys().copied().collect();
-        for dim in dims {
-            self.enter_level(None, dim)?;
-            self.save_level(wait)?;
-        }
-        self.enter_level(None, back)
-    }
 }

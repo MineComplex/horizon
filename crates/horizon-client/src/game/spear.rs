@@ -12,10 +12,8 @@ use horizon_client::{
     attack_strength::delay,
     collisions::SceneCollisions,
     first_person::Hand,
-    items::ItemStack,
     mobs::Damage,
-    spear::{HIT_FEEDBACK_TICKS, Kinetic, REACH},
-};
+    spear::{HIT_FEEDBACK_TICKS, Kinetic, REACH}};
 use horizon_core::{
     geometry::{Aabb, Vec3, traverse_blocks},
     position::BlockPos,
@@ -26,23 +24,6 @@ pub(super) const OWN: i32 = i32::MIN;
 
 impl Game<'_> {}
 impl crate::game::Sim<'_> {
-    /// `Item.use` of a kinetic weapon: `startUsingItem` with a new
-    /// `recentKineticEnemies`, and `KineticWeapon.makeSound` at the user.
-    pub(super) fn use_spear(&mut self, stack: &ItemStack) -> bool {
-        let Some(kinetic) = Kinetic::of(&stack.item) else {
-            return false;
-        };
-        if self.using.is_none() {
-            self.using = Some((self.held_slot(), 0));
-            let actor = None::<u32>;
-            self.stabbed.retain(|(who, _), _| *who != actor);
-            if let Some(p) = &self.player {
-                let at = [p.position.x, p.position.y, p.position.z];
-                self.sounds.play(kinetic.sound, Some(at), 1.0, 1.0);
-            }
-        }
-        true
-    }
     /// `ServerPlayer.getKnownMovement` of the acting player: what they moved
     /// in the last tick. A guest's comes with their moves. A rider's is its
     /// mount's move (`getKnownSpeed`: the vehicle's, or the move the driver's

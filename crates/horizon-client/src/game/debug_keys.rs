@@ -242,7 +242,7 @@ impl Game<'_> {
             )
         };
         // `DebugScreenOverlay`: the single-player variants for a local server.
-        let remote = self.remote.is_some();
+        let remote = true;
         let c = &self.front.debug_charts;
         [
             format!(
@@ -441,12 +441,7 @@ impl Game<'_> {
             } else {
                 (format!("{:.1}", 1000.0 / self.clock.rate()), "")
             };
-            if self.remote.is_none() {
-                let tick_ms = self.front.debug_charts.smoothed_tick_ms;
-                d.line(format!(
-                    "Integrated server @ {tick_ms:.1}/{target} ms{status}, {tx} tx, {rx} rx",
-                ));
-            } else if let Some(remote) = &self.remote {
+            if let Some(remote) = &self.remote {
                 d.line(format!(
                     "\"{}\" server{status}, {tx} tx, {rx} rx",
                     remote.brand
@@ -462,7 +457,7 @@ impl Game<'_> {
             height,
             self.settings.max_fps,
             1000.0 / self.clock.rate(),
-            self.remote.is_some(),
+            true,
         );
         draws.push(hud_layout::GuiDraw::Push(vec![hud_layout::PoseOp::Scale(
             scale, scale,
@@ -739,7 +734,7 @@ impl crate::game::Sim<'_> {
     /// `ServerboundChangeGameModePacket` handled by the integrated server:
     /// `GameModeCommand.setGameMode` with its feedback.
     pub(super) fn change_game_mode(&mut self, mode: GameMode) {
-        if self.remote.is_some() {
+        {
             use horizon_protocol::packets::play::{ChangeGameMode, Serverbound};
             let mode = match mode {
                 GameMode::Survival => 0,

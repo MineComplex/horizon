@@ -268,14 +268,6 @@ impl Game<'_> {
     }
 }
 impl crate::game::Sim<'_> {
-    pub(super) fn beacon_sound(&mut self, p: [i32; 3], sound: &str) {
-        let at = [
-            f64::from(p[0]) + 0.5,
-            f64::from(p[1]) + 0.5,
-            f64::from(p[2]) + 0.5,
-        ];
-        self.sounds.play(sound, Some(at), 1.0, 1.0);
-    }
     /// Opening the menu shows the beacon's current powers.
     pub(super) fn beacon_opened(&mut self) {
         let Some(s) = self.station.as_ref().filter(|s| s.kind == Kind::Beacon) else {
@@ -392,29 +384,10 @@ impl crate::game::Sim<'_> {
     /// a server, `BeaconScreen`'s confirm button sends them
     /// (`ServerboundSetBeaconPacket`) and the server's menu does it.
     fn confirm_beacon(&mut self, sel: [Option<usize>; 2]) {
-        if self.remote.is_some() {
-            let id = |e: Option<usize>| e.and_then(|e| self.remote_effect_network_id(EFFECTS[e].0));
-            let (primary, secondary) = (id(sel[0]), id(sel[1]));
-            self.send(S::SetBeacon(play::SetBeacon { primary, secondary }));
-            return;
-        }
-        let Some(s) = self.station.as_mut() else {
-            return;
-        };
-        let pos = s.pos;
-        s.inputs[0] = None;
-        let name = |e: Option<usize>| e.map(|e| format!("minecraft:{}", EFFECTS[e].0));
-        let mut select_sound = false;
-        if let Some(BlockEntity::Beacon(b)) =
-            self.world.block_entities.get_mut(&(pos[0], pos[1], pos[2]))
-        {
-            b.primary = name(sel[0]);
-            b.secondary = name(sel[1]);
-            select_sound = !b.sections.is_empty();
-        }
-        if select_sound {
-            self.beacon_sound(pos, "minecraft:block.beacon.power_select");
-        }
-        self.world.modified.insert((pos[0] >> 4, pos[2] >> 4));
+        let id = |e: Option<usize>| e.and_then(|e| self.remote_effect_network_id(EFFECTS[e].0));
+        let (primary, secondary) = (id(sel[0]), id(sel[1]));
+        self.send(S::SetBeacon(play::SetBeacon { primary, secondary }));
+        return;
+        
     }
 }

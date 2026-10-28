@@ -15,9 +15,4 @@ use super::Game;
 
 impl Game<'_> {}
 impl crate::game::Sim<'_> {
-    /// Whether a server player other than the one acting rides `vehicle`
-    /// (`Entity.canAddPassenger`: a boat or minecart seats one player here).
-    pub(super) fn ridden_by_guest(&self, vehicle: u32) -> bool {
-        false
-    }
 }

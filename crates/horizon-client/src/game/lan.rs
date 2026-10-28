@@ -22,10 +22,6 @@ impl LanHost {
 }
 
 
-/// A stable UUID for an entity that has none.
-pub(super) fn entity_uuid(id: u32) -> u128 {
-    0x4856_5a4e_0000_0000_0000_0000_0000_0000u128 | u128::from(id)
-}
 
 /// The SynchedEntityData index of the baby flag: AgeableMob.DATA_BABY_ID and
 /// Zombie.DATA_BABY_ID are both the first entry after Mob's (16); Piglin's
@@ -336,9 +332,6 @@ impl crate::game::Sim<'_> {
             .and_then(|s| s.properties.get("facing"))
             .map(String::as_str);
         horizon_client::mobs::villager::bed_facing_code(facing)
-    }
-    /// A chat line the host typed, for the guests.
-    pub(super) fn lan_host_chat(&mut self, message: &str) {
     }
 }
 

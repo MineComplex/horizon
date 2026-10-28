@@ -3,17 +3,15 @@
 //! it adds and the rewards it ejects.
 use super::{Game, natural_spawning::GameLevel};
 use horizon_client::{
-    Result,
     items::ItemStack,
     mobs::{
         trial_spawner::{
             Omen, TrialPlayer,
-            TrialSpawnerLevel, TrialState, Uuid}}};
+            TrialSpawnerLevel, Uuid}}};
 use horizon_core::{
     geometry::Vec3,
     random::LegacyRandom};
 
-type Pos = (i32, i32, i32);
 
 impl TrialSpawnerLevel for GameLevel<'_, '_> {
     fn game_time(&self) -> i64 {
@@ -98,51 +96,4 @@ impl TrialSpawnerLevel for GameLevel<'_, '_> {
 
 impl Game<'_> {}
 impl crate::game::Sim<'_> {
-    /// The trial spawner block at `key`: its state and ominous flag.
-    pub(super) fn trial_spawner_block(&self, key: Pos) -> Option<(TrialState, bool)> {
-        let block = self
-            .pack
-            .assets
-            .registry
-            .state(self.world.block(key.0, key.1, key.2))?;
-        if block.name != "minecraft:trial_spawner" {
-            return None;
-        }
-        let state = block
-            .properties
-            .get("trial_spawner_state")
-            .and_then(|s| TrialState::from_name(s))
-            .unwrap_or_default();
-        Some((
-            state,
-            block.properties.get("ominous").is_some_and(|v| v == "true"),
-        ))
-    }
-    /// `setState` (and `removeOminous`): the block's state and ominous flag.
-    pub(super) fn set_trial_spawner_state(
-        &mut self,
-        key: Pos,
-        state: TrialState,
-        ominous: bool,
-    ) -> Result<()> {
-        let current = self.world.block(key.0, key.1, key.2);
-        let Some(mut block) = self.pack.assets.registry.state(current).cloned() else {
-            return Ok(());
-        };
-        block
-            .properties
-            .insert("trial_spawner_state".into(), state.name().into());
-        block
-            .properties
-            .insert("ominous".into(), ominous.to_string());
-        let id = self.pack.assets.registry.resolve(&block)?;
-        self.level_set([key.0, key.1, key.2], id)
-    }
-    /// `sendBlockUpdated` of a block entity: the clients load its new update tag.
-    pub(super) fn mark_block_entity_updated(&mut self, key: Pos) {
-        if let Some(log) = self.world.block_log.as_mut() {
-            log.push(key);
-        }
-        self.world.modified.insert((key.0 >> 4, key.2 >> 4));
-    }
 }

@@ -84,15 +84,6 @@ impl crate::game::Sim<'_> {
             _ => false,
         }
     }
-    /// Closing it copies the items back and leaves no block-entity contents.
-    pub(super) fn close_ender_chest(&mut self) {
-        let Some(key) = self.ender_open.take() else {
-            return;
-        };
-        if let Some(BlockEntity::Chest(items)) = self.world.block_entities.remove(&key) {
-            self.ender_items = items;
-        }
-    }
 }
 
 // ---- chest menus: double chests, titles and shift-click ----
@@ -396,12 +387,6 @@ impl crate::game::Sim<'_> {
 
 impl Game<'_> {}
 impl crate::game::Sim<'_> {
-    /// `quickMoveStack` of the open chest-like, hopper, dispenser or furnace
-    /// menu for a shift-click on `slot`, run by the verified menu engine
-    /// (`horizon_client::menu`); false when the menu has none.
-    pub(super) fn container_quick_move(&mut self, slot: usize) -> bool {
-        self.menu_click(Some(slot), 0, horizon_client::menu::Input::QuickMove)
-    }
 }
 
 #[cfg(test)]

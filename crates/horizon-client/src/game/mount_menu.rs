@@ -81,7 +81,7 @@ impl Game<'_> {
     /// A click in the mount menu before the generic handling.
     pub(super) fn mount_click(&mut self, right: bool) -> bool {
         // A server's menu: the click goes out like any container click.
-        if !self.mount_active() || self.remote.is_some() {
+        if !self.mount_active() || true {
             return false;
         }
         let Some(r) = self.front.renderer.as_ref() else {
@@ -314,9 +314,6 @@ impl crate::game::Sim<'_> {
         true
     }
     fn show_mount_menu(&mut self) {
-        if self.remote.is_none() {
-            self.carried = None;
-        }
         self.station = None;
         self.container = None;
         self.craft_size = 2;
@@ -366,59 +363,7 @@ impl crate::game::Sim<'_> {
     /// Writes the menu slots to the mount, with the equip sounds. A
     /// server's menu is the server's to write.
     fn mount_sync(&mut self) {
-        if self.remote.is_some() {
-            return;
-        }
-        let Some(open) = self.mount_menu.open.as_ref() else {
-            return;
-        };
-        let Some(index) = self.mount_mob_index(open.mob) else {
-            return;
-        };
-        let (saddle, armor) = (open.saddle.clone(), open.armor.clone());
-        let body = open.show_armor.then_some(armor);
-        let items = open.items.clone();
-        self.mount_store(index, saddle, body, items);
-    }
-    /// The menu's slots back on mount `index` (`body` None: not its slot),
-    /// with the equip sound of what was put on (`Equippable.equipSound`).
-    pub(super) fn mount_store(
-        &mut self,
-        index: usize,
-        saddle: Option<ItemStack>,
-        body: Option<Option<ItemStack>>,
-        items: Vec<Option<ItemStack>>,
-    ) {
-        let m = &self.mobs[index];
-        let at = m.center();
-        let put_on = if saddle.is_some() && !m.extra.saddled {
-            saddle.as_ref()
-        } else {
-            body.as_ref()
-                .and_then(Option::as_ref)
-                .filter(|_| m.extra.head.is_none())
-        };
-        let sound = put_on.map(|s| {
-            self.res
-                .items()
-                .get(&s.item)
-                .and_then(|i| i.equip_sound.clone())
-                .unwrap_or_else(|| "minecraft:item.armor.equip_generic".into())
-        });
-        let m = &mut self.mobs[index];
-        m.set_saddle(saddle);
-        if let Some(body) = body {
-            m.extra.head = body.map(|a| a.item);
-        }
-        let mut items = items;
-        let keep = m.extra.items.len().max(CHEST_SIZE);
-        items.resize(keep, None);
-        m.extra.items = items;
-        let (x, z) = (at[0].floor() as i32 >> 4, at[2].floor() as i32 >> 4);
-        self.world.modified.insert((x, z));
-        if let Some(sound) = sound {
-            self.sounds.play(&sound, Some(at), 0.5, 1.0);
-        }
+        return;
     }
     pub(super) fn mount_slots(&self) -> Option<Vec<usize>> {
         let open = self

@@ -3,77 +3,7 @@
 //! sinking, slowing, climbing and freezing are `PlayerMotion`'s
 //! (`crate::motion`); placing it is the powder snow bucket's `BlockItem.place`.
 use super::Game;
-use horizon_client::{Result, items::ItemStack, mobs::Who};
-use horizon_core::position::BlockPos;
 
 impl Game<'_> {}
 impl crate::game::Sim<'_> {
-    /// Whether the block at `pos` is powder snow.
-    pub(super) fn is_powder_snow(&self, pos: [i32; 3]) -> bool {
-        &*self
-            .res
-            .facts()
-            .get(self.world.block(pos[0], pos[1], pos[2]))
-            .name
-            == "minecraft:powder_snow"
-    }
-    /// `BucketItem.use` with an empty bucket on powder snow:
-    /// `PowderSnowBlock.pickupBlock` (air, level event 2001), the used
-    /// statistic, the fill sound, FLUID_PICKUP, `ItemUtils.createFilledResult`
-    /// and the filled_bucket trigger.
-    pub(super) fn pick_up_powder_snow(&mut self, pos: [i32; 3]) -> Result<()> {
-        let at = BlockPos::new(pos[0], pos[1], pos[2]);
-        let picked = self.with_level(|b, level, ticks| b.bucket_pickup(level, ticks, at));
-        self.process_level_events()?;
-        let Some(filled) = picked else {
-            return Ok(());
-        };
-        self.world.modified.insert((pos[0] >> 4, pos[2] >> 4));
-        self.stats.add("used", "minecraft:bucket", 1);
-        if let Some(eye) = self
-            .player
-            .as_ref()
-            .map(|p| [p.position.x, p.position.y, p.position.z])
-        {
-            self.sounds.play(
-                "minecraft:item.bucket.fill_powder_snow",
-                Some(eye),
-                1.0,
-                1.0,
-            );
-        }
-        self.post_block_game_event("minecraft:fluid_pickup", pos, Some(Who::Player), None);
-        let filled = ItemStack::new(filled, 1);
-        self.filled_result(filled.clone());
-        self.trigger_item("minecraft:filled_bucket", &filled);
-        self.swing_arm();
-        Ok(())
-    }
-    /// `ItemUtils.createFilledResult(held, player, filled)` for the held stack.
-    fn filled_result(&mut self, filled: ItemStack) {
-        if self.creative {
-            // Kept, and the filled one added unless the inventory has it.
-            let has = self
-                .inventory
-                .iter()
-                .flatten()
-                .any(|s| s.same_item_same_components(&filled));
-            if !has {
-                let _ = self.give(filled);
-            }
-            return;
-        }
-        let held = self.held_mut();
-        let last = held.as_ref().is_none_or(|s| s.count <= 1);
-        if last {
-            *held = Some(filled);
-            return;
-        }
-        if let Some(s) = held.as_mut() {
-            s.count -= 1;
-        }
-        if let Some(rest) = self.give(filled) {
-            self.player_drop(rest);
-        }
-    }
 }

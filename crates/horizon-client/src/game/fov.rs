@@ -197,13 +197,4 @@ impl crate::game::Sim<'_> {
             FogType::Atmospheric => CameraFluid::None,
         }
     }
-    /// `SpyglassItem.use`: start scoping.
-    pub(super) fn use_spyglass(&mut self) {
-        if self.using.is_none() {
-            self.using = Some((self.held_slot(), 0));
-            let at = self.eye_position();
-            self.sounds
-                .play("minecraft:item.spyglass.use", at, 1.0, 1.0);
-        }
-    }
 }

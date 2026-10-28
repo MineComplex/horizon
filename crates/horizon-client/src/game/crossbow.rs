@@ -4,14 +4,8 @@
 //! arrows at power 3.15, or rockets at 1.6 for three durability, with the
 //! fanned Multishot angles and their shot pitches. `Player.getProjectile`
 //! finds the ammo for bows and crossbows.
-use super::{Game, shield::OFFHAND_SLOT, view_vector};
-use horizon_client::{
-    enchant::EffectContext,
-    items::ItemStack,
-    mobs::Who,
-    projectiles::{Projectile, ProjectileKind},
-};
-use horizon_core::{geometry::Vec3, random::RandomSource};
+use super::{Game, shield::OFFHAND_SLOT};
+use horizon_client::items::ItemStack;
 
 const CROSSBOW: &str = "minecraft:crossbow";
 const FIREWORK_ROCKET: &str = "minecraft:firework_rocket";
@@ -52,123 +46,6 @@ impl crate::game::Sim<'_> {
     pub(super) fn projectile_slot(&self, weapon: &str) -> Option<usize> {
         let hands = [OFFHAND_SLOT, self.selected].map(|slot| (slot, self.stack_in(slot)));
         projectile_slot(weapon, hands, &self.inventory)
-    }
-    /// `CrossbowItem.use`: shoot when charged, else start charging.
-    pub(super) fn use_crossbow(&mut self, stack: &ItemStack) -> bool {
-        if &*stack.item != CROSSBOW {
-            return false;
-        }
-        // Use is not re-triggered while the crossbow is still held charging.
-        if self.using.is_some() {
-            return true;
-        }
-        if stack.data().is_some_and(|d| !d.charged.is_empty()) {
-            self.shoot_crossbow();
-        } else if (self.projectile_slot(CROSSBOW).is_some() || self.creative)
-            && self.using.is_none()
-        {
-            self.using = Some((self.held_slot(), 0));
-        }
-        true
-    }
-    /// `CrossbowItem.performShooting`.
-    fn shoot_crossbow(&mut self) {
-        let Some(eye) = self.eye_position() else {
-            return;
-        };
-        let Some(bow) = self.held_mut().as_mut() else {
-            return;
-        };
-        let charged = std::mem::take(&mut bow.data_mut().charged);
-        bow.tidy();
-        let weapon = bow.clone();
-        // AbstractArrow's constructor: `getPiercingCount` of the weapon.
-        let pierce = self
-            .res
-            .stations()
-            .enchantments
-            .modify_value(
-                Some(&weapon),
-                "minecraft:projectile_piercing",
-                &EffectContext::default(),
-                &mut self.world.random,
-                0.0,
-            )
-            .clamp(0.0, 127.0) as u8;
-        let count = charged.len();
-        // getShootingPower: a rocket among them slows every shot.
-        let power = if charged.iter().any(|s| &*s.item == FIREWORK_ROCKET) {
-            1.6
-        } else {
-            3.15
-        };
-        // ProjectileWeaponItem.shoot: angles fanned 10 degrees apart.
-        let spread = if count > 1 { 10.0 } else { 0.0 };
-        let view = glam::DVec3::from_array(view_vector(self.yaw, self.pitch));
-        let up = glam::DVec3::from_array(view_vector(self.yaw, self.pitch - 90.0));
-        for (index, ammo) in charged.iter().enumerate() {
-            let angle = if count > 1 {
-                -spread + 2.0 * spread * index as f64 / (count - 1) as f64
-            } else {
-                0.0
-            };
-            let angle = if count == 3 {
-                [0.0, -spread, spread][index]
-            } else {
-                angle
-            };
-            let dir =
-                glam::DQuat::from_axis_angle(up.normalize_or_zero(), angle.to_radians()) * view;
-            // createProjectile: a rocket shot at an angle from 0.15 under the
-            // eyes, spread by its own random; three durability.
-            let rocket = &*ammo.item == FIREWORK_ROCKET;
-            if rocket {
-                let at = Vec3::new(eye[0], eye[1] - f64::from(0.15f32), eye[2]);
-                let mut shot = Projectile::new(ProjectileKind::Snowball, at, None);
-                shot.shoot(
-                    &mut super::dispenser::entity_random(),
-                    dir.to_array(),
-                    power,
-                    1.0,
-                );
-                self.launch_angled_rocket(at, shot.velocity, ammo);
-            }
-            if !rocket {
-                let kind = ProjectileKind::Arrow {
-                    base_damage: 2.0,
-                    critical: true,
-                    effect: None,
-                };
-                let mut arrow = Projectile::new(
-                    kind,
-                    Vec3::new(eye[0], eye[1] - 0.1, eye[2]),
-                    Some(Who::Player),
-                );
-                if let Some(a) = arrow.arrow.as_mut() {
-                    a.set_item(ammo);
-                    a.set_owner(Some(Who::Player));
-                    a.fired_from_weapon = Some(weapon.clone());
-                    a.pierce = pierce;
-                }
-                arrow.shoot(&mut self.world.random, dir.to_array(), power, 1.0);
-                self.add_projectile(arrow);
-            }
-            self.player_projectile_shot();
-            let pitch = if index == 0 {
-                1.0
-            } else {
-                let high = index & 1 == 1;
-                1.0 / (self.world.random.next_float() * 0.5 + 1.8) + if high { 0.63 } else { 0.43 }
-            };
-            self.sounds
-                .play("minecraft:item.crossbow.shoot", Some(eye), 1.0, pitch);
-            self.damage_held(if rocket { 3 } else { 1 });
-        }
-        // CrossbowItem.performShooting: SHOT_CROSSBOW with the crossbow, which
-        // is an empty stack (no match) when the shots broke it.
-        if let Some(stack) = self.held().cloned() {
-            self.trigger_item("minecraft:shot_crossbow", &stack);
-        }
     }
 }
 

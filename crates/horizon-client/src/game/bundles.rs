@@ -67,7 +67,7 @@ impl crate::game::Sim<'_> {
     /// container's own slots. A server only knows these in the inventory and chest-like menus.
     fn bundle_slot(&mut self, slot: usize) -> bool {
         (slot < 36 || slot == 504 || (300..500).contains(&slot))
-            && (self.remote.is_none() || self.remote_storage_open())
+            && (self.remote_storage_open())
             && (slot < 36 || slot == 504 || self.slots().contains(&slot))
     }
     /// `BundleMouseActions.toggleSelectedBundleItem`: the stack here and, on a server, there.
@@ -75,7 +75,7 @@ impl crate::game::Sim<'_> {
         if let Some(stack) = self.slot_mut(slot) {
             toggle_selected(stack, index);
         }
-        if self.remote.is_some() {
+        {
             let (_, menu) = self.remote_menu();
             if let Some(menu_slot) = crate::game::Game::menu_slot_index(&menu, slot) {
                 self.send(S::SelectBundleItem(play::SelectBundleItem {

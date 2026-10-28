@@ -136,9 +136,6 @@ impl crate::game::Sim<'_> {
                 // every server bolt, a skeleton trap's visual one included;
                 // a client's copy of a server bolt (spawn_remote_bolt) only
                 // flashes.
-                if self.remote.is_none() {
-                    self.bolt_clear_copper(b.at);
-                }
             }
             b.life -= 1;
             if b.life < 0 {
@@ -199,16 +196,6 @@ impl crate::game::Sim<'_> {
             };
             self.level_event_at(3002, p, axis);
         }
-    }
-    /// `LightningBolt.clearCopperOnLightningStrike` at the block the bolt struck.
-    fn bolt_clear_copper(&mut self, at: [f64; 3]) {
-        let p = BlockPos::new(
-            at[0].floor() as i32,
-            (at[1] - 1.0e-6).floor() as i32,
-            at[2].floor() as i32,
-        );
-        self.with_level(|b, level, ticks| b.lightning_clear_copper(level, ticks, p));
-        let _ = self.process_level_events();
     }
     /// `LightningStrikeTrigger` at the bolt's discard: every player within 256
     /// blocks, with the mobs in its 30-block box that it did not hit.

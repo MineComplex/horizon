@@ -4,119 +4,14 @@
 //! signal while playing, the comparator output, and saving.
 use super::Game;
 use horizon_client::{
-    containers::{BlockEntity, Jukebox},
-    items::ItemStack,
-    mobs::Species,
-    
-    text::Text};
+    containers::BlockEntity,
+    mobs::Species};
 use horizon_core::{
     geometry::{Aabb, Vec3},
     position::BlockPos};
-use horizon_world::level::flags as level_flags;
 
 impl Game<'_> {}
 impl crate::game::Sim<'_> {
-    fn jukebox(&self, pos: [i32; 3]) -> Option<&Jukebox> {
-        match self.world.block_entities.get(&(pos[0], pos[1], pos[2])) {
-            Some(BlockEntity::Jukebox(j)) => Some(j),
-            _ => None,
-        }
-    }
-    fn set_has_record(&mut self, pos: [i32; 3], has: bool) {
-        let state = self.world.block(pos[0], pos[1], pos[2]);
-        let registry = self.pack.assets.registry;
-        let Some(mut s) = registry.state(state).cloned() else {
-            return;
-        };
-        s.properties.insert(
-            "has_record".into(),
-            if has { "true" } else { "false" }.into(),
-        );
-        if let Some(new) = registry.id(&s) {
-            let p = BlockPos::new(pos[0], pos[1], pos[2]);
-            self.with_level(|b, level, ticks| {
-                b.set_block(level, ticks, p, new, level_flags::UPDATE_CLIENTS)
-            });
-        }
-    }
-    /// `onSongChanged`: neighbours (the signal) and comparators.
-    fn jukebox_changed(&mut self, pos: [i32; 3]) {
-        let p = BlockPos::new(pos[0], pos[1], pos[2]);
-        let state = self.world.block(pos[0], pos[1], pos[2]);
-        self.with_level(|b, level, ticks| {
-            let block = b.block(state);
-            b.update_neighbors_at(level, ticks, p, block);
-        });
-        self.container_changed((pos[0], pos[1], pos[2]));
-        self.world.modified.insert((pos[0] >> 4, pos[2] >> 4));
-    }
-    /// `JukeboxBlock.useItemOn` / `useWithoutItem` on the jukebox at `pos`.
-    pub(super) fn use_jukebox(&mut self, pos: [i32; 3], held: Option<&ItemStack>) -> bool {
-        if &*self
-            .res
-            .facts()
-            .get(self.world.block(pos[0], pos[1], pos[2]))
-            .name
-            != "minecraft:jukebox"
-        {
-            return false;
-        }
-        if self.jukebox(pos).is_some_and(|j| j.record.is_some()) {
-            self.eject_record(pos);
-            return true;
-        }
-        let Some(stack) = held else { return false };
-        let Some(song) = self
-            .res
-            .items()
-            .get(&stack.item)
-            .and_then(|i| i.jukebox_song.clone())
-        else {
-            return false;
-        };
-        // JukeboxPlayable.tryInsertIntoJukebox
-        let record = ItemStack {
-            count: 1,
-            ..stack.clone()
-        };
-        if !self.creative {
-            self.consume_held();
-        }
-        self.stats.custom("play_record", 1);
-        self.world.block_entities.insert(
-            (pos[0], pos[1], pos[2]),
-            BlockEntity::Jukebox(Jukebox {
-                record: Some(record),
-                ticks: 0,
-                playing: true,
-            }),
-        );
-        self.set_has_record(pos, true);
-        self.start_song(pos, &song);
-        self.jukebox_changed(pos);
-        // ServerPlayerGameMode.useItemOn: the action was consumed.
-        self.trigger_block("minecraft:item_used_on_block", pos, stack);
-        true
-    }
-    /// Level event 1010: the song from the jukebox, and the "Now Playing" overlay.
-    fn start_song(&mut self, pos: [i32; 3], song: &str) {
-        self.stop_sound(pos);
-        let Some(s) = self.res.items().songs.get(song).cloned() else {
-            return;
-        };
-        // LevelRenderer.playJukeboxSong: SimpleSoundInstance.forJukeboxSong.
-        self.sounds.play_jukebox(&s.sound, pos);
-        self.jukebox_sounds.insert((pos[0], pos[1], pos[2]));
-        let description =
-            horizon_client::component::to_text(&s.description, &mut |k| Text::literal(k));
-        self.titles
-            .set_overlay(Text::translate("record.nowPlaying", &[description]), true);
-        self.update_song_volumes();
-        self.notify_record_playing(pos, true);
-        if self.sounds.capture.is_some() {
-            self.lan_songs.push((pos, Some(song.to_owned())));
-        }
-    }
     fn stop_sound(&mut self, pos: [i32; 3]) {
         if self.jukebox_sounds.remove(&(pos[0], pos[1], pos[2])) {
             self.sounds.stop_jukebox(pos);
@@ -144,46 +39,9 @@ impl crate::game::Sim<'_> {
             m.extra.party_jukebox = playing.then_some(pos);
         }
     }
-    /// `popOutTheItem`: the disc above the jukebox, and the song stops.
-    fn eject_record(&mut self, pos: [i32; 3]) {
-        let key = (pos[0], pos[1], pos[2]);
-        let record = match self.world.block_entities.get_mut(&key) {
-            Some(BlockEntity::Jukebox(j)) => {
-                j.playing = false;
-                j.ticks = 0;
-                j.record.take()
-            }
-            _ => None,
-        };
-        self.stop_song(pos);
-        if let Some(record) = record {
-            // atLowerCornerWithOffset(pos, 0.5, 1.01, 0.5).offsetRandomXZ(random, 0.7);
-            // `new ItemEntity` moves it with its own random.
-            let at = horizon_world::level::removal::jukebox_pop_position(
-                &mut self.world.random,
-                horizon_core::position::BlockPos::new(pos[0], pos[1], pos[2]),
-            );
-            self.spawn_item(record, at, super::dispenser::new_item_motion(), 10);
-        }
-        self.set_has_record(pos, false);
-        self.jukebox_changed(pos);
-    }
     /// A broken jukebox stops its song (its disc drops with the contents).
     pub(super) fn jukebox_removed(&mut self, pos: [i32; 3]) {
         self.stop_song(pos);
-    }
-    /// Let go of songs whose jukebox stopped.
-    pub(super) fn update_song_volumes(&mut self) {
-        let stopped: Vec<_> = self
-            .jukebox_sounds
-            .iter()
-            .copied()
-            .filter(|k| !matches!(self.world.block_entities.get(k), Some(BlockEntity::Jukebox(j)) if j.playing))
-            .collect();
-        for k in stopped {
-            self.jukebox_sounds.remove(&k);
-            self.sounds.stop_jukebox([k.0, k.1, k.2]);
-        }
     }
 }
 /// The jukebox's redstone signal (15 while a song plays) and comparator output.

@@ -8,9 +8,8 @@ use horizon_client::{
     mobs::{
         Mob, Species, raider},
     patrol::GameplayAttributes,
-    raid::{self, BarName, Raids}};
+    raid::{self, Raids}};
 use horizon_core::{geometry::Vec3, random::RandomSource};
-use horizon_world::nbt::Tag;
 use std::collections::HashMap;
 
 /// Patrol and raid state owned by the game.
@@ -38,9 +37,6 @@ impl Raiding {
 
 
 
-fn block_of(p: Vec3) -> [i32; 3] {
-    [p.x.floor() as i32, p.y.floor() as i32, p.z.floor() as i32]
-}
 
 impl Game<'_> {}
 impl crate::game::Sim<'_> {
@@ -101,7 +97,7 @@ impl crate::game::Sim<'_> {
         let Some(dim) = self.raiding.loaded else {
             return;
         };
-        if !self.raiding.raids.dirty || self.remote.is_some() {
+        if !self.raiding.raids.dirty || true {
             return;
         }
         let tag = horizon_world::nbt::Tag::compound([
@@ -248,19 +244,6 @@ impl crate::game::Sim<'_> {
             m.alive() && !m.removed && raider::state(m).is_some_and(|s| s.raid_id == Some(id))
         })
     }
-    /// The raid bar a living player at `at` is in (`Raid.getPlayers`): red,
-    /// notched in tens. The name is the translate component the client draws.
-    pub(super) fn raid_boss_at(&self, at: [f64; 3], alive: bool) -> Option<(i32, Tag, f32)> {
-        if !alive || self.dim != Dim::Overworld {
-            return None;
-        }
-        let block = block_of(Vec3::new(at[0], at[1], at[2]));
-        let (id, raid) = self.raiding.raids.nearby(block)?;
-        if !raid.bar.visible || raid.is_stopped() {
-            return None;
-        }
-        Some((id, raid_name_tag(raid.bar.name), raid.bar.progress))
-    }
     /// A firework a villager launches to celebrate (`CelebrateVillagersSurvivedRaid`).
     pub(super) fn villager_firework(&mut self, at: [f64; 3], color: usize, flight: u8) {
         let mut stack = horizon_client::items::ItemStack::new("minecraft:firework_rocket", 1);
@@ -295,35 +278,6 @@ impl Game<'_> {
 impl crate::game::Sim<'_> {
 }
 
-/// `Raid.raidEvent`'s name: the raid title, the remaining-raiders line, or
-/// the victory and defeat lines.
-fn raid_name_tag(name: BarName) -> Tag {
-    let key = |k: &str| Tag::compound([("translate", Tag::String(k.into()))]);
-    match name {
-        BarName::Raid => key("event.minecraft.raid"),
-        BarName::Victory => key("event.minecraft.raid.victory.full"),
-        BarName::Defeat => key("event.minecraft.raid.defeat.full"),
-        BarName::Remaining(n) => Tag::compound([
-            ("translate", Tag::String("event.minecraft.raid".into())),
-            (
-                "extra",
-                Tag::List(vec![
-                    Tag::String(" - ".into()),
-                    Tag::compound([
-                        (
-                            "translate",
-                            Tag::String("event.minecraft.raid.raiders_remaining".into()),
-                        ),
-                        (
-                            "with",
-                            Tag::List(vec![Tag::String(n.to_string().as_str().into())]),
-                        ),
-                    ]),
-                ]),
-            ),
-        ]),
-    }
-}
 
 #[cfg(test)]
 mod tests {

@@ -81,31 +81,6 @@ impl crate::game::Sim<'_> {
             pitch,
         );
     }
-    /// `ZombieVillager.mobInteract`: a golden apple on a weakened zombie
-    /// villager starts the cure and is eaten; without weakness it does
-    /// nothing. Returns whether the click was used.
-    pub(super) fn interact_zombie_villager(&mut self, index: usize, item: &str) -> bool {
-        let m = &self.mobs[index];
-        if m.species() != Species::ZombieVillager || item != "minecraft:golden_apple" {
-            return false;
-        }
-        if !m.has_effect("minecraft:weakness") {
-            return true;
-        }
-        self.consume_held();
-        let starter = self.level.player_uuid;
-        let time = zombie_villager::WAIT_MIN
-            + self
-                .world
-                .random
-                .next_int_bound(zombie_villager::WAIT_SPREAD)
-                .unwrap_or(0);
-        let mut events = Vec::new();
-        zombie_villager::start_converting(&mut self.mobs[index], starter, time, &mut events);
-        let _ = self.handle_mob_events(events);
-        self.swing_arm();
-        true
-    }
     /// `ZombieVillager.finishConversion`: the villager returns with its
     /// data, trades, experience and gossip, and the curing player earns the
     /// village's trust.

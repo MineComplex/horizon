@@ -150,32 +150,5 @@ impl crate::game::Sim<'_> {
         }
         Some(event.drop_items)
     }
-    /// The player whose turn it is placed `state` at `pos` over `replaced`:
-    /// `BlockPlaceEvent`. False when a plugin cancelled it.
-    pub(super) fn plugin_block_place(
-        &mut self,
-        pos: [i32; 3],
-        state: horizon_world::registry::BlockStateId,
-        replaced: horizon_world::registry::BlockStateId,
-        item: Option<api::ItemStack>,
-    ) -> bool {
-        if !self.plugins_listen::<ev::BlockPlaceEvent>() {
-            return true;
-        }
-        let Some(player) = self.plugin_acting() else {
-            return true;
-        };
-        let mut event = ev::BlockPlaceEvent {
-            player,
-            world: self.dim.id().to_owned(),
-            pos: BlockPos::new(pos[0], pos[1], pos[2]),
-            block: self.state_string(state),
-            replaced: self.state_string(replaced),
-            item,
-            cancelled: false,
-        };
-        self.plugin_fire(None, &mut event);
-        !event.cancelled
-    }
 }
 

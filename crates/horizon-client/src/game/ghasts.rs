@@ -3,9 +3,7 @@
 //! hatches.
 use super::Game;
 use horizon_client::{
-    items::ItemStack,
-    mobs::{MobEvent, happy_ghast},
-};
+    mobs::{MobEvent, happy_ghast}};
 use horizon_core::geometry::{Aabb, Vec3};
 use horizon_world::registry::BlockStateId;
 
@@ -33,59 +31,6 @@ impl crate::game::Sim<'_> {
                     .map(super::boats::Boat::bounds),
             )
             .collect()
-    }
-    /// `HappyGhast.mobInteract`. Returns whether the click was used.
-    pub(super) fn interact_happy_ghast(&mut self, index: usize, item: &str) -> bool {
-        let m = &self.mobs[index];
-        if !m.alive() || Some(m.id) == self.riding {
-            return false;
-        }
-        if m.is_baby() {
-            // Animal.mobInteract: food grows it up.
-            return false;
-        }
-        let at = m.center();
-        let sneaking = self.keys.contains(&winit::keyboard::KeyCode::ShiftLeft);
-        let harnessed = m.extra.head.is_some();
-        // Equippable.equipOnInteract: a harness goes on a bare adult.
-        if item.ends_with("_harness") && item.starts_with("minecraft:") && !harnessed {
-            self.mobs[index].extra.head = Some(item.into());
-            self.sounds
-                .play("minecraft:entity.happy_ghast.equip", Some(at), 1.0, 1.0);
-            self.consume_held();
-            return true;
-        }
-        // Equippable.canBeSheared: shears take the harness off again.
-        if item == "minecraft:shears"
-            && harnessed
-            && !sneaking
-            && let Some(harness) = self.mobs[index].extra.head.take()
-        {
-            self.sounds
-                .play("minecraft:entity.happy_ghast.unequip", Some(at), 1.0, 1.0);
-            self.spawn_item(ItemStack::new(&harness, 1), at, [0.0, 0.2, 0.0], 10);
-            self.damage_held_tool();
-            return true;
-        }
-        if harnessed && !sneaking {
-            // doPlayerRide.
-            let id = self.mobs[index].id;
-            self.break_leash(id, true, false);
-            let was_empty = self.mobs[index].rider.is_none();
-            // addPassenger: the rider is not standing on top, so no still
-            // timeout.
-            self.mobs[index].extra.counter = 0;
-            self.yaw = self.mobs[index].yaw;
-            self.riding = Some(id);
-            self.mount.reset_jump();
-            if was_empty {
-                let down = happy_ghast::goggles(true, &self.mobs[index]);
-                let _ = self.handle_mob_events(vec![down]);
-            }
-            self.trigger_player("minecraft:started_riding");
-            return true;
-        }
-        false
     }
     /// Getting off lands on top of it.
     pub(super) fn dismount_happy_ghast(&mut self, id: u32) {

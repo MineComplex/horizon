@@ -326,7 +326,7 @@ impl crate::game::Sim<'_> {
                 pos[2].floor() as i32
             )
         });
-        if self.remote.is_some() || !self.sculk.tables.built {
+        if true || !self.sculk.tables.built {
             return;
         }
         let at = block_of(pos);
@@ -963,40 +963,6 @@ impl crate::game::Sim<'_> {
             ctx.player = owner == Some(Who::Player) || self.rides_player(owner);
         }
         self.post_game_event(event, at, ctx);
-    }
-    /// The player shot or threw something.
-    pub(super) fn player_projectile_shot(&mut self) {
-        if let Some(p) = self.player.as_ref() {
-            let at = [
-                p.position.x,
-                p.position.y + f64::from(self.eye),
-                p.position.z,
-            ];
-            self.projectile_event("minecraft:projectile_shoot", Some(Who::Player), at);
-        }
-    }
-    /// `RedStoneOreBlock.useItemOn`: a right-click lights the ore whatever the
-    /// hand holds. False (PASS) when the hand holds a block item, which goes on
-    /// to be placed; true (SUCCESS) otherwise.
-    pub(super) fn use_redstone_ore(
-        &mut self,
-        pos: [i32; 3],
-        held: Option<&horizon_client::items::ItemStack>,
-    ) -> Result<bool> {
-        if !matches!(
-            &*self.block_name(pos),
-            "minecraft:redstone_ore" | "minecraft:deepslate_redstone_ore"
-        ) {
-            return Ok(false);
-        }
-        self.attack_block(pos)?;
-        let block_item = held.is_some_and(|s| {
-            self.res
-                .items()
-                .get(&s.item)
-                .is_some_and(|i| i.block.is_some())
-        });
-        Ok(!block_item)
     }
 }
 

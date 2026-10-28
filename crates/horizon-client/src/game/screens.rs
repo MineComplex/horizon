@@ -358,7 +358,7 @@ impl Game<'_> {
 impl crate::game::Sim<'_> {
     /// The window plays on a server (it has no world of its own).
     pub(super) fn external_server(&self) -> bool {
-        self.remote.is_some()
+        true
     }
 }
 

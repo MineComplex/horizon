@@ -186,19 +186,14 @@ impl crate::game::Sim<'_> {
         speed: f64,
         count: u32,
     ) {
-        {
-            // The server is running (its sounds are captured for the guests).
-            if self.sounds.capture.is_some() {
-                self.creatures
-                    .lan_particles
-                    .push((options.clone(), at, spread, speed, count));
-            }
-            return;
+        // The server is running (its sounds are captured for the guests).
+        if self.sounds.capture.is_some() {
+            self.creatures
+                .lan_particles
+                .push((options.clone(), at, spread, speed, count));
         }
-        let Some(particle) = self.network_particle(options, None) else {
-            return;
-        };
         return;
+        
     }
     /// `ServerLevel.explode`'s packet to each player within 64 blocks. The
     /// sound and the push reach them on their own (the level's sounds, the

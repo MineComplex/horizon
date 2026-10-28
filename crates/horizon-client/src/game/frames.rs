@@ -2,14 +2,13 @@
 //! `ItemFrame.survives`, `interact` (put an item in, then rotate it),
 //! `hurtServer` (take the item out, then break the frame) and
 //! `ItemFrameRenderer` (the frame model and the item at a 45 degree step).
-use super::{Game, Hit, view_vector};
+use super::{Game, view_vector};
 use horizon_assets::{bake::bake_model, model::CuboidModel, resolve::ModelLibrary};
 use horizon_client::{entities::ItemFrame, items::ItemStack, mesher::Vertex};
 use horizon_core::{
-    geometry::{Aabb, Vec3},
+    
     position::BlockPos,
-    random::RandomSource,
-};
+    random::RandomSource};
 use std::sync::Arc;
 
 /// A baked frame model: (corners in block units, unit UVs, sprite) per quad.
@@ -67,16 +66,6 @@ pub(super) fn bake_frame(root: &std::path::Path, name: &str) -> FrameModel {
             )
         })
         .collect()
-}
-fn facing_of(face: [i32; 3]) -> u8 {
-    match face {
-        [0, -1, 0] => 0,
-        [0, 1, 0] => 1,
-        [0, 0, -1] => 2,
-        [0, 0, 1] => 3,
-        [-1, 0, 0] => 4,
-        _ => 5,
-    }
 }
 fn sound(f: &ItemFrame, what: &str) -> String {
     let prefix = if f.glow {
@@ -252,73 +241,6 @@ impl Game<'_> {
     }
 }
 impl crate::game::Sim<'_> {
-    /// `ItemFrame.survives` (not fixed): no collision, a solid block behind
-    /// (or a diode for wall frames), no overlapping hanging entity.
-    fn frame_survives(&self, f: &ItemFrame) -> bool {
-        if f.fixed {
-            return true;
-        }
-        let (lo, hi) = f.bounds();
-        let bounds = Aabb::new(
-            Vec3::new(lo[0], lo[1], lo[2]),
-            Vec3::new(hi[0], hi[1], hi[2]),
-        );
-        let mut scene = horizon_client::collisions::SceneCollisions {
-            world: &self.world,
-            binding: self.collision,
-            subject: None,
-        };
-        if !scene.unobstructed(bounds).unwrap_or(false) {
-            return false;
-        }
-        let s = f.step();
-        let behind = self.res.facts().get(self.world.block(
-            f.pos[0] - s[0],
-            f.pos[1] - s[1],
-            f.pos[2] - s[2],
-        ));
-        let supported = behind.legacy_solid || (s[1] == 0 && behind.has_class("DiodeBlock"));
-        // canCoexist(true): only hanging entities facing the same way block it.
-        let overlaps = |o: ([f64; 3], [f64; 3])| (0..3).all(|i| o.0[i] < hi[i] && lo[i] < o.1[i]);
-        supported
-            && !self
-                .item_frames
-                .iter()
-                .any(|o| o.id != f.id && o.facing == f.facing && overlaps(o.bounds()))
-    }
-    /// `ItemFrameItem.useOn`.
-    pub(super) fn place_item_frame(&mut self, hit: &Hit, stack: &ItemStack) -> bool {
-        let glow = match &*stack.item {
-            "minecraft:item_frame" => false,
-            "minecraft:glow_item_frame" => true,
-            _ => return false,
-        };
-        let pos = std::array::from_fn(|i| hit.pos[i] + hit.face[i]);
-        let frame = ItemFrame {
-            id: self.next_entity + 1,
-            pos,
-            facing: facing_of(hit.face),
-            glow,
-            item: None,
-            rotation: 0,
-            drop_chance: 1.0,
-            fixed: false,
-            invisible: false,
-            check_interval: 0,
-        };
-        if !self.frame_survives(&frame) {
-            return false;
-        }
-        self.next_entity += 1;
-        self.sounds
-            .play(&sound(&frame, "place"), Some(center(&frame)), 1.0, 1.0);
-        self.world.modified.insert((pos[0] >> 4, pos[2] >> 4));
-        self.item_frames.push(frame);
-        if !self.creative {
-            self.consume_held();
-        }
-        true
-    }
     /// The frame under the crosshair within reach and its distance.
     pub(super) fn frame_hit(&self) -> Option<(usize, f64)> {
         let eye = self.eye_position()?;
@@ -357,37 +279,6 @@ impl crate::game::Sim<'_> {
                 .sqrt()
                 > distance
         })
-    }
-    /// `ItemFrame.interact` for the frame under the crosshair.
-    pub(super) fn interact_frame(&mut self) -> bool {
-        let Some((i, d)) = self.frame_hit() else {
-            return false;
-        };
-        if !self.before_block(d) || self.item_frames[i].fixed {
-            return false;
-        }
-        let at = center(&self.item_frames[i]);
-        if self.item_frames[i].item.is_none() {
-            let Some(held) = self.held().cloned() else {
-                return false;
-            };
-            self.item_frames[i].item = Some(ItemStack { count: 1, ..held });
-            self.sounds
-                .play(&sound(&self.item_frames[i], "add_item"), Some(at), 1.0, 1.0);
-            if !self.creative {
-                self.consume_held();
-            }
-        } else {
-            let f = &mut self.item_frames[i];
-            f.rotation = (f.rotation + 1) % 8;
-            let s = sound(f, "rotate_item");
-            self.sounds.play(&s, Some(at), 1.0, 1.0);
-        }
-        let p = self.item_frames[i].pos;
-        self.world.modified.insert((p[0] >> 4, p[2] >> 4));
-        self.frame_output_changed(p);
-        self.swing_arm();
-        true
     }
     /// `ItemFrame.hurtServer` from the player: the item comes out first.
     pub(super) fn attack_frame(&mut self) -> bool {

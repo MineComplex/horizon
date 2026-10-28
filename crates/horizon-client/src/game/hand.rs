@@ -30,35 +30,6 @@ fn attack_range_contains(range: &serde_json::Value, distance: f64, creative: boo
 }
 
 impl Game<'_> {
-    /// `MultiPlayerGameMode.startUseItem`'s bookkeeping around the game's
-    /// use: nothing starts while a block is being broken or the hands are
-    /// busy, and `LocalPlayer.itemUsed` drops the hand after a use that
-    /// swung and spent (or, with infinite materials, kept) the item, or that
-    /// started using it.
-    pub(super) fn use_with_hand(&mut self) -> Result<()> {
-        if self.clicks.destroying.active || self.hands_busy() {
-            return Ok(());
-        }
-        let before = [self.stack_in(self.selected).cloned(), self.offhand.clone()];
-        let swings = self.swings_started;
-        let using = self.using.is_some();
-        let Some(hand) = self.use_item()? else {
-            return Ok(());
-        };
-        let (before, after) = match hand {
-            Hand::Main => (&before[0], self.stack_in(self.selected).cloned()),
-            Hand::Off => (&before[1], self.offhand.clone()),
-        };
-        let swung = self.swings_started != swings;
-        let spent = match (before, &after) {
-            (Some(a), Some(b)) => a.count != b.count || a.item != b.item || self.creative,
-            _ => false,
-        };
-        if (swung && spent) || (!using && self.using.is_some() && after.is_some()) {
-            self.front.heights.item_used(hand);
-        }
-        Ok(())
-    }
     /// `LocalPlayer.tick`: the swing (`LivingEntity.baseTick`), the attack
     /// strength and item swap tickers (`Player.tick`), then
     /// `FirstPersonHandsAndItems.tick`.

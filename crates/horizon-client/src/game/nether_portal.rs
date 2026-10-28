@@ -161,7 +161,7 @@ impl crate::game::Sim<'_> {
     }
     /// Write the waiting entities when they changed.
     pub(super) fn save_portal_arrivals(&mut self) {
-        if !self.portals.dirty || self.remote.is_some() {
+        if !self.portals.dirty || true {
             return;
         }
         let list = self.portals.arrivals.iter().map(arrival_tag).collect();

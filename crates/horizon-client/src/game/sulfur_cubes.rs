@@ -4,10 +4,8 @@
 //! splitting into two babies.
 use super::Game;
 use horizon_client::{
-    items::ItemStack,
     mesher::Vertex,
-    mobs::{Mob, Species, sulfur_cube},
-};
+    mobs::{Mob, sulfur_cube}};
 
 fn block_transform(base: glam::Mat4, baby: bool) -> glam::Mat4 {
     base * glam::Mat4::from_scale(glam::Vec3::new(1.0, -1.0, -1.0))
@@ -76,79 +74,6 @@ impl Game<'_> {
     }
 }
 impl crate::game::Sim<'_> {
-    fn sulfur_sound(&mut self, index: usize, sound: &str) {
-        let at = self.mobs[index].center();
-        self.sounds
-            .play(&format!("minecraft:{sound}"), Some(at), 1.0, 1.0);
-    }
-    /// Spit the swallowed block out on top (`EntityAttachment.PASSENGER`).
-    fn eject_sulfur_block(&mut self, index: usize) {
-        let m = &mut self.mobs[index];
-        let Some(item) = m.extra.head.take() else {
-            return;
-        };
-        let at = [
-            m.position.x,
-            m.position.y + f64::from(m.height()),
-            m.position.z,
-        ];
-        self.spawn_item(ItemStack::new(&item, 1), at, [0.0, 0.2, 0.0], 10);
-    }
-    /// `SulfurCube.mobInteract`. Returns whether the click was used.
-    pub(super) fn interact_sulfur_cube(&mut self, index: usize, item: &str) -> bool {
-        let m = &self.mobs[index];
-        if m.species() != Species::SulfurCube || !m.alive() {
-            return false;
-        }
-        if m.is_baby() {
-            // Slime balls grow a baby up by a tenth.
-            if !m.kind.food.iter().any(|f| f == item) || m.extra.age_locked {
-                return false;
-            }
-            let m = &mut self.mobs[index];
-            let secs = (-m.extra.age / 20) as f32 * 0.1;
-            m.extra.age = (m.extra.age + (secs as i32) * 20).min(0);
-            self.consume_held();
-            self.sulfur_sound(index, "entity.small_sulfur_cube.eat");
-            return true;
-        }
-        if sulfur_cube::primed(m) {
-            return false;
-        }
-        let explosive = sulfur_cube::archetype(m).is_some_and(|a| a.explosion.is_some());
-        if explosive && matches!(item, "minecraft:flint_and_steel" | "minecraft:fire_charge") {
-            if !self.world_data.rules.bool("tnt_explodes") {
-                return false;
-            }
-            sulfur_cube::prime(&mut self.mobs[index], false);
-            if item == "minecraft:flint_and_steel" {
-                self.damage_held_tool();
-            } else {
-                self.consume_held();
-            }
-            return true;
-        }
-        if item == "minecraft:shears" && sulfur_cube::has_body(m) {
-            // shear: out comes the block, and nothing is swallowed for 5 s.
-            self.eject_sulfur_block(index);
-            self.mobs[index].extra.ints[3] = sulfur_cube::PICKUP_TIMER;
-            self.sulfur_sound(index, "entity.sulfur_cube.eject");
-            self.damage_held_tool();
-            return true;
-        }
-        if sulfur_cube::swallowable(m, item) {
-            // equipItem: not the same block again; the old one comes out.
-            if m.extra.head.as_deref() == Some(item) {
-                return false;
-            }
-            self.eject_sulfur_block(index);
-            self.mobs[index].extra.head = Some(item.into());
-            self.consume_held();
-            self.sulfur_sound(index, "entity.sulfur_cube.absorb");
-            return true;
-        }
-        false
-    }
 }
 
 #[cfg(test)]

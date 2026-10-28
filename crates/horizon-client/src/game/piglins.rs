@@ -8,8 +8,7 @@ use horizon_client::{
         Mob, Species, Who,
         finalize::{
             SLOT_NAMES, set_drop_chance, set_item, set_slot_enchantments, slot_enchantments,
-            stored_drop_chance},
-        piglin::ADMIRE}};
+            stored_drop_chance}}};
 use horizon_core::{geometry::Vec3, random::RandomSource};
 
 impl Game<'_> {}
@@ -146,31 +145,6 @@ impl crate::game::Sim<'_> {
             .iter()
             .flatten()
             .any(|s| tag.is_some_and(|t| t.contains(&*s.item)))
-    }
-    fn start_admiring(&mut self, index: usize, item: std::sync::Arc<str>) {
-        let m = &mut self.mobs[index];
-        m.extra.off_hand = Some(item);
-        m.extra.using_item = ADMIRE;
-        m.extra.point = None;
-        m.nav_stop();
-        let at = m.center();
-        self.sounds
-            .play("minecraft:entity.piglin.admiring_item", Some(at), 1.0, 1.0);
-    }
-    /// `PiglinAi.mobInteract`: hand a piglin a gold ingot (only piglin
-    /// currency is accepted from the hand; other loved items are passed over).
-    pub(super) fn give_piglin(&mut self, index: usize, item: &str) -> bool {
-        let m = &self.mobs[index];
-        if m.species() != Species::Piglin
-            || m.is_baby()
-            || m.extra.using_item > 0
-            || m.extra.egg_time > 0
-            || item != "minecraft:gold_ingot"
-        {
-            return false;
-        }
-        self.start_admiring(index, item.into());
-        true
     }
     /// `PiglinAi.stopHoldingOffHandItem` after admiring: gold ingots buy a
     /// roll of the bartering table, thrown toward the player; any other loved

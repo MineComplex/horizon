@@ -3,12 +3,10 @@
 //! scheduled block/fluid ticks (chunk `block_ticks`/`fluid_ticks`).
 use super::{FallingBlock, Game};
 use horizon_client::{
-    Result,
     chunk::Chunk,
     entity_nbt,
     mobs::Who,
-    save::{ChunkExtras, random_uuid},
-};
+    save::{ChunkExtras, random_uuid}};
 use horizon_core::{geometry::Vec3, position::ChunkPos, random::RandomSource};
 use horizon_world::{chunk::BlockState, nbt::Tag, registry::BlockStateId};
 use std::{
@@ -925,21 +923,6 @@ impl crate::game::Sim<'_> {
             }
         }
         out.into_iter().collect()
-    }
-    /// Write the entities of every resident chunk (an autosave or quit).
-    /// Without `wait` (the autosave) they are written on the region writer
-    /// meanwhile: `PersistentEntitySectionManager.autoSave` stores them
-    /// without `saveAll`'s flush.
-    pub(super) fn save_entities(&mut self, wait: bool) -> Result<()> {
-        self.spawn_loaded_entities();
-        let keys: HashSet<(i32, i32)> = self.world.chunks.keys().copied().collect();
-        let chunks = self.entity_chunks(&keys, false);
-        self.prune_entity_memory();
-        if wait {
-            self.save.save_entities(chunks)
-        } else {
-            self.save.save_entities_later(chunks)
-        }
     }
     pub(super) fn prune_entity_memory(&mut self) {
         // Forget entities that no longer exist.

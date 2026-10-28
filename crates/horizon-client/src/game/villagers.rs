@@ -256,21 +256,4 @@ impl crate::game::Sim<'_> {
         // Villager.customServerAiStep after a trade: entity event 14.
         self.mob_event_particles(id, 14);
     }
-    /// `Villager.getPlayerReputation` of the local player.
-    pub(super) fn villager_reputation(&self, id: u32) -> i32 {
-        let Some(uuid) = self.level.player_uuid else {
-            return 0;
-        };
-        self.villager_reputation_of(id, uuid)
-    }
-    /// `Villager.getPlayerReputation` of the player `uuid`.
-    pub(super) fn villager_reputation_of(&self, id: u32, uuid: [i32; 4]) -> i32 {
-        self.villager_index(id)
-            .and_then(|i| villager::ext(&self.mobs[i]))
-            .map_or(0, |e| e.gossips.reputation(uuid))
-    }
-    /// The Hero of the Village amplifier of the player, if any.
-    pub(super) fn hero_amplifier(&self) -> Option<i32> {
-        self.potions.effects.amplifier("hero_of_the_village")
-    }
 }

@@ -8,9 +8,7 @@ use super::{
 };
 use horizon_client::mobs::{
     Species,
-    render::{PROFESSIONS, VILLAGER_TYPES},
-    villager,
-};
+    render::{PROFESSIONS, VILLAGER_TYPES}};
 use horizon_client::{
     hud::{HudBatch, rgba},
     items::ItemStack,
@@ -410,7 +408,7 @@ impl crate::game::Sim<'_> {
     }
     /// `RandomSequences` as `random_sequences.dat` (not on a server's guest).
     pub(super) fn save_random_sequences(&mut self) {
-        if self.remote.is_some() || self.rand_sequences.ids().is_empty() {
+        if true || self.rand_sequences.ids().is_empty() {
             return;
         }
         let tag = horizon_world::nbt::Tag::compound([
@@ -500,97 +498,6 @@ impl crate::game::Sim<'_> {
             trade.offers = offers;
             trade.unset = false;
         }
-    }
-    /// `Villager.mobInteract` / `WanderingTrader.mobInteract`: shake the
-    /// head without offers, else open the trading screen.
-    pub(super) fn interact_trader(
-        &mut self,
-        index: usize,
-        item: &str,
-    ) -> horizon_client::Result<bool> {
-        let m = &self.mobs[index];
-        let species = m.species();
-        if !matches!(species, Species::Villager | Species::WanderingTrader)
-            || !m.alive()
-            || item == "minecraft:villager_spawn_egg"
-            || self.station.is_some()
-            || m.extra.flag2
-            || (species == Species::Villager && villager::sleeping(m))
-        {
-            return Ok(false);
-        }
-        if m.is_baby() {
-            // A baby villager shakes its head; a baby wandering trader does
-            // nothing of its own.
-            if species == Species::WanderingTrader {
-                return Ok(false);
-            }
-            let mut events = Vec::new();
-            villager::set_unhappy(&mut self.mobs[index], &mut events);
-            self.handle_mob_events(events)?;
-            return Ok(true);
-        }
-        self.stats.custom("talked_to_villager", 1);
-        self.ensure_offers(index);
-        let m = &self.mobs[index];
-        let trade = m.extra.trade.as_deref().cloned().unwrap_or_default();
-        if trade.offers.is_empty() {
-            if species == Species::Villager {
-                let mut events = Vec::new();
-                villager::set_unhappy(&mut self.mobs[index], &mut events);
-                self.handle_mob_events(events)?;
-            }
-            return Ok(true);
-        }
-        let villager = species == Species::Villager;
-        let profession = if villager {
-            PROFESSIONS[m.extra.variant2 as usize % PROFESSIONS.len()]
-        } else {
-            "wandering_trader"
-        };
-        let level = if villager {
-            i32::from(m.extra.variant3.max(1)).min(5)
-        } else {
-            1
-        };
-        let mut session = merchant::Session::new(trade.offers, villager);
-        session.xp = trade.xp;
-        session.level = level;
-        session.profession = format!("minecraft:{profession}");
-        session.variant = format!(
-            "minecraft:{}",
-            VILLAGER_TYPES[m.extra.variant as usize % VILLAGER_TYPES.len()]
-        );
-        session.random = m.random.clone();
-        session.origin = [m.position.x, m.position.y, m.position.z];
-        session.ambient_sound_time = m.ambient_timer;
-        let (id, name) = (m.id, m.custom_name.clone());
-        if villager {
-            session.reputation = self.villager_reputation(id);
-            session.hero = self.hero_amplifier();
-            for seq in merchant::Session::sequences_needed(
-                &self.res.stations().trades,
-                &session.profession,
-                level,
-            ) {
-                let r = self.rand_sequences.lend(&seq, self.level.seed);
-                session.sequences.insert(seq, r);
-            }
-        }
-        // startTrading: updateSpecialPrices, then the screen opens.
-        session.update_special_prices();
-        // setTradingPlayer: a wandering trader stands still while trading, a
-        // villager's brain follows and looks at the player
-        // (LookAndFollowTradingPlayerSink).
-        self.mobs[index].extra.flag2 = true;
-        self.open_merchant_state(MerchantState {
-            session: Box::new(session),
-            scroll: 0,
-            focused: None,
-            mob: Some(id),
-            name,
-        });
-        Ok(true)
     }
     /// `Villager.setTradingPlayer(null)`: the session goes back to the mob
     /// (special prices stay as they were), the borrowed sequences to the world.
@@ -749,7 +656,7 @@ impl crate::game::Sim<'_> {
     }
     /// `MerchantMenu.tryMoveItems` for the selected offer (the select trade packet).
     fn try_move_items(&mut self, index: usize) {
-        if self.remote.is_some() {
+        {
             // ServerboundSelectTradePacket; the server moves the items.
             if let Some(m) = self.station.as_mut().and_then(|s| s.merchant.as_mut()) {
                 m.session.selection_hint = index;

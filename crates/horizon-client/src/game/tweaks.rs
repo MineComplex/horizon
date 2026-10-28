@@ -20,14 +20,12 @@
 //! clicks come from `inv_sort::plan`.
 use super::{Creative, Game, Screen};
 use horizon_client::{
-    containers::BlockEntity,
     hud::{HudBatch, rgba},
     inv_sort,
     items::ItemStack,
     keybinds,
     menu::Input,
-    stations::hover_name,
-};
+    stations::hover_name};
 use winit::{event::MouseButton, keyboard::KeyCode};
 
 /// A sort button's side in GUI pixels.
@@ -62,24 +60,13 @@ impl crate::game::Sim<'_> {
         {
             return false;
         }
-        if self.remote.is_some() {
+        {
             self.remote_storage_open()
-        } else {
-            matches!(self.container_kind(), None | Some(BlockEntity::Chest(_)))
         }
     }
     /// One ordinary click on a game slot. False when nothing took it.
     pub(super) fn tweak_click(&mut self, slot: usize, button: i32, input: Input) -> bool {
-        if self.remote.is_some() {
-            return self.remote_menu_ops(&[(Some(slot), button, input)]);
-        }
-        if !self.menu_click(Some(slot), button, input) {
-            return false;
-        }
-        if let Some(key) = self.container {
-            self.container_changed(key);
-        }
-        true
+        return self.remote_menu_ops(&[(Some(slot), button, input)]);
     }
     /// A press on `slot`: true when the tweaks took it (a right-drag
     /// placing), else vanilla's press runs and the tweaks watch the drag.
@@ -368,19 +355,11 @@ impl crate::game::Sim<'_> {
         {
             return Vec::new();
         }
-        let chest_like = if self.remote.is_some() {
+        let chest_like = {
             if !self.remote_storage_open() {
                 return Vec::new();
             }
             true
-        } else {
-            match self.container_kind() {
-                None => false,
-                Some(BlockEntity::Chest(_)) => {
-                    self.chest_rows().is_some() || self.container_block_is_shulker()
-                }
-                Some(_) => return Vec::new(),
-            }
         };
         let mut buttons = Vec::new();
         let container: Vec<usize> = self

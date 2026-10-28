@@ -96,11 +96,6 @@ impl Boat {
             Vec3::new(p.x + w, p.y + HEIGHT, p.z + w),
         )
     }
-    /// `isUnderWater`; it stands in for `canAddPassenger`'s
-    /// `isEyeInFluid(WATER)` too.
-    pub fn under_water(&self) -> bool {
-        matches!(self.status, Status::UnderWater | Status::UnderFlowingWater)
-    }
     /// `getMaxPassengers`: two, one beside a chest.
     pub fn max_passengers(&self) -> usize {
         if self.chest { 1 } else { 2 }
@@ -642,93 +637,6 @@ impl crate::game::Sim<'_> {
             Vec3::new(b.position.x, top, b.position.z)
         }
     }
-    /// `BoatItem.use`: aim at a block or the water surface.
-    pub(super) fn place_boat(&mut self, stack: &ItemStack) -> bool {
-        let Some((wood, chest)) = any_boat_wood(&stack.item) else {
-            return false;
-        };
-        if !self.boat_models.has(wood, chest) {
-            return false;
-        }
-        let Some(eye) = self.eye_position() else {
-            return false;
-        };
-        let dir = view_vector(self.yaw, self.pitch);
-        let reach = self.reach();
-        // ClipContext.Fluid.ANY: the first fluid surface (water or lava) or
-        // block along the ray.
-        let block = self.pick().map(|h| {
-            (
-                h.point,
-                (0..3)
-                    .map(|a| (h.point[a] - eye[a]).powi(2))
-                    .sum::<f64>()
-                    .sqrt(),
-            )
-        });
-        let mut fluid = None;
-        let mut t = 0.0;
-        while t < reach {
-            let p: [f64; 3] = std::array::from_fn(|a| eye[a] + dir[a] * t);
-            let (x, y, z) = (
-                p[0].floor() as i32,
-                p[1].floor() as i32,
-                p[2].floor() as i32,
-            );
-            if let Some((h, _)) = self.fluid_height_of(x, y, z, None)
-                && p[1] <= f64::from(y) + f64::from(h)
-            {
-                fluid = Some(([p[0], f64::from(y) + f64::from(h), p[2]], t));
-                break;
-            }
-            t += 0.05;
-        }
-        let hit = match (block, fluid) {
-            (Some(b), Some(w)) => {
-                if w.1 < b.1 {
-                    w.0
-                } else {
-                    b.0
-                }
-            }
-            (Some(b), None) => b.0,
-            (None, Some(w)) => w.0,
-            (None, None) => return false,
-        };
-        let mut boat = Boat::new(
-            self.next_entity + 1,
-            Arc::from(wood),
-            Vec3::new(hit[0], hit[1], hit[2]),
-            self.yaw,
-        );
-        if chest {
-            boat = boat.with_chest();
-        }
-        let bb = boat.bounds();
-        let (lo, hi) = (bb.min_position(), bb.max_position());
-        let e = 1.0e-7;
-        let inner = Aabb::new(
-            Vec3::new(lo.x + e, lo.y + e, lo.z + e),
-            Vec3::new(hi.x - e, hi.y - e, hi.z - e),
-        );
-        let mut scene = SceneCollisions {
-            world: &self.world,
-            binding: self.collision,
-            subject: None,
-        };
-        if !scene.unobstructed(inner).unwrap_or(false) || self.boat_entity_collision(bb) {
-            return false;
-        }
-        self.next_entity += 1;
-        let key = (hit[0].floor() as i32 >> 4, hit[2].floor() as i32 >> 4);
-        self.world.modified.insert(key);
-        self.boats.push(boat);
-        if !self.creative {
-            self.consume_held();
-        }
-        self.swing_arm();
-        true
-    }
     pub(super) fn boat_hit(&self) -> Option<(usize, f64)> {
         let eye = self.eye_position()?;
         let dir = view_vector(self.yaw, self.pitch);
@@ -760,41 +668,6 @@ impl crate::game::Sim<'_> {
             }
         }
         best
-    }
-    /// `AbstractBoat.interact`: board the boat under the crosshair.
-    pub(super) fn interact_boat(&mut self) -> bool {
-        let Some((i, d)) = self.boat_hit() else {
-            return false;
-        };
-        let sneaking = self.keys.contains(&winit::keyboard::KeyCode::ShiftLeft);
-        if !self.before_block(d) {
-            return false;
-        }
-        // ChestBoat.interact: sneaking (or a full seat) opens the chest.
-        if self.boats[i].chest && (sneaking || self.riding.is_some() || !self.boat_has_room(i)) {
-            let b = &self.boats[i];
-            let key = (i32::MAX - 15, super::minecarts::CART_KEY_Y, b.id as i32);
-            self.world.block_entities.insert(
-                key,
-                horizon_client::containers::BlockEntity::Chest(b.items.clone()),
-            );
-            self.container = Some(key);
-            self.screen = super::Screen::Inventory;
-            self.capture(false);
-            self.right = false;
-            return true;
-        }
-        if sneaking
-            || self.boats[i].out_of_control >= 60.0
-            || self.riding.is_some()
-            || self.ridden_by_guest(self.boats[i].id)
-            || !self.boat_has_room(i)
-        {
-            return false;
-        }
-        self.riding = Some(self.boats[i].id);
-        self.yaw = self.boats[i].yaw;
-        true
     }
     /// `VehicleEntity.hurtServer` from the player's attack.
     pub(super) fn attack_boat(&mut self, damage: f32) -> bool {

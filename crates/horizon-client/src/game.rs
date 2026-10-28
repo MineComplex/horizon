@@ -243,8 +243,7 @@ use horizon_world::{
     collision_context::{CollisionContext, CollisionEntity, CollisionItem},
     entity_obstruction::{EntityIdentity, EntityObstructionWorld, ObstructionEntity},
     level::{
-        Behaviours, Dimension as LevelDimension, EntityQuery, LevelAccess, LevelEvent,
-        PlaceContext, PlaceOutcome, PlayerContext, PlayerEffect, Ticks, flags as level_flags},
+        Behaviours, Dimension as LevelDimension, EntityQuery, LevelAccess, LevelEvent, PlayerContext, PlayerEffect, Ticks, flags as level_flags},
     registry::BlockStateId};
 use std::{
     cell::RefCell,
@@ -539,18 +538,6 @@ enum FallStep {
     Dropped(Vec3),
     /// Hit the ground in this block.
     Landed([i32; 3]),
-}
-/// A guest's right click comes as one packet per hand and part
-/// (`Minecraft.startUseItem`): `ServerGamePacketListenerImpl.handleUseItemOn`
-/// does the block's and `ItemStack.useOn`'s part, `handleUseItem` the
-/// item's own (`Item.use`). Running both for either would use the item twice.
-#[derive(Clone, Copy)]
-enum GuestUse {
-    OnBlock(Hand),
-    Item(Hand),
-    /// `handleInteract`: `Player.interactOn` with the hand, nothing else (the
-    /// client sends UseItem itself when the entity passed).
-    Entity(Hand),
 }
 
 /// The client world as seen by the vanilla block-behaviour library.
@@ -1480,7 +1467,6 @@ struct Sim<'a> {
     message: Option<(String, Instant)>,
     save: Arc<SaveDir>,
     level: Level,
-    session_lock: Option<horizon_client::save::SessionLock>,
     /// The sounds the game decided to play (seeds, the guests' capture, the control socket's
     /// counts); `flush_sounds` hands them to `audio`.
     sounds: horizon_client::sound_out::SoundOut,
@@ -1633,7 +1619,6 @@ struct Sim<'a> {
     dragon: Option<dragon::Dragon>,
     crystals: Vec<dragon::Crystal>,
     dragon_fireballs: Vec<dragon::DragonFireball>,
-    breath_clouds: Vec<dragon::Breath>,
     dragon_model: Option<horizon_client::mobs::Part>,
     text_displays: std::collections::HashMap<i32, text_displays::RemoteTextDisplay>,
     /// The fence knots a server tracks to this client, by entity id, at their
@@ -1719,8 +1704,6 @@ struct Sim<'a> {
     pending_save: Option<saving::ClosingSave>,
     /// The block a guest is acting on (game/lan_actions.rs).
     forced_hit: Option<Hit>,
-    /// The part of a right click a guest's packet asks for (game/lan_actions.rs).
-    guest_use: Option<GuestUse>,
     /// Level events of this tick for the guests, and the guest acting now.
     lan_events: Vec<(i32, [i32; 3], i32, Option<u32>)>,
     /// Jukebox level events 1010 (song name) and 1011 (`None`) for the guests;
@@ -1733,14 +1716,9 @@ struct Sim<'a> {
     lan_entity_events: Vec<(i32, i8, [f64; 3])>,
     /// Successful crits (attacking guest, hit entity), queued while the hub is taken.
     lan_critical_hits: Vec<(Option<u32>, i32, bool)>,
-    /// `LivingEntity.recentKineticEnemies`: when each player (a guest, or the
-    /// window's own) last stabbed each entity this use.
-    stabbed: HashMap<(Option<u32>, u32), i64>,
     /// `LivingEntity.lastKineticHitFeedbackTime` of the entities that felt a
     /// spear's hit (`spear::OWN` is this window's player), in game time.
     kinetic_feedback: HashMap<i32, i64>,
-    /// Global level events for every guest (`ServerLevel.globalLevelEvent`).
-    lan_global_events: Vec<(i32, [i32; 3], i32)>,
     /// `ContainerOpenersCounter`: how many players (the host and the guests)
     /// have each chest open.
     lid_openers: HashMap<(i32, i32, i32), i32>,
@@ -2023,19 +2001,7 @@ impl Game<'_> {
         }
         self.tick_debug_keys()?;
         self.tick_debug_charts();
-        if self.remote.is_some() {
-            return self.tick_remote();
-        }
-        // LevelLoadingScreen.tick.
-        self.loading_progress = match self.loading_reason() {
-            Some(_) => horizon_client::level_loading::smooth(
-                self.loading_progress,
-                self.level_load_progress(),
-            ),
-            None => 0.0,
-        };
-        // A window has no world of its own: servers tick theirs in `tick_server`.
-        Ok(())
+        return self.tick_remote();
     }
     /// Keep the held-key state of toggled sneak and sprint in step with their mapping.
     fn sync_toggle(&mut self, slot: usize) {
@@ -2971,12 +2937,8 @@ impl Game<'_> {
                     return;
                 }
                 if let Some(moved) = self.last_quick_moved.clone() {
-                    if self.remote.is_some() {
+                    {
                         self.remote_quick_move_all(slot, &moved);
-                    } else {
-                        self.menu_session(|menu, env, to_menu| {
-                            Some(menu.quick_move_all(env, to_menu(slot)?, &moved).is_ok())
-                        });
                     }
                 }
                 self.last_inv_click = None;
@@ -3032,7 +2994,7 @@ impl Game<'_> {
         // mouseClicked: an empty hand's PICKUP is the menu's click at once
         // (a right click on a bundle takes its first stack out).
         if let (Some(input), Some(_)) = (input, slot)
-            && self.remote.is_none()
+            && false
             && self.menu_click(slot, i32::from(right), input)
         {
             if let Some(key) = self.container {
@@ -3233,183 +3195,7 @@ impl Game<'_> {
         if self.station_click(right) {
             return;
         }
-        if self.remote.is_some() {
-            return self.remote_click(right);
-        }
-        let Some(size) = self
-            .front
-            .renderer
-            .as_ref()
-            .map(|r| [r.config.width, r.config.height])
-        else {
-            return;
-        };
-        let batch = HudBatch::new(size);
-        let Some(slot) = self.slot_at(&batch, self.front.cursor.0, self.front.cursor.1) else {
-            return;
-        };
-        let held_shift = self.has_shift_down();
-        if self.crafter_click(slot, held_shift, right) {
-            return;
-        }
-        if held_shift && self.container.is_some() && self.container_quick_move(slot) {
-            if let Some(key) = self.container {
-                self.world.modified.insert((key.0 >> 4, key.2 >> 4));
-            }
-            return;
-        }
-        if let Some(c) = &self.carried
-            && self.refuses(slot, c)
-        {
-            return;
-        }
-        let max = |items: &Items, s: &ItemStack| items.get(&s.item).map_or(64, |i| i.max_stack);
-        let shift = held_shift;
-        if slot >= 300
-            && let Some(key) = self.container
-        {
-            self.world.modified.insert((key.0 >> 4, key.2 >> 4));
-        }
-        let is_furnace = matches!(self.container_kind(), Some(BlockEntity::Furnace(_)));
-        if is_furnace && slot == 302 {
-            // FurnaceResultSlot: take only.
-            let Some(result) = self.slot_mut(302).take() else {
-                return;
-            };
-            match &mut self.sim.carried {
-                None => self.sim.carried = Some(result),
-                Some(c)
-                    if c.item == result.item
-                        && c.count + result.count <= max(self.sim.res.items(), c) =>
-                {
-                    c.count += result.count
-                }
-                _ => *self.slot_mut(302) = Some(result),
-            }
-            return;
-        }
-        // Changing the input restarts cooking (AbstractFurnaceBlockEntity.setItem).
-        let furnace_input = (is_furnace && slot == 300).then(|| self.slot_mut(300).clone());
-        if slot == 200 {
-            // ResultSlot: take the crafted stack and consume one of each ingredient.
-            let mut crafted = 0;
-            while let Some((recipe, result)) = self.craft_recipe() {
-                let made = (result.item.clone(), result.count);
-                let cells = self.craft_size * self.craft_size;
-                let remainders = self.res.recipes().remainders(
-                    &recipe,
-                    &self.craft_grid[..cells],
-                    self.craft_size,
-                );
-                if shift {
-                    if self.give(result).is_some() {
-                        break;
-                    }
-                } else {
-                    match &mut self.sim.carried {
-                        None => self.sim.carried = Some(result),
-                        Some(c)
-                            if c.item == result.item
-                                && c.count + result.count <= max(self.sim.res.items(), c) =>
-                        {
-                            c.count += result.count
-                        }
-                        _ => return,
-                    }
-                }
-                for cell in self.craft_grid.iter_mut() {
-                    if let Some(s) = cell {
-                        s.count -= 1;
-                        if s.count == 0 {
-                            *cell = None;
-                        }
-                    }
-                }
-                for (i, rest) in remainders.into_iter().enumerate() {
-                    let Some(rest) = rest else { continue };
-                    match &mut self.craft_grid[i] {
-                        cell @ None => *cell = Some(rest),
-                        Some(c) if c.same_item_same_components(&rest) => c.count += rest.count,
-                        _ => self.give_or_drop(rest),
-                    }
-                }
-                crafted += 1;
-                self.stats.add("crafted", &made.0, made.1 as i32);
-                self.award_crafted(&[format!("minecraft:{recipe}")]);
-                if !shift || crafted >= 64 {
-                    break;
-                }
-            }
-            return;
-        }
-        if shift
-            && (slot < 36 || (500..504).contains(&slot) || (100..109).contains(&slot))
-            && self.inventory_quick_move(slot)
-        {
-            return;
-        }
-        if (500..504).contains(&slot) {
-            let wanted = ["head", "chest", "legs", "feet"][slot - 500];
-            let fits = self.carried.as_ref().is_none_or(|c| {
-                self.res
-                    .items()
-                    .get(&c.item)
-                    .and_then(|i| i.equip_slot.as_deref())
-                    == Some(wanted)
-            });
-            if !fits {
-                return;
-            }
-            std::mem::swap(&mut self.sim.carried, &mut self.sim.armor[slot - 500]);
-            self.apply_equipment();
-            return;
-        }
-        let carried = self.carried.take();
-        let current = self.slot_mut(slot).take();
-        let items = self.res.items();
-        let (new_slot, new_carried) = match (carried, current) {
-            (None, Some(mut s)) if right => {
-                let half = s.count.div_ceil(2);
-                s.count -= half;
-                let taken = ItemStack {
-                    count: half,
-                    ..s.clone()
-                };
-                ((s.count > 0).then_some(s), Some(taken))
-            }
-            (None, s) => (None, s),
-            (Some(mut c), None) if right => {
-                let one = ItemStack {
-                    count: 1,
-                    ..c.clone()
-                };
-                c.count -= 1;
-                (Some(one), (c.count > 0).then_some(c))
-            }
-            (Some(c), None) => (Some(c), None),
-            (Some(mut c), Some(mut s)) if c.same_item_same_components(&s) => {
-                let room = max(items, &s).saturating_sub(s.count);
-                let moved = if right {
-                    1.min(room).min(c.count)
-                } else {
-                    room.min(c.count)
-                };
-                s.count += moved;
-                c.count -= moved;
-                (Some(s), (c.count > 0).then_some(c))
-            }
-            (Some(c), Some(s)) => (Some(c), Some(s)),
-        };
-        self.sim.carried = new_carried;
-        *self.slot_mut(slot) = new_slot;
-        if let Some(before) = furnace_input
-            && let Some(BlockEntity::Furnace(f)) = self
-                .sim
-                .container
-                .and_then(|k| self.sim.world.block_entities.get_mut(&k))
-        {
-            f.input_clicked(self.sim.res.recipes(), before);
-        }
+        return self.remote_click(right);
     }
     /// ItemEntityRenderer: items bob and spin; blocks render as small cubes.
     fn entity_geometry(
@@ -3978,9 +3764,6 @@ impl Game<'_> {
             return Ok(());
         }
         self.close_container();
-        if self.remote.is_none() {
-            self.stats.custom("leave_game", 1);
-        }
         self.lan_close(false);
         self.save_game()?;
         if let Some(mut remote) = self.remote.take() {
@@ -4000,36 +3783,7 @@ impl Game<'_> {
         // lets go of its track.
         self.front.music.stop_playing(None, &mut self.front.audio);
         self.front.audio.stop_all();
-        if self.remote.is_some() {
-            return self.leave_server(None);
-        }
-        // The save screen has finished every write before releasing storage.
-        self.session_lock = None;
-        horizon_client::crash::clear_detail("World");
-        self.front.debug_charts.reset();
-        self.front.boss_overlay.reset();
-        self.bosses = Default::default();
-        self.streaming.paused = true;
-        self.world = World::new(self.res.facts().air, 0);
-        self.player = None;
-        self.sleeping = None;
-        self.sleep_timer = 0;
-        self.clear_entities();
-        self.screen = Screen::Playing;
-        self.clear_lod();
-        self.front.pending_uploads.clear();
-        if let Some(r) = self.front.renderer.as_mut() {
-            r.clear_sections();
-        }
-        self.front.title = Some(Title::new(
-            std::env::current_dir()?.join("saves"),
-            &self.sim.options.resources,
-        ));
-        if let Some(title) = &mut self.front.title {
-            title.last_server = self.sim.settings.file.string("lastServer");
-        }
-        self.capture(false);
-        Ok(())
+        return self.leave_server(None);
     }
     /// FirstPersonHandsAndItemsRenderer: the right arm or the held items of
     /// both hands in view space, converted to camera-relative world space.
@@ -5164,7 +4918,7 @@ impl Game<'_> {
     /// opening a world, or after a portal or a respawn into another dimension.
     fn loading_reason(&self) -> Option<horizon_client::level_loading::Reason> {
         use horizon_client::level_loading::Reason;
-        if self.front.title.is_some() || self.remote.is_some() || self.player.is_some() {
+        if self.front.title.is_some() || true || self.player.is_some() {
             return None;
         }
         Some(
@@ -5279,7 +5033,7 @@ impl Game<'_> {
         if self.sort_key_press(key) {
             return Ok(());
         }
-        if self.remote.is_some() && self.remote_key(key)? {
+        if self.remote_key(key)? {
             return Ok(());
         }
         match key {
@@ -5375,7 +5129,7 @@ impl Game<'_> {
             },
             // key.swapOffhand: on a server, ServerboundPlayerActionPacket SWAP_ITEM_WITH_OFFHAND
             // (the server swaps the hands and sends both slots back; spectators can't).
-            KeyCode::KeyF if self.screen == Screen::Playing && self.remote.is_some() => {
+            KeyCode::KeyF if self.screen == Screen::Playing => {
                 if !self.spectator()
                     && let Some(r) = self.remote.as_mut()
                 {
@@ -5455,63 +5209,7 @@ impl Game<'_> {
             }
             return Ok(());
         }
-        if self.remote.is_some() {
-            return self.remote_mouse(button, pressed);
-        }
-        match button {
-            MouseButton::Left => {
-                // KeyMapping.click: Minecraft.tick starts the attack.
-                if pressed {
-                    self.attack_clicks += 1;
-                }
-                self.front
-                    .toggles
-                    .button(2, pressed, false, self.settings.toggle_attack);
-                self.left = self.front.toggles.is_down(2);
-            }
-            MouseButton::Right => {
-                self.front
-                    .toggles
-                    .button(3, pressed, false, self.settings.toggle_use);
-                self.right = self.front.toggles.is_down(3);
-                // handleKeybinds consumes use clicks without acting while an
-                // item is in use.
-                if pressed && self.using.is_none() {
-                    self.use_with_hand()?;
-                    self.use_delay = 4;
-                }
-            }
-            MouseButton::Middle if pressed => {
-                // Minecraft.pickBlockOrEntity -> the server's handlePickItemFromBlock:
-                // the block's clone item, with its block entity's data on Ctrl in
-                // creative, picked from the inventory (`pick_item`).
-                if let Some(entity) = self.pick_entity_hit() {
-                    // handlePickItemFromEntity: the entity's pick result.
-                    if let Some(stack) = entity.and_then(|id| self.entity_pick_result(id)) {
-                        let infinite = self.sim.creative;
-                        horizon_client::pick_item::pick(
-                            &mut self.sim.inventory[..36],
-                            &mut self.sim.selected,
-                            &stack,
-                            infinite,
-                        );
-                    }
-                } else if let Some(hit) = self.pick() {
-                    let include_data = self.sim.creative && self.has_control_down();
-                    if let Some(stack) = self.picked_stack(hit.pos, include_data) {
-                        let infinite = self.sim.creative;
-                        horizon_client::pick_item::pick(
-                            &mut self.sim.inventory[..36],
-                            &mut self.sim.selected,
-                            &stack,
-                            infinite,
-                        );
-                    }
-                }
-            }
-            _ => {}
-        }
-        Ok(())
+        return self.remote_mouse(button, pressed);
     }
     /// LOD Distance as far terrain uses it (`graphics::lod_distance_capped`).
     fn lod_distance(&self) -> u32 {
@@ -5545,7 +5243,7 @@ impl Game<'_> {
             && self.front.renderer.is_some()
             && self.player.is_some()
             && self.front.title.is_none()
-            && self.remote.is_none();
+            && false;
         if !enabled {
             if self.front.lod.is_some() || self.front.lod_source_attempted {
                 self.clear_lod();
@@ -6390,10 +6088,8 @@ impl crate::game::Sim<'_> {
             recipes: self.res.recipes(),
             // A client rolls no loot (LootTable.getRandomItems needs a
             // ServerLevel): it doesn't load the tables on its game thread.
-            loot: if self.remote.is_some() {
+            loot: {
                 None
-            } else {
-                horizon_client::structure_blocks::loot_data(&self.options.resources)
             },
             registry: self.pack.assets.registry,
             rules,
@@ -6404,7 +6100,7 @@ impl crate::game::Sim<'_> {
             spill: &mut self.spill,
             tickets: self.tickets.levels(),
             lid_openers: &self.lid_openers,
-            client_side: self.remote.is_some(),
+            client_side: true,
             change_events,
         };
         let result = f(self.res.behaviours(), &mut level, &mut self.block_ticks);
@@ -7320,71 +7016,6 @@ impl crate::game::Sim<'_> {
         self.process_level_events()?;
         Ok(())
     }
-    /// The hand whose use ended the click, if any.
-    fn use_item(&mut self) -> Result<Option<Hand>> {
-        self.with_player_actor(|game| game.use_item_as_player())
-    }
-    /// `Minecraft.startUseItem`: the main hand, then the off hand.
-    fn use_item_as_player(&mut self) -> Result<Option<Hand>> {
-        // Spectators only look (MultiPlayerGameMode.useItemOn/useItem pass).
-        if self.spectator() {
-            return Ok(None);
-        }
-        // A carrot or warped fungus on a stick boosts the ridden pig or strider.
-        // A guest's use packets name one hand and touch no entity: the client
-        // sends one per hand and part of its click, and Interact for entities.
-        let guest = self.guest_use;
-        if let Some(GuestUse::Entity(hand)) = guest {
-            return Ok(self
-                .with_hand(hand, |g| g.interact_entity())?
-                .then_some(hand));
-        }
-        let on_block = matches!(guest, Some(GuestUse::OnBlock(_)));
-        if !on_block
-            && self.riding.is_some()
-            && let Some(item) = self.held().map(|s| s.item.clone())
-            && self.use_steering_stick(&item)
-        {
-            return Ok(Some(Hand::Main));
-        }
-        if guest.is_none() && self.interact_entity()? {
-            return Ok(Some(Hand::Main));
-        }
-        // An EntityHitResult may fall through to Item.use, never to useItemOn.
-        let block_hit = if matches!(guest, Some(GuestUse::Item(_))) || self.entity_targeted() {
-            None
-        } else {
-            self.pick()
-        };
-        let hands = match guest {
-            Some(GuestUse::OnBlock(hand) | GuestUse::Item(hand) | GuestUse::Entity(hand)) => {
-                vec![hand]
-            }
-            None => Hand::BOTH.to_vec(),
-        };
-        let entity = guest.is_none() && self.entity_targeted();
-        for hand in hands {
-            // The off hand's turn starts on the entity too (Minecraft.startUseItem).
-            if entity && hand == Hand::Off && self.with_hand(hand, |g| g.interact_entity())? {
-                return Ok(Some(hand));
-            }
-            if self.with_hand(hand, |game| game.use_hand(block_hit.as_ref()))? {
-                return Ok(Some(hand));
-            }
-        }
-        Ok(None)
-    }
-    /// `Player.interactOn` for the entity under the crosshair with the
-    /// acting hand: whether it took the click.
-    fn interact_entity(&mut self) -> Result<bool> {
-        Ok(self.interact_frame()
-            || self.interact_armor_stand()
-            || self.interact_cushion()
-            || self.interact_boat()
-            || self.interact_cart()
-            || self.interact_mob()?
-            || self.interact_knot())
-    }
     /// `ItemStack.applyAfterUseComponentSideEffects`: a used stack with a
     /// `use_cooldown` component starts its entry (`UseCooldown.apply`). A
     /// server's guest also gets `ClientboundCooldownPacket`
@@ -7400,364 +7031,6 @@ impl crate::game::Sim<'_> {
         };
         let group = horizon_client::cooldowns::group(stack, default.as_ref());
         self.cooldowns.add(Arc::clone(&group), component.ticks());
-    }
-    /// One hand's turn in `startUseItem`: `useItemOn` the block aimed at,
-    /// then `useItem`. Whether the click ends here (it acted or failed).
-    fn use_hand(&mut self, block_hit: Option<&Hit>) -> Result<bool> {
-        // isSecondaryUseActive with something in either hand keeps blocks
-        // from reacting.
-        let sneaking = self.keys.contains(&KeyCode::ShiftLeft);
-        let hands_full = self.stack_in(self.selected).is_some() || self.offhand.is_some();
-        let mut anchor_passed = false;
-        // MultiPlayerGameMode.useItemOn: blocks react first.
-        if !(sneaking && hands_full)
-            && let Some(hit) = block_hit
-        {
-            let held = self.held().cloned();
-            if self.use_lectern(hit.pos, held.as_ref()) {
-                self.swing_arm();
-                return Ok(true);
-            }
-            if self.use_sign_applicator(hit.pos, held.as_ref()) {
-                self.swing_arm();
-                return Ok(true);
-            }
-            if self.use_golem_statue(hit.pos, held.as_ref()) {
-                self.swing_arm();
-                return Ok(true);
-            }
-            if self.use_jukebox(hit.pos, held.as_ref()) {
-                self.swing_arm();
-                return Ok(true);
-            }
-            if let Some(swings) = self.use_chiseled_bookshelf(hit, held.as_ref()) {
-                if swings {
-                    self.swing_arm();
-                }
-                return Ok(true);
-            }
-            if self.use_composter(hit.pos, held.as_ref()) {
-                self.swing_arm();
-                return Ok(true);
-            }
-            if self.use_vault(hit.pos, held.as_ref())? {
-                self.swing_arm();
-                return Ok(true);
-            }
-            if self.use_decorated_pot(hit.pos, held.as_ref()) {
-                self.swing_arm();
-                return Ok(true);
-            }
-            if self.use_pumpkin(hit.pos, hit.face, held.as_ref())? {
-                self.swing_arm();
-                return Ok(true);
-            }
-            if self.use_beehive(hit.pos, held.as_ref())? {
-                self.swing_arm();
-                return Ok(true);
-            }
-            if self.use_campfire_douse(hit.pos, held.as_ref())? {
-                self.swing_arm();
-                return Ok(true);
-            }
-            if self.use_redstone_ore(hit.pos, held.as_ref())? {
-                self.swing_arm();
-                return Ok(true);
-            }
-            match self.use_respawn_anchor(hit.pos, held.as_ref())? {
-                respawn_anchor::AnchorUse::Charged => {
-                    self.swing_arm();
-                    return Ok(true);
-                }
-                // The main hand passes; its item is used, then the off hand's glowstone.
-                respawn_anchor::AnchorUse::Pass => anchor_passed = true,
-                respawn_anchor::AnchorUse::Other => {}
-            }
-            // CeilingHangingSignBlock.useItemOn: a hanging sign aimed at the
-            // underside passes, so the next sign chains below instead of
-            // opening the editor (signs here carry no click commands).
-            let chains_sign = hit.face == [0, -1, 0]
-                && held
-                    .as_ref()
-                    .is_some_and(|s| s.item.ends_with("_hanging_sign"))
-                && {
-                    let name = &self
-                        .res
-                        .facts()
-                        .get(self.world.block(hit.pos[0], hit.pos[1], hit.pos[2]))
-                        .name;
-                    name.ends_with("_hanging_sign") && !name.contains("_wall_")
-                }
-                && matches!(
-                    self.world
-                        .block_entities
-                        .get(&(hit.pos[0], hit.pos[1], hit.pos[2])),
-                    Some(BlockEntity::Sign(_))
-                );
-            // TRY_WITH_EMPTY_HAND: only the main hand's turn uses the block
-            // itself (useWithoutItem).
-            if !anchor_passed && !chains_sign && self.hand == Hand::Main {
-                let face = match hit.face {
-                    [0, 1, 0] => Direction::Up,
-                    [0, -1, 0] => Direction::Down,
-                    [0, 0, -1] => Direction::North,
-                    [0, 0, 1] => Direction::South,
-                    [-1, 0, 0] => Direction::West,
-                    _ => Direction::East,
-                };
-                let player = self.use_context();
-                let at = Vec3::new(hit.point[0], hit.point[1], hit.point[2]);
-                let item = held.as_ref().map(|s| s.item.to_string());
-                let result = self.with_level(|b, level, ticks| {
-                    b.use_item_on(
-                        level,
-                        ticks,
-                        BlockPos::new(hit.pos[0], hit.pos[1], hit.pos[2]),
-                        face,
-                        at,
-                        player,
-                        item.as_deref(),
-                    )
-                });
-                self.process_level_events()?;
-                // NoteBlock.useWithoutItem (tuned) and BellBlock.onHit (rung).
-                if result == horizon_world::level::InteractionResult::Success {
-                    let name = self
-                        .res
-                        .facts()
-                        .get(self.world.block(hit.pos[0], hit.pos[1], hit.pos[2]))
-                        .name
-                        .clone();
-                    match &*name {
-                        "minecraft:note_block" => self.stats.custom("tune_noteblock", 1),
-                        "minecraft:bell" => self.stats.custom("bell_ring", 1),
-                        _ => {}
-                    }
-                }
-                if result.consumes_action() {
-                    self.swing_arm();
-                    return Ok(true);
-                }
-            }
-        }
-        let Some(stack) = self.held().cloned() else {
-            return Ok(false);
-        };
-        let Some(info) = self.res.items().get(&stack.item).cloned() else {
-            return Ok(false);
-        };
-        // ServerPlayerGameMode.useItem and useItemOn: an item on cooldown is
-        // not used (PASS, so the other hand may still act).
-        if self
-            .cooldowns
-            .is_on_cooldown(&horizon_client::cooldowns::group(
-                &stack,
-                info.use_cooldown.as_ref(),
-            ))
-        {
-            return Ok(false);
-        }
-        if block_hit.is_some() && (self.use_bone_meal(&stack)? || self.ignite_tnt(&stack)?) {
-            return Ok(true);
-        }
-        // A guest's UseItemOn stops at ItemStack.useOn: what Item.use does
-        // (throw, drink, eat, raise, equip) waits for its UseItem.
-        let on_block = matches!(self.guest_use, Some(GuestUse::OnBlock(_)));
-        let spawn_egg = stack.item.ends_with("_spawn_egg");
-        use horizon_client::first_person::UseResult;
-        let swings = self.swings_started;
-        match self.use_tool(&stack, block_hit.is_some())? {
-            UseResult::Success { swing } => {
-                if (UseResult::Success { swing }).should_swing(swings, self.swings_started) {
-                    self.swing_arm();
-                }
-                return Ok(true);
-            }
-            UseResult::Fail => return Ok(true),
-            UseResult::Pass => {}
-        }
-        if (!on_block && self.use_potion_item(&stack)?)
-            || ((block_hit.is_some() || !spawn_egg)
-                && (!on_block || spawn_egg)
-                && self.throw_item(&stack)?)
-        {
-            return Ok(true);
-        }
-        // BrushItem.useOn: brushing starts on the block aimed at (CONSUME).
-        if block_hit.is_some() && &*stack.item == "minecraft:brush" {
-            if self.using.is_none() {
-                self.using = Some((self.held_slot(), 0));
-            }
-            return Ok(true);
-        }
-        let held = self.held_slot();
-        if !on_block
-            && (self.raise_shield(held)
-                || self.use_fishing_rod(&stack)
-            || self.use_crossbow(&stack)
-            || self.use_trident(&stack)
-            || self.use_spear(&stack)
-            || self.boost_firework(&stack)
-            || self.use_empty_map(&stack)
-                || self.use_book(&stack)
-                // Block items (heads, carved pumpkins) aimed at a block are
-                // placed first (useItemOn before useItem).
-                || (!(info.block.is_some() && block_hit.is_some())
-                    && self.equip_from_hand(&stack)))
-        {
-            return Ok(true);
-        }
-        if !on_block && &*stack.item == "minecraft:spyglass" {
-            self.use_spyglass();
-            return Ok(true);
-        }
-        // BundleItem.use: startUsingItem, then onUseTick empties it.
-        if !on_block && info.bundle {
-            if self.using.is_none() {
-                self.using = Some((self.held_slot(), 0));
-            }
-            self.swing_arm();
-            return Ok(true);
-        }
-        if !on_block && &*stack.item == "minecraft:bow" {
-            if self.using.is_none()
-                && (self.creative || self.projectile_slot("minecraft:bow").is_some())
-            {
-                self.using = Some((self.held_slot(), 0));
-            }
-            return Ok(true);
-        }
-        // Block foods attempt placement before starting consumption.
-        if !on_block && (info.block.is_none() || block_hit.is_none()) && self.start_eating(&info) {
-            return Ok(true);
-        }
-        // BoatItem.use also performs its own fluid/block raycast.
-        if !on_block && self.place_boat(&stack) {
-            return Ok(true);
-        }
-        if let Some(hit) = block_hit
-            && (self.launch_firework(hit, &stack)
-                || self.place_minecart(hit, &stack)
-                || self.place_painting(hit, &stack)
-                || self.place_item_frame(hit, &stack)
-                || self.use_lodestone_compass(hit, &stack)
-                || self.place_armor_stand(hit, &stack)
-                || self.place_cushion(hit, &stack)
-                || self.place_end_crystal(hit, &stack))
-        {
-            return Ok(true);
-        }
-        if self.use_ender_eye(&stack, block_hit.is_some())? {
-            return Ok(true);
-        }
-        let Some(hit) = block_hit else {
-            return Ok(false);
-        };
-        if info.block.is_none() {
-            return Ok(false);
-        }
-        if !self.may_build() {
-            // ItemStack.useOn passes in adventure mode; useItem eats.
-            return Ok(!on_block && self.start_eating(&info));
-        }
-        let face = match hit.face {
-            [0, 1, 0] => Direction::Up,
-            [0, -1, 0] => Direction::Down,
-            [0, 0, -1] => Direction::North,
-            [0, 0, 1] => Direction::South,
-            [-1, 0, 0] => Direction::West,
-            _ => Direction::East,
-        };
-        // BlockItem.place through the vanilla placement rules.
-        let ctx = PlaceContext {
-            clicked_pos: BlockPos::new(hit.pos[0], hit.pos[1], hit.pos[2]),
-            face,
-            hit: Vec3::new(hit.point[0], hit.point[1], hit.point[2]),
-            inside: false,
-            yaw: self.yaw,
-            pitch: self.pitch,
-            sneaking: self.keys.contains(&KeyCode::ShiftLeft),
-            item: stack.item.to_string(),
-            can_use_game_master_blocks: self.can_use_game_master_blocks(),
-        };
-        // What the placement may replace, for BlockPlaceEvent's undo.
-        let before = {
-            let c = hit.pos;
-            let next = [c[0] + hit.face[0], c[1] + hit.face[1], c[2] + hit.face[2]];
-            [
-                (c, self.world.block(c[0], c[1], c[2])),
-                (next, self.world.block(next[0], next[1], next[2])),
-            ]
-        };
-        let outcome = self.with_level(|b, level, ticks| b.place_block(level, ticks, &ctx));
-        // BlockPlaceEvent (a server's player): a plugin may take the block back.
-        if let PlaceOutcome::Placed { pos, state } = &outcome {
-            let target = [pos.x, pos.y, pos.z];
-            let replaced = before
-                .iter()
-                .find(|(p, _)| *p == target)
-                .map_or(self.world.air, |(_, s)| *s);
-            let item = Some(horizon_server_api::ItemStack::new(&stack.item, 1));
-            if !self.plugin_block_place(target, *state, replaced, item) {
-                let at = BlockPos::new(target[0], target[1], target[2]);
-                self.with_level(|b, level, ticks| b.set_block(level, ticks, at, replaced, 3));
-                return Ok(true);
-            }
-        }
-        let PlaceOutcome::Placed { pos, state } = outcome else {
-            self.process_level_events()?;
-            // BlockItem.useOn: a consumable that could not be placed is used,
-            // which ItemStack.useOn counts as a use of the item.
-            if self.start_eating(&info) {
-                self.stats.add("used", &stack.item, 1);
-            }
-            return Ok(true);
-        };
-        let target = [pos.x, pos.y, pos.z];
-        let state = self.apply_item_block_state(target, state, &stack)?;
-        if let Some(entity) = BlockEntity::for_block(&self.res.facts().get(state).name) {
-            let key = (target[0], target[1], target[2]);
-            self.world.block_entities.insert(key, entity);
-            let game_master = self.can_use_game_master_blocks();
-            self.apply_placed_item(target, &stack, game_master);
-            // Block.setPlacedBy.
-            match self.world.block_entities.get(&key) {
-                Some(BlockEntity::CommandBlock(_)) => {
-                    let data = stack.data().is_some_and(|d| {
-                        d.other(horizon_client::block_entity_item::BLOCK_ENTITY_DATA)
-                            .is_some()
-                    });
-                    self.command_block_placed(key, !data);
-                }
-                Some(BlockEntity::Sign(sign)) if !sign.waxed => self.open_sign_editor(key, true),
-                _ => {}
-            }
-        }
-        self.swing_arm();
-        // BlockItem.place's sound is among the level events;
-        // SolidBucketItem.getPlaceSound replaces it with the bucket's own.
-        let solid_bucket = &*stack.item == "minecraft:powder_snow_bucket";
-        if solid_bucket {
-            for event in &mut self.level_events {
-                if let LevelEvent::Sound { pos: at, sound, .. } = event
-                    && *at == pos
-                {
-                    *sound = "minecraft:item.bucket.empty_powder_snow".into();
-                }
-            }
-        }
-        self.process_level_events()?;
-        // BlockItem.place: the used statistic and the placed_block trigger.
-        self.stats.add("used", &stack.item, 1);
-        self.trigger_block("minecraft:placed_block", target, &stack);
-        self.check_wither_spawn(target)?;
-        self.check_golem_spawn(target)?;
-        self.consume_held();
-        // SolidBucketItem.useOn: BucketItem.getEmptySuccessItem in hand.
-        if solid_bucket && !self.creative {
-            *self.held_mut() = Some(ItemStack::new("minecraft:bucket", 1));
-        }
-        Ok(true)
     }
     /// The player as a block's `useItemOn` / `useWithoutItem` sees them.
     fn use_context(&self) -> PlayerContext {
@@ -8072,41 +7345,7 @@ impl crate::game::Sim<'_> {
         self.close_station();
         self.mount_closed();
         self.recipe_ui.reset_screen();
-        if self.remote.is_some() {
-            return self.remote_close_container();
-        }
-        let mut returned: Vec<ItemStack> = self.carried.take().into_iter().collect();
-        returned.extend(self.craft_grid.iter_mut().filter_map(Option::take));
-        for stack in returned {
-            if let Some(rest) = self.give(stack)
-                && let Some(eye) = self.eye_position()
-            {
-                // AbstractContainerMenu.dropOrPlaceInInventory: `drop(stack, false)`.
-                self.throw_from_eyes(rest, eye, false);
-            }
-        }
-        self.craft_size = 2;
-        self.craft_table = None;
-        if let Some(key) = self.container.take() {
-            // A cart's or chest boat's items go back to it.
-            self.close_cart_container(key);
-            let last = self.container_opener_event(key, false);
-            self.post_block_game_event(
-                "minecraft:container_close",
-                [key.0, key.1, key.2],
-                Some(horizon_client::mobs::Who::Player),
-                None,
-            );
-            if last {
-                self.container_edge_sound(key, false);
-            }
-            self.world.modified.insert((key.0 >> 4, key.2 >> 4));
-        }
-        self.close_ender_chest();
-    }
-    /// `quickMoveStack` of the open plain menu for a shift-click.
-    fn inventory_quick_move(&mut self, slot: usize) -> bool {
-        self.menu_click(Some(slot), 0, horizon_client::menu::Input::QuickMove)
+        return self.remote_close_container();
     }
     /// `AbstractContainerMenu.clicked` on the open inventory, crafting table,
     /// chest, hopper, dispenser or furnace menu, run by the verified menu
@@ -8166,7 +7405,7 @@ impl crate::game::Sim<'_> {
                 self.unselect_bundle(slot);
             }
         }
-        if self.remote.is_some() && self.screen == Screen::Inventory {
+        if self.screen == Screen::Inventory {
             // On a server the clicks are the server's: predicted and sent.
             return self.remote_menu_ops(ops);
         }
@@ -8314,7 +7553,7 @@ impl crate::game::Sim<'_> {
             (Kind::ItemPicker, v)
         } else if let Some(columns) = self
             .mount_menu_columns()
-            .filter(|_| self.remote.is_some() && self.mount_active())
+            .filter(|_| self.mount_active())
         {
             // A server's HorseInventoryMenu: the saddle, the body armour,
             // the chest, then the inventory.
@@ -8492,7 +7731,7 @@ impl crate::game::Sim<'_> {
         }
         // The cartography table reads and makes the level's maps; a
         // server's (the client menu's ContainerLevelAccess.NULL) doesn't.
-        let level_maps = (kind == Kind::Cartography && self.remote.is_none()).then(|| {
+        let level_maps = (kind == Kind::Cartography && false).then(|| {
             let held: Vec<ItemStack> = before
                 .iter()
                 .flatten()
@@ -8598,7 +7837,7 @@ impl crate::game::Sim<'_> {
         }
         // On a server the clicks only predict: the server drops, crafts and
         // makes maps itself.
-        let predicting = self.remote.is_some();
+        let predicting = true;
         if !predicting {
             self.register_exploration_maps(made);
         }
@@ -8641,7 +7880,7 @@ impl crate::game::Sim<'_> {
                 self.trigger_brewed_potion(stack);
             }
             if furnace_before > furnace_after
-                && self.remote.is_none()
+                && false
                 && let (Some(pos), Some(p)) = (self.container, self.player.as_ref())
             {
                 let at = [p.position.x, p.position.y, p.position.z];
@@ -8752,42 +7991,14 @@ impl crate::game::Sim<'_> {
     /// `PICKUP` drops the carried stack (left) or one of it (right), thrown
     /// from the hand (`AbstractContainerMenu.doClick`, `LivingEntity.drop`).
     fn throw_click(&mut self, right: bool, input: horizon_client::menu::Input) {
-        use horizon_client::menu::Input;
         let button = i32::from(right);
-        if self.remote.is_some() {
-            if self.screen == Screen::Creative {
-                self.remote_creative_drop(right);
-            } else {
-                self.remote_throw(right, input);
-            }
-            return;
+        if self.screen == Screen::Creative {
+            self.remote_creative_drop(right);
+        } else {
+            self.remote_throw(right, input);
         }
-        let before = self.carried.clone();
-        if !self.menu_click(None, button, input) && input == Input::Pickup {
-            // A screen the menu engine doesn't model: the same doClick.
-            if let Some(c) = self.carried.as_mut() {
-                let thrown = if right {
-                    let one = ItemStack {
-                        count: 1,
-                        ..c.clone()
-                    };
-                    c.count -= 1;
-                    if c.count == 0 {
-                        self.carried = None;
-                    }
-                    one
-                } else {
-                    self.carried.take().expect("some")
-                };
-                self.player_drop(thrown);
-            }
-        }
-        if self.carried != before {
-            self.swing_arm();
-        }
-        if let Some(key) = self.container {
-            self.container_changed(key);
-        }
+        return;
+        
     }
     /// `Camera.setRotation`: the camera's orientation, turned round in
     /// third-person front view.
@@ -9267,139 +8478,6 @@ impl crate::game::Sim<'_> {
         })
         .collect()
     }
-    /// PortalShape: an obsidian frame around 2..=21 by 3..=21 empty blocks.
-    fn portal_shape(&self, start: [i32; 3], x_axis: bool) -> Option<([i32; 3], i32, i32)> {
-        let name = |p: [i32; 3]| {
-            self.res
-                .facts()
-                .get(self.world.block(p[0], p[1], p[2]))
-                .name
-                .clone()
-        };
-        let empty = |p: [i32; 3]| {
-            let n = name(p);
-            matches!(
-                &*n,
-                "minecraft:air"
-                    | "minecraft:cave_air"
-                    | "minecraft:fire"
-                    | "minecraft:soul_fire"
-                    | "minecraft:nether_portal"
-            )
-        };
-        let frame = |p: [i32; 3]| &*name(p) == "minecraft:obsidian";
-        let d = if x_axis { [1, 0, 0] } else { [0, 0, 1] };
-        let mut bottom = start;
-        let mut n = 0;
-        while empty([bottom[0], bottom[1] - 1, bottom[2]]) && n < 21 {
-            bottom[1] -= 1;
-            n += 1;
-        }
-        if !frame([bottom[0], bottom[1] - 1, bottom[2]]) {
-            return None;
-        }
-        let mut left = bottom;
-        n = 0;
-        while empty([left[0] - d[0], left[1], left[2] - d[2]]) && n < 21 {
-            left = [left[0] - d[0], left[1], left[2] - d[2]];
-            n += 1;
-        }
-        if !frame([left[0] - d[0], left[1], left[2] - d[2]]) {
-            return None;
-        }
-        let mut width = 0;
-        while width <= 21 {
-            let p = [left[0] + d[0] * width, left[1], left[2] + d[2] * width];
-            if !empty(p) || !frame([p[0], p[1] - 1, p[2]]) {
-                break;
-            }
-            width += 1;
-        }
-        if !(2..=21).contains(&width)
-            || !frame([left[0] + d[0] * width, left[1], left[2] + d[2] * width])
-        {
-            return None;
-        }
-        let mut height = 0;
-        'rows: while height <= 21 {
-            let y = left[1] + height;
-            if !frame([left[0] - d[0], y, left[2] - d[2]])
-                || !frame([left[0] + d[0] * width, y, left[2] + d[2] * width])
-            {
-                break;
-            }
-            for i in 0..width {
-                if !empty([left[0] + d[0] * i, y, left[2] + d[2] * i]) {
-                    break 'rows;
-                }
-            }
-            height += 1;
-        }
-        let top_ok =
-            (0..width).all(|i| frame([left[0] + d[0] * i, left[1] + height, left[2] + d[2] * i]));
-        ((3..=21).contains(&height) && top_ok).then_some((left, width, height))
-    }
-    /// BaseFireBlock.onPlace: lighting fire inside a frame creates a portal,
-    /// only in the Overworld and the Nether (`inPortalDimension`).
-    fn try_light_portal(&mut self, at: [i32; 3]) -> Result<bool> {
-        if !matches!(self.dim, Dim::Overworld | Dim::Nether) {
-            return Ok(false);
-        }
-        for x_axis in [true, false] {
-            if let Some((origin, width, height)) = self.portal_shape(at, x_axis) {
-                let d = if x_axis { [1, 0, 0] } else { [0, 0, 1] };
-                let registry = &self.pack.assets.registry;
-                let Some(default) = registry.default_state("minecraft:nether_portal") else {
-                    return Ok(false);
-                };
-                let mut portal = registry.state(default).cloned().ok_or("portal state")?;
-                portal
-                    .properties
-                    .insert("axis".into(), if x_axis { "x" } else { "z" }.into());
-                let id = registry.resolve(&portal).unwrap_or(default);
-                for h in 0..height {
-                    for w in 0..width {
-                        self.world.set(
-                            origin[0] + d[0] * w,
-                            origin[1] + h,
-                            origin[2] + d[2] * w,
-                            id,
-                        )?;
-                    }
-                }
-                return Ok(true);
-            }
-        }
-        Ok(false)
-    }
-    /// Let go of every entity of the level (saved first): the next world
-    /// opened must not inherit them, nor save them as its own.
-    fn clear_entities(&mut self) {
-        self.mobs.clear();
-        self.dropped.clear();
-        self.orbs.clear();
-        self.creatures.projectiles.clear();
-        self.falling.clear();
-        self.tnts.clear();
-        self.boats.clear();
-        self.carts.clear();
-        self.armor_stands.clear();
-        self.cushions.clear();
-        self.item_frames.clear();
-        self.paintings.clear();
-        self.others.clear();
-        self.dragon = None;
-        self.crystals.clear();
-        self.dragon_fireballs.clear();
-        self.breath_clouds.clear();
-        self.tridents.clear();
-        self.rockets.clear();
-        self.bolts.clear();
-        self.particles.clear();
-        self.pickups.clear();
-        self.riding = None;
-        self.persist = Default::default();
-    }
     /// Equipment attribute modifiers (LivingEntity.collectEquipmentChanges).
     fn apply_equipment(&mut self) {
         let Some(player) = self.player.as_mut() else {
@@ -9438,124 +8516,6 @@ impl crate::game::Sim<'_> {
             }
         }
         self.apply_enchantment_attributes();
-    }
-    /// Voxel traversal that also stops at fluid source blocks (bucket pick).
-    fn pick_fluid(&self) -> Option<Hit> {
-        let origin = self.eye_position()?;
-        let dir = view_vector(self.yaw, self.pitch);
-        let mut t = 0.0;
-        let mut last = origin.map(|v| v.floor() as i32);
-        while t <= self.reach() {
-            let p = [
-                origin[0] + dir[0] * t,
-                origin[1] + dir[1] * t,
-                origin[2] + dir[2] * t,
-            ];
-            let b = p.map(|v| v.floor() as i32);
-            if b != last {
-                let state = self.world.block(b[0], b[1], b[2]);
-                let f = self.res.facts().get(state);
-                let face = [last[0] - b[0], last[1] - b[1], last[2] - b[2]];
-                if f.fluid != Fluid::None
-                    && f.fluid_level == 8
-                    && !f.fluid_falling
-                    && !f.waterlogged
-                    && f.render_shape != horizon_client::blocks::RenderShape::Model
-                {
-                    return Some(Hit {
-                        pos: b,
-                        face,
-                        point: p,
-                    });
-                }
-                if !self.res.facts().is_air(state) && f.fluid == Fluid::None {
-                    return Some(Hit {
-                        pos: b,
-                        face,
-                        point: p,
-                    });
-                }
-                last = b;
-            }
-            t += 0.05;
-        }
-        None
-    }
-    /// `CauldronInteractions` for the held item aimed at a cauldron.
-    fn use_on_cauldron(&mut self, pos: [i32; 3]) -> Result<bool> {
-        use horizon_client::cauldron::{self, Outcome};
-        struct Hand<'g, 'a>(&'g mut crate::game::Sim<'a>);
-        impl cauldron::Player for Hand<'_, '_> {
-            fn creative(&self) -> bool {
-                self.0.creative
-            }
-            fn hand(&mut self) -> &mut Option<ItemStack> {
-                self.0.held_mut()
-            }
-            fn add(&mut self, stack: &mut ItemStack) -> bool {
-                let before = stack.count;
-                match self.0.give(stack.clone()) {
-                    None => stack.count = 0,
-                    Some(rest) => stack.count = rest.count,
-                }
-                stack.count < before
-            }
-            fn contains(&self, stack: &ItemStack) -> bool {
-                self.0
-                    .inventory
-                    .iter()
-                    .flatten()
-                    .any(|have| have.same_item_same_components(stack))
-            }
-            fn drop_stack(&mut self, stack: ItemStack) {
-                if let Some(eye) = self.0.eye_position() {
-                    // ItemUtils.createFilledResult: `player.drop(stack, false)`.
-                    self.0.throw_from_eyes(stack, eye, false);
-                }
-            }
-        }
-        let registry = self.pack.assets.registry;
-        let id = self.world.block(pos[0], pos[1], pos[2]);
-        let Some(state) = registry
-            .state(id)
-            .filter(|s| s.name.ends_with("cauldron"))
-            .cloned()
-        else {
-            return Ok(false);
-        };
-        let Some(held) = self.held() else {
-            return Ok(false);
-        };
-        let removes_dye = cauldron::removes_dye(self.res.items(), &held.item);
-        let above = self.world.block(pos[0], pos[1] + 1, pos[2]);
-        let under_water = registry
-            .state(above)
-            .is_some_and(|s| s.name == "minecraft:water");
-        let result = cauldron::interact(&state, under_water, removes_dye, &mut Hand(self));
-        if result.outcome == Outcome::Pass {
-            return Ok(false);
-        }
-        if let Some(stat) = result.stat {
-            self.stats.custom(stat, 1);
-        }
-        if let Some(block) = result.block
-            && let Ok(new) = registry.resolve(&block)
-        {
-            self.level_set(pos, new)?;
-        }
-        if let Some(sound) = result.sound {
-            self.sounds.play(
-                sound,
-                Some([
-                    f64::from(pos[0]) + 0.5,
-                    f64::from(pos[1]) + 0.5,
-                    f64::from(pos[2]) + 0.5,
-                ]),
-                1.0,
-                1.0,
-            );
-        }
-        Ok(true)
     }
     /// What `BlockTransformer.transformBlock` would do with a held axe, hoe
     /// or shovel on the block at `pos`, without doing it: the new state, its
@@ -9636,44 +8596,6 @@ impl crate::game::Sim<'_> {
             _ => {}
         }
     }
-    /// `BlockTransformer.transformBlock` for a held axe, hoe or shovel.
-    fn use_block_transformer(
-        &mut self,
-        stack: &ItemStack,
-        pos: [i32; 3],
-        face: [i32; 3],
-    ) -> Result<bool> {
-        let Some((new, sound, loot, damage, particle)) = self.block_transform(stack, pos, face)
-        else {
-            return Ok(false);
-        };
-        // BlockTransformer.transformBlock: ITEM_USED_ON_BLOCK before the swap.
-        self.trigger_block("minecraft:item_used_on_block", pos, stack);
-        self.level_set(pos, new)?;
-        // BlockTransformer.TransformParticle.send.
-        self.transform_particle(&particle, pos);
-        if loot.as_deref() == Some("minecraft:till/rooted_dirt") {
-            self.pop_resource(
-                [pos[0] + face[0], pos[1] + face[1], pos[2] + face[2]],
-                ItemStack::new("minecraft:hanging_roots", 1),
-            );
-        }
-        self.sounds.play(
-            &sound,
-            Some([
-                f64::from(pos[0]) + 0.5,
-                f64::from(pos[1]) + 0.5,
-                f64::from(pos[2]) + 0.5,
-            ]),
-            1.0,
-            1.0,
-        );
-        // ItemStack.useOn: a use that acted counts as one of the item.
-        self.stats.add("used", &stack.item, 1);
-        self.damage_held(damage);
-        self.post_block_game_event("minecraft:block_change", pos, self.sculk_actor(), Some(new));
-        Ok(true)
-    }
     fn set_state_named(&mut self, pos: [i32; 3], name: &str, keep: &[&str]) -> Result<bool> {
         let registry = &self.pack.assets.registry;
         let old = self.world.block(pos[0], pos[1], pos[2]);
@@ -9742,241 +8664,6 @@ impl crate::game::Sim<'_> {
             stack.damage = (stack.damage + amount).min(max - 1);
         }
     }
-    /// Block tool use: distinguish success, failure and fall-through for hand feedback.
-    fn use_tool(
-        &mut self,
-        stack: &ItemStack,
-        allow_block_actions: bool,
-    ) -> Result<horizon_client::first_person::UseResult> {
-        use horizon_client::first_person::UseResult;
-        let item = stack.item.trim_start_matches("minecraft:").to_owned();
-        let at = |p: [i32; 3]| {
-            [
-                f64::from(p[0]) + 0.5,
-                f64::from(p[1]) + 0.5,
-                f64::from(p[2]) + 0.5,
-            ]
-        };
-        if allow_block_actions
-            && let Some(hit) = self.pick()
-            && self.use_on_cauldron(hit.pos)?
-        {
-            return Ok(UseResult::Success { swing: true });
-        }
-        if allow_block_actions
-            && let Some(hit) = self.pick()
-            && let Some(placed) = self.use_on_campfire(hit.pos)?
-        {
-            // SUCCESS_SERVER swings; a full campfire's CONSUME does not.
-            return Ok(UseResult::Success { swing: placed });
-        }
-        // BucketItem has no useOn: a guest's UseItemOn leaves it to UseItem.
-        let bucket = horizon_client::items::bucket_contents(&stack.item);
-        if matches!(self.guest_use, Some(GuestUse::OnBlock(_)))
-            && (item == "bucket" || bucket.is_some())
-        {
-            return Ok(UseResult::Pass);
-        }
-        if item == "bucket" {
-            // getPlayerPOVHitResult(SOURCE_ONLY): powder snow's outline before
-            // a fluid source behind it.
-            if let Some(hit) = self.pick()
-                && self.is_powder_snow(hit.pos)
-            {
-                let eye = self.eye_position().unwrap_or(hit.point);
-                let d = |p: [f64; 3]| {
-                    (p[0] - eye[0]).powi(2) + (p[1] - eye[1]).powi(2) + (p[2] - eye[2]).powi(2)
-                };
-                if self
-                    .pick_fluid()
-                    .is_none_or(|fluid| d(fluid.point) >= d(hit.point))
-                {
-                    self.pick_up_powder_snow(hit.pos)?;
-                    return Ok(UseResult::Success { swing: true });
-                }
-            }
-            let Some(hit) = self.pick_fluid() else {
-                return Ok(UseResult::Pass);
-            };
-            let state = self.world.block(hit.pos[0], hit.pos[1], hit.pos[2]);
-            let f = self.res.facts().get(state).clone();
-            if f.fluid == Fluid::None || f.fluid_level != 8 || f.fluid_falling {
-                return Ok(UseResult::Pass);
-            }
-            let sound = match f.fluid {
-                Fluid::Water => "minecraft:item.bucket.fill",
-                _ => "minecraft:item.bucket.fill_lava",
-            };
-            let pos = BlockPos::new(hit.pos[0], hit.pos[1], hit.pos[2]);
-            // PlayerBucketFillEvent.
-            let Some(filled) =
-                self.with_level(|b, level, ticks| b.bucket_pickup(level, ticks, pos))
-            else {
-                return Ok(UseResult::Pass);
-            };
-            self.process_level_events()?;
-            self.sounds.play(sound, Some(at(hit.pos)), 1.0, 1.0);
-            self.trigger_item("minecraft:filled_bucket", &ItemStack::new(filled, 1));
-            if !self.creative {
-                self.consume_held();
-                let filled = ItemStack {
-                    item: Arc::from(filled),
-                    count: 1,
-                    damage: 0,
-                    extra: None,
-                };
-                if self.held().is_none() {
-                    *self.held_mut() = Some(filled);
-                } else if let Some(rest) = self.give(filled)
-                    && let Some(eye) = self.eye_position()
-                {
-                    // ItemUtils.createFilledResult: `player.drop(stack, false)`.
-                    self.throw_from_eyes(rest, eye, false);
-                }
-            }
-            return Ok(UseResult::Success { swing: true });
-        }
-        // BucketItem.use has its own ray, even when the crosshair hits an entity.
-        if !allow_block_actions && bucket.is_none() {
-            return Ok(UseResult::Pass);
-        }
-        let Some(hit) = self.pick() else {
-            return Ok(UseResult::Pass);
-        };
-        let clicked = self.world.block(hit.pos[0], hit.pos[1], hit.pos[2]);
-        if let Some((content, sound, mob)) = bucket {
-            if !self.may_build() {
-                return Ok(UseResult::Fail);
-            }
-            let target = if self.res.facts().get(clicked).replaceable {
-                hit.pos
-            } else {
-                [
-                    hit.pos[0] + hit.face[0],
-                    hit.pos[1] + hit.face[1],
-                    hit.pos[2] + hit.face[2],
-                ]
-            };
-            let pos = BlockPos::new(target[0], target[1], target[2]);
-            // PlayerBucketEmptyEvent.
-            let emptied = self
-                .with_level(|b, level, ticks| b.bucket_empty(level, ticks, pos, content, sound));
-            self.process_level_events()?;
-            if !emptied {
-                return Ok(UseResult::Fail);
-            }
-            if let Some(kind) = mob {
-                if let Some(id) = self.spawn_mob_at(kind, (target[0], target[1], target[2]), true) {
-                    if let Some(m) = self.mobs.iter_mut().find(|m| m.id == id) {
-                        horizon_client::entity_nbt::load_bucket_data(m, stack);
-                    }
-                    self.mob_placed(id)?;
-                }
-                self.post_block_game_event(
-                    "minecraft:entity_place",
-                    target,
-                    self.sculk_actor(),
-                    None,
-                );
-            }
-            self.trigger_block("minecraft:placed_block", target, stack);
-            if !self.creative {
-                *self.held_mut() = Some(ItemStack::new("minecraft:bucket", 1));
-            }
-            return Ok(UseResult::Success { swing: true });
-        }
-        if self.use_block_transformer(stack, hit.pos, hit.face)? {
-            return Ok(UseResult::Success { swing: true });
-        }
-        if item == "honeycomb" {
-            let registry = self.pack.assets.registry;
-            let old = registry.state(clicked).cloned();
-            if let Some(waxed) = old.and_then(|old| self.res.transformers().waxed(registry, &old))
-                && let Ok(state) = registry.resolve(&waxed)
-            {
-                // HoneycombItem.useOn: ITEM_USED_ON_BLOCK before the swap.
-                self.trigger_block("minecraft:item_used_on_block", hit.pos, stack);
-                self.level_set(hit.pos, state)?;
-                self.level_event_at(3003, hit.pos, 0);
-                self.sounds.play(
-                    "minecraft:item.honeycomb.wax_on",
-                    Some(at(hit.pos)),
-                    1.0,
-                    1.0,
-                );
-                // HoneycombItem.useOn's game event, and ItemStack.useOn's used statistic.
-                self.post_block_game_event(
-                    "minecraft:block_change",
-                    hit.pos,
-                    self.sculk_actor(),
-                    Some(state),
-                );
-                self.stats.add("used", &stack.item, 1);
-                if !self.creative {
-                    self.consume_held();
-                }
-                return Ok(UseResult::Success { swing: true });
-            }
-        }
-        if item == "flint_and_steel" || item == "fire_charge" {
-            if !self.may_build() {
-                return Ok(UseResult::Fail);
-            }
-            let name = self.res.facts().get(clicked).name.clone();
-            if self.can_light(clicked, &name) {
-                let registry = self.pack.assets.registry;
-                let mut state = registry
-                    .state(clicked)
-                    .cloned()
-                    .ok_or("missing lit block state")?;
-                state.properties.insert("lit".into(), "true".into());
-                self.level_set(hit.pos, registry.resolve(&state)?)?;
-                self.sounds.play(
-                    if item == "fire_charge" {
-                        "minecraft:item.firecharge.use"
-                    } else {
-                        "minecraft:item.flintandsteel.use"
-                    },
-                    Some(at(hit.pos)),
-                    1.0,
-                    horizon_client::items::fire_starter_pitch(
-                        item == "fire_charge",
-                        &mut self.world.random,
-                    ),
-                );
-                if item == "fire_charge" {
-                    self.consume_held();
-                } else {
-                    self.damage_held(1);
-                }
-                return Ok(UseResult::Success { swing: true });
-            }
-            let target = [
-                hit.pos[0] + hit.face[0],
-                hit.pos[1] + hit.face[1],
-                hit.pos[2] + hit.face[2],
-            ];
-            if self.can_place_used_fire(target) {
-                if !self.try_light_portal(target)? {
-                    self.place_used_fire(target)?;
-                }
-                let sound = horizon_client::items::fire_starter_sound(item == "fire_charge");
-                let pitch = horizon_client::items::fire_starter_pitch(
-                    item == "fire_charge",
-                    &mut self.world.random,
-                );
-                self.sounds.play(sound, Some(at(target)), 1.0, pitch);
-                if item == "fire_charge" {
-                    self.consume_held();
-                } else {
-                    self.damage_held(1);
-                }
-                return Ok(UseResult::Success { swing: true });
-            }
-            return Ok(UseResult::Fail);
-        }
-        Ok(UseResult::Pass)
-    }
     /// `ExperienceOrb.award`: orbs of the largest sizes; each draws the id
     /// `tryMergeToExisting` compares from the level random, then moves with
     /// its own random.
@@ -9997,7 +8684,7 @@ impl crate::game::Sim<'_> {
         let half = Vec3::new(0.5, 0.5, 0.5);
         let area = Aabb::new(centre.subtract(half), centre.add_vector(half));
         // A server's orbs are its own; a LAN or server guest only shows them.
-        let target = self.remote.is_none().then(|| {
+        let target = false.then(|| {
             self.orbs
                 .iter_mut()
                 .find(|o| o.can_merge(merge_id as u32, value) && o.bounds().intersects(area))
@@ -10031,21 +8718,6 @@ impl crate::game::Sim<'_> {
             count: 1,
             ticks: 0,
         });
-    }
-    fn can_place_used_fire(&mut self, target: [i32; 3]) -> bool {
-        let pos = BlockPos::new(target[0], target[1], target[2]);
-        let direction = match ((self.yaw / 90.0 + 0.5).floor() as i32).rem_euclid(4) {
-            0 => Direction::South,
-            1 => Direction::West,
-            2 => Direction::North,
-            _ => Direction::East,
-        };
-        self.with_level(|b, level, ticks| b.fire_can_be_placed_at(level, ticks, pos, direction))
-    }
-    fn place_used_fire(&mut self, target: [i32; 3]) -> Result<()> {
-        let pos = BlockPos::new(target[0], target[1], target[2]);
-        let state = self.with_level(|b, level, ticks| b.fire_state_for(level, ticks, pos));
-        self.level_set(target, state)
     }
     /// DropExperienceBlock / RedStoneOreBlock / SculkBlock experience ranges.
     fn block_experience(&mut self, name: &str) -> u32 {
@@ -10278,7 +8950,7 @@ impl crate::game::Sim<'_> {
         self.stats.reset("custom", "minecraft:time_since_rest");
     }
     fn wake_up(&mut self) {
-        if self.remote.is_some() {
+        {
             // InBedChatScreen.sendWakeUp: the server wakes the player.
             self.remote_stop_sleeping();
             return;
@@ -10389,12 +9061,7 @@ impl crate::game::Sim<'_> {
     /// generated chunk is saved, hundreds at a time, encoded and written on
     /// the region writer meanwhile.
     fn save_game_with(&mut self, wait: bool) -> Result<()> {
-        if self.remote.is_some() {
-            return Ok(());
-        }
-        self.save_level(wait)?;
-        self.save_parked_levels(wait)?;
-        self.save_game_metadata()
+        return Ok(());
     }
     fn save_game_metadata(&mut self) -> Result<()> {
         self.save_maps();
@@ -10414,31 +9081,6 @@ impl crate::game::Sim<'_> {
         self.save_world_state();
         self.message = Some(("Saved the game".into(), Instant::now()));
         Ok(())
-    }
-    /// Save the level in place: its changed chunks, its entities and its raids.
-    fn save_level(&mut self, wait: bool) -> Result<()> {
-        self.save.save_forced_chunks(&self.streaming.forced)?;
-        self.streaming.save(&mut self.world, wait);
-        let keys: Vec<_> = self.world.modified.drain().collect();
-        let chunks = self.with_entities(keys.iter().filter_map(|k| self.world.chunks.get(k)));
-        self.save
-            .save_later(&chunks, self.pack.assets.registry, self.res.biomes())?;
-        // Prepare entities while the chunk writer runs, then use one barrier.
-        self.save_entities(false)?;
-        self.save_raids();
-        if wait {
-            self.save.flush()?;
-        }
-        Ok(())
-    }
-    /// `LevelLoadTracker.serverProgress`: the player's 7x7 chunks loaded.
-    fn level_load_progress(&self) -> f32 {
-        let (cx, cz) = self.streaming.center;
-        let ready = (-3..=3)
-            .flat_map(|dz| (-3..=3).map(move |dx| (cx + dx, cz + dz)))
-            .filter(|&(x, z)| self.streaming.is_lit(x, z))
-            .count();
-        horizon_client::level_loading::progress(ready)
     }
     /// LOD Distance and Far Detail Reduced as chosen: the player's LOD
     /// Distance when it is on, else a mod's far terrain
@@ -11283,7 +9925,7 @@ impl ApplicationHandler for Game<'_> {
                     let steps = self.clock.advance(elapsed);
                     // The world ticking in the frame: once its ticks took a
                     // tick's length, the rest are dropped (`FixedStep::tick_fits`).
-                    let in_frame = self.remote.is_none();
+                    let in_frame = false;
                     let mut spent = Duration::ZERO;
                     for step in 0..steps {
                         if in_frame && !self.clock.tick_fits(spent) {
@@ -11296,9 +9938,6 @@ impl ApplicationHandler for Game<'_> {
                         if self.front.title.is_none() && !self.pause {
                             let tick = Instant::now();
                             horizon_client::spans::time("tick", || self.tick())?;
-                            if self.remote.is_none() {
-                                self.front.debug_charts.log_tick(tick, tick.elapsed());
-                            }
                             self.tick_ambience();
                             self.tick_fov();
                         }
@@ -11644,7 +10283,6 @@ impl<'a> Game<'a> {
                 message: None,
                 save,
                 level,
-                session_lock: None,
                 sounds: horizon_client::sound_out::SoundOut::new(
                     horizon_client::sound_engine::unique_seed(),
                 ),
@@ -11742,7 +10380,6 @@ impl<'a> Game<'a> {
                 dragon: None,
                 crystals: Vec::new(),
                 dragon_fireballs: Vec::new(),
-                breath_clouds: Vec::new(),
                 dragon_model: prepared.dragon_model,
                 text_displays: Default::default(),
                 remote_knots: Default::default(),
@@ -11797,16 +10434,13 @@ impl<'a> Game<'a> {
                 saved_for_exit: false,
                 pending_save: None,
                 forced_hit: None,
-                guest_use: None,
                 lan_events: Vec::new(),
                 lan_songs: Vec::new(),
                 lan_cushion_breaks: Vec::new(),
                 lan_block_events: Vec::new(),
                 lan_entity_events: Vec::new(),
                 lan_critical_hits: Vec::new(),
-                stabbed: HashMap::new(),
                 kinetic_feedback: HashMap::new(),
-                lan_global_events: Vec::new(),
                 lid_openers: HashMap::new(),
                 guest_packets: Vec::new(),
                 chat_capture: None,

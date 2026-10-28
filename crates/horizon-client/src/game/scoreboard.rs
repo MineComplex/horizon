@@ -67,7 +67,7 @@ impl crate::game::Sim<'_> {
         self.world_root.join("data/minecraft/scoreboard.dat")
     }
     pub(super) fn save_scoreboard(&mut self) {
-        if !self.score.loaded || self.remote.is_some() {
+        if !self.score.loaded || true {
             return;
         }
         self.score.storage.save(&self.world_root);
@@ -375,13 +375,6 @@ impl crate::game::Sim<'_> {
             None => name,
         }
     }
-    pub(super) fn player_display_text(&self) -> Text {
-        let name = Text::literal(self.acting_player_name());
-        match self.player_team() {
-            Some(t) => t.formatted_name(name),
-            None => name,
-        }
-    }
     /// The scoreboard names a score holder argument resolves to.
     pub(super) fn score_holder_names(
         &mut self,
@@ -537,7 +530,7 @@ impl Game<'_> {
         let objective = board.display_objective(sb::SLOT_LIST);
         let shown = tab_list::visible(
             key,
-            self.sim.remote.is_none(),
+            false,
             players.len(),
             objective.is_some(),
         );

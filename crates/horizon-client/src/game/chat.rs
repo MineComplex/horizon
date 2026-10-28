@@ -4,8 +4,7 @@ use super::{Game, Screen};
 pub use horizon_client::world_data::TimeMarker;
 use horizon_client::{
     chat::{
-        Chat, ChatAbilities, ChatAction, ChatScreen, ChatSource, ChatVisibility, Commands,
-        SYSTEM_INDICATOR},
+        Chat, ChatAbilities, ChatAction, ChatScreen, ChatSource, ChatVisibility, Commands},
     hud::HudBatch,
     screen_draw::Measure,
     text::{ClickEvent, Style, Text}};
@@ -825,23 +824,9 @@ impl crate::game::Sim<'_> {
         }
         // Connected to a server (single player's own included), the chat on
         // screen is the connection's: the game's own messages join it.
-        if self.remote.is_some() {
-            self.chat_line(text, ChatSource::Server);
-            return;
-        }
-        // The Chat option's Hidden level takes the server's messages too.
-        self.local_chat_line(text, Some(SYSTEM_INDICATOR), ChatSource::Server);
-    }
-    /// A line on the window's own chat when the Chat option lets `source`
-    /// through.
-    fn local_chat_line(&mut self, text: Text, indicator: Option<u32>, source: ChatSource) {
-        if !self.ui.chat.shows(source) {
-            return;
-        }
-        let focused = self.screen == Screen::Chat;
-        self.ui
-            .chat
-            .add_unwrapped(text, indicator, source, self.ticks, focused);
+        self.chat_line(text, ChatSource::Server);
+        return;
+        
     }
     /// ChatScreen.handleChatInput: history, then a command or a chat line.
     /// The Chat option's restrictions stop the message here too, so a
@@ -853,23 +838,9 @@ impl crate::game::Sim<'_> {
         self.ui.chat.add_recent(message);
         // On a server (single player's own included) the server runs it,
         // unless a client mod owns the command.
-        if self.remote.is_some() {
-            self.send_chat(message);
-            return;
-        }
-        if let Some(command) = message.strip_prefix('/') {
-            self.run_command(command);
-        } else {
-            let line = Text::translate(
-                "chat.type.text",
-                &[self.player_display_name(), Text::literal(message)],
-            );
-            let focused = self.screen == Screen::Chat;
-            self.ui
-                .chat
-                .add_unwrapped(line, None, ChatSource::Player, self.ticks, focused);
-            self.lan_host_chat(message);
-        }
+        self.send_chat(message);
+        return;
+        
     }
     /// `Screen.clickUrlAction`: nothing with Web Links off, else the link
     /// opens, after the confirmation unless Prompt on Links is off.
@@ -898,10 +869,8 @@ impl crate::game::Sim<'_> {
     /// parse; here the server answers it.)
     pub(super) fn click_command(&mut self, command: &str) {
         let command = command.strip_prefix('/').unwrap_or(command);
-        if self.remote.is_some() {
+        {
             self.send_chat(&format!("/{command}"));
-        } else {
-            self.run_command(command);
         }
     }
     /// The engine-side rule values (block behaviour and health).

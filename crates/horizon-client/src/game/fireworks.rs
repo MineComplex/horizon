@@ -2,7 +2,7 @@
 //! from a block face, boosting a gliding player, the 1.15 horizontal
 //! acceleration and 0.04 lift, the flight-duration lifetime, explosion
 //! damage with line of sight, and the client explosion (`createFireworks`).
-use super::{Game, Hit, item_draw::owner_at};
+use super::{Game, item_draw::owner_at};
 use horizon_assets::item_model::DisplayContext;
 use horizon_client::{
     block_entity_render::vertex_light,
@@ -28,9 +28,6 @@ pub(super) struct Rocket {
     pub(super) explosions: Vec<FireworkExplosion>,
     /// Boosting the player (attachedToEntity).
     pub(super) attached: bool,
-    /// On a server, the player it boosts when not this game's own: a guest's
-    /// connection.
-    pub(super) guest: Option<u32>,
     /// `DATA_ATTACHED_TO_TARGET`: the server entity the rocket follows;
     /// boosting happens when it is the local player.
     pub(super) attached_to: Option<u32>,
@@ -53,7 +50,6 @@ impl Rocket {
             life: 0,
             explosions,
             attached: false,
-            guest: None,
             attached_to: None,
             angled: false,
             item,
@@ -188,29 +184,10 @@ impl crate::game::Sim<'_> {
             life: 0,
             explosions,
             attached,
-            guest: None,
             attached_to: None,
             angled: false,
             item: stack.clone(),
         }
-    }
-    /// `FireworkRocketItem.useOn`: launch from the clicked point.
-    pub(super) fn launch_firework(&mut self, hit: &Hit, stack: &ItemStack) -> bool {
-        if &*stack.item != "minecraft:firework_rocket" {
-            return false;
-        }
-        let at = Vec3::new(
-            hit.point[0] + f64::from(hit.face[0]) * 0.15,
-            hit.point[1] + f64::from(hit.face[1]) * 0.15,
-            hit.point[2] + f64::from(hit.face[2]) * 0.15,
-        );
-        let rocket = self.new_rocket(at, stack, false);
-        self.rockets.push(rocket);
-        if !self.creative {
-            self.consume_held();
-        }
-        self.swing_arm();
-        true
     }
     /// A rocket shot at an angle (`DATA_SHOT_AT_ANGLE`): out of a dispenser
     /// (`FireworkRocketItem.asProjectile`) or a crossbow.
@@ -219,23 +196,6 @@ impl crate::game::Sim<'_> {
         rocket.velocity = velocity;
         rocket.angled = true;
         self.rockets.push(rocket);
-    }
-    /// `FireworkRocketItem.use` while gliding: a rocket attached to the player.
-    pub(super) fn boost_firework(&mut self, stack: &ItemStack) -> bool {
-        if &*stack.item != "minecraft:firework_rocket"
-            || !self.player.as_ref().is_some_and(|p| p.fall_flying)
-        {
-            return false;
-        }
-        let at = self.player.as_ref().map_or(Vec3::ZERO, |p| p.position);
-        let mut rocket = self.new_rocket(at, stack, true);
-        rocket.guest = None::<u32>;
-        self.rockets.push(rocket);
-        if !self.creative {
-            self.consume_held();
-        }
-        self.swing_arm();
-        true
     }
     /// FireworkRocketEntity.handleEntityEvent: use the synchronized item data.
     pub(super) fn remote_firework_explosion(&mut self, id: i32) {

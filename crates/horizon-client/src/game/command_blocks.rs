@@ -15,9 +15,7 @@ use horizon_core::position::BlockPos;
 use horizon_protocol::packets::play::{self, Serverbound as S};
 use horizon_world::{
     chunk::BlockState,
-    level::flags,
-    registry::{BlockRegistry, BlockStateId},
-};
+    registry::{BlockRegistry, BlockStateId}};
 use winit::{
     event::{ElementState, KeyEvent},
     keyboard::{KeyCode, PhysicalKey},
@@ -336,39 +334,9 @@ impl crate::game::Sim<'_> {
         let at = BlockPos::new(pos.0, pos.1, pos.2);
         self.with_level(|b, level, ticks| b.schedule_tick(level, ticks, at, 1));
     }
-    /// `CommandBlockEntity.scheduleTick`.
-    fn schedule_command_block_tick(&mut self, pos: Pos) {
-        mark_condition_met(&mut self.world, self.pack.assets.registry, pos);
-        self.schedule_command_block(pos);
-    }
     fn update_output_signal(&mut self, pos: Pos) {
         let at = BlockPos::new(pos.0, pos.1, pos.2);
         self.with_level(|b, level, ticks| b.update_neighbour_for_output_signal(level, ticks, at));
-    }
-    /// `CommandBlock.setPlacedBy`: unless the item carried block entity data
-    /// (`defaults` false), output tracking follows `send_command_feedback` and
-    /// the block's own automatic flag; then the block takes the signal around it.
-    pub(super) fn command_block_placed(&mut self, pos: Pos, defaults: bool) {
-        let feedback = self.world_data.rules.bool("send_command_feedback");
-        let Some(name) = self.block_state_at(pos).map(|s| s.name.as_str()) else {
-            return;
-        };
-        let auto = command_block::automatic_block(name);
-        if defaults && let Some(c) = command_block_mut(&mut self.world, pos) {
-            c.track_output = feedback;
-            c.auto = auto;
-        }
-        let at = BlockPos::new(pos.0, pos.1, pos.2);
-        let signal = self.with_level(|b, level, ticks| b.has_neighbor_signal(level, ticks, at));
-        let registry = self.pack.assets.registry;
-        if let Some((was, auto)) = set_powered(&mut self.world, registry, pos, signal)
-            && signal
-            && !was
-            && !auto
-            && !command_block::automatic_block(name)
-        {
-            self.schedule_command_block(pos);
-        }
     }
     /// `CommandBlock.tick`.
     pub(super) fn command_block_tick(&mut self, pos: BlockPos) {
@@ -610,7 +578,7 @@ impl crate::game::Sim<'_> {
             conditional: s.conditional,
             auto: s.auto,
         };
-        if self.remote.is_some() {
+        {
             self.send(S::SetCommandBlock(play::SetCommandBlock {
                 pos: [edit.pos.0, edit.pos.1, edit.pos.2],
                 command: edit.command,
@@ -619,68 +587,6 @@ impl crate::game::Sim<'_> {
                     | (i8::from(edit.conditional) << 1)
                     | (i8::from(edit.auto) << 2),
             }));
-        } else {
-            self.apply_command_block(&edit);
-        }
-    }
-    /// What `handleSetCommandBlock` does once the player may edit the block.
-    fn apply_command_block(&mut self, s: &CommandBlockEdit) {
-        let pos = s.pos;
-        let registry = self.pack.assets.registry;
-        let Some(current) = self.block_state_at(pos) else {
-            return;
-        };
-        let Some(old_mode) = Mode::of_block(&current.name) else {
-            return;
-        };
-        if self.command_block(pos).is_none() {
-            return;
-        }
-        // The mode is the block, the conditional flag its state; the block
-        // entity stays.
-        let mut wanted = current.clone();
-        wanted.name = s.mode.block().to_owned();
-        wanted
-            .properties
-            .insert("conditional".into(), s.conditional.to_string());
-        if let Ok(id) = registry.resolve(&wanted)
-            && wanted != *current
-        {
-            let entity = self.world.block_entities.take(&pos);
-            let at = BlockPos::new(pos.0, pos.1, pos.2);
-            self.with_level(|b, level, ticks| {
-                b.set_block(level, ticks, at, id, flags::UPDATE_CLIENTS)
-            });
-            if let Some(entity) = entity {
-                self.world.block_entities.put(pos, entity);
-            }
-            let _ = self.process_level_events();
-        }
-        let command = s.command.clone();
-        let Some(c) = command_block_mut(&mut self.world, pos) else {
-            return;
-        };
-        c.set_command(&command);
-        c.track_output = s.track_output;
-        if !s.track_output {
-            c.last_output = None;
-        }
-        // CommandBlockEntity.setAutomatic, then onModeSwitch.
-        let (was_auto, powered) = (c.auto, c.powered);
-        c.auto = s.auto;
-        if !was_auto && s.auto && !powered && s.mode != Mode::Sequence {
-            self.schedule_command_block_tick(pos);
-        }
-        if old_mode != s.mode && s.mode == Mode::Auto && (powered || s.auto) {
-            self.schedule_command_block_tick(pos);
-        }
-        if !command.is_empty() {
-            let key = if self.world_data.rules.bool("command_blocks_work") {
-                "advMode.setCommand.success"
-            } else {
-                "advMode.setCommand.disabled"
-            };
-            self.system_message(Text::translate(key, &[Text::literal(command)]));
         }
     }
 }

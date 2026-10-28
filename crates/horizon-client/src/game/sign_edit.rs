@@ -5,10 +5,8 @@ use super::Game;
 use horizon_client::{
     containers::BlockEntity,
     hud::{HudBatch, rgba},
-    items::ItemStack,
-    signs::{DYE_TEXT, wood_type},
-    ui::EditBox,
-};
+    signs::wood_type,
+    ui::EditBox};
 use horizon_protocol::packets::play::{self, Serverbound as S};
 use winit::{
     event::{ElementState, KeyEvent},
@@ -425,89 +423,6 @@ impl crate::game::Sim<'_> {
             self.open_sign_editor(key, front);
         }
     }
-    /// `SignBlock.useItemOn` with a `SignApplicator` in hand (dyes, ink sacs,
-    /// honeycomb): the item changes the side the player faces and is used up.
-    /// Whether it did; a sign it does not apply to goes on to the empty hand.
-    pub(super) fn use_sign_applicator(&mut self, pos: [i32; 3], held: Option<&ItemStack>) -> bool {
-        let Some(stack) = held else {
-            return false;
-        };
-        let key = (pos[0], pos[1], pos[2]);
-        let Some(BlockEntity::Sign(sign)) = self.world.block_entities.get(&key) else {
-            return false;
-        };
-        if sign.waxed || !self.may_build() {
-            return false;
-        }
-        let item = &*stack.item;
-        let dye = if item.ends_with("_dye") {
-            self.res
-                .items()
-                .get(&stack.item)
-                .and_then(|i| i.dye.clone())
-        } else {
-            None
-        };
-        let colour = dye.and_then(|d| DYE_TEXT.iter().position(|(n, _)| *n == d));
-        if !matches!(
-            item,
-            "minecraft:honeycomb" | "minecraft:glow_ink_sac" | "minecraft:ink_sac"
-        ) && colour.is_none()
-        {
-            return false;
-        }
-        let front = self.facing_sign_front(key);
-        let Some(BlockEntity::Sign(sign)) = self.world.block_entities.get_mut(&key) else {
-            return false;
-        };
-        let centre = pos.map(|v| f64::from(v) + 0.5);
-        let sound = if item == "minecraft:honeycomb" {
-            // HoneycombItem.tryApplyToSign: waxes any sign, empty or not.
-            sign.waxed = true;
-            "minecraft:item.honeycomb.wax_on"
-        } else {
-            let side = if front {
-                &mut sign.front
-            } else {
-                &mut sign.back
-            };
-            // SignApplicator.canApplyToSign: the side must have text.
-            if side.is_empty() {
-                return false;
-            }
-            match colour {
-                Some(c) if side.color != c as u8 => {
-                    side.color = c as u8;
-                    "minecraft:item.dye.use"
-                }
-                None if item == "minecraft:glow_ink_sac" && !side.glowing => {
-                    side.glowing = true;
-                    "minecraft:item.glow_ink_sac.use"
-                }
-                None if item == "minecraft:ink_sac" && side.glowing => {
-                    side.glowing = false;
-                    "minecraft:item.ink_sac.use"
-                }
-                _ => return false,
-            }
-        };
-        if item == "minecraft:honeycomb" {
-            self.level_event_at(3003, pos, 0);
-        }
-        self.sounds.play(sound, Some(centre), 1.0, 1.0);
-        self.mark_block_entity_updated(key);
-        let state = self.world.block(pos[0], pos[1], pos[2]);
-        self.post_block_game_event(
-            "minecraft:block_change",
-            pos,
-            self.sculk_actor(),
-            Some(state),
-        );
-        self.stats.add("used", &stack.item, 1);
-        self.consume_held();
-        self.trigger_block("minecraft:item_used_on_block", pos, stack);
-        true
-    }
     /// `SignBlock.openTextEdit` for the front side after placement.
     pub(super) fn open_sign_editor(&mut self, pos: (i32, i32, i32), front: bool) {
         // Minecraft.setScreen: the editor already open is removed first.
@@ -534,14 +449,12 @@ impl crate::game::Sim<'_> {
     /// and sends it to its guests (`sendBlockUpdated`).
     pub(super) fn close_sign_editor(&mut self) {
         if let Some(edit) = self.sign_edit.take() {
-            if self.remote.is_some() {
+            {
                 self.send(S::SignUpdate(play::SignUpdate {
                     pos: [edit.pos.0, edit.pos.1, edit.pos.2],
                     lines: edit.lines,
                     front: edit.front,
                 }));
-            } else {
-                self.mark_block_entity_updated(edit.pos);
             }
         }
         self.capture(true);

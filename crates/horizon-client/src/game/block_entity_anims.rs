@@ -6,8 +6,7 @@
 use super::Game;
 use horizon_client::{
     block_entity_anim::{
-        BellEntity, ConduitTarget, EndGateway, Shulker, ShulkerStatus, Ticker,
-        closer_to_center_than},
+        BellEntity, ConduitTarget, EndGateway, Shulker, ShulkerStatus, Ticker},
     block_entity_render::BlockAnim,
     collisions::{SceneCollisions, no_collision_empty},
     containers::BlockEntity,
@@ -119,11 +118,6 @@ impl Game<'_> {
                         f64::from(pos[2]) + 0.5,
                     ];
                     // On a server its own copy does this and sends the sound.
-                    if tick.resonate && self.remote.is_none() {
-                        // The server's copy plays the resonance for everyone.
-                        self.sounds
-                            .play("minecraft:block.bell.resonate", Some(centre), 1.0, 1.0);
-                    }
                     if let Some((particles, glow)) = tick.ended {
                         for (p, color) in particles {
                             // ColorParticleOption.create(ENTITY_EFFECT, color): ARGB.
@@ -140,7 +134,7 @@ impl Game<'_> {
                             .sim
                             .mobs
                             .iter_mut()
-                            .filter(|_| self.sim.remote.is_none())
+                            .filter(|_| false)
                         {
                             if glow.contains(&u64::from(m.id)) {
                                 m.add_effect("minecraft:glowing", 60, 0);
@@ -185,7 +179,7 @@ impl Game<'_> {
                     let anims = &mut self.sim.be_anims;
                     let server = anims.gateway_servers.entry(pos).or_insert(initial);
                     // A server sends its copy's block event instead.
-                    let triggered = self.sim.remote.is_none() && server.portal_tick();
+                    let triggered = false && server.portal_tick();
                     let client = anims.gateways.entry(pos).or_insert(initial);
                     if triggered {
                         client.trigger_event(1, 0);
@@ -264,9 +258,6 @@ impl crate::game::Sim<'_> {
                         .or_default()
                         .trigger_event(a, b, time, || gathered);
                 // The server's copy tells the living entities within 32 blocks.
-                if rung && self.remote.is_none() {
-                    self.bell_heard(pos, time);
-                }
             }
             Some(Ticker::Gateway) => {
                 let initial = self.gateway_loaded(pos);
@@ -412,26 +403,6 @@ impl crate::game::Sim<'_> {
             }
         }
         out
-    }
-    /// `BellBlockEntity.updateEntities`: every gathered entity alive within 32
-    /// blocks of the bell's centre gets `HEARD_BELL_TIME` (only villagers
-    /// have a brain that reads it).
-    fn bell_heard(&mut self, pos: [i32; 3], now: i64) {
-        let nearby = self
-            .be_anims
-            .bells
-            .get(&pos)
-            .and_then(|b| b.nearby.clone())
-            .unwrap_or_default();
-        for m in &mut self.mobs {
-            if m.alive()
-                && !m.removed
-                && nearby.contains(&u64::from(m.id))
-                && closer_to_center_than(pos, [m.position.x, m.position.y, m.position.z], 32.0)
-            {
-                horizon_client::mobs::villager_brain::heard_bell(m, now);
-            }
-        }
     }
     /// `ShulkerBoxBlock.canOpen`: a closed box opens only when its lid has
     /// room to rise (`level.noCollision` of the half-open lid box).

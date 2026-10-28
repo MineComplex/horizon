@@ -288,15 +288,6 @@ impl crate::game::Sim<'_> {
             [0.0; 3],
         );
     }
-    /// `ServerLevel.globalLevelEvent`: heard by every player on the server
-    /// (an end portal opening, the dragon's death roar): here, and sent to
-    /// every guest whatever their dimension.
-    pub(super) fn global_level_event(&mut self, id: i32, pos: [i32; 3], data: i32) {
-        self.global_level_event_sound(id, pos);
-        if self.sounds.capture.is_some() {
-            self.lan_global_events.push((id, pos, data));
-        }
-    }
     /// `LevelEventHandler.globalLevelEvent`: the sound two blocks from the
     /// camera towards the event, so it is heard from anywhere.
     pub(super) fn global_level_event_sound(&mut self, id: i32, pos: [i32; 3]) {

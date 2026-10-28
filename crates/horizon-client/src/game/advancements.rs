@@ -371,7 +371,7 @@ impl crate::game::Sim<'_> {
         index
     }
     pub(super) fn load_advancements(&mut self) {
-        if self.adv.loaded || self.remote.is_some() || self.no_player_here() {
+        if self.adv.loaded || true || self.no_player_here() {
             return;
         }
         self.adv.loaded = true;
@@ -389,7 +389,7 @@ impl crate::game::Sim<'_> {
         self.world_data.registries.advancements = tree.list.iter().map(|a| a.id.clone()).collect();
     }
     pub(super) fn save_advancements(&self) {
-        if !self.adv.loaded || self.remote.is_some() || self.no_player_here() {
+        if !self.adv.loaded || true || self.no_player_here() {
             return;
         }
         let Some(path) = self.adv_path() else {
@@ -519,7 +519,7 @@ impl crate::game::Sim<'_> {
     /// `SimpleCriterionTrigger.trigger`: test each open criterion of the
     /// trigger and award what it completes.
     pub(super) fn trigger(&mut self, name: &str, test: impl Fn(&Value, &dyn adv::World) -> bool) {
-        if self.remote.is_some() || self.no_player_here() {
+        if true || self.no_player_here() {
             return;
         }
         self.load_advancements();
@@ -574,7 +574,7 @@ impl crate::game::Sim<'_> {
         {
             self.recipe_toast(unlocked);
         }
-        if unlocked.is_empty() || self.remote.is_some() || self.no_player_here() {
+        if unlocked.is_empty() || true || self.no_player_here() {
             return;
         }
         self.load_advancements();
@@ -704,7 +704,7 @@ impl crate::game::Sim<'_> {
             })
             .count() as f64;
         // Only the criteria the items held could pass (`InventoryIndex`).
-        if self.remote.is_some() || self.no_player_here() {
+        if true || self.no_player_here() {
             return;
         }
         self.load_advancements();
@@ -844,46 +844,6 @@ impl crate::game::Sim<'_> {
                 && adv::damage(&c["damage"], &damage, w, me.position)
         });
     }
-    /// A player condition plus one item (`item` key).
-    pub(super) fn trigger_item(&mut self, name: &str, stack: &ItemStack) {
-        let me = self.player_entity();
-        let it = item_view(stack);
-        self.trigger(name, move |c, w| {
-            let pctx = adv::Entities {
-                this: Some(&me),
-                origin: me.position,
-                tool: None,
-                block_pos: None,
-            };
-            adv::conditions(&c["player"], &pctx, w) && adv::item(&c["item"], &it, w)
-        });
-    }
-    pub(super) fn trigger_item_entity(
-        &mut self,
-        name: &str,
-        stack: &ItemStack,
-        target: &EntityView,
-    ) {
-        let me = self.player_entity();
-        let it = item_view(stack);
-        self.trigger(name, |c, w| adv::item_entity(c, &me, target, &it, w));
-    }
-    /// `EnchantedItemTrigger`: the enchanted item and the levels it cost.
-    pub(super) fn trigger_enchanted_item(&mut self, stack: &ItemStack, levels: i32) {
-        let me = self.player_entity();
-        let it = item_view(stack);
-        self.trigger("minecraft:enchanted_item", move |c, w| {
-            let pctx = adv::Entities {
-                this: Some(&me),
-                origin: me.position,
-                tool: None,
-                block_pos: None,
-            };
-            adv::conditions(&c["player"], &pctx, w)
-                && adv::item(&c["item"], &it, w)
-                && adv::range_i(&c["levels"], i64::from(levels))
-        });
-    }
     /// `BrewedPotionTrigger`: the potion contents of a stack taken from a
     /// brewing stand.
     pub(super) fn trigger_brewed_potion(&mut self, stack: &ItemStack) {
@@ -919,49 +879,6 @@ impl crate::game::Sim<'_> {
             adv::conditions(&c["player"], &pctx, w)
                 && adv::conditions(&c["villager"], &vctx, w)
                 && adv::item(&c["item"], &it, w)
-        });
-    }
-    /// `FishingRodHookedTrigger`: the rod, what the hook is in (or the hook)
-    /// and the items it caught.
-    pub(super) fn trigger_fishing_rod_hooked(
-        &mut self,
-        rod: &ItemStack,
-        hooked: &EntityView,
-        items: &[ItemStack],
-    ) {
-        let me = self.player_entity();
-        let rod = item_view(rod);
-        let hooked = hooked.clone();
-        let items: Vec<ItemView> = items.iter().map(item_view).collect();
-        self.trigger("minecraft:fishing_rod_hooked", move |c, w| {
-            let pctx = adv::Entities {
-                this: Some(&me),
-                origin: me.position,
-                tool: None,
-                block_pos: None,
-            };
-            let ectx = adv::Entities {
-                this: Some(&hooked),
-                ..pctx
-            };
-            adv::conditions(&c["player"], &pctx, w)
-                && adv::item(&c["rod"], &rod, w)
-                && adv::conditions(&c["entity"], &ectx, w)
-                && (c["item"].is_null() || items.iter().any(|i| adv::item(&c["item"], i, w)))
-        });
-    }
-    /// `ItemUsedOnLocationTrigger` (placed_block, item_used_on_block).
-    pub(super) fn trigger_block(&mut self, name: &str, pos: [i32; 3], stack: &ItemStack) {
-        let me = self.player_entity();
-        let it = item_view(stack);
-        self.trigger(name, move |c, w| {
-            let ctx = adv::Entities {
-                this: Some(&me),
-                origin: me.position,
-                tool: Some(&it),
-                block_pos: Some(pos),
-            };
-            adv::conditions(&c["location"], &ctx, w)
         });
     }
     /// `LightningStrikeTrigger`: the bolt, and the mobs around it that it did

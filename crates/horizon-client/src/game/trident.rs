@@ -8,7 +8,7 @@ use horizon_client::{
     collisions::SceneCollisions,
     items::ItemStack,
     mesher::Vertex,
-    mobs::{ Who, anim::Poses},
+    mobs::anim::Poses,
     projectiles::ProjectileWorld};
 use horizon_core::geometry::Vec3;
 
@@ -230,7 +230,7 @@ impl crate::game::Sim<'_> {
             }
             // `hurtWithoutBreaking` and the sound belong to the server; a server's
             // client only launches.
-            let server_client = self.remote.is_some();
+            let server_client = true;
             if !server_client {
                 self.hurt_held_without_breaking(1);
             }
@@ -273,51 +273,6 @@ impl crate::game::Sim<'_> {
             return;
         }
         // The server throws the trident.
-        if self.remote.is_some() {
-            return;
-        }
-        // hurtWithoutBreaking (Unbreaking applies), then the thrown copy.
-        self.hurt_held_without_breaking(1);
-        let thrown = self.held().cloned().unwrap_or(stack);
-        if !self.creative {
-            *self.held_mut() = None;
-        }
-        let start = Vec3::new(eye[0], eye[1] - 0.1, eye[2]);
-        let mut projectile = horizon_client::projectiles::Projectile::new(
-            horizon_client::projectiles::ProjectileKind::Snowball,
-            start,
-            Some(Who::Player),
-        );
-        let (v, on_ground) = self
-            .player
-            .as_ref()
-            .map_or((Vec3::ZERO, true), |p| (p.velocity, p.ground.on_ground));
-        projectile.shoot_from_rotation(
-            &mut self.world.random,
-            self.pitch,
-            self.yaw,
-            0.0,
-            2.5,
-            1.0,
-            v,
-            on_ground,
-        );
-        self.tridents.push(ThrownTrident {
-            id: 0,
-            loyalty: thrown.enchantment_level("minecraft:loyalty"),
-            position: start,
-            previous: start,
-            velocity: projectile.velocity,
-            yaw: projectile.yaw,
-            pitch: projectile.pitch,
-            in_ground: false,
-            in_ground_time: 0,
-            dealt_damage: false,
-            no_physics: false,
-            owner: 0,
-        });
-        self.player_projectile_shot();
-        self.sounds
-            .play("minecraft:item.trident.throw", at, 1.0, 1.0);
+        return;
     }
 }

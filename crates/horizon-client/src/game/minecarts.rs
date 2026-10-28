@@ -4,10 +4,9 @@
 //! `MinecartItem` placement, `VehicleEntity` breaking, the chest, hopper,
 //! furnace and TNT variants, saving, and `AbstractMinecartRenderer`'s old
 //! rail-following render with the display block.
-use super::{Game, Hit, view_vector};
+use super::{Game, view_vector};
 use horizon_client::{
     blocks::Fluid,
-    containers::BlockEntity,
     items::{ItemStack, Items},
     mesher::Vertex,
     mobs::{Part, anim::Poses},
@@ -623,32 +622,6 @@ impl crate::game::Sim<'_> {
             p.velocity = Vec3::ZERO;
         }
     }
-    /// `MinecartItem.useOn`: a cart on the clicked rail.
-    pub(super) fn place_minecart(&mut self, hit: &Hit, stack: &ItemStack) -> bool {
-        let Some(kind) = CartKind::from_id(&stack.item) else {
-            return false;
-        };
-        let Some(rail) = self.rail(hit.pos[0], hit.pos[1], hit.pos[2]) else {
-            return false;
-        };
-        let offset = if rail.shape.is_slope() { 0.5 } else { 0.0 };
-        let at = Vec3::new(
-            f64::from(hit.pos[0]) + 0.5,
-            f64::from(hit.pos[1]) + 0.0625 + offset,
-            f64::from(hit.pos[2]) + 0.5,
-        );
-        self.next_entity += 1;
-        let cart = Minecart::new(self.next_entity, kind, at);
-        self.world
-            .modified
-            .insert((hit.pos[0] >> 4, hit.pos[2] >> 4));
-        self.carts.push(cart);
-        if !self.creative {
-            self.consume_held();
-        }
-        self.swing_arm();
-        true
-    }
     pub(super) fn cart_hit(&self) -> Option<(usize, f64)> {
         let eye = self.eye_position()?;
         let dir = view_vector(self.yaw, self.pitch);
@@ -680,108 +653,6 @@ impl crate::game::Sim<'_> {
             }
         }
         best
-    }
-    /// `interact`: ride, open, fuel or ignite the cart under the crosshair.
-    pub(super) fn interact_cart(&mut self) -> bool {
-        let Some((i, d)) = self.cart_hit() else {
-            return false;
-        };
-        if !self.before_block(d) {
-            return false;
-        }
-        let sneaking = self.keys.contains(&winit::keyboard::KeyCode::ShiftLeft);
-        let held = self.held().cloned();
-        match self.carts[i].kind {
-            CartKind::Rideable => {
-                if sneaking || self.riding.is_some() || self.ridden_by_guest(self.carts[i].id) {
-                    return false;
-                }
-                self.riding = Some(self.carts[i].id);
-            }
-            // AbstractMinecartContainer.interact: no sneak check.
-            CartKind::Chest | CartKind::Hopper => {
-                let c = self.carts[i].clone();
-                let key = (i32::MAX - 15, CART_KEY_Y, c.id as i32);
-                self.world
-                    .block_entities
-                    .insert(key, BlockEntity::Chest(c.items.clone()));
-                self.container = Some(key);
-                self.screen = super::Screen::Inventory;
-                self.capture(false);
-                self.right = false;
-                if c.kind == CartKind::Chest {
-                    let at = [c.position.x, c.position.y, c.position.z];
-                    let pitch = self.world.random.next_float() * 0.1 + 0.9;
-                    self.sounds
-                        .play("minecraft:block.chest.open", Some(at), 0.5, pitch);
-                }
-            }
-            CartKind::Furnace => {
-                let fuel = held
-                    .as_ref()
-                    .is_some_and(|s| matches!(&*s.item, "minecraft:coal" | "minecraft:charcoal"));
-                let c = &mut self.carts[i];
-                if fuel && c.fuel + 3600 <= 32000 {
-                    c.fuel += 3600;
-                    let p = self.player.as_ref().map_or(c.position, |p| p.position);
-                    c.push = [c.position.x - p.x, c.position.z - p.z];
-                    if !self.creative {
-                        self.consume_held();
-                    }
-                }
-            }
-            CartKind::Tnt => {
-                let lighter = held.as_ref().is_some_and(|s| {
-                    matches!(
-                        &*s.item,
-                        "minecraft:flint_and_steel" | "minecraft:fire_charge"
-                    )
-                });
-                if !lighter || self.carts[i].fuse >= 0 {
-                    return false;
-                }
-                let mut c = self.carts[i].clone();
-                self.prime_cart(&mut c);
-                self.carts[i] = c;
-            }
-            // BaseCommandBlock.usedBy: only an operator in creative opens it.
-            CartKind::CommandBlock => return false,
-        }
-        self.swing_arm();
-        true
-    }
-    /// Closing the cart's container open under `key` copies the items back.
-    pub(super) fn close_cart_container(&mut self, key: (i32, i32, i32)) {
-        if key.1 != CART_KEY_Y {
-            return;
-        }
-        self.store_cart_items(key);
-        self.world.block_entities.remove(&key);
-        if let Some(c) = self.carts.iter().find(|c| c.id as i32 == key.2)
-            && c.kind == CartKind::Chest
-        {
-            let at = [c.position.x, c.position.y, c.position.z];
-            let pitch = self.world.random.next_float() * 0.1 + 0.9;
-            self.sounds
-                .play("minecraft:block.chest.close", Some(at), 0.5, pitch);
-        }
-    }
-    /// The menu of a chest or hopper minecart or a chest boat works on the
-    /// vehicle's own items (`ContainerEntity`): the placeholder under `key`
-    /// that the menu edits is copied back to the vehicle.
-    pub(super) fn store_cart_items(&mut self, key: (i32, i32, i32)) {
-        if key.1 != CART_KEY_Y {
-            return;
-        }
-        let Some(BlockEntity::Chest(items)) = self.world.block_entities.get(&key) else {
-            return;
-        };
-        let items = items.clone();
-        if let Some(c) = self.carts.iter_mut().find(|c| c.id as i32 == key.2) {
-            c.items = items;
-        } else if let Some(b) = self.boats.iter_mut().find(|b| b.id as i32 == key.2) {
-            b.items = items;
-        }
     }
     /// The open cart's kind when a cart container is shown.
     pub(super) fn open_cart_kind(&self) -> Option<CartKind> {

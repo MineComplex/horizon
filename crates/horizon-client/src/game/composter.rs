@@ -42,31 +42,6 @@ impl crate::game::Sim<'_> {
         let _ = self.process_level_events();
         after != before
     }
-    /// `ComposterBlock.useItemOn` with the main-hand stack: true when it
-    /// consumed the action (SUCCESS; a full composter falls through to
-    /// `useWithoutItem`, which empties it).
-    pub(super) fn use_composter(&mut self, pos: [i32; 3], held: Option<&ItemStack>) -> bool {
-        let Some(level) = self.composter_level(pos) else {
-            return false;
-        };
-        let Some(stack) = held else {
-            return false;
-        };
-        let Some(layers) = self.compostable(stack) else {
-            return false;
-        };
-        if level >= 8 {
-            return false;
-        }
-        if level < 7 {
-            self.composter_add(pos, &layers);
-            self.stats.add("used", &stack.item, 1);
-            self.consume_held();
-        }
-        // ServerPlayerGameMode.useItemOn: the action was consumed.
-        self.trigger_block("minecraft:item_used_on_block", pos, stack);
-        true
-    }
     /// `HopperBlockEntity.addItem` into the composter's `InputContainer`
     /// (levels 0 to 6; one item, compostable, from above): the remainder.
     pub(super) fn composter_container_insert(

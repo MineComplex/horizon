@@ -1,29 +1,22 @@
 //! `/bossbar` (BossBarCommands) and drawing the custom boss bars.
-use super::{
-    Dim, Game,
-    commands::{R, Target, err},
-};
+use super::{ Game,
+    commands::{R, Target, err}};
 use horizon_client::{
     boss_overlay,
-    bossbar::{self, BossBars},
+    bossbar::BossBars,
     command::{Arg, Context},
-    mobs::Species,
     save,
-    scoreboard::{self as sb, Comp, json_to_tag},
+    scoreboard::{self as sb, Comp},
     scoreboard_cmd::format_list,
-    text::Text,
-};
+    text::Text};
 use horizon_core::random::RandomSource;
-use horizon_protocol::packets::play::{self, BossAction, Clientbound as C};
+use horizon_protocol::packets::play::self;
 use horizon_world::nbt::Tag;
-use std::collections::{HashMap, HashSet};
 
 #[derive(Default)]
 pub(super) struct BossState {
     pub bars: BossBars,
     loaded: bool,
-    /// What each viewer was last sent, so a change becomes one packet.
-    sent: HashMap<u128, HashMap<u128, Offer>>,
 }
 
 fn num(n: impl std::fmt::Display) -> Text {
@@ -53,7 +46,7 @@ impl crate::game::Sim<'_> {
             .join("data/minecraft/custom_boss_events.dat")
     }
     pub(super) fn load_bossbars(&mut self) {
-        if self.bosses.loaded || self.remote.is_some() {
+        if self.bosses.loaded || true {
             return;
         }
         self.bosses.loaded = true;
@@ -65,7 +58,7 @@ impl crate::game::Sim<'_> {
         self.world_data.registries.bossbars = self.bosses.bars.ids();
     }
     pub(super) fn save_bossbars(&self) {
-        if !self.bosses.loaded || self.remote.is_some() {
+        if !self.bosses.loaded || true {
             return;
         }
         if self.bosses.bars.bars.is_empty() && !self.bossbar_path().exists() {
@@ -401,188 +394,7 @@ impl crate::game::Sim<'_> {
     /// that simulates the world applies them to its own overlay; everyone
     /// else gets `ClientboundBossEventPacket`s.
     pub(super) fn publish_boss_bars(&mut self) {
-        if self.remote.is_some() {
-            return;
-        }
-        self.load_bossbars();
-        let viewers = self.boss_viewers();
-        let live: HashSet<u128> = viewers.iter().map(|v| v.uuid).collect();
-        self.bosses.sent.retain(|id, _| live.contains(id));
-        let mut packets = Vec::new();
-        for viewer in &viewers {
-            let desired = self.boss_events_for(viewer);
-            for event in self.diff_boss_events(viewer, desired) {
-                if let Some(conn) = viewer.conn {
-                    packets.push((conn, C::BossEvent(event)));
-                }
-            }
-        }
-        let _ = packets;
-    }
-    fn boss_viewers(&self) -> Vec<Viewer> {
-        let mut out = Vec::new();
-        // While `as_guest` has swapped a guest in, the host's own position
-        // is not in place. Their overlay updates once the tick puts it back.
-        let local = true;
-        if local && let Some(p) = &self.player {
-            let ints = self.level.player_uuid.unwrap_or_else(|| self.acting_uuid());
-            out.push(Viewer {
-                uuid: horizon_client::lan::playerdata::ints_uuid(ints),
-                ints,
-                at: [p.position.x, p.position.y, p.position.z],
-                alive: !p.health.dead_or_dying(),
-                here: true,
-                local: true,
-                conn: None,
-                view_chunks: self.settings.render_distance,
-            });
-        }
-        out
-    }
-    /// Custom bars (`CustomBossEvents.onPlayerConnect` sends them as a player
-    /// joins), then the dragon, withers and the raid.
-    fn boss_events_for(&self, viewer: &Viewer) -> Vec<Offer> {
-        let mut out = Vec::new();
-        for b in &self.bosses.bars.bars {
-            if !b.visible || !b.players.contains(&viewer.ints) {
-                continue;
-            }
-            out.push(Offer {
-                id: b.uuid,
-                name: json_to_tag(&b.name),
-                progress: b.progress(),
-                color: color_index(&b.color),
-                overlay: style_index(&b.style),
-                darken: b.darken,
-                music: b.music,
-                fog: b.fog,
-                scope: Scope::Global,
-            });
-        }
-        if viewer.here
-            && let Some(progress) = self.dragon_boss_progress(viewer.at, viewer.alive)
-        {
-            out.push(Offer {
-                id: bossbar::stable_uuid("minecraft:ender_dragon"),
-                name: translate_tag("entity.minecraft.ender_dragon"),
-                progress,
-                color: 0,
-                overlay: 0,
-                darken: false,
-                music: true,
-                fog: true,
-                scope: Scope::Level(self.dim),
-            });
-        }
-        if viewer.here {
-            let range = f64::from(10.min(viewer.view_chunks.max(0)) * 16);
-            for m in self
-                .mobs
-                .iter()
-                .filter(|m| m.species() == Species::Wither && m.alive() && !m.removed)
-            {
-                let (dx, dz) = (m.position.x - viewer.at[0], m.position.z - viewer.at[2]);
-                if dx * dx + dz * dz > range * range {
-                    continue;
-                }
-                let progress = if m.extra.counter > 0 {
-                    1.0 - m.extra.counter as f32 / horizon_client::mobs::wither::INVULNERABLE as f32
-                } else {
-                    (m.health / m.attrs.max_health).clamp(0.0, 1.0)
-                };
-                let name = if let Some(text) = &m.custom_name_text {
-                    json_to_tag(&text.component())
-                } else if let Some(name) = &m.custom_name {
-                    Tag::String(name.as_str().into())
-                } else {
-                    translate_tag("entity.minecraft.wither")
-                };
-                out.push(Offer {
-                    id: super::lan::entity_uuid(m.id),
-                    name,
-                    progress,
-                    color: 5,
-                    overlay: 0,
-                    darken: true,
-                    music: false,
-                    fog: false,
-                    scope: Scope::Level(self.dim),
-                });
-            }
-        }
-        if viewer.here
-            && let Some((id, name, progress)) = self.raid_boss_at(viewer.at, viewer.alive)
-        {
-            out.push(Offer {
-                id: bossbar::stable_uuid(&format!("raid:{id}")),
-                name,
-                progress,
-                color: 2,
-                overlay: 2,
-                darken: false,
-                music: false,
-                fog: false,
-                scope: Scope::Level(self.dim),
-            });
-        }
-        out
-    }
-    /// The packets that take `viewer` from what it was last sent to `desired`
-    /// (`ServerBossEvent`'s broadcasts).
-    fn diff_boss_events(&mut self, viewer: &Viewer, desired: Vec<Offer>) -> Vec<play::BossEvent> {
-        let full = viewer.local;
-        let dim = self.dim;
-        let sent = self.bosses.sent.entry(viewer.uuid).or_default();
-        let mut out = Vec::new();
-        let event = |id, action| play::BossEvent { id, action };
-        sent.retain(|id, prev| {
-            let owned = full || prev.scope == Scope::Global || prev.scope == Scope::Level(dim);
-            let keep = !owned || desired.iter().any(|e| e.id == *id);
-            if !keep {
-                out.push(event(*id, BossAction::Remove));
-            }
-            keep
-        });
-        for offer in desired {
-            let Some(prev) = sent.get(&offer.id) else {
-                out.push(event(
-                    offer.id,
-                    BossAction::Add {
-                        name: offer.name.clone(),
-                        progress: offer.progress,
-                        color: offer.color,
-                        overlay: offer.overlay,
-                        darken: offer.darken,
-                        music: offer.music,
-                        fog: offer.fog,
-                    },
-                ));
-                sent.insert(offer.id, offer);
-                continue;
-            };
-            let id = offer.id;
-            if prev.progress != offer.progress {
-                let progress = offer.progress;
-                out.push(event(id, BossAction::UpdateProgress { progress }));
-            }
-            if prev.name != offer.name {
-                let name = offer.name.clone();
-                out.push(event(id, BossAction::UpdateName { name }));
-            }
-            if (prev.color, prev.overlay) != (offer.color, offer.overlay) {
-                let (color, overlay) = (offer.color, offer.overlay);
-                out.push(event(id, BossAction::UpdateStyle { color, overlay }));
-            }
-            if (prev.darken, prev.music, prev.fog) != (offer.darken, offer.music, offer.fog) {
-                let (darken, music, fog) = (offer.darken, offer.music, offer.fog);
-                out.push(event(
-                    id,
-                    BossAction::UpdateProperties { darken, music, fog },
-                ));
-            }
-            sent.insert(id, offer);
-        }
-        out
+        return;
     }
 }
 
@@ -592,47 +404,4 @@ fn insecure_uuid(random: &mut impl RandomSource) -> u128 {
     let least = random.next_long() & 4_611_686_018_427_387_903 | i64::MIN;
     ((most as u64 as u128) << 64) | (least as u64 as u128)
 }
-fn translate_tag(key: &str) -> Tag {
-    Tag::compound([("translate", Tag::String(key.into()))])
-}
-fn color_index(color: &str) -> i32 {
-    bossbar::COLORS
-        .iter()
-        .position(|c| *c == color)
-        .unwrap_or(6) as i32
-}
-fn style_index(style: &str) -> i32 {
-    bossbar::STYLES
-        .iter()
-        .position(|s| *s == style)
-        .unwrap_or(0) as i32
-}
 
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum Scope {
-    Global,
-    Level(Dim),
-}
-struct Viewer {
-    uuid: u128,
-    ints: [i32; 4],
-    at: [f64; 3],
-    alive: bool,
-    here: bool,
-    local: bool,
-    conn: Option<u32>,
-    view_chunks: i32,
-}
-/// A boss event as one viewer should see it, and as it was last sent.
-struct Offer {
-    id: u128,
-    name: Tag,
-    progress: f32,
-    /// `BossBarColor` and `BossBarOverlay` ordinals.
-    color: i32,
-    overlay: i32,
-    darken: bool,
-    music: bool,
-    fog: bool,
-    scope: Scope,
-}

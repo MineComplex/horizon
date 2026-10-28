@@ -151,26 +151,6 @@ impl Game<'_> {
     }
 }
 impl crate::game::Sim<'_> {
-    /// A named name tag names the mob under the crosshair.
-    pub(super) fn name_mob(&mut self, index: usize) -> bool {
-        let Some(name) = self
-            .held()
-            .filter(|h| &*h.item == "minecraft:name_tag")
-            .and_then(|h| h.custom_name().map(str::to_owned))
-        else {
-            return false;
-        };
-        let m = &mut self.mobs[index];
-        if !m.alive() {
-            return false;
-        }
-        m.custom_name = Some(name);
-        m.persistent = true;
-        // itemStack.shrink(1), in creative too.
-        self.consume_held();
-        self.swing_arm();
-        true
-    }
     /// `Entity.belowNameDisplay`: the score holder's score in the objective
     /// shown below names, then a space and the objective's name.
     fn below_name_text(&self, holder: &str) -> Option<Text> {

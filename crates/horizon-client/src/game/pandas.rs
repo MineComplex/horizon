@@ -12,51 +12,6 @@ use horizon_core::geometry::Vec3;
 
 impl Game<'_> {}
 impl crate::game::Sim<'_> {
-    /// `Panda.mobInteract` for a click with `item`; whether the click is taken.
-    pub(super) fn interact_panda(&mut self, index: usize, item: &str) -> bool {
-        let creative = self.creative;
-        let m = &mut self.mobs[index];
-        if panda::scared(m) {
-            return false;
-        }
-        if panda::get_up(m) {
-            return true;
-        }
-        if !m.kind.food.iter().any(|f| f == item) {
-            return false;
-        }
-        if m.ai.target.is_some() {
-            panda::got_bamboo(m);
-        }
-        let at = [m.position.x, m.position.y, m.position.z];
-        let mut dropped = None;
-        if m.is_baby() {
-            // ageUp((int) (-getAge() / 20 * 0.1F), true).
-            let seconds = ((-m.extra.age / 20) as f32 * 0.1) as i32;
-            horizon_client::mobs::ai::age_up(m, seconds, true);
-        } else if m.extra.age == 0 && m.extra.in_love <= 0 {
-            m.extra.in_love = 600;
-            m.extra.love_player = true;
-        } else {
-            if panda::is_sitting(m) || m.fluids.in_water {
-                return false;
-            }
-            panda::try_to_sit(m);
-            panda::start_eating(m);
-            // What it held falls, unless the player has infinite materials.
-            if let Some(held) = m.extra.main_hand.clone()
-                && !creative
-            {
-                dropped = Some(ItemStack::new(&held, panda::held_count(m)));
-            }
-            panda::hold(m, item, 1, false);
-        }
-        self.consume_held();
-        if let Some(stack) = dropped {
-            self.spawn_item(stack, at, [0.0, 0.2, 0.0], 10);
-        }
-        true
-    }
     /// `Panda.afterSneeze`: the grown pandas within 10 blocks of a cub jump.
     pub(super) fn panda_sneezed(&mut self, id: u32) {
         let Some(area) = self

@@ -4,7 +4,6 @@
 use super::Game;
 use horizon_client::{
     Result,
-    mobs::Who,
     particles::{ParticleOptions, ParticleType},
     projectiles::{ Projectile, ProjectileKind}};
 use horizon_core::{
@@ -74,40 +73,6 @@ impl Game<'_> {
     }
 }
 impl crate::game::Sim<'_> {
-    /// `WindChargeItem.use`.
-    pub(super) fn throw_wind_charge(&mut self) -> Result<bool> {
-        let (Some(eye), Some(p)) = (self.eye_position(), self.player.as_ref()) else {
-            return Ok(false);
-        };
-        let (velocity, on_ground, pos) = (p.velocity, p.ground.on_ground, p.position);
-        let start = Vec3::new(pos.x, eye[1], pos.z);
-        let mut proj = Projectile::new(ProjectileKind::WindCharge, start, Some(Who::Player));
-        proj.shoot_from_rotation(
-            &mut self.world.random,
-            self.pitch,
-            self.yaw,
-            0.0,
-            1.5,
-            1.0,
-            velocity,
-            on_ground,
-        );
-        self.add_projectile(proj);
-        let pitch = 0.4 / (self.world.random.next_float() * 0.4 + 0.8);
-        self.sounds
-            .play("minecraft:entity.wind_charge.throw", Some(eye), 0.5, pitch);
-        self.stats.add("used", "minecraft:wind_charge", 1);
-        self.swing_arm();
-        if !self.creative
-            && let Some(s) = self.held_mut().as_mut()
-        {
-            s.count -= 1;
-            if s.count == 0 {
-                *self.held_mut() = None;
-            }
-        }
-        Ok(true)
-    }
     /// The exploded positions: rays through everything but the blocks that
     /// stop wind (`blocks_wind_charge_explosions`).
     fn wind_positions(&mut self, center: [f64; 3], radius: f32) -> Vec<[i32; 3]> {

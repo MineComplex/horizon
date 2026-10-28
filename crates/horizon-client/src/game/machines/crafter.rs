@@ -240,19 +240,6 @@ impl crate::game::Sim<'_> {
         (self.carried.is_none() && c.items[i].is_none() && !c.disabled[i] && !self.spectator())
             .then(|| self.translate("gui.togglable_slot", "Click to disable slot"))
     }
-    /// A click in the crafter menu: `CrafterMenu` on the verified menu engine.
-    pub(in crate::game) fn crafter_click(&mut self, slot: usize, shift: bool, right: bool) -> bool {
-        if !self.crafter_open() {
-            return false;
-        }
-        let input = if shift {
-            horizon_client::menu::Input::QuickMove
-        } else {
-            horizon_client::menu::Input::Pickup
-        };
-        self.menu_click(Some(slot), i32::from(right), input);
-        true
-    }
     /// `CrafterScreen.slotClicked`: an empty grid slot is enabled by a click
     /// (or a number key with a hotbar item) when disabled, and disabled by a
     /// click with nothing carried; the menu then gets the click itself.

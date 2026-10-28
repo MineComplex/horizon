@@ -118,9 +118,6 @@ impl crate::game::Sim<'_> {
     /// when it is the input's own name) goes to the server when the menu's
     /// `setItemName` takes it.
     pub(super) fn remote_anvil_rename(&mut self) {
-        if self.remote.is_none() {
-            return;
-        }
         let Some(s) = self
             .station
             .as_ref()

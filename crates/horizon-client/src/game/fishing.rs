@@ -2,7 +2,6 @@
 //! bobbing, lure and bite timers, open water, hooking mobs, retrieving the
 //! `gameplay/fishing` loot) and `FishingHookRenderer` (bobber and line).
 use super::{Game, view_vector};
-use horizon_client::advancements::EntityView;
 use horizon_client::{
     gizmos::Line,
     items::ItemStack,
@@ -10,10 +9,8 @@ use horizon_client::{
     
     pose::Pose};
 use horizon_core::{
-    geometry::{ Vec3, trig},
-    random::RandomSource};
+    geometry::{ Vec3, trig}};
 use horizon_protocol::entity_data::Value;
-use std::sync::Arc;
 
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -28,22 +25,10 @@ pub(super) struct Hook {
     pub(super) position: Vec3,
     pub(super) previous: Vec3,
     state: State,
-    on_ground: bool,
     nibble: i32,
     time_until_lured: i32,
     time_until_hooked: i32,
     open_water: bool,
-    luck: i32,
-}
-/// A player a hook can catch (`canHitEntity`): their entity id, which
-/// guest they are (none: the host) and their box.
-pub(super) struct HookTarget {
-    id: u32,
-}
-const SIZE: f64 = 0.25;
-/// RandomSource.triangle(mode, deviation).
-fn triangle(r: &mut impl RandomSource, mode: f64, deviation: f64) -> f64 {
-    mode + deviation * (f64::from(r.next_float()) - f64::from(r.next_float()))
 }
 impl Game<'_> {
     /// FishingHookRenderer: the bobbers (this player's and the others' a
@@ -99,208 +84,6 @@ impl Game<'_> {
     }
 }
 impl crate::game::Sim<'_> {
-    /// `FishingRodItem.use`.
-    pub(super) fn use_fishing_rod(&mut self, stack: &ItemStack) -> bool {
-        if &*stack.item != "minecraft:fishing_rod" {
-            return false;
-        }
-        let Some(p) = self.player.as_ref() else {
-            return false;
-        };
-        let at = [p.position.x, p.position.y, p.position.z];
-        let pitch = 0.4 / (self.world.random.next_float() * 0.4 + 0.8);
-        if self.hook.is_some() {
-            let damage = self.retrieve_hook(stack);
-            self.damage_held(damage);
-            self.sounds.play(
-                "minecraft:entity.fishing_bobber.retrieve",
-                Some(at),
-                1.0,
-                pitch,
-            );
-        } else {
-            self.sounds.play(
-                "minecraft:entity.fishing_bobber.throw",
-                Some(at),
-                0.5,
-                pitch,
-            );
-            // FishingHook(player, level, luck, lureSpeed)
-            let lure = stack.enchantment_level("minecraft:lure") as i32 * 5 * 20;
-            let luck = stack.enchantment_level("minecraft:luck_of_the_sea") as i32;
-            let (yaw, pitch) = (self.yaw, self.pitch);
-            let y_cos = (-yaw.to_radians() - std::f32::consts::PI).cos();
-            let y_sin = (-yaw.to_radians() - std::f32::consts::PI).sin();
-            let x_cos = -(-pitch.to_radians()).cos();
-            let x_sin = (-pitch.to_radians()).sin();
-            let eye_y = p.position.y + f64::from(p.dimensions.eye_height);
-            let start = Vec3::new(
-                p.position.x - f64::from(y_sin) * 0.3,
-                eye_y,
-                p.position.z - f64::from(y_cos) * 0.3,
-            );
-            let mut v = Vec3::new(
-                f64::from(-y_sin),
-                f64::from((-(x_sin / x_cos)).clamp(-5.0, 5.0)),
-                f64::from(-y_cos),
-            );
-            let len = (v.x * v.x + v.y * v.y + v.z * v.z).sqrt();
-            let r = &mut self.world.random;
-            v = Vec3::new(
-                v.x * (0.6 / len + triangle(r, 0.5, 0.0103365)),
-                v.y * (0.6 / len + triangle(r, 0.5, 0.0103365)),
-                v.z * (0.6 / len + triangle(r, 0.5, 0.0103365)),
-            );
-            // A spawned hook's start position is its feet: centre the box on the eye.
-            let start = Vec3::new(start.x, start.y - SIZE / 2.0, start.z);
-            self.next_entity += 1;
-            self.hook = Some(Hook {
-                id: self.next_entity,
-                position: start,
-                previous: start,
-                state: State::Flying,
-                on_ground: false,
-                nibble: 0,
-                time_until_lured: 0,
-                time_until_hooked: 0,
-                open_water: true,
-                luck,
-            });
-        }
-        self.swing_arm();
-        true
-    }
-    /// `FishingHook.retrieve`: the rod damage it costs.
-    fn retrieve_hook(&mut self, rod: &ItemStack) -> u32 {
-        let Some(hook) = self.hook.take() else {
-            return 0;
-        };
-        let Some(p) = self.player.as_ref() else {
-            return 0;
-        };
-        let owner = p.position;
-        let mut damage = 0;
-        if let State::Hooked(id) = hook.state {
-            // pullEntity: 0.1 of the way to the owner.
-            let d = Vec3::new(
-                owner.x - hook.position.x,
-                owner.y - hook.position.y,
-                owner.z - hook.position.z,
-            );
-            let pulled = |v: Vec3| Vec3::new(v.x + d.x * 0.1, v.y + d.y * 0.1, v.z + d.z * 0.1);
-            let mut hooked_item = false;
-            if let Some(m) = self.mobs.iter_mut().find(|m| m.id == id) {
-                m.velocity = pulled(m.velocity);
-            } else if let Some(item) = self.dropped.iter_mut().find(|i| i.id == id) {
-                item.velocity = pulled(item.velocity);
-                hooked_item = true;
-            } else if self.creatures.hook_targets.iter().any(|t| t.id == id) {
-                // A player: the hub moves them when the tick ends.
-                self.creatures
-                    .hook_pulls
-                    .push((id, Vec3::new(d.x * 0.1, d.y * 0.1, d.z * 0.1)));
-            }
-            // CriteriaTriggers.FISHING_ROD_HOOKED with no items.
-            let hooked = self
-                .mobs
-                .iter()
-                .find(|m| m.id == id)
-                .map(|m| self.mob_entity(m));
-            if let Some(hooked) = hooked {
-                self.trigger_fishing_rod_hooked(rod, &hooked, &[]);
-            }
-            // `hookedIn instanceof ItemEntity ? 3 : 5`.
-            damage = if hooked_item { 3 } else { 5 };
-        } else if hook.nibble > 0 {
-            let biome = self.biome_name_at(hook.position);
-            let Some(loot) = horizon_client::structure_blocks::loot_data(&self.options.resources)
-            else {
-                return damage;
-            };
-            // `withLuck(this.luck + owner.getLuck())`: the rod's Luck of the Sea
-            // plus the owner's luck attribute (the Luck and Bad Luck effects).
-            let owner_luck = self
-                .player
-                .as_mut()
-                .and_then(|p| p.attribute("minecraft:luck").ok())
-                .unwrap_or(0.0) as f32;
-            let mut random = self.world.random.clone();
-            let items = loot.roll(
-                "minecraft:gameplay/fishing",
-                &mut random,
-                hook.luck as f32 + owner_luck,
-                biome.as_deref(),
-                Some(hook.open_water),
-            );
-            self.world.random = random;
-            let mut caught = Vec::new();
-            for stack in items {
-                // FishingHook.retrieve: fish_caught for each catch in #minecraft:fishes.
-                if self
-                    .res
-                    .items()
-                    .item_tags
-                    .get("minecraft:fishes")
-                    .is_some_and(|t| t.contains(stack.item.as_str()))
-                {
-                    self.stats.custom("fish_caught", 1);
-                }
-                let mut item = ItemStack {
-                    item: Arc::from(stack.item.as_str()),
-                    count: stack.count.max(1) as u32,
-                    damage: stack.damage.max(0) as u32,
-                    extra: None,
-                };
-                for (id, level) in &stack.enchantments {
-                    if &*item.item == "minecraft:enchanted_book" {
-                        horizon_client::item_data::set_level(
-                            &mut item.data_mut().stored_enchantments,
-                            id,
-                            (*level).max(0) as u32,
-                        );
-                    } else {
-                        item.enchant(id, (*level).max(0) as u32);
-                    }
-                }
-                if let Some(potion) = &stack.potion {
-                    item = item.with_potion(potion);
-                }
-                caught.push(item.clone());
-                let (dx, dy, dz) = (
-                    owner.x - hook.position.x,
-                    owner.y - hook.position.y,
-                    owner.z - hook.position.z,
-                );
-                let v = [
-                    dx * 0.1,
-                    dy * 0.1 + (dx * dx + dy * dy + dz * dz).sqrt().sqrt() * 0.08,
-                    dz * 0.1,
-                ];
-                self.spawn_item(
-                    item,
-                    [hook.position.x, hook.position.y, hook.position.z],
-                    v,
-                    0,
-                );
-                let xp = self.world.random.next_int_bound(6).unwrap_or(0) as u32 + 1;
-                self.spawn_orbs([owner.x, owner.y + 0.5, owner.z + 0.5], xp);
-            }
-            // CriteriaTriggers.FISHING_ROD_HOOKED: the hook itself is the entity.
-            let bobber = EntityView {
-                kind: "minecraft:fishing_bobber".into(),
-                position: [hook.position.x, hook.position.y, hook.position.z],
-                on_ground: hook.on_ground,
-                fishing_open_water: Some(hook.open_water),
-                ..Default::default()
-            };
-            self.trigger_fishing_rod_hooked(rod, &bobber, &caught);
-            damage = 1;
-        }
-        if hook.on_ground {
-            damage = 2;
-        }
-        damage
-    }
     pub(super) fn biome_name_at(&self, p: Vec3) -> Option<String> {
         let (x, y, z) = (p.x.floor() as i32, p.y.floor() as i32, p.z.floor() as i32);
         let c = self.world.chunks.get(&(x >> 4, z >> 4))?;
@@ -470,12 +253,10 @@ impl Hook {
             position: at,
             previous: at,
             state: State::Flying,
-            on_ground: false,
             nibble: 0,
             time_until_lured: 0,
             time_until_hooked: 0,
             open_water: true,
-            luck: 0,
         }
     }
 }
@@ -499,9 +280,6 @@ impl crate::game::Sim<'_> {
     }
     /// One tick of interpolation for the hooks a server tracks.
     pub(super) fn step_remote_hooks(&mut self, mut step: impl FnMut(u32, Vec3) -> Vec3) {
-        if self.remote.is_none() {
-            return;
-        }
         if let Some(h) = self.hook.as_mut() {
             h.previous = h.position;
             h.position = step(h.id, h.position);
@@ -517,7 +295,7 @@ impl crate::game::Sim<'_> {
         let Some(h) = self
             .hook
             .as_mut()
-            .filter(|h| h.id == id && self.remote.is_some())
+            .filter(|h| h.id == id)
         else {
             return;
         };
@@ -528,13 +306,13 @@ impl crate::game::Sim<'_> {
         }
     }
     pub(super) fn remove_remote_hook(&mut self, id: u32) {
-        if self.remote.is_some() && self.hook.as_ref().is_some_and(|h| h.id == id) {
+        if self.hook.as_ref().is_some_and(|h| h.id == id) {
             self.hook = None;
         }
         self.remote_hooks.retain(|h| h.id != id);
     }
     pub(super) fn clear_remote_hooks(&mut self) {
-        if self.remote.is_some() {
+        {
             self.hook = None;
         }
         self.remote_hooks.clear();

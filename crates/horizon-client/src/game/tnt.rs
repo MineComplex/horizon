@@ -2,13 +2,12 @@
 //! power 4, `TntRenderer` swell and white flash, and `TntBlock.useItemOn`
 //! (flint and steel / fire charge).
 use super::Game;
-use horizon_client::{Result, collisions::SceneCollisions, items::ItemStack, mesher::Vertex};
+use horizon_client::{Result, collisions::SceneCollisions, mesher::Vertex};
 use horizon_core::{
     geometry::{Aabb, Vec3},
     position::BlockPos,
     random::RandomSource,
 };
-use horizon_world::level::flags as level_flags;
 
 #[derive(Clone, Debug)]
 pub(super) struct PrimedTnt {
@@ -277,34 +276,6 @@ impl crate::game::Sim<'_> {
             fuse,
             on_ground: false,
         });
-    }
-    /// `TntBlock.useItemOn`: flint and steel or a fire charge primes TNT.
-    pub(super) fn ignite_tnt(&mut self, stack: &ItemStack) -> Result<bool> {
-        let item = &*stack.item;
-        if item != "minecraft:flint_and_steel" && item != "minecraft:fire_charge" {
-            return Ok(false);
-        }
-        let Some(hit) = self.pick() else {
-            return Ok(false);
-        };
-        let state = self.world.block(hit.pos[0], hit.pos[1], hit.pos[2]);
-        if &*self.res.facts().get(state).name != "minecraft:tnt" {
-            return Ok(false);
-        }
-        let pos = BlockPos::new(hit.pos[0], hit.pos[1], hit.pos[2]);
-        self.spawn_primed_tnt(pos, false);
-        let air = self.world.air;
-        self.with_level(|b, level, ticks| {
-            b.set_block(level, ticks, pos, air, level_flags::UPDATE_ALL_IMMEDIATE)
-        });
-        self.process_level_events()?;
-        self.swing_arm();
-        if item == "minecraft:flint_and_steel" {
-            self.damage_held(1);
-        } else {
-            self.consume_held();
-        }
-        Ok(true)
     }
 }
 

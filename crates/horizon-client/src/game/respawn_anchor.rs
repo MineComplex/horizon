@@ -4,13 +4,9 @@
 //! (`ServerPlayer.findRespawnAndUseSpawnBlock`, `PlayerList.respawn`),
 //! using a charge.
 use super::{Dim, Game};
-use horizon_client::first_person::Hand;
 use horizon_client::{
     Result,
     blocks::Fluid,
-    
-    items::ItemStack,
-    mobs::Who,
     text::Text};
 use horizon_core::geometry::Vec3;
 use horizon_world::registry::BlockStateId;
@@ -45,89 +41,15 @@ impl RespawnConfig {
 }
 
 
-/// What a right click with an item does to an anchor before `useWithoutItem`.
-pub(super) enum AnchorUse {
-    /// Glowstone charged it.
-    Charged,
-    /// `PASS`: the off hand's glowstone charges it instead.
-    Pass,
-    /// `TRY_WITH_EMPTY_HAND`, or not an anchor.
-    Other,
-}
 
 impl Game<'_> {
     // ---- respawning -------------------------------------------------------
 }
 impl crate::game::Sim<'_> {
-    pub(super) fn is_anchor(&self, state: BlockStateId) -> bool {
-        &*self.res.facts().get(state).name == "minecraft:respawn_anchor"
-    }
-    fn anchor_charges(&self, state: BlockStateId) -> i32 {
-        self.pack
-            .assets
-            .registry
-            .state(state)
-            .and_then(|s| s.properties.get("charges"))
-            .and_then(|c| c.parse().ok())
-            .unwrap_or(0)
-    }
-    fn anchor_with_charges(&self, state: BlockStateId, charges: i32) -> Option<BlockStateId> {
-        let mut s = self.pack.assets.registry.state(state)?.clone();
-        s.properties.insert("charges".into(), charges.to_string());
-        self.pack.assets.registry.resolve(&s).ok()
-    }
     /// `RespawnAnchorBlock.canSetSpawn`: the `respawn_anchor_works` attribute
     /// (only the Nether's dimension type sets it).
     pub(super) fn anchor_works(&self) -> bool {
         self.dim == Dim::Nether
-    }
-    /// `RespawnAnchorBlock.charge`: one more charge, the block change and the sound.
-    fn charge_anchor(
-        &mut self,
-        pos: [i32; 3],
-        state: BlockStateId,
-        who: Option<Who>,
-    ) -> Result<()> {
-        let Some(next) = self.anchor_with_charges(state, self.anchor_charges(state) + 1) else {
-            return Ok(());
-        };
-        self.level_set(pos, next)?;
-        self.post_block_game_event("minecraft:block_change", pos, who, Some(next));
-        let at = [
-            f64::from(pos[0]) + 0.5,
-            f64::from(pos[1]) + 0.5,
-            f64::from(pos[2]) + 0.5,
-        ];
-        self.sounds
-            .play("minecraft:block.respawn_anchor.charge", Some(at), 1.0, 1.0);
-        Ok(())
-    }
-    /// `RespawnAnchorBlock.useItemOn` with `held` in the hand that acts.
-    pub(super) fn use_respawn_anchor(
-        &mut self,
-        pos: [i32; 3],
-        held: Option<&ItemStack>,
-    ) -> Result<AnchorUse> {
-        let state = self.world.block(pos[0], pos[1], pos[2]);
-        if !self.is_anchor(state) {
-            return Ok(AnchorUse::Other);
-        }
-        let fuel = |s: Option<&ItemStack>| s.is_some_and(|s| &*s.item == "minecraft:glowstone");
-        let chargeable = self.anchor_charges(state) < 4;
-        if fuel(held) && chargeable {
-            let used = held.cloned();
-            self.charge_anchor(pos, state, Some(Who::Player))?;
-            // itemStack.consume(1, player); the criterion sees the stack as used.
-            self.consume_held();
-            if let Some(stack) = used {
-                self.trigger_block("minecraft:item_used_on_block", pos, &stack);
-            }
-            return Ok(AnchorUse::Charged);
-        }
-        if self.hand == Hand::Main && fuel(self.offhand.as_ref()) && chargeable {
-            return Ok(AnchorUse::Pass);
-        }
-        Ok(AnchorUse::Other)
     }
     /// `RespawnAnchorBlock.useWithoutItem` on a charged anchor: outside the
     /// Nether it explodes; inside, it becomes the respawn point.

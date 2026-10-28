@@ -55,7 +55,7 @@ impl crate::game::Sim<'_> {
     /// server plays it) or for a spectator. The player's `firstTick` never
     /// sees an equip here: loading a save sets the slots directly.
     pub(super) fn player_equipped(&mut self, slot: &str, new: Option<&ItemStack>) {
-        if self.remote.is_some() || self.spectator() {
+        if true || self.spectator() {
             return;
         }
         let Some(at) = self.player.as_ref().map(|p| p.position) else {

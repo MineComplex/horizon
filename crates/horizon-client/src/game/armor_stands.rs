@@ -10,10 +10,7 @@ use horizon_client::{
     mobs::{Mob, Part, anim::Poses},
     trims::{TrimOverride, TrimRegistry, TrimTexture},
 };
-use horizon_core::{
-    geometry::{Aabb, Vec3},
-    random::RandomSource,
-};
+use horizon_core::random::RandomSource;
 use std::{collections::HashMap, path::PathBuf, sync::Arc};
 
 /// `EquipmentLayerRenderer.getColorForLayer`: a dyeable layer (one with a
@@ -491,64 +488,6 @@ impl Game<'_> {
     }
 }
 impl crate::game::Sim<'_> {
-    /// `ArmorStandItem.useOn`.
-    pub(super) fn place_armor_stand(&mut self, hit: &super::Hit, stack: &ItemStack) -> bool {
-        if &*stack.item != "minecraft:armor_stand" || hit.face == [0, -1, 0] {
-            return false;
-        }
-        // BlockPlaceContext: a replaceable clicked block is replaced.
-        let clicked = self
-            .res
-            .facts()
-            .get(self.world.block(hit.pos[0], hit.pos[1], hit.pos[2]));
-        let pos = if clicked.replaceable {
-            hit.pos
-        } else {
-            std::array::from_fn(|i| hit.pos[i] + hit.face[i])
-        };
-        let foot = Vec3::new(
-            f64::from(pos[0]) + 0.5,
-            f64::from(pos[1]),
-            f64::from(pos[2]) + 0.5,
-        );
-        let yaw =
-            (((self.yaw - 180.0 + 180.0).rem_euclid(360.0) - 180.0 + 22.5) / 45.0).floor() * 45.0;
-        let stand = ArmorStand::new(self.next_entity + 1, foot, yaw);
-        let b = stand.bounds();
-        // Touching the floor is not a collision.
-        let (lo, hi) = (b.min_position(), b.max_position());
-        let e = 1.0e-7;
-        let bounds = Aabb::new(
-            Vec3::new(lo.x + e, lo.y + e, lo.z + e),
-            Vec3::new(hi.x - e, hi.y - e, hi.z - e),
-        );
-        let mut scene = horizon_client::collisions::SceneCollisions {
-            world: &self.world,
-            binding: self.collision,
-            subject: None,
-        };
-        if !scene.unobstructed(bounds).unwrap_or(false)
-            || self
-                .armor_stands
-                .iter()
-                .any(|o| overlaps(o.bounds(), bounds))
-        {
-            return false;
-        }
-        self.next_entity += 1;
-        self.sounds.play(
-            "minecraft:entity.armor_stand.place",
-            Some([foot.x, foot.y, foot.z]),
-            0.75,
-            0.8,
-        );
-        self.world.modified.insert((pos[0] >> 4, pos[2] >> 4));
-        self.armor_stands.push(stand);
-        if !self.creative {
-            self.consume_held();
-        }
-        true
-    }
     /// The armor stand under the crosshair, its distance and the hit point.
     pub(super) fn armor_stand_hit(&self) -> Option<(usize, f64, [f64; 3])> {
         let eye = self.eye_position()?;
@@ -581,104 +520,6 @@ impl crate::game::Sim<'_> {
             }
         }
         best
-    }
-    fn equipment_slot(&self, stack: &ItemStack) -> usize {
-        match self
-            .res
-            .items()
-            .get(&stack.item)
-            .and_then(|i| i.equip_slot.as_deref())
-        {
-            Some("feet") => 2,
-            Some("legs") => 3,
-            Some("chest") => 4,
-            Some("head") => 5,
-            Some("offhand") => 1,
-            _ => 0,
-        }
-    }
-    /// `ArmorStand.interactAt`.
-    pub(super) fn interact_armor_stand(&mut self) -> bool {
-        let Some((i, d, point)) = self.armor_stand_hit() else {
-            return false;
-        };
-        if !self.before_block(d) {
-            return false;
-        }
-        let held = self.held().cloned();
-        if held
-            .as_ref()
-            .is_some_and(|h| &*h.item == "minecraft:name_tag")
-        {
-            return false;
-        }
-        let a = &self.armor_stands[i];
-        let slot = match &held {
-            Some(h) => {
-                let slot = self.equipment_slot(h);
-                if slot < 2 && !a.show_arms {
-                    return true;
-                }
-                slot
-            }
-            None => {
-                // getClickedSlot by the height of the click.
-                let y = (point[1] - a.position.y) / if a.small { 0.5 } else { 1.0 };
-                let has = |s: usize| a.equipment[s].is_some();
-                let small = a.small;
-                if y >= 0.1 && y < 0.1 + if small { 0.8 } else { 0.45 } && has(2) {
-                    2
-                } else if y >= 0.9 + if small { 0.3 } else { 0.0 }
-                    && y < 0.9 + if small { 1.0 } else { 0.7 }
-                    && has(4)
-                {
-                    4
-                } else if y >= 0.4 && y < 0.4 + if small { 1.0 } else { 0.8 } && has(3) {
-                    3
-                } else if y >= 1.6 && has(5) {
-                    5
-                } else if !has(0) && has(1) {
-                    1
-                } else {
-                    0
-                }
-            }
-        };
-        let current = self.armor_stands[i].equipment[slot].clone();
-        if held.is_none() && current.is_none() {
-            return false;
-        }
-        // ArmorStand.swapItem.
-        match held {
-            // A player with infinite materials puts a copy of one on an empty
-            // slot and keeps the stack.
-            Some(h) if self.creative && current.is_none() => {
-                self.armor_stands[i].equipment[slot] = Some(ItemStack { count: 1, ..h });
-            }
-            Some(h) if h.count > 1 => {
-                if current.is_some() {
-                    return true;
-                }
-                self.armor_stands[i].equipment[slot] = Some(ItemStack {
-                    count: 1,
-                    ..h.clone()
-                });
-                *self.held_mut() = Some(ItemStack {
-                    count: h.count - 1,
-                    ..h
-                });
-            }
-            h => {
-                self.armor_stands[i].equipment[slot] = h;
-                *self.held_mut() = current;
-            }
-        }
-        let p = self.armor_stands[i].position;
-        self.world
-            .modified
-            .insert(((p.x.floor() as i32) >> 4, (p.z.floor() as i32) >> 4));
-        self.swing_arm();
-        true
     }
     /// `ArmorStand.hurtServer` from a player attack.
     pub(super) fn attack_armor_stand(&mut self) -> bool {
@@ -758,68 +599,8 @@ fn apply_pose(poses: &mut Poses, pose: &[[f32; 3]; 6]) {
         }
     }
 }
-fn overlaps(a: Aabb, b: Aabb) -> bool {
-    let (a0, a1, b0, b1) = (
-        a.min_position(),
-        a.max_position(),
-        b.min_position(),
-        b.max_position(),
-    );
-    a0.x < b1.x && b0.x < a1.x && a0.y < b1.y && b0.y < a1.y && a0.z < b1.z && b0.z < a1.z
-}
 impl Game<'_> {}
 impl crate::game::Sim<'_> {
-    /// `Equippable.swapWithEquipmentSlot`: right-clicking armor swaps it into
-    /// its slot (the worn piece comes back to the hand).
-    pub(super) fn equip_from_hand(&mut self, stack: &ItemStack) -> bool {
-        let Some(info) = self.res.items().get(&stack.item) else {
-            return false;
-        };
-        let (index, slot) = match info.equip_slot.as_deref() {
-            Some("head") => (0, "head"),
-            Some("chest") => (1, "chest"),
-            Some("legs") => (2, "legs"),
-            Some("feet") => (3, "feet"),
-            _ => return false,
-        };
-        if !info.swappable {
-            return false;
-        }
-        let current = self.armor[index].clone();
-        // PREVENT_ARMOR_CHANGE (Curse of Binding) outside creative, or the same item.
-        if current.as_ref().is_some_and(|c| {
-            (c.enchantment_level("minecraft:binding_curse") > 0 && !self.creative)
-                || c.same_item_same_components(stack)
-        }) {
-            return true;
-        }
-        let equipped = ItemStack {
-            count: 1,
-            ..stack.clone()
-        };
-        self.armor[index] = Some(equipped.clone());
-        // Player.setItemSlot: onEquipItem plays the equip sound.
-        self.player_equipped(slot, Some(&equipped));
-        if !self.creative {
-            let mut held = stack.clone();
-            held.count -= 1;
-            if held.count == 0 {
-                // The worn piece comes back to the hand.
-                *self.held_mut() = current;
-            } else {
-                *self.held_mut() = Some(held);
-                if let Some(old) = current
-                    && let Some(rest) = self.give(old)
-                    && let Some(eye) = self.eye_position()
-                {
-                    self.spawn_item(rest, eye, [0.0; 3], 40);
-                }
-            }
-        }
-        self.apply_equipment();
-        self.swing_arm();
-        true
-    }
 }
 impl Game<'_> {
     /// `ItemInHandLayer` and `CustomHeadLayer` of an armour stand: the hand

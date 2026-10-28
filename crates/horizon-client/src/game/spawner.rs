@@ -4,12 +4,8 @@
 //! spinning inside (`SpawnerRenderer`).
 use super::Game;
 use horizon_client::{
-    Result,
     containers::BlockEntity,
-    mobs::{
-        Mob, Who,
-        spawner::SpawnerEvent,
-        trial_spawner::TrialState},
+    mobs::Mob,
     particles::{ParticleOptions, ParticleType}};
 use horizon_core::random::RandomSource;
 use std::collections::{HashMap, HashSet};
@@ -93,50 +89,6 @@ impl crate::game::Sim<'_> {
             .as_ref()
             .is_some_and(|t| t.contains(id))
     }
-    /// What a spawner's tick or a spawn egg did, shown and sent.
-    fn apply_spawner_events(
-        &mut self,
-        key: Pos,
-        events: Vec<SpawnerEvent>,
-        ids: &HashMap<u32, u32>,
-    ) -> Result<()> {
-        let pos = [key.0, key.1, key.2];
-        for event in events {
-            match event {
-                SpawnerEvent::BlockUpdated => self.spawner_block_updated(key),
-                SpawnerEvent::BlockEvent(id) => {
-                    self.lan_block_event(pos, id, 0);
-                    // The client copy's onEventTriggered.
-                    if let Some(BlockEntity::Spawner(s)) = self.world.block_entities.get_mut(&key) {
-                        s.client_event(id);
-                    }
-                }
-                SpawnerEvent::LevelEvent(id) => self.level_event_at(id, pos, 0),
-                SpawnerEvent::EntityPlace(mob, at) => {
-                    let who = ids.get(&mob).map(|id| Who::Mob(*id));
-                    self.post_block_game_event("minecraft:entity_place", at, who, None);
-                }
-                SpawnerEvent::SpawnAnim(mob) => {
-                    if let Some(id) = ids.get(&mob) {
-                        self.mob_poof(*id);
-                    }
-                }
-            }
-        }
-        Ok(())
-    }
-    /// `sendBlockUpdated`: the clients load the new update tag (the client
-    /// copy's delay follows it, its display mob is made again).
-    fn spawner_block_updated(&mut self, key: Pos) {
-        if let Some(BlockEntity::Spawner(s)) = self.world.block_entities.get_mut(&key) {
-            s.client_loaded();
-        }
-        self.spawners.displays.remove(&key);
-        if let Some(log) = self.world.block_log.as_mut() {
-            log.push(key);
-        }
-        self.world.modified.insert((key.0 >> 4, key.2 >> 4));
-    }
     /// `LivingEntity.makePoofParticles` (entity event 20) for a mob.
     pub(super) fn mob_poof(&mut self, id: u32) {
         let Some(m) = self.mobs.iter().find(|m| m.id == id) else {
@@ -179,46 +131,5 @@ impl crate::game::Sim<'_> {
             self.particles.add(&smoke, [x, y, z], [0.0; 3]);
             self.particles.add(&flame, [x, y, z], [0.0; 3]);
         }
-    }
-    /// `SpawnEggItem.useOn` on a spawner: the egg sets its mob. None when the
-    /// clicked block has no spawner.
-    pub(super) fn use_spawn_egg_on_spawner(&mut self, pos: [i32; 3], kind: &str) -> Option<bool> {
-        let key = (pos[0], pos[1], pos[2]);
-        let trial = match self.world.block_entities.get(&key) {
-            Some(BlockEntity::Spawner(_)) => false,
-            Some(BlockEntity::TrialSpawner(_)) => true,
-            _ => return None,
-        };
-        if !self.world_data.rules.bool("spawner_blocks_work") {
-            self.system_message(horizon_client::text::Text::translate(
-                "advMode.notEnabled.spawner",
-                &[],
-            ));
-            return Some(false);
-        }
-        if trial {
-            // TrialSpawnerBlockEntity.setEntityId: overrideEntityToSpawn, which
-            // ends in setState(INACTIVE).
-            if let Some(BlockEntity::TrialSpawner(t)) = self.world.block_entities.get_mut(&key) {
-                t.override_entity(kind);
-            }
-            let ominous = self.trial_spawner_block(key).is_some_and(|(_, o)| o);
-            let _ = self.set_trial_spawner_state(key, TrialState::Inactive, ominous);
-        } else {
-            let mut events = Vec::new();
-            let mut random = std::mem::replace(
-                &mut self.world.random,
-                horizon_core::random::LegacyRandom::new(0),
-            );
-            if let Some(BlockEntity::Spawner(s)) = self.world.block_entities.get_mut(&key) {
-                s.set_entity_id(kind, &mut random, &mut events);
-            }
-            self.world.random = random;
-            let _ = self.apply_spawner_events(key, events, &HashMap::new());
-        }
-        // sendBlockUpdated(3) and the player's block_change game event.
-        self.spawner_block_updated(key);
-        self.post_block_game_event("minecraft:block_change", pos, Some(Who::Player), None);
-        Some(true)
     }
 }

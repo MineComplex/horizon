@@ -4,16 +4,10 @@
 //! them through the block entity's update tag (`lan::chunks::entity_tag`).
 use super::Game;
 use horizon_assets::item_model::DisplayContext;
-use horizon_client::{
-    Result, block_entity_render::vertex_light, containers::BlockEntity, mesher::Vertex, mobs::Who};
+use horizon_client::{ block_entity_render::vertex_light, containers::BlockEntity, mesher::Vertex};
 use horizon_core::position::BlockPos;
 
-/// The `campfire_cooking` recipe kind (`RecipeType.CAMPFIRE_COOKING`).
-const KIND: &str = "minecraft:campfire_cooking";
 
-fn is_campfire(name: &str) -> bool {
-    name == "minecraft:campfire" || name == "minecraft:soul_campfire"
-}
 
 impl Game<'_> {
     /// `CampfireRenderer`: each cooking item lies on the fire, slot `i`
@@ -72,47 +66,4 @@ impl Game<'_> {
     }
 }
 impl crate::game::Sim<'_> {
-    /// `CampfireBlock.useItemOn` with a held item that is a campfire recipe's
-    /// input (`RecipePropertySet.CAMPFIRE_INPUT`): on a server level the food
-    /// goes into the first free slot (`placeFood`), and the use is consumed
-    /// whether or not there was room. A client of a server leaves the placing
-    /// to the server. Whether the food went in; None when this isn't a
-    /// campfire use, so the item's own use runs.
-    pub(super) fn use_on_campfire(&mut self, pos: [i32; 3]) -> Result<Option<bool>> {
-        let state = self.world.block(pos[0], pos[1], pos[2]);
-        if !is_campfire(&self.res.facts().get(state).name) {
-            return Ok(None);
-        }
-        let Some(held) = self.held().cloned() else {
-            return Ok(None);
-        };
-        let Some(time) = self.res.recipes().cook(KIND, &held).map(|r| r.time as i32) else {
-            return Ok(None);
-        };
-        // A client of a server predicts the placing; the server decides.
-        if self.remote.is_some() {
-            return Ok(Some(true));
-        }
-        let key = (pos[0], pos[1], pos[2]);
-        let placed = match self.world.block_entities.get_mut(&key) {
-            Some(BlockEntity::Campfire(c)) => {
-                let mut one = held.clone();
-                c.place_food(&mut one, time)
-            }
-            _ => false,
-        };
-        if placed {
-            // ItemStack.consumeAndReturn: creative keeps the item.
-            self.consume_held();
-            self.stats.custom("interact_with_campfire", 1);
-            self.post_block_game_event(
-                "minecraft:block_change",
-                pos,
-                Some(Who::Player),
-                Some(state),
-            );
-            self.mark_block_entity_updated(key);
-        }
-        Ok(Some(placed))
-    }
 }

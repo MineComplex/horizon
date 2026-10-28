@@ -43,7 +43,7 @@ impl Game<'_> {
             });
             return Ok(());
         }
-        if self.remote.is_some() {
+        {
             if !quit {
                 return self.leave_server(None);
             }
@@ -53,17 +53,6 @@ impl Game<'_> {
                 reply: None,
                 started: Instant::now(),
                 stage: Stage::Writes,
-            });
-        } else {
-            self.close_container();
-            self.stats.custom("leave_game", 1);
-            self.lan_close(false);
-            self.pending_save = Some(ClosingSave {
-                quit,
-                close: true,
-                reply: None,
-                started: Instant::now(),
-                stage: Stage::Generation,
             });
         }
         self.capture(false);

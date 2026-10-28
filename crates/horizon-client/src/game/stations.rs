@@ -284,7 +284,7 @@ fn rgb_of(rgba: u32) -> u32 {
 impl Game<'_> {
     pub(super) fn station_click(&mut self, right: bool) -> bool {
         // A server's brewing stand: its slots are the server's.
-        if self.station.is_none() && (!self.brewing_open() || self.remote.is_some()) {
+        if self.station.is_none() && (!self.brewing_open() || true) {
             return false;
         }
         let Some(size) = self
@@ -303,7 +303,7 @@ impl Game<'_> {
             if kind == Kind::Merchant && !right && self.merchant_click(local) {
                 return true;
             }
-            if kind == Kind::Merchant && self.remote.is_some() {
+            if kind == Kind::Merchant {
                 // A server's trading window: its slots are the server's.
                 return false;
             }
@@ -1367,7 +1367,7 @@ impl crate::game::Sim<'_> {
         let Some(mut station) = self.station.take() else {
             return;
         };
-        if self.remote.is_some() && station.kind != Kind::Merchant {
+        if station.kind != Kind::Merchant {
             // A server's workstation: its removed() gives the inputs back.
             return;
         }
@@ -1470,7 +1470,7 @@ impl crate::game::Sim<'_> {
         match s.kind {
             // A server's table: its data slots carry the offers, and its
             // client menu only clears them without an enchantable item.
-            Kind::Enchanting if self.remote.is_some() => {
+            Kind::Enchanting if true => {
                 let enchantable = s.inputs[0].as_ref().is_some_and(|i| {
                     data.enchantments.enchantable(&i.item) > 0 && i.enchantments().is_empty()
                 });
@@ -1734,14 +1734,6 @@ impl crate::game::Sim<'_> {
         }
         self.level_event_at(1042, pos, 0);
     }
-    fn play_at(&mut self, sound: &str, pos: [i32; 3], volume: f32, pitch: f32) {
-        let at = [
-            f64::from(pos[0]) + 0.5,
-            f64::from(pos[1]) + 0.5,
-            f64::from(pos[2]) + 0.5,
-        ];
-        self.sounds.play(sound, Some(at), volume, pitch);
-    }
     pub(super) fn give_or_drop(&mut self, stack: ItemStack) {
         if let Some(rest) = self.give(stack)
             && let Some(eye) = self.eye_position()
@@ -1792,42 +1784,10 @@ impl crate::game::Sim<'_> {
         {
             return;
         }
-        if self.remote.is_some() {
-            // EnchantmentScreen.mouseClicked: the client menu took it, the server enchants.
-            self.remote_station_button(button as i32);
-            return;
-        }
-        let Some(enchanted) = stations::apply_enchantment(
-            &self.res.stations().enchantments,
-            self.res.items(),
-            self.level.xp_seed,
-            button,
-            cost,
-            &item,
-        ) else {
-            return;
-        };
-        let pos = s.pos;
-        let enchanted_item = enchanted.clone();
-        // Player.onEnchantmentPerformed
-        self.give_levels(-(lapis_needed as i32));
-        self.level.xp_seed = self.world.random.next_int();
-        if let Some(s) = self.station.as_mut() {
-            s.inputs[0] = Some(enchanted);
-            if !self.creative
-                && let Some(l) = s.inputs[1].as_mut()
-            {
-                l.count -= lapis_needed;
-                if l.count == 0 {
-                    s.inputs[1] = None;
-                }
-            }
-        }
-        let pitch = self.world.random.next_float() * 0.1 + 0.9;
-        self.stats.custom("enchant_item", 1);
-        self.trigger_enchanted_item(&enchanted_item, lapis_needed as i32);
-        self.play_at("minecraft:block.enchantment_table.use", pos, 1.0, pitch);
-        self.station_changed();
+        // EnchantmentScreen.mouseClicked: the client menu took it, the server enchants.
+        self.remote_station_button(button as i32);
+        return;
+        
     }
     /// Mouse click while a station or the brewing stand is open. True when handled.
     /// A station's own buttons a controller can focus besides its slots

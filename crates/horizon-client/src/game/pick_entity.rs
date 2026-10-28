@@ -2,7 +2,6 @@
 //! `ServerGamePacketListenerImpl.handlePickItemFromEntity`): the client aims,
 //! the server answers with `Entity.getPickResult`.
 use super::Game;
-use horizon_client::items::ItemStack;
 
 impl Game<'_> {}
 impl crate::game::Sim<'_> {
@@ -32,38 +31,5 @@ impl crate::game::Sim<'_> {
             offer(d, None);
         }
         best.map(|b| b.1)
-    }
-    /// `Entity.getPickResult` of the entity `id`: a mob's spawn egg, the item
-    /// of a boat, minecart, armor stand, cushion, painting, item frame (the
-    /// framed item when it holds one) or end crystal.
-    pub(super) fn entity_pick_result(&self, id: i32) -> Option<ItemStack> {
-        let id = u32::try_from(id).ok()?;
-        let item = if let Some(m) = self.mobs.iter().find(|m| m.id == id) {
-            // Mob.getPickResult: SpawnEggItem.byId.
-            let egg = format!("{}_spawn_egg", m.kind.id);
-            return self.res.items().get(&egg).map(|_| ItemStack::new(&egg, 1));
-        } else if let Some(b) = self.boats.iter().find(|b| b.id == id) {
-            b.entity_type()
-        } else if let Some(c) = self.carts.iter().find(|c| c.id == id) {
-            c.kind.id().to_owned()
-        } else if self.armor_stands.iter().any(|a| a.id == id) {
-            "minecraft:armor_stand".to_owned()
-        } else if let Some(c) = self.cushions.iter().find(|c| c.id == id) {
-            c.item()
-        } else if let Some(f) = self.item_frames.iter().find(|f| f.id == id) {
-            // ItemFrame.getPickResult: what it frames, else the frame itself.
-            return Some(
-                f.item
-                    .clone()
-                    .unwrap_or_else(|| ItemStack::new(f.kind(), 1)),
-            );
-        } else if self.paintings.iter().any(|p| p.id == id) {
-            "minecraft:painting".to_owned()
-        } else if self.crystals.iter().any(|c| c.id == id) {
-            "minecraft:end_crystal".to_owned()
-        } else {
-            return None;
-        };
-        Some(ItemStack::new(&item, 1))
     }
 }

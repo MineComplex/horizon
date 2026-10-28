@@ -71,16 +71,6 @@ impl crate::game::Sim<'_> {
             })
             .collect()
     }
-    /// `getPassengers().size()` of boat `id`.
-    pub(super) fn boat_passengers(&self, id: u32) -> usize {
-        self.boat_players(id) + self.boat_mobs(id).len()
-    }
-    /// `AbstractBoat.canAddPassenger`: a seat is free and the boat is not
-    /// under water.
-    pub(super) fn boat_has_room(&self, i: usize) -> bool {
-        let b = &self.boats[i];
-        self.boat_passengers(b.id) < b.max_passengers() && !b.under_water()
-    }
     /// Where the player in boat `i` sits: in the middle alone, in front of a
     /// mob.
     pub(super) fn player_boat_seat(&self, i: usize) -> Vec3 {
@@ -145,12 +135,6 @@ impl crate::game::Sim<'_> {
     pub(super) fn boat_move_obstacles(&self, b: &Boat) -> Vec<Aabb> {
         let reach = b.velocity.length() + 1.0;
         self.boat_obstacles(b.id, b.bounds().inflate(Vec3::new(reach, reach, reach)))
-    }
-    /// `noEntityCollision(boat, box)` for a new boat (`BoatItem.use`).
-    pub(super) fn boat_entity_collision(&self, bb: Aabb) -> bool {
-        // EntityGetter.getEntityCollisions: the box grown by 1e-7.
-        let area = bb.inflate(Vec3::new(1.0e-7, 1.0e-7, 1.0e-7));
-        !self.boat_obstacles(u32::MAX, area).is_empty()
     }
     /// `positionRider` and `clampRotation` for the mobs in boats: each sits
     /// in its seat facing the way the boat does, an animal in a full boat
