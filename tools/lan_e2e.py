@@ -4988,7 +4988,6 @@ CHECK_FNS = {'tab': check_tab, 'self': check_self, 'armour': check_armour,
 def run(ctl, out, resources, checks):
     host, guest = Game('host', ctl, resources), Game('guest', ctl, resources)
     # Either way explicitly: the game's default is the server thread.
-    host.d.env['HORIZON_SERVER_THREAD'] = '1' if SERVER_THREAD else '0'
     # A headless run (HORIZON_E2E_HEADLESS) has no focused window to draw in: the games render
     # offscreen and never pause on the focus loss, or the world would stand still.
     headless = bool(os.environ.get('HORIZON_E2E_HEADLESS'))
@@ -5058,11 +5057,9 @@ def main():
     parser.add_argument('--bin-dir', help='prebuilt horizon-client and horizon-ctl (default: build with the fast profile)')
     parser.add_argument('--check', action='append', choices=CHECKS, help='run only these checks (repeatable)')
     parser.add_argument('--out', default=str(ROOT / '.local/lan-e2e'), help='screenshots and game logs go here')
-    mode = parser.add_mutually_exclusive_group()
-    mode.add_argument('--server-thread', dest='server_thread', action='store_true', default=True,
-                      help='host on its server thread (default; retained for existing callers)')
-    mode.add_argument('--in-frame', dest='server_thread', action='store_false',
-                      help='host the world in the window, for comparison')
+    # The host's world always runs on its server thread: the window never simulates a world.
+    parser.add_argument('--server-thread', dest='server_thread', action='store_true', default=True,
+                        help='accepted for existing callers (always on)')
     args = parser.parse_args()
     global SERVER_THREAD
     SERVER_THREAD = args.server_thread

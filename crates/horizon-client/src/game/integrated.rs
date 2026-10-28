@@ -225,7 +225,6 @@ impl Game<'_> {
         // A server without a console: no local player, no window, no control socket.
         // Compatibility for gameplay checks outside startup/world loading.
         options.dedicated = Some(Vec::new());
-        options.server_thread = false;
         options.execution_role = ExecutionRole::IntegratedServer;
         options.control = None;
         options.benchmark = None;
@@ -709,7 +708,6 @@ impl Game<'_> {
         let mut options = self.options.clone();
         options.execution_role = ExecutionRole::IntegratedServer;
         options.dedicated = Some(Vec::new());
-        options.server_thread = false;
         let result = std::thread::Builder::new()
             .name("Server thread".into())
             .spawn(move || {

@@ -71,7 +71,7 @@ cargo build --profile fast -p horizon-client        # optimized, quick to link: 
 python3 tools/parity.py --changed origin/main       # the harnesses your branch can affect (CI's parity job)
 python3 tools/parity.py --changed-files paths.txt --list   # which harnesses cover these files, without running them
 python3 tools/parity.py mob_ai sculk       # named harnesses
-python3 tools/lan_e2e.py --check chest     # two real games over LAN (server-thread host); --in-frame compares the fallback
+python3 tools/lan_e2e.py --check chest     # two real games over LAN (server-thread host)
 python3 tools/agent_control_e2e.py         # horizon-ctl / MCP end to end
 ```
 
@@ -156,23 +156,16 @@ python3 tools/agent_control_e2e.py         # horizon-ctl / MCP end to end
 - Shared read-only data: `Resources` (`res`: blocks, items, recipes, mob types, biomes) and `PackResources`
   (`pack`), both in game.rs.
 
-## The two single-player paths
+## Where a world runs
 
-1. **Server thread (default since #1514):** `game/integrated.rs` runs a second `Game` (`serving`) on a
-   "Server thread" with one level per dimension; the window joins it as a client through memory (`remote`),
-   exactly as a LAN guest or a dedicated server's player does. This is what players run. Open
-   `[server-thread]` issues list the gaps left.
-2. **In-frame (`--in-frame`, `--no-server-thread` or `HORIZON_SERVER_THREAD=0`):** the window's `Game` ticks
-   the world itself, one level that follows the player (`fn enter_dimension`). Deterministic rule fixtures still use this path; player-facing integration uses the default server thread.
-
-LAN guests and dedicated servers always use the server code, so a fix there serves both. Test both paths
-when you touch player-facing gameplay:
+The window never simulates a world (this fork only joins servers; docs/crates.md). `--world` (development and
+tests) runs the world on the integrated server thread: `game/integrated.rs` runs a second `Game` (`serving`)
+with one level per dimension, and the window joins it as a client through memory (`remote`), exactly as a
+dedicated server's player does. Server code serves both.
 
 ```sh
-cargo run --profile fast -p horizon-client -- --resources .local/horizon-client/26.3 --world T               # server thread
-cargo run --profile fast -p horizon-client -- --resources .local/horizon-client/26.3 --world T --in-frame    # in-frame
+cargo run --profile fast -p horizon-client -- --resources .local/horizon-client/26.3 --world T   # dev world
 python3 tools/lan_e2e.py --check <name>                  # host on its server thread, guest is a server client
-python3 tools/lan_e2e.py --in-frame --check <name>       # comparison (portals, levels, distance, lava need server-thread mode)
 python3 tools/parity.py dedicated_server server_entities server_player_damage
 ```
 

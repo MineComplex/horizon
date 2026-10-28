@@ -330,13 +330,12 @@ impl Game<'_> {
         self.sync_mod_commands();
         self.show_mod_output();
     }
-    /// Which mods this game runs: a server the server mods, the window
-    /// client mods, and both when it simulates the world itself (in-frame).
+    /// Which mods this game runs: a server the server mods, the window the client mods (the
+    /// window never simulates a world itself: its worlds run on a server).
     fn mod_runs(&self) -> Runs {
         match self.options.execution_role {
             ExecutionRole::IntegratedServer | ExecutionRole::DedicatedServer => Runs::Server,
-            ExecutionRole::Client if self.options.server_thread => Runs::Client,
-            ExecutionRole::Client => Runs::Both,
+            ExecutionRole::Client => Runs::Client,
         }
     }
     /// The Mods page's rows, from what loaded.

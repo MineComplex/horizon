@@ -7,9 +7,8 @@ The game goes title -> world -> Nether -> quit through horizon-ctl, and the acti
 "In the menus", "Singleplayer" in the Overworld, then the Nether, and be cleared on quit:
 
     single     single player on its server thread (the default)
-    in-frame   single player ticked in the window's frame (--in-frame)
     lan        a host opens its world to LAN and a guest joins: the guest shows "Multiplayer",
-               the host "Hosting a world" with a party of 2 of 8 (lan-in-frame: the host in-frame)
+               the host "Hosting a world" with a party of 2 of 8
     setting    off in horizon-extras.txt: nothing reaches Discord; the Horizon Settings switch
                turns it on (the activity appears) and off (it is cleared)
     late       Discord starts after the game: found within the 15 s retry
@@ -246,8 +245,7 @@ def late(bins):
         game.close()
 
 
-CHECKS = {'single': single, 'in-frame': lambda b: single(b, ['--in-frame']), 'lan': lan,
-          'lan-in-frame': lambda b: lan(b, ['--in-frame']), 'setting': setting,
+CHECKS = {'single': single, 'lan': lan, 'setting': setting,
           'late': late}
 
 
