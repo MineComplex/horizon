@@ -27,6 +27,17 @@ def method(source, name):
     return source[start:end]
 
 
+def function(source, name):
+    start = source.index(f"pub fn {name}(")
+    opening = source.index("{", start)
+    depth = 1
+    end = opening + 1
+    while depth:
+        depth += (source[end] == "{") - (source[end] == "}")
+        end += 1
+    return source[start:end]
+
+
 class WorldInputCaptureTests(unittest.TestCase):
     def test_loading_completion_wiring(self):
         game = (ROOT / "crates/horizon-client/src/game.rs").read_text(encoding="utf-8")
@@ -44,6 +55,7 @@ class WorldInputCaptureTests(unittest.TestCase):
     @unittest.skipUnless(shutil.which("rustc"), "requires Rust")
     def test_capture_lifecycle(self):
         source = (ROOT / "crates/horizon-client/src/game.rs").read_text(encoding="utf-8")
+        mouse = (ROOT / "crates/horizon-client-input/src/mouse.rs").read_text(encoding="utf-8")
         fixture = r'''
 use std::cell::Cell;
 #[derive(Clone, Copy, PartialEq)]
@@ -104,6 +116,7 @@ impl Default for Game {
             server_packs: ServerPacks::default() }
     }
 }
+HELPER
 impl Game {
     fn stop_mining(&mut self) { self.mining = false; }
     fn reset_inventory_clicks(&mut self) {}
@@ -166,6 +179,7 @@ fn main() {
         assert!(!game.captured); // Focus alone does not resume gameplay.
         game.capture(true); // Click or resume action.
         assert!(game.captured);
+        assert_eq!(game.cursor, (213.5, 120.0)); // The grab puts the mouse at the centre.
     }
     let mut game = Game::default();
     // On a server the chat is ChatScreen (#708): loading never grabs over it.
@@ -202,7 +216,14 @@ fn main() {
         # The game's half of `capture` queues the grab; the window applies it (`flush_to_window`):
         # here at once, as the next window event or frame does.
         request = method(source, "capture").replace("fn capture(", "fn request_capture(", 1)
-        fixture = fixture.replace("METHODS", request + "\n" + method(source, "grab_pointer") + "\n" +
+        grab = method(source, "grab_pointer").replace(
+            "horizon_client::mouse::mouse_position_after_grab_change",
+            "mouse_position_after_grab_change")
+        request = request.replace(
+            "horizon_client::mouse::mouse_position_after_grab_change",
+            "mouse_position_after_grab_change")
+        fixture = fixture.replace("HELPER", function(mouse, "mouse_position_after_grab_change"))
+        fixture = fixture.replace("METHODS", request + "\n" + grab + "\n" +
                                   method(source, "capture_loaded_world") + """
     fn capture(&mut self, capture: bool) {
         self.request_capture(capture);

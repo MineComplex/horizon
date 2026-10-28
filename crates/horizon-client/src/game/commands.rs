@@ -1809,7 +1809,7 @@ impl Game<'_> {
             if self.world_data.difficulty == 0 && t.category == "monster" {
                 return Err(err("commands.summon.failed.peaceful", &[]));
             }
-            self.spawn_mob(&short, pos, true);
+            self.spawn_mob_spawned(&short, pos);
             name = Text::translate(&format!("entity.minecraft.{short}"), &[]);
         } else {
             match short.as_str() {
