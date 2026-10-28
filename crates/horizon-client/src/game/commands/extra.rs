@@ -98,6 +98,13 @@ fn civil(secs: i64) -> (i64, i64, i64, i64, i64, i64) {
 }
 
 impl Game<'_> {
+    /// CommandSourceStack.getPlayerOrException.
+    fn source_player(&self) -> R<Target> {
+        match self.command_source.map(|s| s.entity) {
+            None | Some(Some(Target::Player)) => Ok(Target::Player),
+            _ => Err(err("permissions.requires.player", &[])),
+        }
+    }
     /// EntityArgument.getEntity / getPlayer.
     fn one_entity(&mut self, ctx: &Context, name: &str, player: bool) -> R<Target> {
         Ok(self.entities(ctx, name, player)?[0])
@@ -203,6 +210,15 @@ impl Game<'_> {
 
     // ---- /waypoint ------------------------------------------------------
 
+    /// A guest's body is only `Player` during its turn; retained command state
+    /// must use its connection so the next server tick still finds that body.
+    pub(super) fn waypoint_target(&self, t: Target) -> Target {
+        match t {
+            Target::Player => self.lan_acting.map_or(t, Target::Guest),
+            _ => t,
+        }
+    }
+
     /// A living entity's `waypoint_transmit_range` (`isTransmittingWaypoint`).
     fn transmit_range(&mut self, t: Target) -> f64 {
         if matches!(t, Target::Guest(_)) {
@@ -276,6 +292,13 @@ impl Game<'_> {
             }
         }
     }
+    fn waypoint_icon(&self, t: Target) -> WaypointIcon {
+        self.cmds
+            .waypoint_icons
+            .get(&self.waypoint_target(t))
+            .cloned()
+            .unwrap_or_default()
+    }
     /// `WaypointArgument.getWaypoint`.
     fn waypoint_arg(&mut self, ctx: &Context) -> R<Target> {
         let t = self.one_entity(ctx, "waypoint", false)?;
@@ -283,6 +306,9 @@ impl Game<'_> {
             return Err(err("argument.waypoint.invalid", &[]));
         }
         Ok(t)
+    }
+    fn is_living(&self, t: Target) -> bool {
+        matches!(t, Target::Player | Target::Mob(_) | Target::Stand(_))
     }
     pub(super) fn cmd_waypoint(&mut self, id: &str, ctx: &Context) -> R<i32> {
         if id == "waypoint.list" {
@@ -543,6 +569,45 @@ impl Game<'_> {
             }
         }
     }
+    /// `Entity.pick(10, 1, false)`: the first non-air block on the view ray,
+    /// else the block at the ray's end.
+    fn test_pick_block(&self) -> [i32; 3] {
+        use horizon_core::{
+            geometry::{Vec3, traverse_blocks},
+            position::BlockPos,
+        };
+        let Some(p) = self.player.as_ref() else {
+            return [0; 3];
+        };
+        let eye = Vec3::new(
+            p.position.x,
+            p.position.y + f64::from(p.dimensions.eye_height),
+            p.position.z,
+        );
+        let (yaw, pitch) = (
+            f64::from(self.yaw).to_radians(),
+            f64::from(self.pitch).to_radians(),
+        );
+        let dir = [
+            -yaw.sin() * pitch.cos(),
+            -pitch.sin(),
+            yaw.cos() * pitch.cos(),
+        ];
+        let end = Vec3::new(
+            eye.x + dir[0] * 10.0,
+            eye.y + dir[1] * 10.0,
+            eye.z + dir[2] * 10.0,
+        );
+        let hit = traverse_blocks(eye, end, 256, |b: BlockPos| {
+            let state = self.world.block(b.x, b.y, b.z);
+            (!self.res.facts().is_air(state)).then_some([b.x, b.y, b.z])
+        });
+        hit.ok().flatten().unwrap_or([
+            end.x.floor() as i32,
+            end.y.floor() as i32,
+            end.z.floor() as i32,
+        ])
+    }
 
     // ---- /kick ----------------------------------------------------------
 
@@ -686,6 +751,14 @@ impl Game<'_> {
             &[Text::literal(name), clickable],
         ));
         Ok(1)
+    }
+    /// ResolvableProfile.CODEC of the player's profile as SNBT.
+    fn player_profile_snbt(&self) -> String {
+        let [a, b, c, d] = self.level.player_uuid.unwrap_or([0; 4]);
+        format!(
+            "{{id:[I;{a},{b},{c},{d}],name:\"{}\",properties:[]}}",
+            super::super::chat::PLAYER_NAME
+        )
     }
 
     // ---- /publish, /unpublish -------------------------------------------
@@ -958,80 +1031,6 @@ impl Game<'_> {
             }
         }
         Ok(1)
-    }
-}
-impl crate::game::Sim<'_> {
-    /// CommandSourceStack.getPlayerOrException.
-    fn source_player(&self) -> R<Target> {
-        match self.command_source.map(|s| s.entity) {
-            None | Some(Some(Target::Player)) => Ok(Target::Player),
-            _ => Err(err("permissions.requires.player", &[])),
-        }
-    }
-    /// A guest's body is only `Player` during its turn; retained command state
-    /// must use its connection so the next server tick still finds that body.
-    pub(super) fn waypoint_target(&self, t: Target) -> Target {
-        match t {
-            Target::Player => self.lan_acting.map_or(t, Target::Guest),
-            _ => t,
-        }
-    }
-    fn waypoint_icon(&self, t: Target) -> WaypointIcon {
-        self.cmds
-            .waypoint_icons
-            .get(&self.waypoint_target(t))
-            .cloned()
-            .unwrap_or_default()
-    }
-    fn is_living(&self, t: Target) -> bool {
-        matches!(t, Target::Player | Target::Mob(_) | Target::Stand(_))
-    }
-    /// `Entity.pick(10, 1, false)`: the first non-air block on the view ray,
-    /// else the block at the ray's end.
-    fn test_pick_block(&self) -> [i32; 3] {
-        use horizon_core::{
-            geometry::{Vec3, traverse_blocks},
-            position::BlockPos,
-        };
-        let Some(p) = self.player.as_ref() else {
-            return [0; 3];
-        };
-        let eye = Vec3::new(
-            p.position.x,
-            p.position.y + f64::from(p.dimensions.eye_height),
-            p.position.z,
-        );
-        let (yaw, pitch) = (
-            f64::from(self.yaw).to_radians(),
-            f64::from(self.pitch).to_radians(),
-        );
-        let dir = [
-            -yaw.sin() * pitch.cos(),
-            -pitch.sin(),
-            yaw.cos() * pitch.cos(),
-        ];
-        let end = Vec3::new(
-            eye.x + dir[0] * 10.0,
-            eye.y + dir[1] * 10.0,
-            eye.z + dir[2] * 10.0,
-        );
-        let hit = traverse_blocks(eye, end, 256, |b: BlockPos| {
-            let state = self.world.block(b.x, b.y, b.z);
-            (!self.res.facts().is_air(state)).then_some([b.x, b.y, b.z])
-        });
-        hit.ok().flatten().unwrap_or([
-            end.x.floor() as i32,
-            end.y.floor() as i32,
-            end.z.floor() as i32,
-        ])
-    }
-    /// ResolvableProfile.CODEC of the player's profile as SNBT.
-    fn player_profile_snbt(&self) -> String {
-        let [a, b, c, d] = self.level.player_uuid.unwrap_or([0; 4]);
-        format!(
-            "{{id:[I;{a},{b},{c},{d}],name:\"{}\",properties:[]}}",
-            super::super::chat::PLAYER_NAME
-        )
     }
 }
 

@@ -79,11 +79,11 @@ impl StartupMenu {
     pub(super) fn handoff(&mut self, game: &mut Game<'_>) {
         game.title = self.title.take();
         game.pending_entry = self.pending.take();
-        game.front.cursor = self.cursor;
-        game.front.modifiers = self.modifiers;
-        game.front.physical_keys = std::mem::take(&mut self.physical_keys);
-        game.front.clipboard = std::mem::take(&mut self.clipboard);
-        game.front.text_selection = std::mem::take(&mut self.selection);
+        game.cursor = self.cursor;
+        game.modifiers = self.modifiers;
+        game.physical_keys = std::mem::take(&mut self.physical_keys);
+        game.clipboard = std::mem::take(&mut self.clipboard);
+        game.text_selection = std::mem::take(&mut self.selection);
         // Preserve an existing resource-error screen opened by start_game.
         if self.options_open {
             let resource_error = game.ui.options.resource_error.take();
@@ -92,7 +92,7 @@ impl StartupMenu {
                 game.ui.options.resource_error.take().or(resource_error);
             game.screen = Screen::Options;
             game.options_from_title = true;
-            game.front.dragging = self.dragging;
+            game.dragging = self.dragging;
         }
     }
 

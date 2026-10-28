@@ -41,6 +41,46 @@ impl Creatures {
     }
 }
 impl Game<'_> {
+    fn trader_path(&self) -> std::path::PathBuf {
+        self.world_root
+            .join("data")
+            .join("minecraft")
+            .join("wandering_trader.dat")
+    }
+    fn load_trader_data(&mut self) {
+        if self.creatures.trader.loaded {
+            return;
+        }
+        let tag = read_dat(&self.trader_path());
+        let data = tag.as_ref().and_then(|t| t.get("data"));
+        let get = |k: &str, d: i32| match data.and_then(|d| d.get(k)) {
+            Some(Tag::Int(v)) => *v,
+            _ => d,
+        };
+        let t = &mut self.creatures.trader;
+        t.spawn_delay = get("spawn_delay", SPAWN_DELAY);
+        t.chance = get("spawn_chance", MIN_CHANCE);
+        t.loaded = true;
+    }
+    pub(super) fn save_wandering_trader(&mut self) {
+        if !self.creatures.trader.loaded || !self.creatures.trader.dirty {
+            return;
+        }
+        let t = &self.creatures.trader;
+        let tag = Tag::compound([
+            (
+                "data",
+                Tag::compound([
+                    ("spawn_delay", Tag::Int(t.spawn_delay)),
+                    ("spawn_chance", Tag::Int(t.chance)),
+                ]),
+            ),
+            ("DataVersion", Tag::Int(horizon_world::DATA_VERSION)),
+        ]);
+        if write_dat(&self.trader_path(), tag).is_ok() {
+            self.creatures.trader.dirty = false;
+        }
+    }
     /// `WanderingTraderSpawner.tick`.
     pub(super) fn tick_wandering_trader(&mut self) {
         if self.dim != Dim::Overworld || !self.world_data.rules.bool("spawn_wandering_traders") {
@@ -177,48 +217,6 @@ impl Game<'_> {
             }
         }
         None
-    }
-}
-impl crate::game::Sim<'_> {
-    fn trader_path(&self) -> std::path::PathBuf {
-        self.world_root
-            .join("data")
-            .join("minecraft")
-            .join("wandering_trader.dat")
-    }
-    fn load_trader_data(&mut self) {
-        if self.creatures.trader.loaded {
-            return;
-        }
-        let tag = read_dat(&self.trader_path());
-        let data = tag.as_ref().and_then(|t| t.get("data"));
-        let get = |k: &str, d: i32| match data.and_then(|d| d.get(k)) {
-            Some(Tag::Int(v)) => *v,
-            _ => d,
-        };
-        let t = &mut self.creatures.trader;
-        t.spawn_delay = get("spawn_delay", SPAWN_DELAY);
-        t.chance = get("spawn_chance", MIN_CHANCE);
-        t.loaded = true;
-    }
-    pub(super) fn save_wandering_trader(&mut self) {
-        if !self.creatures.trader.loaded || !self.creatures.trader.dirty {
-            return;
-        }
-        let t = &self.creatures.trader;
-        let tag = Tag::compound([
-            (
-                "data",
-                Tag::compound([
-                    ("spawn_delay", Tag::Int(t.spawn_delay)),
-                    ("spawn_chance", Tag::Int(t.chance)),
-                ]),
-            ),
-            ("DataVersion", Tag::Int(horizon_world::DATA_VERSION)),
-        ]);
-        if write_dat(&self.trader_path(), tag).is_ok() {
-            self.creatures.trader.dirty = false;
-        }
     }
     /// `hasEnoughSpace`: no collision in the 2 by 3 by 2 box.
     fn trader_has_space(&self, pos: [i32; 3]) -> bool {

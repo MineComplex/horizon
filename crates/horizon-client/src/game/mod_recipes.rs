@@ -69,8 +69,7 @@ fn recipe(id: String, kind: RecipeKind) -> Recipe {
     }
 }
 
-impl Game<'_> {}
-impl crate::game::Sim<'_> {
+impl Game<'_> {
     /// `recipes.give`: a creative player takes the stack as from the
     /// creative inventory; a server hears it as `SetCreativeModeSlot`
     /// through the inventory's sync, and refuses it unless creative.
@@ -110,6 +109,7 @@ impl crate::game::Sim<'_> {
         }
         (self.mods.recipes.clone(), self.mods.known_recipes.1.clone())
     }
+
     fn make_mod_recipes(&mut self) -> Recipes {
         let names = &self.pack.names;
         let items = self.res.items();

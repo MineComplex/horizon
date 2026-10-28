@@ -32,6 +32,16 @@ impl Game<'_> {
         self.lan.as_ref()?.hub.guest(conn)
     }
 
+    /// `PlayerList.getPlayers` but the player in place: the guests who
+    /// joined the world.
+    fn command_players(&self) -> impl Iterator<Item = &Guest> {
+        let acting = self.lan_acting;
+        self.lan
+            .iter()
+            .flat_map(|h| h.hub.guests.iter())
+            .filter(move |g| g.placed && Some(g.conn) != acting)
+    }
+
     /// The entity the command runs as (`CommandSourceStack.getEntity`): a
     /// command typed by the player in place runs as them, the server
     /// console's as nobody.
@@ -49,6 +59,64 @@ impl Game<'_> {
         self.source_entity()
             .filter(|t| t.is_player())
             .unwrap_or(Target::Player)
+    }
+
+    /// `PlayerList.getPlayerByName`: names are not case sensitive.
+    pub(super) fn player_named(&self, name: &str) -> Option<Target> {
+        if self.player.is_some() && name.eq_ignore_ascii_case(self.acting_player_name()) {
+            return Some(Target::Player);
+        }
+        self.command_players()
+            .find(|g| g.name.eq_ignore_ascii_case(name))
+            .map(|g| Target::Guest(g.conn))
+    }
+
+    /// `EntitySelector.findEntities` with a UUID: the player with it, else
+    /// the entity.
+    pub(super) fn target_by_uuid(&self, uuid: u128) -> Option<Target> {
+        let own = self.lan_acting_uuid.or_else(|| {
+            self.level.player_uuid.map(|[a, b, c, d]| {
+                (u128::from(a as u32) << 96)
+                    | (u128::from(b as u32) << 64)
+                    | (u128::from(c as u32) << 32)
+                    | u128::from(d as u32)
+            })
+        });
+        if self.player.is_some() && own == Some(uuid) {
+            return Some(Target::Player);
+        }
+        if let Some(g) = self.command_players().find(|g| g.uuid == uuid) {
+            return Some(Target::Guest(g.conn));
+        }
+        let words = [96, 64, 32, 0].map(|shift| (uuid >> shift) as u32 as i32);
+        self.target_with_uuid(words)
+    }
+
+    /// The guests a selector looks at, in join order (`PlayerList.getPlayers`),
+    /// the one in place as `Target::Player`: all of them, or those in the
+    /// source's level when it limits the search to a place
+    /// (`isWorldLimited`); `@e` and `@n` skip the dead (`Entity::isAlive`).
+    pub(super) fn player_candidates(&self, s: &Selector) -> Vec<Target> {
+        let limited = s.distance.is_some()
+            || s.pos.iter().any(Option::is_some)
+            || s.delta.iter().any(Option::is_some);
+        let alive = matches!(s.kind, 'e' | 'n');
+        let here = self.dim.id();
+        let in_place = self.lan_acting.filter(|_| self.player.is_some());
+        self.lan
+            .iter()
+            .flat_map(|h| h.hub.guests.iter())
+            .filter(|g| g.placed)
+            .filter(|g| !limited || g.dimension == here || Some(g.conn) == in_place)
+            .filter(|g| !alive || (!g.dead && g.health > 0.0))
+            .map(|g| {
+                if Some(g.conn) == in_place {
+                    Target::Player
+                } else {
+                    Target::Guest(g.conn)
+                }
+            })
+            .collect()
     }
 
     /// A guest's experience level and game mode, for `level=` and `gamemode=`.
@@ -138,71 +206,5 @@ impl Game<'_> {
         }
         self.lan = Some(host);
         Some(out)
-    }
-}
-impl crate::game::Sim<'_> {
-    /// `PlayerList.getPlayers` but the player in place: the guests who
-    /// joined the world.
-    fn command_players(&self) -> impl Iterator<Item = &Guest> {
-        let acting = self.lan_acting;
-        self.lan
-            .iter()
-            .flat_map(|h| h.hub.guests.iter())
-            .filter(move |g| g.placed && Some(g.conn) != acting)
-    }
-    /// `PlayerList.getPlayerByName`: names are not case sensitive.
-    pub(super) fn player_named(&self, name: &str) -> Option<Target> {
-        if self.player.is_some() && name.eq_ignore_ascii_case(self.acting_player_name()) {
-            return Some(Target::Player);
-        }
-        self.command_players()
-            .find(|g| g.name.eq_ignore_ascii_case(name))
-            .map(|g| Target::Guest(g.conn))
-    }
-    /// `EntitySelector.findEntities` with a UUID: the player with it, else
-    /// the entity.
-    pub(super) fn target_by_uuid(&self, uuid: u128) -> Option<Target> {
-        let own = self.lan_acting_uuid.or_else(|| {
-            self.level.player_uuid.map(|[a, b, c, d]| {
-                (u128::from(a as u32) << 96)
-                    | (u128::from(b as u32) << 64)
-                    | (u128::from(c as u32) << 32)
-                    | u128::from(d as u32)
-            })
-        });
-        if self.player.is_some() && own == Some(uuid) {
-            return Some(Target::Player);
-        }
-        if let Some(g) = self.command_players().find(|g| g.uuid == uuid) {
-            return Some(Target::Guest(g.conn));
-        }
-        let words = [96, 64, 32, 0].map(|shift| (uuid >> shift) as u32 as i32);
-        self.target_with_uuid(words)
-    }
-    /// The guests a selector looks at, in join order (`PlayerList.getPlayers`),
-    /// the one in place as `Target::Player`: all of them, or those in the
-    /// source's level when it limits the search to a place
-    /// (`isWorldLimited`); `@e` and `@n` skip the dead (`Entity::isAlive`).
-    pub(super) fn player_candidates(&self, s: &Selector) -> Vec<Target> {
-        let limited = s.distance.is_some()
-            || s.pos.iter().any(Option::is_some)
-            || s.delta.iter().any(Option::is_some);
-        let alive = matches!(s.kind, 'e' | 'n');
-        let here = self.dim.id();
-        let in_place = self.lan_acting.filter(|_| self.player.is_some());
-        self.lan
-            .iter()
-            .flat_map(|h| h.hub.guests.iter())
-            .filter(|g| g.placed)
-            .filter(|g| !limited || g.dimension == here || Some(g.conn) == in_place)
-            .filter(|g| !alive || (!g.dead && g.health > 0.0))
-            .map(|g| {
-                if Some(g.conn) == in_place {
-                    Target::Player
-                } else {
-                    Target::Guest(g.conn)
-                }
-            })
-            .collect()
     }
 }
