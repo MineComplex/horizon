@@ -76,13 +76,25 @@ mod tests {
 
     #[test]
     fn the_resources_are_taken_out_and_the_rest_go_to_the_server() {
-        let (resources, rest) =
-            split_resources(strings(&["--nogui", "--resources", "/r", "--port", "25566"]));
+        let (resources, rest) = split_resources(strings(&[
+            "--nogui",
+            "--resources",
+            "/r",
+            "--port",
+            "25566",
+        ]));
         assert_eq!(resources.as_deref(), Some("/r"));
         assert_eq!(rest, strings(&["--nogui", "--port", "25566"]));
         assert_eq!(
             game_args(resources, rest),
-            strings(&["--resources", "/r", "--dedicated", "--nogui", "--port", "25566"])
+            strings(&[
+                "--resources",
+                "/r",
+                "--dedicated",
+                "--nogui",
+                "--port",
+                "25566"
+            ])
         );
         let (resources, rest) = split_resources(strings(&["--resources=/x", "--initSettings"]));
         assert_eq!(resources.as_deref(), Some("/x"));

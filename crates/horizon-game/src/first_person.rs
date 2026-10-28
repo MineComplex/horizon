@@ -7,7 +7,7 @@
 //! `continueDestroyBlock`, `stopDestroyBlock`).
 //!
 //! What those read and do in the world is behind [`HandWorld`].
-pub use horizon_game::swing::{SwingAnimation, swing_duration};
+pub use crate::swing::{SwingAnimation, swing_duration};
 
 /// The ranged item state read by the first-person hand renderer.
 #[derive(Clone, Copy, Debug)]

@@ -25,7 +25,7 @@ def main():
         'marker-particles-parity', 'VanillaMarkerParticlesOracle', 'marker_particles_probe',
         make_input, 'Creative main-hand marker selection and barrier marker positions, velocities and random draws',
         sources=[lab.ROOT / 'tools/test_marker_particles_parity.py',
-                 lab.ROOT / 'crates/horizon-client/src/animate_tick.rs'], expected_lines=16872)
+                 lab.ROOT / 'crates/horizon-game/src/animate_tick.rs'], expected_lines=16872)
 
 
 if __name__ == '__main__':

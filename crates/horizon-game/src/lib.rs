@@ -3,6 +3,7 @@
 //! (docs/crates.md). `horizon_client` re-exports every module under its old path.
 #![forbid(unsafe_code)]
 pub mod advancements;
+pub mod animate_tick;
 pub mod arrows;
 pub mod assets;
 pub mod attack_strength;
@@ -16,6 +17,7 @@ pub mod block_entities;
 pub mod block_entity_item;
 pub mod block_transform;
 pub mod brewing;
+pub mod camera;
 pub mod cauldron;
 pub mod chunk;
 pub mod chunk_map;
@@ -39,6 +41,7 @@ pub mod environment;
 pub mod face_visibility;
 pub mod falling_block;
 pub mod fast_hash;
+pub mod first_person;
 pub mod flatgen;
 pub mod furnace;
 pub mod gallery;
@@ -77,8 +80,10 @@ pub mod providers;
 pub mod raid;
 pub mod random_tick_sections;
 pub mod recipe_book;
+pub mod recipe_book_screen;
 pub mod save;
 pub mod scoreboard_cmd;
+pub mod screen_layout;
 pub mod sculk;
 pub mod signs;
 pub mod skins;
