@@ -5080,12 +5080,8 @@ impl Game<'_> {
             ),
             None => 0.0,
         };
-        // Past `remote`, only a server's world runs (dedicated, or a client's server thread):
-        // a window has no world of its own.
-        if self.options.dedicated.is_none() {
-            return Ok(());
-        }
-        self.tick_level()
+        // A window has no world of its own: servers tick theirs in `tick_server`.
+        Ok(())
     }
     /// A server's tick in its first level (`MinecraftServer.tickServer`'s shared parts): the
     /// clock, the weather, the autosave, mods, then the level itself (`tick_world`). A server
