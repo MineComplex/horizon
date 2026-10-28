@@ -107,6 +107,21 @@ pub(super) struct ModsState {
     /// The server's side of the plugins (game/plugins.rs).
     #[cfg(feature = "mods")]
     pub(super) plugin: super::plugins::PluginGame,
+    /// What mods asked of the window (screens, recipes placed in its book),
+    /// for `flush_to_window`: the game's side doesn't touch the window.
+    #[cfg(feature = "mods")]
+    window_outputs: Vec<Output>,
+    /// What the window last saw for the mods' snapshot (`mods_frame`): the
+    /// GUI's size and the view's hit on the distant terrain.
+    #[cfg(feature = "mods")]
+    window_view: Option<WindowView>,
+}
+
+/// The window's part of a mods' snapshot, kept from its last frame.
+#[cfg(feature = "mods")]
+struct WindowView {
+    gui_size: (f32, f32),
+    lod_hit: Option<([i32; 3], [f64; 3], horizon_world::registry::BlockStateId)>,
 }
 
 /// The mappings `input.mapping` answers for, with the default key their
@@ -279,6 +294,8 @@ impl Game<'_> {
         false
     }
     pub(super) fn mods_chat(&mut self, _line: &str) {}
+    pub(super) fn apply_mod_window_output(&mut self) {}
+    pub(super) fn discard_mod_window_output(&mut self) {}
     pub(super) fn draw_mod_panels(&self, _batch: &mut HudBatch, _corners: &mut Corners) {}
     pub(super) fn open_mod_screen(&mut self, _owner: usize, _settings: bool) {}
     pub(super) fn close_mod_screen(&mut self, _tell: bool) {}
@@ -470,17 +487,17 @@ impl Game<'_> {
                 (name, label, down)
             })
             .collect();
-        if self.mods.font_widths.is_empty() {
-            let atlas = &self.gui.atlas;
-            self.mods.font_widths = (0..FONT_CHARS)
-                .map(|c| char::from_u32(c).map_or(6.0, |c| atlas.glyph_cell(c).1))
-                .collect();
-        }
         let (recipes, known_recipes) = self.mod_recipes();
         Snapshot {
             player,
             clock,
-            gui_size: self.gui_size(),
+            gui_size: self.mods.window_view.as_ref().map_or_else(
+                || {
+                    let b = HudBatch::new([1280, 720]);
+                    (b.width, b.height)
+                },
+                |v| v.gui_size,
+            ),
             held: self.mod_held(),
             frame: self.frame_reading(),
             mappings,
@@ -512,7 +529,7 @@ impl Game<'_> {
                 hit.point,
                 self.world.block(hit.pos[0], hit.pos[1], hit.pos[2]),
             ),
-            None => self.lod_ray(eye, dir, reach)?,
+            None => self.mods.window_view.as_ref()?.lod_hit?,
         };
         let distance = (0..3).map(|i| (point[i] - eye[i]).powi(2)).sum::<f64>();
         let hit = horizon_mods::Hit {
@@ -639,6 +656,25 @@ impl Game<'_> {
     }
     /// Once per frame: the frame hook, and dev mods' rebuilds.
     pub(super) fn mods_frame(&mut self, elapsed: Duration) {
+        let lod_hit = if self.mods.mods.wants_raycast() {
+            self.eye_position().and_then(|eye| {
+                let dir = super::view_vector(self.yaw, self.pitch);
+                self.lod_ray(eye, dir, f64::from(horizon_mods::RAYCAST_MAX))
+            })
+        } else {
+            None
+        };
+        // The font's widths for `render.text-width` (a server has none).
+        if self.mods.font_widths.is_empty() {
+            let atlas = &self.gui.atlas;
+            self.mods.font_widths = (0..FONT_CHARS)
+                .map(|c| char::from_u32(c).map_or(6.0, |c| atlas.glyph_cell(c).1))
+                .collect();
+        }
+        self.mods.window_view = Some(WindowView {
+            gui_size: self.gui_size(),
+            lod_hit,
+        });
         self.reload_dev_mods();
         if !self.mods.mods.is_running() {
             return;
@@ -674,6 +710,26 @@ impl Game<'_> {
     /// to their players.
     pub(super) fn show_mod_output(&mut self) {
         self.route_mod_output(None);
+    }
+    /// The window's half of the mods' output: their screens and recipe
+    /// placements (`flush_to_window`).
+    pub(super) fn apply_mod_window_output(&mut self) {
+        for output in std::mem::take(&mut self.mods.window_outputs) {
+            match output {
+                Output::OpenScreen { owner } => self.open_mod_screen(owner, false),
+                Output::CloseScreen { owner } => {
+                    if self.mods.screen.as_ref().is_some_and(|s| s.owner == owner) {
+                        self.close_mod_screen(false);
+                    }
+                }
+                Output::PlaceRecipe { book_id, all } => self.mod_place_recipe(book_id, all),
+                _ => {}
+            }
+        }
+    }
+    /// A server has no window for the mods' screens.
+    pub(super) fn discard_mod_window_output(&mut self) {
+        self.mods.window_outputs.clear();
     }
     /// [`Game::show_mod_output`], with the hub when it is out of `self.lan`.
     pub(super) fn route_mod_output(&mut self, mut host: Option<&mut LanHost>) {
@@ -721,16 +777,14 @@ impl Game<'_> {
                     self.route_server_output(host.as_deref_mut(), server);
                     continue;
                 }
-                Output::OpenScreen { owner } => {
-                    self.open_mod_screen(owner, false);
+                window @ (Output::OpenScreen { .. }
+                | Output::CloseScreen { .. }
+                | Output::PlaceRecipe { .. }) => {
+                    self.mods.window_outputs.push(window);
                     continue;
                 }
                 Output::Shake { strength, seconds } => {
                     self.mods.shake.add(strength, seconds);
-                    continue;
-                }
-                Output::PlaceRecipe { book_id, all } => {
-                    self.mod_place_recipe(book_id, all);
                     continue;
                 }
                 Output::Give {
@@ -739,12 +793,6 @@ impl Game<'_> {
                     components,
                 } => {
                     self.mod_give(&item, count, &components);
-                    continue;
-                }
-                Output::CloseScreen { owner } => {
-                    if self.mods.screen.as_ref().is_some_and(|s| s.owner == owner) {
-                        self.close_mod_screen(false);
-                    }
                     continue;
                 }
             };

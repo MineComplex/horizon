@@ -1073,7 +1073,7 @@ impl Game<'_> {
     }
     /// IntegratedServer.publishServer without the screen's announcement.
     pub(super) fn lan_start(&mut self, settings: LanSettings) -> Result<()> {
-        if self.lan.is_some() || self.remote.is_some() || self.title.is_some() {
+        if self.lan.is_some() || self.remote.is_some() {
             return Err("already open".into());
         }
         // IntegratedServer.publishServer: the MOTD names the host's profile.

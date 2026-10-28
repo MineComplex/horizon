@@ -59,6 +59,7 @@ impl Game<'_> {
         if let Some(capture) = self.pointer_grab.take() {
             self.grab_pointer(capture);
         }
+        self.apply_mod_window_output();
     }
     /// A server's `flush_to_window`: it has no window, so what the game queued for one goes.
     pub(super) fn drop_window_output(&mut self) {
@@ -66,6 +67,7 @@ impl Game<'_> {
         self.ui.chat.drop_unwrapped();
         self.rumbles.clear();
         self.pointer_grab = None;
+        self.discard_mod_window_output();
     }
     /// `getSituationalMusic` and `getMusicVolume`.
     fn situational_music(&self) -> (Option<Music>, f32) {
