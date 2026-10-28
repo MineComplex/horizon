@@ -124,7 +124,6 @@ pub(super) struct GuestSwap {
     screen: Screen,
     host_sign: Option<super::sign_edit::SignEditor>,
     host_book: Option<super::books::BookScreen>,
-    host_command_block: Option<super::command_blocks::CommandBlockScreen>,
     host_mount_menu: super::mount_menu::MountMenu,
     craft_size: usize,
     craft_table: Option<[i32; 3]>,
@@ -333,7 +332,6 @@ impl crate::game::Sim<'_> {
         let screen = std::mem::replace(&mut self.screen, Screen::Playing);
         let host_sign = self.sign_edit.take();
         let host_book = self.book.take();
-        let host_command_block = self.command_block_screen.take();
         let host_mount_menu = std::mem::take(&mut self.mount_menu);
         // The host's crafting grid stays theirs; a crafting table the guest
         // opens shows as the 3x3 size.
@@ -429,7 +427,6 @@ impl crate::game::Sim<'_> {
             screen,
             host_sign,
             host_book,
-            host_command_block,
             host_mount_menu,
             craft_size,
             craft_table,
@@ -488,7 +485,6 @@ impl crate::game::Sim<'_> {
             screen,
             host_sign,
             host_book,
-            host_command_block,
             host_mount_menu,
             craft_size,
             craft_table,
@@ -608,7 +604,6 @@ impl crate::game::Sim<'_> {
             }) => Some(key),
             _ => None,
         };
-        self.command_block_screen = host_command_block;
         // A mount inventory the guest's action opened (shift + use, or the
         // inventory key while riding).
         let guest_mount = std::mem::replace(&mut self.mount_menu, host_mount_menu).opened_mob();

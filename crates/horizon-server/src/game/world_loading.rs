@@ -7,7 +7,7 @@ pub(super) struct WorldRequest {
     pub name: Option<String>,
     pub seed: Option<i64>,
     pub creative: bool,
-    pub create: Option<crate::hc::title::WorldOptions>,
+    pub create: Option<crate::hc::world_options::WorldOptions>,
 }
 
 pub(super) struct PreparedWorld {
@@ -27,7 +27,7 @@ impl WorldRequest {
         name: Option<&str>,
         seed: Option<i64>,
         creative: bool,
-        create: Option<&crate::hc::title::WorldOptions>,
+        create: Option<&crate::hc::world_options::WorldOptions>,
     ) -> Result<Self> {
         Ok(Self {
             save_root: std::env::current_dir()?.join("saves").join(folder),
@@ -91,7 +91,7 @@ impl WorldRequest {
         // CreateWorldScreen's choices, before streaming reads the generator.
         if created && let Some(o) = create {
             level.hardcore = o.hardcore;
-            level.difficulty = crate::hc::title::DIFFICULTIES[o.difficulty()].into();
+            level.difficulty = crate::hc::world_options::DIFFICULTIES[o.difficulty()].into();
             level.allow_commands = Some(o.commands(creative));
             crate::hc::save::write_world_gen_settings_with(
                 &save_root,

@@ -1157,7 +1157,7 @@ impl crate::game::Sim<'_> {
     /// `LightmapRenderStateExtractor`: (brightness taken off the gamma
     /// option, the pulsing light scale).
     pub(super) fn darkness_lighting(&self, partial: f32) -> (f32, f32) {
-        let scale = self.settings.file.double("darknessEffectScale") as f32;
+        let scale = 1.0f32;
         let modifier = self.darkness_blend(partial) * scale;
         let pulse =
             ((self.ticks as f32 - partial) * std::f32::consts::PI * 0.025).cos() * 0.45 * modifier;

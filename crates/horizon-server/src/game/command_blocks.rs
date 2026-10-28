@@ -18,16 +18,6 @@ use winit::{
 
 type Pos = (i32, i32, i32);
 
-/// The open `CommandBlockEditScreen`.
-pub(super) struct CommandBlockScreen {
-    pos: Pos,
-    command: EditBox,
-    previous: EditBox,
-    track_output: bool,
-    mode: Mode,
-    conditional: bool,
-    auto: bool,
-}
 
 /// What `ServerboundSetCommandBlockPacket` carries.
 struct CommandBlockEdit {
@@ -39,63 +29,8 @@ struct CommandBlockEdit {
     auto: bool,
 }
 
-#[derive(Clone, Copy, PartialEq)]
-enum Button {
-    Output,
-    Mode,
-    Conditional,
-    Auto,
-    Done,
-    Cancel,
-}
 
-/// `EditBox.textColorUneditable`.
-const UNEDITABLE: u32 = 0xFF70_7070;
 
-impl CommandBlockScreen {
-    /// `AbstractCommandBlockEditScreen.init` and `CommandBlockEditScreen`'s
-    /// buttons, in GUI pixels of a `w`×`h` screen.
-    fn buttons(w: f32, h: f32) -> [(Button, f32, f32, f32); 6] {
-        let mid = (w / 2.0).floor();
-        let low = (h / 4.0).floor() + 132.0;
-        [
-            (Button::Output, mid + 130.0, 135.0, 20.0),
-            (Button::Mode, mid - 154.0, 165.0, 100.0),
-            (Button::Conditional, mid - 50.0, 165.0, 100.0),
-            (Button::Auto, mid + 54.0, 165.0, 100.0),
-            (Button::Done, mid - 154.0, low, 150.0),
-            (Button::Cancel, mid + 4.0, low, 150.0),
-        ]
-    }
-    fn label(&self, b: Button) -> Text {
-        let tr = |key: &str| Text::translate(key, &[]);
-        match b {
-            Button::Output => Text::literal(if self.track_output { "O" } else { "X" }),
-            Button::Mode => tr(self.mode.label()),
-            Button::Conditional => tr(if self.conditional {
-                "advMode.mode.conditional"
-            } else {
-                "advMode.mode.unconditional"
-            }),
-            Button::Auto => tr(if self.auto {
-                "advMode.mode.autoexec.bat"
-            } else {
-                "advMode.mode.redstoneTriggered"
-            }),
-            Button::Done => tr("gui.done"),
-            Button::Cancel => tr("gui.cancel"),
-        }
-    }
-    /// `updatePreviousOutput`.
-    fn show_previous(&mut self, block: &CommandBlock) {
-        let shown = if self.track_output {
-            block.last_output_string()
-        } else {
-            "-".to_owned()
-        };
-        self.previous.set_value(&shown);
-    }
-}
 
 fn state_of(registry: &BlockRegistry, state: BlockStateId) -> Option<&BlockState> {
     registry.state(state)
@@ -414,42 +349,6 @@ impl crate::game::Sim<'_> {
                 .with_color(text::GRAY)
                 .italic();
             self.system_message(broadcast);
-        }
-    }
-    pub(super) fn close_command_block(&mut self) {
-        self.command_block_screen = None;
-        self.screen = Screen::Playing;
-        self.capture(true);
-    }
-    /// Characters typed into the command box (`StringUtil.isAllowedChatCharacter`).
-    pub(super) fn command_block_type(&mut self, typed: &str) {
-        let allowed: String = typed
-            .chars()
-            .filter(|&c| c != '\u{a7}' && c >= ' ' && c != '\u{7f}')
-            .collect();
-        if let Some(s) = self.command_block_screen.as_mut()
-            && !allowed.is_empty()
-        {
-            s.command.insert_text(&allowed);
-        }
-    }
-    /// The edit screen's Done: a server's client sends the packet, the
-    /// window's own world applies it (`handleSetCommandBlock`).
-    fn set_command_block(&mut self, s: &CommandBlockScreen) {
-        if !self.can_use_game_master_blocks() {
-            self.system_message(Text::translate("advMode.notAllowed", &[]));
-            return;
-        }
-        let edit = CommandBlockEdit {
-            pos: s.pos,
-            command: s.command.value.clone(),
-            track_output: s.track_output,
-            mode: s.mode,
-            conditional: s.conditional,
-            auto: s.auto,
-        };
-        {
-            self.apply_command_block(&edit);
         }
     }
     /// `ServerGamePacketListenerImpl.handleSetCommandBlock` for a guest: the

@@ -107,3 +107,36 @@ impl crate::game::Sim<'_> {
         })
     }
 }
+
+impl crate::game::Sim<'_> {
+    /// Answers the requests waiting on the control endpoint.
+    pub(crate) fn poll_server_control(&mut self, state: &mut ServerState) {
+        while let Some(request) = self.control.as_ref().and_then(|c| c.try_recv()) {
+            let reply = match request.line.trim().split_once(' ') {
+                _ if request.line.trim() == "server-status" => self.server_status(state),
+                Some(("console", line)) => {
+                    // Command feedback is logged as system chat; the reply carries the text alone.
+                    let output: Vec<String> = capture_log(|| self.console_command(state, line))
+                        .into_iter()
+                        .map(|l| {
+                            l.strip_prefix("System chat: ")
+                                .map_or(l.clone(), str::to_owned)
+                        })
+                        .collect();
+                    json!({ "output": output })
+                }
+                Some(("exit-with", pid)) => match pid.trim().parse() {
+                    Ok(pid) => {
+                        state.exit_with = Some(pid);
+                        json!({ "ok": true })
+                    }
+                    Err(_) => json!({ "error": "exit-with PID" }),
+                },
+                _ => self.server_control(request.line.trim()).unwrap_or_else(
+                    || json!({ "error": format!("unknown request {:?}", request.line) }),
+                ),
+            };
+            let _ = request.reply.send(reply.to_string());
+        }
+    }
+}

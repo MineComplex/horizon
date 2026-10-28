@@ -19,7 +19,6 @@ impl crate::game::Sim<'_> {
     }
     pub(crate) fn totem_event(&mut self, _body: super::totem::Body, _own: bool) {}
     pub(crate) fn dripstone_drip_particle(&mut self, _pos: BlockPos) {}
-    pub(crate) fn open_sign_editor(&mut self, _pos: (i32, i32, i32), _front: bool) {}
     pub(crate) fn open_command_block(&mut self, _pos: (i32, i32, i32)) {}
     pub(crate) fn creative_inventory_open(&self) -> bool {
         false

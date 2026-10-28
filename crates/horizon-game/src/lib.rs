@@ -24,6 +24,7 @@ pub mod chunk_map;
 pub mod chunk_status;
 pub mod block_entity_anim;
 pub mod clock;
+pub mod control;
 pub mod crash;
 pub mod collisions;
 pub mod command_block;

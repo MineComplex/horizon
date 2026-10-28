@@ -131,8 +131,6 @@ pub(super) struct Station {
     pub(super) anvil: AnvilResult,
     /// Anvil rename box text (`AnvilMenu.itemName`).
     pub(super) name: String,
-    /// The box itself (`AnvilScreen`'s `EditBox` of 50, unbordered).
-    pub(super) rename: crate::hc::ui::EditBox,
     /// Stonecutter: the menu's recipe list (crate::hc::menu), its
     /// `selectedRecipeIndex` and the screen's first shown index.
     pub(super) stone: crate::hc::menu::Stonecutter,
@@ -163,7 +161,6 @@ impl Station {
             bookcases: 0,
             anvil: AnvilResult::default(),
             name: String::new(),
-            rename: anvil_box(),
             stone: Default::default(),
             selected: None,
             start: 0,
@@ -702,18 +699,8 @@ impl crate::game::Sim<'_> {
                 .as_ref()
                 .map(|i| stations::hover_name(&|id| self.pack.names.display_item(id), i))
                 .unwrap_or_default();
-            let name = s.name.clone();
-            s.rename.set_value(&name);
         }
         self.station_changed();
-    }
-    /// Whether keyboard text goes to the anvil rename box.
-    pub(super) fn station_typing(&self) -> bool {
-        self.screen == Screen::Inventory
-            && self
-                .station
-                .as_ref()
-                .is_some_and(|s| s.kind == Kind::Anvil && s.inputs[0].is_some())
     }
     /// `ItemStack.getHoverName`: the custom name, a written book's title, the
     /// item name component, else the item's or potion's name.
@@ -767,7 +754,7 @@ impl crate::game::Sim<'_> {
     }
     /// Options.advancedItemTooltips (F3+H).
     fn options_advanced_tooltips(&self) -> bool {
-        self.settings.file.bool("advancedItemTooltips")
+        false
     }
     /// `BrewingStandBlockEntity.serverTick` of the brewing stand at `pos`, in
     /// its place among the level's block entity tickers.

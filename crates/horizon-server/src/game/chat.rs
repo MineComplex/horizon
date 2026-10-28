@@ -214,3 +214,336 @@ fn owner_permission(allow_commands: bool) -> u8 {
 /// `ConfirmLinkScreen`'s buttons, left to right: yes, copy, no.
 const LINK_YES: usize = 0;
 const LINK_COPY: usize = 1;
+
+impl crate::game::Sim<'_> {
+    /// Load per-world command state when a world opens.
+    pub(crate) fn load_world_state(&mut self) {
+        self.world_data.rules = GameRules::load(&self.world_root);
+        self.world_data.clock = WorldClock::default();
+        // PrimaryLevelData: the difficulty comes back from level.dat's difficulty_settings.
+        self.world_data.difficulty = crate::hc::world_options::DIFFICULTIES
+            .iter()
+            .position(|d| *d == self.level.difficulty)
+            .map_or(2, |i| i as u8);
+        if let Ok(bytes) = std::fs::read(self.world_root.join("data/minecraft/world_clocks.dat"))
+            && let Ok(raw) = horizon_world::compression::Compression::Gzip.decode(&bytes, 1 << 20)
+            && let Ok((root, _)) =
+                horizon_world::nbt::read_named(&raw, horizon_world::nbt::Limits::default())
+            && let Some(c) = root
+                .tag
+                .get("data")
+                .and_then(|d| d.get("minecraft:overworld"))
+        {
+            use horizon_world::nbt::Tag;
+            if let Some(Tag::Float(r)) = c.get("rate") {
+                self.world_data.clock.rate = f32::from_bits(*r);
+            }
+            if let Some(Tag::Float(p)) = c.get("partial_tick") {
+                self.world_data.clock.partial = f32::from_bits(*p);
+            }
+            if let Some(Tag::Byte(p)) = c.get("paused") {
+                self.world_data.clock.paused = *p != 0;
+            }
+        }
+        self.build_registries();
+        self.sync_rules();
+    }
+}
+
+impl crate::game::Sim<'_> {
+    /// Registry contents for argument parsing (built when a world opens).
+    pub(crate) fn build_registries(&mut self) {
+        let permission = owner_permission(self.allow_commands());
+        let reg = &mut self.world_data.registries;
+        reg.permission = permission;
+        {
+            let dir = |sub: &str| -> Vec<String> {
+                let root = self.options.resources.join("data/minecraft").join(sub);
+                let mut out = Vec::new();
+                let mut stack = vec![root.clone()];
+                while let Some(d) = stack.pop() {
+                    let Ok(entries) = std::fs::read_dir(&d) else {
+                        continue;
+                    };
+                    for e in entries.flatten() {
+                        let p = e.path();
+                        if p.is_dir() {
+                            stack.push(p);
+                        } else if p.extension().and_then(|x| x.to_str()) == Some("json")
+                            && let Ok(rel) = p.strip_prefix(&root)
+                        {
+                            out.push(format!(
+                                "minecraft:{}",
+                                rel.with_extension("").to_string_lossy().replace('\\', "/")
+                            ));
+                        }
+                    }
+                }
+                out.sort();
+                out
+            };
+            self.world_data.registries.recipes = dir("recipe");
+            self.world_data.registries.damage_types = dir("damage_type");
+            self.world_data.registries.loot_tables = dir("loot_table");
+            self.world_data.registries.templates = {
+                let root = self
+                    .options
+                    .resources
+                    .join("worldgen/structure/minecraft");
+                let mut out = Vec::new();
+                let mut stack = vec![root.clone()];
+                while let Some(d) = stack.pop() {
+                    let Ok(entries) = std::fs::read_dir(&d) else {
+                        continue;
+                    };
+                    for e in entries.flatten() {
+                        let p = e.path();
+                        if p.is_dir() {
+                            stack.push(p);
+                        } else if p.extension().and_then(|x| x.to_str()) == Some("nbt")
+                            && let Ok(rel) = p.strip_prefix(&root)
+                        {
+                            out.push(format!(
+                                "minecraft:{}",
+                                rel.with_extension("").to_string_lossy().replace('\\', "/")
+                            ));
+                        }
+                    }
+                }
+                out.sort();
+                out
+            };
+        }
+        self.world_data.registries.sounds = sound_event_names(&self.options.resources);
+        self.world_data.registries.attributes = [
+            "armor",
+            "armor_toughness",
+            "attack_damage",
+            "attack_knockback",
+            "attack_speed",
+            "block_break_speed",
+            "block_interaction_range",
+            "burning_time",
+            "camera_distance",
+            "explosion_knockback_resistance",
+            "entity_interaction_range",
+            "fall_damage_multiplier",
+            "flying_speed",
+            "follow_range",
+            "gravity",
+            "jump_strength",
+            "knockback_resistance",
+            "luck",
+            "max_absorption",
+            "max_health",
+            "mining_efficiency",
+            "movement_efficiency",
+            "movement_speed",
+            "oxygen_bonus",
+            "safe_fall_distance",
+            "scale",
+            "sneaking_speed",
+            "spawn_reinforcements",
+            "step_height",
+            "submerged_mining_speed",
+            "sweeping_damage_ratio",
+            "tempt_range",
+            "water_movement_efficiency",
+        ]
+        .iter()
+        .map(|a| format!("minecraft:{a}"))
+        .collect();
+        let reg = &mut self.world_data.registries;
+        let mut items: Vec<String> = self
+            .res
+            .items()
+            .order
+            .iter()
+            .map(|s| s.to_string())
+            .collect();
+        items.sort();
+        reg.items = items;
+        reg.item_tags = self
+            .res
+            .items()
+            .item_tags
+            .keys()
+            .map(|k| crate::hc::command::args::normalize(k))
+            .collect();
+        reg.item_tags.sort();
+        reg.block_tags = self
+            .res
+            .items()
+            .block_tags
+            .keys()
+            .map(|k| crate::hc::command::args::normalize(k))
+            .collect();
+        reg.block_tags.sort();
+        let registry = self.pack.assets.registry;
+        let mut blocks: BTreeMap<String, BTreeMap<String, Vec<String>>> = BTreeMap::new();
+        for id in 0..registry.len() {
+            let Some(state) = registry.state(horizon_world::registry::BlockStateId(id as u32))
+            else {
+                continue;
+            };
+            let props = blocks.entry(state.name.clone()).or_default();
+            for (k, v) in &state.properties {
+                let values = props.entry(k.clone()).or_default();
+                if !values.contains(v) {
+                    values.push(v.clone());
+                }
+            }
+        }
+        reg.blocks = blocks
+            .into_iter()
+            .map(|(k, v)| (k, v.into_iter().collect()))
+            .collect();
+        let mut summonable: Vec<String> = self
+            .res
+            .mob_types()
+            .keys()
+            .map(|k| crate::hc::command::args::normalize(k))
+            .collect();
+        summonable.extend(
+            [
+                "minecraft:item",
+                "minecraft:experience_orb",
+                "minecraft:falling_block",
+                "minecraft:arrow",
+                "minecraft:lightning_bolt",
+                "minecraft:minecart",
+                "minecraft:chest_minecart",
+                "minecraft:hopper_minecart",
+                "minecraft:furnace_minecart",
+                "minecraft:tnt_minecart",
+            ]
+            .map(String::from),
+        );
+        summonable.sort();
+        summonable.dedup();
+        reg.summonable = summonable;
+        let root = self.options.resources.clone();
+        let mut types: Vec<String> = serde_json::from_slice::<serde_json::Value>(
+            &std::fs::read(root.join("entity-types.json")).unwrap_or_default(),
+        )
+        .ok()
+        .and_then(|v| {
+            v.as_object().map(|o| {
+                o.keys()
+                    .map(|k| crate::hc::command::args::normalize(k))
+                    .collect()
+            })
+        })
+        .unwrap_or_default();
+        if types.is_empty() {
+            types = reg.summonable.clone();
+            types.push("minecraft:player".into());
+        }
+        types.sort();
+        reg.entity_types = types;
+        let list = |dir: &str| -> Vec<String> {
+            let mut out: Vec<String> = std::fs::read_dir(root.join(dir))
+                .into_iter()
+                .flatten()
+                .flatten()
+                .filter_map(|e| {
+                    e.file_name()
+                        .to_str()?
+                        .strip_suffix(".json")
+                        .map(|n| format!("minecraft:{n}"))
+                })
+                .collect();
+            out.sort();
+            out
+        };
+        // The mob effect registry: every effect `/effect` and the
+        // `mob_effect` resource arguments accept.
+        reg.effects = crate::hc::brewing::EFFECTS
+            .iter()
+            .map(|e| format!("minecraft:{}", e.id))
+            .collect();
+        reg.effects.sort();
+        reg.enchantments = list("data/minecraft/enchantment");
+        reg.structures = list("data/minecraft/worldgen/structure");
+        reg.biomes = list("data/minecraft/worldgen/biome");
+        reg.clocks = list("data/minecraft/world_clock");
+        reg.dimensions = vec![
+            "minecraft:overworld".into(),
+            "minecraft:the_nether".into(),
+            "minecraft:the_end".into(),
+        ];
+        reg.players = vec![PLAYER_NAME.into()];
+        // Timelines of the overworld clock and their time markers.
+        self.world_data.markers.clear();
+        self.world_data.timelines.clear();
+        for name in list("data/minecraft/timeline") {
+            let path = root.join(format!(
+                "data/minecraft/timeline/{}.json",
+                name.trim_start_matches("minecraft:")
+            ));
+            let Ok(v) = serde_json::from_slice::<serde_json::Value>(
+                &std::fs::read(path).unwrap_or_default(),
+            ) else {
+                continue;
+            };
+            if v["clock"].as_str() != Some("minecraft:overworld") {
+                continue;
+            }
+            let period = v["period_ticks"].as_i64();
+            self.world_data.timelines.insert(name.clone(), period);
+            for (marker, def) in v["time_markers"].as_object().into_iter().flatten() {
+                let (ticks, show) = match def {
+                    serde_json::Value::Number(n) => (n.as_i64().unwrap_or(0), false),
+                    other => (
+                        other["ticks"].as_i64().unwrap_or(0),
+                        other["show_in_commands"].as_bool().unwrap_or(false),
+                    ),
+                };
+                self.world_data.markers.insert(
+                    marker.clone(),
+                    TimeMarker {
+                        ticks,
+                        period,
+                        show,
+                    },
+                );
+            }
+        }
+        // Vanilla's built-in registries (mob effects, components, dialogs...).
+        for dir in [&self.options.resources] {
+            if let Ok(bytes) = std::fs::read(dir.join("command-registries.json"))
+                && let Ok(v) = serde_json::from_slice::<serde_json::Value>(&bytes)
+            {
+                self.world_data.registries.fill_from_export(&v);
+                break;
+            }
+        }
+        let reg = &mut self.world_data.registries;
+        reg.timelines = self.world_data.timelines.keys().cloned().collect();
+        reg.time_markers = self
+            .world_data
+            .markers
+            .iter()
+            .filter(|(_, m)| m.show)
+            .map(|(k, _)| k.clone())
+            .collect();
+    }
+}
+
+/// The sound events of every `assets/<namespace>/sounds.json`, sorted
+/// (`/playsound`'s suggestions).
+fn sound_event_names(root: &std::path::Path) -> Vec<String> {
+    let mut out = Vec::new();
+    for entry in std::fs::read_dir(root.join("assets")).into_iter().flatten().flatten() {
+        let namespace = entry.file_name().to_string_lossy().into_owned();
+        let Ok(bytes) = std::fs::read(entry.path().join("sounds.json")) else {
+            continue;
+        };
+        if let Ok(serde_json::Value::Object(events)) = serde_json::from_slice(&bytes) {
+            out.extend(events.keys().map(|k| format!("{namespace}:{k}")));
+        }
+    }
+    out.sort();
+    out.dedup();
+    out
+}

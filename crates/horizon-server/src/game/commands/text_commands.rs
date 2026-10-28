@@ -215,7 +215,7 @@ impl crate::game::Sim<'_> {
         let key = if ctx.has("clear") {
             self.titles_or_packet(
                 &players,
-                Titles::clear,
+                NoTitles::clear,
                 C::ClearTitles(play::Bool1 { value: false }),
             );
             "cleared"
@@ -278,18 +278,14 @@ impl crate::game::Sim<'_> {
     }
     /// TitleCommand's `connection.send` for each player: a guest is sent the
     /// packet, the window's own player shows it.
-    fn titles_or_packet(&mut self, players: &[Target], local: impl FnOnce(&mut Titles), packet: C) {
-        let mut local = Some(local);
+    fn titles_or_packet(&mut self, players: &[Target], _local: impl FnOnce(&mut NoTitles), packet: C) {
         for &t in players {
             match t {
                 Target::Player if self.lan_acting.is_some() => {
                     self.guest_packets.push(packet.clone());
                 }
-                Target::Player => {
-                    if let Some(local) = local.take() {
-                        local(&mut self.titles);
-                    }
-                }
+                // A server has no window of its own to show titles on.
+                Target::Player => {}
                 Target::Guest(conn) => {
                     if let Some(host) = self.lan.as_ref() {
                         host.hub.send_to(conn, &packet);
@@ -299,4 +295,15 @@ impl crate::game::Sim<'_> {
             }
         }
     }
+}
+
+/// The titles of a server's own window: it has none (`titles_or_packet`).
+pub(super) struct NoTitles;
+impl NoTitles {
+    fn clear(&mut self) {}
+    fn reset_times(&mut self) {}
+    fn set_times(&mut self, _fade_in: i32, _stay: i32, _fade_out: i32) {}
+    fn set_title(&mut self, _text: crate::hc::text::Text) {}
+    fn set_subtitle(&mut self, _text: crate::hc::text::Text) {}
+    fn set_overlay(&mut self, _text: crate::hc::text::Text, _animate: bool) {}
 }

@@ -2,8 +2,8 @@
 //! their client tickers (`Level.tickBlockEntities` on the client level) and
 //! the block events that drive them (`ClientboundBlockEventPacket` reaching
 //! `BlockEntity.triggerEvent`). The renderer reads the resulting state through
-//! [`Game::block_anim`] and [`Game::chest_lid`].
-use crate::hc::{block_entity_anim::{
+//! [`crate::game::Sim::block_anim`] and [`crate::game::Sim::chest_lid`].
+use crate::hc::{block_entity_anim::{BlockAnim, 
         BellEntity, ConduitServer, ConduitTarget, EndGateway, Shulker, ShulkerStatus, Ticker,
         closer_to_center_than,
     }, collisions::{SceneCollisions, no_collision_empty}, containers::BlockEntity, effects::EffectInstance, mobs::{Damage, DamageKind}, particles::{ParticleOptions, ParticleType}, save::number, skins};

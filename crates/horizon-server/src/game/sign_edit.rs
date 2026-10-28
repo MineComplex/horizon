@@ -13,8 +13,6 @@ pub(super) struct SignEditor {
     pub pos: (i32, i32, i32),
     pub front: bool,
     pub line: usize,
-    /// The line being edited (`AbstractSignEditScreen`'s text field).
-    edit: EditBox,
     /// `AbstractSignEditScreen.messages`: the side's lines as edited, sent
     /// when the editor closes, even if the sign is gone by then.
     lines: [String; 4],
@@ -232,45 +230,45 @@ impl crate::game::Sim<'_> {
             &mut sign.back
         };
         for (line, new) in side.lines.iter_mut().zip(&p.lines) {
-            *line = crate::hc::clipboard::strip_formatting(new);
+            *line = strip_formatting(new);
         }
         play.sign_editing = None;
         self.mark_block_entity_updated(key);
     }
-    /// The edited line's text.
-    fn sign_current(&self) -> Option<String> {
-        let edit = self.sign_edit.as_ref()?;
-        let BlockEntity::Sign(sign) = self.world.block_entities.get(&edit.pos)? else {
-            return None;
-        };
-        let side = if edit.front { &sign.front } else { &sign.back };
-        Some(side.lines[edit.line].clone())
-    }
-    /// `EditBox.setValue` from the line now being edited.
-    fn sign_load(&mut self) {
-        let Some(text) = self.sign_current() else {
-            return;
-        };
-        if let Some(edit) = self.sign_edit.as_mut() {
-            edit.edit.set_value(&text);
+}
+
+/// `ChatFormatting.stripFormatting`: a sign line as a client may write it.
+fn strip_formatting(input: &str) -> String {
+    let mut out = String::with_capacity(input.len());
+    let mut chars = input.chars().peekable();
+    while let Some(c) = chars.next() {
+        if c == '§'
+            && chars.peek().is_some_and(
+                |n| matches!(n.to_ascii_lowercase(), '0'..='9' | 'a'..='f' | 'k'..='o' | 'r'),
+            )
+        {
+            chars.next();
+            continue;
         }
+        out.push(c);
     }
-    /// Centre x, the first line's y, the line height, the width limit and the four lines.
-    fn sign_lines(&self, width: f32) -> Option<(f32, f32, f32, f32, Vec<String>)> {
-        let edit = self.sign_edit.as_ref()?;
-        let BlockEntity::Sign(sign) = self.world.block_entities.get(&edit.pos)? else {
-            return None;
+    out
+}
+
+impl crate::game::Sim<'_> {
+    /// `SignBlockEntity.openTextEdit`'s turn: the player edits this side (the
+    /// server then opens the editor on their client, `lan_open_sign_editor`).
+    pub(super) fn open_sign_editor(&mut self, pos: (i32, i32, i32), front: bool) {
+        let lines = match self.world.block_entities.get(&pos) {
+            Some(BlockEntity::Sign(sign)) if front => sign.front.lines.clone(),
+            Some(BlockEntity::Sign(sign)) => sign.back.lines.clone(),
+            _ => Default::default(),
         };
-        let text = if edit.front { &sign.front } else { &sign.back };
-        let line_height = sign.line_height();
-        let y = if sign.hanging { 125.0 } else { 90.0 };
-        let top = y - (4.0 * line_height / 2.0).floor();
-        Some((
-            width / 2.0,
-            top,
-            line_height,
-            sign.max_line_width(),
-            text.lines.to_vec(),
-        ))
+        self.sign_edit = Some(SignEditor {
+            pos,
+            front,
+            line: 0,
+            lines,
+        });
     }
 }

@@ -251,3 +251,32 @@ impl crate::game::Sim<'_> {
         }
     }
 }
+
+impl crate::game::Sim<'_> {
+    /// Keep the workers fed until `until`: collect what they finished and
+    /// hand them the next jobs as soon as each one is done, rather than once
+    /// a tick.
+    pub(in crate::game) fn pump_chunks(&mut self, until: Instant, paused: bool) {
+        // Force-loaded chunks too: decorating in vanilla's order, a chunk
+        // waits for its neighbours far more often than once a tick allows.
+        // And the players' chunks while they load, as vanilla's server runs
+        // its chunk tasks while it waits for the next tick
+        // (`MinecraftServer.waitUntilNextTick`): once a tick, a few jobs per
+        // worker (`schedule_generation`) capped joining a world at about 120
+        // columns a second with two workers, the workers idle most of the
+        // time. Not while a respawn search waits for a chunk: its area is
+        // only asked for by the tick's own `update_world`.
+        let players = !paused && self.spawn_wait.is_empty();
+        while self.pregen_runs_here()
+            || ((players || !self.streaming.forced.is_empty()) && self.streaming.busy())
+        {
+            let now = Instant::now();
+            if now >= until {
+                break;
+            }
+            self.streaming
+                .wait((until - now).min(Duration::from_millis(5)));
+            self.stream_world();
+        }
+    }
+}

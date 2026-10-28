@@ -1,5 +1,6 @@
 //! Server methods that lived in the client's mixed files.
 use super::*;
+use crate::hc::text::Text;
 use crate::hc::command::args::GameMode;
 use serde_json::{Value, json};
 
@@ -60,8 +61,6 @@ impl crate::game::Sim<'_> {
     /// A server's `flush_to_window`: it has no window, so what the game queued for one goes.
     pub(crate) fn drop_window_output(&mut self) {
         self.sounds.queue.clear();
-        self.ui.chat.drop_unwrapped();
-        self.rumbles.clear();
         self.hands_used.clear();
         self.pointer_grab = None;
     }
@@ -112,91 +111,6 @@ impl crate::game::Sim<'_> {
 
 
 impl crate::game::Sim<'_> {
-    /// `LevelEventHandler.levelEvent` 3011 to 3021.
-    pub(crate) fn trial_level_event(&mut self, id: i32, pos: [i32; 3], data: i32) {
-        // TrialSpawner.FlameParticle.decode.
-        let spawn_flame = if data == 1 {
-            T::SoulFireFlame
-        } else {
-            T::Flame
-        };
-        let sound = |s: &mut Self, name: &str, volume: f32| {
-            let pitch = event_pitch(s.particles.level_random());
-            s.local_sound(name, pos, volume, pitch);
-        };
-        match id {
-            3011 => self.trial_spawn_particles(pos, spawn_flame),
-            3012 => {
-                sound(self, "block.trial_spawner.spawn_mob", 1.0);
-                self.trial_spawn_particles(pos, spawn_flame);
-            }
-            3013 | 3019 => {
-                sound(self, "block.trial_spawner.detect_player", 1.0);
-                let ty = if id == 3013 {
-                    T::TrialSpawnerDetection
-                } else {
-                    T::TrialSpawnerDetectionOminous
-                };
-                self.detect_player_particles(pos, data, ty);
-            }
-            3014 => {
-                sound(self, "block.trial_spawner.eject_item", 1.0);
-                self.eject_item_particles(pos);
-            }
-            3015 => {
-                if matches!(
-                    self.world.block_entities.get(&(pos[0], pos[1], pos[2])),
-                    Some(BlockEntity::Vault(_))
-                ) {
-                    self.vault_activation_particles(pos, data != 0);
-                    sound(self, "block.vault.activate", 1.0);
-                }
-            }
-            3016 => {
-                // emitDeactivationParticles.
-                let ty = flame(data != 0);
-                for _ in 0..20 {
-                    let random = self.particles.level_random();
-                    let p = [0.4, 0.4, 0.4].map(|lo| next_double(random, lo, 0.6));
-                    let v = [0; 3].map(|_| random.next_gaussian() * 0.02);
-                    let at = std::array::from_fn(|i| f64::from(pos[i]) + p[i]);
-                    self.particle(ty, at, v);
-                }
-                sound(self, "block.vault.deactivate", 1.0);
-            }
-            3017 => self.eject_item_particles(pos),
-            3018 => {
-                for _ in 0..10 {
-                    let random = self.particles.level_random();
-                    let v = [0; 3].map(|_| random.next_gaussian() * 0.02);
-                    let at = pos.map(|c| f64::from(c) + random.next_double());
-                    self.particle(T::Poof, at, v);
-                }
-                sound(self, "block.cobweb.place", 1.0);
-            }
-            3020 => {
-                sound(
-                    self,
-                    "block.trial_spawner.ominous_activate",
-                    if data == 0 { 0.3 } else { 1.0 },
-                );
-                self.detect_player_particles(pos, 0, T::TrialSpawnerDetectionOminous);
-                // addBecomeOminousParticles.
-                for _ in 0..20 {
-                    let random = self.particles.level_random();
-                    let at = pos.map(|c| f64::from(c) + 0.5 + (random.next_double() - 0.5) * 2.0);
-                    let v = [0; 3].map(|_| random.next_gaussian() * 0.02);
-                    self.particle(T::TrialOmen, at, v);
-                    self.particle(T::SoulFireFlame, at, v);
-                }
-            }
-            3021 => {
-                sound(self, "block.trial_spawner.spawn_item", 1.0);
-                self.trial_spawn_particles(pos, spawn_flame);
-            }
-            _ => {}
-        }
-    }
 }
 
 impl crate::game::Sim<'_> {
@@ -208,5 +122,67 @@ impl crate::game::Sim<'_> {
             let name = Text::translate(&format!("gameMode.{}", mode.name()), &[]);
             self.feedback(Text::translate("commands.gamemode.success.self", &[name]));
         }
+    }
+}
+
+impl crate::game::Sim<'_> {
+    /// Their kind and place, for `status`.
+    pub(crate) fn projectiles_status(&self) -> Vec<serde_json::Value> {
+        use serde_json::json;
+        let at = |p: Vec3| [p.x, p.y, p.z];
+        let mut out = Vec::new();
+        for f in &self.fangs.list {
+            out.push(
+                json!({"id": f.id, "kind": "minecraft:evoker_fangs", "position": f.pos,
+                "yaw": f.yaw, "started": f.started, "life": f.life}),
+            );
+        }
+        for t in &self.tnts {
+            out.push(json!({"id": t.id, "kind": "minecraft:tnt", "position": at(t.position), "fuse": t.fuse}));
+        }
+        for f in &self.falling {
+            out.push(json!({"id": f.id, "kind": "minecraft:falling_block", "position": at(f.position), "state": f.state.0}));
+        }
+        for c in &self.crystals {
+            out.push(json!({"id": c.id, "kind": "minecraft:end_crystal", "position": at(c.position), "show_bottom": c.show_bottom}));
+        }
+        for t in &self.tridents {
+            out.push(json!({"id": t.id, "kind": "minecraft:trident", "position": at(t.position)}));
+        }
+        for p in &self.creatures.projectiles {
+            out.push(json!({"id": p.id, "kind": format!("{:?}", p.kind).split([' ', '{']).next().unwrap_or(""), "position": at(p.position), "velocity": at(p.velocity),
+                "player_owned": p.owner == Some(crate::hc::mobs::Who::Player)}));
+        }
+        for (kind, p, _) in self.potions.thrown_entities() {
+            out.push(json!({"kind": kind, "position": at(p)}));
+        }
+        for (id, p) in self.end.eye_positions() {
+            out.push(json!({"id": id, "kind": "minecraft:eye_of_ender", "position": p}));
+        }
+        out.extend(self.hooks_status());
+        out
+    }
+}
+
+impl crate::game::Sim<'_> {
+    /// `SpyglassItem.use`: start scoping.
+    pub(crate) fn use_spyglass(&mut self) {
+        if self.using.is_none() {
+            self.using = Some((self.held_slot(), 0));
+            let at = self.eye_position();
+            self.sounds
+                .play("minecraft:item.spyglass.use", at, 1.0, 1.0);
+        }
+    }
+}
+
+impl crate::game::Sim<'_> {
+    /// `horizon-ctl save` and `save-all`.
+    pub(crate) fn control_save(&mut self, all: bool) -> Result<()> {
+        if all {
+            let keys: Vec<_> = self.world.chunks.keys().copied().collect();
+            self.world.modified.extend(keys);
+        }
+        self.save_game()
     }
 }

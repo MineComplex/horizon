@@ -1,7 +1,7 @@
 //! The component fixtures (`HORIZON_DISPENSE_FIXTURE`, `HORIZON_SCULK_FIXTURE`)
 //! run on `horizon-server`: their own synthetic levels and entity phases on a
 //! server Game, without a client.
-use super::{Options, PackResources, Resources, UiResources, execution_role::ExecutionRole};
+use super::{Options, PackResources, Resources, Settings, execution_role::ExecutionRole};
 use crate::hc::Result;
 use std::sync::Arc;
 
@@ -34,22 +34,12 @@ impl crate::game::Sim<'_> {
     }
 }
 
-/// A server Game: it draws nothing, only the font, which books and chat
-/// measure with.
+/// A server game for the fixture's own thread.
 fn server_game(
     res: &Arc<Resources>,
     pack: PackResources,
     options: Options,
     settings: Settings,
-) -> Result<Game<'_>> {
-    let atlas = HudAtlas::fonts(&options.resources)?;
-    let gui = UiResources {
-        atlas,
-        panorama: Arc::new(crate::hc::gfx::panorama::Faces {
-            size: 1,
-            pixels: [0u8; 4].repeat(6),
-        }),
-    };
-    let audio = Audio::silent(&options.resources);
-    crate::game::Sim::new(res, pack, gui, options, settings, audio, None)
+) -> Result<crate::game::Sim<'_>> {
+    crate::game::Sim::new(res, pack, options, settings, None)
 }

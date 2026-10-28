@@ -128,3 +128,5 @@ pub mod streaming {
 }
 pub use horizon_client_core::sound_source;
 pub use horizon_game::block_entity_anim;
+pub use horizon_game::world_options;
+pub use horizon_game::control;

@@ -1053,3 +1053,373 @@ fn png_size(bytes: &[u8]) -> Option<(u32, u32)> {
     let h = u32::from_be_bytes(bytes[20..24].try_into().ok()?);
     Some((w, h))
 }
+
+impl crate::game::Sim<'_> {
+    /// DedicatedServer.initServer and MinecraftServer.runServer.
+    pub(crate) fn run_dedicated(&mut self) -> Result<()> {
+        // This thread ticks the server (MinecraftServer.spin's priority).
+        horizon_threads::favour_current();
+        // JavaPlugin.onLoad, before the worlds (CraftServer.loadPlugins).
+        self.plugins_load();
+        let Setup {
+            props,
+            universe,
+            level_name,
+            port,
+            started,
+        } = SETUP
+            .get()
+            .and_then(|m| m.lock().unwrap().take())
+            .ok_or("dedicated server not prepared")?;
+        // Main's WorldLoader: a new world's dimensions come from
+        // server.properties before the server starts.
+        let world_dir = std::env::current_dir()?.join(&universe).join(&level_name);
+        let new_world = !world_dir.join("level.dat").exists();
+        if new_world {
+            self.write_world_gen(&world_dir, &props)?;
+        }
+        // The console thread starts first, as in initServer.
+        let (tx, console) = mpsc::channel();
+        std::thread::Builder::new()
+            .name("Server console handler".into())
+            .spawn(move || {
+                let stdin = std::io::stdin();
+                let mut line = String::new();
+                while stdin.read_line(&mut line).is_ok_and(|n| n > 0) {
+                    if tx
+                        .send(line.trim_end_matches(['\r', '\n']).to_owned())
+                        .is_err()
+                    {
+                        break;
+                    }
+                    line.clear();
+                }
+            })?;
+        // Main: Services.create loads the universe's usercache.json.
+        let (mut cache, warnings) = UserCache::load(universe.join("usercache.json"));
+        for warning in warnings {
+            log_from("main", "WARN", &warning);
+        }
+        // Nobody is looked up at Mojang: names nobody has resolve offline.
+        cache.resolve_offline_users = true;
+        *USER_CACHE.lock().unwrap() = Some(cache);
+        // No chat keys are checked: this server never fetches Mojang's
+        // services' public keys (Services.create), so chat is not enforced.
+        let secure_chat = Arc::new(crate::hc::lan::SecureChat::new(false, Vec::new));
+        // Paper's config/paper-global.yml: proxies.velocity puts the server
+        // behind a Velocity proxy, which authenticates the players.
+        let velocity_settings = paper_global::load(std::path::Path::new("config/paper-global.yml"))
+            .map_err(|e| format!("config/paper-global.yml: {e}"))?;
+        log(
+            "INFO",
+            &format!(
+                "Starting minecraft server version {}",
+                horizon_core::VANILLA_VERSION
+            ),
+        );
+        log("INFO", "Loading properties");
+        let game_mode = props.game_mode;
+        log(
+            "INFO",
+            &format!(
+                "Default game type: {}",
+                GAME_MODES[game_mode as usize].to_uppercase()
+            ),
+        );
+        let port = port.unwrap_or(props.server_port as u16);
+        let velocity = if velocity_settings.enabled {
+            if velocity_settings.secret.is_empty() {
+                return Err("config/paper-global.yml: proxies.velocity.secret is empty".into());
+            }
+            Some(Arc::new(Velocity {
+                secret: velocity_settings.secret.clone().into_bytes(),
+            }))
+        } else {
+            None
+        };
+        log(
+            "INFO",
+            &format!(
+                "Starting Minecraft server on {}:{port}",
+                if props.server_ip.is_empty() {
+                    "*"
+                } else {
+                    &props.server_ip
+                }
+            ),
+        );
+        if velocity.is_none() {
+            log("WARN", "**** SERVER IS RUNNING IN OFFLINE/INSECURE MODE!");
+            log(
+                "WARN",
+                "The server will make no attempt to authenticate usernames. Beware.",
+            );
+            log(
+                "WARN",
+                "While this makes the game possible to play without internet access, it also opens up the ability for hackers to connect with any username they choose.",
+            );
+            log(
+                "WARN",
+                "To change this, put the server behind Velocity: proxies.velocity in config/paper-global.yml.",
+            );
+        }
+        let mut lists = Lists::load();
+        lists.use_whitelist = props.white_list;
+        lists.enforce_whitelist = props.enforce_whitelist;
+        let lists = Arc::new(Mutex::new(lists));
+        log("INFO", &format!("Preparing level \"{level_name}\""));
+        let folder = world_dir.to_string_lossy().into_owned();
+        self.load_world(WorldRequest::new(
+            &folder,
+            Some(&level_name),
+            Some(props.seed),
+            game_mode == 1,
+            None,
+        )?)?;
+        if new_world {
+            self.level.hardcore = props.hardcore;
+        }
+        // The single-player host's state is not used: players have their own files.
+        self.level.position = None;
+        // DedicatedServer.initServer: worldData.setGameType; forceDifficulty.
+        self.set_default_game_mode(game_mode);
+        self.world_data.difficulty = props.difficulty as u8;
+        // DedicatedServer.initServer: a legacy `announce-player-achievements`
+        // sets the show_advancement_messages rule once, as the file is read.
+        if let Some(announce) = props.announce_player_achievements {
+            self.world_data.rules.set(
+                "show_advancement_messages",
+                crate::hc::gamerules::Value::Bool(announce),
+            );
+        }
+        self.settings.render_distance = props.view_distance.clamp(2, 32);
+        self.settings.simulation_distance = props.simulation_distance.clamp(2, 32);
+        self.streaming.radius = self.settings.render_distance;
+        self.settle_spawn()?;
+        let gate_lists = lists.clone();
+        let gate: LoginGate = Arc::new(move |address, uuid, name| {
+            let user = NameAndId {
+                id: uuid,
+                name: name.to_owned(),
+            };
+            gate_lists.lock().unwrap().can_login(address, &user)
+        });
+        let bypass_lists = lists.clone();
+        let favicon = std::fs::read("server-icon.png")
+            .ok()
+            .filter(|b| png_size(b) == Some((64, 64)));
+        let net = NetConfig {
+            bind: (!props.server_ip.is_empty())
+                .then(|| props.server_ip.parse().ok())
+                .flatten(),
+            port,
+            motd: props.motd.clone(),
+            max_players: props.max_players.max(0) as usize,
+            compression_threshold: props.network_compression_threshold,
+            enable_status: props.enable_status,
+            hide_online_players: props.hide_online_players,
+            favicon,
+            secure_chat: Some(secure_chat),
+            accepts_transfers: props.accepts_transfers,
+            listen: true,
+            bypasses_limit: Some(Arc::new(move |uuid| {
+                bypass_lists
+                    .lock()
+                    .unwrap()
+                    .ops
+                    .entries()
+                    .iter()
+                    .any(|e| e.user.id == uuid && e.bypasses_player_limit)
+            })),
+            gate: Some(gate),
+            velocity,
+            log: Some(NetLog {
+                write: Arc::new(log_from),
+                lang: Arc::new(log_language(&self.options.resources)),
+                log_ips: props.log_ips,
+            }),
+            resource_pack: props.resource_pack.clone(),
+            // DedicatedServer.serverLinks: `bug-report-link` as the only link
+            // (ServerLinks.KnownLinkType.BUG_REPORT is id 0).
+            server_links: if props.bug_report_link.is_empty() {
+                Vec::new()
+            } else if valid_untrusted_uri(&props.bug_report_link) {
+                vec![horizon_protocol::packets::configuration::ServerLink {
+                    kind: horizon_protocol::packets::configuration::ServerLinkKind::Known(0),
+                    link: props.bug_report_link.clone(),
+                }]
+            } else {
+                log(
+                    "WARN",
+                    &format!("Failed to parse bug link {}", props.bug_report_link),
+                );
+                Vec::new()
+            },
+        };
+        let config = HubConfig {
+            default_game_mode: game_mode,
+            guest_commands: true,
+            force_game_mode: props.force_game_mode,
+            hardcore: self.level.hardcore,
+            view_distance: props.view_distance.clamp(2, 32),
+            simulation_distance: props.simulation_distance.clamp(2, 32),
+            dimension: self.dim.id().to_owned(),
+            seed: self.level.seed,
+            max_players: props.max_players.max(0) as usize,
+            dedicated: true,
+            integrated: false,
+        };
+        let settings = LanSettings {
+            port,
+            guest_commands: true,
+            force_game_mode: props.force_game_mode,
+        };
+        if let Err(e) = self.lan_host(settings, net, config, None) {
+            log("WARN", "**** FAILED TO BIND TO PORT!");
+            log("WARN", &format!("The exception was: {e}"));
+            log("WARN", "Perhaps a server is already running on that port?");
+            return Ok(());
+        }
+        self.sync_ops(&lists);
+        if let Some(host) = self.lan.as_mut() {
+            host.hub.spawn_protection = props.spawn_protection;
+        }
+        // onEnable once the worlds are loaded (PluginLoadOrder.POSTWORLD).
+        self.plugins_enable();
+        self.apply_plugin_actions();
+        log(
+            "INFO",
+            &format!(
+                "Done ({:.3}s)! For help, type \"help\"",
+                started.elapsed().as_secs_f64()
+            ),
+        );
+        // DedicatedServer.initServer ends with saveEverything(false, true, true).
+        self.save_game()?;
+        self.log_saved_levels();
+        if let Some(host) = self.lan.as_mut() {
+            host.hub.entity_range_percent = props.entity_broadcast_range_percentage;
+        }
+        let mut state = ServerState {
+            lists,
+            console,
+            stop: false,
+            autosave: true,
+            empty_ticks: 0,
+            ticks: Default::default(),
+            paused: false,
+            broadcast_console: props.broadcast_console_to_ops,
+            op_level: props.op_permission_level,
+            exit_with: None,
+            ticks_since_check: 0,
+        };
+        let pause_after = props.pause_when_empty_seconds * 20;
+        let idle_timeout = props.player_idle_timeout;
+        if let (Some(script), Some(output)) = (
+            std::env::var_os("HORIZON_COMMAND_SCRIPT"),
+            std::env::var_os("HORIZON_COMMAND_OUTPUT"),
+        ) {
+            // The command harness instead of the loop: it ticks the server itself.
+            let result = self.run_command_harness(script.as_ref(), output.as_ref());
+            self.stop_dedicated()?;
+            return result;
+        }
+        let mut next = Instant::now();
+        while !state.stop {
+            let tick_start = Instant::now();
+            while let Ok(line) = state.console.try_recv() {
+                self.console_line(&mut state, &line);
+            }
+            self.poll_server_control(&mut state);
+            self.apply_plugin_actions();
+            if state.owner_gone() {
+                log("INFO", "The process the server ran for has ended: stopping");
+                state.stop = true;
+            }
+            let players = self.lan.as_ref().map_or(0, |h| h.hub.guests.len());
+            if pause_after > 0 {
+                // A `/pregen` task keeps the server busy as a player would:
+                // paused, nothing would post-process its chunks.
+                if players == 0 && self.pregen_level().is_none() {
+                    state.empty_ticks += 1;
+                } else {
+                    state.empty_ticks = 0;
+                }
+            }
+            let paused = pause_after > 0 && state.empty_ticks >= pause_after;
+            state.paused = paused;
+            if paused && state.empty_ticks == pause_after {
+                log(
+                    "INFO",
+                    &format!(
+                        "Server empty for {} seconds, pausing",
+                        props.pause_when_empty_seconds
+                    ),
+                );
+                self.save_game()?;
+            }
+            if !paused && !state.autosave {
+                // `save-off`: the periodic save inside the tick is skipped.
+                self.ticks = self.ticks.max(1);
+            }
+            // MinecraftServer.tickServer: while paused only the connections run.
+            self.tick_server_timed(paused)?;
+            // The plugins' tasks, then what the tick's events and tasks asked for.
+            self.plugins_tick();
+            self.apply_plugin_actions();
+            if idle_timeout > 0 {
+                self.kick_idle(idle_timeout);
+            }
+            // MinecraftServer.tickServer records each tick's time, for /tick query (and the status).
+            self.clock.record(tick_start.elapsed());
+            state.ticked(Instant::now());
+            self.wait_for_next_server_tick(&mut next, paused);
+        }
+        self.stop_dedicated()
+    }
+}
+
+impl crate::game::Sim<'_> {
+    /// Load the spawn area and find the world spawn as single player does,
+    /// without keeping a player there.
+    pub(crate) fn settle_spawn(&mut self) -> Result<()> {
+        let deadline = Instant::now() + Duration::from_secs(600);
+        while self.player.is_none() {
+            self.stream_world();
+            self.spawn_player()?;
+            if Instant::now() > deadline {
+                return Err("the spawn area did not load".into());
+            }
+            std::thread::sleep(Duration::from_millis(2));
+        }
+        self.player = None;
+        Ok(())
+    }
+}
+
+/// The language the server's log resolves components with: en_us.json.
+fn log_language(resources: &std::path::Path) -> horizon_protocol::text::Language {
+    std::fs::read(resources.join("assets/minecraft/lang/en_us.json"))
+        .ok()
+        .and_then(|b| serde_json::from_slice(&b).ok())
+        .unwrap_or_default()
+}
+
+/// `Util.parseAndValidateUntrustedUri`: an absolute `http`/`https` URI
+/// (java.net.URI's scheme then the allowlist; whitespace-free).
+fn valid_untrusted_uri(uri: &str) -> bool {
+    let Some(colon) = uri.find(':') else {
+        return false;
+    };
+    let scheme = &uri[..colon];
+    let mut chars = scheme.chars();
+    if !chars.next().is_some_and(|c| c.is_ascii_alphabetic())
+        || !chars.all(|c| c.is_ascii_alphanumeric() || matches!(c, '+' | '-' | '.'))
+    {
+        return false;
+    }
+    if !matches!(scheme.to_ascii_lowercase().as_str(), "http" | "https") {
+        return false;
+    }
+    !uri.chars().any(|c| c.is_control() || c == ' ')
+}

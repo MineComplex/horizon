@@ -71,7 +71,7 @@ pub(super) struct Parked {
     lan_entity_events: Vec<(i32, i8, [f64; 3])>,
     lan_critical_hits: Vec<(Option<u32>, i32, bool)>,
     /// Only the per-level parts of these are used (`swap_level`).
-    anims: BlockEntityAnims,
+    anims: crate::hc::block_entity_anim::BlockEntityAnims,
     raiding: Raiding,
     sculk: SculkState,
     creaking: CreakingState,
@@ -461,5 +461,42 @@ impl crate::game::Sim<'_> {
             self.save_level(wait)?;
         }
         self.enter_level(None, back)
+    }
+}
+
+impl crate::game::Sim<'_> {
+    /// The end of `MinecraftServer.runServer`'s loop for a server thread: a
+    /// finished `/tick sprint` reports to the operators as the server, then
+    /// the next tick starts one tick length after this one, or straight away
+    /// while the sprint runs (`checkShouldSprintThisTick`).
+    pub(crate) fn wait_for_next_server_tick(&mut self, next: &mut Instant, paused: bool) {
+        if let Some(report) = self.clock.take_sprint_report() {
+            // ServerTickRateManager.finishTickSprint: the server's sendSuccess.
+            self.console_broadcast = Some(true);
+            self.sprint_report(&report);
+            self.console_broadcast = None;
+            if let Some(mut host) = self.lan.take() {
+                self.send_admin_feedback(&mut host, None);
+                self.lan = Some(host);
+            }
+            self.admin_feedback.clear();
+        }
+        let now = Instant::now();
+        if !paused && self.clock.sprinting() {
+            *next = now;
+            return;
+        }
+        *next += self.clock.tick_duration();
+        if *next > now {
+            // The chunks loading (the players', force-loaded ones, a
+            // `/pregen` task) keep the workers fed until the next tick.
+            self.pump_chunks(*next, paused);
+            let now = Instant::now();
+            if *next > now {
+                std::thread::sleep(*next - now);
+            }
+        } else if now - *next > Duration::from_secs(2) {
+            *next = now;
+        }
     }
 }

@@ -420,7 +420,7 @@ impl crate::game::Sim<'_> {
                                 c.insert("minecraft:item_name".into(), name);
                             });
                         } else {
-                            let t = crate::hc::packs::component(&m["name"]);
+                            let t = crate::hc::component::to_text(&m["name"], &mut |k| crate::hc::text::Text::literal(k));
                             stack.extra.get_or_insert_with(Default::default).custom_name =
                                 Some(t.plain());
                         }
