@@ -63,6 +63,8 @@ pub enum DisplayClick {
     Nothing,
     /// SWAP: the hotbar slot gets a full stack of the item.
     Hotbar(usize, ItemStack),
+    /// SWAP with button 40 (Key F): the off-hand gets a full stack of the item.
+    Offhand(ItemStack),
     /// THROW: a copy of the item is dropped.
     Drop(ItemStack),
 }
@@ -84,8 +86,11 @@ pub fn click_display(
     match input {
         Input::Swap => {
             return match shown {
-                Some(s) => DisplayClick::Hotbar(button as usize, copy(s, max(s))),
-                None => DisplayClick::Nothing,
+                Some(s) if button == 40 => DisplayClick::Offhand(copy(s, max(s))),
+                Some(s) if (0..9).contains(&button) => {
+                    DisplayClick::Hotbar(button as usize, copy(s, max(s)))
+                }
+                Some(_) | None => DisplayClick::Nothing,
             };
         }
         Input::Clone => {

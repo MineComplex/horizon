@@ -303,6 +303,19 @@ impl Creative {
     pub fn search_items(&self) -> &[ItemStack] {
         &self.search_items
     }
+    /// Opening the screen: vanilla rebuilds CreativeModeInventoryScreen, whose
+    /// init() makes a fresh search box and a zeroed scrollbar; only the tab
+    /// persists (its static selectedTab). selectTab on the reopened screen
+    /// takes the oldTab != tab branch, so it empties and refocuses the box.
+    pub fn reopen(&mut self) {
+        self.search.set_value("");
+        self.release();
+        self.scroll = 0.0;
+        self.search.focused = self.tab().search;
+        if self.search.focused {
+            self.search.reset_blink();
+        }
+    }
     /// Indices into `search_items` that CreativeModeInventoryScreen.refreshSearchResults
     /// shows for `term`: the whole tab when empty, the tag tree after `#`, else
     /// the name tree, both over vanilla's suffix arrays (substring matches,
@@ -590,10 +603,14 @@ mod tests {
             display(Some(stack("ender_pearl", 9)), 1, Pickup).0,
             Some(stack("ender_pearl", 8))
         );
-        // Number keys fill a hotbar slot, Q drops copies, pick block clones.
+        // Number keys fill a hotbar slot, F fills off-hand, Q drops copies, pick block clones.
         assert_eq!(
             display(None, 3, Swap).1,
             DisplayClick::Hotbar(3, stack("stone", 64))
+        );
+        assert_eq!(
+            display(None, 40, Swap).1,
+            DisplayClick::Offhand(stack("stone", 64))
         );
         assert_eq!(
             display(None, 0, Throw).1,
