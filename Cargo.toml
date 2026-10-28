@@ -20,6 +20,8 @@ members = [
     "crates/horizon-bench",
     "crates/horizon-proxy",
     "crates/horizon-server",
+    "crates/horizon-server-api",
+    "crates/horizon-plugin-example",
     "crates/horizon-game",
     "crates/horizon-shaders",
     "crates/horizon-shader-api",

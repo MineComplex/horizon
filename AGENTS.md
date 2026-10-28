@@ -48,6 +48,7 @@ Game workspace (root `Cargo.toml`). This fork has no launcher (MineComplex's own
 | `horizon-prepare` | Builds `.local/horizon-client/26.3` from the player's own Minecraft install (runs the Java exporters) |
 | `horizon-server` | The server program, Leaf-style (`horizon-server --nogui`): server.properties, `config/paper-global.yml` (Velocity forwarding), console, `logs/` ([docs/server.md](docs/server.md)). For now it runs `horizon_client::game` without sound or controllers |
 | `horizon-server-files` | `server.properties`, eula, ops/whitelist/bans, usercache |
+| `horizon-server-api` | horizon-server's plugin API, Bukkit-shaped: `Plugin`, events with priorities and cancellation, commands, scheduler ([docs/plugins.md](docs/plugins.md)); the game fires it in `game/plugin_host.rs`. `horizon-plugin-example` is a plugin |
 | `horizon-proxy` | MineComplex's Velocity fork in Rust on tokio: `velocity.toml`, launcher-token login, modern forwarding, server switching, plugins, the Network plugin on Core gRPC ([docs/proxy.md](docs/proxy.md)) |
 | `horizon-shader-api` | Horizon's own WGSL shader packs ([docs/api/shaders.md](docs/api/shaders.md)): `horizon-shaders.toml`, the `.hshader` package; shared by the game, the launcher and the registry |
 | `horizon-shaders` | Shader packs (the `shaders/` folder format), rebuilt clean-room from a written spec of the format; no wgpu |

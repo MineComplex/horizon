@@ -1459,12 +1459,21 @@ impl Game<'_> {
                     }
                     HostEvent::PlayerChat { .. } => {}
                     HostEvent::ChatPending { message, .. } => {
-                        for e in host.hub.relay_chat(*message) {
+                        // AsyncPlayerChatEvent first when a plugin listens.
+                        let events = if self.plugins.is_some() {
+                            self.plugin_chat(&mut host, *message)
+                        } else {
+                            host.hub.relay_chat(*message)
+                        };
+                        for e in events {
                             self.lan_log_event(e);
                         }
                     }
                     HostEvent::Joined(conn) => {
+                        // Before the join saves the player: whether they had played here.
+                        let first_join = self.plugin_first_join(&host, conn);
                         self.lan_guest_joined(&mut host, conn, state.as_ref(), entities, spawn);
+                        self.plugin_joined(&mut host, conn, first_join);
                         if self.options.dedicated.is_some()
                             && let Some(g) = host.hub.guest(conn)
                         {
@@ -1519,6 +1528,7 @@ impl Game<'_> {
                             host.award_leave_game(guest.conn);
                         }
                         self.save_guest(&host, &guest);
+                        self.plugin_left(&mut host, &guest);
                         host.models.remove(&guest.conn);
                         host.play.remove(&guest.conn);
                         self.guest_combat.remove(&guest.conn);

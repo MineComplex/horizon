@@ -130,6 +130,7 @@ mod pickups;
 mod piglins;
 mod piston_push;
 mod player_equip;
+mod plugin_host;
 mod postprocess;
 mod potions;
 mod powder_snow;
@@ -151,6 +152,7 @@ mod respawn_anchor;
 mod saves_control;
 mod saving;
 mod scoreboard;
+pub use plugin_host::set_plugins;
 mod screens;
 mod sculk;
 mod sculk_fixture;
@@ -1901,6 +1903,13 @@ struct Game<'a> {
     lan: Option<lan::LanHost>,
     /// The server's world name (`--server-control`), once asked.
     server_world: std::cell::OnceCell<String>,
+    /// horizon-server's plugins (game/plugin_host.rs), what they asked for
+    /// that waits for the hub, and the players they last saw.
+    plugins: Option<Box<horizon_server_api::PluginHost>>,
+    plugin_actions: Vec<horizon_server_api::Action>,
+    plugin_seen: Vec<horizon_server_api::PlayerRef>,
+    /// Blocks a plugin kept from a player's break: the connection, where, the state.
+    plugin_resend: Vec<(u32, [i32; 3], i32)>,
     command_block_screen: Option<command_blocks::CommandBlockScreen>,
     /// KeyboardHandler's debug key state (game/debug_keys.rs), the physical
     /// keys held, and the debug renderers F3+B and F3+G switch on.
@@ -4104,7 +4113,24 @@ impl Game<'_> {
         {
             return Ok(());
         }
-        // BlockBreakEvent: a plugin may keep the block.
+        // BlockBreakEvent (a server's player): a plugin may keep the block, or
+        // break it without its drops.
+        let Some(drops) = self.plugin_block_break(pos) else {
+            return Ok(());
+        };
+        if drops {
+            return self.destroy_block_as_player(pos);
+        }
+        let rule = self.world_data.rules.bool("block_drops");
+        let no = horizon_client::gamerules::Value::Bool(false);
+        self.world_data.rules.set("block_drops", no);
+        let result = self.destroy_block_as_player(pos);
+        let was = horizon_client::gamerules::Value::Bool(rule);
+        self.world_data.rules.set("block_drops", was);
+        result
+    }
+    /// ServerPlayerGameMode.destroyBlock once the block may go.
+    fn destroy_block_as_player(&mut self, pos: [i32; 3]) -> Result<()> {
         self.rumbles
             .push(horizon_client::gamepad::Rumble::BlockBroken);
         // ServerPlayerGameMode.destroyBlock.
@@ -4612,7 +4638,29 @@ impl Game<'_> {
             can_use_game_master_blocks: self.can_use_game_master_blocks(),
         };
         // What the placement may replace, for BlockPlaceEvent's undo.
+        let before = {
+            let c = hit.pos;
+            let next = [c[0] + hit.face[0], c[1] + hit.face[1], c[2] + hit.face[2]];
+            [
+                (c, self.world.block(c[0], c[1], c[2])),
+                (next, self.world.block(next[0], next[1], next[2])),
+            ]
+        };
         let outcome = self.with_level(|b, level, ticks| b.place_block(level, ticks, &ctx));
+        // BlockPlaceEvent (a server's player): a plugin may take the block back.
+        if let PlaceOutcome::Placed { pos, state } = &outcome {
+            let target = [pos.x, pos.y, pos.z];
+            let replaced = before
+                .iter()
+                .find(|(p, _)| *p == target)
+                .map_or(self.world.air, |(_, s)| *s);
+            let item = Some(horizon_server_api::ItemStack::new(&stack.item, 1));
+            if !self.plugin_block_place(target, *state, replaced, item) {
+                let at = BlockPos::new(target[0], target[1], target[2]);
+                self.with_level(|b, level, ticks| b.set_block(level, ticks, at, replaced, 3));
+                return Ok(true);
+            }
+        }
         let PlaceOutcome::Placed { pos, state } = outcome else {
             self.process_level_events()?;
             // BlockItem.useOn: a consumable that could not be placed is used,
@@ -13470,6 +13518,10 @@ impl<'a> Game<'a> {
             remote: None,
             lan: None,
             server_world: Default::default(),
+            plugins: None,
+            plugin_actions: Vec::new(),
+            plugin_seen: Vec::new(),
+            plugin_resend: Vec::new(),
             command_block_screen: None,
             debug_keys: Default::default(),
             debug_charts: Default::default(),

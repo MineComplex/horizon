@@ -13,7 +13,14 @@ path = "src/main.rs"
 [dependencies]
 # The game without sound or controllers (the server half moves here step by step: docs/crates.md).
 horizon-client = { path = "../horizon-client", default-features = false }
+# The plugin API (Bukkit-shaped), and the plugins this server is built with (src/plugins.rs).
+horizon-server-api = { path = "../horizon-server-api" }
+horizon-plugin-example = { path = "../horizon-plugin-example", optional = true }
 log = "0.4"
+
+[features]
+# The example plugin (crates/horizon-plugin-example): the plugin tests run it; a real server leaves it out.
+example-plugin = ["dep:horizon-plugin-example"]
 
 [lints]
 workspace = true

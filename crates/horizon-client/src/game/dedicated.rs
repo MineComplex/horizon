@@ -446,6 +446,8 @@ impl Game<'_> {
     pub(super) fn run_dedicated(&mut self) -> Result<()> {
         // This thread ticks the server (MinecraftServer.spin's priority).
         horizon_threads::favour_current();
+        // JavaPlugin.onLoad, before the worlds (CraftServer.loadPlugins).
+        self.plugins_load();
         self.join_world_rest()?;
         let Setup {
             props,
@@ -670,6 +672,9 @@ impl Game<'_> {
         if let Some(host) = self.lan.as_mut() {
             host.hub.spawn_protection = props.spawn_protection;
         }
+        // onEnable once the worlds are loaded (PluginLoadOrder.POSTWORLD).
+        self.plugins_enable();
+        self.apply_plugin_actions();
         log(
             "INFO",
             &format!(
@@ -714,6 +719,7 @@ impl Game<'_> {
                 self.console_line(&mut state, &line);
             }
             self.poll_server_control(&mut state);
+            self.apply_plugin_actions();
             if state.owner_gone() {
                 log("INFO", "The process the server ran for has ended: stopping");
                 state.stop = true;
@@ -746,6 +752,9 @@ impl Game<'_> {
             }
             // MinecraftServer.tickServer: while paused only the connections run.
             self.tick_server_timed(paused)?;
+            // The plugins' tasks, then what the tick's events and tasks asked for.
+            self.plugins_tick();
+            self.apply_plugin_actions();
             if idle_timeout > 0 {
                 self.kick_idle(idle_timeout);
             }
@@ -891,7 +900,11 @@ impl Game<'_> {
     /// server (permission level 4). The dedicated-only commands are here;
     /// everything else goes to the game's dispatcher.
     fn console_command(&mut self, state: &mut ServerState, line: &str) {
-        let line = line.strip_prefix('/').unwrap_or(line);
+        // ServerCommandEvent, then the plugins' commands.
+        let Some(line) = self.plugin_console_command(line) else {
+            return;
+        };
+        let line = line.as_str();
         let mut words = line.split_whitespace();
         let Some(command) = words.next() else {
             return;
@@ -1358,6 +1371,8 @@ impl Game<'_> {
 
     fn stop_dedicated(&mut self) -> Result<()> {
         log("INFO", "Stopping server");
+        self.plugins_disable();
+        self.apply_plugin_actions();
         log("INFO", "Saving players");
         if let Some(h) = self.lan.as_mut() {
             for g in &h.hub.guests {

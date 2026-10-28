@@ -17,6 +17,8 @@
 //! is vanilla's (`net.minecraft.server.Main`).
 #![forbid(unsafe_code)]
 
+mod plugins;
+
 use horizon_client::{crash, logging};
 use std::path::PathBuf;
 
@@ -94,6 +96,7 @@ fn main() {
         log::info!("Horizon server {}", crash::version());
         crash::install(home.clone(), "server");
     }
+    horizon_client::game::set_plugins(plugins::installed());
     if let Err(error) = horizon_client::game::run_with(
         horizon_client::game::Program::Server,
         game_args(horizon, server, fixture),

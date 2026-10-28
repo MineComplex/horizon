@@ -1095,6 +1095,7 @@ dependencies = [
  "horizon-hdr",
  "horizon-items",
  "horizon-protocol",
+ "horizon-server-api",
  "horizon-server-files",
  "horizon-shader-api",
  "horizon-shaders",
@@ -1215,6 +1216,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "horizon-plugin-example"
+version = "0.1.0"
+dependencies = [
+ "horizon-server-api",
+]
+
+[[package]]
 name = "horizon-prepare"
 version = "0.1.0"
 dependencies = [
@@ -1273,8 +1281,14 @@ name = "horizon-server"
 version = "0.1.0"
 dependencies = [
  "horizon-client",
+ "horizon-plugin-example",
+ "horizon-server-api",
  "log",
 ]
+
+[[package]]
+name = "horizon-server-api"
+version = "0.1.0"
 
 [[package]]
 name = "horizon-server-files"

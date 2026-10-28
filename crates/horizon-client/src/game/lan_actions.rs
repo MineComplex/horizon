@@ -1839,7 +1839,11 @@ impl Game<'_> {
         command: &str,
         signed: Option<Vec<(String, horizon_client::lan::hub::chat::ChatMessage)>>,
     ) {
-        // Plugins first: PlayerCommandEvent, `/plugins` and their commands.
+        // Plugins first: PlayerCommandPreprocessEvent, `/plugins` and their commands.
+        let Some(command) = self.plugin_player_command(host, conn, command) else {
+            return;
+        };
+        let command = command.as_str();
         if self.guest_message_command(host, conn, command, signed.as_ref()) {
             return;
         }
@@ -2318,18 +2322,29 @@ impl Game<'_> {
             // the dying player's death screen and to everyone the team lets
             // see it; without it, the death screen gets an empty one.
             let shown = self.world_data.rules.bool("show_death_messages");
-            let keep_inventory = false;
             let g = &host.hub.guests[gi];
             let (id, at) = (g.entity_id, g.position);
-            let message = if shown {
+            let text = shown.then(|| {
                 let me = self.player_text(&name, uuid);
-                let text = match cause {
+                match cause {
                     Some(key) => horizon_client::text::Text::translate(&key, &[me]),
                     None if at[1] < f64::from(horizon_client::chunk::MIN_Y - 64) => {
                         horizon_client::text::Text::translate("death.attack.outOfWorld", &[me])
                     }
                     None => self.guest_death_message(conn, me),
-                };
+                }
+            });
+            // PlayerDeathEvent: a plugin may change the message or keep the inventory.
+            let rule = self.world_data.rules.bool("keep_inventory");
+            let (custom, kept) =
+                self.plugin_player_death(host, conn, text.as_ref().map(|t| t.plain()), rule);
+            let keep_inventory = kept && !rule;
+            let text = match custom {
+                Some(Some(line)) => Some(horizon_client::text::Text::legacy(&line)),
+                Some(None) => None,
+                None => text,
+            };
+            let message = if let Some(text) = text {
                 let message = horizon_client::lan::data::component_nbt(&text.component());
                 let team = self.score.board.players_team(&name);
                 if horizon_client::scoreboard::own_death_message_shown(team) {

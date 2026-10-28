@@ -2652,6 +2652,9 @@ pub struct Level {
     /// Game rule values by name without namespace (`keep_inventory`, ...).
     pub game_rules: BTreeMap<String, i32>,
     pub player_uuid: Option<[i32; 4]>,
+    /// A server's world: no single player, so no `singleplayer_uuid` and no
+    /// owner's file in players/data (the players save their own).
+    pub server: bool,
     pub selected_slot: i32,
     pub motion: [f64; 3],
     pub fall_distance: f64,
@@ -3173,7 +3176,7 @@ impl Level {
                 map.remove(&JavaString::from(key));
             }
         }
-        let uuid = self.ensure_player_uuid();
+        let uuid = (!self.server).then(|| self.ensure_player_uuid());
         // A new world's first spawn point is its world spawn.
         if self.world_spawn.is_none() {
             self.world_spawn = self.spawn.map(|s| {
@@ -3250,7 +3253,6 @@ impl Level {
             ),
             ("difficulty_settings", difficulty),
             ("initialized", Tag::Byte(1)),
-            ("singleplayer_uuid", uuid_tag(uuid)),
             ("ServerBrands", Tag::List(brands)),
         ] {
             put(&mut data, key, value);
@@ -3319,12 +3321,15 @@ impl Level {
             }
             write_saved_data(dir, "game_rules", rules)?;
         }
-        write_dat(
-            &dir.join("players")
-                .join("data")
-                .join(format!("{}.dat", uuid_text(uuid))),
-            self.player_tag(),
-        )?;
+        if let Some(uuid) = uuid {
+            put(&mut data, "singleplayer_uuid", uuid_tag(uuid));
+            write_dat(
+                &dir.join("players")
+                    .join("data")
+                    .join(format!("{}.dat", uuid_text(uuid))),
+                self.player_tag(),
+            )?;
+        }
         write_dat(&dir.join("level.dat"), Tag::compound([("Data", data)]))?;
         Ok(())
     }

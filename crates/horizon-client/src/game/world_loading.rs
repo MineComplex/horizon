@@ -115,6 +115,8 @@ impl WorldRequest {
             // single-player save or an older Horizon server wrote into level.dat.
             level.dimension = "minecraft:overworld".to_owned();
         }
+        // A server's world has no single player whose file to write.
+        level.server = options.dedicated.is_some();
         let dim = Dim::from_id(&level.dimension);
         let (mut streaming, save, locator) =
             make_streaming(res, pack, options, settings, &save_root, dim, level.seed)?;
