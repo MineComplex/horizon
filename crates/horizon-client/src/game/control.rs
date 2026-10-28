@@ -69,10 +69,13 @@ impl Game<'_> {
     /// Move the camera along the running flight; reply when it ends.
     pub(super) fn advance_flight(&mut self) {
         let tick_ms = self
+            .sim
             .integrated
             .as_ref()
-            .map_or(self.debug_charts.smoothed_tick_ms, |s| s.smoothed_tick_ms());
-        let Some(flight) = self.flight.as_mut() else {
+            .map_or(self.front.debug_charts.smoothed_tick_ms, |s| {
+                s.smoothed_tick_ms()
+            });
+        let Some(flight) = self.sim.flight.as_mut() else {
             return;
         };
         flight.tick_ms.push(tick_ms);
@@ -82,9 +85,9 @@ impl Game<'_> {
         let d = [b.x - a.x, b.y - a.y, b.z - a.z];
         let at = Vec3::new(a.x + d[0] * t, a.y + d[1] * t, a.z + d[2] * t);
         // Minecraft yaw: 0 faces +Z, 90 faces -X.
-        self.yaw = (-d[0]).atan2(d[2]).to_degrees() as f32;
-        self.pitch = flight.pitch;
-        if let Some(player) = self.player.as_mut() {
+        self.sim.yaw = (-d[0]).atan2(d[2]).to_degrees() as f32;
+        self.sim.pitch = flight.pitch;
+        if let Some(player) = self.sim.player.as_mut() {
             player.position = at;
             player.velocity = Vec3::new(0.0, 0.0, 0.0);
             player.fall_distance = 0.0;
@@ -95,14 +98,14 @@ impl Game<'_> {
         if t >= 1.0
             && let Some(flight) = self.flight.take()
         {
-            let mut summary = self.frame_stats.summary();
+            let mut summary = self.front.frame_stats.summary();
             let n = flight.tick_ms.len().max(1) as f32;
             summary["tick_ms"] = (flight.tick_ms.iter().sum::<f32>() / n).into();
             summary["tick_ms_max"] = flight.tick_ms.iter().copied().fold(0.0, f32::max).into();
             if flight.raw {
-                summary["frame_ms"] = self.frame_stats.frame_millis().into();
-                summary["cpu_ms"] = self.frame_stats.cpu_millis().into();
-                summary["gpu_ms"] = self.frame_stats.gpu_millis().into();
+                summary["frame_ms"] = self.front.frame_stats.frame_millis().into();
+                summary["cpu_ms"] = self.front.frame_stats.cpu_millis().into();
+                summary["gpu_ms"] = self.front.frame_stats.gpu_millis().into();
             }
             let _ = flight.reply.send(summary.to_string());
         }
@@ -110,7 +113,7 @@ impl Game<'_> {
     pub(super) fn poll_control(&mut self, event_loop: &ActiveEventLoop) {
         if let Some((deadline, reply)) = self.pending_bench.take() {
             if Instant::now() >= deadline {
-                let _ = reply.send(self.frame_stats.summary().to_string());
+                let _ = reply.send(self.front.frame_stats.summary().to_string());
             } else {
                 self.pending_bench = Some((deadline, reply));
             }
@@ -120,14 +123,14 @@ impl Game<'_> {
         for request in self.ui_wait.ready() {
             self.answer(request, event_loop);
         }
-        while let Some(request) = self.control.as_ref().and_then(|c| c.try_recv()) {
+        while let Some(request) = self.front.control.as_ref().and_then(|c| c.try_recv()) {
             self.agent_command_seen();
             self.answer(request, event_loop);
             if self.pending_save.is_some() {
                 break;
             }
         }
-        if self.control.is_some() {
+        if self.front.control.is_some() {
             self.watch_events();
         }
         if self.screen == Screen::Options
@@ -206,7 +209,7 @@ impl Game<'_> {
                 .collect::<Vec<_>>() }))),
             "setblock" | "fill" | "particle" | "signedit" => self.render_command(&words),
             "section-draws" => {
-                let r = self.renderer.as_mut().ok_or("no renderer")?;
+                let r = self.front.renderer.as_mut().ok_or("no renderer")?;
                 match words.get(1).copied() {
                     None => {}
                     Some("flat") => r.set_flat_draws(true)?,
@@ -216,7 +219,7 @@ impl Game<'_> {
                 Ok(Some(json!({ "ok": true, "flat": r.flat_draws() })))
             }
             "section-cull" => {
-                let r = self.renderer.as_mut().ok_or("no renderer")?;
+                let r = self.front.renderer.as_mut().ok_or("no renderer")?;
                 match words.get(1).copied() {
                     None => {}
                     Some("on") => r.set_section_cull(true)?,
@@ -226,7 +229,7 @@ impl Game<'_> {
                 Ok(Some(json!({ "ok": true, "cull": r.section_cull() })))
             }
             "section-sides" => {
-                let r = self.renderer.as_mut().ok_or("no renderer")?;
+                let r = self.front.renderer.as_mut().ok_or("no renderer")?;
                 match words.get(1).copied() {
                     None => {}
                     Some("on") => r.set_section_sides(true),
@@ -557,21 +560,21 @@ impl Game<'_> {
                 Ok(Some(self.control_hurt_log()))
             }
             "resume" => {
-                if self.screen == Screen::Paused {
-                    self.screen = Screen::Playing;
+                if self.sim.screen == Screen::Paused {
+                    self.sim.screen = Screen::Playing;
                 }
                 ok()
             }
             "screenshot" => {
-                let renderer = self.renderer.as_mut().ok_or("no renderer yet")?;
-                if self.pending_screenshot.is_some() {
+                let renderer = self.front.renderer.as_mut().ok_or("no renderer yet")?;
+                if self.sim.pending_screenshot.is_some() {
                     return Err("a screenshot is already pending".into());
                 }
                 arg(1)?;
                 // The rest of the line: a path may hold spaces.
                 let path = line.trim_start().strip_prefix("screenshot").unwrap_or("");
                 renderer.screenshot = Some(path.trim().into());
-                self.pending_screenshot = Some(reply.clone());
+                self.sim.pending_screenshot = Some(reply.clone());
                 Ok(None)
             }
             "chat" => {
@@ -606,10 +609,10 @@ impl Game<'_> {
                     self.sign_input(None, Some(text));
                     return ok();
                 }
-                match self.screen {
+                match self.sim.screen {
                     Screen::Chat => self.chat_type(text),
                     Screen::CommandBlock => self.command_block_type(text),
-                    Screen::Options => self.ui.options.type_text(&self.gui.atlas, text),
+                    Screen::Options => self.sim.ui.options.type_text(&self.front.gui.atlas, text),
                     // The port, or the game rules' search and number boxes.
                     Screen::WorldOptions if text == "\\b" => self.world_options_text(None),
                     Screen::WorldOptions => self.world_options_text(Some(text)),
@@ -662,10 +665,10 @@ impl Game<'_> {
                     "agent" => Page::Agent,
                     other => return Err(format!("unknown options page {other}").into()),
                 };
-                if self.screen == Screen::Playing && self.title.is_none() {
+                if self.screen == Screen::Playing && self.front.title.is_none() {
                     self.capture(false);
                 }
-                let from_title = self.title.is_some();
+                let from_title = self.front.title.is_some();
                 self.open_options(from_title);
                 self.ui.options.show(page);
                 if page == Page::ShaderPacks {
@@ -682,9 +685,9 @@ impl Game<'_> {
                 Ok(Some(json!({ "chat": lines })))
             }
             "stats" => {
-                let summary = self.frame_stats.summary();
+                let summary = self.front.frame_stats.summary();
                 if words.get(1) == Some(&"reset") {
-                    self.frame_stats.reset();
+                    self.front.frame_stats.reset();
                 }
                 Ok(Some(summary))
             }
@@ -693,7 +696,7 @@ impl Game<'_> {
                 if self.pending_bench.is_some() {
                     return Err("a benchmark is already running".into());
                 }
-                self.frame_stats.reset();
+                self.front.frame_stats.reset();
                 self.pending_bench = Some((
                     Instant::now() + Duration::from_secs_f64(seconds),
                     reply.clone(),
@@ -707,7 +710,7 @@ impl Game<'_> {
                 }
                 let n = |i: usize| -> Result<f64> { Ok(arg(i)?.parse()?) };
                 let pitch = words.get(8).map_or(Ok(10.0), |p| p.parse::<f32>())?;
-                self.frame_stats.reset();
+                self.front.frame_stats.reset();
                 self.flight = Some(Flight {
                     from: Vec3::new(n(1)?, n(2)?, n(3)?),
                     to: Vec3::new(n(4)?, n(5)?, n(6)?),
@@ -721,7 +724,7 @@ impl Game<'_> {
                 Ok(None)
             }
             "open" => {
-                if self.title.is_none() {
+                if self.front.title.is_none() {
                     return Err("a world is already open".into());
                 }
                 let folder = arg(1)?;
@@ -731,7 +734,7 @@ impl Game<'_> {
                 ok()
             }
             "connect" => {
-                if self.title.is_none() {
+                if self.front.title.is_none() {
                     return Err("leave the current world first".into());
                 }
                 let name = words
@@ -809,17 +812,8 @@ impl Game<'_> {
         }
     }
 
-    /// `horizon-ctl save` and `save-all`.
-    fn control_save(&mut self, all: bool) -> Result<()> {
-        if all {
-            let keys: Vec<_> = self.world.chunks.keys().copied().collect();
-            self.world.modified.extend(keys);
-        }
-        self.save_game()
-    }
-
     fn require_world(&self) -> Result<()> {
-        if self.title.is_some() {
+        if self.front.title.is_some() {
             return Err("no world open; use: open WORLD [SEED] [creative]".into());
         }
         Ok(())
@@ -844,7 +838,7 @@ impl Game<'_> {
         if self.screen == Screen::Win {
             return "win";
         }
-        if self.title.is_some() {
+        if self.front.title.is_some() {
             return "title";
         }
         match self.screen {
@@ -867,6 +861,179 @@ impl Game<'_> {
         }
     }
 
+    fn control_status(&self) -> Value {
+        let player = self.player.as_ref().map(|p| {
+            json!({
+                "position": [p.position.x, p.position.y, p.position.z],
+                "velocity": [p.velocity.x, p.velocity.y, p.velocity.z],
+                "on_ground": p.ground.on_ground,
+                "health": p.health.health(),
+                // The maximum the HUD's hearts last read (its cached value).
+                "max_health": p
+                    .attributes
+                    .lookup(p.attributes.key("minecraft:max_health").as_ref())
+                    .and_then(|h| p.attributes.instance(&h).ok())
+                    .map(|i| i.cached_value()),
+                "food": p.health.food.food,
+            })
+        });
+        let target = self.pick().map(|hit| {
+            let state = self.world.block(hit.pos[0], hit.pos[1], hit.pos[2]);
+            json!({ "pos": hit.pos, "block": &*self.res.facts().get(state).name })
+        });
+        let renderer = self.front.renderer.as_ref().map(|r| {
+            let [arena_bytes, section_vertex_bytes] = r.section_vertex_bytes();
+            // Device memory by the backend's allocator (Vulkan; absent elsewhere).
+            let memory = r.device.generate_allocator_report();
+            json!({
+                "gpu": r.info.name,
+                "vendor": vendor_name(r.info.vendor),
+                "driver": format!("{} {}", r.info.driver, r.info.driver_info).trim(),
+                "device_type": match r.info.device_type {
+                    wgpu::DeviceType::IntegratedGpu => "integrated",
+                    wgpu::DeviceType::DiscreteGpu => "discrete",
+                    wgpu::DeviceType::VirtualGpu => "virtual",
+                    wgpu::DeviceType::Cpu => "cpu",
+                    wgpu::DeviceType::Other => "other",
+                },
+                "backend": format!("{:?}", r.info.backend),
+                "size": [r.config.width, r.config.height],
+                "present_mode": format!("{:?}", r.config.present_mode),
+                "drawn_sections": r.drawn_sections,
+                "section_draws": r.section_draws,
+                "section_draw_calls": r.section_draw_calls,
+                "culled_sections": r.culled_sections(),
+                "uploaded_bytes": r.uploaded_bytes,
+                "resident_sections": r.resident_sections(),
+                "arena_bytes": arena_bytes,
+                "section_vertex_bytes": section_vertex_bytes,
+                "gpu_allocated_bytes": memory.as_ref().map(|m| m.total_allocated_bytes),
+                "gpu_reserved_bytes": memory.as_ref().map(|m| m.total_reserved_bytes),
+            })
+        });
+        // The keyboard as the OS reports it (screens read Shift and Ctrl here).
+        let mut physical_keys: Vec<_> = self
+            .physical_keys
+            .iter()
+            .map(|k| format!("{k:?}"))
+            .collect();
+        physical_keys.sort();
+        let lod = json!({
+            "distance": self.settings.horizon.lod_distance,
+            "effective_distance": self.lod_distance(),
+            "terrain_distance": self.terrain_distance(),
+            "source": if self.front.lod.is_none() { "none" } else if self.integrated.is_some() { "integrated" } else { "local" },
+            "source_attempted": self.front.lod_source_attempted,
+            "active_tiles": self.front.lod.as_ref().map_or(0, |lod| lod.stats().0),
+            "cached_tiles": self.front.lod.as_ref().map_or(0, |lod| lod.stats().1),
+            "far_detail": self.settings.horizon.far_detail.name(),
+            "resident_quads": self.front.renderer.as_ref().map_or(0, |r| r.lod_quads()),
+            "pending_observations": self.front.lod_observe.len(),
+            "refined_samples": self.front.lod.as_ref().map_or(0, |lod| lod.refined_samples()),
+        });
+        // The other players' cracks this client draws (LevelRenderer.destroyingBlocks).
+        let destroying: Vec<_> = self
+            .destroying
+            .iter()
+            .map(|(id, (pos, stage, _))| json!({ "id": id, "pos": pos, "stage": stage }))
+            .collect();
+        let mut status = json!({
+            "screen": self.screen_name(),
+            "debug": {
+                "overlay": self.debug,
+                "hitboxes": self.show_hitboxes,
+                "chunk_borders": self.show_chunk_borders,
+                "pause_menu": self.pause_menu,
+                "advanced_tooltips": self.settings.file.bool("advancedItemTooltips"),
+                "pause_on_lost_focus": self.settings.file.bool("pauseOnLostFocus"),
+                "clipboard": self.front.clipboard.copied(),
+            },
+            "dimension": self.dim.id(),
+            "creative": self.creative,
+            "player": player,
+            "yaw": self.yaw,
+            "pitch": self.pitch,
+            "target": target,
+            "selected": self.selected + 1,
+            "held": self.held().map(|s| json!({ "item": &*s.item, "count": s.count })),
+            "offhand": self.offhand.as_ref().map(|s| json!({ "item": &*s.item, "count": s.count, "damage": s.damage })),
+            "keys": self.keys.iter().map(|k| format!("{k:?}")).collect::<Vec<_>>(),
+            // The keyboard as the OS reports it (Shift and Ctrl in screens).
+            "fps": self.front.fps,
+            "frames": self.frames,
+            "ticks": self.ticks,
+            "day_time": self.world.day_time,
+            "music": self.front.music.current(&self.front.audio.engine),
+            "sounds": self.front.audio.census(),
+            "fishing": self.hook_status(),
+            "tridents": self.tridents.len(),
+            "rockets": self.rockets.len(),
+            "fight": self.dragon_status(),
+            // A client of a server (single player's server thread) knows the
+            // carts it was sent.
+            "carts": self.remote_carts().unwrap_or_else(|| self.carts.iter().map(|c| serde_json::json!({"kind": c.kind.id(), "position": [c.position.x, c.position.y, c.position.z], "velocity": [c.velocity.x, c.velocity.y, c.velocity.z]})).collect::<Vec<_>>()),
+            "riding": self.riding,
+            "using": self.using,
+            "render_distance": self.streaming.radius,
+            "chunks": self.world.chunks.len(),
+            "mobs": self.mobs.len(),
+            "block_entities": self.world.block_entities.len(),
+            "pending_chunks": self.streaming.pending() + self.front.pending_uploads.len() + self.remote_backlog(),
+            "generated_chunks": self.streaming.generated_total,
+            "meshed_sections": self.streaming.meshed_total,
+            "streaming": self.streaming.stages().into_iter().map(|(k, v)| (k.to_string(), v.into())).collect::<serde_json::Map<_, _>>(),
+            "dirty_light": self.world.dirty_light.len(),
+            "renderer": renderer,
+            "display": self.front.window.as_deref().and_then(horizon_client::window::monitor).map(|m| json!({
+                "width": m.size().width,
+                "height": m.size().height,
+                "scale": m.scale_factor(),
+                "refresh_hz": m.refresh_rate_millihertz().map(|r| r.div_ceil(1000)),
+            })),
+            "uptime_seconds": self.started.elapsed().as_secs_f64(),
+            "server": self.remote_status(),
+            // The names the name tags show now, seen from the eyes.
+            "name_tags": self
+                .eye_position()
+                .map(|e| self.shown_name_tags(glam::DVec3::from_array(e))),
+        });
+        status["lod"] = lod;
+        let (target, sampled) = self.front.lod.as_ref().map_or((0, 0), |lod| lod.progress());
+        status["lod"]["target_tiles"] = target.into();
+        status["lod"]["sampled_target_tiles"] = sampled.into();
+        status["pending_uploads"] = self.front.pending_uploads.len().into();
+        status["destroying"] = json!(destroying);
+        status["physical_keys"] = json!(physical_keys);
+        status["heard"] = json!(self.sounds.heard);
+        status["stopped_sounds"] = json!(self.sounds.stopped);
+        // Boats, minecarts, armor stands, item frames and paintings.
+        status["objects"] = json!(self.objects_status());
+        status["lightning"] = json!({"bolts": self.bolts.len(), "struck": self.lightning_seen[0],
+            "flashes": self.lightning_seen[1], "flash": self.flash});
+        // Primed TNT, falling blocks, projectiles, tridents and end crystals.
+        status["projectiles"] = json!(self.projectiles_status());
+        let mut fangs_vertices = Vec::new();
+        self.fangs_geometry(glam::DVec3::ZERO, 0.5, &mut fangs_vertices);
+        status["fangs_vertices"] = json!(fangs_vertices.len());
+        status["maps"] = json!(self.maps_status());
+        // The particles made so far, by type.
+        status["particles"] = json!(self.particles.made());
+        // The world border this side knows of.
+        status["border"] = json!({ "center": self.border.center(), "size": self.border.size() });
+        // The scoreboard sidebar the HUD shows.
+        status["sidebar"] = self.sidebar_status();
+        status
+    }
+}
+impl crate::game::Sim<'_> {
+    /// `horizon-ctl save` and `save-all`.
+    fn control_save(&mut self, all: bool) -> Result<()> {
+        if all {
+            let keys: Vec<_> = self.world.chunks.keys().copied().collect();
+            self.world.modified.extend(keys);
+        }
+        self.save_game()
+    }
     /// The hurts and melee attacks each player logged since the last call
     /// (`PlayerMotion::hurt_log`, `attack_log`), taken out.
     fn control_hurt_log(&mut self) -> Value {
@@ -913,170 +1080,6 @@ impl Game<'_> {
             }
         }
         json!({ "ok": true, "players": players })
-    }
-
-    fn control_status(&self) -> Value {
-        let player = self.player.as_ref().map(|p| {
-            json!({
-                "position": [p.position.x, p.position.y, p.position.z],
-                "velocity": [p.velocity.x, p.velocity.y, p.velocity.z],
-                "on_ground": p.ground.on_ground,
-                "health": p.health.health(),
-                // The maximum the HUD's hearts last read (its cached value).
-                "max_health": p
-                    .attributes
-                    .lookup(p.attributes.key("minecraft:max_health").as_ref())
-                    .and_then(|h| p.attributes.instance(&h).ok())
-                    .map(|i| i.cached_value()),
-                "food": p.health.food.food,
-            })
-        });
-        let target = self.pick().map(|hit| {
-            let state = self.world.block(hit.pos[0], hit.pos[1], hit.pos[2]);
-            json!({ "pos": hit.pos, "block": &*self.res.facts().get(state).name })
-        });
-        let renderer = self.renderer.as_ref().map(|r| {
-            let [arena_bytes, section_vertex_bytes] = r.section_vertex_bytes();
-            // Device memory by the backend's allocator (Vulkan; absent elsewhere).
-            let memory = r.device.generate_allocator_report();
-            json!({
-                "gpu": r.info.name,
-                "vendor": vendor_name(r.info.vendor),
-                "driver": format!("{} {}", r.info.driver, r.info.driver_info).trim(),
-                "device_type": match r.info.device_type {
-                    wgpu::DeviceType::IntegratedGpu => "integrated",
-                    wgpu::DeviceType::DiscreteGpu => "discrete",
-                    wgpu::DeviceType::VirtualGpu => "virtual",
-                    wgpu::DeviceType::Cpu => "cpu",
-                    wgpu::DeviceType::Other => "other",
-                },
-                "backend": format!("{:?}", r.info.backend),
-                "size": [r.config.width, r.config.height],
-                "present_mode": format!("{:?}", r.config.present_mode),
-                "drawn_sections": r.drawn_sections,
-                "section_draws": r.section_draws,
-                "section_draw_calls": r.section_draw_calls,
-                "culled_sections": r.culled_sections(),
-                "uploaded_bytes": r.uploaded_bytes,
-                "resident_sections": r.resident_sections(),
-                "arena_bytes": arena_bytes,
-                "section_vertex_bytes": section_vertex_bytes,
-                "gpu_allocated_bytes": memory.as_ref().map(|m| m.total_allocated_bytes),
-                "gpu_reserved_bytes": memory.as_ref().map(|m| m.total_reserved_bytes),
-            })
-        });
-        // The keyboard as the OS reports it (screens read Shift and Ctrl here).
-        let mut physical_keys: Vec<_> = self
-            .physical_keys
-            .iter()
-            .map(|k| format!("{k:?}"))
-            .collect();
-        physical_keys.sort();
-        let lod = json!({
-            "distance": self.settings.horizon.lod_distance,
-            "effective_distance": self.lod_distance(),
-            "terrain_distance": self.terrain_distance(),
-            "source": if self.lod.is_none() { "none" } else if self.integrated.is_some() { "integrated" } else { "local" },
-            "source_attempted": self.lod_source_attempted,
-            "active_tiles": self.lod.as_ref().map_or(0, |lod| lod.stats().0),
-            "cached_tiles": self.lod.as_ref().map_or(0, |lod| lod.stats().1),
-            "far_detail": self.settings.horizon.far_detail.name(),
-            "resident_quads": self.renderer.as_ref().map_or(0, |r| r.lod_quads()),
-            "pending_observations": self.lod_observe.len(),
-            "refined_samples": self.lod.as_ref().map_or(0, |lod| lod.refined_samples()),
-        });
-        // The other players' cracks this client draws (LevelRenderer.destroyingBlocks).
-        let destroying: Vec<_> = self
-            .destroying
-            .iter()
-            .map(|(id, (pos, stage, _))| json!({ "id": id, "pos": pos, "stage": stage }))
-            .collect();
-        let mut status = json!({
-            "screen": self.screen_name(),
-            "debug": {
-                "overlay": self.debug,
-                "hitboxes": self.show_hitboxes,
-                "chunk_borders": self.show_chunk_borders,
-                "pause_menu": self.pause_menu,
-                "advanced_tooltips": self.settings.file.bool("advancedItemTooltips"),
-                "pause_on_lost_focus": self.settings.file.bool("pauseOnLostFocus"),
-                "clipboard": self.clipboard.copied(),
-            },
-            "dimension": self.dim.id(),
-            "creative": self.creative,
-            "player": player,
-            "yaw": self.yaw,
-            "pitch": self.pitch,
-            "target": target,
-            "selected": self.selected + 1,
-            "held": self.held().map(|s| json!({ "item": &*s.item, "count": s.count })),
-            "offhand": self.offhand.as_ref().map(|s| json!({ "item": &*s.item, "count": s.count, "damage": s.damage })),
-            "keys": self.keys.iter().map(|k| format!("{k:?}")).collect::<Vec<_>>(),
-            // The keyboard as the OS reports it (Shift and Ctrl in screens).
-            "fps": self.fps,
-            "frames": self.frames,
-            "ticks": self.ticks,
-            "day_time": self.world.day_time,
-            "music": self.music.current(&self.audio.engine),
-            "sounds": self.audio.census(),
-            "fishing": self.hook_status(),
-            "tridents": self.tridents.len(),
-            "rockets": self.rockets.len(),
-            "fight": self.dragon_status(),
-            // A client of a server (single player's server thread) knows the
-            // carts it was sent.
-            "carts": self.remote_carts().unwrap_or_else(|| self.carts.iter().map(|c| serde_json::json!({"kind": c.kind.id(), "position": [c.position.x, c.position.y, c.position.z], "velocity": [c.velocity.x, c.velocity.y, c.velocity.z]})).collect::<Vec<_>>()),
-            "riding": self.riding,
-            "using": self.using,
-            "render_distance": self.streaming.radius,
-            "chunks": self.world.chunks.len(),
-            "mobs": self.mobs.len(),
-            "block_entities": self.world.block_entities.len(),
-            "pending_chunks": self.streaming.pending() + self.pending_uploads.len() + self.remote_backlog(),
-            "generated_chunks": self.streaming.generated_total,
-            "meshed_sections": self.streaming.meshed_total,
-            "streaming": self.streaming.stages().into_iter().map(|(k, v)| (k.to_string(), v.into())).collect::<serde_json::Map<_, _>>(),
-            "dirty_light": self.world.dirty_light.len(),
-            "renderer": renderer,
-            "display": self.window.as_deref().and_then(horizon_client::window::monitor).map(|m| json!({
-                "width": m.size().width,
-                "height": m.size().height,
-                "scale": m.scale_factor(),
-                "refresh_hz": m.refresh_rate_millihertz().map(|r| r.div_ceil(1000)),
-            })),
-            "uptime_seconds": self.started.elapsed().as_secs_f64(),
-            "server": self.remote_status(),
-            // The names the name tags show now, seen from the eyes.
-            "name_tags": self
-                .eye_position()
-                .map(|e| self.shown_name_tags(glam::DVec3::from_array(e))),
-        });
-        status["lod"] = lod;
-        let (target, sampled) = self.lod.as_ref().map_or((0, 0), |lod| lod.progress());
-        status["lod"]["target_tiles"] = target.into();
-        status["lod"]["sampled_target_tiles"] = sampled.into();
-        status["pending_uploads"] = self.pending_uploads.len().into();
-        status["destroying"] = json!(destroying);
-        status["physical_keys"] = json!(physical_keys);
-        status["heard"] = json!(self.sounds.heard);
-        status["stopped_sounds"] = json!(self.sounds.stopped);
-        // Boats, minecarts, armor stands, item frames and paintings.
-        status["objects"] = json!(self.objects_status());
-        status["lightning"] = json!({"bolts": self.bolts.len(), "struck": self.lightning_seen[0],
-            "flashes": self.lightning_seen[1], "flash": self.flash});
-        // Primed TNT, falling blocks, projectiles, tridents and end crystals.
-        status["projectiles"] = json!(self.projectiles_status());
-        let mut fangs_vertices = Vec::new();
-        self.fangs_geometry(glam::DVec3::ZERO, 0.5, &mut fangs_vertices);
-        status["fangs_vertices"] = json!(fangs_vertices.len());
-        status["maps"] = json!(self.maps_status());
-        // The particles made so far, by type.
-        status["particles"] = json!(self.particles.made());
-        // The world border this side knows of.
-        status["border"] = json!({ "center": self.border.center(), "size": self.border.size() });
-        // The scoreboard sidebar the HUD shows.
-        status["sidebar"] = self.sidebar_status();
-        status
     }
 }
 

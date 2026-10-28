@@ -51,7 +51,8 @@ struct Drag {
     visited: Vec<usize>,
 }
 
-impl Game<'_> {
+impl Game<'_> {}
+impl crate::game::Sim<'_> {
     /// The open screen is one the tweaks run in, with the extra on.
     pub(super) fn tweaks_on(&self) -> bool {
         if !self.settings.extras.mouse_tweaks
@@ -281,6 +282,80 @@ impl Game<'_> {
 }
 
 impl Game<'_> {
+    /// The sort buttons: a bordered square with three bars, lighter under
+    /// the cursor.
+    pub(super) fn draw_sort_buttons(&self, batch: &mut HudBatch, ox: f32, oy: f32) {
+        let atlas = &self.front.gui.atlas;
+        for ((x, y), _) in self.sort_buttons() {
+            let (x, y) = (ox + x, oy + y);
+            let (cx, cy) = self.front.cursor;
+            let hovered = cx >= x && cx < x + SORT_BUTTON && cy >= y && cy < y + SORT_BUTTON;
+            let face = if hovered {
+                rgba(220, 220, 220, 255)
+            } else {
+                rgba(160, 160, 160, 255)
+            };
+            batch.fill(atlas, x, y, SORT_BUTTON, SORT_BUTTON, rgba(55, 55, 55, 255));
+            batch.fill(
+                atlas,
+                x + 1.0,
+                y + 1.0,
+                SORT_BUTTON - 2.0,
+                SORT_BUTTON - 2.0,
+                face,
+            );
+            for (i, w) in [5.0, 4.0, 3.0].into_iter().enumerate() {
+                let by = y + 2.0 + 2.0 * i as f32;
+                batch.fill(atlas, x + 2.0, by, w, 1.0, rgba(55, 55, 55, 255));
+            }
+        }
+    }
+    /// A left press on a sort button sorts its slots (true).
+    pub(super) fn sort_press(&mut self) -> bool {
+        let Some(r) = self.front.renderer.as_ref() else {
+            return false;
+        };
+        let batch = HudBatch::new([r.config.width, r.config.height]);
+        let (ox, oy) = self.inventory_origin(&batch);
+        let (cx, cy) = self.front.cursor;
+        let hit = self.sort_buttons().into_iter().find(|((x, y), _)| {
+            let (x, y) = (ox + x, oy + y);
+            cx >= x && cx < x + SORT_BUTTON && cy >= y && cy < y + SORT_BUTTON
+        });
+        let Some((_, slots)) = hit else {
+            return false;
+        };
+        self.sort_slots(&slots);
+        true
+    }
+    /// The sort key: sorts the part under the cursor (the container when
+    /// the cursor is over no slot).
+    pub(super) fn sort_key_press(&mut self, key: KeyCode) -> bool {
+        keybinds::key_name(key).is_some_and(|name| self.sort_input(name))
+    }
+    pub(super) fn sort_mouse_press(&mut self, button: MouseButton) -> bool {
+        self.sort_input(&keybinds::mouse_name(button))
+    }
+    fn sort_input(&mut self, name: &str) -> bool {
+        let e = &self.settings.extras;
+        if !e.sort || e.sort_key != name || self.recipe_search_focused() {
+            return false;
+        }
+        let buttons = self.sort_buttons();
+        let hovered = self.inventory_target().0;
+        let slots = buttons
+            .iter()
+            .find(|(_, slots)| hovered.is_some_and(|h| slots.contains(&h)))
+            .or(buttons.first())
+            .map(|(_, slots)| slots.clone());
+        let Some(slots) = slots else {
+            return false;
+        };
+        self.sort_slots(&slots);
+        true
+    }
+}
+impl crate::game::Sim<'_> {
     /// The sort buttons of the open screen, with the extra on: their
     /// corner (from the screen's) and the slots each sorts. The container's
     /// (chest-like ones only) sits by its title, the main inventory's by
@@ -318,78 +393,6 @@ impl Game<'_> {
         }
         buttons.push(((160.0, self.screen_height() - 95.0), (9..36).collect()));
         buttons
-    }
-    /// The sort buttons: a bordered square with three bars, lighter under
-    /// the cursor.
-    pub(super) fn draw_sort_buttons(&self, batch: &mut HudBatch, ox: f32, oy: f32) {
-        let atlas = &self.gui.atlas;
-        for ((x, y), _) in self.sort_buttons() {
-            let (x, y) = (ox + x, oy + y);
-            let (cx, cy) = self.cursor;
-            let hovered = cx >= x && cx < x + SORT_BUTTON && cy >= y && cy < y + SORT_BUTTON;
-            let face = if hovered {
-                rgba(220, 220, 220, 255)
-            } else {
-                rgba(160, 160, 160, 255)
-            };
-            batch.fill(atlas, x, y, SORT_BUTTON, SORT_BUTTON, rgba(55, 55, 55, 255));
-            batch.fill(
-                atlas,
-                x + 1.0,
-                y + 1.0,
-                SORT_BUTTON - 2.0,
-                SORT_BUTTON - 2.0,
-                face,
-            );
-            for (i, w) in [5.0, 4.0, 3.0].into_iter().enumerate() {
-                let by = y + 2.0 + 2.0 * i as f32;
-                batch.fill(atlas, x + 2.0, by, w, 1.0, rgba(55, 55, 55, 255));
-            }
-        }
-    }
-    /// A left press on a sort button sorts its slots (true).
-    pub(super) fn sort_press(&mut self) -> bool {
-        let Some(r) = self.renderer.as_ref() else {
-            return false;
-        };
-        let batch = HudBatch::new([r.config.width, r.config.height]);
-        let (ox, oy) = self.inventory_origin(&batch);
-        let (cx, cy) = self.cursor;
-        let hit = self.sort_buttons().into_iter().find(|((x, y), _)| {
-            let (x, y) = (ox + x, oy + y);
-            cx >= x && cx < x + SORT_BUTTON && cy >= y && cy < y + SORT_BUTTON
-        });
-        let Some((_, slots)) = hit else {
-            return false;
-        };
-        self.sort_slots(&slots);
-        true
-    }
-    /// The sort key: sorts the part under the cursor (the container when
-    /// the cursor is over no slot).
-    pub(super) fn sort_key_press(&mut self, key: KeyCode) -> bool {
-        keybinds::key_name(key).is_some_and(|name| self.sort_input(name))
-    }
-    pub(super) fn sort_mouse_press(&mut self, button: MouseButton) -> bool {
-        self.sort_input(&keybinds::mouse_name(button))
-    }
-    fn sort_input(&mut self, name: &str) -> bool {
-        let e = &self.settings.extras;
-        if !e.sort || e.sort_key != name || self.recipe_search_focused() {
-            return false;
-        }
-        let buttons = self.sort_buttons();
-        let hovered = self.inventory_target().0;
-        let slots = buttons
-            .iter()
-            .find(|(_, slots)| hovered.is_some_and(|h| slots.contains(&h)))
-            .or(buttons.first())
-            .map(|(_, slots)| slots.clone());
-        let Some(slots) = slots else {
-            return false;
-        };
-        self.sort_slots(&slots);
-        true
     }
     /// Sorts `slots` with ordinary left clicks (needs an empty hand).
     fn sort_slots(&mut self, slots: &[usize]) {

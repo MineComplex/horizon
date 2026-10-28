@@ -187,10 +187,6 @@ fn wrap(d: f32) -> f32 {
     }
 }
 impl Game<'_> {
-    /// `key.togglePerspective`.
-    pub(super) fn cycle_camera(&mut self) {
-        self.camera_type = self.camera_type.cycle();
-    }
     /// `Camera.update` (`alignWithEntity` and `getMaxZoom`): the
     /// interpolated eye, or a point up to the camera distance behind (or in
     /// front of) it, pulled in where visual shapes are in the way. Returns the
@@ -265,7 +261,7 @@ impl Game<'_> {
             }),
             mount,
         };
-        let mut view = self.view;
+        let mut view = self.front.view;
         let kind = match self.camera_type {
             CameraType::FirstPerson => horizon_client::camera::CameraType::FirstPerson,
             CameraType::ThirdPersonBack => horizon_client::camera::CameraType::ThirdPersonBack,
@@ -301,12 +297,177 @@ impl Game<'_> {
             .ok()?;
             (!hit.miss).then_some([hit.hit.location.x, hit.hit.location.y, hit.hit.location.z])
         });
-        self.view = view;
+        self.front.view = view;
         Some((
             glam::DVec3::from_array(view.position),
             view.y_rot,
             view.x_rot,
         ))
+    }
+    /// Whether the player's own model shows in the world view.
+    fn player_model_shown(&self) -> bool {
+        // A shader pack's shadow pass draws the player in first person too (shadowPlayer).
+        (!self.camera_type.first_person() || self.front.pack_shadow_casters.1)
+            && self.sleeping.is_none()
+            && !self.spectator()
+            && self.potions.effects.get("minecraft:invisibility").is_none()
+            && self
+                .player
+                .as_ref()
+                .is_some_and(|p| !p.health.dead_or_dying())
+    }
+    /// The player's model for the entity pass in third person.
+    pub(super) fn player_model_geometry(
+        &self,
+        camera: glam::DVec3,
+        alpha: f64,
+        out: &mut Vec<horizon_client::mesher::Vertex>,
+    ) {
+        if !self.player_model_shown() {
+            return;
+        }
+        let Some(m) = self.player_model.as_ref() else {
+            return;
+        };
+        let light = self.world.light(
+            m.position.x.floor() as i32,
+            (m.position.y + 1.62).floor() as i32,
+            m.position.z.floor() as i32,
+        );
+        let packed = (u32::from(light >> 4) * 16) | ((u32::from(light & 15) * 16) << 8);
+        let atlas = &self.front.gui.atlas;
+        let lookup = |name: &str| atlas.sprites.get(name).map(|r| [r.u0, r.v0, r.u1, r.v1]);
+        let start = out.len();
+        horizon_client::mobs::render::render_with(
+            m,
+            alpha as f32,
+            camera,
+            &lookup,
+            packed,
+            self.res.mob_data(),
+            &self.player_armor_layers(),
+            out,
+        );
+        self.player_elytra_geometry(
+            m,
+            self.armor[1].as_ref().map(|s| &*s.item),
+            camera,
+            alpha as f32,
+            packed,
+            out,
+        );
+        self.spin_attack_geometry(m, camera, alpha as f32, packed, out);
+        self.held_item_geometry(m, camera, alpha, packed, true, out);
+        // LivingEntity.isCurrentlyGlowing: the Glowing effect. A server's client is
+        // in its team by its profile name.
+        if self.potions.effects.get("glowing").is_some() {
+            let team = match &self.remote {
+                Some(r) => self.score.board.players_team(&r.profile_name),
+                None => self.player_team(),
+            };
+            self.mark_outline(&out[start..], super::glowing::team_color(team));
+        }
+    }
+    /// `extractEntityInInventoryFollowsMouse`: the player in the box
+    /// `[x0, x1) x [y0, y1)`, `size` pixels per block, turned toward the
+    /// cursor; drawn with a depth buffer and back-face culling.
+    #[allow(clippy::too_many_arguments)]
+    pub(super) fn draw_player_preview(
+        &self,
+        batch: &mut HudBatch,
+        x0: f32,
+        y0: f32,
+        x1: f32,
+        y1: f32,
+        size: f32,
+        offset_y: f32,
+    ) {
+        let Some(m) = self.player_model.as_ref() else {
+            return;
+        };
+        if self
+            .player
+            .as_ref()
+            .is_some_and(|p| p.health.dead_or_dying())
+        {
+            return;
+        }
+        let (cx, cy) = ((x0 + x1) / 2.0, (y0 + y1) / 2.0);
+        let x_angle = ((cx - self.front.cursor.0) / 40.0).atan();
+        let y_angle = ((cy - self.front.cursor.1) / 40.0).atan();
+        let mut m = m.clone();
+        // The render state: still, facing out, the head toward the cursor.
+        m.previous = m.position;
+        m.body_yaw = 180.0 + x_angle * 20.0;
+        m.previous_body_yaw = m.body_yaw;
+        m.head_yaw = m.body_yaw + x_angle * 20.0;
+        m.previous_head_yaw = m.head_yaw;
+        m.head_pitch = -y_angle * 20.0;
+        m.previous_head_pitch = m.head_pitch;
+        m.position.y += 0.125 * f64::from(u8::from(m.extra.crouching));
+        m.previous = m.position;
+        let camera = glam::DVec3::new(m.position.x, m.position.y, m.position.z);
+        let atlas = &self.front.gui.atlas;
+        let lookup = |name: &str| atlas.sprites.get(name).map(|r| [r.u0, r.v0, r.u1, r.v1]);
+        let mut verts = Vec::new();
+        horizon_client::mobs::render::render_with(
+            &m,
+            1.0,
+            camera,
+            &lookup,
+            240 | 240 << 8,
+            self.res.mob_data(),
+            &self.player_armor_layers(),
+            &mut verts,
+        );
+        self.player_elytra_geometry(
+            &m,
+            self.armor[1].as_ref().map(|s| &*s.item),
+            camera,
+            1.0,
+            240 | 240 << 8,
+            &mut verts,
+        );
+        self.held_item_geometry(&m, camera, 1.0, 240 | 240 << 8, false, &mut verts);
+        let height = if m.extra.crouching { 1.5 } else { 1.8 };
+        // PictureInPictureRenderer: the box centre, (size, size, -size);
+        // then the translation and Rz(pi) * Rx(y_angle * 20 degrees).
+        let gui = glam::Mat4::from_translation(glam::Vec3::new(cx, cy, 0.0))
+            * glam::Mat4::from_scale(glam::Vec3::new(size, size, -size))
+            * glam::Mat4::from_translation(glam::Vec3::new(0.0, height / 2.0 + offset_y, 0.0))
+            * glam::Mat4::from_rotation_z(std::f32::consts::PI)
+            * glam::Mat4::from_rotation_x((y_angle * 20.0).to_radians());
+        let fire = self
+            .player
+            .as_ref()
+            .filter(|p| p.fire_ticks > 0 && !p.spectator)
+            .map(|p| (p.dimensions.width, p.dimensions.height));
+        let quads = player_preview_quads(verts, gui, fire, &atlas.sprites);
+        let start = batch.vertices.len();
+        for (_, p, uv, color) in quads {
+            batch.quad_3d(p, uv, color);
+        }
+        batch.depth_since(start, [x0, y0, x1, y1]);
+    }
+    /// The survival inventory's player box (`InventoryScreen`).
+    pub(super) fn draw_inventory_player(&self, batch: &mut HudBatch, ox: f32, oy: f32) {
+        if self.screen == Screen::Inventory {
+            self.draw_player_preview(
+                batch,
+                ox + 26.0,
+                oy + 8.0,
+                ox + 75.0,
+                oy + 78.0,
+                30.0,
+                0.0625,
+            );
+        }
+    }
+}
+impl crate::game::Sim<'_> {
+    /// `key.togglePerspective`.
+    pub(super) fn cycle_camera(&mut self) {
+        self.camera_type = self.camera_type.cycle();
     }
     /// Keep the player's model in step with the player (`LivingEntity.tick`
     /// body turning, `WalkAnimationState`, the swing and the pose).
@@ -338,7 +499,8 @@ impl Game<'_> {
             .is_some_and(|s| s.data().is_some_and(|d| !d.charged.is_empty()));
         let charge_duration = self.inventory[self.selected]
             .as_ref()
-            .map_or(25, |s| Self::charge_ticks(s).max(1)) as i32;
+            .map_or(25, |s| crate::game::Game::charge_ticks(s).max(1))
+            as i32;
         let attack = (self.swing.old_animation, self.swing.animation);
         let swinging = self.swing.swinging();
         // currentSwing.hand().asArm(mainArm).
@@ -430,165 +592,6 @@ impl Game<'_> {
         m.extra.swing_right_arm = swing_right_arm;
         m.hurt_time = hurt;
     }
-    /// Whether the player's own model shows in the world view.
-    fn player_model_shown(&self) -> bool {
-        // A shader pack's shadow pass draws the player in first person too (shadowPlayer).
-        (!self.camera_type.first_person() || self.pack_shadow_casters.1)
-            && self.sleeping.is_none()
-            && !self.spectator()
-            && self.potions.effects.get("minecraft:invisibility").is_none()
-            && self
-                .player
-                .as_ref()
-                .is_some_and(|p| !p.health.dead_or_dying())
-    }
-    /// The player's model for the entity pass in third person.
-    pub(super) fn player_model_geometry(
-        &self,
-        camera: glam::DVec3,
-        alpha: f64,
-        out: &mut Vec<horizon_client::mesher::Vertex>,
-    ) {
-        if !self.player_model_shown() {
-            return;
-        }
-        let Some(m) = self.player_model.as_ref() else {
-            return;
-        };
-        let light = self.world.light(
-            m.position.x.floor() as i32,
-            (m.position.y + 1.62).floor() as i32,
-            m.position.z.floor() as i32,
-        );
-        let packed = (u32::from(light >> 4) * 16) | ((u32::from(light & 15) * 16) << 8);
-        let atlas = &self.gui.atlas;
-        let lookup = |name: &str| atlas.sprites.get(name).map(|r| [r.u0, r.v0, r.u1, r.v1]);
-        let start = out.len();
-        horizon_client::mobs::render::render_with(
-            m,
-            alpha as f32,
-            camera,
-            &lookup,
-            packed,
-            self.res.mob_data(),
-            &self.player_armor_layers(),
-            out,
-        );
-        self.player_elytra_geometry(
-            m,
-            self.armor[1].as_ref().map(|s| &*s.item),
-            camera,
-            alpha as f32,
-            packed,
-            out,
-        );
-        self.spin_attack_geometry(m, camera, alpha as f32, packed, out);
-        self.held_item_geometry(m, camera, alpha, packed, true, out);
-        // LivingEntity.isCurrentlyGlowing: the Glowing effect. A server's client is
-        // in its team by its profile name.
-        if self.potions.effects.get("glowing").is_some() {
-            let team = match &self.remote {
-                Some(r) => self.score.board.players_team(&r.profile_name),
-                None => self.player_team(),
-            };
-            self.mark_outline(&out[start..], super::glowing::team_color(team));
-        }
-    }
-    /// `extractEntityInInventoryFollowsMouse`: the player in the box
-    /// `[x0, x1) x [y0, y1)`, `size` pixels per block, turned toward the
-    /// cursor; drawn with a depth buffer and back-face culling.
-    #[allow(clippy::too_many_arguments)]
-    pub(super) fn draw_player_preview(
-        &self,
-        batch: &mut HudBatch,
-        x0: f32,
-        y0: f32,
-        x1: f32,
-        y1: f32,
-        size: f32,
-        offset_y: f32,
-    ) {
-        let Some(m) = self.player_model.as_ref() else {
-            return;
-        };
-        if self
-            .player
-            .as_ref()
-            .is_some_and(|p| p.health.dead_or_dying())
-        {
-            return;
-        }
-        let (cx, cy) = ((x0 + x1) / 2.0, (y0 + y1) / 2.0);
-        let x_angle = ((cx - self.cursor.0) / 40.0).atan();
-        let y_angle = ((cy - self.cursor.1) / 40.0).atan();
-        let mut m = m.clone();
-        // The render state: still, facing out, the head toward the cursor.
-        m.previous = m.position;
-        m.body_yaw = 180.0 + x_angle * 20.0;
-        m.previous_body_yaw = m.body_yaw;
-        m.head_yaw = m.body_yaw + x_angle * 20.0;
-        m.previous_head_yaw = m.head_yaw;
-        m.head_pitch = -y_angle * 20.0;
-        m.previous_head_pitch = m.head_pitch;
-        m.position.y += 0.125 * f64::from(u8::from(m.extra.crouching));
-        m.previous = m.position;
-        let camera = glam::DVec3::new(m.position.x, m.position.y, m.position.z);
-        let atlas = &self.gui.atlas;
-        let lookup = |name: &str| atlas.sprites.get(name).map(|r| [r.u0, r.v0, r.u1, r.v1]);
-        let mut verts = Vec::new();
-        horizon_client::mobs::render::render_with(
-            &m,
-            1.0,
-            camera,
-            &lookup,
-            240 | 240 << 8,
-            self.res.mob_data(),
-            &self.player_armor_layers(),
-            &mut verts,
-        );
-        self.player_elytra_geometry(
-            &m,
-            self.armor[1].as_ref().map(|s| &*s.item),
-            camera,
-            1.0,
-            240 | 240 << 8,
-            &mut verts,
-        );
-        self.held_item_geometry(&m, camera, 1.0, 240 | 240 << 8, false, &mut verts);
-        let height = if m.extra.crouching { 1.5 } else { 1.8 };
-        // PictureInPictureRenderer: the box centre, (size, size, -size);
-        // then the translation and Rz(pi) * Rx(y_angle * 20 degrees).
-        let gui = glam::Mat4::from_translation(glam::Vec3::new(cx, cy, 0.0))
-            * glam::Mat4::from_scale(glam::Vec3::new(size, size, -size))
-            * glam::Mat4::from_translation(glam::Vec3::new(0.0, height / 2.0 + offset_y, 0.0))
-            * glam::Mat4::from_rotation_z(std::f32::consts::PI)
-            * glam::Mat4::from_rotation_x((y_angle * 20.0).to_radians());
-        let fire = self
-            .player
-            .as_ref()
-            .filter(|p| p.fire_ticks > 0 && !p.spectator)
-            .map(|p| (p.dimensions.width, p.dimensions.height));
-        let quads = player_preview_quads(verts, gui, fire, &atlas.sprites);
-        let start = batch.vertices.len();
-        for (_, p, uv, color) in quads {
-            batch.quad_3d(p, uv, color);
-        }
-        batch.depth_since(start, [x0, y0, x1, y1]);
-    }
-    /// The survival inventory's player box (`InventoryScreen`).
-    pub(super) fn draw_inventory_player(&self, batch: &mut HudBatch, ox: f32, oy: f32) {
-        if self.screen == Screen::Inventory {
-            self.draw_player_preview(
-                batch,
-                ox + 26.0,
-                oy + 8.0,
-                ox + 75.0,
-                oy + 78.0,
-                30.0,
-                0.0625,
-            );
-        }
-    }
 }
 
 impl Game<'_> {
@@ -614,7 +617,7 @@ impl Game<'_> {
         };
         let (Some(model), Some(rect)) = (
             assets.player.get("elytra"),
-            self.gui.atlas.sprites.get(texture),
+            self.front.gui.atlas.sprites.get(texture),
         ) else {
             return;
         };
@@ -656,7 +659,11 @@ impl Game<'_> {
         }
         let (Some(model), Some(rect)) = (
             self.res.spin_attack().as_ref(),
-            self.gui.atlas.sprites.get("entity/trident/trident_riptide"),
+            self.front
+                .gui
+                .atlas
+                .sprites
+                .get("entity/trident/trident_riptide"),
         ) else {
             return;
         };

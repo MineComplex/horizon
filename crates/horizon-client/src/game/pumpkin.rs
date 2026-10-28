@@ -5,7 +5,8 @@ use super::Game;
 use horizon_client::{Result, items::ItemStack};
 use horizon_core::random::RandomSource;
 
-impl Game<'_> {
+impl Game<'_> {}
+impl crate::game::Sim<'_> {
     /// `PumpkinBlock.useItemOn` with `held` in the hand that acts, the block
     /// at `pos` clicked on `face`: true when shears carved it (SUCCESS).
     pub(super) fn use_pumpkin(

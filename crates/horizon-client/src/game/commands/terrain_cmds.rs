@@ -30,6 +30,13 @@ fn ticks_to_seconds(ticks: i64) -> String {
 impl Game<'_> {
     // ---- /forceload ----------------------------------------------------------
 
+    // ---- /fillbiome ----------------------------------------------------------------
+
+    // ---- /worldborder -----------------------------------------------------------------------
+
+    // ---- /loot ---------------------------------------------------------------------------------
+}
+impl crate::game::Sim<'_> {
     pub(super) fn column_arg(&self, ctx: &Context, name: &str) -> R<[i32; 2]> {
         let c = self
             .coords(ctx, name)
@@ -146,9 +153,6 @@ impl Game<'_> {
             }
         }
     }
-
-    // ---- /fillbiome ----------------------------------------------------------------
-
     pub(super) fn cmd_fillbiome(&mut self, ctx: &Context) -> R<i32> {
         let Some(Arg::Resource(biome)) = ctx.get("biome").cloned() else {
             return Ok(0);
@@ -246,9 +250,6 @@ impl Game<'_> {
         ));
         Ok(changed)
     }
-
-    // ---- /worldborder -----------------------------------------------------------------------
-
     /// Every tick: the size change, the wall the player cannot pass and
     /// damage outside the border.
     /// `BorderChangeListener.DelegateBorderChangeListener`'s packets: what
@@ -438,9 +439,6 @@ impl Game<'_> {
             }
         }
     }
-
-    // ---- /loot ---------------------------------------------------------------------------------
-
     fn tool_stack(&mut self, ctx: &Context) -> R<Option<ItemStack>> {
         if let Some(Arg::Item(p)) = ctx.get("tool") {
             let (damage, extra) = match p

@@ -28,6 +28,218 @@ use horizon_world::nbt::Tag;
 const PLAYER: u64 = u64::MAX;
 
 impl Game<'_> {
+    /// The client tickers of the loaded animated block entities, once per
+    /// client tick (`ClientLevel.tickBlockEntities`).
+    pub(super) fn tick_block_entity_anims(&mut self) {
+        // A client of a server only animates what it is sent (the server
+        // runs the conduit and gateway tickers in `tick_world`).
+        let Some(r) = &self.front.renderer else {
+            return;
+        };
+        // Sorted by position: the order they tick in, and a quick lookup.
+        // Read again only when the drawn block entities changed.
+        let revision = r.block_entity_revision();
+        if self.be_anims.present_revision != Some(revision) {
+            let mut present: Vec<([i32; 3], Ticker)> = r
+                .block_entities()
+                .filter_map(|(p, s)| Some((*p, self.be_anims.ticker(*s)?)))
+                .collect();
+            present.sort_unstable_by_key(|(p, _)| *p);
+            self.be_anims.retain_present(&present);
+            self.be_anims.present = present;
+            self.be_anims.present_revision = Some(revision);
+        }
+        let positions = std::mem::take(&mut self.be_anims.present);
+        let players: Vec<[f64; 3]> = match &self.player {
+            Some(p) if !self.spectator() => vec![[p.position.x, p.position.y, p.position.z]],
+            _ => Vec::new(),
+        };
+        let raiders = self
+            .res
+            .stations()
+            .enchantments
+            .entity_tags
+            .get("minecraft:raiders")
+            .cloned()
+            .unwrap_or_default();
+        let frames = self
+            .res
+            .items()
+            .block_tags
+            .get("minecraft:conduit_effect_block")
+            .cloned()
+            .unwrap_or_default();
+        for &(pos, ticker) in &positions {
+            match ticker {
+                Ticker::Lid => self.be_anims.chests.entry(pos).or_default().tick(),
+                Ticker::Book => {
+                    let anims = &mut self.be_anims;
+                    anims
+                        .books
+                        .entry(pos)
+                        .or_default()
+                        .tick(pos, &players, &mut anims.book_random);
+                }
+                Ticker::Shulker { facing } => {
+                    // The lid's push of entities in its way (moveCollidedEntities)
+                    // and the neighbour updates are left to the level.
+                    self.be_anims
+                        .shulkers
+                        .entry(pos)
+                        .or_default()
+                        .tick(pos, facing);
+                }
+                Ticker::Skull { powered } => {
+                    self.be_anims.skulls.entry(pos).or_default().tick(powered);
+                }
+                Ticker::Bell => {
+                    let player = self.player_view().map(|p| BellEntity {
+                        position: [p.position.x, p.position.y, p.position.z],
+                        alive: p.alive,
+                        raider: false,
+                    });
+                    let mobs = &self.sim.mobs;
+                    let entity = |h: u64| {
+                        if h == PLAYER {
+                            return player;
+                        }
+                        let m = mobs.iter().find(|m| u64::from(m.id) == h)?;
+                        Some(BellEntity {
+                            position: [m.position.x, m.position.y, m.position.z],
+                            alive: m.alive() && !m.removed,
+                            raider: raiders.contains(&m.kind.id),
+                        })
+                    };
+                    let tick = self
+                        .sim
+                        .be_anims
+                        .bells
+                        .entry(pos)
+                        .or_default()
+                        .tick(pos, entity);
+                    let centre = [
+                        f64::from(pos[0]) + 0.5,
+                        f64::from(pos[1]) + 0.5,
+                        f64::from(pos[2]) + 0.5,
+                    ];
+                    // On a server its own copy does this and sends the sound.
+                    if tick.resonate && self.remote.is_none() {
+                        // The server's copy plays the resonance for everyone.
+                        self.sounds
+                            .play("minecraft:block.bell.resonate", Some(centre), 1.0, 1.0);
+                    }
+                    if let Some((particles, glow)) = tick.ended {
+                        for (p, color) in particles {
+                            // ColorParticleOption.create(ENTITY_EFFECT, color): ARGB.
+                            let c = color as u32;
+                            let channel = |shift: u32| ((c >> shift) & 255) as f32 / 255.0;
+                            let options = ParticleOptions {
+                                color: [channel(16), channel(8), channel(0), channel(24)],
+                                ..ParticleOptions::simple(ParticleType::EntityEffect)
+                            };
+                            self.sim.particles.add(&options, p, [0.0; 3]);
+                        }
+                        // makeRaidersGlow (the server's effect).
+                        for m in self
+                            .sim
+                            .mobs
+                            .iter_mut()
+                            .filter(|_| self.sim.remote.is_none())
+                        {
+                            if glow.contains(&u64::from(m.id)) {
+                                m.add_effect("minecraft:glowing", 60, 0);
+                            }
+                        }
+                    }
+                }
+                Ticker::Conduit => {
+                    let target = self.conduit_target(pos);
+                    let world = &self.sim.world;
+                    let facts = self.sim.res.facts();
+                    let registry = self.sim.pack.assets.registry;
+                    let is_water = |p: [i32; 3]| {
+                        facts.get(world.block(p[0], p[1], p[2])).fluid
+                            == horizon_client::blocks::Fluid::Water
+                    };
+                    let is_frame = |p: [i32; 3]| {
+                        registry
+                            .state(world.block(p[0], p[1], p[2]))
+                            .is_some_and(|s| frames.contains(&s.name))
+                    };
+                    let time = world.game_time;
+                    let anims = &mut self.sim.be_anims;
+                    let particles = anims.conduits.entry(pos).or_default().client_tick(
+                        pos,
+                        time,
+                        is_water,
+                        is_frame,
+                        target,
+                        self.sim.particles.random(),
+                    );
+                    let nautilus = ParticleOptions::simple(ParticleType::Nautilus);
+                    for (p, v) in particles {
+                        self.particles.add(&nautilus, p, v);
+                    }
+                }
+                Ticker::Pot => {}
+                Ticker::Gateway => {
+                    // The server copy's portalTick runs first; its block event
+                    // reaches the client copy before the client ticks it.
+                    let initial = self.gateway_loaded(pos);
+                    let anims = &mut self.sim.be_anims;
+                    let server = anims.gateway_servers.entry(pos).or_insert(initial);
+                    // A server sends its copy's block event instead.
+                    let triggered = self.sim.remote.is_none() && server.portal_tick();
+                    let client = anims.gateways.entry(pos).or_insert(initial);
+                    if triggered {
+                        client.trigger_event(1, 0);
+                    }
+                    client.tick();
+                }
+            }
+        }
+        self.be_anims.present = positions;
+    }
+    /// `SkullBlockRenderer.getPlayerSkin`: the skin sprite of the profile of
+    /// the player head at `pos`. The skin download is started here; while it
+    /// is in flight (or when it cannot be got) the profile's default skin
+    /// stands in. A head with no profile answers None: `SKIN_BY_TYPE`.
+    pub(super) fn skull_skin_at(&self, pos: [i32; 3]) -> Option<String> {
+        let Some(BlockEntity::Skull(skull)) =
+            self.world.block_entities.get(&(pos[0], pos[1], pos[2]))
+        else {
+            return None;
+        };
+        let skin = skull.skin.as_ref()?;
+        // The texture a packed or resolved `textures` property fetches: the
+        // download of a static profile, or the one the services answer for a
+        // `Dynamic` (name- or id-only) profile.
+        let download = skin.download.clone().or_else(|| {
+            let key = skin.dynamic.as_ref()?;
+            let skins::Resolve::Done(Some(profile)) = self.skin_profiles.borrow_mut().state(key)
+            else {
+                return None;
+            };
+            let (value, signature) = profile.textures()?;
+            let url = skins::unpack(&value, signature, &skins::TEXTURE_URIS).skin?;
+            let location = skins::skin_location(&skins::texture_hash(&url)?);
+            Some((url, location))
+        });
+        if let Some((url, location)) = download {
+            let mut downloads = self.skin_downloads.borrow_mut();
+            if self.front.gui.atlas.sprites.contains_key(&location) {
+                let _ = downloads.state(skins::Kind::Skin, &url);
+                return Some(location);
+            }
+            // Its slot was evicted: offer the image again.
+            if downloads.state(skins::Kind::Skin, &url) == skins::Download::Ready {
+                downloads.again(&location);
+            }
+        }
+        Some(skin.fallback.to_owned())
+    }
+}
+impl crate::game::Sim<'_> {
     /// `BlockEntity.triggerEvent(a, b)` on the client copy of the block entity at `pos`.
     pub(super) fn block_entity_event(&mut self, pos: [i32; 3], a: i32, b: i32) {
         let state = self.world.block(pos[0], pos[1], pos[2]).0;
@@ -225,172 +437,6 @@ impl Game<'_> {
             &mut scene,
             Aabb::new(Vec3::new(b[0], b[1], b[2]), Vec3::new(b[3], b[4], b[5])),
         )
-    }
-    /// The client tickers of the loaded animated block entities, once per
-    /// client tick (`ClientLevel.tickBlockEntities`).
-    pub(super) fn tick_block_entity_anims(&mut self) {
-        // A client of a server only animates what it is sent (the server
-        // runs the conduit and gateway tickers in `tick_world`).
-        let Some(r) = &self.renderer else {
-            return;
-        };
-        // Sorted by position: the order they tick in, and a quick lookup.
-        // Read again only when the drawn block entities changed.
-        let revision = r.block_entity_revision();
-        if self.be_anims.present_revision != Some(revision) {
-            let mut present: Vec<([i32; 3], Ticker)> = r
-                .block_entities()
-                .filter_map(|(p, s)| Some((*p, self.be_anims.ticker(*s)?)))
-                .collect();
-            present.sort_unstable_by_key(|(p, _)| *p);
-            self.be_anims.retain_present(&present);
-            self.be_anims.present = present;
-            self.be_anims.present_revision = Some(revision);
-        }
-        let positions = std::mem::take(&mut self.be_anims.present);
-        let players: Vec<[f64; 3]> = match &self.player {
-            Some(p) if !self.spectator() => vec![[p.position.x, p.position.y, p.position.z]],
-            _ => Vec::new(),
-        };
-        let raiders = self
-            .res
-            .stations()
-            .enchantments
-            .entity_tags
-            .get("minecraft:raiders")
-            .cloned()
-            .unwrap_or_default();
-        let frames = self
-            .res
-            .items()
-            .block_tags
-            .get("minecraft:conduit_effect_block")
-            .cloned()
-            .unwrap_or_default();
-        for &(pos, ticker) in &positions {
-            match ticker {
-                Ticker::Lid => self.be_anims.chests.entry(pos).or_default().tick(),
-                Ticker::Book => {
-                    let anims = &mut self.be_anims;
-                    anims
-                        .books
-                        .entry(pos)
-                        .or_default()
-                        .tick(pos, &players, &mut anims.book_random);
-                }
-                Ticker::Shulker { facing } => {
-                    // The lid's push of entities in its way (moveCollidedEntities)
-                    // and the neighbour updates are left to the level.
-                    self.be_anims
-                        .shulkers
-                        .entry(pos)
-                        .or_default()
-                        .tick(pos, facing);
-                }
-                Ticker::Skull { powered } => {
-                    self.be_anims.skulls.entry(pos).or_default().tick(powered);
-                }
-                Ticker::Bell => {
-                    let player = self.player_view().map(|p| BellEntity {
-                        position: [p.position.x, p.position.y, p.position.z],
-                        alive: p.alive,
-                        raider: false,
-                    });
-                    let mobs = &self.mobs;
-                    let entity = |h: u64| {
-                        if h == PLAYER {
-                            return player;
-                        }
-                        let m = mobs.iter().find(|m| u64::from(m.id) == h)?;
-                        Some(BellEntity {
-                            position: [m.position.x, m.position.y, m.position.z],
-                            alive: m.alive() && !m.removed,
-                            raider: raiders.contains(&m.kind.id),
-                        })
-                    };
-                    let tick = self
-                        .be_anims
-                        .bells
-                        .entry(pos)
-                        .or_default()
-                        .tick(pos, entity);
-                    let centre = [
-                        f64::from(pos[0]) + 0.5,
-                        f64::from(pos[1]) + 0.5,
-                        f64::from(pos[2]) + 0.5,
-                    ];
-                    // On a server its own copy does this and sends the sound.
-                    if tick.resonate && self.remote.is_none() {
-                        // The server's copy plays the resonance for everyone.
-                        self.sounds
-                            .play("minecraft:block.bell.resonate", Some(centre), 1.0, 1.0);
-                    }
-                    if let Some((particles, glow)) = tick.ended {
-                        for (p, color) in particles {
-                            // ColorParticleOption.create(ENTITY_EFFECT, color): ARGB.
-                            let c = color as u32;
-                            let channel = |shift: u32| ((c >> shift) & 255) as f32 / 255.0;
-                            let options = ParticleOptions {
-                                color: [channel(16), channel(8), channel(0), channel(24)],
-                                ..ParticleOptions::simple(ParticleType::EntityEffect)
-                            };
-                            self.particles.add(&options, p, [0.0; 3]);
-                        }
-                        // makeRaidersGlow (the server's effect).
-                        for m in self.mobs.iter_mut().filter(|_| self.remote.is_none()) {
-                            if glow.contains(&u64::from(m.id)) {
-                                m.add_effect("minecraft:glowing", 60, 0);
-                            }
-                        }
-                    }
-                }
-                Ticker::Conduit => {
-                    let target = self.conduit_target(pos);
-                    let world = &self.world;
-                    let facts = self.res.facts();
-                    let registry = self.pack.assets.registry;
-                    let is_water = |p: [i32; 3]| {
-                        facts.get(world.block(p[0], p[1], p[2])).fluid
-                            == horizon_client::blocks::Fluid::Water
-                    };
-                    let is_frame = |p: [i32; 3]| {
-                        registry
-                            .state(world.block(p[0], p[1], p[2]))
-                            .is_some_and(|s| frames.contains(&s.name))
-                    };
-                    let time = world.game_time;
-                    let anims = &mut self.be_anims;
-                    let particles = anims.conduits.entry(pos).or_default().client_tick(
-                        pos,
-                        time,
-                        is_water,
-                        is_frame,
-                        target,
-                        self.particles.random(),
-                    );
-                    let nautilus = ParticleOptions::simple(ParticleType::Nautilus);
-                    for (p, v) in particles {
-                        self.particles.add(&nautilus, p, v);
-                    }
-                }
-                Ticker::Pot => {}
-                Ticker::Gateway => {
-                    // The server copy's portalTick runs first; its block event
-                    // reaches the client copy before the client ticks it.
-                    let initial = self.gateway_loaded(pos);
-                    let anims = &mut self.be_anims;
-                    let server = anims.gateway_servers.entry(pos).or_insert(initial);
-                    // A server sends its copy's block event instead.
-                    let triggered = self.remote.is_none() && server.portal_tick();
-                    let client = anims.gateways.entry(pos).or_insert(initial);
-                    if triggered {
-                        client.trigger_event(1, 0);
-                    }
-                    client.tick();
-                }
-            }
-        }
-        self.be_anims.present = positions;
     }
     /// `ConduitBlockEntity.serverTick` of every conduit in the chunks that
     /// tick blocks, with or without a renderer. The conduits are looked for
@@ -720,43 +766,5 @@ impl Game<'_> {
     /// `ChestLidController.getOpenness(partial)` at `pos`.
     pub(super) fn chest_lid(&self, pos: [i32; 3], partial: f32) -> f32 {
         self.be_anims.lid(pos, partial)
-    }
-    /// `SkullBlockRenderer.getPlayerSkin`: the skin sprite of the profile of
-    /// the player head at `pos`. The skin download is started here; while it
-    /// is in flight (or when it cannot be got) the profile's default skin
-    /// stands in. A head with no profile answers None: `SKIN_BY_TYPE`.
-    pub(super) fn skull_skin_at(&self, pos: [i32; 3]) -> Option<String> {
-        let Some(BlockEntity::Skull(skull)) =
-            self.world.block_entities.get(&(pos[0], pos[1], pos[2]))
-        else {
-            return None;
-        };
-        let skin = skull.skin.as_ref()?;
-        // The texture a packed or resolved `textures` property fetches: the
-        // download of a static profile, or the one the services answer for a
-        // `Dynamic` (name- or id-only) profile.
-        let download = skin.download.clone().or_else(|| {
-            let key = skin.dynamic.as_ref()?;
-            let skins::Resolve::Done(Some(profile)) = self.skin_profiles.borrow_mut().state(key)
-            else {
-                return None;
-            };
-            let (value, signature) = profile.textures()?;
-            let url = skins::unpack(&value, signature, &skins::TEXTURE_URIS).skin?;
-            let location = skins::skin_location(&skins::texture_hash(&url)?);
-            Some((url, location))
-        });
-        if let Some((url, location)) = download {
-            let mut downloads = self.skin_downloads.borrow_mut();
-            if self.gui.atlas.sprites.contains_key(&location) {
-                let _ = downloads.state(skins::Kind::Skin, &url);
-                return Some(location);
-            }
-            // Its slot was evicted: offer the image again.
-            if downloads.state(skins::Kind::Skin, &url) == skins::Download::Ready {
-                downloads.again(&location);
-            }
-        }
-        Some(skin.fallback.to_owned())
     }
 }

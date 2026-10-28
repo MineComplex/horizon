@@ -40,7 +40,8 @@ fn flame(ominous: bool) -> T {
     }
 }
 
-impl Game<'_> {
+impl Game<'_> {}
+impl crate::game::Sim<'_> {
     fn particle(&mut self, ty: T, p: [f64; 3], v: [f64; 3]) {
         self.particles.add(&ParticleOptions::simple(ty), p, v);
     }

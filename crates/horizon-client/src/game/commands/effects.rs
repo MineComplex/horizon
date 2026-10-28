@@ -35,6 +35,8 @@ impl Game<'_> {
             )
         })
     }
+}
+impl crate::game::Sim<'_> {
     /// The executing entity for argument-less forms (the player).
     fn living_targets(&mut self, ctx: &Context) -> R<Vec<Target>> {
         if ctx.get("targets").is_some() {
@@ -45,13 +47,13 @@ impl Game<'_> {
     }
     /// `EffectCommands.giveEffect`.
     pub(super) fn cmd_effect_give(&mut self, ctx: &Context) -> R<i32> {
-        let effect = Self::effect_arg(ctx)?;
+        let effect = crate::game::Game::effect_arg(ctx)?;
         let seconds = if ctx.has("infinite") {
             Some(-1)
         } else {
-            Self::int(ctx, "seconds")
+            crate::game::Game::int(ctx, "seconds")
         };
-        let amplifier = Self::int(ctx, "amplifier").unwrap_or(0);
+        let amplifier = crate::game::Game::int(ctx, "amplifier").unwrap_or(0);
         let particles = !matches!(ctx.get("hideParticles"), Some(Arg::Bool(true)));
         // computeDurationInTicks
         let duration = match seconds {
@@ -111,7 +113,7 @@ impl Game<'_> {
     /// `EffectCommands.clearEffects` / `clearEffect`.
     pub(super) fn cmd_effect_clear(&mut self, ctx: &Context) -> R<i32> {
         let effect = if ctx.get("effect").is_some() {
-            Some(Self::effect_arg(ctx)?)
+            Some(crate::game::Game::effect_arg(ctx)?)
         } else {
             None
         };
@@ -181,7 +183,7 @@ impl Game<'_> {
         let Some(Arg::Resource(id)) = ctx.get("enchantment").cloned() else {
             return Ok(0);
         };
-        let level = Self::int(ctx, "level").unwrap_or(1);
+        let level = crate::game::Game::int(ctx, "level").unwrap_or(1);
         let enchantments = &self.res.stations().enchantments;
         let Some(def) = enchantments.get(&id) else {
             return Err(err(

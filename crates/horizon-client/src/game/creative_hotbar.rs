@@ -3,19 +3,19 @@
 use super::Game;
 use horizon_client::{hotbar, keybinds, text::Text};
 
-impl Game<'_> {
+impl Game<'_> {}
+impl crate::game::Sim<'_> {
     /// Whether the key bound to `mapping` is held.
     pub(super) fn mapped_key_down(&self, mapping: &str) -> bool {
         keybinds::key_code(self.settings.keys.get(mapping))
             .is_some_and(|k| self.physical_keys.contains(&k))
     }
-
     /// `CreativeModeInventoryScreen.handleHotbarLoadOrSave` for the hotbar key
     /// `index`: load puts the saved row in the hotbar (the creative slot
     /// packets follow from the inventory change), save stores the hotbar and
     /// says so on the action bar.
     pub(super) fn hotbar_load_or_save(&mut self, index: usize, load: bool) {
-        let path = Self::options_path().with_file_name("hotbar.nbt");
+        let path = crate::game::Game::options_path().with_file_name("hotbar.nbt");
         let known = |id: &str| self.res.items().get(id).is_some();
         let mut rows = hotbar::load(&path, &known);
         if load {

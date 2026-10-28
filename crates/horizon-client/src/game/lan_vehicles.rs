@@ -36,7 +36,8 @@ fn corners(b: Aabb) -> ([f64; 3], [f64; 3]) {
     ([lo.x, lo.y, lo.z], [hi.x, hi.y, hi.z])
 }
 
-impl Game<'_> {
+impl Game<'_> {}
+impl crate::game::Sim<'_> {
     /// The box of a boat, minecart, armor stand, item frame or painting, and
     /// the point an interact packet's location is measured from (the
     /// client's `remote_object_hit` uses the same points).
@@ -71,7 +72,6 @@ impl Game<'_> {
         let (lo, hi) = p.bounds();
         Some((lo, hi, centre(p.pos)))
     }
-
     /// The vehicles the server's players ride: they move with their riders,
     /// not in `tick_boats` and `tick_carts`.
     pub(super) fn guest_vehicles(&self) -> Vec<u32> {
@@ -79,7 +79,6 @@ impl Game<'_> {
             h.hub.guests.iter().filter_map(|g| g.vehicle).collect()
         })
     }
-
     /// Whether a server player other than the one acting rides `vehicle`
     /// (`Entity.canAddPassenger`: a boat or minecart seats one player here).
     pub(super) fn ridden_by_guest(&self, vehicle: u32) -> bool {
@@ -90,7 +89,6 @@ impl Game<'_> {
                 .any(|g| Some(g.conn) != self.lan_acting && g.vehicle == Some(vehicle))
         })
     }
-
     /// `Player.rideTick` for a server player, before its moves this tick:
     /// it stays in its seat, steers its minecart, or gets out.
     pub(super) fn guest_vehicle_tick(&mut self, host: &mut LanHost, conn: u32) {
@@ -159,7 +157,6 @@ impl Game<'_> {
             g.position = at;
         }
     }
-
     /// After an interaction: a player that got into a vehicle sits in it,
     /// and its last good vehicle position is where the vehicle is.
     pub(super) fn guest_boarded(&mut self, host: &mut LanHost, conn: u32, before: Option<u32>) {
@@ -216,7 +213,6 @@ impl Game<'_> {
             g.on_ground = false;
         }
     }
-
     /// `ServerGamePacketListenerImpl.handleMoveVehicle`: the boat its rider
     /// drives goes where the client says, unless it moved too quickly or
     /// wrongly; then it stays, and the client is told where it is.
@@ -320,7 +316,6 @@ impl Game<'_> {
         g.previous_position = g.position;
         g.position = [seat.x, seat.y, seat.z];
     }
-
     /// `handlePaddleBoat`: the paddles of the boat the player drives.
     pub(super) fn guest_paddle_boat(&mut self, host: &LanHost, conn: u32, paddles: [bool; 2]) {
         let vehicle = host

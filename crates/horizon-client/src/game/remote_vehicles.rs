@@ -22,7 +22,8 @@ pub(super) struct ObjectHit {
     pub location: [f64; 3],
 }
 
-impl Game<'_> {
+impl Game<'_> {}
+impl crate::game::Sim<'_> {
     /// The nearest boat, minecart, item frame, armor stand or painting the
     /// view hits within reach; also End crystals when attacking.
     pub(super) fn remote_object_hit(&self, attacking: bool) -> Option<ObjectHit> {
@@ -99,7 +100,6 @@ impl Game<'_> {
             ],
         })
     }
-
     /// `ClientPacketListener.handleSetEntityPassengersPacket`: who rides
     /// `vehicle` now. The local player gets in or out; mobs and other
     /// players sit where the server keeps them.
@@ -141,7 +141,6 @@ impl Game<'_> {
             }
         }
     }
-
     /// The local player's tick in its vehicle, in place of its own movement:
     /// false when it rides nothing.
     pub(super) fn remote_ride(&mut self, keys: Keys) -> bool {
@@ -188,7 +187,6 @@ impl Game<'_> {
         }
         true
     }
-
     /// `LocalPlayer.tick` for a passenger: the boat it controls goes to the
     /// server every tick with its paddles (the rider's own position does not).
     pub(super) fn remote_vehicle_packets(&self) -> Vec<S> {
@@ -211,7 +209,6 @@ impl Game<'_> {
             }),
         ]
     }
-
     /// `ClientPacketListener.handleMoveVehicle`: the server put the boat the
     /// player drives back.
     pub(super) fn remote_move_vehicle(&mut self, position: [f64; 3], yaw: f32) {

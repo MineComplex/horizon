@@ -174,7 +174,7 @@ impl Game<'_> {
                 continue;
             };
             let (Some(r), Some(part)) = (
-                self.gui.atlas.sprites.get(texture.as_str()),
+                self.front.gui.atlas.sprites.get(texture.as_str()),
                 assets.player.get(layer),
             ) else {
                 continue;
@@ -186,7 +186,7 @@ impl Game<'_> {
             // EquipmentLayerRenderer: the trim layer over the armour.
             if let Some(r) = stack
                 .and_then(|s| assets.trim_texture(&asset, kind, s))
-                .and_then(|t| self.gui.atlas.sprites.get(&t.sprite()))
+                .and_then(|t| self.front.gui.atlas.sprites.get(&t.sprite()))
             {
                 out.push((part, [r.u0, r.v0, r.u1, r.v1], 0xFFFF_FFFF));
             }
@@ -242,11 +242,11 @@ impl Game<'_> {
         for t in wanted {
             let name = t.sprite();
             // Entries the atlas no longer has (rebuilt by a resource reload) are free.
-            let sprites = &self.gui.atlas.sprites;
-            self.trim_slots.retain(|(n, _)| sprites.contains_key(n));
-            if let Some(i) = self.trim_slots.iter().position(|e| e.0 == name) {
-                let e = self.trim_slots.remove(i);
-                self.trim_slots.push(e);
+            let sprites = &self.front.gui.atlas.sprites;
+            self.sim.trim_slots.retain(|(n, _)| sprites.contains_key(n));
+            if let Some(i) = self.sim.trim_slots.iter().position(|e| e.0 == name) {
+                let e = self.sim.trim_slots.remove(i);
+                self.sim.trim_slots.push(e);
                 continue;
             }
             let Some((w, h, rgba)) = t.generate(&self.armor_stand_assets.root) else {
@@ -257,11 +257,12 @@ impl Game<'_> {
                 Some(free) => free,
                 None => {
                     let (old, slot) = self.trim_slots.remove(0);
-                    self.gui.atlas.sprites.remove(&old);
+                    self.front.gui.atlas.sprites.remove(&old);
                     slot
                 }
             };
             let Some(area) = self
+                .front
                 .gui
                 .atlas
                 .sprites
@@ -273,9 +274,12 @@ impl Game<'_> {
             if w > area.w || h > area.h {
                 continue;
             }
-            let (aw, ah) = (self.gui.atlas.width as f32, self.gui.atlas.height as f32);
+            let (aw, ah) = (
+                self.front.gui.atlas.width as f32,
+                self.front.gui.atlas.height as f32,
+            );
             let (x, y) = ((area.u0 * aw).round(), (area.v0 * ah).round());
-            self.map_patches.push(horizon_client::font::Patch {
+            self.front.map_patches.push(horizon_client::font::Patch {
                 x: x as u32,
                 y: y as u32,
                 width: w,
@@ -290,10 +294,194 @@ impl Game<'_> {
                 w,
                 h,
             };
-            self.gui.atlas.sprites.insert(name.clone(), rect);
+            self.front.gui.atlas.sprites.insert(name.clone(), rect);
             self.trim_slots.push((name, slot));
         }
     }
+    /// ArmorStandRenderer: the stand with its default pose, then armor layers.
+    pub(super) fn armor_stand_geometry(
+        &self,
+        camera: glam::DVec3,
+        alpha: f64,
+        out: &mut Vec<Vertex>,
+    ) {
+        let assets = &self.armor_stand_assets;
+        let sprites = &self.front.gui.atlas.sprites;
+        let uv_of = |name: &str| sprites.get(name).map(|r| [r.u0, r.v0, r.u1, r.v1]);
+        let Some(wood) = uv_of("entity/armorstand/armorstand") else {
+            return;
+        };
+        for a in &self.armor_stands {
+            let entity_start = out.len();
+            if a.invisible {
+                continue;
+            }
+            // ArmorStand.shouldRenderAtSqrDistance: 256 times the box's mean
+            // edge (4 for a marker's empty box), whatever the entity distance.
+            // LivingEntityRenderer grows the culling box by 0.5 for a dragon head.
+            let (width, height) = match (a.marker, a.small) {
+                (true, _) => (0.0, 0.0),
+                (false, true) => (0.25, 0.9875),
+                (false, false) => (0.5, 1.975),
+            };
+            let edge = (width + height + width) / 3.0 * 4.0;
+            // 26.3 compares the size with RenderSystem.DEFAULT_DEPTH_CLEAR_VALUE,
+            // which is 0.0 (reverse Z; the bytecode is `dconst_0`): an empty
+            // marker box falls back to 4, so a visible marker stand draws.
+            // Holograms stay hidden through the invisible flag instead.
+            let range = if edge == 0.0 { 4.0 } else { edge } * 64.0;
+            let dragon = a.equipment[5]
+                .as_ref()
+                .is_some_and(|i| &*i.item == "minecraft:dragon_head");
+            let position = super::entity_culling::at(a.position);
+            if !self.standing_entity_in_view(
+                camera,
+                position,
+                position,
+                alpha,
+                width,
+                height,
+                range,
+                if dragon { 0.5 } else { 0.0 },
+            ) {
+                continue;
+            }
+            let Some(model) = (if a.small { &assets.small } else { &assets.main }) else {
+                continue;
+            };
+            let p = glam::DVec3::new(a.position.x, a.position.y, a.position.z) - camera;
+            // setupRotations: 180 - body yaw, plus the wobble for 5 ticks after a hit.
+            let wiggle = (self.world.game_time - a.last_hit) as f32 + alpha as f32;
+            let wobble = if wiggle < 5.0 {
+                (wiggle / 1.5 * std::f32::consts::PI).sin() * 3.0
+            } else {
+                0.0
+            };
+            let base = glam::Mat4::from_translation(p.as_vec3())
+                * glam::Mat4::from_rotation_y((180.0 - a.yaw + wobble).to_radians())
+                * glam::Mat4::from_scale(glam::Vec3::new(-1.0, -1.0, 1.0))
+                * glam::Mat4::from_translation(glam::Vec3::new(0.0, -1.501, 0.0));
+            let mut poses = Poses::new(model);
+            // ArmorStandModel.setupAnim: the stand's pose and part visibility.
+            apply_pose(&mut poses, &a.pose);
+            // Item layers pose from the hidden arms too (`visible` only skips drawing).
+            let posed = poses.clone();
+            let mut hide = |name: &str| {
+                if poses.has(name) {
+                    let pose = poses.get(name);
+                    pose[6] = 0.0;
+                    pose[7] = 0.0;
+                    pose[8] = 0.0;
+                }
+            };
+            if !a.show_arms {
+                hide("left_arm");
+                hide("right_arm");
+            }
+            if a.no_base_plate {
+                hide("base_plate");
+            }
+            let light = self.world.light(
+                a.position.x.floor() as i32,
+                (a.position.y + 0.5).floor() as i32,
+                a.position.z.floor() as i32,
+            );
+            let packed = (u32::from(light >> 4) * 16) | ((u32::from(light & 15) * 16) << 8);
+            horizon_client::mobs::render::draw(
+                model,
+                base,
+                &poses,
+                wood,
+                0xFFFF_FFFF,
+                packed,
+                0,
+                out,
+            );
+            self.armor_stand_items(a, model, base, &posed, packed, out);
+            // HumanoidArmorLayer: head, chest, legs, feet.
+            for (slot, layer) in [
+                (5usize, "helmet"),
+                (4, "chestplate"),
+                (3, "leggings"),
+                (2, "boots"),
+            ] {
+                let Some(stack) = &a.equipment[slot] else {
+                    continue;
+                };
+                let Some(asset) = self
+                    .res
+                    .items()
+                    .get(&stack.item)
+                    .and_then(|i| i.equip_asset.clone())
+                else {
+                    continue;
+                };
+                let kind = if layer == "leggings" {
+                    "humanoid_leggings"
+                } else {
+                    "humanoid"
+                };
+                let Some((texture, undyed)) =
+                    assets.equipment.get(&asset).and_then(|k| k.get(kind))
+                else {
+                    continue;
+                };
+                let (Some(uv), Some(part)) = (uv_of(texture), assets.layers.get(&(layer, a.small)))
+                else {
+                    continue;
+                };
+                let color = undyed.map_or(0xFFFF_FFFF, |c| {
+                    0xFF00_0000 | (c & 0xFF) << 16 | (c & 0xFF00) | (c >> 16) & 0xFF
+                });
+                // ArmorStandRenderer's HumanoidArmorLayer: the armour glint
+                // when `stack.hasFoil()`, as on a living entity.
+                let item_glint = self
+                    .res
+                    .items()
+                    .enchantments
+                    .props
+                    .get(&stack.item)
+                    .is_some_and(|p| p.glint);
+                let overlay = if stack.has_foil(item_glint) {
+                    horizon_client::mobs::render::ARMOR_GLINT
+                } else {
+                    0
+                };
+                // ArmorStandArmorModel.setupAnim: the same pose as the stand.
+                let mut layer_poses = Poses::new(part);
+                apply_pose(&mut layer_poses, &a.pose);
+                horizon_client::mobs::render::draw(
+                    part,
+                    base,
+                    &layer_poses,
+                    uv,
+                    color,
+                    packed,
+                    overlay,
+                    out,
+                );
+                // EquipmentLayerRenderer: the trim layer over the armour.
+                if let Some(trim) = assets
+                    .trim_texture(&asset, kind, stack)
+                    .and_then(|t| uv_of(&t.sprite()))
+                {
+                    horizon_client::mobs::render::draw(
+                        part,
+                        base,
+                        &layer_poses,
+                        trim,
+                        0xFFFF_FFFF,
+                        packed,
+                        overlay,
+                        out,
+                    );
+                }
+            }
+            self.cull_entity_vertices(out, entity_start);
+        }
+    }
+}
+impl crate::game::Sim<'_> {
     /// `ArmorStandItem.useOn`.
     pub(super) fn place_armor_stand(&mut self, hit: &super::Hit, stack: &ItemStack) -> bool {
         if &*stack.item != "minecraft:armor_stand" || hit.face == [0, -1, 0] {
@@ -563,188 +751,6 @@ impl Game<'_> {
             self.world.modified.insert((pos[0] >> 4, pos[2] >> 4));
         }
     }
-    /// ArmorStandRenderer: the stand with its default pose, then armor layers.
-    pub(super) fn armor_stand_geometry(
-        &self,
-        camera: glam::DVec3,
-        alpha: f64,
-        out: &mut Vec<Vertex>,
-    ) {
-        let assets = &self.armor_stand_assets;
-        let sprites = &self.gui.atlas.sprites;
-        let uv_of = |name: &str| sprites.get(name).map(|r| [r.u0, r.v0, r.u1, r.v1]);
-        let Some(wood) = uv_of("entity/armorstand/armorstand") else {
-            return;
-        };
-        for a in &self.armor_stands {
-            let entity_start = out.len();
-            if a.invisible {
-                continue;
-            }
-            // ArmorStand.shouldRenderAtSqrDistance: 256 times the box's mean
-            // edge (4 for a marker's empty box), whatever the entity distance.
-            // LivingEntityRenderer grows the culling box by 0.5 for a dragon head.
-            let (width, height) = match (a.marker, a.small) {
-                (true, _) => (0.0, 0.0),
-                (false, true) => (0.25, 0.9875),
-                (false, false) => (0.5, 1.975),
-            };
-            let edge = (width + height + width) / 3.0 * 4.0;
-            // 26.3 compares the size with RenderSystem.DEFAULT_DEPTH_CLEAR_VALUE,
-            // which is 0.0 (reverse Z; the bytecode is `dconst_0`): an empty
-            // marker box falls back to 4, so a visible marker stand draws.
-            // Holograms stay hidden through the invisible flag instead.
-            let range = if edge == 0.0 { 4.0 } else { edge } * 64.0;
-            let dragon = a.equipment[5]
-                .as_ref()
-                .is_some_and(|i| &*i.item == "minecraft:dragon_head");
-            let position = super::entity_culling::at(a.position);
-            if !self.standing_entity_in_view(
-                camera,
-                position,
-                position,
-                alpha,
-                width,
-                height,
-                range,
-                if dragon { 0.5 } else { 0.0 },
-            ) {
-                continue;
-            }
-            let Some(model) = (if a.small { &assets.small } else { &assets.main }) else {
-                continue;
-            };
-            let p = glam::DVec3::new(a.position.x, a.position.y, a.position.z) - camera;
-            // setupRotations: 180 - body yaw, plus the wobble for 5 ticks after a hit.
-            let wiggle = (self.world.game_time - a.last_hit) as f32 + alpha as f32;
-            let wobble = if wiggle < 5.0 {
-                (wiggle / 1.5 * std::f32::consts::PI).sin() * 3.0
-            } else {
-                0.0
-            };
-            let base = glam::Mat4::from_translation(p.as_vec3())
-                * glam::Mat4::from_rotation_y((180.0 - a.yaw + wobble).to_radians())
-                * glam::Mat4::from_scale(glam::Vec3::new(-1.0, -1.0, 1.0))
-                * glam::Mat4::from_translation(glam::Vec3::new(0.0, -1.501, 0.0));
-            let mut poses = Poses::new(model);
-            // ArmorStandModel.setupAnim: the stand's pose and part visibility.
-            apply_pose(&mut poses, &a.pose);
-            // Item layers pose from the hidden arms too (`visible` only skips drawing).
-            let posed = poses.clone();
-            let mut hide = |name: &str| {
-                if poses.has(name) {
-                    let pose = poses.get(name);
-                    pose[6] = 0.0;
-                    pose[7] = 0.0;
-                    pose[8] = 0.0;
-                }
-            };
-            if !a.show_arms {
-                hide("left_arm");
-                hide("right_arm");
-            }
-            if a.no_base_plate {
-                hide("base_plate");
-            }
-            let light = self.world.light(
-                a.position.x.floor() as i32,
-                (a.position.y + 0.5).floor() as i32,
-                a.position.z.floor() as i32,
-            );
-            let packed = (u32::from(light >> 4) * 16) | ((u32::from(light & 15) * 16) << 8);
-            horizon_client::mobs::render::draw(
-                model,
-                base,
-                &poses,
-                wood,
-                0xFFFF_FFFF,
-                packed,
-                0,
-                out,
-            );
-            self.armor_stand_items(a, model, base, &posed, packed, out);
-            // HumanoidArmorLayer: head, chest, legs, feet.
-            for (slot, layer) in [
-                (5usize, "helmet"),
-                (4, "chestplate"),
-                (3, "leggings"),
-                (2, "boots"),
-            ] {
-                let Some(stack) = &a.equipment[slot] else {
-                    continue;
-                };
-                let Some(asset) = self
-                    .res
-                    .items()
-                    .get(&stack.item)
-                    .and_then(|i| i.equip_asset.clone())
-                else {
-                    continue;
-                };
-                let kind = if layer == "leggings" {
-                    "humanoid_leggings"
-                } else {
-                    "humanoid"
-                };
-                let Some((texture, undyed)) =
-                    assets.equipment.get(&asset).and_then(|k| k.get(kind))
-                else {
-                    continue;
-                };
-                let (Some(uv), Some(part)) = (uv_of(texture), assets.layers.get(&(layer, a.small)))
-                else {
-                    continue;
-                };
-                let color = undyed.map_or(0xFFFF_FFFF, |c| {
-                    0xFF00_0000 | (c & 0xFF) << 16 | (c & 0xFF00) | (c >> 16) & 0xFF
-                });
-                // ArmorStandRenderer's HumanoidArmorLayer: the armour glint
-                // when `stack.hasFoil()`, as on a living entity.
-                let item_glint = self
-                    .res
-                    .items()
-                    .enchantments
-                    .props
-                    .get(&stack.item)
-                    .is_some_and(|p| p.glint);
-                let overlay = if stack.has_foil(item_glint) {
-                    horizon_client::mobs::render::ARMOR_GLINT
-                } else {
-                    0
-                };
-                // ArmorStandArmorModel.setupAnim: the same pose as the stand.
-                let mut layer_poses = Poses::new(part);
-                apply_pose(&mut layer_poses, &a.pose);
-                horizon_client::mobs::render::draw(
-                    part,
-                    base,
-                    &layer_poses,
-                    uv,
-                    color,
-                    packed,
-                    overlay,
-                    out,
-                );
-                // EquipmentLayerRenderer: the trim layer over the armour.
-                if let Some(trim) = assets
-                    .trim_texture(&asset, kind, stack)
-                    .and_then(|t| uv_of(&t.sprite()))
-                {
-                    horizon_client::mobs::render::draw(
-                        part,
-                        base,
-                        &layer_poses,
-                        trim,
-                        0xFFFF_FFFF,
-                        packed,
-                        overlay,
-                        out,
-                    );
-                }
-            }
-            self.cull_entity_vertices(out, entity_start);
-        }
-    }
 }
 /// The `Pose` rotations on the parts of an armor stand model or its armor
 /// (`ArmorStandArmorModel.setupAnim`); the body also turns the sticks.
@@ -782,7 +788,8 @@ fn overlaps(a: Aabb, b: Aabb) -> bool {
     );
     a0.x < b1.x && b0.x < a1.x && a0.y < b1.y && b0.y < a1.y && a0.z < b1.z && b0.z < a1.z
 }
-impl Game<'_> {
+impl Game<'_> {}
+impl crate::game::Sim<'_> {
     /// `Equippable.swapWithEquipmentSlot`: right-clicking armor swaps it into
     /// its slot (the worn piece comes back to the hand).
     pub(super) fn equip_from_hand(&mut self, stack: &ItemStack) -> bool {
@@ -920,7 +927,7 @@ impl Game<'_> {
                 &profile,
                 false,
                 pose,
-                &self.gui.atlas.sprites,
+                &self.front.gui.atlas.sprites,
                 &self.item_host(),
                 &mut sink,
             );

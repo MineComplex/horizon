@@ -57,7 +57,7 @@ impl Game<'_> {
         let size = self.gui_scale().map(|b| [b.width, b.height]);
         let mut nodes = widgets::tree(&widgets::last_labelled(), &widgets::last_targets(), size);
         if matches!(self.screen, Screen::Inventory | Screen::Creative)
-            && self.title.is_none()
+            && self.front.title.is_none()
             && let Ok((ox, oy)) = self.gui_origin()
         {
             nodes.extend(self.slots().into_iter().map(|i| {
@@ -72,39 +72,6 @@ impl Game<'_> {
             }));
         }
         nodes
-    }
-
-    fn node_value(&mut self, node: &Node) -> Value {
-        let mut v = json!({
-            "id": node.id,
-            "kind": node.kind.name(),
-            "bounds": node.rect,
-            "enabled": node.enabled,
-        });
-        if let Some(label) = &node.label {
-            v["label"] = json!(label);
-        }
-        match node.kind {
-            Kind::Slider { value, .. } => v["value"] = json!(value),
-            Kind::Tab(selected) => v["selected"] = json!(selected),
-            Kind::Slot => {
-                if let Some(slot) = node.id.strip_prefix("slot-").and_then(|s| s.parse().ok()) {
-                    let stack = if slot == 200 {
-                        self.craft_result()
-                    } else if slot >= Creative::DISPLAY {
-                        // An item tab's display slot shows the tab's list.
-                        let first = self.creative_screen.first_row(&self.pack.names);
-                        let items = self.creative_screen.items(&self.pack.names);
-                        items.get(first * 9 + slot - Creative::DISPLAY).cloned()
-                    } else {
-                        self.slot_mut(slot).clone()
-                    };
-                    v["stack"] = stack.map_or(Value::Null, |s| self.stack_value(&s));
-                }
-            }
-            _ => {}
-        }
-        v
     }
 
     fn find_node(&self, id: &str) -> Result<Node> {
@@ -214,5 +181,39 @@ impl Game<'_> {
             }
             _ => Ok(Handled::No),
         }
+    }
+}
+impl crate::game::Sim<'_> {
+    fn node_value(&mut self, node: &Node) -> Value {
+        let mut v = json!({
+            "id": node.id,
+            "kind": node.kind.name(),
+            "bounds": node.rect,
+            "enabled": node.enabled,
+        });
+        if let Some(label) = &node.label {
+            v["label"] = json!(label);
+        }
+        match node.kind {
+            Kind::Slider { value, .. } => v["value"] = json!(value),
+            Kind::Tab(selected) => v["selected"] = json!(selected),
+            Kind::Slot => {
+                if let Some(slot) = node.id.strip_prefix("slot-").and_then(|s| s.parse().ok()) {
+                    let stack = if slot == 200 {
+                        self.craft_result()
+                    } else if slot >= Creative::DISPLAY {
+                        // An item tab's display slot shows the tab's list.
+                        let first = self.creative_screen.first_row(&self.pack.names);
+                        let items = self.creative_screen.items(&self.pack.names);
+                        items.get(first * 9 + slot - Creative::DISPLAY).cloned()
+                    } else {
+                        self.slot_mut(slot).clone()
+                    };
+                    v["stack"] = stack.map_or(Value::Null, |s| self.stack_value(&s));
+                }
+            }
+            _ => {}
+        }
+        v
     }
 }

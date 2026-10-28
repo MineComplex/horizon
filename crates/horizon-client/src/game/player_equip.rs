@@ -20,14 +20,14 @@ fn same(a: Option<&ItemStack>, b: Option<&ItemStack>) -> bool {
     }
 }
 
-impl Game<'_> {
+impl Game<'_> {}
+impl crate::game::Sim<'_> {
     /// The armour (head first) and the off hand, in `EquipmentSlot` order of
     /// the inventory menu's slots.
     pub(super) fn player_equipment(&self) -> [Option<ItemStack>; 5] {
         let [head, chest, legs, feet] = self.armor.clone();
         [head, chest, legs, feet, self.offhand.clone()]
     }
-
     /// `onEquipItem` for every slot that changed since `before`: what the
     /// server does for the creative screen, which sends each changed slot
     /// (`handleSetCreativeModeSlot` sets it by player).
@@ -37,7 +37,6 @@ impl Game<'_> {
             self.player_on_equip(slot, before[i].as_ref(), after[i].as_ref());
         }
     }
-
     /// `LivingEntity.onEquipItem(slot, old, new)` for the player in place
     /// (the host, or a guest inside `as_guest`).
     pub(super) fn player_on_equip(
@@ -50,7 +49,6 @@ impl Game<'_> {
             self.player_equipped(slot, new);
         }
     }
-
     /// The body of `onEquipItem` once the item changed: the item's
     /// `Equippable.equipSound` when it is equipped in its own slot, and the
     /// `equip` / `unequip` game event for armour. Nothing on a client (the

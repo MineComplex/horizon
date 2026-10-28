@@ -162,6 +162,60 @@ fn dist_sqr(a: [i32; 3], b: (i32, i32, i32)) -> i64 {
 }
 
 impl Game<'_> {
+    // ---- setup and the block entity index ----
+
+    fn entity_for_kind(kind: u8) -> Option<SculkEntity> {
+        Some(SculkEntity::new(match kind {
+            KIND_SENSOR => SculkKind::Sensor,
+            KIND_CALIBRATED => SculkKind::Calibrated,
+            KIND_SHRIEKER => SculkKind::Shrieker,
+            KIND_CATALYST => SculkKind::Catalyst,
+            _ => return None,
+        }))
+    }
+
+    // ---- contexts ----
+
+    // ---- posting ----
+
+    // ---- ticking ----
+
+    // ---- sensors ----
+
+    // ---- shriekers ----
+
+    // ---- darkness ----
+
+    /// `LightmapRenderStateExtractor`: the night vision effect's intensity
+    /// (`GameRenderer.nightVisionScale`), or conduit power's water vision.
+    pub(super) fn night_vision_intensity(&self, partial: f32) -> f32 {
+        use horizon_client::fog::FogType;
+        if let Some(e) = self.potions.effects.get("night_vision") {
+            // MobEffectInstance.endsWithin(200); -1 is infinite.
+            return if e.duration < 0 || e.duration > 200 {
+                1.0
+            } else {
+                0.7 + ((e.duration as f32 - partial) * std::f32::consts::PI * 0.2).sin() * 0.3
+            };
+        }
+        if self.potions.effects.get("conduit_power").is_some()
+            && let Some(eye) = self.eye_position()
+        {
+            let in_water =
+                horizon_client::fog::fog_type(&self.world, self.res.facts(), eye, self.forward())
+                    == FogType::Water;
+            return self.front.fog.water_vision(in_water);
+        }
+        0.0
+    }
+
+    // ---- catalysts ----
+
+    // ---- particles ----
+
+    // ---- entity events ----
+}
+impl crate::game::Sim<'_> {
     /// Run `f` with the player as the cause of the block changes it makes.
     pub(super) fn with_player_actor<T>(&mut self, f: impl FnOnce(&mut Self) -> T) -> T {
         let prior = self.sculk.actor.replace(Who::Player);
@@ -169,7 +223,6 @@ impl Game<'_> {
         self.sculk.actor = prior;
         out
     }
-
     /// The `sculk` control command: listeners and their vibrations, or a
     /// test charge for the nearest catalyst.
     pub(super) fn sculk_command(&mut self, words: &[&str]) -> Result<serde_json::Value> {
@@ -283,9 +336,6 @@ impl Game<'_> {
     pub(super) fn sculk_actor(&self) -> Option<Who> {
         self.sculk.actor
     }
-
-    // ---- setup and the block entity index ----
-
     pub(super) fn sculk_prepare(&mut self) {
         if self.sculk.tables.built {
             return;
@@ -340,15 +390,6 @@ impl Game<'_> {
     fn state_is(&self, table: &[bool], state: BlockStateId) -> bool {
         table.get(state.0 as usize).copied().unwrap_or(false)
     }
-    fn entity_for_kind(kind: u8) -> Option<SculkEntity> {
-        Some(SculkEntity::new(match kind {
-            KIND_SENSOR => SculkKind::Sensor,
-            KIND_CALIBRATED => SculkKind::Calibrated,
-            KIND_SHRIEKER => SculkKind::Shrieker,
-            KIND_CATALYST => SculkKind::Catalyst,
-            _ => return None,
-        }))
-    }
     /// Find the sculk blocks of chunks that just became resident, and apply
     /// the block writes recorded since the last tick.
     pub(super) fn sculk_sync_index(&mut self) {
@@ -393,7 +434,7 @@ impl Game<'_> {
                 self.world.block_entities.remove(&key);
             }
             self.sculk.index.remove(&key);
-            if let Some(e) = Self::entity_for_kind(new_kind) {
+            if let Some(e) = crate::game::Game::entity_for_kind(new_kind) {
                 self.world
                     .block_entities
                     .insert(key, BlockEntity::Sculk(Box::new(e)));
@@ -437,7 +478,7 @@ impl Game<'_> {
             if !matches!(
                 self.world.block_entities.get(&pos),
                 Some(BlockEntity::Sculk(_))
-            ) && let Some(e) = Self::entity_for_kind(self.kind_of_state(state))
+            ) && let Some(e) = crate::game::Game::entity_for_kind(self.kind_of_state(state))
             {
                 self.world
                     .block_entities
@@ -452,9 +493,6 @@ impl Game<'_> {
             _ => None,
         }
     }
-
-    // ---- contexts ----
-
     fn state_dampens(&self, state: Option<BlockStateId>) -> bool {
         state.is_some_and(|s| self.state_is(&self.sculk.tables.dampens, s))
     }
@@ -503,9 +541,6 @@ impl Game<'_> {
             },
         }
     }
-
-    // ---- posting ----
-
     /// `Level.gameEvent`: tell the listeners within reach.
     pub(super) fn post_game_event(&mut self, event: &'static str, pos: [f64; 3], ctx: Context) {
         super::dispense_fixture::record(|| {
@@ -589,7 +624,6 @@ impl Game<'_> {
         let who = self.sculk.actor;
         self.post_block_game_event(event, [pos.x, pos.y, pos.z], who, state);
     }
-
     fn occluded(&self, origin: [f64; 3], dest: [f64; 3]) -> bool {
         sculk::is_occluded(origin, dest, |p| {
             self.state_is(&self.sculk.tables.occludes, self.world.block(p.x, p.y, p.z))
@@ -688,7 +722,6 @@ impl Game<'_> {
             .and_then(|s| s.properties.get(key))
             .map(String::as_str)
     }
-
     /// `Warden.VibrationUser`: accept a vibration for the warden at `index`.
     fn warden_listen(&mut self, index: usize, event: &'static str, pos: [f64; 3], ctx: &Context) {
         let now = self.world.game_time;
@@ -700,9 +733,6 @@ impl Game<'_> {
             })
         });
     }
-
-    // ---- ticking ----
-
     /// The entity phase of a tick for sculk: the player's warden spawn
     /// tracker (`ServerPlayer.tick`), and the events of entities standing on
     /// and moving over blocks.
@@ -798,9 +828,6 @@ impl Game<'_> {
         }
         Ok(())
     }
-
-    // ---- sensors ----
-
     /// `onReceiveVibration` of a sensor or a shrieker.
     fn sculk_receive(&mut self, key: (i32, i32, i32), info: Info) -> Result<()> {
         let Some(entity) = self.sculk_entity(key) else {
@@ -948,9 +975,6 @@ impl Game<'_> {
             }
         }
     }
-
-    // ---- shriekers ----
-
     fn can_respond(&self, state: BlockStateId) -> bool {
         use horizon_world::food::Difficulty;
         self.state_property(state, "can_summon") == Some("true")
@@ -1145,9 +1169,6 @@ impl Game<'_> {
         }
         w.no_collision(bounds)
     }
-
-    // ---- darkness ----
-
     /// `MobEffectInstance.BlendState.tick` for the darkness effect: it fades
     /// in and out over 22 ticks.
     fn tick_darkness_blend(&mut self) {
@@ -1187,30 +1208,6 @@ impl Game<'_> {
             ((self.ticks as f32 - partial) * std::f32::consts::PI * 0.025).cos() * 0.45 * modifier;
         (modifier, pulse.max(0.0) * scale)
     }
-
-    /// `LightmapRenderStateExtractor`: the night vision effect's intensity
-    /// (`GameRenderer.nightVisionScale`), or conduit power's water vision.
-    pub(super) fn night_vision_intensity(&self, partial: f32) -> f32 {
-        use horizon_client::fog::FogType;
-        if let Some(e) = self.potions.effects.get("night_vision") {
-            // MobEffectInstance.endsWithin(200); -1 is infinite.
-            return if e.duration < 0 || e.duration > 200 {
-                1.0
-            } else {
-                0.7 + ((e.duration as f32 - partial) * std::f32::consts::PI * 0.2).sin() * 0.3
-            };
-        }
-        if self.potions.effects.get("conduit_power").is_some()
-            && let Some(eye) = self.eye_position()
-        {
-            let in_water =
-                horizon_client::fog::fog_type(&self.world, self.res.facts(), eye, self.forward())
-                    == FogType::Water;
-            return self.fog.water_vision(in_water);
-        }
-        0.0
-    }
-
     /// `Warden.applyDarknessAround` / `MobEffectUtil.addEffectToPlayersAround`.
     pub(super) fn apply_darkness(&mut self, at: [f64; 3], radius: f64) {
         self.for_each_player(|g| g.darkness_on_player(at, radius));
@@ -1240,9 +1237,6 @@ impl Game<'_> {
         effect.visible = false;
         self.potions.effects.add(effect);
     }
-
-    // ---- catalysts ----
-
     /// `SculkCatalystBlockEntity.CatalystListener.handleGameEvent` for the
     /// death of a mob: the nearest catalyst within 8 blocks takes its
     /// experience. Returns whether it was consumed.
@@ -1307,9 +1301,6 @@ impl Game<'_> {
         self.sounds
             .play("minecraft:block.sculk_catalyst.bloom", Some(c), 2.0, pitch);
     }
-
-    // ---- particles ----
-
     /// `LevelEvent` 3006: charge cursors moving over sculk, or popping.
     pub(super) fn sculk_charge_event(&mut self, pos: BlockPos, data: i32) {
         let c = center((pos.x, pos.y, pos.z));
@@ -1441,7 +1432,6 @@ impl Game<'_> {
             );
         }
     }
-
     fn vibration_particle(&mut self, from: [f64; 3], to: [f64; 3], ticks: i32) {
         self.particles.vibration(from, to, ticks);
     }
@@ -1474,9 +1464,6 @@ impl Game<'_> {
             self.particles.push(particle);
         }
     }
-
-    // ---- entity events ----
-
     /// `Projectile.shoot` / `onHit`: a projectile of `owner` at a position.
     pub(super) fn projectile_event(
         &mut self,
@@ -1505,7 +1492,6 @@ impl Game<'_> {
             self.projectile_event("minecraft:projectile_shoot", Some(Who::Player), at);
         }
     }
-
     /// Events from entities moving, getting hurt and dying, derived from what
     /// changed this tick.
     fn tick_entity_events(&mut self) {
@@ -1522,7 +1508,6 @@ impl Game<'_> {
             self.step_on_redstone_ore(at, false);
         }
     }
-
     /// Entity.move emits on the authoritative server too, for each ServerPlayer.
     pub(super) fn tick_player_sculk_events(&mut self) {
         // The player.
@@ -1556,7 +1541,6 @@ impl Game<'_> {
             self.sculk.last_health = Some(health);
         }
     }
-
     /// `RedStoneOreBlock.stepOn`: standing on the ore lights it, unless the
     /// entity is stepping carefully (`attack_block` only lights an unlit ore).
     fn step_on_redstone_ore(&mut self, at: [f64; 3], carefully: bool) {
@@ -1576,7 +1560,6 @@ impl Game<'_> {
             let _ = self.attack_block(pos);
         }
     }
-
     fn tick_mob_sculk_events(&mut self) {
         let snapshot: Vec<(u32, [f64; 3], bool, bool, Species, Option<i64>)> = self
             .mobs

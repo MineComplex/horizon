@@ -81,6 +81,19 @@ impl Strike {
 }
 
 impl Game<'_> {
+    /// The player `id` that guest `conn` attacks, if it is one.
+    pub(super) fn pvp_victim(host: &LanHost, conn: u32, id: i32) -> Option<Victim> {
+        if id == host.host_entity {
+            return Some(Victim::Host);
+        }
+        host.hub
+            .guests
+            .iter()
+            .find(|g| g.entity_id == id && g.conn != conn && host.hub.here(g) && !g.dead)
+            .map(|g| Victim::Guest(g.conn))
+    }
+}
+impl crate::game::Sim<'_> {
     /// The guest on the host's crosshair and how far, within reach.
     pub(super) fn guest_hit(&self) -> Option<(u32, f64)> {
         let host = self.lan.as_ref()?;
@@ -94,7 +107,6 @@ impl Game<'_> {
             .filter_map(|g| Some((g.conn, ray_box(eye, dir, reach, guest_bounds(g))?)))
             .min_by(|a, b| a.1.total_cmp(&b.1))
     }
-
     /// The host's attack on the guest under the crosshair, when no mob or
     /// block is nearer.
     pub(super) fn attack_guest(&mut self) -> bool {
@@ -118,19 +130,6 @@ impl Game<'_> {
         self.lan = Some(host);
         true
     }
-
-    /// The player `id` that guest `conn` attacks, if it is one.
-    pub(super) fn pvp_victim(host: &LanHost, conn: u32, id: i32) -> Option<Victim> {
-        if id == host.host_entity {
-            return Some(Victim::Host);
-        }
-        host.hub
-            .guests
-            .iter()
-            .find(|g| g.entity_id == id && g.conn != conn && host.hub.here(g) && !g.dead)
-            .map(|g| Victim::Guest(g.conn))
-    }
-
     /// `Player.attack`'s `causeFoodExhaustion(0.1F)`, charged to the attacker
     /// (the host, or a guest swapped in) only once the hit hurt the victim.
     pub(super) fn pvp_exhaustion(&mut self) {
@@ -140,7 +139,6 @@ impl Game<'_> {
             p.cause_food_exhaustion(0.1);
         }
     }
-
     /// The attacker's side of `Player.attack` (the host, or a guest swapped
     /// in): the damage, the charge reset and the swing.
     pub(super) fn pvp_strike(&mut self) -> Option<Strike> {
@@ -179,7 +177,6 @@ impl Game<'_> {
             sweep_hit,
         })
     }
-
     /// The guests by connection, with their entity ids.
     pub(super) fn lan_guest_entities(&self) -> Vec<(u32, u32)> {
         self.lan.as_ref().map_or_else(Vec::new, |host| {
@@ -190,7 +187,6 @@ impl Game<'_> {
                 .collect()
         })
     }
-
     /// The player a player's projectile hit, when it hit one: the host for a
     /// guest's shot, or a guest.
     pub(super) fn projectile_pvp_victim(&self, p: &Projectile, hit: Hit) -> Option<Victim> {
@@ -212,7 +208,6 @@ impl Game<'_> {
                 .map(|g| Victim::Guest(g.conn)),
         }
     }
-
     /// A player's projectile on a player: the hit runs as the victim, whose
     /// hurt refuses it when the `pvp` game rule or their teams forbid it
     /// (`ServerPlayer.canHarmPlayer`; `AbstractArrow.onHitEntity` then turns
@@ -262,7 +257,6 @@ impl Game<'_> {
         self.lan = Some(host);
         result.unwrap_or(Ok(()))
     }
-
     /// The hit landing on the victim with its extra knockback, then the
     /// attacker's attack sound. Whether the victim was hurt.
     pub(super) fn pvp_land(&mut self, host: &mut LanHost, victim: Victim, s: &Strike) -> bool {
@@ -390,7 +384,6 @@ impl Game<'_> {
         }
         hurt
     }
-
     /// The sweep of the player in place, for the players it reaches: the
     /// damage (`1 + ratio * baseDamage`, plus the enchantments against a
     /// player, scaled by the attack strength) and who hits. The box is set
@@ -411,7 +404,6 @@ impl Game<'_> {
             skip: None,
         }
     }
-
     /// A sweep from a mob hit reaches the other players. Inside a guest's
     /// turn the host holds the other players (`as_guest`), so it waits for
     /// the turn to end.
@@ -423,14 +415,12 @@ impl Game<'_> {
             self.lan = Some(host);
         }
     }
-
     /// The sweeps guests' turns put off.
     pub(super) fn flush_sweeps(&mut self) {
         for sweep in std::mem::take(&mut self.creatures.sweeps) {
             self.sweep_other_players(sweep);
         }
     }
-
     /// `Player.doSweepAttack` on the players: each other player in the box,
     /// closer than 3 blocks (`distanceToSqr < 9`) and not an ally
     /// (`isAlliedTo`), is hurt (`ServerPlayer.canHarmPlayer`: the `pvp` rule)

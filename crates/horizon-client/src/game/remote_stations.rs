@@ -11,7 +11,8 @@ use super::{
 };
 use horizon_protocol::packets::play::{self, Serverbound as S};
 
-impl Game<'_> {
+impl Game<'_> {}
+impl crate::game::Sim<'_> {
     /// The server opened workstation menu `menu` in window `container`.
     pub(super) fn remote_open_station(
         &mut self,
@@ -31,7 +32,6 @@ impl Game<'_> {
         self.screen = Screen::Inventory;
         self.capture(false);
     }
-
     /// Window `container` is the server's workstation menu, open here.
     pub(super) fn remote_station_open(&self, container: i32) -> bool {
         self.station.is_some()
@@ -40,10 +40,9 @@ impl Game<'_> {
                 .as_ref()
                 .and_then(|r| r.menu.as_ref())
                 .is_some_and(|(id, name)| {
-                    *id == container && Self::remote_station_kind(name).is_some()
+                    *id == container && crate::game::Game::remote_station_kind(name).is_some()
                 })
     }
-
     /// The server set station slot `internal`: the client menu's
     /// `Slot.set` runs its container's `setChanged`, so the loom lists the
     /// patterns its inputs allow and the stonecutter the recipes of its input.
@@ -71,7 +70,6 @@ impl Game<'_> {
         // its responder sends.
         self.remote_anvil_rename();
     }
-
     /// `AbstractContainerMenu.setData` from the server.
     pub(super) fn remote_station_data(&mut self, id: usize, value: i16) {
         let Some(s) = self.station.as_mut() else {
@@ -116,7 +114,6 @@ impl Game<'_> {
             _ => {}
         }
     }
-
     /// `AnvilScreen.onNameChanged` on a server: the rename box's text (blank
     /// when it is the input's own name) goes to the server when the menu's
     /// `setItemName` takes it.
@@ -140,7 +137,6 @@ impl Game<'_> {
         }
         self.send(S::RenameItem(play::RenameItem { name }));
     }
-
     /// `MultiPlayerGameMode.handleInventoryButtonClick`: the screen already
     /// ran `clickMenuButton` on its own menu.
     pub(super) fn remote_station_button(&self, button: i32) {

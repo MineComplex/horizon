@@ -30,6 +30,54 @@ fn java_double_text(v: f64) -> Text {
 impl Game<'_> {
     // ---- /recipe -----------------------------------------------------------
 
+    // ---- /damage ----------------------------------------------------------------
+
+    fn damage_kind(ty: &str) -> DamageKind {
+        match ty.trim_start_matches("minecraft:") {
+            "player_attack" => DamageKind::PlayerAttack,
+            "mace_smash" => DamageKind::MaceSmash,
+            "spear" => DamageKind::Spear,
+            "mob_attack" | "mob_attack_no_aggro" => DamageKind::MobAttack,
+            "arrow" => DamageKind::Arrow,
+            "thrown" | "trident" | "mob_projectile" => DamageKind::Thrown,
+            "fireball" | "unattributed_fireball" | "wither_skull" => DamageKind::Fireball,
+            "explosion" | "player_explosion" | "bad_respawn_point" => DamageKind::Explosion,
+            "fall" | "ender_pearl" | "fly_into_wall" => DamageKind::Fall,
+            "on_fire" => DamageKind::OnFire,
+            "in_fire" | "campfire" | "hot_floor" => DamageKind::InFire,
+            "lava" => DamageKind::Lava,
+            "drown" => DamageKind::Drown,
+            "dry_out" => DamageKind::DryOut,
+            "magic" | "indirect_magic" | "dragon_breath" => DamageKind::Magic,
+            "sting" => DamageKind::Sting,
+            "cactus" => DamageKind::Cactus,
+            "sweet_berry_bush" => DamageKind::SweetBerryBush,
+            "freeze" => DamageKind::Freeze,
+            "in_wall" => DamageKind::InWall,
+            "thorns" => DamageKind::Thorns,
+            _ => DamageKind::Generic,
+        }
+    }
+
+    // ---- /rotate and /swing -----------------------------------------------------------
+
+    // ---- sounds -----------------------------------------------------------------------
+
+    // ---- /particle ----------------------------------------------------------------------
+
+    // ---- /attribute ---------------------------------------------------------------------
+
+    /// The attribute id without `minecraft:`, as the attribute map names it.
+    fn attribute_description(attribute: &str) -> Text {
+        let short = attribute.trim_start_matches("minecraft:");
+        Text::translate(&format!("attribute.name.{short}"), &[])
+    }
+
+    // ---- /ride ----------------------------------------------------------------------------
+
+    // ---- /spreadplayers -----------------------------------------------------------------------
+}
+impl crate::game::Sim<'_> {
     /// Every recipe id of the recipe manager (what `/recipe` resolves and suggests).
     pub(super) fn learnable_recipes(&self) -> Vec<String> {
         self.res.stations().recipe_index.ids().cloned().collect()
@@ -77,7 +125,6 @@ impl Game<'_> {
         self.feedback(message);
         Ok(total)
     }
-
     /// ServerRecipeBook.addRecipes/removeRecipes for the player in place: how
     /// many recipe book displays changed (a transmute recipe has one per
     /// material count).
@@ -97,35 +144,6 @@ impl Game<'_> {
             ));
         }
         count
-    }
-
-    // ---- /damage ----------------------------------------------------------------
-
-    fn damage_kind(ty: &str) -> DamageKind {
-        match ty.trim_start_matches("minecraft:") {
-            "player_attack" => DamageKind::PlayerAttack,
-            "mace_smash" => DamageKind::MaceSmash,
-            "spear" => DamageKind::Spear,
-            "mob_attack" | "mob_attack_no_aggro" => DamageKind::MobAttack,
-            "arrow" => DamageKind::Arrow,
-            "thrown" | "trident" | "mob_projectile" => DamageKind::Thrown,
-            "fireball" | "unattributed_fireball" | "wither_skull" => DamageKind::Fireball,
-            "explosion" | "player_explosion" | "bad_respawn_point" => DamageKind::Explosion,
-            "fall" | "ender_pearl" | "fly_into_wall" => DamageKind::Fall,
-            "on_fire" => DamageKind::OnFire,
-            "in_fire" | "campfire" | "hot_floor" => DamageKind::InFire,
-            "lava" => DamageKind::Lava,
-            "drown" => DamageKind::Drown,
-            "dry_out" => DamageKind::DryOut,
-            "magic" | "indirect_magic" | "dragon_breath" => DamageKind::Magic,
-            "sting" => DamageKind::Sting,
-            "cactus" => DamageKind::Cactus,
-            "sweet_berry_bush" => DamageKind::SweetBerryBush,
-            "freeze" => DamageKind::Freeze,
-            "in_wall" => DamageKind::InWall,
-            "thorns" => DamageKind::Thorns,
-            _ => DamageKind::Generic,
-        }
     }
     pub(super) fn cmd_damage(&mut self, ctx: &Context) -> R<i32> {
         let targets = self.entities(ctx, "target", false)?;
@@ -180,7 +198,7 @@ impl Game<'_> {
                     _ => None,
                 });
                 let damage = Damage {
-                    kind: Self::damage_kind(&ty),
+                    kind: crate::game::Game::damage_kind(&ty),
                     attacker,
                     from,
                 };
@@ -204,9 +222,6 @@ impl Game<'_> {
         ));
         Ok(1)
     }
-
-    // ---- /rotate and /swing -----------------------------------------------------------
-
     pub(super) fn cmd_rotate(&mut self, ctx: &Context) -> R<i32> {
         let targets = self.entities(ctx, "target", false)?;
         let Some(t) = targets.first().copied() else {
@@ -285,9 +300,6 @@ impl Game<'_> {
         self.feedback(message);
         Ok(total)
     }
-
-    // ---- sounds -----------------------------------------------------------------------
-
     pub(super) fn cmd_playsound(&mut self, ctx: &Context) -> R<i32> {
         let Some(Arg::Resource(sound)) = ctx.get("sound").cloned() else {
             return Ok(0);
@@ -441,9 +453,6 @@ impl Game<'_> {
         self.feedback(Text::translate(key, &args));
         Ok(targets.len() as i32)
     }
-
-    // ---- /particle ----------------------------------------------------------------------
-
     pub(super) fn cmd_particle(&mut self, ctx: &Context) -> R<i32> {
         use horizon_client::particles::{ParticleOptions, ParticleType};
         let Some(Arg::Str(spec)) = ctx.get("name").cloned() else {
@@ -676,14 +685,6 @@ impl Game<'_> {
         ));
         Ok(reached)
     }
-
-    // ---- /attribute ---------------------------------------------------------------------
-
-    /// The attribute id without `minecraft:`, as the attribute map names it.
-    fn attribute_description(attribute: &str) -> Text {
-        let short = attribute.trim_start_matches("minecraft:");
-        Text::translate(&format!("attribute.name.{short}"), &[])
-    }
     pub(super) fn cmd_attribute(&mut self, id: &str, ctx: &Context) -> R<i32> {
         let targets = self.entities(ctx, "target", false)?;
         let Some(target) = targets.first().copied() else {
@@ -693,7 +694,7 @@ impl Game<'_> {
             return Ok(0);
         };
         let name = self.target_name(target);
-        let description = Self::attribute_description(&attribute);
+        let description = crate::game::Game::attribute_description(&attribute);
         let short = attribute.trim_start_matches("minecraft:").to_owned();
         let no_attribute = |name: &Text, d: &Text| {
             text_error(
@@ -964,7 +965,6 @@ impl Game<'_> {
             )),
         }
     }
-
     /// The attribute map of a living entity whose attributes Horizon does
     /// not model, created from its type's defaults on first use.
     pub(in crate::game) fn generic_attributes(
@@ -1118,9 +1118,6 @@ impl Game<'_> {
         self.feedback(Text::translate(message, &args));
         Ok(result)
     }
-
-    // ---- /ride ----------------------------------------------------------------------------
-
     pub(super) fn cmd_ride(&mut self, id: &str, ctx: &Context) -> R<i32> {
         let targets = self.entities(ctx, "target", false)?;
         let Some(target) = targets.first().copied() else {
@@ -1208,7 +1205,6 @@ impl Game<'_> {
         ));
         Ok(1)
     }
-
     /// Entity.getVehicle: the player's mount, or a mob's.
     pub(super) fn ride_vehicle(&self, t: Target) -> Option<Target> {
         let id = match t {
@@ -1249,9 +1245,6 @@ impl Game<'_> {
         m.position = at;
         m.previous = at;
     }
-
-    // ---- /spreadplayers -----------------------------------------------------------------------
-
     pub(super) fn cmd_spreadplayers(&mut self, ctx: &Context) -> R<i32> {
         let centre = self
             .position_arg(ctx, "center")

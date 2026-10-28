@@ -87,12 +87,13 @@ enum Target {
     Stand(u32),
 }
 
-impl Game<'_> {
+impl Game<'_> {}
+impl crate::game::Sim<'_> {
     /// Run every case of `spec` ("CASES,OUTPUT") and write the results.
     pub(super) fn dispense_fixture(&mut self, spec: &str) -> Result<()> {
         assert!(
             !self.options.execution_role.is_client(),
-            "fixture requires a server Game"
+            "fixture requires a server crate::game::Sim"
         );
         let (input, output) = spec
             .split_once(',')
@@ -116,7 +117,6 @@ impl Game<'_> {
         LOG.with(|log| *log.borrow_mut() = None);
         Ok(())
     }
-
     fn fixture_reset(&mut self, seed: i64) {
         self.world = World::new(self.res.facts().air, seed);
         // The oracle level is plains everywhere (bone meal's flowers, freezing).
@@ -159,7 +159,6 @@ impl Game<'_> {
         self.level.seed = 0;
         self.rand_sequences = Default::default();
     }
-
     fn dispense_case(&mut self, case: &Value) -> Result<Vec<String>> {
         let seed = case["seed"].as_i64().unwrap_or(0);
         self.fixture_reset(seed);
@@ -434,7 +433,6 @@ impl Game<'_> {
         out.push(format!("rng {}", self.world.random.next_long()));
         Ok(out)
     }
-
     /// A player holding the case's item right-clicks the block at `pos`
     /// (`use_item_as_player`'s block steps): the statistics, the result
     /// and the held stack, as `VanillaDispenserOracle.use` prints them.
@@ -487,7 +485,6 @@ impl Game<'_> {
         ));
         Ok(out)
     }
-
     /// A player three blocks south of `pos`, turned to the case's `yaw`,
     /// right-clicks its top face (or the case's `face`) holding
     /// the case's item (`use_item_as_player` on that hit): the statistics,
@@ -603,7 +600,6 @@ impl Game<'_> {
         self.offhand = None;
         Ok(out)
     }
-
     /// The player's hit on the first target with the case's item, from the
     /// attack strength's scaled `base` damage on: the item's damage bonus and
     /// source, the hurt with the weapon's armor effects, then `weapon_hit`
@@ -717,7 +713,6 @@ impl Game<'_> {
         ));
         Ok(out)
     }
-
     /// A stack in a block entity's slot: a container's, a jukebox's record, a
     /// lectern's book, or the items of a block entity Horizon keeps as saved.
     fn fixture_fill(&mut self, p: (i32, i32, i32), slot: usize, stack: Option<ItemStack>) {
@@ -831,7 +826,6 @@ impl Game<'_> {
         self.process_level_events()?;
         Ok(Vec::new())
     }
-
     /// A survival player three blocks south of `pos` mines it holding the
     /// case's item (`break_block`, which every player's mining goes through):
     /// the statistics and the held stack, as `VanillaDispenserOracle.mine`
@@ -881,7 +875,6 @@ impl Game<'_> {
         ));
         Ok(out)
     }
-
     /// `EntityType.create` and `snapTo` for one target: no spawn finalization.
     fn fixture_target(&mut self, e: &Value) -> Result<Target> {
         let kind = e["type"].as_str().unwrap_or("minecraft:pig");
@@ -969,7 +962,6 @@ impl Game<'_> {
         self.mobs.push(mob);
         Ok(Target::Mob(id))
     }
-
     /// `T` lines: removal, equipment by `EquipmentSlot`, shearing readiness, chests.
     fn fixture_describe(&self, index: usize, target: &Target) -> String {
         let mut line = format!("T {index} ");
@@ -1046,7 +1038,6 @@ impl Game<'_> {
         }
         line
     }
-
     /// `N` lines for every entity the dispenser added.
     fn fixture_entities(&self, old_mobs: &[u32], old_stands: &[u32], out: &mut Vec<String>) {
         let line = |kind: &str, p: [f64; 3], v: [f64; 3], extra: &str| {
