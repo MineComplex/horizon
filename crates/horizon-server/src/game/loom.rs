@@ -82,33 +82,6 @@ impl crate::game::Sim<'_> {
         ];
         self.sounds.play(sound, Some(at), 1.0, 1.0);
     }
-    /// A left click inside the loom's pattern grid or scroller.
-    pub(super) fn loom_click(&mut self, local: (f32, f32)) -> bool {
-        let Some(start_row) = self
-            .station
-            .as_ref()
-            .filter(|s| s.loom.display)
-            .map(|s| s.loom.start_row)
-        else {
-            return false;
-        };
-        for row in 0..4 {
-            for column in 0..4 {
-                let index = (row + start_row) * 4 + column;
-                let (x, y) = (60.0 + column as f32 * BUTTON, 13.0 + row as f32 * BUTTON);
-                if inside(local, x, y, BUTTON, BUTTON) && self.loom_button(index) {
-                    return true;
-                }
-            }
-        }
-        if inside(local, 119.0, 9.0, 12.0, 56.0)
-            && let Some(s) = self.station.as_mut()
-        {
-            s.loom.scrolling = true;
-            return true;
-        }
-        false
-    }
     /// The pattern buttons a controller can focus (GUI origin relative).
     pub(super) fn loom_targets(&self) -> Vec<[f32; 4]> {
         let Some(loom) = self.station.as_ref().map(|s| &s.loom).filter(|l| l.display) else {

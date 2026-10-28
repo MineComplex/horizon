@@ -279,7 +279,7 @@ impl crate::game::Sim<'_> {
             .ok();
     }
     pub(super) fn load_advancements(&mut self) {
-        if self.adv.loaded || false || self.no_player_here() {
+        if self.adv.loaded || self.no_player_here() {
             return;
         }
         self.adv.loaded = true;
@@ -297,7 +297,7 @@ impl crate::game::Sim<'_> {
         self.world_data.registries.advancements = tree.list.iter().map(|a| a.id.clone()).collect();
     }
     pub(super) fn save_advancements(&self) {
-        if !self.adv.loaded || false || self.no_player_here() {
+        if !self.adv.loaded || self.no_player_here() {
             return;
         }
         let Some(path) = self.adv_path() else {
@@ -427,7 +427,7 @@ impl crate::game::Sim<'_> {
     /// `SimpleCriterionTrigger.trigger`: test each open criterion of the
     /// trigger and award what it completes.
     pub(super) fn trigger(&mut self, name: &str, test: impl Fn(&Value, &dyn adv::World) -> bool) {
-        if false || self.no_player_here() {
+        if self.no_player_here() {
             return;
         }
         self.load_advancements();
@@ -488,7 +488,7 @@ impl crate::game::Sim<'_> {
         } else {
             self.recipe_toast(unlocked);
         }
-        if unlocked.is_empty() || false || self.no_player_here() {
+        if unlocked.is_empty() || self.no_player_here() {
             return;
         }
         self.load_advancements();
@@ -618,7 +618,7 @@ impl crate::game::Sim<'_> {
             })
             .count() as f64;
         // Only the criteria the items held could pass (`InventoryIndex`).
-        if false || self.no_player_here() {
+        if self.no_player_here() {
             return;
         }
         self.load_advancements();
@@ -650,7 +650,7 @@ impl crate::game::Sim<'_> {
     }
     /// `PlayerTrigger.LOCATION` every second, and the other per-tick checks.
     pub(super) fn tick_advancements(&mut self) {
-        if self.player.is_none() || false {
+        if self.player.is_none() {
             return;
         }
         self.check_inventory_trigger();
@@ -779,7 +779,7 @@ impl crate::game::Sim<'_> {
     /// `ServerPlayer.updateUsingItem`: USING_ITEM for the item in use, with
     /// what the player looks at (`PlayerPredicate.lookingAt`).
     pub(super) fn trigger_using_item(&mut self, stack: &ItemStack) {
-        if false || self.no_player_here() {
+        if self.no_player_here() {
             return;
         }
         let mut me = self.player_entity();

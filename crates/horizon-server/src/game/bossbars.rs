@@ -1,8 +1,5 @@
 //! `/bossbar` (BossBarCommands) and drawing the custom boss bars.
-use super::{
-    Dim,
-    commands::{R, Target, err},
-};
+use super::{Dim, commands::{R, Target, err}};
 use crate::hc::{bossbar::{self, BossBars}, command::{Arg, Context}, mobs::Species, save, scoreboard::{self as sb, Comp, json_to_tag}, scoreboard_cmd::format_list, text::Text};
 use horizon_core::random::RandomSource;
 use horizon_protocol::packets::play::{self, BossAction, Clientbound as C};
@@ -27,7 +24,7 @@ impl crate::game::Sim<'_> {
             .join("data/minecraft/custom_boss_events.dat")
     }
     pub(super) fn load_bossbars(&mut self) {
-        if self.bosses.loaded || false {
+        if self.bosses.loaded {
             return;
         }
         self.bosses.loaded = true;
@@ -39,7 +36,7 @@ impl crate::game::Sim<'_> {
         self.world_data.registries.bossbars = self.bosses.bars.ids();
     }
     pub(super) fn save_bossbars(&self) {
-        if !self.bosses.loaded || false {
+        if !self.bosses.loaded {
             return;
         }
         if self.bosses.bars.bars.is_empty() && !self.bossbar_path().exists() {

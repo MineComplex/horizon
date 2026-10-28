@@ -62,12 +62,6 @@ impl crate::game::Sim<'_> {
             words.first(),
             Some(&("setblock" | "fill" | "getblock" | "container"))
         );
-        // A test's client asks its server (`--server-control`): the command
-        // runs there, in the player's level, and the client hears of it like
-        // any change.
-        if ours && let Some(reply) = self.ask_server(&words.join(" ")) {
-            return reply.map(Some);
-        }
         // Another server's world changes only through its own commands, which
         // it checks as the player's; `getblock` and `container` read what this
         // client has of it.

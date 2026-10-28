@@ -2236,7 +2236,7 @@ impl crate::game::Sim<'_> {
     /// player is invulnerable to wither damage (creative, spectator). A
     /// server's player gets it from the server.
     pub(super) fn wither_rose_contact(&mut self) {
-        if false || self.world_data.difficulty == 0 {
+        if self.world_data.difficulty == 0 {
             return;
         }
         self.give_player_effect("minecraft:wither", 40, 0);
@@ -2413,7 +2413,7 @@ impl crate::game::Sim<'_> {
                     p.owner = Some(Who::Player);
                 }
                 // AbstractHurtingProjectile.tick ends with createParticleTrail.
-                if super::remote_projectiles::has_smoke_trail(&p.kind) {
+                if has_smoke_trail(&p.kind) {
                     trails.push(p.position);
                 }
                 // ThrownEnderpearl.onAboveBubbleColumn / onInsideBubbleColumn.
@@ -4434,4 +4434,14 @@ impl crate::game::Sim<'_> {
             self.set_portal_cooldown(id);
         }
     }
+}
+
+/// but the wind charges (no trail) and the dragon's fireball (its own).
+fn has_smoke_trail(kind: &ProjectileKind) -> bool {
+    matches!(
+        kind,
+        ProjectileKind::SmallFireball
+            | ProjectileKind::LargeFireball { .. }
+            | ProjectileKind::WitherSkull { .. }
+    )
 }

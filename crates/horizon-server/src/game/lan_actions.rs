@@ -2439,9 +2439,6 @@ impl crate::game::Sim<'_> {
             host.hub
                 .overlay_message(crate::hc::lan::data::component_nbt(&text.component()));
         }
-        if self.options.dedicated.is_none() {
-            self.titles.set_overlay(text, false);
-        }
     }
     /// `ServerLevel.wakeUpAllPlayers` for the guests.
     pub(super) fn wake_guests(&mut self) {

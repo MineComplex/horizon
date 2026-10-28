@@ -70,7 +70,6 @@ impl crate::game::Sim<'_> {
         if self.options.dedicated.is_none() {
             self.client_tick_spawners(&spawners);
             for key in trial_spawners {
-                self.client_tick_trial_spawner(key);
             }
         }
         Ok(())

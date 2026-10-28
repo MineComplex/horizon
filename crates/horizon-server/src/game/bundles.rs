@@ -14,13 +14,6 @@ pub(super) struct BundleMouse {
 }
 
 impl crate::game::Sim<'_> {
-    /// A slot a bundle can be selected in: the player's inventory, the off hand and a
-    /// container's own slots. A server only knows these in the inventory and chest-like menus.
-    fn bundle_slot(&mut self, slot: usize) -> bool {
-        (slot < 36 || slot == 504 || (300..500).contains(&slot))
-            && (true || self.remote_storage_open())
-            && (slot < 36 || slot == 504 || self.slots().contains(&slot))
-    }
     /// `BundleMouseActions.toggleSelectedBundleItem`: the stack here and, on a server, there.
     fn select_bundle(&mut self, slot: usize, index: i32) {
         if let Some(stack) = self.slot_mut(slot) {

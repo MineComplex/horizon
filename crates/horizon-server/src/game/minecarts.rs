@@ -25,6 +25,14 @@ pub(super) enum CartKind {
     CommandBlock,
 }
 impl CartKind {
+    fn slots(self) -> usize {
+        match self {
+            Self::Chest => 27,
+            Self::Hopper => 5,
+            _ => 0,
+        }
+    }
+
     pub fn from_id(id: &str) -> Option<Self> {
         Some(match id.strip_prefix("minecraft:")? {
             "minecart" => Self::Rideable,
@@ -44,13 +52,6 @@ impl CartKind {
             Self::Furnace => "minecraft:furnace_minecart",
             Self::Tnt => "minecraft:tnt_minecart",
             Self::CommandBlock => "minecraft:command_block_minecart",
-        }
-    }
-    fn slots(self) -> usize {
-        match self {
-            Self::Chest => 27,
-            Self::Hopper => 5,
-            _ => 0,
         }
     }
 }

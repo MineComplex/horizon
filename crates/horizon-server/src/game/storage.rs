@@ -278,7 +278,7 @@ impl crate::game::Sim<'_> {
     /// reach (a 4-block buffer).
     pub(super) fn tick_craft_table(&mut self) {
         // A server's menu ends when the server closes it.
-        if false || self.craft_size != 3 {
+        if self.craft_size != 3 {
             return;
         }
         let (Some(pos), Some(eye)) = (self.craft_table, self.eye_position()) else {
@@ -335,10 +335,4 @@ impl crate::game::Sim<'_> {
 }
 
 impl crate::game::Sim<'_> {
-    /// `quickMoveStack` of the open chest-like, hopper, dispenser or furnace
-    /// menu for a shift-click on `slot`, run by the verified menu engine
-    /// (`crate::hc::menu`); false when the menu has none.
-    pub(super) fn container_quick_move(&mut self, slot: usize) -> bool {
-        self.menu_click(Some(slot), 0, crate::hc::menu::Input::QuickMove)
-    }
 }

@@ -41,7 +41,7 @@ impl crate::game::Sim<'_> {
     }
     /// `ScoreboardSaveData` read from `data/minecraft/scoreboard.dat`.
     pub(super) fn load_scoreboard(&mut self) {
-        if self.score.loaded || false {
+        if self.score.loaded {
             return;
         }
         self.score.loaded = true;
@@ -60,7 +60,7 @@ impl crate::game::Sim<'_> {
         self.sync_score_registries();
     }
     pub(super) fn save_scoreboard(&mut self) {
-        if !self.score.loaded || false {
+        if !self.score.loaded {
             return;
         }
         self.score.storage.save(&self.world_root);

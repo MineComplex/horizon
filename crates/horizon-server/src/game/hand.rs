@@ -34,7 +34,6 @@ impl crate::game::Sim<'_> {
         });
         self.clicks.destroying = destroying;
         self.attack_clicks = 0;
-        self.request_remote_mining_stop();
         self.mining = None;
     }
     /// `LivingEntity.swing` with `getModifiedSwingDuration`.

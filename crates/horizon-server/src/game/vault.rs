@@ -123,7 +123,6 @@ impl crate::game::Sim<'_> {
             result?;
         }
         if self.options.dedicated.is_none() {
-            self.client_tick_vault(key);
         }
         Ok(())
     }

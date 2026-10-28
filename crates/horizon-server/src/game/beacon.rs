@@ -26,18 +26,6 @@ const PAYMENT: [&str; 5] = [
     "minecraft:diamond",
     "minecraft:netherite_ingot",
 ];
-/// `BeaconMenu.PaymentSlot` and the player inventory, relative to the 176 origin.
-pub(super) fn slot_position(i: usize) -> Option<(f32, f32)> {
-    Some(match i {
-        0..9 => (36.0 + SHIFT + i as f32 * 18.0, 195.0),
-        9..36 => (
-            36.0 + SHIFT + ((i - 9) % 9) as f32 * 18.0,
-            137.0 + ((i - 9) / 9) as f32 * 18.0,
-        ),
-        INPUT => (136.0 + SHIFT, 110.0),
-        _ => return None,
-    })
-}
 /// A power button: (effect index, x, y, primary) relative to the beacon's left edge.
 fn buttons() -> Vec<(usize, f32, f32, bool)> {
     let mut out = Vec::new();
@@ -385,4 +373,17 @@ impl crate::game::Sim<'_> {
         }
         self.world.modified.insert((pos[0] >> 4, pos[2] >> 4));
     }
+}
+
+/// `BeaconMenu.PaymentSlot` and the player inventory, relative to the 176 origin.
+pub(super) fn slot_position(i: usize) -> Option<(f32, f32)> {
+    Some(match i {
+        0..9 => (36.0 + SHIFT + i as f32 * 18.0, 195.0),
+        9..36 => (
+            36.0 + SHIFT + ((i - 9) % 9) as f32 * 18.0,
+            137.0 + ((i - 9) / 9) as f32 * 18.0,
+        ),
+        INPUT => (136.0 + SHIFT, 110.0),
+        _ => return None,
+    })
 }

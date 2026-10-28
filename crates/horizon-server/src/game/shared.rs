@@ -1,5 +1,7 @@
 //! Server methods that lived in the client's mixed files.
 use super::*;
+use crate::hc::command::args::GameMode;
+use serde_json::{Value, json};
 
 
 
@@ -10,8 +12,8 @@ impl crate::game::Sim<'_> {
     pub(crate) fn control_hurt_log(&mut self) -> Value {
         fn drain(
             name: &str,
-            hurt_log: &mut Vec<horizon_client::health::HurtRecord>,
-            attack_log: &mut Vec<horizon_client::health::AttackRecord>,
+            hurt_log: &mut Vec<crate::hc::health::HurtRecord>,
+            attack_log: &mut Vec<crate::hc::health::AttackRecord>,
         ) -> Value {
             let hurts: Vec<Value> = hurt_log
                 .drain(..)
@@ -201,17 +203,7 @@ impl crate::game::Sim<'_> {
     /// `ServerboundChangeGameModePacket` handled by the integrated server:
     /// `GameModeCommand.setGameMode` with its feedback.
     pub(crate) fn change_game_mode(&mut self, mode: GameMode) {
-        if self.remote.is_some() {
-            use horizon_protocol::packets::play::{ChangeGameMode, Serverbound};
-            let mode = match mode {
-                GameMode::Survival => 0,
-                GameMode::Creative => 1,
-                GameMode::Adventure => 2,
-                GameMode::Spectator => 3,
-            };
-            self.send(Serverbound::ChangeGameMode(ChangeGameMode { mode }));
-            return;
-        }
+        
         if self.set_game_mode(mode) {
             let name = Text::translate(&format!("gameMode.{}", mode.name()), &[]);
             self.feedback(Text::translate("commands.gamemode.success.self", &[name]));

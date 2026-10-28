@@ -880,7 +880,7 @@ impl crate::game::Sim<'_> {
     }
     /// The waiting entities of the open world (read once).
     pub(super) fn load_portal_arrivals(&mut self) {
-        if self.portals.loaded || false {
+        if self.portals.loaded {
             return;
         }
         self.portals.loaded = true;
@@ -896,7 +896,7 @@ impl crate::game::Sim<'_> {
     }
     /// Write the waiting entities when they changed.
     pub(super) fn save_portal_arrivals(&mut self) {
-        if !self.portals.dirty || false {
+        if !self.portals.dirty {
             return;
         }
         let list = self.portals.arrivals.iter().map(arrival_tag).collect();

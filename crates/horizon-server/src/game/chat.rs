@@ -13,46 +13,11 @@ use winit::{
 /// The local player's name (offline single player).
 pub const PLAYER_NAME: &str = "Player";
 
-/// The window's chat, death screen and options state (the world's rules and clock are in
-/// `crate::game::Sim::world_data`).
+/// What a server keeps of the chat state: the death message key a command set.
 #[derive(Default)]
 pub struct UiState {
-    pub chat: Chat,
-    pub chat_screen: Option<ChatScreen>,
-    /// When the chat screen opened (its input took the focus: the cursor blink).
-    pub chat_opened: Option<std::time::Instant>,
-    /// The chat screen is `InBedChatScreen`: the sleeper's, with a Leave Bed button.
-    pub in_bed_chat: bool,
-    /// F1: hide the HUD.
-    pub hide_gui: bool,
     /// Death message key set by the cause of death (e.g. /kill).
     pub death_cause: Option<String>,
-    /// Path of an F2 screenshot waiting for its frame.
-    pub screenshot_message: Option<std::path::PathBuf>,
-    /// The options screens.
-    pub options: crate::hc::options_ui::OptionsUi,
-    /// The prepared resources before resource packs are layered on.
-    pub vanilla_root: std::path::PathBuf,
-    /// Death screen cause and when the player died (buttons wait 20 ticks).
-    pub death_text: Option<Text>,
-    pub died_at: Option<std::time::Instant>,
-    /// `DeathScreen.TitleConfirmScreen` and when it opened (its buttons wait
-    /// 20 ticks, `setDelay`).
-    pub death_confirm: Option<std::time::Instant>,
-    /// `LivingEntity.deathTime` of the window's player: ticks since it died.
-    pub death_time: u32,
-}
-
-impl UiState {
-    /// The state a window starts with: the chat remembers the commands kept
-    /// in the game folder (`ChatComponent`'s constructor).
-    pub fn new() -> Self {
-        let mut ui = Self::default();
-        if let Ok(dir) = std::env::current_dir() {
-            ui.chat.load_history(&dir);
-        }
-        ui
-    }
 }
 
 impl crate::game::Sim<'_> {
@@ -68,25 +33,15 @@ impl crate::game::Sim<'_> {
         self.world_data.registries.permission = level;
         out
     }
-    /// The block the player is looking at, for coordinate suggestions.
-    fn refresh_dynamic_registries(&mut self) {
-        self.world_data.registries.target_block = self.pick().map(|h| h.pos);
-        // ClientPacketListener.getOnlinePlayerNames on a server.
-        if let Some(names) = self.remote_online_names() {
-            self.world_data.registries.players = names;
-        }
-    }
     /// A chat message from the game (ChatComponent.addServerSystemMessage).
     pub(super) fn system_message(&mut self, text: Text) {
         if let Some(capture) = self.chat_capture.as_mut() {
             capture.push(text);
             return;
         }
-        // Connected to a server (single player's own included), the chat on
-        // screen is the connection's: the game's own messages join it.
-
-        // The Chat option's Hidden level takes the server's messages too.
-        self.local_chat_line(text, Some(SYSTEM_INDICATOR), ChatSource::Server);
+        // A server has no window chat: its players get their messages as packets,
+        // and the console logs what vanilla's does where it does.
+        let _ = text;
     }
     /// A player's chat line on the window's own chat: a LAN guest's message
     /// while the host runs in-frame (`HostEvent::Chat`). `ChatListener`
@@ -98,11 +53,7 @@ impl crate::game::Sim<'_> {
             capture.push(text);
             return;
         }
-        // A server's client receives the line as a packet (PlayerChat or
-        // DisguisedChat) and filters it there.
-        if true {
-            self.local_chat_line(text, None, ChatSource::Player);
-        }
+        let _ = text;
     }
     /// `Screen.clickCommandAction`: run a clicked command as the player
     /// without adding it to the chat history. A client mod's command goes
@@ -220,10 +171,6 @@ impl crate::game::Sim<'_> {
         if let Err(e) = crate::hc::save::write_dat(&path, root) {
             log::warn!("the world clocks were not written: {e}");
         }
-    }
-    /// F1 hides the HUD (see `hud`); the screenshot key still works.
-    pub(super) fn toggle_hide_gui(&mut self) {
-        self.ui.hide_gui = !self.ui.hide_gui;
     }
 }
 /// `yyyy-MM-dd_HH.mm.ss[_n].png` (Util.getFilenameFormattedDateTime, local time

@@ -1996,22 +1996,6 @@ impl crate::game::Sim<'_> {
             }
         }
     }
-    fn particle_shape(&self, pos: [i32; 3], state: BlockStateId) -> Vec<[f64; 6]> {
-        let f = self.res.facts().get(state);
-        let offset = if f.outline_offset {
-            self.pack
-                .context
-                .tables
-                .offset(state, pos[0], pos[2])
-                .unwrap_or([0.0; 3])
-        } else {
-            [0.0; 3]
-        };
-        f.outline
-            .iter()
-            .map(|b| std::array::from_fn(|i| b[i] + offset[i % 3]))
-            .collect()
-    }
     /// ClientLevel.addDestroyBlockEffect: a burst per outline box.
     fn destroy_particles(&mut self, pos: [i32; 3], state: BlockStateId) {
         let Some((sprite, tint)) = self.particle_sprite(state, pos) else {
@@ -4577,7 +4561,6 @@ impl crate::game::Sim<'_> {
     fn tick_level(&mut self) -> Result<()> {
         self.drop_window_output();
         self.ticks += 1;
-        self.track_experience_display();
         // `/tick freeze` stops the world but not the player.
         let running = self.clock.world_runs();
         if running {
@@ -4696,116 +4679,6 @@ impl crate::game::Sim<'_> {
         self.container
             .and_then(|k| self.world.block_entities.get(&k))
     }
-    /// 300.. are the open container's slots.
-    fn slots(&self) -> Vec<usize> {
-        if self.creative_inventory_open() {
-            return Creative::inventory_slots().collect();
-        }
-        if self.creative_tab_open() {
-            return Creative::tab_slots().collect();
-        }
-        if let Some(v) = self.station_slots().or_else(|| self.mount_slots()) {
-            return v;
-        }
-        let mut v: Vec<usize> = (0..36).collect();
-        match self.container_kind() {
-            Some(BlockEntity::Chest(_)) => v.extend((0..self.container_size()).map(|i| 300 + i)),
-            Some(BlockEntity::Furnace(_)) => v.extend(300..303),
-            Some(BlockEntity::Brewing(_)) => v.extend(300..305),
-            Some(BlockEntity::Crafter(_)) => v.extend(300..310),
-            Some(
-                BlockEntity::Sign(_)
-                | BlockEntity::Jukebox(_)
-                | BlockEntity::Beacon(_)
-                | BlockEntity::Lectern(_)
-                | BlockEntity::Sculk(_)
-                | BlockEntity::Banner(_)
-                | BlockEntity::CreakingHeart(_)
-                | BlockEntity::Spawner(_)
-                | BlockEntity::TrialSpawner(_)
-                | BlockEntity::Vault(_)
-                | BlockEntity::Beehive(_)
-                | BlockEntity::CommandBlock(_)
-                | BlockEntity::EndGateway(_)
-                | BlockEntity::Skull(_)
-                | BlockEntity::DaylightDetector
-                | BlockEntity::Campfire(_)
-                | BlockEntity::ChiseledBookshelf(_),
-            ) => {}
-            None => {
-                v.extend((0..self.craft_size * self.craft_size).map(|i| 100 + i));
-                v.push(200);
-                if self.craft_size == 2 {
-                    v.extend(500..505);
-                }
-            }
-        }
-        v
-    }
-    /// InventoryMenu / CraftingMenu slot layouts.
-    fn slot_position(&self, i: usize) -> (f32, f32) {
-        if self.creative_inventory_open()
-            && let Some(position) = Creative::inventory_slot_position(i)
-        {
-            return position;
-        }
-        if self.creative_tab_open()
-            && let Some(position) = Creative::tab_slot_position(i)
-        {
-            return position;
-        }
-        if let Some(p) = self
-            .station_slot_position(i)
-            .or_else(|| self.machine_slot_position(i))
-            .or_else(|| self.crafter_slot_position(i))
-            .or_else(|| self.mount_slot_position(i))
-        {
-            return p;
-        }
-        let table = self.craft_size == 3;
-        // ContainerScreen (3 rows) shifts the player inventory down by one pixel.
-        // ChestMenu: the inventory sits `18 * (rows - 3) + 1` lower than the
-        // 3-row layout of the other menus.
-        let shift = match self.chest_rows() {
-            Some(rows) => 1.0 + (rows as f32 - 3.0) * 18.0,
-            None => 0.0,
-        };
-        match i {
-            0..9 => (8.0 + i as f32 * 18.0, 142.0 + shift),
-            9..36 => (
-                8.0 + ((i - 9) % 9) as f32 * 18.0,
-                84.0 + shift + ((i - 9) / 9) as f32 * 18.0,
-            ),
-            500..504 => (8.0, 8.0 + (i - 500) as f32 * 18.0),
-            // InventoryMenu: the shield slot.
-            504 => (77.0, 62.0),
-            300..500 => match self.container_kind() {
-                Some(BlockEntity::Furnace(_)) => {
-                    [(56.0, 17.0), (56.0, 53.0), (116.0, 35.0)][(i - 300).min(2)]
-                }
-                _ => (
-                    8.0 + ((i - 300) % 9) as f32 * 18.0,
-                    18.0 + ((i - 300) / 9) as f32 * 18.0,
-                ),
-            },
-            200 => {
-                if table {
-                    (124.0, 35.0)
-                } else {
-                    (154.0, 28.0)
-                }
-            }
-            _ => {
-                let g = i - 100;
-                let (r, c) = (g / self.craft_size, g % self.craft_size);
-                if table {
-                    (30.0 + c as f32 * 18.0, 17.0 + r as f32 * 18.0)
-                } else {
-                    (98.0 + c as f32 * 18.0, 18.0 + r as f32 * 18.0)
-                }
-            }
-        }
-    }
     fn slot_mut(&mut self, i: usize) -> &mut Option<ItemStack> {
         if i >= mount_menu::SADDLE {
             return self.mount_slot_mut(i);
@@ -4874,7 +4747,6 @@ impl crate::game::Sim<'_> {
         self.reset_inventory_clicks();
         self.close_station();
         self.mount_closed();
-        self.recipe_ui.reset_screen();
 
         let mut returned: Vec<ItemStack> = self.carried.take().into_iter().collect();
         returned.extend(self.craft_grid.iter_mut().filter_map(Option::take));
@@ -4905,29 +4777,6 @@ impl crate::game::Sim<'_> {
         }
         self.close_ender_chest();
     }
-    /// `quickMoveStack` of the open plain menu for a shift-click.
-    fn inventory_quick_move(&mut self, slot: usize) -> bool {
-        self.menu_click(Some(slot), 0, crate::hc::menu::Input::QuickMove)
-    }
-    /// `AbstractContainerMenu.clicked` on the open inventory, crafting table,
-    /// chest, hopper, dispenser or furnace menu, run by the verified menu
-    /// engine (`crate::hc::menu`). `slot` None is outside the window.
-    /// False when the open screen is not one the engine models.
-    fn menu_click(
-        &mut self,
-        slot: Option<usize>,
-        button: i32,
-        input: crate::hc::menu::Input,
-    ) -> bool {
-        if let Some(slot) = slot
-            && slot >= Creative::DISPLAY
-            && self.creative_tab_open()
-        {
-            self.creative_display_click(slot, button, input);
-            return true;
-        }
-        self.menu_ops(&[(slot, button, input)])
-    }
     /// Several clicks on one menu instance (a quick craft drag is three).
     fn menu_ops(&mut self, ops: &[(Option<usize>, i32, crate::hc::menu::Input)]) -> bool {
         use crate::hc::menu::Input;
@@ -4936,10 +4785,6 @@ impl crate::game::Sim<'_> {
             if let (Some(slot), Input::QuickMove | Input::Swap) = (slot, input) {
                 self.unselect_bundle(slot);
             }
-        }
-        if false && self.screen == Screen::Inventory {
-            // On a server the clicks are the server's: predicted and sent.
-            return self.remote_menu_ops(ops);
         }
         if let [(Some(slot), button, input)] = ops {
             self.crafter_slot_clicked(*slot, *button, *input);
@@ -5495,40 +5340,6 @@ impl crate::game::Sim<'_> {
     pub(super) fn has_control_down(&self) -> bool {
         self.physical_keys.contains(&KeyCode::ControlLeft)
             || self.physical_keys.contains(&KeyCode::ControlRight)
-    }
-    /// A click outside the window (slot id -999): `THROW` does nothing; a
-    /// `PICKUP` drops the carried stack (left) or one of it (right), thrown
-    /// from the hand (`AbstractContainerMenu.doClick`, `LivingEntity.drop`).
-    fn throw_click(&mut self, right: bool, input: crate::hc::menu::Input) {
-        use crate::hc::menu::Input;
-        let button = i32::from(right);
-
-        let before = self.carried.clone();
-        if !self.menu_click(None, button, input) && input == Input::Pickup {
-            // A screen the menu engine doesn't model: the same doClick.
-            if let Some(c) = self.carried.as_mut() {
-                let thrown = if right {
-                    let one = ItemStack {
-                        count: 1,
-                        ..c.clone()
-                    };
-                    c.count -= 1;
-                    if c.count == 0 {
-                        self.carried = None;
-                    }
-                    one
-                } else {
-                    self.carried.take().expect("some")
-                };
-                self.player_drop(thrown);
-            }
-        }
-        if self.carried != before {
-            self.swing_arm();
-        }
-        if let Some(key) = self.container {
-            self.container_changed(key);
-        }
     }
     /// `LevelRenderer.destroyBlockProgress`: a player's crack on a block (0..=9), or none
     /// (any other progress). Cracks not updated for 400 ticks are dropped.
@@ -7587,26 +7398,6 @@ impl crate::game::Sim<'_> {
 }
 
 impl crate::game::Sim<'_> {
-    fn join_world_rest(&mut self) -> Result<()> {
-        if self.rest_loader.is_some() {
-            let waited = Instant::now();
-            log::info!("Horizon: waiting for world resources");
-            while self.rest_loader.is_some() {
-                self.poll_world_rest()?;
-                if self.rest_loader.is_some() {
-                    std::thread::sleep(Duration::from_millis(10));
-                }
-            }
-            log::info!(
-                "Horizon: world resources joined after {} ms",
-                waited.elapsed().as_millis()
-            );
-        }
-        if self.res.rest.get().is_none() {
-            return Err("world resources are unavailable".into());
-        }
-        Ok(())
-    }
 }
 
 /// `key.hotbar.1` to `key.hotbar.9` in a menu.
@@ -8169,7 +7960,7 @@ impl<'a> Sim<'a> {
             admin_feedback: Vec::new(),
             console_broadcast: None,
             cmds: Default::default(),
-            ui: chat::UiState::new(),
+            ui: Default::default(),
             world_data: Default::default(),
             combat: Default::default(),
             guest_combat: Default::default(),

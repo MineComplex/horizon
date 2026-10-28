@@ -177,7 +177,7 @@ impl crate::game::Sim<'_> {
     }
     /// `ServerStatsCounter.parseLocal`.
     pub(super) fn load_stats(&mut self) {
-        if self.stats.loaded || false || self.no_player_here() {
+        if self.stats.loaded || self.no_player_here() {
             return;
         }
         self.stats.loaded = true;
@@ -187,7 +187,7 @@ impl crate::game::Sim<'_> {
     }
     /// `ServerStatsCounter.save`.
     pub(super) fn save_stats(&self) {
-        if !self.stats.loaded || false || self.no_player_here() {
+        if !self.stats.loaded || self.no_player_here() {
             return;
         }
         if let Some(path) = self.stats_path() {

@@ -8,10 +8,6 @@ use crate::hc::{containers::{BlockEntity, Lectern}, first_person::Hand, item_dat
 use horizon_core::position::BlockPos;
 use horizon_protocol::packets::play::{self, Clientbound as C, Serverbound as S};
 use horizon_world::level::flags as level_flags;
-use winit::{
-    event::{ElementState, KeyEvent},
-    keyboard::{KeyCode, PhysicalKey},
-};
 
 const BLACK: u32 = 0xFF00_0000;
 const PAGE_CHARS: usize = 1024;
@@ -19,19 +15,10 @@ const MAX_PAGES: usize = 100;
 const LINES: usize = 14;
 
 
+/// A book a player's turn opened: on a server only a lectern's
+/// (`LecternBlock.openScreen`), which the server then opens on the player's
+/// client (game/lan_actions.rs, `lan_open_lectern`).
 pub(super) enum BookScreen {
-    Edit {
-        /// Inventory slot of the book (the selected hotbar slot).
-        slot: usize,
-        pages: Vec<String>,
-        page: usize,
-        signing: bool,
-        title: String,
-        /// BookSignScreen's title box (`EditBox` of 15).
-        title_edit: ui::EditBox,
-        /// BookEditScreen's page (`MultiLineEditBox`).
-        page_edit: ui::EditBox,
-    },
     View {
         pages: Vec<Text>,
         page: usize,
@@ -103,78 +90,6 @@ impl crate::game::Sim<'_> {
             g.write_book(p.slot as usize, p.pages, p.title)
         });
     }
-    /// `BookSignScreen.keyPressed` on the title box.
-    fn book_title_key(&mut self, key: KeyCode) -> bool {
-        let (ctrl, shift) = (self.has_control_down(), self.has_shift_down());
-        let Some(BookScreen::Edit {
-            title, title_edit, ..
-        }) = self.book.as_mut()
-        else {
-            return false;
-        };
-        if !title_edit.key(key, ctrl, shift) {
-            return false;
-        }
-        title.clone_from(&title_edit.value);
-        true
-    }
-    fn book_title_insert(&mut self, text: &str) {
-        let Some(BookScreen::Edit {
-            title, title_edit, ..
-        }) = self.book.as_mut()
-        else {
-            return;
-        };
-        title_edit.insert_text(text);
-        title.clone_from(&title_edit.value);
-    }
-    /// The page buttons (`pageForward` adds a page while editing).
-    fn turn_page(&mut self, forward: bool) {
-        let mut lectern_page = None;
-        match self.book.as_mut() {
-            Some(BookScreen::Edit {
-                pages,
-                page,
-                page_edit,
-                ..
-            }) => {
-                let before = *page;
-                if forward {
-                    if *page + 1 >= pages.len() && pages.len() < MAX_PAGES {
-                        pages.push(String::new());
-                    }
-                    if *page + 1 < pages.len() {
-                        *page += 1;
-                    }
-                } else if *page > 0 {
-                    *page -= 1;
-                }
-                if *page != before {
-                    let text = pages[*page].clone();
-                    page_edit.set_value(&text);
-                }
-            }
-            Some(BookScreen::View {
-                lectern: Some(key), ..
-            }) => lectern_page = Some(*key),
-            Some(BookScreen::View { pages, page, .. }) => {
-                if forward && *page + 1 < pages.len() {
-                    *page += 1;
-                } else if !forward && *page > 0 {
-                    *page -= 1;
-                }
-            }
-            None => return,
-        }
-        // LecternScreen's page buttons click the menu's (1 back, 2 forward);
-        // the page turns with the server's data slot and level event 1043.
-        if let Some(key) = lectern_page {
-            self.lectern_button(key, if forward { 2 } else { 1 });
-            return;
-        }
-        self.sounds
-            .play("minecraft:item.book.page_turn", None, 1.0, 1.0);
-    }
     fn set_lectern_powered(&mut self, key: (i32, i32, i32), powered: bool) {
         self.set_lectern_property(key, "powered", powered);
         let p = BlockPos::new(key.0, key.1, key.2);
@@ -203,7 +118,6 @@ impl crate::game::Sim<'_> {
     }
     /// The 2-tick pulses of turned lecterns.
     pub(super) fn tick_lecterns(&mut self) {
-        self.follow_lectern();
         let mut done = Vec::new();
         for (key, left) in &mut self.lectern_pulses {
             *left -= 1;
@@ -263,56 +177,6 @@ impl crate::game::Sim<'_> {
         self.container_changed(key);
         true
     }
-    /// A `LecternMenu` button of the open lectern screen: on a server it is
-    /// sent (`handleInventoryButtonClick`); here the lectern's menu takes it
-    /// with the player's inventory, and the screen follows the block entity.
-    fn lectern_button(&mut self, key: (i32, i32, i32), id: i32) {
-        let Some(mut menu) = self.lectern_menu(key) else {
-            return;
-        };
-        for i in 0..36 {
-            menu.set_player_item(i, self.inventory[i].clone());
-        }
-        menu.set_player_item(40, self.offhand.clone());
-        menu.creative = self.creative;
-        menu.selected = self.selected;
-        menu.may_build = self.may_build();
-        if !menu.button(&self.menu_env(), id) {
-            return;
-        }
-        for i in 0..36 {
-            self.inventory[i] = menu.player_item(i).cloned();
-        }
-        self.offhand = menu.player_item(40).cloned();
-        for stack in std::mem::take(&mut menu.dropped) {
-            self.player_drop(stack);
-        }
-        self.lectern_menu_done(key, &menu);
-        self.follow_lectern();
-    }
-    /// `LecternScreen.bookChanged`: the menu's book slot.
-    pub(super) fn remote_lectern_book(&mut self, book: Option<ItemStack>) {
-        if let Some(BookScreen::View {
-            lectern: Some(_),
-            pages,
-            page,
-        }) = self.book.as_mut()
-        {
-            *pages = view_pages(book.as_ref().and_then(ItemStack::data));
-            *page = (*page).min(pages.len().saturating_sub(1));
-        }
-    }
-    /// `LecternScreen.pageChanged`: the menu's page data slot.
-    pub(super) fn remote_lectern_page(&mut self, value: i32) {
-        if let Some(BookScreen::View {
-            lectern: Some(_),
-            pages,
-            page,
-        }) = self.book.as_mut()
-        {
-            *page = (value.max(0) as usize).min(pages.len().saturating_sub(1));
-        }
-    }
     /// `LecternMenu` over the lectern at `key` (the menu engine, for the
     /// local player and LAN guests alike): its book and page.
     pub(super) fn lectern_menu(&self, key: (i32, i32, i32)) -> Option<Menu> {
@@ -364,5 +228,40 @@ pub(super) fn lectern_signal(world: &crate::hc::world::World, pos: BlockPos) -> 
             (f * 14.0).floor() as i32 + 1
         })),
         _ => None,
+    }
+}
+
+impl crate::game::Sim<'_> {
+    /// `WrittenBookItem.use`: a written book opens on its reader's client
+    /// (`ServerPlayer.openItemGui`); a book and quill opens its editor there by itself.
+    pub(super) fn use_book(&mut self, stack: &ItemStack) -> bool {
+        let written = match &*stack.item {
+            "minecraft:writable_book" => false,
+            "minecraft:written_book" => true,
+            _ => return false,
+        };
+        if self.lan_acting.is_some() && written {
+            let hand = i32::from(self.hand == Hand::Off);
+            self.guest_packets.push(C::OpenBook(play::OpenBook { hand }));
+        }
+        self.swing_arm();
+        true
+    }
+    /// `LecternBlock.openScreen`: the reader's turn takes the lectern's book.
+    pub(super) fn open_lectern(&mut self, pos: [i32; 3]) -> bool {
+        let key = (pos[0], pos[1], pos[2]);
+        let Some(BlockEntity::Lectern(l)) = self.world.block_entities.get(&key) else {
+            return false;
+        };
+        let Some(book) = &l.book else { return false };
+        let pages = view_pages(book.data());
+        let page = (l.page.max(0) as usize).min(pages.len().saturating_sub(1));
+        self.stats.custom("interact_with_lectern", 1);
+        self.book = Some(BookScreen::View {
+            pages,
+            page,
+            lectern: Some(key),
+        });
+        true
     }
 }

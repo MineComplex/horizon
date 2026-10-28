@@ -30,3 +30,13 @@ impl crate::game::Sim<'_> {
     pub(crate) fn lan_update_models(&mut self, _host: &mut super::lan::LanHost) {}
     pub(crate) fn local_chat_line(&mut self, _text: Text, _indicator: Option<u32>) {}
 }
+
+/// Particles the client spawns itself (`ItemParticle`, eating crumbs...): a
+/// server sends its particles as packets (game/lan_particles.rs).
+impl crate::game::Sim<'_> {
+    pub(crate) fn item_particle(&mut self, _stack: &crate::hc::items::ItemStack, _at: [f64; 3], _velocity: [f64; 3]) {}
+    pub(crate) fn eat_particles(&mut self) {}
+    pub(crate) fn ensure_item_particle_sprites(&mut self) {}
+    pub(crate) fn recipe_toast(&mut self, _recipe: &str) {}
+    pub(crate) fn stop_spyglass(&mut self) {}
+}

@@ -3,7 +3,7 @@
 //! colours and sounds follow the vanilla screens (`EnchantmentScreen`,
 //! `AnvilScreen`, `GrindstoneScreen`, `SmithingScreen`, `StonecutterScreen`,
 //! `BrewingStandScreen`); item rules live in `crate::hc::stations`.
-use super::{Game, Screen};
+use super::{Screen};
 use crate::hc::{block_entity_item, brewing, containers::BlockEntity, enchant::Enchantments, items::ItemStack, stations::{self, AnvilResult, EnchantOffers}, text::Text};
 use horizon_core::random::{LegacyRandom, RandomSource};
 
@@ -28,6 +28,25 @@ pub(super) enum Kind {
     Loom,
 }
 impl Kind {
+    /// Whether the menu has a result slot after its inputs.
+    pub(super) fn has_result(self) -> bool {
+        self.result_pos().is_some()
+    }
+
+    fn result_pos(self) -> Option<(f32, f32)> {
+        match self {
+            Self::Enchanting => None,
+            Self::Anvil => Some((134.0, 47.0)),
+            Self::Grindstone => Some((129.0, 34.0)),
+            Self::Smithing => Some((98.0, 48.0)),
+            Self::Stonecutter => Some((143.0, 33.0)),
+            Self::Merchant => Some((170.0, 37.0)),
+            Self::Beacon => None,
+            Self::Cartography => Some((145.0, 39.0)),
+            Self::Loom => Some((143.0, 57.0)),
+        }
+    }
+
     pub(super) fn from_block(name: &str) -> Option<Self> {
         Some(match name {
             "minecraft:enchanting_table" => Self::Enchanting,

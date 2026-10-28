@@ -5,7 +5,7 @@
 //! server the screen shows the server's menu (`ClientboundMountScreenOpenPacket`)
 //! and its clicks go out as container clicks; a server's players get theirs
 //! from game/lan_mount_menu.rs.
-use super::{Game, Screen};
+use super::{Screen};
 use crate::hc::{items::ItemStack, mobs::{Mob, Species, equine, llama}};
 
 /// Menu slot ids: the saddle, the body armour and the chest from 710.
@@ -124,9 +124,7 @@ impl crate::game::Sim<'_> {
     /// (`AbstractMountInventoryMenu.stillValid`).
     pub(super) fn tick_mount_menu(&mut self) {
         // A server's menu ends when the server closes it.
-        if false {
-            return;
-        }
+        
         let Some(open) = self.mount_menu.open.as_ref() else {
             return;
         };
@@ -153,9 +151,7 @@ impl crate::game::Sim<'_> {
     /// Writes the menu slots to the mount, with the equip sounds. A
     /// server's menu is the server's to write.
     fn mount_sync(&mut self) {
-        if false {
-            return;
-        }
+        
         let Some(open) = self.mount_menu.open.as_ref() else {
             return;
         };

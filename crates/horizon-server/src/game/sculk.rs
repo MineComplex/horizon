@@ -491,7 +491,7 @@ impl crate::game::Sim<'_> {
                 pos[2].floor() as i32
             )
         });
-        if false || !self.sculk.tables.built {
+        if !self.sculk.tables.built {
             return;
         }
         let at = block_of(pos);

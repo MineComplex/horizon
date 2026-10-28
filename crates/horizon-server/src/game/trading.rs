@@ -2,10 +2,7 @@
 //! layout (276x166, drawn 50 px left of the usual 176-wide origin), offer
 //! buttons, payment slots, the result slot's `onTake`, villager experience and
 //! level-ups with new offers from the next trade set.
-use super::{
-    Game,
-    stations::{INPUT, Kind, RESULT, Station},
-};
+use super::{stations::{INPUT, Kind, RESULT, Station}};
 use crate::hc::mobs::{
     Species,
     render::{PROFESSIONS, VILLAGER_TYPES},
@@ -123,7 +120,7 @@ impl crate::game::Sim<'_> {
     }
     /// `RandomSequences` as `random_sequences.dat` (not on a server's guest).
     pub(super) fn save_random_sequences(&mut self) {
-        if self.remote.is_some() || self.rand_sequences.ids().is_empty() {
+        if self.rand_sequences.ids().is_empty() {
             return;
         }
         let tag = horizon_world::nbt::Tag::compound([
@@ -483,16 +480,7 @@ impl crate::game::Sim<'_> {
     }
     /// `MerchantMenu.tryMoveItems` for the selected offer (the select trade packet).
     fn try_move_items(&mut self, index: usize) {
-        if self.remote.is_some() {
-            // ServerboundSelectTradePacket; the server moves the items.
-            if let Some(m) = self.station.as_mut().and_then(|s| s.merchant.as_mut()) {
-                m.session.selection_hint = index;
-            }
-            self.send(horizon_protocol::packets::play::Serverbound::SelectTrade(
-                horizon_protocol::packets::play::SelectTrade { item: index as i32 },
-            ));
-            return;
-        }
+        
         self.menu_session(|menu, env, _| {
             menu.merchant_select(env, index);
             Some(true)

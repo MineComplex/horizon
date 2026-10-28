@@ -157,7 +157,7 @@ impl crate::game::Sim<'_> {
         }
     }
     pub(super) fn save_schedule(&self) {
-        if !self.fns.loaded || false {
+        if !self.fns.loaded {
             return;
         }
         let mut events = self.fns.schedule.clone();

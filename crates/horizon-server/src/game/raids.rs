@@ -285,7 +285,7 @@ impl crate::game::Sim<'_> {
         let Some(dim) = self.raiding.loaded else {
             return;
         };
-        if !self.raiding.raids.dirty || false {
+        if !self.raiding.raids.dirty {
             return;
         }
         let tag = horizon_world::nbt::Tag::compound([

@@ -3,7 +3,6 @@
 //! the block events that drive them (`ClientboundBlockEventPacket` reaching
 //! `BlockEntity.triggerEvent`). The renderer reads the resulting state through
 //! [`Game::block_anim`] and [`Game::chest_lid`].
-use super::Game;
 use crate::hc::{block_entity_anim::{
         BellEntity, ConduitServer, ConduitTarget, EndGateway, Shulker, ShulkerStatus, Ticker,
         closer_to_center_than,
@@ -47,7 +46,7 @@ impl crate::game::Sim<'_> {
                         .or_default()
                         .trigger_event(a, b, time, || gathered);
                 // The server's copy tells the living entities within 32 blocks.
-                if rung && self.remote.is_none() {
+                if rung {
                     self.bell_heard(pos, time);
                 }
             }

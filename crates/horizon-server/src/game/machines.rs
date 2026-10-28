@@ -1043,44 +1043,4 @@ enum Screen {
 }
 
 impl crate::game::Sim<'_> {
-    /// `imageHeight` of the open screen (HopperScreen is 133 tall).
-    pub(super) fn screen_height(&self) -> f32 {
-        if self
-            .station
-            .as_ref()
-            .is_some_and(|s| s.kind == super::stations::Kind::Beacon)
-        {
-            return super::beacon::HEIGHT;
-        }
-        if let Some(rows) = self.chest_rows() {
-            // ContainerScreen: 114 + 18 per row.
-            return 114.0 + rows as f32 * 18.0;
-        }
-        if self.container_block_is_shulker() {
-            return 167.0;
-        }
-        if self.machine_screen() == Some(Screen::Hopper) {
-            133.0
-        } else {
-            166.0
-        }
-    }
-    /// HopperMenu / DispenserMenu slot layouts; None for other screens.
-    pub(super) fn machine_slot_position(&self, i: usize) -> Option<(f32, f32)> {
-        let screen = self.machine_screen()?;
-        let inventory_y = if screen == Screen::Hopper { 51.0 } else { 84.0 };
-        Some(match i {
-            0..9 => (8.0 + i as f32 * 18.0, inventory_y + 58.0),
-            9..36 => (
-                8.0 + ((i - 9) % 9) as f32 * 18.0,
-                inventory_y + ((i - 9) / 9) as f32 * 18.0,
-            ),
-            300..500 if screen == Screen::Hopper => (44.0 + (i - 300) as f32 * 18.0, 20.0),
-            300..500 => (
-                62.0 + ((i - 300) % 3) as f32 * 18.0,
-                17.0 + ((i - 300) / 3) as f32 * 18.0,
-            ),
-            _ => return None,
-        })
-    }
 }

@@ -502,6 +502,6 @@ impl crate::game::Sim<'_> {
 impl crate::game::Sim<'_> {
     /// `PlayerRideableJumping`: horses, camels and nautili (the dash).
     pub(crate) fn jumps(species: Species) -> bool {
-        equine::is_equine(species) || horizon_client::mobs::nautilus::is_nautilus(species)
+        equine::is_equine(species) || crate::hc::mobs::nautilus::is_nautilus(species)
     }
 }

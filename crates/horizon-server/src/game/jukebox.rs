@@ -102,9 +102,6 @@ impl crate::game::Sim<'_> {
         // LevelRenderer.playJukeboxSong: SimpleSoundInstance.forJukeboxSong.
         self.sounds.play_jukebox(&s.sound, pos);
         self.jukebox_sounds.insert((pos[0], pos[1], pos[2]));
-        let description = crate::hc::component::to_text(&s.description, &mut |k| Text::literal(k));
-        self.titles
-            .set_overlay(Text::translate("record.nowPlaying", &[description]), true);
         self.update_song_volumes();
         self.notify_record_playing(pos, true);
         if self.sounds.capture.is_some() {

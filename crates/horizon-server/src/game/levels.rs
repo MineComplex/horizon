@@ -13,11 +13,7 @@
 //! game rules, the scoreboard, the maps and the entities waiting to arrive
 //! through a portal.
 
-use super::{
-    Dim, ExperienceOrb, FallingBlock, ItemEntity, Mob, boats, commands, creaking::CreakingState,
-    dragon, fireworks, lan::LanHost, lightning, machines, minecarts, ominous_item_spawner, persist,
-    raids::Raiding, sculk::SculkState, tnt, trident,
-};
+use super::{Dim, ExperienceOrb, FallingBlock, ItemEntity, Mob, boats, commands, creaking::CreakingState, dragon, fireworks, lan::LanHost, lightning, machines, minecarts, ominous_item_spawner, persist, raids::Raiding, sculk::SculkState, tnt, trident};
 use crate::hc::{Result, random_tick_sections::RandomTickSections, save::SaveDir, streaming::Streaming, tick_chunk_membership::TickChunkMembership, ticket_levels::ChunkTickets, vanillagen::VanillaTerrain, world::World};
 use horizon_world::level::{LevelEvent, Ticks};
 use std::{
