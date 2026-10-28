@@ -427,11 +427,7 @@ impl Game<'_> {
         if self.ui.vanilla_root.as_os_str().is_empty() {
             self.ui.vanilla_root = vanilla.clone();
         }
-        let (selected, mods, dev_mods) = (
-            self.settings.resource_packs.clone(),
-            self.settings.mods.enabled.clone(),
-            self.options.dev_mods.clone(),
-        );
+        let selected = self.settings.resource_packs.clone();
         let (assets, res, context) = (
             self.pack.assets.clone(),
             self.res.clone(),
@@ -444,8 +440,8 @@ impl Game<'_> {
             .name("server-pack-reload".into())
             .spawn(move || {
                 super::packs::stage_pack(
-                    &vanilla, &selected, &server, &mods, &dev_mods, &assets, &res, &context,
-                    unicode, japanese, &worker,
+                    &vanilla, &selected, &server, &assets, &res, &context, unicode, japanese,
+                    &worker,
                 )
                 .map_err(|e| e.to_string())
             });

@@ -73,15 +73,6 @@ pub(super) struct Sweep {
 }
 
 impl Strike {
-    /// The damage it deals (plugins may change it).
-    #[cfg_attr(not(feature = "mods"), allow(dead_code))]
-    pub(super) fn amount(&self) -> f32 {
-        self.amount
-    }
-    #[cfg_attr(not(feature = "mods"), allow(dead_code))]
-    pub(super) fn set_amount(&mut self, amount: f32) {
-        self.amount = amount;
-    }
     /// Whether it has extra knockback, which stops the attacker's sprint
     /// once it lands (Player.causeExtraKnockback).
     pub(super) fn stops_sprint(&self) -> bool {

@@ -179,8 +179,6 @@ pub struct Settings {
     pub controller: crate::gamepad::PadSettings,
     /// Horizon's optional extras (`horizon-extras.txt`), all off by default.
     pub extras: crate::extras::Extras,
-    /// The Horizon mods turned on (`horizon-mods.txt`), all off by default.
-    pub mods: crate::mod_list::ModList,
     /// The packs in `shaderpacks/`, listed when the Shader Packs page opens; the pick is
     /// `horizon.shader_pack`.
     pub shader_packs: Vec<crate::shader_pack_list::Entry>,
@@ -258,7 +256,6 @@ impl Default for Settings {
             horizon: Default::default(),
             controller: Default::default(),
             extras: Default::default(),
-            mods: Default::default(),
             shader_packs: Vec::new(),
         }
     }
@@ -302,23 +299,17 @@ impl Settings {
             .parent()
             .map(crate::extras::Extras::load)
             .unwrap_or_default();
-        let mods = path
-            .parent()
-            .map(crate::mod_list::ModList::load)
-            .unwrap_or_default();
         let settings = match fs::read(path) {
             Ok(bytes) => Self {
                 horizon,
                 controller,
                 extras,
-                mods,
                 ..Self::parse(&String::from_utf8_lossy(&bytes))
             },
             Err(_) => Self {
                 horizon,
                 controller,
                 extras,
-                mods,
                 ..Self::default()
             },
         };
@@ -420,7 +411,6 @@ impl Settings {
             horizon: Default::default(),
             controller: Default::default(),
             extras: Default::default(),
-            mods: Default::default(),
             shader_packs: Vec::new(),
             auto_jump: f.bool("autoJump"),
             language: f.string("lang"),
@@ -559,7 +549,6 @@ impl Settings {
             horizon: self.horizon.clone(),
             controller: self.controller.clone(),
             extras: self.extras.clone(),
-            mods: self.mods.clone(),
             ..Self::from_file(file)
         })
     }
@@ -574,7 +563,6 @@ impl Settings {
             self.horizon.save(dir);
             self.controller.save(dir);
             self.extras.save(dir);
-            self.mods.save(dir);
         }
     }
     /// Volume of a sound source (master excluded).
@@ -714,13 +702,11 @@ mod tests {
     #[test]
     fn an_option_set_keeps_horizon_files() {
         let mut s = Settings::parse("fov:70\n");
-        s.mods.enabled.insert("zoom".into());
         s.extras.minimap = true;
         s.horizon.fog = !s.horizon.fog;
         s.controller.vibration = !s.controller.vibration;
         let set = s.with_option("fov", "90").unwrap();
         assert_eq!(set.fov, 90.0);
-        assert_eq!(set.mods, s.mods);
         assert_eq!(set.extras, s.extras);
         assert_eq!(set.horizon, s.horizon);
         assert_eq!(set.controller, s.controller);

@@ -579,25 +579,6 @@ impl Game<'_> {
     }
     pub(super) fn apply_effect_action(&mut self, action: EffectAction) {
         // EntityDamageEvent for the effects that hurt.
-        #[cfg(feature = "mods")]
-        let action = match action {
-            EffectAction::Hurt(source, amount) if !self.creative => {
-                match self.plugin_damage_acting(source, amount, None) {
-                    Some(a) => EffectAction::Hurt(source, a),
-                    None => return,
-                }
-            }
-            EffectAction::Poison if !self.creative => {
-                if self
-                    .plugin_damage_acting("minecraft:magic", 1.0, None)
-                    .is_none()
-                {
-                    return;
-                }
-                EffectAction::Poison
-            }
-            other => other,
-        };
         let creative = self.creative;
         let rules = self.world.health_rules;
         let Some(p) = self.player.as_mut() else {

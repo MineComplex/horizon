@@ -87,7 +87,6 @@ mod lan_mobs;
 mod lan_mount_menu;
 mod lan_particles;
 mod lan_pvp;
-mod lan_quiet;
 mod lan_screen;
 mod lan_stations;
 mod lan_trading;
@@ -107,17 +106,8 @@ mod minecarts;
 mod mob_blocks;
 mod mob_gear;
 mod mob_sounds;
-mod mod_browser;
-#[cfg(feature = "mods")]
-mod mod_browser_recipes;
-mod mod_input;
-#[cfg(feature = "mods")]
-mod mod_recipes;
-mod mod_render;
-mod mods;
 mod mount_menu;
 mod mounts;
-mod moved_extras;
 mod moving_pistons;
 mod music;
 mod names;
@@ -141,11 +131,6 @@ mod pickups;
 mod piglins;
 mod piston_push;
 mod player_equip;
-#[cfg(feature = "mods")]
-mod plugin_events;
-#[cfg(feature = "mods")]
-mod plugin_host;
-mod plugins;
 mod postprocess;
 mod potions;
 mod powder_snow;
@@ -171,7 +156,6 @@ mod screens;
 mod sculk;
 mod sculk_fixture;
 mod server_links;
-mod server_mods;
 mod server_packs;
 mod server_travel;
 mod shader_packs;
@@ -325,8 +309,6 @@ struct Options {
     dedicated: Option<Vec<String>>,
     /// `--benchmark SCENARIO`: run the benchmark, write its report and quit.
     benchmark: Option<String>,
-    /// `--dev-mod PATH` (repeatable): mods always on and reloaded when rebuilt.
-    dev_mods: Vec<PathBuf>,
     /// What this Game executes; independent of its current server connection.
     execution_role: execution_role::ExecutionRole,
 }
@@ -380,7 +362,6 @@ impl Options {
                 .filter(|n| !n.is_empty()),
             dedicated: None,
             benchmark: None,
-            dev_mods: Vec::new(),
             execution_role: execution_role::ExecutionRole::Client,
         };
         // The MineComplex launcher's identity, passed as vanilla's arguments.
@@ -390,7 +371,7 @@ impl Options {
             match arg.as_str() {
                 "--help" | "-h" => {
                     println!(
-                        "Horizon — Minecraft Java Edition {} in Rust\n\n  --resources PATH        Prepared resources (horizon-prepare)\n  --render-distance N     Chunks, 2..64 (default 12)\n  --world NAME            World folder under saves/ (default \"New World\")\n  --seed N                World seed for new worlds (default 0)\n  --width N, --height N   Window size (default 1280 x 720)\n  --creative              Creative mode (default survival)\n  --test-terrain          Simple test terrain instead of vanilla generation\n  --frames N              Exit after N frames (testing)\n  --world-frames N        Exit after N frames drawn in the world (testing)\n  --smoke-report PATH     Write a JSON report on exit\n  --benchmark SCENARIO    Run a benchmark (standard, village, forest, ocean, mountain), write its report to benchmarks/ and quit\n  --control               Accept horizon-ctl commands on a local socket\n  --control-socket PATH   Control socket path (default $XDG_RUNTIME_DIR/horizon-control.sock)\n  --server HOST[:PORT]    Join a multiplayer server (offline mode) at start\n  --quickPlaySingleplayer WORLD  Open this world of saves/ at start, only if it exists (vanilla's)\n  --quickPlayMultiplayer HOST[:PORT]  The same as --server (vanilla's name)\n  --name NAME             Player name for multiplayer (default: generated once, kept in horizon-player.txt)\n  --dev-mod PATH          A Horizon mod (.hmod or folder) to develop: always on, reloaded when rebuilt\n  --pregen                Add Horizon's /pregen command (docs/pregeneration.md)\n\nControls: mouse look, WASD move, Space jump, Left Shift sneak, Left Ctrl sprint,\nleft click break, right click place/use, 1-9/scroll hotbar, E inventory,\nQ drop, F3 debug, Esc pause.",
+                        "Horizon — Minecraft Java Edition {} in Rust\n\n  --resources PATH        Prepared resources (horizon-prepare)\n  --render-distance N     Chunks, 2..64 (default 12)\n  --world NAME            World folder under saves/ (default \"New World\")\n  --seed N                World seed for new worlds (default 0)\n  --width N, --height N   Window size (default 1280 x 720)\n  --creative              Creative mode (default survival)\n  --test-terrain          Simple test terrain instead of vanilla generation\n  --frames N              Exit after N frames (testing)\n  --world-frames N        Exit after N frames drawn in the world (testing)\n  --smoke-report PATH     Write a JSON report on exit\n  --benchmark SCENARIO    Run a benchmark (standard, village, forest, ocean, mountain), write its report to benchmarks/ and quit\n  --control               Accept horizon-ctl commands on a local socket\n  --control-socket PATH   Control socket path (default $XDG_RUNTIME_DIR/horizon-control.sock)\n  --server HOST[:PORT]    Join a multiplayer server (offline mode) at start\n  --quickPlaySingleplayer WORLD  Open this world of saves/ at start, only if it exists (vanilla's)\n  --quickPlayMultiplayer HOST[:PORT]  The same as --server (vanilla's name)\n  --name NAME             Player name for multiplayer (default: generated once, kept in horizon-player.txt)\n  --pregen                Add Horizon's /pregen command (docs/pregeneration.md)\n\nControls: mouse look, WASD move, Space jump, Left Shift sneak, Left Ctrl sprint,\nleft click break, right click place/use, 1-9/scroll hotbar, E inventory,\nQ drop, F3 debug, Esc pause.",
                         horizon_core::VANILLA_VERSION
                     );
                     return Ok(None);
@@ -453,7 +434,6 @@ impl Options {
                                 eprintln!("Quick play: there is no world {value} in saves/");
                             }
                         }
-                        "--dev-mod" => o.dev_mods.push(std::path::absolute(&value)?),
                         "--benchmark" => {
                             if horizon_client::benchmark::scenes(&value).is_none() {
                                 return Err(format!(
@@ -534,9 +514,6 @@ enum Screen {
     DialogWarning,
     /// WinScreen: the end poem and the credits (game/win.rs).
     Win,
-    /// A `ui` mod's own screen, or its settings page from Options > Mods
-    /// (game/mods.rs).
-    Mod,
 }
 struct Mining {
     pos: [i32; 3],
@@ -1828,8 +1805,6 @@ struct Game<'a> {
     frame_graph: horizon_client::perf_overlay::FrameGraph,
     /// Horizon's extras (minimap, auto-reconnect; mods' counters): `game/extras.rs`.
     extras: extras::ExtrasState,
-    /// Horizon mods (`game/mods.rs`), none running unless turned on.
-    mods: mods::ModsState,
     /// Horizon's own shader pack, while one is picked (`game/native_shaders.rs`).
     native_shaders: native_shaders::NativeShaders,
     /// Meshed sections waiting for an upload budget (Horizon settings).
@@ -2982,31 +2957,11 @@ impl Game<'_> {
     }
     /// Plugins hear of blocks growing, spreading, forming and fading.
     fn plugin_change_events(&self) -> bool {
-        #[cfg(feature = "mods")]
-        {
-            use horizon_mods::plugin::EventKind as K;
-            !self.mods.plugin.reverting
-                && [
-                    K::BlockGrow,
-                    K::BlockSpread,
-                    K::BlockForm,
-                    K::BlockFade,
-                    K::LeavesDecay,
-                    K::BlockBurn,
-                ]
-                .into_iter()
-                .any(|k| self.plugins_listen(k))
-        }
-        #[cfg(not(feature = "mods"))]
         false
     }
     /// Plugins hear of pistons moving (`BlockPistonExtendEvent`,
     /// `BlockPistonRetractEvent`).
     fn plugin_piston_events(&self) -> bool {
-        #[cfg(feature = "mods")]
-        return self.plugins_listen(horizon_mods::plugin::EventKind::BlockPistonExtend)
-            || self.plugins_listen(horizon_mods::plugin::EventKind::BlockPistonRetract);
-        #[cfg(not(feature = "mods"))]
         false
     }
     /// `ServerLevel.runBlockEvents` with the plugins asked before each piston
@@ -3021,9 +2976,6 @@ impl Game<'_> {
             let Some(mv) = next else {
                 break;
             };
-            #[cfg(feature = "mods")]
-            let allowed = self.plugin_piston(&mv);
-            #[cfg(not(feature = "mods"))]
             let allowed = {
                 let _ = mv;
                 true
@@ -3306,19 +3258,7 @@ impl Game<'_> {
                 continue;
             }
             // BlockFromToEvent: plugins hear where each fluid tick flows first.
-            #[cfg(feature = "mods")]
-            let flows = fluids && self.plugins_listen(horizon_mods::plugin::EventKind::BlockFromTo);
             loop {
-                #[cfg(feature = "mods")]
-                if flows
-                    && let Some(flow) =
-                        self.with_level(|b, level, ticks| b.scheduled_fluid_flow(level, ticks))
-                {
-                    let vetoes = self.plugin_fluid_flow(&flow);
-                    if !vetoes.is_empty() {
-                        self.with_level(|b, _, ticks| b.veto_flow(ticks, vetoes));
-                    }
-                }
                 let more =
                     self.with_level(|b, level, ticks| b.scheduled_step(level, ticks, fluids));
                 if !self.level_events.is_empty() {
@@ -3715,19 +3655,10 @@ impl Game<'_> {
                 } => self.shrieker_block_event(pos, state),
                 // LeavesDecay, BlockBurn, Form and FadeEvent before the change.
                 LevelEvent::Pending(change) => {
-                    #[cfg(feature = "mods")]
-                    if self.plugin_pending(change) {
-                        self.with_level(|b, level, ticks| b.apply_pending(level, ticks, change));
-                        self.process_level_events()?;
-                    }
-                    #[cfg(not(feature = "mods"))]
                     let _ = change;
                 }
                 // BlockGrow, Spread, Form and FadeEvent.
                 LevelEvent::Changed { cause, changes } => {
-                    #[cfg(feature = "mods")]
-                    self.plugin_block_changed(cause, &changes);
-                    #[cfg(not(feature = "mods"))]
                     let _ = (cause, changes);
                 }
                 LevelEvent::BlockEntityEvent { pos, a, b, .. } => {
@@ -4099,10 +4030,6 @@ impl Game<'_> {
             return Ok(());
         }
         // BlockBreakEvent: a plugin may keep the block.
-        #[cfg(feature = "mods")]
-        if !self.plugin_block_break(pos) {
-            return Ok(());
-        }
         self.rumbles
             .push(horizon_client::gamepad::Rumble::BlockBroken);
         // ServerPlayerGameMode.destroyBlock.
@@ -4139,9 +4066,6 @@ impl Game<'_> {
                 creative,
             )
         });
-        if removed {
-            self.mod_block_event(pos, broken, false);
-        }
         if removed && !creative {
             let held = self.held().cloned();
             self.mine_block_with_held(&facts.name, facts.hardness);
@@ -4150,8 +4074,6 @@ impl Game<'_> {
                     .res
                     .items()
                     .correct_for_drops(held.as_ref(), &facts.name);
-            #[cfg(feature = "mods")]
-            let harvest = harvest && !std::mem::take(&mut self.mods.plugin.no_drops);
             if harvest {
                 // Block.playerDestroy: the mined statistic, the exhaustion and the drops.
                 self.stats.add("mined", &facts.name, 1);
@@ -4561,29 +4483,7 @@ impl Game<'_> {
             can_use_game_master_blocks: self.can_use_game_master_blocks(),
         };
         // What the placement may replace, for BlockPlaceEvent's undo.
-        #[cfg(feature = "mods")]
-        let before = {
-            let c = hit.pos;
-            let o = hit.face;
-            let next = [c[0] + o[0], c[1] + o[1], c[2] + o[2]];
-            [
-                (c, self.world.block(c[0], c[1], c[2])),
-                (next, self.world.block(next[0], next[1], next[2])),
-            ]
-        };
         let outcome = self.with_level(|b, level, ticks| b.place_block(level, ticks, &ctx));
-        #[cfg(feature = "mods")]
-        if let PlaceOutcome::Placed { pos, .. } = &outcome {
-            let target = [pos.x, pos.y, pos.z];
-            let replaced = before
-                .iter()
-                .find(|(p, _)| *p == target)
-                .map_or(self.world.air, |(_, s)| *s);
-            let item = Self::plugin_stack(Some(&stack));
-            if !self.plugin_block_place(target, replaced, item) {
-                return Ok(true);
-            }
-        }
         let PlaceOutcome::Placed { pos, state } = outcome else {
             self.process_level_events()?;
             // BlockItem.useOn: a consumable that could not be placed is used,
@@ -4595,7 +4495,6 @@ impl Game<'_> {
         };
         let target = [pos.x, pos.y, pos.z];
         let state = self.apply_item_block_state(target, state, &stack)?;
-        self.mod_block_event(target, state, true);
         if let Some(entity) = BlockEntity::for_block(&self.res.facts().get(state).name) {
             let key = (target[0], target[1], target[2]);
             self.world.block_entities.insert(key, entity);
@@ -5215,8 +5114,6 @@ impl Game<'_> {
         self.tick_totem();
         self.update_totem_ready();
         self.tick_command_extras();
-        self.tick_mods();
-        self.tick_server_mods();
         self.tick_world(running)
     }
     /// What a server tick runs in each level: effects, the
@@ -5776,7 +5673,6 @@ impl Game<'_> {
             // Hud: the action bar and titles draw over the hotbar (nextStratum).
             self.draw_boss_bars(&mut batch);
             self.draw_extras(&mut batch);
-            self.draw_mod_shapes(&mut batch);
         }
         if show_hud {
             // Hud.nextContextualInfoState: the jump bar, the experience bar or
@@ -5948,13 +5844,11 @@ impl Game<'_> {
             Screen::CommandBlock => self.draw_command_block(&mut batch),
             Screen::Inventory => {
                 self.draw_inventory(&mut batch);
-                self.draw_mod_browser(&mut batch);
             }
             Screen::Creative => {
                 self.draw_creative(&mut batch);
             }
             Screen::Chat => self.draw_chat_screen(&mut batch),
-            Screen::Mod => self.draw_mod_screen(&mut batch),
             Screen::Playing | Screen::Options | Screen::Win => {}
         }
         self.draw_saving_indicator(&mut batch);
@@ -6351,7 +6245,6 @@ impl Game<'_> {
         self.last_inv_click = None;
     }
     pub(super) fn close_container(&mut self) {
-        self.mod_browser_closed();
         self.reset_inventory_clicks();
         self.close_station();
         self.mount_closed();
@@ -7066,9 +6959,6 @@ impl Game<'_> {
     fn inventory_press(&mut self, right: bool) {
         use horizon_client::container_screen::Target;
         use horizon_client::menu::Input;
-        if self.mod_browser_press(right) {
-            return;
-        }
         if !right && self.sort_press() {
             return;
         }
@@ -7447,7 +7337,7 @@ impl Game<'_> {
         }
     }
     fn click_inventory(&mut self, right: bool) {
-        if self.mod_browser_press(right) || self.mount_click(right) {
+        if self.mount_click(right) {
             return;
         }
         if self.recipe_book_click(right) {
@@ -8218,10 +8108,6 @@ impl Game<'_> {
         let magic_boost = self.enchant_damage_bonus(target_kind) * scale;
         amount += magic_boost;
         // A plugin's EntityDamageEvent changed the hit under way.
-        #[cfg(feature = "mods")]
-        if let Some(changed) = self.mods.plugin.damage_override.take() {
-            amount = changed;
-        }
         (amount, scale, crit, magic_boost > 0.0)
     }
     /// `Player.getAttackStrengthScale(0.5)`.
@@ -9581,10 +9467,6 @@ impl Game<'_> {
             };
             let pos = BlockPos::new(hit.pos[0], hit.pos[1], hit.pos[2]);
             // PlayerBucketFillEvent.
-            #[cfg(feature = "mods")]
-            if !self.plugin_bucket(true, hit.pos) {
-                return Ok(UseResult::Fail);
-            }
             let Some(filled) =
                 self.with_level(|b, level, ticks| b.bucket_pickup(level, ticks, pos))
             else {
@@ -9635,10 +9517,6 @@ impl Game<'_> {
             };
             let pos = BlockPos::new(target[0], target[1], target[2]);
             // PlayerBucketEmptyEvent.
-            #[cfg(feature = "mods")]
-            if !self.plugin_bucket(false, target) {
-                return Ok(UseResult::Fail);
-            }
             let emptied = self
                 .with_level(|b, level, ticks| b.bucket_empty(level, ticks, pos, content, sound));
             self.process_level_events()?;
@@ -10563,10 +10441,6 @@ impl Game<'_> {
             return;
         }
         // PlayerBedEnterEvent: cancelled, the bed does nothing.
-        #[cfg(feature = "mods")]
-        if !self.plugin_bed_enter(head) {
-            return;
-        }
         // In reach (bedInRange), day or night: setRespawnPosition(
         // RespawnConfig(the head, the player's yaw), not forced). It replaces
         // an anchor or a spawnpoint; respawning checks the bed is still there
@@ -11196,7 +11070,6 @@ impl Game<'_> {
                 self.pitch,
             ),
         };
-        let (view_yaw, view_pitch) = self.shaken_view(view_yaw, view_pitch);
         self.audio
             .set_listener([camera.x, camera.y, camera.z], view_yaw, view_pitch);
         let block = [
@@ -11717,9 +11590,6 @@ impl Game<'_> {
             }
             return Ok(());
         }
-        if self.screen == Screen::Mod && self.mod_screen_key(key) {
-            return Ok(());
-        }
         if self.sort_key_press(key) {
             return Ok(());
         }
@@ -11757,7 +11627,6 @@ impl Game<'_> {
                 Screen::CommandBlock => self.close_command_block(),
                 Screen::Chat => self.close_chat(),
                 Screen::Win => self.close_win_screen()?,
-                Screen::Mod => self.close_mod_screen(true),
             },
             KeyCode::Digit1
             | KeyCode::Digit2
@@ -11883,10 +11752,6 @@ impl Game<'_> {
     }
     /// A mouse button while playing (window or control socket).
     fn play_mouse(&mut self, button: MouseButton, pressed: bool) -> Result<()> {
-        // A mod's claimed item takes the use button (capability `input`).
-        if self.mod_use(button, pressed) {
-            return Ok(());
-        }
         if self.sleeping.is_some() {
             return Ok(());
         }
@@ -11963,10 +11828,7 @@ impl Game<'_> {
         if g.lod_distance > 0 {
             return (g.lod_distance, reduced);
         }
-        match self.mod_far_terrain() {
-            Some(f) => (f.distance, reduced || f.reduced),
-            None => (0, reduced),
-        }
+        (0, reduced)
     }
     /// LOD Distance as far terrain uses it (`graphics::lod_distance_capped`).
     fn lod_distance(&self) -> u32 {
@@ -12471,7 +12333,6 @@ impl ApplicationHandler for Game<'_> {
                     if self.screen == Screen::Playing
                         && self.sleeping.is_none()
                         && self.player.is_some()
-                        && !self.mod_wheel(d)
                         && let Some((wheel, (_, vertical_steps))) =
                             self.mouse
                                 .on_scroll(raw_x, raw_y, discrete, wheel_sensitivity)
@@ -12500,9 +12361,6 @@ impl ApplicationHandler for Game<'_> {
                     }
                     if self.screen == Screen::Options && d != 0.0 {
                         self.options_scroll(d);
-                    }
-                    if self.screen == Screen::Mod && d != 0.0 {
-                        self.mod_screen_scroll(d);
                     }
                     if self.screen == Screen::Creative && d != 0.0 {
                         self.creative_screen.wheel(f64::from(d), &self.pack.names);
@@ -12646,7 +12504,6 @@ impl ApplicationHandler for Game<'_> {
                                 return Ok(());
                             }
                             self.extras_mouse(button, pressed);
-                            self.mod_mouse_key(button, pressed);
                             for mapped in self.settings.keys.translate_mouse_all(button) {
                                 match mapped {
                                     Err(b) => self.play_mouse(b, pressed)?,
@@ -12740,7 +12597,6 @@ impl ApplicationHandler for Game<'_> {
                             self.stats_click(size);
                         }
                         Screen::Stats if button == MouseButton::Left => self.stats_release(),
-                        Screen::Mod if pressed => self.mod_screen_click(button),
                         _ => {}
                     }
                 }
@@ -12835,14 +12691,6 @@ impl ApplicationHandler for Game<'_> {
                     self.recipe_key(&event);
                 }
                 WindowEvent::KeyboardInput { event, .. }
-                    if self.mod_browser_typing()
-                        && event.state == ElementState::Pressed
-                        && !matches!(event.physical_key, PhysicalKey::Code(KeyCode::Escape)) =>
-                {
-                    // A mod's item panel's search box, as the recipe book's.
-                    self.mod_browser_key(&event);
-                }
-                WindowEvent::KeyboardInput { event, .. }
                     if self.station_typing()
                         && event.state == ElementState::Pressed
                         && !matches!(event.physical_key, PhysicalKey::Code(KeyCode::Escape)) =>
@@ -12925,7 +12773,6 @@ impl ApplicationHandler for Game<'_> {
                     let PhysicalKey::Code(key) = event.physical_key else {
                         return Ok(());
                     };
-                    self.mod_key(key, event.state == ElementState::Pressed, event.repeat);
                     // key.smoothCamera toggles the cinematic camera.
                     if self.screen == Screen::Playing
                         && event.state == ElementState::Pressed
@@ -13018,9 +12865,7 @@ impl ApplicationHandler for Game<'_> {
                             self.sprint_report(&report);
                         }
                     }
-                    self.extras_frame(elapsed);
-                    self.mods_frame(elapsed);
-                    self.poll_moved_extras();
+                    self.extras_frame();
                     self.extras_retry()?;
                     self.apply_mouse_look();
                     self.pad_look(elapsed.as_secs_f32());
@@ -13571,7 +13416,6 @@ impl<'a> Game<'a> {
             pending_uploads: Vec::new(),
             frame_graph: Default::default(),
             extras: Default::default(),
-            mods: Default::default(),
             native_shaders: Default::default(),
             sky_darken_memo: Default::default(),
             persist: Default::default(),
@@ -14466,12 +14310,6 @@ fn start_game<'a>(
         game.options.no_pause = true;
     }
     game.apply_settings();
-    // Benchmarks measure the game alone.
-    if game.options.benchmark.is_none() {
-        game.mods.dev = game.options.dev_mods.clone();
-        game.start_moved_extras();
-        game.start_mods();
-    }
     game.start_agent_control()?;
     if let Some(scenario) = game.options.benchmark.clone() {
         let control = game
@@ -14908,7 +14746,7 @@ fn run_loading(
 ) -> Result<()> {
     let progress = Progress::new();
     let (receiver, loader) =
-        startup_menu::spawn_loader(&options, &settings, &vanilla_root, started, &progress)?;
+        startup_menu::spawn_loader(&settings, &vanilla_root, started, &progress)?;
     let menu = startup_menu::StartupMenu::new(&options, pack_error.as_deref())?;
     let loading = Loading {
         window: None,
@@ -14996,11 +14834,6 @@ pub fn run() -> Result<()> {
             pack_error = Some(e.to_string());
             vanilla_root.clone()
         });
-    options.resources = mods::content_root(
-        &options.resources,
-        &early_settings.mods.enabled,
-        &options.dev_mods,
-    );
     let loaded = load_resources(
         options.resources.clone(),
         &vanilla_root,

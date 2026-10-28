@@ -16,7 +16,7 @@ Horizon is Minecraft: Java Edition 26.3 rewritten from scratch in Rust, so it ru
 - **Single player as a server: the last differences**: Single player now runs a small server in the background, as vanilla does. We are fixing what still behaves differently there; every fix also works for LAN and server players.
 - **Horizon's mod registry**: One place for mods, modpacks and resource packs made for Horizon: browse them on the website and install them from the launcher in one click.
 
-**Next**: Microsoft sign-in (coming soon); CurseForge in the mod browser (coming soon); Fresh benchmarks against vanilla; Pistons push players and mobs; Horizon on Intel Macs; Faster world creation and entry on small CPUs; Servers that hold 20 TPS with 50 to 100 players; Low-end computers: Steam Deck, old Macs, 8 GB; Native upscaling; A batch of targeted optimisations; A Convert to Rust button for what isn't rewritten yet; Mods with code: machines, magic, mobs; Data packs in the mod browser; Prepare a version without Java; Server console, bans and a full admin API; Hosting polish: Windows service, safe updates; Guided hosting with Tailscale and an invite button; An official Docker image for servers; One single-player path: remove the in-frame world; Villages and combat, exactly as in vanilla; Choose the audio output device; Mods that read and change the world; Machines and blocks with inventories (API 0.4); Lua and other languages for mods; Well-known shader looks, rewritten for Horizon; A visible beta label; Wayland and Hyprland polish; A versioned agent-control protocol; Port mods with your own AI agent; Horizon on X (coming soon); Pipeline protection and a GitHub App for agents; Signed updates everywhere, installers included; A server you install with one command.
+**Next**: Microsoft sign-in (coming soon); Fresh benchmarks against vanilla; Pistons push players and mobs; Horizon on Intel Macs; Faster world creation and entry on small CPUs; Servers that hold 20 TPS with 50 to 100 players; Low-end computers: Steam Deck, old Macs, 8 GB; Native upscaling; A batch of targeted optimisations; Mods with code: machines, magic, mobs; Prepare a version without Java; Server console, bans and a full admin API; Hosting polish: Windows service, safe updates; Guided hosting with Tailscale and an invite button; An official Docker image for servers; One single-player path: remove the in-frame world; Villages and combat, exactly as in vanilla; Choose the audio output device; Machines and blocks with inventories (API 0.4); Well-known shader looks, rewritten for Horizon; A visible beta label; Wayland and Hyprland polish; A versioned agent-control protocol; Port mods with your own AI agent; Horizon on X (coming soon); Pipeline protection and a GitHub App for agents; Signed updates everywhere, installers included.
 
 **How to help**: Play it and tell us what differs from vanilla (Discord or GitHub), run the benchmark on your computer, vote for what you want next, or pick one of the Help wanted items.
 
@@ -54,7 +54,7 @@ Making the world-generation mods of popular modpacks (new structures, YUNG's dun
 
 <details><summary>Technical</summary>
 
-`horizon-port-pack` carries a pack's data-driven content over; structure mods that need code get a native port: YUNG's worldgen as written ([#1746](https://github.com/horizon-rust/horizon/issues/1746)), Lithostitched's limited and guaranteed elements with pool and processor modifiers ([#1777](https://github.com/horizon-rust/horizon/issues/1777)), its processors as the game's own types ([#1765](https://github.com/horizon-rust/horizon/issues/1765)). Proved by the structure blocks and layout harnesses ([#1753](https://github.com/horizon-rust/horizon/issues/1753), [#1757](https://github.com/horizon-rust/horizon/issues/1757)). Mods whose Java code does more than world generation don't run ([docs/modpacks.md](docs/modpacks.md)).
+`horizon-port-pack` carries a pack's data-driven content over; structure mods that need code get a native port: YUNG's worldgen as written ([#1746](https://github.com/horizon-rust/horizon/issues/1746)), Lithostitched's limited and guaranteed elements with pool and processor modifiers ([#1777](https://github.com/horizon-rust/horizon/issues/1777)), its processors as the game's own types ([#1765](https://github.com/horizon-rust/horizon/issues/1765)). Proved by the structure blocks and layout harnesses ([#1753](https://github.com/horizon-rust/horizon/issues/1753), [#1757](https://github.com/horizon-rust/horizon/issues/1757)). Mods whose Java code does more than world generation don't run (docs/modpacks.md).
 
 </details>
 
@@ -100,8 +100,6 @@ One place for mods, modpacks and resource packs made for Horizon: browse them on
 
 Merged: the registry index (schema 1, `.hpack`, checks before install, [#1634](https://github.com/horizon-rust/horizon/issues/1634)), `cargo horizon-mod check` ([#1642](https://github.com/horizon-rust/horizon/issues/1642)) and the submission service (`crates/horizon-mod-registry`, [#1659](https://github.com/horizon-rust/horizon/issues/1659)). In review: the website's /mods ([#1596](https://github.com/horizon-rust/horizon/issues/1596)) and /mods/submit ([#1635](https://github.com/horizon-rust/horizon/issues/1635)), and in the launcher the registry as a source ([#1636](https://github.com/horizon-rust/horizon/issues/1636)), install, enable and takedowns ([#1637](https://github.com/horizon-rust/horizon/issues/1637)), the Mods page ([#1638](https://github.com/horizon-rust/horizon/issues/1638)) and modpacks as their own profiles ([#1640](https://github.com/horizon-rust/horizon/issues/1640)).
 
-More: [docs/mods.md](docs/mods.md)
-
 </details>
 
 #### Mods that run on the server
@@ -110,7 +108,7 @@ Mods that run on the server side of a world, so a dedicated server or a LAN worl
 
 <details><summary>Technical</summary>
 
-API 0.3, experimental first ([#1833](https://github.com/horizon-rust/horizon/issues/1833), in review): the same sandboxed component runs on the server thread and the dedicated server, with world events (block broken or placed, entity spawned or killed, player joined or left), game rules and server commands with typed arguments. The world, item and entity interfaces come after (see 'Mods that read and change the world'). [docs/api/mods.md](docs/api/mods.md), [docs/mods.md](docs/mods.md).
+API 0.3, experimental first ([#1833](https://github.com/horizon-rust/horizon/issues/1833), in review): the same sandboxed component runs on the server thread and the dedicated server, with world events (block broken or placed, entity spawned or killed, player joined or left), game rules and server commands with typed arguments. The world, item and entity interfaces come after (see 'Mods that read and change the world'). docs/api/mods.md, docs/mods.md.
 
 </details>
 
@@ -121,8 +119,6 @@ Mods will be able to open their own screens and settings pages and react to keys
 <details><summary>Technical</summary>
 
 Capability `ui` is in review ([#1864](https://github.com/horizon-rust/horizon/issues/1864)): mod-owned screens and a settings page under Options > Mods, built from vanilla's widgets. Still to design: `input` (an item's use, key binds, the crosshair target), `render` (a budgeted draw list on the native shader API) and `world` (changing blocks). Orbital Laser is the acceptance test: it needs all four today through its author's fork (see 'Orbital Laser on the normal game').
-
-More: [docs/mods.md](docs/mods.md)
 
 </details>
 
@@ -338,43 +334,13 @@ More: [docs/profiling.md](docs/profiling.md)
 
 ### Modpacks
 
-#### CurseForge in the mod browser (coming soon)
-
-Coming soon: search and download CurseForge mods and modpacks from the launcher, as you can with Modrinth today.
-
-<details><summary>Technical</summary>
-
-The mod browser lists CurseForge as coming soon ([docs/mod-browser.md](docs/mod-browser.md)): it needs CurseForge API access. Meanwhile packs import from a CurseForge zip or instance folder, and jars only CurseForge hosts come from the player's own instance ([docs/modpacks.md](docs/modpacks.md)).
-
-</details>
-
-#### A Convert to Rust button for what isn't rewritten yet
-
-When a mod, shader pack or modpack hasn't been rewritten for Horizon, one button converts what can be converted, so you don't have to wait for the rewrite.
-
-<details><summary>Technical</summary>
-
-Generalise the mod browser's Port step (`horizon-port-pack`: the data, assets, worldgen and block and item definitions of Java mods, .mrpack and CurseForge zips) to every kind of content: code mods where the API allows it (see 'Mods with code') and shader packs, converting an Iris/OptiFine pack into Horizon's format. The browser says what works before the install. Java code itself does not run ([docs/modpacks.md](docs/modpacks.md), [docs/mod-browser.md](docs/mod-browser.md)).
-
-</details>
-
 #### Mods with code: machines, magic, mobs
 
 Making mods that add machines, magic and mobs work in Horizon, in steps, starting with machines. They are most of what a big modpack is made of.
 
 <details><summary>Technical</summary>
 
-333 of the 496 mods in a big pack (ATM10) contain code. Issue [#1854](https://github.com/horizon-rust/horizon/issues/1854) ranks the API gaps (ticking block entities, networking, rendering, menus, inventories) that unlock them in tiers, with machines first as the recommended path and a furnace ported tick for tick as proof. The first API step is a draft ([#1189](https://github.com/horizon-rust/horizon/issues/1189), see 'Machines and blocks with inventories'). The path isn't started yet ([docs/modpacks.md](docs/modpacks.md)).
-
-</details>
-
-#### Data packs in the mod browser
-
-Search and install data packs from the launcher's mod browser, for the world you choose, as you do mods and resource packs.
-
-<details><summary>Technical</summary>
-
-A Datapacks tab beside Mods and Resource packs: install into a chosen world's datapacks folder, with the same checks and 'works in Horizon' notes as the other kinds ([docs/mod-browser.md](docs/mod-browser.md)).
+333 of the 496 mods in a big pack (ATM10) contain code. Issue [#1854](https://github.com/horizon-rust/horizon/issues/1854) ranks the API gaps (ticking block entities, networking, rendering, menus, inventories) that unlock them in tiers, with machines first as the recommended path and a furnace ported tick for tick as proof. The first API step is a draft ([#1189](https://github.com/horizon-rust/horizon/issues/1189), see 'Machines and blocks with inventories'). The path isn't started yet (docs/modpacks.md).
 
 </details>
 
@@ -396,7 +362,7 @@ Manage a server from a console, ban and pardon players, and drive it from other 
 
 <details><summary>Technical</summary>
 
-`horizon-server console` (a text interface), `ban`, `pardon`, `ban-ip` and `mcp` over stdio. Admin API additions: the player list, kick, ban, op and whitelist, an SSE stream of logs and events, a text metrics endpoint, config GET and PATCH, backup delete and download. The panel's later features (bans, worlds, server.properties import, logs and crash reports, modpacks) and vanilla's management protocol (the JSON-RPC over WebSocket that the `management-server-*` keys configure), so vanilla's tools can manage a Horizon server. [docs/server.md](docs/server.md), [docs/api/server.md](docs/api/server.md).
+`horizon-server console` (a text interface), `ban`, `pardon`, `ban-ip` and `mcp` over stdio. Admin API additions: the player list, kick, ban, op and whitelist, an SSE stream of logs and events, a text metrics endpoint, config GET and PATCH, backup delete and download. The panel's later features (bans, worlds, server.properties import, logs and crash reports, modpacks) and vanilla's management protocol (the JSON-RPC over WebSocket that the `management-server-*` keys configure), so vanilla's tools can manage a Horizon server. [docs/server.md](docs/server.md), docs/api/server.md.
 
 </details>
 
@@ -406,7 +372,7 @@ Smoother hosting: a real Windows service, a backup before every update, backups 
 
 <details><summary>Technical</summary>
 
-A Windows service wrapper instead of the logon scheduled task; `backups.before_update`; hot reload of config for view distance and the message of the day (needs engine support); backups that keep world and player state ([#1808](https://github.com/horizon-rust/horizon/issues/1808), a contributor's draft, in review). [docs/hosting.md](docs/hosting.md), docs/server.md.
+A Windows service wrapper instead of the logon scheduled task; `backups.before_update`; hot reload of config for view distance and the message of the day (needs engine support); backups that keep world and player state ([#1808](https://github.com/horizon-rust/horizon/issues/1808), a contributor's draft, in review). docs/hosting.md, docs/server.md.
 
 </details>
 
@@ -418,8 +384,6 @@ In the launcher, a guide and a button to host a server and invite friends over T
 
 On the Servers page (create, start, back up, update and invite are shipped) add a Tailscale setup that explains and checks each step, and an invite button that hands friends what they need to join over the tailnet. Buttons first, no docs needed, with the details in an Advanced section. Remote access over Tailscale is already described in [docs/server.md](docs/server.md).
 
-More: [docs/hosting.md](docs/hosting.md)
-
 </details>
 
 #### An official Docker image for servers
@@ -428,35 +392,13 @@ An official image to run a Horizon dedicated server in Docker with one command, 
 
 <details><summary>Technical</summary>
 
-The repository has the Dockerfile (`packaging/server/Dockerfile`: a multi-stage build on Debian bookworm-slim, user `horizon`, volume `/data`, port 25565, game files mounted read-only, `HORIZON_EULA` and friends answering the first-start questions), and anyone can build it ([docs/hosting.md](docs/hosting.md), section 9). Left: publish the image to a public registry from the release workflow, tagged per release, so it follows the same checks, and update the docs and the launcher. The image never holds Mojang's files.
+The repository has the Dockerfile (`packaging/server/Dockerfile`: a multi-stage build on Debian bookworm-slim, user `horizon`, volume `/data`, port 25565, game files mounted read-only, `HORIZON_EULA` and friends answering the first-start questions), and anyone can build it (docs/hosting.md, section 9). Left: publish the image to a public registry from the release workflow, tagged per release, so it follows the same checks, and update the docs and the launcher. The image never holds Mojang's files.
 
 More: [docs/server.md](docs/server.md)
 
 </details>
 
-#### A server you install with one command
-
-Install and run a Horizon dedicated server from a terminal with a single command, no launcher needed, for VPSes and headless machines.
-
-<details><summary>Technical</summary>
-
-A player's idea (#horizon-ideas). `horizon-server` already runs headless; left: an install script (Linux/macOS shell, Windows PowerShell) that fetches the signed release, checks it, asks for or points at the player's own game files and starts the server, documented in [docs/hosting.md](docs/hosting.md).
-
-</details>
-
 ### Mods and API
-
-#### Mods that read and change the world
-
-Mods that can see and change blocks, read inventories and items, and find and affect entities, all through the server so every player sees the same thing.
-
-<details><summary>Technical</summary>
-
-After server mods: read blocks, states and biomes in loaded chunks and change them through the server's block log, so clients and the parity harnesses see vanilla's updates; the player's inventory, held item, open container and item stacks with components; entity queries near a position, a safe subset of entity data and data-driven mod entity types. Snapshots and batched calls per tick, never per-block host calls in hot paths. [docs/api/mods.md](docs/api/mods.md) ('Not there yet').
-
-More: [docs/modpacks.md](docs/modpacks.md)
-
-</details>
 
 #### Machines and blocks with inventories (API 0.4)
 
@@ -464,17 +406,7 @@ Mods that add machines: blocks that tick, hold items and have their own menus. T
 
 <details><summary>Technical</summary>
 
-Block entities and menus: ticking machines with slots, server menu logic and the menu protocol to clients, energy, item and fluid transfer, data attachments, accessory slots and custom recipe types, with a typed client and server channel and typed config beside them. A draft ([#1189](https://github.com/horizon-rust/horizon/issues/1189)) proves a furnace ported tick for tick and holds the ATM10 code-mods plan; the design is redone through the API policy before it merges ([docs/modpacks.md](docs/modpacks.md), docs/api/stability.md).
-
-</details>
-
-#### Lua and other languages for mods
-
-Write mods as Lua scripts, in the style of KubeJS, with no compiler, and later in other languages that pass the tests. Every language runs in the same sandbox.
-
-<details><summary>Technical</summary>
-
-Lua first: Horizon ships a Lua interpreter that is itself a WebAssembly mod, and a script mod's manifest names it and the capabilities it uses, so a script can do exactly what a compiled mod with the same manifest can, with hot reload of `main.lua`. Then C, C++, Zig, Go (TinyGo), AssemblyScript and JavaScript or TypeScript are measured against Rust on the same tick-heavy example, and each is supported only with a template, an example and a CI test. [docs/api/mods.md](docs/api/mods.md) ('Ways in').
+Block entities and menus: ticking machines with slots, server menu logic and the menu protocol to clients, energy, item and fluid transfer, data attachments, accessory slots and custom recipe types, with a typed client and server channel and typed config beside them. A draft ([#1189](https://github.com/horizon-rust/horizon/issues/1189)) proves a furnace ported tick for tick and holds the ATM10 code-mods plan; the design is redone through the API policy before it merges (docs/modpacks.md, docs/api/stability.md).
 
 </details>
 
@@ -542,7 +474,7 @@ Coming soon: sign in with your Microsoft account to play on online-mode servers.
 
 <details><summary>Technical</summary>
 
-Device-code sign-in in the launcher and online-mode login in the client. It is turned on by setting the app's client id once Minecraft API access is approved; until then the launcher shows "Coming soon".
+Device-code sign-in in the launcher and online-mode login in the client (docs/microsoft-account.md). It is turned on by setting the app's client id once Minecraft API access is approved; until then the launcher shows "Coming soon".
 
 More: [#1270](https://github.com/horizon-rust/horizon/issues/1270)
 
@@ -600,7 +532,7 @@ You can port a mod to Horizon with your own AI agent on your own computer. Horiz
 
 <details><summary>Technical</summary>
 
-A player runs their own agent locally with `horizon-ctl` and the MCP servers ([docs/agent-control.md](docs/agent-control.md)), `cargo horizon-mod`, `horizon-port-pack` and the parity harnesses as the check. Horizon writes the guide (playhorizon.dev/docs/agents, [docs/modpacks.md](docs/modpacks.md)) and runs no agents, accounts or keys for players. The No AI switch turns all of it off.
+A player runs their own agent locally with `horizon-ctl` and the MCP servers ([docs/agent-control.md](docs/agent-control.md)), `cargo horizon-mod`, `horizon-port-pack` and the parity harnesses as the check. Horizon writes the guide (playhorizon.dev/docs/agents, docs/modpacks.md) and runs no agents, accounts or keys for players. The No AI switch turns all of it off.
 
 More: [https://playhorizon.dev/docs/agents](https://playhorizon.dev/docs/agents)
 
@@ -656,36 +588,6 @@ Keep a 3D mip store on disk built from real chunks, drawn by the GPU beside the 
 
 ### Modpacks
 
-#### Older Fabric and Forge mods
-
-Recognise mods built for versions before 26.1 in the mod browser, so they can be checked and carried over like newer ones.
-
-<details><summary>Technical</summary>
-
-A mapping table from intermediary and SRG names so pre-26.1 jars can be classified, and a rename for mod ids with dashes (`fabric-api`); the port step then treats them like newer jars ([docs/mod-browser.md](docs/mod-browser.md)).
-
-</details>
-
-#### A modpack's own resource and shader packs
-
-Importing a modpack also brings the resource packs and shader packs it ships with, where Horizon can use them.
-
-<details><summary>Technical</summary>
-
-Porting a pack carries data, assets and worldgen today; the resource packs and shader packs bundled with it are left out. Resource packs can be carried as they are; shader packs go through the converter ([docs/modpacks.md](docs/modpacks.md)).
-
-</details>
-
-#### Whole modpacks, such as ATM10, rewritten
-
-Rewriting a complete big modpack for Horizon so it runs far better than the original. Not a priority now: the work above comes first.
-
-<details><summary>Technical</summary>
-
-The project's first goal for modpacks: support them ten times better than vanilla and port any of them. It was set aside in favour of compatibility through the browser. What exists: ATM10's world generates and 42 of its 496 mods are carried at least in part ([docs/modpacks.md](docs/modpacks.md)). It depends on 'Mods with code' and the native mod API.
-
-</details>
-
 #### Running Java mods that aren't rewritten
 
 Run Java mods that nobody has rewritten for Horizon yet, through a bridge or a converter. Hard and not started: the Convert button and native rewrites come first.
@@ -704,17 +606,7 @@ Sign in with other account providers, such as Ely.by or any Yggdrasil-compatible
 
 <details><summary>Technical</summary>
 
-Issue [#1270](https://github.com/horizon-rust/horizon/issues/1270) asks for Ely.by and Yggdrasil-compatible servers with an account selector in the launcher.
-
-</details>
-
-#### Online-mode checks for Play with Friends
-
-Friends who join through an invite code could prove who they are with their Microsoft account, as on online-mode servers.
-
-<details><summary>Technical</summary>
-
-Play with Friends joins over an encrypted tunnel with an invite code ([docs/play-with-friends.md](docs/play-with-friends.md), 'Identity'). Online-mode checks against Mojang's session servers can be added on top of the same tunnel; they need Microsoft sign-in first, which is coming soon. Play with Friends stays self-hosted between players, with no relay run by the project.
+Issue [#1270](https://github.com/horizon-rust/horizon/issues/1270) asks for Ely.by and Yggdrasil-compatible servers with an account selector in the launcher. It builds on the Microsoft sign-in (docs/microsoft-account.md).
 
 </details>
 
@@ -738,8 +630,6 @@ Built-in versions of the client mods players ask for: block info on hover, a rec
 
 Done as extras: a mod list and menu, a minimap and a zoom ([docs/extras.md](docs/extras.md)). Left: block info tooltips, a recipe viewer (a contributor offered to port JEI if it becomes a native feature), a world map and a schematic overlay. They need the read-only interfaces `inventory-read`, `recipes`, `world-read` and `render` in the mod API, or they go into the game directly.
 
-More: [docs/mods.md](docs/mods.md)
-
 </details>
 
 #### Create-style physics as a native mod
@@ -749,16 +639,6 @@ Contraptions and physics like the Create and Aeronautics mods, as a mod for Hori
 <details><summary>Technical</summary>
 
 Issue [#805](https://github.com/horizon-rust/horizon/issues/805) (porting QOL mods) closed with this answer: it would come as a native Horizon mod on the mod API. It needs server mods, entities and rendering first.
-
-</details>
-
-#### Proximity voice chat as a native mod
-
-Hear nearby players talk, as with the voice chat mods of other Minecraft versions, as a Horizon mod.
-
-<details><summary>Technical</summary>
-
-Needs server mods, mod networking and an audio interface in the mod API before anything can be built ([docs/api/mods.md](docs/api/mods.md)).
 
 </details>
 
@@ -872,16 +752,6 @@ No official build. Android was first closed as not planned, with touch controls,
 
 </details>
 
-#### AppImage and a Nix flake
-
-Install Horizon on any Linux distribution as an AppImage, and on NixOS through a Nix flake.
-
-<details><summary>Technical</summary>
-
-A player's idea (#horizon-ideas). An AppImage of the launcher and game from the release workflow, and a flake.nix packaging the release binaries with their runtime libraries (Vulkan loader, X11/Wayland, ALSA), the way horizon-parity's NixOS setup runs them today.
-
-</details>
-
 ### Horizon extras
 
 #### A complete video studio inside the game
@@ -974,7 +844,7 @@ Armour and tools in End city chests should come enchanted, as in vanilla.
 - **GPU occlusion culling on Macs** (v0.2.17): On Macs the GPU now skips terrain hidden behind hills and caves: 8 to 48% more frames per second at 32 chunks on an M4 Pro. [#1434](https://github.com/horizon-rust/horizon/issues/1434)
 - **Animated textures on the GPU** (v0.2.5): Water, lava and other animated blocks are now animated by the graphics card: 1.7 to 2.4 times better 1% lows on Intel graphics. [#1239](https://github.com/horizon-rust/horizon/issues/1239)
 - **Far Detail for integrated graphics** (v0.2.5): An optional Reduced setting for far terrain, suggested on integrated graphics, that saves 2 to 4 ms of GPU time per frame. [#1199](https://github.com/horizon-rust/horizon/issues/1199) · [#1029](https://github.com/horizon-rust/horizon/issues/1029)
-- **The launcher's mod browser** (launcher@0.2.0): Search Modrinth for mods, modpacks and resource packs from the launcher; it says before installing what works in Horizon. [#1154](https://github.com/horizon-rust/horizon/issues/1154) · [#1242](https://github.com/horizon-rust/horizon/issues/1242) · [#1243](https://github.com/horizon-rust/horizon/issues/1243) · [#1246](https://github.com/horizon-rust/horizon/issues/1246) · [docs/mod-browser.md](docs/mod-browser.md)
+- **The launcher's mod browser** (launcher@0.2.0): Search Modrinth for mods, modpacks and resource packs from the launcher; it says before installing what works in Horizon. [#1154](https://github.com/horizon-rust/horizon/issues/1154) · [#1242](https://github.com/horizon-rust/horizon/issues/1242) · [#1243](https://github.com/horizon-rust/horizon/issues/1243) · [#1246](https://github.com/horizon-rust/horizon/issues/1246)
 - **A blocky, Minecraft-like launcher** (launcher@0.2.0): The launcher got a new blocky look in Horizon's purple, in dark and light. [#1269](https://github.com/horizon-rust/horizon/issues/1269) · [docs/design-system.md](docs/design-system.md)
 - **Dynamic lights** (v2026.10.22): An optional extra: torches you hold, drop or set on fire light up what is around them. [#1162](https://github.com/horizon-rust/horizon/issues/1162)
-- **Host a server from the launcher** (launcher-v0.15.0): The launcher's Servers page creates, starts, backs up and updates a Horizon server with buttons, and invites friends. [#1026](https://github.com/horizon-rust/horizon/issues/1026) · [docs/hosting.md](docs/hosting.md)
+- **Host a server from the launcher** (launcher-v0.15.0): The launcher's Servers page creates, starts, backs up and updates a Horizon server with buttons, and invites friends. [#1026](https://github.com/horizon-rust/horizon/issues/1026)

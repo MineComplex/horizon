@@ -43,7 +43,7 @@ pub const VEHICLE_KEY_Y: i32 = -100_000;
 /// The y of the position a plugin inventory's menu names (no block is there).
 pub const PLUGIN_KEY_Y: i32 = -200_000;
 
-/// An inventory a plugin owns (`plugin-inventories`, docs/plugins.md): its
+/// An inventory a plugin owns (Bukkit's `createInventory`): its
 /// slots, the title its menu opens with, and the plugin's id.
 #[derive(Clone, Debug)]
 pub struct PluginInventory {

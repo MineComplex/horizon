@@ -125,8 +125,7 @@
     "#1777",
     "#1765",
     "#1753",
-    "#1757",
-    "docs/modpacks.md"
+    "#1757"
    ],
    "focus": true,
    "announce": true
@@ -185,8 +184,7 @@
     "#1636",
     "#1637",
     "#1638",
-    "#1640",
-    "docs/mods.md"
+    "#1640"
    ],
    "focus": true,
    "announce": true
@@ -292,9 +290,7 @@
    "plain": "Mods that run on the server side of a world, so a dedicated server or a LAN world can have mods that react to players joining, chat and blocks being broken or placed, and that add commands.",
    "dev": "API 0.3, experimental first (#1833, in review): the same sandboxed component runs on the server thread and the dedicated server, with world events (block broken or placed, entity spawned or killed, player joined or left), game rules and server commands with typed arguments. The world, item and entity interfaces come after (see 'Mods that read and change the world'). docs/api/mods.md, docs/mods.md.",
    "links": [
-    "#1833",
-    "docs/api/mods.md",
-    "docs/mods.md"
+    "#1833"
    ]
   },
   {
@@ -305,8 +301,7 @@
    "plain": "Mods will be able to open their own screens and settings pages and react to keys and item use, so bigger mods, such as the Orbital Laser, can run on the normal game.",
    "dev": "Capability `ui` is in review (#1864): mod-owned screens and a settings page under Options > Mods, built from vanilla's widgets. Still to design: `input` (an item's use, key binds, the crosshair target), `render` (a budgeted draw list on the native shader API) and `world` (changing blocks). Orbital Laser is the acceptance test: it needs all four today through its author's fork (see 'Orbital Laser on the normal game').",
    "links": [
-    "#1864",
-    "docs/mods.md"
+    "#1864"
    ]
   },
   {
@@ -342,21 +337,7 @@
    "plain": "Coming soon: sign in with your Microsoft account to play on online-mode servers. The code is ready; it waits for Microsoft's approval.",
    "dev": "Device-code sign-in in the launcher and online-mode login in the client (docs/microsoft-account.md). It is turned on by setting the app's client id once Minecraft API access is approved; until then the launcher shows \"Coming soon\".",
    "links": [
-    "docs/microsoft-account.md",
     "#1270"
-   ],
-   "announce": true
-  },
-  {
-   "id": "curseforge",
-   "title": "CurseForge in the mod browser (coming soon)",
-   "status": "next",
-   "area": "modpacks",
-   "plain": "Coming soon: search and download CurseForge mods and modpacks from the launcher, as you can with Modrinth today.",
-   "dev": "The mod browser lists CurseForge as coming soon (docs/mod-browser.md): it needs CurseForge API access. Meanwhile packs import from a CurseForge zip or instance folder, and jars only CurseForge hosts come from the player's own instance (docs/modpacks.md).",
-   "links": [
-    "docs/mod-browser.md",
-    "docs/modpacks.md"
    ],
    "announce": true
   },
@@ -461,18 +442,6 @@
    ]
   },
   {
-   "id": "convert-to-rust",
-   "title": "A Convert to Rust button for what isn't rewritten yet",
-   "status": "next",
-   "area": "modpacks",
-   "plain": "When a mod, shader pack or modpack hasn't been rewritten for Horizon, one button converts what can be converted, so you don't have to wait for the rewrite.",
-   "dev": "Generalise the mod browser's Port step (`horizon-port-pack`: the data, assets, worldgen and block and item definitions of Java mods, .mrpack and CurseForge zips) to every kind of content: code mods where the API allows it (see 'Mods with code') and shader packs, converting an Iris/OptiFine pack into Horizon's format. The browser says what works before the install. Java code itself does not run (docs/modpacks.md, docs/mod-browser.md).",
-   "links": [
-    "docs/modpacks.md",
-    "docs/mod-browser.md"
-   ]
-  },
-  {
    "id": "code-mods",
    "title": "Mods with code: machines, magic, mobs",
    "status": "next",
@@ -480,19 +449,7 @@
    "plain": "Making mods that add machines, magic and mobs work in Horizon, in steps, starting with machines. They are most of what a big modpack is made of.",
    "dev": "333 of the 496 mods in a big pack (ATM10) contain code. Issue #1854 ranks the API gaps (ticking block entities, networking, rendering, menus, inventories) that unlock them in tiers, with machines first as the recommended path and a furnace ported tick for tick as proof. The first API step is a draft (#1189, see 'Machines and blocks with inventories'). The path isn't started yet (docs/modpacks.md).",
    "links": [
-    "#1854",
-    "docs/modpacks.md"
-   ]
-  },
-  {
-   "id": "datapack-browser",
-   "title": "Data packs in the mod browser",
-   "status": "next",
-   "area": "modpacks",
-   "plain": "Search and install data packs from the launcher's mod browser, for the world you choose, as you do mods and resource packs.",
-   "dev": "A Datapacks tab beside Mods and Resource packs: install into a chosen world's datapacks folder, with the same checks and 'works in Horizon' notes as the other kinds (docs/mod-browser.md).",
-   "links": [
-    "docs/mod-browser.md"
+    "#1854"
    ]
   },
   {
@@ -515,8 +472,7 @@
    "plain": "Manage a server from a console, ban and pardon players, and drive it from other tools through a full admin API and an MCP server for AI agents.",
    "dev": "`horizon-server console` (a text interface), `ban`, `pardon`, `ban-ip` and `mcp` over stdio. Admin API additions: the player list, kick, ban, op and whitelist, an SSE stream of logs and events, a text metrics endpoint, config GET and PATCH, backup delete and download. The panel's later features (bans, worlds, server.properties import, logs and crash reports, modpacks) and vanilla's management protocol (the JSON-RPC over WebSocket that the `management-server-*` keys configure), so vanilla's tools can manage a Horizon server. docs/server.md, docs/api/server.md.",
    "links": [
-    "docs/server.md",
-    "docs/api/server.md"
+    "docs/server.md"
    ]
   },
   {
@@ -527,8 +483,7 @@
    "plain": "Smoother hosting: a real Windows service, a backup before every update, backups that keep the world and each player's state, and a changed view distance or message without a restart.",
    "dev": "A Windows service wrapper instead of the logon scheduled task; `backups.before_update`; hot reload of config for view distance and the message of the day (needs engine support); backups that keep world and player state (#1808, a contributor's draft, in review). docs/hosting.md, docs/server.md.",
    "links": [
-    "#1808",
-    "docs/hosting.md"
+    "#1808"
    ]
   },
   {
@@ -539,7 +494,6 @@
    "plain": "In the launcher, a guide and a button to host a server and invite friends over Tailscale, so nobody has to open ports on a router.",
    "dev": "On the Servers page (create, start, back up, update and invite are shipped) add a Tailscale setup that explains and checks each step, and an invite button that hands friends what they need to join over the tailnet. Buttons first, no docs needed, with the details in an Advanced section. Remote access over Tailscale is already described in docs/server.md.",
    "links": [
-    "docs/hosting.md",
     "docs/server.md"
    ]
   },
@@ -551,7 +505,6 @@
    "plain": "An official image to run a Horizon dedicated server in Docker with one command, your own copy of the game files mounted in.",
    "dev": "The repository has the Dockerfile (`packaging/server/Dockerfile`: a multi-stage build on Debian bookworm-slim, user `horizon`, volume `/data`, port 25565, game files mounted read-only, `HORIZON_EULA` and friends answering the first-start questions), and anyone can build it (docs/hosting.md, section 9). Left: publish the image to a public registry from the release workflow, tagged per release, so it follows the same checks, and update the docs and the launcher. The image never holds Mojang's files.",
    "links": [
-    "docs/hosting.md",
     "docs/server.md"
    ]
   },
@@ -590,18 +543,6 @@
    ]
   },
   {
-   "id": "mod-world-items",
-   "title": "Mods that read and change the world",
-   "status": "next",
-   "area": "mods",
-   "plain": "Mods that can see and change blocks, read inventories and items, and find and affect entities, all through the server so every player sees the same thing.",
-   "dev": "After server mods: read blocks, states and biomes in loaded chunks and change them through the server's block log, so clients and the parity harnesses see vanilla's updates; the player's inventory, held item, open container and item stacks with components; entity queries near a position, a safe subset of entity data and data-driven mod entity types. Snapshots and batched calls per tick, never per-block host calls in hot paths. docs/api/mods.md ('Not there yet').",
-   "links": [
-    "docs/api/mods.md",
-    "docs/modpacks.md"
-   ]
-  },
-  {
    "id": "machines-api",
    "title": "Machines and blocks with inventories (API 0.4)",
    "status": "next",
@@ -609,19 +550,7 @@
    "plain": "Mods that add machines: blocks that tick, hold items and have their own menus. This unlocks the technology mods of big modpacks.",
    "dev": "Block entities and menus: ticking machines with slots, server menu logic and the menu protocol to clients, energy, item and fluid transfer, data attachments, accessory slots and custom recipe types, with a typed client and server channel and typed config beside them. A draft (#1189) proves a furnace ported tick for tick and holds the ATM10 code-mods plan; the design is redone through the API policy before it merges (docs/modpacks.md, docs/api/stability.md).",
    "links": [
-    "#1189",
-    "docs/modpacks.md"
-   ]
-  },
-  {
-   "id": "mod-languages",
-   "title": "Lua and other languages for mods",
-   "status": "next",
-   "area": "mods",
-   "plain": "Write mods as Lua scripts, in the style of KubeJS, with no compiler, and later in other languages that pass the tests. Every language runs in the same sandbox.",
-   "dev": "Lua first: Horizon ships a Lua interpreter that is itself a WebAssembly mod, and a script mod's manifest names it and the capabilities it uses, so a script can do exactly what a compiled mod with the same manifest can, with hot reload of `main.lua`. Then C, C++, Zig, Go (TinyGo), AssemblyScript and JavaScript or TypeScript are measured against Rust on the same tick-heavy example, and each is supported only with a template, an example and a CI test. docs/api/mods.md ('Ways in').",
-   "links": [
-    "docs/api/mods.md"
+    "#1189"
    ]
   },
   {
@@ -680,7 +609,6 @@
    "dev": "A player runs their own agent locally with `horizon-ctl` and the MCP servers (docs/agent-control.md), `cargo horizon-mod`, `horizon-port-pack` and the parity harnesses as the check. Horizon writes the guide (playhorizon.dev/docs/agents, docs/modpacks.md) and runs no agents, accounts or keys for players. The No AI switch turns all of it off.",
    "links": [
     "https://playhorizon.dev/docs/agents",
-    "docs/modpacks.md",
     "docs/agent-control.md"
    ]
   },
@@ -753,39 +681,6 @@
    ]
   },
   {
-   "id": "older-jars",
-   "title": "Older Fabric and Forge mods",
-   "status": "later",
-   "area": "modpacks",
-   "plain": "Recognise mods built for versions before 26.1 in the mod browser, so they can be checked and carried over like newer ones.",
-   "dev": "A mapping table from intermediary and SRG names so pre-26.1 jars can be classified, and a rename for mod ids with dashes (`fabric-api`); the port step then treats them like newer jars (docs/mod-browser.md).",
-   "links": [
-    "docs/mod-browser.md"
-   ]
-  },
-  {
-   "id": "modpack-own-packs",
-   "title": "A modpack's own resource and shader packs",
-   "status": "later",
-   "area": "modpacks",
-   "plain": "Importing a modpack also brings the resource packs and shader packs it ships with, where Horizon can use them.",
-   "dev": "Porting a pack carries data, assets and worldgen today; the resource packs and shader packs bundled with it are left out. Resource packs can be carried as they are; shader packs go through the converter (docs/modpacks.md).",
-   "links": [
-    "docs/modpacks.md"
-   ]
-  },
-  {
-   "id": "whole-modpacks",
-   "title": "Whole modpacks, such as ATM10, rewritten",
-   "status": "later",
-   "area": "modpacks",
-   "plain": "Rewriting a complete big modpack for Horizon so it runs far better than the original. Not a priority now: the work above comes first.",
-   "dev": "The project's first goal for modpacks: support them ten times better than vanilla and port any of them. It was set aside in favour of compatibility through the browser. What exists: ATM10's world generates and 42 of its 496 mods are carried at least in part (docs/modpacks.md). It depends on 'Mods with code' and the native mod API.",
-   "links": [
-    "docs/modpacks.md"
-   ]
-  },
-  {
    "id": "java-mod-bridge",
    "title": "Running Java mods that aren't rewritten",
    "status": "later",
@@ -804,19 +699,7 @@
    "plain": "Sign in with other account providers, such as Ely.by or any Yggdrasil-compatible one, beside Microsoft.",
    "dev": "Issue #1270 asks for Ely.by and Yggdrasil-compatible servers with an account selector in the launcher. It builds on the Microsoft sign-in (docs/microsoft-account.md).",
    "links": [
-    "#1270",
-    "docs/microsoft-account.md"
-   ]
-  },
-  {
-   "id": "friends-online-mode",
-   "title": "Online-mode checks for Play with Friends",
-   "status": "later",
-   "area": "servers",
-   "plain": "Friends who join through an invite code could prove who they are with their Microsoft account, as on online-mode servers.",
-   "dev": "Play with Friends joins over an encrypted tunnel with an invite code (docs/play-with-friends.md, 'Identity'). Online-mode checks against Mojang's session servers can be added on top of the same tunnel; they need Microsoft sign-in first, which is coming soon. Play with Friends stays self-hosted between players, with no relay run by the project.",
-   "links": [
-    "docs/play-with-friends.md"
+    "#1270"
    ]
   },
   {
@@ -838,8 +721,7 @@
    "plain": "Built-in versions of the client mods players ask for: block info on hover, a recipe viewer like JEI, a world map and schematic overlays.",
    "dev": "Done as extras: a mod list and menu, a minimap and a zoom (docs/extras.md). Left: block info tooltips, a recipe viewer (a contributor offered to port JEI if it becomes a native feature), a world map and a schematic overlay. They need the read-only interfaces `inventory-read`, `recipes`, `world-read` and `render` in the mod API, or they go into the game directly.",
    "links": [
-    "docs/extras.md",
-    "docs/mods.md"
+    "docs/extras.md"
    ]
   },
   {
@@ -851,17 +733,6 @@
    "dev": "Issue #805 (porting QOL mods) closed with this answer: it would come as a native Horizon mod on the mod API. It needs server mods, entities and rendering first.",
    "links": [
     "#805"
-   ]
-  },
-  {
-   "id": "proximity-voice",
-   "title": "Proximity voice chat as a native mod",
-   "status": "later",
-   "area": "mods",
-   "plain": "Hear nearby players talk, as with the voice chat mods of other Minecraft versions, as a Horizon mod.",
-   "dev": "Needs server mods, mod networking and an audio interface in the mod API before anything can be built (docs/api/mods.md).",
-   "links": [
-    "docs/api/mods.md"
    ]
   },
   {
@@ -1170,8 +1041,7 @@
     "#1154",
     "#1242",
     "#1243",
-    "#1246",
-    "docs/mod-browser.md"
+    "#1246"
    ],
    "shipped_in": "launcher@0.2.0"
   },
@@ -1208,21 +1078,9 @@
    "plain": "The launcher's Servers page creates, starts, backs up and updates a Horizon server with buttons, and invites friends.",
    "dev": "The launcher's Servers page (#1026) over `horizon-server` (docs/hosting.md).",
    "links": [
-    "#1026",
-    "docs/hosting.md"
+    "#1026"
    ],
    "shipped_in": "launcher-v0.15.0"
-  },
-  {
-   "id": "cli-server-install",
-   "title": "A server you install with one command",
-   "status": "next",
-   "area": "servers",
-   "plain": "Install and run a Horizon dedicated server from a terminal with a single command, no launcher needed, for VPSes and headless machines.",
-   "dev": "A player's idea (#horizon-ideas). `horizon-server` already runs headless; left: an install script (Linux/macOS shell, Windows PowerShell) that fetches the signed release, checks it, asks for or points at the player's own game files and starts the server, documented in docs/hosting.md.",
-   "links": [
-    "docs/hosting.md"
-   ]
   },
   {
    "id": "launcher-look-menus",
@@ -1234,15 +1092,6 @@
    "links": [
     "docs/design-system.md"
    ]
-  },
-  {
-   "id": "linux-packages",
-   "title": "AppImage and a Nix flake",
-   "status": "later",
-   "area": "platforms",
-   "plain": "Install Horizon on any Linux distribution as an AppImage, and on NixOS through a Nix flake.",
-   "dev": "A player's idea (#horizon-ideas). An AppImage of the launcher and game from the release workflow, and a flake.nix packaging the release binaries with their runtime libraries (Vulkan loader, X11/Wayland, ALSA), the way horizon-parity's NixOS setup runs them today.",
-   "links": []
   }
  ],
  "journal": [

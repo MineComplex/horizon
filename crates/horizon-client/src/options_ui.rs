@@ -833,7 +833,6 @@ pub enum Page {
     Language,
     Font,
     Packs,
-    Mods,
     /// Horizon's shader packs, either kind (`shader_pack_list`).
     ShaderPacks,
     /// Horizon's graphics settings (`graphics_ui`).
@@ -865,14 +864,9 @@ enum Act {
     PadKey(&'static str),
     ResetPadKey(&'static str),
     ResetPadKeys,
-    ToggleMod(usize),
     /// Pick `s.shader_packs[i]`, or turn it off when it is the pick.
     PickShaderPack(usize),
     OpenShaderPackFolder,
-    /// The installed mod's own settings page (capability `ui`), shown as a
-    /// screen: `Event::ModSettings` has the game open it.
-    ModSettings(usize),
-    OpenModFolder,
     /// Credits & Attribution's Credits button (WinScreen without the poem).
     Credits,
     CopyAgentDetails,
@@ -922,15 +916,11 @@ pub enum Event {
     /// The pack selection changed (reload resources).
     Packs(Vec<String>),
     OpenPackFolder,
-    OpenModFolder,
     /// The Shader Packs page opened: list `shaderpacks/` into `shader_packs`.
     ListShaderPacks,
     /// A shader pack was picked or turned off: save and apply it.
     ShaderPack,
     OpenShaderPackFolder,
-    /// Open the mod's own settings page (capability `ui`): the installed
-    /// mod's index in `mods.installed`.
-    ModSettings(usize),
     /// Roll the credits (`CreditsAndAttributionScreen.openCreditsScreen`).
     Credits,
     /// Copy how an agent connects (the AI Agent page).
@@ -1063,7 +1053,7 @@ fn option_widget(s: &Settings, opt: Opt, x: f32, y: f32, w: f32) -> Widget {
 /// What a button opening one of Horizon's pages says on hover.
 fn horizon_page_tooltip(page: Page) -> Option<&'static str> {
     Some(match page {
-        Page::Horizon => "Horizon's own settings: graphics, controllers, extras and mods.",
+        Page::Horizon => "Horizon's own settings: graphics, controllers and extras.",
         Page::Graphics => "Graphics, simply: each setting says what it costs.",
         Page::GraphicsAdvanced => {
             "Every graphics setting, Horizon's included, with what each costs."
@@ -1075,9 +1065,6 @@ fn horizon_page_tooltip(page: Page) -> Option<&'static str> {
         Page::Agent => "Let your own AI agent play: horizon-ctl and MCP clients on this computer.",
         Page::ShaderPacks => {
             "Shader packs from the shaderpacks folder: Horizon's own and those in the shaders/ format. One runs at a time."
-        }
-        Page::Mods => {
-            "Mods made for Horizon, from the horizon-mods folder. Each runs in a sandbox and stays off until you turn it on."
         }
         _ => return None,
     })
@@ -1166,7 +1153,6 @@ impl OptionsUi {
             Page::Language => "options.language.title",
             Page::Font => "options.font.title",
             Page::Packs => "resourcePack.title",
-            Page::Mods => "Mods",
             Page::ShaderPacks => "Shader Packs",
             Page::Graphics | Page::GraphicsAdvanced => "options.videoTitle",
             Page::Controller => "Controller Settings",
@@ -1287,10 +1273,7 @@ impl OptionsUi {
                         open("Shader Packs...", Page::ShaderPacks),
                         Some(open("Controller Settings...", Page::Controller)),
                     ),
-                    Row::Buttons(
-                        open("Extras...", Page::Extras),
-                        Some(open("Mods...", Page::Mods)),
-                    ),
+                    Row::Buttons(open("Extras...", Page::Extras), None),
                     // No AI hides the AI Agent page and everything AI.
                     Row::Buttons(
                         self.extra_button(s, crate::extras::Item::DiscordPresence),
@@ -1485,47 +1468,6 @@ impl OptionsUi {
                 rows
             }
             Page::Font => pairs(&[Opt::ForceUnicode, Opt::JapaneseGlyphs]),
-            Page::Mods => {
-                if s.mods.installed.is_empty() {
-                    return vec![Row::Header(
-                        "No mods: put .hmod files in the horizon-mods folder",
-                    )];
-                }
-                s.mods
-                    .installed
-                    .iter()
-                    .enumerate()
-                    .map(|(i, installed)| {
-                        let mut label = Text::literal(format!("{}: ", installed.title))
-                            .append(on_off(s.mods.is_on(i)));
-                        if installed.problem.is_some() {
-                            label = label.append(" (Stopped)");
-                        } else if installed.dev {
-                            label = label.append(" (Dev)");
-                        }
-                        let dead = installed.dev || installed.id.is_empty();
-                        // A running mod with a settings page (capability
-                        // `ui`) gets its own button beside the toggle.
-                        if installed.has_settings {
-                            let toggle = button(0.0, 0.0, 150.0, label, Act::ToggleMod(i));
-                            let settings = button(
-                                0.0,
-                                0.0,
-                                150.0,
-                                Text::literal("Settings"),
-                                Act::ModSettings(i),
-                            );
-                            Row::Buttons(
-                                if dead { inactive(toggle) } else { toggle },
-                                Some(settings),
-                            )
-                        } else {
-                            let widget = button(0.0, 0.0, 310.0, label, Act::ToggleMod(i));
-                            Row::Buttons(if dead { inactive(widget) } else { widget }, None)
-                        }
-                    })
-                    .collect()
-            }
             Page::ShaderPacks => {
                 if s.shader_packs.is_empty() {
                     return vec![Row::Header(
@@ -1595,11 +1537,9 @@ impl OptionsUi {
                     ("options.chat", Some(Page::Chat)),
                     ("options.resourcepack", Some(Page::Packs)),
                     ("options.accessibility", Some(Page::Accessibility)),
-                    // Vanilla's Telemetry Data and Credits slots: Horizon's
-                    // settings and its mods, as a mod adds its button here.
-                    // Credits & Attribution (WinScreen's credits) follows them.
+                    // Vanilla's Telemetry Data slot: Horizon's settings.
+                    // Credits & Attribution (WinScreen's credits) follows.
                     ("Horizon Settings...", Some(Page::Horizon)),
-                    ("Mods...", Some(Page::Mods)),
                     ("options.credits_and_attribution", Some(Page::Credits)),
                 ];
                 let rows = entries.len().div_ceil(2) as f32;
@@ -2032,7 +1972,6 @@ impl OptionsUi {
                 content = y + self.scroll - top + 2.0;
                 out[list_start..].iter_mut().for_each(|w| w.list = true);
                 let folder = match page {
-                    Page::Mods => Some(("Open Mod Folder", Act::OpenModFolder)),
                     Page::ShaderPacks => Some(("Open Pack Folder", Act::OpenShaderPackFolder)),
                     _ => None,
                 };
@@ -2184,21 +2123,6 @@ impl OptionsUi {
                 {
                     tooltip = Some(atlas.font.split(
                         &Text::literal("This feature is not yet available in Horizon."),
-                        170.0,
-                    ));
-                }
-                if let WKind::Button {
-                    act: Act::ToggleMod(i),
-                    ..
-                } = &wd.kind
-                    && let Some(installed) = s.mods.installed.get(*i)
-                {
-                    let description = installed
-                        .problem
-                        .as_deref()
-                        .unwrap_or(&installed.description);
-                    tooltip = Some(atlas.font.split(
-                        &Text::literal(format!("{}\n{description}", installed.title)),
                         170.0,
                     ));
                 }
@@ -2550,15 +2474,6 @@ impl OptionsUi {
                             s.controller.reset_bindings();
                             events.push(Event::Changed);
                         }
-                        Act::ToggleMod(i) => {
-                            s.mods.toggle(i);
-                            events.push(Event::Changed);
-                        }
-                        Act::ModSettings(i) => {
-                            events.push(Event::ButtonClick);
-                            events.push(Event::ModSettings(i));
-                        }
-                        Act::OpenModFolder => events.push(Event::OpenModFolder),
                         Act::PickShaderPack(i) => {
                             if let Some(pack) = s.shader_packs.get(i) {
                                 s.horizon.shader_pack = if s.horizon.shader_pack == pack.file {
@@ -3044,114 +2959,6 @@ mod tests {
             vec![Event::ButtonClick]
         );
         assert!(ui.resource_error.is_none());
-    }
-
-    #[test]
-    fn classic_mods_page_toggles_mods_and_keeps_dev_and_invalid_entries_inactive() {
-        let atlas = atlas();
-        let mut s = Settings::default();
-        let mut ui = OptionsUi::default();
-        let size = (480.0, 240.0);
-        assert!(ui.layout(&s, size.0, size.1).0.iter().any(|w| {
-            matches!(
-                w.kind,
-                WKind::Button {
-                    active: true,
-                    act: Act::Push(Page::Mods),
-                    ..
-                }
-            )
-        }));
-        ui.show(Page::Mods);
-        let empty = ui.layout(&s, size.0, size.1).0;
-        assert!(empty.iter().any(|w| {
-            matches!(&w.kind, WKind::Text { text, .. } if text.plain().contains(".hmod"))
-        }));
-        let open_folder = empty
-            .iter()
-            .find(|w| {
-                matches!(
-                    &w.kind,
-                    WKind::Button {
-                        act: Act::OpenModFolder,
-                        ..
-                    }
-                )
-            })
-            .expect("Mods page has an Open Mod Folder button");
-        assert_eq!(
-            ui.click(
-                &mut s,
-                &atlas,
-                open_folder.x + 1.0,
-                open_folder.y + 1.0,
-                size,
-                [480, 240],
-                false,
-                false,
-            ),
-            vec![Event::ButtonClick, Event::OpenModFolder]
-        );
-        for (id, dev) in [("normal", false), ("dev", true), ("", false)] {
-            s.mods.installed.push(crate::mod_list::Installed {
-                id: id.into(),
-                title: id.into(),
-                description: "May show HUD panels.".into(),
-                problem: id.is_empty().then(|| "Invalid package".into()),
-                dev,
-                has_settings: false,
-            });
-        }
-        let (widgets, ..) = ui.layout(&s, size.0, size.1);
-        let rows: Vec<_> = widgets
-            .iter()
-            .filter(|w| {
-                matches!(
-                    w.kind,
-                    WKind::Button {
-                        act: Act::ToggleMod(_),
-                        ..
-                    }
-                )
-            })
-            .collect();
-        assert_eq!(rows.len(), 3);
-        for (i, row) in rows.iter().enumerate() {
-            let events = ui.click(
-                &mut s,
-                &atlas,
-                row.x + 1.0,
-                row.y + 1.0,
-                size,
-                [480, 240],
-                false,
-                false,
-            );
-            if i == 0 {
-                assert!(events.contains(&Event::Changed));
-                assert!(events.contains(&Event::ButtonClick));
-            } else {
-                assert!(events.is_empty());
-            }
-        }
-        assert!(s.mods.is_on(0));
-        assert!(s.mods.is_on(1));
-        assert!(!s.mods.is_on(2));
-        assert_eq!(s.mods.serialize(), "mod.normal:true\n");
-        let row = rows[0];
-        ui.click(
-            &mut s,
-            &atlas,
-            row.x + 1.0,
-            row.y + 1.0,
-            size,
-            [480, 240],
-            false,
-            false,
-        );
-        assert!(!s.mods.is_on(0));
-        assert!(!ui.back(&mut s).contains(&Event::Close));
-        assert_eq!(ui.page(), Page::Main);
     }
 
     #[test]
@@ -4143,13 +3950,10 @@ mod tests {
                 })
                 .collect()
         };
-        // Vanilla's Options buttons, Horizon's two in the Telemetry and Credits slots, then
+        // Vanilla's Options buttons, Horizon's in the Telemetry slot, then
         // Credits & Attribution (WinScreen's credits).
         let main = pushes(&mut ui);
-        assert_eq!(
-            &main[main.len() - 3..],
-            [Page::Horizon, Page::Mods, Page::Credits]
-        );
+        assert_eq!(&main[main.len() - 2..], [Page::Horizon, Page::Credits]);
         ui.push(Page::Horizon);
         assert_eq!(
             pushes(&mut ui),
@@ -4159,7 +3963,6 @@ mod tests {
                 Page::ShaderPacks,
                 Page::Controller,
                 Page::Extras,
-                Page::Mods,
                 Page::Agent,
             ]
         );

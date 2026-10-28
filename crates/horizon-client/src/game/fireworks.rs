@@ -385,10 +385,6 @@ impl Game<'_> {
         if self.creative || self.spectator() {
             return;
         }
-        #[cfg(feature = "mods")]
-        let Some(amount) = self.plugin_damage_acting("minecraft:fireworks", amount, None) else {
-            return;
-        };
         if let Some(p) = self.player.as_mut()
             && !p.health.dead_or_dying()
             && let Some(id) = self.motion.health.damage.id("minecraft:fireworks")

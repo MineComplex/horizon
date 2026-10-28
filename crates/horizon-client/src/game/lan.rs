@@ -85,8 +85,6 @@ pub(super) struct LanHost {
     /// Guests' commands waiting for the hub to be back in `self.lan`, where
     /// a command can reach every player (game/lan_actions.rs).
     pub commands: Vec<super::lan_actions::GuestCommand>,
-    /// Mods' quiet commands waiting to run a few a tick (game/lan_quiet.rs).
-    pub quiet: std::collections::VecDeque<super::lan_quiet::QuietBatch>,
     /// The entities the guests track, described again every tick
     /// (`lan_entities`) over last tick's states.
     states: lan::entity::States,
@@ -1174,7 +1172,6 @@ impl Game<'_> {
             waypoint_dead: Default::default(),
             border_sent: None,
             commands: Vec::new(),
-            quiet: std::collections::VecDeque::new(),
             states: Default::default(),
         });
         self.sounds.capture = Some(Vec::new());
@@ -1587,20 +1584,7 @@ impl Game<'_> {
                     event @ (HostEvent::Chat { .. } | HostEvent::Warn(_) | HostEvent::Error(_)) => {
                         self.lan_log_event(event);
                     }
-                    HostEvent::PlayerChat { sender, text } => {
-                        self.mod_player_chat(super::server_mods::Who::Uuid(sender), &text);
-                    }
-                    #[cfg(feature = "mods")]
-                    HostEvent::ChatPending { conn, message } => {
-                        for e in self.plugin_chat_pending(&mut host, conn, *message) {
-                            match e {
-                                HostEvent::PlayerChat { sender, text } => self
-                                    .mod_player_chat(super::server_mods::Who::Uuid(sender), &text),
-                                other => self.lan_log_event(other),
-                            }
-                        }
-                    }
-                    #[cfg(not(feature = "mods"))]
+                    HostEvent::PlayerChat { .. } => {}
                     HostEvent::ChatPending { message, .. } => {
                         for e in host.hub.relay_chat(*message) {
                             self.lan_log_event(e);
@@ -1641,8 +1625,6 @@ impl Game<'_> {
                                     .with_color(horizon_client::text::YELLOW),
                             );
                         }
-                        #[cfg(feature = "mods")]
-                        self.plugin_after_join(&mut host, conn);
                     }
                     HostEvent::Left(mut guest) => {
                         // The container they had open loses an opener.
@@ -1663,8 +1645,6 @@ impl Game<'_> {
                         if guest.placed {
                             host.award_leave_game(guest.conn);
                         }
-                        #[cfg(feature = "mods")]
-                        self.plugin_after_leave(&mut host, &guest);
                         self.save_guest(&host, &guest);
                         host.models.remove(&guest.conn);
                         host.play.remove(&guest.conn);
@@ -1698,14 +1678,6 @@ impl Game<'_> {
                 }
             }
             host.states = states;
-        }
-        if !host.quiet.is_empty() {
-            self.lan = Some(host);
-            self.run_quiet_commands();
-            host = self
-                .lan
-                .take()
-                .expect("the hub is back after the quiet commands");
         }
         self.lan_flush_effects(&mut host);
         if !paused {
@@ -1761,10 +1733,6 @@ impl Game<'_> {
         };
         if !known || force {
             g.game_mode = default_mode;
-        }
-        #[cfg(feature = "mods")]
-        if !known {
-            self.mods.plugin.newcomers.insert(conn);
         }
         if !known {
             // ServerPlayer.adjustSpawnLocation: a player new to the world

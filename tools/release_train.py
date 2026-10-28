@@ -67,7 +67,6 @@ LAUNCHER_PATHS = [
     "launcher/",
     "crates/horizon-bench/",
     "crates/horizon-friends/",
-    "crates/horizon-mods/",
     "crates/horizon-port-pack/",
     "crates/horizon-prepare/",
     "crates/horizon-release-sign/",

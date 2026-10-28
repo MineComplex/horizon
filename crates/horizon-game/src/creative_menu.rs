@@ -16,12 +16,9 @@ impl Names {
                 .and_then(|b| serde_json::from_slice::<HashMap<String, String>>(&b).ok())
                 .unwrap_or_default()
         };
-        let mut map = read("minecraft");
-        // Content mods' names (docs/modpacks.md); none in a vanilla root.
-        for namespace in crate::mod_content::namespaces(root) {
-            map.extend(read(&namespace));
+        Self {
+            map: read("minecraft"),
         }
-        Self { map }
     }
     pub fn item(&self, id: &str) -> String {
         let (namespace, path) = id.split_once(':').unwrap_or(("minecraft", id));

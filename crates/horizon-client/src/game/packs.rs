@@ -14,7 +14,6 @@ use horizon_client::{
     text::{Style, Text},
 };
 use std::{
-    collections::BTreeSet,
     path::{Path, PathBuf},
     sync::Arc,
 };
@@ -156,8 +155,6 @@ impl Game<'_> {
             &vanilla,
             &self.settings.resource_packs,
             &self.server_packs.active,
-            &self.settings.mods.enabled,
-            &self.options.dev_mods,
             &self.pack.assets,
             &self.res,
             &self.pack.context,
@@ -263,8 +260,6 @@ pub(super) fn stage_pack(
     vanilla_root: &Path,
     selected: &[String],
     server: &[Pack],
-    mods_enabled: &BTreeSet<String>,
-    dev_mods: &[PathBuf],
     assets: &Arc<Assets>,
     res: &Resources,
     context: &WorkerContext,
@@ -273,7 +268,6 @@ pub(super) fn stage_pack(
     progress: &super::Progress,
 ) -> horizon_client::Result<StagedPack> {
     let root = startup_root(vanilla_root, selected, server)?;
-    let root = super::mods::content_root(&root, mods_enabled, dev_mods);
     progress.set(1);
     let render = Arc::new(horizon_client::render_assets::RenderAssets::load(
         &root, assets,

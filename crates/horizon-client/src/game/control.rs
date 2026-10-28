@@ -335,13 +335,6 @@ impl Game<'_> {
                         self.debug_key(key, KeyAction::Release);
                     }
                 }
-                // Mods' keys (capability `input`) see the key as the keyboard
-                // hook does.
-                let action = arg(2)?;
-                self.mod_key(physical, action != "up", action == "repeat");
-                if action == "tap" {
-                    self.mod_key(physical, false, false);
-                }
                 // Text screens consume raw presses; releases follow key binds.
                 let typing = matches!(self.screen, Screen::Chat | Screen::Options);
                 let key = if typing && arg(2)? != "up" {
@@ -415,19 +408,15 @@ impl Game<'_> {
                 match arg(2)? {
                     "down" => {
                         self.extras_mouse(button, true);
-                        self.mod_mouse_key(button, true);
                         self.play_mouse(button, true)?
                     }
                     "up" => {
                         self.extras_mouse(button, false);
-                        self.mod_mouse_key(button, false);
                         self.play_mouse(button, false)?
                     }
                     "click" => {
                         self.extras_mouse(button, true);
-                        self.mod_mouse_key(button, true);
                         self.extras_mouse(button, false);
-                        self.mod_mouse_key(button, false);
                         self.play_mouse(button, true)?;
                         self.play_mouse(button, false)?;
                     }
@@ -624,9 +613,6 @@ impl Game<'_> {
                     // The port, or the game rules' search and number boxes.
                     Screen::WorldOptions if text == "\\b" => self.world_options_text(None),
                     Screen::WorldOptions => self.world_options_text(Some(text)),
-                    Screen::Inventory if self.mod_browser_typing() => {
-                        self.mod_browser_text((text != "\\b").then_some(text), text == "\\b")
-                    }
                     Screen::Inventory if self.recipe_search_focused() => {
                         self.recipe_text(Some(text), false)
                     }
@@ -667,7 +653,6 @@ impl Game<'_> {
                     "language" => Page::Language,
                     "font" => Page::Font,
                     "packs" => Page::Packs,
-                    "mods" => Page::Mods,
                     "shader-packs" => Page::ShaderPacks,
                     "graphics" => Page::Graphics,
                     "graphics-advanced" => Page::GraphicsAdvanced,
@@ -879,7 +864,6 @@ impl Game<'_> {
             Screen::DialogWarning => "dialog-warning",
             Screen::CommandBlock => "command-block",
             Screen::Win => "win",
-            Screen::Mod => "mod",
         }
     }
 

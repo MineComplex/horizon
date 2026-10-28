@@ -889,10 +889,6 @@ impl Game<'_> {
             return false;
         };
         // InventoryOpenEvent: cancelled, the use opens nothing.
-        #[cfg(feature = "mods")]
-        if !self.plugin_inventory_open(host, conn, menu, items.len() as u32) {
-            return true;
-        }
         // ServerPlayer.openMenu closes the menu that was open.
         self.guest_container_closed(host, conn);
         self.lan_station_closed(host, conn, None);
@@ -1021,12 +1017,6 @@ impl Game<'_> {
 
     /// A packet from a guest that the hub does not handle itself.
     pub(super) fn lan_guest_packet(&mut self, host: &mut LanHost, conn: u32, packet: S) {
-        #[cfg(feature = "mods")]
-        let mut packet = packet;
-        #[cfg(feature = "mods")]
-        if self.plugin_packet(host, conn, &mut packet) {
-            return;
-        }
         let Some(gi) = host.hub.guests.iter().position(|g| g.conn == conn) else {
             return;
         };
@@ -1384,9 +1374,6 @@ impl Game<'_> {
                 self.guest_carried_back(host, gi);
             }
             S::ChatCommand(c) => self.guest_chat_command(host, conn, &c.command),
-            S::CustomPayload(p) if p.channel == horizon_protocol::quiet::CHANNEL => {
-                self.guest_quiet_commands(host, conn, &p.data)
-            }
             S::ChatCommandSigned(p) => self.guest_signed_command(host, conn, p),
             S::ChangeDifficulty(p) if host.hub.guests[gi].permission >= 2 => {
                 if !self.level.difficulty_locked && (0..=3).contains(&p.difficulty) {
@@ -1502,8 +1489,6 @@ impl Game<'_> {
             }
             S::ClientCommand(c) if c.action == 0 => {
                 self.guest_respawn(host, conn);
-                #[cfg(feature = "mods")]
-                self.plugin_respawned(host, conn);
             }
             // ServerStatsCounter.sendStats.
             S::ClientCommand(c) if c.action == 1 => {
@@ -1789,19 +1774,6 @@ impl Game<'_> {
         if let Some(victim) = Self::pvp_victim(host, conn, id) {
             #[allow(unused_mut)]
             if let Some(Some(mut strike)) = self.as_guest(host, conn, |g| g.pvp_strike())
-                && {
-                    #[cfg(feature = "mods")]
-                    let go = match self.plugin_attack(host, conn, id, strike.amount()) {
-                        Some(amount) => {
-                            strike.set_amount(amount);
-                            true
-                        }
-                        None => false,
-                    };
-                    #[cfg(not(feature = "mods"))]
-                    let go = true;
-                    go
-                }
                 && self.pvp_land(host, victim, &strike)
             {
                 self.as_guest(host, conn, |g| {
@@ -1834,27 +1806,6 @@ impl Game<'_> {
             return;
         }
         // EntityDamageByEntityEvent for the hit about to land.
-        #[cfg(feature = "mods")]
-        if self.plugins_listen(horizon_mods::plugin::EventKind::EntityDamage) {
-            let kind = self
-                .plugin_target(id)
-                .map(|t| self.target_type(t))
-                .unwrap_or_default();
-            let estimate = self
-                .as_guest(host, conn, |g| g.melee_damage(&kind).0)
-                .unwrap_or(1.0);
-            match self.plugin_attack(host, conn, id, estimate) {
-                None => {
-                    host.hub.guests[gi].yaw = old_yaw;
-                    host.hub.guests[gi].pitch = old_pitch;
-                    return;
-                }
-                Some(amount) if amount != estimate => {
-                    self.mods.plugin.damage_override = Some(amount);
-                }
-                Some(_) => {}
-            }
-        }
         // A mace's smash sets the attacker's velocity and sends it at once, before the
         // Wind Burst's push (MaceItem.hurtEnemy, then the post-attack effects).
         let sent = self
@@ -1889,20 +1840,6 @@ impl Game<'_> {
         signed: Option<Vec<(String, horizon_client::lan::hub::chat::ChatMessage)>>,
     ) {
         // Plugins first: PlayerCommandEvent, `/plugins` and their commands.
-        #[cfg(feature = "mods")]
-        let changed;
-        #[cfg(feature = "mods")]
-        let (command, signed) = {
-            let Some(line) =
-                self.plugin_player_command(host, conn, command.trim_start_matches('/'))
-            else {
-                return;
-            };
-            changed = line;
-            // A command a plugin rewrote no longer matches its signatures.
-            let same = changed == command.trim_start_matches('/');
-            (changed.as_str(), if same { signed } else { None })
-        };
         if self.guest_message_command(host, conn, command, signed.as_ref()) {
             return;
         }
@@ -1919,10 +1856,6 @@ impl Game<'_> {
                     overlay: false,
                 }),
             );
-            return;
-        }
-        // A server mod's command, for every player whatever their level.
-        if self.guest_server_mod_command(host, conn, command.trim_start_matches('/')) {
             return;
         }
         // An integrated server runs every player's commands at their own
@@ -2061,28 +1994,6 @@ impl Game<'_> {
         };
         let skip = usize::from(text.starts_with('/'));
         let command = &text[skip..];
-        #[cfg(feature = "mods")]
-        if let Some((start, words)) = self.plugin_suggestions(host, conn, command) {
-            let utf16 =
-                |byte: usize| command[..byte.min(command.len())].encode_utf16().count() as i32;
-            let mut w = horizon_protocol::buf::Writer::new();
-            w.varint(id);
-            w.varint(utf16(start) + skip as i32);
-            w.varint(utf16(command.len()) - utf16(start));
-            w.varint(words.len() as i32);
-            for word in &words {
-                w.string(word);
-                w.bool(false);
-            }
-            host.hub.send_to(
-                conn,
-                &C::Unknown(
-                    horizon_protocol::ids::play::clientbound::COMMAND_SUGGESTIONS,
-                    w.data,
-                ),
-            );
-            return;
-        }
         let d = vanilla::game_dispatcher();
         let level = std::mem::replace(&mut self.world_data.registries.permission, permission);
         let parse = d.parse(command, &self.world_data.registries);
@@ -2407,59 +2318,10 @@ impl Game<'_> {
             // the dying player's death screen and to everyone the team lets
             // see it; without it, the death screen gets an empty one.
             let shown = self.world_data.rules.bool("show_death_messages");
-            let mut keep_inventory = false;
-            #[cfg(feature = "mods")]
-            let mut plugin_message: Option<Option<String>> = None;
-            #[cfg(feature = "mods")]
-            if self.plugins_listen(horizon_mods::plugin::EventKind::PlayerDeath) {
-                let me = self.player_text(&name, uuid);
-                let text = match cause.clone() {
-                    Some(key) => horizon_client::text::Text::translate(&key, &[me]),
-                    None if at[1] < f64::from(horizon_client::chunk::MIN_Y - 64) => {
-                        horizon_client::text::Text::translate("death.attack.outOfWorld", &[me])
-                    }
-                    None => self.guest_death_message(conn, me),
-                };
-                let rule = self.world_data.rules.bool("keep_inventory");
-                if let Some((message, keep_inv, keep_level)) =
-                    self.plugin_player_death(host, conn, shown.then(|| text.component()), rule)
-                {
-                    if shown.then(|| text.component().to_string()) != message {
-                        plugin_message = Some(message);
-                    }
-                    keep_inventory = keep_inv && !rule;
-                    if keep_level {
-                        let g = &host.hub.guests[gi];
-                        self.mods
-                            .plugin
-                            .kept_levels
-                            .insert(conn, (g.xp_level, g.xp_progress, g.xp_total));
-                    }
-                }
-            }
-            let _ = &mut keep_inventory;
+            let keep_inventory = false;
             let g = &host.hub.guests[gi];
             let (id, at) = (g.entity_id, g.position);
-            #[cfg(feature = "mods")]
-            let custom = plugin_message.clone();
-            #[cfg(not(feature = "mods"))]
-            let custom: Option<Option<String>> = None;
-            let message = if let Some(custom) = custom {
-                match custom {
-                    Some(text) => {
-                        let tag = super::plugins::plugin_text_tag(&text);
-                        host.hub.system_message(tag.clone());
-                        if self.options.dedicated.is_some() {
-                            super::dedicated::log(
-                                "INFO",
-                                &format!("System chat: {}", super::plugins::strip_codes(&text)),
-                            );
-                        }
-                        tag
-                    }
-                    None => literal(""),
-                }
-            } else if shown {
+            let message = if shown {
                 let me = self.player_text(&name, uuid);
                 let text = match cause {
                     Some(key) => horizon_client::text::Text::translate(&key, &[me]),
@@ -2491,23 +2353,10 @@ impl Game<'_> {
             if let Some(eyes) = drops.filter(|_| !keep_inventory) {
                 self.as_guest(host, conn, |game| game.drop_inventory(eyes));
             }
-            #[cfg(feature = "mods")]
-            let kept_level = self.mods.plugin.kept_levels.contains_key(&conn);
-            #[cfg(not(feature = "mods"))]
             let kept_level = false;
             if !kept_level {
                 self.spawn_orbs(at, reward);
             }
-            #[cfg(feature = "mods")]
-            self.plugin_entity_died(
-                horizon_mods::plugin::types::EntityRef {
-                    id,
-                    kind: "minecraft:player".into(),
-                    player: Some(super::plugins::uuid_str(uuid)),
-                },
-                at,
-                0,
-            );
         }
     }
 
@@ -2698,8 +2547,6 @@ impl Game<'_> {
             let health = &motion.health;
             let freeze_immune = game.wears_freeze_immune();
             // Plugins hear of the damage the surroundings deal: it waits for them.
-            #[cfg(feature = "mods")]
-            let defer = game.plugins_listen(horizon_mods::plugin::EventKind::EntityDamage);
             let burn_immune = game.wears_burn_from_stepping_immunity();
             let Some(player) = game.player.as_mut() else {
                 return (Vec::new(), None);
@@ -2713,10 +2560,6 @@ impl Game<'_> {
                 resources: game.motion,
             };
             w.player.health.advance_clock();
-            #[cfg(feature = "mods")]
-            {
-                w.player.defer_env_damage = defer;
-            }
             let _ = w.fluid_base_tick();
             w.player.ground.on_ground = from_ground;
             // Player.aiStep: a flying player that isn't riding starts every tick
@@ -2813,8 +2656,6 @@ impl Game<'_> {
             game.location_changed_effects([start.x, start.y, start.z], from_ground);
             // LivingEntity.baseTick: outside the world border, then tickEffects.
             // EntityDamageEvent for the damage of the surroundings held back above.
-            #[cfg(feature = "mods")]
-            game.plugin_player_env_damage();
             game.border_damage();
             game.tick_mob_effects();
             // Soul Speed's effects (LivingEntity.baseTick's location_changed
@@ -2828,10 +2669,6 @@ impl Game<'_> {
             let _ = player.food_tick(health, rules);
             events.append(&mut player.events);
             // Flying into a wall waits for the plugins too.
-            #[cfg(feature = "mods")]
-            {
-                player.defer_env_damage = defer;
-            }
             let _ = MotionWorld {
                 entities: &[],
                 player,
@@ -2842,8 +2679,6 @@ impl Game<'_> {
             }
             .server_travel();
             // EntityDamageEvent for it.
-            #[cfg(feature = "mods")]
-            game.plugin_player_env_damage();
             let Some(player) = game.player.as_mut() else {
                 return (Vec::new(), None);
             };
@@ -3214,13 +3049,6 @@ impl Game<'_> {
         let mut taken = Vec::new();
         for i in near.into_iter().rev() {
             // PlayerPickupItemEvent: a cancelled item stays on the ground.
-            #[cfg(feature = "mods")]
-            {
-                let item = self.dropped[i].clone();
-                if !self.plugin_pickup(host, conn, &item) {
-                    continue;
-                }
-            }
             let (stack, item_id) = (self.dropped[i].stack.clone(), self.dropped[i].id);
             let before = stack.count;
             let rest = self.as_guest(host, conn, |g| g.give(stack)).flatten();

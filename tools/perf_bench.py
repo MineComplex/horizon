@@ -13,11 +13,6 @@ for every game. RSS is sampled from outside the process for every game too.
     python3 tools/perf_bench.py --game vanilla-mods --label mods-m4
     python3 tools/perf_bench.py --table horizon-m4 vanilla-m4 mods-m4
 
-A ported mod pack against the same mods on their own loader (docs/modpacks.md, "Measured"):
-
-    python3 tools/perf_bench.py --game horizon --port-work WORK --label pack-horizon
-    python3 tools/perf_bench.py --game neoforge --mod-jars JARS --deps DEPS --label pack-neoforge
-
 Games:
   horizon       target/release/horizon-client, driven over its control socket
   vanilla       your own 26.3 client.jar + Fabric Loader + a dev-only driver
@@ -29,9 +24,6 @@ Games:
                 installs it under .local/neoforge-oracle) + a driver mod
                 (mods/horizon/src/neoforge-bench) + the jars of --mod-jars and
                 --deps, the user's own; 26.3 options it does not know are ignored
-
---port-work loads the mods a horizon-port-pack work folder carried over into
-Horizon as dev mods.
 
 Results: benchmarks/perf/<label>-rd<N>.json, one benchmark report per render
 distance (docs/benchmark-report.md), over --repeats games. Games run with no
@@ -397,8 +389,6 @@ def run_horizon(args, distance):
         command += ["--width", str(args.width), "--height", str(args.height)]
     if args.offscreen:
         command.append("--offscreen")
-    for carry in dev_mods(args):
-        command += ["--dev-mod", str(carry)]
     # Benchmark runs stay out of the live count and send nothing (docs/telemetry.md).
     env = lab.game_env(HORIZON_TELEMETRY_URL="off")
     if args.warm:
@@ -464,13 +454,6 @@ def run_horizon(args, distance):
         sock.unlink(missing_ok=True)
     result["memory"] = sampler.summary(windows)
     return result
-
-
-def dev_mods(args):
-    """The carried-over mods of a horizon-port-pack work folder (docs/modpacks.md), loaded as dev mods."""
-    if not args.port_work:
-        return []
-    return sorted(p for p in (Path(args.port_work) / "mods").glob("*/carry") if (p / "horizon-mod.toml").exists())
 
 
 # Vanilla -------------------------------------------------------------------
@@ -824,7 +807,6 @@ def main():
     p.add_argument("--resources", default=str(lab.RESOURCES))
     p.add_argument("--build", default=str(ROOT / "target/release"))
     p.add_argument("--repeats", type=int, default=3, help="games per render distance; the report gives means and 95%% CIs")
-    p.add_argument("--port-work", help="horizon: also load the mods carried over in this horizon-port-pack work folder")
     p.add_argument("--warm", action="store_true",
                    help="horizon: measure a later start, after one start to the title screen built the caches")
     p.add_argument("--mod-jars", help="neoforge: the mod jars to load (the user's own; never committed)")
@@ -859,8 +841,7 @@ def app(args):
                                 capture_output=True, text=True).stdout.strip() or None
         manifest = (ROOT / "crates/horizon-client/Cargo.toml").read_text()
         version = next(l.split('"')[1] for l in manifest.splitlines() if l.startswith("version"))
-        mods = [{"name": p.parent.name, "version": "carried"} for p in dev_mods(args)]
-        return {"name": "horizon-client", "version": version, "commit": commit, **({"mods": mods} if mods else {})}
+        return {"name": "horizon-client", "version": version, "commit": commit}
     if args.game == "neoforge":
         import neoforge_oracle
         jars = [j.name for f in filter(None, (args.mod_jars, args.deps)) for j in sorted(Path(f).glob("*.jar"))]

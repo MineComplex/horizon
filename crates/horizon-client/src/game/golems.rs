@@ -120,9 +120,6 @@ impl Game<'_> {
         mob.previous_body_yaw = yaw;
         mob.previous_head_yaw = yaw;
         let id = mob.id;
-        if !self.plugin_allows_spawn(&mob, "build") {
-            return None;
-        }
         self.mobs.push(mob);
         Some(id)
     }

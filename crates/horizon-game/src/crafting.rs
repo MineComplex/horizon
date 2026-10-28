@@ -1189,21 +1189,11 @@ impl Recipes {
             files.sort();
             Ok(files)
         };
-        // Vanilla's recipes by bare name, then content mods' as `<ns>:<name>`.
-        let mut files: Vec<(String, PathBuf)> = json_files(&root.join("data/minecraft/recipe"))?
+        // Vanilla's recipes, by bare name.
+        let files: Vec<(String, PathBuf)> = json_files(&root.join("data/minecraft/recipe"))?
             .into_iter()
             .map(|p| (String::new(), p))
             .collect();
-        for namespace in crate::mod_content::namespaces(root) {
-            let dir = root.join(format!("data/{namespace}/recipe"));
-            if dir.is_dir() {
-                files.extend(
-                    json_files(&dir)?
-                        .into_iter()
-                        .map(|p| (format!("{namespace}:"), p)),
-                );
-            }
-        }
         for (prefix, path) in files {
             let stem = path.file_stem().and_then(|s| s.to_str()).unwrap_or("");
             let name = format!("{prefix}{stem}");

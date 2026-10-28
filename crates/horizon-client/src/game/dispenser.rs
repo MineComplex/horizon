@@ -1353,20 +1353,6 @@ impl Game<'_> {
         let target = offset(pos, facing);
         let target_pos = Self::pos_of(target);
         // BlockFertilizeEvent, with no player: a cancelled one keeps the meal.
-        #[cfg(feature = "mods")]
-        if self.plugins_listen(horizon_mods::plugin::EventKind::BlockFertilize)
-            && self.with_level(|b, level, ticks| {
-                b.bone_meal_target(
-                    level,
-                    ticks,
-                    target_pos,
-                    horizon_core::geometry::Direction::Up,
-                )
-            }) == Some(target_pos)
-            && !self.plugin_fertilize_by(None, target_pos)
-        {
-            return Ok((Some(stack), FAIL));
-        }
         let grown = self.with_level(|b, level, ticks| {
             b.grow_crop(level, ticks, target_pos)
                 || b.grow_water_plant(level, ticks, target_pos, None)

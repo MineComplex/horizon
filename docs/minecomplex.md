@@ -34,11 +34,10 @@ signed, so the skin shows on the local player, on other players and on heads. An
 goes through the usual check. The CDN host is a constant. Horizon has no slim player model
 yet, so `metadata.model` is ignored.
 
-## Plugins
+## Plugins and mods
 
-Server plugins in the spirit of Bukkit/Paper (Leaf 26.3 as the reference for the API's shape): see
-[plugins.md](plugins.md). `.hmod` files in the server's `plugins/` folder, each with its data in
-`plugins/<id>/`.
+Horizon's WebAssembly mods and plugins are gone: mods are made in the game itself, and the server's plugin API
+(Bukkit/Paper's shape, Leaf 26.3 as the reference) is to come as native Rust plugins.
 
 ## Not ported
 

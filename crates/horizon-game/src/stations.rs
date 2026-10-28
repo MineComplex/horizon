@@ -504,21 +504,17 @@ fn ingredient(v: &Value, items: &Items) -> Ingredient {
 }
 impl StationRecipes {
     pub fn load(root: &Path, items: &Items) -> Self {
-        // Vanilla's recipes, then the content mods' (docs/modpacks.md).
-        let mut files = Vec::new();
-        let namespaces =
-            std::iter::once("minecraft".to_owned()).chain(crate::mod_content::namespaces(root));
-        for namespace in namespaces {
-            let mut more: Vec<_> = fs::read_dir(root.join(format!("data/{namespace}/recipe")))
-                .into_iter()
-                .flatten()
-                .flatten()
-                .map(|e| e.path())
-                .filter(|p| p.extension().is_some_and(|e| e == "json"))
-                .collect();
-            more.sort();
-            files.extend(more.into_iter().map(|p| (namespace.clone(), p)));
-        }
+        // Vanilla's recipes.
+        let namespace = "minecraft".to_owned();
+        let mut paths: Vec<_> = fs::read_dir(root.join("data/minecraft/recipe"))
+            .into_iter()
+            .flatten()
+            .flatten()
+            .map(|e| e.path())
+            .filter(|p| p.extension().is_some_and(|e| e == "json"))
+            .collect();
+        paths.sort();
+        let files: Vec<_> = paths.into_iter().map(|p| (namespace.clone(), p)).collect();
         let mut smithing = Vec::new();
         let mut stonecutting = Vec::new();
         for (namespace, p) in files {

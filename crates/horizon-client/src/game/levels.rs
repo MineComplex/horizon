@@ -112,16 +112,6 @@ pub(super) struct Levels {
 }
 
 impl Levels {
-    /// The chunks of each level not in place (capability `world` lends
-    /// them to server mods for a call).
-    #[cfg_attr(not(feature = "mods"), allow(dead_code))]
-    pub(super) fn parked_chunks(
-        &mut self,
-    ) -> impl Iterator<Item = (Dim, &mut horizon_client::chunk_map::ChunkMap)> {
-        self.parked
-            .iter_mut()
-            .map(|(d, p)| (*d, &mut p.world.chunks))
-    }
     /// The levels that are not in place, by dimension.
     pub(super) fn parked_dims(&self) -> Vec<Dim> {
         self.parked.keys().copied().collect()
@@ -336,8 +326,6 @@ impl Game<'_> {
             };
             self.update_dedicated_streaming();
             self.stream_world();
-            // What server mods set in this level since its last tick.
-            self.apply_mod_block_writes();
             result = if paused {
                 self.tick_lan(true);
                 Ok(())

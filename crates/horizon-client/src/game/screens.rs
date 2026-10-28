@@ -20,8 +20,7 @@ impl Screen {
             | Self::WorldOptions
             | Self::ServerLinks
             | Self::ConfirmLink
-            | Self::DialogWarning
-            | Self::Mod => true,
+            | Self::DialogWarning => true,
             Self::Playing
             | Self::GameModeSwitcher
             | Self::Chat

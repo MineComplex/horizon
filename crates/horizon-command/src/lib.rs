@@ -750,7 +750,7 @@ impl Dispatcher {
         self.nodes[node].permission = level;
         node
     }
-    /// This tree plus the commands mods own (`docs/mods.md`), so the chat
+    /// This tree plus commands the game adds by name, so the chat
     /// colours and completes them like the others. Every player may use one,
     /// and the text after its name goes to the mod as it was typed.
     pub fn with_mod_commands<'a>(&self, names: impl IntoIterator<Item = &'a str>) -> Dispatcher {

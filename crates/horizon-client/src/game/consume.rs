@@ -48,10 +48,6 @@ impl Game<'_> {
         stack: &ItemStack,
     ) {
         // PlayerItemConsumeEvent: a cancelled one eats nothing.
-        #[cfg(feature = "mods")]
-        if !self.plugin_consume(stack) {
-            return;
-        }
         self.emit_consume(consumable, stack, 16);
         // ServerPlayer: the used statistic and the consume_item trigger.
         self.stats.add("used", &stack.item, 1);
@@ -185,10 +181,6 @@ impl Game<'_> {
             return false;
         }
         // PlayerTeleportEvent: a cancelled spot is one more failed try.
-        #[cfg(feature = "mods")]
-        let Some((at, _)) = self.plugin_teleport(at, None, "chorus-fruit") else {
-            return false;
-        };
         if let Some(p) = self.player.as_mut() {
             p.position = at;
         }

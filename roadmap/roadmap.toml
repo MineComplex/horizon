@@ -111,7 +111,7 @@ dev = """`horizon-port-pack` carries a pack's data-driven content over; structur
 port: YUNG's worldgen as written (#1746), Lithostitched's limited and guaranteed elements with pool and processor \
 modifiers (#1777), its processors as the game's own types (#1765). Proved by the structure blocks and layout \
 harnesses (#1753, #1757). Mods whose Java code does more than world generation don't run (docs/modpacks.md)."""
-links = ["#1746", "#1777", "#1765", "#1753", "#1757", "docs/modpacks.md"]
+links = ["#1746", "#1777", "#1765", "#1753", "#1757"]
 
 [[item]]
 id = "server-clients"
@@ -156,7 +156,7 @@ dev = """Merged: the registry index (schema 1, `.hpack`, checks before install, 
 (#1642) and the submission service (`crates/horizon-mod-registry`, #1659). In review: the website's /mods (#1596) \
 and /mods/submit (#1635), and in the launcher the registry as a source (#1636), install, enable and takedowns \
 (#1637), the Mods page (#1638) and modpacks as their own profiles (#1640)."""
-links = ["#1634", "#1642", "#1659", "#1596", "#1635", "#1636", "#1637", "#1638", "#1640", "docs/mods.md"]
+links = ["#1634", "#1642", "#1659", "#1596", "#1635", "#1636", "#1637", "#1638", "#1640"]
 
 [[item]]
 id = "server-dialogs"
@@ -246,7 +246,7 @@ dev = """API 0.3, experimental first (#1833, in review): the same sandboxed comp
 the dedicated server, with world events (block broken or placed, entity spawned or killed, player joined or \
 left), game rules and server commands with typed arguments. The world, item and entity interfaces come after \
 (see 'Mods that read and change the world'). docs/api/mods.md, docs/mods.md."""
-links = ["#1833", "docs/api/mods.md", "docs/mods.md"]
+links = ["#1833"]
 
 [[item]]
 id = "mod-screens"
@@ -259,7 +259,7 @@ dev = """Capability `ui` is in review (#1864): mod-owned screens and a settings 
 vanilla's widgets. Still to design: `input` (an item's use, key binds, the crosshair target), `render` (a \
 budgeted draw list on the native shader API) and `world` (changing blocks). Orbital Laser is the acceptance \
 test: it needs all four today through its author's fork (see 'Orbital Laser on the normal game')."""
-links = ["#1864", "docs/mods.md"]
+links = ["#1864"]
 
 [[item]]
 id = "modder-tools"
@@ -300,20 +300,7 @@ waits for Microsoft's approval."""
 dev = """Device-code sign-in in the launcher and online-mode login in the client (docs/microsoft-account.md). It is \
 turned on by setting the app's client id once Minecraft API access is approved; until then the launcher shows \
 "Coming soon"."""
-links = ["docs/microsoft-account.md", "#1270"]
-
-[[item]]
-id = "curseforge"
-title = "CurseForge in the mod browser (coming soon)"
-status = "next"
-area = "modpacks"
-announce = true
-plain = """Coming soon: search and download CurseForge mods and modpacks from the launcher, as you can with \
-Modrinth today."""
-dev = """The mod browser lists CurseForge as coming soon (docs/mod-browser.md): it needs CurseForge API access. \
-Meanwhile packs import from a CurseForge zip or instance folder, and jars only CurseForge hosts come from the \
-player's own instance (docs/modpacks.md)."""
-links = ["docs/mod-browser.md", "docs/modpacks.md"]
+links = ["#1270"]
 
 [[item]]
 id = "benchmarks"
@@ -421,20 +408,6 @@ scenes (#1461). Profile first, keep what pays, show before and after numbers."""
 links = ["#1461", "docs/profiling.md"]
 
 [[item]]
-id = "convert-to-rust"
-title = "A Convert to Rust button for what isn't rewritten yet"
-status = "next"
-area = "modpacks"
-plain = """When a mod, shader pack or modpack hasn't been rewritten for Horizon, one button converts what can be \
-converted, so you don't have to wait for the rewrite."""
-dev = """Generalise the mod browser's Port step (`horizon-port-pack`: the data, assets, worldgen and block and item \
-definitions of Java mods, .mrpack and CurseForge zips) to every kind of content: code mods where the API \
-allows it (see 'Mods with code') and shader packs, converting an Iris/OptiFine pack into Horizon's format. \
-The browser says what works before the install. Java code itself does not run (docs/modpacks.md, \
-docs/mod-browser.md)."""
-links = ["docs/modpacks.md", "docs/mod-browser.md"]
-
-[[item]]
 id = "code-mods"
 title = "Mods with code: machines, magic, mobs"
 status = "next"
@@ -445,18 +418,7 @@ dev = """333 of the 496 mods in a big pack (ATM10) contain code. Issue #1854 ran
 entities, networking, rendering, menus, inventories) that unlock them in tiers, with machines first as the \
 recommended path and a furnace ported tick for tick as proof. The first API step is a draft (#1189, see \
 'Machines and blocks with inventories'). The path isn't started yet (docs/modpacks.md)."""
-links = ["#1854", "docs/modpacks.md"]
-
-[[item]]
-id = "datapack-browser"
-title = "Data packs in the mod browser"
-status = "next"
-area = "modpacks"
-plain = """Search and install data packs from the launcher's mod browser, for the world you choose, as you do mods and \
-resource packs."""
-dev = """A Datapacks tab beside Mods and Resource packs: install into a chosen world's datapacks folder, with the \
-same checks and 'works in Horizon' notes as the other kinds (docs/mod-browser.md)."""
-links = ["docs/mod-browser.md"]
+links = ["#1854"]
 
 [[item]]
 id = "prepare-without-java"
@@ -484,7 +446,7 @@ endpoint, config GET and PATCH, backup delete and download. The panel's later fe
 server.properties import, logs and crash reports, modpacks) and vanilla's management protocol (the JSON-RPC \
 over WebSocket that the `management-server-*` keys configure), so vanilla's tools can manage a Horizon \
 server. docs/server.md, docs/api/server.md."""
-links = ["docs/server.md", "docs/api/server.md"]
+links = ["docs/server.md"]
 
 [[item]]
 id = "hosting-polish"
@@ -496,7 +458,7 @@ player's state, and a changed view distance or message without a restart."""
 dev = """A Windows service wrapper instead of the logon scheduled task; `backups.before_update`; hot reload of config \
 for view distance and the message of the day (needs engine support); backups that keep world and player \
 state (#1808, a contributor's draft, in review). docs/hosting.md, docs/server.md."""
-links = ["#1808", "docs/hosting.md"]
+links = ["#1808"]
 
 [[item]]
 id = "tailscale-hosting"
@@ -509,7 +471,7 @@ dev = """On the Servers page (create, start, back up, update and invite are ship
 explains and checks each step, and an invite button that hands friends what they need to join over the \
 tailnet. Buttons first, no docs needed, with the details in an Advanced section. Remote access over \
 Tailscale is already described in docs/server.md."""
-links = ["docs/hosting.md", "docs/server.md"]
+links = ["docs/server.md"]
 
 [[item]]
 id = "docker-image"
@@ -523,7 +485,7 @@ bookworm-slim, user `horizon`, volume `/data`, port 25565, game files mounted re
 friends answering the first-start questions), and anyone can build it (docs/hosting.md, section 9). Left: \
 publish the image to a public registry from the release workflow, tagged per release, so it follows the same \
 checks, and update the docs and the launcher. The image never holds Mojang's files."""
-links = ["docs/hosting.md", "docs/server.md"]
+links = ["docs/server.md"]
 
 [[item]]
 id = "one-single-player-path"
@@ -562,20 +524,6 @@ an older Windows computer had no sound at all, and a device choice is how such c
 links = ["#1035"]
 
 [[item]]
-id = "mod-world-items"
-title = "Mods that read and change the world"
-status = "next"
-area = "mods"
-plain = """Mods that can see and change blocks, read inventories and items, and find and affect entities, all through \
-the server so every player sees the same thing."""
-dev = """After server mods: read blocks, states and biomes in loaded chunks and change them through the server's \
-block log, so clients and the parity harnesses see vanilla's updates; the player's inventory, held item, \
-open container and item stacks with components; entity queries near a position, a safe subset of entity data \
-and data-driven mod entity types. Snapshots and batched calls per tick, never per-block host calls in hot \
-paths. docs/api/mods.md ('Not there yet')."""
-links = ["docs/api/mods.md", "docs/modpacks.md"]
-
-[[item]]
 id = "machines-api"
 title = "Machines and blocks with inventories (API 0.4)"
 status = "next"
@@ -587,21 +535,7 @@ energy, item and fluid transfer, data attachments, accessory slots and custom re
 client and server channel and typed config beside them. A draft (#1189) proves a furnace ported tick for \
 tick and holds the ATM10 code-mods plan; the design is redone through the API policy before it merges \
 (docs/modpacks.md, docs/api/stability.md)."""
-links = ["#1189", "docs/modpacks.md"]
-
-[[item]]
-id = "mod-languages"
-title = "Lua and other languages for mods"
-status = "next"
-area = "mods"
-plain = """Write mods as Lua scripts, in the style of KubeJS, with no compiler, and later in other languages that pass \
-the tests. Every language runs in the same sandbox."""
-dev = """Lua first: Horizon ships a Lua interpreter that is itself a WebAssembly mod, and a script mod's manifest \
-names it and the capabilities it uses, so a script can do exactly what a compiled mod with the same manifest \
-can, with hot reload of `main.lua`. Then C, C++, Zig, Go (TinyGo), AssemblyScript and JavaScript or \
-TypeScript are measured against Rust on the same tick-heavy example, and each is supported only with a \
-template, an example and a CI test. docs/api/mods.md ('Ways in')."""
-links = ["docs/api/mods.md"]
+links = ["#1189"]
 
 [[item]]
 id = "shader-pack-examples"
@@ -663,7 +597,7 @@ dev = """A player runs their own agent locally with `horizon-ctl` and the MCP se
 horizon-mod`, `horizon-port-pack` and the parity harnesses as the check. Horizon writes the guide \
 (playhorizon.dev/docs/agents, docs/modpacks.md) and runs no agents, accounts or keys for players. The No AI \
 switch turns all of it off."""
-links = ["https://playhorizon.dev/docs/agents", "docs/modpacks.md", "docs/agent-control.md"]
+links = ["https://playhorizon.dev/docs/agents", "docs/agent-control.md"]
 
 [[item]]
 id = "x-account"
@@ -747,42 +681,6 @@ far-terrain levels of detail already shipped; the open work on them is #718."""
 links = ["#718"]
 
 [[item]]
-id = "older-jars"
-title = "Older Fabric and Forge mods"
-status = "later"
-area = "modpacks"
-plain = """Recognise mods built for versions before 26.1 in the mod browser, so they can be checked and carried over \
-like newer ones."""
-dev = """A mapping table from intermediary and SRG names so pre-26.1 jars can be classified, and a rename for mod ids \
-with dashes (`fabric-api`); the port step then treats them like newer jars (docs/mod-browser.md)."""
-links = ["docs/mod-browser.md"]
-
-[[item]]
-id = "modpack-own-packs"
-title = "A modpack's own resource and shader packs"
-status = "later"
-area = "modpacks"
-plain = """Importing a modpack also brings the resource packs and shader packs it ships with, where Horizon can use \
-them."""
-dev = """Porting a pack carries data, assets and worldgen today; the resource packs and shader packs bundled with it \
-are left out. Resource packs can be carried as they are; shader packs go through the converter \
-(docs/modpacks.md)."""
-links = ["docs/modpacks.md"]
-
-[[item]]
-id = "whole-modpacks"
-title = "Whole modpacks, such as ATM10, rewritten"
-status = "later"
-area = "modpacks"
-plain = """Rewriting a complete big modpack for Horizon so it runs far better than the original. Not a priority now: \
-the work above comes first."""
-dev = """The project's first goal for modpacks: support them ten times better than vanilla and port any of them. It \
-was set aside in favour of compatibility through the browser. What exists: ATM10's world generates and 42 of \
-its 496 mods are carried at least in part (docs/modpacks.md). It depends on 'Mods with code' and the native \
-mod API."""
-links = ["docs/modpacks.md"]
-
-[[item]]
 id = "java-mod-bridge"
 title = "Running Java mods that aren't rewritten"
 status = "later"
@@ -802,20 +700,7 @@ area = "servers"
 plain = """Sign in with other account providers, such as Ely.by or any Yggdrasil-compatible one, beside Microsoft."""
 dev = """Issue #1270 asks for Ely.by and Yggdrasil-compatible servers with an account selector in the launcher. It \
 builds on the Microsoft sign-in (docs/microsoft-account.md)."""
-links = ["#1270", "docs/microsoft-account.md"]
-
-[[item]]
-id = "friends-online-mode"
-title = "Online-mode checks for Play with Friends"
-status = "later"
-area = "servers"
-plain = """Friends who join through an invite code could prove who they are with their Microsoft account, as on \
-online-mode servers."""
-dev = """Play with Friends joins over an encrypted tunnel with an invite code (docs/play-with-friends.md, \
-'Identity'). Online-mode checks against Mojang's session servers can be added on top of the same tunnel; \
-they need Microsoft sign-in first, which is coming soon. Play with Friends stays self-hosted between \
-players, with no relay run by the project."""
-links = ["docs/play-with-friends.md"]
+links = ["#1270"]
 
 [[item]]
 id = "orbital-laser"
@@ -840,7 +725,7 @@ dev = """Done as extras: a mod list and menu, a minimap and a zoom (docs/extras.
 recipe viewer (a contributor offered to port JEI if it becomes a native feature), a world map and a \
 schematic overlay. They need the read-only interfaces `inventory-read`, `recipes`, `world-read` and `render` \
 in the mod API, or they go into the game directly."""
-links = ["docs/extras.md", "docs/mods.md"]
+links = ["docs/extras.md"]
 
 [[item]]
 id = "create-physics"
@@ -852,16 +737,6 @@ base game."""
 dev = """Issue #805 (porting QOL mods) closed with this answer: it would come as a native Horizon mod on the mod API. \
 It needs server mods, entities and rendering first."""
 links = ["#805"]
-
-[[item]]
-id = "proximity-voice"
-title = "Proximity voice chat as a native mod"
-status = "later"
-area = "mods"
-plain = """Hear nearby players talk, as with the voice chat mods of other Minecraft versions, as a Horizon mod."""
-dev = """Needs server mods, mod networking and an audio interface in the mod API before anything can be built \
-(docs/api/mods.md)."""
-links = ["docs/api/mods.md"]
 
 [[item]]
 id = "light-default-pack"
@@ -1157,7 +1032,7 @@ plain = """Search Modrinth for mods, modpacks and resource packs from the launch
 works in Horizon."""
 dev = """The Mods page (#1154), Java mods checked before install (#1242), project pages, filters and galleries \
 (#1243), modpacks ported in the same step (#1246). docs/mod-browser.md."""
-links = ["#1154", "#1242", "#1243", "#1246", "docs/mod-browser.md"]
+links = ["#1154", "#1242", "#1243", "#1246"]
 
 [[item]]
 id = "launcher-look"
@@ -1188,19 +1063,7 @@ area = "servers"
 plain = """The launcher's Servers page creates, starts, backs up and updates a Horizon server with buttons, and \
 invites friends."""
 dev = """The launcher's Servers page (#1026) over `horizon-server` (docs/hosting.md)."""
-links = ["#1026", "docs/hosting.md"]
-
-[[item]]
-id = "cli-server-install"
-title = "A server you install with one command"
-status = "next"
-area = "servers"
-plain = """Install and run a Horizon dedicated server from a terminal with a single command, no launcher needed, for \
-VPSes and headless machines."""
-dev = """A player's idea (#horizon-ideas). `horizon-server` already runs headless; left: an install script \
-(Linux/macOS shell, Windows PowerShell) that fetches the signed release, checks it, asks for or points at the \
-player's own game files and starts the server, documented in docs/hosting.md."""
-links = ["docs/hosting.md"]
+links = ["#1026"]
 
 [[item]]
 id = "launcher-look-menus"
@@ -1214,13 +1077,3 @@ pause and options screens with the launcher's design tokens (crates/horizon-them
 docs/design-system.md; off by default because it changes the vanilla look."""
 links = ["docs/design-system.md"]
 
-[[item]]
-id = "linux-packages"
-title = "AppImage and a Nix flake"
-status = "later"
-area = "platforms"
-plain = """Install Horizon on any Linux distribution as an AppImage, and on NixOS through a Nix flake."""
-dev = """A player's idea (#horizon-ideas). An AppImage of the launcher and game from the release workflow, and a \
-flake.nix packaging the release binaries with their runtime libraries (Vulkan loader, X11/Wayland, ALSA), \
-the way horizon-parity's NixOS setup runs them today."""
-links = []

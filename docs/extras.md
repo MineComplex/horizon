@@ -60,26 +60,6 @@ in Controls, and adding one would put a non-vanilla mapping into `options.txt`.
 - Off: nothing is gathered and the shaders' loop runs zero times (the count is 0), so it costs
   nothing measurable (numbers in the pull request, #814).
 
-### Moved to the mod browser
-
-The **FPS counter**, **Keystrokes**, **Zoom** and the **Minimap** are official mods now (`mods/official/`, [mods.md](mods.md#horizons-official-mods)),
-with the same look and options. On the first start after the update, a player who had one on gets the mod installed
-from Horizon's registry and turned on, with their corner and options carried over (Zoom's key too, into
-`horizon-mods.txt`, when it wasn't Z), and reads one line in the chat ("Zoom moved to the mod browser: installed for
-you"). The install is checked like the launcher's (size,
-SHA-256, signature, manifest); if it fails (offline), the next start tries again. `horizon-extras.txt` keeps the old
-keys and lists what was done in `movedToMods`. Code: `crates/horizon-client/src/moved_extras.rs`,
-`game/moved_extras.rs`.
-
-The game still draws the minimap, for the mod (`render.set-minimap`, [mods.md](mods.md)):
-- a corner map (top right by default), square or round, small/medium/large, zoom 0.5 to 4 blocks per pixel, rotating
-  with the player or north up, with the player arrow (vanilla's map decoration sprite);
-- vanilla's `MapColor` per block, as map items use, with the map item's height shading and water-depth dithering;
-- underground, in the Nether and under any roof, the floor around the player's height instead of the top block;
-- one cached 16x16 tile per loaded chunk (packed map colour and height), filled nearest first and refreshed when
-  blocks change within 0.3 ms a frame; the 128x128 image is recomposed only when the view moved or a tile changed, and
-  uploaded into a dedicated atlas slot. With no mod showing a map, nothing runs.
-
 ### Auto-reconnect (`autoReconnect`, default off)
 - On the "Connection lost" screen after a multiplayer connection drops, a
   countdown "Reconnecting in N s" with a Cancel button, then a new connection

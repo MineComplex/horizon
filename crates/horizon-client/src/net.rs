@@ -40,8 +40,6 @@ pub enum Event {
     Status(String),
     /// The server's `minecraft:brand` custom payload.
     Brand(String),
-    /// The server runs mods' quiet commands (`horizon_protocol::quiet`).
-    QuietCommands,
     /// Configuration finished: the play state begins with these registries.
     Joined {
         registries: Arc<Dynamic>,
@@ -608,8 +606,6 @@ fn receive_brand(payload: &cfg::CustomPayload, send: &Sender<Event>) {
         && let Ok(brand) = horizon_protocol::buf::Reader::new(&payload.data).string(32767)
     {
         let _ = send.send(Event::Brand(brand));
-    } else if payload.channel == horizon_protocol::quiet::CHANNEL {
-        let _ = send.send(Event::QuietCommands);
     }
 }
 

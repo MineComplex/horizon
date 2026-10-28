@@ -59,7 +59,6 @@ pub mod menu;
 pub mod merchant;
 pub mod minecomplex;
 pub mod mobs;
-pub mod mod_content;
 pub mod motion;
 pub mod nether_portal;
 pub mod offline_name;

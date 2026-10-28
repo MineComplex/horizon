@@ -7,9 +7,8 @@
     python3 tools/pr_ready.py --quick               # without running the vanilla harnesses
 
 From the files the branch changes since its merge base with --base (committed or not) it decides what to run:
-rustfmt, and clippy with warnings denied exactly as CI's verify job runs it (the whole workspace with the game's code
-mods, plus the server build when horizon-client is affected); the tests of the touched crates, with the features
-CI's workspace-wide run gives them; the launcher (its own workspace) the same way when CI's launcher job would run
+rustfmt, and clippy with warnings denied exactly as CI's verify job runs it (the whole workspace, plus the server
+build when horizon-client is affected); the tests of the touched crates; the launcher (its own workspace) the same way when CI's launcher job would run
 (tools/ci/rust_changes.py --launcher); crates/horizon-theme/tokens.css against horizon-theme; Cargo.lock changing
 only with a Cargo.toml; the Python tests (always, as in CI) and the public-tree check; and the vanilla harnesses the
 changes can affect, picked as CI's parity job picks them (tools/parity.py --changed). Harnesses run where the
@@ -269,32 +268,10 @@ def parity_summary(output):
     return text
 
 
-# CI's verify job (.github/workflows/ci.yml): clippy over the whole workspace with the game's code mods, and over the
-# server build (the game without sound or controllers); tests with code mods and mod packaging.
-CI_CLIPPY = "cargo clippy --workspace --all-targets --locked --features horizon-client/mods -- -D warnings"
+# CI's verify job (.github/workflows/ci.yml): clippy over the whole workspace, and over the server build (the game
+# without sound or controllers).
+CI_CLIPPY = "cargo clippy --workspace --all-targets --locked -- -D warnings"
 CI_CLIPPY_SERVER = "cargo clippy -p horizon-client --all-targets --locked --no-default-features -- -D warnings"
-CI_TEST_FEATURES = "horizon-client/mods,horizon-mods/pack"
-
-
-def mod_features(crates):
-    """The features CI's workspace-wide test run gives these crates (code mods are off by default: docs/mods.md).
-    Cargo unifies features over the packages it builds, so a crate tested alone needs the ones the workspace would
-    have turned on for it: horizon-client's code mods, and horizon-mods' runtime, packaging and index."""
-    if crates is None:
-        return f" --features {CI_TEST_FEATURES}"
-    features = []
-    if "horizon-mods" in crates:
-        features += ["horizon-mods/runtime", "horizon-mods/pack", "horizon-mods/index"]
-    if "horizon-client" in crates:
-        features.append("horizon-client/mods")
-    return f" --features {','.join(features)}" if features else ""
-
-
-# What horizon-client's full content-root tests load (mod_content_tests.rs). They take minutes on prepared data, so
-# they are #[ignore]d and run here only when one of these changes.
-CONTENT_ROOT = ("crates/horizon-game/src/mod_content", "crates/horizon-game/src/assets.rs", "crates/horizon-items/",
-                "crates/horizon-mods/", "crates/horizon-assets/")
-CONTENT_ROOT_TESTS = "cargo test --locked -p horizon-client --features horizon-client/mods --lib mod_content::tests:: -- --ignored"
 
 
 def plan(args, base, changed, crates_of, libraries, dependencies):
@@ -326,13 +303,10 @@ def plan(args, base, changed, crates_of, libraries, dependencies):
         Step("rustfmt", "cargo fmt --all -- --check", skip=None if rust else no_rust),
         Step("clippy", clippy, skip=None if rust else no_rust),
         Step("tests" + (": workspace" if crates is None else f": {', '.join(crates)}" if crates else ""),
-             f"cargo test --locked {selection}{mod_features(crates)} --tests",
+             f"cargo test --locked {selection} --tests",
              skip=test_skip, summary=tests_passed),
         Step("doc tests", f"cargo test --locked {doc_selection} --doc",
              skip=test_skip or (None if doc_crates else "no library touched"), summary=tests_passed),
-        Step("content root tests", CONTENT_ROOT_TESTS, summary=tests_passed,
-             skip=None if crates is None or any(p.startswith(CONTENT_ROOT) for p in changed)
-             else "content root untouched"),
         Step("tokens.css up to date", "cargo test --locked -p horizon-theme --lib tokens_css_is_up_to_date",
              skip=None if any(p.startswith(("crates/horizon-theme/", "xtask/")) for p in changed)
              else "theme untouched"),

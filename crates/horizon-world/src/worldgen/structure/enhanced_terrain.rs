@@ -1,7 +1,7 @@
 //! Structure libraries' enhanced terrain adaptation: YUNG's API's and
 //! MoogsStructureLib's, which their Beardifier mixins add to vanilla's
 //! density. Carried as `"horizon:enhanced_terrain_adaptation"` on a structure
-//! and on its pool elements (docs/mods.md); the kernel itself is
+//! and on its pool elements; the kernel itself is
 //! [`TerrainKernel`].
 use super::{
     BoundingBox, Rotation,

@@ -109,8 +109,6 @@ enum Received {
 pub(super) struct Remote {
     pub session: Session,
     pub brand: String,
-    /// The server announced it runs mods' quiet commands.
-    pub quiet_commands: bool,
     pub(super) builtin: Arc<Builtin>,
     lang: Arc<Language>,
     pub(super) registries: Arc<Dynamic>,
@@ -447,7 +445,6 @@ impl Game<'_> {
         self.remote = Some(Remote {
             session,
             brand: "unknown".into(),
-            quiet_commands: false,
             builtin: Arc::new(builtin),
             lang,
             registries: Arc::new(Dynamic::default()),
@@ -710,9 +707,6 @@ impl Game<'_> {
             self.ticks,
             self.screen == Screen::Chat,
         );
-        if self.mods.running() {
-            self.mods_chat(&text);
-        }
         if let Some(r) = self.remote.as_mut() {
             r.chat.push((text, Instant::now()));
             r.chat_received += 1;
@@ -876,11 +870,6 @@ impl Game<'_> {
                 Event::Brand(brand) => {
                     if let Some(remote) = &mut self.remote {
                         remote.brand = brand;
-                    }
-                }
-                Event::QuietCommands => {
-                    if let Some(remote) = &mut self.remote {
-                        remote.quiet_commands = true;
                     }
                 }
                 Event::Reconfigured(registries) => {
@@ -2717,7 +2706,6 @@ impl Game<'_> {
                 if let Some(r) = self.remote.as_mut() {
                     r.commands = Some(tree);
                 }
-                self.merge_remote_tree();
             }
             C::Cooldown(p) => {
                 // ClientPacketListener.handleItemCooldown: the server starts
@@ -3540,8 +3528,6 @@ impl Game<'_> {
     /// One client tick while connected (Minecraft.tick with a ClientLevel).
     pub(super) fn tick_remote(&mut self) -> Result<()> {
         self.tick_remote_level()?;
-        // Client mods tick on any server, single player's own included.
-        self.tick_mods();
         // Minecraft.tick sends this even when the player cannot tick yet,
         // including while waiting for chunks. Keep it outside early returns.
         if self.remote.as_ref().is_some_and(|r| r.joined) {

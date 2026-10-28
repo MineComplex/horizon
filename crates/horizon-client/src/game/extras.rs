@@ -4,7 +4,7 @@
 //! Each hook does nothing while its extra is off and no mod runs.
 use super::{Dim, Game, Screen};
 use horizon_client::{
-    extras::{Corner, Cps, FpsCounter, fov_target},
+    extras::{Corner, fov_target},
     extras_hud::{self, Corners},
     hud::{HudBatch, MINIMAP_SPRITE},
     minimap::{self, Layer, Minimap, View},
@@ -17,10 +17,8 @@ use winit::event::MouseButton;
 
 #[derive(Default)]
 pub(super) struct ExtrasState {
-    fps: FpsCounter,
     /// Left and right mouse buttons: held, and their clicks.
     mouse: [bool; 2],
-    cps: [Cps; 2],
     minimap: Minimap,
     /// The dimension the minimap's tiles belong to.
     minimap_dim: Option<Dim>,
@@ -31,9 +29,6 @@ pub(super) struct ExtrasState {
 const MINIMAP_BUDGET: Duration = Duration::from_micros(300);
 
 impl Game<'_> {
-    fn extras_now(&self) -> f64 {
-        self.started.elapsed().as_secs_f64()
-    }
     /// Mouse buttons while playing, for mods' clicks.
     pub(super) fn extras_mouse(&mut self, button: MouseButton, pressed: bool) {
         let i = match button {
@@ -42,14 +37,9 @@ impl Game<'_> {
             _ => return,
         };
         self.extras.mouse[i] = pressed;
-        // For mods (`input.clicks-per-second`).
-        if pressed && self.mods.running() {
-            let now = self.extras_now();
-            self.extras.cps[i].click(now);
-        }
     }
     /// Once per frame: the frame's time, and keys let go behind screens.
-    pub(super) fn extras_frame(&mut self, elapsed: Duration) {
+    pub(super) fn extras_frame(&mut self) {
         // Under agent control the window may lack focus without pausing.
         let focused = self.focused || self.control.is_some();
         let playing = self.screen == Screen::Playing && self.title.is_none() && focused;
@@ -57,27 +47,6 @@ impl Game<'_> {
             self.extras.mouse = [false; 2];
         }
         self.update_minimap();
-        // For mods (`render.frame-stats`).
-        if self.mods.running() {
-            let now = self.extras_now();
-            self.extras.fps.record(now, elapsed.as_secs_f32() * 1000.0);
-        } else {
-            self.extras.fps.clear();
-        }
-    }
-    /// The frame counter for mods: fps, min, 1% low.
-    #[cfg(feature = "mods")]
-    pub(super) fn frame_reading(&self) -> (u32, u32, u32) {
-        let r = self.extras.fps.reading();
-        (r.fps, r.min, r.low)
-    }
-    /// Attack and use clicks in the last second, and whether each is held.
-    #[cfg(feature = "mods")]
-    pub(super) fn mouse_reading(&mut self) -> ((u32, u32), [bool; 2]) {
-        let now = self.extras_now();
-        let [l, r] = &mut self.extras.cps;
-        let cps = (l.per_second(now) as u32, r.per_second(now) as u32);
-        (cps, self.extras.mouse)
     }
     /// Auto-reconnect: a connection to `address` as `name` starts.
     pub(super) fn extras_connecting(&mut self, address: &str, name: &str) {
@@ -135,25 +104,16 @@ impl Game<'_> {
         if self.title.is_some() || self.ui.hide_gui {
             return None;
         }
-        let m = self.mod_minimap()?;
-        let view = View {
-            x: p.position.x,
-            z: p.position.z,
-            yaw: self.yaw,
-            rotate: m.rotate,
-            blocks_per_pixel: m.blocks_per_pixel,
-            round: m.round,
-        };
-        Some((m.corner, m.size, view))
+        // Mods set the minimap; none does now.
+        let _ = p;
+        None
     }
     /// Refresh the minimap's tiles within the frame budget, recompose its
     /// image when the view or a tile changed, and queue the upload.
     fn update_minimap(&mut self) {
         let Some((_, _, view)) = self.minimap_shown() else {
-            if self.mod_minimap().is_none() || self.player.is_none() {
-                self.extras.minimap.clear();
-                self.extras.minimap_dim = None;
-            }
+            self.extras.minimap.clear();
+            self.extras.minimap_dim = None;
             return;
         };
         if self.extras.minimap_dim != Some(self.dim) {
@@ -201,9 +161,7 @@ impl Game<'_> {
     /// A mod's zoom in effect (`render.set-zoom`): (factor, smooth, turning
     /// scale); none is 1.
     fn zoom_now(&self) -> (f32, bool, f64) {
-        self.mod_zoom().map_or((1.0, true, 1.0), |z| {
-            (z.factor, z.smooth, f64::from(z.turn))
-        })
+        (1.0, true, 1.0)
     }
     /// The field-of-view modifier target, divided by a smooth zoom.
     pub(super) fn zoomed_fov_target(&self, vanilla: f32) -> f32 {
@@ -226,9 +184,8 @@ impl Game<'_> {
     /// The minimap and mods' corner panels, in the HUD layer (hidden with F1
     /// by the caller). The top left corner gives way to the debug screen.
     pub(super) fn draw_extras(&mut self, batch: &mut HudBatch) {
-        let mod_panels = self.mods.has_panels();
         let map = self.minimap_shown();
-        if map.is_none() && !mod_panels {
+        if map.is_none() {
             return;
         }
         let visible = |corner| !(self.debug && corner == Corner::TopLeft);
@@ -252,9 +209,6 @@ impl Game<'_> {
                 north,
             };
             extras_hud::draw_minimap(batch, atlas, &mut corners, &look);
-        }
-        if mod_panels {
-            self.draw_mod_panels(batch, &mut corners);
         }
     }
     /// The height the status effect icons take at the top right

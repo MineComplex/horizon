@@ -175,7 +175,6 @@ impl StartupMenu {
 /// Each generation has its own channel and progress. Pack changes wait for the
 /// old tail before starting another generation, including cache/global writes.
 pub(super) fn spawn_loader(
-    options: &Options,
     settings: &Settings,
     vanilla_root: &std::path::Path,
     started: Instant,
@@ -184,7 +183,6 @@ pub(super) fn spawn_loader(
     let (sender, receiver) = std::sync::mpsc::channel();
     let settings = settings.clone();
     let vanilla_root = vanilla_root.to_path_buf();
-    let dev_mods = options.dev_mods.clone();
     let progress = progress.clone();
     let handle = std::thread::Builder::new()
         .name("resource-loader".into())
@@ -195,7 +193,6 @@ pub(super) fn spawn_loader(
                     pack_error = Some(error.to_string());
                     vanilla_root.clone()
                 });
-            let root = mods::content_root(&root, &settings.mods.enabled, &dev_mods);
             let result = load_resources(
                 root,
                 &vanilla_root,
@@ -330,11 +327,6 @@ impl Loading {
                     let _ = std::fs::create_dir_all(&dir);
                     packs::open_folder(&dir);
                 }
-                Event::OpenModFolder => {
-                    let dir = Game::options_path().with_file_name(horizon_client::mod_list::DIR);
-                    let _ = std::fs::create_dir_all(&dir);
-                    packs::open_folder(&dir);
-                }
                 Event::ListShaderPacks => {
                     self.settings.shader_packs =
                         horizon_client::shader_pack_list::scan(&Game::shader_packs_dir());
@@ -360,8 +352,6 @@ impl Loading {
                         self.menu.win = Some((screen, Instant::now()));
                     }
                 }
-                // Mods' settings pages open only in a running game.
-                Event::ModSettings(_) => {}
                 // The startup menu runs before the game opens a control socket.
                 Event::ButtonClick | Event::CopyAgentDetails => {}
             }
@@ -625,9 +615,8 @@ impl Loading {
             handle.join().map_err(|_| "resource loader panicked")?;
         }
         self.progress = Progress::new();
-        let options = self.options.as_ref().ok_or("loading already finished")?;
+        self.options.as_ref().ok_or("loading already finished")?;
         let (receiver, handle) = spawn_loader(
-            options,
             &self.settings,
             &self.vanilla_root,
             self.started,

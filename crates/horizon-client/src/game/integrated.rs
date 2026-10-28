@@ -302,9 +302,6 @@ impl Game<'_> {
             launch.create.as_ref(),
         )?)?;
         let saved = Box::new(self.level.clone());
-        // IntegratedServer runs the server mods; the window the client mods.
-        self.mods.dev = self.options.dev_mods.clone();
-        self.start_mods();
         // Math.max(2, options.renderDistance): past vanilla's 32 when the
         // window's render distance is (Horizon's options go to 64).
         let view_distance = self.settings.render_distance.max(2);
@@ -396,9 +393,7 @@ impl Game<'_> {
             } else {
                 self.follow_distances(&flags);
                 let started = Instant::now();
-                self.plugins_before_tick();
                 self.tick_server_timed(false)?;
-                self.plugins_after_tick();
                 // MinecraftServer.tickServer's tick times, for /tick query.
                 self.clock.record(started.elapsed());
                 self.debug_charts.log_tick(started, started.elapsed());
@@ -410,7 +405,6 @@ impl Game<'_> {
             self.apply_publish();
             self.wait_for_next_server_tick(&mut next, paused);
         }
-        self.plugins_stop();
         self.stop_integrated()
     }
 

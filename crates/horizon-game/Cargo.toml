@@ -18,8 +18,6 @@ horizon-assets = { path = "../horizon-assets" }
 horizon-protocol = { path = "../horizon-protocol" }
 # server.properties, eula.txt and the user lists (`horizon_game::server`).
 horizon-server-files = { path = "../horizon-server-files" }
-# Content mods' blocks and items (`mod_content`); the code-mod runtime stays in horizon-client's `mods` feature.
-horizon-mods = { path = "../horizon-mods", default-features = false, features = ["index"] }
 # Section and mob meshes are built on the CPU here (plain vertex data, no GPU): `mesher`, `mobs::render`.
 bytemuck = { version = "1.24", features = ["derive"] }
 glam = "0.30"

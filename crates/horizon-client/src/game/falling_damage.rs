@@ -127,10 +127,6 @@ impl Game<'_> {
         } else {
             amount
         };
-        #[cfg(feature = "mods")]
-        let Some(amount) = self.plugin_damage_acting(kind, amount, None) else {
-            return;
-        };
         if let Some(p) = self.player.as_mut()
             && let Some(id) = self.motion.health.damage.id(kind)
         {

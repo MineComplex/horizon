@@ -30,14 +30,6 @@ impl Game<'_> {
         };
         let pos = BlockPos::new(hit.pos[0], hit.pos[1], hit.pos[2]);
         // BlockFertilizeEvent: a cancelled use grows nothing and keeps the meal.
-        #[cfg(feature = "mods")]
-        if self.plugins_listen(horizon_mods::plugin::EventKind::BlockFertilize)
-            && let Some(target) =
-                self.with_level(|b, level, ticks| b.bone_meal_target(level, ticks, pos, face))
-            && !self.plugin_fertilize(target)
-        {
-            return Ok(true);
-        }
         let used = self.with_level(|b, level, ticks| b.use_bone_meal(level, ticks, pos, face));
         // ItemStack.causeUseVibration at the player, after the meal is used
         // up (shrunk even in creative): an emptied stack has no use effects.
