@@ -50,49 +50,6 @@ fn triggers(name: &str) -> bool {
         || n == "bell"
 }
 impl Game<'_> {
-    /// `WindChargeRenderer`: the spinning charge and its wind.
-    pub(super) fn wind_charge_geometry(
-        &self,
-        p: &Projectile,
-        at: glam::Vec3,
-        light: u32,
-        out: &mut Vec<horizon_client::mesher::Vertex>,
-    ) {
-        static MODEL: std::sync::OnceLock<Option<horizon_client::mobs::Part>> =
-            std::sync::OnceLock::new();
-        let model = MODEL.get_or_init(|| {
-            horizon_client::mobs::load_model(&self.options.resources, "minecraft:wind_charge#main")
-        });
-        let Some(model) = model else { return };
-        let Some(r) = self
-            .front
-            .gui
-            .atlas
-            .sprites
-            .get("entity/projectiles/wind_charge")
-            .copied()
-        else {
-            return;
-        };
-        let age = p.age as f32;
-        let mut poses = horizon_client::mobs::anim::Poses::new(model);
-        poses.yrot("wind_charge", -age * 16.0_f32.to_radians());
-        poses.yrot("wind", age * 16.0_f32.to_radians());
-        let base = glam::Mat4::from_translation(at)
-            * glam::Mat4::from_scale(glam::Vec3::new(-1.0, -1.0, 1.0));
-        horizon_client::mobs::render::draw(
-            model,
-            base,
-            &poses,
-            [r.u0, r.v0, r.u1, r.v1],
-            0xFFFF_FFFF,
-            light,
-            0,
-            out,
-        );
-    }
-}
-impl crate::game::Sim<'_> {
     /// `WindChargeItem.use`.
     pub(super) fn throw_wind_charge(&mut self) -> Result<bool> {
         let (Some(eye), Some(p)) = (self.eye_position(), self.player.as_ref()) else {
@@ -353,7 +310,7 @@ impl crate::game::Sim<'_> {
             self.armor_stands = stands;
         }
         // Arrows and other projectiles (the charges themselves ignore it).
-        let push = |position: Vec3, velocity: &mut Vec3, game: &crate::game::Sim<'_>| {
+        let push = |position: Vec3, velocity: &mut Vec3, game: &Game<'_>| {
             let feet = [position.x, position.y, position.z];
             let dist = distance(feet) / diameter;
             if dist > 1.0 {
@@ -583,6 +540,46 @@ impl crate::game::Sim<'_> {
         });
         self.process_level_events()?;
         Ok(())
+    }
+    /// `WindChargeRenderer`: the spinning charge and its wind.
+    pub(super) fn wind_charge_geometry(
+        &self,
+        p: &Projectile,
+        at: glam::Vec3,
+        light: u32,
+        out: &mut Vec<horizon_client::mesher::Vertex>,
+    ) {
+        static MODEL: std::sync::OnceLock<Option<horizon_client::mobs::Part>> =
+            std::sync::OnceLock::new();
+        let model = MODEL.get_or_init(|| {
+            horizon_client::mobs::load_model(&self.options.resources, "minecraft:wind_charge#main")
+        });
+        let Some(model) = model else { return };
+        let Some(r) = self
+            .gui
+            .atlas
+            .sprites
+            .get("entity/projectiles/wind_charge")
+            .copied()
+        else {
+            return;
+        };
+        let age = p.age as f32;
+        let mut poses = horizon_client::mobs::anim::Poses::new(model);
+        poses.yrot("wind_charge", -age * 16.0_f32.to_radians());
+        poses.yrot("wind", age * 16.0_f32.to_radians());
+        let base = glam::Mat4::from_translation(at)
+            * glam::Mat4::from_scale(glam::Vec3::new(-1.0, -1.0, 1.0));
+        horizon_client::mobs::render::draw(
+            model,
+            base,
+            &poses,
+            [r.u0, r.v0, r.u1, r.v1],
+            0xFFFF_FFFF,
+            light,
+            0,
+            out,
+        );
     }
 }
 #[cfg(test)]

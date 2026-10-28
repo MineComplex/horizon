@@ -82,182 +82,6 @@ fn body_armor_fits(species: Species, item: &str) -> bool {
 }
 
 impl Game<'_> {
-    /// A click in the mount menu before the generic handling.
-    pub(super) fn mount_click(&mut self, right: bool) -> bool {
-        // A server's menu: the click goes out like any container click.
-        if !self.mount_active() || self.remote.is_some() {
-            return false;
-        }
-        let Some(r) = self.front.renderer.as_ref() else {
-            return true;
-        };
-        let batch = HudBatch::new([r.config.width, r.config.height]);
-        let Some(slot) = self.slot_at(&batch, self.front.cursor.0, self.front.cursor.1) else {
-            return true;
-        };
-        let shift = self.has_shift_down();
-        if shift {
-            self.mount_quick_move(slot);
-        } else if slot >= SADDLE {
-            self.click_filtered(slot, right);
-        } else {
-            return false;
-        }
-        self.mount_sync();
-        true
-    }
-    /// The inventory slot ids in menu order.
-    fn mount_player_slots() -> Vec<usize> {
-        (9..36).chain(0..9).collect()
-    }
-    /// `HorseInventoryScreen`'s background, slot frames and the mount.
-    pub(super) fn draw_mount_background(&self, batch: &mut HudBatch, ox: f32, oy: f32) {
-        let Some(open) = self.mount_menu.open.as_ref() else {
-            return;
-        };
-        let atlas = &self.front.gui.atlas;
-        batch.sprite_region(
-            atlas,
-            "gui/container/horse",
-            [ox, oy, 176.0, 166.0],
-            256.0,
-            256.0,
-        );
-        if open.columns > 0 {
-            batch.sprite_region(
-                atlas,
-                "gui/sprites/container/horse/chest_slots",
-                [ox + 79.0, oy + 17.0, open.columns as f32 * 18.0, 54.0],
-                90.0,
-                54.0,
-            );
-        }
-        if open.show_saddle {
-            batch.sprite(atlas, "gui/sprites/container/slot", ox + 7.0, oy + 17.0);
-            if open.saddle.is_none() {
-                batch.sprite(
-                    atlas,
-                    "gui/sprites/container/slot/saddle",
-                    ox + 8.0,
-                    oy + 18.0,
-                );
-            }
-        }
-        if open.show_armor {
-            batch.sprite(atlas, "gui/sprites/container/slot", ox + 7.0, oy + 35.0);
-            if open.armor.is_none() {
-                let sprite = if llama::is_llama(open.species) {
-                    "gui/sprites/container/slot/llama_armor"
-                } else {
-                    "gui/sprites/container/slot/horse_armor"
-                };
-                batch.sprite(atlas, sprite, ox + 8.0, oy + 36.0);
-            }
-        }
-        let grey = rgba(64, 64, 64, 255);
-        let title = match self.mobs.iter().find(|m| m.id == open.mob) {
-            Some(m) => m.custom_name.clone().unwrap_or_else(|| {
-                let key = format!(
-                    "entity.minecraft.{}",
-                    m.kind.id.trim_start_matches("minecraft:")
-                );
-                self.translate(&key, &key)
-            }),
-            None => String::new(),
-        };
-        batch.text(atlas, &title, ox + 8.0, oy + 6.0, grey, false);
-        let inventory = self.translate("container.inventory", "Inventory");
-        batch.text(atlas, &inventory, ox + 8.0, oy + 72.0, grey, false);
-        if let Some(m) = self.mobs.iter().find(|m| m.id == open.mob) {
-            self.draw_mob_preview(
-                batch,
-                m,
-                ox + 26.0,
-                oy + 18.0,
-                ox + 78.0,
-                oy + 70.0,
-                17.0,
-                0.25,
-            );
-        }
-    }
-    /// `extractEntityInInventoryFollowsMouse` for a mob: depth-sorted,
-    /// back-face-culled quads turned toward the cursor.
-    #[allow(clippy::too_many_arguments)]
-    fn draw_mob_preview(
-        &self,
-        batch: &mut HudBatch,
-        mob: &Mob,
-        x0: f32,
-        y0: f32,
-        x1: f32,
-        y1: f32,
-        size: f32,
-        offset_y: f32,
-    ) {
-        let (cx, cy) = ((x0 + x1) / 2.0, (y0 + y1) / 2.0);
-        let x_angle = ((cx - self.front.cursor.0) / 40.0).atan();
-        let y_angle = ((cy - self.front.cursor.1) / 40.0).atan();
-        let mut m = mob.clone();
-        m.previous = m.position;
-        m.body_yaw = 180.0 + x_angle * 20.0;
-        m.previous_body_yaw = m.body_yaw;
-        m.head_yaw = m.body_yaw + x_angle * 20.0;
-        m.previous_head_yaw = m.head_yaw;
-        m.head_pitch = -y_angle * 20.0;
-        m.previous_head_pitch = m.head_pitch;
-        m.hurt_time = 0;
-        m.death_time = 0;
-        let camera = glam::DVec3::new(m.position.x, m.position.y, m.position.z);
-        let atlas = &self.front.gui.atlas;
-        let lookup = |name: &str| atlas.sprites.get(name).map(|r| [r.u0, r.v0, r.u1, r.v1]);
-        let mut verts = Vec::new();
-        horizon_client::mobs::render::render_with(
-            &m,
-            1.0,
-            camera,
-            &lookup,
-            240 | 240 << 8,
-            self.res.mob_data(),
-            &[],
-            &mut verts,
-        );
-        let height = m.kind.height as f32;
-        let gui = glam::Mat4::from_translation(glam::Vec3::new(cx, cy, 0.0))
-            * glam::Mat4::from_scale(glam::Vec3::new(size, size, -size))
-            * glam::Mat4::from_translation(glam::Vec3::new(0.0, height / 2.0 + offset_y, 0.0))
-            * glam::Mat4::from_rotation_z(std::f32::consts::PI)
-            * glam::Mat4::from_rotation_x((y_angle * 20.0).to_radians());
-        let mut quads: Vec<(f32, [[f32; 2]; 4], [[f32; 2]; 4], u32)> = Vec::new();
-        for q in verts.as_chunks::<4>().0 {
-            let p: [glam::Vec3; 4] =
-                std::array::from_fn(|i| gui.transform_point3(glam::Vec3::from_array(q[i].pos)));
-            let n = (p[1] - p[0]).cross(p[2] - p[0]);
-            if n.z >= 0.0 {
-                continue;
-            }
-            let n = n.normalize_or_zero();
-            let shade = (0.55 + 0.45 * -n.z - 0.15 * n.y).clamp(0.4, 1.0);
-            let c = q[0].color;
-            let ch = |s: u32| ((((c >> s) & 255) as f32 * shade) as u32) << s;
-            let color = (c & 0xFF00_0000) | ch(0) | ch(8) | ch(16);
-            let depth = p.iter().map(|v| v.z).sum::<f32>() / 4.0;
-            quads.push((
-                depth,
-                p.map(|v| [v.x, v.y]),
-                std::array::from_fn(|i| q[i].uv),
-                color,
-            ));
-        }
-        quads.sort_by(|a, b| a.0.total_cmp(&b.0));
-        let start = batch.vertices.len();
-        for (_, p, uv, color) in quads {
-            batch.quad(p, uv, color);
-        }
-        batch.clip_since(start, x0, y0, x1, y1);
-    }
-}
-impl crate::game::Sim<'_> {
     /// Whether the mount menu is the open screen.
     pub(super) fn mount_active(&self) -> bool {
         self.screen == Screen::Inventory && self.mount_menu.open.is_some()
@@ -523,6 +347,34 @@ impl crate::game::Sim<'_> {
             _ => (true, 64),
         }
     }
+    /// A click in the mount menu before the generic handling.
+    pub(super) fn mount_click(&mut self, right: bool) -> bool {
+        // A server's menu: the click goes out like any container click.
+        if !self.mount_active() || self.remote.is_some() {
+            return false;
+        }
+        let Some(r) = self.renderer.as_ref() else {
+            return true;
+        };
+        let batch = HudBatch::new([r.config.width, r.config.height]);
+        let Some(slot) = self.slot_at(&batch, self.cursor.0, self.cursor.1) else {
+            return true;
+        };
+        let shift = self.has_shift_down();
+        if shift {
+            self.mount_quick_move(slot);
+        } else if slot >= SADDLE {
+            self.click_filtered(slot, right);
+        } else {
+            return false;
+        }
+        self.mount_sync();
+        true
+    }
+    /// The inventory slot ids in menu order.
+    fn mount_player_slots() -> Vec<usize> {
+        (9..36).chain(0..9).collect()
+    }
     /// `AbstractMountInventoryMenu.quickMoveStack`.
     fn mount_quick_move(&mut self, slot: usize) {
         let Some(open) = self.mount_menu.open.as_ref() else {
@@ -533,7 +385,7 @@ impl crate::game::Sim<'_> {
             return;
         };
         if slot >= SADDLE {
-            let player = crate::game::Game::mount_player_slots();
+            let player = Self::mount_player_slots();
             self.move_to(&mut stack, &player, true);
         } else {
             let armor_free = self.mount_slot_mut(ARMOR).is_none();
@@ -561,6 +413,152 @@ impl crate::game::Sim<'_> {
         if stack.count > 0 {
             *self.slot_mut(slot) = Some(stack);
         }
+    }
+    /// `HorseInventoryScreen`'s background, slot frames and the mount.
+    pub(super) fn draw_mount_background(&self, batch: &mut HudBatch, ox: f32, oy: f32) {
+        let Some(open) = self.mount_menu.open.as_ref() else {
+            return;
+        };
+        let atlas = &self.gui.atlas;
+        batch.sprite_region(
+            atlas,
+            "gui/container/horse",
+            [ox, oy, 176.0, 166.0],
+            256.0,
+            256.0,
+        );
+        if open.columns > 0 {
+            batch.sprite_region(
+                atlas,
+                "gui/sprites/container/horse/chest_slots",
+                [ox + 79.0, oy + 17.0, open.columns as f32 * 18.0, 54.0],
+                90.0,
+                54.0,
+            );
+        }
+        if open.show_saddle {
+            batch.sprite(atlas, "gui/sprites/container/slot", ox + 7.0, oy + 17.0);
+            if open.saddle.is_none() {
+                batch.sprite(
+                    atlas,
+                    "gui/sprites/container/slot/saddle",
+                    ox + 8.0,
+                    oy + 18.0,
+                );
+            }
+        }
+        if open.show_armor {
+            batch.sprite(atlas, "gui/sprites/container/slot", ox + 7.0, oy + 35.0);
+            if open.armor.is_none() {
+                let sprite = if llama::is_llama(open.species) {
+                    "gui/sprites/container/slot/llama_armor"
+                } else {
+                    "gui/sprites/container/slot/horse_armor"
+                };
+                batch.sprite(atlas, sprite, ox + 8.0, oy + 36.0);
+            }
+        }
+        let grey = rgba(64, 64, 64, 255);
+        let title = match self.mobs.iter().find(|m| m.id == open.mob) {
+            Some(m) => m.custom_name.clone().unwrap_or_else(|| {
+                let key = format!(
+                    "entity.minecraft.{}",
+                    m.kind.id.trim_start_matches("minecraft:")
+                );
+                self.translate(&key, &key)
+            }),
+            None => String::new(),
+        };
+        batch.text(atlas, &title, ox + 8.0, oy + 6.0, grey, false);
+        let inventory = self.translate("container.inventory", "Inventory");
+        batch.text(atlas, &inventory, ox + 8.0, oy + 72.0, grey, false);
+        if let Some(m) = self.mobs.iter().find(|m| m.id == open.mob) {
+            self.draw_mob_preview(
+                batch,
+                m,
+                ox + 26.0,
+                oy + 18.0,
+                ox + 78.0,
+                oy + 70.0,
+                17.0,
+                0.25,
+            );
+        }
+    }
+    /// `extractEntityInInventoryFollowsMouse` for a mob: depth-sorted,
+    /// back-face-culled quads turned toward the cursor.
+    #[allow(clippy::too_many_arguments)]
+    fn draw_mob_preview(
+        &self,
+        batch: &mut HudBatch,
+        mob: &Mob,
+        x0: f32,
+        y0: f32,
+        x1: f32,
+        y1: f32,
+        size: f32,
+        offset_y: f32,
+    ) {
+        let (cx, cy) = ((x0 + x1) / 2.0, (y0 + y1) / 2.0);
+        let x_angle = ((cx - self.cursor.0) / 40.0).atan();
+        let y_angle = ((cy - self.cursor.1) / 40.0).atan();
+        let mut m = mob.clone();
+        m.previous = m.position;
+        m.body_yaw = 180.0 + x_angle * 20.0;
+        m.previous_body_yaw = m.body_yaw;
+        m.head_yaw = m.body_yaw + x_angle * 20.0;
+        m.previous_head_yaw = m.head_yaw;
+        m.head_pitch = -y_angle * 20.0;
+        m.previous_head_pitch = m.head_pitch;
+        m.hurt_time = 0;
+        m.death_time = 0;
+        let camera = glam::DVec3::new(m.position.x, m.position.y, m.position.z);
+        let atlas = &self.gui.atlas;
+        let lookup = |name: &str| atlas.sprites.get(name).map(|r| [r.u0, r.v0, r.u1, r.v1]);
+        let mut verts = Vec::new();
+        horizon_client::mobs::render::render_with(
+            &m,
+            1.0,
+            camera,
+            &lookup,
+            240 | 240 << 8,
+            self.res.mob_data(),
+            &[],
+            &mut verts,
+        );
+        let height = m.kind.height as f32;
+        let gui = glam::Mat4::from_translation(glam::Vec3::new(cx, cy, 0.0))
+            * glam::Mat4::from_scale(glam::Vec3::new(size, size, -size))
+            * glam::Mat4::from_translation(glam::Vec3::new(0.0, height / 2.0 + offset_y, 0.0))
+            * glam::Mat4::from_rotation_z(std::f32::consts::PI)
+            * glam::Mat4::from_rotation_x((y_angle * 20.0).to_radians());
+        let mut quads: Vec<(f32, [[f32; 2]; 4], [[f32; 2]; 4], u32)> = Vec::new();
+        for q in verts.as_chunks::<4>().0 {
+            let p: [glam::Vec3; 4] =
+                std::array::from_fn(|i| gui.transform_point3(glam::Vec3::from_array(q[i].pos)));
+            let n = (p[1] - p[0]).cross(p[2] - p[0]);
+            if n.z >= 0.0 {
+                continue;
+            }
+            let n = n.normalize_or_zero();
+            let shade = (0.55 + 0.45 * -n.z - 0.15 * n.y).clamp(0.4, 1.0);
+            let c = q[0].color;
+            let ch = |s: u32| ((((c >> s) & 255) as f32 * shade) as u32) << s;
+            let color = (c & 0xFF00_0000) | ch(0) | ch(8) | ch(16);
+            let depth = p.iter().map(|v| v.z).sum::<f32>() / 4.0;
+            quads.push((
+                depth,
+                p.map(|v| [v.x, v.y]),
+                std::array::from_fn(|i| q[i].uv),
+                color,
+            ));
+        }
+        quads.sort_by(|a, b| a.0.total_cmp(&b.0));
+        let start = batch.vertices.len();
+        for (_, p, uv, color) in quads {
+            batch.quad(p, uv, color);
+        }
+        batch.clip_since(start, x0, y0, x1, y1);
     }
 }
 

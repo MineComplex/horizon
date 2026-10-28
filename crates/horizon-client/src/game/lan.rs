@@ -969,7 +969,7 @@ impl Game<'_> {
         }
         match words.get(1).copied() {
             Some("open") => {
-                if self.front.title.is_some() {
+                if self.title.is_some() {
                     return Err("open a world first".into());
                 }
                 let port = words.get(2).map_or(Ok(0), |p| p.parse::<u16>())?;
@@ -993,61 +993,6 @@ impl Game<'_> {
         }
     }
 
-    /// The guests' models for the entity pass.
-    pub(super) fn guest_model_geometry(
-        &self,
-        camera: glam::DVec3,
-        alpha: f64,
-        out: &mut Vec<horizon_client::mesher::Vertex>,
-    ) {
-        let Some(host) = &self.lan else {
-            return;
-        };
-        let atlas = &self.front.gui.atlas;
-        let lookup = |name: &str| atlas.sprites.get(name).map(|r| [r.u0, r.v0, r.u1, r.v1]);
-        for (conn, m) in &host.models {
-            let entity_start = out.len();
-            let light = self.world.light(
-                m.position.x.floor() as i32,
-                (m.position.y + 1.62).floor() as i32,
-                m.position.z.floor() as i32,
-            );
-            let packed = (u32::from(light >> 4) * 16) | ((u32::from(light & 15) * 16) << 8);
-            horizon_client::mobs::render::render_with(
-                m,
-                alpha as f32,
-                camera,
-                &lookup,
-                packed,
-                self.res.mob_data(),
-                &host.hub.guest(*conn).map_or_else(
-                    || self.worn_armor_layers(m),
-                    |g| self.stack_armor_layers(&g.armor),
-                ),
-                out,
-            );
-            self.player_elytra_geometry(
-                m,
-                m.extra.chest.as_deref(),
-                camera,
-                alpha as f32,
-                packed,
-                out,
-            );
-            self.spin_attack_geometry(m, camera, alpha as f32, packed, out);
-            self.held_item_geometry(m, camera, alpha, packed, true, out);
-            // LivingEntity.isCurrentlyGlowing: the guest's Glowing effect.
-            let guest = host.hub.guest(*conn);
-            if m.glowing || guest.is_some_and(|g| g.effects.get("glowing").is_some()) {
-                let team = guest.and_then(|g| self.score.board.players_team(&g.name));
-                self.mark_outline(&out[entity_start..], super::glowing::team_color(team));
-            } else {
-                self.cull_entity_vertices(out, entity_start);
-            }
-        }
-    }
-}
-impl crate::game::Sim<'_> {
     /// `horizon-ctl lan status`.
     fn lan_status(&self) -> serde_json::Value {
         use serde_json::json;
@@ -1105,6 +1050,7 @@ impl crate::game::Sim<'_> {
             _ => json!({ "open": false }),
         }
     }
+
     pub(super) fn lan_open(&mut self, settings: LanSettings) -> Result<()> {
         let port = if let Some(server) = &self.integrated {
             // ShareToLanScreen: IntegratedServer.publishServer.
@@ -1231,6 +1177,7 @@ impl crate::game::Sim<'_> {
         self.sounds.capture = Some(Vec::new());
         Ok(())
     }
+
     /// IntegratedServer.unpublishServer: the guests are sent away.
     pub(super) fn lan_close(&mut self, announce: bool) {
         if self.integrated.is_some() || self.serving() {
@@ -1271,6 +1218,7 @@ impl crate::game::Sim<'_> {
             ));
         }
     }
+
     /// Save a guest when they leave or the world closes: an integrated
     /// server's owner with the world (`save_game`), anyone else in their file.
     pub(super) fn save_guest(&mut self, host: &LanHost, guest: &horizon_client::lan::guest::Guest) {
@@ -1364,6 +1312,7 @@ impl crate::game::Sim<'_> {
             self.save_guest_records(host, g);
         }
     }
+
     /// The world's default game mode (`defaultgamemode`).
     pub(super) fn set_default_game_mode(&mut self, mode: i32) {
         self.level.game_mode = mode;
@@ -1372,6 +1321,7 @@ impl crate::game::Sim<'_> {
             host.hub.config.default_game_mode = mode;
         }
     }
+
     /// New command access and game mode forcing settings of the open world.
     pub(super) fn lan_apply_settings(&mut self, guest_commands: bool, force: bool) {
         if let Some(server) = &self.integrated {
@@ -1389,6 +1339,7 @@ impl crate::game::Sim<'_> {
             host.hub.resend_commands();
         }
     }
+
     pub(super) fn lan_port(&self) -> Option<u16> {
         if let Some(server) = &self.integrated {
             return server.published();
@@ -1398,6 +1349,7 @@ impl crate::game::Sim<'_> {
         }
         self.lan.as_ref().map(|h| h.settings.port)
     }
+
     /// The host as the guests see them.
     fn lan_host_state(&self, host: &LanHost) -> Option<HostState> {
         let p = self.player.as_ref()?;
@@ -1440,6 +1392,7 @@ impl crate::game::Sim<'_> {
             },
         })
     }
+
     /// The entities guests track: mobs, items and the rest (game/lan_entities.rs).
     /// `mob_players` is the guest each mob sees as its player (game/lan_mobs.rs).
     fn lan_entities(
@@ -1508,6 +1461,7 @@ impl crate::game::Sim<'_> {
         }
         self.lan_object_states(host_entity, hub, out);
     }
+
     /// Run the hub for this tick and apply what the guests did. While the
     /// single player game is `paused` only the connections run
     /// (`IntegratedServer.tickPaused`): `ServerGamePacketListenerImpl.tick`
@@ -1750,6 +1704,7 @@ impl crate::game::Sim<'_> {
         // Particles a guest's turn sent (sweep attack, damage indicator, a hook's splashes).
         self.flush_lan_particles();
     }
+
     fn lan_guest_joined(
         &mut self,
         host: &mut LanHost,
@@ -1838,6 +1793,7 @@ impl crate::game::Sim<'_> {
             log::error!("could not reopen {}: {e}", back.id());
         }
     }
+
     /// Level events the game queued, for the guests (`process_level_events`).
     pub(super) fn lan_record_events(&mut self, events: &[horizon_world::level::LevelEvent]) {
         if self.sounds.capture.is_none() {
@@ -1872,6 +1828,7 @@ impl crate::game::Sim<'_> {
             }
         }
     }
+
     /// `Level.blockEvent` for the guests (`ClientboundBlockEventPacket`).
     pub(super) fn lan_block_event(&mut self, pos: [i32; 3], b0: i32, b1: i32) {
         if self.sounds.capture.is_some() {
@@ -2049,6 +2006,7 @@ impl crate::game::Sim<'_> {
             host.hub.critical_hit(attacker, target, magic);
         }
     }
+
     /// Keep the chunks around every guest loaded.
     fn lan_update_streaming(&mut self, host: &LanHost) {
         // DistanceManager.PlayerTicketTracker: every chunk within the server's
@@ -2067,6 +2025,7 @@ impl crate::game::Sim<'_> {
             .map(|g| (g.chunk(), radius))
             .collect();
     }
+
     /// The guests' models, for the host to see them.
     fn lan_update_models(&mut self, host: &mut LanHost) {
         let Some(kind) = self.res.player_type().clone() else {
@@ -2198,6 +2157,7 @@ impl crate::game::Sim<'_> {
                 .is_some_and(|i| i.blocks_attacks.is_some());
         }
     }
+
     /// The bed at `head` as a sleeping model lies in it (`ints[1]`,
     /// `villager::sleep_pose`): its `facing`.
     pub(super) fn bed_facing(&self, head: [i32; 3]) -> i32 {
@@ -2211,6 +2171,61 @@ impl crate::game::Sim<'_> {
             .map(String::as_str);
         horizon_client::mobs::villager::bed_facing_code(facing)
     }
+
+    /// The guests' models for the entity pass.
+    pub(super) fn guest_model_geometry(
+        &self,
+        camera: glam::DVec3,
+        alpha: f64,
+        out: &mut Vec<horizon_client::mesher::Vertex>,
+    ) {
+        let Some(host) = &self.lan else {
+            return;
+        };
+        let atlas = &self.gui.atlas;
+        let lookup = |name: &str| atlas.sprites.get(name).map(|r| [r.u0, r.v0, r.u1, r.v1]);
+        for (conn, m) in &host.models {
+            let entity_start = out.len();
+            let light = self.world.light(
+                m.position.x.floor() as i32,
+                (m.position.y + 1.62).floor() as i32,
+                m.position.z.floor() as i32,
+            );
+            let packed = (u32::from(light >> 4) * 16) | ((u32::from(light & 15) * 16) << 8);
+            horizon_client::mobs::render::render_with(
+                m,
+                alpha as f32,
+                camera,
+                &lookup,
+                packed,
+                self.res.mob_data(),
+                &host.hub.guest(*conn).map_or_else(
+                    || self.worn_armor_layers(m),
+                    |g| self.stack_armor_layers(&g.armor),
+                ),
+                out,
+            );
+            self.player_elytra_geometry(
+                m,
+                m.extra.chest.as_deref(),
+                camera,
+                alpha as f32,
+                packed,
+                out,
+            );
+            self.spin_attack_geometry(m, camera, alpha as f32, packed, out);
+            self.held_item_geometry(m, camera, alpha, packed, true, out);
+            // LivingEntity.isCurrentlyGlowing: the guest's Glowing effect.
+            let guest = host.hub.guest(*conn);
+            if m.glowing || guest.is_some_and(|g| g.effects.get("glowing").is_some()) {
+                let team = guest.and_then(|g| self.score.board.players_team(&g.name));
+                self.mark_outline(&out[entity_start..], super::glowing::team_color(team));
+            } else {
+                self.cull_entity_vertices(out, entity_start);
+            }
+        }
+    }
+
     /// A chat line the host typed, for the guests.
     pub(super) fn lan_host_chat(&mut self, message: &str) {
         if let Some(host) = &self.lan {
@@ -2219,8 +2234,7 @@ impl crate::game::Sim<'_> {
     }
 }
 
-impl Game<'_> {}
-impl crate::game::Sim<'_> {
+impl Game<'_> {
     /// A hub's chat and log lines: a dedicated server logs them
     /// (MinecraftServer.logChatMessage, `[Not Secure]` for unsigned or
     /// expired messages); a LAN host shows the chat.

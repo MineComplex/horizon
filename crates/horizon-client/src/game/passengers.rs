@@ -24,8 +24,7 @@ fn zombie_kind(s: Species) -> bool {
     )
 }
 
-impl Game<'_> {}
-impl crate::game::Sim<'_> {
+impl Game<'_> {
     /// `Entity.startRiding` for two mobs.
     pub(super) fn mount_mob(&mut self, rider: u32, vehicle: u32) {
         if rider == vehicle {
@@ -117,6 +116,7 @@ impl crate::game::Sim<'_> {
             }
         }
     }
+
     /// `finalizeSpawn` jockeys of a naturally spawned mob: baby zombies on
     /// chickens, skeletons on spiders, piglins and baby striders on striders,
     /// zombies on zombie horses.
@@ -274,6 +274,7 @@ impl crate::game::Sim<'_> {
             self.mount_mob(baby, id);
         }
     }
+
     /// `SkeletonHorse.customServerAiStep` and `SkeletonTrapGoal`: a trap
     /// horse is a trap for fifteen minutes; a player within ten blocks springs
     /// it.

@@ -191,42 +191,6 @@ fn arrival_from_tag(a: &Tag) -> Option<Arrival> {
 }
 
 impl Game<'_> {
-    // ---- the player ----
-
-    /// `LocalPlayer.handlePortalTransitionEffect`: whether the confusion
-    /// effect grows this tick. Entering a portal closes screens other than
-    /// the chat and death screens and plays `block.portal.trigger` when the
-    /// effect starts from nothing.
-    pub(super) fn client_portal_effect(&mut self) -> bool {
-        if !std::mem::take(&mut self.portals.client_inside) {
-            return false;
-        }
-        match self.screen {
-            Screen::Playing | Screen::Chat | Screen::Dead => {}
-            Screen::Inventory | Screen::Creative => {
-                self.close_container();
-                self.carried = None;
-                self.screen = Screen::Playing;
-                self.capture(true);
-            }
-            _ => {
-                self.screen = Screen::Playing;
-                self.capture(true);
-            }
-        }
-        if self.front.screen_fx.portal == 0.0 {
-            let pitch = self.world.random.next_float() * 0.4 + 0.8;
-            self.sounds
-                .play("minecraft:block.portal.trigger", None, 0.25, pitch);
-        }
-        true
-    }
-
-    // ---- other entities ----
-
-    // ---- persistence ----
-}
-impl crate::game::Sim<'_> {
     /// The world border's extent.
     fn border_bounds(&self) -> BorderBounds {
         let [min_x, min_z, max_x, max_z] = self.border.bounds();
@@ -449,6 +413,9 @@ impl crate::game::Sim<'_> {
         });
         (at, rotation)
     }
+
+    // ---- the player ----
+
     /// The same on a server's client: `Entity.canUsePortal` (alive, not a
     /// passenger), then only the client's `setAsInsidePortal`, which drives
     /// the confusion effect (`client_portal_effect`).
@@ -484,6 +451,37 @@ impl crate::game::Sim<'_> {
             f64::from(centre.z) + 0.5,
         )
     }
+    /// `LocalPlayer.handlePortalTransitionEffect`: whether the confusion
+    /// effect grows this tick. Entering a portal closes screens other than
+    /// the chat and death screens and plays `block.portal.trigger` when the
+    /// effect starts from nothing.
+    pub(super) fn client_portal_effect(&mut self) -> bool {
+        if !std::mem::take(&mut self.portals.client_inside) {
+            return false;
+        }
+        match self.screen {
+            Screen::Playing | Screen::Chat | Screen::Dead => {}
+            Screen::Inventory | Screen::Creative => {
+                self.close_container();
+                self.carried = None;
+                self.screen = Screen::Playing;
+                self.capture(true);
+            }
+            _ => {
+                self.screen = Screen::Playing;
+                self.capture(true);
+            }
+        }
+        if self.screen_fx.portal == 0.0 {
+            let pitch = self.world.random.next_float() * 0.4 + 0.8;
+            self.sounds
+                .play("minecraft:block.portal.trigger", None, 0.25, pitch);
+        }
+        true
+    }
+
+    // ---- other entities ----
+
     /// Positions before the entities move this tick, and `Entity.handlePortal`
     /// at the start of their tick: an item or mob that stayed in a portal
     /// goes through (transition time 0) and waits for its dimension.
@@ -865,6 +863,9 @@ impl crate::game::Sim<'_> {
             }
         }
     }
+
+    // ---- persistence ----
+
     fn arrivals_path(&self) -> std::path::PathBuf {
         self.world_root
             .join("data")

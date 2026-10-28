@@ -6,8 +6,7 @@ use super::Game;
 use horizon_client::{Result, items::ItemStack, mobs::Who};
 use horizon_core::{position::BlockPos, random::RandomSource};
 
-impl Game<'_> {}
-impl crate::game::Sim<'_> {
+impl Game<'_> {
     /// Entity.playEntityOnFireExtinguishedSound
     fn extinguish_sound(&mut self, at: [f64; 3]) {
         let r = self.particles.random();

@@ -5,8 +5,7 @@
 use super::Game;
 use horizon_client::Result;
 
-impl Game<'_> {}
-impl crate::game::Sim<'_> {
+impl Game<'_> {
     fn golem_block(&self, p: [i32; 3]) -> &str {
         let state = self.world.block(p[0], p[1], p[2]);
         &self.res.facts().get(state).name

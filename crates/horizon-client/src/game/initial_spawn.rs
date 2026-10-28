@@ -69,8 +69,7 @@ impl SpawnLevel for Columns<'_, '_> {
     }
 }
 
-impl Game<'_> {}
-impl crate::game::Sim<'_> {
+impl Game<'_> {
     fn spawn_columns(&self) -> Columns<'_, '_> {
         Columns {
             world: &self.world,

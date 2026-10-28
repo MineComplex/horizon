@@ -134,6 +134,21 @@ fn angle(d: f32) -> f32 {
 }
 
 impl Game<'_> {
+    pub(super) fn move_remote_text_display(
+        &mut self,
+        id: i32,
+        position: [f64; 3],
+        rotation: Option<(f32, f32)>,
+    ) {
+        if let Some(d) = self.text_displays.get_mut(&id) {
+            d.move_to(position, rotation);
+        }
+    }
+    pub(super) fn tick_text_displays(&mut self) {
+        for display in self.text_displays.values_mut() {
+            display.tick();
+        }
+    }
     pub(super) fn text_display_geometry(
         &mut self,
         camera: glam::DVec3,
@@ -141,16 +156,16 @@ impl Game<'_> {
         normal: &mut Vec<Vertex>,
         see_through: &mut Vec<Vertex>,
     ) {
-        self.front.text_display_vertices = 0;
-        let atlas = &self.front.gui.atlas;
-        let front = self.sim.camera_type == super::perspective::CameraType::ThirdPersonFront;
+        self.text_display_vertices = 0;
+        let atlas = &self.gui.atlas;
+        let front = self.camera_type == super::perspective::CameraType::ThirdPersonFront;
         let angles = if front {
-            [self.sim.yaw + 180.0, -self.sim.pitch]
+            [self.yaw + 180.0, -self.pitch]
         } else {
-            [self.sim.yaw, self.sim.pitch]
+            [self.yaw, self.pitch]
         };
         let scale = self.view_scale();
-        for display in self.sim.text_displays.values_mut() {
+        for display in self.text_displays.values_mut() {
             display.last_progress = display.progress(partial as f32);
             let d = display.shown.blend(&display.from, display.last_progress);
             let position = display.previous.lerp(display.position, partial);
@@ -189,7 +204,7 @@ impl Game<'_> {
                 glam::Mat4::from_translation(glam::Vec3::new(1.0 - width / 2.0, -height, 0.0));
             let mut batch = HudBatch::new([1, 1]);
             let bg = if d.flags & 4 != 0 {
-                self.sim.settings.text_background(0.25)
+                self.settings.text_background(0.25)
             } else {
                 d.background as u32
             };
@@ -225,7 +240,7 @@ impl Game<'_> {
                     d.flags & 1 != 0,
                 );
             }
-            let world_light = self.sim.world.light(
+            let world_light = self.world.light(
                 position.x.floor() as i32,
                 position.y.floor() as i32,
                 position.z.floor() as i32,
@@ -259,25 +274,8 @@ impl Game<'_> {
                     });
                 }
             }
-            self.front.text_display_vertices += batch.vertices.len() / 6 * 4;
-            self.front.map_patches.extend(batch.patches);
-        }
-    }
-}
-impl crate::game::Sim<'_> {
-    pub(super) fn move_remote_text_display(
-        &mut self,
-        id: i32,
-        position: [f64; 3],
-        rotation: Option<(f32, f32)>,
-    ) {
-        if let Some(d) = self.text_displays.get_mut(&id) {
-            d.move_to(position, rotation);
-        }
-    }
-    pub(super) fn tick_text_displays(&mut self) {
-        for display in self.text_displays.values_mut() {
-            display.tick();
+            self.text_display_vertices += batch.vertices.len() / 6 * 4;
+            self.map_patches.extend(batch.patches);
         }
     }
 }

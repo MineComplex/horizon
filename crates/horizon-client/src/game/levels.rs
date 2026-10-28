@@ -119,42 +119,6 @@ impl Levels {
 }
 
 impl Game<'_> {
-    /// The end of `MinecraftServer.runServer`'s loop for a server thread: a
-    /// finished `/tick sprint` reports to the operators as the server, then
-    /// the next tick starts one tick length after this one, or straight away
-    /// while the sprint runs (`checkShouldSprintThisTick`).
-    pub(super) fn wait_for_next_server_tick(&mut self, next: &mut Instant, paused: bool) {
-        if let Some(report) = self.clock.take_sprint_report() {
-            // ServerTickRateManager.finishTickSprint: the server's sendSuccess.
-            self.console_broadcast = Some(true);
-            self.sprint_report(&report);
-            self.console_broadcast = None;
-            if let Some(mut host) = self.lan.take() {
-                self.send_admin_feedback(&mut host, None);
-                self.lan = Some(host);
-            }
-            self.admin_feedback.clear();
-        }
-        let now = Instant::now();
-        if !paused && self.clock.sprinting() {
-            *next = now;
-            return;
-        }
-        *next += self.clock.tick_duration();
-        if *next > now {
-            // A `/pregen` task or force-loaded chunks keep the workers fed
-            // until the next tick.
-            self.pump_pregen(*next);
-            let now = Instant::now();
-            if *next > now {
-                std::thread::sleep(*next - now);
-            }
-        } else if now - *next > Duration::from_secs(2) {
-            *next = now;
-        }
-    }
-}
-impl crate::game::Sim<'_> {
     /// A new level for `dim`, opened from the save (`MinecraftServer.createLevels`).
     fn open_level(&self, dim: Dim) -> Result<Parked> {
         let (streaming, save, locator) = super::world_loading::make_streaming(
@@ -216,6 +180,7 @@ impl crate::game::Sim<'_> {
             idle: 0,
         })
     }
+
     /// Exchange the level in place with `p`.
     fn swap_level(&mut self, p: &mut Parked) {
         use std::mem::swap;
@@ -280,6 +245,7 @@ impl crate::game::Sim<'_> {
         self.particles.clear();
         self.pickups.clear();
     }
+
     /// Put `target`'s level in place, opening it first if it is not loaded.
     /// The level that was in place is kept with the others; the shared
     /// clock and weather go with the swap. `host` is the hub when the caller
@@ -320,6 +286,7 @@ impl crate::game::Sim<'_> {
         }
         Ok(())
     }
+
     /// Put `dim`'s level in place for a command whose source is there
     /// (`execute in`, `execute at` a player in another level), opening it if
     /// nobody is in it; returns the level to put back afterwards. Only a
@@ -337,6 +304,7 @@ impl crate::game::Sim<'_> {
             }
         }
     }
+
     /// One server tick (`MinecraftServer.tickServer`): each level with
     /// players or forced chunks in turn (`tickChildren`), its chunks streamed
     /// and loaded and its world ticked. The first pass reads the network and runs the
@@ -382,6 +350,7 @@ impl crate::game::Sim<'_> {
         result?;
         self.close_idle_levels()
     }
+
     /// `tick_server` as a server thread runs it. With `HORIZON_SPIKES=MS`, a
     /// tick longer than MS is logged with its thread CPU time and spans.
     pub(super) fn tick_server_timed(&mut self, paused: bool) -> Result<()> {
@@ -407,6 +376,42 @@ impl crate::game::Sim<'_> {
         }
         result
     }
+
+    /// The end of `MinecraftServer.runServer`'s loop for a server thread: a
+    /// finished `/tick sprint` reports to the operators as the server, then
+    /// the next tick starts one tick length after this one, or straight away
+    /// while the sprint runs (`checkShouldSprintThisTick`).
+    pub(super) fn wait_for_next_server_tick(&mut self, next: &mut Instant, paused: bool) {
+        if let Some(report) = self.clock.take_sprint_report() {
+            // ServerTickRateManager.finishTickSprint: the server's sendSuccess.
+            self.console_broadcast = Some(true);
+            self.sprint_report(&report);
+            self.console_broadcast = None;
+            if let Some(mut host) = self.lan.take() {
+                self.send_admin_feedback(&mut host, None);
+                self.lan = Some(host);
+            }
+            self.admin_feedback.clear();
+        }
+        let now = Instant::now();
+        if !paused && self.clock.sprinting() {
+            *next = now;
+            return;
+        }
+        *next += self.clock.tick_duration();
+        if *next > now {
+            // A `/pregen` task or force-loaded chunks keep the workers fed
+            // until the next tick.
+            self.pump_pregen(*next);
+            let now = Instant::now();
+            if *next > now {
+                std::thread::sleep(*next - now);
+            }
+        } else if now - *next > Duration::from_secs(2) {
+            *next = now;
+        }
+    }
+
     /// The levels this server tick runs, in `MinecraftServer.levels` order
     /// (the Overworld, the Nether, the End): every level with a player in
     /// it, forced chunks or a `/pregen` task, or the Overworld while idle.
@@ -436,6 +441,7 @@ impl crate::game::Sim<'_> {
         }
         dims
     }
+
     /// Count the parked levels' empty ticks, and save and close the ones
     /// (other than the Overworld) nobody has been in for a while.
     pub(super) fn close_idle_levels(&mut self) -> Result<()> {
@@ -463,6 +469,7 @@ impl crate::game::Sim<'_> {
         }
         Ok(())
     }
+
     /// Save every parked level (`MinecraftServer.saveAllChunks`); the level
     /// in place is the caller's to save.
     pub(super) fn save_parked_levels(&mut self, wait: bool) -> Result<()> {

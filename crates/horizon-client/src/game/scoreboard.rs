@@ -46,35 +46,6 @@ fn in_range(v: i32, (lo, hi): IntRange) -> bool {
 }
 
 impl Game<'_> {
-    // ---- score holders ---------------------------------------------------
-
-    // ---- criteria ----------------------------------------------------------
-
-    // ---- teams in gameplay -----------------------------------------------------
-
-    // ---- commands ------------------------------------------------------------
-
-    // ---- the sidebar -----------------------------------------------------------
-
-    /// `Hud.extractScoreboardSidebar` / `displayScoreboardSidebar`.
-    pub(super) fn draw_scoreboard(&self, batch: &mut HudBatch) {
-        let board = &self.score.board;
-        let Some(objective) = self.sidebar_objective() else {
-            return;
-        };
-        let draws = hud_overlays::sidebar(
-            batch.width as i32,
-            batch.height as i32,
-            board,
-            objective,
-            &self.front.gui.atlas.font,
-            self.settings.text_background(0.3),
-            self.settings.text_background(0.4),
-        );
-        hud_layout::paint(batch, &self.front.gui.atlas, &draws);
-    }
-}
-impl crate::game::Sim<'_> {
     fn scoreboard_path(&self) -> std::path::PathBuf {
         self.world_root.join("data/minecraft/scoreboard.dat")
     }
@@ -153,6 +124,9 @@ impl crate::game::Sim<'_> {
         reg.storages = self.score.storage.keys();
         reg.stopwatches = self.score.stopwatches.ids();
     }
+
+    // ---- score holders ---------------------------------------------------
+
     /// `ScoreHolder.getScoreboardName`: the player's name, an entity's UUID.
     pub(super) fn holder_name(&mut self, t: Target) -> Option<String> {
         match t {
@@ -322,6 +296,7 @@ impl crate::game::Sim<'_> {
         }
         pass
     }
+
     /// `advancements=` of a selector, against the player's progress.
     fn advancements_match(
         &self,
@@ -340,6 +315,9 @@ impl crate::game::Sim<'_> {
             }
         })
     }
+
+    // ---- criteria ----------------------------------------------------------
+
     /// `ServerStatsCounter.setValue`'s scoreboard side: the objectives of
     /// each changed statistic's criteria follow it for the player `name`.
     pub(super) fn stat_criteria_changed(
@@ -461,6 +439,9 @@ impl crate::game::Sim<'_> {
         };
         self.score.board.entity_removed(&uuid_text(uuid));
     }
+
+    // ---- teams in gameplay -----------------------------------------------------
+
     /// `Entity.getTeam` of a mob (a mob joins a team by its UUID).
     pub(super) fn mob_team(&self, id: u32) -> Option<&sb::Team> {
         let uuid = self.persist.uuids.get(&id)?;
@@ -512,6 +493,9 @@ impl crate::game::Sim<'_> {
             None => name,
         }
     }
+
+    // ---- commands ------------------------------------------------------------
+
     /// The scoreboard names a score holder argument resolves to.
     pub(super) fn score_holder_names(
         &mut self,
@@ -596,6 +580,9 @@ impl crate::game::Sim<'_> {
             .collect();
         names.join(", ")
     }
+
+    // ---- the sidebar -----------------------------------------------------------
+
     /// The objective in the player's team's sidebar slot, else the sidebar's.
     fn sidebar_objective(&self) -> Option<&sb::Objective> {
         let board = &self.score.board;
@@ -626,6 +613,24 @@ impl crate::game::Sim<'_> {
             .filter_map(|(holder, s)| Some((holder.clone(), s.get(&objective.name)?.value.into())))
             .collect();
         serde_json::json!({ "objective": objective.name, "title": objective.display_text().plain(), "scores": scores })
+    }
+
+    /// `Hud.extractScoreboardSidebar` / `displayScoreboardSidebar`.
+    pub(super) fn draw_scoreboard(&self, batch: &mut HudBatch) {
+        let board = &self.score.board;
+        let Some(objective) = self.sidebar_objective() else {
+            return;
+        };
+        let draws = hud_overlays::sidebar(
+            batch.width as i32,
+            batch.height as i32,
+            board,
+            objective,
+            &self.gui.atlas.font,
+            self.settings.text_background(0.3),
+            self.settings.text_background(0.4),
+        );
+        hud_layout::paint(batch, &self.gui.atlas, &draws);
     }
 }
 
@@ -663,7 +668,7 @@ impl Game<'_> {
                 (players, true, upside_down)
             }
         };
-        let board = &self.sim.score.board;
+        let board = &self.score.board;
         let objective = board.display_objective(sb::SLOT_LIST);
         let shown = tab_list::visible(
             key,
@@ -671,7 +676,7 @@ impl Game<'_> {
             players.len(),
             objective.is_some(),
         );
-        self.front.tab_list.set_visible(shown);
+        self.tab_list.set_visible(shown);
         if !shown {
             return;
         }
@@ -686,15 +691,12 @@ impl Game<'_> {
             // Horizon has no "chat background only" option: vanilla's default (on).
             background: tab_list::row_background(
                 true,
-                f64::from(self.sim.settings.text_background_opacity),
+                f64::from(self.settings.text_background_opacity),
             ),
             upside_down: &up,
         };
-        let draws = self
-            .front
-            .tab_list
-            .layout(&inputs, &self.front.gui.atlas.font);
-        horizon_client::hud_layout::paint(batch, &self.front.gui.atlas, &draws);
+        let draws = self.tab_list.layout(&inputs, &self.gui.atlas.font);
+        horizon_client::hud_layout::paint(batch, &self.gui.atlas, &draws);
     }
 }
 
@@ -712,7 +714,7 @@ fn local_tab_players(me: TabPlayer, guests: &[Guest]) -> Vec<TabPlayer> {
 
 /// The commands' view of the game.
 struct GameEnv<'a, 'b> {
-    g: &'a mut crate::game::Sim<'b>,
+    g: &'a mut Game<'b>,
 }
 impl Env for GameEnv<'_, '_> {
     fn sb(&self) -> &Scoreboard {

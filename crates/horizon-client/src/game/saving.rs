@@ -33,7 +33,7 @@ impl Game<'_> {
             save.quit |= quit;
             return Ok(());
         }
-        if self.front.title.is_some() || self.saved_for_exit {
+        if self.title.is_some() || self.saved_for_exit {
             // A quit from the title still needs the event loop to finish.
             self.pending_save = Some(ClosingSave {
                 quit,
@@ -80,6 +80,35 @@ impl Game<'_> {
         Ok(())
     }
 
+    /// Control saves acknowledge only after durable completion, while their
+    /// snapshot work is spread across event-loop turns too.
+    pub(super) fn begin_control_save(
+        &mut self,
+        all: bool,
+        reply: std::sync::mpsc::Sender<String>,
+    ) -> Result<()> {
+        if self.pending_save.is_some() {
+            return Err("a world save is already in progress".into());
+        }
+        if all {
+            self.world
+                .modified
+                .extend(self.world.chunks.keys().copied());
+        }
+        self.keys.clear();
+        self.physical_keys.clear();
+        self.left = false;
+        self.right = false;
+        self.pending_save = Some(ClosingSave {
+            quit: false,
+            close: false,
+            reply: Some(reply),
+            started: Instant::now(),
+            stage: Stage::Generation,
+        });
+        Ok(())
+    }
+
     /// `true` means the window can exit. The session lock stays in Game until
     /// every snapshot has been queued and every writer has synced its files.
     pub(super) fn poll_closing_save(&mut self) -> Result<bool> {
@@ -109,9 +138,8 @@ impl Game<'_> {
                     if save.started.elapsed() > Duration::from_secs(30) {
                         return Err("chunk generation did not finish before saving".into());
                     }
-                    if self.sim.streaming.poll_save(&mut self.sim.world) {
-                        save.stage =
-                            Stage::Chunks(self.sim.world.modified.iter().copied().collect());
+                    if self.streaming.poll_save(&mut self.world) {
+                        save.stage = Stage::Chunks(self.world.modified.iter().copied().collect());
                     }
                     Ok(false)
                 }
@@ -175,7 +203,7 @@ impl Game<'_> {
                     self.saved_for_exit = true;
                     Ok(true)
                 } else {
-                    if save.close && self.front.title.is_none() {
+                    if save.close && self.title.is_none() {
                         self.finish_close_world()?;
                     }
                     self.clock.reset();
@@ -199,11 +227,11 @@ impl Game<'_> {
     }
 
     pub(super) fn render_closing_save(&mut self) -> Result<()> {
-        let Some(renderer) = &mut self.front.renderer else {
+        let Some(renderer) = &mut self.renderer else {
             return Ok(());
         };
         let mut hud = HudBatch::new([renderer.config.width, renderer.config.height]);
-        let progress = match self.sim.pending_save.as_ref().map(|save| &save.stage) {
+        let progress = match self.pending_save.as_ref().map(|save| &save.stage) {
             Some(Stage::Chunks(_)) => 0.25,
             Some(Stage::Entities(_)) => 0.5,
             Some(Stage::Writes) => 0.9,
@@ -211,41 +239,11 @@ impl Game<'_> {
         };
         horizon_client::level_loading::draw_progress(
             &mut hud,
-            &self.front.gui.atlas,
+            &self.gui.atlas,
             "Saving world...",
             progress,
         );
         renderer.render(&loading_frame(&hud))?;
-        Ok(())
-    }
-}
-impl crate::game::Sim<'_> {
-    /// Control saves acknowledge only after durable completion, while their
-    /// snapshot work is spread across event-loop turns too.
-    pub(super) fn begin_control_save(
-        &mut self,
-        all: bool,
-        reply: std::sync::mpsc::Sender<String>,
-    ) -> Result<()> {
-        if self.pending_save.is_some() {
-            return Err("a world save is already in progress".into());
-        }
-        if all {
-            self.world
-                .modified
-                .extend(self.world.chunks.keys().copied());
-        }
-        self.keys.clear();
-        self.physical_keys.clear();
-        self.left = false;
-        self.right = false;
-        self.pending_save = Some(ClosingSave {
-            quit: false,
-            close: false,
-            reply: Some(reply),
-            started: Instant::now(),
-            stage: Stage::Generation,
-        });
         Ok(())
     }
 }

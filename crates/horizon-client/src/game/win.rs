@@ -33,7 +33,7 @@ impl Game<'_> {
             poem,
             &self.options.resources,
             &self.options.player_name(),
-            &self.front.gui.atlas.font,
+            &self.gui.atlas.font,
         );
         self.win = Some(Win {
             screen,
@@ -44,18 +44,27 @@ impl Game<'_> {
         self.screen = Screen::Win;
         self.capture(false);
     }
+    /// Stop the scroll `scroll` pixels in (`horizon-ctl credits ... SCROLL`).
+    pub(super) fn hold_win_screen(&mut self, scroll: f32) {
+        if let Some(win) = self.win.as_mut() {
+            win.screen.hold(scroll);
+        }
+    }
+    /// `WinScreen.isPauseScreen`: only the credits without the poem pause.
+    pub(super) fn win_screen_pauses(&self) -> bool {
+        self.win.as_ref().is_some_and(|w| !w.screen.poem)
+    }
     pub(super) fn draw_win_screen(&mut self, batch: &mut HudBatch) {
-        let Some(win) = self.sim.win.as_mut() else {
+        let Some(win) = self.win.as_mut() else {
             return;
         };
         let now = Instant::now();
         // DeltaTracker.getGameTimeDeltaTicks: the frame's length in ticks.
-        let delta_ticks = now.duration_since(win.frame).as_secs_f32()
-            / self.sim.clock.tick_duration().as_secs_f32();
+        let delta_ticks =
+            now.duration_since(win.frame).as_secs_f32() / self.clock.tick_duration().as_secs_f32();
         win.frame = now;
         let sprite = |n: &str| {
-            self.front
-                .gui
+            self.gui
                 .atlas
                 .sprites
                 .get(n)
@@ -66,10 +75,9 @@ impl Game<'_> {
                 sprite("environment/end_sky"),
                 sprite("entity/end_portal/end_portal"),
             ],
-            game_time: (self.sim.world.game_time % 24000) as f32 / 24000.0,
+            game_time: (self.world.game_time % 24000) as f32 / 24000.0,
         };
-        win.screen
-            .draw(batch, &self.front.gui.atlas, delta_ticks, fill);
+        win.screen.draw(batch, &self.gui.atlas, delta_ticks, fill);
     }
     /// `WinScreen.keyPressed` / `keyReleased`; Escape closes it (`onClose`).
     pub(super) fn win_key(&mut self, event: &KeyEvent) -> Result<()> {
@@ -102,29 +110,16 @@ impl Game<'_> {
             return Ok(());
         };
         let credits = horizon_client::music::Music::credits();
-        self.front
-            .music
-            .stop_playing_music(&credits, None, &mut self.front.audio);
+        self.music
+            .stop_playing_music(&credits, None, &mut self.audio);
         match win.finish {
             Finish::Options => self.screen = Screen::Options,
-            Finish::Closed if self.front.title.is_some() => self.screen = Screen::Playing,
+            Finish::Closed if self.title.is_some() => self.screen = Screen::Playing,
             Finish::Closed => {
                 self.screen = Screen::Playing;
                 self.capture(true);
             }
         }
         Ok(())
-    }
-}
-impl crate::game::Sim<'_> {
-    /// Stop the scroll `scroll` pixels in (`horizon-ctl credits ... SCROLL`).
-    pub(super) fn hold_win_screen(&mut self, scroll: f32) {
-        if let Some(win) = self.win.as_mut() {
-            win.screen.hold(scroll);
-        }
-    }
-    /// `WinScreen.isPauseScreen`: only the credits without the poem pause.
-    pub(super) fn win_screen_pauses(&self) -> bool {
-        self.win.as_ref().is_some_and(|w| !w.screen.poem)
     }
 }

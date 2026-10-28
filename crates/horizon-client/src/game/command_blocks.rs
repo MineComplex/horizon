@@ -193,119 +193,6 @@ pub(super) fn analog_signal(world: &World, pos: Pos) -> Option<i32> {
 }
 
 impl Game<'_> {
-    pub(super) fn draw_command_block(&mut self, batch: &mut HudBatch) {
-        let Some(mut s) = self.command_block_screen.take() else {
-            return;
-        };
-        // AbstractCommandBlockEditScreen.tick: the block is gone.
-        if self.command_block(s.pos).is_none() {
-            self.close_command_block();
-            return;
-        }
-        let atlas = &self.front.gui.atlas;
-        let (w, h) = (batch.width, batch.height);
-        let mid = (w / 2.0).floor();
-        ui::menu_background(batch, atlas, 0.0, 0.0, w, h, true);
-        let title = Text::translate("advMode.setCommand", &[]);
-        let tw = atlas.font.width_text(&title);
-        batch.text_styled(
-            atlas,
-            &title,
-            (mid - tw / 2.0).floor(),
-            20.0,
-            u32::MAX,
-            true,
-        );
-        let grey = rgba(160, 160, 160, 255);
-        let label = Text::translate("advMode.command", &[]);
-        batch.text_styled(atlas, &label, mid - 149.0, 40.0, grey, true);
-        s.command.x = mid - 150.0;
-        s.command.draw(batch, atlas, None);
-        if !s.previous.value.is_empty() {
-            let label = Text::translate("advMode.previousOutput", &[]);
-            batch.text_styled(atlas, &label, mid - 149.0, 125.0, grey, true);
-            s.previous.x = mid - 150.0;
-            s.previous.draw(batch, atlas, None);
-        }
-        for (b, x, y, bw) in CommandBlockScreen::buttons(w, h) {
-            let hover = ui::hovered(self.front.cursor, x, y, bw, 20.0);
-            ui::button(batch, atlas, x, y, bw, 20.0, &s.label(b), true, hover);
-        }
-        self.command_block_screen = Some(s);
-    }
-    pub(super) fn command_block_click(&mut self) {
-        let Some(mut s) = self.command_block_screen.take() else {
-            return;
-        };
-        let size = self
-            .front
-            .renderer
-            .as_ref()
-            .map_or([1, 1], |r| [r.config.width, r.config.height]);
-        let b = HudBatch::new(size);
-        let hit = CommandBlockScreen::buttons(b.width, b.height)
-            .into_iter()
-            .find(|(_, x, y, bw)| ui::hovered(self.front.cursor, *x, *y, *bw, 20.0))
-            .map(|b| b.0);
-        if hit.is_some() {
-            self.front.audio.play_button_click();
-        }
-        match hit {
-            Some(Button::Output) => {
-                s.track_output = !s.track_output;
-                if let Some(block) = self.command_block(s.pos) {
-                    s.show_previous(block);
-                }
-            }
-            Some(Button::Mode) => s.mode = s.mode.next(),
-            Some(Button::Conditional) => s.conditional = !s.conditional,
-            Some(Button::Auto) => s.auto = !s.auto,
-            Some(Button::Done) => {
-                self.set_command_block(&s);
-                self.close_command_block();
-                return;
-            }
-            Some(Button::Cancel) => {
-                self.close_command_block();
-                return;
-            }
-            None => {}
-        }
-        self.command_block_screen = Some(s);
-    }
-    /// `AbstractCommandBlockEditScreen.keyPressed`: Enter is Done, Escape
-    /// cancels, the rest edits the command.
-    pub(super) fn command_block_key(&mut self, event: &KeyEvent) {
-        if event.state != ElementState::Pressed {
-            return;
-        }
-        let PhysicalKey::Code(key) = event.physical_key else {
-            return;
-        };
-        match key {
-            KeyCode::Escape => return self.close_command_block(),
-            KeyCode::Enter | KeyCode::NumpadEnter => {
-                if let Some(s) = self.command_block_screen.take() {
-                    self.set_command_block(&s);
-                }
-                return self.close_command_block();
-            }
-            _ => {}
-        }
-        let ctrl = self.sim.keys.contains(&KeyCode::ControlLeft);
-        let shift = self.sim.keys.contains(&KeyCode::ShiftLeft);
-        let shortcut = self.edit_shortcut(event);
-        let Some(s) = self.sim.command_block_screen.as_mut() else {
-            return;
-        };
-        if let Some(shortcut) = shortcut {
-            s.command.shortcut(shortcut, &mut self.front.clipboard);
-        } else if !s.command.key(key, ctrl, shift) && !ctrl {
-            self.command_block_type(event.text.as_deref().unwrap_or(""));
-        }
-    }
-}
-impl crate::game::Sim<'_> {
     /// `Player.canUseGameMasterBlocks`: creative with game master commands.
     pub(super) fn can_use_game_master_blocks(&self) -> bool {
         self.creative && self.world_data.registries.permission >= 2
@@ -345,6 +232,7 @@ impl crate::game::Sim<'_> {
         let at = BlockPos::new(pos.0, pos.1, pos.2);
         self.with_level(|b, level, ticks| b.update_neighbour_for_output_signal(level, ticks, at));
     }
+
     /// `CommandBlock.setPlacedBy`: unless the item carried block entity data
     /// (`defaults` false), output tracking follows `send_command_feedback` and
     /// the block's own automatic flag; then the block takes the signal around it.
@@ -370,6 +258,7 @@ impl crate::game::Sim<'_> {
             self.schedule_command_block(pos);
         }
     }
+
     /// `CommandBlock.tick`.
     pub(super) fn command_block_tick(&mut self, pos: BlockPos) {
         let key = (pos.x, pos.y, pos.z);
@@ -548,6 +437,7 @@ impl crate::game::Sim<'_> {
             self.system_message(broadcast);
         }
     }
+
     /// `LocalPlayer.openCommandBlock`.
     pub(super) fn open_command_block(&mut self, pos: Pos) {
         let Some(block) = self.command_block(pos).cloned() else {
@@ -582,6 +472,116 @@ impl crate::game::Sim<'_> {
         self.command_block_screen = None;
         self.screen = Screen::Playing;
         self.capture(true);
+    }
+    pub(super) fn draw_command_block(&mut self, batch: &mut HudBatch) {
+        let Some(mut s) = self.command_block_screen.take() else {
+            return;
+        };
+        // AbstractCommandBlockEditScreen.tick: the block is gone.
+        if self.command_block(s.pos).is_none() {
+            self.close_command_block();
+            return;
+        }
+        let atlas = &self.gui.atlas;
+        let (w, h) = (batch.width, batch.height);
+        let mid = (w / 2.0).floor();
+        ui::menu_background(batch, atlas, 0.0, 0.0, w, h, true);
+        let title = Text::translate("advMode.setCommand", &[]);
+        let tw = atlas.font.width_text(&title);
+        batch.text_styled(
+            atlas,
+            &title,
+            (mid - tw / 2.0).floor(),
+            20.0,
+            u32::MAX,
+            true,
+        );
+        let grey = rgba(160, 160, 160, 255);
+        let label = Text::translate("advMode.command", &[]);
+        batch.text_styled(atlas, &label, mid - 149.0, 40.0, grey, true);
+        s.command.x = mid - 150.0;
+        s.command.draw(batch, atlas, None);
+        if !s.previous.value.is_empty() {
+            let label = Text::translate("advMode.previousOutput", &[]);
+            batch.text_styled(atlas, &label, mid - 149.0, 125.0, grey, true);
+            s.previous.x = mid - 150.0;
+            s.previous.draw(batch, atlas, None);
+        }
+        for (b, x, y, bw) in CommandBlockScreen::buttons(w, h) {
+            let hover = ui::hovered(self.cursor, x, y, bw, 20.0);
+            ui::button(batch, atlas, x, y, bw, 20.0, &s.label(b), true, hover);
+        }
+        self.command_block_screen = Some(s);
+    }
+    pub(super) fn command_block_click(&mut self) {
+        let Some(mut s) = self.command_block_screen.take() else {
+            return;
+        };
+        let size = self
+            .renderer
+            .as_ref()
+            .map_or([1, 1], |r| [r.config.width, r.config.height]);
+        let b = HudBatch::new(size);
+        let hit = CommandBlockScreen::buttons(b.width, b.height)
+            .into_iter()
+            .find(|(_, x, y, bw)| ui::hovered(self.cursor, *x, *y, *bw, 20.0))
+            .map(|b| b.0);
+        if hit.is_some() {
+            self.audio.play_button_click();
+        }
+        match hit {
+            Some(Button::Output) => {
+                s.track_output = !s.track_output;
+                if let Some(block) = self.command_block(s.pos) {
+                    s.show_previous(block);
+                }
+            }
+            Some(Button::Mode) => s.mode = s.mode.next(),
+            Some(Button::Conditional) => s.conditional = !s.conditional,
+            Some(Button::Auto) => s.auto = !s.auto,
+            Some(Button::Done) => {
+                self.set_command_block(&s);
+                self.close_command_block();
+                return;
+            }
+            Some(Button::Cancel) => {
+                self.close_command_block();
+                return;
+            }
+            None => {}
+        }
+        self.command_block_screen = Some(s);
+    }
+    /// `AbstractCommandBlockEditScreen.keyPressed`: Enter is Done, Escape
+    /// cancels, the rest edits the command.
+    pub(super) fn command_block_key(&mut self, event: &KeyEvent) {
+        if event.state != ElementState::Pressed {
+            return;
+        }
+        let PhysicalKey::Code(key) = event.physical_key else {
+            return;
+        };
+        match key {
+            KeyCode::Escape => return self.close_command_block(),
+            KeyCode::Enter | KeyCode::NumpadEnter => {
+                if let Some(s) = self.command_block_screen.take() {
+                    self.set_command_block(&s);
+                }
+                return self.close_command_block();
+            }
+            _ => {}
+        }
+        let ctrl = self.keys.contains(&KeyCode::ControlLeft);
+        let shift = self.keys.contains(&KeyCode::ShiftLeft);
+        let shortcut = self.edit_shortcut(event);
+        let Some(s) = self.command_block_screen.as_mut() else {
+            return;
+        };
+        if let Some(shortcut) = shortcut {
+            s.command.shortcut(shortcut, &mut self.clipboard);
+        } else if !s.command.key(key, ctrl, shift) && !ctrl {
+            self.command_block_type(event.text.as_deref().unwrap_or(""));
+        }
     }
     /// Characters typed into the command box (`StringUtil.isAllowedChatCharacter`).
     pub(super) fn command_block_type(&mut self, typed: &str) {

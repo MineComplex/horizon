@@ -58,8 +58,7 @@ pub(super) fn unpack_loot(
     }
 }
 
-impl Game<'_> {}
-impl crate::game::Sim<'_> {
+impl Game<'_> {
     /// The pot's saved tag at `pos` with its loot unpacked (a new one for a
     /// pot without), or None when no pot is there.
     fn pot_tag(&mut self, pos: [i32; 3]) -> Option<Tag> {

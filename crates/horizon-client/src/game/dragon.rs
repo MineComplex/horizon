@@ -566,27 +566,6 @@ fn wrap64(d: f64) -> f64 {
     if r >= 180.0 { r - 360.0 } else { r }
 }
 impl Game<'_> {
-    /// `BossHealthOverlay.extractRenderState`: whatever `publish_boss_bars`
-    /// (or a server's packets) put on this client's overlay.
-    pub(super) fn draw_boss_bars(&self, batch: &mut HudBatch) {
-        let bars = self
-            .front
-            .boss_overlay
-            .bars(horizon_client::boss_overlay::now_millis());
-        let draws = hud_overlays::boss_overlay(
-            batch.width as i32,
-            batch.height as i32,
-            &bars,
-            &self.front.gui.atlas.font,
-        );
-        hud_layout::paint(batch, &self.front.gui.atlas, &draws);
-    }
-    /// `BossHealthOverlay.shouldPlayMusic`.
-    pub(super) fn boss_music(&self) -> bool {
-        self.front.boss_overlay.should_play_music()
-    }
-}
-impl crate::game::Sim<'_> {
     fn fight_path(&self) -> std::path::PathBuf {
         horizon_client::save::dimension_dir(&self.world_root, "minecraft:the_end").join(FIGHT_FILE)
     }
@@ -2317,6 +2296,20 @@ impl crate::game::Sim<'_> {
         }
         self.hurt_player_by(damage_type, amount);
     }
+    /// `BossHealthOverlay.extractRenderState`: whatever `publish_boss_bars`
+    /// (or a server's packets) put on this client's overlay.
+    pub(super) fn draw_boss_bars(&self, batch: &mut HudBatch) {
+        let bars = self
+            .boss_overlay
+            .bars(horizon_client::boss_overlay::now_millis());
+        let draws = hud_overlays::boss_overlay(
+            batch.width as i32,
+            batch.height as i32,
+            &bars,
+            &self.gui.atlas.font,
+        );
+        hud_layout::paint(batch, &self.gui.atlas, &draws);
+    }
     /// The dragon fight's bar for a player at `at`
     /// (`EnderDragonFight.dragonEvent`, visible while the fight is not won
     /// and the player is alive within 192 blocks of (0, 128, 0)).
@@ -2333,6 +2326,10 @@ impl crate::game::Sim<'_> {
                 .as_ref()
                 .map_or(1.0, |d| (d.health / MAX_HEALTH).clamp(0.0, 1.0)),
         )
+    }
+    /// `BossHealthOverlay.shouldPlayMusic`.
+    pub(super) fn boss_music(&self) -> bool {
+        self.boss_overlay.should_play_music()
     }
 }
 pub(super) struct DragonFireball {
@@ -2419,8 +2416,7 @@ impl Game<'_> {
         };
         let a = alpha as f32;
         let sprite = |n: &str| {
-            self.front
-                .gui
+            self.gui
                 .atlas
                 .sprites
                 .get(n)
@@ -2591,7 +2587,7 @@ impl Game<'_> {
     }
     /// `submitRays`: the death rays from a fixed seed, fading in white to magenta.
     fn dragon_rays(&self, base: glam::Mat4, t: f32, out: &mut Vec<Vertex>) {
-        let white = self.front.gui.atlas.font.white();
+        let white = self.gui.atlas.font.white();
         let uv = [white.u0, white.v0];
         let over = if t > 0.8 {
             ((t - 0.8) / 0.2).min(1.0)
@@ -2649,7 +2645,6 @@ impl Game<'_> {
         out: &mut Vec<Vertex>,
     ) {
         let Some(s) = self
-            .front
             .gui
             .atlas
             .sprites
@@ -2714,7 +2709,6 @@ impl Game<'_> {
         out: &mut Vec<Vertex>,
     ) {
         let Some(s) = self
-            .front
             .gui
             .atlas
             .sprites
@@ -2753,8 +2747,6 @@ impl Game<'_> {
             }
         }
     }
-}
-impl crate::game::Sim<'_> {
     pub(super) fn fight_ready(&mut self) -> bool {
         self.load_fight();
         // spawnExitPortal runs from scanState and the dragon's death, both
@@ -2846,8 +2838,7 @@ impl Crystal {
         })
     }
 }
-impl Game<'_> {}
-impl crate::game::Sim<'_> {
+impl Game<'_> {
     /// `ServerExplosion.hurtEntities`: crystals in reach are removed without
     /// another blast; explosions always hurt dragons.
     pub(super) fn explosion_hits_special(&mut self, center: [f64; 3], radius: f32) {
@@ -2883,8 +2874,7 @@ impl crate::game::Sim<'_> {
         }
     }
 }
-impl Game<'_> {}
-impl crate::game::Sim<'_> {
+impl Game<'_> {
     /// The dragon as guests track it (`EnderDragon.getAddEntityPacket` and
     /// the synched data that differs from the defaults: its health, defined
     /// as 1, and `DATA_PHASE`, defined as hovering). Vanilla pairs it with no
@@ -2922,8 +2912,7 @@ impl crate::game::Sim<'_> {
         })
     }
 }
-impl Game<'_> {}
-impl crate::game::Sim<'_> {
+impl Game<'_> {
     /// The dragon and fight for `horizon-ctl status`.
     pub(super) fn dragon_status(&self) -> serde_json::Value {
         serde_json::json!({
@@ -2958,8 +2947,7 @@ impl crate::game::Sim<'_> {
 }
 /// Respawning the dragon with end crystals on the exit portal
 /// (`EndCrystalItem.useOn`, `EnderDragonFight.tryRespawn`, `DragonRespawnStage`).
-impl Game<'_> {}
-impl crate::game::Sim<'_> {
+impl Game<'_> {
     /// `EndCrystalItem.useOn`: on obsidian or bedrock with room above.
     pub(super) fn place_end_crystal(
         &mut self,
@@ -3392,8 +3380,7 @@ impl crate::game::Sim<'_> {
 /// and the client side of `EnderDragon.aiStep`): the server flies it and
 /// sends its moves, health and phase; the client flaps its wings, keeps
 /// its flight history and places its parts, so it can be drawn and hit.
-impl Game<'_> {}
-impl crate::game::Sim<'_> {
+impl Game<'_> {
     /// `handleAddEntity` for `minecraft:ender_dragon`. Its constructor
     /// sets the full health and the hovering phase until the server's
     /// synched data says otherwise.

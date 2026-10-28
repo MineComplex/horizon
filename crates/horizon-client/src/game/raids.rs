@@ -82,7 +82,7 @@ pub(super) fn sections_to_village(centers: &HashSet<(i32, i32, i32)>, at: (i32, 
 
 /// The level as a raid sees it, with this tick's village data.
 struct Lvl<'a, 'g> {
-    game: &'a crate::game::Sim<'g>,
+    game: &'a Game<'g>,
     difficulty: i32,
     centers: &'a HashSet<(i32, i32, i32)>,
 }
@@ -128,7 +128,7 @@ impl RaidLevel for Lvl<'_, '_> {
 struct PatrolCx<'a, 'g, 'h> {
     level: super::natural_spawning::GameLevel<'a, 'g>,
     centers: HashSet<(i32, i32, i32)>,
-    can_spawn: &'h dyn Fn(&crate::game::Sim, [i32; 3]) -> bool,
+    can_spawn: &'h dyn Fn(&Game, [i32; 3]) -> bool,
 }
 impl SpawnLevel for PatrolCx<'_, '_, '_> {
     fn state(&self, x: i32, y: i32, z: i32) -> horizon_world::registry::BlockStateId {
@@ -221,8 +221,7 @@ fn block_of(p: Vec3) -> [i32; 3] {
     [p.x.floor() as i32, p.y.floor() as i32, p.z.floor() as i32]
 }
 
-impl Game<'_> {}
-impl crate::game::Sim<'_> {
+impl Game<'_> {
     /// `Heightmap.Types.WORLD_SURFACE`: the first free block above the
     /// highest non-air one.
     pub(super) fn surface_height(&self, x: i32, z: i32) -> i32 {
@@ -372,6 +371,7 @@ impl crate::game::Sim<'_> {
             .unwrap_or_default();
         attributes.value(key, self.dim.id(), &biome, self.world.day_time)
     }
+
     /// `BadOmenMobEffect` and `RaidOmenMobEffect.applyEffectTick` for the
     /// player's effect tick: Bad Omen inside a village becomes Raid Omen,
     /// whose last tick starts or extends a raid where it began.
@@ -522,6 +522,7 @@ impl crate::game::Sim<'_> {
         }
         self.raiding.bar_hurts.insert(id, seq);
     }
+
     /// The members of every raid, for `Raids.tick`.
     fn raider_infos(&self) -> HashMap<i32, Vec<RaiderInfo>> {
         let mut out: HashMap<i32, Vec<RaiderInfo>> = HashMap::new();
@@ -746,6 +747,7 @@ impl crate::game::Sim<'_> {
         self.enchant_spawn_equipment(id);
         Some(id)
     }
+
     /// Per-tick raid bookkeeping of every raider (and the ravagers they
     /// ride): the raid's state for the goals, joining and recruiting,
     /// the banner of a fallen captain, idle time.
@@ -1050,6 +1052,7 @@ impl crate::game::Sim<'_> {
             raider::state_mut(dead).raid_id = None;
         }
     }
+
     /// What `getRaidAt` tells each villager where it stands (its brain's
     /// `SetRaidStatus`, `ResetRaidStatus`, `ReactToBell` and raid packages
     /// read it).
@@ -1103,6 +1106,7 @@ impl crate::game::Sim<'_> {
         self.lan_entity_event(id as i32, 42, at);
         self.particles_around_mob(id, "splash", horizon_client::particles::Burst::VILLAGER);
     }
+
     /// The raid bar a living player at `at` is in (`Raid.getPlayers`): red,
     /// notched in tens. The name is the translate component the client draws.
     pub(super) fn raid_boss_at(&self, at: [f64; 3], alive: bool) -> Option<(i32, Tag, f32)> {
@@ -1146,12 +1150,6 @@ impl crate::game::Sim<'_> {
 }
 
 impl Game<'_> {
-    /// `ServerLevel.isVillage`: within one section of a village.
-    fn is_village(centers: &HashSet<(i32, i32, i32)>, pos: [i32; 3]) -> bool {
-        sections_to_village(centers, section(pos)) <= 1
-    }
-}
-impl crate::game::Sim<'_> {
     /// Sections holding a claimed village point of interest (a job site,
     /// bed or bell a villager has taken): `PoiManager.isVillageCenter`.
     pub(super) fn village_centers(&self) -> HashSet<(i32, i32, i32)> {
@@ -1177,7 +1175,7 @@ impl crate::game::Sim<'_> {
             return;
         }
         let attributes = self.gameplay_attributes();
-        let biome_ok = |game: &crate::game::Sim, at: [i32; 3]| {
+        let biome_ok = |game: &Game, at: [i32; 3]| {
             let biome = game
                 .world
                 .chunks
@@ -1271,6 +1269,10 @@ impl crate::game::Sim<'_> {
             self.raiding.siege.tonight = false;
         }
     }
+    /// `ServerLevel.isVillage`: within one section of a village.
+    fn is_village(centers: &HashSet<(i32, i32, i32)>, pos: [i32; 3]) -> bool {
+        sections_to_village(centers, section(pos)) <= 1
+    }
     /// `VillageSiege.tryToSetupSiege`: the first player standing in a village
     /// picks a spot 32 blocks away (ten tries); true when one stood in a
     /// village, even if no spot was found.
@@ -1281,7 +1283,7 @@ impl crate::game::Sim<'_> {
                 continue;
             }
             let center = block_of(player.position);
-            if !crate::game::Game::is_village(&centers, center)
+            if !Self::is_village(&centers, center)
                 || self.natural_level().biome_tag(
                     "minecraft:without_zombie_sieges",
                     center[0],
@@ -1346,7 +1348,7 @@ impl crate::game::Sim<'_> {
                 continue;
             }
             let y = self.surface_height(x, z);
-            if crate::game::Game::is_village(centers, [x, y, z])
+            if Self::is_village(centers, [x, y, z])
                 && spawn_rules::check_spawn_rules(
                     Species::Zombie,
                     &self.natural_level(),

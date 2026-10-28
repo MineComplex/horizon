@@ -6,8 +6,7 @@ use horizon_core::position::BlockPos;
 use horizon_world::chunk::BlockState;
 use winit::keyboard::KeyCode;
 
-impl Game<'_> {}
-impl crate::game::Sim<'_> {
+impl Game<'_> {
     /// The lit campfire at `pos` that `held` puts out, when the item is in
     /// `#minecraft:douses_campfires` (`CampfireBlock.useItemOn`).
     fn campfire_to_douse(&self, pos: [i32; 3], held: Option<&ItemStack>) -> Option<BlockState> {
@@ -26,6 +25,7 @@ impl crate::game::Sim<'_> {
             .filter(|s| s.properties.get("lit").map(String::as_str) == Some("true"))
             .cloned()
     }
+
     /// `CampfireBlock.useItemOn` as this client runs it before the server's
     /// answer (`MultiPlayerGameMode.useItemOn`): the twenty smoke puffs of
     /// `CampfireBlock.douse` and the campfire gone out, kept as predicted
@@ -55,6 +55,7 @@ impl crate::game::Sim<'_> {
         }
         true
     }
+
     /// `CampfireBlock.useItemOn` with `held` in the hand that acts, the block
     /// at `pos` clicked: true when it doused a lit campfire (SUCCESS).
     pub(super) fn use_campfire_douse(

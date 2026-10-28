@@ -8,8 +8,7 @@ use horizon_client::{
 };
 use horizon_core::random::RandomSource;
 
-impl Game<'_> {}
-impl crate::game::Sim<'_> {
+impl Game<'_> {
     fn llama_sound(&mut self, index: usize, sound: &str, volume: f32) {
         let at = self.mobs[index].center();
         let pitch = (self.world.random.next_float() - self.world.random.next_float()) * 0.2 + 1.0;

@@ -11,8 +11,7 @@ use horizon_core::{geometry::trig, position::BlockPos, random::RandomSource};
 use horizon_world::level::LevelEvent;
 use horizon_world::registry::BlockStateId;
 
-impl Game<'_> {}
-impl crate::game::Sim<'_> {
+impl Game<'_> {
     pub(super) fn dragon_egg_particles(&mut self, pos: [i32; 3], data: i32) {
         self.particles.block_teleportation(pos, data, [16, 8, 16]);
     }

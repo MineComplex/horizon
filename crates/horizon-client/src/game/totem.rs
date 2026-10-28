@@ -11,8 +11,7 @@ const TOTEM: &str = "minecraft:totem_of_undying";
 /// `EntityEvent.TOTEM_OF_UNDYING`.
 pub(super) const TOTEM_EVENT: i8 = 35;
 
-impl Game<'_> {}
-impl crate::game::Sim<'_> {
+impl Game<'_> {
     /// Whether either hand holds a totem, for the next hurt: the window's
     /// player once a tick, a server's player for each of its turns.
     pub(super) fn update_totem_ready(&mut self) {

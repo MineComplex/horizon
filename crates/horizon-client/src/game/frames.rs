@@ -91,167 +91,6 @@ fn center(f: &ItemFrame) -> [f64; 3] {
     std::array::from_fn(|i| (lo[i] + hi[i]) / 2.0)
 }
 impl Game<'_> {
-    /// ItemFrameRenderer: the frame model, then the item half size on its face.
-    pub(super) fn frame_geometry(&mut self, camera: glam::DVec3, out: &mut Vec<Vertex>) {
-        let sprites = &self.front.gui.atlas.sprites;
-        let mut maps: Vec<(i32, glam::Mat4, u32)> = Vec::new();
-        let mut items: Vec<(ItemStack, u32, glam::Mat4, u8)> = Vec::new();
-        // ItemFrame.shouldRenderAtSqrDistance: 1024 blocks at a view scale
-        // of 1.
-        let range = 16.0 * 64.0 * self.view_scale();
-        for f in &self.item_frames {
-            let entity_start = out.len();
-            let map = f.item.as_ref().and_then(super::maps::map_id);
-            // EntityRenderer.shouldRender: its box (a block wide with a map),
-            // measured from the box's centre.
-            let (lo, hi) = f.bounds();
-            let (mut lo, mut hi) = (glam::DVec3::from(lo), glam::DVec3::from(hi));
-            if map.is_some() {
-                let s = f.step();
-                for i in 0..3 {
-                    if s[i] == 0 {
-                        let c = (lo[i] + hi[i]) / 2.0;
-                        (lo[i], hi[i]) = (c - 0.5, c + 0.5);
-                    }
-                }
-            }
-            if !self.entity_in_view(camera, (lo + hi) / 2.0, range, lo, hi) {
-                continue;
-            }
-            let s = f.step();
-            // Pose: to the block centre, then X/Y rotation by facing.
-            let (x_rot, y_rot) = if s[1] == 0 {
-                let to_y = match f.facing {
-                    3 => 0.0,
-                    4 => 90.0,
-                    2 => 180.0,
-                    _ => 270.0,
-                };
-                (0.0f64, 180.0f64 - to_y)
-            } else {
-                (-90.0 * f64::from(s[1]), 180.0)
-            };
-            let pose = glam::DMat4::from_translation(
-                glam::DVec3::new(
-                    f64::from(f.pos[0]) + 0.5,
-                    f64::from(f.pos[1]) + 0.5,
-                    f64::from(f.pos[2]) + 0.5,
-                ) - camera,
-            ) * glam::DMat4::from_rotation_x(x_rot.to_radians())
-                * glam::DMat4::from_rotation_y(y_rot.to_radians());
-            let light = self.world.light(f.pos[0], f.pos[1], f.pos[2]);
-            let packed = (u32::from(light >> 4) * 16) | ((u32::from(light & 15) * 16) << 8);
-            // ItemFrameRenderer.getBlockLightLevel: a glow frame's model is at least 5 bright.
-            let frame_light = if f.glow {
-                (light & 0xF0) | (light & 15).max(5)
-            } else {
-                light
-            };
-            let frame_packed =
-                (u32::from(frame_light >> 4) * 16) | ((u32::from(frame_light & 15) * 16) << 8);
-            let mut quad =
-                |m: &glam::DMat4, corners: [[f64; 3]; 4], uv: [[f32; 2]; 4], light: u32| {
-                    // The frame model is drawn with the entity shader, lit by its face normal.
-                    let at = corners.map(|c| m.transform_point3(glam::DVec3::from_array(c)));
-                    let n = (at[1] - at[0]).cross(at[2] - at[0]).normalize_or_zero();
-                    let normal = [0, 1, 2].map(|k| (n[k].clamp(-1.0, 1.0) * 127.0) as i8);
-                    for (p, uv) in at.into_iter().zip(uv) {
-                        out.push(Vertex {
-                            normal: [normal[0], normal[1], normal[2], -127],
-                            pos: p.as_vec3().to_array(),
-                            uv,
-                            layer: 0,
-                            color: 0xFFFF_FFFF,
-                            light,
-
-                            glint_uv: [0.0, 0.0],
-                        });
-                    }
-                };
-            let map_uv = |r: &horizon_client::hud::Rect, uv: [[f32; 2]; 4]| {
-                uv.map(|[u, v]| [r.u0 + u * (r.u1 - r.u0), r.v0 + v * (r.v1 - r.v0)])
-            };
-            if !f.invisible {
-                let model = match (f.glow, map.is_some()) {
-                    (true, true) => &self.glow_map_frame_model,
-                    (false, true) => &self.map_frame_model,
-                    (true, false) => &self.glow_frame_model,
-                    (false, false) => &self.frame_model,
-                };
-                for (corners, uv, sprite) in model {
-                    let Some(r) = sprites.get(sprite) else {
-                        continue;
-                    };
-                    quad(
-                        &pose,
-                        corners.map(|c| {
-                            [
-                                f64::from(c[0]) - 0.5,
-                                f64::from(c[1]) - 0.5,
-                                f64::from(c[2]) - 0.5,
-                            ]
-                        }),
-                        map_uv(r, *uv),
-                        frame_packed,
-                    );
-                }
-            }
-            self.cull_entity_vertices(out, entity_start);
-            if let Some(id) = map {
-                // ItemFrameRenderer: the map fills the face, in 90-degree steps.
-                let depth = if f.invisible { 0.5 } else { 0.4375 };
-                // A glow frame's map is 15728850 = 0xF000D2 (sky coordinate 240,
-                // block coordinate 210), not full bright.
-                let item_light = if f.glow { 240 | 210 << 8 } else { packed };
-                let m = pose
-                    * glam::DMat4::from_translation(glam::DVec3::new(0.0, 0.0, depth))
-                    * glam::DMat4::from_rotation_z(
-                        (f64::from(f.rotation % 4 * 2) * 45.0).to_radians(),
-                    )
-                    * glam::DMat4::from_rotation_z(std::f64::consts::PI)
-                    * glam::DMat4::from_scale(glam::DVec3::splat(0.0078125))
-                    * glam::DMat4::from_translation(glam::DVec3::new(-64.0, -64.0, -1.0));
-                maps.push((id, m.as_mat4(), item_light));
-                continue;
-            }
-            let Some(stack) = f.item.clone() else {
-                continue;
-            };
-            // `GlowItemFrame` items render full bright (15728880).
-            let item_light = if f.glow { 0xFF } else { light };
-            let depth = if f.invisible { 0.5 } else { 0.4375 };
-            let m = pose
-                * glam::DMat4::from_translation(glam::DVec3::new(0.0, 0.0, depth))
-                * glam::DMat4::from_rotation_z((f64::from(f.rotation) * 45.0).to_radians())
-                * glam::DMat4::from_scale(glam::DVec3::splat(0.5));
-            items.push((stack, f.id, m.as_mat4(), item_light));
-        }
-        // `extractRenderState`: FIXED, seeded by the frame entity.
-        for (stack, id, m, light) in items {
-            let entity_start = out.len();
-            let owner = super::item_draw::owner_at([0.0; 3], 0.0, "minecraft:item_frame");
-            let state = self.resolve_item(
-                &stack,
-                horizon_assets::item_model::DisplayContext::Fixed,
-                Some(&owner),
-                id as i32,
-            );
-            self.submit_item_world(
-                &state,
-                m,
-                horizon_client::block_entity_render::vertex_light(light),
-                out,
-            );
-            self.cull_entity_vertices(out, entity_start);
-        }
-        for (id, m, light) in maps {
-            let entity_start = out.len();
-            self.map_vertices(id, true, m, light, out);
-            self.cull_entity_vertices(out, entity_start);
-        }
-    }
-}
-impl crate::game::Sim<'_> {
     /// `ItemFrame.survives` (not fixed): no collision, a solid block behind
     /// (or a diode for wall frames), no overlapping hanging entity.
     fn frame_survives(&self, f: &ItemFrame) -> bool {
@@ -479,6 +318,165 @@ impl crate::game::Sim<'_> {
                 }
             }
             i += 1;
+        }
+    }
+    /// ItemFrameRenderer: the frame model, then the item half size on its face.
+    pub(super) fn frame_geometry(&mut self, camera: glam::DVec3, out: &mut Vec<Vertex>) {
+        let sprites = &self.gui.atlas.sprites;
+        let mut maps: Vec<(i32, glam::Mat4, u32)> = Vec::new();
+        let mut items: Vec<(ItemStack, u32, glam::Mat4, u8)> = Vec::new();
+        // ItemFrame.shouldRenderAtSqrDistance: 1024 blocks at a view scale
+        // of 1.
+        let range = 16.0 * 64.0 * self.view_scale();
+        for f in &self.item_frames {
+            let entity_start = out.len();
+            let map = f.item.as_ref().and_then(super::maps::map_id);
+            // EntityRenderer.shouldRender: its box (a block wide with a map),
+            // measured from the box's centre.
+            let (lo, hi) = f.bounds();
+            let (mut lo, mut hi) = (glam::DVec3::from(lo), glam::DVec3::from(hi));
+            if map.is_some() {
+                let s = f.step();
+                for i in 0..3 {
+                    if s[i] == 0 {
+                        let c = (lo[i] + hi[i]) / 2.0;
+                        (lo[i], hi[i]) = (c - 0.5, c + 0.5);
+                    }
+                }
+            }
+            if !self.entity_in_view(camera, (lo + hi) / 2.0, range, lo, hi) {
+                continue;
+            }
+            let s = f.step();
+            // Pose: to the block centre, then X/Y rotation by facing.
+            let (x_rot, y_rot) = if s[1] == 0 {
+                let to_y = match f.facing {
+                    3 => 0.0,
+                    4 => 90.0,
+                    2 => 180.0,
+                    _ => 270.0,
+                };
+                (0.0f64, 180.0f64 - to_y)
+            } else {
+                (-90.0 * f64::from(s[1]), 180.0)
+            };
+            let pose = glam::DMat4::from_translation(
+                glam::DVec3::new(
+                    f64::from(f.pos[0]) + 0.5,
+                    f64::from(f.pos[1]) + 0.5,
+                    f64::from(f.pos[2]) + 0.5,
+                ) - camera,
+            ) * glam::DMat4::from_rotation_x(x_rot.to_radians())
+                * glam::DMat4::from_rotation_y(y_rot.to_radians());
+            let light = self.world.light(f.pos[0], f.pos[1], f.pos[2]);
+            let packed = (u32::from(light >> 4) * 16) | ((u32::from(light & 15) * 16) << 8);
+            // ItemFrameRenderer.getBlockLightLevel: a glow frame's model is at least 5 bright.
+            let frame_light = if f.glow {
+                (light & 0xF0) | (light & 15).max(5)
+            } else {
+                light
+            };
+            let frame_packed =
+                (u32::from(frame_light >> 4) * 16) | ((u32::from(frame_light & 15) * 16) << 8);
+            let mut quad =
+                |m: &glam::DMat4, corners: [[f64; 3]; 4], uv: [[f32; 2]; 4], light: u32| {
+                    // The frame model is drawn with the entity shader, lit by its face normal.
+                    let at = corners.map(|c| m.transform_point3(glam::DVec3::from_array(c)));
+                    let n = (at[1] - at[0]).cross(at[2] - at[0]).normalize_or_zero();
+                    let normal = [0, 1, 2].map(|k| (n[k].clamp(-1.0, 1.0) * 127.0) as i8);
+                    for (p, uv) in at.into_iter().zip(uv) {
+                        out.push(Vertex {
+                            normal: [normal[0], normal[1], normal[2], -127],
+                            pos: p.as_vec3().to_array(),
+                            uv,
+                            layer: 0,
+                            color: 0xFFFF_FFFF,
+                            light,
+
+                            glint_uv: [0.0, 0.0],
+                        });
+                    }
+                };
+            let map_uv = |r: &horizon_client::hud::Rect, uv: [[f32; 2]; 4]| {
+                uv.map(|[u, v]| [r.u0 + u * (r.u1 - r.u0), r.v0 + v * (r.v1 - r.v0)])
+            };
+            if !f.invisible {
+                let model = match (f.glow, map.is_some()) {
+                    (true, true) => &self.glow_map_frame_model,
+                    (false, true) => &self.map_frame_model,
+                    (true, false) => &self.glow_frame_model,
+                    (false, false) => &self.frame_model,
+                };
+                for (corners, uv, sprite) in model {
+                    let Some(r) = sprites.get(sprite) else {
+                        continue;
+                    };
+                    quad(
+                        &pose,
+                        corners.map(|c| {
+                            [
+                                f64::from(c[0]) - 0.5,
+                                f64::from(c[1]) - 0.5,
+                                f64::from(c[2]) - 0.5,
+                            ]
+                        }),
+                        map_uv(r, *uv),
+                        frame_packed,
+                    );
+                }
+            }
+            self.cull_entity_vertices(out, entity_start);
+            if let Some(id) = map {
+                // ItemFrameRenderer: the map fills the face, in 90-degree steps.
+                let depth = if f.invisible { 0.5 } else { 0.4375 };
+                // A glow frame's map is 15728850 = 0xF000D2 (sky coordinate 240,
+                // block coordinate 210), not full bright.
+                let item_light = if f.glow { 240 | 210 << 8 } else { packed };
+                let m = pose
+                    * glam::DMat4::from_translation(glam::DVec3::new(0.0, 0.0, depth))
+                    * glam::DMat4::from_rotation_z(
+                        (f64::from(f.rotation % 4 * 2) * 45.0).to_radians(),
+                    )
+                    * glam::DMat4::from_rotation_z(std::f64::consts::PI)
+                    * glam::DMat4::from_scale(glam::DVec3::splat(0.0078125))
+                    * glam::DMat4::from_translation(glam::DVec3::new(-64.0, -64.0, -1.0));
+                maps.push((id, m.as_mat4(), item_light));
+                continue;
+            }
+            let Some(stack) = f.item.clone() else {
+                continue;
+            };
+            // `GlowItemFrame` items render full bright (15728880).
+            let item_light = if f.glow { 0xFF } else { light };
+            let depth = if f.invisible { 0.5 } else { 0.4375 };
+            let m = pose
+                * glam::DMat4::from_translation(glam::DVec3::new(0.0, 0.0, depth))
+                * glam::DMat4::from_rotation_z((f64::from(f.rotation) * 45.0).to_radians())
+                * glam::DMat4::from_scale(glam::DVec3::splat(0.5));
+            items.push((stack, f.id, m.as_mat4(), item_light));
+        }
+        // `extractRenderState`: FIXED, seeded by the frame entity.
+        for (stack, id, m, light) in items {
+            let entity_start = out.len();
+            let owner = super::item_draw::owner_at([0.0; 3], 0.0, "minecraft:item_frame");
+            let state = self.resolve_item(
+                &stack,
+                horizon_assets::item_model::DisplayContext::Fixed,
+                Some(&owner),
+                id as i32,
+            );
+            self.submit_item_world(
+                &state,
+                m,
+                horizon_client::block_entity_render::vertex_light(light),
+                out,
+            );
+            self.cull_entity_vertices(out, entity_start);
+        }
+        for (id, m, light) in maps {
+            let entity_start = out.len();
+            self.map_vertices(id, true, m, light, out);
+            self.cull_entity_vertices(out, entity_start);
         }
     }
 }

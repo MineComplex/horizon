@@ -217,12 +217,81 @@ pub(super) struct PackReload {
 }
 
 impl Game<'_> {
+    /// `ConnectScreen`: the server's setting decides what its packs do
+    /// (`configureForServerControl`); single player's own server takes them
+    /// all, quietly (`configureForLocalWorld`).
+    pub(super) fn server_packs_connect(&mut self, address: Option<&str>, user: (String, u128)) {
+        let state = &mut self.server_packs;
+        state.user = user;
+        state.prompt = None;
+        state.notifiers.clear();
+        let Some(address) = address else {
+            state.address = None;
+            state.packs.local_world();
+            return;
+        };
+        let file = multiplayer::servers_file(&saves());
+        let entry = servers::load(&file).into_iter().find(|s| s.ip == address);
+        let setting = entry.as_ref().and_then(|e| e.accept_textures);
+        state.address = entry.map(|e| e.ip);
+        state.packs.connect(Prompt::for_server(setting));
+    }
     /// `Minecraft.clearDownloadedResourcePacks`: every server pack goes at once.
     pub(super) fn server_packs_disconnect(&mut self) {
         self.server_packs.prompt = None;
         self.server_packs.notifiers.clear();
         self.server_packs.packs.disconnect();
         self.tick_server_packs();
+    }
+
+    /// `handleResourcePackPush`.
+    pub(super) fn handle_pack_push(&mut self, p: ResourcePackPush) {
+        if !valid_url(&p.url) {
+            self.send_pack_status(p.id, action::INVALID_URL);
+            return;
+        }
+        let setting = self.server_setting();
+        let prompt = Prompt::for_server(setting);
+        if prompt != Prompt::Pending && (!p.required || prompt != Prompt::Declined) {
+            self.server_packs
+                .packs
+                .push(p.id, &p.url, parse_sha1(&p.hash));
+            return;
+        }
+        // addOrUpdatePackPrompt: one prompt for every pack pushed before it is answered.
+        let text = p.prompt.as_ref().map(|t| comp_text(&tag_to_json(t)));
+        let state = &mut self.server_packs;
+        let open = state.prompt.get_or_insert(PackPrompt {
+            requests: Vec::new(),
+            required: p.required,
+            prompt: None,
+        });
+        open.requests.push((p.id, p.url, p.hash));
+        open.required = p.required;
+        open.prompt = text;
+        // Gui.setScreen: KeyMapping.releaseAll, so no walking behind the prompt.
+        self.keys.clear();
+        self.capture(false);
+    }
+    /// `handleResourcePackPop`: one pack, or all of them.
+    pub(super) fn handle_pack_pop(&mut self, id: Option<u128>) {
+        match id {
+            Some(id) => self.server_packs.packs.pop(id),
+            None => self.server_packs.packs.pop_all(),
+        }
+    }
+    /// The joined server's entry in the server list: its `acceptTextures`.
+    fn server_setting(&self) -> Option<bool> {
+        let address = self.server_packs.address.as_deref()?;
+        servers::load(&multiplayer::servers_file(&saves()))
+            .into_iter()
+            .find(|s| s.ip == address)?
+            .accept_textures
+    }
+    fn send_pack_status(&self, id: u128, status: i32) {
+        if let Some(r) = &self.remote {
+            r.session.send_pack_status(id, status);
+        }
     }
 
     /// The prompt's answer (`PackConfirmScreen`'s callback): the server's
@@ -293,173 +362,6 @@ impl Game<'_> {
         }
         for (id, status) in self.server_packs.packs.take_replies() {
             self.send_pack_status(id, status);
-        }
-    }
-    /// `PackReloadConfig.Callbacks`: applies the staged reload once its
-    /// worker is done; on failure the packs active before reload again.
-    fn drive_pack_reload(&mut self) {
-        let Some(reload) = &self.server_packs.reload else {
-            return;
-        };
-        if !reload.handle.is_finished() {
-            return;
-        }
-        let reload = self.server_packs.reload.take().unwrap();
-        let staged = reload
-            .handle
-            .join()
-            .unwrap_or_else(|_| Err("the pack reload worker panicked".into()));
-        let ok = match staged
-            .and_then(|staged| self.apply_staged_pack(staged).map_err(|e| e.to_string()))
-        {
-            Ok(()) => true,
-            Err(e) => {
-                log::warn!("Horizon: server resource pack reload failed: {e}");
-                false
-            }
-        };
-        self.finish_pack_reload(ok);
-    }
-
-    pub(super) fn draw_pack_prompt(&self, batch: &mut HudBatch) {
-        let Some(prompt) = &self.server_packs.prompt else {
-            return;
-        };
-        let atlas = &self.front.gui.atlas;
-        let (w, h) = (batch.width, batch.height);
-        if self.player.is_none() {
-            // In place of the connecting screen, on its background.
-            batch.fill(
-                atlas,
-                0.0,
-                0.0,
-                w,
-                h,
-                horizon_client::hud::rgba(20, 20, 20, 255),
-            );
-        }
-        ui::menu_background(batch, atlas, 0.0, 0.0, w, h, self.player.is_some());
-        let (_, _, [yes, no]) = prompt.texts();
-        prompt
-            .layout(atlas, (w, h))
-            .draw(batch, atlas, self.front.cursor, [&yes, &no]);
-    }
-    /// The download notifiers' toasts, each in a free 32-pixel slot of the
-    /// `ToastManager` (`hidden`, F1, keeps them timing out undrawn).
-    pub(super) fn draw_pack_toasts(&mut self, batch: &mut HudBatch, hidden: bool) {
-        let multiplier = f64::from(self.sim.settings.notification_display_time);
-        let mut used = self.toast_slots_used();
-        for notifier in &mut self.sim.server_packs.notifiers {
-            let Some(toast) = &mut notifier.toast else {
-                continue;
-            };
-            if toast.slot.is_none() {
-                let Some(slot) = (0..Self::TOAST_SLOTS).find(|s| used & (1 << s) == 0) else {
-                    continue;
-                };
-                used |= 1 << slot;
-                toast.slot = Some(slot);
-            }
-            let (sound, finished) = toast.update(multiplier);
-            if let Some(show) = sound {
-                let event = if show { "ui.toast.in" } else { "ui.toast.out" };
-                self.sim
-                    .sounds
-                    .play(&format!("minecraft:{event}"), None, 1.0, 1.0);
-            }
-            if finished {
-                notifier.toast = None;
-                continue;
-            }
-            if let (false, Some(slot)) = (hidden, toast.slot) {
-                toast.draw(&self.front.gui.atlas, batch, 32.0 * slot as f32);
-            }
-        }
-    }
-    /// A left click on the prompt: its answer when it hit a button.
-    pub(super) fn pack_prompt_click(&mut self) -> Result<()> {
-        let Some(prompt) = &self.server_packs.prompt else {
-            return Ok(());
-        };
-        let answer = prompt
-            .layout(&self.front.gui.atlas, self.gui_size())
-            .answer_at(self.front.cursor);
-        match answer {
-            Some(yes) => {
-                self.front.audio.play_button_click();
-                self.answer_pack_prompt(yes)
-            }
-            None => Ok(()),
-        }
-    }
-}
-impl crate::game::Sim<'_> {
-    /// `ConnectScreen`: the server's setting decides what its packs do
-    /// (`configureForServerControl`); single player's own server takes them
-    /// all, quietly (`configureForLocalWorld`).
-    pub(super) fn server_packs_connect(&mut self, address: Option<&str>, user: (String, u128)) {
-        let state = &mut self.server_packs;
-        state.user = user;
-        state.prompt = None;
-        state.notifiers.clear();
-        let Some(address) = address else {
-            state.address = None;
-            state.packs.local_world();
-            return;
-        };
-        let file = multiplayer::servers_file(&saves());
-        let entry = servers::load(&file).into_iter().find(|s| s.ip == address);
-        let setting = entry.as_ref().and_then(|e| e.accept_textures);
-        state.address = entry.map(|e| e.ip);
-        state.packs.connect(Prompt::for_server(setting));
-    }
-    /// `handleResourcePackPush`.
-    pub(super) fn handle_pack_push(&mut self, p: ResourcePackPush) {
-        if !valid_url(&p.url) {
-            self.send_pack_status(p.id, action::INVALID_URL);
-            return;
-        }
-        let setting = self.server_setting();
-        let prompt = Prompt::for_server(setting);
-        if prompt != Prompt::Pending && (!p.required || prompt != Prompt::Declined) {
-            self.server_packs
-                .packs
-                .push(p.id, &p.url, parse_sha1(&p.hash));
-            return;
-        }
-        // addOrUpdatePackPrompt: one prompt for every pack pushed before it is answered.
-        let text = p.prompt.as_ref().map(|t| comp_text(&tag_to_json(t)));
-        let state = &mut self.server_packs;
-        let open = state.prompt.get_or_insert(PackPrompt {
-            requests: Vec::new(),
-            required: p.required,
-            prompt: None,
-        });
-        open.requests.push((p.id, p.url, p.hash));
-        open.required = p.required;
-        open.prompt = text;
-        // Gui.setScreen: KeyMapping.releaseAll, so no walking behind the prompt.
-        self.keys.clear();
-        self.capture(false);
-    }
-    /// `handleResourcePackPop`: one pack, or all of them.
-    pub(super) fn handle_pack_pop(&mut self, id: Option<u128>) {
-        match id {
-            Some(id) => self.server_packs.packs.pop(id),
-            None => self.server_packs.packs.pop_all(),
-        }
-    }
-    /// The joined server's entry in the server list: its `acceptTextures`.
-    fn server_setting(&self) -> Option<bool> {
-        let address = self.server_packs.address.as_deref()?;
-        servers::load(&multiplayer::servers_file(&saves()))
-            .into_iter()
-            .find(|s| s.ip == address)?
-            .accept_textures
-    }
-    fn send_pack_status(&self, id: u128, status: i32) {
-        if let Some(r) = &self.remote {
-            r.session.send_pack_status(id, status);
         }
     }
     fn start_pack_downloads(&mut self, requests: Vec<horizon_client::server_packs::Request>) {
@@ -551,10 +453,106 @@ impl crate::game::Sim<'_> {
             }
         }
     }
+    /// `PackReloadConfig.Callbacks`: applies the staged reload once its
+    /// worker is done; on failure the packs active before reload again.
+    fn drive_pack_reload(&mut self) {
+        let Some(reload) = &self.server_packs.reload else {
+            return;
+        };
+        if !reload.handle.is_finished() {
+            return;
+        }
+        let reload = self.server_packs.reload.take().unwrap();
+        let staged = reload
+            .handle
+            .join()
+            .unwrap_or_else(|_| Err("the pack reload worker panicked".into()));
+        let ok = match staged
+            .and_then(|staged| self.apply_staged_pack(staged).map_err(|e| e.to_string()))
+        {
+            Ok(()) => true,
+            Err(e) => {
+                log::warn!("Horizon: server resource pack reload failed: {e}");
+                false
+            }
+        };
+        self.finish_pack_reload(ok);
+    }
     /// `ServerPacks::reloaded` and the recovery reload it can ask for.
     fn finish_pack_reload(&mut self, ok: bool) {
         if let Some(recovery) = self.server_packs.packs.reloaded(ok) {
             self.start_pack_reload(&recovery);
+        }
+    }
+
+    pub(super) fn draw_pack_prompt(&self, batch: &mut HudBatch) {
+        let Some(prompt) = &self.server_packs.prompt else {
+            return;
+        };
+        let atlas = &self.gui.atlas;
+        let (w, h) = (batch.width, batch.height);
+        if self.player.is_none() {
+            // In place of the connecting screen, on its background.
+            batch.fill(
+                atlas,
+                0.0,
+                0.0,
+                w,
+                h,
+                horizon_client::hud::rgba(20, 20, 20, 255),
+            );
+        }
+        ui::menu_background(batch, atlas, 0.0, 0.0, w, h, self.player.is_some());
+        let (_, _, [yes, no]) = prompt.texts();
+        prompt
+            .layout(atlas, (w, h))
+            .draw(batch, atlas, self.cursor, [&yes, &no]);
+    }
+    /// The download notifiers' toasts, each in a free 32-pixel slot of the
+    /// `ToastManager` (`hidden`, F1, keeps them timing out undrawn).
+    pub(super) fn draw_pack_toasts(&mut self, batch: &mut HudBatch, hidden: bool) {
+        let multiplier = f64::from(self.settings.notification_display_time);
+        let mut used = self.toast_slots_used();
+        for notifier in &mut self.server_packs.notifiers {
+            let Some(toast) = &mut notifier.toast else {
+                continue;
+            };
+            if toast.slot.is_none() {
+                let Some(slot) = (0..Self::TOAST_SLOTS).find(|s| used & (1 << s) == 0) else {
+                    continue;
+                };
+                used |= 1 << slot;
+                toast.slot = Some(slot);
+            }
+            let (sound, finished) = toast.update(multiplier);
+            if let Some(show) = sound {
+                let event = if show { "ui.toast.in" } else { "ui.toast.out" };
+                self.sounds
+                    .play(&format!("minecraft:{event}"), None, 1.0, 1.0);
+            }
+            if finished {
+                notifier.toast = None;
+                continue;
+            }
+            if let (false, Some(slot)) = (hidden, toast.slot) {
+                toast.draw(&self.gui.atlas, batch, 32.0 * slot as f32);
+            }
+        }
+    }
+    /// A left click on the prompt: its answer when it hit a button.
+    pub(super) fn pack_prompt_click(&mut self) -> Result<()> {
+        let Some(prompt) = &self.server_packs.prompt else {
+            return Ok(());
+        };
+        let answer = prompt
+            .layout(&self.gui.atlas, self.gui_size())
+            .answer_at(self.cursor);
+        match answer {
+            Some(yes) => {
+                self.audio.play_button_click();
+                self.answer_pack_prompt(yes)
+            }
+            None => Ok(()),
         }
     }
 }

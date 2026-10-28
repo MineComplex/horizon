@@ -108,134 +108,6 @@ impl PrimedTnt {
 }
 
 impl Game<'_> {
-    /// `TntRenderer`: the block centred on the entity, swelling over the last
-    /// 10 ticks and flashing white every 5 ticks.
-    pub(super) fn tnt_geometry(&self, camera: glam::DVec3, alpha: f64, out: &mut Vec<Vertex>) {
-        if self.tnts.is_empty() {
-            return;
-        }
-        let Some(state) = self.pack.assets.registry.default_state("minecraft:tnt") else {
-            return;
-        };
-        // Face sprites from the block model: up, down, north, south, west, east.
-        let Ok(models) = self
-            .pack
-            .render
-            .model_catalog
-            .collect(state, BlockPos::new(0, 0, 0))
-        else {
-            return;
-        };
-        let mut sprites = [None; 6];
-        for face in models.iter().flat_map(|(_, m)| m.faces.iter()) {
-            use horizon_assets::model::Direction as D;
-            let index = match face.quad.facing {
-                D::Up => 0,
-                D::Down => 1,
-                D::North => 2,
-                D::South => 3,
-                D::West => 4,
-                D::East => 5,
-            };
-            if sprites[index].is_none() {
-                sprites[index] = self
-                    .pack
-                    .layer_names
-                    .get(&face.layer)
-                    .and_then(|name| self.front.gui.atlas.sprites.get(name).copied());
-            }
-        }
-        let range = super::entity_culling::default_range(
-            glam::DVec3::splat(PrimedTnt::SIZE),
-            self.view_scale(),
-        );
-        for t in &self.tnts {
-            // EntityRenderer.shouldRender.
-            if !self.standing_entity_in_view(
-                camera,
-                super::entity_culling::at(t.previous),
-                super::entity_culling::at(t.position),
-                alpha,
-                PrimedTnt::SIZE,
-                PrimedTnt::SIZE,
-                range,
-                0.0,
-            ) {
-                continue;
-            }
-            let fuse = t.fuse as f32 - alpha as f32 + 1.0;
-            let scale = if fuse < 10.0 {
-                let g = (1.0 - fuse / 10.0).clamp(0.0, 1.0);
-                1.0 + g * g * g * g * 0.3
-            } else {
-                1.0
-            };
-            let lit = fuse >= 0.0 && (fuse / 5.0) as i32 % 2 == 0;
-            let base = glam::DVec3::new(
-                t.previous.x + (t.position.x - t.previous.x) * alpha,
-                t.previous.y + (t.position.y - t.previous.y) * alpha + 0.5,
-                t.previous.z + (t.position.z - t.previous.z) * alpha,
-            ) - camera;
-            let o = base.as_vec3();
-            let light = self.world.light(
-                t.position.x.floor() as i32,
-                (t.position.y + 0.5).floor() as i32,
-                t.position.z.floor() as i32,
-            );
-            let packed = (u32::from(light >> 4) * 16) | ((u32::from(light & 15) * 16) << 8);
-            let v = |x: f32, y: f32, z: f32| o + glam::Vec3::new(x - 0.5, y - 0.5, z - 0.5) * scale;
-            let faces = [
-                (
-                    [v(0., 1., 1.), v(1., 1., 1.), v(1., 1., 0.), v(0., 1., 0.)],
-                    1.0,
-                ),
-                (
-                    [v(0., 0., 0.), v(1., 0., 0.), v(1., 0., 1.), v(0., 0., 1.)],
-                    0.5,
-                ),
-                (
-                    [v(1., 0., 0.), v(0., 0., 0.), v(0., 1., 0.), v(1., 1., 0.)],
-                    0.8,
-                ),
-                (
-                    [v(0., 0., 1.), v(1., 0., 1.), v(1., 1., 1.), v(0., 1., 1.)],
-                    0.8,
-                ),
-                (
-                    [v(0., 0., 0.), v(0., 0., 1.), v(0., 1., 1.), v(0., 1., 0.)],
-                    0.6,
-                ),
-                (
-                    [v(1., 0., 1.), v(1., 0., 0.), v(1., 1., 0.), v(1., 1., 1.)],
-                    0.6,
-                ),
-            ];
-            for ((corners, shade), sprite) in faces.into_iter().zip(sprites) {
-                let Some(r) = sprite else { continue };
-                let c = (255.0 * shade) as u32;
-                let color = 0xFF00_0000 | c << 16 | c << 8 | c;
-                for (p, uv) in
-                    corners
-                        .iter()
-                        .zip([[r.u0, r.v1], [r.u1, r.v1], [r.u1, r.v0], [r.u0, r.v0]])
-                {
-                    // Overlay 5: OverlayTexture white flash.
-                    out.push(Vertex {
-                        normal: [0; 4],
-                        pos: p.to_array(),
-                        uv,
-                        layer: if lit { 5 } else { 0 },
-                        color,
-                        light: packed,
-
-                        glint_uv: [0.0, 0.0],
-                    });
-                }
-            }
-        }
-    }
-}
-impl crate::game::Sim<'_> {
     /// `new PrimedTnt(level, x + 0.5, y, z + 0.5, owner)`; `short` applies
     /// `wasExploded`'s random short fuse. Plays `entity.tnt.primed` for primes.
     pub(super) fn spawn_primed_tnt(&mut self, pos: BlockPos, short: bool) {
@@ -342,6 +214,132 @@ impl crate::game::Sim<'_> {
             self.consume_held();
         }
         Ok(true)
+    }
+    /// `TntRenderer`: the block centred on the entity, swelling over the last
+    /// 10 ticks and flashing white every 5 ticks.
+    pub(super) fn tnt_geometry(&self, camera: glam::DVec3, alpha: f64, out: &mut Vec<Vertex>) {
+        if self.tnts.is_empty() {
+            return;
+        }
+        let Some(state) = self.pack.assets.registry.default_state("minecraft:tnt") else {
+            return;
+        };
+        // Face sprites from the block model: up, down, north, south, west, east.
+        let Ok(models) = self
+            .pack
+            .render
+            .model_catalog
+            .collect(state, BlockPos::new(0, 0, 0))
+        else {
+            return;
+        };
+        let mut sprites = [None; 6];
+        for face in models.iter().flat_map(|(_, m)| m.faces.iter()) {
+            use horizon_assets::model::Direction as D;
+            let index = match face.quad.facing {
+                D::Up => 0,
+                D::Down => 1,
+                D::North => 2,
+                D::South => 3,
+                D::West => 4,
+                D::East => 5,
+            };
+            if sprites[index].is_none() {
+                sprites[index] = self
+                    .pack
+                    .layer_names
+                    .get(&face.layer)
+                    .and_then(|name| self.gui.atlas.sprites.get(name).copied());
+            }
+        }
+        let range = super::entity_culling::default_range(
+            glam::DVec3::splat(PrimedTnt::SIZE),
+            self.view_scale(),
+        );
+        for t in &self.tnts {
+            // EntityRenderer.shouldRender.
+            if !self.standing_entity_in_view(
+                camera,
+                super::entity_culling::at(t.previous),
+                super::entity_culling::at(t.position),
+                alpha,
+                PrimedTnt::SIZE,
+                PrimedTnt::SIZE,
+                range,
+                0.0,
+            ) {
+                continue;
+            }
+            let fuse = t.fuse as f32 - alpha as f32 + 1.0;
+            let scale = if fuse < 10.0 {
+                let g = (1.0 - fuse / 10.0).clamp(0.0, 1.0);
+                1.0 + g * g * g * g * 0.3
+            } else {
+                1.0
+            };
+            let lit = fuse >= 0.0 && (fuse / 5.0) as i32 % 2 == 0;
+            let base = glam::DVec3::new(
+                t.previous.x + (t.position.x - t.previous.x) * alpha,
+                t.previous.y + (t.position.y - t.previous.y) * alpha + 0.5,
+                t.previous.z + (t.position.z - t.previous.z) * alpha,
+            ) - camera;
+            let o = base.as_vec3();
+            let light = self.world.light(
+                t.position.x.floor() as i32,
+                (t.position.y + 0.5).floor() as i32,
+                t.position.z.floor() as i32,
+            );
+            let packed = (u32::from(light >> 4) * 16) | ((u32::from(light & 15) * 16) << 8);
+            let v = |x: f32, y: f32, z: f32| o + glam::Vec3::new(x - 0.5, y - 0.5, z - 0.5) * scale;
+            let faces = [
+                (
+                    [v(0., 1., 1.), v(1., 1., 1.), v(1., 1., 0.), v(0., 1., 0.)],
+                    1.0,
+                ),
+                (
+                    [v(0., 0., 0.), v(1., 0., 0.), v(1., 0., 1.), v(0., 0., 1.)],
+                    0.5,
+                ),
+                (
+                    [v(1., 0., 0.), v(0., 0., 0.), v(0., 1., 0.), v(1., 1., 0.)],
+                    0.8,
+                ),
+                (
+                    [v(0., 0., 1.), v(1., 0., 1.), v(1., 1., 1.), v(0., 1., 1.)],
+                    0.8,
+                ),
+                (
+                    [v(0., 0., 0.), v(0., 0., 1.), v(0., 1., 1.), v(0., 1., 0.)],
+                    0.6,
+                ),
+                (
+                    [v(1., 0., 1.), v(1., 0., 0.), v(1., 1., 0.), v(1., 1., 1.)],
+                    0.6,
+                ),
+            ];
+            for ((corners, shade), sprite) in faces.into_iter().zip(sprites) {
+                let Some(r) = sprite else { continue };
+                let c = (255.0 * shade) as u32;
+                let color = 0xFF00_0000 | c << 16 | c << 8 | c;
+                for (p, uv) in
+                    corners
+                        .iter()
+                        .zip([[r.u0, r.v1], [r.u1, r.v1], [r.u1, r.v0], [r.u0, r.v0]])
+                {
+                    // Overlay 5: OverlayTexture white flash.
+                    out.push(Vertex {
+                        normal: [0; 4],
+                        pos: p.to_array(),
+                        uv,
+                        layer: if lit { 5 } else { 0 },
+                        color,
+                        light: packed,
+
+                        glint_uv: [0.0, 0.0],
+                    });
+                }
+            }
+        }
     }
 }
 

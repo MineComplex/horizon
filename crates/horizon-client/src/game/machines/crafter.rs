@@ -32,48 +32,6 @@ fn recipe_matches(condition: &Value, id: &str) -> bool {
 }
 
 impl Game<'_> {
-    // ---- the menu ----
-
-    /// `CrafterScreen`'s background, disabled slots and powered arrow (the
-    /// verified `screen_layout::crafter`) and its centred title.
-    pub(in crate::game) fn draw_crafter_screen(&self, batch: &mut HudBatch, ox: f32, oy: f32) {
-        let Some(c) = self.container.and_then(|k| self.crafter_at(k)) else {
-            return;
-        };
-        let powered = self
-            .container
-            .map(|k| self.world.block(k.0, k.1, k.2))
-            .is_some_and(|state| self.containers().prop(state, "triggered") == Some("true"));
-        let draws =
-            horizon_client::screen_layout::crafter(&horizon_client::screen_layout::CrafterView {
-                width: 176,
-                height: 166,
-                left: 0,
-                top: 0,
-                disabled: c.disabled,
-                powered,
-            });
-        // The background goes first, then the labels, then the slot decorations.
-        let (background, rest) = draws.split_at(2.min(draws.len()));
-        self.paint_screen(batch, ox, oy, background, true);
-        let atlas = &self.front.gui.atlas;
-        let grey = rgba(64, 64, 64, 255);
-        let title = self.container_title(self.translate("container.crafter", "Crafter"));
-        let tw = HudBatch::text_width(atlas, &title);
-        batch.text(
-            atlas,
-            &title,
-            ox + ((176.0 - tw) / 2.0).trunc(),
-            oy + 6.0,
-            grey,
-            false,
-        );
-        let inventory = self.translate("container.inventory", "Inventory");
-        batch.text(atlas, &inventory, ox + 8.0, oy + 72.0, grey, false);
-        self.paint_screen(batch, ox, oy, rest, true);
-    }
-}
-impl crate::game::Sim<'_> {
     /// `Level.setBlock` of one boolean property of the block at `pos`.
     pub(crate) fn set_bool_prop(&mut self, pos: Pos, key: &str, value: bool, flags: i32) {
         let registry = self.pack.assets.registry;
@@ -238,6 +196,9 @@ impl crate::game::Sim<'_> {
         self.dispenser_event(1049, pos, 0);
         self.dispenser_event(2010, pos, facing as i32);
     }
+
+    // ---- the menu ----
+
     /// The grid's current recipe result (`CrafterMenu.refreshRecipeResult`).
     pub(in crate::game) fn crafter_result(&self) -> Option<ItemStack> {
         let key = self.container?;
@@ -260,6 +221,44 @@ impl crate::game::Sim<'_> {
             RESULT_SLOT => Some((134.0, 35.0)),
             _ => None,
         }
+    }
+    /// `CrafterScreen`'s background, disabled slots and powered arrow (the
+    /// verified `screen_layout::crafter`) and its centred title.
+    pub(in crate::game) fn draw_crafter_screen(&self, batch: &mut HudBatch, ox: f32, oy: f32) {
+        let Some(c) = self.container.and_then(|k| self.crafter_at(k)) else {
+            return;
+        };
+        let powered = self
+            .container
+            .map(|k| self.world.block(k.0, k.1, k.2))
+            .is_some_and(|state| self.containers().prop(state, "triggered") == Some("true"));
+        let draws =
+            horizon_client::screen_layout::crafter(&horizon_client::screen_layout::CrafterView {
+                width: 176,
+                height: 166,
+                left: 0,
+                top: 0,
+                disabled: c.disabled,
+                powered,
+            });
+        // The background goes first, then the labels, then the slot decorations.
+        let (background, rest) = draws.split_at(2.min(draws.len()));
+        self.paint_screen(batch, ox, oy, background, true);
+        let atlas = &self.gui.atlas;
+        let grey = rgba(64, 64, 64, 255);
+        let title = self.container_title(self.translate("container.crafter", "Crafter"));
+        let tw = HudBatch::text_width(atlas, &title);
+        batch.text(
+            atlas,
+            &title,
+            ox + ((176.0 - tw) / 2.0).trunc(),
+            oy + 6.0,
+            grey,
+            false,
+        );
+        let inventory = self.translate("container.inventory", "Inventory");
+        batch.text(atlas, &inventory, ox + 8.0, oy + 72.0, grey, false);
+        self.paint_screen(batch, ox, oy, rest, true);
     }
     /// `gui.togglable_slot` over an empty, enabled grid slot.
     pub(in crate::game) fn crafter_tooltip(&self, slot: usize) -> Option<String> {

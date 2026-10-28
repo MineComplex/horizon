@@ -14,8 +14,7 @@ use horizon_world::level::{flags, hit_slot};
 
 const BLOCK: &str = "minecraft:chiseled_bookshelf";
 
-impl Game<'_> {}
-impl crate::game::Sim<'_> {
+impl Game<'_> {
     /// `useItemOn` with `held` in the acting hand, then `useWithoutItem` on
     /// the main hand's turn: None when the block passes the click, else
     /// whether the use succeeded and the arm swings (a click on an empty slot
@@ -103,6 +102,7 @@ impl crate::game::Sim<'_> {
         self.post_block_game_event("minecraft:block_change", pos, Some(Who::Player), None);
         Some(true)
     }
+
     /// The bookshelf's six slots (made if the block has no block entity yet).
     fn bookshelf_items(&mut self, pos: [i32; 3]) -> Option<&mut [Option<ItemStack>; 6]> {
         let entity = self
@@ -116,6 +116,7 @@ impl crate::game::Sim<'_> {
             _ => None,
         }
     }
+
     /// `ChiseledBookShelfBlockEntity.updateState`: `slot` becomes the last
     /// one touched, the block state takes the slots' occupancy
     /// (`setBlockAndUpdate`) and `BLOCK_CHANGE` goes out.
@@ -147,6 +148,7 @@ impl crate::game::Sim<'_> {
         self.world.modified.insert((pos[0] >> 4, pos[2] >> 4));
         self.post_block_game_event("minecraft:block_change", pos, None, Some(new));
     }
+
     /// The books a hopper or dropper put in or took out: the slot whose
     /// occupancy no longer matches the block state is the one `setItem` or
     /// `removeItem` updated.

@@ -31,23 +31,6 @@ fn num(n: impl std::fmt::Display) -> Text {
 }
 
 impl Game<'_> {
-    fn bar_id(ctx: &Context) -> String {
-        match ctx.get("id") {
-            Some(Arg::Resource(id)) => id.clone(),
-            _ => String::new(),
-        }
-    }
-
-    // ---- ServerBossEvent delivery ------------------------------------------------
-
-    /// `ClientPacketListener.handleBossUpdate`.
-    pub(super) fn apply_boss_event(&mut self, packet: &play::BossEvent) {
-        self.front
-            .boss_overlay
-            .apply(packet, boss_overlay::now_millis());
-    }
-}
-impl crate::game::Sim<'_> {
     fn bossbar_path(&self) -> std::path::PathBuf {
         self.world_root
             .join("data/minecraft/custom_boss_events.dat")
@@ -96,8 +79,14 @@ impl crate::game::Sim<'_> {
         }
         self.publish_boss_bars();
     }
+    fn bar_id(ctx: &Context) -> String {
+        match ctx.get("id") {
+            Some(Arg::Resource(id)) => id.clone(),
+            _ => String::new(),
+        }
+    }
     fn bar_checked(&self, ctx: &Context) -> R<String> {
-        let id = crate::game::Game::bar_id(ctx);
+        let id = Self::bar_id(ctx);
         if self.bosses.bars.get(&id).is_none() {
             return Err(err("commands.bossbar.unknown", &[&id]));
         }
@@ -113,7 +102,7 @@ impl crate::game::Sim<'_> {
     fn bossbar_command(&mut self, id: &str, ctx: &Context) -> R<i32> {
         match id {
             "bossbar.add" => {
-                let bar = crate::game::Game::bar_id(ctx);
+                let bar = Self::bar_id(ctx);
                 if self.bosses.bars.get(&bar).is_some() {
                     return Err(err("commands.bossbar.create.failed", &[&bar]));
                 }
@@ -374,6 +363,7 @@ impl crate::game::Sim<'_> {
             serde_json::from_str(json).map_err(|e| err("argument.component.invalid", &[&e]))?;
         Ok(self.resolve_component(value))
     }
+
     /// Names of the online players in a boss bar's set, in join order.
     fn bossbar_player_names(&self, players: &[[i32; 4]]) -> Vec<Text> {
         self.known_boss_players()
@@ -412,6 +402,9 @@ impl crate::game::Sim<'_> {
             _ => None,
         }
     }
+
+    // ---- ServerBossEvent delivery ------------------------------------------------
+
     /// Tell every viewer the boss events they should be seeing. The window
     /// that simulates the world applies them to its own overlay; everyone
     /// else gets `ClientboundBossEventPacket`s.
@@ -624,6 +617,10 @@ impl crate::game::Sim<'_> {
             sent.insert(id, offer);
         }
         out
+    }
+    /// `ClientPacketListener.handleBossUpdate`.
+    pub(super) fn apply_boss_event(&mut self, packet: &play::BossEvent) {
+        self.boss_overlay.apply(packet, boss_overlay::now_millis());
     }
 }
 

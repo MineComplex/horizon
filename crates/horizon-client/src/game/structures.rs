@@ -3,8 +3,7 @@
 //! the generator's cached starts.
 use super::Game;
 
-impl Game<'_> {}
-impl crate::game::Sim<'_> {
+impl Game<'_> {
     /// Structures reaching `pos`: (id, inside a piece). `getStructureAt`
     /// tests the start's whole box, `getStructureWithPieceAt` a piece's.
     pub(super) fn structures_reaching(&self, pos: [i32; 3]) -> Vec<(String, bool)> {

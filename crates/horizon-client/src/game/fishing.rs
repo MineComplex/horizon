@@ -67,59 +67,6 @@ fn triangle(r: &mut impl RandomSource, mode: f64, deviation: f64) -> f64 {
     mode + deviation * (f64::from(r.next_float()) - f64::from(r.next_float()))
 }
 impl Game<'_> {
-    /// FishingHookRenderer: the bobbers (this player's and the others' a
-    /// server tracks), camera-facing half-block quads centred on the hooks.
-    pub(super) fn fishing_geometry(&self, camera: glam::DVec3, alpha: f64, out: &mut Vec<Vertex>) {
-        let hooks: Vec<glam::DVec3> = self
-            .hook_position(alpha)
-            .into_iter()
-            .chain(self.remote_hook_ends(alpha).into_iter().map(|(h, _)| h))
-            .collect();
-        if hooks.is_empty() {
-            return;
-        }
-        let Some(r) = self
-            .front
-            .gui
-            .atlas
-            .sprites
-            .get("entity/fishing/fishing_hook")
-            .copied()
-        else {
-            return;
-        };
-        let forward = glam::DVec3::from_array(view_vector(self.yaw, self.pitch));
-        let right = forward.cross(glam::DVec3::Y).normalize_or_zero();
-        let up = right.cross(forward).normalize_or_zero();
-        let s = 0.25;
-        let uv = [[r.u0, r.v1], [r.u1, r.v1], [r.u1, r.v0], [r.u0, r.v0]];
-        for p in hooks {
-            let light =
-                self.world
-                    .light(p.x.floor() as i32, p.y.floor() as i32, p.z.floor() as i32);
-            let packed = (u32::from(light >> 4) * 16) | ((u32::from(light & 15) * 16) << 8);
-            let corners = [
-                p - right * s - up * s,
-                p + right * s - up * s,
-                p + right * s + up * s,
-                p - right * s + up * s,
-            ];
-            for (v, uv) in corners.iter().zip(uv) {
-                out.push(Vertex {
-                    normal: [0; 4],
-                    pos: (*v - camera).as_vec3().to_array(),
-                    uv,
-                    layer: 0,
-                    color: 0xFFFF_FFFF,
-                    light: packed,
-
-                    glint_uv: [0.0, 0.0],
-                });
-            }
-        }
-    }
-}
-impl crate::game::Sim<'_> {
     fn holds_rod(&self) -> bool {
         self.held()
             .is_some_and(|s| &*s.item == "minecraft:fishing_rod")
@@ -774,6 +721,56 @@ impl crate::game::Sim<'_> {
             lerp(h.previous.z, h.position.z),
         ))
     }
+    /// FishingHookRenderer: the bobbers (this player's and the others' a
+    /// server tracks), camera-facing half-block quads centred on the hooks.
+    pub(super) fn fishing_geometry(&self, camera: glam::DVec3, alpha: f64, out: &mut Vec<Vertex>) {
+        let hooks: Vec<glam::DVec3> = self
+            .hook_position(alpha)
+            .into_iter()
+            .chain(self.remote_hook_ends(alpha).into_iter().map(|(h, _)| h))
+            .collect();
+        if hooks.is_empty() {
+            return;
+        }
+        let Some(r) = self
+            .gui
+            .atlas
+            .sprites
+            .get("entity/fishing/fishing_hook")
+            .copied()
+        else {
+            return;
+        };
+        let forward = glam::DVec3::from_array(view_vector(self.yaw, self.pitch));
+        let right = forward.cross(glam::DVec3::Y).normalize_or_zero();
+        let up = right.cross(forward).normalize_or_zero();
+        let s = 0.25;
+        let uv = [[r.u0, r.v1], [r.u1, r.v1], [r.u1, r.v0], [r.u0, r.v0]];
+        for p in hooks {
+            let light =
+                self.world
+                    .light(p.x.floor() as i32, p.y.floor() as i32, p.z.floor() as i32);
+            let packed = (u32::from(light >> 4) * 16) | ((u32::from(light & 15) * 16) << 8);
+            let corners = [
+                p - right * s - up * s,
+                p + right * s - up * s,
+                p + right * s + up * s,
+                p - right * s + up * s,
+            ];
+            for (v, uv) in corners.iter().zip(uv) {
+                out.push(Vertex {
+                    normal: [0; 4],
+                    pos: (*v - camera).as_vec3().to_array(),
+                    uv,
+                    layer: 0,
+                    color: 0xFFFF_FFFF,
+                    light: packed,
+
+                    glint_uv: [0.0, 0.0],
+                });
+            }
+        }
+    }
     /// FishingHookRenderer: each line, 16 black `lines` segments sagging
     /// from a quarter block above the hook to the rod in its owner's hand,
     /// `width` pixels wide (`Window.getAppropriateLineWidth`).
@@ -863,8 +860,7 @@ impl crate::game::Sim<'_> {
         }
     }
 }
-impl Game<'_> {}
-impl crate::game::Sim<'_> {
+impl Game<'_> {
     /// The hooks drawn here, with their owners' ids (0 for this player's own).
     pub(super) fn hooks_status(&self) -> Vec<serde_json::Value> {
         let at = |p: Vec3| [p.x, p.y, p.z];
@@ -946,8 +942,7 @@ impl Hook {
     }
 }
 
-impl Game<'_> {}
-impl crate::game::Sim<'_> {
+impl Game<'_> {
     /// The hooks guests track: the host's and each guest's in the level.
     pub(super) fn lan_hook_states(
         &self,
@@ -965,6 +960,7 @@ impl crate::game::Sim<'_> {
             }
         }
     }
+
     /// `handleAddEntity` for a fishing bobber: this player's own becomes its
     /// hook (`Player.fishing`), another player's is drawn on its line to them.
     pub(super) fn spawn_remote_hook(&mut self, id: u32, at: Vec3, owner: i32) {
@@ -980,6 +976,7 @@ impl crate::game::Sim<'_> {
             });
         }
     }
+
     /// One tick of interpolation for the hooks a server tracks.
     pub(super) fn step_remote_hooks(&mut self, mut step: impl FnMut(u32, Vec3) -> Vec3) {
         if self.remote.is_none() {
@@ -994,6 +991,7 @@ impl crate::game::Sim<'_> {
             h.position = step(h.id, h.position);
         }
     }
+
     /// `FishingHook.onSyncedDataUpdated`: this player's hook is biting
     /// (DATA_BITING), which `status` shows as a nibble.
     pub(super) fn remote_hook_data(&mut self, id: u32, values: &[(u8, i32, Value)]) {
@@ -1010,18 +1008,21 @@ impl crate::game::Sim<'_> {
             }
         }
     }
+
     pub(super) fn remove_remote_hook(&mut self, id: u32) {
         if self.remote.is_some() && self.hook.as_ref().is_some_and(|h| h.id == id) {
             self.hook = None;
         }
         self.remote_hooks.retain(|h| h.id != id);
     }
+
     pub(super) fn clear_remote_hooks(&mut self) {
         if self.remote.is_some() {
             self.hook = None;
         }
         self.remote_hooks.clear();
     }
+
     /// Other players' hooks: the bobber and its line to the owner's hand
     /// (`FishingHookRenderer.getPlayerHandPos` in third person), as
     /// (hook, hand) this frame.

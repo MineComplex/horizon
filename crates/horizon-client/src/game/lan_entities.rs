@@ -70,8 +70,7 @@ fn stand_poses(a: &horizon_client::entities::ArmorStand) -> Vec<(u8, i32, Value)
     meta
 }
 
-impl Game<'_> {}
-impl crate::game::Sim<'_> {
+impl Game<'_> {
     /// Who rides what (`Entity.getPassengers`): mobs on mobs, and the
     /// host in its boat or minecart.
     pub(super) fn lan_riding(
@@ -94,6 +93,7 @@ impl crate::game::Sim<'_> {
             riding.add(vehicle as i32, host);
         }
     }
+
     /// Boats, minecarts, armor stands, item frames, paintings and the
     /// entities kept unsimulated, as guests track them.
     pub(super) fn lan_object_states(
@@ -269,8 +269,7 @@ impl crate::game::Sim<'_> {
     }
 }
 
-impl Game<'_> {}
-impl crate::game::Sim<'_> {
+impl Game<'_> {
     /// Gives the entities Horizon keeps without an id one (`Entity.id`, from
     /// the same counter as the rest) before they are first tracked.
     pub(super) fn lan_assign_ids(&mut self) {
@@ -316,6 +315,7 @@ impl crate::game::Sim<'_> {
             .iter_mut()
             .for_each(|b| give(&mut b.id));
     }
+
     /// Primed TNT, falling blocks, projectiles, tridents, firework rockets and
     /// end crystals, as guests track them.
     fn lan_projectile_states(&self, host_entity: Option<i32>, hub: &mut Hub, out: &mut States) {
@@ -495,7 +495,7 @@ impl crate::game::Sim<'_> {
         // DATA_WAITING for its 20-tick wait, and DATA_PARTICLE): the
         // client draws them from these (`tick_remote_clouds`).
         // The hub is out of `self.lan` meanwhile, so it is passed in.
-        let breath = crate::game::Game::hub_particle(
+        let breath = Self::hub_particle(
             hub,
             &horizon_client::particles::ParticleOptions::simple(
                 horizon_client::particles::ParticleType::DragonBreath,

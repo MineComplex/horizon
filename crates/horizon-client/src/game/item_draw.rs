@@ -19,7 +19,7 @@ use std::{cell::RefCell, collections::HashMap};
 
 /// The game's answers to what the resolver cannot read from the stack.
 pub(super) struct Env<'a, 'g> {
-    game: &'a crate::game::Sim<'g>,
+    game: &'a Game<'g>,
 }
 impl ItemEnv for Env<'_, '_> {
     fn potion_effect_color(&self, contents: &Value) -> Option<i32> {
@@ -194,13 +194,108 @@ fn use_duration(components: &Components) -> i32 {
 }
 
 impl Game<'_> {
+    pub(super) fn item_env(&self) -> Env<'_, '_> {
+        Env { game: self }
+    }
     pub(super) fn item_host(&self) -> Host<'_> {
         Host {
             banners: &self.res.stations().banners,
-            sprites: &self.front.gui.atlas.sprites,
+            sprites: &self.gui.atlas.sprites,
             skins: &self.skin_downloads,
             profiles: &self.skin_profiles,
         }
+    }
+    /// The client level as item models read it: worked out once a frame (a
+    /// screen of items read the same level, its sky sampled once).
+    pub(super) fn item_level(&self) -> LevelState {
+        let dimension = match self.dim {
+            Dim::Overworld => "minecraft:overworld",
+            Dim::Nether => "minecraft:the_nether",
+            Dim::End => "minecraft:the_end",
+        };
+        let key = (
+            self.frames,
+            self.world.game_time,
+            self.world.day_time,
+            dimension,
+        );
+        let mut cached = self.item_level_cache.borrow_mut();
+        if let Some((at, level)) = cached.as_ref()
+            && *at == key
+        {
+            return level.clone();
+        }
+        let level = self.level_state_now(dimension);
+        *cached = Some((key, level.clone()));
+        level
+    }
+    fn level_state_now(&self, dimension: &'static str) -> LevelState {
+        let sky = self
+            .dim_environment()
+            .sample(self.world.day_time, None, None);
+        LevelState {
+            dimension: dimension.to_owned(),
+            game_time: self.world.game_time,
+            sun_angle: sky.sun_angle,
+            moon_phase: (self.world.day_time.div_euclid(24_000)).rem_euclid(8) as i32,
+            respawn: self.spawn.map(|s| GlobalPos {
+                dimension: "minecraft:overworld".to_owned(),
+                pos: [s.x.floor() as i32, s.y.floor() as i32, s.z.floor() as i32],
+            }),
+            runs_normally: true,
+        }
+    }
+    /// The local player as `ItemOwner`; `stack` is the stack drawn, to tell
+    /// whether it is the one in use.
+    pub(super) fn player_owner(&self, stack: Option<&ItemStack>) -> OwnerState {
+        let position = self
+            .player
+            .as_ref()
+            .map_or([0.0; 3], |p| [p.position.x, p.position.y, p.position.z]);
+        let mut owner = owner_at(position, self.yaw, "minecraft:player");
+        owner.main_arm_left = self.settings.main_hand_left;
+        owner.is_local_player = true;
+        owner.is_view_entity = true;
+        owner.last_death_location = self
+            .level
+            .last_death
+            .clone()
+            .map(|(dimension, pos)| GlobalPos { dimension, pos });
+        if let (Some((slot, ticks)), Some(stack)) = (self.using, stack)
+            && self.stack_in(slot) == Some(stack)
+        {
+            let view = item_render::stack_view(stack);
+            let duration = use_duration(&self.pack.item_renderer.models.components(&view));
+            owner.using_this_item = true;
+            owner.use_duration = duration;
+            owner.use_item_remaining_ticks = duration - ticks as i32;
+            owner.crossbow_charge_duration = Self::charge_ticks(stack).max(1) as i32;
+        }
+        owner.fishing_cast_with_this_item = stack
+            .zip(self.cast_rod())
+            .is_some_and(|(s, rod)| std::ptr::eq(s, rod));
+        owner.is_selected =
+            stack.is_some() && self.inventory.get(self.selected).and_then(Option::as_ref) == stack;
+        owner.is_carried = owner.is_selected;
+        owner
+    }
+    /// `ItemModelResolver.updateForTopItem`.
+    pub(super) fn resolve_item(
+        &self,
+        stack: &ItemStack,
+        display: DisplayContext,
+        owner: Option<&OwnerState>,
+        seed: i32,
+    ) -> ItemRenderState {
+        let level = self.item_level();
+        self.pack.item_renderer.resolve(
+            &item_render::stack_view(stack),
+            display,
+            owner,
+            Some(&level),
+            seed,
+            &self.item_env(),
+        )
     }
     /// `GuiGraphics.renderItem(player, level, stack, x, y, 0)`.
     pub(super) fn draw_item_model(&self, batch: &mut HudBatch, stack: &ItemStack, x: f32, y: f32) {
@@ -209,7 +304,7 @@ impl Game<'_> {
         item_render::gui::draw(
             &state,
             &self.pack.item_renderer,
-            &self.front.gui.atlas.sprites,
+            &self.gui.atlas.sprites,
             &self.item_host(),
             batch,
             x,
@@ -221,8 +316,7 @@ impl Game<'_> {
     }
     /// The `GLINT_TEXTURING` inputs the atlas and options provide.
     pub(super) fn glint(&self) -> Option<item_render::Glint> {
-        self.front
-            .gui
+        self.gui
             .atlas
             .sprites
             .get("misc/enchanted_glint_item")
@@ -233,6 +327,14 @@ impl Game<'_> {
                 millis: self.started.elapsed().as_secs_f32() * 1000.0,
                 scale: 0.5,
             })
+    }
+    /// The glint scroll phase shared by world items and armour
+    /// (`item_render::Glint::scroll_ticks`).
+    pub(super) fn glint_ticks(&self) -> f32 {
+        item_render::Glint::scroll_ticks(
+            self.started.elapsed().as_secs_f32() * 1000.0,
+            self.settings.file.double("glintSpeed") as f32,
+        )
     }
     /// Submit a resolved item under `pose` (camera-relative) at `light`
     /// (packed lightmap coordinates).
@@ -251,7 +353,7 @@ impl Game<'_> {
         };
         state.submit(
             &self.pack.item_renderer,
-            &self.front.gui.atlas.sprites,
+            &self.gui.atlas.sprites,
             &self.item_host(),
             pose,
             &mut sink,
@@ -273,7 +375,7 @@ impl Game<'_> {
         };
         state.submit(
             &self.pack.item_renderer,
-            &self.front.gui.atlas.sprites,
+            &self.gui.atlas.sprites,
             &self.item_host(),
             pose,
             &mut sink,
@@ -350,111 +452,6 @@ impl Game<'_> {
                 self.cull_entity_vertices(out, entity_start);
             }
         }
-    }
-}
-impl crate::game::Sim<'_> {
-    pub(super) fn item_env(&self) -> Env<'_, '_> {
-        Env { game: self }
-    }
-    /// The client level as item models read it: worked out once a frame (a
-    /// screen of items read the same level, its sky sampled once).
-    pub(super) fn item_level(&self) -> LevelState {
-        let dimension = match self.dim {
-            Dim::Overworld => "minecraft:overworld",
-            Dim::Nether => "minecraft:the_nether",
-            Dim::End => "minecraft:the_end",
-        };
-        let key = (
-            self.frames,
-            self.world.game_time,
-            self.world.day_time,
-            dimension,
-        );
-        let mut cached = self.item_level_cache.borrow_mut();
-        if let Some((at, level)) = cached.as_ref()
-            && *at == key
-        {
-            return level.clone();
-        }
-        let level = self.level_state_now(dimension);
-        *cached = Some((key, level.clone()));
-        level
-    }
-    fn level_state_now(&self, dimension: &'static str) -> LevelState {
-        let sky = self
-            .dim_environment()
-            .sample(self.world.day_time, None, None);
-        LevelState {
-            dimension: dimension.to_owned(),
-            game_time: self.world.game_time,
-            sun_angle: sky.sun_angle,
-            moon_phase: (self.world.day_time.div_euclid(24_000)).rem_euclid(8) as i32,
-            respawn: self.spawn.map(|s| GlobalPos {
-                dimension: "minecraft:overworld".to_owned(),
-                pos: [s.x.floor() as i32, s.y.floor() as i32, s.z.floor() as i32],
-            }),
-            runs_normally: true,
-        }
-    }
-    /// The local player as `ItemOwner`; `stack` is the stack drawn, to tell
-    /// whether it is the one in use.
-    pub(super) fn player_owner(&self, stack: Option<&ItemStack>) -> OwnerState {
-        let position = self
-            .player
-            .as_ref()
-            .map_or([0.0; 3], |p| [p.position.x, p.position.y, p.position.z]);
-        let mut owner = owner_at(position, self.yaw, "minecraft:player");
-        owner.main_arm_left = self.settings.main_hand_left;
-        owner.is_local_player = true;
-        owner.is_view_entity = true;
-        owner.last_death_location = self
-            .level
-            .last_death
-            .clone()
-            .map(|(dimension, pos)| GlobalPos { dimension, pos });
-        if let (Some((slot, ticks)), Some(stack)) = (self.using, stack)
-            && self.stack_in(slot) == Some(stack)
-        {
-            let view = item_render::stack_view(stack);
-            let duration = use_duration(&self.pack.item_renderer.models.components(&view));
-            owner.using_this_item = true;
-            owner.use_duration = duration;
-            owner.use_item_remaining_ticks = duration - ticks as i32;
-            owner.crossbow_charge_duration = crate::game::Game::charge_ticks(stack).max(1) as i32;
-        }
-        owner.fishing_cast_with_this_item = stack
-            .zip(self.cast_rod())
-            .is_some_and(|(s, rod)| std::ptr::eq(s, rod));
-        owner.is_selected =
-            stack.is_some() && self.inventory.get(self.selected).and_then(Option::as_ref) == stack;
-        owner.is_carried = owner.is_selected;
-        owner
-    }
-    /// `ItemModelResolver.updateForTopItem`.
-    pub(super) fn resolve_item(
-        &self,
-        stack: &ItemStack,
-        display: DisplayContext,
-        owner: Option<&OwnerState>,
-        seed: i32,
-    ) -> ItemRenderState {
-        let level = self.item_level();
-        self.pack.item_renderer.resolve(
-            &item_render::stack_view(stack),
-            display,
-            owner,
-            Some(&level),
-            seed,
-            &self.item_env(),
-        )
-    }
-    /// The glint scroll phase shared by world items and armour
-    /// (`item_render::Glint::scroll_ticks`).
-    pub(super) fn glint_ticks(&self) -> f32 {
-        item_render::Glint::scroll_ticks(
-            self.started.elapsed().as_secs_f32() * 1000.0,
-            self.settings.file.double("glintSpeed") as f32,
-        )
     }
 }
 

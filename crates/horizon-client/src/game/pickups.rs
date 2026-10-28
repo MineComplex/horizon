@@ -80,8 +80,7 @@ pub(super) fn guest_target(host: &super::lan::LanHost, id: u32) -> Option<[f64; 
     Some([p.x, (p.y + (p.y + eye)) / 2.0, p.z])
 }
 
-impl Game<'_> {}
-impl crate::game::Sim<'_> {
+impl Game<'_> {
     /// `ItemPickupParticle.updatePosition`: the collector's x and z, halfway up to its eyes.
     fn collector_target(&self, collector: Collector) -> Option<[f64; 3]> {
         let (p, eye) = match collector {

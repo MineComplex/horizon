@@ -48,17 +48,6 @@ pub(super) enum Outcome {
 impl Game<'_> {
     // ---- loading -----------------------------------------------------------
 
-    // ---- scheduled events ------------------------------------------------------
-
-    // ---- ticking -----------------------------------------------------------------
-
-    // ---- running -----------------------------------------------------------------
-
-    // ---- commands ------------------------------------------------------------------
-
-    // ---- predicates -------------------------------------------------------------------
-}
-impl crate::game::Sim<'_> {
     fn datapack_settings_path(&self) -> std::path::PathBuf {
         self.world_root.join("datapacks.json")
     }
@@ -153,6 +142,9 @@ impl crate::game::Sim<'_> {
             .filter(|id| !self.fns.enabled.contains(id))
             .collect();
     }
+
+    // ---- scheduled events ------------------------------------------------------
+
     fn schedule_path(&self) -> std::path::PathBuf {
         self.world_root.join("data/minecraft/scheduled_events.dat")
     }
@@ -215,6 +207,9 @@ impl crate::game::Sim<'_> {
             ]),
         );
     }
+
+    // ---- ticking -----------------------------------------------------------------
+
     /// `ServerFunctionManager.tick` and the scheduled events.
     pub(super) fn tick_functions(&mut self) {
         self.ensure_datapacks();
@@ -260,6 +255,9 @@ impl crate::game::Sim<'_> {
             let _ = self.run_function(&f, args, source);
         }
     }
+
+    // ---- running -----------------------------------------------------------------
+
     /// Run one function with `source`: its commands in order, until a `return`.
     pub(in crate::game) fn run_function(
         &mut self,
@@ -353,6 +351,9 @@ impl crate::game::Sim<'_> {
         }
         Ok(out)
     }
+
+    // ---- commands ------------------------------------------------------------------
+
     pub(super) fn cmd_function(&mut self, ctx: &Context) -> R<i32> {
         let Some(Arg::Resource(name)) = ctx.get("name").cloned() else {
             return Ok(0);
@@ -700,6 +701,9 @@ impl crate::game::Sim<'_> {
         self.rebuild_store();
         self.fns.load_pending = true;
     }
+
+    // ---- predicates -------------------------------------------------------------------
+
     /// `if predicate`: a datapack predicate tested for the source entity.
     pub(in crate::game) fn check_predicate(&mut self, id: &str) -> R<bool> {
         self.ensure_datapacks();

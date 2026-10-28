@@ -135,8 +135,7 @@ fn splash_distance_sqr(at: Vec3, age: u32, bounds: Aabb) -> Option<f64> {
     let d2 = potion.distance_squared_to_box(bounds.inflate(Vec3::new(margin, margin, margin)));
     (d2 < 16.0).then_some(d2)
 }
-impl Game<'_> {}
-impl crate::game::Sim<'_> {
+impl Game<'_> {
     /// `LivingEntity.triggerOnDeathMobEffects` (`onMobRemoved` with the reason
     /// KILLED) for what Oozing, Weaving and Wind Charged do when their bearer
     /// dies. `bearer` is the dying mob's id, `player` whether it is a player,
@@ -425,94 +424,6 @@ fn thrown_kind(stack: &ItemStack) -> &'static str {
 }
 
 impl Game<'_> {
-    /// `ThrownItemRenderer` for thrown splash and lingering potions and
-    /// experience bottles: the item (GROUND) facing the camera at scale 1,
-    /// lit at the light probe (the eye, 0.85 of the 0.25 height).
-    pub(super) fn thrown_potion_geometry(
-        &self,
-        camera: glam::DVec3,
-        alpha: f64,
-        out: &mut Vec<Vertex>,
-    ) {
-        let orientation = glam::Mat4::from_quat(self.camera_orientation());
-        for t in &self.potions.thrown {
-            let previous = glam::DVec3::new(t.previous.x, t.previous.y, t.previous.z);
-            let position = glam::DVec3::new(t.position.x, t.position.y, t.position.z);
-            // ThrowableProjectile.shouldRenderAtSqrDistance: hidden for its
-            // first two ticks within 3.5 blocks (not in the thrower's face).
-            if t.age < 2 && position.distance_squared(camera) < 12.25 {
-                continue;
-            }
-            if !self.standing_entity_in_view(
-                camera,
-                super::entity_culling::at(t.previous),
-                super::entity_culling::at(t.position),
-                alpha,
-                0.25,
-                0.25,
-                64.0,
-                0.0,
-            ) {
-                continue;
-            }
-            let p = previous.lerp(position, alpha);
-            let owner = owner_at(p.to_array(), 0.0, &t.stack.item);
-            let state = self.resolve_item(&t.stack, DisplayContext::Ground, Some(&owner), 0);
-            if state.is_empty() {
-                continue;
-            }
-            let pose = glam::Mat4::from_translation((p - camera).as_vec3()) * orientation;
-            let light = self.world.light(
-                p.x.floor() as i32,
-                (p.y + 0.2125).floor() as i32,
-                p.z.floor() as i32,
-            );
-            self.submit_item_world(&state, pose, vertex_light(light), out);
-        }
-    }
-    /// `Hud.extractEffects`: icons top-right, beneficial row then harmful row;
-    /// every screen but the inventories keeps them.
-    pub(super) fn draw_effect_icons(&self, batch: &mut HudBatch) {
-        if self.potions.effects.list.is_empty() || self.screen_shows_active_effects(batch) {
-            return;
-        }
-        let icons: Vec<hud_overlays::EffectIcon> = self
-            .potions
-            .effects
-            .list
-            .iter()
-            .map(hud_overlays::EffectIcon::from)
-            .collect();
-        let draws = hud_overlays::effects(batch.width as i32, false, &icons);
-        hud_layout::paint(batch, &self.front.gui.atlas, &draws);
-    }
-    /// `EffectsInInventory`: panels to the right of survival/creative inventory.
-    pub(super) fn draw_inventory_effects(
-        &self,
-        batch: &mut HudBatch,
-        origin: (f32, f32),
-        image_width: i32,
-    ) {
-        let panels = inventory_effects::panels(
-            batch.width as i32,
-            [origin.0 as i32, origin.1 as i32],
-            image_width,
-            &self.potions.effects.list,
-            self.clock.rate(),
-            &|key| self.pack.names.display_get(key),
-            &|text| self.front.gui.atlas.font.width(text).ceil() as i32,
-        );
-        if let Some(lines) = inventory_effects::paint(
-            batch,
-            &self.front.gui.atlas,
-            &panels,
-            [self.front.cursor.0 as i32, self.front.cursor.1 as i32],
-        ) {
-            self.draw_tooltip_lines(batch, &lines, self.front.cursor.0, self.front.cursor.1);
-        }
-    }
-}
-impl crate::game::Sim<'_> {
     /// Right-click with a potion, splash/lingering potion or glass bottle.
     pub(super) fn use_potion_item(&mut self, stack: &ItemStack) -> horizon_client::Result<bool> {
         match &*stack.item {
@@ -1124,6 +1035,51 @@ impl crate::game::Sim<'_> {
         }
         self.potions.thrown = thrown;
     }
+    /// `ThrownItemRenderer` for thrown splash and lingering potions and
+    /// experience bottles: the item (GROUND) facing the camera at scale 1,
+    /// lit at the light probe (the eye, 0.85 of the 0.25 height).
+    pub(super) fn thrown_potion_geometry(
+        &self,
+        camera: glam::DVec3,
+        alpha: f64,
+        out: &mut Vec<Vertex>,
+    ) {
+        let orientation = glam::Mat4::from_quat(self.camera_orientation());
+        for t in &self.potions.thrown {
+            let previous = glam::DVec3::new(t.previous.x, t.previous.y, t.previous.z);
+            let position = glam::DVec3::new(t.position.x, t.position.y, t.position.z);
+            // ThrowableProjectile.shouldRenderAtSqrDistance: hidden for its
+            // first two ticks within 3.5 blocks (not in the thrower's face).
+            if t.age < 2 && position.distance_squared(camera) < 12.25 {
+                continue;
+            }
+            if !self.standing_entity_in_view(
+                camera,
+                super::entity_culling::at(t.previous),
+                super::entity_culling::at(t.position),
+                alpha,
+                0.25,
+                0.25,
+                64.0,
+                0.0,
+            ) {
+                continue;
+            }
+            let p = previous.lerp(position, alpha);
+            let owner = owner_at(p.to_array(), 0.0, &t.stack.item);
+            let state = self.resolve_item(&t.stack, DisplayContext::Ground, Some(&owner), 0);
+            if state.is_empty() {
+                continue;
+            }
+            let pose = glam::Mat4::from_translation((p - camera).as_vec3()) * orientation;
+            let light = self.world.light(
+                p.x.floor() as i32,
+                (p.y + 0.2125).floor() as i32,
+                p.z.floor() as i32,
+            );
+            self.submit_item_world(&state, pose, vertex_light(light), out);
+        }
+    }
     /// `HealOrHarmMobEffect.applyInstantaneousEffect` with a source (a
     /// potion or a cloud): indirectMagic, not plain magic.
     fn apply_indirect_effect_action(&mut self, a: EffectAction, source: &Text) {
@@ -1297,12 +1253,53 @@ impl crate::game::Sim<'_> {
                 (self.inventory_origin(batch).0, 176)
             }
             Screen::Creative => (
-                crate::game::Game::creative_origin(batch).0,
+                Self::creative_origin(batch).0,
                 horizon_client::creative::Creative::WIDTH as i32,
             ),
             _ => return false,
         };
         batch.width as i32 - (ox as i32 + image_width + 2) >= 32
+    }
+    /// `Hud.extractEffects`: icons top-right, beneficial row then harmful row;
+    /// every screen but the inventories keeps them.
+    pub(super) fn draw_effect_icons(&self, batch: &mut HudBatch) {
+        if self.potions.effects.list.is_empty() || self.screen_shows_active_effects(batch) {
+            return;
+        }
+        let icons: Vec<hud_overlays::EffectIcon> = self
+            .potions
+            .effects
+            .list
+            .iter()
+            .map(hud_overlays::EffectIcon::from)
+            .collect();
+        let draws = hud_overlays::effects(batch.width as i32, false, &icons);
+        hud_layout::paint(batch, &self.gui.atlas, &draws);
+    }
+    /// `EffectsInInventory`: panels to the right of survival/creative inventory.
+    pub(super) fn draw_inventory_effects(
+        &self,
+        batch: &mut HudBatch,
+        origin: (f32, f32),
+        image_width: i32,
+    ) {
+        let panels = inventory_effects::panels(
+            batch.width as i32,
+            [origin.0 as i32, origin.1 as i32],
+            image_width,
+            &self.potions.effects.list,
+            self.clock.rate(),
+            &|key| self.pack.names.display_get(key),
+            &|text| self.gui.atlas.font.width(text).ceil() as i32,
+        );
+        if let Some(lines) = inventory_effects::paint(
+            batch,
+            &self.gui.atlas,
+            &panels,
+            [self.cursor.0 as i32, self.cursor.1 as i32],
+        ) {
+            self.draw_tooltip_lines(batch, &lines, self.cursor.0, self.cursor.1);
+        }
     }
     /// Effects saved in level.dat (`Player.active_effects`).
     pub(super) fn restore_effects(&mut self) {

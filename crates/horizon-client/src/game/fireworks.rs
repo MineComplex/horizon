@@ -138,58 +138,6 @@ pub(super) fn fireworks_of(stack: &ItemStack) -> (u8, Vec<FireworkExplosion>) {
         .unwrap_or((1, Vec::new()))
 }
 impl Game<'_> {
-    /// `FireworkEntityRenderer.submit`: the item (GROUND) facing the camera,
-    /// lit at the rocket's light probe.
-    pub(super) fn rocket_geometry(&self, camera: glam::DVec3, alpha: f64, out: &mut Vec<Vertex>) {
-        let orientation = glam::Mat4::from_quat(self.camera_orientation());
-        // shouldRender: not while attached to an entity (`isAttachedToEntity`).
-        for r in self
-            .rockets
-            .iter()
-            .filter(|r| !r.attached && r.attached_to.is_none())
-        {
-            // FireworkRocketEntity.shouldRenderAtSqrDistance: within 64 blocks;
-            // EntityRenderer.shouldRender: its 0.25 box in the view.
-            if !self.standing_entity_in_view(
-                camera,
-                super::entity_culling::at(r.previous),
-                super::entity_culling::at(r.position),
-                alpha,
-                0.25,
-                0.25,
-                64.0,
-                0.0,
-            ) {
-                continue;
-            }
-            let p = glam::DVec3::new(
-                r.previous.x + (r.position.x - r.previous.x) * alpha,
-                r.previous.y + (r.position.y - r.previous.y) * alpha,
-                r.previous.z + (r.position.z - r.previous.z) * alpha,
-            );
-            // `updateForNonLiving`: GROUND, owned by the rocket.
-            let owner = owner_at(p.to_array(), 0.0, "minecraft:firework_rocket");
-            let state = self.resolve_item(&r.item, DisplayContext::Ground, Some(&owner), 0);
-            if state.is_empty() {
-                continue;
-            }
-            let mut pose = glam::Mat4::from_translation((p - camera).as_vec3()) * orientation;
-            if r.angled {
-                pose *= glam::Mat4::from_rotation_z(std::f32::consts::PI)
-                    * glam::Mat4::from_rotation_y(std::f32::consts::PI)
-                    * glam::Mat4::from_rotation_x(std::f32::consts::FRAC_PI_2);
-            }
-            // getLightProbePosition: the eye, 0.85 of its 0.25 height.
-            let light = self.world.light(
-                p.x.floor() as i32,
-                (p.y + 0.2125).floor() as i32,
-                p.z.floor() as i32,
-            );
-            self.submit_item_world(&state, pose, vertex_light(light), out);
-        }
-    }
-}
-impl crate::game::Sim<'_> {
     pub(super) fn new_rocket(&mut self, at: Vec3, stack: &ItemStack, attached: bool) -> Rocket {
         let (flight, explosions) = fireworks_of(stack);
         // FireworkRocketEntity: motion and lifetime come from the rocket's own random.
@@ -442,6 +390,56 @@ impl crate::game::Sim<'_> {
             && let Some(id) = self.motion.health.damage.id("minecraft:fireworks")
         {
             let _ = p.hurt(&self.motion.health, self.world.health_rules, id, amount);
+        }
+    }
+    /// `FireworkEntityRenderer.submit`: the item (GROUND) facing the camera,
+    /// lit at the rocket's light probe.
+    pub(super) fn rocket_geometry(&self, camera: glam::DVec3, alpha: f64, out: &mut Vec<Vertex>) {
+        let orientation = glam::Mat4::from_quat(self.camera_orientation());
+        // shouldRender: not while attached to an entity (`isAttachedToEntity`).
+        for r in self
+            .rockets
+            .iter()
+            .filter(|r| !r.attached && r.attached_to.is_none())
+        {
+            // FireworkRocketEntity.shouldRenderAtSqrDistance: within 64 blocks;
+            // EntityRenderer.shouldRender: its 0.25 box in the view.
+            if !self.standing_entity_in_view(
+                camera,
+                super::entity_culling::at(r.previous),
+                super::entity_culling::at(r.position),
+                alpha,
+                0.25,
+                0.25,
+                64.0,
+                0.0,
+            ) {
+                continue;
+            }
+            let p = glam::DVec3::new(
+                r.previous.x + (r.position.x - r.previous.x) * alpha,
+                r.previous.y + (r.position.y - r.previous.y) * alpha,
+                r.previous.z + (r.position.z - r.previous.z) * alpha,
+            );
+            // `updateForNonLiving`: GROUND, owned by the rocket.
+            let owner = owner_at(p.to_array(), 0.0, "minecraft:firework_rocket");
+            let state = self.resolve_item(&r.item, DisplayContext::Ground, Some(&owner), 0);
+            if state.is_empty() {
+                continue;
+            }
+            let mut pose = glam::Mat4::from_translation((p - camera).as_vec3()) * orientation;
+            if r.angled {
+                pose *= glam::Mat4::from_rotation_z(std::f32::consts::PI)
+                    * glam::Mat4::from_rotation_y(std::f32::consts::PI)
+                    * glam::Mat4::from_rotation_x(std::f32::consts::FRAC_PI_2);
+            }
+            // getLightProbePosition: the eye, 0.85 of its 0.25 height.
+            let light = self.world.light(
+                p.x.floor() as i32,
+                (p.y + 0.2125).floor() as i32,
+                p.z.floor() as i32,
+            );
+            self.submit_item_world(&state, pose, vertex_light(light), out);
         }
     }
 }

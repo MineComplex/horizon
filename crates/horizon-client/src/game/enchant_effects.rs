@@ -25,8 +25,7 @@ enum MendSlot {
     Armor(usize),
 }
 
-impl Game<'_> {}
-impl crate::game::Sim<'_> {
+impl Game<'_> {
     /// `Player.getDestroySpeed` after the tool speed: mining efficiency, haste
     /// and mining fatigue.
     pub(super) fn modify_destroy_speed(&self, mut speed: f32) -> f32 {
