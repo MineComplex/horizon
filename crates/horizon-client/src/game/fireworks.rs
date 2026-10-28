@@ -138,30 +138,6 @@ pub(super) fn fireworks_of(stack: &ItemStack) -> (u8, Vec<FireworkExplosion>) {
         .unwrap_or((1, Vec::new()))
 }
 impl Game<'_> {
-    pub(super) fn new_rocket(&mut self, at: Vec3, stack: &ItemStack, attached: bool) -> Rocket {
-        let (flight, explosions) = fireworks_of(stack);
-        // FireworkRocketEntity: motion and lifetime come from the rocket's own random.
-        let r = &mut super::dispenser::entity_random();
-        let tri = |r: &mut horizon_core::random::LegacyRandom| r.triangle(0.0, 0.002297);
-        let velocity = Vec3::new(tri(r), 0.05, tri(r));
-        let lifetime = 10 * (1 + i32::from(flight))
-            + r.next_int_bound(6).unwrap_or(0)
-            + r.next_int_bound(7).unwrap_or(0);
-        Rocket {
-            id: 0,
-            position: at,
-            previous: at,
-            velocity,
-            life: 0,
-            lifetime,
-            explosions,
-            attached,
-            guest: None,
-            attached_to: None,
-            angled: false,
-            item: stack.clone(),
-        }
-    }
     /// `FireworkRocketItem.useOn`: launch from the clicked point.
     pub(super) fn launch_firework(&mut self, hit: &Hit, stack: &ItemStack) -> bool {
         if &*stack.item != "minecraft:firework_rocket" {
@@ -179,14 +155,6 @@ impl Game<'_> {
         }
         self.swing_arm();
         true
-    }
-    /// A rocket shot at an angle (`DATA_SHOT_AT_ANGLE`): out of a dispenser
-    /// (`FireworkRocketItem.asProjectile`) or a crossbow.
-    pub(super) fn launch_angled_rocket(&mut self, at: Vec3, velocity: Vec3, stack: &ItemStack) {
-        let mut rocket = self.new_rocket(at, stack, false);
-        rocket.velocity = velocity;
-        rocket.angled = true;
-        self.rockets.push(rocket);
     }
     /// `FireworkRocketItem.use` while gliding: a rocket attached to the player.
     pub(super) fn boost_firework(&mut self, stack: &ItemStack) -> bool {
@@ -222,9 +190,9 @@ impl Game<'_> {
                     r.position = Vec3::new(g.position[0], g.position[1], g.position[2]);
                 }
             } else if r.attached {
-                if let Some(p) = self.player.as_mut() {
+                if let Some(p) = self.sim.player.as_mut() {
                     if p.fall_flying {
-                        let look = view_vector(self.yaw, self.pitch);
+                        let look = view_vector(self.sim.yaw, self.sim.pitch);
                         let m = p.velocity;
                         p.velocity = Vec3::new(
                             m.x + look[0] * 0.1 + (look[0] * 1.5 - m.x) * 0.5,
@@ -342,18 +310,9 @@ impl Game<'_> {
         }
         let camera = self.eye_position().unwrap_or(at);
         let v = [r.velocity.x, r.velocity.y, r.velocity.z];
-        self.particles
+        self.sim
+            .particles
             .fireworks(at, v, r.explosions.clone(), camera);
-    }
-    /// FireworkRocketEntity.handleEntityEvent: use the synchronized item data.
-    pub(super) fn remote_firework_explosion(&mut self, id: i32) {
-        let camera = self.eye_position();
-        if let Some(r) = self.rockets.iter().find(|r| r.id == id as u32) {
-            let at = [r.position.x, r.position.y, r.position.z];
-            let v = [r.velocity.x, r.velocity.y, r.velocity.z];
-            self.particles
-                .fireworks(at, v, r.explosions.clone(), camera.unwrap_or(at));
-        }
     }
     /// `dealExplosionDamage` on a player that is not the rocket's
     /// `attachedToEntity`: within 5 blocks, when the rocket sees its feet or
@@ -377,19 +336,6 @@ impl Game<'_> {
         };
         if sees {
             self.rocket_hurt_player(blast_damage(damage, from, feet));
-        }
-    }
-    /// `hurtServer` with `damageSources().fireworks`: armor absorbs it and
-    /// wears (`hurtArmor`); creative and spectator players are immune.
-    fn rocket_hurt_player(&mut self, amount: f32) {
-        if self.creative || self.spectator() {
-            return;
-        }
-        if let Some(p) = self.player.as_mut()
-            && !p.health.dead_or_dying()
-            && let Some(id) = self.motion.health.damage.id("minecraft:fireworks")
-        {
-            let _ = p.hurt(&self.motion.health, self.world.health_rules, id, amount);
         }
     }
     /// `FireworkEntityRenderer.submit`: the item (GROUND) facing the camera,
@@ -440,6 +386,63 @@ impl Game<'_> {
                 p.z.floor() as i32,
             );
             self.submit_item_world(&state, pose, vertex_light(light), out);
+        }
+    }
+}
+impl crate::game::Sim<'_> {
+    pub(super) fn new_rocket(&mut self, at: Vec3, stack: &ItemStack, attached: bool) -> Rocket {
+        let (flight, explosions) = fireworks_of(stack);
+        // FireworkRocketEntity: motion and lifetime come from the rocket's own random.
+        let r = &mut super::dispenser::entity_random();
+        let tri = |r: &mut horizon_core::random::LegacyRandom| r.triangle(0.0, 0.002297);
+        let velocity = Vec3::new(tri(r), 0.05, tri(r));
+        let lifetime = 10 * (1 + i32::from(flight))
+            + r.next_int_bound(6).unwrap_or(0)
+            + r.next_int_bound(7).unwrap_or(0);
+        Rocket {
+            id: 0,
+            position: at,
+            previous: at,
+            velocity,
+            life: 0,
+            lifetime,
+            explosions,
+            attached,
+            guest: None,
+            attached_to: None,
+            angled: false,
+            item: stack.clone(),
+        }
+    }
+    /// A rocket shot at an angle (`DATA_SHOT_AT_ANGLE`): out of a dispenser
+    /// (`FireworkRocketItem.asProjectile`) or a crossbow.
+    pub(super) fn launch_angled_rocket(&mut self, at: Vec3, velocity: Vec3, stack: &ItemStack) {
+        let mut rocket = self.new_rocket(at, stack, false);
+        rocket.velocity = velocity;
+        rocket.angled = true;
+        self.rockets.push(rocket);
+    }
+    /// FireworkRocketEntity.handleEntityEvent: use the synchronized item data.
+    pub(super) fn remote_firework_explosion(&mut self, id: i32) {
+        let camera = self.eye_position();
+        if let Some(r) = self.rockets.iter().find(|r| r.id == id as u32) {
+            let at = [r.position.x, r.position.y, r.position.z];
+            let v = [r.velocity.x, r.velocity.y, r.velocity.z];
+            self.particles
+                .fireworks(at, v, r.explosions.clone(), camera.unwrap_or(at));
+        }
+    }
+    /// `hurtServer` with `damageSources().fireworks`: armor absorbs it and
+    /// wears (`hurtArmor`); creative and spectator players are immune.
+    fn rocket_hurt_player(&mut self, amount: f32) {
+        if self.creative || self.spectator() {
+            return;
+        }
+        if let Some(p) = self.player.as_mut()
+            && !p.health.dead_or_dying()
+            && let Some(id) = self.motion.health.damage.id("minecraft:fireworks")
+        {
+            let _ = p.hurt(&self.motion.health, self.world.health_rules, id, amount);
         }
     }
 }

@@ -226,100 +226,6 @@ pub(super) fn item_view(s: &ItemStack) -> ItemView {
     }
 }
 impl Game<'_> {
-    fn adv_path(&self) -> Option<std::path::PathBuf> {
-        Some(super::stats::player_json(
-            &self.world_root,
-            "advancements",
-            self.level.player_uuid?,
-        ))
-    }
-    /// A server with no player of its own and nobody it acts for: there is
-    /// no player for advancements and statistics.
-    pub(super) fn no_player_here(&self) -> bool {
-        self.options.dedicated.is_some() && self.lan_acting.is_none()
-    }
-    /// The advancement tree, loaded once.
-    pub(super) fn advancement_tree(&mut self) -> Arc<Tree> {
-        if self.adv.tree.list.is_empty() {
-            let tree = match self.adv.pending_tree.take().map(|h| h.join()) {
-                Some(Ok(tree)) => tree,
-                _ => Tree::load(&self.options.resources.join("data")),
-            };
-            self.adv.tree = Arc::new(tree);
-            // With the tree, while the world loads: built on the first
-            // inventory change it cost that tick ~10 ms.
-            self.inventory_index();
-        }
-        self.adv.tree.clone()
-    }
-    /// `inventory_changed`'s criteria by item, for the tree in place.
-    fn inventory_index(&mut self) -> Arc<adv::InventoryIndex> {
-        let tree = self.adv.tree.clone();
-        if let Some((built, index)) = &self.adv.inventory_index
-            && Arc::ptr_eq(built, &tree)
-        {
-            return index.clone();
-        }
-        let items = self.res.items();
-        let index = Arc::new(adv::InventoryIndex::build(&tree, |tag| {
-            items
-                .item_tags
-                .get(tag)
-                .map(|t| t.iter().map(String::as_str).collect())
-                .unwrap_or_default()
-        }));
-        self.adv.inventory_index = Some((tree, index.clone()));
-        index
-    }
-    /// Start reading the advancement files on another thread while the world
-    /// loads. The first tick's first criterion trigger used to read and parse
-    /// all of them on the game thread (about 60 ms).
-    pub(super) fn prefetch_advancement_tree(&mut self) {
-        if !self.adv.tree.list.is_empty() || self.adv.pending_tree.is_some() {
-            return;
-        }
-        let data = self.options.resources.join("data");
-        self.adv.pending_tree = std::thread::Builder::new()
-            .name("horizon-advancements".into())
-            .spawn(move || Tree::load(&data))
-            .ok();
-    }
-    pub(super) fn load_advancements(&mut self) {
-        if self.adv.loaded || self.remote.is_some() || self.no_player_here() {
-            return;
-        }
-        self.adv.loaded = true;
-        self.advancement_tree();
-        let progress = self
-            .adv_path()
-            .and_then(|p| std::fs::read_to_string(p).ok())
-            .and_then(|t| serde_json::from_str::<Value>(&t).ok())
-            .map(|v| Progress::from_json(&v))
-            .unwrap_or_default();
-        // The known recipes are the player's own (`recipeBook`), not the
-        // rewards of done advancements: /recipe take sticks.
-        let tree = self.adv.tree.clone();
-        self.adv.progress = progress;
-        self.world_data.registries.advancements = tree.list.iter().map(|a| a.id.clone()).collect();
-    }
-    pub(super) fn save_advancements(&self) {
-        if !self.adv.loaded || self.remote.is_some() || self.no_player_here() {
-            return;
-        }
-        let Some(path) = self.adv_path() else {
-            return;
-        };
-        let json = self
-            .adv
-            .progress
-            .to_json(&self.adv.tree, horizon_world::DATA_VERSION);
-        if let Some(dir) = path.parent() {
-            let _ = std::fs::create_dir_all(dir);
-        }
-        if let Ok(text) = serde_json::to_string_pretty(&json) {
-            let _ = std::fs::write(path, text);
-        }
-    }
     /// The player as predicates see it.
     /// The predicate view of a command target.
     pub(super) fn entity_view_of(&self, t: super::commands::Target) -> EntityView {
@@ -356,71 +262,6 @@ impl Game<'_> {
             },
             &View(self),
         )
-    }
-    pub(super) fn player_entity(&self) -> EntityView {
-        let Some(p) = self.player.as_ref() else {
-            return EntityView::default();
-        };
-        let mut eq: [Option<ItemView>; 7] = Default::default();
-        eq[0] = self.held().map(item_view);
-        eq[1] = self.offhand.as_ref().map(item_view);
-        for (i, a) in self.armor.iter().enumerate() {
-            eq[2 + i] = a.as_ref().map(item_view);
-        }
-        let vehicle = self.riding.and_then(|id| {
-            self.mobs
-                .iter()
-                .find(|m| m.id == id)
-                .map(|m| Box::new(self.mob_entity(m)))
-        });
-        EntityView {
-            kind: "minecraft:player".into(),
-            position: [p.position.x, p.position.y, p.position.z],
-            sneaking: p.pose == horizon_client::pose::Pose::Crouching,
-            sprinting: p.sprinting,
-            swimming: p.pose == horizon_client::pose::Pose::Swimming,
-            flying: p.flying,
-            on_ground: p.ground.on_ground,
-            equipment: eq,
-            vehicle,
-            effects: self
-                .potions
-                .effects
-                .list
-                .iter()
-                .map(|e| (format!("minecraft:{}", e.id), e.amplifier, e.duration))
-                .collect(),
-            gamemode: Some(self.mode.name().to_owned()),
-            ..Default::default()
-        }
-    }
-    pub(super) fn mob_entity(&self, m: &horizon_client::mobs::Mob) -> EntityView {
-        // mainhand, offhand, head, chest, legs, feet.
-        let slot = |i: &Option<std::sync::Arc<str>>| {
-            i.as_ref().map(|id| item_view(&ItemStack::new(id, 1)))
-        };
-        let mut equipment: [Option<ItemView>; 7] = Default::default();
-        if !horizon_client::mobs::equine::is_equine(m.species()) {
-            equipment[0] = slot(&m.extra.main_hand);
-            equipment[1] = slot(&m.extra.off_hand);
-            equipment[2] = slot(&m.extra.head);
-            equipment[3] = slot(&m.extra.chest);
-            equipment[4] = slot(&m.extra.legs);
-            equipment[5] = slot(&m.extra.feet);
-        }
-        EntityView {
-            kind: m.kind.id.clone(),
-            position: [m.position.x, m.position.y, m.position.z],
-            on_fire: m.fire_ticks > 0,
-            baby: m.is_baby(),
-            on_ground: m.on_ground,
-            equipment,
-            components: horizon_client::mobs::finalize::variant_component(m)
-                .map(|(id, value)| (id.to_owned(), value))
-                .into_iter()
-                .collect(),
-            ..Default::default()
-        }
     }
     /// `SimpleCriterionTrigger.trigger`: test each open criterion of the
     /// trigger and award what it completes.
@@ -471,12 +312,6 @@ impl Game<'_> {
             }
         }
     }
-    /// `PlayerAdvancements.progressChanged`, kept for a network player's client.
-    fn progress_changed(&mut self, index: usize) {
-        if self.lan_acting.is_some() {
-            self.adv.changed.insert(index);
-        }
-    }
     /// After `ServerRecipeBook.addRecipes`: the toast and the
     /// `recipe_unlocked` trigger of each recipe now known.
     pub(super) fn recipe_unlocked(&mut self, unlocked: &[String]) {
@@ -511,18 +346,20 @@ impl Game<'_> {
             .rewards
             .recipes
             .iter()
-            .filter(|r| self.res.stations().recipe_index.contains(r))
+            .filter(|r| self.sim.res.stations().recipe_index.contains(r))
             .cloned()
             .collect();
         let (_, unlocked) = self
+            .sim
             .level
             .recipe_book
-            .add_recipes(&self.res.stations().recipe_index, &rewards);
+            .add_recipes(&self.sim.res.stations().recipe_index, &rewards);
         for table in &a.rewards.loot {
-            let items = self
-                .res
-                .items()
-                .loot_table(table, false, None, &mut self.world.random);
+            let items =
+                self.sim
+                    .res
+                    .items()
+                    .loot_table(table, false, None, &mut self.sim.world.random);
             for s in items {
                 if let Some(rest) = self.give(s)
                     && let Some(eye) = self.eye_position()
@@ -1145,16 +982,6 @@ impl Game<'_> {
             }
         }
     }
-    /// The slots held by shown advancement, recipe and pack toasts, as bits.
-    pub(super) fn toast_slots_used(&self) -> u32 {
-        let packs = self.server_packs.toast_slots();
-        self.adv
-            .toasts
-            .iter()
-            .filter_map(|t| t.slot)
-            .chain(packs)
-            .fold(0, |used, slot| used | 1 << slot)
-    }
     /// The `AdvancementToast` or `RecipeToast` at `index` in its slot at `y`.
     fn draw_toast(&mut self, batch: &mut HudBatch, index: usize, y: f32, multiplier: f64) {
         let t = &self.adv.toasts[index];
@@ -1167,11 +994,11 @@ impl Game<'_> {
         if let Some((station, item)) = recipe {
             // RecipeToast: black description under a purple title, the
             // station at 0.6 scale in the corner over the cycling result.
-            let atlas = &self.gui.atlas;
+            let atlas = &self.front.gui.atlas;
             batch.sprite(atlas, "gui/sprites/toast/recipe", x, y);
             let title = self.translate("recipe.toast.title", "New Recipe(s) Unlocked!");
             let description = self.translate("recipe.toast.description", "Check your recipe book");
-            let atlas = &self.gui.atlas;
+            let atlas = &self.front.gui.atlas;
             batch.text(atlas, &title, x + 30.0, y + 7.0, 0xFF50_0050, false);
             batch.text(atlas, &description, x + 30.0, y + 18.0, 0xFF00_0000, false);
             let start = batch.vertices.len();
@@ -1180,7 +1007,7 @@ impl Game<'_> {
             self.draw_item_model(batch, &item, x + 8.0, y + 8.0);
             return;
         }
-        let atlas = &self.gui.atlas;
+        let atlas = &self.front.gui.atlas;
         batch.sprite(atlas, "gui/sprites/toast/advancement", x, y);
         let (key, color) = match frame {
             Frame::Task => ("advancements.toast.task", 0xFF00_FFFF),
@@ -1197,6 +1024,183 @@ impl Game<'_> {
         );
         batch.text_styled(atlas, &title, x + 30.0, y + 18.0, u32::MAX, false);
         self.draw_item(batch, &ItemStack::new(&icon, 1), x + 8.0, y + 8.0);
+    }
+}
+impl crate::game::Sim<'_> {
+    fn adv_path(&self) -> Option<std::path::PathBuf> {
+        Some(super::stats::player_json(
+            &self.world_root,
+            "advancements",
+            self.level.player_uuid?,
+        ))
+    }
+    /// A server with no player of its own and nobody it acts for: there is
+    /// no player for advancements and statistics.
+    pub(super) fn no_player_here(&self) -> bool {
+        self.options.dedicated.is_some() && self.lan_acting.is_none()
+    }
+    /// The advancement tree, loaded once.
+    pub(super) fn advancement_tree(&mut self) -> Arc<Tree> {
+        if self.adv.tree.list.is_empty() {
+            let tree = match self.adv.pending_tree.take().map(|h| h.join()) {
+                Some(Ok(tree)) => tree,
+                _ => Tree::load(&self.options.resources.join("data")),
+            };
+            self.adv.tree = Arc::new(tree);
+            // With the tree, while the world loads: built on the first
+            // inventory change it cost that tick ~10 ms.
+            self.inventory_index();
+        }
+        self.adv.tree.clone()
+    }
+    /// `inventory_changed`'s criteria by item, for the tree in place.
+    fn inventory_index(&mut self) -> Arc<adv::InventoryIndex> {
+        let tree = self.adv.tree.clone();
+        if let Some((built, index)) = &self.adv.inventory_index
+            && Arc::ptr_eq(built, &tree)
+        {
+            return index.clone();
+        }
+        let items = self.res.items();
+        let index = Arc::new(adv::InventoryIndex::build(&tree, |tag| {
+            items
+                .item_tags
+                .get(tag)
+                .map(|t| t.iter().map(String::as_str).collect())
+                .unwrap_or_default()
+        }));
+        self.adv.inventory_index = Some((tree, index.clone()));
+        index
+    }
+    /// Start reading the advancement files on another thread while the world
+    /// loads. The first tick's first criterion trigger used to read and parse
+    /// all of them on the game thread (about 60 ms).
+    pub(super) fn prefetch_advancement_tree(&mut self) {
+        if !self.adv.tree.list.is_empty() || self.adv.pending_tree.is_some() {
+            return;
+        }
+        let data = self.options.resources.join("data");
+        self.adv.pending_tree = std::thread::Builder::new()
+            .name("horizon-advancements".into())
+            .spawn(move || Tree::load(&data))
+            .ok();
+    }
+    pub(super) fn load_advancements(&mut self) {
+        if self.adv.loaded || self.remote.is_some() || self.no_player_here() {
+            return;
+        }
+        self.adv.loaded = true;
+        self.advancement_tree();
+        let progress = self
+            .adv_path()
+            .and_then(|p| std::fs::read_to_string(p).ok())
+            .and_then(|t| serde_json::from_str::<Value>(&t).ok())
+            .map(|v| Progress::from_json(&v))
+            .unwrap_or_default();
+        // The known recipes are the player's own (`recipeBook`), not the
+        // rewards of done advancements: /recipe take sticks.
+        let tree = self.adv.tree.clone();
+        self.adv.progress = progress;
+        self.world_data.registries.advancements = tree.list.iter().map(|a| a.id.clone()).collect();
+    }
+    pub(super) fn save_advancements(&self) {
+        if !self.adv.loaded || self.remote.is_some() || self.no_player_here() {
+            return;
+        }
+        let Some(path) = self.adv_path() else {
+            return;
+        };
+        let json = self
+            .adv
+            .progress
+            .to_json(&self.adv.tree, horizon_world::DATA_VERSION);
+        if let Some(dir) = path.parent() {
+            let _ = std::fs::create_dir_all(dir);
+        }
+        if let Ok(text) = serde_json::to_string_pretty(&json) {
+            let _ = std::fs::write(path, text);
+        }
+    }
+    pub(super) fn player_entity(&self) -> EntityView {
+        let Some(p) = self.player.as_ref() else {
+            return EntityView::default();
+        };
+        let mut eq: [Option<ItemView>; 7] = Default::default();
+        eq[0] = self.held().map(item_view);
+        eq[1] = self.offhand.as_ref().map(item_view);
+        for (i, a) in self.armor.iter().enumerate() {
+            eq[2 + i] = a.as_ref().map(item_view);
+        }
+        let vehicle = self.riding.and_then(|id| {
+            self.mobs
+                .iter()
+                .find(|m| m.id == id)
+                .map(|m| Box::new(self.mob_entity(m)))
+        });
+        EntityView {
+            kind: "minecraft:player".into(),
+            position: [p.position.x, p.position.y, p.position.z],
+            sneaking: p.pose == horizon_client::pose::Pose::Crouching,
+            sprinting: p.sprinting,
+            swimming: p.pose == horizon_client::pose::Pose::Swimming,
+            flying: p.flying,
+            on_ground: p.ground.on_ground,
+            equipment: eq,
+            vehicle,
+            effects: self
+                .potions
+                .effects
+                .list
+                .iter()
+                .map(|e| (format!("minecraft:{}", e.id), e.amplifier, e.duration))
+                .collect(),
+            gamemode: Some(self.mode.name().to_owned()),
+            ..Default::default()
+        }
+    }
+    pub(super) fn mob_entity(&self, m: &horizon_client::mobs::Mob) -> EntityView {
+        // mainhand, offhand, head, chest, legs, feet.
+        let slot = |i: &Option<std::sync::Arc<str>>| {
+            i.as_ref().map(|id| item_view(&ItemStack::new(id, 1)))
+        };
+        let mut equipment: [Option<ItemView>; 7] = Default::default();
+        if !horizon_client::mobs::equine::is_equine(m.species()) {
+            equipment[0] = slot(&m.extra.main_hand);
+            equipment[1] = slot(&m.extra.off_hand);
+            equipment[2] = slot(&m.extra.head);
+            equipment[3] = slot(&m.extra.chest);
+            equipment[4] = slot(&m.extra.legs);
+            equipment[5] = slot(&m.extra.feet);
+        }
+        EntityView {
+            kind: m.kind.id.clone(),
+            position: [m.position.x, m.position.y, m.position.z],
+            on_fire: m.fire_ticks > 0,
+            baby: m.is_baby(),
+            on_ground: m.on_ground,
+            equipment,
+            components: horizon_client::mobs::finalize::variant_component(m)
+                .map(|(id, value)| (id.to_owned(), value))
+                .into_iter()
+                .collect(),
+            ..Default::default()
+        }
+    }
+    /// `PlayerAdvancements.progressChanged`, kept for a network player's client.
+    fn progress_changed(&mut self, index: usize) {
+        if self.lan_acting.is_some() {
+            self.adv.changed.insert(index);
+        }
+    }
+    /// The slots held by shown advancement, recipe and pack toasts, as bits.
+    pub(super) fn toast_slots_used(&self) -> u32 {
+        let packs = self.server_packs.toast_slots();
+        self.adv
+            .toasts
+            .iter()
+            .filter_map(|t| t.slot)
+            .chain(packs)
+            .fold(0, |used, slot| used | 1 << slot)
     }
 }
 /// `Advancement.name`: the bracketed title in the frame's colour, with the
@@ -1266,6 +1270,8 @@ impl Game<'_> {
         }
         changed || criterion.is_none()
     }
+}
+impl crate::game::Sim<'_> {
     /// `AdvancementCommands.Action.REVOKE`.
     pub(super) fn revoke_advancement(&mut self, index: usize, criterion: Option<&str>) -> bool {
         let tree = self.adv.tree.clone();
@@ -1283,7 +1289,8 @@ impl Game<'_> {
         }
     }
 }
-impl Game<'_> {
+impl Game<'_> {}
+impl crate::game::Sim<'_> {
     /// `ClientAdvancements.update` (ClientboundUpdateAdvancementsPacket):
     /// the server's advancements replace or join the tree, each changed one
     /// takes the progress sent, and one just done shows its toast. `icons`

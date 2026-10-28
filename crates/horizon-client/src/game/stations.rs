@@ -282,14 +282,6 @@ fn rgb_of(rgba: u32) -> u32 {
     (rgba & 0xFF) << 16 | (rgba >> 8 & 0xFF) << 8 | (rgba >> 16 & 0xFF)
 }
 impl Game<'_> {
-    /// `Component.translatable`: the selected language (which `lang` layers
-    /// over `en_us`), the caller's English text last.
-    pub(super) fn translate(&self, key: &str, fallback: &str) -> String {
-        horizon_client::lang::get_or(key, fallback)
-    }
-    fn brewing_open(&self) -> bool {
-        matches!(self.container_kind(), Some(BlockEntity::Brewing(_)))
-    }
     /// Opens a workstation menu for the block; false when it is not one.
     pub(super) fn open_station(&mut self, pos: [i32; 3], name: &str) -> bool {
         let Some(kind) = Kind::from_block(name) else {
@@ -348,6 +340,1335 @@ impl Game<'_> {
         for stack in station.inputs.into_iter().flatten() {
             self.give_or_drop(stack);
         }
+    }
+    /// `slotsChanged` / `createResult` for the open station.
+    pub(super) fn station_changed(&mut self) {
+        let Some(mut s) = self.station.take() else {
+            return;
+        };
+        let creative = self.creative;
+        let data = self.res.stations();
+        let items = self.res.items();
+        match s.kind {
+            // A server's table: its data slots carry the offers, and its
+            // client menu only clears them without an enchantable item.
+            Kind::Enchanting if self.remote.is_some() => {
+                let enchantable = s.inputs[0].as_ref().is_some_and(|i| {
+                    data.enchantments.enchantable(&i.item) > 0 && i.enchantments().is_empty()
+                });
+                if !enchantable {
+                    s.offers = Default::default();
+                }
+            }
+            Kind::Enchanting => {
+                s.bookcases = self.count_bookshelves(s.pos);
+                s.offers = stations::enchant_offers(
+                    &data.enchantments,
+                    items,
+                    self.level.xp_seed,
+                    s.bookcases,
+                    s.inputs[0].as_ref(),
+                );
+            }
+            Kind::Anvil => {
+                let name = self.anvil_item_name(&s);
+                let hover = s.inputs[0]
+                    .as_ref()
+                    .map(|i| stations::hover_name(&|id| self.pack.names.display_item(id), i))
+                    .unwrap_or_default();
+                s.anvil = stations::anvil_result(
+                    &data.enchantments,
+                    items,
+                    s.inputs[0].as_ref(),
+                    s.inputs[1].as_ref(),
+                    Some(&name),
+                    &hover,
+                    creative,
+                );
+                s.result = s.anvil.result.clone();
+            }
+            Kind::Grindstone => {
+                s.result = stations::grindstone_result(
+                    &data.enchantments,
+                    items,
+                    s.inputs[0].as_ref(),
+                    s.inputs[1].as_ref(),
+                );
+            }
+            Kind::Smithing => {
+                s.result = data.recipes.smithing_result(
+                    &data.enchantments,
+                    s.inputs[0].as_ref(),
+                    s.inputs[1].as_ref(),
+                    s.inputs[2].as_ref(),
+                );
+            }
+            // The menu engine keeps the merchant's result (Game::menu_session).
+            Kind::Merchant => {}
+            Kind::Beacon => {}
+            // The menu engine keeps the cartography table's, the loom's and
+            // the stonecutter's state (Game::menu_session).
+            Kind::Cartography | Kind::Loom | Kind::Stonecutter => {}
+        }
+        self.station = Some(s);
+    }
+    /// After an anvil or smithing click on the menu engine: the anvil's cost
+    /// and state back into the station and the rename box following the
+    /// input (`AnvilScreen.slotChanged`), then the rest of a taken result's
+    /// `onTake` (the levels, the anvil's wear, the use sound) unless a
+    /// server does it.
+    pub(super) fn combiner_session_end(
+        &mut self,
+        menu: &horizon_client::menu::Menu,
+        predicting: bool,
+    ) {
+        let Some(s) = self.station.as_mut() else {
+            return;
+        };
+        let (pos, kind) = (s.pos, s.kind);
+        if kind == Kind::Anvil {
+            s.anvil.cost = menu.data[0];
+            s.anvil.repair_item_count_cost = menu.anvil.repair_count;
+            s.anvil.only_renaming = menu.anvil.only_renaming;
+            s.anvil.result = s.result.clone();
+        }
+        self.station_after_input();
+        if !menu.combined || predicting {
+            return;
+        }
+        if kind == Kind::Smithing {
+            self.level_event_at(1044, pos, 0);
+            return;
+        }
+        self.give_levels(menu.level_change);
+        if self.anvil_used(pos, self.creative) {
+            self.close_station();
+            self.screen = Screen::Playing;
+            self.capture(true);
+        }
+    }
+    /// `AnvilMenu.onTake`'s level part: out of creative a 12% chance
+    /// (`AnvilBlock.damage`) to wear the anvil a stage, or break a damaged one
+    /// (level event 1029); otherwise level event 1030. True when it broke.
+    pub(super) fn anvil_used(&mut self, pos: [i32; 3], creative: bool) -> bool {
+        let state = self.world.block(pos[0], pos[1], pos[2]);
+        let name = self.res.facts().get(state).name.clone();
+        let anvil = matches!(
+            &*name,
+            "minecraft:anvil" | "minecraft:chipped_anvil" | "minecraft:damaged_anvil"
+        );
+        if !creative && anvil && self.world.random.next_float() < 0.12 {
+            match &*name {
+                "minecraft:anvil" => {
+                    let _ = self.set_state_named(pos, "minecraft:chipped_anvil", &["facing"]);
+                }
+                "minecraft:chipped_anvil" => {
+                    let _ = self.set_state_named(pos, "minecraft:damaged_anvil", &["facing"]);
+                }
+                _ => {
+                    let _ = self
+                        .sim
+                        .world
+                        .set(pos[0], pos[1], pos[2], self.sim.world.air);
+                    self.sim.world.modified.insert((pos[0] >> 4, pos[2] >> 4));
+                    self.level_event_at(1029, pos, 0);
+                    return true;
+                }
+            }
+        }
+        self.level_event_at(1030, pos, 0);
+        false
+    }
+    /// The grindstone result's `onTake` with a level (`amount`: the menu's
+    /// `getExperienceAmount` sum): the orbs at the block's centre
+    /// (`ExperienceOrb.award`), then level event 1042, the grindstone's sound
+    /// for everyone around.
+    pub(super) fn grindstone_taken(&mut self, pos: [i32; 3], amount: i32) {
+        let xp = stations::grindstone_xp_roll(amount, &mut self.world.random);
+        if xp > 0 {
+            self.spawn_orbs(pos.map(|v| f64::from(v) + 0.5), xp);
+        }
+        self.level_event_at(1042, pos, 0);
+    }
+    /// `EnchantmentMenu.clickMenuButton`.
+    fn click_enchant(&mut self, button: usize) {
+        let Some(s) = self.station.as_ref() else {
+            return;
+        };
+        let cost = s.offers.costs[button];
+        let lapis_needed = button as u32 + 1;
+        let Some(item) = s.inputs[0].clone() else {
+            return;
+        };
+        let lapis = s.inputs[1].as_ref().map_or(0, |l| l.count);
+        if lapis < lapis_needed && !self.creative {
+            return;
+        }
+        if cost <= 0
+            || (self.experience.level < lapis_needed as i32 || self.experience.level < cost)
+                && !self.creative
+        {
+            return;
+        }
+        if self.remote.is_some() {
+            // EnchantmentScreen.mouseClicked: the client menu took it, the server enchants.
+            self.remote_station_button(button as i32);
+            return;
+        }
+        let Some(enchanted) = stations::apply_enchantment(
+            &self.res.stations().enchantments,
+            self.res.items(),
+            self.level.xp_seed,
+            button,
+            cost,
+            &item,
+        ) else {
+            return;
+        };
+        let pos = s.pos;
+        let enchanted_item = enchanted.clone();
+        // Player.onEnchantmentPerformed
+        self.give_levels(-(lapis_needed as i32));
+        self.sim.level.xp_seed = self.sim.world.random.next_int();
+        if let Some(s) = self.sim.station.as_mut() {
+            s.inputs[0] = Some(enchanted);
+            if !self.sim.creative
+                && let Some(l) = s.inputs[1].as_mut()
+            {
+                l.count -= lapis_needed;
+                if l.count == 0 {
+                    s.inputs[1] = None;
+                }
+            }
+        }
+        let pitch = self.world.random.next_float() * 0.1 + 0.9;
+        self.stats.custom("enchant_item", 1);
+        self.trigger_enchanted_item(&enchanted_item, lapis_needed as i32);
+        self.play_at("minecraft:block.enchantment_table.use", pos, 1.0, pitch);
+        self.station_changed();
+    }
+    pub(super) fn station_click(&mut self, right: bool) -> bool {
+        // A server's brewing stand: its slots are the server's.
+        if self.station.is_none() && (!self.brewing_open() || self.remote.is_some()) {
+            return false;
+        }
+        let Some(size) = self
+            .front
+            .renderer
+            .as_ref()
+            .map(|r| [r.config.width, r.config.height])
+        else {
+            return true;
+        };
+        let batch = HudBatch::new(size);
+        let (ox, oy) = self.inventory_origin(&batch);
+        let local = (self.front.cursor.0 - ox, self.front.cursor.1 - oy);
+        let shift = self.has_shift_down();
+        if let Some(kind) = self.station.as_ref().map(|s| s.kind) {
+            if kind == Kind::Merchant && !right && self.merchant_click(local) {
+                return true;
+            }
+            if kind == Kind::Merchant && self.remote.is_some() {
+                // A server's trading window: its slots are the server's.
+                return false;
+            }
+            if kind == Kind::Loom && !right && self.loom_click(local) {
+                return true;
+            }
+            if kind == Kind::Beacon && !right && self.beacon_click(local) {
+                return true;
+            }
+            if kind == Kind::Enchanting && !right {
+                for i in 0..3 {
+                    let (x, y, w, h) = enchant_button(i);
+                    if inside(local, x, y, w, h) {
+                        self.click_enchant(i);
+                        return true;
+                    }
+                }
+            }
+            if kind == Kind::Stonecutter && self.stonecutter_click(local) {
+                return true;
+            }
+            if kind == Kind::Anvil && !right && self.anvil_name_click(ox, oy) {
+                return true;
+            }
+        }
+        let Some(slot) = self.slot_at(&batch, self.front.cursor.0, self.front.cursor.1) else {
+            return true;
+        };
+        // Every station's clicks (and the brewing stand's) run on the
+        // verified menu engine.
+        let input = if shift {
+            horizon_client::menu::Input::QuickMove
+        } else {
+            horizon_client::menu::Input::Pickup
+        };
+        self.menu_click(Some(slot), i32::from(right), input);
+        true
+    }
+    /// Recompute after slot changes; the anvil box follows its input item.
+    fn station_after_input(&mut self) {
+        let Some(s) = self.sim.station.as_mut() else {
+            return;
+        };
+        if s.kind == Kind::Anvil && s.inputs[0] != s.anvil_last {
+            // AnvilScreen.slotChanged: the box shows the new input's name.
+            s.anvil_last = s.inputs[0].clone();
+            s.name = s.inputs[0]
+                .as_ref()
+                .map(|i| stations::hover_name(&|id| self.sim.pack.names.display_item(id), i))
+                .unwrap_or_default();
+            let name = s.name.clone();
+            s.rename.set_value(&name);
+        }
+        self.station_changed();
+    }
+    /// `StonecutterScreen.mouseClicked` on its recipe grid: `clickMenuButton`
+    /// with the cell's index (an empty cell's too), and the select sound when
+    /// the menu took it.
+    fn stonecutter_click(&mut self, local: (f32, f32)) -> bool {
+        let Some(start) = self
+            .station
+            .as_ref()
+            .filter(|s| s.inputs[0].is_some() && !s.stone.recipes.is_empty())
+            .map(|s| s.start)
+        else {
+            return false;
+        };
+        for index in start..start + 12 {
+            let p = index - start;
+            let (x, y) = (52.0 + (p % 4) as f32 * 16.0, 14.0 + (p / 4) as f32 * 18.0);
+            if !inside(local, x, y, 16.0, 18.0) {
+                continue;
+            }
+            let mut taken = false;
+            let flag = &mut taken;
+            self.menu_session(|menu, env, _| {
+                *flag = menu.button(env, index as i32);
+                Some(*flag)
+            });
+            if taken {
+                self.sounds
+                    .play("minecraft:ui.stonecutter.select_recipe", None, 1.0, 1.0);
+                self.remote_station_button(index as i32);
+                return true;
+            }
+        }
+        false
+    }
+    pub(super) fn station_text(&mut self, text: Option<&str>, backspace: bool) {
+        // The recipe book's search box takes scripted typing too.
+        if self.recipe_search_focused() {
+            self.recipe_text(text, backspace);
+            return;
+        }
+        let Some(s) = self.station.as_mut() else {
+            return;
+        };
+        if backspace {
+            s.rename.delete_chars(-1);
+        } else if let Some(t) = text {
+            s.rename.insert_text(t);
+        }
+        s.name.clone_from(&s.rename.value);
+        self.station_changed();
+        self.remote_anvil_rename();
+    }
+    /// `AnvilScreen.keyPressed`: the rename box handles the key.
+    pub(super) fn station_key(&mut self, key: winit::keyboard::KeyCode) -> bool {
+        let (ctrl, shift) = (self.has_control_down(), self.has_shift_down());
+        let Some(s) = self.station.as_mut() else {
+            return false;
+        };
+        if !s.rename.key(key, ctrl, shift) {
+            return false;
+        }
+        s.name.clone_from(&s.rename.value);
+        self.station_changed();
+        self.remote_anvil_rename();
+        true
+    }
+    /// Ctrl+A/C/V/X in the anvil's rename box (an `EditBox` of 50) or the
+    /// recipe book's search box.
+    pub(super) fn station_shortcut(&mut self, shortcut: horizon_client::clipboard::EditShortcut) {
+        if self.recipe_search_focused() {
+            self.recipe_shortcut(shortcut);
+            return;
+        }
+        let Some(s) = self.sim.station.as_mut() else {
+            return;
+        };
+        if s.rename.shortcut(shortcut, &mut self.front.clipboard) {
+            s.name.clone_from(&s.rename.value);
+            self.station_changed();
+            self.remote_anvil_rename();
+        }
+    }
+    /// A click in the anvil's name box (`EditBox.onClick`).
+    fn anvil_name_click(&mut self, ox: f32, oy: f32) -> bool {
+        let open = self
+            .station
+            .as_ref()
+            .is_some_and(|s| s.kind == Kind::Anvil && s.inputs[0].is_some());
+        if !open {
+            return false;
+        }
+        let (x, y, w, h) = (ox + 62.0, oy + 24.0, 103.0, 12.0);
+        let (mx, my) = self.front.cursor;
+        if mx < x || my < y || mx >= x + w || my >= y + h {
+            return false;
+        }
+        let shift = self.has_shift_down();
+        let Some(s) = self.sim.station.as_mut() else {
+            return false;
+        };
+        s.rename.x = x;
+        s.rename.y = y;
+        s.rename.width = w;
+        s.rename.click(&self.front.gui.atlas, mx, shift, false);
+        true
+    }
+    /// AnvilScreen's name box, drawn after the station picture.
+    fn draw_anvil_name(&mut self, batch: &mut HudBatch, ox: f32, oy: f32) {
+        let Some(s) = self.sim.station.as_mut() else {
+            return;
+        };
+        let edit = &mut s.rename;
+        edit.x = ox + 62.0;
+        edit.y = oy + 24.0;
+        edit.width = 103.0;
+        edit.height = 12.0;
+        edit.bordered = false;
+        edit.focused = true;
+        edit.text_color = u32::MAX;
+        edit.max_length = ANVIL_NAME_CHARS;
+        edit.draw(batch, &self.front.gui.atlas, None);
+    }
+
+    // ---------------------------------------------------------------- drawing
+
+    fn part(
+        batch: &mut HudBatch,
+        atlas: &horizon_client::hud::HudAtlas,
+        name: &str,
+        src: (f32, f32),
+        size: (f32, f32),
+        dst: (f32, f32),
+    ) {
+        if let Some(mut r) = atlas.sprites.get(name).copied() {
+            let (du, dv) = ((r.u1 - r.u0) / r.w as f32, (r.v1 - r.v0) / r.h as f32);
+            r.u0 += src.0 * du;
+            r.v0 += src.1 * dv;
+            r.u1 = r.u0 + size.0 * du;
+            r.v1 = r.v0 + size.1 * dv;
+            batch.rect_uv(dst.0, dst.1, size.0, size.1, r, u32::MAX);
+        }
+    }
+    /// Text in the Standard Galactic alphabet (`minecraft:alt`), cut to `max` pixels.
+    fn galactic(&self, batch: &mut HudBatch, text: &str, x: f32, y: f32, max: f32, color: u32) {
+        let atlas = &self.front.gui.atlas;
+        let Some(sheet) = atlas.sprites.get("font/ascii_sga").copied() else {
+            batch.text(atlas, text, x, y, color, false);
+            return;
+        };
+        let cell = sheet.w / 16;
+        let (px, py) = (
+            (sheet.u0 * atlas.width as f32) as u32,
+            (sheet.v0 * atlas.height as f32) as u32,
+        );
+        let mut cursor = x;
+        for ch in text.chars() {
+            let advance = if ch == ' ' {
+                4.0
+            } else {
+                let code = ch as u32;
+                if !(0x41..=0x5A).contains(&code) && !(0x61..=0x7A).contains(&code) {
+                    continue;
+                }
+                let (col, row) = (code % 16, code / 16);
+                let (cx, cy) = (px + col * cell, py + row * cell);
+                let mut used = 0;
+                for dx in (0..cell).rev() {
+                    if (0..cell).any(|dy| {
+                        atlas.pixels[(((cy + dy) * atlas.width + cx + dx) * 4 + 3) as usize] != 0
+                    }) {
+                        used = dx + 1;
+                        break;
+                    }
+                }
+                let advance = (used as f32 * 8.0 / cell as f32 + 0.5).floor() + 1.0;
+                if cursor + advance - x > max {
+                    break;
+                }
+                let r = horizon_client::hud::Rect {
+                    u0: cx as f32 / atlas.width as f32,
+                    v0: cy as f32 / atlas.height as f32,
+                    u1: (cx + cell) as f32 / atlas.width as f32,
+                    v1: (cy + cell) as f32 / atlas.height as f32,
+                    w: cell,
+                    h: cell,
+                };
+                batch.rect_uv(cursor, y, 8.0, 8.0, r, color);
+                advance
+            };
+            if cursor + advance - x > max {
+                break;
+            }
+            cursor += advance;
+        }
+    }
+    /// Draws the open station or brewing stand screen; false when none is open.
+    pub(super) fn draw_station(&mut self, batch: &mut HudBatch) -> bool {
+        if self
+            .station
+            .as_ref()
+            .is_some_and(|s| s.kind == Kind::Merchant)
+        {
+            return self.draw_merchant(batch);
+        }
+        if self
+            .station
+            .as_ref()
+            .is_some_and(|s| s.kind == Kind::Beacon)
+        {
+            self.draw_beacon(batch);
+            return true;
+        }
+        let brewing = self.brewing_open();
+        if self.station.is_none() && !brewing {
+            return false;
+        }
+        let (ox, oy) = self.inventory_origin(batch);
+        let local = (self.front.cursor.0 - ox, self.front.cursor.1 - oy);
+        let mut tooltip: Option<Vec<(horizon_client::text::Text, u32)>> = None;
+        let mut anvil_name = false;
+        // Keep item tooltips as stacks until drawing: text alone loses the
+        // bundle contents component (including in the player's inventory).
+        let mut tooltip_stack: Option<ItemStack> = None;
+        {
+            let atlas = &self.front.gui.atlas;
+            batch.fill(
+                atlas,
+                0.0,
+                0.0,
+                batch.width,
+                batch.height,
+                rgba(16, 16, 16, 160),
+            );
+        }
+        let inventory_label = self.translate("container.inventory", "Inventory");
+        if brewing {
+            let Some(BlockEntity::Brewing(b)) = self.container_kind() else {
+                return true;
+            };
+            let (fuel, total_fuel, brew, total_brew) =
+                (b.fuel, b.total_fuel, b.brew_time, b.total_brew_time);
+            let atlas = &self.front.gui.atlas;
+            Self::part(
+                batch,
+                atlas,
+                "gui/container/brewing_stand",
+                (0.0, 0.0),
+                (176.0, 166.0),
+                (ox, oy),
+            );
+            let fuel_len = if total_fuel > 0 {
+                ((18 * fuel + total_fuel - 1) / total_fuel).clamp(0, 18)
+            } else {
+                0
+            };
+            if fuel_len > 0 {
+                Self::part(
+                    batch,
+                    atlas,
+                    "gui/sprites/container/brewing_stand/fuel_length",
+                    (0.0, 0.0),
+                    (fuel_len as f32, 4.0),
+                    (ox + 60.0, oy + 44.0),
+                );
+            }
+            if brew > 0 && total_brew > 0 {
+                let len = (28.0 * (1.0 - brew as f32 / total_brew as f32)) as i32;
+                if len > 0 {
+                    Self::part(
+                        batch,
+                        atlas,
+                        "gui/sprites/container/brewing_stand/brew_progress",
+                        (0.0, 0.0),
+                        (9.0, len as f32),
+                        (ox + 97.0, oy + 16.0),
+                    );
+                }
+                let bubble = [29, 24, 20, 16, 11, 6, 0][(brew / 2 % 7) as usize] as f32;
+                if bubble > 0.0 {
+                    Self::part(
+                        batch,
+                        atlas,
+                        "gui/sprites/container/brewing_stand/bubbles",
+                        (0.0, 29.0 - bubble),
+                        (12.0, bubble),
+                        (ox + 63.0, oy + 14.0 + 29.0 - bubble),
+                    );
+                }
+            }
+            let default = self.translate("container.brewing", "Brewing Stand");
+            let title = self.remote_menu_title().unwrap_or_else(|| {
+                let named = self
+                    .station
+                    .as_ref()
+                    .and_then(|s| self.world.block_names.get(&(s.pos[0], s.pos[1], s.pos[2])));
+                Text::literal(named.cloned().unwrap_or(default)).resolve_legacy()
+            });
+            let tw = atlas.font.width_text(&title);
+            batch.text_styled(
+                atlas,
+                &title,
+                ox + (176.0 - tw) / 2.0,
+                oy + 6.0,
+                GREY,
+                false,
+            );
+            batch.text(atlas, &inventory_label, ox + 8.0, oy + 72.0, GREY, false);
+            // Empty-slot icons.
+            for (i, icon) in [
+                (300, "potion"),
+                (301, "potion"),
+                (302, "potion"),
+                (304, "brewing_fuel"),
+            ] {
+                if self.slot_mut(i).is_none() {
+                    let (sx, sy) = self.station_slot_position(i).unwrap_or_default();
+                    batch.sprite(
+                        &self.front.gui.atlas,
+                        &format!("gui/sprites/container/slot/{icon}"),
+                        ox + sx,
+                        oy + sy,
+                    );
+                }
+            }
+        } else if let Some(kind) = self.station.as_ref().map(|s| s.kind) {
+            // A server's menu has the title it was given.
+            let title = self
+                .remote_menu_title()
+                .unwrap_or_else(|| Text::literal(self.translate(kind.title_key(), "")));
+            {
+                let atlas = &self.front.gui.atlas;
+                Self::part(
+                    batch,
+                    atlas,
+                    kind.texture(),
+                    (0.0, 0.0),
+                    (176.0, 166.0),
+                    (ox, oy),
+                );
+                let (tx, ty) = kind.title_pos();
+                batch.text_styled(atlas, &title, ox + tx, oy + ty, GREY, false);
+                batch.text(atlas, &inventory_label, ox + 8.0, oy + 72.0, GREY, false);
+            }
+            if kind == Kind::Cartography {
+                self.draw_cartography(batch, ox, oy);
+            }
+            if kind == Kind::Loom {
+                tooltip = self.draw_loom(batch, ox, oy, local);
+            }
+            let atlas = &self.front.gui.atlas;
+            let s = self.station.as_ref().expect("open station");
+            let has_input = s.inputs.iter().any(Option::is_some);
+            match kind {
+                Kind::Enchanting => {
+                    if s.inputs[1].is_none() {
+                        batch.sprite(
+                            atlas,
+                            "gui/sprites/container/slot/lapis_lazuli",
+                            ox + 35.0,
+                            oy + 47.0,
+                        );
+                    }
+                    let mut names = LegacyRandom::new(i64::from(self.level.xp_seed));
+                    let gold = s.inputs[1].as_ref().map_or(0, |l| l.count as i32);
+                    let level = self.experience.level;
+                    let offers = s.offers.clone();
+                    for i in 0..3 {
+                        let (bx, by, bw, bh) = enchant_button(i);
+                        let cost = offers.costs[i];
+                        if cost == 0 {
+                            batch.sprite_scaled(
+                                atlas,
+                                "gui/sprites/container/enchanting_table/enchantment_slot_disabled",
+                                ox + bx,
+                                oy + by,
+                                bw,
+                                bh,
+                                u32::MAX,
+                            );
+                            continue;
+                        }
+                        let cost_text = cost.to_string();
+                        let text_width = 86.0 - HudBatch::text_width(atlas, &cost_text);
+                        let count = names.next_int_bound(2).unwrap_or(0) + 3;
+                        let words: Vec<&str> = (0..count)
+                            .map(|_| {
+                                WORDS
+                                    [names.next_int_bound(WORDS.len() as i32).unwrap_or(0) as usize]
+                            })
+                            .collect();
+                        let message = words.join(" ");
+                        let disabled = (gold < i as i32 + 1 || level < cost) && !self.creative;
+                        let col: i32 = if disabled {
+                            batch.sprite_scaled(
+                                atlas,
+                                "gui/sprites/container/enchanting_table/enchantment_slot_disabled",
+                                ox + bx,
+                                oy + by,
+                                bw,
+                                bh,
+                                u32::MAX,
+                            );
+                            batch.sprite(
+                                atlas,
+                                &format!(
+                                    "gui/sprites/container/enchanting_table/level_{}_disabled",
+                                    i + 1
+                                ),
+                                ox + bx + 1.0,
+                                oy + by + 1.0,
+                            );
+                            let c = ((-9937334i32) & 16711422) >> 1;
+                            let msg_color = argb(c | 0xFF00_0000u32 as i32);
+                            self.galactic_deferred(
+                                batch,
+                                &message,
+                                ox + bx + 20.0,
+                                oy + by + 2.0,
+                                text_width,
+                                msg_color,
+                            );
+                            -12550384
+                        } else {
+                            let hover = inside(local, bx, by, bw, bh);
+                            let sprite = if hover {
+                                "enchantment_slot_highlighted"
+                            } else {
+                                "enchantment_slot"
+                            };
+                            batch.sprite_scaled(
+                                atlas,
+                                &format!("gui/sprites/container/enchanting_table/{sprite}"),
+                                ox + bx,
+                                oy + by,
+                                bw,
+                                bh,
+                                u32::MAX,
+                            );
+                            batch.sprite(
+                                atlas,
+                                &format!("gui/sprites/container/enchanting_table/level_{}", i + 1),
+                                ox + bx + 1.0,
+                                oy + by + 1.0,
+                            );
+                            let msg_color = if hover { -128 } else { -9937334 };
+                            self.galactic_deferred(
+                                batch,
+                                &message,
+                                ox + bx + 20.0,
+                                oy + by + 2.0,
+                                text_width,
+                                argb(msg_color),
+                            );
+                            -8323296
+                        };
+                        let atlas = &self.front.gui.atlas;
+                        let cw = HudBatch::text_width(atlas, &cost_text);
+                        batch.text(
+                            atlas,
+                            &cost_text,
+                            ox + bx + 20.0 + 86.0 - cw,
+                            oy + by + 9.0,
+                            argb(col),
+                            true,
+                        );
+                        // Tooltip with the clue (EnchantmentScreen.extractRenderState).
+                        if inside(local, bx, by, bw, 17.0)
+                            && let Some((id, l)) = &offers.clues[i]
+                        {
+                            let e = &self.res.stations().enchantments;
+                            let (name, _) = e.full_name(id, *l);
+                            let clue = self
+                                .translate("container.enchant.clue", "%s . . . ?")
+                                .replace("%s", &name);
+                            let mut lines =
+                                vec![(horizon_client::text::Text::literal(clue), u32::MAX)];
+                            if !self.creative {
+                                lines.push((horizon_client::text::Text::literal(""), u32::MAX));
+                                if level < cost {
+                                    lines.push((
+                                        horizon_client::text::Text::literal(
+                                            self.translate(
+                                                "container.enchant.level.requirement",
+                                                "Level Requirement: %s",
+                                            )
+                                            .replace("%s", &cost.to_string()),
+                                        ),
+                                        rgba(255, 85, 85, 255),
+                                    ));
+                                } else {
+                                    let n = i + 1;
+                                    let lapis = if n == 1 {
+                                        self.translate(
+                                            "container.enchant.lapis.one",
+                                            "1 Lapis Lazuli",
+                                        )
+                                    } else {
+                                        self.translate(
+                                            "container.enchant.lapis.many",
+                                            "%s Lapis Lazuli",
+                                        )
+                                        .replace("%s", &n.to_string())
+                                    };
+                                    lines.push((
+                                        horizon_client::text::Text::literal(lapis),
+                                        if gold >= n as i32 {
+                                            rgba(170, 170, 170, 255)
+                                        } else {
+                                            rgba(255, 85, 85, 255)
+                                        },
+                                    ));
+                                    let levels = if n == 1 {
+                                        self.translate(
+                                            "container.enchant.level.one",
+                                            "1 Enchantment Level",
+                                        )
+                                    } else {
+                                        self.translate(
+                                            "container.enchant.level.many",
+                                            "%s Enchantment Levels",
+                                        )
+                                        .replace("%s", &n.to_string())
+                                    };
+                                    lines.push((
+                                        horizon_client::text::Text::literal(levels),
+                                        rgba(170, 170, 170, 255),
+                                    ));
+                                }
+                            }
+                            tooltip = Some(lines);
+                        }
+                    }
+                }
+                Kind::Anvil => {
+                    let field = if s.inputs[0].is_some() {
+                        "text_field"
+                    } else {
+                        "text_field_disabled"
+                    };
+                    batch.sprite_scaled(
+                        atlas,
+                        &format!("gui/sprites/container/anvil/{field}"),
+                        ox + 59.0,
+                        oy + 20.0,
+                        110.0,
+                        16.0,
+                        u32::MAX,
+                    );
+                    if has_input && s.result.is_none() {
+                        batch.sprite(
+                            atlas,
+                            "gui/sprites/container/anvil/error",
+                            ox + 99.0,
+                            oy + 45.0,
+                        );
+                    }
+                    if s.inputs[0].is_some() {
+                        // Drawn once this borrow of the station ends.
+                        anvil_name = true;
+                    }
+                    let cost = s.anvil.cost;
+                    if cost > 0 {
+                        let mut color = argb(-8323296);
+                        let line = if cost >= 40 && !self.creative {
+                            color = argb(-40864);
+                            Some(self.translate("container.repair.expensive", "Too Expensive!"))
+                        } else if s.result.is_none() {
+                            None
+                        } else {
+                            if !self.may_take_result() {
+                                color = argb(-40864);
+                            }
+                            Some(
+                                self.translate("container.repair.cost", "Enchantment Cost: %1$s")
+                                    .replace("%1$s", &cost.to_string()),
+                            )
+                        };
+                        if let Some(line) = line {
+                            let atlas = &self.front.gui.atlas;
+                            let tw = HudBatch::text_width(atlas, &line);
+                            let tx = 176.0 - 8.0 - tw - 2.0;
+                            batch.fill(
+                                atlas,
+                                ox + tx - 2.0,
+                                oy + 67.0,
+                                176.0 - 8.0 - (tx - 2.0),
+                                12.0,
+                                argb(1325400064),
+                            );
+                            batch.text(atlas, &line, ox + tx, oy + 69.0, color, true);
+                        }
+                    }
+                }
+                Kind::Grindstone => {
+                    if has_input && s.result.is_none() {
+                        batch.sprite(
+                            atlas,
+                            "gui/sprites/container/grindstone/error",
+                            ox + 92.0,
+                            oy + 31.0,
+                        );
+                    }
+                }
+                Kind::Smithing => {
+                    let icons = ["smithing_template_netherite_upgrade", "", ""];
+                    for (i, icon) in icons.iter().enumerate() {
+                        if s.inputs[i].is_none() && !icon.is_empty() {
+                            let (sx, sy) = kind.input_pos(i);
+                            batch.sprite(
+                                atlas,
+                                &format!("gui/sprites/container/slot/{icon}"),
+                                ox + sx,
+                                oy + sy,
+                            );
+                        }
+                    }
+                    if s.inputs.iter().all(Option::is_some) && s.result.is_none() {
+                        batch.sprite(
+                            atlas,
+                            "gui/sprites/container/smithing/error",
+                            ox + 65.0,
+                            oy + 46.0,
+                        );
+                        if inside(local, 65.0, 46.0, 28.0, 21.0) {
+                            tooltip = Some(vec![(
+                                horizon_client::text::Text::literal(self.translate(
+                                    "container.upgrade.error_tooltip",
+                                    "Item can't be upgraded this way",
+                                )),
+                                u32::MAX,
+                            )]);
+                        }
+                    }
+                }
+                Kind::Merchant | Kind::Beacon | Kind::Cartography | Kind::Loom => {}
+                Kind::Stonecutter => {
+                    let display = s.inputs[0].is_some() && !s.stone.recipes.is_empty();
+                    let active = display && s.stone.recipes.len() > 12;
+                    let rows = s.stone.recipes.len().div_ceil(4).saturating_sub(3).max(1);
+                    let offs = if active {
+                        (s.start / 4) as f32 / rows as f32
+                    } else {
+                        0.0
+                    };
+                    let scroller = if active {
+                        "scroller"
+                    } else {
+                        "scroller_disabled"
+                    };
+                    batch.sprite(
+                        atlas,
+                        &format!("gui/sprites/container/stonecutter/{scroller}"),
+                        ox + 119.0,
+                        oy + 15.0 + (41.0 * offs).floor(),
+                    );
+                    if display {
+                        let (start, selected) = (s.start, s.selected);
+                        // graphics.item: the icon only, without the count.
+                        let shown: Vec<(usize, ItemStack)> = (start
+                            ..(start + 12).min(s.stone.recipes.len()))
+                            .map(|i| {
+                                (
+                                    i,
+                                    ItemStack {
+                                        count: 1,
+                                        ..self.res.stations().recipes.stonecutting
+                                            [s.stone.recipes[i]]
+                                            .result
+                                            .clone()
+                                    },
+                                )
+                            })
+                            .collect();
+                        for (index, result) in shown {
+                            let p = index - start;
+                            let (x, y) = (
+                                52.0 + (p % 4) as f32 * 16.0,
+                                14.0 + (p / 4) as f32 * 18.0 + 2.0,
+                            );
+                            let hover = inside(local, x, y, 16.0, 18.0);
+                            let sprite = if Some(index) == selected {
+                                "recipe_selected"
+                            } else if hover {
+                                "recipe_highlighted"
+                            } else {
+                                "recipe"
+                            };
+                            batch.sprite_scaled(
+                                &self.front.gui.atlas,
+                                &format!("gui/sprites/container/stonecutter/{sprite}"),
+                                ox + x,
+                                oy + y - 1.0,
+                                16.0,
+                                18.0,
+                                u32::MAX,
+                            );
+                            self.draw_item(batch, &result, ox + x, oy + y);
+                            if hover {
+                                tooltip_stack = Some(result);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        if anvil_name {
+            self.draw_anvil_name(batch, ox, oy);
+        }
+        let drag = self.drag_view();
+        for i in self.station_slots().unwrap_or_default() {
+            let Some((sx, sy)) = self.slot_position_any(i) else {
+                continue;
+            };
+            let stack = self.slot_mut(i).clone();
+            self.draw_slot_item(batch, drag.as_ref(), i, stack, ox + sx, oy + sy);
+        }
+        if let Some(slot) = self.slot_at(batch, self.front.cursor.0, self.front.cursor.1) {
+            let (sx, sy) = self.slot_position(slot);
+            batch.fill(
+                &self.front.gui.atlas,
+                ox + sx,
+                oy + sy,
+                16.0,
+                16.0,
+                rgba(255, 255, 255, 128),
+            );
+            if self.carried.is_none()
+                && tooltip.is_none()
+                && tooltip_stack.is_none()
+                && let Some(stack) = self.slot_mut(slot).clone()
+            {
+                tooltip_stack = Some(stack);
+            }
+        }
+        if self.carried.is_some() {
+            self.draw_carried(batch);
+        } else if let Some(stack) = tooltip_stack {
+            self.draw_stack_tooltip(batch, &stack, self.front.cursor.0, self.front.cursor.1);
+        } else if let Some(lines) = tooltip {
+            self.draw_tooltip_lines(batch, &lines, self.front.cursor.0, self.front.cursor.1);
+        }
+        true
+    }
+    fn galactic_deferred(
+        &self,
+        batch: &mut HudBatch,
+        text: &str,
+        x: f32,
+        y: f32,
+        max: f32,
+        color: u32,
+    ) {
+        self.galactic(batch, text, x, y, max, color);
+    }
+    fn slot_position_any(&self, i: usize) -> Option<(f32, f32)> {
+        self.station_slot_position(i)
+            .or_else(|| (i < 36).then(|| self.slot_position(i)))
+    }
+
+    // ---------------------------------------------------------------- tooltips
+
+    /// `TooltipRenderUtil`: dark box with the purple border, first line spaced.
+    pub(super) fn draw_tooltip_lines<T: Clone + Into<horizon_client::text::Text>>(
+        &self,
+        batch: &mut HudBatch,
+        lines: &[(T, u32)],
+        x: f32,
+        y: f32,
+    ) {
+        if lines.is_empty() {
+            return;
+        }
+        let lines = Self::resolved(lines);
+        let atlas = &self.front.gui.atlas;
+        let (x, y, w, h) =
+            Self::tooltip_geometry(atlas, &lines, (x, y), (batch.width, batch.height), 0.0);
+        Self::tooltip_box(batch, atlas, x, y, w, h);
+        Self::tooltip_text(batch, atlas, &lines, x, y);
+    }
+    /// A tooltip's lines with their legacy codes resolved and their colours.
+    fn resolved<T: Clone + Into<horizon_client::text::Text>>(
+        lines: &[(T, u32)],
+    ) -> Vec<(horizon_client::text::Text, u32)> {
+        lines
+            .iter()
+            .map(|(text, color)| {
+                let text: horizon_client::text::Text = text.clone().into();
+                (text.resolve_legacy(), *color)
+            })
+            .collect()
+    }
+    /// The tooltip's text's top-left corner and the box's size: beside the
+    /// cursor, kept on screen, `extra` pixels taller than the text.
+    fn tooltip_geometry(
+        atlas: &horizon_client::hud::HudAtlas,
+        lines: &[(horizon_client::text::Text, u32)],
+        (x, y): (f32, f32),
+        (width, height): (f32, f32),
+        extra: f32,
+    ) -> (f32, f32, f32, f32) {
+        let w = lines
+            .iter()
+            .map(|(t, _)| atlas.font.width_text(t))
+            .fold(0.0, f32::max)
+            .max(if extra > 0.0 { 96.0 } else { 0.0 });
+        let text_h = if lines.len() == 1 {
+            8.0
+        } else {
+            8.0 + 2.0 + (lines.len() - 1) as f32 * 10.0
+        };
+        let h = text_h + extra;
+        let mut x = x + 12.0;
+        let mut y = y - 12.0;
+        if x + w > width - 4.0 {
+            x = (x - 28.0 - w).max(4.0);
+        }
+        if y + h + 3.0 > height {
+            y = height - h - 3.0;
+        }
+        y = y.max(4.0);
+        (x, y, w, h)
+    }
+    /// The box and its frame sprites.
+    fn tooltip_box(
+        batch: &mut HudBatch,
+        atlas: &horizon_client::hud::HudAtlas,
+        x: f32,
+        y: f32,
+        w: f32,
+        h: f32,
+    ) {
+        batch.fill(atlas, x - 3.0, y - 4.0, w + 6.0, 1.0, rgba(16, 0, 16, 240));
+        batch.fill(
+            atlas,
+            x - 3.0,
+            y + h + 3.0,
+            w + 6.0,
+            1.0,
+            rgba(16, 0, 16, 240),
+        );
+        batch.fill(
+            atlas,
+            x - 4.0,
+            y - 3.0,
+            w + 8.0,
+            h + 6.0,
+            rgba(16, 0, 16, 240),
+        );
+        batch.fill(atlas, x - 3.0, y - 3.0, w + 6.0, 1.0, rgba(80, 0, 255, 80));
+        batch.fill(
+            atlas,
+            x - 3.0,
+            y + h + 2.0,
+            w + 6.0,
+            1.0,
+            rgba(40, 0, 127, 80),
+        );
+        batch.fill(atlas, x - 3.0, y - 2.0, 1.0, h + 4.0, rgba(60, 0, 190, 80));
+        batch.fill(
+            atlas,
+            x + w + 2.0,
+            y - 2.0,
+            1.0,
+            h + 4.0,
+            rgba(60, 0, 190, 80),
+        );
+    }
+    fn tooltip_text(
+        batch: &mut HudBatch,
+        atlas: &horizon_client::hud::HudAtlas,
+        lines: &[(horizon_client::text::Text, u32)],
+        x: f32,
+        y: f32,
+    ) {
+        let mut ty = y;
+        for (i, (text, color)) in lines.iter().enumerate() {
+            batch.text_styled(atlas, text, x, ty, *color, true);
+            ty += if i == 0 { 12.0 } else { 10.0 };
+        }
+    }
+    /// A stack's tooltip: its lines, and under them a bundle's contents
+    /// (`ClientBundleTooltip`: the 4 wide grid, the `+N` of what it leaves
+    /// out, and the weight bar).
+    pub(super) fn draw_stack_tooltip(
+        &mut self,
+        batch: &mut HudBatch,
+        stack: &ItemStack,
+        x: f32,
+        y: f32,
+    ) {
+        let lines = Self::resolved(&self.stack_tooltip(stack));
+        if lines.is_empty() {
+            return;
+        }
+        // The component's height does not depend on where it is drawn, so a
+        // probe at the origin gives the box its extra height.
+        let probe = horizon_client::bundle::tooltip_layout(self.res.items(), stack, 0.0, 0.0, 96.0);
+        let extra = probe.as_ref().map_or(0.0, |l| l.height + 2.0);
+        let atlas = &self.front.gui.atlas;
+        let (x, y, w, h) =
+            Self::tooltip_geometry(atlas, &lines, (x, y), (batch.width, batch.height), extra);
+        Self::tooltip_box(batch, atlas, x, y, w, h);
+        let text_h = h - extra;
+        Self::tooltip_text(batch, atlas, &lines, x, y);
+        let Some(layout) =
+            horizon_client::bundle::tooltip_layout(self.res.items(), stack, x, y + text_h + 2.0, w)
+        else {
+            return;
+        };
+        self.draw_bundle_tooltip(batch, &layout);
+    }
+    /// `ClientBundleTooltip.extractImage`: the slots, the count past them and
+    /// the progress bar.
+    fn draw_bundle_tooltip(
+        &mut self,
+        batch: &mut HudBatch,
+        layout: &horizon_client::bundle::TooltipLayout,
+    ) {
+        for (i, (at, stack)) in layout.slots.iter().enumerate() {
+            let selected = layout.selected == Some(i);
+            let sprite = |name: &str| format!("gui/sprites/container/bundle/{name}");
+            // Each draw takes the atlas on its own: the item's needs `&mut self`.
+            horizon_client::ui::nine_slice(
+                batch,
+                &self.front.gui.atlas,
+                &sprite(if selected {
+                    "slot_highlight_back"
+                } else {
+                    "slot_background"
+                }),
+                at[0],
+                at[1],
+                24.0,
+                24.0,
+                u32::MAX,
+            );
+            let stack = stack.clone();
+            let [x, y] = *at;
+            self.draw_item(batch, &stack, x + 4.0, y + 4.0);
+            if selected {
+                horizon_client::ui::nine_slice(
+                    batch,
+                    &self.front.gui.atlas,
+                    &sprite("slot_highlight_front"),
+                    x,
+                    y,
+                    24.0,
+                    24.0,
+                    u32::MAX,
+                );
+            }
+        }
+        let atlas = &self.front.gui.atlas;
+        if let Some((at, hidden)) = layout.overflow {
+            let label = horizon_client::text::Text::literal(format!("+{hidden}"));
+            let w = atlas.font.width_text(&label);
+            batch.text_styled(
+                atlas,
+                &label,
+                at[0] + 12.0 - (w / 2.0).floor(),
+                at[1] + 10.0,
+                u32::MAX,
+                true,
+            );
+        }
+        if let Some((at, description)) = layout
+            .empty_description
+            .zip(Some("item.minecraft.bundle.empty.description"))
+        {
+            let text = horizon_client::text::Text::translate(description, &[]);
+            let mut ty = at[1];
+            for line in atlas.font.split_lines(&text, layout.width) {
+                batch.text_styled(atlas, &line.0, at[0], ty, 0xFFAA_AAAA, false);
+                ty += 9.0;
+            }
+        }
+        let [bx, by] = layout.bar;
+        let fill_sprite = if layout.full {
+            "gui/sprites/container/bundle/bundle_progressbar_full"
+        } else {
+            "gui/sprites/container/bundle/bundle_progressbar_fill"
+        };
+        horizon_client::ui::nine_slice(
+            batch,
+            atlas,
+            fill_sprite,
+            bx + 1.0,
+            by,
+            layout.fill,
+            13.0,
+            u32::MAX,
+        );
+        horizon_client::ui::nine_slice(
+            batch,
+            atlas,
+            "gui/sprites/container/bundle/bundle_progressbar_border",
+            bx,
+            by,
+            96.0,
+            13.0,
+            u32::MAX,
+        );
+        if let Some(key) = layout.label {
+            let label = horizon_client::text::Text::translate(key, &[]);
+            let w = atlas.font.width_text(&label);
+            batch.text_styled(
+                atlas,
+                &label,
+                bx + 48.0 - (w / 2.0).floor(),
+                by + 3.0,
+                u32::MAX,
+                true,
+            );
+        }
+    }
+    /// Hovered-slot tooltip on the plain inventory, crafting and container screens.
+    pub(super) fn draw_slot_tooltip(&mut self, batch: &mut HudBatch) {
+        if self.carried.is_some() {
+            return;
+        }
+        let Some(slot) = self.slot_at(batch, self.front.cursor.0, self.front.cursor.1) else {
+            return;
+        };
+        let stack = self.slot_view(slot);
+        if let Some(stack) = stack {
+            self.draw_stack_tooltip(batch, &stack, self.front.cursor.0, self.front.cursor.1);
+        } else if let Some(text) = self.crafter_tooltip(slot) {
+            self.draw_tooltip_lines(
+                batch,
+                &[(horizon_client::text::Text::literal(text), u32::MAX)],
+                self.front.cursor.0,
+                self.front.cursor.1,
+            );
+        }
+    }
+
+    // ---------------------------------------------------------------- brewing stand
+}
+impl crate::game::Sim<'_> {
+    /// `Component.translatable`: the selected language (which `lang` layers
+    /// over `en_us`), the caller's English text last.
+    pub(super) fn translate(&self, key: &str, fallback: &str) -> String {
+        horizon_client::lang::get_or(key, fallback)
+    }
+    fn brewing_open(&self) -> bool {
+        matches!(self.container_kind(), Some(BlockEntity::Brewing(_)))
     }
     pub(super) fn station_slots(&self) -> Option<Vec<usize>> {
         let mut v: Vec<usize> = (0..36).collect();
@@ -429,77 +1750,6 @@ impl Game<'_> {
             Some(_) => s.name.clone(),
             None => String::new(),
         }
-    }
-    /// `slotsChanged` / `createResult` for the open station.
-    pub(super) fn station_changed(&mut self) {
-        let Some(mut s) = self.station.take() else {
-            return;
-        };
-        let creative = self.creative;
-        let data = self.res.stations();
-        let items = self.res.items();
-        match s.kind {
-            // A server's table: its data slots carry the offers, and its
-            // client menu only clears them without an enchantable item.
-            Kind::Enchanting if self.remote.is_some() => {
-                let enchantable = s.inputs[0].as_ref().is_some_and(|i| {
-                    data.enchantments.enchantable(&i.item) > 0 && i.enchantments().is_empty()
-                });
-                if !enchantable {
-                    s.offers = Default::default();
-                }
-            }
-            Kind::Enchanting => {
-                s.bookcases = self.count_bookshelves(s.pos);
-                s.offers = stations::enchant_offers(
-                    &data.enchantments,
-                    items,
-                    self.level.xp_seed,
-                    s.bookcases,
-                    s.inputs[0].as_ref(),
-                );
-            }
-            Kind::Anvil => {
-                let name = self.anvil_item_name(&s);
-                let hover = s.inputs[0]
-                    .as_ref()
-                    .map(|i| stations::hover_name(&|id| self.pack.names.display_item(id), i))
-                    .unwrap_or_default();
-                s.anvil = stations::anvil_result(
-                    &data.enchantments,
-                    items,
-                    s.inputs[0].as_ref(),
-                    s.inputs[1].as_ref(),
-                    Some(&name),
-                    &hover,
-                    creative,
-                );
-                s.result = s.anvil.result.clone();
-            }
-            Kind::Grindstone => {
-                s.result = stations::grindstone_result(
-                    &data.enchantments,
-                    items,
-                    s.inputs[0].as_ref(),
-                    s.inputs[1].as_ref(),
-                );
-            }
-            Kind::Smithing => {
-                s.result = data.recipes.smithing_result(
-                    &data.enchantments,
-                    s.inputs[0].as_ref(),
-                    s.inputs[1].as_ref(),
-                    s.inputs[2].as_ref(),
-                );
-            }
-            // The menu engine keeps the merchant's result (Game::menu_session).
-            Kind::Merchant => {}
-            Kind::Beacon => {}
-            // The menu engine keeps the cartography table's, the loom's and
-            // the stonecutter's state (Game::menu_session).
-            Kind::Cartography | Kind::Loom | Kind::Stonecutter => {}
-        }
-        self.station = Some(s);
     }
     pub(super) fn max_stack(&self, stack: &ItemStack) -> u32 {
         self.res
@@ -630,81 +1880,6 @@ impl Game<'_> {
         }
         stack.count != start
     }
-    /// After an anvil or smithing click on the menu engine: the anvil's cost
-    /// and state back into the station and the rename box following the
-    /// input (`AnvilScreen.slotChanged`), then the rest of a taken result's
-    /// `onTake` (the levels, the anvil's wear, the use sound) unless a
-    /// server does it.
-    pub(super) fn combiner_session_end(
-        &mut self,
-        menu: &horizon_client::menu::Menu,
-        predicting: bool,
-    ) {
-        let Some(s) = self.station.as_mut() else {
-            return;
-        };
-        let (pos, kind) = (s.pos, s.kind);
-        if kind == Kind::Anvil {
-            s.anvil.cost = menu.data[0];
-            s.anvil.repair_item_count_cost = menu.anvil.repair_count;
-            s.anvil.only_renaming = menu.anvil.only_renaming;
-            s.anvil.result = s.result.clone();
-        }
-        self.station_after_input();
-        if !menu.combined || predicting {
-            return;
-        }
-        if kind == Kind::Smithing {
-            self.level_event_at(1044, pos, 0);
-            return;
-        }
-        self.give_levels(menu.level_change);
-        if self.anvil_used(pos, self.creative) {
-            self.close_station();
-            self.screen = Screen::Playing;
-            self.capture(true);
-        }
-    }
-    /// `AnvilMenu.onTake`'s level part: out of creative a 12% chance
-    /// (`AnvilBlock.damage`) to wear the anvil a stage, or break a damaged one
-    /// (level event 1029); otherwise level event 1030. True when it broke.
-    pub(super) fn anvil_used(&mut self, pos: [i32; 3], creative: bool) -> bool {
-        let state = self.world.block(pos[0], pos[1], pos[2]);
-        let name = self.res.facts().get(state).name.clone();
-        let anvil = matches!(
-            &*name,
-            "minecraft:anvil" | "minecraft:chipped_anvil" | "minecraft:damaged_anvil"
-        );
-        if !creative && anvil && self.world.random.next_float() < 0.12 {
-            match &*name {
-                "minecraft:anvil" => {
-                    let _ = self.set_state_named(pos, "minecraft:chipped_anvil", &["facing"]);
-                }
-                "minecraft:chipped_anvil" => {
-                    let _ = self.set_state_named(pos, "minecraft:damaged_anvil", &["facing"]);
-                }
-                _ => {
-                    let _ = self.world.set(pos[0], pos[1], pos[2], self.world.air);
-                    self.world.modified.insert((pos[0] >> 4, pos[2] >> 4));
-                    self.level_event_at(1029, pos, 0);
-                    return true;
-                }
-            }
-        }
-        self.level_event_at(1030, pos, 0);
-        false
-    }
-    /// The grindstone result's `onTake` with a level (`amount`: the menu's
-    /// `getExperienceAmount` sum): the orbs at the block's centre
-    /// (`ExperienceOrb.award`), then level event 1042, the grindstone's sound
-    /// for everyone around.
-    pub(super) fn grindstone_taken(&mut self, pos: [i32; 3], amount: i32) {
-        let xp = stations::grindstone_xp_roll(amount, &mut self.world.random);
-        if xp > 0 {
-            self.spawn_orbs(pos.map(|v| f64::from(v) + 0.5), xp);
-        }
-        self.level_event_at(1042, pos, 0);
-    }
     fn play_at(&mut self, sound: &str, pos: [i32; 3], volume: f32, pitch: f32) {
         let at = [
             f64::from(pos[0]) + 0.5,
@@ -743,63 +1918,6 @@ impl Game<'_> {
             _ => true,
         }
     }
-    /// `EnchantmentMenu.clickMenuButton`.
-    fn click_enchant(&mut self, button: usize) {
-        let Some(s) = self.station.as_ref() else {
-            return;
-        };
-        let cost = s.offers.costs[button];
-        let lapis_needed = button as u32 + 1;
-        let Some(item) = s.inputs[0].clone() else {
-            return;
-        };
-        let lapis = s.inputs[1].as_ref().map_or(0, |l| l.count);
-        if lapis < lapis_needed && !self.creative {
-            return;
-        }
-        if cost <= 0
-            || (self.experience.level < lapis_needed as i32 || self.experience.level < cost)
-                && !self.creative
-        {
-            return;
-        }
-        if self.remote.is_some() {
-            // EnchantmentScreen.mouseClicked: the client menu took it, the server enchants.
-            self.remote_station_button(button as i32);
-            return;
-        }
-        let Some(enchanted) = stations::apply_enchantment(
-            &self.res.stations().enchantments,
-            self.res.items(),
-            self.level.xp_seed,
-            button,
-            cost,
-            &item,
-        ) else {
-            return;
-        };
-        let pos = s.pos;
-        let enchanted_item = enchanted.clone();
-        // Player.onEnchantmentPerformed
-        self.give_levels(-(lapis_needed as i32));
-        self.level.xp_seed = self.world.random.next_int();
-        if let Some(s) = self.station.as_mut() {
-            s.inputs[0] = Some(enchanted);
-            if !self.creative
-                && let Some(l) = s.inputs[1].as_mut()
-            {
-                l.count -= lapis_needed;
-                if l.count == 0 {
-                    s.inputs[1] = None;
-                }
-            }
-        }
-        let pitch = self.world.random.next_float() * 0.1 + 0.9;
-        self.stats.custom("enchant_item", 1);
-        self.trigger_enchanted_item(&enchanted_item, lapis_needed as i32);
-        self.play_at("minecraft:block.enchantment_table.use", pos, 1.0, pitch);
-        self.station_changed();
-    }
     /// Mouse click while a station or the brewing stand is open. True when handled.
     /// A station's own buttons a controller can focus besides its slots
     /// (GUI origin relative): offers, patterns, effects, enchantments and
@@ -833,115 +1951,6 @@ impl Game<'_> {
             _ => Vec::new(),
         }
     }
-    pub(super) fn station_click(&mut self, right: bool) -> bool {
-        // A server's brewing stand: its slots are the server's.
-        if self.station.is_none() && (!self.brewing_open() || self.remote.is_some()) {
-            return false;
-        }
-        let Some(size) = self
-            .renderer
-            .as_ref()
-            .map(|r| [r.config.width, r.config.height])
-        else {
-            return true;
-        };
-        let batch = HudBatch::new(size);
-        let (ox, oy) = self.inventory_origin(&batch);
-        let local = (self.cursor.0 - ox, self.cursor.1 - oy);
-        let shift = self.has_shift_down();
-        if let Some(kind) = self.station.as_ref().map(|s| s.kind) {
-            if kind == Kind::Merchant && !right && self.merchant_click(local) {
-                return true;
-            }
-            if kind == Kind::Merchant && self.remote.is_some() {
-                // A server's trading window: its slots are the server's.
-                return false;
-            }
-            if kind == Kind::Loom && !right && self.loom_click(local) {
-                return true;
-            }
-            if kind == Kind::Beacon && !right && self.beacon_click(local) {
-                return true;
-            }
-            if kind == Kind::Enchanting && !right {
-                for i in 0..3 {
-                    let (x, y, w, h) = enchant_button(i);
-                    if inside(local, x, y, w, h) {
-                        self.click_enchant(i);
-                        return true;
-                    }
-                }
-            }
-            if kind == Kind::Stonecutter && self.stonecutter_click(local) {
-                return true;
-            }
-            if kind == Kind::Anvil && !right && self.anvil_name_click(ox, oy) {
-                return true;
-            }
-        }
-        let Some(slot) = self.slot_at(&batch, self.cursor.0, self.cursor.1) else {
-            return true;
-        };
-        // Every station's clicks (and the brewing stand's) run on the
-        // verified menu engine.
-        let input = if shift {
-            horizon_client::menu::Input::QuickMove
-        } else {
-            horizon_client::menu::Input::Pickup
-        };
-        self.menu_click(Some(slot), i32::from(right), input);
-        true
-    }
-    /// Recompute after slot changes; the anvil box follows its input item.
-    fn station_after_input(&mut self) {
-        let Some(s) = self.station.as_mut() else {
-            return;
-        };
-        if s.kind == Kind::Anvil && s.inputs[0] != s.anvil_last {
-            // AnvilScreen.slotChanged: the box shows the new input's name.
-            s.anvil_last = s.inputs[0].clone();
-            s.name = s.inputs[0]
-                .as_ref()
-                .map(|i| stations::hover_name(&|id| self.pack.names.display_item(id), i))
-                .unwrap_or_default();
-            let name = s.name.clone();
-            s.rename.set_value(&name);
-        }
-        self.station_changed();
-    }
-    /// `StonecutterScreen.mouseClicked` on its recipe grid: `clickMenuButton`
-    /// with the cell's index (an empty cell's too), and the select sound when
-    /// the menu took it.
-    fn stonecutter_click(&mut self, local: (f32, f32)) -> bool {
-        let Some(start) = self
-            .station
-            .as_ref()
-            .filter(|s| s.inputs[0].is_some() && !s.stone.recipes.is_empty())
-            .map(|s| s.start)
-        else {
-            return false;
-        };
-        for index in start..start + 12 {
-            let p = index - start;
-            let (x, y) = (52.0 + (p % 4) as f32 * 16.0, 14.0 + (p / 4) as f32 * 18.0);
-            if !inside(local, x, y, 16.0, 18.0) {
-                continue;
-            }
-            let mut taken = false;
-            let flag = &mut taken;
-            self.menu_session(|menu, env, _| {
-                *flag = menu.button(env, index as i32);
-                Some(*flag)
-            });
-            if taken {
-                self.sounds
-                    .play("minecraft:ui.stonecutter.select_recipe", None, 1.0, 1.0);
-                self.remote_station_button(index as i32);
-                return true;
-            }
-        }
-        false
-    }
     pub(super) fn station_scroll(&mut self, d: f32) {
         self.merchant_scroll(d);
         self.loom_scroll(d);
@@ -963,733 +1972,6 @@ impl Game<'_> {
                 .as_ref()
                 .is_some_and(|s| s.kind == Kind::Anvil && s.inputs[0].is_some())
     }
-    pub(super) fn station_text(&mut self, text: Option<&str>, backspace: bool) {
-        // The recipe book's search box takes scripted typing too.
-        if self.recipe_search_focused() {
-            self.recipe_text(text, backspace);
-            return;
-        }
-        let Some(s) = self.station.as_mut() else {
-            return;
-        };
-        if backspace {
-            s.rename.delete_chars(-1);
-        } else if let Some(t) = text {
-            s.rename.insert_text(t);
-        }
-        s.name.clone_from(&s.rename.value);
-        self.station_changed();
-        self.remote_anvil_rename();
-    }
-    /// `AnvilScreen.keyPressed`: the rename box handles the key.
-    pub(super) fn station_key(&mut self, key: winit::keyboard::KeyCode) -> bool {
-        let (ctrl, shift) = (self.has_control_down(), self.has_shift_down());
-        let Some(s) = self.station.as_mut() else {
-            return false;
-        };
-        if !s.rename.key(key, ctrl, shift) {
-            return false;
-        }
-        s.name.clone_from(&s.rename.value);
-        self.station_changed();
-        self.remote_anvil_rename();
-        true
-    }
-    /// Ctrl+A/C/V/X in the anvil's rename box (an `EditBox` of 50) or the
-    /// recipe book's search box.
-    pub(super) fn station_shortcut(&mut self, shortcut: horizon_client::clipboard::EditShortcut) {
-        if self.recipe_search_focused() {
-            self.recipe_shortcut(shortcut);
-            return;
-        }
-        let Some(s) = self.station.as_mut() else {
-            return;
-        };
-        if s.rename.shortcut(shortcut, &mut self.clipboard) {
-            s.name.clone_from(&s.rename.value);
-            self.station_changed();
-            self.remote_anvil_rename();
-        }
-    }
-    /// A click in the anvil's name box (`EditBox.onClick`).
-    fn anvil_name_click(&mut self, ox: f32, oy: f32) -> bool {
-        let open = self
-            .station
-            .as_ref()
-            .is_some_and(|s| s.kind == Kind::Anvil && s.inputs[0].is_some());
-        if !open {
-            return false;
-        }
-        let (x, y, w, h) = (ox + 62.0, oy + 24.0, 103.0, 12.0);
-        let (mx, my) = self.cursor;
-        if mx < x || my < y || mx >= x + w || my >= y + h {
-            return false;
-        }
-        let shift = self.has_shift_down();
-        let Some(s) = self.station.as_mut() else {
-            return false;
-        };
-        s.rename.x = x;
-        s.rename.y = y;
-        s.rename.width = w;
-        s.rename.click(&self.gui.atlas, mx, shift, false);
-        true
-    }
-    /// AnvilScreen's name box, drawn after the station picture.
-    fn draw_anvil_name(&mut self, batch: &mut HudBatch, ox: f32, oy: f32) {
-        let Some(s) = self.station.as_mut() else {
-            return;
-        };
-        let edit = &mut s.rename;
-        edit.x = ox + 62.0;
-        edit.y = oy + 24.0;
-        edit.width = 103.0;
-        edit.height = 12.0;
-        edit.bordered = false;
-        edit.focused = true;
-        edit.text_color = u32::MAX;
-        edit.max_length = ANVIL_NAME_CHARS;
-        edit.draw(batch, &self.gui.atlas, None);
-    }
-
-    // ---------------------------------------------------------------- drawing
-
-    fn part(
-        batch: &mut HudBatch,
-        atlas: &horizon_client::hud::HudAtlas,
-        name: &str,
-        src: (f32, f32),
-        size: (f32, f32),
-        dst: (f32, f32),
-    ) {
-        if let Some(mut r) = atlas.sprites.get(name).copied() {
-            let (du, dv) = ((r.u1 - r.u0) / r.w as f32, (r.v1 - r.v0) / r.h as f32);
-            r.u0 += src.0 * du;
-            r.v0 += src.1 * dv;
-            r.u1 = r.u0 + size.0 * du;
-            r.v1 = r.v0 + size.1 * dv;
-            batch.rect_uv(dst.0, dst.1, size.0, size.1, r, u32::MAX);
-        }
-    }
-    /// Text in the Standard Galactic alphabet (`minecraft:alt`), cut to `max` pixels.
-    fn galactic(&self, batch: &mut HudBatch, text: &str, x: f32, y: f32, max: f32, color: u32) {
-        let atlas = &self.gui.atlas;
-        let Some(sheet) = atlas.sprites.get("font/ascii_sga").copied() else {
-            batch.text(atlas, text, x, y, color, false);
-            return;
-        };
-        let cell = sheet.w / 16;
-        let (px, py) = (
-            (sheet.u0 * atlas.width as f32) as u32,
-            (sheet.v0 * atlas.height as f32) as u32,
-        );
-        let mut cursor = x;
-        for ch in text.chars() {
-            let advance = if ch == ' ' {
-                4.0
-            } else {
-                let code = ch as u32;
-                if !(0x41..=0x5A).contains(&code) && !(0x61..=0x7A).contains(&code) {
-                    continue;
-                }
-                let (col, row) = (code % 16, code / 16);
-                let (cx, cy) = (px + col * cell, py + row * cell);
-                let mut used = 0;
-                for dx in (0..cell).rev() {
-                    if (0..cell).any(|dy| {
-                        atlas.pixels[(((cy + dy) * atlas.width + cx + dx) * 4 + 3) as usize] != 0
-                    }) {
-                        used = dx + 1;
-                        break;
-                    }
-                }
-                let advance = (used as f32 * 8.0 / cell as f32 + 0.5).floor() + 1.0;
-                if cursor + advance - x > max {
-                    break;
-                }
-                let r = horizon_client::hud::Rect {
-                    u0: cx as f32 / atlas.width as f32,
-                    v0: cy as f32 / atlas.height as f32,
-                    u1: (cx + cell) as f32 / atlas.width as f32,
-                    v1: (cy + cell) as f32 / atlas.height as f32,
-                    w: cell,
-                    h: cell,
-                };
-                batch.rect_uv(cursor, y, 8.0, 8.0, r, color);
-                advance
-            };
-            if cursor + advance - x > max {
-                break;
-            }
-            cursor += advance;
-        }
-    }
-    /// Draws the open station or brewing stand screen; false when none is open.
-    pub(super) fn draw_station(&mut self, batch: &mut HudBatch) -> bool {
-        if self
-            .station
-            .as_ref()
-            .is_some_and(|s| s.kind == Kind::Merchant)
-        {
-            return self.draw_merchant(batch);
-        }
-        if self
-            .station
-            .as_ref()
-            .is_some_and(|s| s.kind == Kind::Beacon)
-        {
-            self.draw_beacon(batch);
-            return true;
-        }
-        let brewing = self.brewing_open();
-        if self.station.is_none() && !brewing {
-            return false;
-        }
-        let (ox, oy) = self.inventory_origin(batch);
-        let local = (self.cursor.0 - ox, self.cursor.1 - oy);
-        let mut tooltip: Option<Vec<(horizon_client::text::Text, u32)>> = None;
-        let mut anvil_name = false;
-        // Keep item tooltips as stacks until drawing: text alone loses the
-        // bundle contents component (including in the player's inventory).
-        let mut tooltip_stack: Option<ItemStack> = None;
-        {
-            let atlas = &self.gui.atlas;
-            batch.fill(
-                atlas,
-                0.0,
-                0.0,
-                batch.width,
-                batch.height,
-                rgba(16, 16, 16, 160),
-            );
-        }
-        let inventory_label = self.translate("container.inventory", "Inventory");
-        if brewing {
-            let Some(BlockEntity::Brewing(b)) = self.container_kind() else {
-                return true;
-            };
-            let (fuel, total_fuel, brew, total_brew) =
-                (b.fuel, b.total_fuel, b.brew_time, b.total_brew_time);
-            let atlas = &self.gui.atlas;
-            Self::part(
-                batch,
-                atlas,
-                "gui/container/brewing_stand",
-                (0.0, 0.0),
-                (176.0, 166.0),
-                (ox, oy),
-            );
-            let fuel_len = if total_fuel > 0 {
-                ((18 * fuel + total_fuel - 1) / total_fuel).clamp(0, 18)
-            } else {
-                0
-            };
-            if fuel_len > 0 {
-                Self::part(
-                    batch,
-                    atlas,
-                    "gui/sprites/container/brewing_stand/fuel_length",
-                    (0.0, 0.0),
-                    (fuel_len as f32, 4.0),
-                    (ox + 60.0, oy + 44.0),
-                );
-            }
-            if brew > 0 && total_brew > 0 {
-                let len = (28.0 * (1.0 - brew as f32 / total_brew as f32)) as i32;
-                if len > 0 {
-                    Self::part(
-                        batch,
-                        atlas,
-                        "gui/sprites/container/brewing_stand/brew_progress",
-                        (0.0, 0.0),
-                        (9.0, len as f32),
-                        (ox + 97.0, oy + 16.0),
-                    );
-                }
-                let bubble = [29, 24, 20, 16, 11, 6, 0][(brew / 2 % 7) as usize] as f32;
-                if bubble > 0.0 {
-                    Self::part(
-                        batch,
-                        atlas,
-                        "gui/sprites/container/brewing_stand/bubbles",
-                        (0.0, 29.0 - bubble),
-                        (12.0, bubble),
-                        (ox + 63.0, oy + 14.0 + 29.0 - bubble),
-                    );
-                }
-            }
-            let default = self.translate("container.brewing", "Brewing Stand");
-            let title = self.remote_menu_title().unwrap_or_else(|| {
-                let named = self
-                    .station
-                    .as_ref()
-                    .and_then(|s| self.world.block_names.get(&(s.pos[0], s.pos[1], s.pos[2])));
-                Text::literal(named.cloned().unwrap_or(default)).resolve_legacy()
-            });
-            let tw = atlas.font.width_text(&title);
-            batch.text_styled(
-                atlas,
-                &title,
-                ox + (176.0 - tw) / 2.0,
-                oy + 6.0,
-                GREY,
-                false,
-            );
-            batch.text(atlas, &inventory_label, ox + 8.0, oy + 72.0, GREY, false);
-            // Empty-slot icons.
-            for (i, icon) in [
-                (300, "potion"),
-                (301, "potion"),
-                (302, "potion"),
-                (304, "brewing_fuel"),
-            ] {
-                if self.slot_mut(i).is_none() {
-                    let (sx, sy) = self.station_slot_position(i).unwrap_or_default();
-                    batch.sprite(
-                        &self.gui.atlas,
-                        &format!("gui/sprites/container/slot/{icon}"),
-                        ox + sx,
-                        oy + sy,
-                    );
-                }
-            }
-        } else if let Some(kind) = self.station.as_ref().map(|s| s.kind) {
-            // A server's menu has the title it was given.
-            let title = self
-                .remote_menu_title()
-                .unwrap_or_else(|| Text::literal(self.translate(kind.title_key(), "")));
-            {
-                let atlas = &self.gui.atlas;
-                Self::part(
-                    batch,
-                    atlas,
-                    kind.texture(),
-                    (0.0, 0.0),
-                    (176.0, 166.0),
-                    (ox, oy),
-                );
-                let (tx, ty) = kind.title_pos();
-                batch.text_styled(atlas, &title, ox + tx, oy + ty, GREY, false);
-                batch.text(atlas, &inventory_label, ox + 8.0, oy + 72.0, GREY, false);
-            }
-            if kind == Kind::Cartography {
-                self.draw_cartography(batch, ox, oy);
-            }
-            if kind == Kind::Loom {
-                tooltip = self.draw_loom(batch, ox, oy, local);
-            }
-            let atlas = &self.gui.atlas;
-            let s = self.station.as_ref().expect("open station");
-            let has_input = s.inputs.iter().any(Option::is_some);
-            match kind {
-                Kind::Enchanting => {
-                    if s.inputs[1].is_none() {
-                        batch.sprite(
-                            atlas,
-                            "gui/sprites/container/slot/lapis_lazuli",
-                            ox + 35.0,
-                            oy + 47.0,
-                        );
-                    }
-                    let mut names = LegacyRandom::new(i64::from(self.level.xp_seed));
-                    let gold = s.inputs[1].as_ref().map_or(0, |l| l.count as i32);
-                    let level = self.experience.level;
-                    let offers = s.offers.clone();
-                    for i in 0..3 {
-                        let (bx, by, bw, bh) = enchant_button(i);
-                        let cost = offers.costs[i];
-                        if cost == 0 {
-                            batch.sprite_scaled(
-                                atlas,
-                                "gui/sprites/container/enchanting_table/enchantment_slot_disabled",
-                                ox + bx,
-                                oy + by,
-                                bw,
-                                bh,
-                                u32::MAX,
-                            );
-                            continue;
-                        }
-                        let cost_text = cost.to_string();
-                        let text_width = 86.0 - HudBatch::text_width(atlas, &cost_text);
-                        let count = names.next_int_bound(2).unwrap_or(0) + 3;
-                        let words: Vec<&str> = (0..count)
-                            .map(|_| {
-                                WORDS
-                                    [names.next_int_bound(WORDS.len() as i32).unwrap_or(0) as usize]
-                            })
-                            .collect();
-                        let message = words.join(" ");
-                        let disabled = (gold < i as i32 + 1 || level < cost) && !self.creative;
-                        let col: i32 = if disabled {
-                            batch.sprite_scaled(
-                                atlas,
-                                "gui/sprites/container/enchanting_table/enchantment_slot_disabled",
-                                ox + bx,
-                                oy + by,
-                                bw,
-                                bh,
-                                u32::MAX,
-                            );
-                            batch.sprite(
-                                atlas,
-                                &format!(
-                                    "gui/sprites/container/enchanting_table/level_{}_disabled",
-                                    i + 1
-                                ),
-                                ox + bx + 1.0,
-                                oy + by + 1.0,
-                            );
-                            let c = ((-9937334i32) & 16711422) >> 1;
-                            let msg_color = argb(c | 0xFF00_0000u32 as i32);
-                            self.galactic_deferred(
-                                batch,
-                                &message,
-                                ox + bx + 20.0,
-                                oy + by + 2.0,
-                                text_width,
-                                msg_color,
-                            );
-                            -12550384
-                        } else {
-                            let hover = inside(local, bx, by, bw, bh);
-                            let sprite = if hover {
-                                "enchantment_slot_highlighted"
-                            } else {
-                                "enchantment_slot"
-                            };
-                            batch.sprite_scaled(
-                                atlas,
-                                &format!("gui/sprites/container/enchanting_table/{sprite}"),
-                                ox + bx,
-                                oy + by,
-                                bw,
-                                bh,
-                                u32::MAX,
-                            );
-                            batch.sprite(
-                                atlas,
-                                &format!("gui/sprites/container/enchanting_table/level_{}", i + 1),
-                                ox + bx + 1.0,
-                                oy + by + 1.0,
-                            );
-                            let msg_color = if hover { -128 } else { -9937334 };
-                            self.galactic_deferred(
-                                batch,
-                                &message,
-                                ox + bx + 20.0,
-                                oy + by + 2.0,
-                                text_width,
-                                argb(msg_color),
-                            );
-                            -8323296
-                        };
-                        let atlas = &self.gui.atlas;
-                        let cw = HudBatch::text_width(atlas, &cost_text);
-                        batch.text(
-                            atlas,
-                            &cost_text,
-                            ox + bx + 20.0 + 86.0 - cw,
-                            oy + by + 9.0,
-                            argb(col),
-                            true,
-                        );
-                        // Tooltip with the clue (EnchantmentScreen.extractRenderState).
-                        if inside(local, bx, by, bw, 17.0)
-                            && let Some((id, l)) = &offers.clues[i]
-                        {
-                            let e = &self.res.stations().enchantments;
-                            let (name, _) = e.full_name(id, *l);
-                            let clue = self
-                                .translate("container.enchant.clue", "%s . . . ?")
-                                .replace("%s", &name);
-                            let mut lines =
-                                vec![(horizon_client::text::Text::literal(clue), u32::MAX)];
-                            if !self.creative {
-                                lines.push((horizon_client::text::Text::literal(""), u32::MAX));
-                                if level < cost {
-                                    lines.push((
-                                        horizon_client::text::Text::literal(
-                                            self.translate(
-                                                "container.enchant.level.requirement",
-                                                "Level Requirement: %s",
-                                            )
-                                            .replace("%s", &cost.to_string()),
-                                        ),
-                                        rgba(255, 85, 85, 255),
-                                    ));
-                                } else {
-                                    let n = i + 1;
-                                    let lapis = if n == 1 {
-                                        self.translate(
-                                            "container.enchant.lapis.one",
-                                            "1 Lapis Lazuli",
-                                        )
-                                    } else {
-                                        self.translate(
-                                            "container.enchant.lapis.many",
-                                            "%s Lapis Lazuli",
-                                        )
-                                        .replace("%s", &n.to_string())
-                                    };
-                                    lines.push((
-                                        horizon_client::text::Text::literal(lapis),
-                                        if gold >= n as i32 {
-                                            rgba(170, 170, 170, 255)
-                                        } else {
-                                            rgba(255, 85, 85, 255)
-                                        },
-                                    ));
-                                    let levels = if n == 1 {
-                                        self.translate(
-                                            "container.enchant.level.one",
-                                            "1 Enchantment Level",
-                                        )
-                                    } else {
-                                        self.translate(
-                                            "container.enchant.level.many",
-                                            "%s Enchantment Levels",
-                                        )
-                                        .replace("%s", &n.to_string())
-                                    };
-                                    lines.push((
-                                        horizon_client::text::Text::literal(levels),
-                                        rgba(170, 170, 170, 255),
-                                    ));
-                                }
-                            }
-                            tooltip = Some(lines);
-                        }
-                    }
-                }
-                Kind::Anvil => {
-                    let field = if s.inputs[0].is_some() {
-                        "text_field"
-                    } else {
-                        "text_field_disabled"
-                    };
-                    batch.sprite_scaled(
-                        atlas,
-                        &format!("gui/sprites/container/anvil/{field}"),
-                        ox + 59.0,
-                        oy + 20.0,
-                        110.0,
-                        16.0,
-                        u32::MAX,
-                    );
-                    if has_input && s.result.is_none() {
-                        batch.sprite(
-                            atlas,
-                            "gui/sprites/container/anvil/error",
-                            ox + 99.0,
-                            oy + 45.0,
-                        );
-                    }
-                    if s.inputs[0].is_some() {
-                        // Drawn once this borrow of the station ends.
-                        anvil_name = true;
-                    }
-                    let cost = s.anvil.cost;
-                    if cost > 0 {
-                        let mut color = argb(-8323296);
-                        let line = if cost >= 40 && !self.creative {
-                            color = argb(-40864);
-                            Some(self.translate("container.repair.expensive", "Too Expensive!"))
-                        } else if s.result.is_none() {
-                            None
-                        } else {
-                            if !self.may_take_result() {
-                                color = argb(-40864);
-                            }
-                            Some(
-                                self.translate("container.repair.cost", "Enchantment Cost: %1$s")
-                                    .replace("%1$s", &cost.to_string()),
-                            )
-                        };
-                        if let Some(line) = line {
-                            let atlas = &self.gui.atlas;
-                            let tw = HudBatch::text_width(atlas, &line);
-                            let tx = 176.0 - 8.0 - tw - 2.0;
-                            batch.fill(
-                                atlas,
-                                ox + tx - 2.0,
-                                oy + 67.0,
-                                176.0 - 8.0 - (tx - 2.0),
-                                12.0,
-                                argb(1325400064),
-                            );
-                            batch.text(atlas, &line, ox + tx, oy + 69.0, color, true);
-                        }
-                    }
-                }
-                Kind::Grindstone => {
-                    if has_input && s.result.is_none() {
-                        batch.sprite(
-                            atlas,
-                            "gui/sprites/container/grindstone/error",
-                            ox + 92.0,
-                            oy + 31.0,
-                        );
-                    }
-                }
-                Kind::Smithing => {
-                    let icons = ["smithing_template_netherite_upgrade", "", ""];
-                    for (i, icon) in icons.iter().enumerate() {
-                        if s.inputs[i].is_none() && !icon.is_empty() {
-                            let (sx, sy) = kind.input_pos(i);
-                            batch.sprite(
-                                atlas,
-                                &format!("gui/sprites/container/slot/{icon}"),
-                                ox + sx,
-                                oy + sy,
-                            );
-                        }
-                    }
-                    if s.inputs.iter().all(Option::is_some) && s.result.is_none() {
-                        batch.sprite(
-                            atlas,
-                            "gui/sprites/container/smithing/error",
-                            ox + 65.0,
-                            oy + 46.0,
-                        );
-                        if inside(local, 65.0, 46.0, 28.0, 21.0) {
-                            tooltip = Some(vec![(
-                                horizon_client::text::Text::literal(self.translate(
-                                    "container.upgrade.error_tooltip",
-                                    "Item can't be upgraded this way",
-                                )),
-                                u32::MAX,
-                            )]);
-                        }
-                    }
-                }
-                Kind::Merchant | Kind::Beacon | Kind::Cartography | Kind::Loom => {}
-                Kind::Stonecutter => {
-                    let display = s.inputs[0].is_some() && !s.stone.recipes.is_empty();
-                    let active = display && s.stone.recipes.len() > 12;
-                    let rows = s.stone.recipes.len().div_ceil(4).saturating_sub(3).max(1);
-                    let offs = if active {
-                        (s.start / 4) as f32 / rows as f32
-                    } else {
-                        0.0
-                    };
-                    let scroller = if active {
-                        "scroller"
-                    } else {
-                        "scroller_disabled"
-                    };
-                    batch.sprite(
-                        atlas,
-                        &format!("gui/sprites/container/stonecutter/{scroller}"),
-                        ox + 119.0,
-                        oy + 15.0 + (41.0 * offs).floor(),
-                    );
-                    if display {
-                        let (start, selected) = (s.start, s.selected);
-                        // graphics.item: the icon only, without the count.
-                        let shown: Vec<(usize, ItemStack)> = (start
-                            ..(start + 12).min(s.stone.recipes.len()))
-                            .map(|i| {
-                                (
-                                    i,
-                                    ItemStack {
-                                        count: 1,
-                                        ..self.res.stations().recipes.stonecutting
-                                            [s.stone.recipes[i]]
-                                            .result
-                                            .clone()
-                                    },
-                                )
-                            })
-                            .collect();
-                        for (index, result) in shown {
-                            let p = index - start;
-                            let (x, y) = (
-                                52.0 + (p % 4) as f32 * 16.0,
-                                14.0 + (p / 4) as f32 * 18.0 + 2.0,
-                            );
-                            let hover = inside(local, x, y, 16.0, 18.0);
-                            let sprite = if Some(index) == selected {
-                                "recipe_selected"
-                            } else if hover {
-                                "recipe_highlighted"
-                            } else {
-                                "recipe"
-                            };
-                            batch.sprite_scaled(
-                                &self.gui.atlas,
-                                &format!("gui/sprites/container/stonecutter/{sprite}"),
-                                ox + x,
-                                oy + y - 1.0,
-                                16.0,
-                                18.0,
-                                u32::MAX,
-                            );
-                            self.draw_item(batch, &result, ox + x, oy + y);
-                            if hover {
-                                tooltip_stack = Some(result);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        if anvil_name {
-            self.draw_anvil_name(batch, ox, oy);
-        }
-        let drag = self.drag_view();
-        for i in self.station_slots().unwrap_or_default() {
-            let Some((sx, sy)) = self.slot_position_any(i) else {
-                continue;
-            };
-            let stack = self.slot_mut(i).clone();
-            self.draw_slot_item(batch, drag.as_ref(), i, stack, ox + sx, oy + sy);
-        }
-        if let Some(slot) = self.slot_at(batch, self.cursor.0, self.cursor.1) {
-            let (sx, sy) = self.slot_position(slot);
-            batch.fill(
-                &self.gui.atlas,
-                ox + sx,
-                oy + sy,
-                16.0,
-                16.0,
-                rgba(255, 255, 255, 128),
-            );
-            if self.carried.is_none()
-                && tooltip.is_none()
-                && tooltip_stack.is_none()
-                && let Some(stack) = self.slot_mut(slot).clone()
-            {
-                tooltip_stack = Some(stack);
-            }
-        }
-        if self.carried.is_some() {
-            self.draw_carried(batch);
-        } else if let Some(stack) = tooltip_stack {
-            self.draw_stack_tooltip(batch, &stack, self.cursor.0, self.cursor.1);
-        } else if let Some(lines) = tooltip {
-            self.draw_tooltip_lines(batch, &lines, self.cursor.0, self.cursor.1);
-        }
-        true
-    }
-    fn galactic_deferred(
-        &self,
-        batch: &mut HudBatch,
-        text: &str,
-        x: f32,
-        y: f32,
-        max: f32,
-        color: u32,
-    ) {
-        self.galactic(batch, text, x, y, max, color);
-    }
-    fn slot_position_any(&self, i: usize) -> Option<(f32, f32)> {
-        self.station_slot_position(i)
-            .or_else(|| (i < 36).then(|| self.slot_position(i)))
-    }
-
-    // ---------------------------------------------------------------- tooltips
-
     /// `ItemStack.getTooltipLines` subset: name in rarity colour, lore,
     /// potion effects, enchantments (gray, curses red), stored enchantments, trims.
     pub(super) fn stack_tooltip(
@@ -2116,283 +2398,6 @@ impl Game<'_> {
     fn options_advanced_tooltips(&self) -> bool {
         self.settings.file.bool("advancedItemTooltips")
     }
-    /// `TooltipRenderUtil`: dark box with the purple border, first line spaced.
-    pub(super) fn draw_tooltip_lines<T: Clone + Into<horizon_client::text::Text>>(
-        &self,
-        batch: &mut HudBatch,
-        lines: &[(T, u32)],
-        x: f32,
-        y: f32,
-    ) {
-        if lines.is_empty() {
-            return;
-        }
-        let lines = Self::resolved(lines);
-        let atlas = &self.gui.atlas;
-        let (x, y, w, h) =
-            Self::tooltip_geometry(atlas, &lines, (x, y), (batch.width, batch.height), 0.0);
-        Self::tooltip_box(batch, atlas, x, y, w, h);
-        Self::tooltip_text(batch, atlas, &lines, x, y);
-    }
-    /// A tooltip's lines with their legacy codes resolved and their colours.
-    fn resolved<T: Clone + Into<horizon_client::text::Text>>(
-        lines: &[(T, u32)],
-    ) -> Vec<(horizon_client::text::Text, u32)> {
-        lines
-            .iter()
-            .map(|(text, color)| {
-                let text: horizon_client::text::Text = text.clone().into();
-                (text.resolve_legacy(), *color)
-            })
-            .collect()
-    }
-    /// The tooltip's text's top-left corner and the box's size: beside the
-    /// cursor, kept on screen, `extra` pixels taller than the text.
-    fn tooltip_geometry(
-        atlas: &horizon_client::hud::HudAtlas,
-        lines: &[(horizon_client::text::Text, u32)],
-        (x, y): (f32, f32),
-        (width, height): (f32, f32),
-        extra: f32,
-    ) -> (f32, f32, f32, f32) {
-        let w = lines
-            .iter()
-            .map(|(t, _)| atlas.font.width_text(t))
-            .fold(0.0, f32::max)
-            .max(if extra > 0.0 { 96.0 } else { 0.0 });
-        let text_h = if lines.len() == 1 {
-            8.0
-        } else {
-            8.0 + 2.0 + (lines.len() - 1) as f32 * 10.0
-        };
-        let h = text_h + extra;
-        let mut x = x + 12.0;
-        let mut y = y - 12.0;
-        if x + w > width - 4.0 {
-            x = (x - 28.0 - w).max(4.0);
-        }
-        if y + h + 3.0 > height {
-            y = height - h - 3.0;
-        }
-        y = y.max(4.0);
-        (x, y, w, h)
-    }
-    /// The box and its frame sprites.
-    fn tooltip_box(
-        batch: &mut HudBatch,
-        atlas: &horizon_client::hud::HudAtlas,
-        x: f32,
-        y: f32,
-        w: f32,
-        h: f32,
-    ) {
-        batch.fill(atlas, x - 3.0, y - 4.0, w + 6.0, 1.0, rgba(16, 0, 16, 240));
-        batch.fill(
-            atlas,
-            x - 3.0,
-            y + h + 3.0,
-            w + 6.0,
-            1.0,
-            rgba(16, 0, 16, 240),
-        );
-        batch.fill(
-            atlas,
-            x - 4.0,
-            y - 3.0,
-            w + 8.0,
-            h + 6.0,
-            rgba(16, 0, 16, 240),
-        );
-        batch.fill(atlas, x - 3.0, y - 3.0, w + 6.0, 1.0, rgba(80, 0, 255, 80));
-        batch.fill(
-            atlas,
-            x - 3.0,
-            y + h + 2.0,
-            w + 6.0,
-            1.0,
-            rgba(40, 0, 127, 80),
-        );
-        batch.fill(atlas, x - 3.0, y - 2.0, 1.0, h + 4.0, rgba(60, 0, 190, 80));
-        batch.fill(
-            atlas,
-            x + w + 2.0,
-            y - 2.0,
-            1.0,
-            h + 4.0,
-            rgba(60, 0, 190, 80),
-        );
-    }
-    fn tooltip_text(
-        batch: &mut HudBatch,
-        atlas: &horizon_client::hud::HudAtlas,
-        lines: &[(horizon_client::text::Text, u32)],
-        x: f32,
-        y: f32,
-    ) {
-        let mut ty = y;
-        for (i, (text, color)) in lines.iter().enumerate() {
-            batch.text_styled(atlas, text, x, ty, *color, true);
-            ty += if i == 0 { 12.0 } else { 10.0 };
-        }
-    }
-    /// A stack's tooltip: its lines, and under them a bundle's contents
-    /// (`ClientBundleTooltip`: the 4 wide grid, the `+N` of what it leaves
-    /// out, and the weight bar).
-    pub(super) fn draw_stack_tooltip(
-        &mut self,
-        batch: &mut HudBatch,
-        stack: &ItemStack,
-        x: f32,
-        y: f32,
-    ) {
-        let lines = Self::resolved(&self.stack_tooltip(stack));
-        if lines.is_empty() {
-            return;
-        }
-        // The component's height does not depend on where it is drawn, so a
-        // probe at the origin gives the box its extra height.
-        let probe = horizon_client::bundle::tooltip_layout(self.res.items(), stack, 0.0, 0.0, 96.0);
-        let extra = probe.as_ref().map_or(0.0, |l| l.height + 2.0);
-        let atlas = &self.gui.atlas;
-        let (x, y, w, h) =
-            Self::tooltip_geometry(atlas, &lines, (x, y), (batch.width, batch.height), extra);
-        Self::tooltip_box(batch, atlas, x, y, w, h);
-        let text_h = h - extra;
-        Self::tooltip_text(batch, atlas, &lines, x, y);
-        let Some(layout) =
-            horizon_client::bundle::tooltip_layout(self.res.items(), stack, x, y + text_h + 2.0, w)
-        else {
-            return;
-        };
-        self.draw_bundle_tooltip(batch, &layout);
-    }
-    /// `ClientBundleTooltip.extractImage`: the slots, the count past them and
-    /// the progress bar.
-    fn draw_bundle_tooltip(
-        &mut self,
-        batch: &mut HudBatch,
-        layout: &horizon_client::bundle::TooltipLayout,
-    ) {
-        for (i, (at, stack)) in layout.slots.iter().enumerate() {
-            let selected = layout.selected == Some(i);
-            let sprite = |name: &str| format!("gui/sprites/container/bundle/{name}");
-            // Each draw takes the atlas on its own: the item's needs `&mut self`.
-            horizon_client::ui::nine_slice(
-                batch,
-                &self.gui.atlas,
-                &sprite(if selected {
-                    "slot_highlight_back"
-                } else {
-                    "slot_background"
-                }),
-                at[0],
-                at[1],
-                24.0,
-                24.0,
-                u32::MAX,
-            );
-            let stack = stack.clone();
-            let [x, y] = *at;
-            self.draw_item(batch, &stack, x + 4.0, y + 4.0);
-            if selected {
-                horizon_client::ui::nine_slice(
-                    batch,
-                    &self.gui.atlas,
-                    &sprite("slot_highlight_front"),
-                    x,
-                    y,
-                    24.0,
-                    24.0,
-                    u32::MAX,
-                );
-            }
-        }
-        let atlas = &self.gui.atlas;
-        if let Some((at, hidden)) = layout.overflow {
-            let label = horizon_client::text::Text::literal(format!("+{hidden}"));
-            let w = atlas.font.width_text(&label);
-            batch.text_styled(
-                atlas,
-                &label,
-                at[0] + 12.0 - (w / 2.0).floor(),
-                at[1] + 10.0,
-                u32::MAX,
-                true,
-            );
-        }
-        if let Some((at, description)) = layout
-            .empty_description
-            .zip(Some("item.minecraft.bundle.empty.description"))
-        {
-            let text = horizon_client::text::Text::translate(description, &[]);
-            let mut ty = at[1];
-            for line in atlas.font.split_lines(&text, layout.width) {
-                batch.text_styled(atlas, &line.0, at[0], ty, 0xFFAA_AAAA, false);
-                ty += 9.0;
-            }
-        }
-        let [bx, by] = layout.bar;
-        let fill_sprite = if layout.full {
-            "gui/sprites/container/bundle/bundle_progressbar_full"
-        } else {
-            "gui/sprites/container/bundle/bundle_progressbar_fill"
-        };
-        horizon_client::ui::nine_slice(
-            batch,
-            atlas,
-            fill_sprite,
-            bx + 1.0,
-            by,
-            layout.fill,
-            13.0,
-            u32::MAX,
-        );
-        horizon_client::ui::nine_slice(
-            batch,
-            atlas,
-            "gui/sprites/container/bundle/bundle_progressbar_border",
-            bx,
-            by,
-            96.0,
-            13.0,
-            u32::MAX,
-        );
-        if let Some(key) = layout.label {
-            let label = horizon_client::text::Text::translate(key, &[]);
-            let w = atlas.font.width_text(&label);
-            batch.text_styled(
-                atlas,
-                &label,
-                bx + 48.0 - (w / 2.0).floor(),
-                by + 3.0,
-                u32::MAX,
-                true,
-            );
-        }
-    }
-    /// Hovered-slot tooltip on the plain inventory, crafting and container screens.
-    pub(super) fn draw_slot_tooltip(&mut self, batch: &mut HudBatch) {
-        if self.carried.is_some() {
-            return;
-        }
-        let Some(slot) = self.slot_at(batch, self.cursor.0, self.cursor.1) else {
-            return;
-        };
-        let stack = self.slot_view(slot);
-        if let Some(stack) = stack {
-            self.draw_stack_tooltip(batch, &stack, self.cursor.0, self.cursor.1);
-        } else if let Some(text) = self.crafter_tooltip(slot) {
-            self.draw_tooltip_lines(
-                batch,
-                &[(horizon_client::text::Text::literal(text), u32::MAX)],
-                self.cursor.0,
-                self.cursor.1,
-            );
-        }
-    }
-
-    // ---------------------------------------------------------------- brewing stand
-
     /// `BrewingStandBlockEntity.serverTick` of the brewing stand at `pos`, in
     /// its place among the level's block entity tickers.
     pub(super) fn tick_brewing_stand(

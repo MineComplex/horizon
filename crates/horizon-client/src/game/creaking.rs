@@ -83,14 +83,6 @@ impl HeartHost for Host<'_> {
 }
 
 impl Game<'_> {
-    fn heart_state_name(&self, state: BlockStateId) -> String {
-        self.pack
-            .assets
-            .registry
-            .state(state)
-            .and_then(|s| s.properties.get("creaking_heart_state").cloned())
-            .unwrap_or_default()
-    }
     /// Runs `f` on the heart at `key` with the game's mobs and level random,
     /// then applies what the heart reported.
     fn with_heart(
@@ -286,6 +278,16 @@ impl Game<'_> {
             .block_entities
             .put(key, BlockEntity::CreakingHeart(heart));
         Ok(())
+    }
+}
+impl crate::game::Sim<'_> {
+    fn heart_state_name(&self, state: BlockStateId) -> String {
+        self.pack
+            .assets
+            .registry
+            .state(state)
+            .and_then(|s| s.properties.get("creaking_heart_state").cloned())
+            .unwrap_or_default()
     }
     /// `ServerLevel.isSpawningMonsters`.
     fn spawning_monsters(&self) -> bool {

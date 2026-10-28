@@ -11,7 +11,7 @@ impl Game<'_> {
         if !self.settings.extras.discord_presence {
             return Status::Off;
         }
-        if self.title.is_some() {
+        if self.front.title.is_some() {
             return Status::Menus;
         }
         let play = if let Some(host) = &self.lan {
