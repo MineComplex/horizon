@@ -184,19 +184,6 @@ struct Launch {
 }
 
 impl Game<'_> {
-    /// `Minecraft.hasSingleplayerServer`: a world of this window's own, run
-    /// in the frame or on its server thread.
-    pub(super) fn has_singleplayer_server(&self) -> bool {
-        self.remote.is_none() || self.integrated.is_some()
-    }
-    /// `IntegratedServer.isPublished`: the world is open to the network.
-    pub(super) fn is_published(&self) -> bool {
-        self.lan.is_some()
-            || self
-                .integrated
-                .as_ref()
-                .is_some_and(|s| s.published().is_some())
-    }
     /// `Minecraft.doWorldLoad`: start the server thread on the world, wait
     /// until it can be joined, then join it through memory.
     pub(super) fn open_integrated(
@@ -401,9 +388,9 @@ impl Game<'_> {
                 self.plugins_after_tick();
                 // MinecraftServer.tickServer's tick times, for /tick query.
                 self.clock.record(started.elapsed());
-                self.debug_charts.log_tick(started, started.elapsed());
+                self.front.debug_charts.log_tick(started, started.elapsed());
                 flags.smoothed_tick_ms.store(
-                    self.debug_charts.smoothed_tick_ms.to_bits(),
+                    self.front.debug_charts.smoothed_tick_ms.to_bits(),
                     Ordering::Relaxed,
                 );
             }
@@ -442,6 +429,21 @@ impl Game<'_> {
         self.save.flush()?;
         self.session_lock = None;
         Ok(())
+    }
+}
+impl crate::game::Sim<'_> {
+    /// `Minecraft.hasSingleplayerServer`: a world of this window's own, run
+    /// in the frame or on its server thread.
+    pub(super) fn has_singleplayer_server(&self) -> bool {
+        self.remote.is_none() || self.integrated.is_some()
+    }
+    /// `IntegratedServer.isPublished`: the world is open to the network.
+    pub(super) fn is_published(&self) -> bool {
+        self.lan.is_some()
+            || self
+                .integrated
+                .as_ref()
+                .is_some_and(|s| s.published().is_some())
     }
 }
 
@@ -539,6 +541,8 @@ impl Game<'_> {
             self.apply_publish();
         }
     }
+}
+impl crate::game::Sim<'_> {
     /// `IntegratedServer.getPort` while published.
     pub(super) fn published_port(&self) -> Option<u16> {
         let s = self.serving.as_ref()?;
@@ -598,7 +602,6 @@ impl Game<'_> {
             self.settings.simulation_distance = simulation;
         }
     }
-
     fn apply_publish(&mut self) {
         if self.lan.is_none() {
             return;
@@ -702,7 +705,8 @@ pub(super) enum ComponentHarness {
     Sculk(String),
 }
 
-impl Game<'_> {
+impl Game<'_> {}
+impl crate::game::Sim<'_> {
     pub(super) fn run_component_harness(&self, fixture: ComponentHarness) -> Result<()> {
         let (res, pack, settings) = (self.res.clone(), self.pack.clone(), self.settings.clone());
         let mut options = self.options.clone();

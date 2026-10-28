@@ -25,121 +25,6 @@ use horizon_core::{
 pub(super) const OWN: i32 = i32::MIN;
 
 impl Game<'_> {
-    /// `Item.use` of a kinetic weapon: `startUsingItem` with a new
-    /// `recentKineticEnemies`, and `KineticWeapon.makeSound` at the user.
-    pub(super) fn use_spear(&mut self, stack: &ItemStack) -> bool {
-        let Some(kinetic) = Kinetic::of(&stack.item) else {
-            return false;
-        };
-        if self.using.is_none() {
-            self.using = Some((self.held_slot(), 0));
-            let actor = self.lan_acting;
-            self.stabbed.retain(|(who, _), _| *who != actor);
-            if let Some(p) = &self.player {
-                let at = [p.position.x, p.position.y, p.position.z];
-                self.sounds.play(kinetic.sound, Some(at), 1.0, 1.0);
-            }
-        }
-        true
-    }
-
-    /// `ServerPlayer.getKnownMovement` of the acting player: what they moved
-    /// in the last tick. A guest's comes with their moves.
-    fn known_player_movement(&self) -> Vec3 {
-        if self.lan_acting.is_some() {
-            return self.known_movement;
-        }
-        self.player
-            .as_ref()
-            .map_or(Vec3::ZERO, |p| p.position.subtract(self.previous_position))
-    }
-
-    /// `Entity.getKnownSpeed` of the mob at `index`, per second: its root
-    /// vehicle's (`KineticWeapon.getMotion`).
-    fn mob_speed(&self, index: usize) -> Vec3 {
-        let mut mob = &self.mobs[index];
-        while let Some(vehicle) = mob
-            .extra
-            .mount
-            .and_then(|v| self.mobs.iter().find(|m| m.id == v))
-        {
-            mob = vehicle;
-        }
-        mob.position.subtract(mob.previous).scale(20.0)
-    }
-
-    /// `Level.clip` with COLLIDER shapes and no fluids: where the segment
-    /// first meets a block, if it does (tall grass lets a stab through).
-    fn clip_collider(&self, from: Vec3, to: Vec3) -> Option<Vec3> {
-        let mut scene = SceneCollisions {
-            world: &self.world,
-            binding: self.collision,
-            subject: None,
-        };
-        traverse_blocks(from, to, 512, |p: BlockPos| {
-            let state = self.world.block(p.x, p.y, p.z);
-            if self.res.facts().is_air(state) {
-                return None;
-            }
-            let shape = self
-                .collision
-                .collision_shape(&mut scene, state, [p.x, p.y, p.z])
-                .ok()?;
-            shape.clip(from, to, p).map(|hit| hit.location)
-        })
-        .ok()
-        .flatten()
-    }
-
-    /// `ProjectileUtil.getHitEntitiesAlong` for the mobs: those whose box the
-    /// segment `from`..`to` meets, or comes within the margin of with no
-    /// block between.
-    fn mobs_along(&self, from: Vec3, to: Vec3, margin: f64) -> Vec<usize> {
-        let grow = Vec3::new(margin, margin, margin);
-        let mut hits = Vec::new();
-        for (i, m) in self.mobs.iter().enumerate() {
-            // PiercingWeapon.canHitEntity: alive, and not the vehicle ridden.
-            if !m.alive() || m.removed || self.riding == Some(m.id) {
-                continue;
-            }
-            let bounds: Aabb = m.bounds();
-            let hit = bounds.contains(from)
-                || bounds.clip(from, to).is_some()
-                || (margin > 0.0
-                    && bounds.inflate(grow).clip(from, to).is_some_and(|outside| {
-                        let centre = bounds.center();
-                        let toward = self.clip_collider(outside, centre).unwrap_or(centre);
-                        bounds.clip(outside, toward).is_some()
-                    }));
-            if hit {
-                hits.push(i);
-            }
-        }
-        hits
-    }
-
-    /// `ProjectileUtil.getHitEntitiesAlong` with the spear's `AttackRange`: the
-    /// mobs along the view from the minimum reach to the maximum plus the
-    /// attacker's own movement, none when a block is closer than the minimum.
-    fn stab_targets(&self, eye: Vec3, look: Vec3, movement: Vec3) -> Vec<usize> {
-        // AttackRange.effectiveMinRange and effectiveMaxRange for a player.
-        let (min, max) = if self.creative {
-            (REACH.min_creative, REACH.max_creative)
-        } else {
-            (REACH.min, REACH.max)
-        };
-        let from = eye.add_vector(look.scale(f64::from(min)));
-        let mut to = eye.add_vector(look.scale(f64::from(max) + movement.dot(look).max(0.0)));
-        // A block closer than the minimum reach takes the whole stab.
-        if let Some(block) = self.clip_collider(eye, to) {
-            to = block;
-            if eye.distance_squared(to) < eye.distance_squared(from) {
-                return Vec::new();
-            }
-        }
-        self.mobs_along(from, to, f64::from(REACH.hitbox_margin))
-    }
-
     /// `KineticWeapon.damageEntities`: one tick of the spear in use, `ticks`
     /// ticks into the use.
     pub(super) fn spear_tick(&mut self, stack: &ItemStack, ticks: u32) {
@@ -285,22 +170,14 @@ impl Game<'_> {
             );
         }
         if hurt {
-            self.last_hurt_by_player.insert(id, self.lan_acting);
+            self.sim.last_hurt_by_player.insert(id, self.sim.lan_acting);
         }
-        if let Some(p) = self.player.as_mut()
-            && !self.creative
+        if let Some(p) = self.sim.player.as_mut()
+            && !self.sim.creative
         {
             p.cause_food_exhaustion(0.1);
         }
         true
-    }
-
-    /// `Player.cannotAttackWithItem` for the held item: a spear needs its
-    /// `minimum_attack_charge` of 1, counting `tolerance` ticks more than the
-    /// `ticker` ticks charged.
-    pub(super) fn cannot_attack_with_item(&self, ticker: i32, tolerance: i32) -> bool {
-        self.held().is_some_and(|s| Kinetic::of(&s.item).is_some())
-            && (ticker + tolerance) as f32 / delay(self.main_hand_attack_speed()) < 1.0
     }
 
     /// `PiercingWeapon.attack` of the spear in the main hand, for a left
@@ -337,7 +214,124 @@ impl Game<'_> {
         }
         Some(kinetic.attack_sound)
     }
-
+}
+impl crate::game::Sim<'_> {
+    /// `Item.use` of a kinetic weapon: `startUsingItem` with a new
+    /// `recentKineticEnemies`, and `KineticWeapon.makeSound` at the user.
+    pub(super) fn use_spear(&mut self, stack: &ItemStack) -> bool {
+        let Some(kinetic) = Kinetic::of(&stack.item) else {
+            return false;
+        };
+        if self.using.is_none() {
+            self.using = Some((self.held_slot(), 0));
+            let actor = self.lan_acting;
+            self.stabbed.retain(|(who, _), _| *who != actor);
+            if let Some(p) = &self.player {
+                let at = [p.position.x, p.position.y, p.position.z];
+                self.sounds.play(kinetic.sound, Some(at), 1.0, 1.0);
+            }
+        }
+        true
+    }
+    /// `ServerPlayer.getKnownMovement` of the acting player: what they moved
+    /// in the last tick. A guest's comes with their moves.
+    fn known_player_movement(&self) -> Vec3 {
+        if self.lan_acting.is_some() {
+            return self.known_movement;
+        }
+        self.player
+            .as_ref()
+            .map_or(Vec3::ZERO, |p| p.position.subtract(self.previous_position))
+    }
+    /// `Entity.getKnownSpeed` of the mob at `index`, per second: its root
+    /// vehicle's (`KineticWeapon.getMotion`).
+    fn mob_speed(&self, index: usize) -> Vec3 {
+        let mut mob = &self.mobs[index];
+        while let Some(vehicle) = mob
+            .extra
+            .mount
+            .and_then(|v| self.mobs.iter().find(|m| m.id == v))
+        {
+            mob = vehicle;
+        }
+        mob.position.subtract(mob.previous).scale(20.0)
+    }
+    /// `Level.clip` with COLLIDER shapes and no fluids: where the segment
+    /// first meets a block, if it does (tall grass lets a stab through).
+    fn clip_collider(&self, from: Vec3, to: Vec3) -> Option<Vec3> {
+        let mut scene = SceneCollisions {
+            world: &self.world,
+            binding: self.collision,
+            subject: None,
+        };
+        traverse_blocks(from, to, 512, |p: BlockPos| {
+            let state = self.world.block(p.x, p.y, p.z);
+            if self.res.facts().is_air(state) {
+                return None;
+            }
+            let shape = self
+                .collision
+                .collision_shape(&mut scene, state, [p.x, p.y, p.z])
+                .ok()?;
+            shape.clip(from, to, p).map(|hit| hit.location)
+        })
+        .ok()
+        .flatten()
+    }
+    /// `ProjectileUtil.getHitEntitiesAlong` for the mobs: those whose box the
+    /// segment `from`..`to` meets, or comes within the margin of with no
+    /// block between.
+    fn mobs_along(&self, from: Vec3, to: Vec3, margin: f64) -> Vec<usize> {
+        let grow = Vec3::new(margin, margin, margin);
+        let mut hits = Vec::new();
+        for (i, m) in self.mobs.iter().enumerate() {
+            // PiercingWeapon.canHitEntity: alive, and not the vehicle ridden.
+            if !m.alive() || m.removed || self.riding == Some(m.id) {
+                continue;
+            }
+            let bounds: Aabb = m.bounds();
+            let hit = bounds.contains(from)
+                || bounds.clip(from, to).is_some()
+                || (margin > 0.0
+                    && bounds.inflate(grow).clip(from, to).is_some_and(|outside| {
+                        let centre = bounds.center();
+                        let toward = self.clip_collider(outside, centre).unwrap_or(centre);
+                        bounds.clip(outside, toward).is_some()
+                    }));
+            if hit {
+                hits.push(i);
+            }
+        }
+        hits
+    }
+    /// `ProjectileUtil.getHitEntitiesAlong` with the spear's `AttackRange`: the
+    /// mobs along the view from the minimum reach to the maximum plus the
+    /// attacker's own movement, none when a block is closer than the minimum.
+    fn stab_targets(&self, eye: Vec3, look: Vec3, movement: Vec3) -> Vec<usize> {
+        // AttackRange.effectiveMinRange and effectiveMaxRange for a player.
+        let (min, max) = if self.creative {
+            (REACH.min_creative, REACH.max_creative)
+        } else {
+            (REACH.min, REACH.max)
+        };
+        let from = eye.add_vector(look.scale(f64::from(min)));
+        let mut to = eye.add_vector(look.scale(f64::from(max) + movement.dot(look).max(0.0)));
+        // A block closer than the minimum reach takes the whole stab.
+        if let Some(block) = self.clip_collider(eye, to) {
+            to = block;
+            if eye.distance_squared(to) < eye.distance_squared(from) {
+                return Vec::new();
+            }
+        }
+        self.mobs_along(from, to, f64::from(REACH.hitbox_margin))
+    }
+    /// `Player.cannotAttackWithItem` for the held item: a spear needs its
+    /// `minimum_attack_charge` of 1, counting `tolerance` ticks more than the
+    /// `ticker` ticks charged.
+    pub(super) fn cannot_attack_with_item(&self, ticker: i32, tolerance: i32) -> bool {
+        self.held().is_some_and(|s| Kinetic::of(&s.item).is_some())
+            && (ticker + tolerance) as f32 / delay(self.main_hand_attack_speed()) < 1.0
+    }
     /// A sound at the player's feet.
     pub(super) fn play_at_feet(&mut self, sound: &str) {
         if let Some(p) = &self.player {
@@ -345,7 +339,6 @@ impl Game<'_> {
             self.sounds.play(sound, Some(at), 1.0, 1.0);
         }
     }
-
     /// `LivingEntity.onKineticHit` for `entity`: the hit feels (the spear
     /// moves back, `kinetic_hit_ticks`) and sounds, at most once every ten
     /// ticks.
@@ -361,14 +354,12 @@ impl Game<'_> {
                 .play_unshared(kinetic.hit_sound, Some(at), 1.0, 1.0);
         }
     }
-
     /// `getTicksSinceLastKineticHitFeedback` of this window's player.
     pub(super) fn kinetic_hit_ticks(&self, partial: f32) -> f32 {
         self.kinetic_feedback
             .get(&OWN)
             .map_or(0.0, |&t| (self.world.game_time - t) as f32 + partial)
     }
-
     /// `LivingEntity.handleEntityEvent(2)` on a server's client: the
     /// player `id` (this one, or another) was hit by the spear it uses.
     pub(super) fn remote_kinetic_hit(&mut self, id: i32) {

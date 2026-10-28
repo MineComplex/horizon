@@ -7,17 +7,6 @@ use horizon_client::{Result, items::ItemStack, mobs::Who};
 use horizon_core::{position::BlockPos, random::RandomSource};
 
 impl Game<'_> {
-    /// Entity.playEntityOnFireExtinguishedSound
-    fn extinguish_sound(&mut self, at: [f64; 3]) {
-        let r = self.particles.random();
-        let pitch = 1.6 + (r.next_float() - r.next_float()) * 0.4;
-        self.sounds.play(
-            "minecraft:entity.generic.extinguish_fire",
-            Some(at),
-            0.7,
-            pitch,
-        );
-    }
     /// `Entity.applyEffectsFromBlocks`: a burning player in the rain
     /// (`isInRain`) has the fire put out (`clearFire`), with the extinguish
     /// sound that everyone near hears.
@@ -33,15 +22,6 @@ impl Game<'_> {
             player.fire_ticks = 0;
         }
         self.extinguish_sound([at.x, at.y, at.z]);
-    }
-    /// Whether the block at `pos` is powder snow.
-    pub(super) fn is_powder_snow(&self, pos: [i32; 3]) -> bool {
-        &*self
-            .res
-            .facts()
-            .get(self.world.block(pos[0], pos[1], pos[2]))
-            .name
-            == "minecraft:powder_snow"
     }
     /// `BucketItem.use` with an empty bucket on powder snow:
     /// `PowderSnowBlock.pickupBlock` (air, level event 2001), the used
@@ -74,6 +54,28 @@ impl Game<'_> {
         self.trigger_item("minecraft:filled_bucket", &filled);
         self.swing_arm();
         Ok(())
+    }
+}
+impl crate::game::Sim<'_> {
+    /// Entity.playEntityOnFireExtinguishedSound
+    fn extinguish_sound(&mut self, at: [f64; 3]) {
+        let r = self.particles.random();
+        let pitch = 1.6 + (r.next_float() - r.next_float()) * 0.4;
+        self.sounds.play(
+            "minecraft:entity.generic.extinguish_fire",
+            Some(at),
+            0.7,
+            pitch,
+        );
+    }
+    /// Whether the block at `pos` is powder snow.
+    pub(super) fn is_powder_snow(&self, pos: [i32; 3]) -> bool {
+        &*self
+            .res
+            .facts()
+            .get(self.world.block(pos[0], pos[1], pos[2]))
+            .name
+            == "minecraft:powder_snow"
     }
     /// `ItemUtils.createFilledResult(held, player, filled)` for the held stack.
     fn filled_result(&mut self, filled: ItemStack) {

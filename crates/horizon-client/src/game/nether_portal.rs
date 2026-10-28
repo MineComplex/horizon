@@ -194,6 +194,310 @@ fn arrival_from_tag(a: &Tag) -> Option<Arrival> {
 }
 
 impl Game<'_> {
+    /// Where an item or mob through an End portal lands once `plan`'s level
+    /// has loaded around it: the bottom centre of the End's spawn point,
+    /// above the platform built below it (`EndPlatformFeature.createEndPlatform`);
+    /// out of the End, the top of the shared spawn's column
+    /// (`Entity.adjustSpawnLocation`).
+    fn end_portal_exit(&mut self, plan: &Plan) -> Vec3 {
+        let p = plan.approximate;
+        let centre = Vec3::new(f64::from(p.x) + 0.5, f64::from(p.y), f64::from(p.z) + 0.5);
+        if plan.dim == Dim::End {
+            // In the End the arrival only builds the platform: no spawn search.
+            if let Err(e) = self.end_arrival(centre, &mut None) {
+                log::error!("End platform: {e}");
+            }
+            return centre;
+        }
+        let y = self.motion_top(p.x, p.z);
+        Vec3::new(centre.x, f64::from(y), centre.z)
+    }
+    /// The exit portal of `plan` in the loaded dimension: the closest one
+    /// within reach, else one built by `PortalForcer.createPortal`.
+    pub(super) fn nether_exit_portal(&mut self, plan: &Plan) -> Option<FoundRectangle> {
+        let to_nether = plan.dim == Dim::Nether;
+        let radius = if to_nether { 16 } else { 128 };
+        let border = self.border_bounds();
+        let portals = self.portal_blocks(plan.approximate, radius);
+        let (min_section, max_section) = if to_nether { (0, 15) } else { (-4, 19) };
+        let found = closest_portal(
+            &portals,
+            plan.approximate,
+            to_nether,
+            &border,
+            min_section,
+            max_section,
+        );
+        if let Some(found) = found {
+            let state = self.world.block(found.x, found.y, found.z);
+            let x_axis = self.res.behaviours().portal_axis(state).unwrap_or(true);
+            return Some(largest_rectangle_around(
+                found,
+                if x_axis { Axis::X } else { Axis::Z },
+                21,
+                Axis::Y,
+                21,
+                |p| self.world.block(p.x, p.y, p.z) == state,
+            ));
+        }
+        let logical = if to_nether { 128 } else { 384 };
+        let (approximate, x_axis) = (plan.approximate, plan.entry_x_axis);
+        let created = self.with_level(|b, level, ticks| {
+            b.create_portal(level, ticks, approximate, x_axis, &border, logical)
+        });
+        let _ = self.process_level_events();
+        created
+    }
+
+    // ---- the player ----
+
+    /// `ServerPlayer.handlePortal` (not while changing dimension: there is no
+    /// player then). Players wait `players_nether_portal_default_delay`
+    /// ticks, or the creative delay with invulnerable abilities.
+    pub(super) fn tick_nether_portal(&mut self) -> Result<()> {
+        // A server's portals are its own.
+        if self.remote.is_some() {
+            return Ok(());
+        }
+        let Some(p) = self.player.as_ref() else {
+            return Ok(());
+        };
+        if self.travelling.is_some() {
+            return Ok(());
+        }
+        let allowed = !p.health.dead_or_dying() && self.riding.is_none() && self.sleeping.is_none();
+        let rule = if p.invulnerable {
+            "players_nether_portal_creative_delay"
+        } else {
+            "players_nether_portal_default_delay"
+        };
+        let transition = self.world_data.rules.int(rule).max(0);
+        let Some(entry) = self
+            .portals
+            .player
+            .handle(allowed, transition, PLAYER_DELAY)
+        else {
+            return Ok(());
+        };
+        self.player_through_nether_portal(entry)
+    }
+    /// `Entity.handlePortal` once the player's portal process at `entry`
+    /// finished: `NetherPortalBlock.getPortalDestination`, then
+    /// `teleportToPortalDestination` (`isAllowedToEnterPortal`).
+    pub(super) fn player_through_nether_portal(&mut self, entry: BlockPos) -> Result<()> {
+        let Some(p) = self.player.as_ref() else {
+            return Ok(());
+        };
+        let plan = self.portal_plan(
+            entry,
+            p.position,
+            p.dimensions.width,
+            p.dimensions.height,
+            true,
+        );
+        if !self.may_enter(plan.dim) {
+            return Ok(());
+        }
+        self.portals.travel = Some(plan);
+        self.end_portal_travel = false;
+        self.enter_dimension(plan.dim)?;
+        let centre = self.arrival_centre(&plan);
+        if let Some((_, target)) = self.travelling.as_mut() {
+            *target = centre;
+        }
+        Ok(())
+    }
+    /// The player's arrival once the destination has loaded around the
+    /// approximate exit: the waiting entities first, then the exit portal
+    /// (found or built), the position in it, the turned yaw and motion, and
+    /// `TeleportTransition.PLAY_PORTAL_SOUND` (level event 1032).
+    pub(super) fn arrive_through_nether_portal(
+        &mut self,
+        mut player: horizon_client::motion::PlayerMotion,
+        target: Vec3,
+    ) -> Result<()> {
+        self.resolve_arrivals();
+        let plan = self.portals.travel.take();
+        let Some(plan) = plan else {
+            // A command teleport can change dimensions without going through
+            // a portal. It has no portal placement, rotation, or sound effect.
+            player.position = target;
+            player.velocity = Vec3::ZERO;
+            player.fall_distance = 0.0;
+            self.previous_position = target;
+            self.player = Some(player);
+            self.front.pad.player_replaced();
+            self.front.sway = Default::default();
+            self.apply_equipment();
+            return Ok(());
+        };
+        let exit = self.nether_exit_portal(&plan);
+        let (position, rotation) = match exit {
+            Some(exit) => self.arrival(&plan, exit),
+            None => (target, 0.0),
+        };
+        player.position = position;
+        // Relative.ROTATION and Relative.DELTA: the yaw turns, the motion
+        // turns with it.
+        player.yaw += rotation;
+        player.head_yaw += rotation;
+        self.yaw += rotation;
+        player.velocity = rotate_y(player.velocity, -rotation);
+        self.previous_position = player.position;
+        self.player = Some(player);
+        self.front.pad.player_replaced();
+        self.front.sway = Default::default();
+        self.apply_equipment();
+        let pitch = self.world.random.next_float() * 0.4 + 0.8;
+        self.sounds
+            .play("minecraft:block.portal.travel", None, 0.25, pitch);
+        Ok(())
+    }
+    /// `LocalPlayer.handlePortalTransitionEffect`: whether the confusion
+    /// effect grows this tick. Entering a portal closes screens other than
+    /// the chat and death screens and plays `block.portal.trigger` when the
+    /// effect starts from nothing.
+    pub(super) fn client_portal_effect(&mut self) -> bool {
+        if !std::mem::take(&mut self.portals.client_inside) {
+            return false;
+        }
+        match self.screen {
+            Screen::Playing | Screen::Chat | Screen::Dead => {}
+            Screen::Inventory | Screen::Creative => {
+                self.close_container();
+                self.carried = None;
+                self.screen = Screen::Playing;
+                self.capture(true);
+            }
+            _ => {
+                self.screen = Screen::Playing;
+                self.capture(true);
+            }
+        }
+        if self.front.screen_fx.portal == 0.0 {
+            let pitch = self.world.random.next_float() * 0.4 + 0.8;
+            self.sounds
+                .play("minecraft:block.portal.trigger", None, 0.25, pitch);
+        }
+        true
+    }
+
+    // ---- other entities ----
+
+    /// Positions before the entities move this tick, and `Entity.handlePortal`
+    /// at the start of their tick: an item or mob that stayed in a portal
+    /// goes through (transition time 0) and waits for its dimension.
+    pub(super) fn handle_entity_portals(&mut self) {
+        if self.sim.remote.is_some() {
+            return;
+        }
+        self.load_portal_arrivals();
+        let mut leaving: Vec<(u32, BlockPos)> = Vec::new();
+        self.sim.portals.before.clear();
+        for e in &self.sim.dropped {
+            self.sim.portals.before.insert(e.id, e.position);
+        }
+        for m in &self.sim.mobs {
+            self.sim.portals.before.insert(m.id, m.position);
+        }
+        for b in &self.sim.boats {
+            self.sim.portals.before.insert(b.id, b.position);
+        }
+        for c in &self.sim.carts {
+            self.sim.portals.before.insert(c.id, c.position);
+        }
+        let ids: Vec<(u32, bool)> = self
+            .sim
+            .dropped
+            .iter()
+            .map(|e| (e.id, true))
+            .chain(self.mobs.iter().map(|m| (m.id, self.mob_can_use_portal(m))))
+            .chain(
+                self.boats
+                    .iter()
+                    .map(|b| b.id)
+                    .chain(self.carts.iter().map(|c| c.id))
+                    .map(|id| (id, !self.vehicle_occupied(id))),
+            )
+            .collect();
+        let present: std::collections::HashSet<u32> = ids.iter().map(|(id, _)| *id).collect();
+        self.portals.entities.retain(|id, _| present.contains(id));
+        for (id, allowed) in ids {
+            let Some(state) = self.portals.entities.get_mut(&id) else {
+                continue;
+            };
+            if let Some(entry) = state.handle(allowed, 0, ENTITY_DELAY) {
+                leaving.push((id, entry));
+            }
+            if state.cooldown == 0 && state.process.is_none() {
+                self.portals.entities.remove(&id);
+            }
+        }
+        for (id, entry) in leaving {
+            self.send_through_portal(id, entry);
+        }
+    }
+    /// Entities waiting for the loaded dimension whose exit area is loaded:
+    /// their exit portal (found or built) or End destination, position,
+    /// turned yaw and motion, and portal cooldown; they join the world with the chunk entities.
+    pub(super) fn resolve_arrivals(&mut self) {
+        if self.remote.is_some() {
+            return;
+        }
+        let mut i = 0;
+        while i < self.portals.arrivals.len() {
+            let plan = self.portals.arrivals[i].plan;
+            let (cx, cz) = (plan.approximate.x >> 4, plan.approximate.z >> 4);
+            let ready = plan.dim == self.dim
+                && (-1..=1).all(|dz| (-1..=1).all(|dx| self.streaming.is_lit(cx + dx, cz + dz)));
+            if !ready {
+                i += 1;
+                continue;
+            }
+            let Arrival { plan, mut tag } = self.portals.arrivals.remove(i);
+            self.portals.dirty = true;
+            let motion = horizon_client::entity_nbt::motion(&tag);
+            let [yaw, pitch] = horizon_client::entity_nbt::rotation(&tag);
+            let (at, motion, [yaw, pitch]) = if plan.end {
+                // Relative.DELTA: the motion is kept.
+                let at = self.end_portal_exit(&plan);
+                let into_end = plan.dim == Dim::End;
+                let turn =
+                    end_portal_rotation(into_end, [yaw, pitch], self.level.world_spawn_angle);
+                (at, motion, turn)
+            } else {
+                let Some(exit) = self.nether_exit_portal(&plan) else {
+                    continue;
+                };
+                let (at, rotation) = self.arrival(&plan, exit);
+                (at, rotate_y(motion, -rotation), [yaw + rotation, pitch])
+            };
+            if let Tag::Compound(c) = &mut tag {
+                c.insert("Pos".into(), doubles([at.x, at.y, at.z]));
+                c.insert("Motion".into(), doubles([motion.x, motion.y, motion.z]));
+                c.insert(
+                    "Rotation".into(),
+                    Tag::List(vec![Tag::Float(yaw.to_bits()), Tag::Float(pitch.to_bits())]),
+                );
+                // setPortalCooldown before the teleport, copied by restoreFrom.
+                c.insert("PortalCooldown".into(), Tag::Int(ENTITY_DELAY));
+            }
+            let key = ((at.x.floor() as i32) >> 4, (at.z.floor() as i32) >> 4);
+            match self
+                .world
+                .loaded_entities
+                .iter_mut()
+                .find(|(k, _)| *k == key)
+            {
+                Some((_, tags)) => tags.push(tag),
+                None => self.world.loaded_entities.push((key, vec![tag])),
+            }
+        }
+    }
+
+    // ---- persistence ----
+}
+impl crate::game::Sim<'_> {
     /// The world border's extent.
     fn border_bounds(&self) -> BorderBounds {
         let [min_x, min_z, max_x, max_z] = self.border.bounds();
@@ -292,24 +596,6 @@ impl Game<'_> {
     fn is_end_portal(&self, state: horizon_world::registry::BlockStateId) -> bool {
         &*self.res.facts().get(state).name == "minecraft:end_portal"
     }
-    /// Where an item or mob through an End portal lands once `plan`'s level
-    /// has loaded around it: the bottom centre of the End's spawn point,
-    /// above the platform built below it (`EndPlatformFeature.createEndPlatform`);
-    /// out of the End, the top of the shared spawn's column
-    /// (`Entity.adjustSpawnLocation`).
-    fn end_portal_exit(&mut self, plan: &Plan) -> Vec3 {
-        let p = plan.approximate;
-        let centre = Vec3::new(f64::from(p.x) + 0.5, f64::from(p.y), f64::from(p.z) + 0.5);
-        if plan.dim == Dim::End {
-            // In the End the arrival only builds the platform: no spawn search.
-            if let Err(e) = self.end_arrival(centre, &mut None) {
-                log::error!("End platform: {e}");
-            }
-            return centre;
-        }
-        let y = self.motion_top(p.x, p.z);
-        Vec3::new(centre.x, f64::from(y), centre.z)
-    }
     /// The nether portal blocks of the chunks within `radius` of `center`
     /// (the points of interest `PortalForcer` searches): loaded chunks as
     /// they are, the others as saved; chunks never generated have none.
@@ -357,42 +643,6 @@ impl Game<'_> {
         }
         out
     }
-    /// The exit portal of `plan` in the loaded dimension: the closest one
-    /// within reach, else one built by `PortalForcer.createPortal`.
-    pub(super) fn nether_exit_portal(&mut self, plan: &Plan) -> Option<FoundRectangle> {
-        let to_nether = plan.dim == Dim::Nether;
-        let radius = if to_nether { 16 } else { 128 };
-        let border = self.border_bounds();
-        let portals = self.portal_blocks(plan.approximate, radius);
-        let (min_section, max_section) = if to_nether { (0, 15) } else { (-4, 19) };
-        let found = closest_portal(
-            &portals,
-            plan.approximate,
-            to_nether,
-            &border,
-            min_section,
-            max_section,
-        );
-        if let Some(found) = found {
-            let state = self.world.block(found.x, found.y, found.z);
-            let x_axis = self.res.behaviours().portal_axis(state).unwrap_or(true);
-            return Some(largest_rectangle_around(
-                found,
-                if x_axis { Axis::X } else { Axis::Z },
-                21,
-                Axis::Y,
-                21,
-                |p| self.world.block(p.x, p.y, p.z) == state,
-            ));
-        }
-        let logical = if to_nether { 128 } else { 384 };
-        let (approximate, x_axis) = (plan.approximate, plan.entry_x_axis);
-        let created = self.with_level(|b, level, ticks| {
-            b.create_portal(level, ticks, approximate, x_axis, &border, logical)
-        });
-        let _ = self.process_level_events();
-        created
-    }
     /// `NetherPortalBlock.createDimensionTransition`: the arrival position
     /// and the yaw turned by.
     pub(super) fn arrival(&self, plan: &Plan, exit: FoundRectangle) -> (Vec3, f32) {
@@ -416,9 +666,6 @@ impl Game<'_> {
         });
         (at, rotation)
     }
-
-    // ---- the player ----
-
     /// The same on a server's client: `Entity.canUsePortal` (alive, not a
     /// passenger), then only the client's `setAsInsidePortal`, which drives
     /// the confusion effect (`client_portal_effect`).
@@ -430,62 +677,6 @@ impl Game<'_> {
         if alive && self.riding.is_none() {
             self.portals.client_inside = true;
         }
-    }
-    /// `ServerPlayer.handlePortal` (not while changing dimension: there is no
-    /// player then). Players wait `players_nether_portal_default_delay`
-    /// ticks, or the creative delay with invulnerable abilities.
-    pub(super) fn tick_nether_portal(&mut self) -> Result<()> {
-        // A server's portals are its own.
-        if self.remote.is_some() {
-            return Ok(());
-        }
-        let Some(p) = self.player.as_ref() else {
-            return Ok(());
-        };
-        if self.travelling.is_some() {
-            return Ok(());
-        }
-        let allowed = !p.health.dead_or_dying() && self.riding.is_none() && self.sleeping.is_none();
-        let rule = if p.invulnerable {
-            "players_nether_portal_creative_delay"
-        } else {
-            "players_nether_portal_default_delay"
-        };
-        let transition = self.world_data.rules.int(rule).max(0);
-        let Some(entry) = self
-            .portals
-            .player
-            .handle(allowed, transition, PLAYER_DELAY)
-        else {
-            return Ok(());
-        };
-        self.player_through_nether_portal(entry)
-    }
-    /// `Entity.handlePortal` once the player's portal process at `entry`
-    /// finished: `NetherPortalBlock.getPortalDestination`, then
-    /// `teleportToPortalDestination` (`isAllowedToEnterPortal`).
-    pub(super) fn player_through_nether_portal(&mut self, entry: BlockPos) -> Result<()> {
-        let Some(p) = self.player.as_ref() else {
-            return Ok(());
-        };
-        let plan = self.portal_plan(
-            entry,
-            p.position,
-            p.dimensions.width,
-            p.dimensions.height,
-            true,
-        );
-        if !self.may_enter(plan.dim) {
-            return Ok(());
-        }
-        self.portals.travel = Some(plan);
-        self.end_portal_travel = false;
-        self.enter_dimension(plan.dim)?;
-        let centre = self.arrival_centre(&plan);
-        if let Some((_, target)) = self.travelling.as_mut() {
-            *target = centre;
-        }
-        Ok(())
     }
     /// Where to wait for the destination of `plan` to load, once its level
     /// is open: the portal its points of interest lead to, or the
@@ -509,135 +700,6 @@ impl Game<'_> {
             f64::from(centre.y),
             f64::from(centre.z) + 0.5,
         )
-    }
-    /// The player's arrival once the destination has loaded around the
-    /// approximate exit: the waiting entities first, then the exit portal
-    /// (found or built), the position in it, the turned yaw and motion, and
-    /// `TeleportTransition.PLAY_PORTAL_SOUND` (level event 1032).
-    pub(super) fn arrive_through_nether_portal(
-        &mut self,
-        mut player: horizon_client::motion::PlayerMotion,
-        target: Vec3,
-    ) -> Result<()> {
-        self.resolve_arrivals();
-        let plan = self.portals.travel.take();
-        let Some(plan) = plan else {
-            // A command teleport can change dimensions without going through
-            // a portal. It has no portal placement, rotation, or sound effect.
-            player.position = target;
-            player.velocity = Vec3::ZERO;
-            player.fall_distance = 0.0;
-            self.previous_position = target;
-            self.player = Some(player);
-            self.pad.player_replaced();
-            self.sway = Default::default();
-            self.apply_equipment();
-            return Ok(());
-        };
-        let exit = self.nether_exit_portal(&plan);
-        let (position, rotation) = match exit {
-            Some(exit) => self.arrival(&plan, exit),
-            None => (target, 0.0),
-        };
-        player.position = position;
-        // Relative.ROTATION and Relative.DELTA: the yaw turns, the motion
-        // turns with it.
-        player.yaw += rotation;
-        player.head_yaw += rotation;
-        self.yaw += rotation;
-        player.velocity = rotate_y(player.velocity, -rotation);
-        self.previous_position = player.position;
-        self.player = Some(player);
-        self.pad.player_replaced();
-        self.sway = Default::default();
-        self.apply_equipment();
-        let pitch = self.world.random.next_float() * 0.4 + 0.8;
-        self.sounds
-            .play("minecraft:block.portal.travel", None, 0.25, pitch);
-        Ok(())
-    }
-    /// `LocalPlayer.handlePortalTransitionEffect`: whether the confusion
-    /// effect grows this tick. Entering a portal closes screens other than
-    /// the chat and death screens and plays `block.portal.trigger` when the
-    /// effect starts from nothing.
-    pub(super) fn client_portal_effect(&mut self) -> bool {
-        if !std::mem::take(&mut self.portals.client_inside) {
-            return false;
-        }
-        match self.screen {
-            Screen::Playing | Screen::Chat | Screen::Dead => {}
-            Screen::Inventory | Screen::Creative => {
-                self.close_container();
-                self.carried = None;
-                self.screen = Screen::Playing;
-                self.capture(true);
-            }
-            _ => {
-                self.screen = Screen::Playing;
-                self.capture(true);
-            }
-        }
-        if self.screen_fx.portal == 0.0 {
-            let pitch = self.world.random.next_float() * 0.4 + 0.8;
-            self.sounds
-                .play("minecraft:block.portal.trigger", None, 0.25, pitch);
-        }
-        true
-    }
-
-    // ---- other entities ----
-
-    /// Positions before the entities move this tick, and `Entity.handlePortal`
-    /// at the start of their tick: an item or mob that stayed in a portal
-    /// goes through (transition time 0) and waits for its dimension.
-    pub(super) fn handle_entity_portals(&mut self) {
-        if self.remote.is_some() {
-            return;
-        }
-        self.load_portal_arrivals();
-        let mut leaving: Vec<(u32, BlockPos)> = Vec::new();
-        self.portals.before.clear();
-        for e in &self.dropped {
-            self.portals.before.insert(e.id, e.position);
-        }
-        for m in &self.mobs {
-            self.portals.before.insert(m.id, m.position);
-        }
-        for b in &self.boats {
-            self.portals.before.insert(b.id, b.position);
-        }
-        for c in &self.carts {
-            self.portals.before.insert(c.id, c.position);
-        }
-        let ids: Vec<(u32, bool)> = self
-            .dropped
-            .iter()
-            .map(|e| (e.id, true))
-            .chain(self.mobs.iter().map(|m| (m.id, self.mob_can_use_portal(m))))
-            .chain(
-                self.boats
-                    .iter()
-                    .map(|b| b.id)
-                    .chain(self.carts.iter().map(|c| c.id))
-                    .map(|id| (id, !self.vehicle_occupied(id))),
-            )
-            .collect();
-        let present: std::collections::HashSet<u32> = ids.iter().map(|(id, _)| *id).collect();
-        self.portals.entities.retain(|id, _| present.contains(id));
-        for (id, allowed) in ids {
-            let Some(state) = self.portals.entities.get_mut(&id) else {
-                continue;
-            };
-            if let Some(entry) = state.handle(allowed, 0, ENTITY_DELAY) {
-                leaving.push((id, entry));
-            }
-            if state.cooldown == 0 && state.process.is_none() {
-                self.portals.entities.remove(&id);
-            }
-        }
-        for (id, entry) in leaving {
-            self.send_through_portal(id, entry);
-        }
     }
     /// `Entity.load`: the saved `PortalCooldown` (an entity that just came
     /// through stands in its exit portal for 300 ticks without going back).
@@ -911,66 +973,6 @@ impl Game<'_> {
             self.portals.dirty = true;
         }
     }
-    /// Entities waiting for the loaded dimension whose exit area is loaded:
-    /// their exit portal (found or built) or End destination, position,
-    /// turned yaw and motion, and portal cooldown; they join the world with the chunk entities.
-    pub(super) fn resolve_arrivals(&mut self) {
-        if self.remote.is_some() {
-            return;
-        }
-        let mut i = 0;
-        while i < self.portals.arrivals.len() {
-            let plan = self.portals.arrivals[i].plan;
-            let (cx, cz) = (plan.approximate.x >> 4, plan.approximate.z >> 4);
-            let ready = plan.dim == self.dim
-                && (-1..=1).all(|dz| (-1..=1).all(|dx| self.streaming.is_lit(cx + dx, cz + dz)));
-            if !ready {
-                i += 1;
-                continue;
-            }
-            let Arrival { plan, mut tag } = self.portals.arrivals.remove(i);
-            self.portals.dirty = true;
-            let motion = horizon_client::entity_nbt::motion(&tag);
-            let [yaw, pitch] = horizon_client::entity_nbt::rotation(&tag);
-            let (at, motion, [yaw, pitch]) = if plan.end {
-                // Relative.DELTA: the motion is kept.
-                let at = self.end_portal_exit(&plan);
-                let into_end = plan.dim == Dim::End;
-                let turn =
-                    end_portal_rotation(into_end, [yaw, pitch], self.level.world_spawn_angle);
-                (at, motion, turn)
-            } else {
-                let Some(exit) = self.nether_exit_portal(&plan) else {
-                    continue;
-                };
-                let (at, rotation) = self.arrival(&plan, exit);
-                (at, rotate_y(motion, -rotation), [yaw + rotation, pitch])
-            };
-            if let Tag::Compound(c) = &mut tag {
-                c.insert("Pos".into(), doubles([at.x, at.y, at.z]));
-                c.insert("Motion".into(), doubles([motion.x, motion.y, motion.z]));
-                c.insert(
-                    "Rotation".into(),
-                    Tag::List(vec![Tag::Float(yaw.to_bits()), Tag::Float(pitch.to_bits())]),
-                );
-                // setPortalCooldown before the teleport, copied by restoreFrom.
-                c.insert("PortalCooldown".into(), Tag::Int(ENTITY_DELAY));
-            }
-            let key = ((at.x.floor() as i32) >> 4, (at.z.floor() as i32) >> 4);
-            match self
-                .world
-                .loaded_entities
-                .iter_mut()
-                .find(|(k, _)| *k == key)
-            {
-                Some((_, tags)) => tags.push(tag),
-                None => self.world.loaded_entities.push((key, vec![tag])),
-            }
-        }
-    }
-
-    // ---- persistence ----
-
     fn arrivals_path(&self) -> std::path::PathBuf {
         self.world_root
             .join("data")

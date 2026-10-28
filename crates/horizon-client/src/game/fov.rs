@@ -18,57 +18,23 @@ use horizon_client::{
 const WALKING_SPEED: f32 = 0.1;
 
 impl Game<'_> {
-    /// `Player.isScoping`: using a spyglass.
-    pub(super) fn scoping(&self) -> bool {
-        self.using
-            .and_then(|(slot, _)| self.stack_in(slot))
-            .is_some_and(|s| &*s.item == "minecraft:spyglass")
-    }
-    /// `options.fovEffectScale`.
-    pub(super) fn fov_effect_scale(&self) -> f32 {
-        self.settings.file.double("fovEffectScale") as f32
-    }
-    /// `options.screenEffectScale` (Distortion Effects).
-    pub(super) fn screen_effect_scale(&self) -> f32 {
-        self.settings.file.double("screenEffectScale") as f32
-    }
     /// `LocalPlayer.getEffectBlendFactor(NAUSEA, partial)`: 0 without the effect.
     pub(super) fn nausea_blend(&self, partial: f32) -> f32 {
         if self.potions.effects.get("nausea").is_none() {
             return 0.0;
         }
-        let fx = &self.screen_fx;
+        let fx = &self.front.screen_fx;
         fx.o_nausea + partial * (fx.nausea - fx.o_nausea)
     }
     /// The spin `GameRenderer.renderLevel` multiplies into the level's
     /// projection: the larger of the portal and Nausea intensities, scaled by
     /// Distortion Effects squared, turning by `LocalPlayer.getSpinningEffectAngle`.
     pub(super) fn spinning_matrix(&self, partial: f32) -> glam::Mat4 {
-        let fx = &self.screen_fx;
+        let fx = &self.front.screen_fx;
         let portal = fx.o_portal + partial * (fx.portal - fx.o_portal);
         let scale = self.screen_effect_scale();
         let intensity = portal.max(self.nausea_blend(partial)) * (scale * scale);
         spinning_effect_matrix(intensity, fx.spinning_time + partial * fx.spinning_speed)
-    }
-    /// What `AbstractClientPlayer.getFieldOfViewModifier` reads.
-    fn fov_player(&self) -> Option<FovPlayer> {
-        let p = self.player.as_ref()?;
-        let using = self.using.and_then(|(slot, ticks)| {
-            let stack = self.stack_in(slot)?;
-            let item = match &*stack.item {
-                "minecraft:bow" => UseItem::Bow,
-                "minecraft:spyglass" => UseItem::Spyglass,
-                _ => UseItem::Other,
-            };
-            Some((item, ticks as i32))
-        });
-        Some(FovPlayer {
-            flying: p.flying,
-            walking_speed: WALKING_SPEED,
-            // Player.aiStep keeps `speed` as the float movement speed attribute.
-            movement_speed: f64::from(p.speed),
-            using,
-        })
     }
     /// `Camera.tick`: the eye height and the field-of-view modifier ease
     /// halfway toward the player's each tick.
@@ -86,29 +52,11 @@ impl Game<'_> {
                 p.dimensions.eye_height
             }
         });
-        self.view.tick(eye, target);
-    }
-    /// The player's `deathTime` while dead or dying: whole ticks counted by
-    /// `LivingEntity.tickDeath`, so `deathTime + partialTicks` in
-    /// `Camera.extractRenderState` rises smoothly across frames.
-    pub(super) fn death_time(&self) -> Option<i32> {
-        let p = self.player.as_ref()?;
-        p.health
-            .dead_or_dying()
-            .then(|| self.ui.death_time.min(i32::MAX as u32) as i32)
-    }
-    /// The fluid at the camera, as `Camera.getFluidInCamera` reports it.
-    pub(super) fn camera_fluid(&self, camera: [f64; 3]) -> CameraFluid {
-        match fog_type(&self.world, self.res.facts(), camera, self.forward()) {
-            FogType::Water => CameraFluid::Water,
-            FogType::Lava => CameraFluid::Lava,
-            FogType::PowderSnow => CameraFluid::PowderSnow,
-            FogType::Atmospheric => CameraFluid::None,
-        }
+        self.front.view.tick(eye, target);
     }
     /// `Camera.calculateFov` with `modifyFovBasedOnDeathOrFluid`.
     pub(super) fn fov_degrees(&self, partial: f32, camera: [f64; 3]) -> f32 {
-        let fov = self.view.calculate_fov(
+        let fov = self.front.view.calculate_fov(
             partial,
             self.settings.fov as i32,
             self.fov_effect_scale(),
@@ -120,7 +68,7 @@ impl Game<'_> {
     }
     /// `Camera.calculateHudFov`: the first-person hand's field of view.
     pub(super) fn hud_fov_degrees(&self, partial: f32, camera: [f64; 3]) -> f32 {
-        self.view.calculate_hud_fov(
+        self.front.view.calculate_hud_fov(
             partial,
             self.fov_effect_scale(),
             self.death_time(),
@@ -142,8 +90,10 @@ impl Game<'_> {
                 death_time: self.death_time().map(|t| t as f32 + partial),
             }),
             player: Some((
-                self.avatar.backwards_interpolated_walk_distance(partial),
-                self.avatar.interpolated_bob(partial),
+                self.front
+                    .avatar
+                    .backwards_interpolated_walk_distance(partial),
+                self.front.avatar.interpolated_bob(partial),
             )),
         };
         let tilt = self.settings.file.double("damageTiltStrength");
@@ -164,13 +114,87 @@ impl Game<'_> {
             (p.position.x - start[0]) as f32,
             (p.position.z - start[2]) as f32,
         );
-        self.avatar.tick();
-        self.avatar
+        self.front.avatar.tick();
+        self.front
+            .avatar
             .update_bob(ground && alive && !swimming, velocity);
         if riding {
-            self.avatar.reset_bob();
+            self.front.avatar.reset_bob();
         } else {
-            self.avatar.add_walked(dx, dz);
+            self.front.avatar.add_walked(dx, dz);
+        }
+    }
+    /// `Hud.extractCameraOverlays`: the spyglass scope, its size easing
+    /// towards 1.125 by half the frame's game ticks and reset to 0.5 while
+    /// not scoping in first person.
+    pub(super) fn draw_spyglass(&mut self, batch: &mut HudBatch) {
+        self.front.scope_scale += 0.5 * self.front.frame_ticks * (1.125 - self.front.scope_scale);
+        if !self.camera_type.first_person() {
+            return;
+        }
+        if !self.scoping() {
+            self.front.scope_scale = 0.5;
+            return;
+        }
+        let draws = hud_overlays::spyglass(
+            batch.width as i32,
+            batch.height as i32,
+            self.front.scope_scale,
+        );
+        hud_layout::paint(batch, &self.front.gui.atlas, &draws);
+    }
+}
+impl crate::game::Sim<'_> {
+    /// `Player.isScoping`: using a spyglass.
+    pub(super) fn scoping(&self) -> bool {
+        self.using
+            .and_then(|(slot, _)| self.stack_in(slot))
+            .is_some_and(|s| &*s.item == "minecraft:spyglass")
+    }
+    /// `options.fovEffectScale`.
+    pub(super) fn fov_effect_scale(&self) -> f32 {
+        self.settings.file.double("fovEffectScale") as f32
+    }
+    /// `options.screenEffectScale` (Distortion Effects).
+    pub(super) fn screen_effect_scale(&self) -> f32 {
+        self.settings.file.double("screenEffectScale") as f32
+    }
+    /// What `AbstractClientPlayer.getFieldOfViewModifier` reads.
+    fn fov_player(&self) -> Option<FovPlayer> {
+        let p = self.player.as_ref()?;
+        let using = self.using.and_then(|(slot, ticks)| {
+            let stack = self.stack_in(slot)?;
+            let item = match &*stack.item {
+                "minecraft:bow" => UseItem::Bow,
+                "minecraft:spyglass" => UseItem::Spyglass,
+                _ => UseItem::Other,
+            };
+            Some((item, ticks as i32))
+        });
+        Some(FovPlayer {
+            flying: p.flying,
+            walking_speed: WALKING_SPEED,
+            // Player.aiStep keeps `speed` as the float movement speed attribute.
+            movement_speed: f64::from(p.speed),
+            using,
+        })
+    }
+    /// The player's `deathTime` while dead or dying: whole ticks counted by
+    /// `LivingEntity.tickDeath`, so `deathTime + partialTicks` in
+    /// `Camera.extractRenderState` rises smoothly across frames.
+    pub(super) fn death_time(&self) -> Option<i32> {
+        let p = self.player.as_ref()?;
+        p.health
+            .dead_or_dying()
+            .then(|| self.ui.death_time.min(i32::MAX as u32) as i32)
+    }
+    /// The fluid at the camera, as `Camera.getFluidInCamera` reports it.
+    pub(super) fn camera_fluid(&self, camera: [f64; 3]) -> CameraFluid {
+        match fog_type(&self.world, self.res.facts(), camera, self.forward()) {
+            FogType::Water => CameraFluid::Water,
+            FogType::Lava => CameraFluid::Lava,
+            FogType::PowderSnow => CameraFluid::PowderSnow,
+            FogType::Atmospheric => CameraFluid::None,
         }
     }
     /// `SpyglassItem.use`: start scoping.
@@ -187,21 +211,5 @@ impl Game<'_> {
         let at = self.eye_position();
         self.sounds
             .play("minecraft:item.spyglass.stop_using", at, 1.0, 1.0);
-    }
-    /// `Hud.extractCameraOverlays`: the spyglass scope, its size easing
-    /// towards 1.125 by half the frame's game ticks and reset to 0.5 while
-    /// not scoping in first person.
-    pub(super) fn draw_spyglass(&mut self, batch: &mut HudBatch) {
-        self.scope_scale += 0.5 * self.frame_ticks * (1.125 - self.scope_scale);
-        if !self.camera_type.first_person() {
-            return;
-        }
-        if !self.scoping() {
-            self.scope_scale = 0.5;
-            return;
-        }
-        let draws =
-            hud_overlays::spyglass(batch.width as i32, batch.height as i32, self.scope_scale);
-        hud_layout::paint(batch, &self.gui.atlas, &draws);
     }
 }
