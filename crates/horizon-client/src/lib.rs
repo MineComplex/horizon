@@ -74,6 +74,7 @@ pub mod first_person;
 pub use horizon_game::flatgen;
 pub mod fog;
 pub mod font;
+pub use horizon_game::furnace;
 pub mod game_mode_switcher;
 pub mod game_rules_screen;
 pub mod gfx;

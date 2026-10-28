@@ -235,6 +235,7 @@ def main():
                lab.ROOT / 'crates/horizon-game/src/chunk/block_entity.rs',
                lab.ROOT / 'crates/horizon-client-core/src/identifier.rs',
                lab.ROOT / 'crates/horizon-game/src/mobs/spawn_selection.rs',
+               lab.ROOT / 'crates/horizon-game/src/biome.rs',
                lab.ROOT / 'crates/horizon-game/src/mobs/spawn_rules.rs']
     tested = base.source_hashes(sources)
     inputs = build / 'inputs.txt'

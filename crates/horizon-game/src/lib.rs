@@ -40,6 +40,7 @@ pub mod face_visibility;
 pub mod falling_block;
 pub mod fast_hash;
 pub mod flatgen;
+pub mod furnace;
 pub mod gallery;
 pub mod gossip;
 pub mod health;
