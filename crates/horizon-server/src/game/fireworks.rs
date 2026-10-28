@@ -2,7 +2,7 @@
 //! from a block face, boosting a gliding player, the 1.15 horizontal
 //! acceleration and 0.04 lift, the flight-duration lifetime, explosion
 //! damage with line of sight, and the client explosion (`createFireworks`).
-use super::{Hit, item_draw::owner_at, view_vector};
+use super::{Hit, view_vector};
 use crate::hc::{collisions::SceneCollisions, items::ItemStack, mobs::{Damage, DamageKind}, particles::{FireworkExplosion, ParticleOptions, ParticleType}};
 use horizon_assets::item_model::DisplayContext;
 use horizon_core::{

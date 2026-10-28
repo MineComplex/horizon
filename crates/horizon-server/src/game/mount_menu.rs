@@ -318,3 +318,37 @@ impl crate::game::Sim<'_> {
     }
 }
 
+impl crate::game::Sim<'_> {
+    /// `AbstractHorse.openCustomInventoryScreen` for a tamed adult mount: the
+    /// turn's player has it open (the server then opens it on their client,
+    /// game/lan_mount_menu.rs).
+    pub(super) fn open_mount_menu(&mut self, index: usize) {
+        let m = &self.mobs[index];
+        let species = m.species();
+        if !has_mount_menu(species) {
+            return;
+        }
+        let mut items = m.extra.items.clone();
+        items.resize(CHEST_SIZE, None);
+        let show_armor = shows_body(species);
+        self.mount_menu.open = Some(Open {
+            mob: m.id,
+            species,
+            columns: mount_columns(m),
+            saddle: m.saddle_item(),
+            armor: m
+                .extra
+                .head
+                .as_deref()
+                .filter(|_| show_armor)
+                .map(|i| ItemStack::new(i, 1)),
+            items,
+            show_saddle: shows_saddle(species),
+            show_armor,
+        });
+    }
+    /// The inventory slot ids in menu order.
+    fn mount_player_slots() -> Vec<usize> {
+        (9..36).chain(0..9).collect()
+    }
+}

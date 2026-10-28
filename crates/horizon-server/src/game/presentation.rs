@@ -34,9 +34,17 @@ impl crate::game::Sim<'_> {
 /// Particles the client spawns itself (`ItemParticle`, eating crumbs...): a
 /// server sends its particles as packets (game/lan_particles.rs).
 impl crate::game::Sim<'_> {
-    pub(crate) fn item_particle(&mut self, _stack: &crate::hc::items::ItemStack, _at: [f64; 3], _velocity: [f64; 3]) {}
-    pub(crate) fn eat_particles(&mut self) {}
+    pub(crate) fn item_particle(&self, _stack: &crate::hc::items::ItemStack) -> crate::hc::particles::ParticleOptions {
+        crate::hc::particles::ParticleOptions::item(Vec::new())
+    }
+    pub(crate) fn eat_particles(&mut self, _stack: &crate::hc::items::ItemStack, _count: u32) {}
+    /// Fireballs' smoke (`AbstractHurtingProjectile.createParticleTrail`): the clients draw it.
+    pub(crate) fn smoke_trails(&mut self, _at: impl IntoIterator<Item = horizon_core::geometry::Vec3>) {}
+    /// The shape break particles fill: the clients'.
+    pub(crate) fn particle_shape(&self, _pos: [i32; 3], _state: BlockStateId) -> Vec<[f64; 6]> {
+        Vec::new()
+    }
     pub(crate) fn ensure_item_particle_sprites(&mut self) {}
-    pub(crate) fn recipe_toast(&mut self, _recipe: &str) {}
+    pub(crate) fn recipe_toast(&mut self, _recipes: &[String]) {}
     pub(crate) fn stop_spyglass(&mut self) {}
 }

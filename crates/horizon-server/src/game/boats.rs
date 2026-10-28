@@ -2,7 +2,11 @@
 //! paddling controls, collisions, riding (`positionRider`, `clampRotation`,
 //! dismounting), `BoatItem` placement, `VehicleEntity.hurtServer` breaking,
 //! saving and `AbstractBoatRenderer` with animated paddles.
-use super::{entity_culling::at, view_vector};
+use super::view_vector;
+
+fn at(p: horizon_core::geometry::Vec3) -> glam::DVec3 {
+    glam::DVec3::new(p.x, p.y, p.z)
+}
 use crate::hc::{blocks::Fluid, collisions::{EntityCollisions, SceneCollisions}, items::ItemStack, mobs::{Part, anim::Poses, riders}};
 use horizon_core::{
     geometry::{Aabb, Vec3},

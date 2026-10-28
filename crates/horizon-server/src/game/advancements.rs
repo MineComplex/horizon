@@ -2,7 +2,7 @@
 //! events (`CriteriaTriggers`), awarding with rewards, the toast and the
 //! chat announcement, and `players/advancements/<uuid>.json`.
 use super::Dim;
-use crate::hc::{advancements::{self as adv, EntityView, Frame, ItemView, Progress, Tree}, items::ItemStack, text::{self, Style, Text}, toasts::Slide};
+use crate::hc::{advancements::{self as adv, EntityView, Frame, ItemView, Progress, Tree}, items::ItemStack, text::{self, Style, Text}};
 use horizon_core::geometry::Vec3;
 use serde_json::Value;
 use std::{
@@ -11,63 +11,6 @@ use std::{
     time::Instant,
 };
 
-pub(super) struct Toast {
-    icon: String,
-    frame: Frame,
-    title: Text,
-    slide: Slide,
-    /// `ToastInstance.firstSlotIndex`: the 32-pixel slot it stacks in once it
-    /// leaves the queue.
-    slot: Option<usize>,
-    /// A `RecipeToast`: the crafting station and result of each display
-    /// unlocked while it lasts (`recipeItems`); empty for an advancement.
-    recipes: Vec<(String, ItemStack)>,
-    /// `RecipeToast.changed` and `lastChanged`.
-    changed: bool,
-    last_changed: i64,
-}
-impl Toast {
-    /// `RecipeToast.addOrUpdate` on a new toast.
-    pub(super) fn recipe(items: Vec<(String, ItemStack)>) -> Self {
-        Self {
-            icon: String::new(),
-            frame: Frame::Task,
-            title: Text::literal(""),
-            slide: Slide::default(),
-            slot: None,
-            recipes: items,
-            changed: true,
-            last_changed: 0,
-        }
-    }
-    pub(super) fn is_recipe(&self) -> bool {
-        !self.recipes.is_empty()
-    }
-    /// `RecipeToast.addItem`: more displays on a toast still queued or shown.
-    pub(super) fn add_recipes(&mut self, items: Vec<(String, ItemStack)>) {
-        self.recipes.extend(items);
-        self.changed = true;
-    }
-    /// `Toast.update` with `fullyVisibleForMs`: whether it wants to be shown.
-    fn wants_show(&mut self, fully_for: i64, multiplier: f64) -> bool {
-        let time = 5000.0 * multiplier;
-        if self.recipes.is_empty() {
-            // AdvancementToast.
-            return (fully_for as f64) < time;
-        }
-        if self.changed {
-            self.last_changed = fully_for;
-            self.changed = false;
-        }
-        ((fully_for - self.last_changed) as f64) < time
-    }
-    /// `RecipeToast.displayedRecipeIndex`: the displays take turns over the
-    /// toast's display time.
-    fn displayed_recipe(&self, fully_for: i64, multiplier: f64) -> usize {
-        let n = self.recipes.len() as f64;
-        (fully_for as f64 / (5000.0 * multiplier / n).max(1.0) % n) as usize
-    }
-}
 #[derive(Default)]
 pub(super) struct AdvState {
     pub(super) tree: Arc<Tree>,
@@ -76,7 +19,6 @@ pub(super) struct AdvState {
     pub(super) positions: Option<Vec<(f32, f32)>>,
     pub(super) progress: Progress,
     pub(super) loaded: bool,
-    pub(super) toasts: VecDeque<Toast>,
     /// Awards skip the toast (`/advancement grant ... everything`).
     pub(super) quiet: bool,
     /// The inventory last seen by `inventory_changed`.
@@ -536,16 +478,6 @@ impl crate::game::Sim<'_> {
         if let Some(d) = &a.display {
             // A network player's client shows its own toast.
             if d.show_toast && !self.adv.quiet && self.lan_acting.is_none() {
-                self.adv.toasts.push_back(Toast {
-                    icon: d.icon.clone(),
-                    frame: d.frame,
-                    title: text_of(&d.title),
-                    slide: Slide::default(),
-                    slot: None,
-                    recipes: Vec::new(),
-                    changed: false,
-                    last_changed: 0,
-                });
             }
             if d.announce && self.world_data.rules.bool("show_advancement_messages") {
                 let key = match d.frame {
@@ -1384,16 +1316,6 @@ impl crate::game::Sim<'_> {
                 && self.adv.progress.done(a)
                 && let Some(d) = a.display.as_ref().filter(|d| d.show_toast)
             {
-                self.adv.toasts.push_back(Toast {
-                    icon: d.icon.clone(),
-                    frame: d.frame,
-                    title: text_of(&d.title),
-                    slide: Slide::default(),
-                    slot: None,
-                    recipes: Vec::new(),
-                    changed: false,
-                    last_changed: 0,
-                });
             }
         }
     }

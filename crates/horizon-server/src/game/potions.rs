@@ -2,7 +2,7 @@
 //! `Consumable`), throwing splash/lingering potions (`ThrownSplashPotion`),
 //! filling glass bottles (`BottleItem`), the per-tick effect application,
 //! effect attribute modifiers and the HUD effect icons (`Hud.extractEffects`).
-use super::{Screen, dragon::{Breath, FightPlayer, FightWho}, item_draw::owner_at, remote_projectiles::cloud_client_tick};
+use super::{Screen, dragon::{Breath, FightPlayer, FightWho}};
 use crate::hc::{brewing, effects::{EffectAction, EffectInstance, PlayerEffects}, items::ItemStack, particles::{ParticleOptions, ParticleType}, text::Text};
 use horizon_assets::item_model::DisplayContext;
 use horizon_core::{
@@ -301,8 +301,6 @@ pub(super) struct BodyPotions {
 pub(super) struct PotionState {
     pub(super) effects: PlayerEffects,
     thrown: Vec<ThrownPotion>,
-    /// The area effect clouds a server tracks (game/remote_projectiles.rs).
-    pub(super) clouds: Vec<super::remote_projectiles::RemoteCloud>,
     applied: Vec<(&'static str, &'static str, f64, &'static str)>,
     /// Armor the protection table was computed for.
     protection_for: Option<Vec<Option<ItemStack>>>,
@@ -846,13 +844,7 @@ impl crate::game::Sim<'_> {
             return false;
         }
         let waiting = c.age < LINGERING_WAIT;
-        cloud_client_tick(
-            &mut self.particles,
-            c.at,
-            c.radius,
-            waiting,
-            &potion.particle(),
-        );
+
         if waiting {
             return true;
         }

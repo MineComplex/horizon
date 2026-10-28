@@ -366,11 +366,7 @@ impl crate::game::Sim<'_> {
                 Target::Player if self.lan_acting.is_some() => {
                     self.guest_packets.push(packet.clone());
                 }
-                Target::Player => {
-                    let selection =
-                        crate::hc::audio::Audio::stop_selection(sound.as_deref(), source);
-                    self.sounds.stop_sounds(sound.as_deref(), source, selection);
-                }
+                Target::Player => {}
                 Target::Guest(conn) => {
                     if let Some(host) = self.lan.as_ref() {
                         host.hub.send_to(conn, &packet);

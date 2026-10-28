@@ -1434,7 +1434,6 @@ struct Sim<'a> {
     cushions: Vec<crate::hc::entities::Cushion>,
     /// Entities of types Horizon does not simulate.
     others: Vec<commands::OtherEntity>,
-    armor_stand_assets: armor_stands::ArmorStandAssets,
     /// The camera the last frame drew from (position, yaw, pitch, fov), for the locator bar.
     locator_camera: Option<([f64; 3], f32, f32, f32)>,
     /// `LocalPlayer.experienceDisplayStartTick`: (last progress, seen a change, tick).
@@ -3569,7 +3568,6 @@ impl crate::game::Sim<'_> {
     }
     /// ServerPlayerGameMode.destroyBlock once the block may go.
     fn destroy_block_as_player(&mut self, pos: [i32; 3]) -> Result<()> {
-        self.rumbles.push(crate::hc::gamepad::Rumble::BlockBroken);
         // ServerPlayerGameMode.destroyBlock.
         let state = self.world.block(pos[0], pos[1], pos[2]);
         let broken = state;
@@ -7868,7 +7866,6 @@ impl<'a> Sim<'a> {
             armor_stands: Vec::new(),
             cushions: Vec::new(),
             others: Vec::new(),
-            armor_stand_assets: prepared.armor_stand_assets,
             locator_camera: None,
             experience_display: Default::default(),
             boats: Vec::new(),

@@ -3070,14 +3070,7 @@ impl crate::game::Sim<'_> {
         if let Some(capture) = self.chat_capture.as_mut() {
             capture.push(line.clone());
         }
-        let focused = self.screen == Screen::Chat;
-        self.ui.chat.add_unwrapped(
-            line,
-            None,
-            crate::hc::chat::ChatSource::Player,
-            self.ticks,
-            focused,
-        );
+        let _ = line;
         Ok(1)
     }
     /// MessageArgument: `@p`-style selectors in a message become names.

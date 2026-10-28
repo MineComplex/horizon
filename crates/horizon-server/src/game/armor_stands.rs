@@ -3,7 +3,7 @@
 //! of `hurtServer` (creative breaks at once), and `ArmorStandRenderer` with
 //! the default pose, the hit wobble and humanoid armor layers.
 use super::view_vector;
-use crate::hc::{entities::ArmorStand, items::ItemStack, mobs::{Mob, Part, anim::Poses}, trims::{TrimOverride, TrimRegistry, TrimTexture}};
+use crate::hc::{entities::ArmorStand, items::ItemStack, mobs::{Mob, Part, anim::Poses}};
 use horizon_core::{
     geometry::{Aabb, Vec3},
     random::RandomSource,
@@ -25,106 +25,6 @@ fn layer_color(undyed: Option<u32>, stack: Option<&ItemStack>) -> u32 {
     })
 }
 
-/// Armor stand models and the humanoid layers of every equipment asset.
-pub(super) struct ArmorStandAssets {
-    pub main: Option<Part>,
-    pub small: Option<Part>,
-    /// (slot model suffix, small) -> model.
-    pub layers: HashMap<(&'static str, bool), Part>,
-    /// The player's armour models by slot (helmet, chestplate, leggings, boots).
-    pub player: HashMap<&'static str, Part>,
-    /// asset id -> layer kind (humanoid / humanoid_leggings) -> (texture, undyed colour).
-    pub equipment: HashMap<String, HashMap<String, (String, Option<u32>)>>,
-    /// asset id -> `trim_overrides`.
-    pub trim_overrides: HashMap<String, Vec<TrimOverride>>,
-    pub trims: TrimRegistry,
-    /// The resources the trim textures are made from.
-    pub root: PathBuf,
-}
-impl ArmorStandAssets {
-    pub fn load(
-        root: &std::path::Path,
-        document: Option<&crate::hc::mobs::EntityModelDocument>,
-    ) -> Self {
-        let load = |key: &str| document.and_then(|document| document.model(key));
-        let mut layers = HashMap::new();
-        let mut player = HashMap::new();
-        for slot in ["helmet", "chestplate", "leggings", "boots"] {
-            if let Some(part) = load(&format!("minecraft:player#{slot}")) {
-                player.insert(slot, part);
-            }
-            for (small, model) in [(false, "armor_stand"), (true, "armor_stand_small")] {
-                if let Some(part) = load(&format!("minecraft:{model}#{slot}")) {
-                    layers.insert((slot, small), part);
-                }
-            }
-        }
-        if let Some(part) = load("minecraft:elytra#main") {
-            player.insert("elytra", part);
-        }
-        let mut equipment = HashMap::new();
-        let mut trim_overrides = HashMap::new();
-        if let Ok(entries) = std::fs::read_dir(root.join("assets/minecraft/equipment")) {
-            for e in entries.flatten() {
-                let path = e.path();
-                let Some(name) = path.file_stem().and_then(|s| s.to_str()) else {
-                    continue;
-                };
-                let Ok(v) =
-                    std::fs::read(&path).map(|b| serde_json::from_slice::<serde_json::Value>(&b))
-                else {
-                    continue;
-                };
-                let Ok(v) = v else { continue };
-                let mut kinds = HashMap::new();
-                for kind in ["humanoid", "humanoid_leggings", "wings"] {
-                    if let Some(layer) = v["layers"][kind].get(0) {
-                        let tex = layer["texture"]
-                            .as_str()
-                            .unwrap_or(name)
-                            .trim_start_matches("minecraft:");
-                        let undyed = layer["dyeable"]["color_when_undyed"]
-                            .as_i64()
-                            .map(|c| c as u32 & 0xFF_FFFF);
-                        kinds.insert(
-                            kind.to_owned(),
-                            (format!("entity/equipment/{kind}/{tex}"), undyed),
-                        );
-                    }
-                }
-                trim_overrides.insert(format!("minecraft:{name}"), TrimOverride::list(&v));
-                equipment.insert(format!("minecraft:{name}"), kinds);
-            }
-        }
-        Self {
-            main: load("minecraft:armor_stand#main"),
-            small: load("minecraft:armor_stand_small#main"),
-            layers,
-            player,
-            equipment,
-            trim_overrides,
-            trims: TrimRegistry::load(root),
-            root: root.to_owned(),
-        }
-    }
-    /// Trim data of reloaded resources (the models stay).
-    pub fn reload_trims(&mut self, root: &std::path::Path) {
-        let fresh = Self::load(root, None);
-        self.trim_overrides = fresh.trim_overrides;
-        self.trims = fresh.trims;
-        self.root = fresh.root;
-    }
-    /// `TrimTextureKey`: the trim texture of `stack` on its humanoid
-    /// layer (`humanoid` or `humanoid_leggings`), if it has a trim.
-    fn trim_texture(&self, asset: &str, kind: &str, stack: &ItemStack) -> Option<TrimTexture> {
-        let (material, pattern) = stack.extra.as_ref()?.trim.as_ref()?;
-        let overrides = self
-            .trim_overrides
-            .get(asset)
-            .map_or(&[][..], Vec::as_slice);
-        TrimTexture::resolve(&self.trims, overrides, material, pattern, kind)
-    }
-}
 impl crate::game::Sim<'_> {
     /// `ArmorStandItem.useOn`.
     pub(super) fn place_armor_stand(&mut self, hit: &super::Hit, stack: &ItemStack) -> bool {
