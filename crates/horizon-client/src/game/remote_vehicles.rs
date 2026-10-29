@@ -1,6 +1,4 @@
-//! Boats, minecarts, item frames, armor stands and paintings for a server's
-//! client: single player on its server thread, a LAN guest, a player on a
-//! dedicated server.
+//! Boats, minecarts, item frames, armor stands and paintings on the client.
 //!
 //! The client aims at them like at mobs (`Minecraft.hitResult`, then
 //! `ServerboundInteractPacket`), and rides the vehicle the server seats it in

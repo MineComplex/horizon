@@ -715,12 +715,7 @@ impl Game<'_> {
         }
     }
 }
-impl crate::game::Sim<'_> {}
 /// Saving and loading the dragon and the crystals as chunk entities.
-impl Dragon {}
-impl Crystal {}
-impl crate::game::Sim<'_> {}
-impl crate::game::Sim<'_> {}
 /// Respawning the dragon with end crystals on the exit portal
 /// (`EndCrystalItem.useOn`, `EnderDragonFight.tryRespawn`, `DragonRespawnStage`).
 impl crate::game::Sim<'_> {

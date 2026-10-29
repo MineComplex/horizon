@@ -1,9 +1,5 @@
-//! Dispenser behaviours: `DispenserBlock.getDispenseMethod(..).dispense` with
-//! every `DispenseItemBehavior` registration of vanilla that Horizon has the
-//! entities for. A behaviour returns what is left in the slot and the level
-//! event it plays (`DefaultDispenseItemBehavior.dispense` then plays that
-//! event and the smoke animation, event 2000).
-use super::Game;
+//! `RandomSource.create()` for entity randoms and `withProperty` for block
+//! states. Dispensing is the server's.
 use horizon_core::random::LegacyRandom;
 use horizon_world::registry::BlockStateId;
 
@@ -39,27 +35,6 @@ pub(super) fn entity_random() -> LegacyRandom {
     LegacyRandom::new(seed ^ nanos)
 }
 
-impl Game<'_> {
-    // ---- level events (LevelEventHandler) ----
-
-    // ---- DefaultDispenseItemBehavior ----
-
-    // ---- the registry ----
-
-    // ---- entities ----
-
-    // ---- ProjectileDispenseBehavior ----
-
-    // ---- entities placed by items ----
-
-    // ---- buckets ----
-
-    // ---- fire, bone meal and TNT ----
-
-    // ---- blocks placed by dispensers ----
-
-    // ---- bottles, glowstone, shears, brush, honeycomb ----
-}
 impl crate::game::Sim<'_> {
     /// The same block with other properties (`withProperty`).
     pub(super) fn with_props(

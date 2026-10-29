@@ -1,7 +1,5 @@
-//! Mobs in the game loop: ticking with entity snapshots, natural and
-//! chunk-generation spawning (`NaturalSpawner`), mob events (attacks,
-//! breeding, conversions, drops), projectiles, player interactions
-//! (feeding, shearing, milking, spawn eggs, throwing) and rendering.
+//! Mobs on the client: the world the mob code reads, the player as mobs see
+//! it, the particles of the server's mob events, projectiles and rendering.
 use super::{Dim, Game, view_vector};
 use horizon_assets::item_model::DisplayContext;
 use horizon_client::{

@@ -1,6 +1,5 @@
-//! Wind charges: the item a player throws (`WindChargeItem`), the charges
-//! breezes shoot, and the burst they make (`ServerExplosion` with
-//! `TRIGGER_BLOCK`: no damage, only knockback and the blocks that react).
+//! Wind charges' rendering (`WindChargeRenderer`). Their bursts are the
+//! server's.
 use super::Game;
 use horizon_client::projectiles::Projectile;
 
@@ -51,4 +50,3 @@ impl Game<'_> {
         );
     }
 }
-impl crate::game::Sim<'_> {}

@@ -1,7 +1,5 @@
-//! Hosting the open world on the local network ("Open to LAN"): starts the
-//! server threads and the play-state hub, feeds it the world's entities each
-//! tick and turns what the guests do into gameplay. A world that is not open
-//! costs one `Option` check per tick.
+//! `horizon-ctl lan ...`, answered by the test's server, and the entity data
+//! indices the client reads a mob's baby flag from.
 use horizon_client::Result;
 
 /// The SynchedEntityData index of the baby flag: AgeableMob.DATA_BABY_ID and

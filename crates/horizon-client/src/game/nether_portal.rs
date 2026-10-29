@@ -1,15 +1,6 @@
-//! Nether portals for the player and the other entities:
-//! `Entity.setAsInsidePortal` / `handlePortal` with `PortalProcessor`,
-//! `NetherPortalBlock.getPortalTransitionTime` and `getPortalDestination`
-//! (`PortalForcer` through `horizon_world::level::portal_travel`), and
-//! `LocalPlayer.handlePortalTransitionEffect`. Items and mobs also go through
-//! End portals here (`EndPortalBlock.entityInside` / `getPortalDestination`);
-//! the player's End portals are game/end.rs's.
-//!
-//! Only one dimension is loaded at a time. The player's destination is found
-//! once the other dimension has loaded around it. An item or mob that goes
-//! through waits as an `Arrival` (its saved compound and where it stood in its
-//! portal) until the player is in that dimension and its exit is loaded.
+//! Nether portals on the client: `LocalPlayer.handlePortalTransitionEffect`
+//! (the confusion effect, closing screens, the trigger sound). Travel is the
+//! server's.
 use super::{Game, Screen};
 use horizon_core::random::RandomSource;
 

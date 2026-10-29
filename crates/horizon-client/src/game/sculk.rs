@@ -1,8 +1,7 @@
-//! Game events and sculk on the game side: dispatching events to sculk
-//! sensors, shriekers and wardens (`GameEventDispatcher`), the vibration
-//! ticker, redstone output, resonance, shrieks and warden summoning
-//! (`SculkShriekerBlockEntity`, `SpawnUtil`), catalysts feeding the sculk
-//! spreader from deaths, and the darkness wardens and shriekers cast.
+//! Sculk and darkness on the client: the charge and shriek particles of the
+//! server's level events, and the darkness and night vision blends
+//! (`MobEffectInstance.tickClient`). Vibrations, shrieks and wardens are the
+//! server's.
 use super::Game;
 use horizon_client::{
     containers::BlockEntity,

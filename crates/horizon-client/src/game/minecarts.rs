@@ -667,8 +667,6 @@ impl crate::game::Sim<'_> {
         }
     }
 }
-/// Saving and loading.
-impl Minecart {}
 
 #[cfg(test)]
 mod tests {

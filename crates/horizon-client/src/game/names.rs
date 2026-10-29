@@ -1,10 +1,9 @@
-//! Custom names: `NameTagItem.interactLivingEntity` and the name tag
+//! The name tag of custom-named mobs and players
 //! (`EntityRenderer.submitNameTag`): above the head, facing the camera,
 //! on a translucent black background, shown when the name is visible or the
 //! mob is under the crosshair within 64 blocks, as its team's name tag
 //! visibility allows, in the team's colours, with its score in the
-//! objective displayed below names. Other players' names (on a LAN host
-//! or a server) show whenever `LivingEntityRenderer.shouldShowName` allows.
+//! objective displayed below names. Other players' names show whenever `LivingEntityRenderer.shouldShowName` allows.
 use super::{Game, view_vector};
 use horizon_client::{
     block_entity_render::vertex_light, mesher::Vertex, mobs::Mob, save::uuid_text,

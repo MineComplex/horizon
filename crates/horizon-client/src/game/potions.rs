@@ -22,7 +22,6 @@ pub(super) struct ThrownPotion {
     velocity: Vec3,
     age: u32,
 }
-impl crate::game::Sim<'_> {}
 /// Effects, thrown potions and the attribute modifiers last applied.
 #[derive(Default)]
 pub(super) struct PotionState {

@@ -11,5 +11,3 @@ pub(super) fn heart_signal(world: &horizon_client::world::World, pos: BlockPos) 
         _ => None,
     }
 }
-
-impl crate::game::Sim<'_> {}

@@ -4,10 +4,7 @@
 //! maps through `LevelMaps`; the scaled and locked copies a take makes
 //! (`MapItem.scaleMap`, `lockMap`) are registered after the click. The
 //! screen draws the preview with its error and lock sprites.
-use super::{
-    Game,
-    maps::{MapData, map_id},
-};
+use super::{Game, maps::map_id};
 use horizon_client::hud::HudBatch;
 
 impl Game<'_> {
@@ -77,5 +74,3 @@ impl Game<'_> {
         }
     }
 }
-impl crate::game::Sim<'_> {}
-impl MapData {}

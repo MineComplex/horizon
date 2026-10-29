@@ -1,6 +1,5 @@
 //! The locator bar on this client (horizon_client::locator_bar): the
-//! waypoints a server tracks for the player (`handleWaypoint`; on a served
-//! world the host's own connection in lan/waypoints.rs), the experience
+//! waypoints a server tracks for the player (`handleWaypoint`), the experience
 //! bar's priority after a change, and the dots drawn from the last frame's
 //! camera.
 use super::Game;

@@ -32,7 +32,6 @@ impl EndFlash {
         self.old_intensity + (self.intensity - self.old_intensity) * partial
     }
 }
-impl EndState {}
 
 impl EndState {
     /// `handleAddEntity` for an eye of ender on a server's client: it flies

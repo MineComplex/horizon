@@ -9,7 +9,6 @@ mod banners;
 mod beacon;
 mod beehives;
 mod block_entity_anims;
-mod block_items;
 mod blockctl;
 mod boat_passengers;
 mod boats;
@@ -21,7 +20,6 @@ mod campfire;
 mod campfire_douse;
 mod cartography;
 mod chat;
-mod chiseled_bookshelf;
 mod client_ambient;
 mod clipboard;
 mod combat;
@@ -31,15 +29,12 @@ mod commands;
 mod composter;
 mod consume;
 mod control;
-mod copper_golems;
 mod creaking;
 mod creative_hotbar;
 mod creatures;
 mod crossbow;
 pub(crate) mod cushions;
 mod debug_keys;
-mod decorated_pot;
-mod dedicated;
 mod deflect;
 mod dialogs;
 mod discord;
@@ -56,7 +51,6 @@ mod fireworks;
 mod fishing;
 mod fov;
 mod frames;
-mod functions;
 mod game_mode;
 mod gamemode_switcher;
 mod ghasts;
@@ -66,9 +60,6 @@ mod item_draw;
 mod item_particles;
 mod jukebox;
 mod lan;
-mod lan_actions;
-mod lan_attributes;
-mod lan_mobs;
 mod lan_particles;
 mod leads;
 mod level_particles;
@@ -80,7 +71,6 @@ mod machines;
 mod maps;
 mod minecarts;
 mod mob_blocks;
-mod mob_gear;
 mod mob_sounds;
 mod mount_menu;
 mod mounts;
@@ -106,7 +96,6 @@ mod pickups;
 mod piglins;
 mod piston_push;
 mod potions;
-mod raids;
 mod recipe_book;
 mod remote;
 mod remote_chunks;
@@ -128,9 +117,7 @@ mod server_links;
 mod server_packs;
 mod shader_packs;
 mod shield;
-mod shoulders;
 mod sign_edit;
-mod sniffers;
 mod spawner;
 mod spear;
 mod spectator;
@@ -141,7 +128,6 @@ mod stations;
 mod stats;
 mod stats_screen;
 mod storage;
-mod structures;
 mod subtitle_hud;
 mod sulfur_cubes;
 mod text_displays;
@@ -149,7 +135,6 @@ mod titles;
 mod tnt;
 mod totem;
 mod trading;
-mod trial_spawner;
 mod trial_visuals;
 mod trident;
 mod tweaks;
@@ -159,7 +144,6 @@ mod villagers;
 mod win;
 mod wind;
 mod wither;
-mod zombie_reinforcements;
 use horizon_client::{
     Result,
     assets::Assets,
@@ -516,8 +500,6 @@ struct GameLevel<'w> {
     raining: bool,
     thundering: bool,
     player_box: Option<([f64; 3], [f64; 3])>,
-    /// The LAN guests in this level who trigger blocks (not spectators).
-    guest_boxes: Vec<([f64; 3], [f64; 3])>,
     player_collision: Option<PlayerCollision>,
     /// Minecart boxes (detector rails).
     cart_boxes: Vec<([f64; 3], [f64; 3])>,
@@ -707,7 +689,6 @@ impl GameLevel<'_> {
         let b = self.blockers;
         self.player_box
             .iter()
-            .chain(&self.guest_boxes)
             .chain(&self.cart_boxes)
             .map(boxed)
             .chain(b.mobs.iter().filter(|m| !m.removed).map(Mob::bounds))
@@ -1003,13 +984,7 @@ impl LevelAccess for GameLevel<'_> {
                 .count()
         };
         let arrows = || self.arrow_boxes.iter().filter(|b| hit(b)).count();
-        let players = || {
-            self.player_box
-                .iter()
-                .chain(&self.guest_boxes)
-                .filter(|b| hit(b))
-                .count()
-        };
+        let players = || self.player_box.iter().filter(|b| hit(b)).count();
         match query {
             EntityQuery::Minecart => carts(),
             EntityQuery::Arrows => arrows(),
@@ -5648,7 +5623,6 @@ impl crate::game::Sim<'_> {
                 (b.min_position().components(), b.max_position().components())
             })
             .collect();
-        let guest_boxes = self.lan_block_trigger_boxes();
         let dimension = match self.dim {
             Dim::Overworld => LevelDimension::Overworld,
             Dim::Nether => LevelDimension::Nether,
@@ -5692,7 +5666,6 @@ impl crate::game::Sim<'_> {
             raining: rain > 0.2,
             thundering: thunder > 0.9,
             player_box,
-            guest_boxes,
             player_collision,
             biomes: self.res.biomes(),
             seed: self.level.seed,

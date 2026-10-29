@@ -294,9 +294,6 @@ pub(super) fn shelf_signal(
     )
 }
 
-impl Game<'_> {
-    // ---- dispensers and droppers ----
-}
 impl crate::game::Sim<'_> {
     fn containers(&self) -> Containers<'_> {
         Containers {

@@ -1,9 +1,8 @@
 //! The recipe book of the inventory, crafting table and furnace screens
 //! (`RecipeBookComponent`): the green book button, the tabs by category, the
 //! search box, the craftable filter, the pages of recipe buttons with the
-//! alternatives overlay, ghost recipes, and placing a recipe in the grid
-//! (`ServerPlaceRecipe`). Which recipes are known comes from the advancement
-//! rewards; the open and filter settings are saved with the player.
+//! alternatives overlay and ghost recipes. The server places a recipe in the
+//! grid and says which recipes are known and how the book was left.
 use super::{Game, Screen};
 use horizon_client::{
     containers::{BlockEntity, FurnaceKind},

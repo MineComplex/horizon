@@ -1,8 +1,7 @@
 //! The window's own ambient effects of entities, which a client makes for
 //! itself (`level().isClientSide()` branches): endermen's and endermites'
-//! portal particles, blazes' smoke and burn, eyes of ender's trail. They run
-//! on the game that has the window, in-frame or following a server, never on
-//! a server: nothing of them goes over the network.
+//! portal particles, blazes' smoke and burn, eyes of ender's trail. Nothing of
+//! them goes over the network.
 use horizon_client::blocks::RenderShape;
 use horizon_client::mobs::{MobEvent, ambient};
 use horizon_client::motion::{LAVA, WATER};

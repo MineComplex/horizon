@@ -918,7 +918,6 @@ impl Game<'_> {
         status
     }
 }
-impl crate::game::Sim<'_> {}
 
 /// PCI vendor IDs of the GPU makers players have (Apple's is wgpu's Metal value).
 fn vendor_name(id: u32) -> String {
