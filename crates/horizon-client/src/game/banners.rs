@@ -7,7 +7,6 @@ use horizon_client::{
     containers::BlockEntity,
 };
 
-impl Game<'_> {}
 impl crate::game::Sim<'_> {
     /// The pattern textures and tints of the banner at `pos`, bottom first.
     pub(super) fn banner_layers_at(&self, pos: [i32; 3]) -> Vec<(String, u32)> {

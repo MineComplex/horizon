@@ -7,7 +7,6 @@ use horizon_client::{
     mobs::{Mob, sniffer}};
 use horizon_core::random::RandomSource;
 
-impl Game<'_> {}
 impl crate::game::Sim<'_> {
     /// The egg item at the parent (`Sniffer.spawnChildFromBreeding`; the
     /// brain already played the plop and dropped the experience).

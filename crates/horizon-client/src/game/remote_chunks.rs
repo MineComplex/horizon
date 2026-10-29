@@ -215,7 +215,6 @@ pub(super) enum Next {
     Lost,
 }
 
-impl Game<'_> {}
 impl crate::game::Sim<'_> {
     /// `handleLevelChunkWithLight`: the column replaces any loaded one, and
     /// its block entities load their update tags. `decoded` is the column the

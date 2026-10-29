@@ -75,8 +75,6 @@ fn duration(seconds: f64) -> String {
     }
 }
 
-impl Game<'_> {
-}
 impl crate::game::Sim<'_> {
     pub(super) fn cmd_pregen(&mut self, id: &str, ctx: &Context) -> R<i32> {
         match id {

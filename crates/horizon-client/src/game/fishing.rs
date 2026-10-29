@@ -206,7 +206,6 @@ impl crate::game::Sim<'_> {
         }
     }
 }
-impl Game<'_> {}
 impl crate::game::Sim<'_> {
     /// The hooks drawn here, with their owners' ids (0 for this player's own).
     pub(super) fn hooks_status(&self) -> Vec<serde_json::Value> {
@@ -261,7 +260,6 @@ impl Hook {
     }
 }
 
-impl Game<'_> {}
 impl crate::game::Sim<'_> {
     /// `handleAddEntity` for a fishing bobber: this player's own becomes its
     /// hook (`Player.fishing`), another player's is drawn on its line to them.

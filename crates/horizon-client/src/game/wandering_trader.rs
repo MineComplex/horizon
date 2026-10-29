@@ -27,7 +27,6 @@ impl Default for Spawner {
 }
 impl Creatures {
 }
-impl Game<'_> {}
 impl crate::game::Sim<'_> {
     fn trader_path(&self) -> std::path::PathBuf {
         self.world_root

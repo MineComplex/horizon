@@ -599,9 +599,6 @@ fn apply_pose(poses: &mut Poses, pose: &[[f32; 3]; 6]) {
         }
     }
 }
-impl Game<'_> {}
-impl crate::game::Sim<'_> {
-}
 impl Game<'_> {
     /// `ItemInHandLayer` and `CustomHeadLayer` of an armour stand: the hand
     /// items in the third-person contexts, and a non-armour head item on the

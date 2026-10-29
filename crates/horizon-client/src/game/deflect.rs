@@ -47,7 +47,6 @@ fn pick_box(p: &Projectile) -> Aabb {
     )
 }
 
-impl Game<'_> {}
 impl crate::game::Sim<'_> {
     /// The redirectable projectile under the crosshair within the attack
     /// reach, and how far along the view it is.

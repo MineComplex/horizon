@@ -49,7 +49,6 @@ struct Body {
     supported: bool,
 }
 
-impl Game<'_> {}
 impl crate::game::Sim<'_> {
     /// Push whatever this tick's moving pistons ran into, in the order the
     /// pistons ticked: vanilla pushes from each block entity's own tick.

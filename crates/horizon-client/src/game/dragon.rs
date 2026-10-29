@@ -1314,7 +1314,6 @@ impl Crystal {
         })
     }
 }
-impl Game<'_> {}
 impl crate::game::Sim<'_> {
     /// `ServerExplosion.hurtEntities`: crystals in reach are removed without
     /// another blast; explosions always hurt dragons.
@@ -1351,10 +1350,6 @@ impl crate::game::Sim<'_> {
         }
     }
 }
-impl Game<'_> {}
-impl crate::game::Sim<'_> {
-}
-impl Game<'_> {}
 impl crate::game::Sim<'_> {
     /// The dragon and fight for `horizon-ctl status`.
     pub(super) fn dragon_status(&self) -> serde_json::Value {
@@ -1387,7 +1382,6 @@ impl crate::game::Sim<'_> {
 }
 /// Respawning the dragon with end crystals on the exit portal
 /// (`EndCrystalItem.useOn`, `EnderDragonFight.tryRespawn`, `DragonRespawnStage`).
-impl Game<'_> {}
 impl crate::game::Sim<'_> {
     /// `EndCrystal.kill` (`/kill`): the crystal is removed, without a blast
     /// (`Entity.kill` does not hurt it).
@@ -1463,7 +1457,6 @@ impl crate::game::Sim<'_> {
 /// and the client side of `EnderDragon.aiStep`): the server flies it and
 /// sends its moves, health and phase; the client flaps its wings, keeps
 /// its flight history and places its parts, so it can be drawn and hit.
-impl Game<'_> {}
 impl crate::game::Sim<'_> {
     /// `handleAddEntity` for `minecraft:ender_dragon`. Its constructor
     /// sets the full health and the hovering phase until the server's

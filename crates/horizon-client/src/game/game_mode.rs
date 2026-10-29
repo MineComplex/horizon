@@ -3,7 +3,6 @@
 use super::{Game, Screen};
 use horizon_client::command::args::GameMode;
 
-impl Game<'_> {}
 impl crate::game::Sim<'_> {
     pub(super) fn spectator(&self) -> bool {
         self.mode == GameMode::Spectator
@@ -68,7 +67,6 @@ impl crate::game::Sim<'_> {
         }
     }
 }
-impl Game<'_> {}
 impl crate::game::Sim<'_> {
     /// `ServerPlayer.setGameMode(SPECTATOR)`: `stopRiding`.
     fn dismount_for_spectator(&mut self) {

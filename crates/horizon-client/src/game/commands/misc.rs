@@ -12,7 +12,6 @@ fn millis(nanos: u64) -> String {
     format_fixed(f64::from(nanos as f32 / 1_000_000.0), 1)
 }
 
-impl Game<'_> {}
 impl crate::game::Sim<'_> {
     /// `/stopwatch` (StopwatchCommand).
     pub(super) fn cmd_stopwatch(&mut self, id: &str, ctx: &Context) -> R<i32> {

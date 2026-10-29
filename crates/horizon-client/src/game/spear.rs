@@ -22,7 +22,6 @@ use horizon_core::{
 /// The key of this window's own player in `Game::kinetic_feedback`.
 pub(super) const OWN: i32 = i32::MIN;
 
-impl Game<'_> {}
 impl crate::game::Sim<'_> {
     /// `ServerPlayer.getKnownMovement` of the acting player: what they moved
     /// in the last tick. A guest's comes with their moves. A rider's is its

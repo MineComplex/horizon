@@ -143,7 +143,6 @@ pub(super) fn player_json(world: &Path, dir: &str, uuid: [i32; 4]) -> PathBuf {
     );
     world.join("players").join(dir).join(format!("{text}.json"))
 }
-impl Game<'_> {}
 impl crate::game::Sim<'_> {
     fn stats_path(&self) -> Option<PathBuf> {
         Some(player_json(
@@ -173,8 +172,3 @@ impl crate::game::Sim<'_> {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-}

@@ -13,7 +13,6 @@ use horizon_client::menu::Env;
 
 
 
-impl Game<'_> {}
 impl crate::game::Sim<'_> {
     pub(super) fn menu_env(&self) -> Env<'_> {
         Env {

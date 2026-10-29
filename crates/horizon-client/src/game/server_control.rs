@@ -21,12 +21,8 @@ use super::Game;
 use horizon_client::Result;
 use serde_json::Value;
 
-impl Game<'_> {}
-impl crate::game::Sim<'_> {
-}
 
 /// The client's side: a test's client asks its server (`--server-control`).
-impl Game<'_> {}
 impl crate::game::Sim<'_> {
     /// Ask the server this client plays on `as NAME words`: None when the
     /// client was not given the server's control endpoint.

@@ -13,7 +13,6 @@ use horizon_client::{
 use horizon_core::random::RandomSource;
 
 
-impl Game<'_> {}
 impl crate::game::Sim<'_> {
     /// `Player.getDestroySpeed` after the tool speed: mining efficiency, haste
     /// and mining fatigue.

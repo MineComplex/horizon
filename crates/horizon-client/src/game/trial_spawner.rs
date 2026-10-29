@@ -94,6 +94,3 @@ impl TrialSpawnerLevel for GameLevel<'_, '_> {
     }
 }
 
-impl Game<'_> {}
-impl crate::game::Sim<'_> {
-}

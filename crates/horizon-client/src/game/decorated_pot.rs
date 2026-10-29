@@ -51,6 +51,3 @@ pub(super) fn unpack_loot(
     }
 }
 
-impl Game<'_> {}
-impl crate::game::Sim<'_> {
-}

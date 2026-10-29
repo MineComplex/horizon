@@ -27,7 +27,6 @@ pub(super) struct Bolt {
     /// the host, `Some(Some(conn))` for a guest.
     pub cause: Option<Option<u32>>,
 }
-impl Game<'_> {}
 impl crate::game::Sim<'_> {
     pub(super) fn spawn_bolt(&mut self, at: [f64; 3], visual_only: bool) {
         if !visual_only {

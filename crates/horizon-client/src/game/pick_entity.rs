@@ -3,7 +3,6 @@
 //! the server answers with `Entity.getPickResult`.
 use super::Game;
 
-impl Game<'_> {}
 impl crate::game::Sim<'_> {
     /// The entity the crosshair hits before any block, as `Entity.getId`; an
     /// entity with nothing to pick (a projectile, a player, the dragon) is

@@ -28,7 +28,6 @@ fn completion_state(count: i32) -> i32 {
 
 pub(super) type Brushing = HashMap<[i32; 3], BrushState>;
 
-impl Game<'_> {}
 impl crate::game::Sim<'_> {
     /// `BrushItem.spawnDustParticles`.
     pub(super) fn brush_dust(&mut self, hit: &Hit, off_hand: bool) {

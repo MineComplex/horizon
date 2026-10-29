@@ -2231,7 +2231,6 @@ fn from_loot(stack: &horizon_world::loot::LootStack) -> ItemStack {
     }
     item
 }
-impl Game<'_> {}
 impl crate::game::Sim<'_> {
     /// The rest of `NetherPortalBlock.randomTick` after a won roll: with a
     /// player close enough for spawning, a zombified piglin spawns on the block

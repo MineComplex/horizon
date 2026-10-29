@@ -73,8 +73,6 @@ impl Game<'_> {
         }
     }
 }
-impl crate::game::Sim<'_> {
-}
 
 #[cfg(test)]
 mod tests {

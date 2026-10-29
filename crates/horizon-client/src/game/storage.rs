@@ -8,7 +8,6 @@ use horizon_core::random::RandomSource;
 pub(super) fn is_shulker_box(name: &str) -> bool {
     name.ends_with("shulker_box")
 }
-impl Game<'_> {}
 impl crate::game::Sim<'_> {
     /// The custom name of the open container, or its default title
     /// (a double chest is named by whichever half has a name).
@@ -385,9 +384,6 @@ impl crate::game::Sim<'_> {
     }
 }
 
-impl Game<'_> {}
-impl crate::game::Sim<'_> {
-}
 
 #[cfg(test)]
 mod tests {

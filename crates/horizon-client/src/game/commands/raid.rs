@@ -2,7 +2,6 @@
 use super::{Game, R, Text, err};
 use horizon_client::{command::Context, mobs::raider};
 
-impl Game<'_> {}
 impl crate::game::Sim<'_> {
     pub(in crate::game) fn cmd_raid(&mut self, id: &str, ctx: &Context) -> R<i32> {
         let Some(player) = self.player.as_ref().map(|p| p.position) else {

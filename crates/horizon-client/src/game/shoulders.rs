@@ -13,7 +13,6 @@ fn occupied(extra: &Tag, key: &str) -> bool {
     matches!(extra.get(key), Some(Tag::Compound(c)) if !c.is_empty())
 }
 
-impl Game<'_> {}
 impl crate::game::Sim<'_> {
     /// `ServerPlayer.setEntityOnShoulder` for a parrot that touched its
     /// owner: stored in the first free slot, the parrot gone from the world.

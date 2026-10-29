@@ -22,7 +22,6 @@ pub(super) struct ObjectHit {
     pub location: [f64; 3],
 }
 
-impl Game<'_> {}
 impl crate::game::Sim<'_> {
     /// The nearest boat, minecart, item frame, armor stand or painting the
     /// view hits within reach; also End crystals when attacking.

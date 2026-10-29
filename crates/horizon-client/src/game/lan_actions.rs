@@ -13,7 +13,6 @@ use super::Game;
 
 
 
-impl Game<'_> {}
 impl crate::game::Sim<'_> {
     /// `ServerLevel.players()` in turn: the host's own player, then each
     /// guest in the level in place with their state swapped in (`as_guest`).
@@ -29,7 +28,4 @@ impl crate::game::Sim<'_> {
     }
 }
 
-impl Game<'_> {}
-impl crate::game::Sim<'_> {
-}
 

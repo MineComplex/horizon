@@ -10,7 +10,6 @@ use horizon_core::{
     geometry::{Aabb, Vec3},
     position::BlockPos};
 
-impl Game<'_> {}
 impl crate::game::Sim<'_> {
     fn stop_sound(&mut self, pos: [i32; 3]) {
         if self.jukebox_sounds.remove(&(pos[0], pos[1], pos[2])) {

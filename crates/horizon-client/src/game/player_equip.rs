@@ -20,7 +20,6 @@ fn same(a: Option<&ItemStack>, b: Option<&ItemStack>) -> bool {
     }
 }
 
-impl Game<'_> {}
 impl crate::game::Sim<'_> {
     /// The armour (head first) and the off hand, in `EquipmentSlot` order of
     /// the inventory menu's slots.

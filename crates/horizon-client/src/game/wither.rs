@@ -5,7 +5,6 @@ use horizon_client::{
     
     projectiles::{Projectile, ProjectileKind}};
 
-impl Game<'_> {}
 impl crate::game::Sim<'_> {
     fn is_wither_skull(&self, p: [i32; 3]) -> bool {
         let name = &*self

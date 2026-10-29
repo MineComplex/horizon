@@ -53,7 +53,6 @@ pub(super) fn boat_pushes(boat: Aabb, other: Aabb, other_is_boat: bool) -> bool 
     }
 }
 
-impl Game<'_> {}
 impl crate::game::Sim<'_> {
     /// The players in boat `id`: the window's player (or the server player
     /// acting as it) and the server's other players.

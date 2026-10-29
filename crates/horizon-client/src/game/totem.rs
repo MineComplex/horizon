@@ -8,7 +8,6 @@ use horizon_client::{
 /// `EntityEvent.TOTEM_OF_UNDYING`.
 pub(super) const TOTEM_EVENT: i8 = 35;
 
-impl Game<'_> {}
 impl crate::game::Sim<'_> {
     /// Entity event 35 from a server, for this client's own player or an
     /// entity it draws.

@@ -18,7 +18,6 @@ fn zombie_kind(s: Species) -> bool {
     )
 }
 
-impl Game<'_> {}
 impl crate::game::Sim<'_> {
     /// `Entity.startRiding` for two mobs.
     pub(super) fn mount_mob(&mut self, rider: u32, vehicle: u32) {

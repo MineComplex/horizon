@@ -11,7 +11,6 @@ use horizon_client::{
             stored_drop_chance}}};
 use horizon_core::{geometry::Vec3, random::RandomSource};
 
-impl Game<'_> {}
 impl crate::game::Sim<'_> {
     fn item_in_tag(&self, tag: &str, item: &str) -> bool {
         self.res

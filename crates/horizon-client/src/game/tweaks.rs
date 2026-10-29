@@ -49,7 +49,6 @@ struct Drag {
     visited: Vec<usize>,
 }
 
-impl Game<'_> {}
 impl crate::game::Sim<'_> {
     /// The open screen is one the tweaks run in, with the extra on.
     pub(super) fn tweaks_on(&self) -> bool {

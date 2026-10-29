@@ -10,7 +10,6 @@ use horizon_client::{
 };
 use horizon_core::geometry::Vec3;
 
-impl Game<'_> {}
 impl crate::game::Sim<'_> {
     /// `Panda.afterSneeze`: the grown pandas within 10 blocks of a cub jump.
     pub(super) fn panda_sneezed(&mut self, id: u32) {

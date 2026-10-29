@@ -10,7 +10,6 @@ use horizon_core::position::BlockPos;
 use horizon_world::level::flags;
 
 
-impl Game<'_> {}
 impl crate::game::Sim<'_> {
     /// `ChiseledBookShelfBlockEntity.updateState`: `slot` becomes the last
     /// one touched, the block state takes the slots' occupancy

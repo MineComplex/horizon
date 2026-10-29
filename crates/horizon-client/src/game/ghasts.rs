@@ -7,7 +7,6 @@ use horizon_client::{
 use horizon_core::geometry::{Aabb, Vec3};
 use horizon_world::registry::BlockStateId;
 
-impl Game<'_> {}
 impl crate::game::Sim<'_> {
     /// Client `EntityGetter.getEntityCollisions` for the player: the
     /// entities that `canBeCollidedWith` it, solid happy ghasts and boats

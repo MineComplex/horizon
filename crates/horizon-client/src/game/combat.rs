@@ -49,7 +49,6 @@ pub(super) struct CombatTracker {
     /// but the mobs they killed still ask for their loot.
     pub(super) charged_exploders: Vec<u32>,
 }
-impl Game<'_> {}
 impl crate::game::Sim<'_> {
     /// `LivingEntity.makeDrownParticles`: eight bubbles around the entity,
     /// moving with it.

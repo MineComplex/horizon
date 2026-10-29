@@ -39,8 +39,6 @@ impl Levels {
     }
 }
 
-impl Game<'_> {
-}
 impl crate::game::Sim<'_> {
     /// Put `target`'s level in place, opening it first if it is not loaded.
     /// The level that was in place is kept with the others; the shared

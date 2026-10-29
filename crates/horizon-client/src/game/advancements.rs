@@ -196,7 +196,6 @@ fn now_text() -> String {
         .map_or(0, |d| d.as_secs()) as i64;
     adv::date_text(secs)
 }
-impl Game<'_> {}
 impl crate::game::Sim<'_> {
     /// `ItemPredicate.test` (the `item_filter` of a filtered item modifier).
     pub(super) fn loot_item_filter(&self, predicate: &Value, s: &ItemStack) -> bool {
@@ -559,14 +558,10 @@ impl crate::game::Sim<'_> {
             let a = &tree.list[ai];
             let was = self.adv.progress.done(a);
             self.adv.progress.grant(&a.id, &a.criteria[ci].name, &date);
-            self.progress_changed(ai);
             if !was && self.adv.progress.done(a) {
                 self.award(ai);
             }
         }
-    }
-    /// `PlayerAdvancements.progressChanged`, kept for a network player's client.
-    fn progress_changed(&mut self, index: usize) {
     }
     /// After `ServerRecipeBook.addRecipes`: the toast and the
     /// `recipe_unlocked` trigger of each recipe now known.
@@ -1077,7 +1072,6 @@ fn decorate_name(d: &adv::Display) -> Text {
     }
     text_of(&component).with_component(component)
 }
-impl Game<'_> {}
 impl crate::game::Sim<'_> {
     /// `AdvancementCommands.Action.GRANT` on one advancement (or one of
     /// its criteria): false when nothing changed.
@@ -1097,7 +1091,6 @@ impl crate::game::Sim<'_> {
             let was = self.adv.progress.done(a);
             if self.adv.progress.grant(&a.id, c, &date) {
                 changed = true;
-                self.progress_changed(index);
                 if !was && self.adv.progress.done(a) {
                     self.award(index);
                 }
@@ -1109,7 +1102,6 @@ impl crate::game::Sim<'_> {
     pub(super) fn revoke_advancement(&mut self, index: usize, criterion: Option<&str>) -> bool {
         let tree = self.adv.tree.clone();
         let a = &tree.list[index];
-        self.progress_changed(index);
         match criterion {
             Some(c) => self.adv.progress.revoke(&a.id, c),
             None => {
@@ -1122,7 +1114,6 @@ impl crate::game::Sim<'_> {
         }
     }
 }
-impl Game<'_> {}
 impl crate::game::Sim<'_> {
     /// `ClientAdvancements.update` (ClientboundUpdateAdvancementsPacket):
     /// the server's advancements replace or join the tree, each changed one

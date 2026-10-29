@@ -12,7 +12,6 @@ use horizon_core::geometry::Vec3;
 fn block_of(p: Vec3) -> [i32; 3] {
     [p.x.floor() as i32, p.y.floor() as i32, p.z.floor() as i32]
 }
-impl Game<'_> {}
 impl crate::game::Sim<'_> {
     fn villager_index(&self, id: u32) -> Option<usize> {
         self.mobs

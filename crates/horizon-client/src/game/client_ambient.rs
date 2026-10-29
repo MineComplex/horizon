@@ -11,7 +11,6 @@ use horizon_client::particles::{ParticleEngine, ParticleOptions, ParticleType};
 use horizon_client::pose::Pose;
 use horizon_core::{geometry::Vec3, random::RandomSource};
 
-impl Game<'_> {}
 impl crate::game::Sim<'_> {
     pub(super) fn tick_client_ambient(&mut self) {
         let mut events = Vec::new();

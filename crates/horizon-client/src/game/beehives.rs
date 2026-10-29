@@ -60,7 +60,6 @@ impl HiveHost for GameHive<'_, '_> {
     }
 }
 
-impl Game<'_> {}
 impl crate::game::Sim<'_> {
     fn hive_with_honey(&self, state: BlockStateId, level: i32) -> Option<BlockStateId> {
         let registry = self.pack.assets.registry;

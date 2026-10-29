@@ -11,7 +11,6 @@ use super::{
 };
 use horizon_protocol::packets::play::{self, Serverbound as S};
 
-impl Game<'_> {}
 impl crate::game::Sim<'_> {
     /// The server opened workstation menu `menu` in window `container`.
     pub(super) fn remote_open_station(

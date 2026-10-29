@@ -12,7 +12,6 @@ use horizon_core::random::RandomSource;
 use horizon_world::chunk::BlockState;
 
 
-impl Game<'_> {}
 impl crate::game::Sim<'_> {
     /// A copper golem opened or closed a chest half: the counter changes and
     /// the clients see the block event (`openerCountChanged`).

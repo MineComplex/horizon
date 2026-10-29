@@ -21,8 +21,6 @@ pub(super) struct Sweep {
 }
 
 
-impl Game<'_> {
-}
 impl crate::game::Sim<'_> {
     /// The guest on the host's crosshair and how far, within reach.
     pub(super) fn guest_hit(&self) -> Option<(u32, f64)> {
@@ -52,10 +50,5 @@ impl crate::game::Sim<'_> {
         Sweep {
             hit_box: Aabb::new(Vec3::ZERO, Vec3::ZERO),
         }
-    }
-    /// A sweep from a mob hit reaches the other players. Inside a guest's
-    /// turn the host holds the other players (`as_guest`), so it waits for
-    /// the turn to end.
-    pub(super) fn sweep_other_players(&mut self, sweep: Sweep) {
     }
 }

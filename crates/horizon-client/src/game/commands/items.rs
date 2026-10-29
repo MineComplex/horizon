@@ -54,7 +54,6 @@ fn matches_name(pattern: &str, name: &str) -> bool {
     }
 }
 
-impl Game<'_> {}
 impl crate::game::Sim<'_> {
     fn owner_of(&mut self, ctx: &Context, prefix: &str, many: bool) -> R<Vec<Owner>> {
         let kind = ctx

@@ -67,7 +67,6 @@ impl Game<'_> {
     }
 }
 
-impl Game<'_> {}
 impl crate::game::Sim<'_> {
     /// Entity.setViewScale (LevelExtractor.extractVisibleEntities): the entity
     /// distance option times the render distance's boost — 1 at 8 chunks, 2.5

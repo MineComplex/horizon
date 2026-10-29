@@ -864,7 +864,6 @@ impl crate::game::Sim<'_> {
     }
 }
 
-impl Game<'_> {}
 impl crate::game::Sim<'_> {
     /// `ServerPlayer.openDialog`: the dialog screen for a dialog id or inline
     /// definition.
@@ -877,7 +876,6 @@ impl crate::game::Sim<'_> {
         self.cmds.dialog = None;
     }
 }
-impl Game<'_> {}
 impl crate::game::Sim<'_> {
     /// The player's profile id as `UUID.toString()`: the saved id, else the
     /// offline id of the player's name.

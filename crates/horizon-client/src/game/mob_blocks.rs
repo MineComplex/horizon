@@ -407,5 +407,3 @@ impl Game<'_> {
         }
     }
 }
-impl crate::game::Sim<'_> {
-}

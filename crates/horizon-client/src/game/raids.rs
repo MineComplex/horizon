@@ -38,7 +38,6 @@ impl Raiding {
 
 
 
-impl Game<'_> {}
 impl crate::game::Sim<'_> {
     /// Every claimed village point of interest (job sites, beds, bells).
     fn village_pois(&self) -> Vec<[i32; 3]> {
@@ -273,14 +272,5 @@ impl crate::game::Sim<'_> {
     }
 }
 
-impl Game<'_> {
-}
-impl crate::game::Sim<'_> {
-}
 
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-}

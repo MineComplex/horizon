@@ -10,7 +10,6 @@ use horizon_client::{
 };
 use horizon_core::{position::BlockPos, random::RandomSource};
 
-impl Game<'_> {}
 impl crate::game::Sim<'_> {
     /// The composter's `level` at `pos`, None when it isn't a composter.
     pub(super) fn composter_level(&self, pos: [i32; 3]) -> Option<i32> {

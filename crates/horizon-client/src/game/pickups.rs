@@ -72,7 +72,6 @@ pub(super) fn position(p: &Pickup, partial: f64) -> [f64; 3] {
 }
 
 
-impl Game<'_> {}
 impl crate::game::Sim<'_> {
     /// `ItemPickupParticle.updatePosition`: the collector's x and z, halfway up to its eyes.
     fn collector_target(&self, collector: Collector) -> Option<[f64; 3]> {

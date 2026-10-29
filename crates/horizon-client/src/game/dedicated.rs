@@ -9,7 +9,6 @@
 use super::Game;
 use std::io::Write;
 
-mod status;
 
 
 
@@ -51,17 +50,9 @@ thread_local! {
 
 
 
-impl Game<'_> {}
-impl crate::game::Sim<'_> {
-}
 
 
 
 
-impl Game<'_> {
-
-}
-impl crate::game::Sim<'_> {
-}
 
 

@@ -72,7 +72,6 @@ fn smash_push(center: Vec3, heavy: f64, at: Vec3, velocity: &mut Vec3, resistanc
     );
 }
 
-impl Game<'_> {}
 impl crate::game::Sim<'_> {
     fn holds_mace(&self) -> bool {
         self.inventory[self.selected]

@@ -44,7 +44,6 @@ fn slot_item(m: &horizon_client::mobs::Mob, slot: usize) -> Option<std::sync::Ar
     }
 }
 
-impl Game<'_> {}
 impl crate::game::Sim<'_> {
     /// `Mob.populateDefaultEquipmentEnchantments`: the weapon one time in
     /// four and each piece of armour one time in two, scaled by the local

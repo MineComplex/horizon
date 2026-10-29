@@ -9,7 +9,6 @@ use super::Game;
 
 
 
-impl Game<'_> {}
 impl crate::game::Sim<'_> {
     /// Runs `f` as each guest in play here, for what strikes every player in
     /// an area (`Level.getEntities`), not only the window's own.
@@ -34,9 +33,6 @@ impl crate::game::Sim<'_> {
     }
 }
 
-impl Game<'_> {}
-impl crate::game::Sim<'_> {
-}
 
 /// A guest as the blocks that look for players see them
 /// (`PlayerDetector`, `level.getPlayers`: the dead ones too).
@@ -50,7 +46,6 @@ pub(super) struct Present {
     pub alive: bool,
 }
 
-impl Game<'_> {}
 impl crate::game::Sim<'_> {
     /// Every guest in the world (`ServerLevel.getPlayers` past the host).
     pub(super) fn lan_present(&self) -> Vec<Present> {
@@ -66,11 +61,3 @@ impl crate::game::Sim<'_> {
 }
 
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-
-
-
-}

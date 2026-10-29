@@ -9,7 +9,6 @@ use horizon_core::geometry::Vec3;
 use horizon_protocol::entity_data::Value;
 use std::sync::Arc;
 
-impl Game<'_> {}
 impl crate::game::Sim<'_> {
     /// `handleAddEntity` for an object type; false when `kind` isn't one.
     /// Hanging entities come at their block, with their direction as the

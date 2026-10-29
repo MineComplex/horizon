@@ -3,7 +3,6 @@ use super::{Arg, Context, Game, R, Target, err};
 use horizon_client::{hud_overlays::Titles, lan::data::component_nbt, text::Text};
 use horizon_protocol::packets::play::{self, Clientbound as C};
 
-impl Game<'_> {}
 impl crate::game::Sim<'_> {
     /// ComponentArgument with selectors resolved for the source
     /// (ComponentUtils.updateForEntity: names joined by ", ").

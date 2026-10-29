@@ -81,7 +81,6 @@ impl HeartHost for Host<'_> {
     }
 }
 
-impl Game<'_> {}
 impl crate::game::Sim<'_> {
     /// Runs `f` on the heart at `key` with the game's mobs and level random,
     /// then applies what the heart reported.

@@ -19,8 +19,6 @@ fn rgb(c: [f32; 4]) -> [f32; 3] {
 }
 
 
-impl Game<'_> {
-}
 impl crate::game::Sim<'_> {
     /// `SonicBoom.tick` uses `ServerLevel.sendParticles` for each ray point.
     /// Keep the local event's rendering; connected players receive one at rest.

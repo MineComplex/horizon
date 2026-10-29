@@ -15,7 +15,6 @@ type ItemConsumable = Consumable<String, ConsumeEffect>;
 /// `EntityEvent.USE_ITEM_COMPLETE`: the server finished the player's use.
 pub(super) const USE_ITEM_COMPLETE_EVENT: i8 = 9;
 
-impl Game<'_> {}
 impl crate::game::Sim<'_> {
     /// `Consumable.emitParticlesAndSounds(user.getRandom(), user, stack, count)`.
     pub(super) fn emit_consume(

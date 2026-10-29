@@ -20,7 +20,6 @@ fn components(stack: &ItemStack) -> Compound {
     }
 }
 
-impl Game<'_> {}
 impl crate::game::Sim<'_> {
     /// The block entity at `key` as vanilla saves it, with its custom name.
     fn saved_block_entity(&self, key: (i32, i32, i32)) -> Option<Tag> {

@@ -30,6 +30,3 @@ pub(super) fn record_events(events: &[horizon_world::level::LevelEvent]) {
 
 
 
-impl Game<'_> {}
-impl crate::game::Sim<'_> {
-}

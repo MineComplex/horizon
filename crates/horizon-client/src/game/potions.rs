@@ -49,7 +49,6 @@ pub(super) fn mob_effect_id(id: &str) -> Option<&'static str> {
     .get(id)
     .copied()
 }
-impl Game<'_> {}
 impl crate::game::Sim<'_> {
     /// A living mob's own random (`Entity.random`), else the world's.
     fn bearer_random(&mut self, bearer: Option<u32>) -> &mut LegacyRandom {
