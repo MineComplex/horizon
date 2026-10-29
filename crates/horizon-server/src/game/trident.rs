@@ -32,7 +32,7 @@ pub(super) struct ThrownTrident {
     pub(super) no_physics: bool,
     returning: u32,
     creative_only: bool,
-    /// The player that threw it (`Projectile.getOwner`); `None` for the host.
+    /// The player that threw it (`Projectile.getOwner`); `None` for the game.
     player: Option<u32>,
 }
 impl ThrownTrident {

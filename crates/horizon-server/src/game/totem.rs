@@ -66,17 +66,6 @@ impl crate::game::Sim<'_> {
         }
         Some(body)
     }
-    /// The window's player's totem: the server's half, then the event to
-    /// the players and to this window's own client.
-    pub(super) fn tick_totem(&mut self) {
-        let Some(body) = self.apply_totem() else {
-            return;
-        };
-        if let Some(net) = &self.network {
-            net.hub.entity_event(net.host_entity, TOTEM_EVENT, body.at);
-        }
-        self.totem_event(body, true);
-    }
 }
 
 /// Where an entity event's entity stands and its size.

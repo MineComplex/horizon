@@ -294,7 +294,7 @@ impl crate::game::Sim<'_> {
     }
 }
 /// What a player's body was last given for its effects and enchantments:
-/// a player keeps their own while the host's are in `PotionState`.
+/// a player keeps their own while the game's are in `PotionState`.
 #[derive(Default)]
 pub(super) struct BodyPotions {
     applied: Vec<(&'static str, &'static str, f64, &'static str)>,

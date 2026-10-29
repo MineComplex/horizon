@@ -6149,7 +6149,7 @@ impl crate::game::Sim<'_> {
     /// while the window is unfocused (losing focus releases the pointer).
     fn capture(&mut self, capture: bool) {
         // A player's action (`as_player`) opens and closes screens on the
-        // player's own client: the window's pointer stays the host's (#687).
+        // player's own client: the window's pointer stays the game's (#687).
         // MouseHandler.grabMouse never captures an inactive window, and vanilla
         // grabs only on `setScreen(null)`: the pack prompt and server dialogs
         // are screens over the world that keep the pointer.

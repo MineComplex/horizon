@@ -14,7 +14,7 @@ use horizon_protocol::packets::play::{self, Clientbound as C};
 /// The players mobs can see this tick, by connection.
 pub(super) type PlayerViews = Vec<(u32, PlayerView)>;
 
-/// The player a mob sees this tick: `None` for the host, else a player.
+/// The player a mob sees this tick: `None` for the game, else a player.
 /// A mob that targets a player, or that a player hurt in the last 100 ticks
 /// (`LivingEntity.getLastHurtByMob`), keeps them while they are still a
 /// valid target; otherwise it sees the nearest player
@@ -125,7 +125,7 @@ pub(super) fn acts_on_player(e: &MobEvent) -> bool {
 
 impl crate::game::Sim<'_> {
     /// How mobs see each player in play (`player_view` with the player swapped
-    /// in; what the host alone tracks, such as its last attacker, stays out).
+    /// in; what the game alone tracks, such as its last attacker, stays out).
     pub(super) fn net_player_views(&mut self) -> PlayerViews {
         let Some(mut net) = self.network.take() else {
             return Vec::new();
@@ -337,7 +337,7 @@ pub(super) struct Present {
 }
 
 impl crate::game::Sim<'_> {
-    /// Every player in the world (`ServerLevel.getPlayers` past the host).
+    /// Every player in the world (`ServerLevel.getPlayers` past the game).
     pub(super) fn net_present(&self) -> Vec<Present> {
         let players = self
             .network
@@ -359,7 +359,7 @@ impl crate::game::Sim<'_> {
             })
             .collect()
     }
-    /// The UUID of the player acting: the player `as_player` runs, else the host.
+    /// The UUID of the player acting: the player `as_player` runs, else the game.
     pub(super) fn acting_uuid(&self) -> [i32; 4] {
         self.net_acting_uuid
             .map(crate::hc::server_net::playerdata::uuid_ints)

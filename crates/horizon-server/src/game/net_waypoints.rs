@@ -6,10 +6,6 @@ use crate::hc::{
     server_net::waypoints::{self, HIDING_HEADS, Icon, PLAYER_RANGE},
 };
 
-/// The host player's connection id in the waypoint managers: its packets
-/// go to this client's locator bar rather than to a player.
-const HOST_CONN: u32 = u32::MAX;
-
 /// `waypoint_transmit_range`: hidden by crouching, invisibility or a head worn.
 fn transmit_range(crouching: bool, invisible: bool, head: Option<&ItemStack>) -> f64 {
     let hiding_head = head.is_some_and(|s| HIDING_HEADS.contains(&&*s.item));
@@ -93,10 +89,6 @@ impl crate::game::Sim<'_> {
             }
         }
         for (conn, packet) in out {
-            // A server has no host connection of its own: its windows are players.
-            if conn == HOST_CONN {
-                continue;
-            }
             if let Some(g) = net.hub.player(conn) {
                 g.send(&packet);
             }

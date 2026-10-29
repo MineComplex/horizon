@@ -4341,7 +4341,8 @@ HEIGHTS = {'horse': 1.6, 'donkey': 1.5, 'pig': 0.9, 'strider': 1.7, 'camel': 2.3
 
 
 def mob_seen(game, mob_id):
-    found = [m for m in game.raw('mobs', 96).get('near', []) if m['id'] == mob_id]
+    # The client's own view of the mob (`mobs` asks the server).
+    found = [m for m in game.raw('entities', 96).get('entities', []) if m['id'] == mob_id]
     return found[0] if found else None
 
 
@@ -7366,8 +7367,9 @@ def check_critical_hits(host, guest, out):
                              f'{{NoAI:1b,PersistenceRequired:1b,Invulnerable:{int(hit == "refused")}b,Tags:["{tag}"]}}')
                     player.wait(20)  # full attack charge and paired entities
                     if kind == 'zombie':
-                        mob = next(m for m in player.raw('mobs', 16)['near']
-                                   if m['kind'] == 'minecraft:zombie' and math.dist(m['pos'], target) < 0.1)
+                        # The client's own entity list (`mobs` asks the server).
+                        mob = next(m for m in player.raw('entities', 16)['entities']
+                                   if m['type'] == 'minecraft:zombie' and math.dist(m['pos'], target) < 0.1)
                         mob_id = mob['id']
                         assert mob_seen(other, mob_id), f'{case}: observer has not paired the zombie'
                     health_before = mob_seen(player, mob_id)['health'] if mob_id is not None else hearts(other)[1]

@@ -649,7 +649,7 @@ impl crate::game::Sim<'_> {
                     .find(|m| m.id == id)
                     .and_then(|m| m.extra.leash.map(|holder| (holder, m.extra.leash_player)))
                     .and_then(|(holder, player)| match holder {
-                        // The player who tied it (the host's when unrecorded).
+                        // The player who tied it (the game's when unrecorded).
                         crate::hc::mobs::leash::Holder::Player => {
                             let uuid = player.or(self.level.player_uuid)?;
                             self.target_by_uuid(crate::hc::server_net::playerdata::ints_uuid(uuid))

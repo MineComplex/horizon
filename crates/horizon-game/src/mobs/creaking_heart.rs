@@ -3,7 +3,7 @@
 //! (`SpawnUtil.trySpawnMob`), lets it go by day, when it strays or when a
 //! player is stuck in it, and when that creaking is hurt by a player emits
 //! trails and spreads resin over the logs. The game and the mob AI probe
-//! both tick hearts through this module; the host applies the block changes
+//! both tick hearts through this module; the game applies the block changes
 //! and plays what it reports.
 use super::{Mob, MobEvent, MobType, MobWorld, creaking};
 use crate::{collisions::SceneCollisions, containers::CreakingHeart};

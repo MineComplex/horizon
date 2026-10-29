@@ -1,3 +1,4 @@
+
 //! Fishing: `FishingRodItem.use` (cast / reel in), the `FishingHook` (flight,
 //! bobbing, lure and bite timers, open water, hooking mobs, retrieving the
 //! `gameplay/fishing` loot) and `FishingHookRenderer` (bobber and line).
@@ -45,7 +46,7 @@ pub(super) struct Hook {
     lure: i32,
 }
 /// A player a hook can catch (`canHitEntity`): their entity id, which
-/// player they are (none: the host) and their box.
+/// player they are (none: the game) and their box.
 pub(super) struct HookTarget {
     id: u32,
     conn: Option<u32>,
@@ -484,7 +485,7 @@ impl crate::game::Sim<'_> {
         if !self.holds_rod() || d2 > 1024.0 {
             return;
         }
-        // The players it can catch, as they stand now (the host's own hook;
+        // The players it can catch, as they stand now (the game's own hook;
         // players' hooks use the ones taken as their turns start).
         if self.net_acting.is_none()
             && matches!(h.state, State::Flying | State::Hooked(_))
@@ -668,9 +669,7 @@ impl crate::game::Sim<'_> {
                     p.velocity = p.velocity.add_vector(delta);
                 }
             };
-            if id == net.host_entity as u32 {
-                push(self);
-            } else if let Some(conn) = net
+            if let Some(conn) = net
                 .hub
                 .players
                 .iter()
@@ -734,7 +733,7 @@ impl Hook {
 }
 
 impl crate::game::Sim<'_> {
-    /// The hooks players track: the host's and each player's in the level.
+    /// The hooks players track: the game's and each player's in the level.
     pub(super) fn net_hook_states(
         &self,
         play: &HashMap<u32, PlayerPlay>,

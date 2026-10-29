@@ -1,7 +1,7 @@
 //! Beehives and bee nests (`BeehiveBlockEntity`): up to three bees stored as
 //! entity tags, let out when their time inside is up (never at night or in
 //! the rain, nor through a blocked front, unless the hive is emptied in an
-//! emergency), honey for every bee coming home with nectar. The host (the game
+//! emergency), honey for every bee coming home with nectar. The game (the game
 //! or the mob AI probe) loads and adds the bees through [`HiveHost`].
 pub use crate::chunk::block_entity::{Beehive, Occupant};
 use crate::mobs::{Mob, Species, bee};

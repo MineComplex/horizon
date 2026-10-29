@@ -302,7 +302,7 @@ impl crate::game::Sim<'_> {
         };
         // BehaviorUtils.throwItem toward the nearest visible player
         // (NEAREST_VISIBLE_PLAYER: within 16, alive, no spectators; the
-        // players count as much as the host), else nearby.
+        // players count as much as the game), else nearby.
         let at = m.position;
         let net = self
             .player

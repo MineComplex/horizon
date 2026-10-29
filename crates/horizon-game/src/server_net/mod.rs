@@ -215,7 +215,7 @@ pub struct Shared {
     max_players: AtomicUsize,
     /// PlayerList.players in join order: profile id and name.
     online: Mutex<Vec<(u128, String)>>,
-    /// Profiles held by the host (the LAN host's own name).
+    /// Profiles held by the game (the LAN game's own name).
     reserved: Mutex<HashSet<u128>>,
     next: AtomicU32,
     stop: AtomicBool,
@@ -504,7 +504,7 @@ impl Listener {
     pub fn poll(&self) -> Vec<NetEvent> {
         self.events.try_iter().collect()
     }
-    /// Reserve a uuid for the host so a player cannot take the name.
+    /// Reserve a uuid for the game so a player cannot take the name.
     pub fn reserve(&self, uuid: u128) {
         self.shared.reserved.lock().unwrap().insert(uuid);
     }

@@ -4,7 +4,7 @@
 //! once and dying of it, and the hive and flower bookkeeping: finding a hive
 //! with room nearby (`BeeLocateHiveGoal`), flying home at night, in the rain
 //! or with nectar (`BeeGoToHiveGoal`) and going in (`BeeEnterHiveGoal`, done
-//! by the host: [`MobEvent::EnterHive`]); the hive lets them out
+//! by the game: [`MobEvent::EnterHive`]); the hive lets them out
 //! (`crate::beehive`).
 use super::{
     Damage, DamageKind, Mob, MobEvent, MobWorld, Species, Who,

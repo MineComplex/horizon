@@ -51,7 +51,7 @@ pub enum Play {
     Singleplayer,
     /// A server or someone else's LAN world. Its address and name are never shown.
     Multiplayer,
-    /// This world is open to LAN or friends; `players` counts the host.
+    /// This world is open to LAN or friends; `players` counts the game.
     Hosting {
         players: usize,
     },

@@ -1,5 +1,5 @@
 //! Players' saved state: `players/data/<uuid>.dat` in the vanilla player
-//! compound, through the same code that saves the host.
+//! compound, through the same code that saves the game.
 use super::player::{SavedBody, ServerPlayer};
 use crate::{
     items::ItemStack,

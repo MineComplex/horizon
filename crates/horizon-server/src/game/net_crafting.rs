@@ -1,5 +1,5 @@
 //! Crafting for players: the inventory's 2x2 grid (window 0) and the
-//! crafting table (`minecraft:crafting`) run the host's menu engine
+//! crafting table (`minecraft:crafting`) run the game's menu engine
 //! (`crate::hc::menu`, `Kind::Inventory` / `Kind::Crafting`) over the
 //! player's inventory, with vanilla's packets: OpenScreen, container clicks
 //! and their corrections, and the grid back into the inventory when the menu
@@ -106,7 +106,7 @@ impl crate::game::Sim<'_> {
         menu: &mut Menu,
         op: impl FnOnce(&mut Menu, &Env) -> R,
     ) -> R {
-        // The cartography table reads and makes the host level's maps.
+        // The cartography table reads and makes the game level's maps.
         let maps = (menu.kind() == Kind::Cartography).then(|| {
             let g = &net.hub.players[gi];
             let held: Vec<ItemStack> = (0..menu.slot_count())
@@ -196,7 +196,7 @@ impl crate::game::Sim<'_> {
         true
     }
     /// A click on the player's open furnace, blast furnace, smoker or brewing stand:
-    /// the host's `AbstractFurnaceMenu` (fuel slot, take-only result, quick moves by
+    /// the game's `AbstractFurnaceMenu` (fuel slot, take-only result, quick moves by
     /// recipe and fuel) or `BrewingStandMenu` (one bottle per slot, ingredient and
     /// blaze powder slots) over the block entity's slots. False for other windows.
     pub(super) fn net_machine_click(

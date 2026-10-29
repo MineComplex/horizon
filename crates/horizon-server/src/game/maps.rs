@@ -19,7 +19,7 @@ pub(super) struct Decoration {
     pub rot: u8,
     pub holder: Option<u32>,
 }
-/// The host among a map's holders (the players are their connections).
+/// The game among a map's holders (the players are their connections).
 const HOST: u32 = u32::MAX;
 /// A player carrying a map, or seeing it framed
 /// (`MapItemSavedData.HoldingPlayer`): the column sweep's step, and what
@@ -771,7 +771,7 @@ impl crate::game::Sim<'_> {
             .collect();
         let (yaw, dim) = (self.yaw, self.dimension_id());
         let (nether, game_time) = (self.dim == super::Dim::Nether, self.world.game_time);
-        // The player whose turn it is, else the host.
+        // The player whose turn it is, else the game.
         let me = self.net_acting.unwrap_or(HOST);
         for (id, targets) in carried {
             let Some(m) = self.map(id) else { continue };

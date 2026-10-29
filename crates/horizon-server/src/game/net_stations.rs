@@ -1,5 +1,5 @@
 //! Workstation menus for players: the screen a player's use opens runs on
-//! the host's menu engine (`crate::hc::menu`), the one single player
+//! the game's menu engine (`crate::hc::menu`), the one single player
 //! uses, with vanilla's packets: OpenScreen with the station's `MenuType`,
 //! container clicks, `ServerboundContainerButtonClickPacket`, the content and
 //! data slot sync after each (`broadcastChanges`), and the inputs back into

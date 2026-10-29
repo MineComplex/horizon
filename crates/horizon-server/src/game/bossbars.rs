@@ -424,7 +424,7 @@ impl crate::game::Sim<'_> {
     }
     fn boss_viewers(&self) -> Vec<Viewer> {
         let mut out = Vec::new();
-        // While `as_player` has swapped a player in, the host's own position
+        // While `as_player` has swapped a player in, the game's own position
         // is not in place. Their overlay updates once the tick puts it back.
         let local = false;
         if local && let Some(p) = &self.player {

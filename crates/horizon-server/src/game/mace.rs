@@ -299,7 +299,7 @@ impl crate::game::Sim<'_> {
             self.smash_push_players(&push);
         }
     }
-    /// `MaceItem.knockback` on the players but the attacker: the host unless
+    /// `MaceItem.knockback` on the players but the attacker: the game unless
     /// it attacked, and every player but the attacker.
     fn smash_push_players(&mut self, push: &SmashPush) {
         if push.attacker.is_some() {
@@ -313,7 +313,7 @@ impl crate::game::Sim<'_> {
             self.smash_push_players(&push);
         }
     }
-    /// `MaceItem.knockback` on the player here (the host, or the player swapped
+    /// `MaceItem.knockback` on the player here (the game, or the player swapped
     /// in): not a spectator, an ally of the attacker (`isAlliedTo`: the same
     /// team) or a creative player flying.
     fn smash_push_player(&mut self, push: &SmashPush) {

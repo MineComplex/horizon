@@ -186,7 +186,7 @@ const DRAWN_LIMIT: usize = 8192;
 /// What a GUI item's vertices depend on: its layers' baked models (kept for the
 /// renderer's life, so their addresses name them), tints and transforms, the
 /// atlas, and the exact position. None for items whose drawing changes with time
-/// or the host: a glint, or a special model renderer.
+/// or the game: a glint, or a special model renderer.
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub(crate) struct DrawnKey {
     renderer: usize,

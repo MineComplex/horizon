@@ -172,8 +172,8 @@ impl crate::game::Sim<'_> {
     /// `ServerLevel.sendParticles` for the players a server serves: one
     /// `ClientboundLevelParticlesPacket` to each player in the level whose
     /// block is within 32 blocks of `at`. The window's own player is not
-    /// sent it (the caller draws it in this window). While the host holds
-    /// the players (a player's turn through `as_player`, a host's hit on a
+    /// sent it (the caller draws it in this window). While the game holds
+    /// the players (a player's turn through `as_player`, a game's hit on a
     /// player) the packet waits for the turn to end so that it reaches every
     /// player, the player too.
     pub(super) fn net_send_particles(

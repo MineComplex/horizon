@@ -24,7 +24,7 @@ pub(super) struct Bolt {
     /// Blocks it set on fire (`blocksSetOnFire`).
     fires: i32,
     /// The player who channelled it (`LightningBolt.cause`): `Some(None)` for
-    /// the host, `Some(Some(conn))` for a player.
+    /// the game, `Some(Some(conn))` for a player.
     pub cause: Option<Option<u32>>,
 }
 impl crate::game::Sim<'_> {

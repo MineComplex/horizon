@@ -692,7 +692,7 @@ impl crate::game::Sim<'_> {
     fn arena_loaded(&self) -> bool {
         (-2..=1).all(|cz| (-2..=1).all(|cx| self.streaming.is_lit(cx, cz)))
     }
-    /// The player acting now: the player whose turn it is, else the host.
+    /// The player acting now: the player whose turn it is, else the game.
     fn acting_player(&self) -> FightWho {
         self.net_acting
             .map_or(FightWho::Host, FightWho::ServerPlayer)
@@ -2588,7 +2588,7 @@ impl crate::game::Sim<'_> {
             let (a, b) = (room.min_position(), room.max_position());
             lo.x < b.x && hi.x > a.x && lo.y < b.y && hi.y > a.y && lo.z < b.z && hi.z > a.z
         };
-        // Level.getEntities: the host's player and every player in the level.
+        // Level.getEntities: the game's player and every player in the level.
         let player = self
             .fight_players()
             .iter()

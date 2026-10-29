@@ -90,7 +90,6 @@ impl crate::game::Sim<'_> {
             || before(self.cart_hit().map(|h| h.1))
             || before(self.dragon_hit().map(|h| h.1))
             || before(self.mob_hit().map(|h| h.1))
-            || before(self.aimed_player().map(|h| h.1))
             || before(self.redirectable_hit().map(|h| h.1))
     }
     /// `LocalPlayer.isHandsBusy`: paddling a boat.

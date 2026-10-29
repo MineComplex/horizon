@@ -1184,7 +1184,7 @@ impl crate::game::Sim<'_> {
         if new_world {
             self.level.hardcore = props.hardcore;
         }
-        // The single-player host's state is not used: players have their own files.
+        // The single-player game's state is not used: players have their own files.
         self.level.position = None;
         // DedicatedServer.initServer: worldData.setGameType; forceDifficulty.
         self.set_default_game_mode(game_mode);

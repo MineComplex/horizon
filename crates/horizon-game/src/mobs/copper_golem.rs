@@ -120,7 +120,7 @@ pub fn animate(m: &mut Mob) -> bool {
 /// `CopperGolem.updateWeathering` on the level random: the first tick sets
 /// the next weathering tick, which advances the weather state; once
 /// oxidized, a golem on an air block may turn into a statue
-/// (`MobEvent::BecomeStatue`, done by the host).
+/// (`MobEvent::BecomeStatue`, done by the game).
 pub fn update_weathering(
     m: &mut Mob,
     w: &MobWorld,

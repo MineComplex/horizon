@@ -6,7 +6,7 @@
 //! unreachable chests.
 //!
 //! The chests are read from the world; what changes them comes out as
-//! [`MobEvent::ChestOpen`] and [`MobEvent::ChestSlot`] for the host to apply
+//! [`MobEvent::ChestOpen`] and [`MobEvent::ChestSlot`] for the game to apply
 //! before the next mob ticks.
 use super::{
     Mob, MobEvent, MobWorld,

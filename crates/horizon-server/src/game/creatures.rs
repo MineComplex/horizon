@@ -608,7 +608,7 @@ impl crate::game::Sim<'_> {
                 if let Some(conn) = seen_player {
                     // ShulkerBullet.finalTarget is the player's entity: the
                     // bullet homes on it while the projectiles tick, where
-                    // `Who::Player` is the host's own player.
+                    // `Who::Player` is the game's own player.
                     if let Some(&(_, id)) = player_ids.iter().find(|g| g.0 == conn) {
                         for e in &mut events[from..] {
                             if let MobEvent::Projectile(p) = e
@@ -2244,64 +2244,6 @@ impl crate::game::Sim<'_> {
             let _ = player.hurt(&self.motion.health, self.world.health_rules, id, amount);
         }
     }
-    /// `Player.aiStep` touching arrows in its box grown by (1, 0.5, 1):
-    /// `AbstractArrow.playerTouch`, then `Player.take`'s pickup sound at the
-    /// arrow (`ClientPacketListener.handleTakeItemEntity`).
-    pub(super) fn touch_arrows(&mut self) {
-        use crate::hc::arrows::Touch;
-        let Some(p) = self.player.as_ref() else {
-            return;
-        };
-        if p.health.dead_or_dying() || self.spectator() {
-            return;
-        }
-        let w = f64::from(p.dimensions.width) / 2.0;
-        let reach = Aabb::new(
-            Vec3::new(p.position.x - w, p.position.y, p.position.z - w),
-            Vec3::new(
-                p.position.x + w,
-                p.position.y + f64::from(p.dimensions.height),
-                p.position.z + w,
-            ),
-        )
-        .inflate(Vec3::new(1.0, 0.5, 1.0));
-        // Player.hasInfiniteMaterials.
-        let creative = self.creative;
-        let mut projectiles = std::mem::take(&mut self.creatures.projectiles);
-        let mut picked = Vec::new();
-        projectiles.retain(|shot| {
-            let Some(a) = shot.arrow.as_ref().filter(|a| !a.removed) else {
-                return true;
-            };
-            let at = shot.position;
-            let bounds = Aabb::new(
-                Vec3::new(at.x - 0.25, at.y, at.z - 0.25),
-                Vec3::new(at.x + 0.25, at.y + 0.5, at.z + 0.25),
-            );
-            if !bounds.intersects(reach) {
-                return true;
-            }
-            let taken = match a.player_touch(creative) {
-                Touch::Ignore => false,
-                Touch::Take => true,
-                // Inventory.add: a creative player takes what does not fit.
-                Touch::Give(stack) => self.give(stack).is_none() || creative,
-            };
-            if taken {
-                let r = &mut self.world.random;
-                let pitch = (r.next_float() - r.next_float()) * 1.4 + 2.0;
-                self.sounds.play(
-                    "minecraft:entity.item.pickup",
-                    Some([at.x, at.y, at.z]),
-                    0.2,
-                    pitch,
-                );
-                picked.push(shot.clone());
-            }
-            !taken
-        });
-        self.creatures.projectiles = projectiles;
-    }
     fn tick_projectiles(&mut self) -> Result<()> {
         let mut projectiles = std::mem::take(&mut self.creatures.projectiles);
         let mut hits = Vec::new();
@@ -2380,7 +2322,7 @@ impl crate::game::Sim<'_> {
                 let mob_shot = !matches!(p.owner, Some(Who::Player));
                 // A player's arrows, snowballs and eggs meet every player; a
                 // player's flies from that player (Projectile.getOwner), not
-                // from the host, until it has left them.
+                // from the game, until it has left them.
                 let pvp = !mob_shot && super::net_pvp::meets_players(&p.kind);
                 let shooter = p
                     .player
@@ -2476,8 +2418,8 @@ impl crate::game::Sim<'_> {
                 continue;
             }
             // A player's projectile lands as theirs: a pearl takes them, what
-            // it hurts answers to them. One hitting the host (`Who::Player`
-            // here) stays the host's hit.
+            // it hurts answers to them. One hitting the game (`Who::Player`
+            // here) stays the game's hit.
             match p.player {
                 Some(conn)
                     if !matches!(
@@ -2497,7 +2439,7 @@ impl crate::game::Sim<'_> {
         self.flush_wind_bursts()
     }
     /// `projectile_hit` for a projectile the player `conn` shot, run as them;
-    /// as the host's when they have left.
+    /// as the game's when they have left.
     fn player_projectile_hit(&mut self, conn: u32, p: &Projectile, hit: Hit) -> Result<()> {
         let Some(mut net) = self.network.take() else {
             return self.projectile_hit(p, hit);

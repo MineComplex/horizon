@@ -807,7 +807,7 @@ impl crate::game::Sim<'_> {
         }
         self.sculk_stand_on(standing);
     }
-    /// `stepOn` for the player in place: the host, or a player swapped in
+    /// `stepOn` for the player in place: the game, or a player swapped in
     /// (`player_server_tick`), as a server has no player of its own.
     pub(super) fn sculk_step_on_player(&mut self) {
         if let Some(p) = self.player.as_ref()

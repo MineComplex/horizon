@@ -85,7 +85,7 @@ impl crate::game::Sim<'_> {
     }
     /// The UUID of the player an allay likes (`LIKED_PLAYER`).
     fn allay_liked_uuid(&self, i: usize) -> [i32; 4] {
-        // An allay saved before its player was kept belongs to the host.
+        // An allay saved before its player was kept belongs to the game.
         self.mobs[i]
             .extra
             .owner

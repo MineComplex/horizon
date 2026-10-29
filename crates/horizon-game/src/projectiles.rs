@@ -109,7 +109,7 @@ pub struct Projectile {
     pub kind: ProjectileKind,
     pub owner: Option<Who>,
     /// On a server, the player (by connection) who shot it: `Who::Player`
-    /// then means them, not the host.
+    /// then means them, not the game.
     pub player: Option<u32>,
     pub position: Vec3,
     pub previous: Vec3,

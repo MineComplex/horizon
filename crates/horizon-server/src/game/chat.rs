@@ -37,18 +37,6 @@ impl crate::game::Sim<'_> {
         // and the console logs what vanilla's does where it does.
         let _ = text;
     }
-    /// A player's chat line on the window's own chat: a player's message
-    /// while the host runs in-frame (`HostEvent::Chat`). `ChatListener`
-    /// checks `canReceivePlayerMessages` for these, so Commands Only and
-    /// Hidden drop them; command feedback (`/list`, `/tp`) is a system
-    /// message and takes the system-message permission instead.
-    pub(super) fn player_message(&mut self, text: Text) {
-        if let Some(capture) = self.chat_capture.as_mut() {
-            capture.push(text);
-            return;
-        }
-        let _ = text;
-    }
     /// Advance the overworld clock (ServerClockManager.tick) when
     /// `advance_time` allows it.
     pub(super) fn advance_clock(&mut self) {

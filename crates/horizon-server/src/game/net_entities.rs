@@ -410,7 +410,7 @@ impl crate::game::Sim<'_> {
             e.pitch = t.pitch;
             e.velocity = at(t.velocity);
             // Projectile.getAddEntityPacket: the owner's id; a trident here is
-            // always the host player's.
+            // always the game's player's.
             e.data = owner(Some(crate::hc::mobs::Who::Player));
             e.meta = arrow_meta(false, t.no_physics, 0, t.in_ground);
             // ThrownTrident.ID_LOYALTY and ID_FOIL.

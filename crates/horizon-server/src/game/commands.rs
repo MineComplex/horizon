@@ -35,7 +35,7 @@ pub(super) type R<T> = Result<T, CommandError>;
 /// An entity a selector found.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub(super) enum Target {
-    /// The player in place: the host's, or the player whose turn it is.
+    /// The player in place: the game's, or the player whose turn it is.
     Player,
     /// Another player of a server or server: a player by connection
     /// (game/commands/players.rs).
@@ -190,7 +190,7 @@ impl crate::game::Sim<'_> {
         self.broadcast_to_admins(message);
     }
     /// CommandSourceStack.broadcastToAdmins (`sendSuccess` with `broadcast`)
-    /// for a player's command, the host's in a world open to LAN and the
+    /// for a player's command, the game's in a world open to LAN and the
     /// dedicated server console's when `broadcast-console-to-ops` is on:
     /// `[name: message]`, gray and italic, for the other operators when
     /// `send_command_feedback`, and for a player's command on a dedicated
@@ -199,7 +199,7 @@ impl crate::game::Sim<'_> {
     pub(super) fn broadcast_to_admins(&mut self, message: Text) {
         let informs = match self.console_broadcast {
             Some(broadcast) => broadcast,
-            // While a player acts the host's Network is out of `self.network`.
+            // While a player acts the game's Network is out of `self.network`.
             None => self.net_acting.is_some() || self.network.is_some(),
         };
         if !informs

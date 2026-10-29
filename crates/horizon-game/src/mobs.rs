@@ -1012,7 +1012,7 @@ pub enum MobEvent {
         hive: [i32; 3],
     },
     /// `LandOnOwnersShoulderGoal`: a tame parrot touched its owner and sits
-    /// on their shoulder (the host stores its tag and discards it).
+    /// on their shoulder (the game stores its tag and discards it).
     ParrotToShoulder {
         mob: u32,
     },
@@ -1846,7 +1846,7 @@ pub struct MobWorld<'a> {
     /// The scoreboard teams of the player and the mobs (collision rules),
     /// shared: the mob ticks build them once a tick, not once a mob.
     pub teams: std::sync::Arc<Teams<'a>>,
-    /// Item data (max stack sizes), when the host has it.
+    /// Item data (max stack sizes), when the game has it.
     pub items: Option<&'a crate::items::Items>,
     /// Hold the damage of the surroundings in `Mob::env_damage` instead of
     /// dealing it (plugins listen to the damage events).

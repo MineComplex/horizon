@@ -1,4 +1,4 @@
-//! What players do in a server. The host's gameplay code is written for
+//! What players do in a server. The game's gameplay code is written for
 //! the one local player, so a player's action runs through it with the player's
 //! state swapped in for the duration of the call (position, inventory, game
 //! mode, experience, mining and item use): digging, placing, using items and
@@ -173,11 +173,11 @@ pub(super) struct PlayerSwap {
     packets: Vec<play::Clientbound>,
     /// The entity events queued for that player.
     entity_events: Vec<i8>,
-    /// The host's count of swings started, kept while the player acts.
+    /// The game's count of swings started, kept while the player acts.
     swings: u32,
     /// How many projectiles there were: those added since are the player's.
     projectiles: usize,
-    /// The host's equipment modifiers.
+    /// The game's equipment modifiers.
     modifiers: Vec<(String, String)>,
 }
 
@@ -219,7 +219,7 @@ fn direction(face: i32) -> [i32; 3] {
 }
 
 impl crate::game::Sim<'_> {
-    /// Run `f` as the player `conn`: the host's player state is swapped for theirs.
+    /// Run `f` as the player `conn`: the game's player state is swapped for theirs.
     pub(super) fn as_player<R>(
         &mut self,
         net: &mut Network,
@@ -233,7 +233,7 @@ impl crate::game::Sim<'_> {
     }
     /// The first half of `as_player`: the player's state in place of the
     /// game's, which the returned swap keeps until `leave_player`. Between the
-    /// two the host may go back into `self.network`, so that what the player does
+    /// two the network may go back into `self.network`, so that what the player does
     /// can reach the other players (their commands, `for_player`), and a
     /// player's turn can nest in another's: the acting player and the packets
     /// queued for them are kept and restored too.
@@ -285,7 +285,7 @@ impl crate::game::Sim<'_> {
             return None;
         };
         self.sculk.swap_player(&mut play.sculk);
-        // The player's own CombatTracker: damage to them is not the host's.
+        // The player's own CombatTracker: damage to them is not the game's.
         // A new body starts with no record of the last one.
         let player_combat = if fresh {
             Default::default()
@@ -329,20 +329,20 @@ impl crate::game::Sim<'_> {
                 total: g.xp_total,
             },
         );
-        // The host's held keys stay theirs: the player holds only sneak, and a
-        // screen the player opens (`keys.clear()`) leaves the host walking.
+        // The game's held keys stay theirs: the player holds only sneak, and a
+        // screen the player opens (`keys.clear()`) leaves the game walking.
         let host_keys = std::mem::take(&mut self.keys);
         if g.sneaking {
             self.keys.insert(KeyCode::ShiftLeft);
         }
-        // The window's screens are the host's: a sign, book, command block or
-        // mount menu the player's action opens is not drawn over the host's
+        // The window's screens are the game's: a sign, book, command block or
+        // mount menu the player's action opens is not drawn over the game's
         // world (#687). The player's client opens its own.
         let screen = std::mem::replace(&mut self.screen, Screen::Playing);
         let host_sign = self.sign_edit.take();
         let host_book = self.book.take();
         let host_mount_menu = std::mem::take(&mut self.mount_menu);
-        // The host's crafting grid stays theirs; a crafting table the player
+        // The game's crafting grid stays theirs; a crafting table the player
         // opens shows as the 3x3 size.
         let craft_size = std::mem::replace(&mut self.craft_size, 2);
         let craft_table = self.craft_table.take();
@@ -364,7 +364,7 @@ impl crate::game::Sim<'_> {
         // The player's vehicle (Entity.vehicle) for its turn.
         let riding = std::mem::replace(&mut self.riding, g.vehicle);
         let host_station = self.station.take();
-        // The player's bed, sleep counter and respawn point; the host's
+        // The player's bed, sleep counter and respawn point; the game's
         // respawn point, anchor and action bar stay theirs.
         let sleeping = std::mem::replace(&mut self.sleeping, g.bed);
         let sleep_timer = std::mem::replace(&mut self.sleep_timer, g.sleep_timer);
@@ -375,8 +375,8 @@ impl crate::game::Sim<'_> {
         let respawn = (self.respawn_config.take(), self.level.spawn);
         self.respawn_config = g.respawn_elsewhere.as_ref().map(RespawnConfig::from_saved);
         let message = self.message.take();
-        // The player's own ender inventory; one the host has open goes back
-        // into the host's while the player acts.
+        // The player's own ender inventory; one the game has open goes back
+        // into the game's while the player acts.
         let host_ender = self.ender_open;
         self.close_ender_chest();
         std::mem::swap(&mut self.ender_items, &mut g.ender_items);
@@ -531,7 +531,7 @@ impl crate::game::Sim<'_> {
             modifiers,
         } = swap;
         self.sculk.swap_player(&mut play.sculk);
-        // The player's damage record back into their slot, the host's in place.
+        // The player's damage record back into their slot, the game's in place.
         let player_combat = std::mem::replace(&mut self.combat, combat);
         self.player_combat.insert(conn, player_combat);
         play.modifiers = std::mem::replace(&mut self.applied_modifiers, modifiers);
@@ -541,7 +541,7 @@ impl crate::game::Sim<'_> {
                 p.player = Some(conn);
             }
         }
-        // The player's swings are theirs: the host's own count stays the host's.
+        // The player's swings are theirs: the game's own count stays the game's.
         play.swings += self.swings_started.wrapping_sub(swings);
         self.swings_started = swings;
         for packet in std::mem::replace(&mut self.player_packets, packets) {
@@ -574,7 +574,7 @@ impl crate::game::Sim<'_> {
         // itself (lan_open_container), not a stand-in block entity.
         self.close_ender_chest();
 
-        // What the action opened: handed to the player instead of the host.
+        // What the action opened: handed to the player instead of the game.
         let opened = self.container.take();
         let player_table = std::mem::replace(&mut self.craft_table, craft_table);
         let opened_table = (std::mem::replace(&mut self.craft_size, craft_size) == 3)
@@ -661,7 +661,7 @@ impl crate::game::Sim<'_> {
         self.mode = mode;
         self.creative = creative;
         self.selected = std::mem::replace(&mut g.selected, selected);
-        // `g.selected` now holds the host's value: swap the inventories back.
+        // `g.selected` now holds the game's value: swap the inventories back.
         std::mem::swap(&mut self.selected, &mut g.selected);
         std::mem::swap(&mut self.inventory, &mut g.inventory);
         std::mem::swap(&mut self.armor, &mut g.armor);
@@ -770,11 +770,11 @@ impl crate::game::Sim<'_> {
             self.net_open_mount(net, conn, mob);
         }
     }
-    /// `ServerLevel.players()` in turn: the host's own player, then each
+    /// `ServerLevel.players()` in turn: the game's own player, then each
     /// player in the level in place with their state swapped in (`as_player`).
     /// What reaches the players around a point (a beacon's powers, a splash
     /// potion, a warden's darkness, an elder guardian's curse) lands on each
-    /// of them, not only on the host. A server has no player of its own.
+    /// of them, not only on the game. A server has no player of its own.
     /// Inside a player's action (the hub taken) only that player is in place.
     pub(super) fn for_each_player(&mut self, mut f: impl FnMut(&mut Self)) {
         if self.player.is_some() {
@@ -795,7 +795,7 @@ impl crate::game::Sim<'_> {
         }
         self.network = Some(net);
     }
-    /// The game mode fields without `set_mode`'s side effects on the host.
+    /// The game mode fields without `set_mode`'s side effects on the game.
     fn set_mode_raw(&mut self, id: i32) {
         use crate::hc::command::args::GameMode;
         self.mode = match id {
@@ -1588,7 +1588,7 @@ impl crate::game::Sim<'_> {
     /// held (`dropOrPlaceInInventory` for a removed player). Respawning
     /// sooner removes it too.
     /// `ServerGamePacketListenerImpl.handleTeleportToEntityPacket` for a
-    /// player: the host's own, or a player in the world.
+    /// player: the game's own, or a player in the world.
     fn player_spectate_teleport(&mut self, net: &mut Network, gi: usize, uuid: u128) {
         let own = net.hub.players[gi].conn;
         let target = net
@@ -1861,7 +1861,7 @@ impl crate::game::Sim<'_> {
             return;
         }
         // The player's own level (Commands.performCommand with the player's
-        // source): an operator's on a dedicated server, never the host's.
+        // source): an operator's on a dedicated server, never the game's.
         let Some(permission) = net.hub.player(conn).map(|g| g.permission) else {
             return;
         };
@@ -1928,11 +1928,11 @@ impl crate::game::Sim<'_> {
         ok
     }
     /// The `broadcastToAdmins` lines a command queued (`source`: the player
-    /// whose it was; none for the host's or the console's): every other
+    /// whose it was; none for the game's or the console's): every other
     /// operator gets them, and the console logs them as the server's own
     /// system messages (MinecraftServer.sendSystemMessage).
     pub(super) fn send_admin_feedback(&mut self, net: &mut Network, source: Option<u32>) {
-        // PlayerList.isOp for the host of a world open to LAN: the owner when
+        // PlayerList.isOp for the game of a world open to LAN: the owner when
         // the world allows commands, everyone when the LAN does.
         let host_op = source.is_some()
             && !net.hub.config.dedicated
@@ -2004,7 +2004,7 @@ impl crate::game::Sim<'_> {
         let Some(i) = net.hub.players.iter().position(|g| g.conn == conn) else {
             return;
         };
-        // The player's own bed, else the world spawn: never the host's bed.
+        // The player's own bed, else the world spawn: never the game's bed.
         let world = self
             .level
             .world_spawn
@@ -2383,7 +2383,7 @@ impl crate::game::Sim<'_> {
             }
         }
     }
-    /// `SleepStatus.update`'s counts over the host's player and the players:
+    /// `SleepStatus.update`'s counts over the game's player and the players:
     /// the players not in spectator mode, how many are in bed, and how many
     /// of those have slept 100 ticks.
     fn sleep_counts(&self) -> (i64, i64, i64) {
@@ -2423,7 +2423,7 @@ impl crate::game::Sim<'_> {
         ((active * percent + 99) / 100).max(1)
     }
     /// `SleepStatus.areEnoughSleeping` and `areEnoughDeepSleeping` over the
-    /// host's player and the players: of the players not in spectator mode,
+    /// game's player and the players: of the players not in spectator mode,
     /// players_sleeping_percentage of them (at least one) are in bed, and as
     /// many have slept 100 ticks.
     pub(super) fn enough_slept(&self) -> bool {
@@ -2491,7 +2491,7 @@ impl crate::game::Sim<'_> {
     /// the player made ServerGamePacketListenerImpl.handleMovePlayer's jump
     /// (`ServerPlayer.jumpFromGround`'s exhaustion),
     /// ServerPlayer.doCheckFallDamage (the fall distance grows while they go
-    /// down and hurts them where they land, as the host's own landing does;
+    /// down and hurts them where they land, as the game's own landing does;
     /// water resets it, lava halves it) and checkMovementStatistics (the
     /// exhaustion of sprinting and swimming), then LivingEntity.baseTick's
     /// hazards (drowning, lava, fire blocks, suffocation, the void), and
@@ -2942,7 +2942,7 @@ impl crate::game::Sim<'_> {
         let swinging = play.swing.swinging();
         if progress != play.last_progress && progress >= 0 {
             play.last_progress = progress;
-            // The host player sees it too (on the server thread its window is a player).
+            // The game's player sees it too (on the server thread its window is a player).
             self.destroy_block_progress(net.hub.players[gi].entity_id, pos, progress);
             net.hub.broadcast_near(
                 [f64::from(pos[0]), f64::from(pos[1]), f64::from(pos[2])],
@@ -3208,8 +3208,7 @@ impl crate::game::Sim<'_> {
                 .send_to(conn, &swing_packet(g.entity_id, c.hand, c.animation));
         }
     }
-    /// The tick's arm swings for the players around (the players' to everyone
-    /// else, the host's to the players), and `LivingEntity.updateSwingTime`
+    /// The tick's arm swings for the players around, and `LivingEntity.updateSwingTime`
     /// for the players' bodies here.
     pub(super) fn net_swings(&mut self, net: &mut Network) {
         let conns: Vec<u32> = net.play.keys().copied().collect();
@@ -3230,48 +3229,6 @@ impl crate::game::Sim<'_> {
             }
             play.swing.tick();
         }
-        self.net_host_crack(net);
-        if self.swings_started != net.host_swings {
-            net.host_swings = self.swings_started;
-            if let (Some(p), Some(c)) = (self.player.as_ref(), self.swing.current) {
-                let at = [p.position.x, p.position.y, p.position.z];
-                let packet = swing_packet(net.host_entity, c.hand, c.animation);
-                net.hub.broadcast_near(at, 128.0, &packet, None);
-            }
-        }
-    }
-}
-
-impl crate::game::Sim<'_> {
-    /// The host player's crack, for the players (`ServerLevel.destroyBlockProgress` from the
-    /// host's mining): each new stage, and -1 once it stops or breaks the block.
-    fn net_host_crack(&mut self, net: &mut Network) {
-        let now = self
-            .mining
-            .as_ref()
-            .and_then(|m| (m.progress > 0.0).then(|| (m.pos, ((m.progress * 10.0) as i32).min(9))));
-        if now == net.host_crack {
-            return;
-        }
-        let packet = |pos: [i32; 3], progress: u8| {
-            C::BlockDestruction(play::BlockDestruction {
-                id: net.host_entity,
-                pos,
-                progress,
-            })
-        };
-        let near = |pos: [i32; 3]| [f64::from(pos[0]), f64::from(pos[1]), f64::from(pos[2])];
-        if let Some((pos, _)) = net.host_crack
-            && now.is_none_or(|(p, _)| p != pos)
-        {
-            net.hub
-                .broadcast_near(near(pos), 64.0, &packet(pos, 255), None);
-        }
-        if let Some((pos, stage)) = now {
-            net.hub
-                .broadcast_near(near(pos), 64.0, &packet(pos, stage as u8), None);
-        }
-        net.host_crack = now;
     }
 }
 

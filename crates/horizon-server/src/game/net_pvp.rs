@@ -1,11 +1,10 @@
-//! Players hitting players on the server (`Player.attack` on a player):
-//! the host hits a player, a player hits the host or another player. The hit
+//! Players hitting players on the server (`Player.attack` on a player). The hit
 //! is worked out as the attacker (weapon, attack strength, critical hit,
 //! enchantments, a mace's smash) and lands on the victim like any player
 //! attack (blocking, armour, knockback), when the `pvp` game rule allows it
 //! (`ServerPlayer.canHarmPlayer`, `isPvpAllowed`). A player's arrow on
 //! another player lands the same way.
-use super::{net_mobs::player_bounds, ray_box, server_net::Network, view_vector};
+use super::{net_mobs::player_bounds, server_net::Network};
 
 use crate::hc::{
     Result,
@@ -27,7 +26,6 @@ pub(super) fn meets_players(kind: &ProjectileKind) -> bool {
 /// Who a player's attack lands on.
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(super) enum Victim {
-    Host,
     ServerPlayer(u32),
 }
 
@@ -58,7 +56,7 @@ pub(super) struct Strike {
 /// worked out as the attacker.
 #[derive(Clone)]
 pub(super) struct Sweep {
-    /// The attacking player (none: the host).
+    /// The attacking player (none: the game).
     attacker: Option<u32>,
     from: [f64; 3],
     /// The damage after the enchantments and the attack strength.
@@ -81,44 +79,8 @@ impl Strike {
 }
 
 impl crate::game::Sim<'_> {
-    /// The player on the host's crosshair and how far, within reach.
-    pub(super) fn aimed_player(&self) -> Option<(u32, f64)> {
-        let net = self.network.as_ref()?;
-        let eye = self.eye_position()?;
-        let dir = view_vector(self.yaw, self.pitch);
-        let reach = if self.creative { 5.0 } else { 3.0 };
-        net.hub
-            .players
-            .iter()
-            .filter(|g| net.hub.here(g) && g.loaded && !g.dead && !g.spectator())
-            .filter_map(|g| Some((g.conn, ray_box(eye, dir, reach, player_bounds(g))?)))
-            .min_by(|a, b| a.1.total_cmp(&b.1))
-    }
-    /// The host's attack on the player under the crosshair, when no mob or
-    /// block is nearer.
-    pub(super) fn attack_player(&mut self) -> bool {
-        let Some((conn, d)) = self.aimed_player() else {
-            return false;
-        };
-        if self.mob_hit().is_some_and(|(_, m)| m < d) || !self.before_block(d) {
-            return false;
-        }
-        let Some(mut net) = self.network.take() else {
-            return false;
-        };
-        if let Some(strike) = self.pvp_strike()
-            && self.pvp_land(&mut net, Victim::ServerPlayer(conn), &strike)
-        {
-            self.pvp_exhaustion();
-            if strike.stops_sprint() {
-                self.stop_sprint_after_extra_knockback();
-            }
-        }
-        self.network = Some(net);
-        true
-    }
     /// `Player.attack`'s `causeFoodExhaustion(0.1F)`, charged to the attacker
-    /// (the host, or a player swapped in) only once the hit hurt the victim.
+    /// (the game, or a player swapped in) only once the hit hurt the victim.
     pub(super) fn pvp_exhaustion(&mut self) {
         if let Some(p) = self.player.as_mut()
             && !self.creative
@@ -126,7 +88,7 @@ impl crate::game::Sim<'_> {
             p.cause_food_exhaustion(0.1);
         }
     }
-    /// The attacker's side of `Player.attack` (the host, or a player swapped
+    /// The attacker's side of `Player.attack` (the game, or a player swapped
     /// in): the damage, the charge reset and the swing.
     pub(super) fn pvp_strike(&mut self) -> Option<Strike> {
         let p = self.player.as_ref()?;
@@ -174,7 +136,7 @@ impl crate::game::Sim<'_> {
                 .collect()
         })
     }
-    /// The player a player's projectile hit, when it hit one: the host for a
+    /// The player a player's projectile hit, when it hit one: the game for a
     /// player's shot, or a player.
     pub(super) fn projectile_pvp_victim(&self, p: &Projectile, hit: Hit) -> Option<Victim> {
         if p.owner != Some(Who::Player) || !meets_players(&p.kind) {
@@ -184,7 +146,7 @@ impl crate::game::Sim<'_> {
             return None;
         };
         match who {
-            Who::Player => p.player.map(|_| Victim::Host),
+            Who::Player => None,
             Who::Mob(id) => self
                 .network
                 .as_ref()?
@@ -217,7 +179,6 @@ impl crate::game::Sim<'_> {
             None => self.player_team().cloned(),
         };
         let target = match victim {
-            Victim::Host => self.player_team().cloned(),
             Victim::ServerPlayer(conn) => net.hub.player(conn).and_then(|g| team_of(self, &g.name)),
         };
         let refused = !(self.world_data.rules.bool("pvp")
@@ -227,13 +188,6 @@ impl crate::game::Sim<'_> {
             at,
         };
         let result = match victim {
-            Victim::Host => {
-                self.network = Some(net);
-                self.combat.refuse_player_hit = refused;
-                let r = self.projectile_hit(p, on_player);
-                self.combat.refuse_player_hit = false;
-                return r;
-            }
             Victim::ServerPlayer(conn) => self.player_hit_by(&mut net, conn, |g| {
                 g.combat.refuse_player_hit = refused;
                 let r = g.projectile_hit(p, on_player);
@@ -250,7 +204,6 @@ impl crate::game::Sim<'_> {
         // ServerPlayer.canHarmPlayer: the pvp game rule, then the victim's
         // team (Player.canHarmPlayer: allies only with friendly fire on).
         let team = match victim {
-            Victim::Host => self.player_team(),
             Victim::ServerPlayer(conn) => net
                 .hub
                 .player(conn)
@@ -281,7 +234,6 @@ impl crate::game::Sim<'_> {
         };
         let (hurt, thorns) = if self.world_data.rules.bool("pvp") && harm {
             match victim {
-                Victim::Host => land(self),
                 Victim::ServerPlayer(conn) => {
                     self.player_struck_by(net, conn, land).unwrap_or_default()
                 }
@@ -292,12 +244,6 @@ impl crate::game::Sim<'_> {
         // ServerPlayer.awardKillScore: the blow that kills a player.
         if hurt {
             let died = match victim {
-                // A totem that fired is applied on the next tick_totem, so the
-                // victim is still at zero health but is not dying.
-                Victim::Host => self
-                    .player
-                    .as_ref()
-                    .is_some_and(|p| p.health.dead_or_dying() && !p.health.totem_used),
                 Victim::ServerPlayer(conn) => net
                     .hub
                     .player(conn)
@@ -315,7 +261,6 @@ impl crate::game::Sim<'_> {
         }
         if hurt && (s.crit || s.magic) {
             let target = match victim {
-                Victim::Host => self.player.as_ref().map(|p| (net.host_entity, p)),
                 Victim::ServerPlayer(conn) => net
                     .hub
                     .player(conn)
@@ -355,7 +300,6 @@ impl crate::game::Sim<'_> {
             self.sweep_attack(at, Some(s.from));
             // The other players next to the victim (Player.doSweepAttack).
             let bounds = match victim {
-                Victim::Host => self.player.as_ref().map(|p| p.bounds()),
                 Victim::ServerPlayer(conn) => net.hub.player(conn).map(player_bounds),
             };
             if let (Some(sweep), Some(bounds)) = (&s.sweep_hit, bounds) {
@@ -394,7 +338,7 @@ impl crate::game::Sim<'_> {
         }
     }
     /// A sweep from a mob hit reaches the other players. Inside a player's
-    /// turn the host holds the other players (`as_player`), so it waits for
+    /// turn the game holds the other players (`as_player`), so it waits for
     /// the turn to end.
     pub(super) fn sweep_other_players(&mut self, sweep: Sweep) {
         if self.net_acting.is_some() {
@@ -446,7 +390,6 @@ impl crate::game::Sim<'_> {
                 continue;
             }
             match victim {
-                Victim::Host => land(self),
                 Victim::ServerPlayer(conn) => {
                     self.player_struck_by(net, conn, land);
                 }
@@ -458,9 +401,6 @@ impl crate::game::Sim<'_> {
 impl crate::game::Sim<'_> {
     /// The player `id` that player `conn` attacks, if it is one.
     pub(crate) fn pvp_victim(net: &Network, conn: u32, id: i32) -> Option<Victim> {
-        if id == net.host_entity {
-            return Some(Victim::Host);
-        }
         net.hub
             .players
             .iter()

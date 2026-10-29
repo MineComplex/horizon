@@ -113,7 +113,7 @@ pub fn register_parrot(m: &mut Mob) {
     g.add(3, LandOnOwnersShoulder);
 }
 /// `LandOnOwnersShoulderGoal`: a standing parrot, 100 ticks old, lands on
-/// the shoulder of the owner it touches; the host does the landing.
+/// the shoulder of the owner it touches; the game does the landing.
 #[derive(Clone, Debug)]
 struct LandOnOwnersShoulder;
 impl Goal for LandOnOwnersShoulder {

@@ -1,5 +1,5 @@
 //! Trading for players: the villager screen a player opens runs the same
-//! merchant menu as the host's (`crate::hc::menu`, `Kind::Merchant`),
+//! merchant menu as the game's (`crate::hc::menu`, `Kind::Merchant`),
 //! with vanilla's packets: OpenScreen (`minecraft:merchant`), MerchantOffers,
 //! the select trade packet, container clicks and the content sync after each.
 use super::{server_net::Network, stations::Kind as StationKind, trading::MerchantState};

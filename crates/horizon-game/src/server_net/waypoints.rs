@@ -79,7 +79,7 @@ impl Default for Icon {
 #[derive(Clone, Debug)]
 pub struct Player {
     pub uuid: u128,
-    /// The connection that receives the player's locator bar (None: the host,
+    /// The connection that receives the player's locator bar (None: the game,
     /// whose own game draws it).
     pub conn: Option<u32>,
     pub position: [f64; 3],

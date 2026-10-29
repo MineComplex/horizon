@@ -47,22 +47,15 @@ pub struct NetSettings {
 pub(super) struct Network {
     pub hub: Hub,
     pub settings: NetSettings,
-    pub host_entity: i32,
-    /// The host's swings the players were told of (`crate::game::Sim::swings_started`).
-    pub host_swings: u32,
-    /// The host's crack the players were told of: the block and its stage.
-    pub host_crack: Option<([i32; 3], i32)>,
-    /// The players' models in the host's world.
+    /// The players' models in the game's world.
     pub models: HashMap<u32, Mob>,
     pub play: HashMap<u32, super::net_actions::PlayerPlay>,
     /// Blocks broken this tick (their sound is a level event for the players).
     pub broken: Vec<[f64; 3]>,
     /// Hurt time, death and swing time (while swinging) of the mobs players see.
     mob_state: HashMap<super::Dim, HashMap<u32, (i32, bool, Option<i32>)>>,
-    /// The player each mob sees as its player, when not the host (game/net_mobs.rs).
+    /// The player each mob sees as its player, when not the game (game/net_mobs.rs).
     pub mob_players: HashMap<u32, u32>,
-    /// An integrated server's owner (game/integrated.rs).
-    pub owner: Option<Owner>,
     /// The players' locator bars, one waypoint manager per level by
     /// dimension id (game/net_waypoints.rs), and the players who are dead,
     /// whose respawn replaces their waypoint.
@@ -103,15 +96,6 @@ impl Network {
             self.award_leave_game(conn);
         }
     }
-}
-
-/// The player who owns an integrated server's world: a player whose state is
-/// the world's own player (`players/data/<singleplayer_uuid>.dat`), as in
-/// single player.
-pub(super) struct Owner {
-    pub uuid: u128,
-    /// The world's player as loaded, until the owner joins.
-    pub saved: Option<Box<crate::hc::save::Level>>,
 }
 
 /// A stable UUID for an entity that has none.
@@ -974,16 +958,16 @@ impl crate::game::Sim<'_> {
                     ],
                     "chunks": g.sent_chunks.len(),
                     "tracked": g.tracker.len(),
-                    // Whether the host draws this player lying in a bed.
+                    // Whether the game draws this player lying in a bed.
                     "model_lying": h.models.get(&g.conn).map(|m| m.extra.ints[1] != 0),
-                    // The armour the host draws on this player, head to feet.
+                    // The armour the game draws on this player, head to feet.
                     "model_armor": h.models.get(&g.conn).map(|m| {
                         [&m.extra.head, &m.extra.chest, &m.extra.legs, &m.extra.feet]
                             .map(|s| s.as_deref())
                     }),
-                    // The host draws this player's arm swinging.
+                    // The game draws this player's arm swinging.
                     "model_swinging": h.models.get(&g.conn).map(|m| m.ai.swinging),
-                    // For how many ticks the host draws this player using an item.
+                    // For how many ticks the game draws this player using an item.
                     "model_using": h.models.get(&g.conn).map(|m| m.extra.using_item),
                 })).collect::<Vec<_>>(),
             }),
@@ -1028,8 +1012,6 @@ impl crate::game::Sim<'_> {
                 .clone(),
         );
         let network = Listener::start_with(sync.clone(), net_config)?;
-        self.next_entity += 1;
-        let host_entity = self.next_entity as i32;
         let mut hub = Hub::new(network, sync, encoder, config);
         hub.flat_world = self.world_flat;
         let port = hub.network.port;
@@ -1038,15 +1020,11 @@ impl crate::game::Sim<'_> {
         self.network = Some(Network {
             hub,
             settings: NetSettings { port, ..settings },
-            host_entity,
-            host_swings: self.swings_started,
-            host_crack: None,
             models: HashMap::new(),
             play: HashMap::new(),
             broken: Vec::new(),
             mob_state: HashMap::new(),
             mob_players: HashMap::new(),
-            owner: None,
             waypoints: Default::default(),
             waypoint_dead: Default::default(),
             border_sent: None,
@@ -1056,7 +1034,7 @@ impl crate::game::Sim<'_> {
         self.sounds.capture = Some(Vec::new());
         Ok(())
     }
-    /// IntegratedServer.unpublishServer: the players are sent away.
+    /// The server stops: the players are saved and sent away.
     pub(super) fn net_close(&mut self, announce: bool) {
         let Some(mut net) = self.network.take() else {
             return;
@@ -1083,30 +1061,18 @@ impl crate::game::Sim<'_> {
             ));
         }
     }
-    /// Save a player when they leave or the world closes: an integrated
-    /// server's owner with the world (`save_game`), anyone else in their file.
+    /// Save a player when they leave or the server stops, in their file.
     pub(super) fn save_player(
         &mut self,
         net: &Network,
         player: &crate::hc::server_net::player::ServerPlayer,
     ) {
-        if net.owner.as_ref().is_some_and(|o| o.uuid == player.uuid) {
-            if player.placed {
-                playerdata::store(player, &mut self.level);
-            }
-        } else {
-            playerdata::save(player, &self.world_root);
-        }
+        playerdata::save(player, &self.world_root);
         self.save_player_records(net, player);
     }
-    /// The file name of a player's advancements and statistics: an
-    /// integrated server's owner keeps single player's.
-    fn records_uuid(&self, net: &Network, uuid: u128) -> Option<[i32; 4]> {
-        if net.owner.as_ref().is_some_and(|o| o.uuid == uuid) {
-            self.level.player_uuid
-        } else {
-            Some(playerdata::uuid_ints(uuid))
-        }
+    /// The file name of a player's advancements and statistics.
+    fn records_uuid(&self, _net: &Network, uuid: u128) -> Option<[i32; 4]> {
+        Some(playerdata::uuid_ints(uuid))
     }
     /// `PlayerAdvancements.save` and `ServerStatsCounter.save` of a network player.
     pub(super) fn save_player_records(
@@ -1166,19 +1132,6 @@ impl crate::game::Sim<'_> {
             super::stats::Stats::read(&super::stats::player_json(&self.world_root, "stats", uuid));
         stats.mark_all_dirty();
         net.play.entry(conn).or_default().stats = stats;
-    }
-    /// The integrated server's owner into the world's player, for `Level::write`.
-    pub(super) fn store_owner(&mut self) {
-        let Some(net) = &self.network else {
-            return;
-        };
-        let Some(uuid) = net.owner.as_ref().map(|o| o.uuid) else {
-            return;
-        };
-        if let Some(g) = net.hub.players.iter().find(|g| g.uuid == uuid && g.placed) {
-            playerdata::store(g, &mut self.level);
-            self.save_player_records(net, g);
-        }
     }
     /// The world's default game mode (`defaultgamemode`).
     pub(super) fn set_default_game_mode(&mut self, mode: i32) {
@@ -1259,7 +1212,7 @@ impl crate::game::Sim<'_> {
         };
         // What the tick sends a player goes to its connection at the end.
         let holding = server_net::Holding::start();
-        // The host's own commands' (and command blocks') players moving
+        // The game's own commands' (and command blocks') players moving
         // to another level, and their broadcastToAdmins lines.
         if !self.level_teleports.is_empty() {
             self.run_level_teleports(&mut net);
@@ -1402,7 +1355,7 @@ impl crate::game::Sim<'_> {
                             && let Some(g) = net.hub.player(conn)
                             && g.placed
                         {
-                            // The host's chat hears of the newcomer as the players do.
+                            // The game's chat hears of the newcomer as the players do.
                             let who = self.player_text(&g.name, g.uuid);
                             self.system_message(
                                 Text::translate("multiplayer.player.joined", &[who])
@@ -1503,20 +1456,10 @@ impl crate::game::Sim<'_> {
         let force = net.hub.config.force_game_mode;
         let root = self.world_root.clone();
         let in_place = net.hub.config.dimension.clone();
-        let owner = net.owner.as_mut();
         let Some(g) = net.hub.player_mut(conn) else {
             return;
         };
-        let saved = owner
-            .filter(|o| o.uuid == g.uuid)
-            .and_then(|o| o.saved.take());
-        let known = match saved {
-            Some(level) => {
-                playerdata::apply(g, &level);
-                level.position.is_some()
-            }
-            None => playerdata::load(g, &root),
-        };
+        let known = playerdata::load(g, &root);
         if !known || force {
             g.game_mode = default_mode;
         }
@@ -1728,14 +1671,14 @@ impl crate::game::Sim<'_> {
                 use crate::hc::mobs::{DamageKind as K, Who};
                 let player = source.attacker == Some(Who::Player);
                 let kind = super::creatures::damage_type(source.kind, player);
-                // The player a mob sees is the player acting, else the host.
-                let cause = source.attacker.map(|who| match who {
+                // The player a mob sees is the player acting.
+                let cause = source.attacker.and_then(|who| match who {
                     Who::Player => net
                         .mob_players
                         .get(&m.id)
                         .and_then(|conn| net.hub.player(*conn))
-                        .map_or(net.host_entity, |g| g.entity_id),
-                    Who::Mob(id) => id as i32,
+                        .map(|g| g.entity_id),
+                    Who::Mob(id) => Some(id as i32),
                 });
                 // A projectile is the direct entity of its hit: not tracked here.
                 let melee = matches!(
@@ -1768,21 +1711,17 @@ impl crate::game::Sim<'_> {
         net.mob_state.insert(self.dim, seen);
         // Level.broadcastEntityEvent(player, 2) of a spear's stab.
         for attacker in kinetic_hits {
-            let hit = match attacker {
-                None => self
-                    .player
-                    .as_ref()
-                    .map(|p| (net.host_entity, [p.position.x, p.position.y, p.position.z])),
-                Some(conn) => net.hub.player(conn).map(|g| (g.entity_id, g.position)),
-            };
+            let hit = attacker
+                .and_then(|conn| net.hub.player(conn))
+                .map(|g| (g.entity_id, g.position));
             if let Some((id, at)) = hit {
                 net.hub.entity_event(id, 2, at);
             }
         }
         for (attacker, target, magic) in critical_hits {
-            let Some(attacker) = attacker.map_or(Some(net.host_entity), |conn| {
-                net.hub.player(conn).map(|g| g.entity_id)
-            }) else {
+            let Some(attacker) =
+                attacker.and_then(|conn| net.hub.player(conn).map(|g| g.entity_id))
+            else {
                 continue;
             };
             net.hub.critical_hit(attacker, target, magic);
@@ -1809,25 +1748,17 @@ impl crate::game::Sim<'_> {
 }
 
 impl crate::game::Sim<'_> {
-    /// A hub's chat and log lines: a dedicated server logs them
+    /// A hub's chat and log lines, in the server's log
     /// (MinecraftServer.logChatMessage, `[Not Secure]` for unsigned or
-    /// expired messages); a LAN host shows the chat.
+    /// expired messages).
     pub(super) fn net_log_event(&mut self, event: HostEvent) {
-        let dedicated = true;
         match event {
-            HostEvent::Chat { line, secure } if dedicated => {
+            HostEvent::Chat { line, secure } => {
                 let tag = if secure { "" } else { "[Not Secure] " };
                 super::dedicated::log("INFO", &format!("{tag}{line}"));
             }
-            // Player chat (and `/say`'s or `/me`'s, which are chat messages
-            // too): the host's Chat option decides, as `ChatListener` does
-            // for the players' packets. Command feedback is a system message
-            // and takes the system-message permission instead.
-            HostEvent::Chat { line, .. } => self.player_message(Text::literal(line)),
-            HostEvent::Warn(line) if dedicated => super::dedicated::log("WARN", &line),
-            HostEvent::Warn(line) => log::warn!("{line}"),
-            HostEvent::Error(line) if dedicated => super::dedicated::log("ERROR", &line),
-            HostEvent::Error(line) => log::error!("{line}"),
+            HostEvent::Warn(line) => super::dedicated::log("WARN", &line),
+            HostEvent::Error(line) => super::dedicated::log("ERROR", &line),
             _ => {}
         }
     }

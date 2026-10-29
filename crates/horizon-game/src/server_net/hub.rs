@@ -115,7 +115,7 @@ pub enum HostEvent {
     /// A player left (state to save, entities to drop).
     Left(Box<ServerPlayer>),
     Packet(u32, Box<S>),
-    /// A chat line to show on the host (already broadcast to the players);
+    /// A chat line to show on the game (already broadcast to the players);
     /// a dedicated server logs it, `[Not Secure]` unless signed and fresh.
     Chat {
         line: String,
@@ -502,7 +502,7 @@ impl Hub {
             overlay: true,
         }));
     }
-    /// A chat message from the host (a disguised chat: the host has no
+    /// A chat message from the game (a disguised chat: the game has no
     /// connection to sign with).
     pub fn chat(&self, sender: &str, text: &str) {
         self.broadcast(&C::DisguisedChat(play::DisguisedChat {
@@ -640,7 +640,7 @@ impl Hub {
 
     fn admit(&mut self, j: super::Joined, ctx: &mut TickCtx) -> u32 {
         // The game's ids are taken by incrementing first: the current value
-        // is the last id in use (the host's own, right after opening to LAN).
+        // is the last id in use (the game's own, right after opening to LAN).
         *ctx.next_entity += 1;
         let entity_id = *ctx.next_entity as i32;
         let conn = j.conn;
@@ -2476,7 +2476,7 @@ impl Hub {
         }));
     }
 
-    /// The host's game mode changed (PlayerInfo UPDATE_GAME_MODE for everyone).
+    /// The game's game mode changed (PlayerInfo UPDATE_GAME_MODE for everyone).
     pub fn set_host_game_mode(&self, uuid: u128, mode: i32) {
         self.broadcast(&C::PlayerInfoUpdate(play::PlayerInfoUpdate {
             actions: 4,

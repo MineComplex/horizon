@@ -1147,7 +1147,7 @@ struct Sim<'a> {
     /// (attribute swapping).
     attack_item: Option<Arc<str>>,
     /// Mobs a player hurt (`LivingEntity.lastHurtByPlayer`), with the player
-    /// it was by connection (None: the host).
+    /// it was by connection (None: the game).
     last_hurt_by_player: HashMap<u32, Option<u32>>,
     /// Mobs whose death (`LivingEntity.die`) has been handled.
     died: HashSet<u32>,
@@ -1872,7 +1872,7 @@ impl crate::game::Sim<'_> {
             self.dropped.last_mut().unwrap().thrower = Some(uuid);
         }
     }
-    /// The UUID of the player acting: the player whose turn it is, else the host.
+    /// The UUID of the player acting: the player whose turn it is, else the game.
     pub(super) fn acting_player_uuid(&mut self) -> [i32; 4] {
         match self.net_acting_uuid {
             Some(player) => crate::hc::server_net::playerdata::uuid_ints(player),
@@ -1888,7 +1888,7 @@ impl crate::game::Sim<'_> {
         let catalog = self.res.items();
         let max_stack =
             |stack: &ItemStack| catalog.get(&stack.item).map_or(64, |i| i.max_stack).max(1);
-        // A player only shows the host's items.
+        // A player only shows the game's items.
         let merging = true;
         for i in 0..items.len() {
             if removed[i] {
@@ -4279,11 +4279,6 @@ impl crate::game::Sim<'_> {
         if running {
             self.advance_clock();
         }
-        if self.use_delay > 0 {
-            self.use_delay -= 1;
-        }
-        self.tick_totem();
-        self.update_totem_ready();
         self.tick_command_extras();
         self.tick_world(running)
     }
@@ -4293,11 +4288,6 @@ impl crate::game::Sim<'_> {
         self.share_spawn_conditions();
         self.update_chunk_tickets();
         crate::hc::spans::time("tick_effects", || self.tick_effects(running));
-        // Player.tick's ItemCooldowns.tick for the window's player (a
-        // server's players count theirs down in `tick_players`).
-        self.shield_cooldown = self.shield_cooldown.saturating_sub(1);
-        self.cooldowns.tick();
-        crate::hc::spans::time("tick_using", || self.tick_using());
         // The players' digging came in with their packets, before the level
         // ticks; ServerLevel.tick then runs the scheduled and random block
         // ticks before any entity, so what they drop or spawn (dispensed
@@ -4318,7 +4308,6 @@ impl crate::game::Sim<'_> {
             crate::hc::spans::time("tick_maps", || self.tick_maps());
             self.tick_lodestone_compasses();
             crate::hc::spans::time("tick_bolts", || self.tick_bolts());
-            crate::hc::spans::time("tick_fishing", || self.tick_fishing());
             crate::hc::spans::time("tick_tridents", || self.tick_tridents());
             crate::hc::spans::time("tick_rockets", || self.tick_rockets());
             crate::hc::spans::time("tick_ominous_item_spawners", || {
@@ -4328,7 +4317,6 @@ impl crate::game::Sim<'_> {
         if running {
             crate::hc::spans::time("entity_portals", || self.handle_entity_portals());
             crate::hc::spans::time("tick_items", || self.tick_items());
-            crate::hc::spans::time("touch_arrows", || self.touch_arrows());
         }
         crate::hc::spans::time("spawn_loaded_entities", || self.spawn_loaded_entities());
         if running {
@@ -5216,7 +5204,6 @@ impl crate::game::Sim<'_> {
             || self.attack_boat(hand_damage)
             || self.attack_cart(hand_damage)
             || self.attack_dragon()
-            || self.attack_player()
         {
             return true;
         }
@@ -6341,7 +6328,7 @@ impl crate::game::Sim<'_> {
             .as_ref()
             .filter(|p| !p.health.dead_or_dying() && !spectator);
         // ExperienceOrb.followNearbyPlayer: each orb goes for the nearest
-        // living player within 8 blocks, the host's own or a player.
+        // living player within 8 blocks, the game's own or a player.
         let mut followed: Vec<([f64; 3], [f64; 3])> = player
             .map(|p| {
                 let feet = [p.position.x, p.position.y, p.position.z];
@@ -6924,7 +6911,6 @@ impl crate::game::Sim<'_> {
         self.save_schedule();
         self.save_warden_tracker();
         self.sync_level();
-        self.store_owner();
         self.level.write(&self.world_root)?;
         self.save_world_state();
         self.message = Some(("Saved the game".into(), Instant::now()));

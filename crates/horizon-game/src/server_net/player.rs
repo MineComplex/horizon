@@ -1,5 +1,5 @@
 //! A remote player: connection, position, chunk and entity views, and the
-//! player state (inventory, health, game mode) that the host's gameplay code
+//! player state (inventory, health, game mode) that the game's gameplay code
 //! operates on when it acts for them.
 use super::{Joined, PlayerSender, entity::Tracker};
 use crate::{

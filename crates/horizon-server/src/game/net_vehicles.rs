@@ -176,7 +176,7 @@ impl crate::game::Sim<'_> {
         if before == Some(vehicle) {
             return;
         }
-        // The host in the window rides it already.
+        // The game in the window rides it already.
         if self.riding == Some(vehicle) {
             net.hub.players[gi].vehicle = before;
             return;

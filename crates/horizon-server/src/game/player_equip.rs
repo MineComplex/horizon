@@ -1,7 +1,7 @@
 //! `LivingEntity.onEquipItem` for players: the equip sound and the equip
 //! game event when an armour or off-hand slot takes a different item, from
 //! every path that calls it (use, the inventory menu, the creative screen,
-//! the swap-hands key, dispensers), for the host and for players.
+//! the swap-hands key, dispensers), for the game and for players.
 use crate::hc::items::ItemStack;
 
 /// The equipment slots `onEquipItem` can act on, as `EquipmentSlot` names:
@@ -20,7 +20,7 @@ fn same(a: Option<&ItemStack>, b: Option<&ItemStack>) -> bool {
 
 impl crate::game::Sim<'_> {
     /// `LivingEntity.onEquipItem(slot, old, new)` for the player in place
-    /// (the host, or a player inside `as_player`).
+    /// (the game, or a player inside `as_player`).
     pub(super) fn player_on_equip(
         &mut self,
         slot: &str,
