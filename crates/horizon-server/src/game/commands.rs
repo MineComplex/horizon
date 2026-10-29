@@ -35,11 +35,11 @@ pub(super) type R<T> = Result<T, CommandError>;
 /// An entity a selector found.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub(super) enum Target {
-    /// The player in place: the host's, or the guest whose turn it is.
+    /// The player in place: the host's, or the player whose turn it is.
     Player,
-    /// Another player of a hosted world or server: a guest by connection
+    /// Another player of a server or server: a player by connection
     /// (game/commands/players.rs).
-    Guest(u32),
+    ServerPlayer(u32),
     Mob(u32),
     Item(u32),
     /// An experience orb, by its entity id.
@@ -190,7 +190,7 @@ impl crate::game::Sim<'_> {
         self.broadcast_to_admins(message);
     }
     /// CommandSourceStack.broadcastToAdmins (`sendSuccess` with `broadcast`)
-    /// for a guest's command, the host's in a world open to LAN and the
+    /// for a player's command, the host's in a world open to LAN and the
     /// dedicated server console's when `broadcast-console-to-ops` is on:
     /// `[name: message]`, gray and italic, for the other operators when
     /// `send_command_feedback`, and for a player's command on a dedicated
@@ -199,8 +199,8 @@ impl crate::game::Sim<'_> {
     pub(super) fn broadcast_to_admins(&mut self, message: Text) {
         let informs = match self.console_broadcast {
             Some(broadcast) => broadcast,
-            // While a guest acts the host's LanHost is out of `self.lan`.
-            None => self.lan_acting.is_some() || self.lan.is_some(),
+            // While a player acts the host's Network is out of `self.network`.
+            None => self.net_acting.is_some() || self.network.is_some(),
         };
         if !informs
             || message
@@ -212,7 +212,7 @@ impl crate::game::Sim<'_> {
         let ops = self.world_data.rules.bool("send_command_feedback");
         // MinecraftServer.sendSystemMessage, unless the server is the source.
         let console = self.console_broadcast.is_none()
-            && self.lan_acting.is_some()
+            && self.net_acting.is_some()
             && self.world_data.rules.bool("log_admin_commands");
         if !ops && !console {
             return;
@@ -233,7 +233,7 @@ impl crate::game::Sim<'_> {
     /// `/tell`, showing the player on hover, inserting the name.
     pub(super) fn player_display_name(&self) -> Text {
         let name = self.acting_player_name().to_owned();
-        let Some(uuid) = self.lan_acting_uuid else {
+        let Some(uuid) = self.net_acting_uuid else {
             return self.target_name(Target::Player);
         };
         self.target_name(Target::Player).with_component_fields(vec![
@@ -309,11 +309,11 @@ impl crate::game::Sim<'_> {
     /// level in place.
     pub(super) fn target_level(&self, t: Target) -> Dim {
         let conn = match t {
-            Target::Player => self.lan_acting,
-            Target::Guest(conn) => Some(conn),
+            Target::Player => self.net_acting,
+            Target::ServerPlayer(conn) => Some(conn),
             _ => None,
         };
-        conn.and_then(|c| self.command_guest(c))
+        conn.and_then(|c| self.command_player(c))
             .map_or(self.dim, |g| Dim::from_id(&g.dimension))
     }
     pub(super) fn target_position(&self, t: Target) -> Option<[f64; 3]> {
@@ -322,7 +322,7 @@ impl crate::game::Sim<'_> {
                 .player
                 .as_ref()
                 .map(|p| [p.position.x, p.position.y, p.position.z]),
-            Target::Guest(conn) => self.command_guest(conn).map(|g| g.position),
+            Target::ServerPlayer(conn) => self.command_player(conn).map(|g| g.position),
             Target::Mob(id) => self
                 .mobs
                 .iter()
@@ -394,7 +394,7 @@ impl crate::game::Sim<'_> {
     }
     pub(super) fn target_type(&self, t: Target) -> String {
         match t {
-            Target::Player | Target::Guest(_) => "minecraft:player".into(),
+            Target::Player | Target::ServerPlayer(_) => "minecraft:player".into(),
             Target::Mob(id) => self
                 .mobs
                 .iter()
@@ -438,17 +438,17 @@ impl crate::game::Sim<'_> {
             Target::Dragon(_) => "minecraft:ender_dragon".into(),
         }
     }
-    /// The name of the player the game acts for: a guest's own while their
+    /// The name of the player the game acts for: a player's own while their
     /// command or action runs (`Player.getName`).
     pub(super) fn acting_player_name(&self) -> &str {
-        self.lan_acting_name.as_deref().unwrap_or(PLAYER_NAME)
+        self.net_acting_name.as_deref().unwrap_or(PLAYER_NAME)
     }
     /// Entity.getDisplayName.
     pub(super) fn target_name(&self, t: Target) -> Text {
         match t {
             Target::Player => {
                 let name = self.acting_player_name();
-                if let Some(uuid) = self.lan_acting_uuid {
+                if let Some(uuid) = self.net_acting_uuid {
                     return self.player_text(name, uuid);
                 }
                 match self.score.board.players_team(name) {
@@ -457,7 +457,7 @@ impl crate::game::Sim<'_> {
                     None => Text::literal(name),
                 }
             }
-            Target::Guest(conn) => match self.command_guest(conn) {
+            Target::ServerPlayer(conn) => match self.command_player(conn) {
                 Some(g) => self.player_text(&g.name, g.uuid),
                 None => Text::empty(),
             },
@@ -525,8 +525,8 @@ impl crate::game::Sim<'_> {
             // @s: the executing entity (none for a server source).
             ('s', Some(source)) => source_candidates.extend(source.entity),
             ('s', None) => source_candidates.extend(self.source_entity()),
-            // A guest in place is among the players, in join order.
-            _ if self.player.is_some() && self.lan_acting.is_none() => {
+            // A player in place is among the players, in join order.
+            _ if self.player.is_some() && self.net_acting.is_none() => {
                 source_candidates.push(Target::Player);
             }
             _ => {}
@@ -620,7 +620,7 @@ impl crate::game::Sim<'_> {
                 }
                 let player = match t {
                     Target::Player => Some((level, if creative { "creative" } else { "survival" })),
-                    Target::Guest(conn) => self.guest_level_and_mode(conn),
+                    Target::ServerPlayer(conn) => self.player_level_and_mode(conn),
                     _ => None,
                 };
                 if let Some((lo, hi)) = s.level
@@ -711,7 +711,7 @@ impl crate::game::Sim<'_> {
     fn level_holds(&self, t: Target) -> bool {
         match t {
             // A player is in no level of its own.
-            Target::Player | Target::Guest(_) => true,
+            Target::Player | Target::ServerPlayer(_) => true,
             Target::Mob(id) => self.mobs.iter().any(|m| m.id == id),
             Target::Item(id) => self.dropped.iter().any(|i| i.id == id),
             Target::Orb(id) => self.orbs.iter().any(|o| o.id == id),
@@ -1157,13 +1157,13 @@ impl crate::game::Sim<'_> {
         for &t in targets.iter().filter(|_| !empty) {
             // The player's UUID, which an item they could not hold is set to.
             let conn = match t {
-                Target::Guest(conn) => Some(conn),
-                _ => self.lan_acting,
+                Target::ServerPlayer(conn) => Some(conn),
+                _ => self.net_acting,
             };
             let uuid = match conn {
                 Some(conn) => self
-                    .command_guest(conn)
-                    .map(|g| crate::hc::lan::playerdata::uuid_ints(g.uuid)),
+                    .command_player(conn)
+                    .map(|g| crate::hc::server_net::playerdata::uuid_ints(g.uuid)),
                 None => Some(self.level.ensure_player_uuid()),
             };
             self.for_player(t, |g| {
@@ -1245,7 +1245,7 @@ impl crate::game::Sim<'_> {
     fn teleport_to_in_level(&mut self, t: Target, pos: [f64; 3], rotation: Option<[f32; 2]>) {
         let v = Vec3::new(pos[0], pos[1], pos[2]);
         match t {
-            Target::Guest(_) => {
+            Target::ServerPlayer(_) => {
                 self.for_player(t, |g| g.teleport_to(Target::Player, pos, rotation));
             }
             Target::Player => {
@@ -1255,7 +1255,7 @@ impl crate::game::Sim<'_> {
                 // A server's player teleported within their level is placed
                 // there at once: the arrival they were waiting for elsewhere
                 // in it (whose chunks lose their tickets) is abandoned.
-                if let Some(conn) = self.lan_acting {
+                if let Some(conn) = self.net_acting {
                     self.server_trips.retain(|trip| !trip.is(conn));
                 }
                 if let Some(p) = self.player.as_mut() {
@@ -1365,8 +1365,8 @@ impl crate::game::Sim<'_> {
         rotation: Option<[f32; 2]>,
     ) -> bool {
         let conn = match t {
-            Target::Player => self.lan_acting,
-            Target::Guest(conn) => Some(conn),
+            Target::Player => self.net_acting,
+            Target::ServerPlayer(conn) => Some(conn),
             _ => None,
         };
         let at = self.target_level(t);
@@ -1683,7 +1683,7 @@ impl crate::game::Sim<'_> {
     }
     fn kill_target_in_level(&mut self, t: Target) {
         match t {
-            Target::Guest(_) => {
+            Target::ServerPlayer(_) => {
                 self.for_player(t, |g| g.kill_target(Target::Player));
             }
             Target::Player => {

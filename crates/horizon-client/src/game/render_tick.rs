@@ -375,7 +375,7 @@ impl Game<'_> {
                             ("minecraft:weather.rain", 0.2, 1.0)
                         };
                         let p = at.map(|c| f64::from(c) + 0.5);
-                        // playLocalSound: guests make their own rain, so a host
+                        // playLocalSound: players make their own rain, so a host
                         // must not capture it for them.
                         self.sim.sounds.play_unshared(name, Some(p), volume, pitch);
                     }

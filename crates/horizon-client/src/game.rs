@@ -59,8 +59,6 @@ mod hand;
 mod item_draw;
 mod item_particles;
 mod jukebox;
-mod lan;
-mod lan_particles;
 mod leads;
 mod level_particles;
 mod lightning;
@@ -80,6 +78,7 @@ mod names;
 mod native_shaders;
 mod natural_spawning;
 mod net_harness;
+mod net_particles;
 mod nether_portal;
 mod ominous_item_spawner;
 mod options;
@@ -114,6 +113,7 @@ mod screens;
 mod sculk;
 mod server_control;
 mod server_links;
+mod server_net;
 mod server_packs;
 mod shader_packs;
 mod shield;
@@ -525,7 +525,7 @@ struct GameLevel<'w> {
     /// `Difficulty.getId()` (peaceful 0 .. hard 3).
     difficulty: i32,
     /// The feet of the players who keep fire spreading around them: the local
-    /// player and the LAN guests in this level, spectators aside.
+    /// player and the players in this level, spectators aside.
     fire_players: Vec<[f64; 3]>,
     spill: &'w mut spill::Spill,
     /// Where the chunk tickets let blocks tick.
@@ -962,7 +962,7 @@ impl LevelAccess for GameLevel<'_> {
         self.tickets.block_ticking(chunk.x, chunk.z) && ticking_chunk(self.world, chunk.x, chunk.z)
     }
     /// Entities that trigger pressure plates, tripwires, detector rails and
-    /// wooden buttons: the players (the host and the LAN guests), the mobs,
+    /// wooden buttons: the players (the players), the mobs,
     /// the minecarts and the other entities that don't ignore block triggers,
     /// and for `EntityQuery::Arrows` the arrows.
     fn count_entities(&self, area: Aabb, query: EntityQuery) -> usize {
@@ -1370,7 +1370,7 @@ struct Sim<'a> {
     message: Option<(String, Instant)>,
     save: Arc<SaveDir>,
     level: Level,
-    /// The sounds the game decided to play (seeds, the guests' capture, the control socket's
+    /// The sounds the game decided to play (seeds, the players' capture, the control socket's
     /// counts); `flush_sounds` hands them to `audio`.
     sounds: horizon_client::sound_out::SoundOut,
     /// Vibrations the game asked of the pad, for the window to play (`flush_to_window`).
@@ -1567,18 +1567,18 @@ struct Sim<'a> {
     /// Closing the window, `quit` or a stop signal asked the game to end:
     /// the next event-loop turn leaves the server and exits.
     quitting: bool,
-    /// The block a guest is acting on (game/lan_actions.rs).
+    /// The block a player is acting on (game/net_actions.rs).
     forced_hit: Option<Hit>,
-    /// Jukebox level events 1010 (song name) and 1011 (`None`) for the guests;
+    /// Jukebox level events 1010 (song name) and 1011 (`None`) for the players;
     /// the song's network id is only known once the hub is in hand.
-    lan_songs: Vec<([i32; 3], Option<String>)>,
+    net_songs: Vec<([i32; 3], Option<String>)>,
     /// Block events (position, b0, b1, state) and entity events (id, event,
-    /// position) for the guests.
-    lan_block_events: Vec<([i32; 3], i32, i32, u32)>,
+    /// position) for the players.
+    net_block_events: Vec<([i32; 3], i32, i32, u32)>,
     /// `LivingEntity.lastKineticHitFeedbackTime` of the entities that felt a
     /// spear's hit (`spear::OWN` is this window's player), in game time.
     kinetic_feedback: HashMap<i32, i64>,
-    /// `ContainerOpenersCounter`: how many players (the host and the guests)
+    /// `ContainerOpenersCounter`: how many players (the players)
     /// have each chest open.
     lid_openers: HashMap<(i32, i32, i32), i32>,
     ui: chat::UiState,
@@ -5185,7 +5185,7 @@ impl crate::game::Sim<'_> {
     /// Voxel traversal against non-air, non-fluid blocks, clipped against
     /// each block's outline shape (`BlockGetter.clip` with `ClipContext.Block.OUTLINE`).
     fn pick(&self) -> Option<Hit> {
-        // A guest of a hosted world acts on the block their client targeted.
+        // A player of a server acts on the block their client targeted.
         if let Some(hit) = &self.forced_hit {
             return Some(Hit {
                 pos: hit.pos,
@@ -6083,7 +6083,7 @@ impl crate::game::Sim<'_> {
     }
     /// `ItemStack.applyAfterUseComponentSideEffects`: a used stack with a
     /// `use_cooldown` component starts its entry (`UseCooldown.apply`). A
-    /// server's guest also gets `ClientboundCooldownPacket`
+    /// server's player also gets `ClientboundCooldownPacket`
     /// (`ServerItemCooldowns.onCooldownStarted`), queued for their turn's end.
     pub(super) fn apply_use_cooldown(&mut self, stack: &ItemStack) {
         let default = self
@@ -6148,8 +6148,8 @@ impl crate::game::Sim<'_> {
     /// the cursor where it is. Like GLFW's `glfwSetCursorPos`, nothing warps
     /// while the window is unfocused (losing focus releases the pointer).
     fn capture(&mut self, capture: bool) {
-        // A guest's action (`as_guest`) opens and closes screens on the
-        // guest's own client: the window's pointer stays the host's (#687).
+        // A player's action (`as_player`) opens and closes screens on the
+        // player's own client: the window's pointer stays the host's (#687).
         // MouseHandler.grabMouse never captures an inactive window, and vanilla
         // grabs only on `setScreen(null)`: the pack prompt and server dialogs
         // are screens over the world that keep the pointer.
@@ -8446,8 +8446,8 @@ impl<'a> Game<'a> {
                 left_for_exit: false,
                 quitting: false,
                 forced_hit: None,
-                lan_songs: Vec::new(),
-                lan_block_events: Vec::new(),
+                net_songs: Vec::new(),
+                net_block_events: Vec::new(),
                 kinetic_feedback: HashMap::new(),
                 lid_openers: HashMap::new(),
                 ui: chat::UiState::new(),

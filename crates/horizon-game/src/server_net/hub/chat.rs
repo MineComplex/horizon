@@ -88,12 +88,12 @@ impl ChatMessage {
 impl Hub {
     /// MinecraftServer.enforceSecureProfile.
     pub fn enforces_secure_chat(&self) -> bool {
-        self.lan.shared.config.enforces_secure_chat()
+        self.network.shared.config.enforces_secure_chat()
     }
 
     /// Component.getString in the server's language, for the log.
     pub(crate) fn english(&self, tag: &Tag) -> String {
-        match &self.lan.shared.config.log {
+        match &self.network.shared.config.log {
             Some(log) => horizon_protocol::text::plain(tag, &log.lang),
             None => horizon_protocol::text::plain(tag, &Default::default()),
         }
@@ -102,7 +102,7 @@ impl Hub {
     /// tryHandleChat: an illegal character disconnects; with chat hidden a
     /// message (not a command) is refused. Whether to go on.
     pub fn try_handle_chat(&mut self, i: usize, message: &str, command: bool) -> bool {
-        let conn = self.guests[i].conn;
+        let conn = self.players[i].conn;
         if !message.chars().all(allowed) {
             self.kick(
                 conn,
@@ -111,8 +111,8 @@ impl Hub {
             return false;
         }
         // ChatVisiblity.HIDDEN.
-        if !command && self.guests[i].info.chat_visibility == 2 {
-            self.guests[i].send(&C::SystemChat(play::SystemChat {
+        if !command && self.players[i].info.chat_visibility == 2 {
+            self.players[i].send(&C::SystemChat(play::SystemChat {
                 content: red("chat.disabled.options"),
                 overlay: false,
             }));
@@ -128,7 +128,7 @@ impl Hub {
         update: &play::LastSeenUpdate,
         events: &mut Vec<HostEvent>,
     ) -> Option<Vec<Signature>> {
-        let g = &mut self.guests[i];
+        let g = &mut self.players[i];
         match g
             .last_seen
             .apply_update(update.offset, update.acknowledged, update.checksum)
@@ -152,7 +152,7 @@ impl Hub {
 
     /// handleChatAck.
     pub(super) fn chat_ack(&mut self, i: usize, offset: i32, events: &mut Vec<HostEvent>) {
-        let g = &mut self.guests[i];
+        let g = &mut self.players[i];
         if g.last_seen.apply_offset(offset).is_err() {
             events.push(HostEvent::Error(format!(
                 "Failed to validate message acknowledgement offset from {}",
@@ -171,10 +171,10 @@ impl Hub {
         let reason = red(e.key());
         events.push(HostEvent::Warn(format!(
             "Failed to update secure chat state for {}: '{}'",
-            self.guests[i].name,
+            self.players[i].name,
             self.english(&reason)
         )));
-        self.guests[i].send(&C::SystemChat(play::SystemChat {
+        self.players[i].send(&C::SystemChat(play::SystemChat {
             content: reason,
             overlay: false,
         }));
@@ -197,7 +197,7 @@ impl Hub {
             last_seen: &last_seen,
         };
         let signature = c.signature.as_deref().and_then(secure_chat::signature);
-        let g = &mut self.guests[i];
+        let g = &mut self.players[i];
         let (uuid, name) = (g.uuid, g.name.clone());
         let message = match g
             .chain
@@ -214,7 +214,7 @@ impl Hub {
         }
         if self.intercept_chat {
             events.push(HostEvent::ChatPending {
-                conn: self.guests[i].conn,
+                conn: self.players[i].conn,
                 message: Box::new(message),
             });
             return;
@@ -236,7 +236,7 @@ impl Hub {
     /// would have sent it, signed when it was.
     pub fn relay_chat(&mut self, message: ChatMessage) -> Vec<HostEvent> {
         let mut events = Vec::new();
-        let Some(g) = self.guests.iter().find(|g| g.uuid == message.sender) else {
+        let Some(g) = self.players.iter().find(|g| g.uuid == message.sender) else {
             return events;
         };
         let (uuid, name) = (g.uuid, g.name.clone());
@@ -267,7 +267,7 @@ impl Hub {
             key: p.key,
             signature: p.key_signature,
         };
-        let g = &self.guests[i];
+        let g = &self.players[i];
         let (conn, uuid) = (g.conn, g.uuid);
         let old = g.chain.session().map(|s| s.profile_key.expires_at);
         if g.chain.session().is_some_and(|s| s.profile_key == key) {
@@ -280,7 +280,7 @@ impl Hub {
             );
             return;
         }
-        let secure = self.lan.shared.config.secure_chat.clone();
+        let secure = self.network.shared.config.secure_chat.clone();
         let keys = secure.as_deref().map_or(&[][..], |s| s.keys());
         if keys.is_empty() {
             events.push(HostEvent::Warn(format!(
@@ -292,7 +292,7 @@ impl Hub {
         match ChatSession::validate(p.session, key, keys, uuid) {
             Ok(session) => {
                 let data = session.data();
-                self.guests[i].chain = Chain::keyed(session);
+                self.players[i].chain = Chain::keyed(session);
                 // resetPlayerChatState: INITIALIZE_CHAT to every player.
                 self.broadcast(&C::PlayerInfoUpdate(play::PlayerInfoUpdate {
                     actions: 2,
@@ -323,8 +323,8 @@ impl Hub {
     ) {
         let secure = message.trusted(now_millis());
         events.push(HostEvent::Chat { line, secure });
-        for k in 0..self.guests.len() {
-            if self.guests[k].placed {
+        for k in 0..self.players.len() {
+            if self.players[k].placed {
                 self.send_chat(k, message, bound);
             }
         }
@@ -335,7 +335,7 @@ impl Hub {
     /// packed against its cache; a signed message joins the cache and the
     /// messages the player must acknowledge.
     pub fn send_chat(&mut self, k: usize, message: &ChatMessage, bound: &play::ChatTypeBound) {
-        let g = &mut self.guests[k];
+        let g = &mut self.players[k];
         if g.info.chat_visibility != 0 {
             return;
         }
@@ -374,7 +374,7 @@ impl Hub {
     /// sendChatMessage of a system message: a disguised chat, to players
     /// who show chat.
     fn send_disguised(&self, k: usize, message: Tag, chat_type: play::ChatTypeBound) {
-        let g = &self.guests[k];
+        let g = &self.players[k];
         if g.info.chat_visibility == 0 {
             g.send(&C::DisguisedChat(play::DisguisedChat {
                 message,
@@ -395,7 +395,7 @@ impl Hub {
         events: &mut Vec<HostEvent>,
     ) -> Result<Vec<(String, ChatMessage)>, DecodeError> {
         let (enforce, now) = (self.enforces_secure_chat(), now_millis());
-        let g = &mut self.guests[i];
+        let g = &mut self.players[i];
         let uuid = g.uuid;
         let mut out = Vec::new();
         if p.arguments.is_empty() {
@@ -457,7 +457,7 @@ impl Hub {
         text: &str,
         events: &mut Vec<HostEvent>,
     ) {
-        let (uuid, name) = (self.guests[i].uuid, self.guests[i].name.clone());
+        let (uuid, name) = (self.players[i].uuid, self.players[i].name.clone());
         let bound = play::ChatTypeBound {
             chat_type: self.chat_type_id(chat_type),
             name: self.player_display_name(uuid, &name),
@@ -476,8 +476,8 @@ impl Hub {
                     line,
                     secure: false,
                 });
-                for k in 0..self.guests.len() {
-                    if self.guests[k].placed {
+                for k in 0..self.players.len() {
+                    if self.players[k].placed {
                         self.send_disguised(k, literal(text), bound.clone());
                     }
                 }
@@ -494,13 +494,13 @@ impl Hub {
         message: Option<ChatMessage>,
         text: &str,
     ) {
-        let (uuid, name) = (self.guests[i].uuid, self.guests[i].name.clone());
+        let (uuid, name) = (self.players[i].uuid, self.players[i].name.clone());
         let (outgoing, incoming) = (
             self.chat_type_id("msg_command_outgoing"),
             self.chat_type_id("msg_command_incoming"),
         );
         for &t in targets {
-            let target = self.player_display_name(self.guests[t].uuid, &self.guests[t].name);
+            let target = self.player_display_name(self.players[t].uuid, &self.players[t].name);
             let out = play::ChatTypeBound {
                 chat_type: outgoing,
                 name: self.player_display_name(uuid, &name),

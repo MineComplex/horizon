@@ -1,6 +1,6 @@
 //! `/tellraw` (TellRawCommand) and `/title` (TitleCommand).
 use super::{Arg, Context, R, Target, err};
-use crate::hc::{lan::data::component_nbt, text::Text};
+use crate::hc::{server_net::data::component_nbt, text::Text};
 use horizon_protocol::packets::play::{self, Clientbound as C};
 
 impl crate::game::Sim<'_> {
@@ -188,18 +188,18 @@ impl crate::game::Sim<'_> {
         }
         out
     }
-    /// The players the command reaches: the window's own and the LAN guests.
+    /// The players the command reaches: the window's own and the players.
     fn player_targets(&mut self, ctx: &Context) -> R<Vec<Target>> {
         let targets = self.entities(ctx, "targets", true)?;
         Ok(targets
             .into_iter()
-            .filter(|t| matches!(t, Target::Player | Target::Guest(_)))
+            .filter(|t| matches!(t, Target::Player | Target::ServerPlayer(_)))
             .collect())
     }
     pub(super) fn cmd_tellraw(&mut self, ctx: &Context) -> R<i32> {
         let players = self.player_targets(ctx)?;
         let message = self.component_arg(ctx, "message")?;
-        // Each player's chat (a guest's through the connection).
+        // Each player's chat (a player's through the connection).
         for &t in &players {
             self.for_player(t, |g| g.system_message(message.clone()));
         }
@@ -276,7 +276,7 @@ impl crate::game::Sim<'_> {
         self.feedback(message);
         Ok(n as i32)
     }
-    /// TitleCommand's `connection.send` for each player: a guest is sent the
+    /// TitleCommand's `connection.send` for each player: a player is sent the
     /// packet, the window's own player shows it.
     fn titles_or_packet(
         &mut self,
@@ -286,14 +286,14 @@ impl crate::game::Sim<'_> {
     ) {
         for &t in players {
             match t {
-                Target::Player if self.lan_acting.is_some() => {
-                    self.guest_packets.push(packet.clone());
+                Target::Player if self.net_acting.is_some() => {
+                    self.player_packets.push(packet.clone());
                 }
                 // A server has no window of its own to show titles on.
                 Target::Player => {}
-                Target::Guest(conn) => {
-                    if let Some(host) = self.lan.as_ref() {
-                        host.hub.send_to(conn, &packet);
+                Target::ServerPlayer(conn) => {
+                    if let Some(net) = self.network.as_ref() {
+                        net.hub.send_to(conn, &packet);
                     }
                 }
                 _ => {}

@@ -496,7 +496,7 @@ impl crate::game::Sim<'_> {
         // ServerLevel.tick: only entities in entity-ticking chunks tick.
         let ticking = self.entity_ticking_area();
         // A server player's boat is driven by its client (lan_vehicles.rs).
-        let driven = self.guest_vehicles();
+        let driven = self.player_vehicles();
         for i in 0..self.boats.len() {
             let p = self.boats[i].position;
             if Some(self.boats[i].id) == self.riding
@@ -755,7 +755,7 @@ impl crate::game::Sim<'_> {
         if sneaking
             || self.boats[i].out_of_control >= 60.0
             || self.riding.is_some()
-            || self.ridden_by_guest(self.boats[i].id)
+            || self.ridden_by_player(self.boats[i].id)
             || !self.boat_has_room(i)
         {
             return false;

@@ -2,7 +2,7 @@
 //! patch read back as vanilla's `components` compound, so the decoder the saved
 //! and command item NBT use fills every field. Both sides use it: a client for
 //! what its server sends, a server for a creative client's
-//! `SetCreativeModeSlot`. The other direction is `lan::guest::stack_to_network`.
+//! `SetCreativeModeSlot`. The other direction is `lan::player::stack_to_network`.
 use crate::items::ItemStack;
 use horizon_protocol::item::{Component, Profile, Stack, component};
 use horizon_protocol::registry::{Builtin, Dynamic};
@@ -292,7 +292,7 @@ mod tests {
         };
         let dynamic = Dynamic::default();
         let water = ItemStack::new("minecraft:potion", 1).with_potion("minecraft:water");
-        let wire = crate::lan::guest::stack_to_network(
+        let wire = crate::server_net::player::stack_to_network(
             |name| builtin.get("minecraft:item").unwrap().id(name).unwrap(),
             |registry, name| builtin.get(registry)?.id(name),
             &Some(water.clone()),
@@ -369,7 +369,7 @@ mod tests {
         };
         let mut bundle = ItemStack::new("minecraft:bundle", 1);
         bundle.data_mut().bundle_contents = vec![ItemStack::new("minecraft:stone", 32)];
-        let wire = crate::lan::guest::stack_to_network(
+        let wire = crate::server_net::player::stack_to_network(
             |name| items.iter().position(|i| *i == name).unwrap_or(0) as i32,
             |_, _| None,
             &Some(bundle),
@@ -463,7 +463,7 @@ mod tests {
                 .and_then(|ids| ids.id(name))
                 .or_else(|| dynamic.id(registry, name))
         };
-        let wire = crate::lan::guest::stack_to_network(
+        let wire = crate::server_net::player::stack_to_network(
             |name| {
                 builtin
                     .get("minecraft:item")
@@ -493,7 +493,7 @@ mod tests {
         // PotionContents: the potion is a built-in registry, as a hub's
         // `SyncData::id` treats it, so the id has to come from there.
         let potion = ItemStack::new("minecraft:splash_potion", 1).with_potion("swiftness");
-        let wire = crate::lan::guest::stack_to_network(
+        let wire = crate::server_net::player::stack_to_network(
             |name| id("minecraft:item", name).unwrap_or(0),
             id,
             &Some(potion),

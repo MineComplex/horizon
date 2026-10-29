@@ -184,7 +184,7 @@ impl VanillaTerrain {
             }
             last = Some(name);
             tick_blocks.push(index);
-            block_entity_types.push(crate::lan::chunks::block_entity_type(name));
+            block_entity_types.push(crate::server_net::chunks::block_entity_type(name));
         }
         Ok(Self {
             generator,
@@ -523,9 +523,9 @@ impl ChunkGenerator for VanillaTerrain {
                 // Placed data can lack its type (a brushable block's loot table
                 // alone); vanilla saves every pending block entity with its id,
                 // and skips one without when the chunk finishes.
-                if let Some(id) =
-                    crate::lan::chunks::block_entity_type(chunk.block_name(pos[0], pos[1], pos[2]))
-                {
+                if let Some(id) = crate::server_net::chunks::block_entity_type(
+                    chunk.block_name(pos[0], pos[1], pos[2]),
+                ) {
                     nbt.insert("id".into(), Tag::String(id.into()));
                 }
                 for (key, v) in ["x", "y", "z"].into_iter().zip(pos) {
@@ -640,7 +640,7 @@ impl ChunkGenerator for VanillaTerrain {
                     .any(|(p, _)| *p == (pos[0], pos[1], pos[2]))
             })
             .filter_map(|(pos, nbt)| {
-                let id = crate::lan::chunks::block_entity_type(
+                let id = crate::server_net::chunks::block_entity_type(
                     chunk.block_name(pos[0], pos[1], pos[2]),
                 )?;
                 let mut nbt = nbt.clone();

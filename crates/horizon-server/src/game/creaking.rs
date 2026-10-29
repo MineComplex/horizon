@@ -116,7 +116,7 @@ impl crate::game::Sim<'_> {
         let mut events = Vec::new();
         let added = {
             let w = self.mob_world_base(&snapshot);
-            let mut host = Host {
+            let mut net = Host {
                 mobs: &mut mobs,
                 added: Vec::new(),
                 uuids: &mut uuids,
@@ -124,8 +124,8 @@ impl crate::game::Sim<'_> {
                 next_entity: &mut next_entity,
                 spawning,
             };
-            f(heart, &w, &mut random, &mut host, &mut events);
-            host.added
+            f(heart, &w, &mut random, &mut net, &mut events);
+            net.added
         };
         mobs.extend(added);
         self.mobs = mobs;
@@ -168,8 +168,8 @@ impl crate::game::Sim<'_> {
         else {
             return;
         };
-        let _ = self.with_heart(key, &mut heart, |h, w, lr, host, out| {
-            creaking_heart::creaking_hurt(h, home, w, lr, host, out);
+        let _ = self.with_heart(key, &mut heart, |h, w, lr, net, out| {
+            creaking_heart::creaking_hurt(h, home, w, lr, net, out);
         });
         self.world
             .block_entities
@@ -232,8 +232,8 @@ impl crate::game::Sim<'_> {
         else {
             return;
         };
-        let _ = self.with_heart(key, &mut heart, |h, _, _, host, out| {
-            creaking_heart::remove_protector(h, host, true, out);
+        let _ = self.with_heart(key, &mut heart, |h, _, _, net, out| {
+            creaking_heart::remove_protector(h, net, true, out);
         });
         let state = self.world.block(key.0, key.1, key.2);
         let natural = self
@@ -270,16 +270,16 @@ impl crate::game::Sim<'_> {
         if &*self.res.facts().get(state).name != "minecraft:creaking_heart" {
             // The block is gone: preRemoveSideEffects.
             self.world.block_entities.forget(&key);
-            self.with_heart(key, &mut heart, |h, _, _, host, out| {
-                creaking_heart::remove_protector(h, host, false, out);
+            self.with_heart(key, &mut heart, |h, _, _, net, out| {
+                creaking_heart::remove_protector(h, net, false, out);
             })?;
             return Ok(());
         }
         // getTicker: none once uprooted.
         if self.heart_state_name(state) != "uprooted" {
             let pos = [key.0, key.1, key.2];
-            self.with_heart(key, &mut heart, |h, w, lr, host, out| {
-                creaking_heart::server_tick(h, pos, w, lr, host, out);
+            self.with_heart(key, &mut heart, |h, w, lr, net, out| {
+                creaking_heart::server_tick(h, pos, w, lr, net, out);
             })?;
         }
         self.world

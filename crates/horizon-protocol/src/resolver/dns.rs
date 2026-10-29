@@ -297,7 +297,7 @@ mod tests {
 
     #[test]
     fn resolv_conf_name_servers_in_order() {
-        let conf = "# generated\nsearch lan\nnameserver 192.168.1.1\nnameserver fe80::1%en0\n\
+        let conf = "# generated\nsearch network\nnameserver 192.168.1.1\nnameserver fe80::1%en0\n\
                     nameserver  ::1 \nnameserver bogus\noptions ndots:1\n";
         let servers: Vec<String> = name_servers(conf).iter().map(|s| s.to_string()).collect();
         assert_eq!(servers, ["192.168.1.1:53", "[fe80::1]:53", "[::1]:53"]);

@@ -879,7 +879,7 @@ impl crate::game::Sim<'_> {
     }
     /// Gives `lend_items`' slots back to the vehicle, so its own items stay
     /// the one source of truth: a menu copy that is still around (open, or
-    /// left by a guest's close) gets the changed items copied to `items`.
+    /// left by a player's close) gets the changed items copied to `items`.
     fn reclaim_items(&mut self, key: Pos, open: bool, items: &mut Vec<Option<ItemStack>>) {
         let slots = if open {
             self.world.block_entities.get(&key).cloned()

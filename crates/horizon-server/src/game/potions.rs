@@ -294,7 +294,7 @@ impl crate::game::Sim<'_> {
     }
 }
 /// What a player's body was last given for its effects and enchantments:
-/// a guest keeps their own while the host's are in `PotionState`.
+/// a player keeps their own while the host's are in `PotionState`.
 #[derive(Default)]
 pub(super) struct BodyPotions {
     applied: Vec<(&'static str, &'static str, f64, &'static str)>,
@@ -316,7 +316,7 @@ pub(super) struct PotionState {
 
 impl PotionState {
     /// Trade the player's own state (effects and what their body was given)
-    /// with a guest's, around `as_guest`. Potions in flight stay.
+    /// with a player's, around `as_player`. Potions in flight stay.
     pub(super) fn swap_player(&mut self, effects: &mut PlayerEffects, body: &mut BodyPotions) {
         std::mem::swap(&mut self.effects, effects);
         std::mem::swap(&mut self.applied, &mut body.applied);
@@ -572,7 +572,7 @@ impl crate::game::Sim<'_> {
         }
     }
     /// `LivingEntity.tickEffects` (server side) for `self.player`, the local
-    /// player or a guest acting (`as_guest`), then its attribute modifiers
+    /// player or a player acting (`as_player`), then its attribute modifiers
     /// and status flags.
     pub(super) fn tick_mob_effects(&mut self) {
         let Some(player) = self.player.as_ref() else {

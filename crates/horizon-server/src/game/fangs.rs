@@ -53,7 +53,7 @@ impl crate::game::Sim<'_> {
             }
             if !f.started {
                 f.started = true;
-                self.lan_entity_event(f.id as i32, 4, f.pos);
+                self.net_entity_event(f.id as i32, 4, f.pos);
                 self.sounds.play_unshared(
                     "minecraft:entity.evoker_fangs.attack",
                     Some(f.pos),
@@ -95,7 +95,7 @@ impl crate::game::Sim<'_> {
             }
         };
         bite(self);
-        self.each_guest_hit(bite);
+        self.each_player_hit(bite);
         // `AbstractIllager.considersEntityAsAlly`: with no teams, the illager
         // tag is allied; `Evoker.considersEntityAsAlly` adds a vex whose
         // owner is allied (itself or another illager). Teams are not modelled.

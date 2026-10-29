@@ -437,12 +437,12 @@ fn the_chat_option_filters_the_lines_both_ways() {
     assert_eq!(shown(&chat), ["client", "server", "player"]);
 }
 
-/// The in-frame LAN host's chat: a guest's line is a player message, so the
+/// The in-frame LAN host's chat: a player's line is a player message, so the
 /// Chat option's player-message permission hides it at Commands Only and
 /// Hidden; command feedback (`/list`, `/tp`) is a system message and stays
 /// at Commands Only.
 #[test]
-fn a_guests_line_follows_the_player_message_permission() {
+fn a_players_line_follows_the_player_message_permission() {
     let font = font();
     let shown = |visibility, source| {
         let mut chat = Chat::default();

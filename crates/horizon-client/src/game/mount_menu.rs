@@ -4,7 +4,7 @@
 //! E while riding a tamed mount or with shift + use on a tamed one. On a
 //! server the screen shows the server's menu (`ClientboundMountScreenOpenPacket`)
 //! and its clicks go out as container clicks; a server's players get theirs
-//! from game/lan_mount_menu.rs.
+//! from game/net_mount_menu.rs.
 use super::{Game, Screen};
 use horizon_client::{
     hud::{HudBatch, rgba},

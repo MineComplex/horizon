@@ -270,7 +270,7 @@ impl crate::game::Sim<'_> {
         }
     }
     /// `CombatTracker.getDeathMessage` for a player whose display name is
-    /// `me`: a server's guest is not `PLAYER_NAME`.
+    /// `me`: a server's player is not `PLAYER_NAME`.
     pub(super) fn combat_death_message_for(&mut self, me: Text) -> Text {
         self.recheck_combat();
         let entries = std::mem::take(&mut self.combat.entries);

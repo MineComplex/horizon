@@ -269,8 +269,8 @@ impl crate::game::Sim<'_> {
             }
             // The direction turned by the look (`Entity.getLookQuaternion`:
             // pitch about x, then yaw about y), scaled by coordinate_scale
-            // and the magnitude, added to the velocity (the guest's client
-            // is told of it by `guest_hit_by`).
+            // and the magnitude, added to the velocity (the player's client
+            // is told of it by `player_hit_by`).
             Some("minecraft:apply_impulse") => {
                 let vec3 = |key: &str| [0, 1, 2].map(|i| effect[key][i].as_f64().unwrap_or(0.0));
                 let (d, scale) = (vec3("direction"), vec3("coordinate_scale"));
@@ -622,7 +622,7 @@ impl crate::game::Sim<'_> {
     /// Every fifth tick the player walking on one also gets a soul particle
     /// (returned as its position and velocity, for the caller to show or send
     /// to the players around) and sometimes a sound. Runs for the window's own
-    /// player and for each guest on the server (`guest_server_tick`); a remote
+    /// player and for each player on the server (`player_server_tick`); a remote
     /// client leaves it to its server.
     pub(super) fn tick_soul_speed(&mut self) -> Option<([f64; 3], [f64; 3])> {
         const ID: &str = "minecraft:soul_speed";

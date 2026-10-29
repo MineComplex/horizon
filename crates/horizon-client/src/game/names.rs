@@ -168,7 +168,7 @@ impl crate::game::Sim<'_> {
         t.push(objective.display_text());
         Some(t)
     }
-    /// The other players' models and names: the guests on a LAN host, the
+    /// The other players' models and names: the players on a LAN host, the
     /// players a server sends on a client.
     fn other_players(&self) -> Vec<(&Mob, String)> {
         let mut out = Vec::new();

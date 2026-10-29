@@ -36,7 +36,7 @@ pub(super) fn ally_of_player(m: &Mob, player: Option<[i32; 4]>) -> bool {
         || m.species() == Species::Allay && m.extra.tame
 }
 
-/// A smash's knockback on the players, put off while a guest's turn holds
+/// A smash's knockback on the players, put off while a player's turn holds
 /// the other players.
 pub(super) struct SmashPush {
     center: Vec3,
@@ -285,35 +285,35 @@ impl crate::game::Sim<'_> {
         for s in self.armor_stands.iter_mut().filter(|s| !s.marker) {
             smash_push(center, heavy, s.position, &mut s.velocity, 0.0);
         }
-        // The host and the LAN guests are living entities too. A guest's turn
-        // holds the other players (`as_guest`): the push waits for it to end.
+        // The players are living entities too. A player's turn
+        // holds the other players (`as_player`): the push waits for it to end.
         let push = SmashPush {
             center,
             heavy,
-            attacker: self.lan_acting,
+            attacker: self.net_acting,
             team: self.player_team().cloned(),
         };
-        if self.lan_acting.is_some() {
+        if self.net_acting.is_some() {
             self.creatures.smash_pushes.push(push);
         } else {
             self.smash_push_players(&push);
         }
     }
     /// `MaceItem.knockback` on the players but the attacker: the host unless
-    /// it attacked, and every guest but the attacker.
+    /// it attacked, and every player but the attacker.
     fn smash_push_players(&mut self, push: &SmashPush) {
         if push.attacker.is_some() {
             self.smash_push_player(push);
         }
-        self.each_guest_hit_except(push.attacker, |g| g.smash_push_player(push));
+        self.each_player_hit_except(push.attacker, |g| g.smash_push_player(push));
     }
-    /// The pushes guests' smashes put off.
+    /// The pushes players' smashes put off.
     pub(super) fn flush_smash_pushes(&mut self) {
         for push in std::mem::take(&mut self.creatures.smash_pushes) {
             self.smash_push_players(&push);
         }
     }
-    /// `MaceItem.knockback` on the player here (the host, or the guest swapped
+    /// `MaceItem.knockback` on the player here (the host, or the player swapped
     /// in): not a spectator, an ally of the attacker (`isAlliedTo`: the same
     /// team) or a creative player flying.
     fn smash_push_player(&mut self, push: &SmashPush) {

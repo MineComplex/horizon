@@ -25,7 +25,7 @@ pub(super) struct AdvState {
     pub(super) last_inventory: u64,
     /// `ServerPlayer.levitationStartPos` and `levitationStartTime`.
     pub(super) levitation: Option<([f64; 3], u64)>,
-    /// While the game acts for a network player (`as_guest`): the
+    /// While the game acts for a network player (`as_player`): the
     /// advancements whose progress changed (`progressChanged`), the recipes
     /// unlocked and the announcements, for their client and everyone's.
     pub(super) changed: BTreeSet<usize>,
@@ -172,7 +172,7 @@ impl crate::game::Sim<'_> {
     /// A server with no player of its own and nobody it acts for: there is
     /// no player for advancements and statistics.
     pub(super) fn no_player_here(&self) -> bool {
-        self.lan_acting.is_none()
+        self.net_acting.is_none()
     }
     /// The advancement tree, loaded once.
     pub(super) fn advancement_tree(&mut self) -> Arc<Tree> {
@@ -417,14 +417,14 @@ impl crate::game::Sim<'_> {
     }
     /// `PlayerAdvancements.progressChanged`, kept for a network player's client.
     fn progress_changed(&mut self, index: usize) {
-        if self.lan_acting.is_some() {
+        if self.net_acting.is_some() {
             self.adv.changed.insert(index);
         }
     }
     /// After `ServerRecipeBook.addRecipes`: the toast and the
     /// `recipe_unlocked` trigger of each recipe now known.
     pub(super) fn recipe_unlocked(&mut self, unlocked: &[String]) {
-        if self.lan_acting.is_some() {
+        if self.net_acting.is_some() {
             // A network player's client gets them in ClientboundRecipeBookAddPacket.
             self.adv.unlocked.extend_from_slice(unlocked);
         } else {
@@ -487,7 +487,7 @@ impl crate::game::Sim<'_> {
             let name = adv_name(a);
             // PlayerList.broadcastSystemMessage: everyone hears of a
             // network player's advancement.
-            match self.lan_acting_name.clone() {
+            match self.net_acting_name.clone() {
                 // Player.getDisplayName.
                 Some(_) => {
                     let player = self.target_name(super::commands::Target::Player);

@@ -107,14 +107,14 @@ impl crate::game::Sim<'_> {
     /// `Projectile.deflect(AIM_DEFLECT, player, player, true)`.
     pub(super) fn deflect(&mut self, i: usize) {
         let dir = view_vector(self.yaw, self.pitch);
-        let guest = self.lan_acting;
+        let player = self.net_acting;
         let p = &mut self.creatures.projectiles[i];
         p.velocity = Vec3::new(dir[0], dir[1], dir[2]);
         p.yaw = dir[0].atan2(dir[2]).to_degrees() as f32;
         p.pitch = dir[1].atan2(dir[0].hypot(dir[2])).to_degrees() as f32;
         p.owner = Some(Who::Player);
-        // On a server, the guest who struck it (their projectile now).
-        p.guest = guest;
+        // On a server, the player who struck it (their projectile now).
+        p.player = player;
         // Not into the one who turned it on its way out.
         p.left_owner = false;
         // `AbstractHurtingProjectile.onDeflection` by an attack, and the

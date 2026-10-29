@@ -26,8 +26,8 @@ impl crate::game::Sim<'_> {
     /// `ServerPlayer.completeUsingItem`: the player's own client is told
     /// first, and completes the use itself (eating the food there too).
     pub(super) fn send_use_item_complete(&mut self) {
-        if self.lan_acting.is_some() {
-            self.guest_entity_events.push(USE_ITEM_COMPLETE_EVENT);
+        if self.net_acting.is_some() {
+            self.player_entity_events.push(USE_ITEM_COMPLETE_EVENT);
         }
     }
     /// `Consumable.emitParticlesAndSounds(user.getRandom(), user, stack, count)`.

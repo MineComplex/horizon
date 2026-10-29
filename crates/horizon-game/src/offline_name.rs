@@ -3,7 +3,7 @@
 //! `"Player" + System.currentTimeMillis() % 1000` (net.minecraft.client.main.Main)
 //! and the official launcher always passes the account's name, so two players
 //! rarely share one. Horizon used plain `Player` for everyone, which is also
-//! the LAN host's own profile: every guest got the host's offline UUID and was
+//! the LAN host's own profile: every player got the host's offline UUID and was
 //! refused with "You logged in from another location". The generated name is
 //! kept in `horizon-player.txt` next to `options.txt` so the same player gets
 //! the same offline UUID (and inventory on a friend's world) every time.
@@ -14,7 +14,7 @@ const KEY: &str = "name:";
 
 /// StringUtil.isValidPlayerName, plus not empty (the login screen sends at least one character).
 pub fn is_valid(name: &str) -> bool {
-    crate::lan::conn::valid_name(name)
+    crate::server_net::conn::valid_name(name)
 }
 
 /// `Player` and five digits (vanilla's default has three: one shared name in a

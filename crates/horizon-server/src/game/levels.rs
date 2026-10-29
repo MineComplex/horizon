@@ -4,7 +4,7 @@
 //! own fields (the world, its streaming and save, block ticks, entities).
 //! A server (the dedicated server and single player's server thread) keeps
 //! the other dimensions' levels here and ticks each one with players or forced
-//! chunks by swapping it into place (`enter_level`), the way `as_guest` swaps a player
+//! chunks by swapping it into place (`enter_level`), the way `as_player` swaps a player
 //! in, so the tick code runs unchanged, one level at a time. The in-frame
 //! game holds one level, which follows its player (`enter_dimension`).
 //!
@@ -15,8 +15,8 @@
 
 use super::{
     Dim, ExperienceOrb, FallingBlock, ItemEntity, Mob, boats, commands, creaking::CreakingState,
-    dragon, fireworks, lan::LanHost, lightning, machines, minecarts, ominous_item_spawner, persist,
-    raids::Raiding, sculk::SculkState, tnt, trident,
+    dragon, fireworks, lightning, machines, minecarts, ominous_item_spawner, persist,
+    raids::Raiding, sculk::SculkState, server_net::Network, tnt, trident,
 };
 use crate::hc::{
     Result, random_tick_sections::RandomTickSections, save::SaveDir, streaming::Streaming,
@@ -74,10 +74,10 @@ pub(super) struct Parked {
     persist: persist::EntityMemory,
     lectern_pulses: Vec<((i32, i32, i32), i32)>,
     lid_openers: HashMap<(i32, i32, i32), i32>,
-    lan_events: Vec<(i32, [i32; 3], i32, Option<u32>)>,
-    lan_block_events: Vec<([i32; 3], i32, i32, u32)>,
-    lan_entity_events: Vec<(i32, i8, [f64; 3])>,
-    lan_critical_hits: Vec<(Option<u32>, i32, bool)>,
+    net_events: Vec<(i32, [i32; 3], i32, Option<u32>)>,
+    net_block_events: Vec<([i32; 3], i32, i32, u32)>,
+    net_entity_events: Vec<(i32, i8, [f64; 3])>,
+    net_critical_hits: Vec<(Option<u32>, i32, bool)>,
     /// Only the per-level parts of these are used (`swap_level`).
     anims: crate::hc::block_entity_anim::BlockEntityAnims,
     raiding: Raiding,
@@ -174,10 +174,10 @@ impl crate::game::Sim<'_> {
             persist: Default::default(),
             lectern_pulses: Vec::new(),
             lid_openers: HashMap::new(),
-            lan_events: Vec::new(),
-            lan_block_events: Vec::new(),
-            lan_entity_events: Vec::new(),
-            lan_critical_hits: Vec::new(),
+            net_events: Vec::new(),
+            net_block_events: Vec::new(),
+            net_entity_events: Vec::new(),
+            net_critical_hits: Vec::new(),
             anims: Default::default(),
             raiding: Default::default(),
             sculk: Default::default(),
@@ -227,10 +227,10 @@ impl crate::game::Sim<'_> {
         swap(&mut self.persist, &mut p.persist);
         swap(&mut self.lectern_pulses, &mut p.lectern_pulses);
         swap(&mut self.lid_openers, &mut p.lid_openers);
-        swap(&mut self.lan_events, &mut p.lan_events);
-        swap(&mut self.lan_block_events, &mut p.lan_block_events);
-        swap(&mut self.lan_entity_events, &mut p.lan_entity_events);
-        swap(&mut self.lan_critical_hits, &mut p.lan_critical_hits);
+        swap(&mut self.net_events, &mut p.net_events);
+        swap(&mut self.net_block_events, &mut p.net_block_events);
+        swap(&mut self.net_entity_events, &mut p.net_entity_events);
+        swap(&mut self.net_critical_hits, &mut p.net_critical_hits);
         let (a, b) = (&mut self.be_anims, &mut p.anims);
         swap(&mut a.chests, &mut b.chests);
         swap(&mut a.books, &mut b.books);
@@ -251,8 +251,8 @@ impl crate::game::Sim<'_> {
     /// Put `target`'s level in place, opening it first if it is not loaded.
     /// The level that was in place is kept with the others; the shared
     /// clock and weather go with the swap. `host` is the hub when the caller
-    /// holds it (`self.lan` is taken during the network tick).
-    pub(super) fn enter_level(&mut self, host: Option<&mut LanHost>, target: Dim) -> Result<()> {
+    /// holds it (`self.network` is taken during the network tick).
+    pub(super) fn enter_level(&mut self, net: Option<&mut Network>, target: Dim) -> Result<()> {
         if target != self.dim {
             let (mut p, opened) = match self.levels.parked.remove(&target) {
                 Some(p) => (p, false),
@@ -275,11 +275,11 @@ impl crate::game::Sim<'_> {
                 self.apply_streaming_settings();
             }
         }
-        let host = match host {
+        let net = match net {
             Some(h) => Some(h),
-            None => self.lan.as_mut(),
+            None => self.network.as_mut(),
         };
-        if let Some(h) = host {
+        if let Some(h) = net {
             h.hub.set_dimension(target.id());
         }
         Ok(())
@@ -339,7 +339,7 @@ impl crate::game::Sim<'_> {
             self.update_dedicated_streaming();
             self.stream_world();
             result = if paused {
-                self.tick_lan(true);
+                self.tick_net(true);
                 Ok(())
             } else if k == 0 {
                 if self.agent.hold_server {
@@ -391,10 +391,10 @@ impl crate::game::Sim<'_> {
     /// (the Overworld, the Nether, the End): every level with a player in
     /// it, forced chunks or a `/pregen` task, or the Overworld while idle.
     pub(super) fn levels_to_tick(&self) -> Vec<Dim> {
-        let guests = self
-            .lan
+        let players = self
+            .network
             .as_ref()
-            .map_or(&[][..], |h| h.hub.guests.as_slice());
+            .map_or(&[][..], |h| h.hub.players.as_slice());
         let mut dims: Vec<Dim> = [Dim::Overworld, Dim::Nether, Dim::End]
             .into_iter()
             .filter(|d| {
@@ -406,7 +406,7 @@ impl crate::game::Sim<'_> {
                         .get(d)
                         .is_some_and(|p| !p.streaming.forced.is_empty())
                 };
-                guests.iter().any(|g| g.dimension == d.id())
+                players.iter().any(|g| g.dimension == d.id())
                     || forced
                     || self.pregen_level() == Some(*d)
             })
@@ -478,9 +478,9 @@ impl crate::game::Sim<'_> {
             self.console_broadcast = Some(true);
             self.sprint_report(&report);
             self.console_broadcast = None;
-            if let Some(mut host) = self.lan.take() {
-                self.send_admin_feedback(&mut host, None);
-                self.lan = Some(host);
+            if let Some(mut net) = self.network.take() {
+                self.send_admin_feedback(&mut net, None);
+                self.network = Some(net);
             }
             self.admin_feedback.clear();
         }

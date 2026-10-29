@@ -75,10 +75,10 @@ impl crate::game::Sim<'_> {
             let i = ((samples.len() as f64 * q) as usize).min(samples.len().saturating_sub(1));
             samples.get(i).copied().map_or(0.0, millis)
         };
-        let (players, max_players) = self.lan.as_ref().map_or((Vec::new(), 0), |h| {
+        let (players, max_players) = self.network.as_ref().map_or((Vec::new(), 0), |h| {
             let players = h
                 .hub
-                .guests
+                .players
                 .iter()
                 .map(|g| {
                     json!({
@@ -89,7 +89,7 @@ impl crate::game::Sim<'_> {
                     })
                 })
                 .collect();
-            (players, h.hub.lan.shared.max_players())
+            (players, h.hub.network.shared.max_players())
         });
         json!({
             "tps": state.tps(),

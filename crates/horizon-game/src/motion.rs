@@ -344,7 +344,7 @@ pub struct PlayerMotion {
     pub sync_position: bool,
     /// Moved by an ender pearl (`ServerPlayer.teleport`): a server sends the
     /// position packet even when the player lands where they stood. The
-    /// server takes it at the end of a guest's turn.
+    /// server takes it at the end of a player's turn.
     pub teleported: bool,
     pub events: Vec<MotionEvent>,
     /// Hold the damage of the surroundings in `env_damage` instead of
@@ -375,7 +375,7 @@ pub struct PlayerMotion {
     pub burn_from_stepping_immune: bool,
     /// `Entity.oldPosition`: where this tick started.
     pub old_position: Vec3,
-    /// The server's copy of a player another client moves (a LAN guest), while
+    /// The server's copy of a player another client moves (a player), while
     /// it travels on the server: `isLocalInstanceAuthoritative` is false, so
     /// its moves check no fall damage.
     pub server_copy: bool,
@@ -3104,7 +3104,7 @@ mod tests {
         let assets = Assets::load(&root).unwrap();
         let resources = MotionResources::load(&root, &assets).unwrap();
         // Both abilities are set by creative/spectator mode changes for the
-        // resident player and for LAN/dedicated guests.
+        // resident player and for LAN/dedicated players.
         for spectator in [false, true] {
             for food in [0, 1, 20] {
                 let mut player = PlayerMotion::new(&resources, Vec3::ZERO).unwrap();
@@ -3425,7 +3425,7 @@ mod tests {
             }
         }
     }
-    /// A client's own fall (multiplayer, a LAN guest, single player on its
+    /// A client's own fall (multiplayer, a player, single player on its
     /// server thread) plays its landing but never hurts it: only the server
     /// does (`Entity.hurt` on a client), so a server that cancels fall damage
     /// leaves the screen still.

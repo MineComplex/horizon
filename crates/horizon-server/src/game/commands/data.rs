@@ -38,7 +38,7 @@ impl crate::game::Sim<'_> {
     fn entity_nbt_in_level(&mut self, t: Target) -> Option<Tag> {
         let player_uuid = self.level.player_uuid;
         Some(match t {
-            Target::Guest(_) => {
+            Target::ServerPlayer(_) => {
                 return self
                     .for_player(t, |g| g.entity_nbt(Target::Player))
                     .flatten();

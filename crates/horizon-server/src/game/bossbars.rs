@@ -365,15 +365,15 @@ impl crate::game::Sim<'_> {
             .map(|(_, name)| name)
             .collect()
     }
-    /// The players who can be told about a bar: the one in place, then guests.
+    /// The players who can be told about a bar: the one in place, then players.
     fn known_boss_players(&self) -> Vec<([i32; 4], Text)> {
         let mut out = Vec::new();
         if self.player.is_some() {
             out.push((self.acting_uuid(), self.target_name(Target::Player)));
         }
-        if let Some(host) = &self.lan {
-            for g in host.hub.guests.iter().filter(|g| g.placed) {
-                let ints = crate::hc::lan::playerdata::uuid_ints(g.uuid);
+        if let Some(net) = &self.network {
+            for g in net.hub.players.iter().filter(|g| g.placed) {
+                let ints = crate::hc::server_net::playerdata::uuid_ints(g.uuid);
                 if out.iter().any(|(uuid, _)| *uuid == ints) {
                     continue;
                 }
@@ -385,12 +385,12 @@ impl crate::game::Sim<'_> {
     fn player_target_uuid(&self, target: Target) -> Option<[i32; 4]> {
         match target {
             Target::Player => Some(self.acting_uuid()),
-            Target::Guest(conn) => self.lan.as_ref().and_then(|h| {
+            Target::ServerPlayer(conn) => self.network.as_ref().and_then(|h| {
                 h.hub
-                    .guests
+                    .players
                     .iter()
                     .find(|g| g.conn == conn)
-                    .map(|g| crate::hc::lan::playerdata::uuid_ints(g.uuid))
+                    .map(|g| crate::hc::server_net::playerdata::uuid_ints(g.uuid))
             }),
             _ => None,
         }
@@ -415,22 +415,22 @@ impl crate::game::Sim<'_> {
         if packets.is_empty() {
             return;
         }
-        let Some(host) = self.lan.as_ref() else {
+        let Some(net) = self.network.as_ref() else {
             return;
         };
         for (conn, packet) in &packets {
-            host.hub.send_to(*conn, packet);
+            net.hub.send_to(*conn, packet);
         }
     }
     fn boss_viewers(&self) -> Vec<Viewer> {
         let mut out = Vec::new();
-        // While `as_guest` has swapped a guest in, the host's own position
+        // While `as_player` has swapped a player in, the host's own position
         // is not in place. Their overlay updates once the tick puts it back.
         let local = false;
         if local && let Some(p) = &self.player {
             let ints = self.level.player_uuid.unwrap_or_else(|| self.acting_uuid());
             out.push(Viewer {
-                uuid: crate::hc::lan::playerdata::ints_uuid(ints),
+                uuid: crate::hc::server_net::playerdata::ints_uuid(ints),
                 ints,
                 at: [p.position.x, p.position.y, p.position.z],
                 alive: !p.health.dead_or_dying(),
@@ -440,14 +440,14 @@ impl crate::game::Sim<'_> {
                 view_chunks: self.settings.render_distance,
             });
         }
-        if let Some(host) = &self.lan {
-            for g in host.hub.guests.iter().filter(|g| g.placed) {
+        if let Some(net) = &self.network {
+            for g in net.hub.players.iter().filter(|g| g.placed) {
                 if out.iter().any(|v| v.uuid == g.uuid) {
                     continue;
                 }
                 out.push(Viewer {
                     uuid: g.uuid,
-                    ints: crate::hc::lan::playerdata::uuid_ints(g.uuid),
+                    ints: crate::hc::server_net::playerdata::uuid_ints(g.uuid),
                     at: g.position,
                     alive: !g.dead,
                     here: g.dimension == self.dim.id(),
@@ -518,7 +518,7 @@ impl crate::game::Sim<'_> {
                     translate_tag("entity.minecraft.wither")
                 };
                 out.push(Offer {
-                    id: super::lan::entity_uuid(m.id),
+                    id: super::server_net::entity_uuid(m.id),
                     name,
                     progress,
                     color: 5,

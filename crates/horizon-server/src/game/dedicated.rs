@@ -6,10 +6,9 @@
 //! its simulation and the play-state hub that LAN hosting uses, configured
 //! from server.properties, with the operator, whitelist and ban lists and a
 //! console on standard input.
-use super::{Options, lan::LanSettings, world_loading::WorldRequest};
+use super::{Options, server_net::NetSettings, world_loading::WorldRequest};
 use crate::hc::{
     Result,
-    lan::{LoginGate, NetConfig, NetLog, hub::HubConfig, velocity::Velocity},
     server::{
         eula, paper_global,
         properties::{GAME_MODES, ServerProperties, SystemEntropy},
@@ -19,6 +18,7 @@ use crate::hc::{
             format_date,
         },
     },
+    server_net::{LoginGate, NetConfig, NetLog, hub::HubConfig, velocity::Velocity},
     text::Text,
 };
 use horizon_protocol::text::translatable;
@@ -446,11 +446,11 @@ impl crate::game::Sim<'_> {
     /// the spawn chunk while nobody is online.
     pub(super) fn update_dedicated_streaming(&mut self) {
         let center = self
-            .lan
+            .network
             .as_ref()
             .and_then(|h| {
                 h.hub
-                    .guests
+                    .players
                     .iter()
                     .find(|g| h.hub.here(g))
                     .map(|g| g.chunk())
@@ -466,28 +466,28 @@ impl crate::game::Sim<'_> {
     /// ServerGamePacketListenerImpl.tick: players idle longer than the
     /// timeout are kicked.
     fn kick_idle(&mut self, minutes: i32) {
-        let Some(host) = self.lan.as_mut() else {
+        let Some(net) = self.network.as_mut() else {
             return;
         };
         let limit = u64::try_from(minutes).unwrap_or(0) * 1200;
-        let idle: Vec<u32> = host
+        let idle: Vec<u32> = net
             .hub
-            .guests
+            .players
             .iter()
-            .filter(|g| host.hub.ticks.saturating_sub(g.last_action_tick) > limit)
+            .filter(|g| net.hub.ticks.saturating_sub(g.last_action_tick) > limit)
             .map(|g| g.conn)
             .collect();
         for conn in idle {
-            host.hub
+            net.hub
                 .kick(conn, translatable("multiplayer.disconnect.idling", &[]));
         }
     }
     /// Ops' permission levels for the hub (PlayerList.getProfilePermissions).
     fn sync_ops(&mut self, lists: &Arc<Mutex<Lists>>) {
-        let Some(host) = self.lan.as_mut() else {
+        let Some(net) = self.network.as_mut() else {
             return;
         };
-        host.hub.ops = lists
+        net.hub.ops = lists
             .lock()
             .unwrap()
             .ops
@@ -495,13 +495,13 @@ impl crate::game::Sim<'_> {
             .iter()
             .map(|e| (e.user.id, e.level as u8))
             .collect();
-        host.hub.resend_commands();
+        net.hub.resend_commands();
     }
     /// A player on the server, by name.
     fn online_player(&self, name: &str) -> Option<NameAndId> {
-        let hub = &self.lan.as_ref()?.hub;
+        let hub = &self.network.as_ref()?.hub;
         let g = hub
-            .guests
+            .players
             .iter()
             .find(|g| g.name.eq_ignore_ascii_case(name))?;
         Some(NameAndId {
@@ -542,10 +542,10 @@ impl crate::game::Sim<'_> {
         self.console_broadcast = Some(state.broadcast_console);
         self.console_command(state, line);
         self.console_broadcast = None;
-        if let Some(mut host) = self.lan.take() {
-            self.run_level_teleports(&mut host);
-            self.send_admin_feedback(&mut host, None);
-            self.lan = Some(host);
+        if let Some(mut net) = self.network.take() {
+            self.run_level_teleports(&mut net);
+            self.send_admin_feedback(&mut net, None);
+            self.network = Some(net);
         }
         self.admin_feedback.clear();
     }
@@ -593,35 +593,35 @@ impl crate::game::Sim<'_> {
                 }
             }
             "list" => {
-                let guests: Vec<(String, u128)> = self
-                    .lan
+                let players: Vec<(String, u128)> = self
+                    .network
                     .as_ref()
                     .map(|h| {
                         h.hub
-                            .guests
+                            .players
                             .iter()
                             .map(|g| (g.name.clone(), g.uuid))
                             .collect()
                     })
                     .unwrap_or_default();
                 let max = self
-                    .lan
+                    .network
                     .as_ref()
-                    .map_or(0, |h| h.hub.lan.shared.max_players());
+                    .map_or(0, |h| h.hub.network.shared.max_players());
                 let names: Vec<String> = if rest.first() == Some(&"uuids") {
-                    guests
+                    players
                         .iter()
                         .map(|(n, u)| {
                             format!("{n} ({})", horizon_protocol::crypto::uuid_string(*u))
                         })
                         .collect()
                 } else {
-                    guests.iter().map(|(n, _)| n.clone()).collect()
+                    players.iter().map(|(n, _)| n.clone()).collect()
                 };
                 self.console_reply(Text::translate(
                     "commands.list.players",
                     &[
-                        lit(&guests.len().to_string()),
+                        lit(&players.len().to_string()),
                         lit(&max.to_string()),
                         lit(&names.join(", ")),
                     ],
@@ -700,9 +700,9 @@ impl crate::game::Sim<'_> {
                 let ip = if target.parse::<std::net::IpAddr>().is_ok() {
                     Some(target.to_owned())
                 } else {
-                    self.lan.as_ref().and_then(|h| {
+                    self.network.as_ref().and_then(|h| {
                         h.hub
-                            .guests
+                            .players
                             .iter()
                             .find(|g| g.name.eq_ignore_ascii_case(target))
                             .map(|g| g.address.ip().to_string())
@@ -734,11 +734,11 @@ impl crate::game::Sim<'_> {
                     ],
                 ));
                 let banned: Vec<u128> = self
-                    .lan
+                    .network
                     .as_ref()
                     .map(|h| {
                         h.hub
-                            .guests
+                            .players
                             .iter()
                             .filter(|g| g.address.ip().to_string() == ip)
                             .map(|g| g.uuid)
@@ -851,7 +851,7 @@ impl crate::game::Sim<'_> {
                 // message of type say_command, logged as not secure.
                 let message = rest.join(" ");
                 log("INFO", &format!("[Not Secure] [Server] {message}"));
-                if let Some(h) = &self.lan {
+                if let Some(h) = &self.network {
                     h.hub.say("Server", &message);
                 }
             }
@@ -959,14 +959,14 @@ impl crate::game::Sim<'_> {
     fn kick_unlisted_players(&mut self, lists: &Arc<Mutex<Lists>>) {
         let unlisted: Vec<u128> = {
             let l = lists.lock().unwrap();
-            let Some(host) = self.lan.as_ref() else {
+            let Some(net) = self.network.as_ref() else {
                 return;
             };
             if !(l.enforce_whitelist && l.use_whitelist) {
                 return;
             }
-            host.hub
-                .guests
+            net.hub
+                .players
                 .iter()
                 .filter(|g| {
                     !l.white.contains(&NameAndId {
@@ -985,10 +985,10 @@ impl crate::game::Sim<'_> {
         }
     }
     fn kick_uuid(&mut self, uuid: u128, reason: Tag) {
-        if let Some(h) = self.lan.as_mut() {
+        if let Some(h) = self.network.as_mut() {
             let conns: Vec<u32> = h
                 .hub
-                .guests
+                .players
                 .iter()
                 .filter(|g| g.uuid == uuid)
                 .map(|g| g.conn)
@@ -1021,18 +1021,18 @@ impl crate::game::Sim<'_> {
         self.plugins_disable();
         self.apply_plugin_actions();
         log("INFO", "Saving players");
-        if let Some(h) = self.lan.as_mut() {
-            for g in &h.hub.guests {
-                crate::hc::lan::playerdata::save(g, &self.world_root);
+        if let Some(h) = self.network.as_mut() {
+            for g in &h.hub.players {
+                crate::hc::server_net::playerdata::save(g, &self.world_root);
             }
         }
-        if let Some(h) = self.lan.as_ref() {
-            for g in &h.hub.guests {
-                self.save_guest_records(h, g);
+        if let Some(h) = self.network.as_ref() {
+            for g in &h.hub.players {
+                self.save_player_records(h, g);
             }
         }
-        if let Some(h) = self.lan.as_mut() {
-            let conns: Vec<u32> = h.hub.guests.iter().map(|g| g.conn).collect();
+        if let Some(h) = self.network.as_mut() {
+            let conns: Vec<u32> = h.hub.players.iter().map(|g| g.conn).collect();
             for conn in conns {
                 h.hub.kick(
                     conn,
@@ -1044,7 +1044,7 @@ impl crate::game::Sim<'_> {
         log("INFO", "Saving worlds");
         self.save_game()?;
         self.log_saved_levels();
-        self.lan_close(false);
+        self.net_close(false);
         Ok(())
     }
 }
@@ -1110,7 +1110,7 @@ impl crate::game::Sim<'_> {
         *USER_CACHE.lock().unwrap() = Some(cache);
         // No chat keys are checked: this server never fetches Mojang's
         // services' public keys (Services.create), so chat is not enforced.
-        let secure_chat = Arc::new(crate::hc::lan::SecureChat::new(false, Vec::new));
+        let secure_chat = Arc::new(crate::hc::server_net::SecureChat::new(false, Vec::new));
         // Paper's config/paper-global.yml: proxies.velocity puts the server
         // behind a Velocity proxy, which authenticates the players.
         let velocity_settings = paper_global::load(std::path::Path::new("config/paper-global.yml"))
@@ -1213,7 +1213,7 @@ impl crate::game::Sim<'_> {
         let favicon = std::fs::read("server-icon.png")
             .ok()
             .filter(|b| png_size(b) == Some((64, 64)));
-        let net = NetConfig {
+        let net_config = NetConfig {
             bind: (!props.server_ip.is_empty())
                 .then(|| props.server_ip.parse().ok())
                 .flatten(),
@@ -1263,7 +1263,7 @@ impl crate::game::Sim<'_> {
         };
         let config = HubConfig {
             default_game_mode: game_mode,
-            guest_commands: true,
+            player_commands: true,
             force_game_mode: props.force_game_mode,
             hardcore: self.level.hardcore,
             view_distance: props.view_distance.clamp(2, 32),
@@ -1272,22 +1272,21 @@ impl crate::game::Sim<'_> {
             seed: self.level.seed,
             max_players: props.max_players.max(0) as usize,
             dedicated: true,
-            integrated: false,
         };
-        let settings = LanSettings {
+        let settings = NetSettings {
             port,
-            guest_commands: true,
+            player_commands: true,
             force_game_mode: props.force_game_mode,
         };
-        if let Err(e) = self.lan_host(settings, net, config, None) {
+        if let Err(e) = self.start_network(settings, net_config, config) {
             log("WARN", "**** FAILED TO BIND TO PORT!");
             log("WARN", &format!("The exception was: {e}"));
             log("WARN", "Perhaps a server is already running on that port?");
             return Ok(());
         }
         self.sync_ops(&lists);
-        if let Some(host) = self.lan.as_mut() {
-            host.hub.spawn_protection = props.spawn_protection;
+        if let Some(net) = self.network.as_mut() {
+            net.hub.spawn_protection = props.spawn_protection;
         }
         // onEnable once the worlds are loaded (PluginLoadOrder.POSTWORLD).
         self.plugins_enable();
@@ -1302,8 +1301,8 @@ impl crate::game::Sim<'_> {
         // DedicatedServer.initServer ends with saveEverything(false, true, true).
         self.save_game()?;
         self.log_saved_levels();
-        if let Some(host) = self.lan.as_mut() {
-            host.hub.entity_range_percent = props.entity_broadcast_range_percentage;
+        if let Some(net) = self.network.as_mut() {
+            net.hub.entity_range_percent = props.entity_broadcast_range_percentage;
         }
         let mut state = ServerState {
             lists,
@@ -1341,7 +1340,7 @@ impl crate::game::Sim<'_> {
                 log("INFO", "The process the server ran for has ended: stopping");
                 state.stop = true;
             }
-            let players = self.lan.as_ref().map_or(0, |h| h.hub.guests.len());
+            let players = self.network.as_ref().map_or(0, |h| h.hub.players.len());
             if pause_after > 0 {
                 // A `/pregen` task keeps the server busy as a player would:
                 // paused, nothing would post-process its chunks.

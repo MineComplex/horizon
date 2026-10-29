@@ -15,9 +15,9 @@ pub mod conn;
 pub mod containers;
 pub mod data;
 pub mod entity;
-pub mod guest;
 pub mod hub;
 pub mod menu;
+pub mod player;
 pub mod playerdata;
 mod recipes;
 pub mod scoreboard;
@@ -143,7 +143,7 @@ impl NetConfig {
         self.secure_chat.as_ref().is_some_and(|s| s.enforced())
     }
     /// IntegratedServer.publishServer.
-    pub fn lan(port: u16, motd: String, max_players: usize) -> Self {
+    pub fn network(port: u16, motd: String, max_players: usize) -> Self {
         Self {
             bind: None,
             port,
@@ -386,7 +386,7 @@ pub fn base64(data: &[u8]) -> String {
 }
 
 /// A running LAN server.
-pub struct Lan {
+pub struct Listener {
     pub shared: Arc<Shared>,
     events: Receiver<NetEvent>,
     pub port: u16,
@@ -394,7 +394,7 @@ pub struct Lan {
     /// Stops the accept loop alone: local connections stay.
     listener_stop: Arc<AtomicBool>,
 }
-impl Lan {
+impl Listener {
     /// Listen on `port` (0 picks a free one).
     pub fn start(
         sync: Arc<data::SyncData>,
@@ -402,7 +402,7 @@ impl Lan {
         motd: String,
         max_players: usize,
     ) -> io::Result<Self> {
-        Self::start_with(sync, NetConfig::lan(port, motd, max_players))
+        Self::start_with(sync, NetConfig::network(port, motd, max_players))
     }
     /// ServerConnectionListener.startTcpServerListener with a configuration.
     pub fn start_with(sync: Arc<data::SyncData>, config: NetConfig) -> io::Result<Self> {
@@ -420,7 +420,7 @@ impl Lan {
             random: Mutex::new(crate::server::java_properties::now_millis() as u64 | 1),
             config,
         });
-        let mut lan = Self {
+        let mut network = Self {
             shared,
             events,
             port: 0,
@@ -428,9 +428,9 @@ impl Lan {
             listener_stop: Arc::new(AtomicBool::new(false)),
         };
         if listen {
-            lan.listen(port)?;
+            network.listen(port)?;
         }
-        Ok(lan)
+        Ok(network)
     }
     /// Start accepting connections on `port` (0 picks a free one). Returns
     /// the port. Nothing is announced on the local network (no LanServerPinger).
@@ -464,7 +464,7 @@ impl Lan {
         let stop = Arc::new(AtomicBool::new(false));
         let (accept_shared, accept_stop) = (self.shared.clone(), stop.clone());
         let thread = std::thread::Builder::new()
-            .name("horizon-lan-accept".into())
+            .name("horizon-network-accept".into())
             .spawn(move || accept_loop(listener, accept_shared, &accept_stop))?;
         self.listener = Some(thread);
         self.listener_stop = stop;
@@ -495,7 +495,7 @@ impl Lan {
                 if let Err(e) = conn::serve_local(server, shared)
                     && std::env::var_os("HORIZON_NET_DEBUG").is_some()
                 {
-                    log::warn!("[lan] local: {e}");
+                    log::warn!("[network] local: {e}");
                 }
             })?;
         Ok(client)
@@ -504,7 +504,7 @@ impl Lan {
     pub fn poll(&self) -> Vec<NetEvent> {
         self.events.try_iter().collect()
     }
-    /// Reserve a uuid for the host so a guest cannot take the name.
+    /// Reserve a uuid for the host so a player cannot take the name.
     pub fn reserve(&self, uuid: u128) {
         self.shared.reserved.lock().unwrap().insert(uuid);
     }
@@ -513,7 +513,7 @@ impl Lan {
         self.stop_listening();
     }
 }
-impl Drop for Lan {
+impl Drop for Listener {
     fn drop(&mut self) {
         self.stop();
     }
@@ -525,7 +525,7 @@ fn accept_loop(listener: TcpListener, shared: Arc<Shared>, stop: &AtomicBool) {
             Ok((stream, addr)) => {
                 let shared = shared.clone();
                 let _ = std::thread::Builder::new()
-                    .name("horizon-lan-conn".into())
+                    .name("horizon-network-conn".into())
                     .spawn(move || handle(stream, addr, shared));
             }
             Err(e) if e.kind() == io::ErrorKind::WouldBlock => {
@@ -540,7 +540,7 @@ fn handle(stream: TcpStream, addr: SocketAddr, shared: Arc<Shared>) {
     if let Err(e) = conn::serve(stream, addr, shared)
         && std::env::var_os("HORIZON_NET_DEBUG").is_some()
     {
-        log::warn!("[lan] {addr}: {e}");
+        log::warn!("[network] {addr}: {e}");
     }
 }
 

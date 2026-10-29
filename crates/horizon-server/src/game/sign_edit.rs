@@ -1,7 +1,7 @@
 //! The sign editing screen (`SignEditScreen` / `HangingSignEditScreen`):
 //! opened when a sign is placed, four lines limited to the sign's line
 //! width, Up/Down/Enter move between lines, Escape or Done closes.
-use super::lan::LanHost;
+use super::server_net::Network;
 use crate::hc::{containers::BlockEntity, items::ItemStack, signs::DYE_TEXT};
 use horizon_protocol::packets::play::{self, Clientbound as C};
 
@@ -162,32 +162,32 @@ impl crate::game::Sim<'_> {
         self.trigger_block("minecraft:item_used_on_block", pos, stack);
         true
     }
-    /// `ServerPlayer.openTextEdit` for the guest whose action opened a sign:
-    /// the block, then the editor, on its client, and the guest may write on it.
-    pub(super) fn lan_open_sign_editor(&mut self, host: &mut LanHost, conn: u32, edit: SignEditor) {
+    /// `ServerPlayer.openTextEdit` for the player whose action opened a sign:
+    /// the block, then the editor, on its client, and the player may write on it.
+    pub(super) fn net_open_sign_editor(&mut self, net: &mut Network, conn: u32, edit: SignEditor) {
         let pos = [edit.pos.0, edit.pos.1, edit.pos.2];
         let state = self.world.block(pos[0], pos[1], pos[2]).0 as i32;
-        host.hub
+        net.hub
             .send_to(conn, &C::BlockUpdate(play::BlockUpdate { pos, state }));
-        host.hub.send_to(
+        net.hub.send_to(
             conn,
             &C::OpenSignEditor(play::OpenSignEditor {
                 pos,
                 front: edit.front,
             }),
         );
-        host.play.entry(conn).or_default().sign_editing = Some(pos);
+        net.play.entry(conn).or_default().sign_editing = Some(pos);
     }
     /// `ServerGamePacketListenerImpl.handleSignUpdate`: the lines, formatting
-    /// codes stripped, go on the sign the guest may write on unless it is
-    /// waxed (`SignBlockEntity.updateSignText`); a guest gone out of reach
+    /// codes stripped, go on the sign the player may write on unless it is
+    /// waxed (`SignBlockEntity.updateSignText`); a player gone out of reach
     /// may no longer write (`playerIsTooFarAwayToEdit`).
-    pub(super) fn lan_sign_update(&mut self, host: &mut LanHost, conn: u32, p: play::SignUpdate) {
-        let Some(g) = host.hub.guest(conn) else {
+    pub(super) fn net_sign_update(&mut self, net: &mut Network, conn: u32, p: play::SignUpdate) {
+        let Some(g) = net.hub.player(conn) else {
             return;
         };
         let near = g.within_block_range(p.pos, 4.0);
-        let Some(play) = host.play.get_mut(&conn) else {
+        let Some(play) = net.play.get_mut(&conn) else {
             return;
         };
         if !near {
@@ -237,7 +237,7 @@ fn strip_formatting(input: &str) -> String {
 
 impl crate::game::Sim<'_> {
     /// `SignBlockEntity.openTextEdit`'s turn: the player edits this side (the
-    /// server then opens the editor on their client, `lan_open_sign_editor`).
+    /// server then opens the editor on their client, `net_open_sign_editor`).
     pub(super) fn open_sign_editor(&mut self, pos: (i32, i32, i32), front: bool) {
         let _lines = match self.world.block_entities.get(&pos) {
             Some(BlockEntity::Sign(sign)) if front => sign.front.lines.clone(),

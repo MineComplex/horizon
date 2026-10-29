@@ -21,7 +21,7 @@ const PLAYER_KNOCKBACK: f32 = 1.22;
 /// `BreezeWindCharge.RADIUS`.
 const BREEZE_RADIUS: f32 = 3.0;
 
-/// A burst `wind_burst` puts off until a guest's turn is over.
+/// A burst `wind_burst` puts off until a player's turn is over.
 pub(super) struct Burst {
     center: [f64; 3],
     radius: f32,
@@ -141,7 +141,7 @@ impl crate::game::Sim<'_> {
                     m.damage(1.0, source);
                 }
                 if p.owner == Some(Who::Player) {
-                    self.last_hurt_by_player.insert(id, self.lan_acting);
+                    self.last_hurt_by_player.insert(id, self.net_acting);
                 }
             }
         }
@@ -207,7 +207,7 @@ impl crate::game::Sim<'_> {
     }
     /// `ServerExplosion.hurtEntities` for a calculator that damages nothing:
     /// knockback scaled by distance, exposure and the multiplier. Returns the
-    /// guests it pushed and by how much (`hitPlayers`), which their clients
+    /// players it pushed and by how much (`hitPlayers`), which their clients
     /// apply from the burst's packet.
     fn wind_knockback(
         &mut self,
@@ -235,28 +235,28 @@ impl crate::game::Sim<'_> {
                 [d[0] / l, d[1] / l, d[2] / l]
             }
         };
-        // The player, then every other player in the level (LAN guests),
-        // each swapped in as the player. In a guest's turn (a mace's wind
-        // burst) the player is that guest.
+        // The player, then every other player in the level (players),
+        // each swapped in as the player. In a player's turn (a mace's wind
+        // burst) the player is that player.
         let own = self.wind_push_player(center, radius, multiplier, wind_charge);
-        let mut pushed: Vec<_> = self.lan_acting.zip(own).into_iter().collect();
-        if let Some(mut host) = self.lan.take() {
-            let guests: Vec<u32> = host
+        let mut pushed: Vec<_> = self.net_acting.zip(own).into_iter().collect();
+        if let Some(mut net) = self.network.take() {
+            let players: Vec<u32> = net
                 .hub
-                .guests
+                .players
                 .iter()
-                .filter(|g| host.hub.here(g) && g.loaded && !g.dead)
+                .filter(|g| net.hub.here(g) && g.loaded && !g.dead)
                 .map(|g| g.conn)
                 .collect();
-            for conn in guests {
-                let push = self.as_guest(&mut host, conn, |g| {
+            for conn in players {
+                let push = self.as_player(&mut net, conn, |g| {
                     g.wind_push_player(center, radius, multiplier, wind_charge)
                 });
                 if let Some(Some(push)) = push {
                     pushed.push((conn, push));
                 }
             }
-            self.lan = Some(host);
+            self.network = Some(net);
         }
         let multiplier = f64::from(multiplier);
         let mut mobs = std::mem::take(&mut self.mobs);
@@ -422,10 +422,10 @@ impl crate::game::Sim<'_> {
         breeze: bool,
         wind_charge: bool,
     ) -> Result<()> {
-        // In a guest's turn (their charge landing, their mace's burst) the
-        // host holds the other players (`as_guest`): the burst waits for the
-        // turn to end so that it reaches every player, the guest too.
-        if self.lan_acting.is_some() && self.lan.is_none() {
+        // In a player's turn (their charge landing, their mace's burst) the
+        // host holds the other players (`as_player`): the burst waits for the
+        // turn to end so that it reaches every player, the player too.
+        if self.net_acting.is_some() && self.network.is_none() {
             self.creatures.wind_bursts.push(Burst {
                 center,
                 radius,
@@ -471,10 +471,10 @@ impl crate::game::Sim<'_> {
         };
         self.particles
             .add(&ParticleOptions::simple(ty), center, [1.0, 0.0, 0.0]);
-        self.lan_wind_burst(center, radius, sound, block_count, &pushed);
+        self.net_wind_burst(center, radius, sound, block_count, &pushed);
         Ok(())
     }
-    /// The bursts guests' turns put off.
+    /// The bursts players' turns put off.
     pub(super) fn flush_wind_bursts(&mut self) -> Result<()> {
         self.flush_smash_pushes();
         for b in std::mem::take(&mut self.creatures.wind_bursts) {

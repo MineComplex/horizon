@@ -26,11 +26,11 @@ impl crate::game::Sim<'_> {
     pub(crate) fn creative_tab_open(&self) -> bool {
         false
     }
-    pub(crate) fn lan_update_models(&mut self, _host: &mut super::lan::LanHost) {}
+    pub(crate) fn net_update_models(&mut self, _host: &mut super::server_net::Network) {}
 }
 
 /// Particles the client spawns itself (`ItemParticle`, eating crumbs...): a
-/// server sends its particles as packets (game/lan_particles.rs).
+/// server sends its particles as packets (game/net_particles.rs).
 impl crate::game::Sim<'_> {
     pub(crate) fn item_particle(
         &self,

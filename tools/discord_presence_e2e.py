@@ -191,7 +191,7 @@ def lan(bins, host_args=()):
     guest = None
     try:
         host.ctl_run('wait-for', 'loaded', '--timeout', '300')
-        port = host.ctl_run('lan', 'open')['port']
+        port = host.ctl_run('network', 'open')['port']
         host.discord.wait('first player', shows('Multiplayer', 'In the Overworld'))
         guest = Game(bins, 'guest')
         guest.discord.wait('guest title screen', shows('In the menus'))

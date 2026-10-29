@@ -27,9 +27,9 @@ pub(super) struct Rocket {
     pub(super) explosions: Vec<FireworkExplosion>,
     /// Boosting the player (attachedToEntity).
     pub(super) attached: bool,
-    /// On a server, the player it boosts when not this game's own: a guest's
+    /// On a server, the player it boosts when not this game's own: a player's
     /// connection.
-    pub(super) guest: Option<u32>,
+    pub(super) player: Option<u32>,
     /// `DATA_SHOT_AT_ANGLE` (dispensers): constant velocity, exploding on
     /// the first block it hits.
     pub(super) angled: bool,
@@ -121,7 +121,7 @@ impl crate::game::Sim<'_> {
             lifetime,
             explosions,
             attached,
-            guest: None,
+            player: None,
             angled: false,
             item: stack.clone(),
         }
@@ -161,7 +161,7 @@ impl crate::game::Sim<'_> {
         }
         let at = self.player.as_ref().map_or(Vec3::ZERO, |p| p.position);
         let mut rocket = self.new_rocket(at, stack, true);
-        rocket.guest = self.lan_acting;
+        rocket.player = self.net_acting;
         self.rockets.push(rocket);
         if !self.creative {
             self.consume_held();
@@ -175,14 +175,14 @@ impl crate::game::Sim<'_> {
             let mut r = self.rockets.remove(i);
             r.previous = r.position;
             if r.attached
-                && let Some(conn) = r.guest
+                && let Some(conn) = r.player
             {
-                // A guest's rocket follows them; their own client boosts them.
-                let guest = self
-                    .lan
+                // A player's rocket follows them; their own client boosts them.
+                let player = self
+                    .network
                     .as_ref()
-                    .and_then(|host| host.hub.guests.iter().find(|g| g.conn == conn));
-                if let Some(g) = guest {
+                    .and_then(|net| net.hub.players.iter().find(|g| g.conn == conn));
+                if let Some(g) = player {
                     r.position = Vec3::new(g.position[0], g.position[1], g.position[2]);
                 }
             } else if r.attached {
@@ -243,31 +243,31 @@ impl crate::game::Sim<'_> {
         // FireworkRocketEntity.explode broadcasts before discard. Send now:
         // tick_lan removes missing tracked entities before flushing effects.
         if r.id != 0
-            && let Some(host) = &self.lan
+            && let Some(net) = &self.network
         {
-            host.hub
+            net.hub
                 .entity_event(r.id as i32, FIREWORK_EXPLODE_EVENT, at);
         }
         if !r.explosions.is_empty() {
             let damage = 5.0 + r.explosions.len() as f32 * 2.0;
             let from = r.position;
-            // `attachedToEntity` takes the full damage, a guest as well; every
+            // `attachedToEntity` takes the full damage, a player as well; every
             // other player in range and in sight takes the blast.
-            let boosted = r.guest.filter(|_| r.attached);
+            let boosted = r.player.filter(|_| r.attached);
             if r.attached && boosted.is_none() {
                 self.rocket_hurt_player(damage);
             } else {
                 self.rocket_blast_player(from, damage);
             }
             if let Some(conn) = boosted
-                && let Some(mut host) = self.lan.take()
+                && let Some(mut net) = self.network.take()
             {
-                self.as_guest(&mut host, conn, |g| g.rocket_hurt_player(damage));
-                self.lan = Some(host);
+                self.as_player(&mut net, conn, |g| g.rocket_hurt_player(damage));
+                self.network = Some(net);
             }
-            // Every other player in the level (LAN guests, the players of a
+            // Every other player in the level (players, the players of a
             // server thread), each swapped in as the player.
-            self.each_guest_hit_except(boosted, |g| g.rocket_blast_player(from, damage));
+            self.each_player_hit_except(boosted, |g| g.rocket_blast_player(from, damage));
             let hits: Vec<(u32, f32)> = {
                 let world = self.mob_world_base(&[]);
                 self.mobs

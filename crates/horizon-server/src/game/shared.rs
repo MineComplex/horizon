@@ -36,11 +36,8 @@ impl crate::game::Sim<'_> {
             json!({ "name": name, "hurts": hurts, "attacks": attacks })
         }
         let mut players = Vec::new();
-        if let Some(p) = self.player.as_mut() {
-            players.push(drain("host", &mut p.hurt_log, &mut p.attack_log));
-        }
-        if let Some(host) = self.lan.as_mut() {
-            for g in &mut host.hub.guests {
+        if let Some(net) = self.network.as_mut() {
+            for g in &mut net.hub.players {
                 let name = g.name.clone();
                 if let Some(m) = g.motion.as_mut() {
                     players.push(drain(&name, &mut m.hurt_log, &mut m.attack_log));

@@ -1,4 +1,4 @@
-//! Boats and minecarts for a server's players: LAN guests, players on a
+//! Boats and minecarts for a server's players: players, players on a
 //! dedicated server, and single player's window on its server thread.
 //!
 //! A player aims at a vehicle, item frame, armor stand or painting as at a
@@ -9,7 +9,7 @@
 //! here with the rider's input (`ServerPlayer.getLastClientMoveIntent`).
 //! Sneaking gets out (`Player.rideTick`: `wantsToStopRiding`), and the client
 //! is teleported where the player lands (`ServerPlayer.dismountTo`).
-use super::{Keys, lan::LanHost, minecarts::SEAT};
+use super::{Keys, minecarts::SEAT, server_net::Network};
 use crate::hc::collisions::SceneCollisions;
 use horizon_core::geometry::{Aabb, Vec3};
 use horizon_protocol::{
@@ -73,36 +73,36 @@ impl crate::game::Sim<'_> {
     }
     /// The vehicles the server's players ride: they move with their riders,
     /// not in `tick_boats` and `tick_carts`.
-    pub(super) fn guest_vehicles(&self) -> Vec<u32> {
-        self.lan.as_ref().map_or_else(Vec::new, |h| {
-            h.hub.guests.iter().filter_map(|g| g.vehicle).collect()
+    pub(super) fn player_vehicles(&self) -> Vec<u32> {
+        self.network.as_ref().map_or_else(Vec::new, |h| {
+            h.hub.players.iter().filter_map(|g| g.vehicle).collect()
         })
     }
     /// Whether a server player other than the one acting rides `vehicle`
     /// (`Entity.canAddPassenger`: a boat or minecart seats one player here).
-    pub(super) fn ridden_by_guest(&self, vehicle: u32) -> bool {
-        self.lan.as_ref().is_some_and(|h| {
+    pub(super) fn ridden_by_player(&self, vehicle: u32) -> bool {
+        self.network.as_ref().is_some_and(|h| {
             h.hub
-                .guests
+                .players
                 .iter()
-                .any(|g| Some(g.conn) != self.lan_acting && g.vehicle == Some(vehicle))
+                .any(|g| Some(g.conn) != self.net_acting && g.vehicle == Some(vehicle))
         })
     }
     /// Whether a server player rides `vehicle` (`Entity.isPassenger`: a
     /// passenger does not use a portal on its own, the vehicle carries it
     /// across, `Entity.teleportCrossDimension`).
-    pub(super) fn guest_rides(&self, vehicle: u32) -> bool {
-        self.lan
+    pub(super) fn player_rides(&self, vehicle: u32) -> bool {
+        self.network
             .as_ref()
-            .is_some_and(|h| h.hub.guests.iter().any(|g| g.vehicle == Some(vehicle)))
+            .is_some_and(|h| h.hub.players.iter().any(|g| g.vehicle == Some(vehicle)))
     }
     /// `Player.rideTick` for a server player, before its moves this tick:
     /// it stays in its seat, steers its minecart, or gets out.
-    pub(super) fn guest_vehicle_tick(&mut self, host: &mut LanHost, conn: u32) {
-        let Some(gi) = host.hub.guests.iter().position(|g| g.conn == conn) else {
+    pub(super) fn player_vehicle_tick(&mut self, net: &mut Network, conn: u32) {
+        let Some(gi) = net.hub.players.iter().position(|g| g.conn == conn) else {
             return;
         };
-        let g = &host.hub.guests[gi];
+        let g = &net.hub.players[gi];
         let Some(vehicle) = g.vehicle else {
             return;
         };
@@ -114,7 +114,7 @@ impl crate::game::Sim<'_> {
         // The vehicle is gone (broken, in another level) or the rider died:
         // its client drops it with the entity or the death screen.
         if dead || (boat.is_none() && !cart && !mount && !cushion) {
-            let g = &mut host.hub.guests[gi];
+            let g = &mut net.hub.players[gi];
             (g.vehicle, g.vehicle_good) = (None, None);
             return;
         }
@@ -125,9 +125,9 @@ impl crate::game::Sim<'_> {
             b.hurt_time = (b.hurt_time - 1).max(0);
             b.damage = (b.damage - 1.0).max(0.0);
         }
-        // Getting out goes through leave_guest, which tells the client and
+        // Getting out goes through leave_player, which tells the client and
         // teleports it (ServerPlayer.dismountTo).
-        let seat = self.as_guest(host, conn, |game| {
+        let seat = self.as_player(net, conn, |game| {
             // A cushion does not move: the rider sits on it until it sneaks
             // (`Cushion.removePassenger` plays the get-up sound).
             if game.cushions.iter().any(|c| Some(c.id) == game.riding) {
@@ -159,18 +159,18 @@ impl crate::game::Sim<'_> {
             Some([p.x, p.y, p.z])
         });
         if let Some(Some(at)) = seat {
-            let g = &mut host.hub.guests[gi];
+            let g = &mut net.hub.players[gi];
             g.previous_position = g.position;
             g.position = at;
         }
     }
     /// After an interaction: a player that got into a vehicle sits in it,
     /// and its last good vehicle position is where the vehicle is.
-    pub(super) fn guest_boarded(&mut self, host: &mut LanHost, conn: u32, before: Option<u32>) {
-        let Some(gi) = host.hub.guests.iter().position(|g| g.conn == conn) else {
+    pub(super) fn player_boarded(&mut self, net: &mut Network, conn: u32, before: Option<u32>) {
+        let Some(gi) = net.hub.players.iter().position(|g| g.conn == conn) else {
             return;
         };
-        let Some(vehicle) = host.hub.guests[gi].vehicle else {
+        let Some(vehicle) = net.hub.players[gi].vehicle else {
             return;
         };
         if before == Some(vehicle) {
@@ -178,7 +178,7 @@ impl crate::game::Sim<'_> {
         }
         // The host in the window rides it already.
         if self.riding == Some(vehicle) {
-            host.hub.guests[gi].vehicle = before;
+            net.hub.players[gi].vehicle = before;
             return;
         }
         let at = self
@@ -199,7 +199,7 @@ impl crate::game::Sim<'_> {
                     .map(|c| (c.position, c.seat()))
             });
         if let Some((p, seat)) = at {
-            let g = &mut host.hub.guests[gi];
+            let g = &mut net.hub.players[gi];
             g.vehicle_good = Some([p.x, p.y, p.z]);
             g.previous_position = g.position;
             g.position = [seat.x, seat.y, seat.z];
@@ -207,14 +207,14 @@ impl crate::game::Sim<'_> {
             return;
         }
         // An animal: the rider sits where `positionRider` puts it.
-        let seat = self.as_guest(host, conn, |game| {
+        let seat = self.as_player(net, conn, |game| {
             game.position_rider();
             game.player
                 .as_ref()
                 .map(|p| [p.position.x, p.position.y, p.position.z])
         });
         if let Some(Some(at)) = seat {
-            let g = &mut host.hub.guests[gi];
+            let g = &mut net.hub.players[gi];
             g.previous_position = g.position;
             g.position = at;
             g.on_ground = false;
@@ -223,13 +223,13 @@ impl crate::game::Sim<'_> {
     /// `ServerGamePacketListenerImpl.handleMoveVehicle`: the boat its rider
     /// drives goes where the client says, unless it moved too quickly or
     /// wrongly; then it stays, and the client is told where it is.
-    pub(super) fn guest_move_vehicle(
+    pub(super) fn player_move_vehicle(
         &mut self,
-        host: &mut LanHost,
+        net: &mut Network,
         conn: u32,
         p: &play::MoveVehicleRequest,
     ) {
-        let Some(gi) = host.hub.guests.iter().position(|g| g.conn == conn) else {
+        let Some(gi) = net.hub.players.iter().position(|g| g.conn == conn) else {
             return;
         };
         let [x, y, z] = p.position;
@@ -239,25 +239,25 @@ impl crate::game::Sim<'_> {
             || !p.yaw.is_finite()
             || !p.pitch.is_finite()
         {
-            host.hub.kick(
+            net.hub.kick(
                 conn,
                 translatable("multiplayer.disconnect.invalid_vehicle_movement", &[]),
             );
             return;
         }
-        let g = &host.hub.guests[gi];
+        let g = &net.hub.players[gi];
         if g.awaiting_teleport.is_some() || !g.loaded {
             return;
         }
-        let owner = host.hub.singleplayer_owner == Some(g.uuid);
+        let owner = net.hub.singleplayer_owner == Some(g.uuid);
         let (vehicle, good) = (g.vehicle, g.vehicle_good);
-        let back = |host: &mut LanHost, position: Vec3, yaw: f32| {
+        let back = |net: &mut Network, position: Vec3, yaw: f32| {
             let packet = play::MoveVehicle {
                 position: [position.x, position.y, position.z],
                 yaw,
                 pitch: 0.0,
             };
-            host.hub.send_to(conn, &C::MoveVehicle(packet));
+            net.hub.send_to(conn, &C::MoveVehicle(packet));
         };
         // Only a boat is driven by its rider (getControllingPassenger); a
         // minecart that is elsewhere on the client is put back.
@@ -265,7 +265,7 @@ impl crate::game::Sim<'_> {
             if let Some(c) = vehicle.and_then(|v| self.carts.iter().find(|c| c.id == v))
                 && c.position.distance_squared(Vec3::new(x, y, z)) > 1.0
             {
-                back(host, c.position, c.yaw);
+                back(net, c.position, c.yaw);
             }
             return;
         };
@@ -281,7 +281,7 @@ impl crate::game::Sim<'_> {
         let moved = target.distance_squared(old) - b.velocity.length_squared();
         if moved > 100.0 && !owner {
             log::warn!("boat {} moved too quickly! {moved}", b.id);
-            back(host, old, b.yaw);
+            back(net, old, b.yaw);
             return;
         }
         // vehicle.move(PLAYER, target - lastGood) with the boat's collisions:
@@ -307,7 +307,7 @@ impl crate::game::Sim<'_> {
             .unwrap_or(true);
         if free_before && (wrongly || !free_after) {
             log::warn!("boat {} moved wrongly", b.id);
-            back(host, old, b.yaw);
+            back(net, old, b.yaw);
             return;
         }
         let b = &mut self.boats[i];
@@ -318,16 +318,16 @@ impl crate::game::Sim<'_> {
         b.yaw = p.yaw;
         b.on_ground = p.on_ground;
         let seat = self.player_boat_seat(i);
-        let g = &mut host.hub.guests[gi];
+        let g = &mut net.hub.players[gi];
         g.vehicle_good = Some([target.x, target.y, target.z]);
         g.previous_position = g.position;
         g.position = [seat.x, seat.y, seat.z];
     }
     /// `handlePaddleBoat`: the paddles of the boat the player drives.
-    pub(super) fn guest_paddle_boat(&mut self, host: &LanHost, conn: u32, paddles: [bool; 2]) {
-        let vehicle = host
+    pub(super) fn player_paddle_boat(&mut self, net: &Network, conn: u32, paddles: [bool; 2]) {
+        let vehicle = net
             .hub
-            .guests
+            .players
             .iter()
             .find(|g| g.conn == conn)
             .and_then(|g| g.vehicle);

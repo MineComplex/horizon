@@ -302,24 +302,24 @@ impl crate::game::Sim<'_> {
         };
         // BehaviorUtils.throwItem toward the nearest visible player
         // (NEAREST_VISIBLE_PLAYER: within 16, alive, no spectators; the
-        // guests count as much as the host), else nearby.
+        // players count as much as the host), else nearby.
         let at = m.position;
-        let host = self
+        let net = self
             .player
             .as_ref()
             .filter(|p| !p.health.dead_or_dying() && !self.spectator())
             .map(|p| [p.position.x, p.position.y, p.position.z]);
-        let guests = self.lan.iter().flat_map(|h| {
+        let players = self.network.iter().flat_map(|h| {
             h.hub
-                .guests
+                .players
                 .iter()
                 .filter(|g| h.hub.here(g) && g.loaded && !g.dead && !g.spectator())
                 .map(|g| g.position)
         });
         let d = |p: &[f64; 3]| at.distance_squared(Vec3::new(p[0], p[1], p[2]));
-        let target = host
+        let target = net
             .into_iter()
-            .chain(guests)
+            .chain(players)
             .filter(|p| d(p) < 256.0)
             .min_by(|a, b| d(a).total_cmp(&d(b)))
             .map(|p| [p[0], p[1] + 1.0, p[2]]);

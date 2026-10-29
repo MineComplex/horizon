@@ -657,7 +657,7 @@ impl crate::game::Sim<'_> {
                     if let Some(m) = self.mobs.iter_mut().find(|m| m.id == id) {
                         m.damage(amount, crate::hc::mobs::Damage::player(at));
                     }
-                    self.last_hurt_by_player.insert(id, self.lan_acting);
+                    self.last_hurt_by_player.insert(id, self.net_acting);
                 }
                 "set" => {
                     let n = |i: usize| words[i].parse::<i32>().unwrap_or(0);

@@ -365,11 +365,11 @@ mod tests {
         .unwrap();
         let tree = CommandTree { root: report };
         let builtin = Builtin::default();
-        let guest = tree.packet(0, false, &builtin);
-        let names: Vec<_> = guest.nodes.iter().map(|n| n.name.as_str()).collect();
+        let player = tree.packet(0, false, &builtin);
+        let names: Vec<_> = player.nodes.iter().map(|n| n.name.as_str()).collect();
         assert_eq!(names, ["", "me", "tell", "action"]);
         // `tell` redirects to `me` (node 1).
-        assert_eq!(guest.nodes[2].redirect, Some(1));
+        assert_eq!(player.nodes[2].redirect, Some(1));
         let op = tree.packet(2, true, &builtin);
         let names: Vec<_> = op.nodes.iter().map(|n| n.name.as_str()).collect();
         // The root's children in vanilla's registration order.

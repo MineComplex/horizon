@@ -14,12 +14,12 @@ impl crate::game::Sim<'_> {
             self.sounds.stop_jukebox(pos);
         }
     }
-    /// Level event 1011: the song ends, here and for the guests.
+    /// Level event 1011: the song ends, here and for the players.
     fn stop_song(&mut self, pos: [i32; 3]) {
         self.stop_sound(pos);
         self.notify_record_playing(pos, false);
         if self.sounds.capture.is_some() {
-            self.lan_songs.push((pos, None));
+            self.net_songs.push((pos, None));
         }
     }
     /// `LevelEventHandler.notifyNearbyEntities` (level events 1010 and 1011):

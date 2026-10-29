@@ -209,7 +209,7 @@ impl crate::game::Sim<'_> {
             match event {
                 SpawnerEvent::BlockUpdated => self.spawner_block_updated(key),
                 SpawnerEvent::BlockEvent(id) => {
-                    self.lan_block_event(pos, id, 0);
+                    self.net_block_event(pos, id, 0);
                     // The client copy's onEventTriggered.
                     if let Some(BlockEntity::Spawner(s)) = self.world.block_entities.get_mut(&key) {
                         s.client_event(id);
@@ -247,7 +247,7 @@ impl crate::game::Sim<'_> {
             return;
         };
         let at = m.position;
-        self.lan_entity_event(id as i32, 20, [at.x, at.y, at.z]);
+        self.net_entity_event(id as i32, 20, [at.x, at.y, at.z]);
         self.poof_particles(id);
     }
     /// `Mob.handleEntityEvent` 20 (`spawnAnim` on a client): the poof about

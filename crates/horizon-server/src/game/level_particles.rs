@@ -214,11 +214,11 @@ impl crate::game::Sim<'_> {
     }
     /// `ServerLevel.globalLevelEvent`: heard by every player on the server
     /// (an end portal opening, the dragon's death roar): here, and sent to
-    /// every guest whatever their dimension.
+    /// every player whatever their dimension.
     pub(super) fn global_level_event(&mut self, id: i32, pos: [i32; 3], data: i32) {
         self.global_level_event_sound(id, pos);
         if self.sounds.capture.is_some() {
-            self.lan_global_events.push((id, pos, data));
+            self.net_global_events.push((id, pos, data));
         }
     }
     /// `LevelEventHandler.globalLevelEvent`: the sound two blocks from the
@@ -242,7 +242,7 @@ impl crate::game::Sim<'_> {
             }
             [0, 1, 2].map(|k| eye[k] + d[k] / length * 2.0)
         });
-        // Each guest plays it from the global packet.
+        // Each player plays it from the global packet.
         self.sounds.play_unshared(sound, at, volume, 1.0);
     }
     /// `ClientLevel.addBreakingBlockEffects`: the block's hit sound (only for
@@ -259,7 +259,7 @@ impl crate::game::Sim<'_> {
         }
         if play_sound {
             let sounds = self.res.facts().get(state).sounds.clone();
-            // Each guest plays it from the level event itself.
+            // Each player plays it from the level event itself.
             self.sounds.play_unshared(
                 &sounds.hit,
                 Some(pos.map(|v| f64::from(v) + 0.5)),

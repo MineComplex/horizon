@@ -28,19 +28,19 @@ impl VaultLevel for Players {
 
 impl crate::game::Sim<'_> {
     fn vault_players(&self) -> Players {
-        let host = self.player.as_ref().map(|p| VaultPlayer {
+        let net = self.player.as_ref().map(|p| VaultPlayer {
             uuid: self.acting_uuid(),
             block: [p.position.x, p.position.y, p.position.z].map(|v| v.floor() as i32),
             spectator: self.spectator(),
         });
-        let guests = self.lan_present().into_iter().map(|g| VaultPlayer {
+        let players = self.net_present().into_iter().map(|g| VaultPlayer {
             uuid: g.uuid,
             block: g.position.map(|v| v.floor() as i32),
             spectator: g.spectator,
         });
         Players {
             time: self.world.game_time,
-            players: host.into_iter().chain(guests).collect(),
+            players: net.into_iter().chain(players).collect(),
         }
     }
     /// The vault at `key` with its block's state and ominous flag.

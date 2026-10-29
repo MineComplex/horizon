@@ -4,7 +4,7 @@
 //! it picks up (the end of `AbstractBoat.tick`), where they sit
 //! (`positionRider`, `clampRotation`) and how they get out.
 //! Saving them under the boat's `Passengers` lives in `persist.rs`.
-use super::{boats::Boat, lan_mobs::guest_bounds};
+use super::{boats::Boat, net_mobs::player_bounds};
 use crate::hc::{
     camera::wrap_degrees,
     mobs::{Mob, Species, Who, drops::is_animal, equine, riders},
@@ -63,14 +63,14 @@ impl crate::game::Sim<'_> {
     /// The players in boat `id`: the window's player (or the server player
     /// acting as it) and the server's other players.
     pub(super) fn boat_players(&self, id: u32) -> usize {
-        let guests = self.lan.as_ref().map_or(0, |h| {
+        let players = self.network.as_ref().map_or(0, |h| {
             h.hub
-                .guests
+                .players
                 .iter()
-                .filter(|g| Some(g.conn) != self.lan_acting && g.vehicle == Some(id))
+                .filter(|g| Some(g.conn) != self.net_acting && g.vehicle == Some(id))
                 .count()
         });
-        usize::from(self.riding == Some(id)) + guests
+        usize::from(self.riding == Some(id)) + players
     }
     /// The mobs in boat `id`, in their seat order after the players
     /// (`Entity.addPassenger` puts a player first).
@@ -126,16 +126,16 @@ impl crate::game::Sim<'_> {
         {
             out.push((p.bounds(), true));
         }
-        if let Some(host) = self.lan.as_ref() {
-            for g in host.hub.guests.iter().filter(|g| {
-                Some(g.conn) != self.lan_acting
-                    && host.hub.here(g)
+        if let Some(net) = self.network.as_ref() {
+            for g in net.hub.players.iter().filter(|g| {
+                Some(g.conn) != self.net_acting
+                    && net.hub.here(g)
                     && g.loaded
                     && !g.dead
                     && !g.spectator()
                     && g.vehicle != Some(id)
             }) {
-                out.push((guest_bounds(g), false));
+                out.push((player_bounds(g), false));
             }
         }
         out
@@ -293,7 +293,7 @@ impl crate::game::Sim<'_> {
                 self.boats[k].velocity = self.boats[k].velocity.add_vector(v);
             }
         }
-        let guest_carts = self.guest_vehicles();
+        let player_carts = self.player_vehicles();
         for c in 0..self.carts.len() {
             let cb = self.carts[c].bounds();
             if !cb.intersects(area) || !boat_pushes(bb, cb, false) {
@@ -307,7 +307,7 @@ impl crate::game::Sim<'_> {
             }
             let cid = self.carts[c].id;
             let ridden = self.riding == Some(cid)
-                || guest_carts.contains(&cid)
+                || player_carts.contains(&cid)
                 || self.mobs.iter().any(|m| m.extra.mount == Some(cid));
             if !ridden {
                 self.carts[c].velocity = self.carts[c].velocity.add_vector(v);

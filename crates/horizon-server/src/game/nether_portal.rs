@@ -485,7 +485,7 @@ impl crate::game::Sim<'_> {
         for (id, entry) in leaving {
             // `Entity.teleportCrossDimension` carries the passengers: a
             // vehicle server players ride takes them along.
-            if self.guest_rides(id) {
+            if self.player_rides(id) {
                 self.portals.carrying.push((self.dim, id, entry));
             } else {
                 self.send_through_portal(id, entry);
@@ -525,7 +525,7 @@ impl crate::game::Sim<'_> {
         m.alive()
             && m.extra.mount.is_none()
             && self.riding != Some(m.id)
-            && (!self.guest_rides(m.id) || self.carries_riders())
+            && (!self.player_rides(m.id) || self.carries_riders())
             && m.species() != Species::Wither
     }
     /// `canUsePortal(false)` of a boat or minecart: empty, or ridden by
@@ -573,7 +573,7 @@ impl crate::game::Sim<'_> {
     /// Whether the player, a server player or a mob rides vehicle `id`.
     fn vehicle_occupied(&self, id: u32) -> bool {
         self.riding == Some(id)
-            || self.ridden_by_guest(id)
+            || self.ridden_by_player(id)
             || self.mobs.iter().any(|m| m.extra.mount == Some(id))
     }
     /// `NetherPortalBlock.entityInside` and `EndPortalBlock.entityInside`

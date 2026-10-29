@@ -2,7 +2,7 @@
 //! tick (`execute`, `executeChain`), `BaseCommandBlock.performCommand`
 //! through the command system with the block's output, and
 //! `CommandBlockEditScreen` with what `handleSetCommandBlock` does with it.
-use super::{commands::execute::Source, lan::LanHost};
+use super::{commands::execute::Source, server_net::Network};
 use crate::hc::{
     command_block::{self, CommandBlock, Mode},
     containers::BlockEntity,
@@ -348,15 +348,15 @@ impl crate::game::Sim<'_> {
             self.system_message(broadcast);
         }
     }
-    /// `ServerGamePacketListenerImpl.handleSetCommandBlock` for a guest: the
+    /// `ServerGamePacketListenerImpl.handleSetCommandBlock` for a player: the
     /// block is edited only by a creative player with game master commands.
-    pub(super) fn lan_set_command_block(
+    pub(super) fn net_set_command_block(
         &mut self,
-        host: &mut LanHost,
+        net: &mut Network,
         conn: u32,
         p: play::SetCommandBlock,
     ) {
-        let Some(g) = host.hub.guest(conn) else {
+        let Some(g) = net.hub.player(conn) else {
             return;
         };
         let allowed = g.creative() && g.permission >= 2;
@@ -368,7 +368,7 @@ impl crate::game::Sim<'_> {
             conditional: p.flags & 2 != 0,
             auto: p.flags & 4 != 0,
         };
-        self.as_guest(host, conn, |game| {
+        self.as_player(net, conn, |game| {
             if allowed {
                 game.apply_command_block(&edit);
                 // BaseCommandBlock.onUpdated: the clients get the new command.

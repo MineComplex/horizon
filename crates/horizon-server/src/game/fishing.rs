@@ -1,9 +1,9 @@
 //! Fishing: `FishingRodItem.use` (cast / reel in), the `FishingHook` (flight,
 //! bobbing, lure and bite timers, open water, hooking mobs, retrieving the
 //! `gameplay/fishing` loot) and `FishingHookRenderer` (bobber and line).
-use super::{lan::LanHost, lan_mobs::guest_bounds};
+use super::{net_mobs::player_bounds, server_net::Network};
 use crate::hc::advancements::EntityView;
-use crate::hc::lan::{entity::States, hub::Hub};
+use crate::hc::server_net::{entity::States, hub::Hub};
 use crate::hc::{
     blocks::Fluid,
     collisions::SceneCollisions,
@@ -18,7 +18,7 @@ use horizon_core::{
 use horizon_protocol::entity_data::{Value, serializer};
 use std::{collections::HashMap, sync::Arc};
 
-use super::lan_actions::GuestPlay;
+use super::net_actions::PlayerPlay;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 enum State {
@@ -45,7 +45,7 @@ pub(super) struct Hook {
     lure: i32,
 }
 /// A player a hook can catch (`canHitEntity`): their entity id, which
-/// guest they are (none: the host) and their box.
+/// player they are (none: the host) and their box.
 pub(super) struct HookTarget {
     id: u32,
     conn: Option<u32>,
@@ -467,7 +467,7 @@ impl crate::game::Sim<'_> {
         self.particles
             .send_particles(&options, at, spread, speed, count);
         // The players a server serves are sent them too.
-        self.lan_send_particles(&options, at, spread, speed, count);
+        self.net_send_particles(&options, at, spread, speed, count);
     }
     /// `FishingHook.tick`.
     pub(super) fn tick_fishing(&mut self) {
@@ -485,13 +485,13 @@ impl crate::game::Sim<'_> {
             return;
         }
         // The players it can catch, as they stand now (the host's own hook;
-        // guests' hooks use the ones taken as their turns start).
-        if self.lan_acting.is_none()
+        // players' hooks use the ones taken as their turns start).
+        if self.net_acting.is_none()
             && matches!(h.state, State::Flying | State::Hooked(_))
-            && let Some(host) = self.lan.take()
+            && let Some(net) = self.network.take()
         {
-            self.refresh_hook_targets(&host);
-            self.lan = Some(host);
+            self.refresh_hook_targets(&net);
+            self.network = Some(net);
         }
         h.previous = h.position;
         if h.on_ground {
@@ -532,7 +532,7 @@ impl crate::game::Sim<'_> {
                     .find(|m| m.alive() && touches(m.bounds()))
                     .map(|m| m.id)
                     .or_else(|| {
-                        let owner = self.lan_acting;
+                        let owner = self.net_acting;
                         self.creatures
                             .hook_targets
                             .iter()
@@ -642,24 +642,24 @@ impl crate::game::Sim<'_> {
     }
     /// The players a hook can catch: everyone but spectators and the dead
     /// (`Projectile.canHitEntity`), the players in the level.
-    pub(super) fn refresh_hook_targets(&mut self, host: &LanHost) {
+    pub(super) fn refresh_hook_targets(&mut self, net: &Network) {
         let mut targets = Vec::new();
-        for g in &host.hub.guests {
-            if host.hub.here(g) && g.loaded && !g.dead && !g.spectator() {
+        for g in &net.hub.players {
+            if net.hub.here(g) && g.loaded && !g.dead && !g.spectator() {
                 targets.push(HookTarget {
                     id: g.entity_id as u32,
                     conn: Some(g.conn),
-                    bounds: guest_bounds(g),
+                    bounds: player_bounds(g),
                 });
             }
         }
         self.creatures.hook_targets = targets;
     }
     /// `FishingHook.pullEntity` on the players the hooks reeled in this tick
-    /// pulled: their velocity moves, and a guest's reaches their client.
+    /// pulled: their velocity moves, and a player's reaches their client.
     pub(super) fn flush_hook_pulls(&mut self) {
         let pulls = std::mem::take(&mut self.creatures.hook_pulls);
-        let Some(mut host) = self.lan.take() else {
+        let Some(mut net) = self.network.take() else {
             return;
         };
         for (id, delta) in pulls {
@@ -668,19 +668,19 @@ impl crate::game::Sim<'_> {
                     p.velocity = p.velocity.add_vector(delta);
                 }
             };
-            if id == host.host_entity as u32 {
+            if id == net.host_entity as u32 {
                 push(self);
-            } else if let Some(conn) = host
+            } else if let Some(conn) = net
                 .hub
-                .guests
+                .players
                 .iter()
                 .find(|g| g.entity_id as u32 == id)
                 .map(|g| g.conn)
             {
-                self.guest_hit_by(&mut host, conn, push);
+                self.player_hit_by(&mut net, conn, push);
             }
         }
-        self.lan = Some(host);
+        self.network = Some(net);
     }
 }
 impl crate::game::Sim<'_> {
@@ -717,7 +717,7 @@ impl Hook {
         let p = self.position;
         let e = out.add(
             self.id as i32,
-            super::lan::entity_uuid(self.id),
+            super::server_net::entity_uuid(self.id),
             "minecraft:fishing_bobber",
         );
         e.position = [p.x, p.y, p.z];
@@ -734,18 +734,14 @@ impl Hook {
 }
 
 impl crate::game::Sim<'_> {
-    /// The hooks guests track: the host's and each guest's in the level.
-    pub(super) fn lan_hook_states(
+    /// The hooks players track: the host's and each player's in the level.
+    pub(super) fn net_hook_states(
         &self,
-        host_entity: Option<i32>,
-        play: &HashMap<u32, GuestPlay>,
+        play: &HashMap<u32, PlayerPlay>,
         hub: &Hub,
         out: &mut States,
     ) {
-        if let (Some(h), Some(owner)) = (&self.hook, host_entity) {
-            h.track(owner, out);
-        }
-        for g in hub.guests.iter().filter(|g| hub.here(g)) {
+        for g in hub.players.iter().filter(|g| hub.here(g)) {
             if let Some(h) = play.get(&g.conn).and_then(|p| p.hook.as_ref()) {
                 h.track(g.entity_id, out);
             }

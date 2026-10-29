@@ -25,7 +25,7 @@ impl crate::game::Sim<'_> {
                             .add(&ParticleOptions::simple(ty), at, velocity);
                     }
                 }
-                // Each guest of a LAN host makes its own.
+                // Each player of a LAN host makes its own.
                 MobEvent::LocalSound(name, at, volume, pitch) => {
                     self.sounds
                         .play_unshared(&format!("minecraft:{name}"), Some(at), volume, pitch)
@@ -125,7 +125,7 @@ impl crate::game::Sim<'_> {
     /// `LivingEntity.tickEffects` on a client: the swirls around an entity
     /// with visible effects, from the particles its synched data lists. The
     /// window's player has its own effects, a server's mobs and players the
-    /// list the server sent, and the mobs and guests of a game in the frame
+    /// list the server sent, and the mobs and players of a game in the frame
     /// theirs.
     fn effect_swirls(&mut self) {
         if let Some(p) = self.player.as_ref() {

@@ -359,23 +359,23 @@ impl crate::game::Sim<'_> {
             exploding
                 .is_none_or(|id| crate::hc::scoreboard::teams_allow_damage(g.mob_team(id), victim))
         };
-        // The player, then every other player in the level (LAN guests),
+        // The player, then every other player in the level (players),
         // each swapped in as the player.
         self.explosion_hurt_player(center, radius, damage_type, exploding);
-        if let Some(mut host) = self.lan.take() {
-            let guests: Vec<u32> = host
+        if let Some(mut net) = self.network.take() {
+            let players: Vec<u32> = net
                 .hub
-                .guests
+                .players
                 .iter()
-                .filter(|g| host.hub.here(g) && g.loaded && !g.dead)
+                .filter(|g| net.hub.here(g) && g.loaded && !g.dead)
                 .map(|g| g.conn)
                 .collect();
-            for conn in guests {
-                self.guest_hit_by(&mut host, conn, |g| {
+            for conn in players {
+                self.player_hit_by(&mut net, conn, |g| {
                     g.explosion_hurt_player(center, radius, damage_type, exploding);
                 });
             }
-            self.lan = Some(host);
+            self.network = Some(net);
         }
         // Mobs.
         let mut mobs = std::mem::take(&mut self.mobs);
@@ -600,7 +600,7 @@ impl crate::game::Sim<'_> {
             .explosion(center, small, block_count, radius, &|b| {
                 facts.is_air(world.block(b[0], b[1], b[2]))
             });
-        self.lan_explode(center, small, radius, block_count);
+        self.net_explode(center, small, radius, block_count);
         Ok(())
     }
     /// `BlockBehaviour.onExplosionHit` (TNT: `wasExploded` primes a short fuse).

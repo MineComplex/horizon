@@ -9,6 +9,8 @@ Checks, from the client's side:
   plugins   /plugins lists the plugin
   chat      AsyncPlayerChatEvent: `!hey` comes back in the plugin's shout format
   break     BlockBreakEvent: bedrock the player breaks stays, and the player is told
+  drop      PlayerDropItemEvent: a diamond the player throws stays in the hand
+  mode      PlayerGameModeChangeEvent: the player hears of their new game mode
   disable   the server log disables the plugin as it stops
 
     python3 tools/test_plugins_e2e.py [--bin-dir target/fast]
@@ -114,6 +116,22 @@ def main():
             block = ctl('block', *target)['block']
             assert block == 'minecraft:bedrock', f'the bedrock is {block}'
         check('break', bedrock)
+
+        def drop():
+            ctl('give', 'minecraft:diamond', 3)
+            ctl('wait', 10)
+            ctl('select', 'minecraft:diamond')
+            ctl('drop')
+            ctl('wait', 10)
+            chat_until('Diamonds stay in your hand.')
+            held = ctl('state')['held']
+            assert held and held['item'] == 'minecraft:diamond' and held['count'] == 3, f'held {held}'
+        check('drop', drop)
+
+        def mode():
+            ctl('chat', '/gamemode survival')
+            chat_until('Game mode 0.')
+        check('mode', mode)
     finally:
         ctl('quit', check=False)
         deadline = time.time() + 60

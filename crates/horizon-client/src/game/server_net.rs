@@ -52,29 +52,29 @@ pub(super) fn baby_index(kind: &str) -> Option<u8> {
 }
 
 pub const HELP: &[&str] = &[
-    "lan open [PORT] [commands] [force]  the test server's port; commands lets every player run commands",
-    "lan status                     the test server's port and players",
+    "network open [PORT] [commands] [force]  the test server's port; commands lets every player run commands",
+    "network status                     the test server's port and players",
 ];
 
 impl crate::game::Sim<'_> {
     /// `horizon-ctl lan ...`: a test's client asks its server
     /// (`--server-control`), which is always open, on its own port.
-    pub(super) fn lan_control(&mut self, words: &[&str]) -> Result<Option<serde_json::Value>> {
-        if words[0] != "lan" {
+    pub(super) fn net_control(&mut self, words: &[&str]) -> Result<Option<serde_json::Value>> {
+        if words[0] != "network" {
             return Ok(None);
         }
         match self.ask_server(&words.join(" ")) {
             Some(reply) => reply.map(Some),
             None => {
-                Err("lan: this client has no server control endpoint (--server-control)".into())
+                Err("network: this client has no server control endpoint (--server-control)".into())
             }
         }
     }
-    /// `Level.blockEvent` for the guests (`ClientboundBlockEventPacket`).
-    pub(super) fn lan_block_event(&mut self, pos: [i32; 3], b0: i32, b1: i32) {
+    /// `Level.blockEvent` for the players (`ClientboundBlockEventPacket`).
+    pub(super) fn net_block_event(&mut self, pos: [i32; 3], b0: i32, b1: i32) {
         if self.sounds.capture.is_some() {
             let state = self.world.block(pos[0], pos[1], pos[2]).0;
-            self.lan_block_events.push((pos, b0, b1, state));
+            self.net_block_events.push((pos, b0, b1, state));
         }
     }
     /// The bed at `head` as a sleeping model lies in it (`ints[1]`,

@@ -173,14 +173,14 @@ impl crate::game::Sim<'_> {
     }
     /// `Level.broadcastEntityEvent` of an event whose `handleEntityEvent`
     /// draws particles about the mob (villager 12, 13 and 14, taming 6 and 7,
-    /// love 18): the guests get the byte, and this game draws it as its own
+    /// love 18): the players get the byte, and this game draws it as its own
     /// client would.
     pub(super) fn mob_event_particles(&mut self, id: u32, event: i8) {
         let Some(m) = self.mobs.iter().find(|m| m.id == id) else {
             return;
         };
         let at = [m.position.x, m.position.y, m.position.z];
-        self.lan_entity_event(id as i32, event, at);
+        self.net_entity_event(id as i32, event, at);
         self.entity_event_particles(id, event);
     }
     /// `handleEntityEvent(event)`'s particles about mob `id`
@@ -425,7 +425,7 @@ impl crate::game::Sim<'_> {
             self.villager_traded_by(id, uuid);
         }
     }
-    /// The TRADE reputation event from the player `uuid` (a guest's too).
+    /// The TRADE reputation event from the player `uuid` (a player's too).
     pub(super) fn villager_traded_by(&mut self, id: u32, uuid: [i32; 4]) {
         let Some(i) = self.villager_index(id) else {
             return;

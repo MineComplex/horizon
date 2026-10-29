@@ -3,7 +3,7 @@
 //! pixels, 1024 characters, 100 pages), signing it into a written book,
 //! reading written books, and lecterns (placing a book, turning its pages
 //! with a redstone pulse, the comparator output and taking the book).
-use super::lan::LanHost;
+use super::server_net::Network;
 use crate::hc::{
     containers::{BlockEntity, Lectern},
     first_person::Hand,
@@ -17,7 +17,7 @@ use horizon_world::level::flags as level_flags;
 
 /// A book a player's turn opened: on a server only a lectern's
 /// (`LecternBlock.openScreen`), which the server then opens on the player's
-/// client (game/lan_actions.rs, `lan_open_lectern`).
+/// client (game/net_actions.rs, `net_open_lectern`).
 pub(super) enum BookScreen {
     View { lectern: Option<(i32, i32, i32)> },
 }
@@ -26,7 +26,7 @@ impl crate::game::Sim<'_> {
     /// the written book its writer signed.
     fn write_book(&mut self, slot: usize, pages: Vec<String>, title: Option<String>) {
         let author = self
-            .lan_acting_name
+            .net_acting_name
             .clone()
             .unwrap_or_else(|| super::chat::PLAYER_NAME.to_owned());
         let Some(stack) = self
@@ -55,13 +55,13 @@ impl crate::game::Sim<'_> {
             stack.tidy();
         }
     }
-    /// `ServerGamePacketListenerImpl.handleEditBook`: a guest's book in a
+    /// `ServerGamePacketListenerImpl.handleEditBook`: a player's book in a
     /// hotbar slot or its off hand (`updateBookContents`, `signBook`).
-    pub(super) fn lan_edit_book(&mut self, host: &mut LanHost, conn: u32, p: play::EditBook) {
+    pub(super) fn net_edit_book(&mut self, net: &mut Network, conn: u32, p: play::EditBook) {
         if !((0..9).contains(&p.slot) || p.slot == super::shield::OFFHAND_SLOT as i32) {
             return;
         }
-        self.as_guest(host, conn, |g| {
+        self.as_player(net, conn, |g| {
             g.write_book(p.slot as usize, p.pages, p.title)
         });
     }
@@ -153,7 +153,7 @@ impl crate::game::Sim<'_> {
         true
     }
     /// `LecternMenu` over the lectern at `key` (the menu engine, for the
-    /// local player and LAN guests alike): its book and page.
+    /// local player and players alike): its book and page.
     pub(super) fn lectern_menu(&self, key: (i32, i32, i32)) -> Option<Menu> {
         let Some(BlockEntity::Lectern(l)) = self.world.block_entities.get(&key) else {
             return None;
@@ -215,9 +215,9 @@ impl crate::game::Sim<'_> {
             "minecraft:written_book" => true,
             _ => return false,
         };
-        if self.lan_acting.is_some() && written {
+        if self.net_acting.is_some() && written {
             let hand = i32::from(self.hand == Hand::Off);
-            self.guest_packets
+            self.player_packets
                 .push(C::OpenBook(play::OpenBook { hand }));
         }
         self.swing_arm();

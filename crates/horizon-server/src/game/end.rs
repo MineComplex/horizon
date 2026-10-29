@@ -218,8 +218,8 @@ impl crate::game::Sim<'_> {
             (state.name == "minecraft:end_portal_frame").then(|| (hit, state.clone()))
         });
         let Some((hit, state)) = target else {
-            // EnderEyeItem.useOn passes off a frame: a guest's UseItem throws it.
-            if matches!(self.guest_use, Some(super::GuestUse::OnBlock(_))) {
+            // EnderEyeItem.useOn passes off a frame: a player's UseItem throws it.
+            if matches!(self.player_use, Some(super::PlayerUse::OnBlock(_))) {
                 return Ok(false);
             }
             // EnderEyeItem.use: throw the eye towards the nearest stronghold.
@@ -340,7 +340,7 @@ impl crate::game::Sim<'_> {
         if self.dim == Dim::End {
             self.ensure_exit_portal()?;
         }
-        // A server's players go through end portals as connections (`tick_guests`).
+        // A server's players go through end portals as connections (`tick_players`).
         Ok(())
     }
     /// Whether a `width` by `height` box at `position` is inside an End

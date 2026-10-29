@@ -188,7 +188,7 @@ impl PatrolLevel for PatrolCx<'_, '_, '_> {
         self.level.game.dim == Dim::Overworld && self.level.game.sky_darken() < 4
     }
     /// `PatrolSpawner.tick` picks from `level.players()`: the local player
-    /// and every guest in the level.
+    /// and every player in the level.
     fn patrol_players(&self) -> Vec<([i32; 3], bool)> {
         self.level
             .players
@@ -1081,14 +1081,14 @@ impl crate::game::Sim<'_> {
             }
         }
     }
-    /// Entity event 42 for villager `id`: the guests get the byte, and this
+    /// Entity event 42 for villager `id`: the players get the byte, and this
     /// game draws `AbstractVillager.addParticlesAroundSelf(SPLASH)` itself.
     fn mob_raid_splash(&mut self, id: u32) {
         let Some(m) = self.mobs.iter().find(|m| m.id == id) else {
             return;
         };
         let at = [m.position.x, m.position.y, m.position.z];
-        self.lan_entity_event(id as i32, 42, at);
+        self.net_entity_event(id as i32, 42, at);
         self.particles_around_mob(id, "splash", crate::hc::particles::Burst::VILLAGER);
     }
     /// The raid bar a living player at `at` is in (`Raid.getPlayers`): red,

@@ -102,8 +102,8 @@ impl crate::game::Sim<'_> {
     pub(super) fn target_rotation(&self, t: Target) -> [f32; 2] {
         match t {
             Target::Player => [self.yaw, self.pitch],
-            Target::Guest(conn) => self
-                .command_guest(conn)
+            Target::ServerPlayer(conn) => self
+                .command_player(conn)
                 .map_or([0.0; 2], |g| [g.yaw, g.pitch]),
             Target::Mob(id) => self
                 .mobs
@@ -139,7 +139,9 @@ impl crate::game::Sim<'_> {
                 .player
                 .as_ref()
                 .map_or(1.62, |p| f64::from(p.dimensions.eye_height)),
-            Target::Guest(conn) => self.command_guest(conn).map_or(1.62, |g| g.eye_height()),
+            Target::ServerPlayer(conn) => {
+                self.command_player(conn).map_or(1.62, |g| g.eye_height())
+            }
             Target::Mob(id) => self
                 .mobs
                 .iter()
@@ -650,7 +652,7 @@ impl crate::game::Sim<'_> {
                         // The player who tied it (the host's when unrecorded).
                         crate::hc::mobs::leash::Holder::Player => {
                             let uuid = player.or(self.level.player_uuid)?;
-                            self.target_by_uuid(crate::hc::lan::playerdata::ints_uuid(uuid))
+                            self.target_by_uuid(crate::hc::server_net::playerdata::ints_uuid(uuid))
                         }
                         crate::hc::mobs::leash::Holder::Mob(i) => Some(Target::Mob(i)),
                         crate::hc::mobs::leash::Holder::Knot(_) => None,
@@ -667,14 +669,16 @@ impl crate::game::Sim<'_> {
                     .projectiles
                     .iter()
                     .find(|p| p.id == id)
-                    .and_then(|p| match (p.owner?, p.guest) {
-                        // A guest's shot: `Who::Player` is them.
+                    .and_then(|p| match (p.owner?, p.player) {
+                        // A player's shot: `Who::Player` is them.
                         (crate::hc::mobs::Who::Player, Some(conn))
-                            if self.lan_acting == Some(conn) =>
+                            if self.net_acting == Some(conn) =>
                         {
                             Some(Target::Player)
                         }
-                        (crate::hc::mobs::Who::Player, Some(conn)) => Some(Target::Guest(conn)),
+                        (crate::hc::mobs::Who::Player, Some(conn)) => {
+                            Some(Target::ServerPlayer(conn))
+                        }
                         (crate::hc::mobs::Who::Player, None) => Some(Target::Player),
                         (crate::hc::mobs::Who::Mob(id), _) => Some(Target::Mob(id)),
                     })

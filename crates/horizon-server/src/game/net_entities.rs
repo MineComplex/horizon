@@ -3,7 +3,7 @@
 //! stands, item frames, paintings and the entities Horizon keeps without
 //! simulating them, each as vanilla pairs it (`getAddEntityPacket` and the
 //! synched data that differs from the defaults), and who rides what.
-use crate::hc::lan::{
+use crate::hc::server_net::{
     entity::{EntityState, Riding, States},
     hub::Hub,
 };
@@ -13,7 +13,7 @@ use horizon_world::nbt::Tag;
 fn state(id: u32, kind: &str, position: [f64; 3], yaw: f32, on_ground: bool) -> EntityState {
     EntityState {
         id: id as i32,
-        uuid: super::lan::entity_uuid(id),
+        uuid: super::server_net::entity_uuid(id),
         kind: kind.to_owned(),
         position,
         yaw,
@@ -72,34 +72,21 @@ fn stand_poses(a: &crate::hc::entities::ArmorStand) -> Vec<(u8, i32, Value)> {
 impl crate::game::Sim<'_> {
     /// Who rides what (`Entity.getPassengers`): mobs on mobs, and the
     /// host in its boat or minecart.
-    pub(super) fn lan_riding(
-        &self,
-        host_entity: Option<i32>,
-        guests: &[(u32, i32)],
-        riding: &mut Riding,
-    ) {
+    pub(super) fn net_riding(&self, players: &[(u32, i32)], riding: &mut Riding) {
         riding.clear();
         // The server's players in their boats and minecarts.
-        for &(vehicle, guest) in guests {
-            riding.add(vehicle as i32, guest);
+        for &(vehicle, player) in players {
+            riding.add(vehicle as i32, player);
         }
         for m in self.mobs.iter().filter(|m| !m.removed) {
             if let Some(vehicle) = m.extra.mount {
                 riding.add(vehicle as i32, m.id as i32);
             }
         }
-        if let (Some(host), Some(vehicle)) = (host_entity, self.riding) {
-            riding.add(vehicle as i32, host);
-        }
     }
     /// Boats, minecarts, armor stands, item frames, paintings and the
-    /// entities kept unsimulated, as guests track them.
-    pub(super) fn lan_object_states(
-        &self,
-        host_entity: Option<i32>,
-        hub: &mut Hub,
-        out: &mut States,
-    ) {
+    /// entities kept unsimulated, as players track them.
+    pub(super) fn net_object_states(&self, hub: &mut Hub, out: &mut States) {
         for b in &self.boats {
             let p = b.position;
             let mut e = state(b.id, &b.entity_type(), [p.x, p.y, p.z], b.yaw, b.on_ground);
@@ -256,7 +243,7 @@ impl crate::game::Sim<'_> {
             }
             out.push(e);
         }
-        self.lan_projectile_states(host_entity, hub, out);
+        self.net_projectile_states(hub, out);
         for o in &self.others {
             let p = o.position;
             let mut e = state(o.id, &o.kind, [p.x, p.y, p.z], o.yaw, false);
@@ -270,7 +257,7 @@ impl crate::game::Sim<'_> {
 impl crate::game::Sim<'_> {
     /// Gives the entities Horizon keeps without an id one (`Entity.id`, from
     /// the same counter as the rest) before they are first tracked.
-    pub(super) fn lan_assign_ids(&mut self) {
+    pub(super) fn net_assign_ids(&mut self) {
         // LeashFenceKnotEntity: one per fence post with a lead on it
         // (`notifyLeasheeRemoved` discards it once the last lead is gone).
         let knots: Vec<[i32; 3]> = self
@@ -314,11 +301,11 @@ impl crate::game::Sim<'_> {
             .for_each(|b| give(&mut b.id));
     }
     /// Primed TNT, falling blocks, projectiles, tridents, firework rockets and
-    /// end crystals, as guests track them.
-    fn lan_projectile_states(&self, host_entity: Option<i32>, hub: &mut Hub, out: &mut States) {
+    /// end crystals, as players track them.
+    fn net_projectile_states(&self, hub: &mut Hub, out: &mut States) {
         let owner = |who: Option<crate::hc::mobs::Who>| match who {
             Some(crate::hc::mobs::Who::Mob(id)) => id as i32,
-            Some(crate::hc::mobs::Who::Player) => host_entity.unwrap_or(0),
+            Some(crate::hc::mobs::Who::Player) => 0,
             None => 0,
         };
         let at = |p: horizon_core::geometry::Vec3| [p.x, p.y, p.z];
@@ -362,7 +349,7 @@ impl crate::game::Sim<'_> {
             e.velocity = at(p.velocity);
             e.needs_sync = p.needs_sync;
             // Projectile.getAddEntityPacket: the owner's id.
-            e.data = match p.guest.and_then(|conn| hub.guest(conn)) {
+            e.data = match p.player.and_then(|conn| hub.player(conn)) {
                 Some(g) => g.entity_id,
                 None => owner(p.owner),
             };
@@ -457,13 +444,13 @@ impl crate::game::Sim<'_> {
                     Value::Item(hub.stack(&Some(r.item.clone()))),
                 ));
             }
-            let boosted = match r.guest {
+            let boosted = match r.player {
                 Some(conn) => hub
-                    .guests
+                    .players
                     .iter()
                     .find(|g| g.conn == conn)
                     .map(|g| g.entity_id),
-                None => host_entity,
+                None => None,
             };
             if r.attached
                 && let Some(player) = boosted
@@ -491,7 +478,7 @@ impl crate::game::Sim<'_> {
         // The dragon's breath and lingering potion clouds (AreaEffectCloud's DATA_RADIUS,
         // DATA_WAITING for its 20-tick wait, and DATA_PARTICLE): the
         // client draws them from these (`tick_remote_clouds`).
-        // The hub is out of `self.lan` meanwhile, so it is passed in.
+        // The hub is out of `self.network` meanwhile, so it is passed in.
         let breath = crate::game::Sim::hub_particle(
             hub,
             &crate::hc::particles::ParticleOptions::simple(
@@ -523,7 +510,7 @@ impl crate::game::Sim<'_> {
                 .push((9, serializer::BOOLEAN, Value::Bool(false)));
             out.push(e);
         }
-        out.extend(self.lan_dragon_state());
+        out.extend(self.net_dragon_state());
     }
 }
 

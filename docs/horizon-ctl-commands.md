@@ -102,7 +102,7 @@ Every command `horizon-ctl` takes, its MCP tool in `horizon-ctl mcp` (the launch
 | `connect ADDRESS [NAME]` | `connect` (network) | Join a multiplayer server, or a friend's world by its invite code, from the title screen | `address` (string, required): HOST[:PORT] or friend:CODE<br>`name` (string): player name when offline |
 | `disconnect` | `disconnect` | Leave the server, back to the server list | none |
 | `servers` | `servers` | The Multiplayer screen's server list: name and address | none |
-| `lan open [PORT] [commands] [force] \| lan status` | `lan` (network) | The test server's port and players (launch --world) | `action` (open, close, status, required): what to do<br>`port` (integer): port for open<br>`commands` (boolean): allow cheats<br>`force` (boolean): force the game mode |
+| `network open [PORT] [commands] [force] \| network status` | `network` (network) | The test server's port and players (launch --world) | `action` (open, close, status, required): what to do<br>`port` (integer): port for open<br>`commands` (boolean): allow cheats<br>`force` (boolean): force the game mode |
 | `friends host\|stop\|status` | `friends` (network) | Play with Friends: share the open world behind an invite code, stop, or see who joined | `action` (host, stop, status, required): what to do |
 
 ## World and cheats

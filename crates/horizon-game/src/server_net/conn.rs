@@ -337,7 +337,7 @@ fn post(batch: Vec<Posted>) {
     let post = POST.get_or_init(|| {
         let (tx, rx) = channel::<Vec<Posted>>();
         std::thread::Builder::new()
-            .name("horizon-lan-post".to_owned())
+            .name("horizon-network-post".to_owned())
             .spawn(move || {
                 for batch in rx {
                     batch.into_iter().for_each(Posted::hand_over);
@@ -907,7 +907,7 @@ fn play(c: Connection, shared: &Arc<Shared>, parts: Parts, address: std::net::So
     let writer_thread = {
         let (alive, latency, pending) = (alive.clone(), latency.clone(), pending.clone());
         std::thread::Builder::new()
-            .name(format!("horizon-lan-out-{conn_id}"))
+            .name(format!("horizon-network-out-{conn_id}"))
             .spawn(move || {
                 // Ticks and frames come first (horizon_threads).
                 horizon_threads::behind_server();

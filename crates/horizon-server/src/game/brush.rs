@@ -62,7 +62,7 @@ impl crate::game::Sim<'_> {
             "minecraft:suspicious_gravel" => ("minecraft:item.brush.brushing.gravel", true),
             _ => ("minecraft:item.brush.brushing.generic", false),
         };
-        if self.lan_acting.is_none() {
+        if self.net_acting.is_none() {
             self.brush_dust(hit, slot == super::shield::OFFHAND_SLOT);
         }
         let at = hit.pos.map(|v| f64::from(v) + 0.5);

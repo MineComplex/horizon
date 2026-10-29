@@ -107,7 +107,7 @@ impl crate::game::Sim<'_> {
         let m = &self.mobs[index];
         let species = m.species();
         // A server player rides it already (`isVehicle`: no seat, no feeding).
-        if self.ridden_by_guest(m.id) {
+        if self.ridden_by_player(m.id) {
             return false;
         }
         if matches!(species, Species::Pig | Species::Strider) {

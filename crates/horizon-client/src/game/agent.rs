@@ -1468,7 +1468,7 @@ impl Game<'_> {
                     _ => false,
                 };
                 // A client of a server (single player's server thread, a LAN
-                // guest) sees the block once the server's answer comes.
+                // player) sees the block once the server's answer comes.
                 if *place
                     && !changed
                     && self.remote.is_some()

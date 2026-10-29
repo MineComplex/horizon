@@ -1,9 +1,9 @@
-//! Container menus for guests (AbstractContainerMenu.doClick): the player's
+//! Container menus for players (AbstractContainerMenu.doClick): the player's
 //! inventory menu (window 0) and block containers (chests, barrels, hoppers,
 //! dispensers, shulker boxes). The click modes are pickup, quick move, swap,
 //! clone, throw, quick craft (drag) and pickup all; items thrown out of a
 //! menu are returned for the game to drop.
-use super::guest::Guest;
+use super::player::ServerPlayer;
 use crate::{
     bundle::{Contents, can_be_in_bundle, toggle_selected},
     items::{ItemStack, Items},
@@ -140,10 +140,15 @@ impl Slots {
             .iter()
             .all(|k| world.block_entities.contains_key(k))
     }
-    /// `Container.stillValid` for the guest: the block entities are there
-    /// and the guest is within reach of each (`stillValidBlockEntity`). The
+    /// `Container.stillValid` for the player: the block entities are there
+    /// and the player is within reach of each (`stillValidBlockEntity`). The
     /// ender chest's block is `at` (`PlayerEnderChestContainer.activeChest`).
-    pub fn still_valid(self, world: &World, guest: &Guest, at: Option<(i32, i32, i32)>) -> bool {
+    pub fn still_valid(
+        self,
+        world: &World,
+        player: &ServerPlayer,
+        at: Option<(i32, i32, i32)>,
+    ) -> bool {
         if let Slots::Plugin(_) = self {
             return self.valid(world);
         }
@@ -156,10 +161,10 @@ impl Slots {
         self.valid(world)
             && blocks
                 .iter()
-                .all(|k| k.1 == VEHICLE_KEY_Y || guest.within_block_range([k.0, k.1, k.2], 4.0))
+                .all(|k| k.1 == VEHICLE_KEY_Y || player.within_block_range([k.0, k.1, k.2], 4.0))
     }
     /// Container slot `n`.
-    pub fn get(self, world: &World, guest: &Guest, mut n: usize) -> Option<ItemStack> {
+    pub fn get(self, world: &World, player: &ServerPlayer, mut n: usize) -> Option<ItemStack> {
         if let Slots::Plugin(id) = self {
             return PLUGIN_INVENTORIES
                 .lock()
@@ -171,7 +176,7 @@ impl Slots {
                 .flatten();
         }
         if self == Slots::Ender {
-            return guest.ender_items.get(n).cloned().flatten();
+            return player.ender_items.get(n).cloned().flatten();
         }
         for k in self.halves() {
             let slots = world.block_entities.get(&k)?.slots();
@@ -183,7 +188,7 @@ impl Slots {
         None
     }
     /// Every container slot, in menu order.
-    pub fn read(self, world: &World, guest: &Guest) -> Option<Vec<Option<ItemStack>>> {
+    pub fn read(self, world: &World, player: &ServerPlayer) -> Option<Vec<Option<ItemStack>>> {
         if let Slots::Plugin(id) = self {
             return PLUGIN_INVENTORIES
                 .lock()
@@ -192,7 +197,7 @@ impl Slots {
                 .map(|p| p.items.clone());
         }
         if self == Slots::Ender {
-            return Some(guest.ender_items.clone());
+            return Some(player.ender_items.clone());
         }
         let mut items = Vec::new();
         for k in self.halves() {
@@ -201,7 +206,12 @@ impl Slots {
         Some(items)
     }
     /// Store what `read` gave, changed.
-    pub fn write(self, world: &mut World, guest: &mut Guest, items: Vec<Option<ItemStack>>) {
+    pub fn write(
+        self,
+        world: &mut World,
+        player: &mut ServerPlayer,
+        items: Vec<Option<ItemStack>>,
+    ) {
         if let Slots::Plugin(id) = self {
             with_plugin_inventory(id, |p| {
                 for (k, slot) in p.items.iter_mut().enumerate() {
@@ -211,7 +221,7 @@ impl Slots {
             return;
         }
         if self == Slots::Ender {
-            guest.ender_items = items;
+            player.ender_items = items;
             return;
         }
         let mut rest = items.into_iter();
@@ -227,7 +237,7 @@ impl Slots {
 
 /// Slots of a menu seen as one list.
 pub struct View<'a> {
-    pub guest: &'a mut Guest,
+    pub player: &'a mut ServerPlayer,
     /// The container's slots, or None for the inventory menu.
     pub container: Option<&'a mut [Option<ItemStack>]>,
     /// The container is a shulker box (`ShulkerBoxSlot`).
@@ -248,12 +258,12 @@ impl View<'_> {
         match &self.container {
             Some(c) if i < c.len() => c[i].clone(),
             Some(c) => self
-                .guest
+                .player
                 .inventory
                 .get(player_slot(i - c.len()))
                 .cloned()
                 .flatten(),
-            None => self.guest.menu_slot(i),
+            None => self.player.menu_slot(i),
         }
     }
     pub fn set(&mut self, i: usize, item: Option<ItemStack>) {
@@ -261,9 +271,9 @@ impl View<'_> {
             Some(c) if i < c.len() => c[i] = item,
             Some(c) => {
                 let n = c.len();
-                self.guest.inventory[player_slot(i - n)] = item;
+                self.player.inventory[player_slot(i - n)] = item;
             }
-            None => self.guest.set_menu_slot(i, item),
+            None => self.player.set_menu_slot(i, item),
         }
     }
     /// Whether the slot takes part in clicks at all.
@@ -425,13 +435,13 @@ pub fn click(
         match mode {
             input::PICKUP | input::QUICK_MOVE if slot == -999 => {
                 if mode == input::PICKUP
-                    && let Some(mut carried) = view.guest.carried.take()
+                    && let Some(mut carried) = view.player.carried.take()
                 {
                     if button == 1 && carried.count > 1 {
                         let mut one = carried.clone();
                         one.count = 1;
                         carried.count -= 1;
-                        view.guest.carried = Some(carried);
+                        view.player.carried = Some(carried);
                         drops.push(one);
                     } else {
                         drops.push(carried);
@@ -448,20 +458,20 @@ pub fn click(
             }
             input::SWAP => swap(view, slot, button, rules),
             input::CLONE => {
-                if view.guest.carried.is_none()
-                    && view.guest.creative()
+                if view.player.carried.is_none()
+                    && view.player.creative()
                     && let Ok(i) = usize::try_from(slot)
                     && let Some(stack) = view.get(i)
                 {
                     let max = rules.max_stack(&stack.item).max(1);
-                    view.guest.carried = Some(ItemStack {
+                    view.player.carried = Some(ItemStack {
                         count: max,
                         ..stack
                     });
                 }
             }
             input::THROW => {
-                if view.guest.carried.is_none()
+                if view.player.carried.is_none()
                     && let Ok(i) = usize::try_from(slot)
                     && view.enabled(i)
                     && let Some(mut stack) = view.get(i)
@@ -499,7 +509,7 @@ fn pickup(view: &mut View, slot: i32, button: i32, rules: &dyn Rules) {
     if bundle_click(view, i, right, rules) {
         return;
     }
-    let (slot_item, carried) = (view.get(i), view.guest.carried.clone());
+    let (slot_item, carried) = (view.get(i), view.player.carried.clone());
     match (slot_item, carried) {
         (None, None) => {}
         (None, Some(mut c)) => {
@@ -513,7 +523,7 @@ fn pickup(view: &mut View, slot: i32, button: i32, rules: &dyn Rules) {
                     }),
                 );
                 c.count -= amount;
-                view.guest.carried = (c.count > 0).then_some(c);
+                view.player.carried = (c.count > 0).then_some(c);
             }
         }
         (Some(mut s), None) => {
@@ -524,7 +534,7 @@ fn pickup(view: &mut View, slot: i32, button: i32, rules: &dyn Rules) {
             };
             s.count -= take;
             view.set(i, (s.count > 0).then_some(s));
-            view.guest.carried = Some(taken);
+            view.player.carried = Some(taken);
         }
         (Some(mut s), Some(mut c)) => {
             if !view.may_place(i, &c, rules) {
@@ -536,10 +546,10 @@ fn pickup(view: &mut View, slot: i32, button: i32, rules: &dyn Rules) {
                 s.count += moved;
                 c.count -= moved;
                 view.set(i, Some(s));
-                view.guest.carried = (c.count > 0).then_some(c);
+                view.player.carried = (c.count > 0).then_some(c);
             } else if c.count <= view.slot_max(i, &c, rules) {
                 view.set(i, Some(c));
-                view.guest.carried = Some(s);
+                view.player.carried = Some(s);
             }
         }
     }
@@ -551,7 +561,7 @@ fn pickup(view: &mut View, slot: i32, button: i32, rules: &dyn Rules) {
 fn bundle_click(view: &mut View, i: usize, right: bool, rules: &dyn Rules) -> bool {
     let items = rules.items();
     let other = view.get(i);
-    if let Some(mut carried) = view.guest.carried.clone()
+    if let Some(mut carried) = view.player.carried.clone()
         && let Some(mut contents) = Contents::of(items, &carried)
         && other.is_some() != right
     {
@@ -590,7 +600,7 @@ fn bundle_click(view: &mut View, i: usize, right: bool, rules: &dyn Rules) -> bo
             }
         }
         contents.store(&mut carried);
-        view.guest.carried = Some(carried);
+        view.player.carried = Some(carried);
         return true;
     }
     let Some(mut bundle) = other else {
@@ -601,21 +611,21 @@ fn bundle_click(view: &mut View, i: usize, right: bool, rules: &dyn Rules) -> bo
     };
     // Slot.allowModification: mayPickup and mayPlace of its item.
     let allowed = view.may_place(i, &bundle, rules);
-    match (view.guest.carried.take(), right) {
+    match (view.player.carried.take(), right) {
         (Some(mut carried), false) => {
             if allowed {
                 contents.try_insert(items, &mut carried);
             }
-            view.guest.carried = (carried.count > 0).then_some(carried);
+            view.player.carried = (carried.count > 0).then_some(carried);
         }
         (None, true) => {
             if allowed {
-                view.guest.carried = contents.remove_one(items);
+                view.player.carried = contents.remove_one(items);
             }
         }
         (carried, _) => {
             // toggleSelectedItem(-1), then the click goes on.
-            view.guest.carried = carried;
+            view.player.carried = carried;
             toggle_selected(&mut bundle, -1);
             view.set(i, Some(bundle));
             return false;
@@ -657,7 +667,7 @@ fn swap(view: &mut View, slot: i32, button: i32, rules: &dyn Rules) {
 
 fn pickup_all(view: &mut View, slot: i32, rules: &dyn Rules) {
     let _ = slot;
-    let Some(mut carried) = view.guest.carried.clone() else {
+    let Some(mut carried) = view.player.carried.clone() else {
         return;
     };
     let max = rules.max_stack(&carried.item).max(1);
@@ -682,7 +692,7 @@ fn pickup_all(view: &mut View, slot: i32, rules: &dyn Rules) {
             view.set(i, (s.count > 0).then_some(s));
         }
     }
-    view.guest.carried = Some(carried);
+    view.player.carried = Some(carried);
 }
 
 /// Dragging a stack over slots (QUICK_CRAFT): start, add slots, end.
@@ -695,12 +705,12 @@ fn quick_craft(
 ) {
     let (stage, kind) = (button & 3, ((button >> 2) & 3) as u8);
     match stage {
-        0 => *drag = view.guest.carried.is_some().then_some((kind, Vec::new())),
+        0 => *drag = view.player.carried.is_some().then_some((kind, Vec::new())),
         1 => {
             if let (Some((_, slots)), Ok(i)) = (drag.as_mut(), usize::try_from(slot))
                 && i < view.len()
                 && !slots.contains(&i)
-                && let Some(c) = &view.guest.carried
+                && let Some(c) = &view.player.carried
                 && view.enabled(i)
                 && view.may_place(i, c, rules)
                 && view.get(i).is_none_or(|s| s.same_item_same_components(c))
@@ -712,7 +722,7 @@ fn quick_craft(
             let Some((kind, slots)) = drag.take() else {
                 return;
             };
-            let Some(mut carried) = view.guest.carried.clone() else {
+            let Some(mut carried) = view.player.carried.clone() else {
                 return;
             };
             if slots.is_empty() {
@@ -746,11 +756,11 @@ fn quick_craft(
                         ..carried.clone()
                     }),
                 );
-                if kind != 2 || !view.guest.creative() {
+                if kind != 2 || !view.player.creative() {
                     carried.count -= put;
                 }
             }
-            view.guest.carried = (carried.count > 0).then_some(carried);
+            view.player.carried = (carried.count > 0).then_some(carried);
         }
     }
 }
@@ -758,7 +768,7 @@ fn quick_craft(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::lan::{Joined, PlayerSender};
+    use crate::server_net::{Joined, PlayerSender};
     use horizon_protocol::packets::configuration::ClientInformation;
     use std::sync::{Arc, atomic::AtomicI32, mpsc};
 
@@ -775,9 +785,9 @@ mod tests {
         }
     }
 
-    fn guest() -> Guest {
+    fn player() -> ServerPlayer {
         let (tx, _rx) = mpsc::channel();
-        Guest::new(
+        ServerPlayer::new(
             Joined {
                 conn: 2,
                 uuid: 2,
@@ -823,15 +833,15 @@ mod tests {
         })
     }
 
-    /// A guest's chest clicks run `BundleItem`'s overrides: a carried
+    /// A player's chest clicks run `BundleItem`'s overrides: a carried
     /// bundle takes a slot's stack and drops its first one into an empty
     /// slot; a stack clicked onto a bundle goes in, as far as it fits.
     #[test]
-    fn guest_chest_clicks_fill_and_empty_bundles() {
+    fn player_chest_clicks_fill_and_empty_bundles() {
         let Some(rules) = rules() else {
             return;
         };
-        let mut g = guest();
+        let mut g = player();
         let mut chest = vec![
             Some(ItemStack::new("minecraft:stone", 48)),
             None,
@@ -839,70 +849,70 @@ mod tests {
         ];
         let mut drag = None;
         let mut view = View {
-            guest: &mut g,
+            player: &mut g,
             container: Some(&mut chest),
             shulker: false,
         };
-        view.guest.carried = Some(ItemStack::new("minecraft:bundle", 1));
+        view.player.carried = Some(ItemStack::new("minecraft:bundle", 1));
         // Left click with the bundle: the stone goes in.
         click(&mut view, &mut drag, 0, 0, input::PICKUP, &rules);
         assert_eq!(view.get(0), None);
         assert_eq!(
-            contents(&view.guest.carried),
+            contents(&view.player.carried),
             [("minecraft:stone".into(), 48)]
         );
         // Right click on an empty slot: the stone comes back out.
         click(&mut view, &mut drag, 1, 1, input::PICKUP, &rules);
         assert_eq!(view.get(1).map(|s| s.count), Some(48));
-        assert_eq!(contents(&view.guest.carried), []);
+        assert_eq!(contents(&view.player.carried), []);
         // Ender pearls (1/16 each) onto the bundle in the chest: 16 fit.
-        view.guest.carried = Some(ItemStack::new("minecraft:ender_pearl", 16));
+        view.player.carried = Some(ItemStack::new("minecraft:ender_pearl", 16));
         click(&mut view, &mut drag, 2, 0, input::PICKUP, &rules);
-        assert_eq!(view.guest.carried, None);
+        assert_eq!(view.player.carried, None);
         let bundle = view.get(2);
         assert_eq!(contents(&bundle), [("minecraft:ender_pearl".into(), 16)]);
         // Full: more stone stays in hand.
-        view.guest.carried = Some(ItemStack::new("minecraft:stone", 5));
+        view.player.carried = Some(ItemStack::new("minecraft:stone", 5));
         click(&mut view, &mut drag, 2, 0, input::PICKUP, &rules);
-        assert_eq!(view.guest.carried.as_ref().map(|s| s.count), Some(5));
+        assert_eq!(view.player.carried.as_ref().map(|s| s.count), Some(5));
         // Right click on it with an empty hand takes the pearls out.
-        view.guest.carried = None;
+        view.player.carried = None;
         click(&mut view, &mut drag, 2, 1, input::PICKUP, &rules);
         assert_eq!(
-            view.guest.carried.as_ref().map(|s| (&*s.item, s.count)),
+            view.player.carried.as_ref().map(|s| (&*s.item, s.count)),
             Some(("minecraft:ender_pearl", 16))
         );
         assert_eq!(contents(&view.get(2)), []);
     }
 
     #[test]
-    fn guest_shulker_box_menu_refuses_shulker_boxes() {
+    fn player_shulker_box_menu_refuses_shulker_boxes() {
         let Some(rules) = rules() else {
             return;
         };
         for shulker in [true, false] {
-            let mut g = guest();
+            let mut g = player();
             let mut container = vec![None; 27];
             let mut drag = None;
             let mut view = View {
-                guest: &mut g,
+                player: &mut g,
                 container: Some(&mut container),
                 shulker,
             };
             // Carried onto an empty slot, shift-clicked from the hotbar
             // (menu slot 27 + 27) and swapped in with the number key 1.
-            view.guest.carried = Some(ItemStack::new("minecraft:red_shulker_box", 1));
+            view.player.carried = Some(ItemStack::new("minecraft:red_shulker_box", 1));
             click(&mut view, &mut drag, 0, 0, input::PICKUP, &rules);
             assert_eq!(view.get(0).is_none(), shulker);
-            view.guest.carried = None;
-            view.guest.inventory[0] = Some(ItemStack::new("minecraft:shulker_box", 1));
+            view.player.carried = None;
+            view.player.inventory[0] = Some(ItemStack::new("minecraft:shulker_box", 1));
             click(&mut view, &mut drag, 54, 0, input::QUICK_MOVE, &rules);
-            assert_eq!(view.guest.inventory[0].is_some(), shulker);
-            view.guest.inventory[0] = Some(ItemStack::new("minecraft:blue_shulker_box", 1));
+            assert_eq!(view.player.inventory[0].is_some(), shulker);
+            view.player.inventory[0] = Some(ItemStack::new("minecraft:blue_shulker_box", 1));
             click(&mut view, &mut drag, 5, 0, input::SWAP, &rules);
             assert_eq!(view.get(5).is_none(), shulker);
             // Anything else goes in.
-            view.guest.carried = Some(ItemStack::new("minecraft:diamond", 1));
+            view.player.carried = Some(ItemStack::new("minecraft:diamond", 1));
             click(&mut view, &mut drag, 9, 0, input::PICKUP, &rules);
             assert!(view.get(9).is_some());
         }

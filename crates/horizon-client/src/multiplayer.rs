@@ -148,7 +148,7 @@ fn ping_all(servers: &[ServerEntry], pings: &Pings, icons: &Icons, file: &Path) 
                         // A new favicon replaces the saved one (an invalid one
                         // clears it) and servers.dat is saved again.
                         if let Some(png) = favicon_bytes(&json) {
-                            let encoded = crate::lan::base64(&png);
+                            let encoded = crate::server_net::base64(&png);
                             let pixels = icon_pixels(&png);
                             match &pixels {
                                 Some(p) => icons.lock().unwrap().insert(address.clone(), p.clone()),
@@ -204,7 +204,11 @@ fn save_icon(file: &Path, address: &str, icon: Option<String>) {
 /// sends replaces the one its list entries keep.
 pub fn save_server_icon(saves: &Path, address: &str, png: &[u8]) {
     if icon_pixels(png).is_some() {
-        save_icon(&servers_file(saves), address, Some(crate::lan::base64(png)));
+        save_icon(
+            &servers_file(saves),
+            address,
+            Some(crate::server_net::base64(png)),
+        );
     }
 }
 
@@ -1314,7 +1318,7 @@ mod tests {
     #[test]
     fn favicons_are_64_pixel_pngs_behind_the_data_url() {
         let icon = png(64);
-        let encoded = crate::lan::base64(&icon);
+        let encoded = crate::server_net::base64(&icon);
         let (a, b) = encoded.split_at(10);
         let json = serde_json::json!({ "favicon": format!("data:image/png;base64,{a}\n{b}") });
         let bytes = favicon_bytes(&json).unwrap();

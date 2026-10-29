@@ -48,7 +48,7 @@ impl crate::game::Sim<'_> {
         for &t in &targets {
             let h = holder(self.target_name(t));
             // ServerPlayer.awardRecipes / resetRecipes on the target's own
-            // ServerRecipeBook: a guest's is swapped in for the call, and the
+            // ServerRecipeBook: a player's is swapped in for the call, and the
             // packets go to its client.
             let n = self
                 .for_player(t, |g| g.change_recipes(give, &recipes))
@@ -88,8 +88,8 @@ impl crate::game::Sim<'_> {
         let removed = self.level.recipe_book.remove_recipes(index, recipes);
         let count = removed.len() as i32;
         // A network player's client drops them from its book.
-        if self.lan_acting.is_some() && !removed.is_empty() {
-            self.guest_packets.push(C::RecipeBookRemove(
+        if self.net_acting.is_some() && !removed.is_empty() {
+            self.player_packets.push(C::RecipeBookRemove(
                 horizon_protocol::packets::recipes::RecipeBookRemove { ids: removed },
             ));
         }
@@ -127,7 +127,7 @@ impl crate::game::Sim<'_> {
                 // `DamageSource(type, cause, by)`: the death message names the
                 // causing entity, else the direct one. A mob is noted by
                 // `hurt_player_from`, a player here.
-                if let Some(t @ (Target::Player | Target::Guest(_))) = cause.or(by) {
+                if let Some(t @ (Target::Player | Target::ServerPlayer(_))) = cause.or(by) {
                     let name = self.target_name(t);
                     self.note_direct_entity(&ty, name);
                 }
@@ -279,12 +279,14 @@ impl crate::game::Sim<'_> {
         let here = self.dim.id();
         let mut tracker = Tracker::default();
         for t in targets {
-            if !matches!(t, Target::Player | Target::Guest(_)) {
+            if !matches!(t, Target::Player | Target::ServerPlayer(_)) {
                 continue;
             }
             // Only players in the source's level hear it.
-            if let Target::Guest(conn) = t
-                && self.command_guest(conn).is_none_or(|g| g.dimension != here)
+            if let Target::ServerPlayer(conn) = t
+                && self
+                    .command_player(conn)
+                    .is_none_or(|g| g.dimension != here)
             {
                 continue;
             }
@@ -311,19 +313,19 @@ impl crate::game::Sim<'_> {
             };
             // The connection is sent the sound; the window's own player
             // plays it.
-            let guest = match t {
-                Target::Guest(conn) => Some(conn),
-                _ => self.lan_acting,
+            let player = match t {
+                Target::ServerPlayer(conn) => Some(conn),
+                _ => self.net_acting,
             };
-            match guest.and_then(|conn| Some((conn, self.lan.as_ref()?))) {
-                Some((conn, host)) => {
-                    let packet = host
+            match player.and_then(|conn| Some((conn, self.network.as_ref()?))) {
+                Some((conn, net)) => {
+                    let packet = net
                         .hub
                         .sound_packet(&sound, at, v, pitch, source as i32, seed);
                     if t == Target::Player {
-                        self.guest_packets.push(packet);
+                        self.player_packets.push(packet);
                     } else {
-                        host.hub.send_to(conn, &packet);
+                        net.hub.send_to(conn, &packet);
                     }
                 }
                 None => self.sounds.play_on(source, &sound, Some(at), v, pitch),
@@ -368,13 +370,13 @@ impl crate::game::Sim<'_> {
         });
         for &t in &targets {
             match t {
-                Target::Player if self.lan_acting.is_some() => {
-                    self.guest_packets.push(packet.clone());
+                Target::Player if self.net_acting.is_some() => {
+                    self.player_packets.push(packet.clone());
                 }
                 Target::Player => {}
-                Target::Guest(conn) => {
-                    if let Some(host) = self.lan.as_ref() {
-                        host.hub.send_to(conn, &packet);
+                Target::ServerPlayer(conn) => {
+                    if let Some(net) = self.network.as_ref() {
+                        net.hub.send_to(conn, &packet);
                     }
                 }
                 _ => {}
@@ -539,16 +541,16 @@ impl crate::game::Sim<'_> {
         let viewers = if ctx.get("viewers").is_some() {
             self.entities(ctx, "viewers", true)?
         } else {
-            let acting = self.lan_acting;
-            let guests = self.lan.iter().flat_map(|h| h.hub.guests.iter());
+            let acting = self.net_acting;
+            let players = self.network.iter().flat_map(|h| h.hub.players.iter());
             self.player
                 .as_ref()
                 .map(|_| Target::Player)
                 .into_iter()
                 .chain(
-                    guests
+                    players
                         .filter(|g| g.placed && Some(g.conn) != acting)
-                        .map(|g| Target::Guest(g.conn)),
+                        .map(|g| Target::ServerPlayer(g.conn)),
                 )
                 .collect()
         };
@@ -568,7 +570,7 @@ impl crate::game::Sim<'_> {
             return Err(err("commands.particle.failed", &[]));
         }
         // ServerLevel.sendParticles: each viewer a server serves is sent the
-        // particles (the player in place too when it is a guest); the
+        // particles (the player in place too when it is a player); the
         // window's own player draws them.
         let packet = self
             .network_particle(&options, block_state)
@@ -587,13 +589,13 @@ impl crate::game::Sim<'_> {
         let mut local = false;
         for &t in &reached {
             match (t, &packet) {
-                (Target::Player, Some(p)) if self.lan_acting.is_some() => {
-                    self.guest_packets.push(p.clone());
+                (Target::Player, Some(p)) if self.net_acting.is_some() => {
+                    self.player_packets.push(p.clone());
                 }
                 (Target::Player, _) => local = true,
-                (Target::Guest(conn), Some(p)) => {
-                    if let Some(host) = self.lan.as_ref() {
-                        host.hub.send_to(conn, p);
+                (Target::ServerPlayer(conn), Some(p)) => {
+                    if let Some(net) = self.network.as_ref() {
+                        net.hub.send_to(conn, p);
                     }
                 }
                 _ => {}

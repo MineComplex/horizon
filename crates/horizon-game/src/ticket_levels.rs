@@ -20,7 +20,7 @@
 //!   block ticking (`isPositionTickingWithEntitiesLoaded`,
 //!   `shouldTickBlocksAt`, `LevelChunk.isTicking`).
 //!
-//! Whoever the players are (the local player, LAN guests, a dedicated
+//! Whoever the players are (the local player, players, a dedicated
 //! server's players), they count the same.
 use crate::fast_hash::FxHashMap;
 use std::sync::Arc;

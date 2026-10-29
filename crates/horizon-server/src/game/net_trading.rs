@@ -1,8 +1,8 @@
-//! Trading for LAN guests: the villager screen a guest opens runs the same
+//! Trading for players: the villager screen a player opens runs the same
 //! merchant menu as the host's (`crate::hc::menu`, `Kind::Merchant`),
 //! with vanilla's packets: OpenScreen (`minecraft:merchant`), MerchantOffers,
 //! the select trade packet, container clicks and the content sync after each.
-use super::{lan::LanHost, stations::Kind as StationKind, trading::MerchantState};
+use super::{server_net::Network, stations::Kind as StationKind, trading::MerchantState};
 use crate::hc::{
     items::ItemStack,
     menu::{Env, Input, Kind, Menu},
@@ -10,8 +10,8 @@ use crate::hc::{
 };
 use horizon_protocol::packets::play::{self, Clientbound as C};
 
-/// A guest's open trading screen.
-pub(super) struct GuestMerchant {
+/// A player's open trading screen.
+pub(super) struct PlayerMerchant {
     pub(super) window: i32,
     state: i32,
     /// The payment slots and the result.
@@ -22,7 +22,7 @@ pub(super) struct GuestMerchant {
     sent_level: i32,
 }
 
-/// A guest's UUID as gossip targets it.
+/// A player's UUID as gossip targets it.
 fn uuid_words(uuid: u128) -> [i32; 4] {
     [
         (uuid >> 96) as i32,
@@ -33,22 +33,22 @@ fn uuid_words(uuid: u128) -> [i32; 4] {
 }
 
 impl crate::game::Sim<'_> {
-    /// A trading screen the guest's interaction opened (it opened as a
-    /// station while the guest acted): handed to the guest.
-    pub(super) fn lan_open_merchant(
+    /// A trading screen the player's interaction opened (it opened as a
+    /// station while the player acted): handed to the player.
+    pub(super) fn net_open_merchant(
         &mut self,
-        host: &mut LanHost,
+        net: &mut Network,
         conn: u32,
         mut state: MerchantState,
     ) {
-        let Some(gi) = host.hub.guests.iter().position(|g| g.conn == conn) else {
+        let Some(gi) = net.hub.players.iter().position(|g| g.conn == conn) else {
             return;
         };
-        let uuid = uuid_words(host.hub.guests[gi].uuid);
+        let uuid = uuid_words(net.hub.players[gi].uuid);
         if let Some(id) = state.mob
             && state.session.villager
         {
-            // startTrading with the guest's reputation. The session already
+            // startTrading with the player's reputation. The session already
             // captured their Hero effect while they acted as the player.
             state.session.reputation = self.villager_reputation_of(id, uuid);
             state.session.update_special_prices();
@@ -56,13 +56,13 @@ impl crate::game::Sim<'_> {
         // InventoryOpenEvent: cancelled, no trades.
         let title = self.merchant_display_name(&state);
         // The container or workstation the trading screen replaces is closed.
-        self.guest_container_closed(host, conn);
-        self.lan_station_closed(host, conn, None);
-        let Some(window) = host.hub.open_merchant_window(conn, title) else {
+        self.player_container_closed(net, conn);
+        self.net_station_closed(net, conn, None);
+        let Some(window) = net.hub.open_merchant_window(conn, title) else {
             self.merchant_closed(&mut state);
             return;
         };
-        let mut gm = GuestMerchant {
+        let mut gm = PlayerMerchant {
             window,
             state: 0,
             slots: [None, None, None],
@@ -70,9 +70,9 @@ impl crate::game::Sim<'_> {
             sent: Vec::new(),
             sent_level: 0,
         };
-        self.lan_send_offers(host, conn, &mut gm, true);
-        self.lan_send_merchant_content(host, conn, &mut gm);
-        host.play.entry(conn).or_default().merchant = Some(gm);
+        self.net_send_offers(net, conn, &mut gm, true);
+        self.net_send_merchant_content(net, conn, &mut gm);
+        net.play.entry(conn).or_default().merchant = Some(gm);
     }
     /// `Entity.getDisplayName` of the merchant, the screen's title: its name
     /// (custom, else the profession's) with the show_entity hover event and
@@ -130,11 +130,11 @@ impl crate::game::Sim<'_> {
     /// The screen title: the custom name, else the profession (the client
     /// adds the level itself).
     /// `ServerPlayer.sendMerchantOffers`, when the offers changed.
-    fn lan_send_offers(
+    fn net_send_offers(
         &mut self,
-        host: &mut LanHost,
+        net: &mut Network,
         conn: u32,
-        gm: &mut GuestMerchant,
+        gm: &mut PlayerMerchant,
         force: bool,
     ) {
         let s = &gm.merchant.session;
@@ -145,14 +145,14 @@ impl crate::game::Sim<'_> {
             .offers
             .iter()
             .filter_map(|o| {
-                let cost = |st: &ItemStack, hub: &mut crate::hc::lan::hub::Hub| {
+                let cost = |st: &ItemStack, hub: &mut crate::hc::server_net::hub::Hub| {
                     hub.stack(&Some(st.clone())).map(play::NetCost::from)
                 };
                 Some(play::NetOffer {
-                    cost_a: cost(&o.base_cost_a.stack, &mut host.hub)?,
-                    result: host.hub.stack(&Some(o.result.clone()))?,
+                    cost_a: cost(&o.base_cost_a.stack, &mut net.hub)?,
+                    result: net.hub.stack(&Some(o.result.clone()))?,
                     cost_b: match &o.cost_b {
-                        Some(b) => Some(cost(&b.stack, &mut host.hub)?),
+                        Some(b) => Some(cost(&b.stack, &mut net.hub)?),
                         None => None,
                     },
                     out_of_stock: o.out_of_stock(),
@@ -165,7 +165,7 @@ impl crate::game::Sim<'_> {
                 })
             })
             .collect();
-        host.hub.send_to(
+        net.hub.send_to(
             conn,
             &C::MerchantOffers(play::MerchantOffers {
                 container: gm.window,
@@ -179,44 +179,44 @@ impl crate::game::Sim<'_> {
         gm.sent = s.offers.clone();
         gm.sent_level = s.level;
     }
-    fn lan_send_merchant_content(&mut self, host: &mut LanHost, conn: u32, gm: &mut GuestMerchant) {
-        let Some(gi) = host.hub.guests.iter().position(|g| g.conn == conn) else {
+    fn net_send_merchant_content(&mut self, net: &mut Network, conn: u32, gm: &mut PlayerMerchant) {
+        let Some(gi) = net.hub.players.iter().position(|g| g.conn == conn) else {
             return;
         };
         let mut items: Vec<Option<ItemStack>> = gm.slots.to_vec();
-        let g = &host.hub.guests[gi];
+        let g = &net.hub.players[gi];
         items.extend((9..36).chain(0..9).map(|i| g.inventory[i].clone()));
         let carried = g.carried.clone();
-        let net: Vec<_> = items.iter().map(|s| host.hub.stack(s)).collect();
-        let carried = host.hub.stack(&carried);
+        let stacks: Vec<_> = items.iter().map(|s| net.hub.stack(s)).collect();
+        let carried = net.hub.stack(&carried);
         gm.state = (gm.state + 1) & 0x7FFF;
-        host.hub.send_to(
+        net.hub.send_to(
             conn,
             &C::ContainerSetContent(play::ContainerSetContent {
                 container: gm.window,
                 state: gm.state,
-                items: net,
+                items: stacks,
                 carried,
             }),
         );
     }
-    /// Runs `op` on the guest's merchant menu (their inventory copied in and
-    /// back), then syncs the client. False when the guest has no such window.
-    fn lan_merchant_op(
+    /// Runs `op` on the player's merchant menu (their inventory copied in and
+    /// back), then syncs the client. False when the player has no such window.
+    fn net_merchant_op(
         &mut self,
-        host: &mut LanHost,
+        net: &mut Network,
         conn: u32,
         window: Option<i32>,
         op: impl FnOnce(&mut Menu, &Env),
     ) -> bool {
-        let Some(mut gm) = host.play.get_mut(&conn).and_then(|p| p.merchant.take()) else {
+        let Some(mut gm) = net.play.get_mut(&conn).and_then(|p| p.merchant.take()) else {
             return false;
         };
         if window.is_some_and(|w| w != gm.window) {
-            host.play.entry(conn).or_default().merchant = Some(gm);
+            net.play.entry(conn).or_default().merchant = Some(gm);
             return false;
         }
-        let Some(gi) = host.hub.guests.iter().position(|g| g.conn == conn) else {
+        let Some(gi) = net.hub.players.iter().position(|g| g.conn == conn) else {
             return false;
         };
         let mut session = gm.merchant.session.clone();
@@ -247,7 +247,7 @@ impl crate::game::Sim<'_> {
         };
         let mut menu = Menu::new(Kind::Merchant);
         {
-            let g = &host.hub.guests[gi];
+            let g = &net.hub.players[gi];
             for i in 0..36 {
                 menu.set_player_item(i, g.inventory[i].clone());
             }
@@ -270,7 +270,7 @@ impl crate::game::Sim<'_> {
             menu.slot(2).cloned(),
         ];
         {
-            let g = &mut host.hub.guests[gi];
+            let g = &mut net.hub.players[gi];
             for i in 0..36 {
                 g.inventory[i] = menu.player_item(i).cloned();
             }
@@ -281,19 +281,19 @@ impl crate::game::Sim<'_> {
         let (session, traded) = self.merchant_apply(session, gm.merchant.mob);
         gm.merchant.session = session;
         if !traded.is_empty() {
-            // The guest's own statistic and advancements.
-            self.as_guest(host, conn, |g| g.merchant_traded(gm.merchant.mob, &traded));
+            // The player's own statistic and advancements.
+            self.as_player(net, conn, |g| g.merchant_traded(gm.merchant.mob, &traded));
         }
-        self.drop_guest_items(host, gi, dropped);
-        self.lan_send_offers(host, conn, &mut gm, false);
-        self.lan_send_merchant_content(host, conn, &mut gm);
-        host.play.entry(conn).or_default().merchant = Some(gm);
+        self.drop_player_items(net, gi, dropped);
+        self.net_send_offers(net, conn, &mut gm, false);
+        self.net_send_merchant_content(net, conn, &mut gm);
+        net.play.entry(conn).or_default().merchant = Some(gm);
         true
     }
-    /// A container click on the guest's trading window.
-    pub(super) fn lan_merchant_click(
+    /// A container click on the player's trading window.
+    pub(super) fn net_merchant_click(
         &mut self,
-        host: &mut LanHost,
+        net: &mut Network,
         conn: u32,
         p: &play::ContainerClick,
     ) -> bool {
@@ -307,36 +307,36 @@ impl crate::game::Sim<'_> {
             _ => Input::PickupAll,
         };
         let (slot, button) = (i32::from(p.slot), i32::from(p.button));
-        self.lan_merchant_op(host, conn, Some(p.container), |menu, env| {
+        self.net_merchant_op(net, conn, Some(p.container), |menu, env| {
             let _ = menu.click(env, slot, button, input);
         })
     }
     /// ServerboundSelectTradePacket: the selection hint, then tryMoveItems.
-    pub(super) fn lan_select_trade(&mut self, host: &mut LanHost, conn: u32, index: i32) {
+    pub(super) fn net_select_trade(&mut self, net: &mut Network, conn: u32, index: i32) {
         let Ok(index) = usize::try_from(index) else {
             return;
         };
-        self.lan_merchant_op(host, conn, None, |menu, env| {
+        self.net_merchant_op(net, conn, None, |menu, env| {
             menu.merchant_select(env, index)
         });
     }
-    /// The guest closed the trading window (or it is closed for them):
+    /// The player closed the trading window (or it is closed for them):
     /// MerchantMenu.removed, then the villager gets its state back.
-    pub(super) fn lan_merchant_closed(
+    pub(super) fn net_merchant_closed(
         &mut self,
-        host: &mut LanHost,
+        net: &mut Network,
         conn: u32,
         window: Option<i32>,
     ) -> bool {
-        if !self.lan_merchant_op(host, conn, window, |menu, env| menu.merchant_close(env)) {
+        if !self.net_merchant_op(net, conn, window, |menu, env| menu.merchant_close(env)) {
             return false;
         }
-        let Some(mut gm) = host.play.get_mut(&conn).and_then(|p| p.merchant.take()) else {
+        let Some(mut gm) = net.play.get_mut(&conn).and_then(|p| p.merchant.take()) else {
             return false;
         };
-        let uuid = host
+        let uuid = net
             .hub
-            .guests
+            .players
             .iter()
             .find(|g| g.conn == conn)
             .map(|g| uuid_words(g.uuid));
@@ -348,10 +348,10 @@ impl crate::game::Sim<'_> {
         self.merchant_closed(&mut gm.merchant);
         true
     }
-    /// `Villager.customServerAiStep` for the guests' trading villagers: the
+    /// `Villager.customServerAiStep` for the players' trading villagers: the
     /// TRADE reputation event, then the prices follow.
-    pub(super) fn lan_merchant_tick(&mut self, host: &mut LanHost) {
-        let conns: Vec<u32> = host
+    pub(super) fn net_merchant_tick(&mut self, net: &mut Network) {
+        let conns: Vec<u32> = net
             .play
             .iter()
             .filter(|(_, p)| {
@@ -362,23 +362,23 @@ impl crate::game::Sim<'_> {
             .map(|(c, _)| *c)
             .collect();
         for conn in conns {
-            let Some(uuid) = host
+            let Some(uuid) = net
                 .hub
-                .guests
+                .players
                 .iter()
-                .find(|g| g.conn == conn && host.hub.here(g))
+                .find(|g| g.conn == conn && net.hub.here(g))
                 .map(|g| uuid_words(g.uuid))
             else {
                 continue;
             };
-            let Some(gm) = host.play.get_mut(&conn).and_then(|p| p.merchant.as_mut()) else {
+            let Some(gm) = net.play.get_mut(&conn).and_then(|p| p.merchant.as_mut()) else {
                 continue;
             };
             gm.merchant.session.last_traded = false;
             let Some(id) = gm.merchant.mob else { continue };
             self.villager_traded_by(id, uuid);
             let reputation = self.villager_reputation_of(id, uuid);
-            self.lan_merchant_op(host, conn, None, |menu, env| {
+            self.net_merchant_op(net, conn, None, |menu, env| {
                 if let Some(s) = menu.merchant.as_mut() {
                     s.reputation = reputation;
                     s.update_special_prices();
@@ -387,11 +387,11 @@ impl crate::game::Sim<'_> {
             });
         }
     }
-    /// Takes a station a guest's action opened: a trading screen or a
-    /// workstation menu goes to the guest (game/lan_stations.rs).
-    pub(super) fn lan_station_opened(
+    /// Takes a station a player's action opened: a trading screen or a
+    /// workstation menu goes to the player (game/net_stations.rs).
+    pub(super) fn net_station_opened(
         &mut self,
-        host: &mut LanHost,
+        net: &mut Network,
         conn: u32,
         station: super::stations::Station,
     ) {
@@ -399,9 +399,9 @@ impl crate::game::Sim<'_> {
         if station.kind == StationKind::Merchant
             && let Some(m) = station.merchant.take()
         {
-            self.lan_open_merchant(host, conn, *m);
+            self.net_open_merchant(net, conn, *m);
             return;
         }
-        self.lan_open_station(host, conn, &station);
+        self.net_open_station(net, conn, &station);
     }
 }

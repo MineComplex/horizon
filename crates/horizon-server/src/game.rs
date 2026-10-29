@@ -57,20 +57,6 @@ mod hand;
 mod initial_spawn;
 mod jukebox;
 mod keys;
-mod lan;
-mod lan_actions;
-mod lan_attributes;
-mod lan_chat;
-mod lan_crafting;
-mod lan_entities;
-mod lan_mobs;
-mod lan_mount_menu;
-mod lan_particles;
-mod lan_pvp;
-mod lan_stations;
-mod lan_trading;
-mod lan_vehicles;
-mod lan_waypoints;
 mod leads;
 mod level_particles;
 mod levels;
@@ -88,6 +74,19 @@ mod mounts;
 mod names;
 mod natural_spawning;
 mod nautili;
+mod net_actions;
+mod net_attributes;
+mod net_chat;
+mod net_crafting;
+mod net_entities;
+mod net_mobs;
+mod net_mount_menu;
+mod net_particles;
+mod net_pvp;
+mod net_stations;
+mod net_trading;
+mod net_vehicles;
+mod net_waypoints;
 mod nether_portal;
 mod ominous_item_spawner;
 mod paintings;
@@ -107,6 +106,7 @@ mod pumpkin;
 mod raids;
 mod respawn_anchor;
 mod scoreboard;
+mod server_net;
 mod shared;
 mod stations;
 mod trading;
@@ -323,12 +323,12 @@ enum FallStep {
     /// Hit the ground in this block.
     Landed([i32; 3]),
 }
-/// A guest's right click comes as one packet per hand and part
+/// A player's right click comes as one packet per hand and part
 /// (`Minecraft.startUseItem`): `ServerGamePacketListenerImpl.handleUseItemOn`
 /// does the block's and `ItemStack.useOn`'s part, `handleUseItem` the
 /// item's own (`Item.use`). Running both for either would use the item twice.
 #[derive(Clone, Copy)]
-enum GuestUse {
+enum PlayerUse {
     OnBlock(Hand),
     Item(Hand),
     /// `handleInteract`: `Player.interactOn` with the hand, nothing else (the
@@ -349,8 +349,8 @@ struct GameLevel<'w> {
     raining: bool,
     thundering: bool,
     player_box: Option<([f64; 3], [f64; 3])>,
-    /// The LAN guests in this level who trigger blocks (not spectators).
-    guest_boxes: Vec<([f64; 3], [f64; 3])>,
+    /// The players in this level who trigger blocks (not spectators).
+    player_boxes: Vec<([f64; 3], [f64; 3])>,
     player_collision: Option<PlayerCollision>,
     /// Minecart boxes (detector rails).
     cart_boxes: Vec<([f64; 3], [f64; 3])>,
@@ -380,7 +380,7 @@ struct GameLevel<'w> {
     /// `Difficulty.getId()` (peaceful 0 .. hard 3).
     difficulty: i32,
     /// The feet of the players who keep fire spreading around them: the local
-    /// player and the LAN guests in this level, spectators aside.
+    /// player and the players in this level, spectators aside.
     fire_players: Vec<[f64; 3]>,
     /// Block loot random sequences (`ServerLevel.getRandomSequence`).
     rand_sequences: &'w mut crate::hc::random_sequences::RandomSequences,
@@ -391,7 +391,7 @@ struct GameLevel<'w> {
     random_tick_sections: &'w mut crate::hc::random_tick_sections::RandomTickSections,
     /// Players with each chest open (a trapped chest's signal).
     lid_openers: &'w HashMap<(i32, i32, i32), i32>,
-    /// `Level.isClientSide`: a client's copy of the level (a guest of a LAN
+    /// `Level.isClientSide`: a client's copy of the level (a player of a LAN
     /// world, a window on its server thread, a dedicated server's client).
     client_side: bool,
     /// Plugins hear of blocks changing by themselves (`LevelEvent::Changed`).
@@ -553,7 +553,7 @@ impl GameLevel<'_> {
         let b = self.blockers;
         self.player_box
             .iter()
-            .chain(&self.guest_boxes)
+            .chain(&self.player_boxes)
             .chain(&self.cart_boxes)
             .map(boxed)
             .chain(b.mobs.iter().filter(|m| !m.removed).map(Mob::bounds))
@@ -826,7 +826,7 @@ impl LevelAccess for GameLevel<'_> {
         self.tickets.block_ticking(chunk.x, chunk.z) && ticking_chunk(self.world, chunk.x, chunk.z)
     }
     /// Entities that trigger pressure plates, tripwires, detector rails and
-    /// wooden buttons: the players (the host and the LAN guests), the mobs,
+    /// wooden buttons: the players (the players), the mobs,
     /// the minecarts and the other entities that don't ignore block triggers,
     /// and for `EntityQuery::Arrows` the arrows.
     fn count_entities(&self, area: Aabb, query: EntityQuery) -> usize {
@@ -851,7 +851,7 @@ impl LevelAccess for GameLevel<'_> {
         let players = || {
             self.player_box
                 .iter()
-                .chain(&self.guest_boxes)
+                .chain(&self.player_boxes)
                 .filter(|b| hit(b))
                 .count()
         };
@@ -1110,7 +1110,7 @@ struct Sim<'a> {
     save: Arc<SaveDir>,
     level: Level,
     session_lock: Option<crate::hc::save::SessionLock>,
-    /// The sounds the game decided to play (seeds, the guests' capture, the control socket's
+    /// The sounds the game decided to play (seeds, the players' capture, the control socket's
     /// counts); `flush_sounds` hands them to `audio`.
     sounds: crate::hc::sound_out::SoundOut,
     /// `LocalPlayer.itemUsed` for the first-person hand heights, applied by the window
@@ -1146,7 +1146,7 @@ struct Sim<'a> {
     /// swap just before an attack keeps them, with the new item's enchantments
     /// (attribute swapping).
     attack_item: Option<Arc<str>>,
-    /// Mobs a player hurt (`LivingEntity.lastHurtByPlayer`), with the guest
+    /// Mobs a player hurt (`LivingEntity.lastHurtByPlayer`), with the player
     /// it was by connection (None: the host).
     last_hurt_by_player: HashMap<u32, Option<u32>>,
     /// Mobs whose death (`LivingEntity.die`) has been handled.
@@ -1284,8 +1284,8 @@ struct Sim<'a> {
     /// The overworld's last `sky_darken` and its inputs (time, rain, thunder).
     sky_darken_memo: std::cell::Cell<Option<((i64, u32, u32), i32)>>,
     persist: persist::EntityMemory,
-    /// This world is open to the network (game/lan.rs).
-    lan: Option<lan::LanHost>,
+    /// This world is open to the network (game/server_net.rs).
+    network: Option<server_net::Network>,
     /// horizon-server's plugins (game/plugin_host.rs), what they asked for
     /// that waits for the hub, and the players they last saw.
     plugins: Option<Box<horizon_server_api::PluginHost>>,
@@ -1300,55 +1300,55 @@ struct Sim<'a> {
     plugin_last_moves: HashMap<u32, horizon_server_api::Location>,
     /// MultiPlayerGameMode.previousLocalPlayerMode (F3+N goes back to it).
     previous_mode: Option<crate::hc::command::args::GameMode>,
-    /// The block a guest is acting on (game/lan_actions.rs).
+    /// The block a player is acting on (game/net_actions.rs).
     forced_hit: Option<Hit>,
-    /// The part of a right click a guest's packet asks for (game/lan_actions.rs).
-    guest_use: Option<GuestUse>,
-    /// Level events of this tick for the guests, and the guest acting now.
-    lan_events: Vec<(i32, [i32; 3], i32, Option<u32>)>,
-    /// Jukebox level events 1010 (song name) and 1011 (`None`) for the guests;
+    /// The part of a right click a player's packet asks for (game/net_actions.rs).
+    player_use: Option<PlayerUse>,
+    /// Level events of this tick for the players, and the player acting now.
+    net_events: Vec<(i32, [i32; 3], i32, Option<u32>)>,
+    /// Jukebox level events 1010 (song name) and 1011 (`None`) for the players;
     /// the song's network id is only known once the hub is in hand.
-    lan_songs: Vec<([i32; 3], Option<String>)>,
-    lan_cushion_breaks: Vec<(horizon_world::registry::BlockStateId, [f64; 3])>,
+    net_songs: Vec<([i32; 3], Option<String>)>,
+    net_cushion_breaks: Vec<(horizon_world::registry::BlockStateId, [f64; 3])>,
     /// Block events (position, b0, b1, state) and entity events (id, event,
-    /// position) for the guests.
-    lan_block_events: Vec<([i32; 3], i32, i32, u32)>,
-    lan_entity_events: Vec<(i32, i8, [f64; 3])>,
-    /// Successful crits (attacking guest, hit entity), queued while the hub is taken.
-    lan_critical_hits: Vec<(Option<u32>, i32, bool)>,
-    /// Spear stabs that landed (the stabbing guest), queued while the hub is
+    /// position) for the players.
+    net_block_events: Vec<([i32; 3], i32, i32, u32)>,
+    net_entity_events: Vec<(i32, i8, [f64; 3])>,
+    /// Successful crits (attacking player, hit entity), queued while the hub is taken.
+    net_critical_hits: Vec<(Option<u32>, i32, bool)>,
+    /// Spear stabs that landed (the stabbing player), queued while the hub is
     /// taken: `broadcastEntityEvent(player, 2)`.
-    lan_kinetic_hits: Vec<Option<u32>>,
-    /// `LivingEntity.recentKineticEnemies`: when each player (a guest, or the
+    net_kinetic_hits: Vec<Option<u32>>,
+    /// `LivingEntity.recentKineticEnemies`: when each player (a player, or the
     /// window's own) last stabbed each entity this use.
     stabbed: HashMap<(Option<u32>, u32), i64>,
-    /// The movement a guest's client reported this tick
+    /// The movement a player's client reported this tick
     /// (`ServerPlayer.getKnownMovement`), for their turn.
     known_movement: Vec3,
     /// `LivingEntity.lastKineticHitFeedbackTime` of the entities that felt a
     /// spear's hit (`spear::OWN` is this window's player), in game time.
     kinetic_feedback: HashMap<i32, i64>,
-    /// Global level events for every guest (`ServerLevel.globalLevelEvent`).
-    lan_global_events: Vec<(i32, [i32; 3], i32)>,
-    /// `ContainerOpenersCounter`: how many players (the host and the guests)
+    /// Global level events for every player (`ServerLevel.globalLevelEvent`).
+    net_global_events: Vec<(i32, [i32; 3], i32)>,
+    /// `ContainerOpenersCounter`: how many players (the players)
     /// have each chest open.
     lid_openers: HashMap<(i32, i32, i32), i32>,
-    lan_acting: Option<u32>,
-    /// The name of the guest `lan_acting` acts for (`Player.getName`).
-    lan_acting_name: Option<String>,
+    net_acting: Option<u32>,
+    /// The name of the player `net_acting` acts for (`Player.getName`).
+    net_acting_name: Option<String>,
     /// Their UUID (`Player.getUUID`).
-    lan_acting_uuid: Option<u128>,
-    /// Command feedback to forward to a guest.
+    net_acting_uuid: Option<u128>,
+    /// Command feedback to forward to a player.
     chat_capture: Option<Vec<crate::hc::text::Text>>,
-    /// Packets for the guest acting now, sent once its action returns.
-    guest_packets: Vec<horizon_protocol::packets::play::Clientbound>,
-    /// The acting guest's cooldowns, as (item, ticks): their packet needs the
-    /// hub's item registry, which the guest's turn does not hold.
-    guest_cooldowns: Vec<(Arc<str>, i32)>,
-    /// The acting guest's own entity events (`ServerPlayer.connection.send`),
-    /// sent with their entity id, which the guest's turn does not hold.
-    guest_entity_events: Vec<i8>,
-    /// `broadcastToAdmins` lines a guest's command queued, sent once it
+    /// Packets for the player acting now, sent once its action returns.
+    player_packets: Vec<horizon_protocol::packets::play::Clientbound>,
+    /// The acting player's cooldowns, as (item, ticks): their packet needs the
+    /// hub's item registry, which the player's turn does not hold.
+    player_cooldowns: Vec<(Arc<str>, i32)>,
+    /// The acting player's own entity events (`ServerPlayer.connection.send`),
+    /// sent with their entity id, which the player's turn does not hold.
+    player_entity_events: Vec<i8>,
+    /// `broadcastToAdmins` lines a player's command queued, sent once it
     /// returns: the line, whether operators get it and whether the console
     /// logs it.
     admin_feedback: Vec<(crate::hc::text::Text, bool, bool)>,
@@ -1362,8 +1362,8 @@ struct Sim<'a> {
     /// Game rules, difficulty, the clock and the command registries (vanilla's `ServerLevelData`).
     world_data: crate::hc::world_data::WorldData,
     combat: combat::CombatTracker,
-    /// Each guest's own `CombatTracker`, out of `combat` between turns.
-    guest_combat: std::collections::HashMap<u32, combat::CombatTracker>,
+    /// Each player's own `CombatTracker`, out of `combat` between turns.
+    player_combat: std::collections::HashMap<u32, combat::CombatTracker>,
     mount: mounts::MountState,
     stats: stats::Stats,
     score: scoreboard::ScoreState,
@@ -1466,7 +1466,7 @@ impl crate::game::Sim<'_> {
     /// Voxel traversal against non-air, non-fluid blocks, clipped against
     /// each block's outline shape (`BlockGetter.clip` with `ClipContext.Block.OUTLINE`).
     fn pick(&self) -> Option<Hit> {
-        // A guest of a hosted world acts on the block their client targeted.
+        // A player of a server acts on the block their client targeted.
         if let Some(hit) = &self.forced_hit {
             return Some(Hit {
                 pos: hit.pos,
@@ -1872,10 +1872,10 @@ impl crate::game::Sim<'_> {
             self.dropped.last_mut().unwrap().thrower = Some(uuid);
         }
     }
-    /// The UUID of the player acting: the guest whose turn it is, else the host.
+    /// The UUID of the player acting: the player whose turn it is, else the host.
     pub(super) fn acting_player_uuid(&mut self) -> [i32; 4] {
-        match self.lan_acting_uuid {
-            Some(guest) => crate::hc::lan::playerdata::uuid_ints(guest),
+        match self.net_acting_uuid {
+            Some(player) => crate::hc::server_net::playerdata::uuid_ints(player),
             None => self.level.ensure_player_uuid(),
         }
     }
@@ -1888,7 +1888,7 @@ impl crate::game::Sim<'_> {
         let catalog = self.res.items();
         let max_stack =
             |stack: &ItemStack| catalog.get(&stack.item).map_or(64, |i| i.max_stack).max(1);
-        // A LAN or server guest only shows the host's items.
+        // A player only shows the host's items.
         let merging = true;
         for i in 0..items.len() {
             if removed[i] {
@@ -2106,7 +2106,7 @@ impl crate::game::Sim<'_> {
                 (b.min_position().components(), b.max_position().components())
             })
             .collect();
-        let guest_boxes = self.lan_block_trigger_boxes();
+        let player_boxes = self.net_block_trigger_boxes();
         let dimension = match self.dim {
             Dim::Overworld => LevelDimension::Overworld,
             Dim::Nether => LevelDimension::Nether,
@@ -2118,9 +2118,9 @@ impl crate::game::Sim<'_> {
             .iter()
             .filter(|_| !spectator)
             .map(|p| [p.position.x, p.position.y, p.position.z])
-            .chain(self.lan.iter().flat_map(|h| {
+            .chain(self.network.iter().flat_map(|h| {
                 h.hub
-                    .guests
+                    .players
                     .iter()
                     .filter(|g| h.hub.here(g) && !g.spectator())
                     .map(|g| g.position)
@@ -2158,7 +2158,7 @@ impl crate::game::Sim<'_> {
             raining: rain > 0.2,
             thundering: thunder > 0.9,
             player_box,
-            guest_boxes,
+            player_boxes,
             player_collision,
             biomes: self.res.biomes(),
             seed: self.level.seed,
@@ -2257,13 +2257,13 @@ impl crate::game::Sim<'_> {
         self.tick_chunks.recycle_added(added);
     }
     /// `DistanceManager`'s tickets of the level in place, from every player in
-    /// it (the local player, LAN guests, a server's players) and its forced
+    /// it (the local player, players, a server's players) and its forced
     /// chunks. A game with neither a server nor a player (the headless
     /// fixtures) ticks everywhere.
     fn update_chunk_tickets(&mut self) {
-        let mut players: Vec<(i32, i32)> = self.lan.as_ref().map_or_else(Vec::new, |h| {
+        let mut players: Vec<(i32, i32)> = self.network.as_ref().map_or_else(Vec::new, |h| {
             h.hub
-                .guests
+                .players
                 .iter()
                 .filter(|g| h.hub.here(g))
                 .map(|g| g.chunk())
@@ -2316,11 +2316,11 @@ impl crate::game::Sim<'_> {
             .filter(|&(x, z)| levels.random_ticking(x, z) && ticking_chunk(&self.world, x, z))
             .collect();
         // Entity.checkInsideBlocks for the plates, tripwires, detector rails and
-        // buttons under the players (the host and the LAN guests), the minecarts
+        // buttons under the players (the players), the minecarts
         // and the arrows (the mobs and other entities are added in `with_level`
         // below).
         let mut inside = Vec::new();
-        let guests = self.lan_block_trigger_boxes();
+        let players = self.net_block_trigger_boxes();
         let boxes = self
             .player
             .iter()
@@ -2340,7 +2340,7 @@ impl crate::game::Sim<'_> {
                     [p.x + 0.49, p.y + 0.7, p.z + 0.49],
                 )
             }))
-            .chain(guests);
+            .chain(players);
         for (lo, hi) in boxes {
             for x in (lo[0] + 1e-7).floor() as i32..=(hi[0] - 1e-7).floor() as i32 {
                 for y in (lo[1] + 1e-7).floor() as i32..=(hi[1] - 1e-7).floor() as i32 {
@@ -2366,7 +2366,7 @@ impl crate::game::Sim<'_> {
         }
         // BigDripleafBlock.entityInside also asks whether the player stands on
         // the ground and how high its feet are: the leaves its box's feet
-        // layer is inside (the host and the LAN guests).
+        // layer is inside (the players).
         let mut standing = Vec::new();
         let feet = self
             .player
@@ -2380,7 +2380,7 @@ impl crate::game::Sim<'_> {
                 )
             })
             .chain(
-                self.lan_guest_feet()
+                self.net_player_feet()
                     .into_iter()
                     .map(|(at, on_ground)| (at, on_ground, 0.3)),
             );
@@ -2498,7 +2498,7 @@ impl crate::game::Sim<'_> {
     /// Side effects reported by the behaviour library, in vanilla order.
     fn process_level_events(&mut self) -> Result<()> {
         let events = std::mem::take(&mut self.level_events);
-        self.lan_record_events(&events);
+        self.net_record_events(&events);
         dispense_fixture::record_events(&events);
         for event in events {
             match event {
@@ -3423,15 +3423,15 @@ impl crate::game::Sim<'_> {
             return Ok(None);
         }
         // A carrot or warped fungus on a stick boosts the ridden pig or strider.
-        // A guest's use packets name one hand and touch no entity: the client
+        // A player's use packets name one hand and touch no entity: the client
         // sends one per hand and part of its click, and Interact for entities.
-        let guest = self.guest_use;
-        if let Some(GuestUse::Entity(hand)) = guest {
+        let player = self.player_use;
+        if let Some(PlayerUse::Entity(hand)) = player {
             return Ok(self
                 .with_hand(hand, |g| g.interact_entity())?
                 .then_some(hand));
         }
-        let on_block = matches!(guest, Some(GuestUse::OnBlock(_)));
+        let on_block = matches!(player, Some(PlayerUse::OnBlock(_)));
         if !on_block
             && self.riding.is_some()
             && let Some(item) = self.held().map(|s| s.item.clone())
@@ -3439,22 +3439,22 @@ impl crate::game::Sim<'_> {
         {
             return Ok(Some(Hand::Main));
         }
-        if guest.is_none() && self.interact_entity()? {
+        if player.is_none() && self.interact_entity()? {
             return Ok(Some(Hand::Main));
         }
         // An EntityHitResult may fall through to Item.use, never to useItemOn.
-        let block_hit = if matches!(guest, Some(GuestUse::Item(_))) || self.entity_targeted() {
+        let block_hit = if matches!(player, Some(PlayerUse::Item(_))) || self.entity_targeted() {
             None
         } else {
             self.pick()
         };
-        let hands = match guest {
-            Some(GuestUse::OnBlock(hand) | GuestUse::Item(hand) | GuestUse::Entity(hand)) => {
+        let hands = match player {
+            Some(PlayerUse::OnBlock(hand) | PlayerUse::Item(hand) | PlayerUse::Entity(hand)) => {
                 vec![hand]
             }
             None => Hand::BOTH.to_vec(),
         };
-        let entity = guest.is_none() && self.entity_targeted();
+        let entity = player.is_none() && self.entity_targeted();
         for hand in hands {
             // The off hand's turn starts on the entity too (Minecraft.startUseItem).
             if entity && hand == Hand::Off && self.with_hand(hand, |g| g.interact_entity())? {
@@ -3479,7 +3479,7 @@ impl crate::game::Sim<'_> {
     }
     /// `ItemStack.applyAfterUseComponentSideEffects`: a used stack with a
     /// `use_cooldown` component starts its entry (`UseCooldown.apply`). A
-    /// server's guest also gets `ClientboundCooldownPacket`
+    /// server's player also gets `ClientboundCooldownPacket`
     /// (`ServerItemCooldowns.onCooldownStarted`), queued for their turn's end.
     pub(super) fn apply_use_cooldown(&mut self, stack: &ItemStack) {
         let default = self
@@ -3492,8 +3492,8 @@ impl crate::game::Sim<'_> {
         };
         let group = crate::hc::cooldowns::group(stack, default.as_ref());
         self.cooldowns.add(Arc::clone(&group), component.ticks());
-        if self.lan_acting.is_some() {
-            self.guest_cooldowns.push((group, component.ticks()));
+        if self.net_acting.is_some() {
+            self.player_cooldowns.push((group, component.ticks()));
         }
     }
     /// One hand's turn in `startUseItem`: `useItemOn` the block aimed at,
@@ -3652,9 +3652,9 @@ impl crate::game::Sim<'_> {
         if block_hit.is_some() && (self.use_bone_meal(&stack)? || self.ignite_tnt(&stack)?) {
             return Ok(true);
         }
-        // A guest's UseItemOn stops at ItemStack.useOn: what Item.use does
+        // A player's UseItemOn stops at ItemStack.useOn: what Item.use does
         // (throw, drink, eat, raise, equip) waits for its UseItem.
-        let on_block = matches!(self.guest_use, Some(GuestUse::OnBlock(_)));
+        let on_block = matches!(self.player_use, Some(PlayerUse::OnBlock(_)));
         let spawn_egg = stack.item.ends_with("_spawn_egg");
         use crate::hc::first_person::UseResult;
         let swings = self.swings_started;
@@ -4200,10 +4200,10 @@ impl crate::game::Sim<'_> {
         let m = self.mining.as_mut().ok_or("mining")?;
         // ServerPlayerGameMode breaks a player's block at once only when it is instant (START's
         // insta-mine); otherwise it waits for the client's STOP_DESTROY_BLOCK
-        // (`guest_stop_digging`), never breaking it on its own count. Breaking it here would
+        // (`player_stop_digging`), never breaking it on its own count. Breaking it here would
         // take the block from under the player's crack before the player's client predicts the
         // break, so it gets neither particles nor sound.
-        if m.progress >= 1.0 && (self.lan_acting.is_none() || m.ticks == 1) {
+        if m.progress >= 1.0 && (self.net_acting.is_none() || m.ticks == 1) {
             let pos = m.pos;
             self.mining = None;
             self.break_block(pos)?;
@@ -4258,7 +4258,7 @@ impl crate::game::Sim<'_> {
     }
     /// A server's tick in its first level (`MinecraftServer.tickServer`'s shared parts): the
     /// clock, the weather, the autosave, mods, then the level itself (`tick_world`). A server
-    /// has no player of its own: its players are connections (`tick_guests`).
+    /// has no player of its own: its players are connections (`tick_players`).
     fn tick_level(&mut self) -> Result<()> {
         self.drop_window_output();
         self.ticks += 1;
@@ -4294,7 +4294,7 @@ impl crate::game::Sim<'_> {
         self.update_chunk_tickets();
         crate::hc::spans::time("tick_effects", || self.tick_effects(running));
         // Player.tick's ItemCooldowns.tick for the window's player (a
-        // server's players count theirs down in `tick_guests`).
+        // server's players count theirs down in `tick_players`).
         self.shield_cooldown = self.shield_cooldown.saturating_sub(1);
         self.cooldowns.tick();
         crate::hc::spans::time("tick_using", || self.tick_using());
@@ -4340,7 +4340,7 @@ impl crate::game::Sim<'_> {
                 self.resolve_arrivals();
             });
         }
-        crate::hc::spans::time("tick_lan", || self.tick_lan(false));
+        crate::hc::spans::time("tick_net", || self.tick_net(false));
         crate::hc::spans::time("tick_sleep", || self.tick_sleep());
         self.announce_sleep_status();
         if running {
@@ -5083,7 +5083,7 @@ impl crate::game::Sim<'_> {
         // the offset is the one from the player to the particle.
         let origin = from.unwrap_or(at);
         let spread = [at[0] - origin[0], 0.0, at[2] - origin[2]];
-        self.lan_send_particles(&sweep, at, spread, 0.0, 0);
+        self.net_send_particles(&sweep, at, spread, 0.0, 0);
         self.sounds
             .play("minecraft:entity.player.attack.sweep", from, 1.0, 1.0);
     }
@@ -5151,7 +5151,7 @@ impl crate::game::Sim<'_> {
             if self.hurt_by_player(i, damage, source) {
                 self.mobs[i].knockback(0.4, xd, zd);
                 self.last_hurt_by_player
-                    .insert(self.mobs[i].id, self.lan_acting);
+                    .insert(self.mobs[i].id, self.net_acting);
             }
         }
         // `getEntitiesOfClass(LivingEntity.class)` takes the other players too.
@@ -5216,7 +5216,7 @@ impl crate::game::Sim<'_> {
             || self.attack_boat(hand_damage)
             || self.attack_cart(hand_damage)
             || self.attack_dragon()
-            || self.attack_guest()
+            || self.attack_player()
         {
             return true;
         }
@@ -5304,12 +5304,12 @@ impl crate::game::Sim<'_> {
             self.stats
                 .custom("damage_dealt", (actual * 10.0).round() as i32);
             if crit {
-                let (acting, target) = (self.lan_acting, self.mobs[index].id as i32);
+                let (acting, target) = (self.net_acting, self.mobs[index].id as i32);
                 self.critical_hit(acting, target, feet, width, height, false);
             }
             // Player.attackVisualEffects: magicCrit when the enchantments added damage.
             if magic {
-                let (acting, target) = (self.lan_acting, self.mobs[index].id as i32);
+                let (acting, target) = (self.net_acting, self.mobs[index].id as i32);
                 self.critical_hit(acting, target, feet, width, height, true);
             }
             if actual > 2.0 {
@@ -5324,7 +5324,7 @@ impl crate::game::Sim<'_> {
                     (actual * 0.5) as u32,
                 );
                 // The players a server serves are sent them too.
-                self.lan_send_particles(
+                self.net_send_particles(
                     &indicator,
                     [feet[0], feet[1] + height * 0.5, feet[2]],
                     [0.1, 0.0, 0.1],
@@ -5333,7 +5333,7 @@ impl crate::game::Sim<'_> {
                 );
             }
             self.last_hurt_by_player
-                .insert(self.mobs[index].id, self.lan_acting);
+                .insert(self.mobs[index].id, self.net_acting);
             let sound = if crit {
                 "minecraft:entity.player.attack.crit"
             } else if scale > 0.9 {
@@ -6027,9 +6027,9 @@ impl crate::game::Sim<'_> {
             // SUCCESS_SERVER swings; a full campfire's CONSUME does not.
             return Ok(UseResult::Success { swing: placed });
         }
-        // BucketItem has no useOn: a guest's UseItemOn leaves it to UseItem.
+        // BucketItem has no useOn: a player's UseItemOn leaves it to UseItem.
         let bucket = crate::hc::items::bucket_contents(&stack.item);
-        if matches!(self.guest_use, Some(GuestUse::OnBlock(_)))
+        if matches!(self.player_use, Some(PlayerUse::OnBlock(_)))
             && (item == "bucket" || bucket.is_some())
         {
             return Ok(UseResult::Pass);
@@ -6253,7 +6253,7 @@ impl crate::game::Sim<'_> {
         let centre = Vec3::new(at[0], at[1], at[2]);
         let half = Vec3::new(0.5, 0.5, 0.5);
         let area = Aabb::new(centre.subtract(half), centre.add_vector(half));
-        // A server's orbs are its own; a LAN or server guest only shows them.
+        // A server's orbs are its own; a player only shows them.
         let target = true.then(|| {
             self.orbs
                 .iter_mut()
@@ -6341,7 +6341,7 @@ impl crate::game::Sim<'_> {
             .as_ref()
             .filter(|p| !p.health.dead_or_dying() && !spectator);
         // ExperienceOrb.followNearbyPlayer: each orb goes for the nearest
-        // living player within 8 blocks, the host's own or a guest.
+        // living player within 8 blocks, the host's own or a player.
         let mut followed: Vec<([f64; 3], [f64; 3])> = player
             .map(|p| {
                 let feet = [p.position.x, p.position.y, p.position.z];
@@ -6350,10 +6350,10 @@ impl crate::game::Sim<'_> {
             })
             .into_iter()
             .collect();
-        if let Some(host) = self.lan.as_ref() {
+        if let Some(net) = self.network.as_ref() {
             followed.extend(
-                host.hub
-                    .guests
+                net.hub
+                    .players
                     .iter()
                     .filter(|g| g.placed && g.loaded && !g.dead && g.health > 0.0)
                     .filter(|g| !g.spectator())
@@ -6612,10 +6612,10 @@ impl crate::game::Sim<'_> {
     }
     /// A translated message for the player the game acts for: `overlay` is
     /// `sendOverlayMessage` (the action bar), else `sendSystemMessage` (chat).
-    /// A guest gets a packet, so its own client translates it.
+    /// A player gets a packet, so its own client translates it.
     fn tell_sleeper(&mut self, key: &str, fallback: &str, overlay: bool) {
-        if self.lan_acting.is_some() {
-            self.guest_packets
+        if self.net_acting.is_some() {
+            self.player_packets
                 .push(horizon_protocol::packets::play::Clientbound::SystemChat(
                     horizon_protocol::packets::play::SystemChat {
                         content: horizon_protocol::text::translatable(key, &[]),
@@ -6701,9 +6701,9 @@ impl crate::game::Sim<'_> {
             if moved {
                 self.tell_sleeper("block.minecraft.set_spawn", "Respawn point set", false);
             }
-            // The fallback becomes the world spawn: a guest's is none of its
+            // The fallback becomes the world spawn: a player's is none of its
             // own, so it follows `setworldspawn`.
-            self.spawn = if self.lan_acting.is_some() {
+            self.spawn = if self.net_acting.is_some() {
                 None
             } else {
                 self.level
@@ -6806,7 +6806,7 @@ impl crate::game::Sim<'_> {
             if self.sleeping.is_some() {
                 self.wake_up();
             }
-            self.wake_guests();
+            self.wake_players();
             // SleepStatus.removeAllSleepers: waking everyone is not announced.
             self.sleep_seen.1 = 0;
         }
@@ -7377,7 +7377,7 @@ impl<'a> Sim<'a> {
             control: None,
             sky_darken_memo: Default::default(),
             persist: Default::default(),
-            lan: None,
+            network: None,
             plugins: None,
             plugin_actions: Vec::new(),
             plugin_seen: Vec::new(),
@@ -7386,25 +7386,25 @@ impl<'a> Sim<'a> {
             plugin_last_moves: HashMap::new(),
             previous_mode: None,
             forced_hit: None,
-            guest_use: None,
-            lan_events: Vec::new(),
-            lan_songs: Vec::new(),
-            lan_cushion_breaks: Vec::new(),
-            lan_block_events: Vec::new(),
-            lan_entity_events: Vec::new(),
-            lan_critical_hits: Vec::new(),
-            lan_kinetic_hits: Vec::new(),
+            player_use: None,
+            net_events: Vec::new(),
+            net_songs: Vec::new(),
+            net_cushion_breaks: Vec::new(),
+            net_block_events: Vec::new(),
+            net_entity_events: Vec::new(),
+            net_critical_hits: Vec::new(),
+            net_kinetic_hits: Vec::new(),
             stabbed: HashMap::new(),
             known_movement: Vec3::ZERO,
             kinetic_feedback: HashMap::new(),
-            lan_global_events: Vec::new(),
+            net_global_events: Vec::new(),
             lid_openers: HashMap::new(),
-            lan_acting: None,
-            guest_packets: Vec::new(),
-            guest_cooldowns: Vec::new(),
-            guest_entity_events: Vec::new(),
-            lan_acting_name: None,
-            lan_acting_uuid: None,
+            net_acting: None,
+            player_packets: Vec::new(),
+            player_cooldowns: Vec::new(),
+            player_entity_events: Vec::new(),
+            net_acting_name: None,
+            net_acting_uuid: None,
             chat_capture: None,
             admin_feedback: Vec::new(),
             console_broadcast: None,
@@ -7412,7 +7412,7 @@ impl<'a> Sim<'a> {
             ui: Default::default(),
             world_data: Default::default(),
             combat: Default::default(),
-            guest_combat: Default::default(),
+            player_combat: Default::default(),
             mount: Default::default(),
             stats: Default::default(),
             score: Default::default(),

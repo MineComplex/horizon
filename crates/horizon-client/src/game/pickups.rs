@@ -93,7 +93,7 @@ impl crate::game::Sim<'_> {
         }
     }
     /// [`Self::add_pickup`] with the collector's first target given (a LAN
-    /// guest's model while the host is taken out for its tick).
+    /// player's model while the host is taken out for its tick).
     pub(super) fn add_pickup_toward(
         &mut self,
         taken: Taken,

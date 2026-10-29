@@ -24,7 +24,7 @@ pub(super) struct Bolt {
     /// Blocks it set on fire (`blocksSetOnFire`).
     fires: i32,
     /// The player who channelled it (`LightningBolt.cause`): `Some(None)` for
-    /// the host, `Some(Some(conn))` for a guest.
+    /// the host, `Some(Some(conn))` for a player.
     pub cause: Option<Option<u32>>,
 }
 impl crate::game::Sim<'_> {
@@ -314,7 +314,7 @@ impl crate::game::Sim<'_> {
                 if !b.visual_only {
                     let struck = self.thunder_hit(b);
                     if let Some(cause) = b.cause {
-                        let who = cause.map_or(Target::Player, Target::Guest);
+                        let who = cause.map_or(Target::Player, Target::ServerPlayer);
                         self.for_player(who, |g| g.trigger_channeled_lightning(&struck));
                     }
                 }
@@ -501,7 +501,7 @@ impl crate::game::Sim<'_> {
             }
         };
         strike(self);
-        self.each_guest_hit(strike);
+        self.each_player_hit(strike);
         // Dropped items burn up (ItemEntity health 5), save fire-resistant ones.
         self.dropped.retain(|e| {
             !inside([e.position.x, e.position.y, e.position.z])

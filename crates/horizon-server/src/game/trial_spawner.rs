@@ -32,7 +32,7 @@ impl TrialSpawnerLevel for GameLevel<'_, '_> {
         self.game.world_data.rules.bool("spawn_mobs")
     }
     fn players(&self) -> Vec<TrialPlayer> {
-        let guests = self.game.lan_present().into_iter().map(|g| TrialPlayer {
+        let players = self.game.net_present().into_iter().map(|g| TrialPlayer {
             uuid: g.uuid,
             block: g.position.map(|v| v.floor() as i32),
             eye: g.eye,
@@ -41,13 +41,13 @@ impl TrialSpawnerLevel for GameLevel<'_, '_> {
             position: g.position,
             height: g.height,
             alive: g.alive,
-            // Guests carry no effects yet.
+            // Players carry no effects yet.
             omen: None,
         });
         let (Some(p), Some(view)) = (self.game.player.as_ref(), self.game.player_view()) else {
-            return guests.collect();
+            return players.collect();
         };
-        let host = TrialPlayer {
+        let net = TrialPlayer {
             uuid: self.game.acting_uuid(),
             block: [p.position.x, p.position.y, p.position.z].map(|v| v.floor() as i32),
             eye: view.eye,
@@ -62,7 +62,7 @@ impl TrialSpawnerLevel for GameLevel<'_, '_> {
                 self.game.potions.effects.get("bad_omen").map(|_| Omen::Bad)
             },
         };
-        std::iter::once(host).chain(guests).collect()
+        std::iter::once(net).chain(players).collect()
     }
     fn visual_hit(&self, from: [f64; 3], to: [f64; 3]) -> Option<[i32; 3]> {
         let v = |p: [f64; 3]| Vec3::new(p[0], p[1], p[2]);

@@ -1,22 +1,22 @@
-//! Commands acting on the other players of a hosted world or a server
+//! Commands acting on the other players of a server or a server
 //! (EntitySelector.findPlayers and EntityArgument's player targets). The
-//! player in place (the host's, or the guest whose turn it is) is
-//! `Target::Player`; every other guest is `Target::Guest`, found by name,
+//! player in place (the host's, or the player whose turn it is) is
+//! `Target::Player`; every other player is `Target::Player`, found by name,
 //! UUID or selector, and what a command does to them runs with their state
 //! swapped in (`for_player`), as their own turn, what it tells them going to
 //! their chat.
 use super::Target;
-use crate::hc::{command::args::Selector, lan::guest::Guest, text::Text};
+use crate::hc::{command::args::Selector, server_net::player::ServerPlayer, text::Text};
 use horizon_protocol::packets::play::{self, Clientbound as C};
 
 impl Target {
     /// A player, in place or not (`instanceof ServerPlayer`).
     pub(in crate::game) fn is_player(self) -> bool {
-        matches!(self, Target::Player | Target::Guest(_))
+        matches!(self, Target::Player | Target::ServerPlayer(_))
     }
 }
 
-/// GameType.getName for a guest's game mode id.
+/// GameType.getName for a player's game mode id.
 fn mode_name(id: i32) -> &'static str {
     match id {
         1 => "creative",
@@ -27,17 +27,17 @@ fn mode_name(id: i32) -> &'static str {
 }
 
 impl crate::game::Sim<'_> {
-    /// The guest `conn`, while the hub is in `self.lan`.
-    pub(in crate::game) fn command_guest(&self, conn: u32) -> Option<&Guest> {
-        self.lan.as_ref()?.hub.guest(conn)
+    /// The player `conn`, while the hub is in `self.network`.
+    pub(in crate::game) fn command_player(&self, conn: u32) -> Option<&ServerPlayer> {
+        self.network.as_ref()?.hub.player(conn)
     }
-    /// `PlayerList.getPlayers` but the player in place: the guests who
+    /// `PlayerList.getPlayers` but the player in place: the players who
     /// joined the world.
-    fn command_players(&self) -> impl Iterator<Item = &Guest> {
-        let acting = self.lan_acting;
-        self.lan
+    fn command_players(&self) -> impl Iterator<Item = &ServerPlayer> {
+        let acting = self.net_acting;
+        self.network
             .iter()
-            .flat_map(|h| h.hub.guests.iter())
+            .flat_map(|h| h.hub.players.iter())
             .filter(move |g| g.placed && Some(g.conn) != acting)
     }
     /// The entity the command runs as (`CommandSourceStack.getEntity`): a
@@ -64,12 +64,12 @@ impl crate::game::Sim<'_> {
         }
         self.command_players()
             .find(|g| g.name.eq_ignore_ascii_case(name))
-            .map(|g| Target::Guest(g.conn))
+            .map(|g| Target::ServerPlayer(g.conn))
     }
     /// `EntitySelector.findEntities` with a UUID: the player with it, else
     /// the entity.
     pub(super) fn target_by_uuid(&self, uuid: u128) -> Option<Target> {
-        let own = self.lan_acting_uuid.or_else(|| {
+        let own = self.net_acting_uuid.or_else(|| {
             self.level.player_uuid.map(|[a, b, c, d]| {
                 (u128::from(a as u32) << 96)
                     | (u128::from(b as u32) << 64)
@@ -81,12 +81,12 @@ impl crate::game::Sim<'_> {
             return Some(Target::Player);
         }
         if let Some(g) = self.command_players().find(|g| g.uuid == uuid) {
-            return Some(Target::Guest(g.conn));
+            return Some(Target::ServerPlayer(g.conn));
         }
         let words = [96, 64, 32, 0].map(|shift| (uuid >> shift) as u32 as i32);
         self.target_with_uuid(words)
     }
-    /// The guests a selector looks at, in join order (`PlayerList.getPlayers`),
+    /// The players a selector looks at, in join order (`PlayerList.getPlayers`),
     /// the one in place as `Target::Player`: all of them, or those in the
     /// source's level when it limits the search to a place
     /// (`isWorldLimited`); `@e` and `@n` skip the dead (`Entity::isAlive`).
@@ -96,10 +96,10 @@ impl crate::game::Sim<'_> {
             || s.delta.iter().any(Option::is_some);
         let alive = matches!(s.kind, 'e' | 'n');
         let here = self.dim.id();
-        let in_place = self.lan_acting.filter(|_| self.player.is_some());
-        self.lan
+        let in_place = self.net_acting.filter(|_| self.player.is_some());
+        self.network
             .iter()
-            .flat_map(|h| h.hub.guests.iter())
+            .flat_map(|h| h.hub.players.iter())
             .filter(|g| g.placed)
             .filter(|g| !limited || g.dimension == here || Some(g.conn) == in_place)
             .filter(|g| !alive || (!g.dead && g.health > 0.0))
@@ -107,14 +107,14 @@ impl crate::game::Sim<'_> {
                 if Some(g.conn) == in_place {
                     Target::Player
                 } else {
-                    Target::Guest(g.conn)
+                    Target::ServerPlayer(g.conn)
                 }
             })
             .collect()
     }
-    /// A guest's experience level and game mode, for `level=` and `gamemode=`.
-    pub(super) fn guest_level_and_mode(&self, conn: u32) -> Option<(i32, &'static str)> {
-        self.command_guest(conn)
+    /// A player's experience level and game mode, for `level=` and `gamemode=`.
+    pub(super) fn player_level_and_mode(&self, conn: u32) -> Option<(i32, &'static str)> {
+        self.command_player(conn)
             .map(|g| (g.xp_level, mode_name(g.game_mode)))
     }
     /// `Player.getDisplayName`: the name as its team shows it, suggesting a
@@ -138,7 +138,7 @@ impl crate::game::Sim<'_> {
         ])
     }
     /// Run `f` for the player `t` (None for anything else): in place, or
-    /// with the guest's state swapped in, in their level, as their own turn.
+    /// with the player's state swapped in, in their level, as their own turn.
     /// What `f` tells the player (`system_message`) goes to their chat; the
     /// command's own feedback is the caller's to send.
     pub(in crate::game) fn for_player<T>(
@@ -148,54 +148,54 @@ impl crate::game::Sim<'_> {
     ) -> Option<T> {
         let conn = match t {
             Target::Player => return Some(f(self)),
-            Target::Guest(conn) if self.lan_acting == Some(conn) => return Some(f(self)),
-            Target::Guest(conn) => conn,
+            Target::ServerPlayer(conn) if self.net_acting == Some(conn) => return Some(f(self)),
+            Target::ServerPlayer(conn) => conn,
             _ => return None,
         };
-        let mut host = self.lan.take()?;
+        let mut net = self.network.take()?;
         let back = self.dim;
-        let theirs = host
+        let theirs = net
             .hub
-            .guest(conn)
+            .player(conn)
             .map(|g| super::super::Dim::from_id(&g.dimension));
         if let Some(dim) = theirs.filter(|d| *d != back)
-            && let Err(e) = self.enter_level(Some(&mut host), dim)
+            && let Err(e) = self.enter_level(Some(&mut net), dim)
         {
             log::error!("could not open {}: {e}", dim.id());
         }
-        let Some(swap) = self.enter_guest(&mut host, conn) else {
+        let Some(swap) = self.enter_player(&mut net, conn) else {
             if self.dim != back
-                && let Err(e) = self.enter_level(Some(&mut host), back)
+                && let Err(e) = self.enter_level(Some(&mut net), back)
             {
                 log::error!("could not reopen {}: {e}", back.id());
             }
-            self.lan = Some(host);
+            self.network = Some(net);
             return None;
         };
-        self.lan = Some(host);
+        self.network = Some(net);
         let source = self.chat_capture.replace(Vec::new());
         let out = f(self);
         let told = std::mem::replace(&mut self.chat_capture, source).unwrap_or_default();
-        let mut host = self
-            .lan
+        let mut net = self
+            .network
             .take()
             .expect("the hub is back after a player's turn");
-        self.leave_guest(&mut host, swap);
+        self.leave_player(&mut net, swap);
         for line in told {
-            host.hub.send_to(
+            net.hub.send_to(
                 conn,
                 &C::SystemChat(play::SystemChat {
-                    content: crate::hc::lan::data::component_nbt(&line.component()),
+                    content: crate::hc::server_net::data::component_nbt(&line.component()),
                     overlay: false,
                 }),
             );
         }
         if self.dim != back
-            && let Err(e) = self.enter_level(Some(&mut host), back)
+            && let Err(e) = self.enter_level(Some(&mut net), back)
         {
             log::error!("could not reopen {}: {e}", back.id());
         }
-        self.lan = Some(host);
+        self.network = Some(net);
         Some(out)
     }
 }

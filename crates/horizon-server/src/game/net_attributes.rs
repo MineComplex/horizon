@@ -1,15 +1,15 @@
 //! The attribute instances a server syncs for the living entities it tracks
-//! (`ClientboundUpdateAttributesPacket`, lan/attributes.rs): the ones
+//! (`ClientboundUpdateAttributesPacket`, server_net/attributes.rs): the ones
 //! vanilla's `AttributeMap` would have created by then, since only those are
 //! sent, never the type's other defaults.
 use super::commands::Target;
 use crate::hc::{
     effects,
-    lan::attributes::{add_modifier, generic_syncable, instance, operation_named},
     mobs::{
         Mob,
         finalize::{self, Attr, Op},
     },
+    server_net::attributes::{add_modifier, generic_syncable, instance, operation_named},
 };
 use horizon_protocol::packets::play::{AttributeModifier, AttributeSnapshot};
 use std::sync::Arc;

@@ -52,9 +52,9 @@ impl crate::game::Sim<'_> {
             );
         // Join/configuration uses the normal hub, but never advances the world.
         while !self
-            .lan
+            .network
             .as_ref()
-            .is_some_and(|h| h.hub.guests.iter().any(|g| g.placed && g.loaded))
+            .is_some_and(|h| h.hub.players.iter().any(|g| g.placed && g.loaded))
         {
             self.tick_server(true)?;
             if Instant::now() > deadline {
@@ -132,30 +132,37 @@ impl crate::game::Sim<'_> {
     /// The owner's authoritative body and level, using the same swaps as a
     /// server command. Always put them back, also when a script operation fails.
     pub(crate) fn harness_owner<T>(&mut self, f: impl FnOnce(&mut Self) -> Result<T>) -> Result<T> {
-        let mut host = self.lan.take().ok_or("command harness: no hub")?;
+        let mut net = self.network.take().ok_or("command harness: no hub")?;
         // The script's player: the first on the server.
-        let owner = host.hub.guests.first().map_or(0, |g| g.uuid);
-        let guest = host.hub.guests.iter().find(|g| g.uuid == owner && g.placed);
-        let Some(guest) = guest else {
-            self.lan = Some(host);
+        let owner = net.hub.players.first().map_or(0, |g| g.uuid);
+        let player = net.hub.players.iter().find(|g| g.uuid == owner && g.placed);
+        let Some(player) = player else {
+            self.network = Some(net);
             return Err("command harness: owner is not connected".into());
         };
-        let (conn, dim, back) = (guest.conn, super::Dim::from_id(&guest.dimension), self.dim);
-        if let Err(error) = self.enter_level(Some(&mut host), dim) {
-            self.lan = Some(host);
+        let (conn, dim, back) = (
+            player.conn,
+            super::Dim::from_id(&player.dimension),
+            self.dim,
+        );
+        if let Err(error) = self.enter_level(Some(&mut net), dim) {
+            self.network = Some(net);
             return Err(error);
         }
         let swap = self
-            .enter_guest(&mut host, conn)
+            .enter_player(&mut net, conn)
             .expect("the owner is not already acting");
-        self.lan = Some(host);
+        self.network = Some(net);
         let result = f(self);
-        let mut host = self.lan.take().expect("the operation puts the hub back");
-        self.leave_guest(&mut host, swap);
-        host.hub.sync_all_effects();
-        self.run_level_teleports(&mut host);
-        let restored = self.enter_level(Some(&mut host), back);
-        self.lan = Some(host);
+        let mut net = self
+            .network
+            .take()
+            .expect("the operation puts the hub back");
+        self.leave_player(&mut net, swap);
+        net.hub.sync_all_effects();
+        self.run_level_teleports(&mut net);
+        let restored = self.enter_level(Some(&mut net), back);
+        self.network = Some(net);
         restored?;
         result
     }
@@ -183,21 +190,21 @@ impl crate::game::Sim<'_> {
                 true,
             );
             Ok((
-                g.lan_acting.ok_or("command harness: no acting owner")?,
+                g.net_acting.ok_or("command harness: no acting owner")?,
                 plan,
             ))
         })?;
         // Start travel after restoring the owner's body: change_level updates
-        // its hub record, which leave_guest would otherwise overwrite.
+        // its hub record, which leave_player would otherwise overwrite.
         let owner = self
-            .lan
+            .network
             .as_ref()
-            .and_then(|h| h.hub.guests.first())
+            .and_then(|h| h.hub.players.first())
             .map_or(0, |g| g.uuid);
         self.in_player_level(owner, |g| {
-            let mut host = g.lan.take().ok_or("command harness: no hub")?;
-            g.start_server_trip(&mut host, conn, plan.dim, Some(plan));
-            g.lan = Some(host);
+            let mut net = g.network.take().ok_or("command harness: no hub")?;
+            g.start_server_trip(&mut net, conn, plan.dim, Some(plan));
+            g.network = Some(net);
             Ok(())
         })
     }

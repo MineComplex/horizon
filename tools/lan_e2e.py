@@ -686,7 +686,7 @@ def nether_portal(game, x, y, z):
 
 def lan_guest(host):
     """The guest's entry in the host's `lan status` (on the server thread the owner is listed too)."""
-    guests = host.raw('lan', 'status')['guests']
+    guests = host.raw('network', 'status')['players']
     return next(g for g in guests if g['name'] == GUEST_NAME)
 
 def check_distance(host, guest, out):
@@ -896,7 +896,7 @@ def level_ticking(host, guest, out):
 def level_rejoin(host, guest, out):
     """The guest leaves in the Nether and joins again there (its player data keeps its level)."""
     before = pos_of(guest)
-    port = host.raw('lan', 'status')['port']
+    port = host.raw('network', 'status')['port']
     guest.raw('disconnect')
     time.sleep(2)
     guest.raw('connect', f'127.0.0.1:{port}', GUEST_NAME)
@@ -1033,7 +1033,7 @@ def level_reload(host, guest, out):
     before = pos_of(guest)
     # The server saves as it stops with the host's client; the world opens on a new one.
     host.reopen()
-    port = host.raw('lan', 'open', 0, 'commands')['port']
+    port = host.raw('network', 'open', 0, 'commands')['port']
     back_to_game(guest)
     guest.raw('connect', f'127.0.0.1:{port}', GUEST_NAME)
     guest.raw('wait-for', 'loaded', '--timeout', 300)
@@ -1222,7 +1222,7 @@ def leave_game_total(host):
 def check_leave(host, guest, out):
     # PlayerList.remove awards Stats.LEAVE_GAME before it saves the player: a guest who leaves has it in
     # their saved statistics, and it counts again the next time they leave.
-    port = host.raw('lan', 'status')['port']
+    port = host.raw('network', 'status')['port']
     before = leave_game_total(host)
     counts = []
     for _ in range(2):
@@ -3716,7 +3716,7 @@ def server_player(host, game):
     if game is host and not SERVER_THREAD:
         return own(host)
     name = GUEST_NAME if game is not host else host.player
-    return next(g for g in host.raw('lan', 'status')['guests'] if g['name'] == name)
+    return next(g for g in host.raw('network', 'status')['players'] if g['name'] == name)
 
 
 def check_shield(host, guest, out):
@@ -5024,7 +5024,7 @@ def run(ctl, out, resources, checks):
         host('command', command='fill ~-8 ~-1 ~-8 ~8 ~-1 ~8 minecraft:stone')
         host('command', command='fill ~-8 ~ ~-8 ~8 ~6 ~8 minecraft:air')
         host('command', command='gamerule spawn_mobs false')
-        port = host.raw('lan', 'open', 0, 'commands')['port']
+        port = host.raw('network', 'open', 0, 'commands')['port']
         host.player = 'Player'  # the host's profile name
         guest.launch(*launch)
         guest.raw('connect', f'127.0.0.1:{port}', GUEST_NAME)
@@ -6715,7 +6715,7 @@ def check_recipe_settings(host, guest, out):
     host.wait(20)
     guest.raw('disconnect')
     host.reopen()
-    port = host.raw('lan', 'open', 0, 'commands')['port']
+    port = host.raw('network', 'open', 0, 'commands')['port']
     guest.raw('connect', f'127.0.0.1:{port}', GUEST_NAME)
     guest.raw('wait-for', 'loaded', '--timeout', 300)
     guest.wait(20)

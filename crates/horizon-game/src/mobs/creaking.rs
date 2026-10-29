@@ -157,7 +157,7 @@ pub fn on_attack(m: &mut Mob, events: &mut Vec<MobEvent>) {
     m.extra.ints[ATTACKING] = ATTACK_TICKS;
     broadcast(m, 4, events);
 }
-/// `Level.broadcastEntityEvent` for a creaking (guests run `entity_event`).
+/// `Level.broadcastEntityEvent` for a creaking (players run `entity_event`).
 fn broadcast(m: &Mob, event: i8, events: &mut Vec<MobEvent>) {
     events.push(MobEvent::EntityEvent {
         mob: m.id,

@@ -31,23 +31,23 @@ impl crate::game::Sim<'_> {
         let result = match words.as_slice() {
             ["world"] => Ok(json!({
                 "world": self.level.name,
-                "port": self.lan.as_ref().map(|h| h.settings.port),
+                "port": self.network.as_ref().map(|h| h.settings.port),
             })),
             ["as", name, rest @ ..] if !rest.is_empty() => self.player_control(name, line, rest),
             _ => return None,
         };
         Some(result.unwrap_or_else(|e| json!({ "error": e.to_string() })))
     }
-    /// The guest called `name`: its profile.
-    fn guest_uuid(&self, name: &str) -> Result<u128> {
-        self.lan
+    /// The player called `name`: its profile.
+    fn player_uuid(&self, name: &str) -> Result<u128> {
+        self.network
             .as_ref()
-            .and_then(|h| h.hub.guests.iter().find(|g| g.name == name && g.placed))
+            .and_then(|h| h.hub.players.iter().find(|g| g.name == name && g.placed))
             .map(|g| g.uuid)
             .ok_or_else(|| format!("{name} is not on this server").into())
     }
     fn player_control(&mut self, name: &str, line: &str, words: &[&str]) -> Result<Value> {
-        let uuid = self.guest_uuid(name)?;
+        let uuid = self.player_uuid(name)?;
         let ok = || Ok(json!({ "ok": true }));
         match words {
             ["command", ..] => {
@@ -76,9 +76,9 @@ impl crate::game::Sim<'_> {
             ["mobs", radius] => {
                 let radius: f64 = radius.parse()?;
                 let center = self
-                    .lan
+                    .network
                     .as_ref()
-                    .and_then(|h| h.hub.guests.iter().find(|g| g.uuid == uuid))
+                    .and_then(|h| h.hub.players.iter().find(|g| g.uuid == uuid))
                     .map_or(Vec3::ZERO, |g| {
                         Vec3::new(g.position[0], g.position[1], g.position[2])
                     });
@@ -91,9 +91,9 @@ impl crate::game::Sim<'_> {
                     [x, y, z, ..] => [*x, *y, *z],
                     _ => {
                         let g = self
-                            .lan
+                            .network
                             .as_ref()
-                            .and_then(|h| h.hub.guests.iter().find(|g| g.uuid == uuid))
+                            .and_then(|h| h.hub.players.iter().find(|g| g.uuid == uuid))
                             .ok_or("no such player")?;
                         let yaw = f64::from(g.yaw).to_radians();
                         let p = g.position;
@@ -126,34 +126,34 @@ impl crate::game::Sim<'_> {
                 let reply = self.in_player_level(uuid, |g| g.block_command(words))?;
                 Ok(reply.unwrap_or_else(|| json!({ "ok": true })))
             }
-            ["lan", rest @ ..] => self.server_lan(rest),
+            ["network", rest @ ..] => self.server_net(rest),
             _ => Err(format!("unknown request {line:?}").into()),
         }
     }
     /// `horizon-ctl lan` on a server: it is always open, on its own port.
     /// `commands` lets every player run commands, `force` forces the default
     /// game mode (Open to LAN's options).
-    fn server_lan(&mut self, words: &[&str]) -> Result<Value> {
+    fn server_net(&mut self, words: &[&str]) -> Result<Value> {
         match words.first().copied() {
             Some("open") => {
-                let host = self.lan.as_mut().ok_or("the server is not listening")?;
-                host.settings.guest_commands = words.contains(&"commands");
-                host.settings.force_game_mode = words.contains(&"force");
-                host.hub.config.force_game_mode = host.settings.force_game_mode;
-                host.hub.everyone_level = if host.settings.guest_commands { 2 } else { 0 };
-                host.hub.resend_commands();
-                Ok(json!({ "ok": true, "port": host.settings.port }))
+                let net = self.network.as_mut().ok_or("the server is not listening")?;
+                net.settings.player_commands = words.contains(&"commands");
+                net.settings.force_game_mode = words.contains(&"force");
+                net.hub.config.force_game_mode = net.settings.force_game_mode;
+                net.hub.everyone_level = if net.settings.player_commands { 2 } else { 0 };
+                net.hub.resend_commands();
+                Ok(json!({ "ok": true, "port": net.settings.port }))
             }
-            Some("status") => Ok(self.lan_status()),
+            Some("status") => Ok(self.net_status()),
             Some("close") => Err("a server does not close".into()),
-            _ => Err("lan open|close|status".into()),
+            _ => Err("network open|close|status".into()),
         }
     }
     /// Run `f` with the level of the player `uuid` in place (the server holds
     /// one per dimension), then put back the level that was.
     pub(super) fn in_player_level<T>(&mut self, uuid: u128, f: impl FnOnce(&mut Self) -> T) -> T {
-        let dim = self.lan.as_ref().and_then(|h| {
-            let g = h.hub.guests.iter().find(|g| g.uuid == uuid)?;
+        let dim = self.network.as_ref().and_then(|h| {
+            let g = h.hub.players.iter().find(|g| g.uuid == uuid)?;
             Some(super::Dim::from_id(&g.dimension))
         });
         let back = dim.and_then(|d| self.enter_command_level(d));
@@ -167,54 +167,56 @@ impl crate::game::Sim<'_> {
     /// permission), in the player's level: `execute as` the player. The
     /// feedback goes to the player's chat and is returned.
     pub(super) fn player_console_command(&mut self, uuid: u128, command: &str) -> Vec<String> {
-        let Some(mut host) = self.lan.take() else {
+        let Some(mut net) = self.network.take() else {
             return Vec::new();
         };
         let mut out = Vec::new();
-        if let Some(g) = host.hub.guests.iter().find(|g| g.uuid == uuid && g.placed) {
+        if let Some(g) = net.hub.players.iter().find(|g| g.uuid == uuid && g.placed) {
             let conn = g.conn;
             // Commands.performCommand runs in the player's level.
             let (back, theirs) = (self.dim, super::Dim::from_id(&g.dimension));
-            let entered = theirs == back || self.enter_level(Some(&mut host), theirs).is_ok();
-            if entered && let Some(swap) = self.enter_guest(&mut host, conn) {
+            let entered = theirs == back || self.enter_level(Some(&mut net), theirs).is_ok();
+            if entered && let Some(swap) = self.enter_player(&mut net, conn) {
                 let command = command.trim_start_matches('/').to_owned();
                 // The hub is back in place while the command runs, as for a
-                // guest's own (`run_guest_commands`): selectors see every
+                // player's own (`run_player_commands`): selectors see every
                 // player (`team join … @a`), and `defaultgamemode` reaches it.
-                self.lan = Some(host);
+                self.network = Some(net);
                 let lines = self.as_console(|g| {
                     g.chat_capture = Some(Vec::new());
                     g.run_command(&command);
                     g.chat_capture.take().unwrap_or_default()
                 });
-                host = self.lan.take().expect("a command puts the hub back");
-                self.leave_guest(&mut host, swap);
-                host.hub.sync_all_effects();
+                net = self.network.take().expect("a command puts the hub back");
+                self.leave_player(&mut net, swap);
+                net.hub.sync_all_effects();
                 // A teleport into another level happens before its feedback is
                 // sent, and what the command earned is announced before it too.
-                self.run_level_teleports(&mut host);
-                self.announce_guest_advancements(&mut host);
+                self.run_level_teleports(&mut net);
+                self.announce_player_advancements(&mut net);
                 for line in lines {
                     out.push(line.plain());
-                    host.hub.send_to(
+                    net.hub.send_to(
                         conn,
                         &horizon_protocol::packets::play::Clientbound::SystemChat(
                             horizon_protocol::packets::play::SystemChat {
-                                content: crate::hc::lan::data::component_nbt(&line.component()),
+                                content: crate::hc::server_net::data::component_nbt(
+                                    &line.component(),
+                                ),
                                 overlay: false,
                             },
                         ),
                     );
                 }
-                self.send_admin_feedback(&mut host, Some(conn));
+                self.send_admin_feedback(&mut net, Some(conn));
             }
             if theirs != back
-                && let Err(e) = self.enter_level(Some(&mut host), back)
+                && let Err(e) = self.enter_level(Some(&mut net), back)
             {
                 log::error!("could not reopen {}: {e}", back.id());
             }
         }
-        self.lan = Some(host);
+        self.network = Some(net);
         out
     }
 }

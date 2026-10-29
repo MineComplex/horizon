@@ -53,7 +53,7 @@ impl crate::game::Sim<'_> {
         let mut tracker = Tracker::default();
         for t in self.living_targets(ctx)? {
             let changed = match t {
-                Target::Player | Target::Guest(_) => {
+                Target::Player | Target::ServerPlayer(_) => {
                     let mut instance = EffectInstance::new(effect.id, duration, amplifier);
                     instance.visible = particles;
                     self.for_player(t, |g| g.add_player_effect(instance))
@@ -107,7 +107,7 @@ impl crate::game::Sim<'_> {
         let mut tracker = Tracker::default();
         for t in self.living_targets(ctx)? {
             let changed = match (t, effect) {
-                (Target::Player | Target::Guest(_), None) => self
+                (Target::Player | Target::ServerPlayer(_), None) => self
                     .for_player(t, |g| {
                         let any = !g.potions.effects.list.is_empty();
                         g.potions.effects.clear();
@@ -115,7 +115,7 @@ impl crate::game::Sim<'_> {
                         any
                     })
                     .unwrap_or(false),
-                (Target::Player | Target::Guest(_), Some(e)) => self
+                (Target::Player | Target::ServerPlayer(_), Some(e)) => self
                     .for_player(t, |g| {
                         let before = g.potions.effects.list.len();
                         g.potions.effects.list.retain(|x| x.id != e.id);

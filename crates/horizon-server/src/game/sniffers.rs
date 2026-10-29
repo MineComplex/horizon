@@ -45,7 +45,7 @@ impl crate::game::Sim<'_> {
     /// digging animation) and `playSearchingSound`.
     pub(super) fn tick_sniffer_effects(&mut self) {
         // Vanilla runs these on each client: a sniffer within 32 blocks of
-        // any player in the level (the host and the guests) shows them.
+        // any player in the level (the players) shows them.
         let players = self.level_players();
         if players.is_empty() {
             return;

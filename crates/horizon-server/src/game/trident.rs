@@ -32,8 +32,8 @@ pub(super) struct ThrownTrident {
     pub(super) no_physics: bool,
     returning: u32,
     creative_only: bool,
-    /// The guest that threw it (`Projectile.getOwner`); `None` for the host.
-    guest: Option<u32>,
+    /// The player that threw it (`Projectile.getOwner`); `None` for the host.
+    player: Option<u32>,
 }
 impl ThrownTrident {
     /// `ThrownTrident.tick`'s Loyalty return: pulled up and towards the
@@ -122,7 +122,7 @@ impl crate::game::Sim<'_> {
     /// The `summon_entity` and `play_sound` effects of `channeling.json`: in a
     /// thunderstorm (`weather_check`) a spot that sees the sky (`can_see_sky`)
     /// gets a lightning bolt and the thunder sound.
-    fn channel_lightning(&mut self, at: [f64; 3], guest: Option<u32>) {
+    fn channel_lightning(&mut self, at: [f64; 3], player: Option<u32>) {
         // Level.isThundering: the thunder level, in dimensions with weather.
         if self.dim != super::Dim::Overworld || self.world.weather.levels(1.0).1 <= 0.9 {
             return;
@@ -139,7 +139,7 @@ impl crate::game::Sim<'_> {
         self.spawn_bolt(at, false);
         // The summon effect's owner is the thrower: LightningBolt.setCause.
         if let Some(bolt) = self.bolts.last_mut() {
-            bolt.cause = Some(guest);
+            bolt.cause = Some(player);
         }
         self.sounds
             .play("minecraft:item.trident.thunder", Some(at), 5.0, 1.0);
@@ -147,7 +147,7 @@ impl crate::game::Sim<'_> {
     /// `minecraft:hit_block` of Channeling (`AbstractArrow.hitBlockEnchantmentEffects`):
     /// the block the trident's path first hits, if it is a lightning rod, with
     /// the hit location clamped into the block (`BlockPos.clampLocationWithin`).
-    fn channel_rod_hit(&mut self, from: Vec3, velocity: Vec3, guest: Option<u32>) {
+    fn channel_rod_hit(&mut self, from: Vec3, velocity: Vec3, player: Option<u32>) {
         let to = Vec3::new(
             from.x + velocity.x,
             from.y + velocity.y,
@@ -186,7 +186,7 @@ impl crate::game::Sim<'_> {
                 clamp(hit.location.y, hit.block.y),
                 clamp(hit.location.z, hit.block.z),
             ],
-            guest,
+            player,
         );
     }
     /// `TridentItem.releaseUsing`.
@@ -297,32 +297,32 @@ impl crate::game::Sim<'_> {
             no_physics: false,
             returning: 0,
             creative_only: self.creative,
-            guest: self.lan_acting,
+            player: self.net_acting,
         });
         self.player_projectile_shot();
         self.sounds
             .play("minecraft:item.trident.throw", at, 1.0, 1.0);
     }
     /// The thrower's `PLAYER_HURT_ENTITY` for a trident hit: run as the
-    /// guest that threw it, and not at all once they have left.
+    /// player that threw it, and not at all once they have left.
     fn thrower_hit(
         &mut self,
-        guest: Option<u32>,
+        player: Option<u32>,
         victim: &crate::hc::advancements::EntityView,
         direct: crate::hc::advancements::EntityView,
         damage: f32,
     ) {
-        let Some(conn) = guest.filter(|c| self.lan_acting != Some(*c)) else {
+        let Some(conn) = player.filter(|c| self.net_acting != Some(*c)) else {
             self.player_hit(victim, "minecraft:trident", Some(direct), damage);
             return;
         };
-        let Some(mut host) = self.lan.take() else {
+        let Some(mut net) = self.network.take() else {
             return;
         };
-        self.as_guest(&mut host, conn, |g| {
+        self.as_player(&mut net, conn, |g| {
             g.player_hit(victim, "minecraft:trident", Some(direct), damage)
         });
-        self.lan = Some(host);
+        self.network = Some(net);
     }
     pub(super) fn tick_tridents(&mut self) {
         let Some(eye) = self.eye_position() else {
@@ -415,7 +415,7 @@ impl crate::game::Sim<'_> {
                     if let Some(at) = hurt_at
                         && t.stack.enchantment_level("minecraft:channeling") > 0
                     {
-                        self.channel_lightning(at, t.guest);
+                        self.channel_lightning(at, t.player);
                     }
                     if hurt_at.is_some()
                         && let Some(m) = self.mobs.iter().find(|m| m.id == id)
@@ -427,7 +427,7 @@ impl crate::game::Sim<'_> {
                             position: [t.position.x, t.position.y, t.position.z],
                             ..Default::default()
                         };
-                        self.thrower_hit(t.guest, &victim, direct, damage);
+                        self.thrower_hit(t.player, &victim, direct, damage);
                     }
                     self.sounds.play(
                         "minecraft:item.trident.hit",
@@ -459,7 +459,7 @@ impl crate::game::Sim<'_> {
                         );
                         if blocked {
                             if t.stack.enchantment_level("minecraft:channeling") > 0 {
-                                self.channel_rod_hit(from, flight, t.guest);
+                                self.channel_rod_hit(from, flight, t.player);
                             }
                             t.in_ground = true;
                             t.velocity = Vec3::ZERO;

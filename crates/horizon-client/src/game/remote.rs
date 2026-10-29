@@ -1165,7 +1165,7 @@ impl Game<'_> {
                 // Entity.getTeam: a mob is on a team by its UUID.
                 self.persist.uuids.insert(
                     p.id as u32,
-                    horizon_client::lan::playerdata::uuid_ints(p.uuid),
+                    horizon_client::server_net::playerdata::uuid_ints(p.uuid),
                 );
                 self.spawn_entity(p.id, &kind, p.position, rotation);
                 // Entity.recreateFromPacket: setDeltaMovement(packet.getMovement()).
@@ -1721,7 +1721,7 @@ impl Game<'_> {
             // Then the received health again, which the old maximum clamped.
             C::UpdateAttributes(p) if self.remote.as_ref().is_some_and(|r| r.entity_id == p.id) => {
                 if let Some(pl) = self.player.as_mut() {
-                    horizon_client::lan::attributes::apply(&mut pl.attributes, &p.values);
+                    horizon_client::server_net::attributes::apply(&mut pl.attributes, &p.values);
                 }
                 self.apply_remote_health();
             }
@@ -2959,7 +2959,7 @@ impl crate::game::Sim<'_> {
     /// the server's echo doesn't hand back a bare item.
     fn to_network(&self, s: &Option<ItemStack>) -> Option<Stack> {
         let r = self.remote.as_ref()?;
-        horizon_client::lan::guest::stack_to_network(
+        horizon_client::server_net::player::stack_to_network(
             |name| self.item_id(name),
             // Built-in first, as a hub's `SyncData::id` does: potions are one.
             |registry, name| {
@@ -3357,7 +3357,7 @@ impl crate::game::Sim<'_> {
                     d[0] * d[0] + d[1] * d[1] + d[2] * d[2] > 4096.0
                 };
                 let handler = r.stepped.entry(id).or_insert_with(|| {
-                    let interval = horizon_client::lan::tracking::settings(&m.kind.id).1;
+                    let interval = horizon_client::server_net::tracking::settings(&m.kind.id).1;
                     SteppedInterpolation::new(interval as i32)
                 });
                 let snap = if far {
@@ -6131,7 +6131,7 @@ type DryUse = (DryChanges, Vec<DrySound>);
 /// Where `BlockItem.place` on the dry level placed, and the blocks it set.
 type DryPlace = (horizon_core::position::BlockPos, DryChanges);
 
-/// The blocks a guest's hand flips that its use predicts (and hears at once): a wooden or
+/// The blocks a player's hand flips that its use predicts (and hears at once): a wooden or
 /// copper door, trapdoor or fence gate, a lever or a button. An iron door or trapdoor has
 /// no hand use.
 pub(super) fn hand_operated(name: &str) -> bool {

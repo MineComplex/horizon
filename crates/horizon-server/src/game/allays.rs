@@ -94,8 +94,8 @@ impl crate::game::Sim<'_> {
             .unwrap_or([0, 0, 0, 1])
     }
     /// `AllayAi.getLikedPlayer`: the player the allay was given an item by,
-    /// found by UUID among the host and the guests of the level (the window
-    /// is a guest on the server thread), when they are not a spectator and
+    /// found by UUID among the players of the level (the window
+    /// is a player on the server thread), when they are not a spectator and
     /// within 64 blocks.
     fn allay_liked_player(&self, i: usize) -> Option<horizon_core::geometry::Vec3> {
         let m = &self.mobs[i];
@@ -103,12 +103,12 @@ impl crate::game::Sim<'_> {
             return None;
         }
         let uuid = self.allay_liked_uuid(i);
-        let host = self
+        let net = self
             .player_view()
             .filter(|p| !p.spectator && self.level.player_uuid.unwrap_or([0, 0, 0, 1]) == uuid)
             .map(|p| p.position);
-        let found = host.or_else(|| {
-            self.lan_present()
+        let found = net.or_else(|| {
+            self.net_present()
                 .into_iter()
                 .find(|p| p.uuid == uuid && !p.spectator)
                 .map(|p| {

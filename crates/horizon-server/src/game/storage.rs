@@ -248,7 +248,7 @@ impl crate::game::Sim<'_> {
         }
         let range = self.reach() + 4.0;
         let near = self.container_parts().iter().all(|&((x, y, z), _)| {
-            crate::hc::lan::guest::within_block_range(eye, range, [x, y, z])
+            crate::hc::server_net::player::within_block_range(eye, range, [x, y, z])
         });
         if !near {
             self.close_container();
@@ -270,7 +270,7 @@ impl crate::game::Sim<'_> {
         let state = self.world.block(pos[0], pos[1], pos[2]);
         let table = &*self.res.facts().get(state).name == "minecraft:crafting_table";
         let range = self.reach() + 4.0;
-        if !(table && crate::hc::lan::guest::within_block_range(eye, range, pos)) {
+        if !(table && crate::hc::server_net::player::within_block_range(eye, range, pos)) {
             self.close_container();
             self.screen = super::Screen::Playing;
             self.capture(true);

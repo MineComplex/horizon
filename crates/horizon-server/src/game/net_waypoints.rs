@@ -1,16 +1,13 @@
-//! The locator bar of the players on a served world (lan/waypoints.rs): what
+//! The players' locator bar (server_net/waypoints.rs): what
 //! each player looks like to their level's waypoint manager this tick.
-use super::lan::LanHost;
+use super::server_net::Network;
 use crate::hc::{
     items::ItemStack,
-    lan::{
-        hub::HostState,
-        waypoints::{self, HIDING_HEADS, Icon, PLAYER_RANGE},
-    },
+    server_net::waypoints::{self, HIDING_HEADS, Icon, PLAYER_RANGE},
 };
 
 /// The host player's connection id in the waypoint managers: its packets
-/// go to this client's locator bar rather than to a guest.
+/// go to this client's locator bar rather than to a player.
 const HOST_CONN: u32 = u32::MAX;
 
 /// `waypoint_transmit_range`: hidden by crouching, invisibility or a head worn.
@@ -34,44 +31,14 @@ impl crate::game::Sim<'_> {
     /// level: a player who changes level leaves the old one's manager
     /// (`ServerLevel.removePlayerImmediately`: untracked for everyone there)
     /// and joins the new one's (`addDuringTeleport`).
-    pub(super) fn lan_update_waypoints(&mut self, host: &mut LanHost, state: Option<&HostState>) {
+    pub(super) fn net_update_waypoints(&mut self, net: &mut Network) {
         let mut players: Vec<(&str, waypoints::Player)> = Vec::new();
-        if let Some(h) = state {
-            let icon = self
-                .cmds
-                .waypoint_icons
-                .get(&super::commands::Target::Player)
-                .map(|i| Icon {
-                    style: i.style.clone(),
-                    color: i.color,
-                })
-                .unwrap_or_default();
-            players.push((
-                self.dim.id(),
-                waypoints::Player {
-                    uuid: h.uuid,
-                    conn: Some(HOST_CONN),
-                    position: h.position,
-                    spectator: self.spectator(),
-                    transmit_range: transmit_range(
-                        h.sneaking,
-                        self.potions.effects.get("invisibility").is_some(),
-                        h.equipment[5].as_ref(),
-                    ),
-                    receive_range: PLAYER_RANGE,
-                    first_tick: false,
-                    view_distance: host.hub.config.view_distance,
-                    team: self.waypoint_team(&h.name),
-                    icon,
-                },
-            ));
-        }
         let mut respawned = Vec::new();
-        for g in host.hub.guests.iter().filter(|g| g.placed) {
+        for g in net.hub.players.iter().filter(|g| g.placed) {
             // PlayerList.respawn makes a new ServerPlayer.
             if g.dead {
-                host.waypoint_dead.insert(g.uuid);
-            } else if host.waypoint_dead.remove(&g.uuid) {
+                net.waypoint_dead.insert(g.uuid);
+            } else if net.waypoint_dead.remove(&g.uuid) {
                 respawned.push(g.uuid);
             }
             // Player.updatePlayerPose: the shift key crouches unless flying.
@@ -96,10 +63,10 @@ impl crate::game::Sim<'_> {
                 },
             ));
         }
-        host.waypoint_dead
+        net.waypoint_dead
             .retain(|uuid| players.iter().any(|(_, p)| p.uuid == *uuid));
         let locator_bar = self.world_data.rules.bool("locator_bar");
-        let mut levels: Vec<String> = host.waypoints.keys().cloned().collect();
+        let mut levels: Vec<String> = net.waypoints.keys().cloned().collect();
         for (level, _) in &players {
             if !levels.iter().any(|l| l == level) {
                 levels.push((*level).to_owned());
@@ -118,19 +85,19 @@ impl crate::game::Sim<'_> {
                 .filter(|(l, _)| *l != level)
                 .filter_map(|(_, p)| Some((p.uuid, p.conn?)))
                 .collect();
-            let manager = host.waypoints.entry(level.clone()).or_default();
+            let manager = net.waypoints.entry(level.clone()).or_default();
             out.extend(manager.tick_level(&here, &away, &respawned, locator_bar));
             // Nobody left in the level: nothing to remember there.
             if here.is_empty() {
-                host.waypoints.remove(&level);
+                net.waypoints.remove(&level);
             }
         }
         for (conn, packet) in out {
-            // A server has no host connection of its own: its windows are guests.
+            // A server has no host connection of its own: its windows are players.
             if conn == HOST_CONN {
                 continue;
             }
-            if let Some(g) = host.hub.guest(conn) {
+            if let Some(g) = net.hub.player(conn) {
                 g.send(&packet);
             }
         }

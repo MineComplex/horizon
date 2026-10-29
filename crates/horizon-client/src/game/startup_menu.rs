@@ -721,11 +721,11 @@ mod tests {
             Action::Connect {
                 address: "localhost:25565".into(),
             },
-            "Guest".into(),
+            "Alex".into(),
         );
         assert!(
             matches!(menu.pending.take(), Some(PendingWorldEntry::Server { address, name, .. })
-            if address == "localhost:25565" && name == "Guest")
+            if address == "localhost:25565" && name == "Alex")
         );
         assert!(menu.pending.take().is_none(), "an entry is consumed once");
     }

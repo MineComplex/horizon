@@ -96,7 +96,7 @@ pub(super) const HEIGHT: f64 = 0.7;
 /// The minecart's passenger attachment minus Player.DEFAULT_VEHICLE_ATTACHMENT.
 pub(super) const SEAT: f64 = 0.1875 - 0.6;
 /// The placeholder container key under which an open cart's items live.
-pub(super) const CART_KEY_Y: i32 = crate::hc::lan::menu::VEHICLE_KEY_Y;
+pub(super) const CART_KEY_Y: i32 = crate::hc::server_net::menu::VEHICLE_KEY_Y;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub(super) enum Shape {
@@ -622,7 +622,7 @@ impl crate::game::Sim<'_> {
     }
     /// `AbstractMinecart.push` from each player walking into a cart
     /// (`LivingEntity.pushEntities`): the window's player and every server
-    /// player (single player's own on its server thread, LAN guests). A
+    /// player (single player's own on its server thread, players). A
     /// player in a vehicle pushes nothing here. The quarter push the player
     /// gets back only moves the server's copy of it (`Entity.push` marks
     /// `needsSync`, which `ServerEntity` sends to the other players only),
@@ -638,9 +638,9 @@ impl crate::game::Sim<'_> {
         {
             pushers.push((p.position, p.bounds()));
         }
-        if let Some(host) = self.lan.as_ref() {
-            for g in host.hub.guests.iter().filter(|g| {
-                host.hub.here(g) && g.loaded && !g.dead && !g.spectator() && g.vehicle.is_none()
+        if let Some(net) = self.network.as_ref() {
+            for g in net.hub.players.iter().filter(|g| {
+                net.hub.here(g) && g.loaded && !g.dead && !g.spectator() && g.vehicle.is_none()
             }) {
                 let [x, y, z] = g.position;
                 pushers.push((Vec3::new(x, y, z), g.bounds()));
@@ -736,7 +736,7 @@ impl crate::game::Sim<'_> {
         // ServerLevel.tick: only entities in entity-ticking chunks tick.
         let ticking = self.entity_ticking_area();
         // A server player's minecart moves with its rider (lan_vehicles.rs).
-        let ridden = self.guest_vehicles();
+        let ridden = self.player_vehicles();
         // By id: an exploding cart can destroy or prime others mid-loop.
         let ids: Vec<u32> = self.carts.iter().map(|c| c.id).collect();
         for &id in &ids {
@@ -959,7 +959,7 @@ impl crate::game::Sim<'_> {
         let held = self.held().cloned();
         match self.carts[i].kind {
             CartKind::Rideable => {
-                if sneaking || self.riding.is_some() || self.ridden_by_guest(self.carts[i].id) {
+                if sneaking || self.riding.is_some() || self.ridden_by_player(self.carts[i].id) {
                     return false;
                 }
                 self.riding = Some(self.carts[i].id);

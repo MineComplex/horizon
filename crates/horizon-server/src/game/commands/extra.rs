@@ -205,17 +205,17 @@ impl crate::game::Sim<'_> {
             _ => self.set_camera(None),
         }
     }
-    /// A guest's body is only `Player` during its turn; retained command state
+    /// A player's body is only `Player` during its turn; retained command state
     /// must use its connection so the next server tick still finds that body.
     pub(super) fn waypoint_target(&self, t: Target) -> Target {
         match t {
-            Target::Player => self.lan_acting.map_or(t, Target::Guest),
+            Target::Player => self.net_acting.map_or(t, Target::ServerPlayer),
             _ => t,
         }
     }
     /// A living entity's `waypoint_transmit_range` (`isTransmittingWaypoint`).
     fn transmit_range(&mut self, t: Target) -> f64 {
-        if matches!(t, Target::Guest(_)) {
+        if matches!(t, Target::ServerPlayer(_)) {
             return self
                 .for_player(t, |g| g.transmit_range(Target::Player))
                 .unwrap_or(0.0);
@@ -263,7 +263,7 @@ impl crate::game::Sim<'_> {
         alive
             .into_iter()
             .map(|t| match t {
-                Target::Guest(conn) if self.lan_acting == Some(conn) => Target::Player,
+                Target::ServerPlayer(conn) if self.net_acting == Some(conn) => Target::Player,
                 _ => t,
             })
             .collect()
@@ -593,7 +593,7 @@ impl crate::game::Sim<'_> {
             end.z.floor() as i32,
         ])
     }
-    /// `KickCommand.kickPlayers`: only guests of a published world can be
+    /// `KickCommand.kickPlayers`: only players of a published world can be
     /// kicked; the owner never.
     pub(super) fn cmd_kick(&mut self, ctx: &Context) -> R<i32> {
         let selector = match ctx.get("targets") {
@@ -601,13 +601,13 @@ impl crate::game::Sim<'_> {
             _ => None,
         };
         // EntityArgument.getPlayers runs before the published check.
-        let host = self.entities(ctx, "targets", true).unwrap_or_default();
-        let guests: Vec<(u32, String)> = match (&self.lan, &selector) {
-            (Some(lan), Some(s)) => lan
+        let net = self.entities(ctx, "targets", true).unwrap_or_default();
+        let players: Vec<(u32, String)> = match (&self.network, &selector) {
+            (Some(network), Some(s)) => network
                 .hub
-                .guests
+                .players
                 .iter()
-                .filter(|g| lan.hub.singleplayer_owner != Some(g.uuid))
+                .filter(|g| network.hub.singleplayer_owner != Some(g.uuid))
                 .filter(|g| match &s.player_name {
                     Some(name) => g.name.eq_ignore_ascii_case(name),
                     None => s.kind == 'a' || s.kind == 'e',
@@ -616,10 +616,10 @@ impl crate::game::Sim<'_> {
                 .collect(),
             _ => Vec::new(),
         };
-        if host.is_empty() && guests.is_empty() {
+        if net.is_empty() && players.is_empty() {
             return Err(err("argument.entity.notfound.player", &[]));
         }
-        if self.lan.is_none() {
+        if self.network.is_none() {
             return Err(err("commands.kick.singleplayer.failed", &[]));
         }
         let reason_raw = match ctx.get("reason") {
@@ -638,9 +638,9 @@ impl crate::game::Sim<'_> {
             )]),
         };
         let mut count = 0;
-        for (conn, name) in guests {
-            if let Some(lan) = self.lan.as_mut() {
-                lan.hub.kick(conn, tag.clone());
+        for (conn, name) in players {
+            if let Some(network) = self.network.as_mut() {
+                network.hub.kick(conn, tag.clone());
             }
             self.feedback(Text::translate(
                 "commands.kick.success",

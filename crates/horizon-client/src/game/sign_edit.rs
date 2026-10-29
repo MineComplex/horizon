@@ -379,7 +379,7 @@ impl crate::game::Sim<'_> {
     }
     /// `AbstractSignEditScreen.removed`: a server's client sends what it
     /// wrote (ServerboundSignUpdatePacket); the window's own world keeps it
-    /// and sends it to its guests (`sendBlockUpdated`).
+    /// and sends it to its players (`sendBlockUpdated`).
     pub(super) fn close_sign_editor(&mut self) {
         if let Some(edit) = self.sign_edit.take() {
             {

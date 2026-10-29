@@ -83,7 +83,7 @@ impl crate::game::Sim<'_> {
         // Spectators never count as openers.
         !self.spectator() && self.container_openers_changed(key, open)
     }
-    /// `container_opener_event` for a player who is not a spectator (a guest).
+    /// `container_opener_event` for a player who is not a spectator (a player).
     pub(super) fn container_openers_changed(&mut self, key: (i32, i32, i32), open: bool) -> bool {
         let pos = [key.0, key.1, key.2];
         let state = self.world.block(pos[0], pos[1], pos[2]).0;
@@ -113,21 +113,21 @@ impl crate::game::Sim<'_> {
                     shulker.stop_open()
                 };
                 self.block_entity_event(pos, 1, count);
-                self.lan_block_event(pos, 1, count);
+                self.net_block_event(pos, 1, count);
                 edge
             }
             _ => false,
         }
     }
     /// `ContainerOpenersCounter.incrementOpeners` / `decrementOpeners` of the
-    /// chest at `key` (the host and the guests are counted), then
+    /// chest at `key` (the players are counted), then
     /// `ChestBlockEntity.signalOpenCount`: block event 1 with the count, here
-    /// and for the guests. True when the count crossed zero.
+    /// and for the players. True when the count crossed zero.
     fn lid_openers_changed(&mut self, key: (i32, i32, i32), open: bool) -> bool {
         let (before, count) = self.count_opener(key, open);
         let pos = [key.0, key.1, key.2];
         self.block_entity_event(pos, 1, count);
-        self.lan_block_event(pos, 1, count);
+        self.net_block_event(pos, 1, count);
         // TrappedChestBlockEntity.signalOpenCount: its signal is the count
         // (`TrappedChestBlock.getSignal`), so the blocks around it and
         // below it hear of a change.

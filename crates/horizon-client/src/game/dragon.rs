@@ -77,7 +77,7 @@ impl Phase {
     }
 }
 pub(super) struct Dragon {
-    /// `Entity.id` once tracked to guests (0 before); its parts take the
+    /// `Entity.id` once tracked to players (0 before); its parts take the
     /// eight ids after it (`EnderDragon`'s constructor reserves them).
     pub id: u32,
     pub position: Vec3,

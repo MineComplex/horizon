@@ -154,7 +154,7 @@ const PAGES: Ty = Ty::Enum(&[
 /// MCP tools that delete or overwrite the player's things (`destructiveHint`).
 pub const DESTRUCTIVE: &[&str] = &["fill", "setblock"];
 /// MCP tools that reach other players or the network (`openWorldHint`): only when the player asks.
-pub const OPEN_WORLD: &[&str] = &["connect", "lan", "friends", "chat", "command"];
+pub const OPEN_WORLD: &[&str] = &["connect", "network", "friends", "chat", "command"];
 
 macro_rules! cmd {
     ($name:expr, $group:ident, $usage:expr, $summary:expr, $details:expr, [$($ex:expr),* $(,)?], $params:expr, mcp: $mcp:expr, local: $local:expr $(, wire: $wire:expr)?) => {
@@ -372,9 +372,9 @@ pub const COMMANDS: &[Cmd] = &[
     cmd!("disconnect", Multiplayer, "disconnect", "leave the server, back to the server list", "", ["horizon-ctl disconnect"], &[], mcp: true, local: false),
     cmd!("servers", Multiplayer, "servers", "the Multiplayer screen's server list: name and address",
         "Add, edit and remove them on the Multiplayer screen (click-button Multiplayer, then ui).", ["horizon-ctl servers"], &[], mcp: true, local: false),
-    cmd!("lan", Multiplayer, "lan open [PORT] [commands] [force] | lan status", "the test server's port and players (launch --world)",
+    cmd!("network", Multiplayer, "network open [PORT] [commands] [force] | network status", "the test server's port and players (launch --world)",
         "open answers with the port the server listens on; commands lets every player use commands; force forces the game mode.",
-        ["horizon-ctl lan open", "horizon-ctl lan status"],
+        ["horizon-ctl network open", "horizon-ctl network status"],
         &[p("action", Ty::Enum(&["open", "close", "status"]), "what to do"), opt("port", Ty::Int, "port for open"), opt("commands", Ty::Bool, "allow cheats"), opt("force", Ty::Bool, "force the game mode")], mcp: true, local: false),
     cmd!("friends", Multiplayer, "friends host|stop|status", "Play with Friends: share the open world behind an invite code, stop, or see who joined",
         "status gives the code: share it only when the player asks. Friends join with connect friend:CODE.",
@@ -800,10 +800,10 @@ mod tests {
         for name in DESTRUCTIVE.iter().chain(OPEN_WORLD) {
             assert!(find(name).is_some_and(|c| c.mcp), "{name}");
         }
-        let lan = find("lan").unwrap();
+        let network = find("network").unwrap();
         assert_eq!(
-            line_for(lan, &json!({ "action": "open", "commands": true })).unwrap(),
-            ["lan", "open", "commands"]
+            line_for(network, &json!({ "action": "open", "commands": true })).unwrap(),
+            ["network", "open", "commands"]
         );
     }
 

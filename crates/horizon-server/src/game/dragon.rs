@@ -248,7 +248,7 @@ impl Phase {
     }
 }
 pub(super) struct Dragon {
-    /// `Entity.id` once tracked to guests (0 before); its parts take the
+    /// `Entity.id` once tracked to players (0 before); its parts take the
     /// eight ids after it (`EnderDragon`'s constructor reserves them).
     pub id: u32,
     pub position: Vec3,
@@ -288,12 +288,12 @@ pub(super) struct Dragon {
     strafe_request: Option<StrafeRequest>,
     random: LegacyRandom,
 }
-/// A player in the fight: the window's own player, or a guest by
-/// connection (a LAN or server player).
+/// A player in the fight: the window's own player, or a player by
+/// connection (a player).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum FightWho {
     Host,
-    Guest(u32),
+    ServerPlayer(u32),
 }
 /// A player in the End as the dragon sees it.
 #[derive(Clone, Copy, Debug)]
@@ -692,12 +692,13 @@ impl crate::game::Sim<'_> {
     fn arena_loaded(&self) -> bool {
         (-2..=1).all(|cz| (-2..=1).all(|cx| self.streaming.is_lit(cx, cz)))
     }
-    /// The player acting now: the guest whose turn it is, else the host.
+    /// The player acting now: the player whose turn it is, else the host.
     fn acting_player(&self) -> FightWho {
-        self.lan_acting.map_or(FightWho::Host, FightWho::Guest)
+        self.net_acting
+            .map_or(FightWho::Host, FightWho::ServerPlayer)
     }
     /// The players in the level the dragon sees (`level.players()`): the
-    /// window's own, then every guest in the level.
+    /// window's own, then every player in the level.
     pub(super) fn fight_players(&self) -> Vec<FightPlayer> {
         let mut out = Vec::new();
         if let Some(p) = self.player.as_ref() {
@@ -710,13 +711,13 @@ impl crate::game::Sim<'_> {
                 spectator: self.spectator(),
             });
         }
-        if let Some(h) = self.lan.as_ref() {
-            for g in h.hub.guests.iter().filter(|g| h.hub.here(g) && g.loaded) {
+        if let Some(h) = self.network.as_ref() {
+            for g in h.hub.players.iter().filter(|g| h.hub.here(g) && g.loaded) {
                 let [x, y, z] = g.position;
                 out.push(FightPlayer {
-                    who: FightWho::Guest(g.conn),
+                    who: FightWho::ServerPlayer(g.conn),
                     position: Vec3::new(x, y, z),
-                    bounds: super::lan_mobs::guest_bounds(g),
+                    bounds: super::net_mobs::player_bounds(g),
                     alive: !g.dead,
                     creative: g.creative(),
                     spectator: g.spectator(),
@@ -725,31 +726,31 @@ impl crate::game::Sim<'_> {
         }
         out
     }
-    /// Run `f` as the fight's player `who` (a guest's turn, its knockback
+    /// Run `f` as the fight's player `who` (a player's turn, its knockback
     /// sent to its client).
     pub(super) fn as_fight_player(&mut self, who: FightWho, f: impl FnOnce(&mut Self)) {
         match who {
             FightWho::Host => f(self),
-            FightWho::Guest(conn) => {
-                let Some(mut host) = self.lan.take() else {
+            FightWho::ServerPlayer(conn) => {
+                let Some(mut net) = self.network.take() else {
                     return;
                 };
-                self.guest_hit_by(&mut host, conn, f);
-                self.lan = Some(host);
+                self.player_hit_by(&mut net, conn, f);
+                self.network = Some(net);
             }
         }
     }
     /// `EnderDragonFight.validPlayer`: the players alive within 192 blocks of
-    /// (0, 128, 0), the host and the guests in the level alike.
+    /// (0, 128, 0), the players in the level alike.
     fn fight_has_players(&self) -> bool {
         let near =
             |p: [f64; 3]| p[0].powi(2) + (p[1] - 128.0).powi(2) + p[2].powi(2) <= 192.0 * 192.0;
-        let host = self.player.as_ref().is_some_and(|p| {
+        let net = self.player.as_ref().is_some_and(|p| {
             !p.health.dead_or_dying() && near([p.position.x, p.position.y, p.position.z])
         });
-        host || self.lan.as_ref().is_some_and(|h| {
+        net || self.network.as_ref().is_some_and(|h| {
             h.hub
-                .guests
+                .players
                 .iter()
                 .any(|g| h.hub.here(g) && g.loaded && !g.dead && near(g.position))
         })
@@ -952,7 +953,7 @@ impl crate::game::Sim<'_> {
         }
         out
     }
-    /// The box of the dragon part or end crystal guests know as entity `id`
+    /// The box of the dragon part or end crystal players know as entity `id`
     /// (`EnderDragonPart`s follow the dragon's id).
     pub(super) fn tracked_special_box(&self, id: i32) -> Option<Aabb> {
         let id = u32::try_from(id).ok().filter(|&id| id != 0)?;
@@ -1034,7 +1035,7 @@ impl crate::game::Sim<'_> {
         hurt
     }
     /// `LivingEntity.die`: `getKillCredit().awardKillScore`, for the player
-    /// who hurt the dragon within the last 100 ticks. A guest's kill is
+    /// who hurt the dragon within the last 100 ticks. A player's kill is
     /// theirs: their statistics, scores and advancements.
     fn credit_dragon_kill(&mut self) {
         let Some(d) = self.dragon.as_ref() else {
@@ -1049,18 +1050,18 @@ impl crate::game::Sim<'_> {
             ..Default::default()
         };
         let id = d.id;
-        let guest = match who {
-            FightWho::Guest(conn) if self.lan_acting.is_none() => Some(conn),
+        let player = match who {
+            FightWho::ServerPlayer(conn) if self.net_acting.is_none() => Some(conn),
             _ => None,
         };
-        let credited = guest.is_some_and(|conn| {
-            let Some(mut host) = self.lan.take() else {
+        let credited = player.is_some_and(|conn| {
+            let Some(mut net) = self.network.take() else {
                 return false;
             };
             let done = self
-                .as_guest(&mut host, conn, |g| g.award_dragon_kill(id, &view))
+                .as_player(&mut net, conn, |g| g.award_dragon_kill(id, &view))
                 .is_some();
-            self.lan = Some(host);
+            self.network = Some(net);
             done
         });
         if !credited {
@@ -2470,11 +2471,11 @@ impl crate::game::Sim<'_> {
     }
 }
 impl crate::game::Sim<'_> {
-    /// The dragon as guests track it (`EnderDragon.getAddEntityPacket` and
+    /// The dragon as players track it (`EnderDragon.getAddEntityPacket` and
     /// the synched data that differs from the defaults: its health, defined
     /// as 1, and `DATA_PHASE`, defined as hovering). Vanilla pairs it with no
     /// attribute instances.
-    pub(super) fn lan_dragon_state(&self) -> Option<crate::hc::lan::entity::EntityState> {
+    pub(super) fn net_dragon_state(&self) -> Option<crate::hc::server_net::entity::EntityState> {
         use horizon_protocol::entity_data::{Value, serializer};
         let d = self.dragon.as_ref().filter(|d| d.id != 0)?;
         let mut meta = Vec::new();
@@ -2486,9 +2487,9 @@ impl crate::game::Sim<'_> {
         if phase != 10 {
             meta.push((16, serializer::INT, Value::Int(phase)));
         }
-        Some(crate::hc::lan::entity::EntityState {
+        Some(crate::hc::server_net::entity::EntityState {
             id: d.id as i32,
-            uuid: super::lan::entity_uuid(d.id),
+            uuid: super::server_net::entity_uuid(d.id),
             kind: "minecraft:ender_dragon".to_owned(),
             position: [d.position.x, d.position.y, d.position.z],
             yaw: d.yaw,
@@ -2587,7 +2588,7 @@ impl crate::game::Sim<'_> {
             let (a, b) = (room.min_position(), room.max_position());
             lo.x < b.x && hi.x > a.x && lo.y < b.y && hi.y > a.y && lo.z < b.z && hi.z > a.z
         };
-        // Level.getEntities: the host's player and every guest in the level.
+        // Level.getEntities: the host's player and every player in the level.
         let player = self
             .fight_players()
             .iter()

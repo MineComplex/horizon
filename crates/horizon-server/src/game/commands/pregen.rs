@@ -5,8 +5,8 @@
 //! chunk the players leave.
 use super::{CommandError, Context, Dim, R};
 use crate::hc::{
-    lan::data::component_nbt,
     pregen::{Pregen, Shape},
+    server_net::data::component_nbt,
     text::{self, Text},
 };
 use horizon_protocol::packets::play::{self, Clientbound as C};
@@ -27,7 +27,7 @@ pub(in crate::game) struct PregenTask {
     reported: Instant,
     /// When the band last moved, to notice a task that stopped advancing.
     moved: Instant,
-    /// The player who started it, told the progress too (a guest's connection).
+    /// The player who started it, told the progress too (a player's connection).
     owner: Option<u32>,
 }
 
@@ -118,7 +118,7 @@ impl crate::game::Sim<'_> {
                     resumed: now,
                     reported: now,
                     moved: now,
-                    owner: self.lan_acting,
+                    owner: self.net_acting,
                 });
                 Ok(total as i32)
             }
@@ -239,8 +239,8 @@ impl crate::game::Sim<'_> {
     /// The console and the player who started the task get the progress.
     fn pregen_report(&mut self, owner: Option<u32>, message: Text) {
         super::super::dedicated::log("INFO", &message.plain());
-        if let Some(host) = &self.lan
-            && let Some(g) = owner.and_then(|c| host.hub.guest(c))
+        if let Some(net) = &self.network
+            && let Some(g) = owner.and_then(|c| net.hub.player(c))
         {
             g.send(&C::SystemChat(play::SystemChat {
                 content: component_nbt(&message.component()),

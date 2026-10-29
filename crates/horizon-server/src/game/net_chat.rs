@@ -1,11 +1,11 @@
-//! A guest's commands that carry chat: the unsigned and signed command
+//! A player's commands that carry chat: the unsigned and signed command
 //! packets (ServerGamePacketListenerImpl.handleChatCommand and
 //! handleSignedChatCommand), and the message commands whose text they sign
 //! (SayCommand, EmoteCommands, MsgCommand), relayed by the hub as chat.
-use super::lan::LanHost;
+use super::server_net::Network;
 use crate::hc::{
     command::{Arg, ArgType, NodeKind, ParseResults, vanilla},
-    lan::{
+    server_net::{
         data::component_nbt,
         hub::{HostEvent, chat::ChatMessage},
     },
@@ -18,7 +18,7 @@ use horizon_protocol::packets::play::{self, Clientbound as C};
 type Signed = Vec<(String, ChatMessage)>;
 
 impl crate::game::Sim<'_> {
-    /// CommandDispatcher.parse with the guest's permission level.
+    /// CommandDispatcher.parse with the player's permission level.
     fn parse_as(&mut self, permission: u8, command: &str) -> ParseResults {
         let level = std::mem::replace(&mut self.world_data.registries.permission, permission);
         let parse = vanilla::game_dispatcher().parse(command, &self.world_data.registries);
@@ -54,80 +54,80 @@ impl crate::game::Sim<'_> {
     }
     /// handleChatCommand (performUnsignedChatCommand): refused when the
     /// server enforces secure chat and the command has a message to sign.
-    pub(super) fn guest_chat_command(&mut self, host: &mut LanHost, conn: u32, command: &str) {
-        let Some(i) = host.hub.guests.iter().position(|g| g.conn == conn) else {
+    pub(super) fn player_chat_command(&mut self, net: &mut Network, conn: u32, command: &str) {
+        let Some(i) = net.hub.players.iter().position(|g| g.conn == conn) else {
             return;
         };
-        if !host.hub.try_handle_chat(i, command, true) {
+        if !net.hub.try_handle_chat(i, command, true) {
             return;
         }
-        let permission = host.hub.guests[i].permission;
-        if host.hub.enforces_secure_chat()
+        let permission = net.hub.players[i].permission;
+        if net.hub.enforces_secure_chat()
             && !self.signable_arguments(permission, command).is_empty()
         {
-            let name = host.hub.guests[i].name.clone();
-            self.lan_log_event(HostEvent::Error(format!(
+            let name = net.hub.players[i].name.clone();
+            self.net_log_event(HostEvent::Error(format!(
                 "Received unsigned command packet from {name}, but the command requires signable arguments: {command}"
             )));
             let failure = Text::translate("chat.disabled.invalid_command_signature", &[])
                 .with_color(text::RED);
-            host.hub.guests[i].send(&C::SystemChat(play::SystemChat {
+            net.hub.players[i].send(&C::SystemChat(play::SystemChat {
                 content: component_nbt(&failure.component()),
                 overlay: false,
             }));
             return;
         }
-        self.guest_command(host, conn, command, None);
+        self.player_command(net, conn, command, None);
     }
     /// handleSignedChatCommand: the acknowledgements, then each message
     /// argument through the sender's chain, then the command with them.
-    pub(super) fn guest_signed_command(
+    pub(super) fn player_signed_command(
         &mut self,
-        host: &mut LanHost,
+        net: &mut Network,
         conn: u32,
         p: play::ChatCommandSigned,
     ) {
-        let Some(i) = host.hub.guests.iter().position(|g| g.conn == conn) else {
+        let Some(i) = net.hub.players.iter().position(|g| g.conn == conn) else {
             return;
         };
         let mut events = Vec::new();
         let mut signed = None;
-        if let Some(last_seen) = host.hub.apply_last_seen(i, &p.last_seen, &mut events)
-            && host.hub.try_handle_chat(i, &p.command, true)
+        if let Some(last_seen) = net.hub.apply_last_seen(i, &p.last_seen, &mut events)
+            && net.hub.try_handle_chat(i, &p.command, true)
         {
-            let permission = host.hub.guests[i].permission;
+            let permission = net.hub.players[i].permission;
             let parsed = self.signable_arguments(permission, &p.command);
-            match host
+            match net
                 .hub
                 .signed_arguments(i, &p, &parsed, &last_seen, &mut events)
             {
                 Ok(arguments) => signed = Some(arguments),
-                Err(e) => host.hub.decode_failure(i, e, &mut events),
+                Err(e) => net.hub.decode_failure(i, e, &mut events),
             }
         }
         for event in events {
-            self.lan_log_event(event);
+            self.net_log_event(event);
         }
         if let Some(signed) = signed {
-            self.guest_command(host, conn, &p.command, Some(signed));
+            self.player_command(net, conn, &p.command, Some(signed));
         }
     }
-    /// SayCommand, EmoteCommands and MsgCommand for a guest: chat to the
-    /// players, signed when the guest signed it (a disguised chat after an
+    /// SayCommand, EmoteCommands and MsgCommand for a player: chat to the
+    /// players, signed when the player signed it (a disguised chat after an
     /// unsigned command packet). False when the command is another one, or
     /// one this can't run (selectors other than `@s` and `@a`), for the
     /// game's dispatcher to handle.
-    pub(super) fn guest_message_command(
+    pub(super) fn player_message_command(
         &mut self,
-        host: &mut LanHost,
+        net: &mut Network,
         conn: u32,
         command: &str,
         signed: Option<&Signed>,
     ) -> bool {
-        let Some(i) = host.hub.guests.iter().position(|g| g.conn == conn) else {
+        let Some(i) = net.hub.players.iter().position(|g| g.conn == conn) else {
             return false;
         };
-        let parse = self.parse_as(host.hub.guests[i].permission, command);
+        let parse = self.parse_as(net.hub.players[i].permission, command);
         let Ok((context, id)) = parse.executable() else {
             return false;
         };
@@ -153,16 +153,16 @@ impl crate::game::Sim<'_> {
                 .rev()
                 .find(|a| a.name == "targets")
                 .and_then(|a| command.get(a.range.0..a.range.1));
-            let guests = &host.hub.guests;
-            let placed = |k: &usize| guests[*k].placed;
+            let players = &net.hub.players;
+            let placed = |k: &usize| players[*k].placed;
             let targets: Vec<usize> = match (raw, &selector.player_name, selector.uuid) {
                 (Some("@s"), ..) => vec![i],
-                (Some("@a"), ..) => (0..guests.len()).filter(placed).collect(),
-                (_, Some(name), _) => (0..guests.len())
-                    .filter(|&k| placed(&k) && guests[k].name.eq_ignore_ascii_case(name))
+                (Some("@a"), ..) => (0..players.len()).filter(placed).collect(),
+                (_, Some(name), _) => (0..players.len())
+                    .filter(|&k| placed(&k) && players[k].name.eq_ignore_ascii_case(name))
                     .collect(),
-                (_, None, Some(uuid)) => (0..guests.len())
-                    .filter(|&k| placed(&k) && guests[k].uuid == uuid)
+                (_, None, Some(uuid)) => (0..players.len())
+                    .filter(|&k| placed(&k) && players[k].uuid == uuid)
                     .collect(),
                 _ => return false,
             };
@@ -170,24 +170,24 @@ impl crate::game::Sim<'_> {
                 let failure = Text::empty()
                     .append(Text::translate("argument.entity.notfound.player", &[]))
                     .with_color(text::RED);
-                host.hub.guests[i].send(&C::SystemChat(play::SystemChat {
+                net.hub.players[i].send(&C::SystemChat(play::SystemChat {
                     content: component_nbt(&failure.component()),
                     overlay: false,
                 }));
                 return true;
             }
-            host.hub.whisper(i, &targets, message, text);
+            net.hub.whisper(i, &targets, message, text);
         } else {
             let chat_type = if id == "say" {
                 "say_command"
             } else {
                 "emote_command"
             };
-            host.hub
+            net.hub
                 .broadcast_command_chat(i, chat_type, message, text, &mut events);
         }
         for event in events {
-            self.lan_log_event(event);
+            self.net_log_event(event);
         }
         true
     }

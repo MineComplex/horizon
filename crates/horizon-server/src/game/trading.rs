@@ -98,7 +98,7 @@ impl crate::game::Sim<'_> {
     pub(super) fn random_sequences_path(&self) -> std::path::PathBuf {
         self.world_root.join("data/minecraft/random_sequences.dat")
     }
-    /// `RandomSequences` as `random_sequences.dat` (not on a server's guest).
+    /// `RandomSequences` as `random_sequences.dat` (not on a server's player).
     pub(super) fn save_random_sequences(&mut self) {
         if self.rand_sequences.ids().is_empty() {
             return;

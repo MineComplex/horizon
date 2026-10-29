@@ -85,7 +85,7 @@ pub struct World {
     pub day_time: i64,
     pub weather: Weather,
     /// Every block position written since the log was last drained, kept
-    /// only while the world is open to the network (see `lan`).
+    /// only while the world is open to the network (see `network`).
     pub block_log: Option<Vec<(i32, i32, i32)>>,
     /// The sections whose light changed since the log was last drained, as
     /// a bit per section of each column, kept while `block_log` is

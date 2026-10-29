@@ -111,11 +111,11 @@ impl crate::game::Sim<'_> {
             let state = self.world.block(at[0] + d[0], at[1] + d[1], at[2] + d[2]);
             &*self.res.facts().get(state).name == "minecraft:fire"
         });
-        let mut host = GameHive { game: self };
+        let mut net = GameHive { game: self };
         if fire && !hive.bees.is_empty() {
-            hive.release_all(at, facing, honey, Release::Emergency, &mut host);
+            hive.release_all(at, facing, honey, Release::Emergency, &mut net);
         }
-        hive.server_tick(at, facing, honey, &mut host);
+        hive.server_tick(at, facing, honey, &mut net);
         self.world
             .block_entities
             .put(key, BlockEntity::Beehive(hive));
@@ -302,7 +302,7 @@ impl crate::game::Sim<'_> {
     }
     /// `BeehiveBlock.angerNearbyBees`: bees within 8 blocks (6 up and down)
     /// without a target go for a random player in the same box, the window's
-    /// own or a guest (`None` is the window's player).
+    /// own or a player (`None` is the window's player).
     pub(super) fn anger_nearby_bees(&mut self, at: [i32; 3]) {
         let min = Vec3::new(
             f64::from(at[0]) - 8.0,
@@ -317,13 +317,13 @@ impl crate::game::Sim<'_> {
         {
             players.push(None);
         }
-        if let Some(host) = self.lan.as_ref() {
+        if let Some(net) = self.network.as_ref() {
             players.extend(
-                host.hub
-                    .guests
+                net.hub
+                    .players
                     .iter()
-                    .filter(|g| host.hub.here(g) && g.loaded && !g.dead)
-                    .filter(|g| super::lan_mobs::guest_bounds(g).intersects(area))
+                    .filter(|g| net.hub.here(g) && g.loaded && !g.dead)
+                    .filter(|g| super::net_mobs::player_bounds(g).intersects(area))
                     .map(|g| Some(g.conn)),
             );
         }
@@ -347,11 +347,11 @@ impl crate::game::Sim<'_> {
                 .next_int_bound(players.len() as i32)
                 .unwrap_or(0) as usize;
             self.mobs[i].ai.target = Some(Who::Player);
-            // The player a mob sees is its guest binding, else the window's.
-            if let Some(host) = self.lan.as_mut() {
+            // The player a mob sees is its player binding, else the window's.
+            if let Some(net) = self.network.as_mut() {
                 match players[pick] {
-                    Some(conn) => host.mob_players.insert(self.mobs[i].id, conn),
-                    None => host.mob_players.remove(&self.mobs[i].id),
+                    Some(conn) => net.mob_players.insert(self.mobs[i].id, conn),
+                    None => net.mob_players.remove(&self.mobs[i].id),
                 };
             }
         }

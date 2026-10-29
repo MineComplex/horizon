@@ -57,7 +57,7 @@ pub struct SentEffect {
     pub tick_count: i32,
 }
 
-pub struct Guest {
+pub struct ServerPlayer {
     pub conn: u32,
     /// The client's address (IP bans, `list`).
     pub address: std::net::SocketAddr,
@@ -225,10 +225,10 @@ pub struct Guest {
     /// The moves accepted since the game last looked (movement, on ground),
     /// for ServerPlayer.doCheckFallDamage.
     pub moves: Vec<([f64; 3], bool)>,
-    /// Whether the guest was on the ground before the first of `moves`.
+    /// Whether the player was on the ground before the first of `moves`.
     pub moves_from_ground: bool,
     pub dead: bool,
-    /// `LivingEntity.deathTime`: ticks since the guest died.
+    /// `LivingEntity.deathTime`: ticks since the player died.
     pub death_time: u32,
     /// The join packets were sent (PlayerList.placeNewPlayer ran).
     pub placed: bool,
@@ -254,14 +254,14 @@ pub struct Guest {
     pub advancements_loaded: bool,
     pub advancements_visible: Vec<bool>,
     pub advancements_changed: std::collections::BTreeSet<usize>,
-    /// The server's scoreboard as this player's client has it (lan/scoreboard.rs).
+    /// The server's scoreboard as this player's client has it (server_net/scoreboard.rs).
     pub scoreboard: super::scoreboard::View,
     /// Recipes unlocked since the client was last told
     /// (`ServerRecipeBook.addRecipes` sends them).
     pub recipes_unlocked: Vec<String>,
 }
 
-impl Guest {
+impl ServerPlayer {
     pub fn new(j: Joined, entity_id: i32, position: [f64; 3], view_distance: i32) -> Self {
         Self {
             conn: j.conn,
@@ -427,7 +427,7 @@ impl Guest {
             Pose::Standing
         }
     }
-    /// `Avatar.POSES` for the guest's pose, with its scale attribute.
+    /// `Avatar.POSES` for the player's pose, with its scale attribute.
     pub fn dimensions(&self) -> Dimensions {
         let pose = self.pose();
         match &self.motion {
@@ -448,7 +448,7 @@ impl Guest {
     pub fn eye_height(&self) -> f64 {
         f64::from(self.dimensions().eye_height)
     }
-    /// `Player.isWithinBlockInteractionRange(pos, buffer)` for the guest:
+    /// `Player.isWithinBlockInteractionRange(pos, buffer)` for the player:
     /// its block interaction range is 4.5, 5 in creative.
     pub fn within_block_range(&self, pos: [i32; 3], buffer: f64) -> bool {
         let eye = [
@@ -669,7 +669,7 @@ fn network_stack(
                 horizon_protocol::item::Component::Stacks(contents),
             ));
         }
-        // The books a lectern shows and a guest reads.
+        // The books a lectern shows and a player reads.
         if !d.writable_pages.is_empty() {
             stack.added.push((
                 horizon_protocol::item::component::WRITABLE_BOOK_CONTENT,

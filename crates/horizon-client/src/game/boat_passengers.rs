@@ -56,8 +56,8 @@ impl crate::game::Sim<'_> {
     /// The players in boat `id`: the window's player (or the server player
     /// acting as it) and the server's other players.
     pub(super) fn boat_players(&self, id: u32) -> usize {
-        let guests = 0;
-        usize::from(self.riding == Some(id)) + guests
+        let players = 0;
+        usize::from(self.riding == Some(id)) + players
     }
     /// The mobs in boat `id`, in their seat order after the players
     /// (`Entity.addPassenger` puts a player first).

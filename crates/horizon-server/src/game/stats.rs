@@ -348,12 +348,14 @@ impl crate::game::Sim<'_> {
         {
             players.push((p.position, rest(&self.stats)));
         }
-        if let Some(host) = self.lan.as_ref() {
+        if let Some(net) = self.network.as_ref() {
             let level = self.dim.id();
-            for g in host.hub.guests.iter().filter(|g| {
-                g.placed && g.dimension == level && g.game_mode != crate::hc::lan::guest::SPECTATOR
+            for g in net.hub.players.iter().filter(|g| {
+                g.placed
+                    && g.dimension == level
+                    && g.game_mode != crate::hc::server_net::player::SPECTATOR
             }) {
-                let since = host.play.get(&g.conn).map_or(0, |p| rest(&p.stats));
+                let since = net.play.get(&g.conn).map_or(0, |p| rest(&p.stats));
                 players.push((
                     Vec3::new(g.position[0], g.position[1], g.position[2]),
                     since,

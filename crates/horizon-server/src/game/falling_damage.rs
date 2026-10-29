@@ -16,28 +16,28 @@ impl crate::game::Sim<'_> {
                     "minecraft:falling_block"
                 };
                 self.falling_hurt_player(block.position, impact.amount, kind);
-                if let Some(mut host) = self.lan.take() {
+                if let Some(mut net) = self.network.take() {
                     let bounds = falling_block::bounds(block.position);
-                    let conns = host
+                    let conns = net
                         .hub
-                        .guests
+                        .players
                         .iter()
                         .filter(|g| {
-                            host.hub.here(g)
+                            net.hub.here(g)
                                 && g.loaded
                                 && !g.dead
                                 && !g.creative()
                                 && !g.spectator()
-                                && bounds.intersects(super::lan_mobs::guest_bounds(g))
+                                && bounds.intersects(super::net_mobs::player_bounds(g))
                         })
                         .map(|g| g.conn)
                         .collect::<Vec<_>>();
                     for conn in conns {
-                        self.guest_hit_by(&mut host, conn, |g| {
+                        self.player_hit_by(&mut net, conn, |g| {
                             g.falling_hurt_player(block.position, impact.amount, kind)
                         });
                     }
-                    self.lan = Some(host);
+                    self.network = Some(net);
                 }
             }
             if anvil

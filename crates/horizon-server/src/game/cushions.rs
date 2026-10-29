@@ -269,9 +269,9 @@ impl crate::game::Sim<'_> {
         let id = self.cushions[i].id;
         let occupied = self.riding == Some(id)
             || self
-                .lan
+                .network
                 .as_ref()
-                .is_some_and(|h| h.hub.guests.iter().any(|g| g.vehicle == Some(id)));
+                .is_some_and(|h| h.hub.players.iter().any(|g| g.vehicle == Some(id)));
         // `Cushion.interact`: an occupied cushion (`isVehicle`) passes.
         if occupied {
             return false;
@@ -343,10 +343,10 @@ impl crate::game::Sim<'_> {
         let p = c.position;
         // Entity.getY(2/3) is relative to the cushion's quarter-block height.
         let particle_at = [p.x, p.y + 0.25 * (2.0 / 3.0), p.z];
-        // Guest actions temporarily take self.lan; flush once the hub is back.
+        // Player actions temporarily take self.lan; flush once the hub is back.
         // Queue before resolving a sprite: a dedicated server has no renderer.
         if self.sounds.capture.is_some() {
-            self.lan_cushion_breaks.push((state, particle_at));
+            self.net_cushion_breaks.push((state, particle_at));
         }
         let at = [p.x.floor() as i32, p.y.floor() as i32, p.z.floor() as i32];
         let Some((sprite, tint)) = self.particle_sprite(state, at) else {

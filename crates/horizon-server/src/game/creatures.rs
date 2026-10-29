@@ -43,21 +43,21 @@ fn arrow_damage(arrow: &mut Projectile, fallback: &mut impl RandomSource) -> f32
 #[derive(Default)]
 pub(super) struct Creatures {
     pub projectiles: Vec<Projectile>,
-    /// Wind bursts from a guest's turn, waiting for it to end (game/wind.rs).
+    /// Wind bursts from a player's turn, waiting for it to end (game/wind.rs).
     pub wind_bursts: Vec<super::wind::Burst>,
     /// The players a fishing hook can catch, taken as the hooks tick, and
     /// the pulls on them waiting for the hub (game/fishing.rs).
     pub hook_targets: Vec<super::fishing::HookTarget>,
     pub hook_pulls: Vec<(u32, horizon_core::geometry::Vec3)>,
-    /// Mace smash knockback on the other players from a guest's turn, waiting
+    /// Mace smash knockback on the other players from a player's turn, waiting
     /// for it to end (game/mace.rs).
     pub smash_pushes: Vec<super::mace::SmashPush>,
-    /// Sweep attacks from a guest's turn, waiting for it to end
-    /// (game/lan_pvp.rs).
-    pub sweeps: Vec<super::lan_pvp::Sweep>,
-    /// Explosion packets from a guest's turn, waiting for it to end
-    /// (centre, small, radius, blocks hit; game/lan_particles.rs).
-    pub lan_explosions: Vec<([f64; 3], bool, f32, usize)>,
+    /// Sweep attacks from a player's turn, waiting for it to end
+    /// (game/net_pvp.rs).
+    pub sweeps: Vec<super::net_pvp::Sweep>,
+    /// Explosion packets from a player's turn, waiting for it to end
+    /// (centre, small, radius, blocks hit; game/net_particles.rs).
+    pub net_explosions: Vec<([f64; 3], bool, f32, usize)>,
     /// Ticks left of the elder guardian's apparition (MobAppearanceParticle).
     pub elder_apparition: i32,
     /// The wandering trader spawner's clock.
@@ -66,9 +66,9 @@ pub(super) struct Creatures {
     pub shoulder_time: std::collections::HashMap<[i32; 4], i64>,
     /// The cat spawner's countdown (`CatSpawner.nextTick`).
     pub cat_tick: i32,
-    /// Particles from a guest's turn, waiting for it to end
-    /// (`lan_send_particles`: options, centre, spread, speed, count).
-    pub lan_particles: Vec<(
+    /// Particles from a player's turn, waiting for it to end
+    /// (`net_send_particles`: options, centre, spread, speed, count).
+    pub net_particles: Vec<(
         crate::hc::particles::ParticleOptions,
         [f64; 3],
         [f64; 3],
@@ -499,25 +499,25 @@ impl crate::game::Sim<'_> {
         let mut corpses = Vec::new();
         let mut died = std::mem::take(&mut self.died);
         let ticking = self.entity_ticking_area();
-        // With guests on, each mob sees its nearest player (game/lan_mobs.rs).
-        let guests = self.lan_guest_views();
+        // With views on, each mob sees its nearest player (game/net_mobs.rs).
+        let views = self.net_player_views();
         let players = self.level_players();
-        let mut bindings = match self.lan.as_mut() {
-            Some(host) if !guests.is_empty() => std::mem::take(&mut host.mob_players),
+        let mut bindings = match self.network.as_mut() {
+            Some(net) if !views.is_empty() => std::mem::take(&mut net.mob_players),
             _ => Default::default(),
         };
-        // The guests' entity ids by connection, for the shulker bullets fired
-        // at the guest a mob sees.
-        let guest_ids: Vec<(u32, u32)> = match self.lan.as_ref() {
-            Some(host) if !guests.is_empty() => host
+        // The views' entity ids by connection, for the shulker bullets fired
+        // at the player a mob sees.
+        let player_ids: Vec<(u32, u32)> = match self.network.as_ref() {
+            Some(net) if !views.is_empty() => net
                 .hub
-                .guests
+                .players
                 .iter()
                 .map(|g| (g.conn, g.entity_id as u32))
                 .collect(),
             _ => Vec::new(),
         };
-        let mut guest_events = Vec::new();
+        let mut player_events = Vec::new();
         // The mobs whose bodies go this tick: (id, feet, width, height).
         let mut gone = Vec::new();
         let level_random;
@@ -556,15 +556,15 @@ impl crate::game::Sim<'_> {
                     m.position.z,
                 )
                 .map(|p| p.position);
-                let seen_guest = if guests.is_empty() {
+                let seen_player = if views.is_empty() {
                     None
                 } else {
                     let bound = bindings.get(&m.id).copied();
-                    let conn = super::lan_mobs::player_for(m, w.player.as_ref(), &guests, bound);
+                    let conn = super::net_mobs::player_for(m, w.player.as_ref(), &views, bound);
                     match conn {
                         Some(conn) => {
                             bindings.insert(m.id, conn);
-                            w.player = guests.iter().find(|g| g.0 == conn).map(|g| g.1.clone());
+                            w.player = views.iter().find(|g| g.0 == conn).map(|g| g.1.clone());
                         }
                         None => {
                             bindings.remove(&m.id);
@@ -605,11 +605,11 @@ impl crate::game::Sim<'_> {
                     let (width, height) = (f64::from(m.width()), f64::from(m.height()));
                     gone.push((m.id, m.position, width, height));
                 }
-                if let Some(conn) = seen_guest {
-                    // ShulkerBullet.finalTarget is the guest's entity: the
+                if let Some(conn) = seen_player {
+                    // ShulkerBullet.finalTarget is the player's entity: the
                     // bullet homes on it while the projectiles tick, where
                     // `Who::Player` is the host's own player.
-                    if let Some(&(_, id)) = guest_ids.iter().find(|g| g.0 == conn) {
+                    if let Some(&(_, id)) = player_ids.iter().find(|g| g.0 == conn) {
                         for e in &mut events[from..] {
                             if let MobEvent::Projectile(p) = e
                                 && let ProjectileKind::ShulkerBullet { target, .. } = &mut p.kind
@@ -621,8 +621,8 @@ impl crate::game::Sim<'_> {
                     }
                     let mut k = from;
                     while k < events.len() {
-                        if super::lan_mobs::acts_on_player(&events[k]) {
-                            guest_events.push((conn, events.remove(k)));
+                        if super::net_mobs::acts_on_player(&events[k]) {
+                            player_events.push((conn, events.remove(k)));
                         } else {
                             k += 1;
                         }
@@ -651,14 +651,14 @@ impl crate::game::Sim<'_> {
             level_random = scratch;
         }
         self.world.random = level_random;
-        if let Some(host) = self.lan.as_mut()
-            && !guests.is_empty()
+        if let Some(net) = self.network.as_mut()
+            && !views.is_empty()
         {
             // A set: a scan of every mob for each binding is quadratic, and a
             // server's loaded mobs run into the thousands.
             let live: crate::hc::fast_hash::FxHashSet<u32> = mobs.iter().map(|m| m.id).collect();
             bindings.retain(|id, _| live.contains(id));
-            host.mob_players = bindings;
+            net.mob_players = bindings;
         }
         self.mobs.append(&mut mobs);
         self.died = died;
@@ -667,7 +667,7 @@ impl crate::game::Sim<'_> {
         // ... and entity event 60 goes out as it is: the poof.
         for (id, at, width, height) in gone {
             let at = [at.x, at.y, at.z];
-            self.lan_entity_event(id as i32, 60, at);
+            self.net_entity_event(id as i32, 60, at);
             self.death_poof(at, width, height);
         }
         self.sync_riders();
@@ -692,7 +692,7 @@ impl crate::game::Sim<'_> {
             self.effects_on_death(&names, bounds, false, Some(m.id), Some(&mut m.random));
         }
         self.handle_mob_events(events)?;
-        self.lan_guest_mob_events(guest_events);
+        self.net_player_mob_events(player_events);
         self.tick_projectiles()?;
         self.tick_fangs();
         self.tick_allays();
@@ -747,8 +747,8 @@ impl crate::game::Sim<'_> {
         // the mob gets KILL_MOB_NEAR_SCULK_CATALYST.
         if consumed && catalyst_xp > 0 {
             let who = match killer {
-                Some(Some(conn)) => Some(super::commands::Target::Guest(conn)),
-                Some(None) if self.lan_acting.is_none() => Some(super::commands::Target::Player),
+                Some(Some(conn)) => Some(super::commands::Target::ServerPlayer(conn)),
+                Some(None) if self.net_acting.is_none() => Some(super::commands::Target::Player),
                 _ => None,
             };
             if let Some(who) = who {
@@ -758,17 +758,17 @@ impl crate::game::Sim<'_> {
             }
         }
         if by_player {
-            // A guest's kill is theirs: their statistics, scores and
+            // A player's kill is theirs: their statistics, scores and
             // advancements (LivingEntity.die credits lastHurtByPlayer).
-            let guest = killer.flatten().filter(|_| self.lan_acting.is_none());
-            let credited = guest.is_some_and(|conn| {
-                let Some(mut host) = self.lan.take() else {
+            let player = killer.flatten().filter(|_| self.net_acting.is_none());
+            let credited = player.is_some_and(|conn| {
+                let Some(mut net) = self.network.take() else {
                     return false;
                 };
                 let done = self
-                    .as_guest(&mut host, conn, |g| g.credit_kill(m))
+                    .as_player(&mut net, conn, |g| g.credit_kill(m))
                     .is_some();
-                self.lan = Some(host);
+                self.network = Some(net);
                 done
             });
             if !credited {
@@ -1063,10 +1063,10 @@ impl crate::game::Sim<'_> {
     pub(super) fn handle_mob_events(&mut self, events: Vec<MobEvent>) -> Result<()> {
         for e in events {
             match e {
-                MobEvent::SquidCycle { mob, at } => self.lan_entity_event(mob as i32, 19, at),
-                MobEvent::RabbitHop { mob, at } => self.lan_entity_event(mob as i32, 1, at),
+                MobEvent::SquidCycle { mob, at } => self.net_entity_event(mob as i32, 19, at),
+                MobEvent::RabbitHop { mob, at } => self.net_entity_event(mob as i32, 1, at),
                 MobEvent::Drown { mob, at } => {
-                    self.lan_entity_event(mob as i32, super::combat::DROWN_EVENT, at);
+                    self.net_entity_event(mob as i32, super::combat::DROWN_EVENT, at);
                     let v = self
                         .mobs
                         .iter()
@@ -1075,7 +1075,7 @@ impl crate::game::Sim<'_> {
                     self.drown_particles(at, v);
                 }
                 MobEvent::EntityEvent { mob, event, at } => {
-                    self.lan_entity_event(mob as i32, event, at)
+                    self.net_entity_event(mob as i32, event, at)
                 }
                 MobEvent::LevelParticles {
                     kind,
@@ -1088,7 +1088,7 @@ impl crate::game::Sim<'_> {
                         let options = crate::hc::particles::ParticleOptions::simple(ty);
                         self.particles
                             .send_particles(&options, at, spread, speed, count);
-                        self.lan_level_particles(&options, at, spread, speed, count);
+                        self.net_level_particles(&options, at, spread, speed, count);
                     }
                 }
                 MobEvent::Sound(name, at, volume, pitch)
@@ -1424,8 +1424,8 @@ impl crate::game::Sim<'_> {
                 MobEvent::DestroyProgress { mob, pos, progress } => {
                     self.destroy_block_progress(mob as i32, pos, progress);
                     // ServerLevel.destroyBlockProgress: every player nearby sees it.
-                    if let Some(host) = self.lan.as_ref() {
-                        host.hub.broadcast_near(
+                    if let Some(net) = self.network.as_ref() {
+                        net.hub.broadcast_near(
                             [f64::from(pos[0]), f64::from(pos[1]), f64::from(pos[2])],
                             64.0,
                             &horizon_protocol::packets::play::Clientbound::BlockDestruction(
@@ -1534,7 +1534,7 @@ impl crate::game::Sim<'_> {
                         }
                         let options = crate::hc::particles::ParticleOptions::simple(ty);
                         if ty == crate::hc::particles::ParticleType::SonicBoom {
-                            self.lan_sonic_boom(&options, at);
+                            self.net_sonic_boom(&options, at);
                         }
                         // Count 0: one particle exactly there, at rest.
                         if count == 0 {
@@ -1565,7 +1565,7 @@ impl crate::game::Sim<'_> {
                     height,
                     burst,
                 } => {
-                    self.lan_entity_event(mob as i32, event, feet);
+                    self.net_entity_event(mob as i32, event, feet);
                     self.particles_around(kind, feet, [width, height], burst)
                 }
                 MobEvent::ParticleAt { kind, at, velocity } => {
@@ -2001,18 +2001,18 @@ impl crate::game::Sim<'_> {
         let mut cursed = Vec::new();
         self.for_each_player(|g| {
             if g.elder_curse_player(at) {
-                cursed.push(g.lan_acting);
+                cursed.push(g.net_acting);
             }
         });
-        // A guest's client shows the apparition and plays the curse itself
+        // A player's client shows the apparition and plays the curse itself
         // (ClientboundGameEventPacket.GUARDIAN_ELDER_EFFECT).
-        if let Some(host) = self.lan.as_ref() {
+        if let Some(net) = self.network.as_ref() {
             for conn in cursed.into_iter().flatten() {
-                host.hub.send_to(
+                net.hub.send_to(
                     conn,
                     &horizon_protocol::packets::play::Clientbound::GameEvent(
                         horizon_protocol::packets::play::GameEvent {
-                            event: crate::hc::lan::hub::game_event::GUARDIAN_ELDER_EFFECT,
+                            event: crate::hc::server_net::hub::game_event::GUARDIAN_ELDER_EFFECT,
                             param: 1.0,
                         },
                     ),
@@ -2038,7 +2038,7 @@ impl crate::game::Sim<'_> {
         }
         let at = [p.position.x, p.position.y, p.position.z];
         self.give_player_effect("minecraft:mining_fatigue", 6000, 2);
-        if self.lan_acting.is_none() {
+        if self.net_acting.is_none() {
             self.sounds
                 .play("minecraft:entity.elder_guardian.curse", Some(at), 1.0, 1.0);
             self.creatures.elder_apparition = super::mob_blocks::APPARITION_TICKS;
@@ -2345,25 +2345,25 @@ impl crate::game::Sim<'_> {
             // Arrows also hit minecarts (VehicleEntity is pickable).
             let mut arrow_targets = targets.clone();
             arrow_targets.extend(self.carts.iter().map(|c| (Who::Mob(c.id), c.bounds())));
-            // Mobs' projectiles also hit the guests (game/lan_mobs.rs).
-            let guests = self.lan_projectile_targets();
-            let mut arrow_targets_guests = arrow_targets.clone();
-            arrow_targets_guests.extend(guests.iter().copied());
-            let mut targets_guests = targets.clone();
-            targets_guests.extend(guests);
+            // Mobs' projectiles also hit the players (game/net_mobs.rs).
+            let players = self.net_projectile_targets();
+            let mut arrow_targets_players = arrow_targets.clone();
+            arrow_targets_players.extend(players.iter().copied());
+            let mut targets_players = targets.clone();
+            targets_players.extend(players);
             let pw = ProjWorld { w: &w, targets };
-            let pw_guests = ProjWorld {
+            let pw_players = ProjWorld {
                 w: &w,
-                targets: targets_guests,
+                targets: targets_players,
             };
-            let guest_entities = self.lan_guest_entities();
+            let player_entities = self.net_player_entities();
             // ThrownEnderpearl.tick: a dead player's pearl is discarded in
             // place of its tick while ender_pearls_vanish_on_death is on.
             let vanish = self.world_data.rules.bool("ender_pearls_vanish_on_death");
             let host_dead = self.player_view().is_some_and(|p| !p.alive);
-            let dead_guests: Vec<u32> = self.lan.as_ref().map_or_else(Vec::new, |h| {
+            let dead_players: Vec<u32> = self.network.as_ref().map_or_else(Vec::new, |h| {
                 h.hub
-                    .guests
+                    .players
                     .iter()
                     .filter(|g| g.dead)
                     .map(|g| g.conn)
@@ -2373,28 +2373,28 @@ impl crate::game::Sim<'_> {
                 if vanish
                     && matches!(p.kind, ProjectileKind::EnderPearl)
                     && p.owner == Some(Who::Player)
-                    && p.guest.map_or(host_dead, |c| dead_guests.contains(&c))
+                    && p.player.map_or(host_dead, |c| dead_players.contains(&c))
                 {
                     return false;
                 }
                 let mob_shot = !matches!(p.owner, Some(Who::Player));
                 // A player's arrows, snowballs and eggs meet every player; a
-                // guest's flies from that guest (Projectile.getOwner), not
+                // player's flies from that player (Projectile.getOwner), not
                 // from the host, until it has left them.
-                let pvp = !mob_shot && super::lan_pvp::meets_players(&p.kind);
+                let pvp = !mob_shot && super::net_pvp::meets_players(&p.kind);
                 let shooter = p
-                    .guest
+                    .player
                     .filter(|_| pvp)
-                    .and_then(|c| guest_entities.iter().find(|(g, _)| *g == c))
+                    .and_then(|c| player_entities.iter().find(|(g, _)| *g == c))
                     .map(|&(_, id)| Who::Mob(id));
                 if shooter.is_some() {
                     p.owner = shooter;
                 }
                 let (keep, hit) = match (p.arrow.is_some(), mob_shot || pvp) {
                     (true, false) => crate::hc::arrows::tick(p, &scene, &arrow_targets),
-                    (true, true) => crate::hc::arrows::tick(p, &scene, &arrow_targets_guests),
+                    (true, true) => crate::hc::arrows::tick(p, &scene, &arrow_targets_players),
                     (false, false) => p.tick(&pw),
-                    (false, true) => p.tick(&pw_guests),
+                    (false, true) => p.tick(&pw_players),
                 };
                 if shooter.is_some() {
                     p.owner = Some(Who::Player);
@@ -2475,10 +2475,10 @@ impl crate::game::Sim<'_> {
                 self.projectile_hits_player(&p, hit, victim)?;
                 continue;
             }
-            // A guest's projectile lands as theirs: a pearl takes them, what
+            // A player's projectile lands as theirs: a pearl takes them, what
             // it hurts answers to them. One hitting the host (`Who::Player`
             // here) stays the host's hit.
-            match p.guest {
+            match p.player {
                 Some(conn)
                     if !matches!(
                         hit,
@@ -2488,31 +2488,31 @@ impl crate::game::Sim<'_> {
                         }
                     ) =>
                 {
-                    self.guest_projectile_hit(conn, &p, hit)?;
+                    self.player_projectile_hit(conn, &p, hit)?;
                 }
                 _ => self.projectile_hit(&p, hit)?,
             }
         }
-        self.flush_lan_explosions();
+        self.flush_net_explosions();
         self.flush_wind_bursts()
     }
-    /// `projectile_hit` for a projectile the guest `conn` shot, run as them;
+    /// `projectile_hit` for a projectile the player `conn` shot, run as them;
     /// as the host's when they have left.
-    fn guest_projectile_hit(&mut self, conn: u32, p: &Projectile, hit: Hit) -> Result<()> {
-        let Some(mut host) = self.lan.take() else {
+    fn player_projectile_hit(&mut self, conn: u32, p: &Projectile, hit: Hit) -> Result<()> {
+        let Some(mut net) = self.network.take() else {
             return self.projectile_hit(p, hit);
         };
-        let result = self.as_guest(&mut host, conn, |g| g.projectile_hit(p, hit));
-        // The mob hit now answers to the guest (LivingEntity.lastHurtByPlayer).
+        let result = self.as_player(&mut net, conn, |g| g.projectile_hit(p, hit));
+        // The mob hit now answers to the player (LivingEntity.lastHurtByPlayer).
         if result.is_some()
             && let Hit::Entity {
                 who: Who::Mob(id), ..
             } = hit
             && self.mobs.iter().any(|m| m.id == id)
         {
-            host.mob_players.insert(id, conn);
+            net.mob_players.insert(id, conn);
         }
-        self.lan = Some(host);
+        self.network = Some(net);
         match result {
             Some(r) => r,
             None => self.projectile_hit(p, hit),
@@ -2698,7 +2698,7 @@ impl crate::game::Sim<'_> {
         });
         if let Some(strength) = hit {
             let _ = self.process_level_events();
-            if p.owner == Some(Who::Player) && (p.guest.is_none() || p.guest == self.lan_acting) {
+            if p.owner == Some(Who::Player) && (p.player.is_none() || p.player == self.net_acting) {
                 self.stats.custom("target_hit", 1);
                 let kind = if p
                     .arrow
@@ -2765,7 +2765,7 @@ impl crate::game::Sim<'_> {
             who: Who::Mob(id),
             at,
         } = hit
-            && self.lan_projectile_hit(p, id, at)
+            && self.net_projectile_hit(p, id, at)
         {
             return Ok(());
         }
@@ -2901,7 +2901,7 @@ impl crate::game::Sim<'_> {
                             .find(|m| m.id == id)
                             .is_some_and(|m| m.damage(amount, source));
                         if p.owner == Some(Who::Player) {
-                            self.last_hurt_by_player.insert(id, self.lan_acting);
+                            self.last_hurt_by_player.insert(id, self.net_acting);
                             if hurt && let Some(m) = self.mobs.iter().find(|m| m.id == id) {
                                 // LivingEntity.hurtServer: PLAYER_HURT_ENTITY.
                                 let victim = self.mob_entity(m);
@@ -3267,11 +3267,11 @@ impl crate::game::Sim<'_> {
         }
         Ok(())
     }
-    /// `Snowball`/`ThrownEgg.onHit`: entity event 3 for the guests, before the
+    /// `Snowball`/`ThrownEgg.onHit`: entity event 3 for the players, before the
     /// projectile is discarded (the clients lose it when the tracker next runs).
     fn thrown_break_event(&mut self, id: u32, at: [f64; 3]) {
         if id != 0 {
-            self.lan_entity_event(id as i32, 3, at);
+            self.net_entity_event(id as i32, 3, at);
         }
     }
     /// `Snowball`/`ThrownEgg.handleEntityEvent(3)`: eight crumbs of the
@@ -3813,7 +3813,7 @@ impl crate::game::Sim<'_> {
                 );
                 // The feeder gets the kill, as for a normal player attack.
                 if hurt {
-                    self.last_hurt_by_player.insert(id, self.lan_acting);
+                    self.last_hurt_by_player.insert(id, self.net_acting);
                 }
             }
             // Parrot.mobInteract: parrot food may tame a wild one (one time in

@@ -27,7 +27,7 @@ const HELP: &[&str] = &[
     "time TICKS                     set the time of day",
     "summon KIND [X Y Z] [baby]     spawn a mob (in front of the player without a position)",
     "mobs [RADIUS]                  list mobs near the player with their AI state",
-    "hurtlog                        the hurts taken and melee attacks made since the last call, per player (host and guests)",
+    "hurtlog                        the hurts taken and melee attacks made since the last call, per player (host and players)",
     "fill X1 Y1 Z1 X2 Y2 Z2 BLOCK   set a box of loaded blocks",
     "resume                         leave the pause menu",
     "screenshot PATH                write the next frame as PNG",
@@ -177,7 +177,7 @@ impl Game<'_> {
         if let Some(value) = self.options_control(&words, line)? {
             return Ok(Some(value));
         }
-        if let Some(value) = self.lan_control(&words)? {
+        if let Some(value) = self.net_control(&words)? {
             return Ok(Some(value));
         }
         match self.agent_command(&words, line, reply, event_loop)? {
@@ -190,7 +190,7 @@ impl Game<'_> {
                 .iter()
                 .chain(super::station_control::HELP)
                 .chain(super::blockctl::HELP)
-                .chain(super::lan::HELP)
+                .chain(super::server_net::HELP)
                 .chain(super::render_control::HELP)
                 .chain(super::agent::HELP)
                 .chain(super::ui_control::HELP)

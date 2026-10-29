@@ -10,8 +10,8 @@
 use super::end::GatewayJob;
 use super::nether_portal::{PLAYER_DELAY, Plan};
 use super::respawn_anchor::RespawnConfig;
-use super::{Dim, Mob, boats, lan::LanHost, minecarts};
-use crate::hc::{lan::hub::TickCtx, text::Text, world_spawn::PlayerSpawnFinder};
+use super::{Dim, Mob, boats, minecarts, server_net::Network};
+use crate::hc::{server_net::hub::TickCtx, text::Text, world_spawn::PlayerSpawnFinder};
 use horizon_core::{geometry::Vec3, position::BlockPos};
 use horizon_protocol::packets::play::{self, Clientbound as C};
 
@@ -138,19 +138,19 @@ impl crate::game::Sim<'_> {
             .iter()
             .any(|t| t.vehicle.is_some() && t.source == dim)
     }
-    /// Per server tick in each level, after the guests' own: the arrivals of
+    /// Per server tick in each level, after the players' own: the arrivals of
     /// the trips into this level, then `Entity.handlePortal` for each player
     /// in it (Nether portals count up their transition time, End portals
     /// take them at once).
-    pub(super) fn tick_server_travel(&mut self, host: &mut LanHost) {
+    pub(super) fn tick_server_travel(&mut self, net: &mut Network) {
         // Outside a server only the respawns at the world spawn wait for chunks.
-        self.arrive_server_trips(host);
-        self.carry_riders_through_portals(host);
-        let conns: Vec<u32> = host
+        self.arrive_server_trips(net);
+        self.carry_riders_through_portals(net);
+        let conns: Vec<u32> = net
             .hub
-            .guests
+            .players
             .iter()
-            .filter(|g| host.hub.here(g) && g.loaded && !g.dead && !g.spectator())
+            .filter(|g| net.hub.here(g) && g.loaded && !g.dead && !g.spectator())
             .map(|g| g.conn)
             .collect();
         for conn in conns {
@@ -158,16 +158,16 @@ impl crate::game::Sim<'_> {
                 continue;
             }
             // `Entity.portalProcess` and `portalCooldown` are the player's own.
-            let mut portal = host.play.entry(conn).or_default().portal;
+            let mut portal = net.play.entry(conn).or_default().portal;
             std::mem::swap(&mut self.portals.player, &mut portal);
-            self.handle_server_portal(host, conn);
+            self.handle_server_portal(net, conn);
             std::mem::swap(&mut self.portals.player, &mut portal);
-            host.play.entry(conn).or_default().portal = portal;
+            net.play.entry(conn).or_default().portal = portal;
         }
     }
     /// `Entity.handlePortal` for one player, whose portal state is in place.
-    fn handle_server_portal(&mut self, host: &mut LanHost, conn: u32) {
-        let Some(g) = host.hub.guest(conn) else {
+    fn handle_server_portal(&mut self, net: &mut Network, conn: u32) {
+        let Some(g) = net.hub.player(conn) else {
             return;
         };
         let (at, invulnerable, sleeping, riding) = (
@@ -184,11 +184,11 @@ impl crate::game::Sim<'_> {
         }
         // `ServerPlayer.showEndCredits`: the player stays out of the world while the
         // poem rolls, then PERFORM_RESPAWN takes it to its respawn point.
-        let play = host.play.entry(conn).or_default();
+        let play = net.play.entry(conn).or_default();
         if play.won_game {
             if std::mem::take(&mut play.respawn_requested) {
                 play.won_game = false;
-                self.start_server_trip(host, conn, Dim::Overworld, None);
+                self.start_server_trip(net, conn, Dim::Overworld, None);
                 self.portals.player.cooldown = 10;
             }
             return;
@@ -196,13 +196,13 @@ impl crate::game::Sim<'_> {
         let (end_portal, gateway) = self.inside_end_portals(at, WIDTH, HEIGHT);
         if end_portal && !riding {
             // EndPortalBlock.entityInside: the first exit from the End shows the credits.
-            if self.dim == Dim::End && !host.hub.guest(conn).is_some_and(|g| g.seen_credits) {
-                if let Some(g) = host.hub.guests.iter_mut().find(|g| g.conn == conn) {
+            if self.dim == Dim::End && !net.hub.player(conn).is_some_and(|g| g.seen_credits) {
+                if let Some(g) = net.hub.players.iter_mut().find(|g| g.conn == conn) {
                     g.seen_credits = true;
                 }
-                host.play.entry(conn).or_default().won_game = true;
+                net.play.entry(conn).or_default().won_game = true;
                 // ClientboundGameEventPacket.WIN_GAME.
-                host.hub.send_to(
+                net.hub.send_to(
                     conn,
                     &C::GameEvent(play::GameEvent {
                         event: 4,
@@ -217,7 +217,7 @@ impl crate::game::Sim<'_> {
                 } else {
                     Dim::End
                 };
-                self.start_server_trip(host, conn, target, None);
+                self.start_server_trip(net, conn, target, None);
             }
             // Entity.setAsInsidePortal while cooling down restarts the cooldown.
             self.portals.player.cooldown = 10;
@@ -230,7 +230,7 @@ impl crate::game::Sim<'_> {
             && self.gateway_enter(g)
         {
             if self.portals.player.cooldown == 0 {
-                self.start_gateway_trip(host, conn, g);
+                self.start_gateway_trip(net, conn, g);
             }
             // setPortalCooldown: after the trip, or again while cooling down.
             self.portals.player.cooldown = 10;
@@ -253,13 +253,13 @@ impl crate::game::Sim<'_> {
         if !self.may_enter(plan.dim) {
             return;
         }
-        self.start_server_trip(host, conn, plan.dim, Some(plan));
+        self.start_server_trip(net, conn, plan.dim, Some(plan));
     }
     /// `Entity.handlePortal` of a vehicle server players ride, once through
     /// a portal (a vehicle's transition time is 0): the riders travel with
     /// it and ride it again on arrival (`Entity.teleportCrossDimension`), so
     /// a rider never waits for its own portal delay.
-    fn carry_riders_through_portals(&mut self, host: &mut LanHost) {
+    fn carry_riders_through_portals(&mut self, net: &mut Network) {
         for (vehicle, entry) in self.take_carrying(self.dim) {
             let Some(plan) = self.vehicle_plan(vehicle, entry) else {
                 continue;
@@ -267,9 +267,9 @@ impl crate::game::Sim<'_> {
             if !self.may_enter(plan.dim) {
                 continue;
             }
-            let riders: Vec<u32> = host
+            let riders: Vec<u32> = net
                 .hub
-                .guests
+                .players
                 .iter()
                 .filter(|g| g.vehicle == Some(vehicle) && !self.on_server_trip(g.conn))
                 .map(|g| g.conn)
@@ -280,7 +280,7 @@ impl crate::game::Sim<'_> {
                 && self.dim == Dim::End
                 && riders
                     .iter()
-                    .any(|c| !host.hub.guest(*c).is_some_and(|g| g.seen_credits))
+                    .any(|c| !net.hub.player(*c).is_some_and(|g| g.seen_credits))
             {
                 continue;
             }
@@ -288,7 +288,7 @@ impl crate::game::Sim<'_> {
             // point out of the End).
             let (target, plan) = (plan.dim, (!plan.end).then_some(plan));
             for conn in riders {
-                self.start_server_trip(host, conn, target, plan);
+                self.start_server_trip(net, conn, target, plan);
             }
         }
     }
@@ -313,15 +313,15 @@ impl crate::game::Sim<'_> {
     /// level whose tick is running is put back in place afterwards.
     pub(super) fn start_server_trip(
         &mut self,
-        host: &mut LanHost,
+        net: &mut Network,
         conn: u32,
         target: Dim,
         plan: Option<Plan>,
     ) {
-        let Some(i) = host.hub.guests.iter().position(|g| g.conn == conn) else {
+        let Some(i) = net.hub.players.iter().position(|g| g.conn == conn) else {
             return;
         };
-        let g = &host.hub.guests[i];
+        let g = &net.hub.players[i];
         let from = Vec3::new(g.position[0], g.position[1], g.position[2]);
         let yaw = g.yaw;
         // The vehicle the player rides travels with it: the player is its
@@ -345,7 +345,7 @@ impl crate::game::Sim<'_> {
         self.end_portal_travel = end;
         // Leaving the End: the player's own respawn point.
         let own = if end {
-            self.as_guest(host, conn, |g| g.end_destination(target))
+            self.as_player(net, conn, |g| g.end_destination(target))
                 .flatten()
         } else {
             None
@@ -354,7 +354,7 @@ impl crate::game::Sim<'_> {
             .or_else(|| self.end_destination(target))
             .unwrap_or(Vec3::new(from.x * scale, from.y, from.z * scale));
         self.end_portal_travel = false;
-        if let Err(e) = self.enter_level(Some(host), target) {
+        if let Err(e) = self.enter_level(Some(net), target) {
             log::error!("could not open {}: {e}", target.id());
             return;
         }
@@ -365,8 +365,8 @@ impl crate::game::Sim<'_> {
         let at = [destination.x, destination.y, destination.z];
         let ctx = self.server_ctx();
         // TeleportTransition.PLAY_PORTAL_SOUND.
-        host.hub.change_level(i, at, yaw, None, true, &ctx);
-        self.as_guest(host, conn, |g| g.trigger_dimension(source, target));
+        net.hub.change_level(i, at, yaw, None, true, &ctx);
+        self.as_player(net, conn, |g| g.trigger_dimension(source, target));
         self.server_trips.push(Trip {
             conn,
             dim: target,
@@ -381,7 +381,7 @@ impl crate::game::Sim<'_> {
             finder: None,
             placed: false,
         });
-        if let Err(e) = self.enter_level(Some(host), source) {
+        if let Err(e) = self.enter_level(Some(net), source) {
             log::error!("could not reopen {}: {e}", source.id());
         }
     }
@@ -456,7 +456,7 @@ impl crate::game::Sim<'_> {
     }
     /// TeleportTransition.missingRespawnBlock: the world spawn, in the
     /// Overworld.
-    fn respawn_at_world_spawn(&mut self, host: &mut LanHost, conn: u32) {
+    fn respawn_at_world_spawn(&mut self, net: &mut Network, conn: u32) {
         let at = self.level.world_spawn.map_or(
             self.spawn.map_or([0.5, 80.0, 0.5], |s| [s.x, s.y, s.z]),
             |[x, y, z]| [f64::from(x) + 0.5, f64::from(y), f64::from(z) + 0.5],
@@ -467,21 +467,21 @@ impl crate::game::Sim<'_> {
             at,
             rotation: None,
         });
-        self.run_level_teleports(host);
+        self.run_level_teleports(net);
         self.world_spawn_trip(conn);
     }
     /// `TheEndGatewayBlockEntity.getPortalPosition` and the teleport within
     /// the End (keeping the player's motion and look): straight to an exact
     /// exit, else once the destination has loaded around the player, who
     /// waits there (its exit is found among those blocks, or built).
-    fn start_gateway_trip(&mut self, host: &mut LanHost, conn: u32, gateway: [i32; 3]) {
-        let Some(i) = host.hub.guests.iter().position(|g| g.conn == conn) else {
+    fn start_gateway_trip(&mut self, net: &mut Network, conn: u32, gateway: [i32; 3]) {
+        let Some(i) = net.hub.players.iter().position(|g| g.conn == conn) else {
             return;
         };
         let (job, destination) = self.gateway_job(gateway);
         let at = [destination.x, destination.y, destination.z];
         // Relative.union(DELTA, ROTATION).
-        host.hub.teleport_keeping_motion(i, at);
+        net.hub.teleport_keeping_motion(i, at);
         if let GatewayJob::Known { exact: true, .. } = job {
             return;
         }
@@ -503,11 +503,11 @@ impl crate::game::Sim<'_> {
     /// The trips into the level in place whose destination has loaded
     /// around their target: the exit (the Nether portal found or built, the
     /// End platform, the Overworld's spawn column) and the teleport there.
-    fn arrive_server_trips(&mut self, host: &mut LanHost) {
+    fn arrive_server_trips(&mut self, net: &mut Network) {
         let mut k = 0;
         while k < self.server_trips.len() {
             let trip = &self.server_trips[k];
-            let Some(i) = host.hub.guests.iter().position(|g| g.conn == trip.conn) else {
+            let Some(i) = net.hub.players.iter().position(|g| g.conn == trip.conn) else {
                 // They left on the way.
                 self.server_trips.remove(k);
                 continue;
@@ -527,12 +527,12 @@ impl crate::game::Sim<'_> {
                 continue;
             }
             self.resolve_arrivals();
-            let yaw = host.hub.guests[i].yaw;
+            let yaw = net.hub.players[i].yaw;
             let (position, yaw) = if let Some(config) = trip.respawn {
-                match self.as_guest(host, trip.conn, |g| g.resolve_server_respawn(config)) {
+                match self.as_player(net, trip.conn, |g| g.resolve_server_respawn(config)) {
                     Some(Some(found)) => found,
                     _ => {
-                        self.respawn_at_world_spawn(host, trip.conn);
+                        self.respawn_at_world_spawn(net, trip.conn);
                         continue;
                     }
                 }
@@ -543,7 +543,7 @@ impl crate::game::Sim<'_> {
                 match self.search_spawn(suggestion, &mut trip.finder) {
                     // The respawn already put the player on this column:
                     // vanilla teleports once, so no second move.
-                    Ok(at) if host.hub.guests[i].position == [at.x, at.y, at.z] => continue,
+                    Ok(at) if net.hub.players[i].position == [at.x, at.y, at.z] => continue,
                     Ok(at) => (at, yaw),
                     Err(chunk) => {
                         self.spawn_wait.push(chunk);
@@ -561,7 +561,7 @@ impl crate::game::Sim<'_> {
                     }
                 }
             } else if trip.end {
-                let arrival = match self.as_guest(host, trip.conn, |g| {
+                let arrival = match self.as_player(net, trip.conn, |g| {
                     g.end_arrival(trip.target, &mut trip.finder)
                 }) {
                     Some(arrival) => arrival,
@@ -599,12 +599,12 @@ impl crate::game::Sim<'_> {
                 self.arrive_vehicle(trip.source, vehicle, position, yaw);
             }
             // Player.getDimensionChangingDelay.
-            host.play.entry(trip.conn).or_default().portal.cooldown = 10;
-            let g = &mut host.hub.guests[i];
+            net.play.entry(trip.conn).or_default().portal.cooldown = 10;
+            let g = &mut net.hub.players[i];
             g.yaw = yaw;
             // A new body at the exit: no fall distance or motion carried over.
             g.motion = None;
-            host.hub
+            net.hub
                 .teleport(i, Some([position.x, position.y, position.z]));
         }
     }
@@ -636,24 +636,23 @@ impl crate::game::Sim<'_> {
     /// (`ServerPlayer.teleport` from TeleportCommand): a Respawn packet
     /// keeping all data and the teleport, with no portal sound. The server
     /// leaves the body alone until the level has loaded around it.
-    pub(super) fn run_level_teleports(&mut self, host: &mut LanHost) {
+    pub(super) fn run_level_teleports(&mut self, net: &mut Network) {
         for t in std::mem::take(&mut self.level_teleports) {
-            let Some(i) = host.hub.guests.iter().position(|g| g.conn == t.conn) else {
+            let Some(i) = net.hub.players.iter().position(|g| g.conn == t.conn) else {
                 continue;
             };
             let source = self.dim;
-            if let Err(e) = self.enter_level(Some(host), t.dim) {
+            if let Err(e) = self.enter_level(Some(net), t.dim) {
                 log::error!("could not open {}: {e}", t.dim.id());
                 continue;
             }
-            let g = &mut host.hub.guests[i];
+            let g = &mut net.hub.players[i];
             let [yaw, pitch] = t.rotation.unwrap_or([g.yaw, g.pitch]);
             // A new body there: no fall distance or motion carried over.
             g.motion = None;
             let ctx = self.server_ctx();
-            host.hub
-                .change_level(i, t.at, yaw, Some(pitch), false, &ctx);
-            self.as_guest(host, t.conn, |g| g.trigger_dimension(source, t.dim));
+            net.hub.change_level(i, t.at, yaw, Some(pitch), false, &ctx);
+            self.as_player(net, t.conn, |g| g.trigger_dimension(source, t.dim));
             self.server_trips.retain(|trip| !trip.is(t.conn));
             self.server_trips.push(Trip {
                 conn: t.conn,
@@ -671,7 +670,7 @@ impl crate::game::Sim<'_> {
                 finder: None,
                 placed: true,
             });
-            if let Err(e) = self.enter_level(Some(host), source) {
+            if let Err(e) = self.enter_level(Some(net), source) {
                 log::error!("could not reopen {}: {e}", source.id());
             }
         }
@@ -682,7 +681,6 @@ impl crate::game::Sim<'_> {
         let clock_rate = self.network_clock_rate();
         TickCtx {
             world: &mut self.world,
-            host: None,
             entities: &[],
             next_entity: &mut self.next_entity,
             spawn,

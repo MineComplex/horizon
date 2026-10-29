@@ -181,7 +181,7 @@ fn owner(m: &Mob, w: &MobWorld) -> Option<(Vec3, f64, bool)> {
     Some((p.position, p.eye[1], p.spectator))
 }
 /// Whether the player the mob sees is the one saved as its owner (with
-/// guests on, that player is whoever stands nearest).
+/// players on, that player is whoever stands nearest).
 fn is_owner(m: &Mob, w: &MobWorld) -> bool {
     w.player
         .as_ref()

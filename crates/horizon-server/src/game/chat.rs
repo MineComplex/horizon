@@ -37,7 +37,7 @@ impl crate::game::Sim<'_> {
         // and the console logs what vanilla's does where it does.
         let _ = text;
     }
-    /// A player's chat line on the window's own chat: a LAN guest's message
+    /// A player's chat line on the window's own chat: a player's message
     /// while the host runs in-frame (`HostEvent::Chat`). `ChatListener`
     /// checks `canReceivePlayerMessages` for these, so Commands Only and
     /// Hidden drop them; command feedback (`/list`, `/tp`) is a system

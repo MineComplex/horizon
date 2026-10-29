@@ -35,7 +35,7 @@ pub struct SoundOut {
     /// Seeds of positional plays (the level random's `nextLong`).
     pub random: LegacyRandom,
     /// Positional sounds played since the last drain, kept while the world is open to the network
-    /// so guests hear them too.
+    /// so players hear them too.
     pub capture: Option<Vec<(String, [f64; 3], f32, f32)>>,
     /// How many times each positional sound played (the control socket's `status`).
     pub heard: BTreeMap<String, u32>,
@@ -65,7 +65,7 @@ impl SoundOut {
         self.play_seeded(event, at, volume, pitch, seed);
     }
     /// `play` for this client only: a sound a packet's handler plays (`playLocalSound`), which the
-    /// guests play from that packet themselves.
+    /// players play from that packet themselves.
     pub fn play_unshared(&mut self, event: &str, at: Option<[f64; 3]>, volume: f32, pitch: f32) {
         let capture = self.capture.take();
         self.play(event, at, volume, pitch);

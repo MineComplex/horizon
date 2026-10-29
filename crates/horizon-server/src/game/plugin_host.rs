@@ -5,9 +5,9 @@
 //! runs their commands and tasks, and applies what they asked for once their
 //! handler returns (`apply_plugin_actions`), through the server's own commands
 //! so every change reaches the players as any other does.
-use super::lan::LanHost;
+use super::server_net::Network;
 use crate::hc::{
-    lan::{guest::Guest, hub::HostEvent},
+    server_net::{hub::HostEvent, player::ServerPlayer},
     text::Text,
 };
 use horizon_protocol::packets::play::{self, Clientbound as C};
@@ -53,9 +53,9 @@ impl api::server::View for View<'_> {
     }
     fn max_players(&self) -> usize {
         self.game
-            .lan
+            .network
             .as_ref()
-            .map_or(0, |h| h.hub.lan.shared.max_players())
+            .map_or(0, |h| h.hub.network.shared.max_players())
     }
     fn time(&self) -> i64 {
         self.game.world.day_time.rem_euclid(24000)
@@ -71,48 +71,48 @@ impl crate::game::Sim<'_> {
         if plugins.is_empty() {
             return;
         }
-        let mut host = PluginHost::new(plugins);
-        host.load();
-        self.plugins = Some(Box::new(host));
+        let mut net = PluginHost::new(plugins);
+        net.load();
+        self.plugins = Some(Box::new(net));
         self.plugin_log();
     }
     /// `onEnable`, once the worlds are loaded and the server listens.
     pub(super) fn plugins_enable(&mut self) {
-        let Some(mut host) = self.plugins.take() else {
+        let Some(mut net) = self.plugins.take() else {
             return;
         };
-        host.enable();
-        if let Some(lan) = self.lan.as_mut() {
+        net.enable();
+        if let Some(network) = self.network.as_mut() {
             // The plugins decide the join and quit messages and see chat first.
-            lan.hub.quiet_joins = host.listens::<ev::PlayerJoinEvent>();
-            lan.hub.quiet_leaves = host.listens::<ev::PlayerQuitEvent>();
-            lan.hub.intercept_chat = host.listens::<ev::PlayerChatEvent>();
+            network.hub.quiet_joins = net.listens::<ev::PlayerJoinEvent>();
+            network.hub.quiet_leaves = net.listens::<ev::PlayerQuitEvent>();
+            network.hub.intercept_chat = net.listens::<ev::PlayerChatEvent>();
         }
-        self.plugins = Some(host);
+        self.plugins = Some(net);
         self.plugin_log();
     }
     /// `onDisable` as the server stops, with what they still asked for.
     pub(super) fn plugins_disable(&mut self) {
-        if let Some(host) = self.plugins.as_mut() {
-            host.disable();
+        if let Some(net) = self.plugins.as_mut() {
+            net.disable();
         }
         self.plugin_log();
     }
     fn plugin_log(&mut self) {
-        let Some(host) = self.plugins.as_mut() else {
+        let Some(net) = self.plugins.as_mut() else {
             return;
         };
-        for line in host.take_log() {
+        for line in net.take_log() {
             super::dedicated::log("INFO", &line);
         }
     }
     /// The online players, from the hub in hand or in place, else the last
     /// ones seen (the hub is out of its place during a player's turn).
-    fn plugin_players(&mut self, host: Option<&LanHost>) -> Vec<PlayerRef> {
-        if let Some(h) = host.or(self.lan.as_ref()) {
+    fn plugin_players(&mut self, net: Option<&Network>) -> Vec<PlayerRef> {
+        if let Some(h) = net.or(self.network.as_ref()) {
             let players: Vec<PlayerRef> = h
                 .hub
-                .guests
+                .players
                 .iter()
                 .filter(|g| g.placed)
                 .map(crate::game::Sim::plugin_player)
@@ -122,9 +122,9 @@ impl crate::game::Sim<'_> {
         }
         self.plugin_seen.clone()
     }
-    /// The player whose turn it is (`as_guest`).
+    /// The player whose turn it is (`as_player`).
     fn plugin_acting(&self) -> Option<PlayerRef> {
-        let uuid = self.lan_acting_uuid?;
+        let uuid = self.net_acting_uuid?;
         let mut p = self.plugin_seen.iter().find(|p| p.uuid == uuid)?.clone();
         // The turn's own state is in the game.
         if let Some(m) = self.player.as_ref() {
@@ -144,8 +144,8 @@ impl crate::game::Sim<'_> {
         self.plugins.as_ref().is_some_and(|h| h.listens::<E>())
     }
     /// `callEvent`; what the listeners asked for waits for `apply_plugin_actions`.
-    fn plugin_fire<E: Event>(&mut self, host: Option<&LanHost>, event: &mut E) {
-        let players = self.plugin_players(host);
+    fn plugin_fire<E: Event>(&mut self, net: Option<&Network>, event: &mut E) {
+        let players = self.plugin_players(net);
         let Some(mut plugins) = self.plugins.take() else {
             return;
         };
@@ -182,16 +182,11 @@ impl crate::game::Sim<'_> {
     }
     /// A plugin's command or `/plugins` (`line` without its slash); false
     /// when no plugin has it.
-    fn plugin_command(
-        &mut self,
-        host: Option<&LanHost>,
-        sender: CommandSender,
-        line: &str,
-    ) -> bool {
+    fn plugin_command(&mut self, net: Option<&Network>, sender: CommandSender, line: &str) -> bool {
         if self.plugins.is_none() {
             return false;
         }
-        let players = self.plugin_players(host);
+        let players = self.plugin_players(net);
         let Some(mut plugins) = self.plugins.take() else {
             return false;
         };
@@ -213,20 +208,20 @@ impl crate::game::Sim<'_> {
         }
     }
     /// What the plugins asked for, with the hub in place (between ticks and
-    /// after a guest's packets): messages and kicks directly, the rest
+    /// after a player's packets): messages and kicks directly, the rest
     /// through the server's own commands, quietly, as the console.
     pub(super) fn apply_plugin_actions(&mut self) {
         // Blocks a plugin kept, which their client took away already.
-        if let Some(h) = self.lan.as_ref() {
+        if let Some(h) = self.network.as_ref() {
             for (conn, pos, state) in std::mem::take(&mut self.plugin_resend) {
                 h.hub
                     .send_to(conn, &C::BlockUpdate(play::BlockUpdate { pos, state }));
             }
         }
         // Inventories a plugin kept, which their client changed already.
-        if let Some(h) = self.lan.as_mut() {
+        if let Some(h) = self.network.as_mut() {
             for conn in std::mem::take(&mut self.plugin_resync) {
-                if let Some(i) = h.hub.guests.iter().position(|g| g.conn == conn) {
+                if let Some(i) = h.hub.players.iter().position(|g| g.conn == conn) {
                     h.hub.send_inventory(i);
                 }
             }
@@ -241,9 +236,9 @@ impl crate::game::Sim<'_> {
     }
     fn apply_plugin_action(&mut self, action: Action) {
         let name_of = |game: &Self, uuid: u128| {
-            game.lan.as_ref().and_then(|h| {
+            game.network.as_ref().and_then(|h| {
                 h.hub
-                    .guests
+                    .players
                     .iter()
                     .find(|g| g.uuid == uuid && g.placed)
                     .map(|g| (g.conn, g.name.clone()))
@@ -251,13 +246,13 @@ impl crate::game::Sim<'_> {
         };
         match action {
             Action::Message { to, text } => {
-                if let (Some((conn, _)), Some(h)) = (name_of(self, to), self.lan.as_ref()) {
+                if let (Some((conn, _)), Some(h)) = (name_of(self, to), self.network.as_ref()) {
                     h.hub.send_to(conn, &system_chat(&text));
                 }
             }
             Action::Broadcast(text) => {
                 super::dedicated::log("INFO", &api::strip_colors(&text));
-                if let Some(h) = self.lan.as_ref() {
+                if let Some(h) = self.network.as_ref() {
                     h.hub.system_message(legacy_nbt(&text));
                 }
             }
@@ -266,7 +261,7 @@ impl crate::game::Sim<'_> {
             }
             Action::Kick { player, reason } => {
                 if let Some((conn, _)) = name_of(self, player)
-                    && let Some(h) = self.lan.as_mut()
+                    && let Some(h) = self.network.as_mut()
                 {
                     h.hub.kick(conn, legacy_nbt(&reason));
                 }
@@ -284,10 +279,10 @@ impl crate::game::Sim<'_> {
                 command,
             } => {
                 if let Some((conn, _)) = name_of(self, uuid)
-                    && let Some(mut host) = self.lan.take()
+                    && let Some(mut net) = self.network.take()
                 {
-                    self.guest_command(&mut host, conn, &command, None);
-                    self.lan = Some(host);
+                    self.player_command(&mut net, conn, &command, None);
+                    self.network = Some(net);
                 }
             }
             Action::SetBlock { world, pos, state } => {
@@ -328,17 +323,17 @@ impl crate::game::Sim<'_> {
     /// After a player joined and was placed: `PlayerJoinEvent`, and the join
     /// message it leaves (the hub left it to the plugins).
     /// Whether the player has no saved data on this server yet (checked before the join saves it).
-    pub(super) fn plugin_first_join(&self, host: &LanHost, conn: u32) -> bool {
-        let Some(g) = host.hub.guest(conn) else {
+    pub(super) fn plugin_first_join(&self, net: &Network, conn: u32) -> bool {
+        let Some(g) = net.hub.player(conn) else {
             return false;
         };
-        !crate::hc::lan::playerdata::exists(&self.world_root, g.uuid)
+        !crate::hc::server_net::playerdata::exists(&self.world_root, g.uuid)
     }
-    pub(super) fn plugin_joined(&mut self, host: &mut LanHost, conn: u32, first_join: bool) {
+    pub(super) fn plugin_joined(&mut self, net: &mut Network, conn: u32, first_join: bool) {
         if !self.plugins_listen::<ev::PlayerJoinEvent>() {
             return;
         }
-        let Some(g) = host.hub.guest(conn).filter(|g| g.placed) else {
+        let Some(g) = net.hub.player(conn).filter(|g| g.placed) else {
             return;
         };
         let player = crate::game::Sim::plugin_player(g);
@@ -348,18 +343,18 @@ impl crate::game::Sim<'_> {
             join_message: Some(vanilla.clone()),
             first_join,
         };
-        self.plugin_fire(Some(host), &mut event);
+        self.plugin_fire(Some(net), &mut event);
         match event.join_message {
-            Some(text) if text == vanilla => host.hub.announce_join(conn),
+            Some(text) if text == vanilla => net.hub.announce_join(conn),
             Some(text) => {
                 super::dedicated::log("INFO", &api::strip_colors(&text));
-                host.hub.system_message(legacy_nbt(&text));
+                net.hub.system_message(legacy_nbt(&text));
             }
             None => {}
         }
     }
     /// After a player left: `PlayerQuitEvent`, and the quit message it leaves.
-    pub(super) fn plugin_left(&mut self, host: &mut LanHost, g: &Guest) {
+    pub(super) fn plugin_left(&mut self, net: &mut Network, g: &ServerPlayer) {
         if !g.placed || !self.plugins_listen::<ev::PlayerQuitEvent>() {
             return;
         }
@@ -369,12 +364,12 @@ impl crate::game::Sim<'_> {
             quit_message: Some(vanilla.clone()),
             reason: g.left_reason.clone(),
         };
-        self.plugin_fire(Some(host), &mut event);
+        self.plugin_fire(Some(net), &mut event);
         match event.quit_message {
-            Some(text) if text == vanilla => host.hub.announce_leave(g.uuid, &g.name),
+            Some(text) if text == vanilla => net.hub.announce_leave(g.uuid, &g.name),
             Some(text) => {
                 super::dedicated::log("INFO", &api::strip_colors(&text));
-                host.hub.system_message(legacy_nbt(&text));
+                net.hub.system_message(legacy_nbt(&text));
             }
             None => {}
         }
@@ -384,16 +379,16 @@ impl crate::game::Sim<'_> {
     /// it alone, or as a system message as they made it.
     pub(super) fn plugin_chat(
         &mut self,
-        host: &mut LanHost,
-        message: crate::hc::lan::hub::chat::ChatMessage,
+        net: &mut Network,
+        message: crate::hc::server_net::hub::chat::ChatMessage,
     ) -> Vec<HostEvent> {
-        let Some(g) = host.hub.guests.iter().find(|g| g.uuid == message.sender) else {
-            return host.hub.relay_chat(message);
+        let Some(g) = net.hub.players.iter().find(|g| g.uuid == message.sender) else {
+            return net.hub.relay_chat(message);
         };
         let player = crate::game::Sim::plugin_player(g);
-        let everyone: Vec<u128> = host
+        let everyone: Vec<u128> = net
             .hub
-            .guests
+            .players
             .iter()
             .filter(|g| g.placed)
             .map(|g| g.uuid)
@@ -406,7 +401,7 @@ impl crate::game::Sim<'_> {
             recipients: everyone.clone(),
             cancelled: false,
         };
-        self.plugin_fire(Some(host), &mut event);
+        self.plugin_fire(Some(net), &mut event);
         if event.cancelled {
             return Vec::new();
         }
@@ -414,13 +409,13 @@ impl crate::game::Sim<'_> {
             && event.format == FORMAT
             && event.recipients == everyone
         {
-            return host.hub.relay_chat(message);
+            return net.hub.relay_chat(message);
         }
         let line = event.formatted();
         let content = system_chat(&line);
-        for g in host
+        for g in net
             .hub
-            .guests
+            .players
             .iter()
             .filter(|g| g.placed && event.recipients.contains(&g.uuid))
         {
@@ -436,14 +431,14 @@ impl crate::game::Sim<'_> {
     /// The line the game should run, or None when a plugin took it.
     pub(super) fn plugin_player_command(
         &mut self,
-        host: &mut LanHost,
+        net: &mut Network,
         conn: u32,
         command: &str,
     ) -> Option<String> {
         if self.plugins.is_none() {
             return Some(command.to_owned());
         }
-        let Some(g) = host.hub.guest(conn) else {
+        let Some(g) = net.hub.player(conn) else {
             return Some(command.to_owned());
         };
         let player = crate::game::Sim::plugin_player(g);
@@ -454,13 +449,13 @@ impl crate::game::Sim<'_> {
                 message: format!("/{line}"),
                 cancelled: false,
             };
-            self.plugin_fire(Some(host), &mut event);
+            self.plugin_fire(Some(net), &mut event);
             if event.cancelled {
                 return None;
             }
             line = event.message.trim_start_matches('/').to_owned();
         }
-        if self.plugin_command(Some(host), CommandSender::Player(player), &line) {
+        if self.plugin_command(Some(net), CommandSender::Player(player), &line) {
             return None;
         }
         Some(line)
@@ -509,7 +504,7 @@ impl crate::game::Sim<'_> {
         };
         self.plugin_fire(None, &mut event);
         if event.cancelled {
-            if let Some(conn) = self.lan_acting {
+            if let Some(conn) = self.net_acting {
                 self.plugin_resend.push((conn, pos, state.0 as i32));
             }
             return None;
@@ -549,7 +544,7 @@ impl crate::game::Sim<'_> {
     /// when they left it as it was) and whether the inventory stays.
     pub(super) fn plugin_player_death(
         &mut self,
-        host: &mut LanHost,
+        net: &mut Network,
         conn: u32,
         message: Option<String>,
         keep_inventory: bool,
@@ -557,7 +552,7 @@ impl crate::game::Sim<'_> {
         if !self.plugins_listen::<ev::PlayerDeathEvent>() {
             return (None, keep_inventory);
         }
-        let Some(g) = host.hub.guest(conn) else {
+        let Some(g) = net.hub.player(conn) else {
             return (None, keep_inventory);
         };
         let mut event = ev::PlayerDeathEvent {
@@ -565,7 +560,7 @@ impl crate::game::Sim<'_> {
             death_message: message.clone(),
             keep_inventory,
         };
-        self.plugin_fire(Some(host), &mut event);
+        self.plugin_fire(Some(net), &mut event);
         let changed = (event.death_message != message).then_some(event.death_message);
         (changed, event.keep_inventory)
     }
@@ -576,7 +571,7 @@ impl crate::game::Sim<'_> {
     /// cancelled it (the caller then sends their client the truth back).
     pub(super) fn plugin_interact(
         &mut self,
-        host: &mut LanHost,
+        net: &mut Network,
         conn: u32,
         action: ev::InteractAction,
         hand: ev::Hand,
@@ -585,7 +580,7 @@ impl crate::game::Sim<'_> {
         if !self.plugins_listen::<ev::PlayerInteractEvent>() {
             return true;
         }
-        let Some(g) = host.hub.guest(conn) else {
+        let Some(g) = net.hub.player(conn) else {
             return true;
         };
         let held = match hand {
@@ -606,11 +601,11 @@ impl crate::game::Sim<'_> {
             }),
             cancelled: false,
         };
-        self.plugin_fire(Some(host), &mut event);
+        self.plugin_fire(Some(net), &mut event);
         if event.cancelled
-            && let Some(i) = host.hub.guests.iter().position(|g| g.conn == conn)
+            && let Some(i) = net.hub.players.iter().position(|g| g.conn == conn)
         {
-            host.hub.send_inventory(i);
+            net.hub.send_inventory(i);
         }
         !event.cancelled
     }
@@ -631,7 +626,7 @@ impl crate::game::Sim<'_> {
         };
         self.plugin_fire(None, &mut event);
         if event.cancelled
-            && let Some(conn) = self.lan_acting
+            && let Some(conn) = self.net_acting
         {
             self.plugin_resync.push(conn);
         }
@@ -658,7 +653,7 @@ impl crate::game::Sim<'_> {
     /// `world`. The location a plugin chose instead, if it changed it.
     pub(super) fn plugin_respawn(
         &mut self,
-        host: &mut LanHost,
+        net: &mut Network,
         i: usize,
         world: &str,
         at: [f64; 3],
@@ -667,7 +662,7 @@ impl crate::game::Sim<'_> {
         if !self.plugins_listen::<ev::PlayerRespawnEvent>() {
             return None;
         }
-        let g = &host.hub.guests[i];
+        let g = &net.hub.players[i];
         let start = Location {
             world: world.to_owned(),
             x: at[0],
@@ -681,19 +676,19 @@ impl crate::game::Sim<'_> {
             respawn_location: start.clone(),
             own_spawn,
         };
-        self.plugin_fire(Some(host), &mut event);
+        self.plugin_fire(Some(net), &mut event);
         (event.respawn_location != start).then_some(event.respawn_location)
     }
     /// `PlayerMoveEvent` once a tick for each player who moved or turned
     /// since the last: a cancelled move puts them back, a changed `to` moves
     /// them there.
-    pub(super) fn plugin_moves(&mut self, host: &mut LanHost) {
+    pub(super) fn plugin_moves(&mut self, net: &mut Network) {
         if !self.plugins_listen::<ev::PlayerMoveEvent>() {
             self.plugin_last_moves.clear();
             return;
         }
-        for i in 0..host.hub.guests.len() {
-            let g = &host.hub.guests[i];
+        for i in 0..net.hub.players.len() {
+            let g = &net.hub.players[i];
             if !g.placed || g.dead {
                 continue;
             }
@@ -714,12 +709,12 @@ impl crate::game::Sim<'_> {
                 continue;
             }
             let mut event = ev::PlayerMoveEvent {
-                player: crate::game::Sim::plugin_player(&host.hub.guests[i]),
+                player: crate::game::Sim::plugin_player(&net.hub.players[i]),
                 from: from.clone(),
                 to: now.clone(),
                 cancelled: false,
             };
-            self.plugin_fire(Some(host), &mut event);
+            self.plugin_fire(Some(net), &mut event);
             let place = if event.cancelled {
                 Some(from)
             } else {
@@ -729,11 +724,11 @@ impl crate::game::Sim<'_> {
                 continue;
             };
             if place.world == now.world {
-                let g = &mut host.hub.guests[i];
+                let g = &mut net.hub.players[i];
                 (g.yaw, g.pitch) = (place.yaw, place.pitch);
-                host.hub.teleport(i, Some([place.x, place.y, place.z]));
+                net.hub.teleport(i, Some([place.x, place.y, place.z]));
             } else {
-                let uuid = host.hub.guests[i].uuid;
+                let uuid = net.hub.players[i].uuid;
                 self.plugin_actions.push(Action::Teleport {
                     player: uuid,
                     to: place.clone(),
@@ -746,7 +741,7 @@ impl crate::game::Sim<'_> {
 
 /// Legacy-coded text (`§a...`) as a chat component.
 fn legacy_nbt(text: &str) -> horizon_world::nbt::Tag {
-    crate::hc::lan::data::component_nbt(&Text::legacy(text).component())
+    crate::hc::server_net::data::component_nbt(&Text::legacy(text).component())
 }
 fn system_chat(text: &str) -> C {
     C::SystemChat(play::SystemChat {
@@ -757,7 +752,7 @@ fn system_chat(text: &str) -> C {
 
 impl crate::game::Sim<'_> {
     /// A player as plugins see them.
-    pub(crate) fn plugin_player(g: &Guest) -> PlayerRef {
+    pub(crate) fn plugin_player(g: &ServerPlayer) -> PlayerRef {
         PlayerRef {
             name: g.name.clone(),
             uuid: g.uuid,

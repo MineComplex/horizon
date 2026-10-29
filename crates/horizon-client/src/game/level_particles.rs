@@ -307,7 +307,7 @@ impl crate::game::Sim<'_> {
             }
             [0, 1, 2].map(|k| eye[k] + d[k] / length * 2.0)
         });
-        // Each guest plays it from the global packet.
+        // Each player plays it from the global packet.
         self.sounds.play_unshared(sound, at, volume, 1.0);
     }
     /// `ClientLevel.addBreakingBlockEffects`: the block's hit sound (only for
@@ -324,7 +324,7 @@ impl crate::game::Sim<'_> {
         }
         if play_sound {
             let sounds = self.res.facts().get(state).sounds.clone();
-            // Each guest plays it from the level event itself.
+            // Each player plays it from the level event itself.
             self.sounds.play_unshared(
                 &sounds.hit,
                 Some(pos.map(|v| f64::from(v) + 0.5)),

@@ -2,6 +2,7 @@
 //!
 //! - a welcome: its own join message, and a line to the player;
 //! - bedrock nobody breaks, and placed TNT taken back unless the player is an operator;
+//! - diamonds nobody throws away, and a line when a player's game mode changes;
 //! - chat: `!` at the start shouts (gold, to everyone), `/mute` silences a player;
 //! - `/hello [name]`, `/heal` (operators: full food, a golden apple), `/mute <player>`;
 //! - every 5 minutes, a tip to everyone.
@@ -9,7 +10,7 @@ use horizon_server_api::{
     ItemStack, Plugin, PluginDescription, Plugins,
     event::{
         BlockBreakEvent, BlockPlaceEvent, EventPriority, PlayerChatEvent, PlayerDeathEvent,
-        PlayerJoinEvent,
+        PlayerDropItemEvent, PlayerGameModeChangeEvent, PlayerJoinEvent,
     },
 };
 use std::{
@@ -61,6 +62,23 @@ impl Plugin for Example {
                     e.cancelled = true;
                     server.send_message(&e.player, "§cOnly operators place TNT.");
                 }
+            },
+        );
+        plugins.listen(
+            EventPriority::Normal,
+            false,
+            |e: &mut PlayerDropItemEvent, server| {
+                if e.item.item == "minecraft:diamond" {
+                    e.cancelled = true;
+                    server.send_message(&e.player, "§bDiamonds stay in your hand.");
+                }
+            },
+        );
+        plugins.listen(
+            EventPriority::Monitor,
+            true,
+            |e: &mut PlayerGameModeChangeEvent, server| {
+                server.send_message(&e.player, &format!("§7Game mode {}.", e.new_game_mode));
             },
         );
         let muted = self.muted.clone();

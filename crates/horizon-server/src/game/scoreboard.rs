@@ -123,7 +123,7 @@ impl crate::game::Sim<'_> {
     pub(super) fn holder_name(&mut self, t: Target) -> Option<String> {
         match t {
             Target::Player => Some(self.acting_player_name().to_owned()),
-            Target::Guest(conn) => self.command_guest(conn).map(|g| g.name.clone()),
+            Target::ServerPlayer(conn) => self.command_player(conn).map(|g| g.name.clone()),
             Target::Mob(id)
             | Target::Item(id)
             | Target::Stand(id)
@@ -182,7 +182,7 @@ impl crate::game::Sim<'_> {
             | Target::Cart(id)
             | Target::Other(id) => self.persist.raw.get(&id),
             Target::Player => self.level.player_extra.as_ref(),
-            Target::Guest(_)
+            Target::ServerPlayer(_)
             | Target::Orb(_)
             | Target::Projectile(_)
             | Target::Crystal(_)
@@ -328,15 +328,15 @@ impl crate::game::Sim<'_> {
     }
     /// `ServerScoreboard`'s packets: each placed player's client is sent
     /// what changed on the board since it was last sent it (all of it on
-    /// joining), lan/scoreboard.rs.
-    pub(super) fn lan_sync_scoreboard(&mut self, host: &mut super::lan::LanHost) {
-        if host.hub.guests.iter().all(|g| !g.placed) {
+    /// joining), server_net/scoreboard.rs.
+    pub(super) fn net_sync_scoreboard(&mut self, net: &mut super::server_net::Network) {
+        if net.hub.players.iter().all(|g| !g.placed) {
             return;
         }
         self.load_scoreboard();
-        host.hub.teams.clone_from(&self.score.board.teams);
-        let view = crate::hc::lan::scoreboard::View::of(&self.score.board);
-        for g in host.hub.guests.iter_mut().filter(|g| g.placed) {
+        net.hub.teams.clone_from(&self.score.board.teams);
+        let view = crate::hc::server_net::scoreboard::View::of(&self.score.board);
+        for g in net.hub.players.iter_mut().filter(|g| g.placed) {
             if g.scoreboard != view {
                 g.send_all(&g.scoreboard.changes(&view));
                 g.scoreboard = view.clone();

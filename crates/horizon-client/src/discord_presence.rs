@@ -266,7 +266,7 @@ fn activity(status: Status, since: Option<u64>) -> Option<Value> {
         a["timestamps"] = json!({"start": start});
     }
     if let Some(players) = party {
-        let max = crate::lan::MAX_PLAYERS;
+        let max = crate::server_net::MAX_PLAYERS;
         a["party"] = json!({
             "id": format!("horizon-{}", std::process::id()),
             "size": [players.clamp(1, max), max],

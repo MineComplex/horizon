@@ -3,7 +3,7 @@
 //! client of a server only gets synched data and entity events, and runs the
 //! animation steps vanilla runs on the client (`Entity.onSyncedDataUpdated`,
 //! `handleEntityEvent` and the per tick animation states). The server's half
-//! is `game/lan.rs` (`mob_meta`, with `pose_id` here for index 6) and
+//! is `game/server_net.rs` (`mob_meta`, with `pose_id` here for index 6) and
 //! `MobEvent::EntityEvent`; the client's half is `game/remote_mob_data.rs`,
 //! `game/remote.rs` (`C::EntityEvent`) and `client_tick` here.
 //!

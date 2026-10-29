@@ -56,7 +56,7 @@ POSITIONAL = {
     'give': ['item', 'count'], 'options_get': ['keys'], 'options_set': ['key', 'value'],
     'wait_for': ['condition', 'value'], 'select': ['slot'],
     'summon': ['kind', 'x', 'y', 'z'], 'interact_entity': ['id'], 'effect': ['id', 'seconds', 'amplifier'],
-    'xp': ['levels'], 'options': ['page'], 'lan': ['action'],
+    'xp': ['levels'], 'options': ['page'], 'network': ['action'],
 }
 # Booleans the game takes as bare words.
 BARE = {'click_slot': ['right', 'shift'], 'click': ['right', 'middle', 'shift'], 'summon': ['baby']}
@@ -549,12 +549,12 @@ def manage_scenario(d, out):
     effects = json.dumps(d('effects'))
     assert 'speed' in effects, effects
     d('xp', levels=5)
-    assert d('lan', action='status') is not None
+    assert d('network', action='status') is not None
     d('options', page='horizon')
     assert 'graphics' in widgets(d), widgets(d).keys()
     d('close')
     assert d('servers')['servers'] == []
-    return {'lan': d('lan', action='status')['port']}
+    return {'network': d('network', action='status')['port']}
 
 
 # The world each scenario plays in, on the horizon-server `launch --world` starts (the client has none).

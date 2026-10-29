@@ -11,14 +11,6 @@ impl crate::game::Sim<'_> {
     pub(super) fn may_build(&self) -> bool {
         matches!(self.mode, GameMode::Survival | GameMode::Creative)
     }
-    pub(super) fn mode_id(&self) -> i32 {
-        match self.mode {
-            GameMode::Survival => 0,
-            GameMode::Creative => 1,
-            GameMode::Adventure => 2,
-            GameMode::Spectator => 3,
-        }
-    }
     pub(super) fn set_mode_id(&mut self, id: i32) {
         let mode = match id {
             1 => GameMode::Creative,

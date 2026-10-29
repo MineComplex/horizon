@@ -4,7 +4,7 @@
 //! shading, the dithered edge), the player marker, `data/minecraft/maps/<id>.dat` and
 //! `maps/last_id.dat`, the 128x128 texture in an atlas slot, the two-handed
 //! first-person view and maps in item frames.
-use super::lan::LanHost;
+use super::server_net::Network;
 use crate::hc::{blocks::Fluid, items::ItemStack};
 use horizon_world::nbt::Tag;
 use std::collections::HashMap;
@@ -19,7 +19,7 @@ pub(super) struct Decoration {
     pub rot: u8,
     pub holder: Option<u32>,
 }
-/// The host among a map's holders (the guests are their connections).
+/// The host among a map's holders (the players are their connections).
 const HOST: u32 = u32::MAX;
 /// A player carrying a map, or seeing it framed
 /// (`MapItemSavedData.HoldingPlayer`): the column sweep's step, and what
@@ -771,8 +771,8 @@ impl crate::game::Sim<'_> {
             .collect();
         let (yaw, dim) = (self.yaw, self.dimension_id());
         let (nether, game_time) = (self.dim == super::Dim::Nether, self.world.game_time);
-        // The guest whose turn it is, else the host.
-        let me = self.lan_acting.unwrap_or(HOST);
+        // The player whose turn it is, else the host.
+        let me = self.net_acting.unwrap_or(HOST);
         for (id, targets) in carried {
             let Some(m) = self.map(id) else { continue };
             m.holder(me).carried = game_time;
@@ -850,12 +850,12 @@ impl crate::game::Sim<'_> {
             self.update_map(id);
         }
     }
-    /// `ServerPlayer.synchronizeSpecialItemUpdates` for each map the guest
+    /// `ServerPlayer.synchronizeSpecialItemUpdates` for each map the player
     /// carries, and every 10 ticks (`ServerEntity.sendChanges`) for each map
     /// framed in the level: a `ClientboundMapItemDataPacket` when something
-    /// changed since the guest's last one.
-    pub(super) fn lan_map_updates(&mut self, host: &LanHost, conn: u32) {
-        let Some(g) = host.hub.guest(conn) else {
+    /// changed since the player's last one.
+    pub(super) fn net_map_updates(&mut self, net: &Network, conn: u32) {
+        let Some(g) = net.hub.player(conn) else {
             return;
         };
         let mut ids: Vec<i32> = g
@@ -866,7 +866,7 @@ impl crate::game::Sim<'_> {
             .filter_map(map_id)
             .collect();
         let now = self.world.game_time;
-        if now % 10 == 0 && host.hub.here(g) {
+        if now % 10 == 0 && net.hub.here(g) {
             let framed: Vec<i32> = self
                 .item_frames
                 .iter()
@@ -882,7 +882,7 @@ impl crate::game::Sim<'_> {
         ids.sort_unstable();
         ids.dedup();
         let kind = |name: &str| {
-            host.hub.registry_id(
+            net.hub.registry_id(
                 "minecraft:map_decoration_type",
                 &format!("minecraft:{name}"),
             )
@@ -921,7 +921,7 @@ impl crate::game::Sim<'_> {
         if nether {
             radius /= 2;
         }
-        let h = m.holder(self.lan_acting.unwrap_or(HOST));
+        let h = m.holder(self.net_acting.unwrap_or(HOST));
         h.step += 1;
         let step = h.step;
         let mut changes: Vec<(i32, i32, u8)> = Vec::new();

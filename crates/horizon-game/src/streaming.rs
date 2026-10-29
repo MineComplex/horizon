@@ -2384,7 +2384,7 @@ mod tests {
         }
     }
 
-    /// A server player's area (`lan_update_streaming`: the server view
+    /// A server player's area (`net_update_streaming`: the server view
     /// distance + 1) finishes vanilla's FULL square: PLAYER_LOADING tickets at
     /// level 31 out to the view distance, FULL (33) two chunks past it. Every
     /// chunk the player tracks has its 3x3 neighbourhood finished, so it can

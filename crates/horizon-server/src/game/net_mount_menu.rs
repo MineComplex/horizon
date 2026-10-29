@@ -6,15 +6,15 @@
 //! (`Kind::Mount`) with the mount's saddle, body item and chest copied in and
 //! written back, and the slots go to the client after each change, as
 //! `broadcastChanges` does.
-use super::{lan::LanHost, lan_crafting::input};
+use super::{net_crafting::input, server_net::Network};
 use crate::hc::{
     items::ItemStack,
     menu::{Kind, Menu},
 };
 use horizon_protocol::packets::play::{self, Clientbound as C};
 
-/// A guest's open mount menu.
-pub(super) struct GuestMount {
+/// A player's open mount menu.
+pub(super) struct PlayerMount {
     window: i32,
     mob: u32,
     columns: usize,
@@ -26,26 +26,26 @@ pub(super) struct GuestMount {
 impl crate::game::Sim<'_> {
     /// `ServerPlayer.openHorseInventory` for mount `mob`: the open menu
     /// closes, the client gets the mount screen and the menu's slots.
-    pub(super) fn lan_open_mount(&mut self, host: &mut LanHost, conn: u32, mob: u32) {
+    pub(super) fn net_open_mount(&mut self, net: &mut Network, conn: u32, mob: u32) {
         let Some(index) = self.mobs.iter().position(|m| m.id == mob) else {
             return;
         };
         let columns = super::mount_menu::mount_columns(&self.mobs[index]);
-        self.lan_mount_closed(host, conn, None);
-        self.lan_station_closed(host, conn, None);
-        self.lan_crafting_closed(host, conn, None);
-        self.guest_container_closed(host, conn);
-        let Some(window) = host.hub.open_mount_window(conn, columns as i32, mob as i32) else {
+        self.net_mount_closed(net, conn, None);
+        self.net_station_closed(net, conn, None);
+        self.net_crafting_closed(net, conn, None);
+        self.player_container_closed(net, conn);
+        let Some(window) = net.hub.open_mount_window(conn, columns as i32, mob as i32) else {
             return;
         };
-        host.play.entry(conn).or_default().mount_window = Some(GuestMount {
+        net.play.entry(conn).or_default().mount_window = Some(PlayerMount {
             window,
             mob,
             columns,
             state: 0,
             sent: None,
         });
-        self.lan_send_mount(host, conn);
+        self.net_send_mount(net, conn);
     }
     /// `HorseInventoryMenu` over mount `index`, with the player's inventory
     /// loaded by the caller.
@@ -63,15 +63,15 @@ impl crate::game::Sim<'_> {
     }
     /// The menu's slots (the mount's, then the inventory and the hotbar)
     /// and the carried stack, sent when they changed since the last time.
-    fn lan_send_mount(&mut self, host: &mut LanHost, conn: u32) {
-        let Some(gm) = host.play.get(&conn).and_then(|p| p.mount_window.as_ref()) else {
+    fn net_send_mount(&mut self, net: &mut Network, conn: u32) {
+        let Some(gm) = net.play.get(&conn).and_then(|p| p.mount_window.as_ref()) else {
             return;
         };
         let (mob, columns) = (gm.mob, gm.columns);
         let Some(index) = self.mobs.iter().position(|m| m.id == mob) else {
             return;
         };
-        let Some(g) = host.hub.guests.iter().find(|g| g.conn == conn) else {
+        let Some(g) = net.hub.players.iter().find(|g| g.conn == conn) else {
             return;
         };
         let (saddle, body, items) = self.mount_contents(index);
@@ -80,7 +80,7 @@ impl crate::game::Sim<'_> {
         slots.extend((9..36).chain(0..9).map(|i| g.inventory[i].clone()));
         let carried = g.carried.clone();
         let now = Some((slots, carried));
-        let Some(gm) = host
+        let Some(gm) = net
             .play
             .get_mut(&conn)
             .and_then(|p| p.mount_window.as_mut())
@@ -97,19 +97,19 @@ impl crate::game::Sim<'_> {
         let content = C::ContainerSetContent(play::ContainerSetContent {
             container: window,
             state,
-            items: slots.iter().map(|s| host.hub.stack(s)).collect(),
-            carried: host.hub.stack(&carried),
+            items: slots.iter().map(|s| net.hub.stack(s)).collect(),
+            carried: net.hub.stack(&carried),
         });
-        host.hub.send_to(conn, &content);
+        net.hub.send_to(conn, &content);
     }
-    /// A click on the guest's mount window; false for other windows.
-    pub(super) fn lan_mount_click(
+    /// A click on the player's mount window; false for other windows.
+    pub(super) fn net_mount_click(
         &mut self,
-        host: &mut LanHost,
+        net: &mut Network,
         conn: u32,
         p: &play::ContainerClick,
     ) -> bool {
-        let Some((mob, columns)) = host
+        let Some((mob, columns)) = net
             .play
             .get(&conn)
             .and_then(|pl| pl.mount_window.as_ref())
@@ -118,43 +118,43 @@ impl crate::game::Sim<'_> {
         else {
             return false;
         };
-        if let Some(gi) = host.hub.guests.iter().position(|g| g.conn == conn)
-            && !host.hub.guests[gi].spectator()
+        if let Some(gi) = net.hub.players.iter().position(|g| g.conn == conn)
+            && !net.hub.players[gi].spectator()
             && let Some(index) = self.mobs.iter().position(|m| m.id == mob)
         {
             let mut menu = self.mount_engine_menu(index, columns);
-            self.guest_menu_op(host, gi, &mut menu, |menu, env| {
+            self.player_menu_op(net, gi, &mut menu, |menu, env| {
                 let _ = menu.click(env, i32::from(p.slot), i32::from(p.button), input(p.input));
             });
-            self.lan_mount_store(index, columns, &menu);
+            self.net_mount_store(index, columns, &menu);
         }
         // The client is told what the server has, whatever it predicted.
-        if let Some(gm) = host
+        if let Some(gm) = net
             .play
             .get_mut(&conn)
             .and_then(|pl| pl.mount_window.as_mut())
         {
             gm.sent = None;
         }
-        self.lan_send_mount(host, conn);
+        self.net_send_mount(net, conn);
         true
     }
-    fn lan_mount_store(&mut self, index: usize, columns: usize, menu: &Menu) {
+    fn net_mount_store(&mut self, index: usize, columns: usize, menu: &Menu) {
         let (_, body, _) = self.mount_contents(index);
         let body = body.map(|_| menu.slot(1).cloned());
-        let items = crate::game::Sim::lan_store_slots(menu, columns);
+        let items = crate::game::Sim::net_store_slots(menu, columns);
         self.mount_store(index, menu.slot(0).cloned(), body, items);
     }
-    /// `AbstractContainerMenu.removed` of the guest's mount menu (`window`;
+    /// `AbstractContainerMenu.removed` of the player's mount menu (`window`;
     /// None closes it whichever it is): the carried stack goes back to the
     /// inventory. False when no such window is open.
-    pub(super) fn lan_mount_closed(
+    pub(super) fn net_mount_closed(
         &mut self,
-        host: &mut LanHost,
+        net: &mut Network,
         conn: u32,
         window: Option<i32>,
     ) -> bool {
-        let closed = host
+        let closed = net
             .play
             .get_mut(&conn)
             .and_then(|p| {
@@ -163,10 +163,10 @@ impl crate::game::Sim<'_> {
             })
             .is_some();
         if closed
-            && let Some(gi) = host.hub.guests.iter().position(|g| g.conn == conn)
-            && let Some(carried) = host.hub.guests[gi].carried.take()
+            && let Some(gi) = net.hub.players.iter().position(|g| g.conn == conn)
+            && let Some(carried) = net.hub.players[gi].carried.take()
         {
-            self.lan_place_back(host, gi, vec![carried]);
+            self.net_place_back(net, gi, vec![carried]);
         }
         closed
     }
@@ -174,14 +174,14 @@ impl crate::game::Sim<'_> {
     /// (`AbstractMountInventoryMenu.stillValid`: alive, within the entity
     /// interaction range plus 4 of the eyes), and the others follow the
     /// mount's and the inventory's slots.
-    pub(super) fn tick_lan_mount_menus(&mut self, host: &mut LanHost) {
-        let open: Vec<(u32, u32, i32)> = host
+    pub(super) fn tick_net_mount_menus(&mut self, net: &mut Network) {
+        let open: Vec<(u32, u32, i32)> = net
             .play
             .iter()
             .filter_map(|(c, p)| p.mount_window.as_ref().map(|m| (*c, m.mob, m.window)))
             .collect();
         for (conn, mob, window) in open {
-            let Some(g) = host.hub.guests.iter().find(|g| g.conn == conn) else {
+            let Some(g) = net.hub.players.iter().find(|g| g.conn == conn) else {
                 continue;
             };
             let eye = [g.position[0], g.position[1] + g.eye_height(), g.position[2]];
@@ -197,10 +197,10 @@ impl crate::game::Sim<'_> {
                 m.alive() && d < 7.0 * 7.0
             });
             if valid {
-                self.lan_send_mount(host, conn);
+                self.net_send_mount(net, conn);
             } else {
-                self.lan_mount_closed(host, conn, Some(window));
-                host.hub.send_to(
+                self.net_mount_closed(net, conn, Some(window));
+                net.hub.send_to(
                     conn,
                     &C::ContainerClose(play::ContainerClose { container: window }),
                 );
@@ -211,7 +211,7 @@ impl crate::game::Sim<'_> {
 
 impl crate::game::Sim<'_> {
     /// The engine menu's mount slots back on mount `index`.
-    pub(crate) fn lan_store_slots(menu: &Menu, columns: usize) -> Vec<Option<ItemStack>> {
+    pub(crate) fn net_store_slots(menu: &Menu, columns: usize) -> Vec<Option<ItemStack>> {
         (0..columns * 3)
             .map(|k| menu.slot(2 + k).cloned())
             .collect()

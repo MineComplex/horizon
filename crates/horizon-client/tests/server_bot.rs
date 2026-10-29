@@ -1,15 +1,15 @@
-//! A protocol bot joins a hosted world the way a vanilla client does:
+//! A protocol bot joins the server the way a vanilla client does:
 //! handshake, status, offline login, configuration (registries and tags),
 //! then the play state (login, chunks with light, player list, entities,
 //! block changes). Needs the prepared resources; skipped without them.
 use horizon_client::{
     chunk::{Chunk, MIN_Y},
-    lan::{
-        Lan,
+    server_net::{
+        Listener,
         chunks::ChunkEncoder,
         data::SyncData,
         entity::EntityState,
-        hub::{HostEvent, HostState, Hub, HubConfig, TickCtx},
+        hub::{HostEvent, Hub, HubConfig, TickCtx},
     },
     world::World,
 };
@@ -169,28 +169,8 @@ struct Server {
 }
 impl Server {
     fn tick(&mut self, entities: &[EntityState]) {
-        let host = HostState {
-            uuid: 42,
-            name: "Host".into(),
-            entity_id: 1,
-            position: [0.5, -59.0, 0.5],
-            yaw: 0.0,
-            pitch: 0.0,
-            head_yaw: 0.0,
-            on_ground: true,
-            game_mode: 1,
-            sneaking: false,
-            sprinting: false,
-            equipment: Default::default(),
-            health: 20.0,
-            attributes: Vec::new(),
-            bed: None,
-            living_flags: 0,
-            body: Default::default(),
-        };
         let mut ctx = TickCtx {
             world: &mut self.world,
-            host: Some(&host),
             entities,
             next_entity: &mut self.next_entity,
             spawn: [8.5, f64::from(MIN_Y + 5), 8.5],
@@ -225,7 +205,7 @@ impl Server {
 
 fn server(resources: &Path) -> Server {
     let sync = Arc::new(SyncData::load(resources).expect("sync data"));
-    let lan = Lan::start(sync.clone(), 0, "Test - World".into(), 8).unwrap();
+    let network = Listener::start(sync.clone(), 0, "Test - World".into(), 8).unwrap();
     let biomes: Vec<String> = sync
         .dynamic
         .registries
@@ -239,18 +219,17 @@ fn server(resources: &Path) -> Server {
     ];
     let encoder = ChunkEncoder::new(states, &sync.builtin, &biomes, &biomes);
     let hub = Hub::new(
-        lan,
+        network,
         sync,
         encoder,
         HubConfig {
             default_game_mode: 1,
-            guest_commands: true,
+            player_commands: true,
             force_game_mode: false,
             hardcore: false,
             view_distance: 3,
             simulation_distance: 3,
             dedicated: false,
-            integrated: false,
             dimension: "minecraft:overworld".into(),
             seed: 1234,
             max_players: 8,
@@ -285,28 +264,28 @@ fn recipe_settings_packets_update_only_the_players_book_and_survive_save() {
         return;
     };
     let mut s = server(&resources);
-    let port = s.hub.lan.port;
+    let port = s.hub.network.port;
     let _bot = run(&mut s, move || connect(port, "RecipeSettings", true));
     let deadline = Instant::now() + Duration::from_secs(5);
-    while s.hub.guests.is_empty() {
+    while s.hub.players.is_empty() {
         s.tick(&[]);
-        assert!(Instant::now() < deadline, "guest did not join");
+        assert!(Instant::now() < deadline, "player did not join");
         thread::yield_now();
     }
     for book in 0..4 {
         for flags in 0..4 {
             let open = flags & 1 != 0;
             let filtering = flags & 2 != 0;
-            let before = s.hub.guests[0].recipe_book.clone();
+            let before = s.hub.players[0].recipe_book.clone();
             // Vanilla's wire payload: RecipeBookType VarInt, open, filtering.
             let packet = S::decode(
                 horizon_protocol::ids::play::serverbound::RECIPE_BOOK_CHANGE_SETTINGS,
                 &[book, u8::from(open), u8::from(filtering)],
             )
             .unwrap();
-            s.hub.guests[0].inbox.push_back(packet);
+            s.hub.players[0].inbox.push_back(packet);
             s.tick(&[]);
-            let settings = &s.hub.guests[0].recipe_book;
+            let settings = &s.hub.players[0].recipe_book;
             for i in 0..4 {
                 assert_eq!(
                     settings.open[i],
@@ -326,7 +305,7 @@ fn recipe_settings_packets_update_only_the_players_book_and_survive_save() {
                 );
             }
             let mut saved = horizon_client::save::Level::default();
-            horizon_client::lan::playerdata::store(&s.hub.guests[0], &mut saved);
+            horizon_client::server_net::playerdata::store(&s.hub.players[0], &mut saved);
             let mut reopened = horizon_client::save::Level::default();
             reopened.read_player(&saved.player_tag());
             assert_eq!(reopened.recipe_book.open, settings.open);
@@ -354,17 +333,17 @@ fn sprint_commands_survive_keyboard_input_changes() {
         return;
     };
     let mut s = server(&resources);
-    let port = s.hub.lan.port;
+    let port = s.hub.network.port;
     let _bot = run(&mut s, move || connect(port, "Sprinter", true));
     let deadline = Instant::now() + Duration::from_secs(5);
-    while s.hub.guests.is_empty() {
+    while s.hub.players.is_empty() {
         s.tick(&[]);
-        assert!(Instant::now() < deadline, "guest did not join");
+        assert!(Instant::now() < deadline, "player did not join");
         thread::yield_now();
     }
-    let id = s.hub.guests[0].entity_id;
-    s.hub.guests[0].loaded = true;
-    s.hub.guests[0]
+    let id = s.hub.players[0].entity_id;
+    s.hub.players[0].loaded = true;
+    s.hub.players[0]
         .inbox
         .push_back(S::PlayerCommand(play::PlayerCommand {
             id,
@@ -372,15 +351,15 @@ fn sprint_commands_survive_keyboard_input_changes() {
             data: 0,
         }));
     s.tick(&[]);
-    assert!(s.hub.guests[0].sprinting);
+    assert!(s.hub.players[0].sprinting);
     // LocalPlayer keeps sprinting after Ctrl is released while W remains
     // down. Double-tap sprint also sends forward without the sprint key.
     for flags in [65, 1, 0, 33] {
-        s.hub.guests[0]
+        s.hub.players[0]
             .inbox
             .push_back(S::PlayerInput(play::PlayerInput { flags }));
         s.tick(&[]);
-        let g = &s.hub.guests[0];
+        let g = &s.hub.players[0];
         assert!(
             g.sprinting,
             "keyboard input {flags} cleared the sprint flag"
@@ -388,7 +367,7 @@ fn sprint_commands_survive_keyboard_input_changes() {
         assert_eq!(g.input, flags);
         assert_eq!(g.sneaking, flags & 32 != 0);
     }
-    s.hub.guests[0]
+    s.hub.players[0]
         .inbox
         .push_back(S::PlayerCommand(play::PlayerCommand {
             id,
@@ -396,13 +375,13 @@ fn sprint_commands_survive_keyboard_input_changes() {
             data: 0,
         }));
     s.tick(&[]);
-    assert!(!s.hub.guests[0].sprinting);
-    s.hub.guests[0]
+    assert!(!s.hub.players[0].sprinting);
+    s.hub.players[0]
         .inbox
         .push_back(S::PlayerInput(play::PlayerInput { flags: 65 }));
     s.tick(&[]);
     assert!(
-        !s.hub.guests[0].sprinting,
+        !s.hub.players[0].sprinting,
         "keyboard input started a sprint"
     );
 }
@@ -413,7 +392,7 @@ fn status_and_join() {
         return;
     };
     let mut s = server(&resources);
-    let port = s.hub.lan.port;
+    let port = s.hub.network.port;
     // Server list ping.
     let json = run(&mut s, move || {
         let mut c = Connection::connect("127.0.0.1", port, Duration::from_secs(5))
@@ -479,7 +458,7 @@ fn status_and_join() {
                 // forceGameTimeSynchronization sends no clocks and may come first.
                 C::SetTime(t) if !t.clocks.is_empty() => time = true,
                 C::PlayerInfoUpdate(u) => {
-                    info |= u.entries.iter().any(|e| e.name.as_deref() == Some("Host"));
+                    info |= u.entries.iter().any(|e| e.name.as_deref() == Some("Steve"));
                 }
                 C::Commands(_) => commands = true,
                 C::LevelChunkWithLight(l) => {
@@ -542,12 +521,12 @@ fn status_and_join() {
 }
 
 #[test]
-fn guests_see_each_other_and_the_world_entities() {
+fn players_see_each_other_and_the_world_entities() {
     let Some(resources) = resources() else {
         return;
     };
     let mut s = server(&resources);
-    let port = s.hub.lan.port;
+    let port = s.hub.network.port;
     let zombie = EntityState {
         id: 500,
         uuid: 9,

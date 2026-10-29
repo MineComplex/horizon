@@ -1140,7 +1140,7 @@ fn push_entities(m: &mut Mob, w: &MobWorld, events: &mut Vec<MobEvent>) {
         za *= pow;
         xa *= f64::from(0.05_f32);
         za *= f64::from(0.05_f32);
-        // A guest's server-side push never reaches its client (ServerPlayer
+        // A player's server-side push never reaches its client (ServerPlayer
         // motion is synced only when hurt): its client pushes it itself.
         if who != Who::Player || w.player.as_ref().is_none_or(|p| !p.remote) {
             events.push(MobEvent::Push {

@@ -230,7 +230,7 @@ pub fn iron_hurt_target(m: &mut Mob, who: Who, cx: &mut Cx) {
         1.0,
     ));
 }
-/// `Level.broadcastEntityEvent` for an iron golem (guests run `client_event`).
+/// `Level.broadcastEntityEvent` for an iron golem (players run `client_event`).
 fn entity_event(m: &Mob, event: i8, cx: &mut Cx) {
     cx.events.push(MobEvent::EntityEvent {
         mob: m.id,

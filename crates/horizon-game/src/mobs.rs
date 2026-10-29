@@ -785,7 +785,7 @@ pub struct Extra {
     /// the spin the rope's torque gives it.
     pub leash: Option<leash::Holder>,
     pub leash_pending: Option<leash::Pending>,
-    /// The UUID of the player behind `Holder::Player` (host or guest).
+    /// The UUID of the player behind `Holder::Player` (host or player).
     pub leash_player: Option<[i32; 4]>,
     pub leash_spin: f64,
     /// More species scratch values.
@@ -970,7 +970,7 @@ pub enum MobEvent {
         mob: u32,
         at: [f64; 3],
     },
-    /// `Level.broadcastEntityEvent` for a mob: guests run its
+    /// `Level.broadcastEntityEvent` for a mob: players run its
     /// `handleEntityEvent`.
     EntityEvent {
         mob: u32,
@@ -1774,7 +1774,7 @@ pub struct PlayerView {
     /// The mobs on the player's team (`isAlliedTo`): combat targeting
     /// leaves the player alone.
     pub allies: std::sync::Arc<std::collections::HashSet<u32>>,
-    /// A LAN guest: its own client moves it, and touching mobs push it there
+    /// A player: its own client moves it, and touching mobs push it there
     /// (`EntitySelector.pushableBy` on the client).
     pub remote: bool,
     /// `isSleeping` and `getSleepTimer` (100 once slept through, then the

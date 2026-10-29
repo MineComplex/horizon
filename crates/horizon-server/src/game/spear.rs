@@ -33,7 +33,7 @@ impl crate::game::Sim<'_> {
         };
         if self.using.is_none() {
             self.using = Some((self.held_slot(), 0));
-            let actor = self.lan_acting;
+            let actor = self.net_acting;
             self.stabbed.retain(|(who, _), _| *who != actor);
             if let Some(p) = &self.player {
                 let at = [p.position.x, p.position.y, p.position.z];
@@ -43,7 +43,7 @@ impl crate::game::Sim<'_> {
         true
     }
     /// `ServerPlayer.getKnownMovement` of the acting player: what they moved
-    /// in the last tick. A guest's comes with their moves. A rider's is its
+    /// in the last tick. A player's comes with their moves. A rider's is its
     /// mount's move (`getKnownSpeed`: the vehicle's, or the move the driver's
     /// client sent for it), so a charge on horseback carries the horse's speed.
     fn known_player_movement(&self) -> Vec3 {
@@ -53,7 +53,7 @@ impl crate::game::Sim<'_> {
         {
             return self.mob_speed(i).scale(1.0 / 20.0);
         }
-        if self.lan_acting.is_some() {
+        if self.net_acting.is_some() {
             return self.known_movement;
         }
         self.player
@@ -164,7 +164,7 @@ impl crate::game::Sim<'_> {
         let movement = self.known_player_movement();
         let attacker_speed = look.dot(movement.scale(20.0));
         let now = self.world.game_time;
-        let actor = self.lan_acting;
+        let actor = self.net_acting;
         let mut affected = false;
         for i in self.stab_targets(eye, look, movement) {
             let key = (actor, self.mobs[i].id);
@@ -191,7 +191,7 @@ impl crate::game::Sim<'_> {
         if affected {
             // Level.broadcastEntityEvent(player, 2), felt by the player too.
             if self.sounds.capture.is_some() {
-                self.lan_kinetic_hits.push(actor);
+                self.net_kinetic_hits.push(actor);
             }
             let who = actor.map_or(OWN, |conn| conn as i32);
             self.kinetic_hit_feedback(who, &kinetic, [feet.x, feet.y, feet.z]);
@@ -261,7 +261,7 @@ impl crate::game::Sim<'_> {
         );
         // attackVisualEffects: no attack sound, the enchantments' magic crit.
         if magic_boost > 0.0 {
-            let acting = self.lan_acting;
+            let acting = self.net_acting;
             self.critical_hit(acting, id as i32, feet, width, height, true);
         }
         self.combat.last_hurt_mob = Some((id, self.world.game_time));
@@ -291,7 +291,7 @@ impl crate::game::Sim<'_> {
             );
         }
         if hurt {
-            self.last_hurt_by_player.insert(id, self.lan_acting);
+            self.last_hurt_by_player.insert(id, self.net_acting);
         }
         if let Some(p) = self.player.as_mut()
             && !self.creative

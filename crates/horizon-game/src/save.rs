@@ -4497,9 +4497,10 @@ mod tests {
         };
         assert_eq!(*back, c);
         // The update tag a server's clients get: the items alone.
-        let update =
-            crate::lan::chunks::entity_tag(&crate::containers::BlockEntity::Campfire(Box::new(c)))
-                .expect("update tag");
+        let update = crate::server_net::chunks::entity_tag(
+            &crate::containers::BlockEntity::Campfire(Box::new(c)),
+        )
+        .expect("update tag");
         assert!(update.get("Items").is_some() && update.get("CookingTimes").is_none());
     }
     #[test]

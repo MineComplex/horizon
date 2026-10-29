@@ -244,12 +244,12 @@ impl crate::game::Sim<'_> {
     /// Every tick: the size change, the wall the player cannot pass and
     /// damage outside the border.
     /// `BorderChangeListener.DelegateBorderChangeListener`'s packets: what
-    /// changed on the border since the guests were last told of it.
-    pub(in crate::game) fn lan_sync_border(&mut self, host: &mut crate::game::lan::LanHost) {
-        let now = crate::hc::lan::border::Sent::of(&self.border);
-        if let Some(sent) = host.border_sent.replace(now) {
+    /// changed on the border since the players were last told of it.
+    pub(in crate::game) fn net_sync_border(&mut self, net: &mut crate::game::server_net::Network) {
+        let now = crate::hc::server_net::border::Sent::of(&self.border);
+        if let Some(sent) = net.border_sent.replace(now) {
             for packet in sent.changes(&self.border) {
-                host.hub.broadcast(&packet);
+                net.hub.broadcast(&packet);
             }
         }
     }
@@ -267,7 +267,7 @@ impl crate::game::Sim<'_> {
     }
     /// `LivingEntity.baseTick`: a player outside the border, further than
     /// its safe zone, is hurt by the blocks beyond it. The game's player, or
-    /// a guest's in their turn (`as_guest`).
+    /// a player's in their turn (`as_player`).
     pub(in crate::game) fn border_damage(&mut self) {
         let Some((px, pz, half)) = self.player.as_ref().map(|p| {
             (

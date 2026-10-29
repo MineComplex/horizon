@@ -737,7 +737,7 @@ mod tests {
             component::WRITTEN_BOOK_CONTENT,
             Component::WrittenBook(WrittenBook {
                 title: "Notes".into(),
-                author: "Guest".into(),
+                author: "Alex".into(),
                 generation: 1,
                 pages: vec![literal("one"), literal("two")],
                 resolved: true,

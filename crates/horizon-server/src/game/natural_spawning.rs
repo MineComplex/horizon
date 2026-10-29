@@ -417,16 +417,16 @@ impl<'a> crate::game::Sim<'a> {
         }
     }
     /// Every player in the level in place: the local player, and the LAN
-    /// guests or server players in it.
+    /// players or server players in it.
     pub(super) fn level_players(&self) -> Vec<LevelPlayer> {
-        let mut players: Vec<LevelPlayer> = self.lan.as_ref().map_or_else(Vec::new, |h| {
+        let mut players: Vec<LevelPlayer> = self.network.as_ref().map_or_else(Vec::new, |h| {
             h.hub
-                .guests
+                .players
                 .iter()
                 .filter(|g| h.hub.here(g))
                 .map(|g| LevelPlayer {
                     position: Vec3::new(g.position[0], g.position[1], g.position[2]),
-                    bounds: super::lan_mobs::guest_bounds(g),
+                    bounds: super::net_mobs::player_bounds(g),
                     alive: !g.dead,
                     creative: g.creative(),
                     spectator: g.spectator(),

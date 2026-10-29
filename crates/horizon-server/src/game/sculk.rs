@@ -87,8 +87,8 @@ pub(super) struct SculkState {
 impl SculkState {
     pub(super) fn swap_player(&mut self, other: &mut PlayerEvents) {
         let steps = self.steps.remove(&Who::Player);
-        if let Some(guest) = other.steps.take() {
-            self.steps.insert(Who::Player, guest);
+        if let Some(player) = other.steps.take() {
+            self.steps.insert(Who::Player, player);
         }
         other.steps = steps;
         std::mem::swap(&mut self.last_health, &mut other.last_health);
@@ -807,8 +807,8 @@ impl crate::game::Sim<'_> {
         }
         self.sculk_stand_on(standing);
     }
-    /// `stepOn` for the player in place: the host, or a guest swapped in
-    /// (`guest_server_tick`), as a server has no player of its own.
+    /// `stepOn` for the player in place: the host, or a player swapped in
+    /// (`player_server_tick`), as a server has no player of its own.
     pub(super) fn sculk_step_on_player(&mut self) {
         if let Some(p) = self.player.as_ref()
             && p.ground.on_ground
