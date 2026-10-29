@@ -220,6 +220,22 @@ impl crate::game::Sim<'_> {
     pub(super) fn spawn_mob(&mut self, kind: &str, at: [f64; 3], persistent: bool) -> Option<u32> {
         self.spawn_mob_for(kind, at, persistent, false)
     }
+    /// `horizon-ctl summon`: a mob at `at` (a baby if asked), with the
+    /// jockeys a spawn egg's mob gets.
+    pub(super) fn summon(&mut self, kind: &str, at: [f64; 3], baby: bool) -> Result<u32> {
+        let id = self
+            .spawn_mob_spawned(kind, at)
+            .ok_or_else(|| format!("unknown or unsupported mob {kind}"))?;
+        if baby && let Some(m) = self.mobs.iter_mut().find(|m| m.id == id) {
+            m.extra.age = if m.species() == Species::Sniffer {
+                crate::hc::mobs::sniffer::BABY_START_AGE
+            } else {
+                -24000
+            };
+        }
+        self.spawn_jockeys(id, false);
+        Ok(id)
+    }
     /// `SummonCommand` and `SpawnEggItem`: vanilla spawns the mob, but it
     /// never calls `Mob.setPersistenceRequired` for it, so the mob is not
     /// persistent: the despawn rule holds it like any other mob, and only

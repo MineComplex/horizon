@@ -597,19 +597,6 @@ impl crate::game::Sim<'_> {
     pub(super) fn spawn_mob(&mut self, kind: &str, at: [f64; 3], persistent: bool) -> Option<u32> {
         self.spawn_mob_for(kind, at, persistent, false)
     }
-    /// `SummonCommand` and `SpawnEggItem`: vanilla spawns the mob, but it
-    /// never calls `Mob.setPersistenceRequired` for it, so the mob is not
-    /// persistent: the despawn rule holds it like any other mob, and only
-    /// its NBT can make it persistent.
-    pub(super) fn spawn_mob_spawned(&mut self, kind: &str, at: [f64; 3]) -> Option<u32> {
-        // The spawn is not a natural one (no jockeys, the patrol leader roll
-        // stays), but the mob is not persistent.
-        let id = self.spawn_mob_for(kind, at, true, false)?;
-        if let Some(m) = self.mobs.iter_mut().find(|m| m.id == id) {
-            m.persistent = false;
-        }
-        Some(id)
-    }
     /// `spawn_mob` for a patrol or raid (`EntitySpawnReason.PATROL` / `EVENT`),
     /// which never rolls a patrol leader.
     pub(super) fn spawn_mob_for(
@@ -651,103 +638,6 @@ impl crate::game::Sim<'_> {
             self.spawn_jockeys(id, true);
         }
         Some(id)
-    }
-    /// The `summon` command: spawn a mob in front of the player or at a position.
-    pub(super) fn summon(&mut self, kind: &str, at: Option<[f64; 3]>, baby: bool) -> Result<u32> {
-        let at = match at {
-            Some(a) => a,
-            None => {
-                let p = self.player.as_ref().ok_or("no player yet")?;
-                let d = view_vector(self.yaw, 0.0);
-                [
-                    p.position.x + d[0] * 3.0,
-                    p.position.y,
-                    p.position.z + d[2] * 3.0,
-                ]
-            }
-        };
-        let id = self
-            .spawn_mob_spawned(kind, at)
-            .ok_or_else(|| format!("unknown or unsupported mob {kind}"))?;
-        if baby && let Some(m) = self.mobs.iter_mut().find(|m| m.id == id) {
-            m.extra.age = if m.species() == Species::Sniffer {
-                horizon_client::mobs::sniffer::BABY_START_AGE
-            } else {
-                -24000
-            };
-        }
-        self.spawn_jockeys(id, false);
-        Ok(id)
-    }
-    /// The `mobs` command: nearby mobs with position, health and running goals.
-    pub(super) fn control_mobs(&self, radius: f64) -> serde_json::Value {
-        let center = self.player.as_ref().map_or(Vec3::ZERO, |p| p.position);
-        self.control_mobs_at(radius, center)
-    }
-    pub(super) fn control_mobs_at(&self, radius: f64, center: Vec3) -> serde_json::Value {
-        let list: Vec<serde_json::Value> = self
-            .mobs
-            .iter()
-            .filter(|m| m.distance_sqr(center) <= radius * radius)
-            .map(|m| {
-                let mut state = serde_json::json!({
-                    "id": m.id,
-                    "kind": m.kind.id,
-                    "pos": [m.position.x, m.position.y, m.position.z],
-                    "health": m.health,
-                    "baby": m.is_baby(),
-                    "target": m.ai.target.map(|t| format!("{t:?}")),
-                    "goals": m.ai.goals.running_names(),
-                    "held": m.extra.main_hand.as_deref(),
-                    "mount": m.extra.mount,
-                    "rider": m.extra.rider,
-                    // A player's input this tick, and whether it steers.
-                    "ridden": m.rider.map(|r| r.steer),
-                    "controlled": horizon_client::mobs::equine::controlled(m),
-                    "saddled": m.extra.saddled,
-                    "enchants": horizon_client::mobs::gear::gear(m).map(|g| g.slots.iter().map(|s| s.iter().map(|(e, l)| format!("{e}:{l}")).collect::<Vec<_>>()).collect::<Vec<_>>()),
-                    "ints": m.extra.ints,
-                    "pois": [m.extra.home, m.extra.bed, m.extra.meeting],
-                    "profession": m.extra.variant2,
-                    "targets": m.ai.targets.running_names(),
-                    "path": m.ai.nav.path.as_ref().map(|p| p.nodes.len() - p.next.min(p.nodes.len())),
-                    "on_ground": m.on_ground,
-                    "variant": m.extra.variant,
-                    "color": m.extra.color,
-                    "sheared": m.extra.sheared,
-                    "burning": m.fire_ticks > 0,
-                    "size": m.extra.size,
-                    "leash": m.extra.leash.map(|h| format!("{h:?}")),
-                    "tame": m.extra.tame,
-                    "sitting": m.extra.sitting,
-                    "temper": m.extra.variant3,
-                    "chested": m.extra.chested,
-                    "head": m.extra.head.as_deref(),
-                    "warden": horizon_client::mobs::warden::describe(m),
-                    "villager": horizon_client::mobs::villager::ext(m).map(|e| serde_json::json!({
-                        "food_level": e.food_level,
-                        "inventory": e.inventory.iter().map(|s| format!("{}x{}", s.count, s.item)).collect::<Vec<_>>(),
-                        "gossips": e.gossips.len(),
-                        "last_slept": e.last_slept,
-                        "raid": e.raid,
-                    })),
-                    "raider": horizon_client::mobs::raider::state(m).map(|s| serde_json::json!({
-                        "raid": s.raid_id,
-                        "wave": s.wave,
-                        "leader": s.patrol_leader,
-                        "patrolling": s.patrolling,
-                        "patrol_target": s.patrol_target,
-                        "vehicle": m.extra.mount,
-                    })),
-                });
-                // Drawn seated (Entity.isPassenger); set apart because the
-                // json! above is at the macro recursion limit.
-                state["passenger"] = m.extra.passenger.into();
-                state["guardian_beam"] = serde_json::json!(horizon_client::mobs::guardian::beam(m, 0.0));
-                state
-            })
-            .collect();
-        serde_json::json!({ "count": self.mobs.len(), "near": list, "projectiles": self.creatures.projectiles.len() })
     }
     pub(super) fn mob_world_base<'s>(&'s self, others: &'s [Seen]) -> MobWorld<'s> {
         let (rain, thunder) = self.world.weather.levels(1.0);
@@ -1242,14 +1132,13 @@ impl crate::game::Sim<'_> {
                 MobEvent::Projectile(mut p) => {
                     self.next_entity += 1;
                     p.id = self.next_entity;
-                    let (owner, at) = (p.owner, [p.position.x, p.position.y, p.position.z]);
+                    let at = [p.position.x, p.position.y, p.position.z];
                     // LlamaSpit.recreateFromPacket: the spit's burst on the client.
                     if p.kind == ProjectileKind::LlamaSpit {
                         let v = p.velocity;
                         self.particles.llama_spit_burst(at, [v.x, v.y, v.z]);
                     }
                     self.add_projectile(p);
-                    self.projectile_event("minecraft:projectile_shoot", owner, at);
                 }
                 MobEvent::Spawn(mut m) => {
                     self.next_entity += 1;
@@ -1566,7 +1455,7 @@ impl crate::game::Sim<'_> {
                     }
                 }
                 MobEvent::PandaSneezed { mob } => self.panda_sneezed(mob),
-                MobEvent::ShedScute { mob, at, pitch } => {
+                MobEvent::ShedScute { at, pitch, .. } => {
                     // The mob already checked `shouldDropLoot` (a baby, `mob_drops`).
                     let table = "minecraft:gameplay/armadillo_shed";
                     let drops = self.sequence_loot(table, table, None);
@@ -1579,8 +1468,6 @@ impl crate::game::Sim<'_> {
                         1.0,
                         pitch,
                     );
-                    let ctx = self.who_context(Some(Who::Mob(mob)), None);
-                    self.post_game_event("minecraft:entity_place", at, ctx);
                 }
                 MobEvent::GiftLoot { mob, table, at } => {
                     // Turtle.ageBoundaryReached and Panda.afterSneeze: only
@@ -1652,16 +1539,9 @@ impl crate::game::Sim<'_> {
         if p.extra.love_player {
             self.stats.custom("animals_bred", 1);
             let parent = self.mob_entity(&p);
-            let partner_view = self
-                .mobs
-                .iter()
-                .find(|m| m.id == partner)
-                .map(|m| self.mob_entity(m))
-                .unwrap_or_else(|| parent.clone());
             let mut child = parent.clone();
             child.baby = true;
             // TurtleBreedGoal.breed triggers it without a child.
-            let turtle = p.species() == Species::Turtle;
             if matches!(
                 (
                     p.species(),
@@ -1674,7 +1554,6 @@ impl crate::game::Sim<'_> {
             ) {
                 child.kind = "minecraft:mule".into();
             }
-            self.trigger_bred(&parent, &partner_view, (!turtle).then_some(&child));
         }
         if let Some(q) = self.mobs.iter_mut().find(|m| m.id == partner) {
             q.extra.age = 6000;
@@ -1966,23 +1845,6 @@ impl crate::game::Sim<'_> {
                 self.thorns(a);
             }
         }
-        // LivingEntity.hurtServer: ENTITY_HURT_PLAYER, unless it returned
-        // early (invulnerable, or inside the hurt cooldown).
-        if outcome.hurt || outcome.sound {
-            let source = attacker
-                .or(owner)
-                .and_then(|id| self.mobs.iter().find(|m| m.id == id))
-                .map(|m| self.mob_entity(m));
-            self.trigger_entity_hurt_player(&horizon_client::advancements::DamageView {
-                kind: damage_type.to_owned(),
-                direct: source.clone().filter(|_| !projectile),
-                is_direct: !projectile,
-                source,
-                original: amount,
-                actual: amount - outcome.blocked,
-                blocked: outcome.blocked > 0.0,
-            });
-        }
         if raised {
             self.after_block(outcome, amount, attacker, projectile);
         }
@@ -2136,40 +1998,6 @@ impl crate::game::Sim<'_> {
                 self.particles.add(&bubble, p, [0.0; 3]);
             }
         }
-    }
-}
-/// Mob.getBaseExperienceReward
-/// The damage type id of a Horizon damage kind.
-pub(super) fn damage_type(kind: horizon_client::mobs::DamageKind, player: bool) -> &'static str {
-    use horizon_client::mobs::DamageKind as K;
-    match kind {
-        K::PlayerAttack => "minecraft:player_attack",
-        K::MaceSmash => "minecraft:mace_smash",
-        K::Spear => "minecraft:spear",
-        K::MobAttack => "minecraft:mob_attack",
-        K::Arrow => "minecraft:arrow",
-        K::Thrown => "minecraft:thrown",
-        K::Fireball => "minecraft:fireball",
-        K::Explosion if player => "minecraft:player_explosion",
-        K::Explosion => "minecraft:explosion",
-        K::Fall => "minecraft:fall",
-        K::FallingBlock => "minecraft:falling_block",
-        K::OnFire => "minecraft:on_fire",
-        K::InFire => "minecraft:in_fire",
-        K::Lava => "minecraft:lava",
-        K::Drown => "minecraft:drown",
-        K::DryOut => "minecraft:dry_out",
-        K::Magic => "minecraft:magic",
-        K::Sting => "minecraft:sting",
-        K::Cactus => "minecraft:cactus",
-        K::SweetBerryBush => "minecraft:sweet_berry_bush",
-        K::Generic => "minecraft:generic",
-        K::InWall => "minecraft:in_wall",
-        K::Thorns => "minecraft:thorns",
-        K::SonicBoom => "minecraft:sonic_boom",
-        K::Freeze => "minecraft:freeze",
-        K::OutOfWorld => "minecraft:out_of_world",
-        K::Cramming => "minecraft:cramming",
     }
 }
 /// A generated loot stack as a Horizon item stack.

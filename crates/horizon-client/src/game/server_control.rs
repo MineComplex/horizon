@@ -32,6 +32,12 @@ impl crate::game::Sim<'_> {
         };
         Some(ask(path, &format!("as {name} {words}")))
     }
+    /// [`Self::ask_server`] for what only the server can answer.
+    pub(super) fn server_reply(&self, words: &str) -> Result<Value> {
+        self.ask_server(words).ok_or(
+            "the world is the server's: this needs its control endpoint (--server-control)",
+        )?
+    }
     /// The world's name on the server this client plays on, once asked.
     pub(super) fn server_world_name(&self) -> Option<String> {
         if let Some(name) = self.server_world.get() {

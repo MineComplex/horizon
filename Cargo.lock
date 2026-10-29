@@ -1280,10 +1280,30 @@ dependencies = [
 name = "horizon-server"
 version = "0.1.0"
 dependencies = [
- "horizon-client",
+ "chrono",
+ "flate2",
+ "glam",
+ "horizon-assets",
+ "horizon-bench",
+ "horizon-client-core",
+ "horizon-command",
+ "horizon-core",
+ "horizon-game",
+ "horizon-items",
  "horizon-plugin-example",
+ "horizon-protocol",
  "horizon-server-api",
+ "horizon-server-files",
+ "horizon-threads",
+ "horizon-world",
  "log",
+ "miniz_oxide 0.8.9",
+ "png",
+ "serde",
+ "serde_json",
+ "sha1",
+ "sha2",
+ "zip",
 ]
 
 [[package]]

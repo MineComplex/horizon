@@ -214,14 +214,6 @@ impl crate::game::Sim<'_> {
         match *e {
             MobEvent::Tamed { mob } => {
                 let owner = self.level.player_uuid.or(Some([0, 0, 0, 1]));
-                if let Some(view) = self
-                    .mobs
-                    .iter()
-                    .find(|m| m.id == mob)
-                    .map(|m| self.mob_entity(m))
-                {
-                    self.trigger_entity("minecraft:tame_animal", "entity", &view);
-                }
                 if let Some(m) = self.mobs.iter_mut().find(|m| m.id == mob) {
                     m.extra.owner = owner;
                     m.persistent = true;

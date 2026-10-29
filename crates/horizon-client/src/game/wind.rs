@@ -335,8 +335,6 @@ impl crate::game::Sim<'_> {
         // host holds the other players (`as_guest`): the burst waits for the
         // turn to end so that it reaches every player, the guest too.
         // ServerExplosion.explode: the blast is heard first.
-        let ctx = horizon_client::sculk::Context::default();
-        self.post_game_event("minecraft:explode", center, ctx);
         let mut targets = self.wind_positions(center, radius);
         // ServerExplosion.shouldAffectBlocklikeEntities
         let blocklike = !breeze && !wind_charge && self.world_data.rules.bool("mob_griefing");

@@ -2427,6 +2427,8 @@ impl Game<'_> {
         // a client. Ticking it after the keybinds keeps a held use from
         // trying again a tick before the server's entry ends.
         self.cooldowns.tick();
+        // LivingEntity.tickEffects on a client: MobEffectInstance.tickClient.
+        self.tick_darkness_blend();
         // Inventory.tick's ItemStack.inventoryTick: the pop time runs down.
         for pop in &mut self.hotbar_pop {
             *pop = pop.saturating_sub(1);

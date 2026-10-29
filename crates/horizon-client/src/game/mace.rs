@@ -161,12 +161,7 @@ impl crate::game::Sim<'_> {
                 fraction,
             )
         };
-        let old_health = self.mobs[index].health;
-        let hurt = self.mobs[index].damage_with(amount, source, Some(&mut breach));
-        if hurt && self.mobs[index].health != old_health {
-            self.mob_damage_event(self.mobs[index].id);
-        }
-        hurt
+        self.mobs[index].damage_with(amount, source, Some(&mut breach))
     }
     /// `Player.itemAttackInteraction` after the player's hit landed on the mob
     /// at `index`: the item's `hurtEnemy` (the "used" statistic of a weapon),

@@ -30,11 +30,9 @@ const AMBIENT_INTERVAL: i32 = 80;
 
 #[derive(Default)]
 pub(super) struct Fight {
-    pub killed: bool,
     exit_portal: Option<[i32; 3]>,
     alive_crystals: i32,
     crystal_scan: i32,
-    players: bool,
     /// The respawn sequence (`DragonRespawnStage`) and its tick count.
     respawn: Option<(Respawn, i32)>,
     /// The four crystals on the exit portal driving the respawn.
@@ -51,16 +49,7 @@ enum Respawn {
     Pillars,
     Summoning,
 }
-impl Respawn {
-    fn name(self) -> &'static str {
-        match self {
-            Respawn::Start => "start",
-            Respawn::Preparing => "preparing_to_summon_pillars",
-            Respawn::Pillars => "summoning_pillars",
-            Respawn::Summoning => "summoning_dragon",
-        }
-    }
-}
+impl Respawn {}
 #[derive(Clone, Debug)]
 pub(super) struct Crystal {
     /// The entity id a server tracks it by (0 until it is tracked).
@@ -645,26 +634,20 @@ impl crate::game::Sim<'_> {
         let Some((who, _)) = d.hurt_by_player.filter(|(_, hit)| d.ticks - hit <= 100) else {
             return;
         };
-        let view = horizon_client::advancements::EntityView {
-            kind: "minecraft:ender_dragon".to_owned(),
-            position: [d.position.x, d.position.y, d.position.z],
-            ..Default::default()
-        };
         let id = d.id;
         let guest = match who {
             FightWho::Guest(conn) if true => Some(conn),
             _ => None,
         };
         if guest.is_none() {
-            self.award_dragon_kill(id, &view);
+            self.award_dragon_kill(id);
         }
     }
     /// `ServerPlayer.awardKillScore` for the dragon, on the killer's state.
-    fn award_dragon_kill(&mut self, id: u32, view: &horizon_client::advancements::EntityView) {
+    fn award_dragon_kill(&mut self, id: u32) {
         self.stats.add("killed", "minecraft:ender_dragon", 1);
         self.stats.custom("mob_kills", 1);
         self.score_player_killed(super::commands::Target::Mob(id));
-        self.trigger_killed(view, None);
     }
     /// Player melee on the dragon's parts or a crystal under the crosshair.
     /// The dragon part under the crosshair within reach: its id and distance.
@@ -1300,36 +1283,7 @@ impl crate::game::Sim<'_> {
         }
     }
 }
-impl crate::game::Sim<'_> {
-    /// The dragon and fight for `horizon-ctl status`.
-    pub(super) fn dragon_status(&self) -> serde_json::Value {
-        serde_json::json!({
-            "dragon": self.dragon.as_ref().map(|d| serde_json::json!({
-                "id": d.id,
-                "position": [d.position.x, d.position.y, d.position.z],
-                "health": d.health,
-                "phase": d.phase.id(),
-                "death_time": d.death_time,
-                // The player it strafes: "host", or the guest's entity id.
-                "strafing": match &d.phase {
-                    Phase::Strafe { player: Some(FightWho::Host), .. } => serde_json::json!("host"),
-                    _ => serde_json::Value::Null,
-                },
-            })),
-            "players": self.fight.players,
-            "crystals": self.crystals.len(),
-            // The tracked id (0 until tracked) and position of each crystal.
-            "crystal_list": self.crystals.iter().map(|c| serde_json::json!({
-                "id": c.id,
-                "position": [c.position.x, c.position.y, c.position.z],
-            })).collect::<Vec<_>>(),
-            "alive_crystals": self.fight.alive_crystals,
-            "killed": self.fight.killed,
-            "exit_portal": self.fight.exit_portal,
-            "respawn": self.fight.respawn.map(|(s, t)| format!("{} {t}", s.name())),
-        })
-    }
-}
+impl crate::game::Sim<'_> {}
 /// Respawning the dragon with end crystals on the exit portal
 /// (`EndCrystalItem.useOn`, `EnderDragonFight.tryRespawn`, `DragonRespawnStage`).
 impl crate::game::Sim<'_> {

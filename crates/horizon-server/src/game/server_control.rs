@@ -8,6 +8,8 @@
 //!
 //! - `command TEXT`: run a command as the player, at the console's permission,
 //!   in the player's level; answers with the feedback it got
+//! - `summon KIND [X Y Z] [baby]`: a mob (3 blocks in front of the player
+//!   without a position); answers with its entity id
 //! - `give ITEM [COUNT]`, `time TICKS`, `mobs RADIUS`, `hurtlog`, `simulation`,
 //!   `server-hold on|off`, `save`, `save-all`
 //! - `setblock`, `fill`, `getblock`, `container`: the block commands
@@ -81,6 +83,30 @@ impl crate::game::Sim<'_> {
                         Vec3::new(g.position[0], g.position[1], g.position[2])
                     });
                 Ok(self.in_player_level(uuid, |g| g.control_mobs_at(radius, center)))
+            }
+            ["summon", kind, rest @ ..] => {
+                let baby = rest.contains(&"baby");
+                let nums: Vec<f64> = rest.iter().filter_map(|w| w.parse().ok()).collect();
+                let at = match nums.as_slice() {
+                    [x, y, z, ..] => [*x, *y, *z],
+                    _ => {
+                        let g = self
+                            .lan
+                            .as_ref()
+                            .and_then(|h| h.hub.guests.iter().find(|g| g.uuid == uuid))
+                            .ok_or("no such player")?;
+                        let yaw = f64::from(g.yaw).to_radians();
+                        let p = g.position;
+                        [p[0] - yaw.sin() * 3.0, p[1], p[2] + yaw.cos() * 3.0]
+                    }
+                };
+                let kind = if kind.contains(':') {
+                    (*kind).to_owned()
+                } else {
+                    format!("minecraft:{kind}")
+                };
+                let id = self.in_player_level(uuid, |g| g.summon(&kind, at, baby))?;
+                Ok(json!({ "ok": true, "id": id }))
             }
             ["hurtlog"] => Ok(self.control_hurt_log()),
             ["simulation"] => Ok(self.in_player_level(uuid, |g| {

@@ -535,8 +535,6 @@ impl crate::game::Sim<'_> {
                 .push(horizon_client::gamepad::Rumble::Explosion { distance, radius });
         }
         // Explosion.explode: the blast is heard.
-        let ctx = horizon_client::sculk::Context::default();
-        self.post_game_event("minecraft:explode", center, ctx);
         let mut targets = self.exploded_positions(center, radius, resists);
         // EntityExplodeEvent: plugins may cancel it or spare blocks.
         self.explosion_hurt_entities(center, radius, damage_type);

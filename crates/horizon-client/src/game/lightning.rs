@@ -4,7 +4,6 @@
 //! `thunderHit` (damage and burning, charged creepers, zombified piglins,
 //! witches, mooshroom colours, turtles, burnt items), lightning rods, the sky
 //! flash, the sounds and the branching additive bolt.
-use super::commands::Target;
 use horizon_client::advancements::EntityView;
 use horizon_client::mobs::{Damage, DamageKind, MobEvent, SpawnSetup, Species};
 use horizon_core::{position::BlockPos, random::RandomSource};
@@ -23,9 +22,6 @@ pub(super) struct Bolt {
     hit: Vec<u32>,
     /// Blocks it set on fire (`blocksSetOnFire`).
     fires: i32,
-    /// The player who channelled it (`LightningBolt.cause`): `Some(None)` for
-    /// the host, `Some(Some(conn))` for a guest.
-    pub cause: Option<Option<u32>>,
 }
 impl crate::game::Sim<'_> {
     /// `ClientLevel.addEntity` for a server's lightning bolt: on a client it
@@ -46,7 +42,6 @@ impl crate::game::Sim<'_> {
             converted: Vec::new(),
             hit: Vec::new(),
             fires: 0,
-            cause: None,
         });
     }
     /// `spawnFire`: fire at the strike point and `extra` random neighbours,
@@ -135,11 +130,7 @@ impl crate::game::Sim<'_> {
                 }
                 self.flash = 2;
                 if !b.visual_only {
-                    let struck = self.thunder_hit(b);
-                    if let Some(cause) = b.cause {
-                        let who = cause.map_or(Target::Player, Target::Guest);
-                        self.for_player(who, |g| g.trigger_channeled_lightning(&struck));
-                    }
+                    self.thunder_hit(b);
                 }
             }
             true
@@ -178,32 +169,12 @@ impl crate::game::Sim<'_> {
     /// blocks, with the mobs in its 30-block box that it did not hit.
     fn lightning_strike_triggers(&mut self, b: &Bolt) {
         let at = b.at;
-        let bolt = EntityView {
-            kind: "minecraft:lightning_bolt".into(),
-            position: at,
-            blocks_set_on_fire: b.fires,
-            ..Default::default()
-        };
-        let viewers: Vec<EntityView> = self
-            .mobs
-            .iter()
-            .filter(|m| m.alive() && !b.hit.contains(&m.id))
-            .filter(|m| {
-                (m.position.x - at[0]).abs() <= 15.0
-                    && (m.position.z - at[2]).abs() <= 15.0
-                    && m.position.y >= at[1] - 15.0
-                    && m.position.y <= at[1] + 21.0
-            })
-            .map(|m| self.mob_entity(m))
-            .collect();
         self.for_each_player(|g| {
             let Some(p) = g.player.as_ref().map(|p| p.position) else {
                 return;
             };
             let d2 = (p.x - at[0]).powi(2) + (p.y - at[1]).powi(2) + (p.z - at[2]).powi(2);
-            if d2 < 256.0 * 256.0 {
-                g.trigger_lightning_strike(&bolt, &viewers);
-            }
+            if d2 < 256.0 * 256.0 {}
         });
     }
     /// `thunderHit` for entities within 3 blocks (up to 9 above). Returns the

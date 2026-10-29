@@ -1,6 +1,6 @@
 //! Commands from the control socket (`horizon-ctl`), run on the game thread.
 use super::{Game, Screen};
-use horizon_client::{Result, items::ItemStack};
+use horizon_client::Result;
 use horizon_core::geometry::Vec3;
 use serde_json::{Value, json};
 use std::{
@@ -192,7 +192,6 @@ impl Game<'_> {
                 .chain(super::blockctl::HELP)
                 .chain(super::lan::HELP)
                 .chain(super::render_control::HELP)
-                .chain(super::sculk::HELP)
                 .chain(super::agent::HELP)
                 .chain(super::ui_control::HELP)
                 .chain(super::options::CONTROL_HELP)
@@ -231,7 +230,6 @@ impl Game<'_> {
                 }
                 Ok(Some(json!({ "ok": true, "sides": r.section_sides() })))
             }
-            "sculk" => Ok(Some(self.sculk_command(&words)?)),
             "status" => Ok(Some(self.control_status())),
             "stall" => {
                 let millis: u64 = arg(1)?.parse()?;
@@ -243,27 +241,14 @@ impl Game<'_> {
             }
             "simulation" => {
                 self.require_world()?;
-                let value = if let Some(reply) = self.ask_server("simulation") {
-                    reply?
-                } else {
-                    json!({ "game_time": self.world.game_time, "projectiles": self.projectiles_status() })
-                };
-                Ok(Some(value))
+                Ok(Some(self.server_reply("simulation")?))
             }
             "server-hold" => {
                 self.require_world()?;
-                let held = match arg(1)? {
-                    "on" => true,
-                    "off" => false,
-                    _ => return Err("server-hold on|off".into()),
-                };
-                if let Some(reply) = self.ask_server(&format!("server-hold {}", words[1])) {
-                    reply?;
-                } else if self.remote.is_some() {
-                    return Err("server-hold requires the world's host".into());
-                } else {
-                    self.agent.hold_server = held;
+                if !matches!(arg(1)?, "on" | "off") {
+                    return Err("server-hold on|off".into());
                 }
+                self.server_reply(&format!("server-hold {}", words[1]))?;
                 ok()
             }
             "pad" => Ok(Some(self.pad_command(&words)?)),
@@ -451,35 +436,12 @@ impl Game<'_> {
                 } else {
                     format!("minecraft:{name}")
                 };
-                let info = self
-                    .res
-                    .items()
-                    .get(&item)
-                    .ok_or_else(|| format!("unknown item {item}"))?;
+                if self.res.items().get(&item).is_none() {
+                    return Err(format!("unknown item {item}").into());
+                }
                 let count: u32 = words.get(2).map_or(Ok(1), |c| c.parse())?;
                 // The inventory is the server's player's.
-                if let Some(reply) = self.ask_server(&format!("give {item} {count}")) {
-                    return Ok(Some(reply?));
-                }
-                let max = info.max_stack;
-                let mut given = 0;
-                // Stop once the inventory is full.
-                while given < count {
-                    let n = (count - given).min(max);
-                    let rest = self
-                        .give(ItemStack {
-                            item: item.as_str().into(),
-                            count: n,
-                            damage: 0,
-                            extra: None,
-                        })
-                        .map_or(0, |r| r.count);
-                    given += n - rest;
-                    if rest > 0 {
-                        break;
-                    }
-                }
-                Ok(Some(json!({ "ok": true, "given": given })))
+                Ok(Some(self.server_reply(&format!("give {item} {count}"))?))
             }
             "render-distance" => {
                 let n: i32 = arg(1)?.parse()?;
@@ -501,35 +463,24 @@ impl Game<'_> {
             }
             "time" => {
                 let time: i64 = arg(1)?.parse()?;
-                self.world.day_time = time;
                 // The clock is the server's.
-                if let Some(reply) = self.ask_server(&format!("time {time}")) {
-                    reply?;
-                }
+                self.server_reply(&format!("time {time}"))?;
                 ok()
             }
             "summon" => {
                 self.require_world()?;
-                let baby = words.contains(&"baby");
-                let nums: Vec<f64> = words[2..].iter().filter_map(|w| w.parse().ok()).collect();
-                let at = (nums.len() >= 3).then(|| [nums[0], nums[1], nums[2]]);
-                let id = self.summon(arg(1)?, at, baby)?;
-                Ok(Some(json!({ "ok": true, "id": id })))
+                arg(1)?;
+                // The mob is the server's: the reply has its entity id.
+                Ok(Some(self.server_reply(&words.join(" "))?))
             }
             "mobs" => {
                 self.require_world()?;
                 let radius: f64 = words.get(1).map_or(Ok(64.0), |r| r.parse())?;
-                if let Some(reply) = self.ask_server(&format!("mobs {radius}")) {
-                    return Ok(Some(reply?));
-                }
-                Ok(Some(self.control_mobs(radius)))
+                Ok(Some(self.server_reply(&format!("mobs {radius}"))?))
             }
             "hurtlog" => {
                 self.require_world()?;
-                if let Some(reply) = self.ask_server("hurtlog") {
-                    return Ok(Some(reply?));
-                }
-                Ok(Some(self.control_hurt_log()))
+                Ok(Some(self.server_reply("hurtlog")?))
             }
             "resume" => {
                 if self.sim.screen == Screen::Paused {
@@ -745,12 +696,6 @@ impl Game<'_> {
                 reply?;
                 ok()
             }
-            "dragon-hurt" => {
-                // Test hook: damage the dragon's head as the player would.
-                let amount: f32 = arg(1)?.parse()?;
-                self.hit_special(super::dragon::SPECIAL, amount, true, false);
-                ok()
-            }
             "quit" => {
                 self.quitting = true;
                 ok()
@@ -917,7 +862,6 @@ impl Game<'_> {
             "fishing": self.hook_status(),
             "tridents": self.tridents.len(),
             "rockets": self.rockets.len(),
-            "fight": self.dragon_status(),
             // A client of a server (single player's server thread) knows the
             // carts it was sent.
             "carts": self.remote_carts().unwrap_or_else(|| self.carts.iter().map(|c| serde_json::json!({"kind": c.kind.id(), "position": [c.position.x, c.position.y, c.position.z], "velocity": [c.velocity.x, c.velocity.y, c.velocity.z]})).collect::<Vec<_>>()),
@@ -974,44 +918,7 @@ impl Game<'_> {
         status
     }
 }
-impl crate::game::Sim<'_> {
-    /// The hurts and melee attacks each player logged since the last call
-    /// (`PlayerMotion::hurt_log`, `attack_log`), taken out.
-    pub(super) fn control_hurt_log(&mut self) -> Value {
-        fn drain(
-            name: &str,
-            hurt_log: &mut Vec<horizon_client::health::HurtRecord>,
-            attack_log: &mut Vec<horizon_client::health::AttackRecord>,
-        ) -> Value {
-            let hurts: Vec<Value> = hurt_log
-                .drain(..)
-                .map(|r| {
-                    json!({
-                        "t": r.game_time, "source": r.source, "amount": r.amount,
-                        "blocked": r.blocked, "taken": r.taken, "hurt": r.hurt,
-                        "armor": r.armor, "toughness": r.toughness, "health": r.health,
-                        "fire_ticks": r.fire_ticks, "knockback": r.knockback,
-                    })
-                })
-                .collect();
-            let attacks: Vec<Value> = attack_log
-                .drain(..)
-                .map(|r| {
-                    json!({
-                        "t": r.game_time, "target": r.target, "id": r.id, "killed": r.killed, "amount": r.amount,
-                        "scale": r.scale, "crit": r.crit, "landed": r.landed, "dealt": r.dealt,
-                    })
-                })
-                .collect();
-            json!({ "name": name, "hurts": hurts, "attacks": attacks })
-        }
-        let mut players = Vec::new();
-        if let Some(p) = self.player.as_mut() {
-            players.push(drain("host", &mut p.hurt_log, &mut p.attack_log));
-        }
-        json!({ "ok": true, "players": players })
-    }
-}
+impl crate::game::Sim<'_> {}
 
 /// PCI vendor IDs of the GPU makers players have (Apple's is wgpu's Metal value).
 fn vendor_name(id: u32) -> String {

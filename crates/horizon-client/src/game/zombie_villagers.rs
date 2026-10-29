@@ -3,7 +3,6 @@
 //! a cure (`ZombieVillager.mobInteract`), and the cured villager that
 //! remembers who saved it (`ZombieVillager.finishConversion`).
 use horizon_client::{
-    advancements as adv,
     gossip::GossipType,
     mobs::{Mob, Species, villager, zombie_villager},
 };
@@ -108,12 +107,6 @@ impl crate::game::Sim<'_> {
             g.add(uuid, GossipType::MajorPositive, 20);
             g.add(uuid, GossipType::MinorPositive, 25);
         }
-        let cured = v.clone();
-        let villager_view = self.mob_entity(&cured);
-        let zombie_view = self.mob_entity(&old);
-        if cured_by_player {
-            self.trigger_cured_zombie_villager(&zombie_view, &villager_view);
-        }
         let pitch = (self.world.random.next_float() - self.world.random.next_float()) * 0.2 + 1.0;
         self.sounds.play(
             "minecraft:entity.zombie_villager.converted",
@@ -121,27 +114,6 @@ impl crate::game::Sim<'_> {
             2.0,
             pitch,
         );
-    }
-    /// `CuredZombieVillagerTrigger`.
-    fn trigger_cured_zombie_villager(
-        &mut self,
-        zombie: &adv::EntityView,
-        villager: &adv::EntityView,
-    ) {
-        let me = self.player_entity();
-        let (zombie, villager) = (zombie.clone(), villager.clone());
-        self.trigger("minecraft:cured_zombie_villager", move |c, w| {
-            let origin = me.position;
-            let ctx = |e| adv::Entities {
-                this: Some(e),
-                origin,
-                tool: None,
-                block_pos: None,
-            };
-            adv::conditions(&c["player"], &ctx(&me), w)
-                && adv::conditions(&c["zombie"], &ctx(&zombie), w)
-                && adv::conditions(&c["villager"], &ctx(&villager), w)
-        });
     }
 }
 

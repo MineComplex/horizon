@@ -38,7 +38,6 @@ impl crate::game::Sim<'_> {
         let at = BlockPos::new(pos[0], pos[1], pos[2]);
         self.with_level(|b, level, ticks| b.set_block(level, ticks, at, new, flags::UPDATE_ALL));
         self.world.modified.insert((pos[0] >> 4, pos[2] >> 4));
-        self.post_block_game_event("minecraft:block_change", pos, None, Some(new));
     }
     /// The books a hopper or dropper put in or took out: the slot whose
     /// occupancy no longer matches the block state is the one `setItem` or

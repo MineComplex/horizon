@@ -43,7 +43,6 @@ mod dedicated;
 mod deflect;
 mod dialogs;
 mod discord;
-mod dispense_fixture;
 mod dispenser;
 mod dragon;
 mod dynamic_lights;
@@ -108,7 +107,6 @@ mod pick_entity;
 mod pickups;
 mod piglins;
 mod piston_push;
-mod player_equip;
 mod plugin_host;
 mod potions;
 mod raids;
@@ -4345,12 +4343,10 @@ impl Game<'_> {
         if self.creative_inventory_open() {
             if Self::creative_trash_hovered(&batch, self.front.cursor) {
                 if self.has_shift_down() {
-                    let before = self.player_equipment();
                     self.inventory.fill(None);
                     self.armor.fill(None);
                     self.offhand = None;
                     self.craft_grid[..4].fill(None);
-                    self.player_equipment_changed(&before);
                     self.apply_equipment();
                 } else {
                     self.carried = None;
@@ -5088,12 +5084,6 @@ impl Game<'_> {
                     &mut self.sim.offhand,
                     &mut self.sim.inventory[self.sim.selected],
                 );
-                let (offhand, main) = (
-                    self.sim.offhand.clone(),
-                    self.sim.inventory[self.sim.selected].clone(),
-                );
-                self.player_on_equip("offhand", main.as_ref(), offhand.as_ref());
-                self.player_on_equip("mainhand", offhand.as_ref(), main.as_ref());
                 self.using = None;
             }
             KeyCode::KeyQ if self.screen == Screen::Playing => {
@@ -6436,12 +6426,6 @@ impl crate::game::Sim<'_> {
             self.resolve_container_maps(key, centre);
             self.container = Some(key);
             let first = self.container_opener_event(key, true);
-            self.post_block_game_event(
-                "minecraft:container_open",
-                [key.0, key.1, key.2],
-                Some(horizon_client::mobs::Who::Player),
-                None,
-            );
             let stat = match &*name {
                 "minecraft:chest" => "open_chest",
                 "minecraft:trapped_chest" => "trigger_trapped_chest",
@@ -6715,7 +6699,6 @@ impl crate::game::Sim<'_> {
         {
             let at = BlockPos::new(pos[0], pos[1], pos[2]);
             self.with_level(|b, level, ticks| b.set_block(level, ticks, at, disarmed, 260));
-            self.post_block_game_event("minecraft:shear", pos, self.sculk_actor(), None);
         }
         // BeehiveBlock.playerWillDestroy: a creative break still drops the hive
         // with its bees and honey level.
@@ -6762,14 +6745,12 @@ impl crate::game::Sim<'_> {
                         self.pop_resource(pos, d);
                     }
                 }
-                // BeehiveBlock.playerDestroy: silk touch keeps the bees in, so
-                // the trigger counts them; otherwise they are out already.
-                if let Some((hive, (honey, facing))) = hive {
-                    let bees = if silk { hive.bees.len() as i64 } else { 0 };
-                    if !silk {
-                        self.hive_broken_by_player(pos, hive, honey, facing);
-                    }
-                    self.trigger_bee_nest_destroyed(broken, held.as_ref(), bees);
+                // BeehiveBlock.playerDestroy: silk touch keeps the bees in;
+                // otherwise they come out.
+                if let Some((hive, (honey, facing))) = hive
+                    && !silk
+                {
+                    self.hive_broken_by_player(pos, hive, honey, facing);
                 }
                 // InfestedBlock.spawnAfterBreak: its silverfish comes out unless the
                 // tool has silk touch (#prevents_infested_spawns) or blocks don't drop.
@@ -7506,9 +7487,6 @@ impl crate::game::Sim<'_> {
             .collect();
         let carried = self.carried.clone();
         let creative = self.creative;
-        // CreativeModeInventoryScreen clicks the menu itself and sends every
-        // changed slot, which the server sets by player.
-        let equipment_before = (self.screen == Screen::Creative).then(|| self.player_equipment());
         let station_menu = self.station.as_ref().map(|s| {
             (
                 s.loom.selected.map_or(-1, |i| i as i32),
@@ -7663,8 +7641,6 @@ impl crate::game::Sim<'_> {
             self.player_menu_sound(sound);
         }
         let crafted = std::mem::take(&mut menu.crafted);
-        let brewed = std::mem::take(&mut menu.brewed);
-        let equipped = std::mem::take(&mut menu.equipped);
         for (i, stack) in after.into_iter().enumerate() {
             if let Some(g) = game_of[i] {
                 *self.slot_mut(g) = stack;
@@ -7679,9 +7655,6 @@ impl crate::game::Sim<'_> {
                 self.player_drop(stack);
             }
             self.award_crafted(&crafted);
-            for stack in &brewed {
-                self.trigger_brewed_potion(stack);
-            }
             if furnace_before > furnace_after
                 && false
                 && let (Some(pos), Some(p)) = (self.container, self.player.as_ref())
@@ -7743,14 +7716,6 @@ impl crate::game::Sim<'_> {
         {
             // AbstractFurnaceBlockEntity.setItem: only a new input restarts cooking.
             f.input_clicked(self.res.recipes(), before[0].clone());
-        }
-        match equipment_before {
-            Some(before) => self.player_equipment_changed(&before),
-            None => {
-                for (slot, stack) in equipped {
-                    self.player_equipped(slot, stack.as_ref());
-                }
-            }
         }
         self.apply_equipment();
         if let Some(maps) = level_maps {
@@ -8122,15 +8087,6 @@ impl crate::game::Sim<'_> {
             None => horizon_client::mobs::Damage::of(horizon_client::mobs::DamageKind::Generic),
         };
         let landed = self.hurt_by_player(index, amount, source);
-        if landed {
-            let victim = self.mob_entity(&self.mobs[index]);
-            self.player_hit(
-                &victim,
-                creatures::damage_type(source.kind, true),
-                None,
-                amount,
-            );
-        }
         if let Some(p) = self.player.as_mut() {
             if p.attack_log.len() >= 64 {
                 p.attack_log.remove(0);

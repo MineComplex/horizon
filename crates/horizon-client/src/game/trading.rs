@@ -572,8 +572,7 @@ impl crate::game::Sim<'_> {
             .as_ref()
             .and_then(|s| s.merchant.as_ref())
             .and_then(|m| m.mob);
-        let (session, traded) = self.merchant_apply(session, mob);
-        self.merchant_traded(mob, &traded);
+        let (session, _) = self.merchant_apply(session, mob);
         if let Some(m) = self.station.as_mut().and_then(|s| s.merchant.as_mut()) {
             m.session = session;
         }
@@ -622,19 +621,6 @@ impl crate::game::Sim<'_> {
             }
         }
         (session, traded)
-    }
-    /// `MerchantResultSlot.checkTakeAchievements` and `AbstractVillager.notifyTrade`
-    /// for each trade made: the statistic and the `villager_trade` trigger.
-    pub(super) fn merchant_traded(&mut self, mob: Option<u32>, results: &[ItemStack]) {
-        for result in results {
-            self.stats.custom("traded_with_villager", 1);
-            let villager = mob
-                .and_then(|id| self.mobs.iter().find(|m| m.id == id))
-                .map(|m| self.mob_entity(m));
-            if let Some(villager) = villager {
-                self.trigger_trade(&villager, result);
-            }
-        }
     }
     /// `MerchantMenu.tryMoveItems` for the selected offer (the select trade packet).
     fn try_move_items(&mut self, index: usize) {
