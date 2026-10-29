@@ -11,7 +11,6 @@ use crate::hc::{Result, items::ItemStack, lan::{
         hub::{BodyFlags, HostEvent, HostState, Hub, HubConfig, TickCtx},
         playerdata,
     }, mobs::{Mob, Species, Who, leash::Holder}, text::Text};
-use horizon_core::geometry::Vec3;
 use horizon_protocol::{
     entity_data::{Value, serializer},
     packets::play::{self, Clientbound as C},

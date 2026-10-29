@@ -2,6 +2,7 @@
 //! chunk-generation spawning (`NaturalSpawner`), mob events (attacks,
 //! breeding, conversions, drops), projectiles, player interactions
 //! (feeding, shearing, milking, spawn eggs, throwing) and rendering.
+use crate::game::keys::KeyCode;
 use super::{Dim, view_vector};
 use crate::hc::{Result, arrows::EntityHit, blocks::Fluid, collisions::SceneCollisions, items::ItemStack, mobs::{
         Damage, DamageKind, Mob, MobEvent, MobWorld, PlayerView, Seen, SpawnSetup, Species, Who,
@@ -9,7 +10,6 @@ use crate::hc::{Result, arrows::EntityHit, blocks::Fluid, collisions::SceneColli
         farm::Climate,
         spawning::{self, BiomeFacts},
     }, projectiles::{Hit, Projectile, ProjectileKind, ProjectileWorld}, text::Text};
-use horizon_assets::item_model::DisplayContext;
 use horizon_core::{
     geometry::{Aabb, Direction, Vec3, traverse_blocks},
     position::BlockPos,
@@ -143,7 +143,7 @@ impl crate::game::Sim<'_> {
             alive: !p.health.dead_or_dying(),
             // EntitySelector.NO_CREATIVE_OR_SPECTATOR.
             creative: self.creative || self.spectator(),
-            sneaking: self.keys.contains(&winit::keyboard::KeyCode::ShiftLeft),
+            sneaking: self.keys.contains(&KeyCode::ShiftLeft),
             swimming: p.swimming,
             look: view_vector(self.yaw, self.pitch),
             main_hand: self.held().map(|s| s.item.clone()),
@@ -3468,8 +3468,8 @@ impl crate::game::Sim<'_> {
             .is_some_and(|t| t.contains(&*item));
         let player_at = self.eye_position();
         let acting = self.acting_player_uuid();
-        let sneaking = self.keys.contains(&winit::keyboard::KeyCode::ShiftLeft)
-            || self.keys.contains(&winit::keyboard::KeyCode::ShiftRight);
+        let sneaking = self.keys.contains(&KeyCode::ShiftLeft)
+            || self.keys.contains(&KeyCode::ShiftRight);
         let held_damage = held.as_ref().map_or(0, |h| h.damage as i32);
         let held_extra = held.as_ref().and_then(|h| h.extra.clone());
         let m = &mut self.mobs[index];

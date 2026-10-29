@@ -3,12 +3,12 @@
 //! of `hurtServer` (creative breaks at once), and `ArmorStandRenderer` with
 //! the default pose, the hit wobble and humanoid armor layers.
 use super::view_vector;
-use crate::hc::{entities::ArmorStand, items::ItemStack, mobs::{Mob, Part, anim::Poses}};
+use crate::hc::{entities::ArmorStand, items::ItemStack, mobs::anim::Poses};
 use horizon_core::{
     geometry::{Aabb, Vec3},
     random::RandomSource,
 };
-use std::{collections::HashMap, path::PathBuf, sync::Arc};
+use std::sync::Arc;
 
 /// `EquipmentLayerRenderer.getColorForLayer`: a dyeable layer (one with a
 /// colour when undyed) takes the stack's `minecraft:dyed_color`, else that

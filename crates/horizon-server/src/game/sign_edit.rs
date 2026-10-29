@@ -2,12 +2,8 @@
 //! opened when a sign is placed, four lines limited to the sign's line
 //! width, Up/Down/Enter move between lines, Escape or Done closes.
 use super::lan::LanHost;
-use crate::hc::{containers::BlockEntity, items::ItemStack, signs::{DYE_TEXT, wood_type}};
-use horizon_protocol::packets::play::{self, Clientbound as C, Serverbound as S};
-use winit::{
-    event::{ElementState, KeyEvent},
-    keyboard::{KeyCode, PhysicalKey},
-};
+use crate::hc::{containers::BlockEntity, items::ItemStack, signs::DYE_TEXT};
+use horizon_protocol::packets::play::{self, Clientbound as C};
 
 pub(super) struct SignEditor {
     pub pos: (i32, i32, i32),

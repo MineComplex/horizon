@@ -1,7 +1,7 @@
 //! Shulker boxes (`ShulkerBoxBlockEntity`: 27 slots that refuse other boxes,
 //! kept in the dropped item's `container` component) and ender chests (the
 //! player's `PlayerEnderChestContainer`, saved as `EnderItems`).
-use crate::hc::{containers::BlockEntity, items::ItemStack, text::Text};
+use crate::hc::{containers::BlockEntity, items::ItemStack};
 use horizon_core::random::RandomSource;
 
 pub(super) fn is_shulker_box(name: &str) -> bool {

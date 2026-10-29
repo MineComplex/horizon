@@ -1,6 +1,7 @@
 //! Nautili on the game side (`AbstractNautilus.mobInteract`): taming with
 //! pufferfish, feeding, the saddle and armour, riding, and the zombie
 //! nautilus a drowned with a trident sometimes rides.
+use crate::game::keys::KeyCode;
 use crate::hc::{items::ItemStack, mobs::{Species, nautilus}};
 use horizon_core::random::RandomSource;
 
@@ -45,8 +46,8 @@ impl crate::game::Sim<'_> {
             .map(|t| t.iter().cloned().collect())
             .unwrap_or_default();
         let food = nautilus::is_food(m, item, &taming);
-        let sneaking = self.keys.contains(&winit::keyboard::KeyCode::ShiftLeft)
-            || self.keys.contains(&winit::keyboard::KeyCode::ShiftRight);
+        let sneaking = self.keys.contains(&KeyCode::ShiftLeft)
+            || self.keys.contains(&KeyCode::ShiftRight);
         let tame = m.extra.tame;
         if m.is_baby() {
             // Animal.mobInteract: food grows a baby up by a tenth.

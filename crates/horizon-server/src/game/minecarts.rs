@@ -4,8 +4,9 @@
 //! `MinecartItem` placement, `VehicleEntity` breaking, the chest, hopper,
 //! furnace and TNT variants, saving, and `AbstractMinecartRenderer`'s old
 //! rail-following render with the display block.
+use crate::game::keys::KeyCode;
 use super::{Hit, Keys, explosion::BlockInteraction, view_vector};
-use crate::hc::{blocks::Fluid, collisions::SceneCollisions, containers::BlockEntity, items::{ItemStack, Items}, mobs::{Part, anim::Poses}, particles::{ParticleOptions, ParticleType}};
+use crate::hc::{blocks::Fluid, collisions::SceneCollisions, containers::BlockEntity, items::{ItemStack, Items}, mobs::Part, particles::{ParticleOptions, ParticleType}};
 use horizon_core::{
     geometry::{Aabb, Vec3, trig},
     random::RandomSource,
@@ -993,7 +994,7 @@ impl crate::game::Sim<'_> {
         if !self.before_block(d) {
             return false;
         }
-        let sneaking = self.keys.contains(&winit::keyboard::KeyCode::ShiftLeft);
+        let sneaking = self.keys.contains(&KeyCode::ShiftLeft);
         let held = self.held().cloned();
         match self.carts[i].kind {
             CartKind::Rideable => {

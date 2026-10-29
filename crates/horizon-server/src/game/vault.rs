@@ -3,7 +3,6 @@
 //! keys players insert (`VaultBlock.useItemOn`) and the display item spinning
 //! inside (`VaultRenderer`).
 use crate::hc::{Result, containers::BlockEntity, items::ItemStack, vault::{Vault, VaultEvent, VaultLevel, VaultPlayer, VaultState}};
-use horizon_assets::item_model::DisplayContext;
 use horizon_core::random::LegacyRandom;
 
 type Pos = (i32, i32, i32);

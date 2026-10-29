@@ -2,7 +2,7 @@
 //! snapshots are prepared in small batches and the region workers drain.
 use crate::hc::Result;
 use std::{
-    collections::{HashSet, VecDeque},
+    collections::VecDeque,
     time::{Duration, Instant},
 };
 

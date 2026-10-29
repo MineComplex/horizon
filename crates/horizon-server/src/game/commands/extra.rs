@@ -3,6 +3,7 @@
 //! (DialogCommand), `/posteffect` (PostEffectCommand), `/kick`,
 //! `/fetchprofile`, `/publish`, `/unpublish`, `/debug`, `/jfr` and
 //! `/version`, with vanilla's feedback and failures.
+use crate::game::keys::KeyCode;
 use super::{Arg, Context, R, Target, err};
 use crate::hc::{command::CommandError, text::{self, Style, Text}};
 use std::{collections::HashMap, time::Instant};
@@ -187,7 +188,7 @@ impl crate::game::Sim<'_> {
             self.set_camera(None);
             return;
         }
-        let sneaking = self.keys.contains(&winit::keyboard::KeyCode::ShiftLeft)
+        let sneaking = self.keys.contains(&KeyCode::ShiftLeft)
             && self.screen == super::Screen::Playing;
         match self.target_position(t) {
             Some(p) if !sneaking => {

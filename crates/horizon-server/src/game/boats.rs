@@ -2,12 +2,13 @@
 //! paddling controls, collisions, riding (`positionRider`, `clampRotation`,
 //! dismounting), `BoatItem` placement, `VehicleEntity.hurtServer` breaking,
 //! saving and `AbstractBoatRenderer` with animated paddles.
+use crate::game::keys::KeyCode;
 use super::view_vector;
 
 fn at(p: horizon_core::geometry::Vec3) -> glam::DVec3 {
     glam::DVec3::new(p.x, p.y, p.z)
 }
-use crate::hc::{blocks::Fluid, collisions::{EntityCollisions, SceneCollisions}, items::ItemStack, mobs::{Part, anim::Poses, riders}};
+use crate::hc::{blocks::Fluid, collisions::{EntityCollisions, SceneCollisions}, items::ItemStack, mobs::{Part, riders}};
 use horizon_core::{
     geometry::{Aabb, Vec3},
     random::RandomSource,
@@ -742,7 +743,7 @@ impl crate::game::Sim<'_> {
         let Some((i, d)) = self.boat_hit() else {
             return false;
         };
-        let sneaking = self.keys.contains(&winit::keyboard::KeyCode::ShiftLeft);
+        let sneaking = self.keys.contains(&KeyCode::ShiftLeft);
         if !self.before_block(d) {
             return false;
         }

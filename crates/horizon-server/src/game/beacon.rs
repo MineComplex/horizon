@@ -4,8 +4,7 @@
 //! range, the activate/ambient/deactivate sounds, the 230x219 menu with its
 //! power buttons and payment slot, and the rotating, scrolling beam.
 use super::stations::{INPUT, Kind};
-use crate::hc::{containers::{Beacon, BlockEntity}, effects::EffectInstance, items::ItemStack, mobs::render::{DYE, DYE_NAMES}};
-use horizon_protocol::packets::play::{self, Serverbound as S};
+use crate::hc::{containers::{Beacon, BlockEntity}, effects::EffectInstance, mobs::render::{DYE, DYE_NAMES}};
 
 /// The beacon screen is 54 px wider than the 176-px menus it shares an origin with.
 pub(super) const SHIFT: f32 = -27.0;

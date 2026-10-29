@@ -1,6 +1,6 @@
 //! The totem of undying (`LivingEntity.checkTotemDeathProtection` with the
 //! totem's `death_protection` component, entity event 35 on the client).
-use crate::hc::{effects::EffectInstance, particles::{ParticleOptions, ParticleType}};
+use crate::hc::effects::EffectInstance;
 
 const TOTEM: &str = "minecraft:totem_of_undying";
 

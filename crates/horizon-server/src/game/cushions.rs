@@ -9,9 +9,8 @@
 use super::{Hit, view_vector};
 use crate::hc::entities::{Cushion, dye_index};
 use crate::hc::items::ItemStack;
-use crate::hc::mobs::anim::Poses;
 use horizon_core::geometry::{Aabb, Vec3};
-use winit::keyboard::KeyCode;
+use crate::game::keys::KeyCode;
 
 /// `Direction.fromYRot(yaw).toYRot()`: the nearest 90 degree step.
 pub(crate) fn snap_yaw(yaw: f32) -> f32 {

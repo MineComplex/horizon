@@ -8,7 +8,7 @@ use crate::hc::{containers::BlockEntity, fast_hash::{FxHashMap, FxHashSet}, mobs
 use horizon_core::{geometry::Direction, position::BlockPos, random::RandomSource};
 use horizon_world::registry::BlockStateId;
 use std::collections::HashSet;
-use winit::keyboard::KeyCode;
+use crate::game::keys::KeyCode;
 
 pub const HELP: &[&str] = &[
     "sculk                          sculk listeners, the warning level and the darkness blend",

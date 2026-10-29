@@ -24,8 +24,6 @@ horizon-world = { path = "../horizon-world" }
 horizon-protocol = { path = "../horizon-protocol" }
 horizon-server-files = { path = "../horizon-server-files" }
 horizon-bench = { path = "../horizon-bench" }
-# Key codes of the acting player's input, as the game's code names them (the types only: no window).
-winit = "0.30.13"
 glam = "0.30"
 sha1 = "0.10"
 sha2 = "0.10.9"

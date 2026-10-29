@@ -3,8 +3,9 @@
 //! `continueAttack`, `MultiPlayerGameMode` block breaking), the arm swing
 //! (`LivingEntity.SwingState`) and the first-person equip heights
 //! (`FirstPersonHandsAndItems`) with the item swap ticker they read.
+use crate::game::keys::KeyCode;
 use super::minecarts::CartKind;
-use crate::hc::{Result, attack_strength::HeldStack, first_person::{Hand, HandWorld, Hit, SwingAnimation, UseResult, swing_duration}, items::ItemStack};
+use crate::hc::{Result, first_person::{Hand, HandWorld, Hit, SwingAnimation, UseResult, swing_duration}, items::ItemStack};
 
 /// The off hand's place in `visible_hands` (the main hand uses its hotbar slot).
 const OFFHAND: usize = usize::MAX;
@@ -113,10 +114,10 @@ impl crate::game::Sim<'_> {
         self.riding
             .is_some_and(|id| self.boats.iter().any(|b| b.id == id))
             && [
-                winit::keyboard::KeyCode::KeyW,
-                winit::keyboard::KeyCode::KeyS,
-                winit::keyboard::KeyCode::KeyA,
-                winit::keyboard::KeyCode::KeyD,
+                KeyCode::KeyW,
+                KeyCode::KeyS,
+                KeyCode::KeyA,
+                KeyCode::KeyD,
             ]
             .iter()
             .any(|k| self.keys.contains(k))

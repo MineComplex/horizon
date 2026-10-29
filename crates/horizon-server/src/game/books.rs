@@ -6,7 +6,7 @@
 use super::lan::LanHost;
 use crate::hc::{containers::{BlockEntity, Lectern}, first_person::Hand, item_data::{StackData, WrittenBook}, items::ItemStack, menu::{Kind, Menu}, text::Text};
 use horizon_core::position::BlockPos;
-use horizon_protocol::packets::play::{self, Clientbound as C, Serverbound as S};
+use horizon_protocol::packets::play::{self, Clientbound as C};
 use horizon_world::level::flags as level_flags;
 
 const BLACK: u32 = 0xFF00_0000;

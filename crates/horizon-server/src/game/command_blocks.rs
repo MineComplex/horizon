@@ -2,18 +2,14 @@
 //! tick (`execute`, `executeChain`), `BaseCommandBlock.performCommand`
 //! through the command system with the block's output, and
 //! `CommandBlockEditScreen` with what `handleSetCommandBlock` does with it.
-use super::{Screen, commands::execute::Source, lan::LanHost};
+use super::{commands::execute::Source, lan::LanHost};
 use crate::hc::{command_block::{self, CommandBlock, Mode}, containers::BlockEntity, text::{self, Text}, world::World};
 use horizon_core::position::BlockPos;
-use horizon_protocol::packets::play::{self, Serverbound as S};
+use horizon_protocol::packets::play::{self};
 use horizon_world::{
     chunk::BlockState,
     level::flags,
     registry::{BlockRegistry, BlockStateId},
-};
-use winit::{
-    event::{ElementState, KeyEvent},
-    keyboard::{KeyCode, PhysicalKey},
 };
 
 type Pos = (i32, i32, i32);

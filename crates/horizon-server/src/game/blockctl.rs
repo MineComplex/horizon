@@ -58,7 +58,7 @@ impl crate::game::Sim<'_> {
     }
     /// Block commands; None when `words[0]` is not one of them.
     pub(super) fn block_command(&mut self, words: &[&str]) -> Result<Option<Value>> {
-        let ours = matches!(
+        let _ours = matches!(
             words.first(),
             Some(&("setblock" | "fill" | "getblock" | "container"))
         );

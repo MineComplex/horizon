@@ -3,10 +3,9 @@
 //! the block events that drive them (`ClientboundBlockEventPacket` reaching
 //! `BlockEntity.triggerEvent`). The renderer reads the resulting state through
 //! [`crate::game::Sim::block_anim`] and [`crate::game::Sim::chest_lid`].
-use crate::hc::{block_entity_anim::{BlockAnim, 
-        BellEntity, ConduitServer, ConduitTarget, EndGateway, Shulker, ShulkerStatus, Ticker,
+use crate::hc::{block_entity_anim::{BlockAnim, ConduitServer, ConduitTarget, EndGateway, Shulker, ShulkerStatus, Ticker,
         closer_to_center_than,
-    }, collisions::{SceneCollisions, no_collision_empty}, containers::BlockEntity, effects::EffectInstance, mobs::{Damage, DamageKind}, particles::{ParticleOptions, ParticleType}, save::number, skins};
+    }, collisions::{SceneCollisions, no_collision_empty}, effects::EffectInstance, mobs::{Damage, DamageKind}, save::number};
 use horizon_core::{
     geometry::{Aabb, Vec3},
     position::BlockPos,

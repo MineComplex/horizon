@@ -2,7 +2,7 @@
 //! layout (276x166, drawn 50 px left of the usual 176-wide origin), offer
 //! buttons, payment slots, the result slot's `onTake`, villager experience and
 //! level-ups with new offers from the next trade set.
-use super::{stations::{INPUT, Kind, RESULT, Station}};
+use super::stations::{Kind, Station};
 use crate::hc::mobs::{
     Species,
     render::{PROFESSIONS, VILLAGER_TYPES},

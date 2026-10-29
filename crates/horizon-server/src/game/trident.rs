@@ -4,7 +4,7 @@
 //! return to the owner, pickup) with `ThrownTridentRenderer`, and Channeling's
 //! lightning on a hit (`channeling.json`).
 use super::view_vector;
-use crate::hc::{collisions::SceneCollisions, enchant::EffectContext, items::ItemStack, mobs::{Damage, DamageKind, Who, anim::Poses}, projectiles::ProjectileWorld};
+use crate::hc::{collisions::SceneCollisions, enchant::EffectContext, items::ItemStack, mobs::{Damage, DamageKind, Who}, projectiles::ProjectileWorld};
 use horizon_core::{
     geometry::{Aabb, Vec3, traverse_blocks},
     position::BlockPos,

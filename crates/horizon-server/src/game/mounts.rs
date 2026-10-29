@@ -2,6 +2,7 @@
 //! armour and chests, mounting, the rider's control and jump bar
 //! (`LocalPlayer.aiStep`'s riding jump), positioning, dismounting, and the
 //! mount's health and jump bar on the HUD.
+use crate::game::keys::KeyCode;
 use crate::hc::{items::ItemStack, mobs::{MobEvent, Species, equine}, sprint::Keys};
 use horizon_core::{geometry::Vec3, random::RandomSource};
 
@@ -60,7 +61,7 @@ impl crate::game::Sim<'_> {
                 .insert((at[0].floor() as i32 >> 4, at[2].floor() as i32 >> 4));
             return true;
         }
-        if !m.extra.saddled || self.keys.contains(&winit::keyboard::KeyCode::ShiftLeft) {
+        if !m.extra.saddled || self.keys.contains(&KeyCode::ShiftLeft) {
             return false;
         }
         self.riding = Some(m.id);
@@ -136,8 +137,8 @@ impl crate::game::Sim<'_> {
         // AbstractHorse.mobInteract: shift + use opens a tamed adult's inventory.
         if !m.is_baby()
             && m.extra.tame
-            && (self.keys.contains(&winit::keyboard::KeyCode::ShiftLeft)
-                || self.keys.contains(&winit::keyboard::KeyCode::ShiftRight))
+            && (self.keys.contains(&KeyCode::ShiftLeft)
+                || self.keys.contains(&KeyCode::ShiftRight))
         {
             self.open_mount_menu(index);
             return true;
@@ -355,7 +356,7 @@ impl crate::game::Sim<'_> {
             pitch: self.pitch,
             jump: if jump > 0.0 { jump } else { pending },
             steer,
-            sprint: keys.sprint || self.keys.contains(&winit::keyboard::KeyCode::ControlLeft),
+            sprint: keys.sprint || self.keys.contains(&KeyCode::ControlLeft),
             jumping: keys.jump,
         });
         true

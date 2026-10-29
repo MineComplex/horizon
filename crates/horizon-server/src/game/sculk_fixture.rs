@@ -18,7 +18,7 @@ use std::{
     io::Write as _,
     sync::Arc,
 };
-use winit::keyboard::KeyCode;
+use crate::game::keys::KeyCode;
 
 struct MobSpec {
     kind: String,

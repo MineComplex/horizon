@@ -2,9 +2,6 @@
 //! one of the items it shows, which a click that takes one out of it then takes
 //! (`BundleContents.Mutable.removeOne`). Moving off the bundle clears the
 //! selection. On a server the selection is sent to it (`ServerboundSelectBundleItemPacket`).
-use super::Screen;
-use crate::hc::{bundle::{Contents, toggle_selected}};
-use horizon_protocol::packets::play::{self, Serverbound as S};
 
 
 impl crate::game::Sim<'_> {

@@ -2,6 +2,7 @@
 //! (`Entity.interact`'s leash part), fence knots (`LeadItem.useOn` and
 //! `LeashFenceKnotEntity.interact`), loading and saving who holds what,
 //! breaking, and drawing the rope (`LeashFeatureRenderer`) and the knot.
+use crate::game::keys::KeyCode;
 use crate::hc::{items::ItemStack, mobs::leash::{self, Holder, Pending}};
 use horizon_world::nbt::Tag;
 
@@ -136,7 +137,7 @@ impl crate::game::Sim<'_> {
     }
     /// `Entity.interact`'s leash part for a mob. Returns whether it was used.
     pub(super) fn interact_leash(&mut self, index: usize, item: &str) -> bool {
-        let sneaking = self.keys.contains(&winit::keyboard::KeyCode::ShiftLeft);
+        let sneaking = self.keys.contains(&KeyCode::ShiftLeft);
         let id = self.mobs[index].id;
         let at = self.mobs[index].center();
         if !self.mobs[index].alive() {
@@ -241,7 +242,7 @@ impl crate::game::Sim<'_> {
             .filter(|&i| self.mobs[i].extra.leash == Some(Holder::Knot(knot_pos)))
             .collect();
         let held_item = self.held().map(|s| s.item.to_string());
-        let sneaking = self.keys.contains(&winit::keyboard::KeyCode::ShiftLeft);
+        let sneaking = self.keys.contains(&KeyCode::ShiftLeft);
         // Shears snip every lead on the knot.
         if held_item.as_deref() == Some("minecraft:shears") && !existing.is_empty() {
             for i in existing {

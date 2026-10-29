@@ -10,12 +10,11 @@
 //! once the other dimension has loaded around it. An item or mob that goes
 //! through waits as an `Arrival` (its saved compound and where it stood in its
 //! portal) until the player is in that dimension and its exit is loaded.
-use super::{Dim, Screen};
+use super::Dim;
 use crate::hc::nether_portal::PortalState;
 use horizon_core::{
     geometry::{Aabb, Axis, Vec3},
     position::BlockPos,
-    random::RandomSource,
 };
 use horizon_world::{
     level::portal_travel::{

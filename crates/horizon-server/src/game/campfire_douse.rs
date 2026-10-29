@@ -1,9 +1,7 @@
 //! `CampfireBlock.useItemOn`: an item in `#minecraft:douses_campfires` (the
 //! shovels) put on a lit campfire puts it out.
 use crate::hc::{Result, animate_tick::make_campfire_smoke, items::ItemStack};
-use horizon_core::position::BlockPos;
 use horizon_world::chunk::BlockState;
-use winit::keyboard::KeyCode;
 
 impl crate::game::Sim<'_> {
     /// The lit campfire at `pos` that `held` puts out, when the item is in

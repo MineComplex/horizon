@@ -69,7 +69,7 @@ impl crate::game::Sim<'_> {
         // window; a dedicated or integrated server has none.
         if self.options.dedicated.is_none() {
             self.client_tick_spawners(&spawners);
-            for key in trial_spawners {
+            for _key in trial_spawners {
             }
         }
         Ok(())

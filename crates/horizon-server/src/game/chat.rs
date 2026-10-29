@@ -1,14 +1,9 @@
 //! Chat, the command registries and the per-world state behind commands
 //! (game rules, the world clock, difficulty), bound to the game.
-use super::Screen;
 pub use crate::hc::world_data::{TimeMarker, WorldClock};
-use crate::hc::{gamerules::GameRules, text::{ClickEvent, Style, Text}};
+use crate::hc::{gamerules::GameRules, text::Text};
 use std::collections::BTreeMap;
 
-use winit::{
-    event::KeyEvent,
-    keyboard::{KeyCode, PhysicalKey},
-};
 
 /// The local player's name (offline single player).
 pub const PLAYER_NAME: &str = "Player";

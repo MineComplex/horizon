@@ -4,7 +4,6 @@
 //! crafting animation ticks, and the menu with its toggleable slots.
 use super::*;
 use crate::hc::{advancements as adv, containers::Crafter};
-use horizon_protocol::packets::play::{self, Serverbound as S};
 use serde_json::Value;
 
 /// `CrafterBlock`'s crafting animation length.

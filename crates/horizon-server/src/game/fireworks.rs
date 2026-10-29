@@ -4,7 +4,6 @@
 //! damage with line of sight, and the client explosion (`createFireworks`).
 use super::{Hit, view_vector};
 use crate::hc::{collisions::SceneCollisions, items::ItemStack, mobs::{Damage, DamageKind}, particles::{FireworkExplosion, ParticleOptions, ParticleType}};
-use horizon_assets::item_model::DisplayContext;
 use horizon_core::{
     geometry::{Aabb, Vec3},
     random::RandomSource,

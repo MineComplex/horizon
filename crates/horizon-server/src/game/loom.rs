@@ -3,7 +3,7 @@
 //! selectable patterns, the pattern buttons, quick moves, the result) runs on
 //! the verified engine, `crate::hc::menu`, through `crate::game::Sim::menu_session`.
 use super::stations::Kind;
-use crate::hc::{banner::{self, BannerLayer}, items::ItemStack, screen_layout::{self, LoomView, ScreenDraw}};
+use crate::hc::{banner::{self}, items::ItemStack};
 use std::sync::Arc;
 
 /// Per-menu loom state: `selectablePatterns`, the selected index and the

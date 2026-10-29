@@ -6,9 +6,8 @@ use crate::hc::{advancements::{self as adv, EntityView, Frame, ItemView, Progres
 use horizon_core::geometry::Vec3;
 use serde_json::Value;
 use std::{
-    collections::{BTreeMap, BTreeSet, VecDeque},
+    collections::{BTreeMap, BTreeSet},
     sync::Arc,
-    time::Instant,
 };
 
 #[derive(Default)]
@@ -1314,7 +1313,7 @@ impl crate::game::Sim<'_> {
             if !p.reset
                 && p.show
                 && self.adv.progress.done(a)
-                && let Some(d) = a.display.as_ref().filter(|d| d.show_toast)
+                && let Some(_d) = a.display.as_ref().filter(|d| d.show_toast)
             {
             }
         }

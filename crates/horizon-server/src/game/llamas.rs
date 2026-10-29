@@ -1,6 +1,7 @@
 //! Llamas on the game side: `AbstractChestedHorse.mobInteract` and
 //! `Llama.handleEating` (wheat and hay), chests, carpets, shearing a carpet
 //! off and riding.
+use crate::game::keys::KeyCode;
 use crate::hc::{items::ItemStack, mobs::{equine, llama}};
 use horizon_core::random::RandomSource;
 
@@ -71,7 +72,7 @@ impl crate::game::Sim<'_> {
         if !m.alive() || Some(m.id) == self.riding {
             return false;
         }
-        let sneaking = self.keys.contains(&winit::keyboard::KeyCode::ShiftLeft);
+        let sneaking = self.keys.contains(&KeyCode::ShiftLeft);
         let (baby, tamed, vehicle) = (m.is_baby(), m.extra.tame, m.rider.is_some());
         let open_inventory = !baby && tamed && sneaking;
         if !vehicle && !open_inventory && !item.is_empty() {

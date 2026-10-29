@@ -1,6 +1,7 @@
 //! Happy ghasts on the game side: putting a harness on (and shearing it
 //! off), riding, getting off on top, and the ghastling a dried ghast block
 //! hatches.
+use crate::game::keys::KeyCode;
 use crate::hc::{items::ItemStack, mobs::{MobEvent, happy_ghast}};
 use horizon_core::geometry::{Aabb, Vec3};
 use horizon_world::registry::BlockStateId;
@@ -40,7 +41,7 @@ impl crate::game::Sim<'_> {
             return false;
         }
         let at = m.center();
-        let sneaking = self.keys.contains(&winit::keyboard::KeyCode::ShiftLeft);
+        let sneaking = self.keys.contains(&KeyCode::ShiftLeft);
         let harnessed = m.extra.head.is_some();
         // Equippable.equipOnInteract: a harness goes on a bare adult.
         if item.ends_with("_harness") && item.starts_with("minecraft:") && !harnessed {

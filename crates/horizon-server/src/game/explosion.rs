@@ -544,7 +544,7 @@ impl crate::game::Sim<'_> {
                 p.position.y - center[1],
                 p.position.z - center[2],
             ];
-            let distance = (d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).sqrt();
+            let _distance = (d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).sqrt();
         }
         // Explosion.explode: the blast is heard.
         let ctx = crate::hc::sculk::Context::default();

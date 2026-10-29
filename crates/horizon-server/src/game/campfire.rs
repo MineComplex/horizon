@@ -3,7 +3,6 @@
 //! items drawn on the fire are `campfire_geometry`'s; a server's clients get
 //! them through the block entity's update tag (`lan::chunks::entity_tag`).
 use crate::hc::{Result, block_entities::Pos, containers::BlockEntity, items::ItemStack, mobs::Who};
-use horizon_assets::item_model::DisplayContext;
 use horizon_core::position::BlockPos;
 
 /// The `campfire_cooking` recipe kind (`RecipeType.CAMPFIRE_COOKING`).

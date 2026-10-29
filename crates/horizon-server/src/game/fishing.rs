@@ -1,10 +1,10 @@
 //! Fishing: `FishingRodItem.use` (cast / reel in), the `FishingHook` (flight,
 //! bobbing, lure and bite timers, open water, hooking mobs, retrieving the
 //! `gameplay/fishing` loot) and `FishingHookRenderer` (bobber and line).
-use super::{lan::LanHost, lan_mobs::guest_bounds, view_vector};
+use super::{lan::LanHost, lan_mobs::guest_bounds};
 use crate::hc::advancements::EntityView;
 use crate::hc::lan::{entity::States, hub::Hub};
-use crate::hc::{blocks::Fluid, collisions::SceneCollisions, items::ItemStack, particles::{ParticleOptions, ParticleType}, pose::Pose};
+use crate::hc::{blocks::Fluid, collisions::SceneCollisions, items::ItemStack, particles::{ParticleOptions, ParticleType}};
 use horizon_core::{
     geometry::{Aabb, Vec3, trig},
     position::BlockPos,

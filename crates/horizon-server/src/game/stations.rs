@@ -4,8 +4,8 @@
 //! `AnvilScreen`, `GrindstoneScreen`, `SmithingScreen`, `StonecutterScreen`,
 //! `BrewingStandScreen`); item rules live in `crate::hc::stations`.
 use super::{Screen};
-use crate::hc::{block_entity_item, brewing, containers::BlockEntity, enchant::Enchantments, items::ItemStack, stations::{self, AnvilResult, EnchantOffers}, text::Text};
-use horizon_core::random::{LegacyRandom, RandomSource};
+use crate::hc::{brewing, containers::BlockEntity, items::ItemStack, stations::{self, AnvilResult, EnchantOffers}};
+use horizon_core::random::RandomSource;
 
 /// Slot ids of the open station: inputs from 600, the result at 650.
 pub(super) const INPUT: usize = 600;

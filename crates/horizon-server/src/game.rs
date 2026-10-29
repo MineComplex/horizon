@@ -1,6 +1,7 @@
 //! The playable game loop: streaming world, player simulation at 20 ticks/s,
 //! block interaction, inventory and HUD.
 mod shared;
+mod keys;
 mod block_entity_anims;
 mod trading;
 mod advancements;
@@ -166,22 +167,10 @@ use std::{
     cell::RefCell,
     collections::{HashMap, HashSet},
     path::PathBuf,
-    sync::{
-        Arc,
-        atomic::{AtomicU32, Ordering},
-        mpsc::{Receiver, TryRecvError},
-    },
-    thread::JoinHandle,
+    sync::Arc,
     time::{Duration, Instant},
 };
-use winit::{
-    application::ApplicationHandler,
-    error::EventLoopError,
-    event::{DeviceEvent, DeviceId, ElementState, MouseButton, MouseScrollDelta, WindowEvent},
-    event_loop::{ActiveEventLoop, ControlFlow, EventLoop},
-    keyboard::{KeyCode, PhysicalKey},
-    window::{CursorGrabMode, Window, WindowId},
-};
+use crate::game::keys::KeyCode;
 
 #[derive(Clone)]
 struct Options {
@@ -254,11 +243,6 @@ const COMPONENT_FIXTURES: &[&str] = &["HORIZON_DISPENSE_FIXTURE", "HORIZON_SCULK
 fn refusal(program: Program, args: &[String], fixture: impl Fn(&str) -> bool) -> Option<String> {
     match program {
         Program::Client => {
-            if args.iter().any(|a| a == "--dedicated") {
-                return Some(
-                    "--dedicated: horizon-client only joins servers; run horizon-server".to_owned(),
-                );
-            }
             COMPONENT_FIXTURES
                 .iter()
                 .chain(&["HORIZON_COMMAND_SCRIPT"])

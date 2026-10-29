@@ -2,9 +2,8 @@
 //! `Consumable`), throwing splash/lingering potions (`ThrownSplashPotion`),
 //! filling glass bottles (`BottleItem`), the per-tick effect application,
 //! effect attribute modifiers and the HUD effect icons (`Hud.extractEffects`).
-use super::{Screen, dragon::{Breath, FightPlayer, FightWho}};
+use super::dragon::{Breath, FightPlayer, FightWho};
 use crate::hc::{brewing, effects::{EffectAction, EffectInstance, PlayerEffects}, items::ItemStack, particles::{ParticleOptions, ParticleType}, text::Text};
-use horizon_assets::item_model::DisplayContext;
 use horizon_core::{
     geometry::{Aabb, Direction, Vec3},
     random::{LegacyRandom, RandomSource},
