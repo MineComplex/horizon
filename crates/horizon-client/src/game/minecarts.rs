@@ -10,11 +10,12 @@ use horizon_client::{
     items::{ItemStack, Items},
     mesher::Vertex,
     mobs::{Part, anim::Poses},
-    
-    sound_engine::{CartSound, SoundEngine, SoundInstance, Sounds}};
+    sound_engine::{CartSound, SoundEngine, SoundInstance, Sounds},
+};
 use horizon_core::{
     geometry::{Aabb, Vec3},
-    random::RandomSource};
+    random::RandomSource,
+};
 use horizon_world::registry::BlockStateId;
 use std::collections::HashMap;
 
@@ -498,9 +499,7 @@ impl crate::game::Sim<'_> {
         let s = self.pack.assets.registry.state(state)?;
         let shape = Shape::parse(s.properties.get("shape").map_or("", String::as_str));
         let powered = s.properties.get("powered").is_some_and(|v| v == "true");
-        Some(Rail {
-            shape,
-        })
+        Some(Rail { shape })
     }
     /// `getCurrentBlockPosOrRailBelow`.
     fn rail_block(&self, p: Vec3) -> [i32; 3] {

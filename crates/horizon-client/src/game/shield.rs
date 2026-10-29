@@ -3,7 +3,6 @@
 //! `applyItemBlocking` inputs, and what follows a block: item damage,
 //! the block sound, attacker knockback (`blockedByItem`) and axes disabling
 //! the shield (`Player.blockUsingItem`, `BlocksAttacks.disable`).
-use super::Game;
 use horizon_client::{
     health::{BlockOutcome, Blocking},
     items::ItemStack,

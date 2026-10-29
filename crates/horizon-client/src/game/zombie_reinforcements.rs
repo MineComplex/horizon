@@ -1,6 +1,5 @@
 //! `Zombie.hurtServer`'s reinforcements: a hurt zombie on Hard may call
 //! another of its kind from 7 to 40 blocks away to fight its target.
-use super::Game;
 use horizon_client::mobs::{
     MobType, Species, Who,
     finalize::{self, Attr, Op},

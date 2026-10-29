@@ -1,12 +1,10 @@
 //! Enchanting what mobs spawn with (`Mob.populateDefaultEquipmentEnchantments`
 //! through the `mob_spawn_equipment` provider) and the raid buffs
 //! (`Raider.applyRaidBuffs`).
-use super::Game;
-use horizon_client::{
-    mobs::{
-        Species,
-        
-        gear::{self, ARMOR, MAIN}}};
+use horizon_client::mobs::{
+    Species,
+    gear::{self, ARMOR, MAIN},
+};
 use horizon_core::random::RandomSource;
 
 /// `EnchantmentsByCostWithDifficulty` of `mob_spawn_equipment`.

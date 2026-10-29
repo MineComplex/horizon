@@ -12,7 +12,6 @@ use super::Game;
 use horizon_client::Result;
 use std::time::Duration;
 
-
 impl Game<'_> {
     /// The command harness's player (`HORIZON_STATIONARY_CLIENT`): pump the
     /// connection without predicting movement, so the player stays where
@@ -24,6 +23,4 @@ impl Game<'_> {
         }
         Ok(())
     }
-
-
 }

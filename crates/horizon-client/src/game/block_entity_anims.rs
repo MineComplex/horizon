@@ -5,18 +5,18 @@
 //! [`Game::block_anim`] and [`Game::chest_lid`].
 use super::Game;
 use horizon_client::{
-    block_entity_anim::{
-        BellEntity, ConduitTarget, EndGateway, Shulker, ShulkerStatus, Ticker},
+    block_entity_anim::{BellEntity, ConduitTarget, EndGateway, Shulker, ShulkerStatus, Ticker},
     block_entity_render::BlockAnim,
     collisions::{SceneCollisions, no_collision_empty},
     containers::BlockEntity,
-    
     particles::{ParticleOptions, ParticleType},
     save::number,
-    skins};
+    skins,
+};
 use horizon_core::{
     geometry::{Aabb, Vec3},
-    position::BlockPos};
+    position::BlockPos,
+};
 use horizon_world::nbt::Tag;
 
 /// The handle of the local player among a bell's gathered entities.
@@ -130,12 +130,7 @@ impl Game<'_> {
                             self.sim.particles.add(&options, p, [0.0; 3]);
                         }
                         // makeRaidersGlow (the server's effect).
-                        for m in self
-                            .sim
-                            .mobs
-                            .iter_mut()
-                            .filter(|_| false)
-                        {
+                        for m in self.sim.mobs.iter_mut().filter(|_| false) {
                             if glow.contains(&u64::from(m.id)) {
                                 m.add_effect("minecraft:glowing", 60, 0);
                             }

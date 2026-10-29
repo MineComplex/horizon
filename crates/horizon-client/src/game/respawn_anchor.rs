@@ -4,10 +4,7 @@
 //! (`ServerPlayer.findRespawnAndUseSpawnBlock`, `PlayerList.respawn`),
 //! using a charge.
 use super::{Dim, Game};
-use horizon_client::{
-    Result,
-    blocks::Fluid,
-    text::Text};
+use horizon_client::{Result, blocks::Fluid, text::Text};
 use horizon_core::geometry::Vec3;
 use horizon_world::registry::BlockStateId;
 
@@ -39,8 +36,6 @@ impl RespawnConfig {
         (self.dim.id().to_owned(), self.pos, self.yaw, self.forced)
     }
 }
-
-
 
 impl Game<'_> {
     // ---- respawning -------------------------------------------------------

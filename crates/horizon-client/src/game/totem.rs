@@ -1,9 +1,6 @@
 //! The totem of undying (`LivingEntity.checkTotemDeathProtection` with the
 //! totem's `death_protection` component, entity event 35 on the client).
-use super::Game;
-use horizon_client::{
-    particles::{ParticleOptions, ParticleType}};
-
+use horizon_client::particles::{ParticleOptions, ParticleType};
 
 /// `EntityEvent.TOTEM_OF_UNDYING`.
 pub(super) const TOTEM_EVENT: i8 = 35;

@@ -10,7 +10,6 @@ use horizon_client::{
 };
 use horizon_protocol::packets::play::TrackedWaypoint;
 
-
 fn uuid(ints: [i32; 4]) -> u128 {
     ints.iter()
         .fold(0u128, |acc, &i| acc << 32 | u128::from(i as u32))

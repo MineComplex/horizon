@@ -4,7 +4,6 @@
 //! waxing (3003), wax off (3004) and scraping (3005), plus the smoke, drips,
 //! egg and dragon fireball particles of 1501, 1502, 1504, 2006, 2009, 2012
 //! and 3009.
-use super::Game;
 use horizon_client::items::ItemStack;
 use horizon_client::particles::{self, ParticleOptions, ParticleType};
 use horizon_core::{geometry::trig, position::BlockPos, random::RandomSource};

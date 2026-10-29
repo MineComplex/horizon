@@ -1,17 +1,12 @@
 //! Trial spawners in the game: `TrialSpawner.tickServer` for every trial
 //! spawner (`mobs::trial_spawner`), the block's state as it changes, the mobs
 //! it adds and the rewards it ejects.
-use super::{Game, natural_spawning::GameLevel};
+use super::natural_spawning::GameLevel;
 use horizon_client::{
     items::ItemStack,
-    mobs::{
-        trial_spawner::{
-            Omen, TrialPlayer,
-            TrialSpawnerLevel, Uuid}}};
-use horizon_core::{
-    geometry::Vec3,
-    random::LegacyRandom};
-
+    mobs::trial_spawner::{Omen, TrialPlayer, TrialSpawnerLevel, Uuid},
+};
+use horizon_core::{geometry::Vec3, random::LegacyRandom};
 
 impl TrialSpawnerLevel for GameLevel<'_, '_> {
     fn game_time(&self) -> i64 {
@@ -93,4 +88,3 @@ impl TrialSpawnerLevel for GameLevel<'_, '_> {
         self.game.level.seed
     }
 }
-

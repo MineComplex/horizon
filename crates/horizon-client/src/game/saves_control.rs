@@ -1,5 +1,4 @@
 //! The multiplayer server list from the control socket (the Multiplayer screen's list).
-use super::Game;
 use horizon_client::Result;
 use serde_json::{Value, json};
 use std::{path::PathBuf, sync::mpsc::Sender};

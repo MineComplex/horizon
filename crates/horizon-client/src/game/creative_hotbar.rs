@@ -1,6 +1,5 @@
 //! The creative toolbars, `hotbar.nbt` beside `options.txt`: hold the save or
 //! load key and press a hotbar key (`Minecraft.handleKeybinds`).
-use super::Game;
 use horizon_client::{hotbar, keybinds, text::Text};
 
 impl crate::game::Sim<'_> {

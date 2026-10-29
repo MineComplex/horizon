@@ -1,6 +1,5 @@
 //! Control-socket block commands for scripted tests: `setblock`, `fill`,
 //! `getblock` and `container` (list or put items in a block entity).
-use super::Game;
 use horizon_client::{Result, containers::BlockEntity, items::ItemStack};
 use horizon_world::{chunk::BlockState, registry::BlockStateId};
 use serde_json::{Value, json};

@@ -3,7 +3,6 @@
 //! every case (a dispenser or dropper with items, blocks and target entities
 //! around it) through `dispense_from` on a fresh headless world and prints what
 //! changed in the format of `VanillaDispenserOracle`.
-use super::Game;
 use std::cell::RefCell;
 
 thread_local! {
@@ -27,6 +26,3 @@ pub(super) fn record_events(events: &[horizon_world::level::LevelEvent]) {
         }
     }
 }
-
-
-

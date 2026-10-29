@@ -2,15 +2,15 @@
 //! does to chests (opener counts, the lid block events, slots), the openers
 //! recheck, turning into statues, and the hand-over, waxing, scraping and
 //! shearing interactions.
-use super::Game;
 use horizon_client::{
     items::ItemStack,
     mobs::{
         Mob,
-        transport_items::{held, set_held}}};
+        transport_items::{held, set_held},
+    },
+};
 use horizon_core::random::RandomSource;
 use horizon_world::chunk::BlockState;
-
 
 impl crate::game::Sim<'_> {
     /// A copper golem opened or closed a chest half: the counter changes and

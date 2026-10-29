@@ -12,10 +12,7 @@
 //! portal) until the player is in that dimension and its exit is loaded.
 use super::{Dim, Game, Screen};
 use horizon_client::nether_portal::PortalState;
-use horizon_core::{
-    geometry::Vec3,
-    position::BlockPos,
-    random::RandomSource};
+use horizon_core::{geometry::Vec3, position::BlockPos, random::RandomSource};
 use horizon_world::nbt::Tag;
 use std::collections::HashMap;
 
@@ -37,8 +34,7 @@ pub(super) struct Plan {
     pub(super) end: bool,
 }
 
-impl Plan {
-}
+impl Plan {}
 
 /// An entity on its way to a dimension that isn't loaded.
 #[derive(Clone, Debug)]
@@ -171,4 +167,3 @@ impl crate::game::Sim<'_> {
         }
     }
 }
-

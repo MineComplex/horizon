@@ -17,10 +17,8 @@
 //!
 //! And for the tools: `world` (the level's name and the port), `exit-with PID`
 //! (stop when that process ends: the client a test started the server for).
-use super::Game;
 use horizon_client::Result;
 use serde_json::Value;
-
 
 /// The client's side: a test's client asks its server (`--server-control`).
 impl crate::game::Sim<'_> {

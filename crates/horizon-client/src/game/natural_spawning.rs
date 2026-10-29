@@ -12,12 +12,13 @@ use horizon_client::{
         seen_grid::SeenGrid,
         spawn_rules::{Dimension, SpawnLevel},
         spawn_selection::{
-            self, Category, Heightmap, NaturalLevel, SpawnCost, StructureAt, StructureSpawns}}};
-use horizon_core::{
-    geometry::{Aabb, Vec3}};
+            self, Category, Heightmap, NaturalLevel, SpawnCost, StructureAt, StructureSpawns,
+        },
+    },
+};
+use horizon_core::geometry::{Aabb, Vec3};
 use horizon_world::registry::BlockStateId;
 use std::collections::HashMap;
-
 
 /// A player in the level in place, as spawning and despawning see it.
 pub(super) struct LevelPlayer {

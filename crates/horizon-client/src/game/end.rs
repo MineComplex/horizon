@@ -5,20 +5,14 @@
 use super::{Dim, Game};
 use horizon_client::{
     Result,
-    
     environment::Environment,
     items::ItemStack,
     mesher::Vertex,
     particles::{ParticleOptions, ParticleType},
-    vanillagen::VanillaTerrain};
+    vanillagen::VanillaTerrain,
+};
 use horizon_core::random::RandomSource;
 use std::sync::Arc;
-
-
-
-
-
-
 
 #[derive(Default)]
 pub(super) struct EndState {
@@ -110,8 +104,7 @@ struct EyeOfEnder {
     velocity: glam::DVec3,
     life: u32,
 }
-impl EyeOfEnder {
-}
+impl EyeOfEnder {}
 
 impl Game<'_> {
     /// SkyRenderer.renderEndFlash, drawn after the renderer's resident sky mesh.
@@ -456,7 +449,4 @@ impl crate::game::Sim<'_> {
 mod tests {
     use super::*;
     use horizon_client::containers::EndGateway;
-
-
-
 }

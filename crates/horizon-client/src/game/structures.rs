@@ -1,7 +1,6 @@
 //! Which structures contain a position (`StructureManager.getStructureAt`
 //! and `getStructureWithPieceAt`), from the chunk's structure references and
 //! the generator's cached starts.
-use super::Game;
 
 impl crate::game::Sim<'_> {
     /// Structures reaching `pos`: (id, inside a piece). `getStructureAt`

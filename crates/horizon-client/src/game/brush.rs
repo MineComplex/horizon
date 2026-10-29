@@ -1,12 +1,10 @@
 //! Brushing suspicious sand and gravel: `BrushItem.onUseTick` and
 //! `BrushableBlockEntity`. The block's loot table stays in its saved block
 //! entity (like a decorated pot's) until the first counted stroke rolls it.
-use super::{Game, Hit, view_vector};
-use horizon_client::{
-    particles::{ParticleOptions, ParticleType}};
+use super::{Hit, view_vector};
+use horizon_client::particles::{ParticleOptions, ParticleType};
 use horizon_core::random::RandomSource;
 use std::collections::HashMap;
-
 
 /// A brushable block's counters. Vanilla never saves them: the block's
 /// `dusted` state is all that is left after a reload.

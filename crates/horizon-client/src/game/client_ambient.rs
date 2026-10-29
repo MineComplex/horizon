@@ -3,7 +3,6 @@
 //! portal particles, blazes' smoke and burn, eyes of ender's trail. They run
 //! on the game that has the window, in-frame or following a server, never on
 //! a server: nothing of them goes over the network.
-use super::Game;
 use horizon_client::blocks::RenderShape;
 use horizon_client::mobs::{MobEvent, ambient};
 use horizon_client::motion::{LAVA, WATER};

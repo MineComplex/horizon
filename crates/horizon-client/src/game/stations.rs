@@ -1787,7 +1787,6 @@ impl crate::game::Sim<'_> {
         // EnchantmentScreen.mouseClicked: the client menu took it, the server enchants.
         self.remote_station_button(button as i32);
         return;
-        
     }
     /// Mouse click while a station or the brewing stand is open. True when handled.
     /// A station's own buttons a controller can focus besides its slots

@@ -3,7 +3,7 @@
 //! block drops (`Block.dropResources`), drawn from the level random at the
 //! moment vanilla draws them. The item entities they make are added to the
 //! world as soon as the behaviour returns, within the same tick.
-use super::{Game, GameLevel, Screen, dispenser::new_item_motion, storage::is_shulker_box};
+use super::{GameLevel, Screen, dispenser::new_item_motion, storage::is_shulker_box};
 use horizon_client::{
     block_entity_item, block_entity_nbt,
     containers::{Banner, BlockEntity},
@@ -260,7 +260,6 @@ pub(super) fn saved_entity(
         })
         .cloned()
 }
-
 
 impl GameLevel<'_> {
     /// `Block.popResource(level, pos, stack)` with the broken block's copied components.

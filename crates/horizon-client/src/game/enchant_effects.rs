@@ -6,12 +6,11 @@
 //! the armor attribute effects (respiration, depth strider, ...), Soul
 //! Speed's `location_changed` and `tick` effects and the
 //! `minecraft:location_changed` disk effect (frost walker).
-use super::Game;
 use horizon_client::{
     enchant::{EffectContext, level_value},
-    items::ItemStack};
+    items::ItemStack,
+};
 use horizon_core::random::RandomSource;
-
 
 impl crate::game::Sim<'_> {
     /// `Player.getDestroySpeed` after the tool speed: mining efficiency, haste
@@ -503,5 +502,3 @@ impl crate::game::Sim<'_> {
         self.potions.enchant_modifiers = wanted;
     }
 }
-
-

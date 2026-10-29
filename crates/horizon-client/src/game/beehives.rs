@@ -1,11 +1,11 @@
 //! Beehives and bee nests in the game (`crate::beehive` holds their logic):
 //! their server tick, bees going in, and the bees let out, angry, when a
 //! player breaks the hive or fire reaches it.
-use super::Game;
 use horizon_client::{
     beehive::{self, Beehive, HiveHost, Release},
     containers::BlockEntity,
-    mobs::{Mob, Who, bee}};
+    mobs::{Mob, Who, bee},
+};
 use horizon_core::{
     geometry::{Aabb, Vec3},
     random::{LegacyRandom, RandomSource},

@@ -137,7 +137,6 @@ mod sculk;
 mod server_control;
 mod server_links;
 mod server_packs;
-mod server_travel;
 mod shader_packs;
 mod shield;
 mod shoulders;
@@ -199,7 +198,7 @@ use horizon_client::{
     mesher::{MeshTables, Vertex},
     mobs::{Mob, MobType, MobTypes},
     models,
-    motion::{ MotionResources, PlayerMotion},
+    motion::{MotionResources, PlayerMotion},
     mouse::{LookOptions, MouseLook, Rotation},
     particles::Particle,
     render_assets::RenderAssets,
@@ -209,19 +208,23 @@ use horizon_client::{
     streaming::{Streaming, WorkerContext},
     testgen::TestTerrain,
     title::{Action, Title},
-    world::World};
-use horizon_core::{
-    
-    geometry::{Aabb, Direction},
-    position::BlockPos};
+    world::World,
+};
 use horizon_core::{geometry::Vec3, random::RandomSource};
+use horizon_core::{
+    geometry::{Aabb, Direction},
+    position::BlockPos,
+};
 use horizon_world::{
     block_collision::BlockCollisionRegistry,
     collision_context::{CollisionContext, CollisionEntity, CollisionItem},
     entity_obstruction::{EntityIdentity, EntityObstructionWorld, ObstructionEntity},
     level::{
-        Behaviours, Dimension as LevelDimension, EntityQuery, LevelAccess, LevelEvent, PlayerContext, PlayerEffect, Ticks, flags as level_flags},
-    registry::BlockStateId};
+        Behaviours, Dimension as LevelDimension, EntityQuery, LevelAccess, LevelEvent,
+        PlayerContext, PlayerEffect, Ticks, flags as level_flags,
+    },
+    registry::BlockStateId,
+};
 use std::{
     cell::RefCell,
     collections::{HashMap, HashSet},
@@ -346,7 +349,6 @@ mod program_tests {
             );
         }
     }
-
 }
 
 impl Options {
@@ -1542,7 +1544,6 @@ struct Sim<'a> {
     /// A player carried through a portal, re-placed once the destination loads.
     travelling: Option<(PlayerMotion, Vec3)>,
     /// Players a command sends to another level, once it has run.
-    level_teleports: Vec<server_travel::LevelTeleport>,
     /// A server's levels other than the one in place (game/levels.rs).
     levels: levels::Levels,
     /// Nether portals: the player's, items' and mobs' (game/nether_portal.rs).
@@ -5253,8 +5254,7 @@ impl Game<'_> {
             }
         }
         // The loading screen's chunk map fills ring by ring, as vanilla's.
-        self.sim.streaming.loading =
-            self.loading_reason().is_some();
+        self.sim.streaming.loading = self.loading_reason().is_some();
         let (uploads, unloaded) = self.stream_world();
         if let Some(lod) = &mut self.front.lod {
             self.front
@@ -6022,7 +6022,6 @@ impl crate::game::Sim<'_> {
             .iter()
             .filter(|_| !spectator)
             .map(|p| [p.position.x, p.position.y, p.position.z])
-            
             .collect();
         let blockers = Blockers {
             mobs: &self.mobs,
@@ -6065,9 +6064,7 @@ impl crate::game::Sim<'_> {
             recipes: self.res.recipes(),
             // A client rolls no loot (LootTable.getRandomItems needs a
             // ServerLevel): it doesn't load the tables on its game thread.
-            loot: {
-                None
-            },
+            loot: { None },
             registry: self.pack.assets.registry,
             rules,
             difficulty: i32::from(self.world_data.difficulty),
@@ -7528,10 +7525,7 @@ impl crate::game::Sim<'_> {
             let mut v = vec![None; 45];
             v.extend((0..9).map(Some));
             (Kind::ItemPicker, v)
-        } else if let Some(columns) = self
-            .mount_menu_columns()
-            .filter(|_| self.mount_active())
-        {
+        } else if let Some(columns) = self.mount_menu_columns().filter(|_| self.mount_active()) {
             // A server's HorseInventoryMenu: the saddle, the body armour,
             // the chest, then the inventory.
             let mut v = vec![Some(mount_menu::SADDLE), Some(mount_menu::ARMOR)];
@@ -7975,7 +7969,6 @@ impl crate::game::Sim<'_> {
             self.remote_throw(right, input);
         }
         return;
-        
     }
     /// `Camera.setRotation`: the camera's orientation, turned round in
     /// third-person front view.
@@ -10318,7 +10311,6 @@ impl<'a> Game<'a> {
                 world_root: PathBuf::new(),
                 world_flat: false,
                 travelling: None,
-                level_teleports: Vec::new(),
                 levels: Default::default(),
                 portals: Default::default(),
                 end_travel: false,
@@ -11550,9 +11542,7 @@ impl Loading {
         );
         let renderer_ms = renderer_at.elapsed().as_millis();
         // Audio is created on the main thread, after the core is ready.
-        let audio = {
-            Audio::new(&options.resources)
-        };
+        let audio = { Audio::new(&options.resources) };
         let pack_error = loaded.pack_error.or_else(|| self.pack_error.take());
         // The game borrows its shared resources for the process's lifetime,
         // like the single copy an integrated server would share.
@@ -11823,9 +11813,7 @@ pub fn run_with(program: Program, args: Vec<String>) -> Result<()> {
     )?;
     let gui = loaded.gui.ok_or("missing menu bundle")?;
     options.resources = loaded.root.clone();
-    let audio = {
-        Audio::new(&options.resources)
-    };
+    let audio = { Audio::new(&options.resources) };
     let resources = loaded.resources;
     let game = start_game(
         &resources,
@@ -11856,7 +11844,6 @@ fn tick_sleep_timer(timer: u32, sleeping: bool) -> u32 {
         0
     }
 }
-
 
 #[cfg(test)]
 mod startup_cpu_tests {

@@ -5,7 +5,7 @@
 //! UUID or selector, and what a command does to them runs with their state
 //! swapped in (`for_player`), as their own turn, what it tells them going to
 //! their chat.
-use super::{Game, Target};
+use super::Target;
 use horizon_client::{command::args::Selector, lan::guest::Guest, text::Text};
 
 impl Target {

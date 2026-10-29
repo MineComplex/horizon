@@ -11,7 +11,8 @@ use horizon_client::{
     containers::BlockEntity,
     hud::{HudBatch, rgba},
     items::ItemStack,
-    mesher::Vertex};
+    mesher::Vertex,
+};
 use horizon_protocol::packets::play::{self, Serverbound as S};
 
 /// The beacon screen is 54 px wider than the 176-px menus it shares an origin with.
@@ -388,6 +389,5 @@ impl crate::game::Sim<'_> {
         let (primary, secondary) = (id(sel[0]), id(sel[1]));
         self.send(S::SetBeacon(play::SetBeacon { primary, secondary }));
         return;
-        
     }
 }

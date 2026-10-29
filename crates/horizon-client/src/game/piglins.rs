@@ -1,14 +1,16 @@
 //! The game side of piglins (`PiglinAi`): spotting and picking up gold,
 //! bartering when the admiring is over, and anger at players who open
 //! their chests or mine their gold.
-use super::Game;
 use horizon_client::{
     items::ItemStack,
     mobs::{
         Mob, Species, Who,
         finalize::{
             SLOT_NAMES, set_drop_chance, set_item, set_slot_enchantments, slot_enchantments,
-            stored_drop_chance}}};
+            stored_drop_chance,
+        },
+    },
+};
 use horizon_core::{geometry::Vec3, random::RandomSource};
 
 impl crate::game::Sim<'_> {

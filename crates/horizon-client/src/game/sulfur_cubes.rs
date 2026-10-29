@@ -5,7 +5,8 @@
 use super::Game;
 use horizon_client::{
     mesher::Vertex,
-    mobs::{Mob, sulfur_cube}};
+    mobs::{Mob, sulfur_cube},
+};
 
 fn block_transform(base: glam::Mat4, baby: bool) -> glam::Mat4 {
     base * glam::Mat4::from_scale(glam::Vec3::new(1.0, -1.0, -1.0))

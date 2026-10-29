@@ -2,12 +2,9 @@
 //! its particles and sounds, and `TeleportRandomlyConsumeEffect` (chorus
 //! fruit) for the local player. The level random stands in for the player's
 //! own, as for every other player draw.
-use super::Game;
-use horizon_client::{
-    items::{ConsumeEffect, ItemStack}};
+use horizon_client::items::{ConsumeEffect, ItemStack};
 use horizon_core::random::LegacyRandom;
-use horizon_world::{
-    consumable::{Consumable, EmissionWorld}};
+use horizon_world::consumable::{Consumable, EmissionWorld};
 use std::convert::Infallible;
 
 type ItemConsumable = Consumable<String, ConsumeEffect>;
@@ -74,4 +71,3 @@ impl EmissionWorld for Emitter<'_, '_> {
         Ok(())
     }
 }
-

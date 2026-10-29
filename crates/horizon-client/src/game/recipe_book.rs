@@ -13,9 +13,11 @@ use horizon_client::{
     recipe_book::{Book, BookType, ClientBook, Collection, Entry, GhostTarget, Tab},
     recipe_book_screen::{
         self as screen, ButtonView, Call, Drawn, GhostView, ItemCall, OverlayRecipe, OverlayView,
-        Screen as Layout, Search, TabView},
+        Screen as Layout, Search, TabView,
+    },
     text::{Style, Text},
-    ui::EditBox};
+    ui::EditBox,
+};
 use std::{
     collections::BTreeSet,
     hash::{Hash, Hasher},
@@ -1158,7 +1160,6 @@ impl crate::game::Sim<'_> {
             },
         ));
         return;
-        
     }
     /// ClientboundRecipeBookAddPacket (`ClientRecipeBook.add`): the
     /// displays join the book, highlighted when new, and the recipes whose

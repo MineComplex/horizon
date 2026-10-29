@@ -9,7 +9,8 @@ use horizon_client::{
     fast_hash::FxHashMap,
     mobs::{Mob, Species, Who, warden},
     particles::{ParticleOptions, ParticleType},
-    sculk::{self, Context, Info, SculkEntity, SculkKind, WardenSpawnTracker}};
+    sculk::{self, Context, Info, SculkEntity, SculkKind, WardenSpawnTracker},
+};
 use horizon_core::{geometry::Direction, position::BlockPos, random::RandomSource};
 use horizon_world::registry::BlockStateId;
 use std::collections::HashSet;
@@ -68,9 +69,7 @@ pub(super) struct SculkState {
     pub tracker_loaded: bool,
 }
 
-impl SculkState {
-
-}
+impl SculkState {}
 /// An insertion-ordered set of block positions (`Level.blockEntityTickers`
 /// keeps the order block entities were added in).
 #[derive(Default)]
@@ -110,7 +109,6 @@ fn dist_sqr(a: [i32; 3], b: (i32, i32, i32)) -> i64 {
 
 impl Game<'_> {
     // ---- setup and the block entity index ----
-
 
     // ---- contexts ----
 
@@ -969,7 +967,6 @@ impl crate::game::Sim<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
-
 
     #[test]
     fn centres_and_blocks_agree() {

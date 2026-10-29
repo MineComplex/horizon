@@ -1,5 +1,5 @@
 //! `/tellraw` (TellRawCommand) and `/title` (TitleCommand).
-use super::{Arg, Context, Game, R, Target, err};
+use super::{Arg, Context, R, Target, err};
 use horizon_client::{hud_overlays::Titles, lan::data::component_nbt, text::Text};
 use horizon_protocol::packets::play::{self, Clientbound as C};
 
@@ -292,8 +292,7 @@ impl crate::game::Sim<'_> {
                         local(&mut self.titles);
                     }
                 }
-                Target::Guest(conn) => {
-                }
+                Target::Guest(conn) => {}
                 _ => {}
             }
         }

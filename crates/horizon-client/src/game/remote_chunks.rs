@@ -2,7 +2,6 @@
 //! sections and light of each packet become a client column on a decoder
 //! thread as soon as the packet arrives, so the frame that handles it in
 //! order only inserts the result (`ClientPacketListener.handleLevelChunkWithLight`).
-use super::Game;
 use horizon_client::{
     chunk::{BIOME_STRATEGY, Chunk, Light, MIN_Y, SECTIONS, Section, block_strategy},
     streaming::Streaming,

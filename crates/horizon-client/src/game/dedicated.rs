@@ -6,12 +6,7 @@
 //! its simulation and the play-state hub that LAN hosting uses, configured
 //! from server.properties, with the operator, whitelist and ban lists and a
 //! console on standard input.
-use super::Game;
 use std::io::Write;
-
-
-
-
 
 /// Log4j's console pattern: `[HH:mm:ss] [thread/LEVEL]: message`.
 pub(super) fn log(level: &str, message: &str) {
@@ -44,15 +39,3 @@ thread_local! {
     /// The lines logged while a control request runs a console command.
     static CAPTURE: std::cell::RefCell<Option<Vec<String>>> = const { std::cell::RefCell::new(None) };
 }
-
-
-
-
-
-
-
-
-
-
-
-

@@ -15,7 +15,8 @@ use horizon_core::position::BlockPos;
 use horizon_protocol::packets::play::{self, Serverbound as S};
 use horizon_world::{
     chunk::BlockState,
-    registry::{BlockRegistry, BlockStateId}};
+    registry::{BlockRegistry, BlockStateId},
+};
 use winit::{
     event::{ElementState, KeyEvent},
     keyboard::{KeyCode, PhysicalKey},

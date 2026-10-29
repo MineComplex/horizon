@@ -4,7 +4,7 @@
 //! `thunderHit` (damage and burning, charged creepers, zombified piglins,
 //! witches, mooshroom colours, turtles, burnt items), lightning rods, the sky
 //! flash, the sounds and the branching additive bolt.
-use super::{Game, commands::Target};
+use super::commands::Target;
 use horizon_client::advancements::EntityView;
 use horizon_client::mobs::{Damage, DamageKind, MobEvent, SpawnSetup, Species};
 use horizon_core::{position::BlockPos, random::RandomSource};

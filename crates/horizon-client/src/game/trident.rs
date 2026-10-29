@@ -5,11 +5,9 @@
 //! lightning on a hit (`channeling.json`).
 use super::{Game, view_vector};
 use horizon_client::{
-    collisions::SceneCollisions,
-    items::ItemStack,
-    mesher::Vertex,
-    mobs::anim::Poses,
-    projectiles::ProjectileWorld};
+    collisions::SceneCollisions, items::ItemStack, mesher::Vertex, mobs::anim::Poses,
+    projectiles::ProjectileWorld,
+};
 use horizon_core::geometry::Vec3;
 
 pub(super) struct ThrownTrident {

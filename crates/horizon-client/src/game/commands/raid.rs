@@ -1,5 +1,5 @@
 //! `RaidCommand`: `/raid start|stop|check|spawnleader|setomen|glow|sound`.
-use super::{Game, R, Text, err};
+use super::{R, Text, err};
 use horizon_client::{command::Context, mobs::raider};
 
 impl crate::game::Sim<'_> {

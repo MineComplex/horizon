@@ -2,7 +2,6 @@
 //! (`LandOnOwnersShoulderGoal`), is kept as the player's `ShoulderEntityLeft`
 //! or `ShoulderEntityRight`, and flies off again when the player is hurt,
 //! falls, swims, flies or sleeps (`ServerPlayer.handleShoulderEntities`).
-use super::Game;
 use horizon_client::mobs::Species;
 use horizon_world::nbt::Tag;
 

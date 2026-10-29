@@ -1,6 +1,6 @@
 //! `/place template` (PlaceCommand): a saved structure template placed with
 //! rotation, mirroring and integrity.
-use super::{Arg, Context, Game, R, err};
+use super::{Arg, Context, R, err};
 use horizon_client::{save, text::Text};
 use horizon_core::random::{LegacyRandom, RandomSource};
 use horizon_world::{

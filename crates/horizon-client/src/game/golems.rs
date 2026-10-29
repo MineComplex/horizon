@@ -2,7 +2,6 @@
 //! pumpkin or jack o'lantern on two snow blocks makes a snow golem, and on a
 //! T of four iron blocks (arms along X or Z, nothing beside the legs) an iron
 //! golem. Players placing the pumpkin and dispensers share it.
-use super::Game;
 use horizon_client::Result;
 
 impl crate::game::Sim<'_> {

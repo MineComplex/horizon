@@ -3,7 +3,6 @@
 //! learn whether the click ends on the mob or goes on to the held item
 //! (`Minecraft.startUseItem` then sends UseItem). The server does the real
 //! interaction; this is what the client's copy of the mob answers.
-use super::Game;
 use horizon_client::{
     first_person::Hand,
     mobs::{Species, equine, llama},

@@ -1,6 +1,6 @@
 //! Game modes beyond survival and creative (`GameType`): adventure players
 //! cannot build, spectators fly through blocks and only watch.
-use super::{Game, Screen};
+use super::Screen;
 use horizon_client::command::args::GameMode;
 
 impl crate::game::Sim<'_> {

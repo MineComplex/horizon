@@ -2,12 +2,13 @@
 //! (`ClientboundUpdateAttributesPacket`, lan/attributes.rs): the ones
 //! vanilla's `AttributeMap` would have created by then, since only those are
 //! sent, never the type's other defaults.
-use super::Game;
 use horizon_client::{
     lan::attributes::operation_named,
     mobs::{
         Mob,
-        finalize::{self, Attr, Op}}};
+        finalize::{self, Attr, Op},
+    },
+};
 
 /// `EquipmentSlotGroup.test`: whether a modifier's slot group covers a slot.
 fn slot_in_group(group: &str, slot: &str) -> bool {

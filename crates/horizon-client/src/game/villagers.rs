@@ -1,7 +1,6 @@
 //! What villagers do with each other and with the player: gossip and
 //! reputation, sharing food and wares, picking up dropped items, making
 //! babies, calling iron golems and the prices they ask.
-use super::Game;
 use horizon_client::{
     gossip::{self, GossipType},
     items::ItemStack,

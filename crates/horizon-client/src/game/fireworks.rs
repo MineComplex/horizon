@@ -5,12 +5,9 @@
 use super::{Game, item_draw::owner_at};
 use horizon_assets::item_model::DisplayContext;
 use horizon_client::{
-    block_entity_render::vertex_light,
-    collisions::SceneCollisions,
-    items::ItemStack,
-    mesher::Vertex,
-    
-    particles::FireworkExplosion};
+    block_entity_render::vertex_light, collisions::SceneCollisions, items::ItemStack,
+    mesher::Vertex, particles::FireworkExplosion,
+};
 use horizon_core::{
     geometry::{Aabb, Vec3},
     random::RandomSource,

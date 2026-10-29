@@ -25,7 +25,8 @@ use horizon_client::{
     items::ItemStack,
     keybinds,
     menu::Input,
-    stations::hover_name};
+    stations::hover_name,
+};
 use winit::{event::MouseButton, keyboard::KeyCode};
 
 /// A sort button's side in GUI pixels.
@@ -59,9 +60,7 @@ impl crate::game::Sim<'_> {
         {
             return false;
         }
-        {
-            self.remote_storage_open()
-        }
+        { self.remote_storage_open() }
     }
     /// One ordinary click on a game slot. False when nothing took it.
     pub(super) fn tweak_click(&mut self, slot: usize, button: i32, input: Input) -> bool {

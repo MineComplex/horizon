@@ -3,11 +3,11 @@
 use super::{Game, Screen};
 pub use horizon_client::world_data::TimeMarker;
 use horizon_client::{
-    chat::{
-        Chat, ChatAbilities, ChatAction, ChatScreen, ChatSource, ChatVisibility, Commands},
+    chat::{Chat, ChatAbilities, ChatAction, ChatScreen, ChatSource, ChatVisibility, Commands},
     hud::HudBatch,
     screen_draw::Measure,
-    text::{ClickEvent, Style, Text}};
+    text::{ClickEvent, Style, Text},
+};
 use std::collections::BTreeMap;
 
 /// The tree the chat parses and completes with: a server's, once it has
@@ -826,7 +826,6 @@ impl crate::game::Sim<'_> {
         // screen is the connection's: the game's own messages join it.
         self.chat_line(text, ChatSource::Server);
         return;
-        
     }
     /// ChatScreen.handleChatInput: history, then a command or a chat line.
     /// The Chat option's restrictions stop the message here too, so a
@@ -840,7 +839,6 @@ impl crate::game::Sim<'_> {
         // unless a client mod owns the command.
         self.send_chat(message);
         return;
-        
     }
     /// `Screen.clickUrlAction`: nothing with Web Links off, else the link
     /// opens, after the confirmation unless Prompt on Links is off.

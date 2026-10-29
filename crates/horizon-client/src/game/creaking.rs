@@ -1,7 +1,7 @@
 //! The creaking heart block entity in the game: `mobs::creaking_heart`
 //! ticks each heart (spawning, letting go of and bleeding for its creaking)
 //! and this applies what it reports to the world, the mobs and the speakers.
-use super::{Game, creatures::seen};
+use super::creatures::seen;
 use horizon_client::{
     Result,
     containers::{BlockEntity, CreakingHeart},
@@ -256,5 +256,3 @@ impl crate::game::Sim<'_> {
             && self.world_data.rules.bool("spawn_monsters")
     }
 }
-
-

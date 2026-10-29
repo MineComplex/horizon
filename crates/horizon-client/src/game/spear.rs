@@ -7,13 +7,14 @@
 //! `Player.stabAttack`). The hit's feedback (`onKineticHit`) reaches the
 //! players around as entity event 2. A left click jabs instead
 //! (`PiercingWeapon.attack`), which Lunge turns into a dash.
-use super::{Game, view_vector};
+use super::view_vector;
 use horizon_client::{
     attack_strength::delay,
     collisions::SceneCollisions,
     first_person::Hand,
     mobs::Damage,
-    spear::{HIT_FEEDBACK_TICKS, Kinetic, REACH}};
+    spear::{HIT_FEEDBACK_TICKS, Kinetic, REACH},
+};
 use horizon_core::{
     geometry::{Aabb, Vec3, traverse_blocks},
     position::BlockPos,

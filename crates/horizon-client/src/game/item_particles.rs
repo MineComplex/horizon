@@ -1,6 +1,5 @@
 //! The sprites of item particles: `BreakingItemParticle.ItemParticleProvider.getSprite`
 //! resolves the stack's model for the ground and picks a layer's particle sprite.
-use super::Game;
 use horizon_assets::item_model::DisplayContext;
 use horizon_client::{
     items::ItemStack,

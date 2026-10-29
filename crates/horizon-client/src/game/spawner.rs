@@ -6,12 +6,12 @@ use super::Game;
 use horizon_client::{
     containers::BlockEntity,
     mobs::Mob,
-    particles::{ParticleOptions, ParticleType}};
+    particles::{ParticleOptions, ParticleType},
+};
 use horizon_core::random::RandomSource;
 use std::collections::{HashMap, HashSet};
 
 type Pos = (i32, i32, i32);
-
 
 /// What the spawner code keeps between ticks.
 #[derive(Default)]

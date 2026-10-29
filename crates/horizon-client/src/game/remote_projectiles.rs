@@ -2,7 +2,7 @@
 //! end crystals on a server's client (`ClientPacketListener.handleAddEntity`
 //! and `handleSetEntityData`): the server simulates them, the client draws
 //! them where it says and interpolates their moves.
-use super::{FallStep, FallingBlock, Game, fireworks::fireworks_of, view_vector};
+use super::{FallStep, FallingBlock, fireworks::fireworks_of, view_vector};
 use horizon_client::projectiles::{Hit, Projectile, ProjectileKind, ProjectileWorld};
 use horizon_client::{
     collisions::SceneCollisions,

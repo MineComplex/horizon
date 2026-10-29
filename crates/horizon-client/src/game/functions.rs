@@ -2,9 +2,8 @@
 //! tags, `/schedule`), predicates, `/reload` and `/datapack`.
 use super::{
     Game,
-    commands::{
-        R, err,
-        execute::Source}};
+    commands::{R, err, execute::Source},
+};
 use horizon_client::{
     command::{Arg, Context},
     datapack::{self, DataPack, DataStore, Function},

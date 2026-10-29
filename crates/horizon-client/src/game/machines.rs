@@ -9,7 +9,8 @@ use horizon_client::{
     Result,
     containers::BlockEntity,
     items::{ItemStack, Items},
-    world::World};
+    world::World,
+};
 use horizon_core::{geometry::Direction, position::BlockPos, random::RandomSource};
 use horizon_world::{level::Behaviours, registry::BlockStateId};
 
@@ -319,7 +320,6 @@ impl Containers<'_> {
         (total * 14.0).floor() as i32 + i32::from(total > 0.0)
     }
 }
-
 
 fn bone_meal() -> ItemStack {
     ItemStack {
@@ -773,6 +773,4 @@ mod item_column_tests {
                 && hi.z > min.z
         })
     }
-
-
 }

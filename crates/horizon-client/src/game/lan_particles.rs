@@ -1,12 +1,12 @@
 //! Particles a server sends its players and its clients draw:
 //! `ClientboundLevelParticlesPacket` (`ServerLevel.sendParticles`, which
 //! `/particle` uses) and `ClientboundExplodePacket` (`ServerLevel.explode`).
-use super::Game;
 use horizon_client::particles::{ParticleOptions, ParticleType};
 use horizon_core::{geometry::Vec3, random::RandomSource};
 use horizon_protocol::{
     entity_data::{Particle, ParticleData},
-    packets::play::self};
+    packets::play,
+};
 use horizon_world::registry::BlockStateId;
 
 /// An ARGB colour as the options' RGBA.
@@ -17,7 +17,6 @@ fn rgba(argb: i32) -> [f32; 4] {
 fn rgb(c: [f32; 4]) -> [f32; 3] {
     [c[0], c[1], c[2]]
 }
-
 
 impl crate::game::Sim<'_> {
     /// `SonicBoom.tick` uses `ServerLevel.sendParticles` for each ray point.
@@ -46,7 +45,8 @@ impl crate::game::Sim<'_> {
         options: &ParticleOptions,
         state: Option<BlockStateId>,
     ) -> Option<Particle> {
-        None}
+        None
+    }
     /// The options a server's particle stands for (None for a type or data
     /// this client doesn't draw).
     pub(super) fn received_particle(
@@ -191,7 +191,6 @@ impl crate::game::Sim<'_> {
                 .push((options.clone(), at, spread, speed, count));
         }
         return;
-        
     }
     /// `ServerLevel.explode`'s packet to each player within 64 blocks. The
     /// sound and the push reach them on their own (the level's sounds, the

@@ -2,7 +2,7 @@
 //! variant choice, `HangingEntity.survives` checks every 100 ticks,
 //! breaking by attack (`dropItem`), saving, and `PaintingRenderer` quads.
 use super::{Game, view_vector};
-use horizon_client::{ items::ItemStack, mesher::Vertex};
+use horizon_client::{items::ItemStack, mesher::Vertex};
 use std::sync::Arc;
 
 /// A `painting_variant` and whether `#placeable` lists it (in tag order).

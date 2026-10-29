@@ -1,7 +1,7 @@
 //! `WanderingTraderSpawner`: every 1200 ticks the spawn delay counts down;
 //! when it runs out a trader may appear near the player (or the nearest
 //! bell), bringing two llamas on leads, and wanders off after two days.
-use super::{ Game, creatures::Creatures};
+use super::creatures::Creatures;
 use horizon_client::save::write_dat;
 use horizon_world::nbt::Tag;
 
@@ -25,8 +25,7 @@ impl Default for Spawner {
         }
     }
 }
-impl Creatures {
-}
+impl Creatures {}
 impl crate::game::Sim<'_> {
     fn trader_path(&self) -> std::path::PathBuf {
         self.world_root

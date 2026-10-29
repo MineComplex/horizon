@@ -2,7 +2,6 @@
 //! vehicles, the jockeys that spawn mounted (chicken jockeys, spider
 //! jockeys, strider jockeys, zombie horsemen) and the skeleton horse trap.
 //! Saving riders under `Passengers` lives in `persist.rs`.
-use super::Game;
 use horizon_client::mobs::{Species, riders};
 use horizon_core::{geometry::Vec3, random::RandomSource};
 use std::collections::HashMap;

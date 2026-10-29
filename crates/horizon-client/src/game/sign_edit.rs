@@ -6,7 +6,8 @@ use horizon_client::{
     containers::BlockEntity,
     hud::{HudBatch, rgba},
     signs::wood_type,
-    ui::EditBox};
+    ui::EditBox,
+};
 use horizon_protocol::packets::play::{self, Serverbound as S};
 use winit::{
     event::{ElementState, KeyEvent},

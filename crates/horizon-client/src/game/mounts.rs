@@ -6,7 +6,8 @@ use super::Game;
 use horizon_client::{
     hud::HudBatch,
     mobs::{MobEvent, Species, equine},
-    sprint::Keys};
+    sprint::Keys,
+};
 use horizon_core::geometry::Vec3;
 
 /// `passengerAttachments` minus the player's 0.6 vehicle attachment.
@@ -31,8 +32,7 @@ pub(super) struct MountState {
     pub(super) jump_scale: f32,
     was_jumping: bool,
 }
-impl MountState {
-}
+impl MountState {}
 impl Game<'_> {
     /// `PlayerRideableJumping`: horses, camels and nautili (the dash).
     fn jumps(species: Species) -> bool {

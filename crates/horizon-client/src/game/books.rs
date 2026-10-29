@@ -12,7 +12,8 @@ use horizon_client::{
     items::ItemStack,
     menu::{Kind, Menu},
     text::Text,
-    ui};
+    ui,
+};
 use horizon_core::position::BlockPos;
 use horizon_protocol::packets::play::{self, Serverbound as S};
 use horizon_world::level::flags as level_flags;
@@ -845,8 +846,7 @@ impl crate::game::Sim<'_> {
                 lectern: Some(_),
                 ..
             })
-        )
-        {
+        ) {
             self.remote_close_container();
         }
         self.book = None;

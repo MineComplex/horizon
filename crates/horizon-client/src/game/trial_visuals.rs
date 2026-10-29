@@ -3,12 +3,11 @@
 //! the ambient sound) and `VaultBlockEntity.Client.tick` (idle smoke and
 //! flames, the connection particles towards the player, the ambient sound).
 //! Every draw comes from the client level's random.
-use super::Game;
 use horizon_client::{
     containers::BlockEntity,
-    particles::{ParticleOptions, ParticleType as T}};
+    particles::{ParticleOptions, ParticleType as T},
+};
 use horizon_core::random::{LegacyRandom, RandomSource};
-
 
 /// `Mth.nextDouble`.
 fn next_double(random: &mut LegacyRandom, min: f64, max: f64) -> f64 {

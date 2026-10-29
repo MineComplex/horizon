@@ -2,7 +2,6 @@
 //! into whoever took it over three ticks (`ClientPacketListener.handleTakeItemEntity`
 //! adds one for every `ClientboundTakeItemEntityPacket`), drawn with the render
 //! state it had when it was taken (`extractEntity(from, 1.0F)`).
-use super::Game;
 use horizon_client::{
     entities::{ExperienceOrb, ItemEntity},
     projectiles::Projectile,
@@ -70,7 +69,6 @@ pub(super) fn position(p: &Pickup, partial: f64) -> [f64; 3] {
         from[i] + time * (target - from[i])
     })
 }
-
 
 impl crate::game::Sim<'_> {
     /// `ItemPickupParticle.updatePosition`: the collector's x and z, halfway up to its eyes.

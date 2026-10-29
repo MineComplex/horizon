@@ -9,7 +9,8 @@ use horizon_client::{
     blocks::MAP_COLORS,
     hud::{MAP_SLOTS, Rect},
     items::ItemStack,
-    mesher::Vertex};
+    mesher::Vertex,
+};
 use horizon_world::nbt::Tag;
 use std::collections::HashMap;
 
@@ -30,8 +31,7 @@ struct Holder {
     /// The changed pixels' box (min x, min y, max x, max y).
     dirty: Option<[i32; 4]>,
 }
-impl Holder {
-}
+impl Holder {}
 pub(super) struct MapData {
     pub center: [i32; 2],
     pub scale: u8,
@@ -775,5 +775,4 @@ mod tests {
         }
         assert_eq!(decoration_sprite("minecraft:nothing"), None);
     }
-
 }

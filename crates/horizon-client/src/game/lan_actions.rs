@@ -5,13 +5,6 @@
 //! blocks, attacking and the commands all behave exactly as they do for the
 //! host, and every world change they cause reaches all players through the
 //! block log, the level events and the entity tracker.
-use super::Game;
-
-
-
-
-
-
 
 impl crate::game::Sim<'_> {
     /// `ServerLevel.players()` in turn: the host's own player, then each
@@ -27,5 +20,3 @@ impl crate::game::Sim<'_> {
         return;
     }
 }
-
-

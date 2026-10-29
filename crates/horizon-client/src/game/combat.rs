@@ -1,9 +1,9 @@
 //! The player's `CombatTracker`: the damage taken lately, who dealt it and
 //! where the player fell from, turned into the vanilla death message.
-use super::Game;
 use horizon_client::{
     particles::{ParticleOptions, ParticleType},
-    text::Text};
+    text::Text,
+};
 use horizon_core::random::RandomSource;
 
 /// `EntityEvent.DROWN_PARTICLES`: broadcast with the drowning damage.

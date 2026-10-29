@@ -2,7 +2,6 @@
 //! HashSet, so iteration and the following shuffle match vanilla's random
 //! draws), entity damage with exposure and knockback, block interaction with
 //! merged drops and TNT chain priming, and optional fire.
-use super::Game;
 use horizon_client::{Result, blocks::Fluid, collisions::SceneCollisions, items::ItemStack};
 use horizon_core::{
     geometry::{Vec3, VoxelShape},

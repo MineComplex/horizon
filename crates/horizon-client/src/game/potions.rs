@@ -2,23 +2,22 @@
 //! `Consumable`), throwing splash/lingering potions (`ThrownSplashPotion`),
 //! filling glass bottles (`BottleItem`), the per-tick effect application,
 //! effect attribute modifiers and the HUD effect icons (`Hud.extractEffects`).
-use super::{
-    Game, Screen,
-    item_draw::owner_at};
+use super::{Game, Screen, item_draw::owner_at};
 use horizon_assets::item_model::DisplayContext;
 use horizon_client::{
     block_entity_render::vertex_light,
     brewing,
-    effects::{ EffectInstance, PlayerEffects},
+    effects::{EffectInstance, PlayerEffects},
     hud::HudBatch,
     hud_layout, hud_overlays, inventory_effects,
     items::ItemStack,
     mesher::Vertex,
-    
-    text::Text};
+    text::Text,
+};
 use horizon_core::{
     geometry::Vec3,
-    random::{LegacyRandom, RandomSource}};
+    random::{LegacyRandom, RandomSource},
+};
 
 /// A thrown splash or lingering potion in flight.
 #[derive(Clone, Debug)]

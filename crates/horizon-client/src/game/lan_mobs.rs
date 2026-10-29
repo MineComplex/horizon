@@ -3,11 +3,6 @@
 //! player vanilla's `Level.getNearestPlayer` would give it, and keeps the
 //! guest it targets until it lets go. What it then does to `Who::Player`
 //! (hits, pushes, fire, its projectiles) runs with that guest swapped in.
-use super::Game;
-
-
-
-
 
 impl crate::game::Sim<'_> {
     /// Runs `f` as each guest in play here, for what strikes every player in
@@ -32,7 +27,6 @@ impl crate::game::Sim<'_> {
         return Vec::new();
     }
 }
-
 
 /// A guest as the blocks that look for players see them
 /// (`PlayerDetector`, `level.getPlayers`: the dead ones too).
@@ -59,5 +53,3 @@ impl crate::game::Sim<'_> {
             .unwrap_or_default()
     }
 }
-
-

@@ -3,7 +3,6 @@
 //! stops the fall, cancels its damage and knocks the creatures around the
 //! target away. The rest of a weapon hit (`Player.itemAttackInteraction`)
 //! is here too: `hurtEnemy`, the post-attack enchantments and `postHurtEnemy`.
-use super::Game;
 use horizon_client::{
     enchant::EffectContext,
     items::ItemStack,

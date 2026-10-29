@@ -1,6 +1,5 @@
 //! Particles a client of a server draws for a mob's entity event, which the
 //! server does not send as a particle packet.
-use super::Game;
 use horizon_client::{
     mobs::Species,
     particles::{ParticleOptions, ParticleType},

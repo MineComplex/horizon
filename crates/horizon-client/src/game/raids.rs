@@ -2,13 +2,12 @@
 //! their waves, boss bar, victory and the raiders' bookkeeping. The rules are
 //! `horizon_client::patrol` and `horizon_client::raid`; this is the game's
 //! side of them.
-use super::{Dim, Game};
+use super::Dim;
 use horizon_client::{
-    
-    mobs::{
-        Mob, Species, raider},
+    mobs::{Mob, Species, raider},
     patrol::GameplayAttributes,
-    raid::{self, Raids}};
+    raid::{self, Raids},
+};
 use horizon_core::{geometry::Vec3, random::RandomSource};
 use std::collections::HashMap;
 
@@ -30,13 +29,7 @@ pub(super) struct Raiding {
     homes: HashMap<i32, (i64, std::sync::Arc<Vec<[i32; 3]>>)>,
 }
 
-
-impl Raiding {
-}
-
-
-
-
+impl Raiding {}
 
 impl crate::game::Sim<'_> {
     /// Every claimed village point of interest (job sites, beds, bells).
@@ -271,6 +264,3 @@ impl crate::game::Sim<'_> {
         }
     }
 }
-
-
-

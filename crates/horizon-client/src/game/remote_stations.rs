@@ -6,7 +6,7 @@
 //! do. The menu's client-side `slotsChanged` follows the server's slots, and
 //! its data slots come in `ClientboundContainerSetDataPacket`.
 use super::{
-    Game, Screen,
+    Screen,
     stations::{Kind, Station},
 };
 use horizon_protocol::packets::play::{self, Serverbound as S};

@@ -1,7 +1,6 @@
 //! Pick Block on an entity (`Minecraft.pickBlockOrEntity`'s entity case and
 //! `ServerGamePacketListenerImpl.handlePickItemFromEntity`): the client aims,
 //! the server answers with `Entity.getPickResult`.
-use super::Game;
 
 impl crate::game::Sim<'_> {
     /// The entity the crosshair hits before any block, as `Entity.getId`; an

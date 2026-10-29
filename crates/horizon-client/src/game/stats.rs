@@ -2,7 +2,6 @@
 //! mined, items used/crafted/broken/picked up/dropped and mobs killed or
 //! killed by, saved to `players/stats/<uuid>.json`, plus the phantom
 //! spawner that reads the time since rest (`PhantomSpawner`).
-use super::Game;
 use std::{
     collections::{BTreeMap, BTreeSet},
     path::{Path, PathBuf},
@@ -171,4 +170,3 @@ impl crate::game::Sim<'_> {
         }
     }
 }
-

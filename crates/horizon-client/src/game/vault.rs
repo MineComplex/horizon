@@ -5,12 +5,8 @@
 use super::Game;
 use horizon_assets::item_model::DisplayContext;
 use horizon_client::{
-    block_entity_render::vertex_light,
-    containers::BlockEntity,
-    item_render,
-    mesher::Vertex};
-
-
+    block_entity_render::vertex_light, containers::BlockEntity, item_render, mesher::Vertex,
+};
 
 impl Game<'_> {
     /// `VaultRenderer`: the display item of every vault near the camera that

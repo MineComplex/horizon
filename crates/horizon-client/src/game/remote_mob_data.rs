@@ -2,7 +2,6 @@
 //! (ClientPacketListener.handleSetEntityData, then each entity's
 //! `onSyncedDataUpdated`): what a client draws from it rather than from its
 //! own simulation, which a client of a server doesn't run.
-use super::Game;
 use horizon_client::mobs::render::{PROFESSIONS, VILLAGER_TYPES};
 use horizon_client::mobs::{
     Mob, Species, Who, armadillo, bat, bee, camel, creaking, equine, finalize, illusioner, panda,

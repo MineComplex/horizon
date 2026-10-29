@@ -3,25 +3,14 @@
 //! tick and turns what the guests do into gameplay. A world that is not open
 //! costs one `Option` check per tick.
 use super::Game;
-use horizon_client::{
-    Result,
-    lan::hub::Hub,
-    mobs::Mob};
-use horizon_protocol::{
-    entity_data::{Value, serializer}};
-
-
-
+use horizon_client::{Result, lan::hub::Hub, mobs::Mob};
+use horizon_protocol::entity_data::{Value, serializer};
 
 pub(super) struct LanHost {
     pub hub: Hub,
 }
 
-impl LanHost {
-
-}
-
-
+impl LanHost {}
 
 /// The SynchedEntityData index of the baby flag: AgeableMob.DATA_BABY_ID and
 /// Zombie.DATA_BABY_ID are both the first entry after Mob's (16); Piglin's
@@ -202,10 +191,6 @@ fn mob_variant_meta(
     }
 }
 
-
-
-
-
 pub const HELP: &[&str] = &[
     "lan open [PORT] [commands] [force]  the test server's port; commands lets every player run commands",
     "lan status                     the test server's port and players",
@@ -334,5 +319,3 @@ impl crate::game::Sim<'_> {
         horizon_client::mobs::villager::bed_facing_code(facing)
     }
 }
-
-

@@ -2,16 +2,9 @@
 //! bobbing, lure and bite timers, open water, hooking mobs, retrieving the
 //! `gameplay/fishing` loot) and `FishingHookRenderer` (bobber and line).
 use super::{Game, view_vector};
-use horizon_client::{
-    gizmos::Line,
-    items::ItemStack,
-    mesher::Vertex,
-    
-    pose::Pose};
-use horizon_core::{
-    geometry::{ Vec3, trig}};
+use horizon_client::{gizmos::Line, items::ItemStack, mesher::Vertex, pose::Pose};
+use horizon_core::geometry::{Vec3, trig};
 use horizon_protocol::entity_data::Value;
-
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 enum State {
@@ -290,11 +283,7 @@ impl crate::game::Sim<'_> {
     /// `FishingHook.onSyncedDataUpdated`: this player's hook is biting
     /// (DATA_BITING), which `status` shows as a nibble.
     pub(super) fn remote_hook_data(&mut self, id: u32, values: &[(u8, i32, Value)]) {
-        let Some(h) = self
-            .hook
-            .as_mut()
-            .filter(|h| h.id == id)
-        else {
+        let Some(h) = self.hook.as_mut().filter(|h| h.id == id) else {
             return;
         };
         for (index, _, value) in values {

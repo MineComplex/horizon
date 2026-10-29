@@ -1,7 +1,6 @@
 //! `CampfireBlock.useItemOn`: an item in `#minecraft:douses_campfires` (the
 //! shovels) put on a lit campfire puts it out.
-use super::Game;
-use horizon_client::{ animate_tick::make_campfire_smoke, items::ItemStack};
+use horizon_client::{animate_tick::make_campfire_smoke, items::ItemStack};
 use horizon_core::position::BlockPos;
 use horizon_world::chunk::BlockState;
 use winit::keyboard::KeyCode;

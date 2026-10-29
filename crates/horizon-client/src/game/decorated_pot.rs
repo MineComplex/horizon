@@ -2,14 +2,9 @@
 //! entities): the loot table a trial chamber pot holds, rolled into its item
 //! the first time the item is read (`RandomizableContainer.unpackLootTable`),
 //! and `DecoratedPotBlock.useItemOn` / `useWithoutItem`.
-use super::Game;
-use horizon_client::{
-    
-    random_sequences::RandomSequences,
-    save};
+use horizon_client::{random_sequences::RandomSequences, save};
 use horizon_core::random::LegacyRandom;
 use horizon_world::{loot::LootData, nbt::Tag};
-
 
 /// `RandomizableContainer.unpackLootTable(null)` on a pot's saved tag: the
 /// loot table, if any, is removed and `LootTable.fill` puts its roll in
@@ -50,4 +45,3 @@ pub(super) fn unpack_loot(
         map.insert("item".into(), save::item_to_nbt(&item));
     }
 }
-

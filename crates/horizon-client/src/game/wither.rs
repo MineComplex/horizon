@@ -1,9 +1,6 @@
 //! The wither on the game side: building it (`WitherSkullBlock.checkSpawn`),
 //! its boss bar, and its skulls hitting and exploding.
-use super::Game;
-use horizon_client::{
-    
-    projectiles::{Projectile, ProjectileKind}};
+use horizon_client::projectiles::{Projectile, ProjectileKind};
 
 impl crate::game::Sim<'_> {
     fn is_wither_skull(&self, p: [i32; 3]) -> bool {

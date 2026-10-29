@@ -3,7 +3,7 @@
 //! `ProjectileDeflection.AIM_DEFLECT` instead of hurting anything. It flies on
 //! along the player's view and is the player's now (`Projectile.deflect`
 //! sets the owner), so a ghast it meets dies of it (`Ghast.isReflectedFireball`).
-use super::{Game, ray_box, view_vector};
+use super::{ray_box, view_vector};
 use horizon_client::{
     mobs::Who,
     projectiles::{Projectile, ProjectileKind},

@@ -413,8 +413,7 @@ impl crate::game::Sim<'_> {
                         horizon_client::audio::Audio::stop_selection(sound.as_deref(), source);
                     self.sounds.stop_sounds(sound.as_deref(), source, selection);
                 }
-                Target::Guest(conn) => {
-                }
+                Target::Guest(conn) => {}
                 _ => {}
             }
         }
@@ -623,8 +622,7 @@ impl crate::game::Sim<'_> {
                     self.guest_packets.push(p.clone());
                 }
                 (Target::Player, _) => local = true,
-                (Target::Guest(conn), Some(p)) => {
-                }
+                (Target::Guest(conn), Some(p)) => {}
                 _ => {}
             }
         }

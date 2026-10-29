@@ -5,10 +5,7 @@
 use super::{Game, view_vector};
 use horizon_assets::{bake::bake_model, model::CuboidModel, resolve::ModelLibrary};
 use horizon_client::{entities::ItemFrame, items::ItemStack, mesher::Vertex};
-use horizon_core::{
-    
-    position::BlockPos,
-    random::RandomSource};
+use horizon_core::{position::BlockPos, random::RandomSource};
 use std::sync::Arc;
 
 /// A baked frame model: (corners in block units, unit UVs, sprite) per quad.

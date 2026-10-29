@@ -12,16 +12,17 @@ use horizon_client::{
     mesher::Vertex,
     mobs::{
         Damage, DamageKind, Mob, MobEvent, MobWorld, PlayerView, Seen, SpawnSetup, Species, Who,
-        
         farm::Climate,
-        spawning::{self, BiomeFacts}},
-    projectiles::{ Projectile, ProjectileKind, ProjectileWorld}};
+        spawning::{self, BiomeFacts},
+    },
+    projectiles::{Projectile, ProjectileKind, ProjectileWorld},
+};
 use horizon_core::{
     geometry::{Aabb, Vec3, traverse_blocks},
     position::BlockPos,
-    random::RandomSource};
+    random::RandomSource,
+};
 use std::sync::Arc;
-
 
 /// Mob-system state owned by the game.
 #[derive(Default)]

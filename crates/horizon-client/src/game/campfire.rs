@@ -4,10 +4,8 @@
 //! them through the block entity's update tag (`lan::chunks::entity_tag`).
 use super::Game;
 use horizon_assets::item_model::DisplayContext;
-use horizon_client::{ block_entity_render::vertex_light, containers::BlockEntity, mesher::Vertex};
+use horizon_client::{block_entity_render::vertex_light, containers::BlockEntity, mesher::Vertex};
 use horizon_core::position::BlockPos;
-
-
 
 impl Game<'_> {
     /// `CampfireRenderer`: each cooking item lies on the fire, slot `i`

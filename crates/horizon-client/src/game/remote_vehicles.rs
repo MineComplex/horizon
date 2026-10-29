@@ -9,7 +9,7 @@
 //! server (`LocalPlayer.tick`: `ServerboundMoveVehiclePacket`,
 //! `AbstractBoat.tick`: `ServerboundPaddleBoatPacket`). A minecart moves on
 //! the server with the rider's input, and the rider sits in it.
-use super::{Game, Keys, ray_box, view_vector};
+use super::{Keys, ray_box, view_vector};
 use horizon_core::geometry::{Aabb, Vec3};
 use horizon_protocol::packets::play::{self, Serverbound as S};
 

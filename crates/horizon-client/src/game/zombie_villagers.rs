@@ -2,7 +2,6 @@
 //! into zombie villagers (`Zombie.killedEntity`), the golden apple that starts
 //! a cure (`ZombieVillager.mobInteract`), and the cured villager that
 //! remembers who saved it (`ZombieVillager.finishConversion`).
-use super::Game;
 use horizon_client::{
     advancements as adv,
     gossip::GossipType,

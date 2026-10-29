@@ -13,7 +13,8 @@ use serde_json::Value;
 use std::{
     collections::{BTreeMap, VecDeque},
     sync::Arc,
-    time::Instant};
+    time::Instant,
+};
 
 pub(super) struct Toast {
     icon: String,

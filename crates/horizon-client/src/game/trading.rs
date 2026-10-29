@@ -8,7 +8,8 @@ use super::{
 };
 use horizon_client::mobs::{
     Species,
-    render::{PROFESSIONS, VILLAGER_TYPES}};
+    render::{PROFESSIONS, VILLAGER_TYPES},
+};
 use horizon_client::{
     hud::{HudBatch, rgba},
     items::ItemStack,

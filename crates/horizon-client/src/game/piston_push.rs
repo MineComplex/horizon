@@ -7,7 +7,6 @@
 //! then run through the block collision scan, so a pushed entity stops at a
 //! wall instead of passing through it.
 //!
-use super::Game;
 use horizon_client::collisions::{EntityCollisions, SceneCollisions, with_piston_noclip};
 use horizon_core::geometry::{Aabb, Direction, Vec3, border::BorderGeometry};
 use horizon_core::position::BlockPos;
@@ -371,8 +370,7 @@ impl crate::game::Sim<'_> {
                     p.position = p.position.add_vector(movement);
                 }
             }
-            Target::Guest(conn) => {
-            }
+            Target::Guest(conn) => {}
             Target::Mob(i) => {
                 let m = &mut self.mobs[i];
                 m.position = m.position.add_vector(movement);
@@ -399,8 +397,7 @@ impl crate::game::Sim<'_> {
                 let m = &mut self.mobs[i];
                 m.velocity = piston_push::bounce_velocity(movement, m.velocity);
             }
-            Target::Guest(conn) => {
-            }
+            Target::Guest(conn) => {}
             Target::Item(i) => {
                 self.dropped[i].velocity =
                     piston_push::bounce_velocity(movement, self.dropped[i].velocity)

@@ -4,14 +4,7 @@
 //! guest's inventory, with vanilla's packets: OpenScreen, container clicks
 //! and their corrections, and the grid back into the inventory when the menu
 //! closes (`AbstractContainerMenu.clearContainer`).
-use super::Game;
 use horizon_client::menu::Env;
-
-
-
-
-
-
 
 impl crate::game::Sim<'_> {
     pub(super) fn menu_env(&self) -> Env<'_> {

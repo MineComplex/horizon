@@ -5,7 +5,8 @@ use super::Game;
 use horizon_client::{
     Result,
     particles::{ParticleOptions, ParticleType},
-    projectiles::{ Projectile, ProjectileKind}};
+    projectiles::{Projectile, ProjectileKind},
+};
 use horizon_core::{
     geometry::{Direction, Vec3},
     position::BlockPos,
@@ -13,7 +14,6 @@ use horizon_core::{
 };
 use horizon_world::level::PlayerContext;
 use std::collections::BTreeSet;
-
 
 /// Whether a block reacts to a wind charge's burst by being used.
 fn triggers(name: &str) -> bool {

@@ -2,7 +2,6 @@
 //! client (`ClientPacketListener.handleAddEntity`, `handleSetEntityData`,
 //! `handleSetEquipment`): the server simulates them, the client places them
 //! where it says and interpolates their moves like a mob's.
-use super::Game;
 use horizon_client::entities::{ArmorStand, Cushion, ItemFrame, Painting};
 use horizon_client::mobs::leash::Holder;
 use horizon_core::geometry::Vec3;

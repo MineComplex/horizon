@@ -5,12 +5,8 @@
 //! attack (blocking, armour, knockback), when the `pvp` game rule allows it
 //! (`ServerPlayer.canHarmPlayer`, `isPvpAllowed`). A player's arrow on
 //! another player lands the same way.
-use super::Game;
 
 use horizon_core::geometry::{Aabb, Vec3};
-
-
-
 
 /// A sweep attack's reach to the other players (`Player.doSweepAttack`),
 /// worked out as the attacker.
@@ -19,7 +15,6 @@ pub(super) struct Sweep {
     /// The target's box grown by (1, 0.25, 1).
     pub(super) hit_box: Aabb,
 }
-
 
 impl crate::game::Sim<'_> {
     /// The guest on the host's crosshair and how far, within reach.

@@ -3,10 +3,11 @@
 //! lives on the server and hands its band to the level's streaming, whose
 //! workers do the work; chunks behind the band unload and are saved as any
 //! chunk the players leave.
-use super::{CommandError, Context, Dim, Game, R};
+use super::{CommandError, Context, Dim, R};
 use horizon_client::{
     pregen::{Pregen, Shape},
-    text::{self, Text}};
+    text::{self, Text},
+};
 use std::time::{Duration, Instant};
 
 /// How often the progress is reported.

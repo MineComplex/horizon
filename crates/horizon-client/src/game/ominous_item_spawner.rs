@@ -5,10 +5,8 @@
 use super::Game;
 use horizon_assets::item_model::DisplayContext;
 use horizon_client::{
-    block_entity_render::vertex_light,
-    item_render,
-    items::ItemStack,
-    mesher::Vertex};
+    block_entity_render::vertex_light, item_render, items::ItemStack, mesher::Vertex,
+};
 
 /// `OminousItemSpawnerRenderer`: grows over its first 50 ticks, turning 40
 /// degrees a tick.
@@ -25,8 +23,6 @@ pub(super) struct OminousItemSpawner {
     pub(super) uuid: [i32; 4],
     pub(super) raw: Option<Box<horizon_world::nbt::Tag>>,
 }
-
-
 
 impl Game<'_> {
     /// `OminousItemSpawnerRenderer`: the item, full bright, growing over its

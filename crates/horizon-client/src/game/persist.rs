@@ -1,12 +1,13 @@
 //! Saving and loading the game state that lives outside chunk blocks:
 //! entities (`entities/*.mca`, per chunk like vanilla's `EntityStorage`) and
 //! scheduled block/fluid ticks (chunk `block_ticks`/`fluid_ticks`).
-use super::{FallingBlock, Game};
+use super::FallingBlock;
 use horizon_client::{
     chunk::Chunk,
     entity_nbt,
     mobs::Who,
-    save::{ChunkExtras, random_uuid}};
+    save::{ChunkExtras, random_uuid},
+};
 use horizon_core::{geometry::Vec3, position::ChunkPos, random::RandomSource};
 use horizon_world::{chunk::BlockState, nbt::Tag, registry::BlockStateId};
 use std::{

@@ -11,7 +11,8 @@ use horizon_client::{
     hud::HudBatch,
     hud_layout, hud_overlays,
     mesher::Vertex,
-    particles::{ParticleOptions, ParticleType}};
+    particles::{ParticleOptions, ParticleType},
+};
 use horizon_core::{
     geometry::{Aabb, Vec3},
     random::{LegacyRandom, RandomSource},
@@ -80,10 +81,8 @@ pub(super) struct Crystal {
     pub invulnerable: bool,
 }
 #[derive(Clone, Debug, Default)]
-struct Path {
-}
-impl Path {
-}
+struct Path {}
+impl Path {}
 #[derive(Clone, Debug, PartialEq)]
 enum Phase {
     Holding {
@@ -1728,6 +1727,4 @@ mod tests {
         }
         assert_eq!(d.health, MAX_HEALTH - 85.0);
     }
-
-
 }

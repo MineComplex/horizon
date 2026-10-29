@@ -1,9 +1,7 @@
 //! Happy ghasts on the game side: putting a harness on (and shearing it
 //! off), riding, getting off on top, and the ghastling a dried ghast block
 //! hatches.
-use super::Game;
-use horizon_client::{
-    mobs::{MobEvent, happy_ghast}};
+use horizon_client::mobs::{MobEvent, happy_ghast};
 use horizon_core::geometry::{Aabb, Vec3};
 use horizon_world::registry::BlockStateId;
 

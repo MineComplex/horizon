@@ -24,8 +24,6 @@ fn aabb(bounds: ([f64; 3], [f64; 3])) -> Aabb {
     )
 }
 
-
-
 impl Game<'_> {
     /// `CushionRenderer`: the coloured model, rotated to the nearest
     /// direction, with its bottom on the cushion's position.

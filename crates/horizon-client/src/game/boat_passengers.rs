@@ -4,10 +4,11 @@
 //! it picks up (the end of `AbstractBoat.tick`), where they sit
 //! (`positionRider`, `clampRotation`) and how they get out.
 //! Saving them under the boat's `Passengers` lives in `persist.rs`.
-use super::{Game, boats::Boat};
+use super::boats::Boat;
 use horizon_client::{
     camera::wrap_degrees,
-    mobs::{Mob, Species, drops::is_animal, equine, riders}};
+    mobs::{Mob, Species, drops::is_animal, equine, riders},
+};
 use horizon_core::geometry::{Aabb, Vec3};
 
 /// `Entity.boardingCooldown` once a mob leaves its boat.

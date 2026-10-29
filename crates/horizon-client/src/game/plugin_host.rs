@@ -9,7 +9,8 @@ use super::{Game, lan::LanHost};
 use horizon_client::lan::guest::Guest;
 use horizon_server_api::{
     self as api, BlockPos, Location, PlayerRef, Plugin,
-    event::{self as ev, Event}};
+    event::{self as ev, Event},
+};
 use std::sync::Mutex;
 
 /// The plugins `horizon-server` was built with, until the server starts.
@@ -151,4 +152,3 @@ impl crate::game::Sim<'_> {
         Some(event.drop_items)
     }
 }
-

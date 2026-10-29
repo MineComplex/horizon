@@ -914,9 +914,7 @@ impl crate::game::Sim<'_> {
     }
     fn cmd_help(&mut self, ctx: &Context) -> R<i32> {
         // A dedicated server lists its own commands too (Commands.CommandSelection.DEDICATED).
-        let d = {
-            vanilla::game_dispatcher()
-        };
+        let d = { vanilla::game_dispatcher() };
         let level = self.world_data.registries.permission;
         match ctx.get("command") {
             None => {
@@ -1328,30 +1326,6 @@ impl crate::game::Sim<'_> {
             Target::Frame(_) | Target::Painting(_) => {}
         }
     }
-    /// A server's player teleported into another level than theirs
-    /// (ServerPlayer.teleport): queued to move after the command. False
-    /// when `t` is not a player in another level.
-    fn teleport_across(
-        &mut self,
-        t: Target,
-        level: super::Dim,
-        pos: [f64; 3],
-        rotation: Option<[f32; 2]>,
-    ) -> bool {
-        let conn = match t {
-            Target::Player => None::<u32>,
-            Target::Guest(conn) => Some(conn),
-            _ => None,
-        };
-        let at = self.target_level(t);
-        let Some(conn) = conn.filter(|_| at != level && false) else {
-            return false;
-        };
-        self.level_teleports
-            .push(super::server_travel::LevelTeleport {
-            });
-        true
-    }
     fn cmd_teleport(&mut self, id: &str, ctx: &Context) -> R<i32> {
         let targets = if id.starts_with("teleport.targets") {
             self.entities(ctx, "targets", false)?
@@ -1366,9 +1340,7 @@ impl crate::game::Sim<'_> {
             // TeleportCommand.teleportToEntity: the destination's rotation too.
             let rotation = Some(self.target_rotation(dest));
             for &t in &targets {
-                if !self.teleport_across(t, level, pos, rotation) {
-                    self.teleport_to(t, pos, rotation);
-                }
+                self.teleport_to(t, pos, rotation);
             }
             let message = if targets.len() == 1 {
                 Text::translate(
@@ -1446,9 +1418,6 @@ impl crate::game::Sim<'_> {
         };
         for &t in &targets {
             let rotation = look_at(self, t).or(rotation);
-            if self.teleport_across(t, source_level, pos, rotation) {
-                continue;
-            }
             self.teleport_to(t, pos, rotation);
         }
         let [x, y, z] = pos.map(|v| Text::literal(format_double(v)));

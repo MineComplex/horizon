@@ -51,8 +51,7 @@ fn shows_body(species: Species) -> bool {
 pub(super) struct MountMenu {
     open: Option<Open>,
 }
-impl MountMenu {
-}
+impl MountMenu {}
 struct Open {
     mob: u32,
     species: Species,

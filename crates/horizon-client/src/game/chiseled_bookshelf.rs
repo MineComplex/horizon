@@ -4,11 +4,9 @@
 //! hopper or dropper moved (`machines::container_changed`). The slots' books
 //! show through the block state's `slot_N_occupied`, which reaches a server's
 //! clients with the block update.
-use super::Game;
 use horizon_client::containers::BlockEntity;
 use horizon_core::position::BlockPos;
 use horizon_world::level::flags;
-
 
 impl crate::game::Sim<'_> {
     /// `ChiseledBookShelfBlockEntity.updateState`: `slot` becomes the last

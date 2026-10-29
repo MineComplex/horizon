@@ -13,17 +13,12 @@
 //! game rules, the scoreboard, the maps and the entities waiting to arrive
 //! through a portal.
 
-use super::{
-    Dim, Game, lan::LanHost};
+use super::{Dim, lan::LanHost};
 use horizon_client::Result;
 use std::collections::HashMap;
 
-
 /// A level that is not in place: every per-level field of `Game`.
-pub(super) struct Parked {
-}
-
-
+pub(super) struct Parked {}
 
 /// The levels not in place, by dimension.
 #[derive(Default)]
@@ -32,7 +27,6 @@ pub(super) struct Levels {
 }
 
 impl Levels {
-
     /// The levels that are not in place, by dimension.
     pub(super) fn parked_dims(&self) -> Vec<Dim> {
         self.parked.keys().copied().collect()

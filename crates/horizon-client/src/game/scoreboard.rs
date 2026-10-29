@@ -528,12 +528,7 @@ impl Game<'_> {
         };
         let board = &self.sim.score.board;
         let objective = board.display_objective(sb::SLOT_LIST);
-        let shown = tab_list::visible(
-            key,
-            false,
-            players.len(),
-            objective.is_some(),
-        );
+        let shown = tab_list::visible(key, false, players.len(), objective.is_some());
         self.front.tab_list.set_visible(shown);
         if !shown {
             return;

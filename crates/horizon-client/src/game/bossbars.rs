@@ -1,6 +1,8 @@
 //! `/bossbar` (BossBarCommands) and drawing the custom boss bars.
-use super::{ Game,
-    commands::{R, Target, err}};
+use super::{
+    Game,
+    commands::{R, Target, err},
+};
 use horizon_client::{
     boss_overlay,
     bossbar::BossBars,
@@ -8,9 +10,10 @@ use horizon_client::{
     save,
     scoreboard::{self as sb, Comp},
     scoreboard_cmd::format_list,
-    text::Text};
+    text::Text,
+};
 use horizon_core::random::RandomSource;
-use horizon_protocol::packets::play::self;
+use horizon_protocol::packets::play;
 use horizon_world::nbt::Tag;
 
 #[derive(Default)]
@@ -404,4 +407,3 @@ fn insecure_uuid(random: &mut impl RandomSource) -> u128 {
     let least = random.next_long() & 4_611_686_018_427_387_903 | i64::MIN;
     ((most as u64 as u128) << 64) | (least as u64 as u128)
 }
-
