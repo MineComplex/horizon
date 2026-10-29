@@ -32,11 +32,8 @@ struct Holder {
     dirty: Option<[i32; 4]>,
 }
 pub(super) struct MapData {
-    pub center: [i32; 2],
     pub scale: u8,
-    pub dimension: String,
     pub locked: bool,
-    pub unlimited: bool,
     pub colors: Vec<u8>,
     pub decorations: Vec<Decoration>,
     holders: Vec<Holder>,
@@ -46,15 +43,12 @@ pub(super) struct MapData {
 }
 impl MapData {
     /// `MapItemSavedData.createFresh`: centred on the scale's grid cell.
-    pub(super) fn fresh(x: f64, z: f64, scale: u8, dimension: &str) -> Self {
+    pub(super) fn fresh(_x: f64, _z: f64, scale: u8, _dimension: &str) -> Self {
         let size = 128 * (1 << scale);
-        let cell = |v: f64| (v.floor() as i32 + 64).div_euclid(size) * size + size / 2 - 64;
+        let _cell = |v: f64| (v.floor() as i32 + 64).div_euclid(size) * size + size / 2 - 64;
         Self {
-            center: [cell(x), cell(z)],
             scale,
-            dimension: dimension.to_owned(),
             locked: false,
-            unlimited: false,
             colors: vec![0; 128 * 128],
             decorations: Vec::new(),
             holders: Vec::new(),
@@ -86,7 +80,7 @@ impl MapData {
             Some(Tag::Byte(v)) => Some(i32::from(*v)),
             _ => None,
         };
-        let dimension = match d.get("dimension") {
+        let _dimension = match d.get("dimension") {
             Some(Tag::String(s)) => s.to_string_lossy(),
             _ => "minecraft:overworld".to_owned(),
         };
@@ -96,11 +90,8 @@ impl MapData {
         };
         colors.resize(128 * 128, 0);
         Some(Self {
-            center: [int("xCenter")?, int("zCenter")?],
             scale: int("scale").unwrap_or(0).clamp(0, 4) as u8,
-            dimension,
             locked: int("locked").unwrap_or(0) != 0,
-            unlimited: int("unlimitedTracking").unwrap_or(0) != 0,
             colors,
             decorations: Vec::new(),
             holders: Vec::new(),
@@ -183,19 +174,6 @@ fn decoration_type(sprite: &str) -> Option<&'static str> {
         .iter()
         .find(|(_, s)| *s == sprite)
         .map(|(name, _)| *name)
-}
-/// `MapItemSavedData.addTargetDecoration`: the `"+"` entry of
-/// `minecraft:map_decorations`, rotation 180.
-fn target_decoration(decoration: &str, at: [i32; 3]) -> Tag {
-    Tag::compound([(
-        "+",
-        Tag::compound([
-            ("type", Tag::String(decoration.into())),
-            ("x", Tag::Double(f64::from(at[0]).to_bits())),
-            ("z", Tag::Double(f64::from(at[2]).to_bits())),
-            ("rotation", Tag::Float(180.0f32.to_bits())),
-        ]),
-    )])
 }
 impl Game<'_> {
     /// The atlas slot showing map `id`, its texture uploaded when it changed.
@@ -498,166 +476,6 @@ impl crate::game::Sim<'_> {
     pub(super) fn peek_map_id(&mut self) -> i32 {
         let id = self.next_map_id();
         self.maps.last_id = Some(id - 1);
-        id
-    }
-    /// `ExplorationMapFunction.run` for an item a generated chest still holds
-    /// unsearched (`structure_blocks::take_pending_map`): the nearest
-    /// structure of the tag around `origin`, a new map centred on it with its
-    /// biome preview and target decoration. False when nothing is found: the
-    /// loot table's `filtered` map_id check would have discarded the item.
-    pub(super) fn resolve_pending_map(&mut self, item: &mut ItemStack, origin: [f64; 3]) -> bool {
-        let Some(map) = horizon_client::structure_blocks::take_pending_map(item) else {
-            return true;
-        };
-        let names = self.structure_tag(&map.destination);
-        let from = origin.map(|v| v.floor() as i32);
-        let found = self
-            .end
-            .locator()
-            .filter(|_| !names.is_empty())
-            .and_then(|t| t.locate(&names, from, map.search_radius));
-        let Some((_, at)) = found else {
-            return false;
-        };
-        let mut data = MapData::fresh(
-            f64::from(at[0]),
-            f64::from(at[2]),
-            map.zoom,
-            self.dimension_id(),
-        );
-        data.unlimited = true;
-        let id = self.new_map_id(data);
-        self.render_biome_preview(id);
-        let d = item.data_mut();
-        d.map_id = Some(id);
-        d.other.retain(|(k, _)| k != "minecraft:map_decorations");
-        d.other.push((
-            "minecraft:map_decorations".into(),
-            target_decoration(&map.decoration, at),
-        ));
-        true
-    }
-    /// The unsearched exploration maps of a container being opened
-    /// (`RandomizableContainer.unpackLootTable` runs the function then).
-    pub(super) fn resolve_container_maps(&mut self, key: (i32, i32, i32), origin: [f64; 3]) {
-        use horizon_client::containers::BlockEntity;
-        let Some(BlockEntity::Chest(slots)) = self.world.block_entities.get(&key) else {
-            return;
-        };
-        let pending: Vec<usize> = slots
-            .iter()
-            .enumerate()
-            .filter(|(_, s)| {
-                s.as_ref()
-                    .is_some_and(horizon_client::structure_blocks::has_pending_map)
-            })
-            .map(|(i, _)| i)
-            .collect();
-        for i in pending {
-            let Some(BlockEntity::Chest(slots)) = self.world.block_entities.get_mut(&key) else {
-                return;
-            };
-            let Some(mut item) = slots[i].take() else {
-                continue;
-            };
-            let keep = self.resolve_pending_map(&mut item, origin);
-            if let Some(BlockEntity::Chest(slots)) = self.world.block_entities.get_mut(&key) {
-                slots[i] = keep.then_some(item);
-            }
-        }
-    }
-    /// `MapItem.renderBiomePreviewMap`: the map's biomes at sea level, water
-    /// outlines (`#water_on_map_outlines`) drawn in orange and brown.
-    pub(super) fn render_biome_preview(&mut self, id: i32) {
-        let Some(terrain) = self.end.locator() else {
-            return;
-        };
-        let dim = self.dimension_id();
-        let zoom = self.streaming.biome_zoom;
-        let watery_biomes: std::collections::HashSet<String> = self
-            .tag_entries("worldgen/biome", "minecraft:water_on_map_outlines")
-            .into_iter()
-            .collect();
-        let Some(m) = self.maps.data.get(&id) else {
-            return;
-        };
-        if m.dimension != dim {
-            return;
-        }
-        let scale = 1i32 << m.scale;
-        let start_x = m.center[0] / scale - 64;
-        let start_z = m.center[1] / scale - 64;
-        let sea_level = 63;
-        let quarts: Vec<[i32; 3]> = (0..128)
-            .flat_map(|row| {
-                (0..128).map(move |column| {
-                    zoom.quart_at_block(horizon_core::position::BlockPos::new(
-                        (start_x + column) * scale,
-                        sea_level,
-                        (start_z + row) * scale,
-                    ))
-                })
-            })
-            .collect();
-        let watery: Vec<bool> = terrain
-            .noise_biomes(&quarts)
-            .into_iter()
-            .map(|b| b.is_some_and(|b| watery_biomes.contains(&b)))
-            .collect();
-        let is_watery = |x: i32, z: i32| watery[(z * 128 + x) as usize];
-        // MapColor ids and MapColor.Brightness ids.
-        const ORANGE: u8 = 15;
-        const BROWN: u8 = 26;
-        const LOW: u8 = 0;
-        const NORMAL: u8 = 1;
-        const HIGH: u8 = 2;
-        const LOWEST: u8 = 3;
-        let Some(m) = self.maps.data.get_mut(&id) else {
-            return;
-        };
-        for mx in 1..127 {
-            for mz in 1..127 {
-                let mut water_count = 0;
-                for dx in -1..2 {
-                    for dz in -1..2 {
-                        if (dx != 0 || dz != 0) && is_watery(mx + dx, mz + dz) {
-                            water_count += 1;
-                        }
-                    }
-                }
-                let mut brightness = LOWEST;
-                let mut color = 0;
-                if is_watery(mx, mz) {
-                    color = ORANGE;
-                    if water_count > 7 && mz % 2 == 0 {
-                        let sin = horizon_core::geometry::trig::sin(f64::from(mz as f32 + 0.0));
-                        match (mx + (sin * 7.0) as i32) / 8 % 5 {
-                            0 | 4 => brightness = LOW,
-                            1 | 3 => brightness = NORMAL,
-                            2 => brightness = HIGH,
-                            _ => {}
-                        }
-                    } else if water_count > 7 {
-                        color = 0;
-                    } else if water_count > 5 {
-                        brightness = NORMAL;
-                    } else if water_count > 1 {
-                        brightness = LOW;
-                    }
-                } else if water_count > 0 {
-                    color = BROWN;
-                    brightness = if water_count > 3 { NORMAL } else { LOWEST };
-                }
-                if color != 0 {
-                    m.update_color(mx, mz, color << 2 | brightness);
-                }
-            }
-        }
-    }
-    /// Registers `data` under a free map id.
-    pub(super) fn new_map_id(&mut self, data: MapData) -> i32 {
-        let id = self.next_map_id();
-        self.maps.data.insert(id, data);
         id
     }
     /// The maps the player carries, for `status`: how many of their pixels

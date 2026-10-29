@@ -36,21 +36,6 @@ pub(super) enum Kind {
     Loom,
 }
 impl Kind {
-    pub(super) fn from_block(name: &str) -> Option<Self> {
-        Some(match name {
-            "minecraft:enchanting_table" => Self::Enchanting,
-            "minecraft:anvil" | "minecraft:chipped_anvil" | "minecraft:damaged_anvil" => {
-                Self::Anvil
-            }
-            "minecraft:grindstone" => Self::Grindstone,
-            "minecraft:smithing_table" => Self::Smithing,
-            "minecraft:stonecutter" => Self::Stonecutter,
-            "minecraft:beacon" => Self::Beacon,
-            "minecraft:cartography_table" => Self::Cartography,
-            "minecraft:loom" => Self::Loom,
-            _ => return None,
-        })
-    }
     pub(super) fn inputs(self) -> usize {
         match self {
             Self::Smithing | Self::Loom => 3,
@@ -1317,38 +1302,6 @@ impl crate::game::Sim<'_> {
     fn brewing_open(&self) -> bool {
         matches!(self.container_kind(), Some(BlockEntity::Brewing(_)))
     }
-    /// Opens a workstation menu for the block; false when it is not one.
-    pub(super) fn open_station(&mut self, pos: [i32; 3], name: &str) -> bool {
-        let Some(kind) = Kind::from_block(name) else {
-            return false;
-        };
-        if self.level.xp_seed == 0 {
-            self.level.xp_seed = self.world.random.next_int();
-        }
-        self.station = Some(Station::new(kind, pos));
-        self.station_changed();
-        self.beacon_opened();
-        // The block's interaction statistic.
-        let stat = match name {
-            "minecraft:crafting_table" => "interact_with_crafting_table",
-            "minecraft:furnace" => "interact_with_furnace",
-            "minecraft:blast_furnace" => "interact_with_blast_furnace",
-            "minecraft:smoker" => "interact_with_smoker",
-            "minecraft:brewing_stand" => "interact_with_brewingstand",
-            "minecraft:beacon" => "interact_with_beacon",
-            "minecraft:grindstone" => "interact_with_grindstone",
-            "minecraft:smithing_table" => "interact_with_smithing_table",
-            "minecraft:stonecutter" => "interact_with_stonecutter",
-            "minecraft:loom" => "interact_with_loom",
-            "minecraft:cartography_table" => "interact_with_cartography_table",
-            n if n.ends_with("anvil") => "interact_with_anvil",
-            _ => "",
-        };
-        if !stat.is_empty() {
-            self.stats.custom(stat, 1);
-        }
-        true
-    }
     /// `AbstractContainerMenu.clearContainer`: inputs go back to the player.
     pub(super) fn close_station(&mut self) {
         if self
@@ -1523,16 +1476,6 @@ impl crate::game::Sim<'_> {
         {
             // Inventory.placeItemBackInInventory: `player.drop(stack, false)`.
             self.throw_from_eyes(rest, eye, false);
-        }
-    }
-    /// `Player.giveExperienceLevels`.
-    pub(super) fn give_levels(&mut self, levels: i32) {
-        let xp = &mut self.experience;
-        xp.level = xp.level.saturating_add(levels);
-        if xp.level < 0 {
-            xp.level = 0;
-            xp.progress = 0.0;
-            xp.total = 0;
         }
     }
     /// Whether the result slot may be taken (`mayPickup`).

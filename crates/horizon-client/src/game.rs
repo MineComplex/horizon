@@ -210,7 +210,7 @@ use horizon_world::{
     entity_obstruction::{EntityIdentity, EntityObstructionWorld, ObstructionEntity},
     level::{
         Behaviours, Dimension as LevelDimension, EntityQuery, LevelAccess, LevelEvent,
-        PlayerContext, PlayerEffect, Ticks, flags as level_flags,
+        PlayerContext, PlayerEffect, Ticks,
     },
     registry::BlockStateId,
 };
@@ -1346,8 +1346,6 @@ struct Sim<'a> {
     carried: Option<ItemStack>,
     craft_grid: Vec<Option<ItemStack>>,
     craft_size: usize,
-    /// The crafting table the 3x3 grid belongs to (`CraftingMenu.access`).
-    craft_table: Option<[i32; 3]>,
     /// A quick craft drag over inventory slots: (button, game slots so far).
     inv_drag: Option<(i32, Vec<usize>)>,
     /// `AbstractContainerScreen`'s quick craft and skip-release state.
@@ -5831,19 +5829,6 @@ impl crate::game::Sim<'_> {
         self.flush_spill();
         result
     }
-    /// Level.setBlock(pos, state, UPDATE_ALL) with neighbour/shape updates.
-    fn level_set(&mut self, pos: [i32; 3], state: BlockStateId) -> Result<()> {
-        self.with_level(|b, level, ticks| {
-            b.set_block(
-                level,
-                ticks,
-                BlockPos::new(pos[0], pos[1], pos[2]),
-                state,
-                level_flags::UPDATE_ALL,
-            );
-        });
-        self.process_level_events()
-    }
     /// Copies the moving-piston block entities into the world, where the
     /// collision queries and the renderer read them.
     fn sync_moving_pistons(&mut self) {
@@ -6151,95 +6136,6 @@ impl crate::game::Sim<'_> {
             }
         }
         Ok(())
-    }
-    /// Menus opened by PlayerEffect::OpenMenu.
-    fn open_menu(&mut self, pos: [i32; 3]) {
-        let name = self
-            .res
-            .facts()
-            .get(self.world.block(pos[0], pos[1], pos[2]))
-            .name
-            .clone();
-        let key = (pos[0], pos[1], pos[2]);
-        if self.chest_menu_blocked(key, &name) {
-            // The use still succeeds, but no menu, stat or piglin anger.
-            return;
-        }
-        if &*name == "minecraft:lectern" {
-            self.open_lectern(pos);
-            return;
-        }
-        if horizon_client::command_block::Mode::of_block(&name).is_some() {
-            self.open_command_block(key);
-            return;
-        }
-        // SignBlock.useWithoutItem: the text editor, not a container.
-        if horizon_client::signs::sign_kind(&name).is_some() {
-            self.use_sign_empty_hand(pos);
-            return;
-        }
-        if &*name == "minecraft:crafting_table" {
-            self.craft_size = 3;
-            self.craft_table = Some(pos);
-        } else if &*name == "minecraft:ender_chest" {
-            self.open_ender_chest(key);
-            // EnderChestBlock.useWithoutItem
-            self.stats.custom("open_enderchest", 1);
-            self.anger_piglins(true);
-            if self.container_opener_event(key, true) {
-                self.container_edge_sound(key, true);
-            }
-        } else if &*name == "minecraft:beacon" && self.open_station(pos, &name) {
-            self.world.block_entities.get_or_insert_with(key, || {
-                BlockEntity::for_block(&name).unwrap_or(BlockEntity::Chest(Vec::new()))
-            });
-        } else if storage::is_shulker_box(&name) && !self.shulker_can_open(pos) {
-            // ShulkerBoxBlock.canOpen: the lid has no room; nothing opens.
-        } else if let Some(entity) = BlockEntity::for_block(&name) {
-            self.world.block_entities.get_or_insert_with(key, || entity);
-            let centre = [
-                f64::from(key.0) + 0.5,
-                f64::from(key.1) + 0.5,
-                f64::from(key.2) + 0.5,
-            ];
-            self.resolve_container_maps(key, centre);
-            self.container = Some(key);
-            let first = self.container_opener_event(key, true);
-            let stat = match &*name {
-                "minecraft:chest" => "open_chest",
-                "minecraft:trapped_chest" => "trigger_trapped_chest",
-                "minecraft:barrel" => "open_barrel",
-                "minecraft:hopper" => "inspect_hopper",
-                "minecraft:dropper" => "inspect_dropper",
-                "minecraft:dispenser" => "inspect_dispenser",
-                n if storage::is_shulker_box(n) => "open_shulker_box",
-                _ => "",
-            };
-            if !stat.is_empty() {
-                self.stats.custom(stat, 1);
-            }
-            // Opening a piglin-guarded container angers the piglins who see it.
-            if self.guarded_by_piglins(&name) {
-                self.anger_piglins(true);
-            }
-            if first {
-                self.container_edge_sound(key, true);
-            }
-        } else if self.open_station(pos, &name) {
-            // Workstation menus: game/stations.rs.
-        } else {
-            self.message = Some((
-                format!(
-                    "{} is not available yet",
-                    name.trim_start_matches("minecraft:").replace('_', " ")
-                ),
-                Instant::now(),
-            ));
-            return;
-        }
-        self.screen = Screen::Inventory;
-        self.capture(false);
-        self.right = false;
     }
     /// One `FallingBlockEntity.tick` move of `f`.
     fn fall_step(&self, f: &mut FallingBlock) -> Result<FallStep> {
@@ -7412,24 +7308,6 @@ impl crate::game::Sim<'_> {
             "wax_off" => self.level_event_at(3004, pos, 0),
             _ => {}
         }
-    }
-    fn set_state_named(&mut self, pos: [i32; 3], name: &str, keep: &[&str]) -> Result<bool> {
-        let registry = &self.pack.assets.registry;
-        let old = self.world.block(pos[0], pos[1], pos[2]);
-        let Some(default) = registry.default_state(name) else {
-            return Ok(false);
-        };
-        let mut state = registry.state(default).cloned().ok_or("state")?;
-        if let Some(previous) = registry.state(old) {
-            for k in keep {
-                if let Some(v) = previous.properties.get(*k) {
-                    state.properties.insert((*k).to_owned(), v.clone());
-                }
-            }
-        }
-        let id = registry.resolve(&state).unwrap_or(default);
-        self.level_set(pos, id)?;
-        Ok(true)
     }
     /// `ExperienceOrb.tryMergeToExisting`: an orb of the same value within a
     /// 1 block box of `at`, whose id is a multiple of 40 from `merge_id`, takes
@@ -8694,7 +8572,6 @@ impl<'a> Game<'a> {
                 carried: None,
                 craft_grid: vec![None; 9],
                 craft_size: 2,
-                craft_table: None,
                 inv_drag: None,
                 tweaks: Default::default(),
                 inv_clicks: Default::default(),

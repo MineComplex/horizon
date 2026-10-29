@@ -3,10 +3,7 @@
 //! levels every 80 ticks, the primary/secondary effects for players in
 //! range, the activate/ambient/deactivate sounds, the 230x219 menu with its
 //! power buttons and payment slot, and the rotating, scrolling beam.
-use super::{
-    Game,
-    stations::{INPUT, Kind},
-};
+use super::{Game, stations::INPUT};
 use horizon_client::{
     containers::BlockEntity,
     hud::{HudBatch, rgba},
@@ -269,22 +266,6 @@ impl Game<'_> {
     }
 }
 impl crate::game::Sim<'_> {
-    /// Opening the menu shows the beacon's current powers.
-    pub(super) fn beacon_opened(&mut self) {
-        let Some(s) = self.station.as_ref().filter(|s| s.kind == Kind::Beacon) else {
-            return;
-        };
-        let pos = s.pos;
-        let (p, sec) = match self.world.block_entities.get(&(pos[0], pos[1], pos[2])) {
-            Some(BlockEntity::Beacon(b)) => (b.primary.clone(), b.secondary.clone()),
-            _ => (None, None),
-        };
-        let index =
-            |e: Option<String>| e.and_then(|e| EFFECTS.iter().position(|(n, _)| e.ends_with(n)));
-        if let Some(s) = self.station.as_mut() {
-            s.beacon = [index(p), index(sec)];
-        }
-    }
     fn beacon_levels(&self) -> i32 {
         let Some(s) = self.station.as_ref() else {
             return 0;

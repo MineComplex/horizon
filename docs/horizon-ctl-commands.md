@@ -116,7 +116,7 @@ Every command `horizon-ctl` takes, its MCP tool in `horizon-ctl mcp` (the launch
 | `effect ID SECONDS [AMPLIFIER] \| effect clear` | `effect` | Give a status effect, or clear them all | `id` (string, required): effect id such as speed, or clear<br>`seconds` (number): duration<br>`amplifier` (integer): level - 1 (default 0) |
 | `effects` | `effects` | The player's active status effects | none |
 | `xp LEVELS` | `xp` | Add experience levels (negative removes) | `levels` (integer, required): levels to add |
-| `enchant ID LEVEL` | `enchant` | Enchant the held item (a book stores it) | `id` (string, required): enchantment id<br>`level` (integer, required): level |
+| `enchant ID LEVEL` | `enchant` | Enchant the held item (the server's /enchant) | `id` (string, required): enchantment id<br>`level` (integer, required): level |
 | `potion ITEM POTION` | `potion` | Give a potion item | `item` (potion, splash_potion, lingering_potion, tipped_arrow, required): which item<br>`potion` (string, required): potion id |
 | `fill X1 Y1 Z1 X2 Y2 Z2 BLOCK` | `fill` (destructive) | Set a box of loaded blocks | `x1` (integer, required): corner X<br>`y1` (integer, required): corner Y<br>`z1` (integer, required): corner Z<br>`x2` (integer, required): opposite X<br>`y2` (integer, required): opposite Y<br>`z2` (integer, required): opposite Z<br>`block` (string, required): block state |
 | `container X Y Z [ITEM COUNT]` | `container` | List a container's items, or add items to it | `x` (integer, required): block X<br>`y` (integer, required): block Y<br>`z` (integer, required): block Z<br>`item` (string): item to add<br>`count` (integer): how many |

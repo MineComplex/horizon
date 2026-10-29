@@ -38,6 +38,15 @@ impl crate::game::Sim<'_> {
             "the world is the server's: this needs its control endpoint (--server-control)",
         )?
     }
+    /// A command run as the player on the server (`as NAME command TEXT`):
+    /// its feedback, as `horizon-ctl command` answers.
+    pub(super) fn server_command(&self, text: &str) -> Result<Option<Value>> {
+        let reply = self.server_reply(&format!("command {text}"))?;
+        if let Some(e) = reply.get("error") {
+            return Err(e.to_string().into());
+        }
+        Ok(Some(reply))
+    }
     /// The world's name on the server this client plays on, once asked.
     pub(super) fn server_world_name(&self) -> Option<String> {
         if let Some(name) = self.server_world.get() {

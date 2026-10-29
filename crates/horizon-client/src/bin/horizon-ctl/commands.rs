@@ -362,7 +362,7 @@ pub const COMMANDS: &[Cmd] = &[
     cmd!("signedit", Screens, "signedit X Y Z [front|back]", "open the sign editor of the sign at X Y Z (then type and close)",
         "", ["horizon-ctl signedit 3 64 1"], &[BLOCK_XYZ[0], BLOCK_XYZ[1], BLOCK_XYZ[2], opt("side", Ty::Enum(&["front", "back"]), "which side")], mcp: true, local: false),
     cmd!("mount-menu", Screens, "mount-menu", "open the inventory of the horse, donkey, mule or llama being ridden",
-        "As the inventory key does while riding; also opens the nearest one's.", ["horizon-ctl mount-menu"], &[], mcp: true, local: false),
+        "As the inventory key does while riding: the server opens it.", ["horizon-ctl mount-menu"], &[], mcp: true, local: false),
     cmd!("chat-log", Screens, "chat-log [N]", "the newest N chat messages", "", ["horizon-ctl chat-log 5"], &[], mcp: false, local: false),
     // Multiplayer
     cmd!("connect", Multiplayer, "connect ADDRESS [NAME]", "join a multiplayer server, or a friend's world by its invite code, from the title screen",
@@ -392,7 +392,7 @@ pub const COMMANDS: &[Cmd] = &[
         &[p("id", Ty::Str, "effect id such as speed, or clear"), opt("seconds", Ty::Num, "duration"), opt("amplifier", Ty::Int, "level - 1 (default 0)")], mcp: true, local: false),
     cmd!("effects", World, "effects", "the player's active status effects", "", ["horizon-ctl effects"], &[], mcp: true, local: false),
     cmd!("xp", World, "xp LEVELS", "add experience levels (negative removes)", "", ["horizon-ctl xp 30"], &[p("levels", Ty::Int, "levels to add")], mcp: true, local: false),
-    cmd!("enchant", World, "enchant ID LEVEL", "enchant the held item (a book stores it)", "", ["horizon-ctl enchant sharpness 5"],
+    cmd!("enchant", World, "enchant ID LEVEL", "enchant the held item (the server's /enchant)", "", ["horizon-ctl enchant sharpness 5"],
         &[p("id", Ty::Str, "enchantment id"), p("level", Ty::Int, "level")], mcp: true, local: false),
     cmd!("potion", World, "potion ITEM POTION", "give a potion item", "", ["horizon-ctl potion splash_potion healing"],
         &[p("item", Ty::Enum(&["potion", "splash_potion", "lingering_potion", "tipped_arrow"]), "which item"), p("potion", Ty::Str, "potion id")], mcp: true, local: false),

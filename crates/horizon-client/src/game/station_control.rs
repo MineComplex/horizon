@@ -6,8 +6,6 @@ use serde_json::{Value, json};
 
 pub(super) const HELP: &[&str] = &[
     "xp LEVELS                      add (or remove) experience levels",
-    "setblock X Y Z BLOCK           place a block's default state (with its block entity)",
-    "use X Y Z                      open the block's menu as if right-clicked",
     "click-slot ID [right] [shift]  click a menu slot (0-35 inventory, 300+ container, 600+ station, 650 result)",
     "click-gui X Y [right] [shift]  click at GUI pixel X Y relative to the menu's top-left corner",
     "book [next|back|take|sign|done] the open book or lectern: its page, or press one of its buttons",
@@ -17,6 +15,7 @@ pub(super) const HELP: &[&str] = &[
     "menu                           JSON dump of the open menu, carried stack and inventory",
     "effect ID SECONDS [AMPLIFIER]  give a status effect (effect clear removes all)",
     "effects                        list active status effects",
+    "mount-menu                     open the inventory of the horse, donkey, mule or llama being ridden",
     "close                          close the open menu",
 ];
 fn id(name: &str) -> String {
@@ -75,31 +74,10 @@ impl Game<'_> {
         let flag = |name: &str| words.iter().skip(1).any(|w| *w == name);
         let ok = || Ok(Some(json!({ "ok": true })));
         match words.first().copied().unwrap_or("") {
+            // The player is the server's: these run its commands there.
             "xp" => {
                 let n: i32 = arg(1)?.parse()?;
-                self.give_levels(n);
-                Ok(Some(json!({ "ok": true, "level": self.experience.level })))
-            }
-            "setblock" => {
-                let pos = [arg(1)?.parse()?, arg(2)?.parse()?, arg(3)?.parse()?];
-                let name = id(arg(4)?);
-                if !self.set_state_named(pos, &name, &[])? {
-                    return Err(format!("cannot place {name}").into());
-                }
-                if let Some(entity) = horizon_client::containers::BlockEntity::for_block(&name) {
-                    self.world
-                        .block_entities
-                        .insert((pos[0], pos[1], pos[2]), entity);
-                }
-                self.world.modified.insert((pos[0] >> 4, pos[2] >> 4));
-                ok()
-            }
-            "use" => {
-                let pos = [arg(1)?.parse()?, arg(2)?.parse()?, arg(3)?.parse()?];
-                self.open_menu(pos);
-                Ok(Some(
-                    json!({ "ok": true, "station": self.station.as_ref().map(|s| format!("{:?}", s.kind)) }),
-                ))
+                self.server_command(&format!("experience add @s {n} levels"))
             }
             "click-slot" => {
                 let slot: usize = arg(1)?.parse()?;
@@ -129,18 +107,14 @@ impl Game<'_> {
                 if self.sim.res.stations().enchantments.get(&e).is_none() {
                     return Err(format!("unknown enchantment {e}").into());
                 }
-                let held = self.sim.inventory[self.sim.selected]
-                    .as_mut()
-                    .ok_or("no held item")?;
-                held.enchant(&e, level);
-                self.apply_equipment();
-                ok()
+                self.server_command(&format!("enchant @s {e} {level}"))
             }
             "book" => Ok(Some(self.book_control(words.get(1).copied())?)),
             "potion" => {
-                let stack = ItemStack::new(&id(arg(1)?), 1).with_potion(&id(arg(2)?));
-                let rest = self.give(stack);
-                Ok(Some(json!({ "ok": rest.is_none() })))
+                let (item, potion) = (id(arg(1)?), id(arg(2)?));
+                self.server_command(&format!(
+                    "give @s {item}[potion_contents={{potion:\"{potion}\"}}]"
+                ))
             }
             "menu" => {
                 let slots: Vec<Value> = self
@@ -168,24 +142,30 @@ impl Game<'_> {
             }
             "effect" => {
                 if arg(1)? == "clear" {
-                    self.potions.effects.clear();
-                    return ok();
+                    return self.server_command("effect clear @s");
                 }
                 let def = horizon_client::brewing::effect(arg(1)?).ok_or("unknown effect")?;
                 let seconds: i32 = arg(2)?.parse()?;
                 let amp: i32 = words.get(3).map_or(Ok(0), |a| a.parse())?;
-                self.potions
-                    .effects
-                    .add(horizon_client::effects::EffectInstance::new(
-                        def.id,
-                        seconds * 20,
-                        amp,
-                    ));
-                ok()
+                self.server_command(&format!(
+                    "effect give @s minecraft:{} {seconds} {amp}",
+                    def.id
+                ))
             }
             "effects" => Ok(Some(
                 json!({ "effects": self.effects_json(), "health": self.player.as_ref().map(|p| p.health.health()) }),
             )),
+            "mount-menu" => {
+                // MultiPlayerGameMode.isServerControlledInventory: the inventory
+                // key while riding asks the server (OPEN_INVENTORY).
+                if !self.riding_mount_with_menu() {
+                    return Err("not riding a horse, donkey, mule or llama".into());
+                }
+                if let Some(r) = self.remote.as_mut() {
+                    r.pending_keys.push(winit::keyboard::KeyCode::KeyE);
+                }
+                ok()
+            }
             "close" => {
                 self.close_container();
                 self.screen = Screen::Playing;

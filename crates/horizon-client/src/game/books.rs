@@ -979,23 +979,6 @@ impl crate::game::Sim<'_> {
         self.sounds
             .play("minecraft:item.book.page_turn", None, 1.0, 1.0);
     }
-    /// `LecternBlock.openScreen`: reading the lectern's book.
-    pub(super) fn open_lectern(&mut self, pos: [i32; 3]) -> bool {
-        let key = (pos[0], pos[1], pos[2]);
-        let Some(BlockEntity::Lectern(l)) = self.world.block_entities.get(&key) else {
-            return false;
-        };
-        let Some(book) = &l.book else { return false };
-        let pages = view_pages(book.data());
-        let page = (l.page.max(0) as usize).min(pages.len().saturating_sub(1));
-        self.stats.custom("interact_with_lectern", 1);
-        self.open_book(BookScreen::View {
-            pages,
-            page,
-            lectern: Some(key),
-        });
-        true
-    }
     /// A `LecternMenu` button of the open lectern screen: on a server it is
     /// sent (`handleInventoryButtonClick`); here the lectern's menu takes it
     /// with the player's inventory, and the screen follows the block entity.

@@ -545,6 +545,7 @@ def manage_scenario(d, out):
     items = {s.get('item') for s in d('inventory')['hotbar'] if s}
     assert 'minecraft:milk_bucket' in items, items
     d('effect', id='speed', seconds=30, amplifier=1)
+    d('wait', ticks=5)  # the server's effect packet
     effects = json.dumps(d('effects'))
     assert 'speed' in effects, effects
     d('xp', levels=5)

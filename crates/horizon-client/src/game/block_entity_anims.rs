@@ -5,9 +5,8 @@
 //! [`Game::block_anim`] and [`Game::chest_lid`].
 use super::Game;
 use horizon_client::{
-    block_entity_anim::{BellEntity, ConduitTarget, EndGateway, Shulker, ShulkerStatus, Ticker},
+    block_entity_anim::{BellEntity, ConduitTarget, EndGateway, Ticker},
     block_entity_render::BlockAnim,
-    collisions::{SceneCollisions, no_collision_empty},
     containers::BlockEntity,
     particles::{ParticleOptions, ParticleType},
     save::number,
@@ -390,32 +389,6 @@ impl crate::game::Sim<'_> {
             }
         }
         out
-    }
-    /// `ShulkerBoxBlock.canOpen`: a closed box opens only when its lid has
-    /// room to rise (`level.noCollision` of the half-open lid box).
-    pub(super) fn shulker_can_open(&self, pos: [i32; 3]) -> bool {
-        let state = self.world.block(pos[0], pos[1], pos[2]).0;
-        let Some(Ticker::Shulker { facing }) = self.be_anims.ticker(state) else {
-            return true;
-        };
-        let closed = self
-            .be_anims
-            .shulkers
-            .get(&pos)
-            .is_none_or(|s| s.status == ShulkerStatus::Closed);
-        if !closed {
-            return true;
-        }
-        let b = Shulker::lid_box(pos, facing);
-        let mut scene = SceneCollisions {
-            world: &self.world,
-            binding: self.collision,
-            subject: None,
-        };
-        no_collision_empty(
-            &mut scene,
-            Aabb::new(Vec3::new(b[0], b[1], b[2]), Vec3::new(b[3], b[4], b[5])),
-        )
     }
     /// `Entity.isInRain`: rain at the block position or at the top of the box.
     pub(super) fn in_rain(&mut self, at: Vec3, top: f64) -> bool {
