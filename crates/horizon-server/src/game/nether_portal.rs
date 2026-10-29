@@ -75,7 +75,7 @@ struct Arrival {
     tag: Tag,
 }
 
-/// The nether portal state of the world (`crate::game::Sim::portals`).
+/// The nether portal state of the world (`crate::game::Server::portals`).
 #[derive(Default)]
 pub(super) struct Portals {
     /// The player's.
@@ -191,7 +191,7 @@ fn arrival_from_tag(a: &Tag) -> Option<Arrival> {
     })
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// The world border's extent.
     fn border_bounds(&self) -> BorderBounds {
         let [min_x, min_z, max_x, max_z] = self.border.bounds();
@@ -863,7 +863,7 @@ impl crate::game::Sim<'_> {
             .join("data")
             .join("horizon_portal_arrivals.dat")
     }
-    /// The waiting entities of the open world (read once).
+    /// The entities waiting to arrive through a portal (read once).
     pub(super) fn load_portal_arrivals(&mut self) {
         if self.portals.loaded {
             return;

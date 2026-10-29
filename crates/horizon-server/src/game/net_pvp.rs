@@ -78,7 +78,7 @@ impl Strike {
     }
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// `Player.attack`'s `causeFoodExhaustion(0.1F)`, charged to the attacker
     /// (the game, or a player swapped in) only once the hit hurt the victim.
     pub(super) fn pvp_exhaustion(&mut self) {
@@ -398,7 +398,7 @@ impl crate::game::Sim<'_> {
     }
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// The player `id` that player `conn` attacks, if it is one.
     pub(crate) fn pvp_victim(net: &Network, conn: u32, id: i32) -> Option<Victim> {
         net.hub

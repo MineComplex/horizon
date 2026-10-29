@@ -82,7 +82,7 @@ pub(super) fn sections_to_village(centers: &HashSet<(i32, i32, i32)>, at: (i32, 
 
 /// The level as a raid sees it, with this tick's village data.
 struct Lvl<'a, 'g> {
-    game: &'a crate::game::Sim<'g>,
+    game: &'a crate::game::Server<'g>,
     difficulty: i32,
     centers: &'a HashSet<(i32, i32, i32)>,
 }
@@ -128,7 +128,7 @@ impl RaidLevel for Lvl<'_, '_> {
 struct PatrolCx<'a, 'g, 'h> {
     level: super::natural_spawning::GameLevel<'a, 'g>,
     centers: HashSet<(i32, i32, i32)>,
-    can_spawn: &'h dyn Fn(&crate::game::Sim, [i32; 3]) -> bool,
+    can_spawn: &'h dyn Fn(&crate::game::Server, [i32; 3]) -> bool,
 }
 impl SpawnLevel for PatrolCx<'_, '_, '_> {
     fn state(&self, x: i32, y: i32, z: i32) -> horizon_world::registry::BlockStateId {
@@ -221,7 +221,7 @@ fn block_of(p: Vec3) -> [i32; 3] {
     [p.x.floor() as i32, p.y.floor() as i32, p.z.floor() as i32]
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// `Heightmap.Types.WORLD_SURFACE`: the first free block above the
     /// highest non-air one.
     pub(super) fn surface_height(&self, x: i32, z: i32) -> i32 {
@@ -1133,7 +1133,7 @@ impl crate::game::Sim<'_> {
     }
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// Sections holding a claimed village point of interest (a job site,
     /// bed or bell a villager has taken): `PoiManager.isVillageCenter`.
     pub(super) fn village_centers(&self) -> HashSet<(i32, i32, i32)> {
@@ -1159,7 +1159,7 @@ impl crate::game::Sim<'_> {
             return;
         }
         let attributes = self.gameplay_attributes();
-        let biome_ok = |game: &crate::game::Sim, at: [i32; 3]| {
+        let biome_ok = |game: &crate::game::Server, at: [i32; 3]| {
             let biome = game
                 .world
                 .chunks
@@ -1263,7 +1263,7 @@ impl crate::game::Sim<'_> {
                 continue;
             }
             let center = block_of(player.position);
-            if !crate::game::Sim::is_village(&centers, center)
+            if !crate::game::Server::is_village(&centers, center)
                 || self.natural_level().biome_tag(
                     "minecraft:without_zombie_sieges",
                     center[0],
@@ -1328,7 +1328,7 @@ impl crate::game::Sim<'_> {
                 continue;
             }
             let y = self.surface_height(x, z);
-            if crate::game::Sim::is_village(centers, [x, y, z])
+            if crate::game::Server::is_village(centers, [x, y, z])
                 && spawn_rules::check_spawn_rules(
                     Species::Zombie,
                     &self.natural_level(),
@@ -1410,7 +1410,7 @@ fn raid_name_tag(name: BarName) -> Tag {
     }
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// `ServerLevel.isVillage`: within one section of a village.
     pub(crate) fn is_village(centers: &HashSet<(i32, i32, i32)>, pos: [i32; 3]) -> bool {
         sections_to_village(centers, section(pos)) <= 1

@@ -23,7 +23,7 @@ impl Tracker {
 fn effect_name(id: &str) -> Text {
     Text::translate(&format!("effect.minecraft.{id}"), &[])
 }
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// The executing entity for argument-less forms (the player).
     fn living_targets(&mut self, ctx: &Context) -> R<Vec<Target>> {
         if ctx.get("targets").is_some() {
@@ -34,13 +34,13 @@ impl crate::game::Sim<'_> {
     }
     /// `EffectCommands.giveEffect`.
     pub(super) fn cmd_effect_give(&mut self, ctx: &Context) -> R<i32> {
-        let effect = crate::game::Sim::effect_arg(ctx)?;
+        let effect = crate::game::Server::effect_arg(ctx)?;
         let seconds = if ctx.has("infinite") {
             Some(-1)
         } else {
-            crate::game::Sim::int(ctx, "seconds")
+            crate::game::Server::int(ctx, "seconds")
         };
-        let amplifier = crate::game::Sim::int(ctx, "amplifier").unwrap_or(0);
+        let amplifier = crate::game::Server::int(ctx, "amplifier").unwrap_or(0);
         let particles = !matches!(ctx.get("hideParticles"), Some(Arg::Bool(true)));
         // computeDurationInTicks
         let duration = match seconds {
@@ -100,7 +100,7 @@ impl crate::game::Sim<'_> {
     /// `EffectCommands.clearEffects` / `clearEffect`.
     pub(super) fn cmd_effect_clear(&mut self, ctx: &Context) -> R<i32> {
         let effect = if ctx.get("effect").is_some() {
-            Some(crate::game::Sim::effect_arg(ctx)?)
+            Some(crate::game::Server::effect_arg(ctx)?)
         } else {
             None
         };
@@ -170,7 +170,7 @@ impl crate::game::Sim<'_> {
         let Some(Arg::Resource(id)) = ctx.get("enchantment").cloned() else {
             return Ok(0);
         };
-        let level = crate::game::Sim::int(ctx, "level").unwrap_or(1);
+        let level = crate::game::Server::int(ctx, "level").unwrap_or(1);
         let enchantments = &self.res.stations().enchantments;
         let Some(def) = enchantments.get(&id) else {
             return Err(err(
@@ -273,7 +273,7 @@ impl crate::game::Sim<'_> {
     }
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     pub(crate) fn effect_arg(ctx: &Context) -> R<&'static brewing::EffectDef> {
         let Some(Arg::Resource(id)) = ctx.get("effect") else {
             return Err(err("argument.resource.invalid_type", &[]));

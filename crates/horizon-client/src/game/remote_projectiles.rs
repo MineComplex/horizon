@@ -153,7 +153,7 @@ pub(super) fn has_smoke_trail(kind: &ProjectileKind) -> bool {
     )
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     /// `AbstractHurtingProjectile.createParticleTrail`: one smoke puff half a
     /// block above each position.
     pub(super) fn smoke_trails(&mut self, at: impl IntoIterator<Item = Vec3>) {

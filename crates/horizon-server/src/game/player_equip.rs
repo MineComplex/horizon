@@ -18,7 +18,7 @@ fn same(a: Option<&ItemStack>, b: Option<&ItemStack>) -> bool {
     }
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// `LivingEntity.onEquipItem(slot, old, new)` for the player in place
     /// (the game, or a player inside `as_player`).
     pub(super) fn player_on_equip(

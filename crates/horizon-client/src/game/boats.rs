@@ -249,7 +249,6 @@ impl Game<'_> {
             };
             let folder = if b.chest { "chest_boat" } else { "boat" };
             let Some(uv) = self
-                .front
                 .gui
                 .atlas
                 .sprites
@@ -328,7 +327,7 @@ impl Game<'_> {
         }
     }
 }
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     fn fluid_height(&self, x: i32, y: i32, z: i32) -> Option<(f32, bool)> {
         self.fluid_height_of(x, y, z, Some(Fluid::Water))
     }

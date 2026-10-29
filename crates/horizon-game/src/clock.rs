@@ -437,8 +437,8 @@ impl FixedStep {
         self.manager.is_sprinting()
     }
     /// Whether a frame that ran its world in the frame, and whose ticks so
-    /// far took `spent`, may run another one. Vanilla's world ticks on the
-    /// integrated server's thread, so a slow tick costs its frames nothing:
+    /// far took `spent`, may run another one. Vanilla's world ticks on a
+    /// server thread of its own, so a slow tick costs its frames nothing:
     /// the server falls behind and says so (`MinecraftServer.runServer`'s
     /// "Can't keep up!"). In the frame, a world whose ticks take longer than
     /// their length falls behind every frame, so every frame ran the client

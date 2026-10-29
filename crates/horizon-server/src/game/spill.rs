@@ -611,7 +611,7 @@ impl GameLevel<'_> {
     }
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// Add the item entities the block behaviour spawned and follow up on the
     /// block entities it removed.
     pub(super) fn flush_spill(&mut self) {

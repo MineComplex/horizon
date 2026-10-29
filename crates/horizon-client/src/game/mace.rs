@@ -9,7 +9,7 @@ use horizon_core::{position::BlockPos, random::RandomSource};
 /// `MaceItem.SMASH_ATTACK_KNOCKBACK_RADIUS`.
 const KNOCKBACK_RADIUS: f64 = 3.5;
 
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     /// Level event 2013 (`ParticleUtils.spawnSmashAttackParticles`): dust
     /// pillars of the block at `pos`, a cluster over it and a ring 3.5 out.
     pub(super) fn smash_dust(&mut self, pos: BlockPos, count: i32) {

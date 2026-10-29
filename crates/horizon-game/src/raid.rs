@@ -160,7 +160,7 @@ pub struct RaiderInfo {
     pub patrol_leader: bool,
 }
 
-/// The single player a raid sees (`level.players()`).
+/// A player a raid sees (`level.players()`).
 #[derive(Clone, Copy, Debug)]
 pub struct RaidPlayer {
     pub position: [f64; 3],

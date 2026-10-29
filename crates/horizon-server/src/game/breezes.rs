@@ -5,7 +5,7 @@ use crate::hc::{
     particles::Particle,
 };
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     pub(super) fn tick_breeze_effects(&mut self) {
         let Some(camera) = self.player.as_ref().map(|p| p.position) else {
             return;

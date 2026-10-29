@@ -29,7 +29,7 @@ fn num(n: impl std::fmt::Display) -> Text {
     Text::literal(n.to_string())
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     fn bossbar_path(&self) -> std::path::PathBuf {
         self.world_root
             .join("data/minecraft/custom_boss_events.dat")
@@ -79,7 +79,7 @@ impl crate::game::Sim<'_> {
         self.publish_boss_bars();
     }
     fn bar_checked(&self, ctx: &Context) -> R<String> {
-        let id = crate::game::Sim::bar_id(ctx);
+        let id = crate::game::Server::bar_id(ctx);
         if self.bosses.bars.get(&id).is_none() {
             return Err(err("commands.bossbar.unknown", &[&id]));
         }
@@ -95,7 +95,7 @@ impl crate::game::Sim<'_> {
     fn bossbar_command(&mut self, id: &str, ctx: &Context) -> R<i32> {
         match id {
             "bossbar.add" => {
-                let bar = crate::game::Sim::bar_id(ctx);
+                let bar = crate::game::Server::bar_id(ctx);
                 if self.bosses.bars.get(&bar).is_some() {
                     return Err(err("commands.bossbar.create.failed", &[&bar]));
                 }
@@ -657,7 +657,7 @@ struct Offer {
     scope: Scope,
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     pub(crate) fn bar_id(ctx: &Context) -> String {
         match ctx.get("id") {
             Some(Arg::Resource(id)) => id.clone(),

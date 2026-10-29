@@ -8,7 +8,7 @@ use crate::hc::{
 };
 use horizon_core::random::RandomSource;
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     fn sulfur_sound(&mut self, index: usize, sound: &str) {
         let at = self.mobs[index].center();
         self.sounds

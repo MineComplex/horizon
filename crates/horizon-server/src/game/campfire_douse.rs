@@ -3,7 +3,7 @@
 use crate::hc::{Result, animate_tick::make_campfire_smoke, items::ItemStack};
 use horizon_world::chunk::BlockState;
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// The lit campfire at `pos` that `held` puts out, when the item is in
     /// `#minecraft:douses_campfires` (`CampfireBlock.useItemOn`).
     fn campfire_to_douse(&self, pos: [i32; 3], held: Option<&ItemStack>) -> Option<BlockState> {

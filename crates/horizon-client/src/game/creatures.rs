@@ -134,7 +134,7 @@ fn flame_geometry(
 impl Game<'_> {
     /// Mob models and projectiles for the entity pass.
     pub(super) fn mob_geometry(&self, camera: glam::DVec3, alpha: f64, out: &mut Vec<Vertex>) {
-        let atlas = &self.front.gui.atlas;
+        let atlas = &self.gui.atlas;
         let lookup = |name: &str| atlas.sprites.get(name).map(|r| [r.u0, r.v0, r.u1, r.v1]);
         let scale = self.view_scale();
         for mob in &self.mobs {
@@ -162,7 +162,7 @@ impl Game<'_> {
             }
             // EntityRenderer.shouldRender: the culling box, grown by 0.5
             // (GuardianRenderer also draws while its beam is out).
-            if let Some(view) = &self.front.view_frustum
+            if let Some(view) = &self.view_frustum
                 && horizon_client::mobs::guardian::beam(mob, alpha as f32).is_none()
             {
                 let lo =
@@ -486,7 +486,7 @@ impl Game<'_> {
         }
     }
 }
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     pub(super) fn player_view(&self) -> Option<PlayerView> {
         let p = self.player.as_ref()?;
         let w = f64::from(p.dimensions.width) / 2.0;
@@ -726,7 +726,7 @@ impl crate::game::Sim<'_> {
         }
     }
 }
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     /// A mob's particle burst (hearts, smoke, splashes) around a point.
     pub(super) fn mob_particles(&mut self, kind: &str, at: [f64; 3], count: u32) {
         let Some(ty) = horizon_client::particles::ParticleType::from_name(kind) else {

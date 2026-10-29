@@ -128,7 +128,7 @@ impl Station {
     }
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// `Component.translatable`: the selected language (which `lang` layers
     /// over `en_us`), the caller's English text last.
     pub(super) fn translate(&self, key: &str, fallback: &str) -> String {
@@ -298,11 +298,11 @@ impl crate::game::Sim<'_> {
                     s.inputs[2].as_ref(),
                 );
             }
-            // The menu engine keeps the merchant's result (crate::game::Sim::menu_session).
+            // The menu engine keeps the merchant's result (crate::game::Server::menu_session).
             Kind::Merchant => {}
             Kind::Beacon => {}
             // The menu engine keeps the cartography table's, the loom's and
-            // the stonecutter's state (crate::game::Sim::menu_session).
+            // the stonecutter's state (crate::game::Server::menu_session).
             Kind::Cartography | Kind::Loom | Kind::Stonecutter => {}
         }
         self.station = Some(s);

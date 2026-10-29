@@ -50,7 +50,7 @@ struct Drag {
     visited: Vec<usize>,
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     /// The open screen is one the tweaks run in, with the extra on.
     pub(super) fn tweaks_on(&self) -> bool {
         if !self.settings.extras.mouse_tweaks
@@ -270,10 +270,10 @@ impl Game<'_> {
     /// The sort buttons: a bordered square with three bars, lighter under
     /// the cursor.
     pub(super) fn draw_sort_buttons(&self, batch: &mut HudBatch, ox: f32, oy: f32) {
-        let atlas = &self.front.gui.atlas;
+        let atlas = &self.gui.atlas;
         for ((x, y), _) in self.sort_buttons() {
             let (x, y) = (ox + x, oy + y);
-            let (cx, cy) = self.front.cursor;
+            let (cx, cy) = self.cursor;
             let hovered = cx >= x && cx < x + SORT_BUTTON && cy >= y && cy < y + SORT_BUTTON;
             let face = if hovered {
                 rgba(220, 220, 220, 255)
@@ -297,12 +297,12 @@ impl Game<'_> {
     }
     /// A left press on a sort button sorts its slots (true).
     pub(super) fn sort_press(&mut self) -> bool {
-        let Some(r) = self.front.renderer.as_ref() else {
+        let Some(r) = self.renderer.as_ref() else {
             return false;
         };
         let batch = HudBatch::new([r.config.width, r.config.height]);
         let (ox, oy) = self.inventory_origin(&batch);
-        let (cx, cy) = self.front.cursor;
+        let (cx, cy) = self.cursor;
         let hit = self.sort_buttons().into_iter().find(|((x, y), _)| {
             let (x, y) = (ox + x, oy + y);
             cx >= x && cx < x + SORT_BUTTON && cy >= y && cy < y + SORT_BUTTON
@@ -340,7 +340,7 @@ impl Game<'_> {
         true
     }
 }
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     /// The sort buttons of the open screen, with the extra on: their
     /// corner (from the screen's) and the slots each sorts. The container's
     /// (chest-like ones only) sits by its title, the main inventory's by

@@ -2,11 +2,11 @@
 //! signed-in account gives one. Vanilla's client defaults `--username` to
 //! `"Player" + System.currentTimeMillis() % 1000` (net.minecraft.client.main.Main)
 //! and the official launcher always passes the account's name, so two players
-//! rarely share one. Horizon used plain `Player` for everyone, which is also
-//! the LAN game's own profile: every player got the game's offline UUID and was
-//! refused with "You logged in from another location". The generated name is
-//! kept in `horizon-player.txt` next to `options.txt` so the same player gets
-//! the same offline UUID (and inventory on a friend's world) every time.
+//! rarely share one. With plain `Player` for everyone, every player would get
+//! the same offline UUID and be refused with "You logged in from another
+//! location". The generated name is kept in `horizon-player.txt` next to
+//! `options.txt` so the same player gets the same offline UUID (and inventory
+//! on a server) every time.
 use std::{fs, path::Path};
 
 pub const FILE: &str = "horizon-player.txt";
@@ -73,11 +73,11 @@ mod tests {
     }
 
     #[test]
-    fn generated_names_are_valid_and_never_the_hosts_profile() {
+    fn generated_names_are_valid_and_never_the_plain_name() {
         for seed in [0, 7, 99_999, 100_000, u64::MAX] {
             let name = generate(seed);
             assert!(is_valid(&name), "{name}");
-            // The LAN game's own profile (game/chat.rs PLAYER_NAME).
+            // The server's own player name (game/chat.rs PLAYER_NAME).
             assert_ne!(name, "Player");
             assert_eq!(name.len(), 11);
         }

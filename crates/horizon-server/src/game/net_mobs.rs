@@ -1,5 +1,5 @@
-//! Mobs and the players of an open world. The mob code sees one player
-//! (`MobWorld.player`, `Who::Player`); with players on, each mob sees the
+//! Mobs and the server's players. The mob code sees one player
+//! (`MobWorld.player`, `Who::Player`); each mob sees the
 //! player vanilla's `Level.getNearestPlayer` would give it, and keeps the
 //! player it targets until it lets go. What it then does to `Who::Player`
 //! (hits, pushes, fire, its projectiles) runs with that player swapped in.
@@ -123,7 +123,7 @@ pub(super) fn acts_on_player(e: &MobEvent) -> bool {
     )
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// How mobs see each player in play (`player_view` with the player swapped
     /// in; what the game alone tracks, such as its last attacker, stays out).
     pub(super) fn net_player_views(&mut self) -> PlayerViews {
@@ -268,7 +268,7 @@ impl crate::game::Sim<'_> {
     }
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// Hurt a player: `f` runs as them, and the knockback it gave reaches
     /// their client. A hurt marks the velocity (Entity.markHurt), which goes
     /// out once the player's server copy has travelled (`player_server_tick`);
@@ -336,7 +336,7 @@ pub(super) struct Present {
     pub alive: bool,
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// Every player in the world (`ServerLevel.getPlayers` past the game).
     pub(super) fn net_present(&self) -> Vec<Present> {
         let players = self

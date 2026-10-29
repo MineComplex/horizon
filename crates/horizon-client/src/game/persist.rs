@@ -13,7 +13,7 @@ pub struct EntityMemory {
     pub(super) raw: HashMap<u32, Tag>,
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     /// The mobs riding entity `id` under `tag`'s `Passengers`, after the
     /// passengers it kept from loading.
     fn put_mob_passengers(&mut self, tag: &mut Tag, id: u32) {

@@ -1,12 +1,11 @@
 //! A server's levels, one per dimension (`MinecraftServer.levels`).
 //!
-//! The game's tick code reads one level: the one in place, held in `Game`'s
+//! The game's tick code reads one level: the one in place, held in `Server`'s
 //! own fields (the world, its streaming and save, block ticks, entities).
-//! A server (the dedicated server and single player's server thread) keeps
-//! the other dimensions' levels here and ticks each one with players or forced
-//! chunks by swapping it into place (`enter_level`), the way `as_player` swaps a player
-//! in, so the tick code runs unchanged, one level at a time. The in-frame
-//! game holds one level, which follows its player (`enter_dimension`).
+//! The other dimensions' levels wait here; each one with players or forced
+//! chunks ticks by being swapped into place (`enter_level`), the way
+//! `as_player` swaps a player in, so the tick code runs unchanged, one level
+//! at a time.
 //!
 //! Shared by every level, as vanilla's derived levels share the
 //! Overworld's level data: the game time, the day time and the weather, the
@@ -123,7 +122,7 @@ impl Levels {
     }
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// A new level for `dim`, opened from the save (`MinecraftServer.createLevels`).
     fn open_level(&self, dim: Dim) -> Result<Parked> {
         let (streaming, save, locator) = super::world_loading::make_streaming(
@@ -250,7 +249,7 @@ impl crate::game::Sim<'_> {
     }
     /// Put `target`'s level in place, opening it first if it is not loaded.
     /// The level that was in place is kept with the others; the shared
-    /// clock and weather go with the swap. `host` is the hub when the caller
+    /// clock and weather go with the swap. `net` is the network when the caller
     /// holds it (`self.network` is taken during the network tick).
     pub(super) fn enter_level(&mut self, net: Option<&mut Network>, target: Dim) -> Result<()> {
         if target != self.dim {
@@ -467,7 +466,7 @@ impl crate::game::Sim<'_> {
     }
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// The end of `MinecraftServer.runServer`'s loop for a server thread: a
     /// finished `/tick sprint` reports to the operators as the server, then
     /// the next tick starts one tick length after this one, or straight away

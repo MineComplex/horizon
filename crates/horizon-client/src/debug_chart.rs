@@ -1,6 +1,5 @@
-//! The debug charts (26.3 `debugchart`): F3+2 shows the frame times and, in
-//! single player, the integrated server's tick times; F3+3 the ping and, on a
-//! remote server, the bandwidth. Each chart keeps the last 240 samples
+//! The debug charts (26.3 `debugchart`): F3+2 shows the frame times and the
+//! tick times, when there are any; F3+3 the ping and the bandwidth. Each chart keeps the last 240 samples
 //! (`LocalSampleLogger`) and draws one bar per sample over a 60 pixel high
 //! box (`AbstractDebugChart`).
 use crate::{
@@ -64,7 +63,7 @@ pub struct DebugCharts {
     pub lightmap: bool,
     /// `frameTimeLogger`: nanoseconds between frames.
     pub frame_times: SampleLogger,
-    /// `tickTimeLogger`: the integrated server's ticks.
+    /// `tickTimeLogger`: tick times.
     pub tick_times: SampleLogger,
     /// `pingLogger`: milliseconds.
     pub ping: SampleLogger,
@@ -119,7 +118,7 @@ impl DebugCharts {
         self.packet_totals = [0; 2];
         self.packet_tick = 0;
     }
-    /// One integrated server tick that started at `started` and ran its
+    /// One tick that started at `started` and ran its
     /// tick method for `method` (`MinecraftServer.logFullTickTime` and
     /// `logTickMethodTime`): the full tick runs from one start to the next,
     /// and what the tick method leaves of it is idle.

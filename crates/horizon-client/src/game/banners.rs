@@ -6,7 +6,7 @@ use horizon_client::{
     containers::BlockEntity,
 };
 
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     /// The pattern textures and tints of the banner at `pos`, bottom first.
     pub(super) fn banner_layers_at(&self, pos: [i32; 3]) -> Vec<(String, u32)> {
         let Some(BlockEntity::Banner(b)) = self.world.block_entities.get(&(pos[0], pos[1], pos[2]))

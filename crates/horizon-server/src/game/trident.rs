@@ -87,7 +87,7 @@ fn segment_box(from: Vec3, d: Vec3, b: Aabb) -> Option<f64> {
     }
     (t0 <= t1).then_some(t0)
 }
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// `TridentItem.use`: start the throw unless one more use would break it.
     pub(super) fn use_trident(&mut self, stack: &ItemStack) -> bool {
         if &*stack.item != "minecraft:trident" {

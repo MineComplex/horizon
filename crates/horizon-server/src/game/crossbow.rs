@@ -40,7 +40,7 @@ fn projectile_slot(
         })
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// `Player.getProjectile` for `weapon` (`projectile_slot`).
     pub(super) fn projectile_slot(&self, weapon: &str) -> Option<usize> {
         let hands = [OFFHAND_SLOT, self.selected].map(|slot| (slot, self.stack_in(slot)));
@@ -68,9 +68,9 @@ impl crate::game::Sim<'_> {
     pub(super) fn tick_crossbow(&mut self, slot: usize, ticks: u32, stack: &ItemStack) {
         let ticks = ticks + 1;
         self.using = Some((slot, ticks));
-        let charge = crate::game::Sim::charge_ticks(stack).max(1) as f32;
+        let charge = crate::game::Server::charge_ticks(stack).max(1) as f32;
         let (before, now) = ((ticks - 1) as f32 / charge, ticks as f32 / charge);
-        let sounds = crate::game::Sim::charging_sounds(stack);
+        let sounds = crate::game::Server::charging_sounds(stack);
         let at = self
             .player
             .as_ref()
@@ -215,7 +215,7 @@ impl crate::game::Sim<'_> {
     }
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     pub(crate) fn charging_sounds(stack: &ItemStack) -> [&'static str; 3] {
         match stack.enchantment_level("minecraft:quick_charge") {
             0 => [
@@ -242,7 +242,7 @@ impl crate::game::Sim<'_> {
     }
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     pub(crate) fn charge_ticks(stack: &ItemStack) -> u32 {
         // crossbow_charge_time: 1.25 s, minus 0.25 s per Quick Charge level.
         let seconds = 1.25 - 0.25 * stack.enchantment_level("minecraft:quick_charge") as f32;

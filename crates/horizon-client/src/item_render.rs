@@ -127,7 +127,7 @@ pub trait SpecialHost {
         None
     }
 }
-/// A host with no registries: patterns and skins fall back to defaults.
+/// No registries: patterns and skins fall back to defaults.
 pub struct NoHost;
 impl SpecialHost for NoHost {
     fn banner_texture(&self, _: &str) -> Option<String> {

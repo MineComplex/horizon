@@ -102,7 +102,7 @@ pub(super) fn fireworks_of(stack: &ItemStack) -> (u8, Vec<FireworkExplosion>) {
         .and_then(|d| d.fireworks.clone())
         .unwrap_or((1, Vec::new()))
 }
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     pub(super) fn new_rocket(&mut self, at: Vec3, stack: &ItemStack, attached: bool) -> Rocket {
         let (flight, explosions) = fireworks_of(stack);
         // FireworkRocketEntity: motion and lifetime come from the rocket's own random.

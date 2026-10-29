@@ -22,7 +22,7 @@ fn java_float(v: f32) -> String {
     crate::hc::snbt::java_float(v)
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// A provider argument: its registry id (None when inline) and value.
     pub(in crate::game) fn provider_arg(
         &self,

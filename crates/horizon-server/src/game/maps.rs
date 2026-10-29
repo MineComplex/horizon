@@ -396,7 +396,7 @@ fn decoration_rotation(nether: bool, game_time: i64, y_rot: f64) -> u8 {
         ((adjusted * 16.0 / 360.0) as i32 & 15) as u8
     }
 }
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     fn dimension_id(&self) -> &'static str {
         match self.dim {
             super::Dim::Nether => "minecraft:the_nether",

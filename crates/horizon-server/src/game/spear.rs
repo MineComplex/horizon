@@ -21,10 +21,10 @@ use horizon_core::{
     position::BlockPos,
 };
 
-/// The key of this window's own player in `crate::game::Sim::kinetic_feedback`.
+/// The key of this window's own player in `crate::game::Server::kinetic_feedback`.
 pub(super) const OWN: i32 = i32::MIN;
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// `Item.use` of a kinetic weapon: `startUsingItem` with a new
     /// `recentKineticEnemies`, and `KineticWeapon.makeSound` at the user.
     pub(super) fn use_spear(&mut self, stack: &ItemStack) -> bool {

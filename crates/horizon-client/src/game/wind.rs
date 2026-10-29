@@ -19,7 +19,6 @@ impl Game<'_> {
         });
         let Some(model) = model else { return };
         let Some(r) = self
-            .front
             .gui
             .atlas
             .sprites

@@ -1,6 +1,6 @@
-//! A server's mobs as a client animates them. The server thread, a LAN host
-//! and a dedicated server run each mob's animation state (`ai::tick`); a
-//! client of a server only gets synched data and entity events, and runs the
+//! A server's mobs as a client animates them. The server runs each mob's
+//! animation state (`ai::tick`); a client only gets synched data and entity
+//! events, and runs the
 //! animation steps vanilla runs on the client (`Entity.onSyncedDataUpdated`,
 //! `handleEntityEvent` and the per tick animation states). The server's half
 //! is `game/server_net.rs` (`mob_meta`, with `pose_id` here for index 6) and

@@ -41,7 +41,7 @@ fn in_range(v: i32, (lo, hi): IntRange) -> bool {
     lo.is_none_or(|l| v >= l) && hi.is_none_or(|h| v <= h)
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     fn scoreboard_path(&self) -> std::path::PathBuf {
         self.world_root.join("data/minecraft/scoreboard.dat")
     }
@@ -562,7 +562,7 @@ impl crate::game::Sim<'_> {
 
 /// The commands' view of the game.
 struct GameEnv<'a, 'b> {
-    g: &'a mut crate::game::Sim<'b>,
+    g: &'a mut crate::game::Server<'b>,
 }
 impl Env for GameEnv<'_, '_> {
     fn sb(&self) -> &Scoreboard {

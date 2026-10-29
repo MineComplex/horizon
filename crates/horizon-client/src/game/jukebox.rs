@@ -8,7 +8,7 @@ use horizon_core::{
     position::BlockPos,
 };
 
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     fn stop_sound(&mut self, pos: [i32; 3]) {
         if self.jukebox_sounds.remove(&(pos[0], pos[1], pos[2])) {
             self.sounds.stop_jukebox(pos);

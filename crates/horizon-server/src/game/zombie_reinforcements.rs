@@ -24,7 +24,7 @@ fn offset(random: &mut LegacyRandom) -> i32 {
     distance * random.next_int_between_inclusive(-1, 1).unwrap_or(0)
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// `Zombie.hurtServer` after the hit: on Hard, with the zombie's chance
     /// and monsters spawning, a copy of it appears out of sight and takes
     /// `target`; both then call less often.

@@ -40,7 +40,7 @@ impl Maps for LevelMaps {
     }
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// The maps of `stacks` (loaded as needed) for a menu over this level.
     pub(super) fn level_maps<'s>(
         &mut self,

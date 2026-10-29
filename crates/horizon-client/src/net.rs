@@ -102,7 +102,7 @@ impl Session {
         view_distance: i8,
         lang: Arc<Language>,
     ) -> Self {
-        Self::start(address, name, auth, view_distance, lang, None, None)
+        Self::start(address, name, auth, view_distance, lang, None)
     }
     /// `ConnectScreen.startConnecting` for a `transfer`: the cookies the
     /// server stored carry to the new connection (`TransferState`).
@@ -114,24 +114,7 @@ impl Session {
         lang: Arc<Language>,
         cookies: Cookies,
     ) -> Self {
-        Self::start(
-            address,
-            name,
-            auth,
-            view_distance,
-            lang,
-            None,
-            Some(cookies),
-        )
-    }
-    /// Join an integrated server through memory (`Connection.connectToLocalServer`).
-    pub fn connect_local(
-        pipe: horizon_protocol::connection::Pipe,
-        name: &str,
-        view_distance: i8,
-        lang: Arc<Language>,
-    ) -> Self {
-        Self::start("local", name, None, view_distance, lang, Some(pipe), None)
+        Self::start(address, name, auth, view_distance, lang, Some(cookies))
     }
     fn start(
         address: &str,
@@ -139,7 +122,6 @@ impl Session {
         auth: Option<Arc<AuthSession>>,
         view_distance: i8,
         lang: Arc<Language>,
-        local: Option<horizon_protocol::connection::Pipe>,
         cookies: Option<Cookies>,
     ) -> Self {
         let (send, events) = channel();
@@ -158,7 +140,6 @@ impl Session {
             .name("horizon-net".into())
             .spawn(move || {
                 let result = run(
-                    local,
                     &address_owned,
                     &name_owned,
                     auth.as_deref(),
@@ -295,7 +276,6 @@ fn tr(lang: &Language, key: &str) -> String {
 /// The whole connection. Ok: why it ended for good (the server's reason, or
 /// a refusal no retry fixes); Err: the connection failed.
 fn run(
-    local: Option<horizon_protocol::connection::Pipe>,
     address: &str,
     name: &str,
     auth: Option<&AuthSession>,
@@ -308,17 +288,12 @@ fn run(
     cookies: &Cookies,
     transferred: bool,
 ) -> Result<String, String> {
-    let (host, port, mut c) = if let Some(pipe) = local {
-        (address.to_owned(), 0, Connection::local(pipe))
-    } else {
-        let Some((host, port)) = parse_address(address) else {
-            return Ok(format!("Invalid server address: {address}"));
-        };
-        status(send, "Connecting to the server...");
-        let c = Connection::connect_server(&host, port, Duration::from_secs(10))
-            .map_err(|e| e.to_string())?;
-        (host, port, c)
+    let Some((host, port)) = parse_address(address) else {
+        return Ok(format!("Invalid server address: {address}"));
     };
+    status(send, "Connecting to the server...");
+    let mut c = Connection::connect_server(&host, port, Duration::from_secs(10))
+        .map_err(|e| e.to_string())?;
     *shared_counters.lock().unwrap() = Some(c.reader.counters.clone());
     let e = |e: horizon_protocol::Error| e.to_string();
     c.send(

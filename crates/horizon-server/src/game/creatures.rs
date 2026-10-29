@@ -129,7 +129,7 @@ impl ProjectileWorld for ProjWorld<'_, '_> {
 pub(super) fn seen(m: &Mob, player: Option<[i32; 4]>) -> Seen {
     m.seen(player)
 }
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     pub(super) fn player_view(&self) -> Option<PlayerView> {
         let p = self.player.as_ref()?;
         let w = f64::from(p.dimensions.width) / 2.0;
@@ -4320,7 +4320,7 @@ fn from_loot(stack: &horizon_world::loot::LootStack) -> ItemStack {
     }
     item
 }
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// The rest of `NetherPortalBlock.randomTick` after a won roll: with a
     /// player close enough for spawning, a zombified piglin spawns on the block
     /// under the portal column when it is a valid spawn.

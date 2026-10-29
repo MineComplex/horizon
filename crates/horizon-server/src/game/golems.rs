@@ -4,7 +4,7 @@
 //! golem. Players placing the pumpkin and dispensers share it.
 use crate::hc::Result;
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     fn golem_block(&self, p: [i32; 3]) -> &str {
         let state = self.world.block(p[0], p[1], p[2]);
         &self.res.facts().get(state).name

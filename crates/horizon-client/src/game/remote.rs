@@ -293,15 +293,15 @@ impl Game<'_> {
             return Ok(());
         }
         self.join_world_rest()?;
-        if let Err(error) = self.join_server(address, name, None, cookies) {
+        if let Err(error) = self.join_server(address, name, cookies) {
             log::warn!("Horizon: could not join server: {error}");
-            if self.front.title.is_none() {
-                self.front.title = Some(horizon_client::title::Title::new(
+            if self.title.is_none() {
+                self.title = Some(horizon_client::title::Title::new(
                     std::env::current_dir()?.join("saves"),
                     &self.options.resources,
                 ));
             }
-            if let Some(title) = &mut self.front.title {
+            if let Some(title) = &mut self.title {
                 title.failed(error);
             }
             self.capture(false);
@@ -312,7 +312,6 @@ impl Game<'_> {
         &mut self,
         address: &str,
         name: &str,
-        local: Option<horizon_protocol::connection::Pipe>,
         cookies: Option<horizon_client::net::Cookies>,
     ) -> Result<()> {
         let root = self.options.resources.clone();
@@ -321,12 +320,7 @@ impl Game<'_> {
             .ok_or("Resources are incomplete: registries.json is missing or invalid. Click \"Prepare again\" in the launcher (or run horizon-prepare), then try again.")?;
         let lang = Arc::new(horizon_client::net::load_language(&root));
         let view = client_view_distance(self.settings.render_distance);
-        if local.is_none() {
-            horizon_client::crash::set_detail(
-                "Server",
-                horizon_client::net::shown_address(address),
-            );
-        }
+        horizon_client::crash::set_detail("Server", horizon_client::net::shown_address(address));
         // A signed-in account always plays under its own name.
         let auth = horizon_client::auth::current();
         let name = auth.as_ref().map_or(name, |a| a.name.as_str());
@@ -339,23 +333,18 @@ impl Game<'_> {
             },
             |a| (a.name.clone(), a.uuid),
         );
-        self.server_packs_connect(local.is_none().then_some(address), user);
-        let session = match local {
-            Some(pipe) => Session::connect_local(pipe, name, view, lang.clone()),
-            None => {
-                self.extras_connecting(address, name);
-                match cookies {
-                    Some(cookies) => Session::connect_transferred(
-                        address,
-                        name,
-                        auth.clone(),
-                        view,
-                        lang.clone(),
-                        cookies,
-                    ),
-                    None => Session::connect(address, name, auth.clone(), view, lang.clone()),
-                }
-            }
+        self.server_packs_connect(address, user);
+        self.extras_connecting(address, name);
+        let session = match cookies {
+            Some(cookies) => Session::connect_transferred(
+                address,
+                name,
+                auth.clone(),
+                view,
+                lang.clone(),
+                cookies,
+            ),
+            None => Session::connect(address, name, auth.clone(), view, lang.clone()),
         };
         let player_type = super::perspective::player_type(&root);
         let mut streaming = Streaming::new(
@@ -400,24 +389,24 @@ impl Game<'_> {
             progress: 0.0,
             total: 0,
         };
-        // The connected client never opens a server world (single player also
-        // joins here), so load the registries its argument parsers and local
+        // The client opens no world of its own, so load the registries its
+        // argument parsers and local
         // suggestions need before receiving the server's command tree.
         self.world_data.registries = Default::default();
         self.build_registries();
         self.world_data.registries.permission = 0;
         self.ui.chat.clear();
         self.screen = Screen::Playing;
-        self.front.title = None;
+        self.title = None;
         self.dim = Dim::Overworld;
         self.clear_lod();
-        self.front.pending_uploads.clear();
-        if let Some(r) = self.front.renderer.as_mut() {
+        self.pending_uploads.clear();
+        if let Some(r) = self.renderer.as_mut() {
             r.clear_sections();
         }
         self.apply_settings();
         self.clear_waypoints();
-        self.front.boss_overlay.reset();
+        self.boss_overlay.reset();
         self.remote = Some(Remote {
             session,
             brand: "unknown".into(),
@@ -510,7 +499,7 @@ impl Game<'_> {
             self.extras_left();
         }
         self.clear_waypoints();
-        self.front.boss_overlay.reset();
+        self.boss_overlay.reset();
         if let Some(mut r) = self.remote.take() {
             r.session.disconnect();
         }
@@ -520,8 +509,8 @@ impl Game<'_> {
         self.clock = Default::default();
         self.adv = Default::default();
         self.stats = Default::default();
-        self.front.debug_charts.reset();
-        self.front.tab_list.reset();
+        self.debug_charts.reset();
+        self.tab_list.reset();
         self.score.board = Default::default();
         self.streaming = Streaming::new(Arc::new(NoTerrain), self.pack.context.clone(), 1);
         self.streaming.paused = true;
@@ -534,13 +523,13 @@ impl Game<'_> {
         self.particles.clear();
         self.pickups.clear();
         self.score.board = Default::default();
-        self.front.tab_list = Default::default();
+        self.tab_list = Default::default();
         self.border = Default::default();
         self.screen = Screen::Playing;
         self.container = None;
         self.clear_lod();
-        self.front.pending_uploads.clear();
-        if let Some(r) = self.front.renderer.as_mut() {
+        self.pending_uploads.clear();
+        if let Some(r) = self.renderer.as_mut() {
             r.clear_sections();
         }
         let saves = std::env::current_dir()?.join("saves");
@@ -553,7 +542,7 @@ impl Game<'_> {
             },
             None => horizon_client::multiplayer::Screen::list(&saves),
         });
-        self.front.title = Some(title);
+        self.title = Some(title);
         self.capture(false);
         Ok(())
     }
@@ -668,7 +657,7 @@ impl Game<'_> {
                     }
                 }
                 Event::Reconfigured(registries) => {
-                    self.front.boss_overlay.reset();
+                    self.boss_overlay.reset();
                     self.set_registries(registries);
                 }
                 // handleTransfer: "Cannot transfer to server from
@@ -833,8 +822,8 @@ impl Game<'_> {
                 r.chunk_center = (0, 0);
             }
             self.clear_lod();
-            self.front.pending_uploads.clear();
-            if let Some(renderer) = self.front.renderer.as_mut() {
+            self.pending_uploads.clear();
+            if let Some(renderer) = self.renderer.as_mut() {
                 renderer.clear_sections();
             }
         }
@@ -864,9 +853,9 @@ impl Game<'_> {
         }
         let mut freed = Vec::with_capacity(gone.len());
         for &(x, z) in &gone {
-            freed.extend(self.sim.streaming.forget(&mut self.sim.world, x, z));
+            freed.extend(self.streaming.forget(&mut self.world, x, z));
         }
-        if let Some(renderer) = self.front.renderer.as_mut() {
+        if let Some(renderer) = self.renderer.as_mut() {
             renderer.remove_columns(gone.iter().copied());
         }
         horizon_client::chunk::free_columns(freed, gone.len());
@@ -990,7 +979,7 @@ impl Game<'_> {
             // PingDebugMonitor.onPongReceived.
             C::PongResponse(p) => {
                 let delay = self.debug_millis() - p.time;
-                self.front.debug_charts.ping.log(delay);
+                self.debug_charts.ping.log(delay);
             }
             C::Login(p) => {
                 self.level.hardcore = p.hardcore;
@@ -1047,12 +1036,11 @@ impl Game<'_> {
             C::LightUpdate(p) => self.remote_light_update(&p),
             C::ForgetLevelChunk(p) => {
                 let [x, z] = p.pos;
-                self.sim.streaming.forget(&mut self.sim.world, x, z);
-                self.sim
-                    .world
+                self.streaming.forget(&mut self.world, x, z);
+                self.world
                     .block_entities
                     .retain(|k, _| (k.0 >> 4, k.2 >> 4) != (x, z));
-                if let Some(renderer) = self.front.renderer.as_mut() {
+                if let Some(renderer) = self.renderer.as_mut() {
                     renderer.remove_columns([(x, z)]);
                 }
             }
@@ -1261,13 +1249,13 @@ impl Game<'_> {
             // lead (this player, another player, a mob or a fence knot), for
             // the rope.
             C::SetEntityLink(p) => {
-                let me = self.sim.remote.as_ref().map(|r| r.entity_id);
-                if let Some(m) = self.sim.mobs.iter_mut().find(|m| m.id == p.source as u32) {
+                let me = self.remote.as_ref().map(|r| r.entity_id);
+                if let Some(m) = self.mobs.iter_mut().find(|m| m.id == p.source as u32) {
                     use horizon_client::mobs::leash::Holder;
                     m.extra.leash = match p.dest {
                         0 => None,
                         d if Some(d) == me => Some(Holder::Player),
-                        d => match self.sim.remote_knots.get(&(d as u32)) {
+                        d => match self.remote_knots.get(&(d as u32)) {
                             Some(&block) => Some(Holder::Knot(block)),
                             // Not a known knot yet: kept by id until the knot
                             // arrives (game/remote_objects.rs).
@@ -1563,7 +1551,7 @@ impl Game<'_> {
             C::SetEntityMotion(p) => self.remote_motion(p.id, p.velocity),
             // ClientPacketListener.handleDamageEvent: LivingEntity.handleDamageEvent
             // jolts the walk animation and restarts the hurt flash. Its hurt
-            // sound comes as a sound from Horizon's host, which plays it itself.
+            // sound comes as a sound from the server, which plays it itself.
             // This player's own hurt tilt and flash come from the server too
             // (sent to the player itself): its own moves never hurt it.
             C::DamageEvent(p) => {
@@ -2109,8 +2097,8 @@ impl Game<'_> {
                     let text = horizon_client::scoreboard::comp_text(&json);
                     (!text.plain().is_empty()).then_some(text)
                 };
-                self.front.tab_list.header = text(&p.header);
-                self.front.tab_list.footer = text(&p.footer);
+                self.tab_list.header = text(&p.header);
+                self.tab_list.footer = text(&p.footer);
             }
             C::InitializeBorder(p) => {
                 let b = &mut self.border;
@@ -2264,11 +2252,10 @@ impl Game<'_> {
             self.skin_slots.len()
         } else {
             let (old, slot) = self.skin_slots.remove(0);
-            self.front.gui.atlas.sprites.remove(&old);
+            self.gui.atlas.sprites.remove(&old);
             slot
         };
         let Some(rect) = self
-            .front
             .gui
             .atlas
             .sprites
@@ -2277,18 +2264,15 @@ impl Game<'_> {
         else {
             return;
         };
-        let (w, h) = (
-            self.front.gui.atlas.width as f32,
-            self.front.gui.atlas.height as f32,
-        );
-        self.front.map_patches.push(horizon_client::font::Patch {
+        let (w, h) = (self.gui.atlas.width as f32, self.gui.atlas.height as f32);
+        self.map_patches.push(horizon_client::font::Patch {
             x: (rect.u0 * w).round() as u32,
             y: (rect.v0 * h).round() as u32,
             width: 64,
             height: 64,
             rgba,
         });
-        self.front.gui.atlas.sprites.insert(location.clone(), rect);
+        self.gui.atlas.sprites.insert(location.clone(), rect);
         self.skin_slots.push((location, slot));
     }
     /// ClientPacketListener.handleMovePlayer.
@@ -2338,8 +2322,8 @@ impl Game<'_> {
                 player.spectator = self.spectator();
                 player.velocity = delta;
                 self.player = Some(player);
-                self.front.pad.player_replaced();
-                self.front.sway = Default::default();
+                self.pad.player_replaced();
+                self.sway = Default::default();
                 self.eye = 1.62;
                 self.previous_eye = 1.62;
                 self.clock.reset();
@@ -2412,7 +2396,7 @@ impl Game<'_> {
         // Minecraft.tick: TickRateManager.tick; ClientLevel.tickTime advances
         // the time only while the level runs normally.
         let running = self.clock.world_runs();
-        self.front.boss_overlay.tick_darken(running);
+        self.boss_overlay.tick_darken(running);
         if running {
             self.world.game_time += 1;
             self.remote_clock_tick();
@@ -2430,7 +2414,7 @@ impl Game<'_> {
         self.remote_handle_input();
         // Player.tick's ItemCooldowns.tick, in ClientLevel.tickEntities after
         // handleKeybinds: this path replaces `tick_world`'s for a server's
-        // client (multiplayer and the default single player), so the entries
+        // client, so the entries
         // advance here or the slot stays shaded until the server says the
         // entry ended. `onCooldownEnded` is the plain ItemCooldowns' no-op on
         // a client. Ticking it after the keybinds keeps a held use from
@@ -2520,15 +2504,15 @@ impl Game<'_> {
             | u8::from(keys.shift) << 5
             | u8::from(keys.sprint) << 6;
         // A passenger moves with its vehicle (Entity.rideTick), not by itself.
-        let riding = self.sim.screen != Screen::Dead && self.remote_ride(keys);
+        let riding = self.screen != Screen::Dead && self.remote_ride(keys);
         // The server sends no passenger's position: they sit where their
         // vehicles are now.
         self.position_riders();
-        let Some(player) = self.sim.player.as_mut() else {
+        let Some(player) = self.player.as_mut() else {
             return Ok(());
         };
         if !riding {
-            self.sim.previous_position = player.position;
+            self.previous_position = player.position;
         }
         let before = (
             player.ground.on_ground,
@@ -2539,16 +2523,16 @@ impl Game<'_> {
         self.sync_player_body();
         // LivingEntity.tickDeath: the local player counts its deathTime once
         // per client tick while dead (the camera's death roll and zoom).
-        if self.sim.screen == Screen::Dead {
-            self.sim.ui.death_time = self.sim.ui.death_time.saturating_add(1);
+        if self.screen == Screen::Dead {
+            self.ui.death_time = self.ui.death_time.saturating_add(1);
         }
-        let Some(player) = self.sim.player.as_mut() else {
+        let Some(player) = self.player.as_mut() else {
             return Ok(());
         };
         let was_gliding = player.fall_flying;
-        let dead = self.sim.screen == Screen::Dead;
+        let dead = self.screen == Screen::Dead;
         // LivingEntity.isImmobile: a sleeper lies still in the bed.
-        if let Some(head) = self.sim.sleeping {
+        if let Some(head) = self.sleeping {
             player.position = Vec3::new(
                 f64::from(head[0]) + 0.5,
                 f64::from(head[1]) + 0.5625,
@@ -2561,10 +2545,10 @@ impl Game<'_> {
             MotionWorld {
                 entities: &entity_collisions,
                 player,
-                scene: &mut self.sim.world,
-                assets: &self.sim.pack.assets,
-                collision_binding: self.sim.collision,
-                resources: self.sim.motion,
+                scene: &mut self.world,
+                assets: &self.pack.assets,
+                collision_binding: self.collision,
+                resources: self.motion,
             }
             .controlled_simulation_tick(keys)?;
         } else {
@@ -2580,8 +2564,8 @@ impl Game<'_> {
         // server (ServerboundPlayerCommandPacket START_FALL_FLYING).
         let started_gliding = player.fall_flying && !was_gliding;
         let events = std::mem::take(&mut player.events);
-        self.sim.previous_eye = self.sim.eye;
-        self.sim.eye += (player.dimensions.eye_height - self.sim.eye) * 0.5;
+        self.previous_eye = self.eye;
+        self.eye += (player.dimensions.eye_height - self.eye) * 0.5;
         let feet = [player.position.x, player.position.y, player.position.z];
         for event in events {
             match event {
@@ -2653,17 +2637,15 @@ impl Game<'_> {
         use horizon_client::interaction_input::Button;
         let input = match button {
             MouseButton::Left => {
-                self.front
-                    .toggles
+                self.toggles
                     .button(2, pressed, false, self.settings.toggle_attack);
-                self.left = self.front.toggles.is_down(2);
+                self.left = self.toggles.is_down(2);
                 Some(Button::Attack)
             }
             MouseButton::Right => {
-                self.front
-                    .toggles
+                self.toggles
                     .button(3, pressed, false, self.settings.toggle_use);
-                self.right = self.front.toggles.is_down(3);
+                self.right = self.toggles.is_down(3);
                 Some(Button::Use)
             }
             MouseButton::Middle => Some(Button::Pick),
@@ -2733,7 +2715,6 @@ impl Game<'_> {
     /// A container click: the server answers with the authoritative slots.
     pub(super) fn remote_click(&mut self, right: bool) {
         let Some(size) = self
-            .front
             .renderer
             .as_ref()
             .map(|r| [r.config.width, r.config.height])
@@ -2741,7 +2722,7 @@ impl Game<'_> {
             return;
         };
         let batch = HudBatch::new(size);
-        let Some(internal) = self.slot_at(&batch, self.front.cursor.0, self.front.cursor.1) else {
+        let Some(internal) = self.slot_at(&batch, self.cursor.0, self.cursor.1) else {
             return;
         };
         let input = if self.has_shift_down() {
@@ -2758,7 +2739,7 @@ impl Game<'_> {
         if self.player.is_some() {
             return false;
         }
-        let atlas = &self.front.gui.atlas;
+        let atlas = &self.gui.atlas;
         let (w, h) = (batch.width, batch.height);
         batch.fill(atlas, 0.0, 0.0, w, h, rgba(20, 20, 20, 255));
         let shown = horizon_client::net::shown_address(&r.session.address);
@@ -2783,7 +2764,7 @@ impl Game<'_> {
     /// The server's death message; chat uses the shared ChatComponent.
     pub(super) fn remote_hud(&self, batch: &mut HudBatch) {
         let Some(r) = &self.remote else { return };
-        let atlas = &self.front.gui.atlas;
+        let atlas = &self.gui.atlas;
         let w = batch.width;
         if self.screen == Screen::Dead
             && let Some(message) = &r.death_message
@@ -2860,7 +2841,7 @@ impl Game<'_> {
                 .collect::<Vec<_>>(),
             // The player's own model exists (third person and the inventory draw it).
             "player_model": self.player_model.is_some(),
-            "text_display_vertices": self.front.text_display_vertices,
+            "text_display_vertices": self.text_display_vertices,
             "text_displays": self.text_displays.len(),
             "health": r.health.0,
             "food": r.health.1,
@@ -2869,7 +2850,7 @@ impl Game<'_> {
         }))
     }
 }
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     /// A `Holder<SoundEvent>` off the wire: an inline event's location, or
     /// the name of a registered one.
     pub(super) fn remote_sound_name(
@@ -5543,6 +5524,14 @@ impl crate::game::Sim<'_> {
     pub(super) fn remote_drop(&mut self, all: bool) {
         let dropped =
             horizon_client::items::take_held_drop(&mut self.inventory[self.selected], all, false);
+        // The drop is the server's to decide (a plugin may keep the stack):
+        // the prediction is no creative edit to send it.
+        let selected = self.selected;
+        if let Some(r) = self.remote.as_mut()
+            && let Some(slot) = r.synced.get_mut(selected)
+        {
+            *slot = self.inventory[selected].clone();
+        }
         self.send(S::PlayerAction(play::PlayerAction {
             action: if all { 4 } else { 5 },
             pos: [0; 3],
@@ -6267,9 +6256,9 @@ fn client_view_distance(render_distance: i32) -> i8 {
     render_distance.clamp(2, i32::from(i8::MAX)) as i8
 }
 
-struct RemoteInputWorld<'g, 'a>(&'g mut crate::game::Sim<'a>);
+struct RemoteInputWorld<'g, 'a>(&'g mut crate::game::Game<'a>);
 
-struct RemoteUseWorld<'g, 'a>(&'g mut crate::game::Sim<'a>);
+struct RemoteUseWorld<'g, 'a>(&'g mut crate::game::Game<'a>);
 
 impl horizon_client::interaction_input::TargetUseWorld for RemoteUseWorld<'_, '_> {
     fn use_entity(&mut self) -> bool {
@@ -6403,7 +6392,7 @@ mod tests {
             }
         }
 
-        // As with the LAN tests, prepared game resources are optional locally.
+        // As with the server tests, prepared game resources are optional locally.
         let resources = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("../../.local/horizon-client")
             .join(horizon_core::VANILLA_VERSION);

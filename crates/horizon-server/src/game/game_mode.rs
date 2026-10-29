@@ -3,7 +3,7 @@
 use super::Screen;
 use crate::hc::command::args::GameMode;
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     pub(super) fn spectator(&self) -> bool {
         self.mode == GameMode::Spectator
     }
@@ -67,7 +67,7 @@ impl crate::game::Sim<'_> {
         }
     }
 }
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// `ServerPlayer.setGameMode(SPECTATOR)`: `stopRiding`.
     fn dismount_for_spectator(&mut self) {
         let Some(id) = self.riding else {

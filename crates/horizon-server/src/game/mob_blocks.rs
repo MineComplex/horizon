@@ -6,7 +6,7 @@
 /// `ElderGuardianParticle.lifetime`.
 pub(super) const APPARITION_TICKS: i32 = 30;
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// Count the elder guardian's apparition down.
     pub(super) fn tick_apparition(&mut self) {
         self.creatures.elder_apparition = (self.creatures.elder_apparition - 1).max(0);

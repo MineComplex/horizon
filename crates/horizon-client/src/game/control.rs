@@ -59,16 +59,15 @@ pub struct Flight {
     /// Reply with every frame time too (`fly ... PITCH raw`).
     raw: bool,
     reply: Sender<String>,
-    /// The world's smoothed tick time each frame (the F3 server line): the
-    /// server thread's when single player runs on one.
+    /// The world's smoothed tick time each frame (the F3 server line).
     tick_ms: Vec<f32>,
 }
 
 impl Game<'_> {
     /// Move the camera along the running flight; reply when it ends.
     pub(super) fn advance_flight(&mut self) {
-        let tick_ms = self.front.debug_charts.smoothed_tick_ms;
-        let Some(flight) = self.sim.flight.as_mut() else {
+        let tick_ms = self.debug_charts.smoothed_tick_ms;
+        let Some(flight) = self.flight.as_mut() else {
             return;
         };
         flight.tick_ms.push(tick_ms);
@@ -78,9 +77,9 @@ impl Game<'_> {
         let d = [b.x - a.x, b.y - a.y, b.z - a.z];
         let at = Vec3::new(a.x + d[0] * t, a.y + d[1] * t, a.z + d[2] * t);
         // Minecraft yaw: 0 faces +Z, 90 faces -X.
-        self.sim.yaw = (-d[0]).atan2(d[2]).to_degrees() as f32;
-        self.sim.pitch = flight.pitch;
-        if let Some(player) = self.sim.player.as_mut() {
+        self.yaw = (-d[0]).atan2(d[2]).to_degrees() as f32;
+        self.pitch = flight.pitch;
+        if let Some(player) = self.player.as_mut() {
             player.position = at;
             player.velocity = Vec3::new(0.0, 0.0, 0.0);
             player.fall_distance = 0.0;
@@ -91,14 +90,14 @@ impl Game<'_> {
         if t >= 1.0
             && let Some(flight) = self.flight.take()
         {
-            let mut summary = self.front.frame_stats.summary();
+            let mut summary = self.frame_stats.summary();
             let n = flight.tick_ms.len().max(1) as f32;
             summary["tick_ms"] = (flight.tick_ms.iter().sum::<f32>() / n).into();
             summary["tick_ms_max"] = flight.tick_ms.iter().copied().fold(0.0, f32::max).into();
             if flight.raw {
-                summary["frame_ms"] = self.front.frame_stats.frame_millis().into();
-                summary["cpu_ms"] = self.front.frame_stats.cpu_millis().into();
-                summary["gpu_ms"] = self.front.frame_stats.gpu_millis().into();
+                summary["frame_ms"] = self.frame_stats.frame_millis().into();
+                summary["cpu_ms"] = self.frame_stats.cpu_millis().into();
+                summary["gpu_ms"] = self.frame_stats.gpu_millis().into();
             }
             let _ = flight.reply.send(summary.to_string());
         }
@@ -106,7 +105,7 @@ impl Game<'_> {
     pub(super) fn poll_control(&mut self, event_loop: &ActiveEventLoop) {
         if let Some((deadline, reply)) = self.pending_bench.take() {
             if Instant::now() >= deadline {
-                let _ = reply.send(self.front.frame_stats.summary().to_string());
+                let _ = reply.send(self.frame_stats.summary().to_string());
             } else {
                 self.pending_bench = Some((deadline, reply));
             }
@@ -116,14 +115,14 @@ impl Game<'_> {
         for request in self.ui_wait.ready() {
             self.answer(request, event_loop);
         }
-        while let Some(request) = self.front.control.as_ref().and_then(|c| c.try_recv()) {
+        while let Some(request) = self.control.as_ref().and_then(|c| c.try_recv()) {
             self.agent_command_seen();
             self.answer(request, event_loop);
             if self.quitting {
                 break;
             }
         }
-        if self.front.control.is_some() {
+        if self.control.is_some() {
             self.watch_events();
         }
         if self.screen == Screen::Options
@@ -201,7 +200,7 @@ impl Game<'_> {
                 .collect::<Vec<_>>() }))),
             "setblock" | "fill" | "particle" | "signedit" => self.render_command(&words),
             "section-draws" => {
-                let r = self.front.renderer.as_mut().ok_or("no renderer")?;
+                let r = self.renderer.as_mut().ok_or("no renderer")?;
                 match words.get(1).copied() {
                     None => {}
                     Some("flat") => r.set_flat_draws(true)?,
@@ -211,7 +210,7 @@ impl Game<'_> {
                 Ok(Some(json!({ "ok": true, "flat": r.flat_draws() })))
             }
             "section-cull" => {
-                let r = self.front.renderer.as_mut().ok_or("no renderer")?;
+                let r = self.renderer.as_mut().ok_or("no renderer")?;
                 match words.get(1).copied() {
                     None => {}
                     Some("on") => r.set_section_cull(true)?,
@@ -221,7 +220,7 @@ impl Game<'_> {
                 Ok(Some(json!({ "ok": true, "cull": r.section_cull() })))
             }
             "section-sides" => {
-                let r = self.front.renderer.as_mut().ok_or("no renderer")?;
+                let r = self.renderer.as_mut().ok_or("no renderer")?;
                 match words.get(1).copied() {
                     None => {}
                     Some("on") => r.set_section_sides(true),
@@ -483,21 +482,21 @@ impl Game<'_> {
                 Ok(Some(self.server_reply("hurtlog")?))
             }
             "resume" => {
-                if self.sim.screen == Screen::Paused {
-                    self.sim.screen = Screen::Playing;
+                if self.screen == Screen::Paused {
+                    self.screen = Screen::Playing;
                 }
                 ok()
             }
             "screenshot" => {
-                let renderer = self.front.renderer.as_mut().ok_or("no renderer yet")?;
-                if self.sim.pending_screenshot.is_some() {
+                let renderer = self.renderer.as_mut().ok_or("no renderer yet")?;
+                if self.pending_screenshot.is_some() {
                     return Err("a screenshot is already pending".into());
                 }
                 arg(1)?;
                 // The rest of the line: a path may hold spaces.
                 let path = line.trim_start().strip_prefix("screenshot").unwrap_or("");
                 renderer.screenshot = Some(path.trim().into());
-                self.sim.pending_screenshot = Some(reply.clone());
+                self.pending_screenshot = Some(reply.clone());
                 Ok(None)
             }
             "chat" => {
@@ -532,10 +531,10 @@ impl Game<'_> {
                     self.sign_input(None, Some(text));
                     return ok();
                 }
-                match self.sim.screen {
+                match self.screen {
                     Screen::Chat => self.chat_type(text),
                     Screen::CommandBlock => self.command_block_type(text),
-                    Screen::Options => self.sim.ui.options.type_text(&self.front.gui.atlas, text),
+                    Screen::Options => self.ui.options.type_text(&self.gui.atlas, text),
                     // The port, or the game rules' search and number boxes.
                     Screen::Inventory if self.recipe_search_focused() => {
                         self.recipe_text(Some(text), false)
@@ -586,10 +585,10 @@ impl Game<'_> {
                     "agent" => Page::Agent,
                     other => return Err(format!("unknown options page {other}").into()),
                 };
-                if self.screen == Screen::Playing && self.front.title.is_none() {
+                if self.screen == Screen::Playing && self.title.is_none() {
                     self.capture(false);
                 }
-                let from_title = self.front.title.is_some();
+                let from_title = self.title.is_some();
                 self.open_options(from_title);
                 self.ui.options.show(page);
                 if page == Page::ShaderPacks {
@@ -606,9 +605,9 @@ impl Game<'_> {
                 Ok(Some(json!({ "chat": lines })))
             }
             "stats" => {
-                let summary = self.front.frame_stats.summary();
+                let summary = self.frame_stats.summary();
                 if words.get(1) == Some(&"reset") {
-                    self.front.frame_stats.reset();
+                    self.frame_stats.reset();
                 }
                 Ok(Some(summary))
             }
@@ -617,7 +616,7 @@ impl Game<'_> {
                 if self.pending_bench.is_some() {
                     return Err("a benchmark is already running".into());
                 }
-                self.front.frame_stats.reset();
+                self.frame_stats.reset();
                 self.pending_bench = Some((
                     Instant::now() + Duration::from_secs_f64(seconds),
                     reply.clone(),
@@ -631,7 +630,7 @@ impl Game<'_> {
                 }
                 let n = |i: usize| -> Result<f64> { Ok(arg(i)?.parse()?) };
                 let pitch = words.get(8).map_or(Ok(10.0), |p| p.parse::<f32>())?;
-                self.front.frame_stats.reset();
+                self.frame_stats.reset();
                 self.flight = Some(Flight {
                     from: Vec3::new(n(1)?, n(2)?, n(3)?),
                     to: Vec3::new(n(4)?, n(5)?, n(6)?),
@@ -645,7 +644,7 @@ impl Game<'_> {
                 Ok(None)
             }
             "connect" => {
-                if self.front.title.is_none() {
+                if self.title.is_none() {
                     return Err("leave the current world first".into());
                 }
                 let name = words
@@ -708,7 +707,7 @@ impl Game<'_> {
     }
 
     fn require_world(&self) -> Result<()> {
-        if self.front.title.is_some() {
+        if self.title.is_some() {
             return Err("no world open; use: open WORLD [SEED] [creative]".into());
         }
         Ok(())
@@ -733,7 +732,7 @@ impl Game<'_> {
         if self.screen == Screen::Win {
             return "win";
         }
-        if self.front.title.is_some() {
+        if self.title.is_some() {
             return "title";
         }
         match self.screen {
@@ -775,7 +774,7 @@ impl Game<'_> {
             let state = self.world.block(hit.pos[0], hit.pos[1], hit.pos[2]);
             json!({ "pos": hit.pos, "block": &*self.res.facts().get(state).name })
         });
-        let renderer = self.front.renderer.as_ref().map(|r| {
+        let renderer = self.renderer.as_ref().map(|r| {
             let [arena_bytes, section_vertex_bytes] = r.section_vertex_bytes();
             // Device memory by the backend's allocator (Vulkan; absent elsewhere).
             let memory = r.device.generate_allocator_report();
@@ -816,14 +815,14 @@ impl Game<'_> {
             "distance": self.settings.horizon.lod_distance,
             "effective_distance": self.lod_distance(),
             "terrain_distance": self.terrain_distance(),
-            "source": if self.front.lod.is_none() { "none" } else if self.remote.is_some() { "server" } else { "local" },
-            "source_attempted": self.front.lod_source_attempted,
-            "active_tiles": self.front.lod.as_ref().map_or(0, |lod| lod.stats().0),
-            "cached_tiles": self.front.lod.as_ref().map_or(0, |lod| lod.stats().1),
+            "source": if self.lod.is_none() { "none" } else if self.remote.is_some() { "server" } else { "local" },
+            "source_attempted": self.lod_source_attempted,
+            "active_tiles": self.lod.as_ref().map_or(0, |lod| lod.stats().0),
+            "cached_tiles": self.lod.as_ref().map_or(0, |lod| lod.stats().1),
             "far_detail": self.settings.horizon.far_detail.name(),
-            "resident_quads": self.front.renderer.as_ref().map_or(0, |r| r.lod_quads()),
-            "pending_observations": self.front.lod_observe.len(),
-            "refined_samples": self.front.lod.as_ref().map_or(0, |lod| lod.refined_samples()),
+            "resident_quads": self.renderer.as_ref().map_or(0, |r| r.lod_quads()),
+            "pending_observations": self.lod_observe.len(),
+            "refined_samples": self.lod.as_ref().map_or(0, |lod| lod.refined_samples()),
         });
         // The other players' cracks this client draws (LevelRenderer.destroyingBlocks).
         let destroying: Vec<_> = self
@@ -840,7 +839,7 @@ impl Game<'_> {
                 "pause_menu": self.pause_menu,
                 "advanced_tooltips": self.settings.file.bool("advancedItemTooltips"),
                 "pause_on_lost_focus": self.settings.file.bool("pauseOnLostFocus"),
-                "clipboard": self.front.clipboard.copied(),
+                "clipboard": self.clipboard.copied(),
             },
             "dimension": self.dim.id(),
             "creative": self.creative,
@@ -853,17 +852,16 @@ impl Game<'_> {
             "offhand": self.offhand.as_ref().map(|s| json!({ "item": &*s.item, "count": s.count, "damage": s.damage })),
             "keys": self.keys.iter().map(|k| format!("{k:?}")).collect::<Vec<_>>(),
             // The keyboard as the OS reports it (Shift and Ctrl in screens).
-            "fps": self.front.fps,
+            "fps": self.fps,
             "frames": self.frames,
             "ticks": self.ticks,
             "day_time": self.world.day_time,
-            "music": self.front.music.current(&self.front.audio.engine),
-            "sounds": self.front.audio.census(),
+            "music": self.music.current(&self.audio.engine),
+            "sounds": self.audio.census(),
             "fishing": self.hook_status(),
             "tridents": self.tridents.len(),
             "rockets": self.rockets.len(),
-            // A client of a server (single player's server thread) knows the
-            // carts it was sent.
+            // The client knows the carts the server sent.
             "carts": self.remote_carts().unwrap_or_else(|| self.carts.iter().map(|c| serde_json::json!({"kind": c.kind.id(), "position": [c.position.x, c.position.y, c.position.z], "velocity": [c.velocity.x, c.velocity.y, c.velocity.z]})).collect::<Vec<_>>()),
             "riding": self.riding,
             "using": self.using,
@@ -871,13 +869,13 @@ impl Game<'_> {
             "chunks": self.world.chunks.len(),
             "mobs": self.mobs.len(),
             "block_entities": self.world.block_entities.len(),
-            "pending_chunks": self.streaming.pending() + self.front.pending_uploads.len() + self.remote_backlog(),
+            "pending_chunks": self.streaming.pending() + self.pending_uploads.len() + self.remote_backlog(),
             "generated_chunks": self.streaming.generated_total,
             "meshed_sections": self.streaming.meshed_total,
             "streaming": self.streaming.stages().into_iter().map(|(k, v)| (k.to_string(), v.into())).collect::<serde_json::Map<_, _>>(),
             "dirty_light": self.world.dirty_light.len(),
             "renderer": renderer,
-            "display": self.front.window.as_deref().and_then(horizon_client::window::monitor).map(|m| json!({
+            "display": self.window.as_deref().and_then(horizon_client::window::monitor).map(|m| json!({
                 "width": m.size().width,
                 "height": m.size().height,
                 "scale": m.scale_factor(),
@@ -891,10 +889,10 @@ impl Game<'_> {
                 .map(|e| self.shown_name_tags(glam::DVec3::from_array(e))),
         });
         status["lod"] = lod;
-        let (target, sampled) = self.front.lod.as_ref().map_or((0, 0), |lod| lod.progress());
+        let (target, sampled) = self.lod.as_ref().map_or((0, 0), |lod| lod.progress());
         status["lod"]["target_tiles"] = target.into();
         status["lod"]["sampled_target_tiles"] = sampled.into();
-        status["pending_uploads"] = self.front.pending_uploads.len().into();
+        status["pending_uploads"] = self.pending_uploads.len().into();
         status["destroying"] = json!(destroying);
         status["physical_keys"] = json!(physical_keys);
         status["heard"] = json!(self.sounds.heard);

@@ -105,7 +105,7 @@ impl TrialSpawnerLevel for GameLevel<'_, '_> {
     }
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// The server tick of the trial spawner at `key`. Its client tick comes
     /// after every block entity's.
     pub(super) fn tick_trial_spawner(&mut self, key: Pos) -> Result<()> {

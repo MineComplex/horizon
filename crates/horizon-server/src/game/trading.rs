@@ -94,7 +94,7 @@ impl merchant::MapMaker for GameMaps<'_> {
     }
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     pub(super) fn random_sequences_path(&self) -> std::path::PathBuf {
         self.world_root.join("data/minecraft/random_sequences.dat")
     }

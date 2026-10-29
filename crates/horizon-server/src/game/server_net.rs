@@ -1,7 +1,6 @@
-//! Hosting the open world on the local network ("Open to LAN"): starts the
-//! server threads and the play-state hub, feeds it the world's entities each
-//! tick and turns what the players do into gameplay. A world that is not open
-//! costs one `Option` check per tick.
+//! The server's network side in the game: starts the connection threads and
+//! the play-state hub, feeds it the world's entities each tick and turns what
+//! the players do into gameplay.
 use super::shield::OFFHAND_SLOT;
 use crate::hc::{
     Result,
@@ -36,7 +35,7 @@ pub(super) fn sync_data(root: &std::path::Path) -> std::result::Result<Arc<SyncD
         .clone()
 }
 
-/// The settings of the open world (WorldOptionsScreen's multiplayer section).
+/// The network settings: the port, whether players run commands, forced game mode.
 #[derive(Clone, Copy, Debug)]
 pub struct NetSettings {
     pub port: u16,
@@ -917,7 +916,7 @@ fn mob_equipment(
     }
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// `horizon-ctl network status`.
     pub(super) fn net_status(&self) -> serde_json::Value {
         use serde_json::json;
@@ -1203,9 +1202,9 @@ impl crate::game::Sim<'_> {
         self.net_object_states(hub, out);
     }
     /// Run the hub for this tick and apply what the players did. While the
-    /// single player game is `paused` only the connections run
-    /// (`IntegratedServer.tickPaused`): `ServerGamePacketListenerImpl.tick`
-    /// skips `tickPlayer`, so no player's air, hunger or damage moves on.
+    /// server is held (`paused`) only the connections run:
+    /// `ServerGamePacketListenerImpl.tick` skips `tickPlayer`, so no player's
+    /// air, hunger or damage moves on.
     pub(super) fn tick_net(&mut self, paused: bool) {
         let Some(mut net) = self.network.take() else {
             return;
@@ -1230,196 +1229,195 @@ impl crate::game::Sim<'_> {
                 m.rider = None;
             }
         }
-        if net.hub.config.dedicated {
-            let has_players = !net.hub.players.is_empty();
-            let mut states = std::mem::take(&mut net.states);
-            if has_players {
-                self.net_assign_ids();
-                let players: Vec<(u32, i32)> = net
-                    .hub
-                    .players
-                    .iter()
-                    .filter_map(|g| Some((g.vehicle?, g.entity_id)))
-                    .collect();
-                self.net_riding(&players, &mut net.hub.riding);
-                self.net_entities(&net.mob_players, &mut net.hub, &mut states);
-                self.net_hook_states(&net.play, &net.hub, &mut states);
-            } else {
-                states.clear();
-            }
-            // ServerEntity.sendChanges clears needsSync once it has looked.
-            for m in &mut self.mobs {
-                m.needs_sync = false;
-            }
-            for p in &mut self.creatures.projectiles {
-                p.needs_sync = false;
-            }
-            // `runBlockEvents`' broadcast precedes the tick's block changes
-            // (`ChunkHolder.broadcastChanges` in `tick_level` below): the
-            // player re-runs a piston's `triggerEvent` while its level still
-            // has the blocks as they were before the move.
-            for (pos, b0, b1, state) in std::mem::take(&mut self.net_block_events) {
-                net.hub.block_event(pos, b0, b1, state);
-            }
-            let entities = states.as_slice();
-            // An entity that left the level since the last tick (a snowball
-            // that hit) is dropped by the tracker below: its event goes out
-            // first, as `Level.broadcastEntityEvent` precedes the discard.
-            let (gone, later): (Vec<_>, Vec<_>) = std::mem::take(&mut self.net_entity_events)
-                .into_iter()
-                .partition(|(id, ..)| !entities.iter().any(|e| e.id == *id));
-            self.net_entity_events = later;
-            for (id, event, at) in gone {
-                net.hub.entity_event(id, event, at);
-            }
-            let spawn = self.spawn.map_or([0.5, 80.0, 0.5], |s| [s.x, s.y, s.z]);
-            let events = {
-                let clock_rate = self.network_clock_rate();
-                let mut ctx = TickCtx {
-                    world: &mut self.world,
-                    entities,
-                    next_entity: &mut self.next_entity,
-                    spawn,
-                    difficulty: i32::from(self.world_data.difficulty),
-                    difficulty_locked: self.level.difficulty_locked,
-                    clock_rate,
-                    tick_rate: self.clock.rate(),
-                    tick_frozen: self.clock.frozen(),
-                    tick_steps: self.clock.step_state(),
-                    collision: Some(self.collision),
-                    border: &self.border,
-                };
-                net.hub.movement_checks = (
-                    self.world_data.rules.bool("player_movement_check"),
-                    self.world_data.rules.bool("elytra_movement_check"),
-                );
-                net.hub
-                    .set_immediate_respawn(self.world_data.rules.bool("immediate_respawn"));
-                // A server with several levels runs a pass for each
-                // (`tick_server`): the network is read once, before the first.
-                let pass = self.level_pass;
-                let mut events = if pass.first {
-                    net.hub.poll(&mut ctx)
-                } else {
-                    Vec::new()
-                };
-                events.extend(net.hub.tick_level(&mut ctx));
-                if pass.last {
-                    net.hub.end_tick();
-                }
-                events
-            };
-            for event in events {
-                match event {
-                    event @ (HostEvent::Chat { .. } | HostEvent::Warn(_) | HostEvent::Error(_)) => {
-                        self.net_log_event(event);
-                    }
-                    HostEvent::PlayerChat { .. } => {}
-                    HostEvent::ChatPending { message, .. } => {
-                        // AsyncPlayerChatEvent first when a plugin listens.
-                        let events = if self.plugins.is_some() {
-                            self.plugin_chat(&mut net, *message)
-                        } else {
-                            net.hub.relay_chat(*message)
-                        };
-                        for e in events {
-                            self.net_log_event(e);
-                        }
-                    }
-                    HostEvent::Joined(conn) => {
-                        // Before the join saves the player: whether they had played here.
-                        let first_join = self.plugin_first_join(&net, conn);
-                        self.net_player_joined(&mut net, conn, entities, spawn);
-                        self.plugin_joined(&mut net, conn, first_join);
-                        if let Some(g) = net.hub.player(conn) {
-                            // PlayerList.placeNewPlayer, then the broadcast join message.
-                            super::dedicated::player_joined(g.uuid, &g.name);
-                            let [x, y, z] = g.position;
-                            super::dedicated::log(
-                                "INFO",
-                                &format!(
-                                    "{}[/{}] logged in with entity id {} at ({}, {}, {})",
-                                    g.name,
-                                    g.address,
-                                    g.entity_id,
-                                    super::dedicated::java_double(x),
-                                    super::dedicated::java_double(y),
-                                    super::dedicated::java_double(z)
-                                ),
-                            );
-                            super::dedicated::log(
-                                "INFO",
-                                &format!("System chat: {} joined the game", g.name),
-                            );
-                        } else if self.player.is_some()
-                            && let Some(g) = net.hub.player(conn)
-                            && g.placed
-                        {
-                            // The game's chat hears of the newcomer as the players do.
-                            let who = self.player_text(&g.name, g.uuid);
-                            self.system_message(
-                                Text::translate("multiplayer.player.joined", &[who])
-                                    .with_color(crate::hc::text::YELLOW),
-                            );
-                        }
-                    }
-                    HostEvent::Left(mut player) => {
-                        // The container they had open loses an opener.
-                        if let Some(pos) = player.menu.as_ref().and_then(|m| m.pos)
-                            && !player.spectator()
-                        {
-                            // In the level they were in.
-                            let back = self.dim;
-                            let theirs = super::Dim::from_id(&player.dimension);
-                            if self.enter_level(Some(&mut net), theirs).is_ok() {
-                                self.container_openers_changed(pos, false);
-                            }
-                            if let Err(e) = self.enter_level(Some(&mut net), back) {
-                                log::error!("could not reopen {}: {e}", back.id());
-                            }
-                        }
-                        self.net_crafting_left(&mut net, &mut player);
-                        if player.placed {
-                            net.award_leave_game(player.conn);
-                        }
-                        self.save_player(&net, &player);
-                        self.plugin_left(&mut net, &player);
-                        net.models.remove(&player.conn);
-                        net.play.remove(&player.conn);
-                        self.player_combat.remove(&player.conn);
-                        if player.placed {
-                            super::dedicated::log(
-                                "INFO",
-                                &format!("{} lost connection: {}", player.name, player.left_reason),
-                            );
-                            super::dedicated::log(
-                                "INFO",
-                                &format!("System chat: {} left the game", player.name),
-                            );
-                        } else if self.player.is_some() && player.placed {
-                            // ServerGamePacketListenerImpl.removePlayerFromWorld.
-                            let who = self.player_text(&player.name, player.uuid);
-                            self.system_message(
-                                Text::translate("multiplayer.player.left", &[who])
-                                    .with_color(crate::hc::text::YELLOW),
-                            );
-                        }
-                    }
-                    HostEvent::Packet(conn, packet) => {
-                        self.net_player_packet(&mut net, conn, *packet);
-                        if !net.commands.is_empty() {
-                            self.network = Some(net);
-                            self.run_player_commands();
-                            net = self
-                                .network
-                                .take()
-                                .expect("the hub is back after the commands");
-                        }
-                    }
-                }
-            }
-            net.states = states;
+        let has_players = !net.hub.players.is_empty();
+        let mut states = std::mem::take(&mut net.states);
+        if has_players {
+            self.net_assign_ids();
+            let players: Vec<(u32, i32)> = net
+                .hub
+                .players
+                .iter()
+                .filter_map(|g| Some((g.vehicle?, g.entity_id)))
+                .collect();
+            self.net_riding(&players, &mut net.hub.riding);
+            self.net_entities(&net.mob_players, &mut net.hub, &mut states);
+            self.net_hook_states(&net.play, &net.hub, &mut states);
+        } else {
+            states.clear();
         }
+        // ServerEntity.sendChanges clears needsSync once it has looked.
+        for m in &mut self.mobs {
+            m.needs_sync = false;
+        }
+        for p in &mut self.creatures.projectiles {
+            p.needs_sync = false;
+        }
+        // `runBlockEvents`' broadcast precedes the tick's block changes
+        // (`ChunkHolder.broadcastChanges` in `tick_level` below): the
+        // player re-runs a piston's `triggerEvent` while its level still
+        // has the blocks as they were before the move.
+        for (pos, b0, b1, state) in std::mem::take(&mut self.net_block_events) {
+            net.hub.block_event(pos, b0, b1, state);
+        }
+        let entities = states.as_slice();
+        // An entity that left the level since the last tick (a snowball
+        // that hit) is dropped by the tracker below: its event goes out
+        // first, as `Level.broadcastEntityEvent` precedes the discard.
+        let (gone, later): (Vec<_>, Vec<_>) = std::mem::take(&mut self.net_entity_events)
+            .into_iter()
+            .partition(|(id, ..)| !entities.iter().any(|e| e.id == *id));
+        self.net_entity_events = later;
+        for (id, event, at) in gone {
+            net.hub.entity_event(id, event, at);
+        }
+        let spawn = self.spawn.map_or([0.5, 80.0, 0.5], |s| [s.x, s.y, s.z]);
+        let events = {
+            let clock_rate = self.network_clock_rate();
+            let mut ctx = TickCtx {
+                world: &mut self.world,
+                entities,
+                next_entity: &mut self.next_entity,
+                spawn,
+                difficulty: i32::from(self.world_data.difficulty),
+                difficulty_locked: self.level.difficulty_locked,
+                clock_rate,
+                tick_rate: self.clock.rate(),
+                tick_frozen: self.clock.frozen(),
+                tick_steps: self.clock.step_state(),
+                collision: Some(self.collision),
+                border: &self.border,
+            };
+            net.hub.movement_checks = (
+                self.world_data.rules.bool("player_movement_check"),
+                self.world_data.rules.bool("elytra_movement_check"),
+            );
+            net.hub
+                .set_immediate_respawn(self.world_data.rules.bool("immediate_respawn"));
+            // A server with several levels runs a pass for each
+            // (`tick_server`): the network is read once, before the first.
+            let pass = self.level_pass;
+            let mut events = if pass.first {
+                net.hub.poll(&mut ctx)
+            } else {
+                Vec::new()
+            };
+            events.extend(net.hub.tick_level(&mut ctx));
+            if pass.last {
+                net.hub.end_tick();
+            }
+            events
+        };
+        for event in events {
+            match event {
+                event @ (HostEvent::Chat { .. } | HostEvent::Warn(_) | HostEvent::Error(_)) => {
+                    self.net_log_event(event);
+                }
+                HostEvent::PlayerChat { .. } => {}
+                HostEvent::ChatPending { message, .. } => {
+                    // AsyncPlayerChatEvent first when a plugin listens.
+                    let events = if self.plugins.is_some() {
+                        self.plugin_chat(&mut net, *message)
+                    } else {
+                        net.hub.relay_chat(*message)
+                    };
+                    for e in events {
+                        self.net_log_event(e);
+                    }
+                }
+                HostEvent::Joined(conn) => {
+                    // Before the join saves the player: whether they had played here.
+                    let first_join = self.plugin_first_join(&net, conn);
+                    self.net_player_joined(&mut net, conn, entities, spawn);
+                    self.plugin_joined(&mut net, conn, first_join);
+                    if let Some(g) = net.hub.player(conn) {
+                        // PlayerList.placeNewPlayer, then the broadcast join message.
+                        super::dedicated::player_joined(g.uuid, &g.name);
+                        let [x, y, z] = g.position;
+                        super::dedicated::log(
+                            "INFO",
+                            &format!(
+                                "{}[/{}] logged in with entity id {} at ({}, {}, {})",
+                                g.name,
+                                g.address,
+                                g.entity_id,
+                                super::dedicated::java_double(x),
+                                super::dedicated::java_double(y),
+                                super::dedicated::java_double(z)
+                            ),
+                        );
+                        super::dedicated::log(
+                            "INFO",
+                            &format!("System chat: {} joined the game", g.name),
+                        );
+                    } else if self.player.is_some()
+                        && let Some(g) = net.hub.player(conn)
+                        && g.placed
+                    {
+                        // The game's chat hears of the newcomer as the players do.
+                        let who = self.player_text(&g.name, g.uuid);
+                        self.system_message(
+                            Text::translate("multiplayer.player.joined", &[who])
+                                .with_color(crate::hc::text::YELLOW),
+                        );
+                    }
+                }
+                HostEvent::Left(mut player) => {
+                    // The container they had open loses an opener.
+                    if let Some(pos) = player.menu.as_ref().and_then(|m| m.pos)
+                        && !player.spectator()
+                    {
+                        // In the level they were in.
+                        let back = self.dim;
+                        let theirs = super::Dim::from_id(&player.dimension);
+                        if self.enter_level(Some(&mut net), theirs).is_ok() {
+                            self.container_openers_changed(pos, false);
+                        }
+                        if let Err(e) = self.enter_level(Some(&mut net), back) {
+                            log::error!("could not reopen {}: {e}", back.id());
+                        }
+                    }
+                    self.net_crafting_left(&mut net, &mut player);
+                    if player.placed {
+                        net.award_leave_game(player.conn);
+                    }
+                    self.save_player(&net, &player);
+                    self.plugin_left(&mut net, &player);
+                    net.models.remove(&player.conn);
+                    net.play.remove(&player.conn);
+                    self.player_combat.remove(&player.conn);
+                    if player.placed {
+                        super::dedicated::log(
+                            "INFO",
+                            &format!("{} lost connection: {}", player.name, player.left_reason),
+                        );
+                        super::dedicated::log(
+                            "INFO",
+                            &format!("System chat: {} left the game", player.name),
+                        );
+                    } else if self.player.is_some() && player.placed {
+                        // ServerGamePacketListenerImpl.removePlayerFromWorld.
+                        let who = self.player_text(&player.name, player.uuid);
+                        self.system_message(
+                            Text::translate("multiplayer.player.left", &[who])
+                                .with_color(crate::hc::text::YELLOW),
+                        );
+                    }
+                }
+                HostEvent::Packet(conn, packet) => {
+                    self.net_player_packet(&mut net, conn, *packet);
+                    if !net.commands.is_empty() {
+                        self.network = Some(net);
+                        self.run_player_commands();
+                        net = self
+                            .network
+                            .take()
+                            .expect("the hub is back after the commands");
+                    }
+                }
+            }
+        }
+        net.states = states;
+
         self.net_flush_effects(&mut net);
         if !paused {
             self.tick_players(&mut net);
@@ -1480,7 +1478,7 @@ impl crate::game::Sim<'_> {
             g.dimension = super::Dim::Overworld.id().to_owned();
         }
         // A server places each player in their own level
-        // (`PlayerList.placeNewPlayer`); the in-frame game has one.
+        // (`PlayerList.placeNewPlayer`).
         let back = self.dim;
         let level = super::Dim::from_id(&g.dimension);
         let elsewhere = level != back;
@@ -1747,7 +1745,7 @@ impl crate::game::Sim<'_> {
     }
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// A hub's chat and log lines, in the server's log
     /// (MinecraftServer.logChatMessage, `[Not Secure]` for unsigned or
     /// expired messages).

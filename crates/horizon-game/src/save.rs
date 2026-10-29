@@ -2652,8 +2652,8 @@ pub struct Level {
     /// Game rule values by name without namespace (`keep_inventory`, ...).
     pub game_rules: BTreeMap<String, i32>,
     pub player_uuid: Option<[i32; 4]>,
-    /// A server's world: no single player, so no `singleplayer_uuid` and no
-    /// owner's file in players/data (the players save their own).
+    /// A server's world: no `singleplayer_uuid` and no player of its own in
+    /// players/data (the players save their own).
     pub server: bool,
     pub selected_slot: i32,
     pub motion: [f64; 3],
@@ -2668,7 +2668,7 @@ pub struct Level {
     pub player_extra: Option<Tag>,
 }
 impl Level {
-    /// Initialize the offline single-player identity before saving or dropping items.
+    /// The world's own player identity (`Player`'s offline UUID), made on first use.
     pub fn ensure_player_uuid(&mut self) -> [i32; 4] {
         *self.player_uuid.get_or_insert_with(|| {
             let u = horizon_protocol::crypto::offline_uuid("Player");

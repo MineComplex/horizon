@@ -5,7 +5,7 @@ use horizon_client::particles::{ParticleOptions, ParticleType};
 /// `EntityEvent.TOTEM_OF_UNDYING`.
 pub(super) const TOTEM_EVENT: i8 = 35;
 
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     /// Entity event 35 from a server, for this client's own player or an
     /// entity it draws.
     pub(super) fn remote_totem(&mut self, id: i32) {

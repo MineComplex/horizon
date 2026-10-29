@@ -1,5 +1,4 @@
-//! Boats and minecarts for a server's players: players, players on a
-//! dedicated server, and single player's window on its server thread.
+//! Boats and minecarts for the server's players.
 //!
 //! A player aims at a vehicle, item frame, armor stand or painting as at a
 //! mob (`ServerGamePacketListenerImpl.handleInteract`), and the game's own
@@ -36,7 +35,7 @@ fn corners(b: Aabb) -> ([f64; 3], [f64; 3]) {
     ([lo.x, lo.y, lo.z], [hi.x, hi.y, hi.z])
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// The box of a boat, minecart, armor stand, item frame or painting, and
     /// the point an interact packet's location is measured from (the
     /// client's `remote_object_hit` uses the same points).
@@ -249,7 +248,6 @@ impl crate::game::Sim<'_> {
         if g.awaiting_teleport.is_some() || !g.loaded {
             return;
         }
-        let owner = net.hub.singleplayer_owner == Some(g.uuid);
         let (vehicle, good) = (g.vehicle, g.vehicle_good);
         let back = |net: &mut Network, position: Vec3, yaw: f32| {
             let packet = play::MoveVehicle {
@@ -279,7 +277,7 @@ impl crate::game::Sim<'_> {
         );
         // Moved too quickly: more than 10 blocks past its own motion.
         let moved = target.distance_squared(old) - b.velocity.length_squared();
-        if moved > 100.0 && !owner {
+        if moved > 100.0 {
             log::warn!("boat {} moved too quickly! {moved}", b.id);
             back(net, old, b.yaw);
             return;

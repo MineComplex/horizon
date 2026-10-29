@@ -6,7 +6,7 @@ use horizon_client::{
 };
 use horizon_core::{geometry::Vec3, random::RandomSource};
 
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     /// `Ravager.handleEntityEvent(69)`: forty puffs of smoke from the middle
     /// of its box, then `applyRoarKnockbackClient`: this client's own player
     /// within 4 blocks is thrown away from it.

@@ -23,8 +23,7 @@ pub(in crate::game) struct Source {
     pub silent: bool,
     /// Index of the newest `store` in `ExecState::stores`.
     pub store: Option<u32>,
-    /// The level this command source uses. Horizon has only this dimension's
-    /// chunks loaded in the single-player client.
+    /// The level this command source uses.
     pub dimension: Dim,
     /// The dimension `execute in` named, if any: a server teleports its
     /// players there (`TeleportCommand` into the source's level).
@@ -69,7 +68,7 @@ fn java_int(v: f64) -> i32 {
     v as i32
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// The source a command typed by the player starts from.
     pub(in crate::game) fn player_source(&self) -> Source {
         Source {

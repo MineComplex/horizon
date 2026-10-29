@@ -167,7 +167,7 @@ pub(super) fn player_json(world: &Path, dir: &str, uuid: [i32; 4]) -> PathBuf {
     );
     world.join("players").join(dir).join(format!("{text}.json"))
 }
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     fn stats_path(&self) -> Option<PathBuf> {
         Some(player_json(
             &self.world_root,
@@ -319,8 +319,7 @@ impl crate::game::Sim<'_> {
     /// phantoms. A custom spawner ticks only while `spawn_mobs` is on
     /// (`ServerChunkCache.tickChunks`), and this one only spawns enemies
     /// (`ServerLevel.isSpawningMonsters`: `spawn_monsters` too). Every
-    /// player of the level counts: the game's own and the hosted ones (a
-    /// server thread's players are all hosted).
+    /// player of the level counts.
     pub(super) fn spawn_phantoms(&mut self) {
         let rules = &self.world_data.rules;
         if !rules.bool("spawn_mobs")

@@ -9,7 +9,7 @@ use crate::hc::{
 };
 use horizon_world::nbt::Tag;
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     fn lead_sound(&mut self, sound: &str, at: [f64; 3]) {
         self.sounds
             .play(&format!("minecraft:item.lead.{sound}"), Some(at), 1.0, 1.0);

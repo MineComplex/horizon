@@ -13,7 +13,7 @@ pub(super) const HELP: &[&str] = &[
     "container X Y Z [ITEM COUNT]   list a container, or add items to it",
 ];
 
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     fn state_text(&self, state: BlockStateId) -> String {
         let Some(s) = self.pack.assets.registry.state(state) else {
             return "?".into();

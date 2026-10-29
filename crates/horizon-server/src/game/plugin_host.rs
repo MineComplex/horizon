@@ -27,7 +27,7 @@ pub fn set_plugins(plugins: Vec<Box<dyn Plugin>>) {
 
 /// What plugins read of the server.
 struct View<'a> {
-    game: &'a crate::game::Sim<'a>,
+    game: &'a crate::game::Server<'a>,
     players: Vec<PlayerRef>,
 }
 impl api::server::View for View<'_> {
@@ -62,7 +62,7 @@ impl api::server::View for View<'_> {
     }
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// `onLoad` of the plugins `horizon-server` was built with (before the worlds).
     pub(super) fn plugins_load(&mut self) {
         let Some(plugins) = PLUGINS.lock().unwrap_or_else(|e| e.into_inner()).take() else {
@@ -115,7 +115,7 @@ impl crate::game::Sim<'_> {
                 .players
                 .iter()
                 .filter(|g| g.placed)
-                .map(crate::game::Sim::plugin_player)
+                .map(crate::game::Server::plugin_player)
                 .collect();
             self.plugin_seen = players.clone();
             return players;
@@ -336,7 +336,7 @@ impl crate::game::Sim<'_> {
         let Some(g) = net.hub.player(conn).filter(|g| g.placed) else {
             return;
         };
-        let player = crate::game::Sim::plugin_player(g);
+        let player = crate::game::Server::plugin_player(g);
         let vanilla = format!("§e{} joined the game", g.name);
         let mut event = ev::PlayerJoinEvent {
             player,
@@ -360,7 +360,7 @@ impl crate::game::Sim<'_> {
         }
         let vanilla = format!("§e{} left the game", g.name);
         let mut event = ev::PlayerQuitEvent {
-            player: crate::game::Sim::plugin_player(g),
+            player: crate::game::Server::plugin_player(g),
             quit_message: Some(vanilla.clone()),
             reason: g.left_reason.clone(),
         };
@@ -385,7 +385,7 @@ impl crate::game::Sim<'_> {
         let Some(g) = net.hub.players.iter().find(|g| g.uuid == message.sender) else {
             return net.hub.relay_chat(message);
         };
-        let player = crate::game::Sim::plugin_player(g);
+        let player = crate::game::Server::plugin_player(g);
         let everyone: Vec<u128> = net
             .hub
             .players
@@ -441,7 +441,7 @@ impl crate::game::Sim<'_> {
         let Some(g) = net.hub.player(conn) else {
             return Some(command.to_owned());
         };
-        let player = crate::game::Sim::plugin_player(g);
+        let player = crate::game::Server::plugin_player(g);
         let mut line = command.trim_start_matches('/').to_owned();
         if self.plugins_listen::<ev::PlayerCommandPreprocessEvent>() {
             let mut event = ev::PlayerCommandPreprocessEvent {
@@ -556,7 +556,7 @@ impl crate::game::Sim<'_> {
             return (None, keep_inventory);
         };
         let mut event = ev::PlayerDeathEvent {
-            player: crate::game::Sim::plugin_player(g),
+            player: crate::game::Server::plugin_player(g),
             death_message: message.clone(),
             keep_inventory,
         };
@@ -566,7 +566,7 @@ impl crate::game::Sim<'_> {
     }
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// `PlayerInteractEvent` for the player of `conn`; false when a plugin
     /// cancelled it (the caller then sends their client the truth back).
     pub(super) fn plugin_interact(
@@ -588,7 +588,7 @@ impl crate::game::Sim<'_> {
             ev::Hand::Off => g.offhand.clone(),
         };
         let mut event = ev::PlayerInteractEvent {
-            player: crate::game::Sim::plugin_player(g),
+            player: crate::game::Server::plugin_player(g),
             action,
             hand,
             item: held.map(|s| api::ItemStack::new(&s.item, s.count)),
@@ -672,7 +672,7 @@ impl crate::game::Sim<'_> {
             pitch: g.pitch,
         };
         let mut event = ev::PlayerRespawnEvent {
-            player: crate::game::Sim::plugin_player(g),
+            player: crate::game::Server::plugin_player(g),
             respawn_location: start.clone(),
             own_spawn,
         };
@@ -692,7 +692,7 @@ impl crate::game::Sim<'_> {
             if !g.placed || g.dead {
                 continue;
             }
-            let now = crate::game::Sim::plugin_player(g).location;
+            let now = crate::game::Server::plugin_player(g).location;
             let conn = g.conn;
             let Some(from) = self.plugin_last_moves.insert(conn, now.clone()) else {
                 continue;
@@ -709,7 +709,7 @@ impl crate::game::Sim<'_> {
                 continue;
             }
             let mut event = ev::PlayerMoveEvent {
-                player: crate::game::Sim::plugin_player(&net.hub.players[i]),
+                player: crate::game::Server::plugin_player(&net.hub.players[i]),
                 from: from.clone(),
                 to: now.clone(),
                 cancelled: false,
@@ -750,7 +750,7 @@ fn system_chat(text: &str) -> C {
     })
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// A player as plugins see them.
     pub(crate) fn plugin_player(g: &ServerPlayer) -> PlayerRef {
         PlayerRef {

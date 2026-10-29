@@ -65,7 +65,7 @@ fn can_wear_horse_armor(species: Species) -> bool {
     matches!(species, Species::Horse | Species::ZombieHorse)
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// Whether the mount menu is the open screen.
     pub(super) fn mount_active(&self) -> bool {
         self.screen == Screen::Inventory && self.mount_menu.open.is_some()
@@ -208,7 +208,7 @@ impl crate::game::Sim<'_> {
     }
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// `AbstractHorse.openCustomInventoryScreen` for a tamed adult mount: the
     /// turn's player has it open (the server then opens it on their client,
     /// game/net_mount_menu.rs).

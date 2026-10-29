@@ -271,7 +271,6 @@ impl Game<'_> {
             return false;
         }
         let Some(size) = self
-            .front
             .renderer
             .as_ref()
             .map(|r| [r.config.width, r.config.height])
@@ -280,7 +279,7 @@ impl Game<'_> {
         };
         let batch = HudBatch::new(size);
         let (ox, oy) = self.inventory_origin(&batch);
-        let local = (self.front.cursor.0 - ox, self.front.cursor.1 - oy);
+        let local = (self.cursor.0 - ox, self.cursor.1 - oy);
         let shift = self.has_shift_down();
         if let Some(kind) = self.station.as_ref().map(|s| s.kind) {
             if kind == Kind::Merchant && !right && self.merchant_click(local) {
@@ -312,7 +311,7 @@ impl Game<'_> {
                 return true;
             }
         }
-        let Some(slot) = self.slot_at(&batch, self.front.cursor.0, self.front.cursor.1) else {
+        let Some(slot) = self.slot_at(&batch, self.cursor.0, self.cursor.1) else {
             return true;
         };
         // Every station's clicks (and the brewing stand's) run on the
@@ -332,10 +331,10 @@ impl Game<'_> {
             self.recipe_shortcut(shortcut);
             return;
         }
-        let Some(s) = self.sim.station.as_mut() else {
+        let Some(s) = self.station.as_mut() else {
             return;
         };
-        if s.rename.shortcut(shortcut, &mut self.front.clipboard) {
+        if s.rename.shortcut(shortcut, &mut self.clipboard) {
             s.name.clone_from(&s.rename.value);
             self.station_changed();
             self.remote_anvil_rename();
@@ -351,23 +350,23 @@ impl Game<'_> {
             return false;
         }
         let (x, y, w, h) = (ox + 62.0, oy + 24.0, 103.0, 12.0);
-        let (mx, my) = self.front.cursor;
+        let (mx, my) = self.cursor;
         if mx < x || my < y || mx >= x + w || my >= y + h {
             return false;
         }
         let shift = self.has_shift_down();
-        let Some(s) = self.sim.station.as_mut() else {
+        let Some(s) = self.station.as_mut() else {
             return false;
         };
         s.rename.x = x;
         s.rename.y = y;
         s.rename.width = w;
-        s.rename.click(&self.front.gui.atlas, mx, shift, false);
+        s.rename.click(&self.gui.atlas, mx, shift, false);
         true
     }
     /// AnvilScreen's name box, drawn after the station picture.
     fn draw_anvil_name(&mut self, batch: &mut HudBatch, ox: f32, oy: f32) {
-        let Some(s) = self.sim.station.as_mut() else {
+        let Some(s) = self.station.as_mut() else {
             return;
         };
         let edit = &mut s.rename;
@@ -379,7 +378,7 @@ impl Game<'_> {
         edit.focused = true;
         edit.text_color = u32::MAX;
         edit.max_length = ANVIL_NAME_CHARS;
-        edit.draw(batch, &self.front.gui.atlas, None);
+        edit.draw(batch, &self.gui.atlas, None);
     }
 
     // ---------------------------------------------------------------- drawing
@@ -403,7 +402,7 @@ impl Game<'_> {
     }
     /// Text in the Standard Galactic alphabet (`minecraft:alt`), cut to `max` pixels.
     fn galactic(&self, batch: &mut HudBatch, text: &str, x: f32, y: f32, max: f32, color: u32) {
-        let atlas = &self.front.gui.atlas;
+        let atlas = &self.gui.atlas;
         let Some(sheet) = atlas.sprites.get("font/ascii_sga").copied() else {
             batch.text(atlas, text, x, y, color, false);
             return;
@@ -476,14 +475,14 @@ impl Game<'_> {
             return false;
         }
         let (ox, oy) = self.inventory_origin(batch);
-        let local = (self.front.cursor.0 - ox, self.front.cursor.1 - oy);
+        let local = (self.cursor.0 - ox, self.cursor.1 - oy);
         let mut tooltip: Option<Vec<(horizon_client::text::Text, u32)>> = None;
         let mut anvil_name = false;
         // Keep item tooltips as stacks until drawing: text alone loses the
         // bundle contents component (including in the player's inventory).
         let mut tooltip_stack: Option<ItemStack> = None;
         {
-            let atlas = &self.front.gui.atlas;
+            let atlas = &self.gui.atlas;
             batch.fill(
                 atlas,
                 0.0,
@@ -500,7 +499,7 @@ impl Game<'_> {
             };
             let (fuel, total_fuel, brew, total_brew) =
                 (b.fuel, b.total_fuel, b.brew_time, b.total_brew_time);
-            let atlas = &self.front.gui.atlas;
+            let atlas = &self.gui.atlas;
             Self::part(
                 batch,
                 atlas,
@@ -576,7 +575,7 @@ impl Game<'_> {
                 if self.slot_mut(i).is_none() {
                     let (sx, sy) = self.station_slot_position(i).unwrap_or_default();
                     batch.sprite(
-                        &self.front.gui.atlas,
+                        &self.gui.atlas,
                         &format!("gui/sprites/container/slot/{icon}"),
                         ox + sx,
                         oy + sy,
@@ -589,7 +588,7 @@ impl Game<'_> {
                 .remote_menu_title()
                 .unwrap_or_else(|| Text::literal(self.translate(kind.title_key(), "")));
             {
-                let atlas = &self.front.gui.atlas;
+                let atlas = &self.gui.atlas;
                 Self::part(
                     batch,
                     atlas,
@@ -608,7 +607,7 @@ impl Game<'_> {
             if kind == Kind::Loom {
                 tooltip = self.draw_loom(batch, ox, oy, local);
             }
-            let atlas = &self.front.gui.atlas;
+            let atlas = &self.gui.atlas;
             let s = self.station.as_ref().expect("open station");
             let has_input = s.inputs.iter().any(Option::is_some);
             match kind {
@@ -714,7 +713,7 @@ impl Game<'_> {
                             );
                             -8323296
                         };
-                        let atlas = &self.front.gui.atlas;
+                        let atlas = &self.gui.atlas;
                         let cw = HudBatch::text_width(atlas, &cost_text);
                         batch.text(
                             atlas,
@@ -837,7 +836,7 @@ impl Game<'_> {
                             )
                         };
                         if let Some(line) = line {
-                            let atlas = &self.front.gui.atlas;
+                            let atlas = &self.gui.atlas;
                             let tw = HudBatch::text_width(atlas, &line);
                             let tx = 176.0 - 8.0 - tw - 2.0;
                             batch.fill(
@@ -947,7 +946,7 @@ impl Game<'_> {
                                 "recipe"
                             };
                             batch.sprite_scaled(
-                                &self.front.gui.atlas,
+                                &self.gui.atlas,
                                 &format!("gui/sprites/container/stonecutter/{sprite}"),
                                 ox + x,
                                 oy + y - 1.0,
@@ -975,10 +974,10 @@ impl Game<'_> {
             let stack = self.slot_mut(i).clone();
             self.draw_slot_item(batch, drag.as_ref(), i, &stack, ox + sx, oy + sy);
         }
-        if let Some(slot) = self.slot_at(batch, self.front.cursor.0, self.front.cursor.1) {
+        if let Some(slot) = self.slot_at(batch, self.cursor.0, self.cursor.1) {
             let (sx, sy) = self.slot_position(slot);
             batch.fill(
-                &self.front.gui.atlas,
+                &self.gui.atlas,
                 ox + sx,
                 oy + sy,
                 16.0,
@@ -996,9 +995,9 @@ impl Game<'_> {
         if self.carried.is_some() {
             self.draw_carried(batch);
         } else if let Some(stack) = tooltip_stack {
-            self.draw_stack_tooltip(batch, &stack, self.front.cursor.0, self.front.cursor.1);
+            self.draw_stack_tooltip(batch, &stack, self.cursor.0, self.cursor.1);
         } else if let Some(lines) = tooltip {
-            self.draw_tooltip_lines(batch, &lines, self.front.cursor.0, self.front.cursor.1);
+            self.draw_tooltip_lines(batch, &lines, self.cursor.0, self.cursor.1);
         }
         true
     }
@@ -1028,7 +1027,7 @@ impl Game<'_> {
             return;
         }
         let lines = Self::resolved(lines);
-        let atlas = &self.front.gui.atlas;
+        let atlas = &self.gui.atlas;
         let (x, y, w, h) =
             Self::tooltip_geometry(atlas, &lines, (x, y), (batch.width, batch.height), 0.0);
         Self::tooltip_box(batch, atlas, x, y, w, h);
@@ -1153,7 +1152,7 @@ impl Game<'_> {
         // probe at the origin gives the box its extra height.
         let probe = horizon_client::bundle::tooltip_layout(self.res.items(), stack, 0.0, 0.0, 96.0);
         let extra = probe.as_ref().map_or(0.0, |l| l.height + 2.0);
-        let atlas = &self.front.gui.atlas;
+        let atlas = &self.gui.atlas;
         let (x, y, w, h) =
             Self::tooltip_geometry(atlas, &lines, (x, y), (batch.width, batch.height), extra);
         Self::tooltip_box(batch, atlas, x, y, w, h);
@@ -1179,7 +1178,7 @@ impl Game<'_> {
             // Each draw takes the atlas on its own: the item's needs `&mut self`.
             horizon_client::ui::nine_slice(
                 batch,
-                &self.front.gui.atlas,
+                &self.gui.atlas,
                 &sprite(if selected {
                     "slot_highlight_back"
                 } else {
@@ -1197,7 +1196,7 @@ impl Game<'_> {
             if selected {
                 horizon_client::ui::nine_slice(
                     batch,
-                    &self.front.gui.atlas,
+                    &self.gui.atlas,
                     &sprite("slot_highlight_front"),
                     x,
                     y,
@@ -1207,7 +1206,7 @@ impl Game<'_> {
                 );
             }
         }
-        let atlas = &self.front.gui.atlas;
+        let atlas = &self.gui.atlas;
         if let Some((at, hidden)) = layout.overflow {
             let label = horizon_client::text::Text::literal(format!("+{hidden}"));
             let w = atlas.font.width_text(&label);
@@ -1275,25 +1274,25 @@ impl Game<'_> {
         if self.carried.is_some() {
             return;
         }
-        let Some(slot) = self.slot_at(batch, self.front.cursor.0, self.front.cursor.1) else {
+        let Some(slot) = self.slot_at(batch, self.cursor.0, self.cursor.1) else {
             return;
         };
         let stack = self.slot_view(slot);
         if let Some(stack) = stack {
-            self.draw_stack_tooltip(batch, &stack, self.front.cursor.0, self.front.cursor.1);
+            self.draw_stack_tooltip(batch, &stack, self.cursor.0, self.cursor.1);
         } else if let Some(text) = self.crafter_tooltip(slot) {
             self.draw_tooltip_lines(
                 batch,
                 &[(horizon_client::text::Text::literal(text), u32::MAX)],
-                self.front.cursor.0,
-                self.front.cursor.1,
+                self.cursor.0,
+                self.cursor.1,
             );
         }
     }
 
     // ---------------------------------------------------------------- brewing stand
 }
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     /// `Component.translatable`: the selected language (which `lang` layers
     /// over `en_us`), the caller's English text last.
     pub(super) fn translate(&self, key: &str, fallback: &str) -> String {

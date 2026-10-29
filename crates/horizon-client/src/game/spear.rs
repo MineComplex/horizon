@@ -15,7 +15,7 @@ use horizon_client::{
 /// The key of this window's own player in `Game::kinetic_feedback`.
 pub(super) const OWN: i32 = i32::MIN;
 
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     /// `Player.cannotAttackWithItem` for the held item: a spear needs its
     /// `minimum_attack_charge` of 1, counting `tolerance` ticks more than the
     /// `ticker` ticks charged.

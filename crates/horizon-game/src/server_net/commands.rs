@@ -1,8 +1,7 @@
 //! The command tree players receive (Commands.sendCommands and
 //! ClientboundCommandsPacket): vanilla's tree from the data generator's
 //! commands report, cut down to the nodes the player's permission level may
-//! use and the commands of the server kind (dedicated servers have `op`,
-//! `ban`, `stop` ...; an integrated server `publish`), numbered breadth first
+//! use and a server's commands (`op`, `ban`, `stop` ...; not `publish`), numbered breadth first
 //! as vanilla does, with the argument parsers' network properties and the
 //! custom suggestion providers (`command_suggestions`). The report sorts each
 //! node's children; the tree keeps vanilla's registration order
@@ -20,29 +19,9 @@ use std::{
     sync::OnceLock,
 };
 
-/// Commands.CommandSelection: registered only on dedicated servers.
-const DEDICATED_ONLY: &[&str] = &[
-    "ban",
-    "ban-ip",
-    "banlist",
-    "deop",
-    "op",
-    "pardon",
-    "pardon-ip",
-    "perf",
-    "save-all",
-    "save-off",
-    "save-on",
-    "setidletimeout",
-    "stop",
-    "transfer",
-    "whitelist",
-];
-/// Registered only on integrated servers.
+/// Commands vanilla registers only on an integrated server, which a
+/// server has none of.
 const INTEGRATED_ONLY: &[&str] = &["publish", "unpublish"];
-/// Commands that check permissions only on dedicated servers
-/// (`checkPermissions` in SeedCommand and VersionCommand).
-const OPEN_WHEN_INTEGRATED: &[&str] = &["seed", "version"];
 /// Game rules of experimental features (minecart improvements), which the
 /// report lists but a vanilla-features world does not register.
 const EXPERIMENTAL_RULES: &[&str] = &["max_minecart_speed", "minecraft:max_minecart_speed"];
@@ -85,19 +64,13 @@ impl CommandTree {
     }
 
     /// The ClientboundCommandsPacket for a player with `level` permissions.
-    pub fn packet(&self, level: u8, dedicated: bool, builtin: &Builtin) -> Commands {
-        self.packet_with(level, dedicated, builtin, &Value::Null)
+    pub fn packet(&self, level: u8, builtin: &Builtin) -> Commands {
+        self.packet_with(level, builtin, &Value::Null)
     }
 
     /// [`CommandTree::packet`] with more commands after vanilla's: `extra`
     /// is a root in the report's format (server mods' commands).
-    pub fn packet_with(
-        &self,
-        level: u8,
-        dedicated: bool,
-        builtin: &Builtin,
-        extra: &Value,
-    ) -> Commands {
+    pub fn packet_with(&self, level: u8, builtin: &Builtin, extra: &Value) -> Commands {
         let mut nodes = vec![Node {
             name: String::new(),
             kind: 0,
@@ -117,7 +90,6 @@ impl CommandTree {
                 0,
                 &mut Vec::new(),
                 level,
-                dedicated,
                 &suggestions,
                 &mut nodes,
                 &mut paths,
@@ -177,7 +149,6 @@ fn fill(
     target: usize,
     path: &mut Vec<String>,
     level: u8,
-    dedicated: bool,
     suggestions: &HashMap<&str, &'static str>,
     nodes: &mut Vec<Node>,
     paths: &mut HashMap<Vec<String>, usize>,
@@ -201,12 +172,7 @@ fn fill(
     }
     for name in names {
         let child = &children[name];
-        let required =
-            if path.is_empty() && !dedicated && OPEN_WHEN_INTEGRATED.contains(&name.as_str()) {
-                0
-            } else {
-                required_level(child)
-            };
+        let required = required_level(child);
         if required > level
             || path.len() == 1
                 && path[0] == "gamerule"
@@ -214,10 +180,7 @@ fn fill(
         {
             continue;
         }
-        if path.is_empty()
-            && (dedicated && INTEGRATED_ONLY.contains(&name.as_str())
-                || !dedicated && DEDICATED_ONLY.contains(&name.as_str()))
-        {
+        if path.is_empty() && INTEGRATED_ONLY.contains(&name.as_str()) {
             continue;
         }
         path.push(name.clone());
@@ -244,16 +207,7 @@ fn fill(
         });
         nodes[target].children.push(index);
         paths.insert(path.clone(), index);
-        fill(
-            child,
-            index,
-            path,
-            level,
-            dedicated,
-            suggestions,
-            nodes,
-            paths,
-        );
+        fill(child, index, path, level, suggestions, nodes, paths);
         path.pop();
     }
 }
@@ -359,18 +313,19 @@ mod tests {
                 "say":{"type":"literal","children":{"message":{"type":"argument","parser":"minecraft:message","executable":true}},
                        "permissions":{"type":"minecraft:require","permission":{"type":"minecraft:command_level","level":"gamemasters"}}},
                 "me":{"type":"literal","children":{"action":{"type":"argument","parser":"minecraft:message","executable":true}}},
-                "stop":{"type":"literal","executable":true},
+                "stop":{"type":"literal","executable":true,
+                        "permissions":{"type":"minecraft:require","permission":{"type":"minecraft:command_level","level":"owners"}}},
                 "tell":{"type":"literal","redirect":["me"]}}}"#,
         )
         .unwrap();
         let tree = CommandTree { root: report };
         let builtin = Builtin::default();
-        let player = tree.packet(0, false, &builtin);
+        let player = tree.packet(0, &builtin);
         let names: Vec<_> = player.nodes.iter().map(|n| n.name.as_str()).collect();
         assert_eq!(names, ["", "me", "tell", "action"]);
         // `tell` redirects to `me` (node 1).
         assert_eq!(player.nodes[2].redirect, Some(1));
-        let op = tree.packet(2, true, &builtin);
+        let op = tree.packet(4, &builtin);
         let names: Vec<_> = op.nodes.iter().map(|n| n.name.as_str()).collect();
         // The root's children in vanilla's registration order.
         assert_eq!(
@@ -392,7 +347,7 @@ mod tests {
         )
         .unwrap();
         let tree = CommandTree { root: report };
-        let packet = tree.packet_with(0, true, &Builtin::default(), &mods);
+        let packet = tree.packet_with(0, &Builtin::default(), &mods);
         let names: Vec<_> = packet.nodes.iter().map(|n| n.name.as_str()).collect();
         assert_eq!(names, ["", "me", "beacon", "action", "height"]);
         let beacon = &packet.nodes[2];
@@ -402,7 +357,7 @@ mod tests {
         assert_eq!(height.1, vec![3, 0, 0, 0, 1, 0, 0, 0, 64]);
         // No mods: vanilla's tree as it is.
         assert_eq!(
-            tree.packet_with(0, true, &Builtin::default(), &Value::Null)
+            tree.packet_with(0, &Builtin::default(), &Value::Null)
                 .nodes
                 .len(),
             3

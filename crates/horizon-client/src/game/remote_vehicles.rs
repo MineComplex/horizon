@@ -20,7 +20,7 @@ pub(super) struct ObjectHit {
     pub location: [f64; 3],
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     /// The nearest boat, minecart, item frame, armor stand or painting the
     /// view hits within reach; also End crystals when attacking.
     pub(super) fn remote_object_hit(&self, attacking: bool) -> Option<ObjectHit> {

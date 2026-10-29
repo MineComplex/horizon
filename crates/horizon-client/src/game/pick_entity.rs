@@ -2,7 +2,7 @@
 //! `ServerGamePacketListenerImpl.handlePickItemFromEntity`): the client aims,
 //! the server answers with `Entity.getPickResult`.
 
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     /// The entity the crosshair hits before any block, as `Entity.getId`; an
     /// entity with nothing to pick (a projectile, a player, the dragon) is
     /// `Some(None)`. `None` when the view hits a block or nothing.

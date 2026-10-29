@@ -8,7 +8,7 @@ use horizon_client::{
     mobs::{Species, equine, llama},
 };
 
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     /// Whether mob `i` takes a right click with `hand`'s item on this
     /// client (`Mob.interact`'s result consumes the action).
     pub(super) fn remote_mob_takes(&self, i: usize, hand: Hand) -> bool {

@@ -16,7 +16,7 @@ pub(super) struct CombatTracker {
     /// The mob the player last hurt (`getLastHurtMob`) and when.
     pub(super) last_hurt_mob: Option<(u32, i64)>,
 }
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     /// `LivingEntity.makeDrownParticles`: eight bubbles around the entity,
     /// moving with it.
     pub(super) fn drown_particles(&mut self, at: [f64; 3], velocity: [f64; 3]) {

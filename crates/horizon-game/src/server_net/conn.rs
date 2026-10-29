@@ -441,16 +441,6 @@ pub fn serve(
     serve_connection(Connection::from_stream(stream).map_err(e)?, address, shared)
 }
 
-/// `ServerConnectionListener.startMemoryChannel`: an integrated server's
-/// own player, over one end of an in-memory pipe.
-pub fn serve_local(
-    pipe: horizon_protocol::connection::Pipe,
-    shared: Arc<Shared>,
-) -> Result<(), String> {
-    let address = std::net::SocketAddr::from(([127, 0, 0, 1], 0));
-    serve_connection(Connection::local(pipe), address, shared)
-}
-
 fn serve_connection(
     mut c: Connection,
     address: std::net::SocketAddr,

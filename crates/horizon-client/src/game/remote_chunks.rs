@@ -70,7 +70,7 @@ impl ChunkFormat {
                 continue;
             }
             // A global section is as wide as the server's registry: 16 bits
-            // from a vanilla server, wider from a Horizon host with the same
+            // from a vanilla server, wider from a Horizon server with the same
             // content mods. Read it at that width, then widen it to ours.
             let ours = block_strategy();
             let strategy = if ours.wire_has_palette(s.states.bits) {
@@ -85,7 +85,7 @@ impl ChunkFormat {
             if strategy.global_bits != ours.global_bits {
                 let mut values = [0u32; 4096];
                 blocks.unpack(&mut values);
-                // Ids past our registry (a host with mods we lack) read as air.
+                // Ids past our registry (a server with mods we lack) read as air.
                 let limit = 1u64 << ours.global_bits;
                 for v in &mut values {
                     if u64::from(*v) >= limit {
@@ -214,7 +214,7 @@ pub(super) enum Next {
     Lost,
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     /// `handleLevelChunkWithLight`: the column replaces any loaded one, and
     /// its block entities load their update tags. `decoded` is the column the
     /// decoder made with `format`; another format since means decode again.

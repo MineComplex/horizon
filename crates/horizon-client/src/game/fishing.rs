@@ -27,7 +27,6 @@ impl Game<'_> {
             return;
         }
         let Some(r) = self
-            .front
             .gui
             .atlas
             .sprites
@@ -67,7 +66,7 @@ impl Game<'_> {
         }
     }
 }
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     /// `FishingRodCast`: the stack in the arm holding the rod
     /// (`FishingHookRenderer.getHoldingArm`) while the hook is out.
     pub(super) fn cast_rod(&self) -> Option<&ItemStack> {
@@ -181,7 +180,7 @@ impl crate::game::Sim<'_> {
         }
     }
 }
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     /// The hooks drawn here, with their owners' ids (0 for this player's own).
     pub(super) fn hooks_status(&self) -> Vec<serde_json::Value> {
         let at = |p: Vec3| [p.x, p.y, p.z];
@@ -225,7 +224,7 @@ impl Hook {
     }
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     /// `handleAddEntity` for a fishing bobber: this player's own becomes its
     /// hook (`Player.fishing`), another player's is drawn on its line to them.
     pub(super) fn spawn_remote_hook(&mut self, id: u32, at: Vec3, owner: i32) {

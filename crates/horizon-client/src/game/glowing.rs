@@ -16,8 +16,7 @@ impl Game<'_> {
     /// alpha kept (`OutlineBufferSource`'s team-coloured copy of each draw).
     pub(super) fn mark_outline(&self, vertices: &[Vertex], rgb: u32) {
         let color = horizon_client::mobs::render::abgr(rgb);
-        self.front
-            .glowing_vertices
+        self.glowing_vertices
             .borrow_mut()
             .extend(vertices.iter().map(|v| Vertex {
                 color,
@@ -26,7 +25,7 @@ impl Game<'_> {
             }));
     }
 }
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     /// `Entity.isCurrentlyGlowing` of an entity that is not living (an item, a projectile):
     /// its `Glowing` tag, or shared flag 6 as a server sent it.
     pub(super) fn entity_glowing(&self, id: u32) -> bool {

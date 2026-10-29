@@ -28,7 +28,7 @@ fn set_key(tag: &mut Tag, key: &str, value: Tag) {
         c.insert(JavaString::from(key), value);
     }
 }
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// `NbtPredicate.getEntityTagToCompare`: the entity as saved. An entity
     /// in another level is read in the level that holds it.
     pub(in crate::game) fn entity_nbt(&mut self, t: Target) -> Option<Tag> {

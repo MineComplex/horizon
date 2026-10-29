@@ -16,7 +16,7 @@ fn transmit_range(crouching: bool, invisible: bool, head: Option<&ItemStack>) ->
     }
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// The player's team and its colour, as the locator bar shows it.
     fn waypoint_team(&self, name: &str) -> Option<(String, Option<i32>)> {
         let team = self.score.board.players_team(name)?;

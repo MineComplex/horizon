@@ -391,9 +391,6 @@ struct GameLevel<'w> {
     random_tick_sections: &'w mut crate::hc::random_tick_sections::RandomTickSections,
     /// Players with each chest open (a trapped chest's signal).
     lid_openers: &'w HashMap<(i32, i32, i32), i32>,
-    /// `Level.isClientSide`: a client's copy of the level (a player of a LAN
-    /// world, a window on its server thread, a dedicated server's client).
-    client_side: bool,
     /// Plugins hear of blocks changing by themselves (`LevelEvent::Changed`).
     change_events: bool,
 }
@@ -583,7 +580,7 @@ impl GameLevel<'_> {
 }
 impl LevelAccess for GameLevel<'_> {
     fn is_client_side(&self) -> bool {
-        self.client_side
+        false
     }
     fn reports_changes(&self) -> bool {
         self.change_events
@@ -865,16 +862,7 @@ impl LevelAccess for GameLevel<'_> {
     fn emit(&mut self, event: LevelEvent) {
         match event {
             // Block.dropResources draws its loot and spots right away.
-            // `popResource` only drops server-side (`!level.isClientSide`):
-            // a client's moveBlocks (a piston's block event) skips it.
-            LevelEvent::DropResources { pos, state } if !self.client_side => {
-                self.drop_resources_now(pos, state)
-            }
-            LevelEvent::DropResources { .. } => {}
-            // `ClientLevel.playSeededSound` plays only when the excluded
-            // player is this client's own: the block's `playSound(null, ...)`
-            // (a piston's move, a note) reaches it from the server instead.
-            LevelEvent::Sound { .. } if self.client_side => {}
+            LevelEvent::DropResources { pos, state } => self.drop_resources_now(pos, state),
             // Block.popResource of the block's own item (tall flowers, flower beds).
             LevelEvent::BlockEvent {
                 pos,
@@ -940,7 +928,7 @@ struct FallingBlock {
 }
 /// The data loaded once at startup and never changed: blocks, items,
 /// recipes, biomes, mobs, collision and motion. Read-only and `Send + Sync`,
-/// so the client and an integrated server thread can share one copy.
+/// so every level and worker thread shares one copy.
 pub struct Resources {
     core: WorldCore,
     rest: std::sync::OnceLock<WorldRest>,
@@ -1050,11 +1038,12 @@ fn ticking_chunk(world: &World, x: i32, z: i32) -> bool {
         && (-1..=1).all(|dz| (-1..=1).all(|dx| world.chunks.contains_key(&(x + dx, z + dz))))
 }
 
-/// Everything of `Game` but the window (`Frontend`): what a server runs.
-struct Sim<'a> {
+/// The server: its worlds (one level in place, the others in `levels`),
+/// their simulation, the players' network side and the plugins.
+struct Server<'a> {
     /// Block entities' ticking fields (lids, bells, shulker boxes, gateways, conduits).
     be_anims: crate::hc::block_entity_anim::BlockEntityAnims,
-    /// Shared with an integrated server; `collision` and `motion` borrow from it.
+    /// Shared by the levels; `collision` and `motion` borrow from it.
     res: Arc<Resources>,
     collision: &'a BlockCollisionRegistry<'a>,
     motion: &'a MotionResources,
@@ -1245,7 +1234,7 @@ struct Sim<'a> {
     crystals: Vec<dragon::Crystal>,
     dragon_fireballs: Vec<dragon::DragonFireball>,
     breath_clouds: Vec<dragon::Breath>,
-    /// The entity ids a hosted server gives the knots its mobs hang on, by
+    /// The entity ids the server gives the knots its mobs hang on, by
     /// block, while a lead is tied there.
     knot_ids: HashMap<[i32; 3], u32>,
     /// The boat the player rides.
@@ -1451,7 +1440,7 @@ fn view_vector(yaw: f32, pitch: f32) -> [f64; 3] {
     let (y, p) = (f64::from(yaw).to_radians(), f64::from(pitch).to_radians());
     [-y.sin() * p.cos(), -p.sin(), y.cos() * p.cos()]
 }
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     fn eye_position(&self) -> Option<[f64; 3]> {
         let p = self.player.as_ref()?;
         Some([
@@ -2178,7 +2167,6 @@ impl crate::game::Sim<'_> {
             tickets: self.tickets.levels(),
             random_tick_sections: &mut self.random_tick_sections,
             lid_openers: &self.lid_openers,
-            client_side: false,
             change_events,
         };
         let result = f(self.res.behaviours(), &mut level, &mut self.block_ticks);
@@ -5702,7 +5690,7 @@ impl crate::game::Sim<'_> {
     /// `CauldronInteractions` for the held item aimed at a cauldron.
     fn use_on_cauldron(&mut self, pos: [i32; 3]) -> Result<bool> {
         use crate::hc::cauldron::{self, Outcome};
-        struct Hand<'g, 'a>(&'g mut crate::game::Sim<'a>);
+        struct Hand<'g, 'a>(&'g mut crate::game::Server<'a>);
         impl cauldron::Player for Hand<'_, '_> {
             fn creative(&self) -> bool {
                 self.0.creative
@@ -6985,7 +6973,7 @@ impl crate::game::Sim<'_> {
     }
 }
 
-impl crate::game::Sim<'_> {}
+impl crate::game::Server<'_> {}
 
 /// The synchronous launch loads both phases; an ordinary launch returns the
 /// core bundle while the rest worker keeps loading.
@@ -7140,7 +7128,7 @@ pub fn run_with(args: Vec<String>) -> Result<()> {
         settings.render_distance = d;
     }
     let loaded = load_resources(&options.resources.clone(), &settings, started)?;
-    let mut game = Sim::new(&loaded.resources, loaded.pack, options, settings, None)?;
+    let mut game = Server::new(&loaded.resources, loaded.pack, options, settings, None)?;
     if let Some(fixture) = fixture {
         return game.run_component_harness(fixture);
     }
@@ -7169,11 +7157,11 @@ fn reset_world_progress(adv: &mut advancements::AdvState, stats: &mut stats::Sta
     *stats = Default::default();
 }
 
-impl crate::game::Sim<'_> {}
+impl crate::game::Server<'_> {}
 
-impl crate::game::Sim<'_> {}
+impl crate::game::Server<'_> {}
 
-impl<'a> Sim<'a> {
+impl<'a> Server<'a> {
     /// The server's game: its state, before a world opens (`run_dedicated` loads it).
     pub(crate) fn new(
         res: &'a Arc<Resources>,
@@ -7207,7 +7195,7 @@ impl<'a> Sim<'a> {
         // The server draws no particles: it only hears of them (and sends them on).
         let particles =
             crate::hc::particles::ParticleEngine::new(&root, &HashMap::new(), &HashSet::new());
-        Ok(Sim {
+        Ok(Server {
             be_anims: {
                 let mut anims = crate::hc::block_entity_anim::BlockEntityAnims::default();
                 anims.classify(registry);
@@ -7474,7 +7462,7 @@ fn unique_seed() -> i64 {
     next ^ nanos
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     pub(crate) fn spawn_player(&mut self) -> Result<()> {
         if self.player.is_some() {
             return Ok(());
@@ -7579,7 +7567,7 @@ impl crate::game::Sim<'_> {
     }
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// Load authoritative world state synchronously, without client entry or
     /// integrated-server selection. Server startup must use this entry point.
     fn load_world(&mut self, request: world_loading::WorldRequest) -> Result<()> {

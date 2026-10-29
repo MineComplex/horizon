@@ -25,7 +25,7 @@ fn recipe_matches(condition: &Value, id: &str) -> bool {
     }
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// `Level.setBlock` of one boolean property of the block at `pos`.
     pub(crate) fn set_bool_prop(&mut self, pos: Pos, key: &str, value: bool, flags: i32) {
         let registry = self.pack.assets.registry;

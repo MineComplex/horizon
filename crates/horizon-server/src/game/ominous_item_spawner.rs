@@ -47,7 +47,7 @@ fn block(p: [f64; 3]) -> [i32; 3] {
     p.map(|v| v.floor() as i32)
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// `OminousItemSpawner.create` added at `position`.
     pub(super) fn add_ominous_item_spawner(
         &mut self,

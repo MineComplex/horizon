@@ -4,7 +4,7 @@
 use crate::hc::{containers::BlockEntity, items::ItemStack, mobs::Species};
 use horizon_core::random::RandomSource;
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     pub(super) fn tick_allays(&mut self) {
         let griefing = self.world_data.rules.bool("mob_griefing");
         // The playing jukeboxes, found at the first allay: no allay starts

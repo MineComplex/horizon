@@ -82,7 +82,7 @@ impl HeartHost for Host<'_> {
     }
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     fn heart_state_name(&self, state: BlockStateId) -> String {
         self.pack
             .assets

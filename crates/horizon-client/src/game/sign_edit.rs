@@ -120,7 +120,7 @@ impl Game<'_> {
         let Some(BlockEntity::Sign(sign)) = self.world.block_entities.get(&edit.pos) else {
             return false;
         };
-        HudBatch::text_width(&self.front.gui.atlas, value) <= sign.max_line_width()
+        HudBatch::text_width(&self.gui.atlas, value) <= sign.max_line_width()
     }
     /// Edit the line, then keep the result only when it still fits.
     fn sign_change(&mut self, f: impl FnOnce(&mut EditBox)) {
@@ -162,18 +162,17 @@ impl Game<'_> {
     /// pass the sign's width is refused whole.
     fn sign_shortcut(&mut self, shortcut: horizon_client::clipboard::EditShortcut) {
         if shortcut == horizon_client::clipboard::EditShortcut::Paste {
-            let raw = horizon_client::clipboard::Clipboard::get(&mut self.front.clipboard);
+            let raw = horizon_client::clipboard::Clipboard::get(&mut self.clipboard);
             let text = horizon_client::clipboard::helper_clipboard_contents(&raw);
             self.sign_change(|edit| edit.insert_text(&text));
             return;
         }
         let before = self
-            .sim
             .sign_edit
             .as_ref()
             .map(|e| (e.edit.value.clone(), e.edit.cursor, e.edit.highlight));
-        if let Some(edit) = self.sim.sign_edit.as_mut() {
-            edit.edit.shortcut(shortcut, &mut self.front.clipboard);
+        if let Some(edit) = self.sign_edit.as_mut() {
+            edit.edit.shortcut(shortcut, &mut self.clipboard);
             let clean = horizon_client::clipboard::strip_formatting(&edit.edit.value);
             if clean != edit.edit.value {
                 let n = horizon_client::ui::char_len(&clean);
@@ -189,9 +188,9 @@ impl Game<'_> {
     pub(super) fn sign_edit_click(&mut self, size: [u32; 2]) {
         let b = HudBatch::new(size);
         let (x, y) = (b.width / 2.0 - 100.0, b.height / 4.0 + 144.0);
-        let (mx, my) = self.front.cursor;
+        let (mx, my) = self.cursor;
         if mx >= x && mx < x + 200.0 && my >= y && my < y + 20.0 {
-            self.front.audio.play_button_click();
+            self.audio.play_button_click();
             self.close_sign_editor();
             return;
         }
@@ -214,13 +213,13 @@ impl Game<'_> {
                 .as_ref()
                 .map(|e| e.edit.value.clone())
                 .unwrap_or_default();
-            let lw = HudBatch::text_width(&self.front.gui.atlas, &value);
+            let lw = HudBatch::text_width(&self.gui.atlas, &value);
             let text_x = cx - (lw as i32 / 2) as f32;
-            if let Some(edit) = self.sim.sign_edit.as_mut() {
+            if let Some(edit) = self.sign_edit.as_mut() {
                 edit.edit.x = text_x;
                 edit.edit.y = ly;
                 edit.edit.width = max_width;
-                edit.edit.click(&self.front.gui.atlas, mx, shift, false);
+                edit.edit.click(&self.gui.atlas, mx, shift, false);
             }
             self.sign_write();
             return;
@@ -231,7 +230,7 @@ impl Game<'_> {
         let Some(BlockEntity::Sign(sign)) = self.world.block_entities.get(&edit.pos) else {
             return;
         };
-        let atlas = &self.front.gui.atlas;
+        let atlas = &self.gui.atlas;
         let (w, h) = (batch.width, batch.height);
         batch.fill(atlas, 0.0, 0.0, w, h, rgba(16, 16, 16, 160));
         let (key, fallback) = if sign.hanging {
@@ -355,7 +354,7 @@ impl Game<'_> {
         );
     }
 }
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     /// `SignBlock.openTextEdit` for the front side after placement.
     pub(super) fn open_sign_editor(&mut self, pos: (i32, i32, i32), front: bool) {
         // Minecraft.setScreen: the editor already open is removed first.

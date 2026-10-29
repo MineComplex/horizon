@@ -27,7 +27,7 @@ fn java_double_text(v: f64) -> Text {
     Text::literal(crate::hc::snbt::java_double(v))
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// Every recipe id of the recipe manager (what `/recipe` resolves and suggests).
     pub(super) fn learnable_recipes(&self) -> Vec<String> {
         self.res.stations().recipe_index.ids().cloned().collect()
@@ -148,7 +148,7 @@ impl crate::game::Sim<'_> {
                     _ => None,
                 });
                 let damage = Damage {
-                    kind: crate::game::Sim::damage_kind(&ty),
+                    kind: crate::game::Server::damage_kind(&ty),
                     attacker,
                     from,
                 };
@@ -639,7 +639,7 @@ impl crate::game::Sim<'_> {
             return Ok(0);
         };
         let name = self.target_name(target);
-        let description = crate::game::Sim::attribute_description(&attribute);
+        let description = crate::game::Server::attribute_description(&attribute);
         let short = attribute.trim_start_matches("minecraft:").to_owned();
         let no_attribute = |name: &Text, d: &Text| {
             text_error(
@@ -1457,7 +1457,7 @@ fn look_at(from: [f64; 3], to: [f64; 3]) -> [f32; 2] {
     [yaw.rem_euclid(360.0), pitch]
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     pub(crate) fn damage_kind(ty: &str) -> DamageKind {
         match ty.trim_start_matches("minecraft:") {
             "player_attack" => DamageKind::PlayerAttack,
@@ -1486,7 +1486,7 @@ impl crate::game::Sim<'_> {
     }
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// The attribute id without `minecraft:`, as the attribute map names it.
     pub(crate) fn attribute_description(attribute: &str) -> Text {
         let short = attribute.trim_start_matches("minecraft:");

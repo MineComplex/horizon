@@ -24,7 +24,7 @@ fn abgr(r: f32, g: f32, b: f32) -> u32 {
 impl Game<'_> {
     /// `LeashFeatureRenderer` for every lead and `LeashKnotRenderer` for the knots.
     pub(super) fn leash_geometry(&self, camera: glam::DVec3, alpha: f64, out: &mut Vec<Vertex>) {
-        let atlas = &self.front.gui.atlas;
+        let atlas = &self.gui.atlas;
         let white = atlas.font.white();
         let uv = [
             [white.u0, white.v1],
@@ -159,7 +159,7 @@ impl Game<'_> {
         }
     }
 }
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     /// The `leash` tag of a mob about to be saved.
     pub(super) fn write_leash(&mut self, tag: &mut Tag, index: usize) {
         let Tag::Compound(map) = tag else { return };

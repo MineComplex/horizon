@@ -117,15 +117,25 @@ def main():
             assert block == 'minecraft:bedrock', f'the bedrock is {block}'
         check('break', bedrock)
 
+        def held_until(count, ticks=200):
+            # The server's inventory packets come when it gets to them.
+            for _ in range(ticks // 5):
+                held = ctl('state')['held']
+                if held and held['item'] == 'minecraft:diamond' and held['count'] == count:
+                    return held
+                ctl('wait', 5)
+            raise AssertionError(f'never held {count} diamonds: {held}')
+
         def drop():
             ctl('give', 'minecraft:diamond', 3)
-            ctl('wait', 10)
-            ctl('select', 'minecraft:diamond')
+            for _ in range(40):
+                if ctl('select', 'minecraft:diamond', check=False).get('ok'):
+                    break
+                ctl('wait', 5)
+            held_until(3)
             ctl('drop')
-            ctl('wait', 10)
             chat_until('Diamonds stay in your hand.')
-            held = ctl('state')['held']
-            assert held and held['item'] == 'minecraft:diamond' and held['count'] == 3, f'held {held}'
+            held_until(3)
         check('drop', drop)
 
         def mode():

@@ -58,8 +58,6 @@ pub struct HubConfig {
     pub dimension: String,
     pub seed: i64,
     pub max_players: usize,
-    /// A dedicated server: operators from `ops`, the dedicated-only commands.
-    pub dedicated: bool,
 }
 
 /// What the other players see of a player's body besides sneaking and
@@ -159,9 +157,6 @@ pub struct Hub {
     pub movement_checks: (bool, bool),
     /// The `immediate_respawn` game rule, as the players were last told.
     immediate_respawn: bool,
-    /// An integrated server's owner (`MinecraftServer.isSingleplayerOwner`),
-    /// whose moves are never checked.
-    pub singleplayer_owner: Option<u128>,
     /// The world is superflat (`ServerLevel.isFlat`, a world-wide flag, sent as
     /// `CommonPlayerSpawnInfo.isFlat` in every dimension).
     pub flat_world: bool,
@@ -360,7 +355,6 @@ impl Hub {
             ticks: 0,
             immediate_respawn: false,
             movement_checks: (true, true),
-            singleplayer_owner: None,
             flat_world: false,
             riding: Default::default(),
             last_clock: i64::MIN,
@@ -640,7 +634,7 @@ impl Hub {
 
     fn admit(&mut self, j: super::Joined, ctx: &mut TickCtx) -> u32 {
         // The game's ids are taken by incrementing first: the current value
-        // is the last id in use (the game's own, right after opening to LAN).
+        // is the last id in use.
         *ctx.next_entity += 1;
         let entity_id = *ctx.next_entity as i32;
         let conn = j.conn;
@@ -658,13 +652,7 @@ impl Hub {
 
     /// The permission level a player gets: their operator level (`ops`).
     fn default_permission(&self, uuid: u128) -> u8 {
-        if self.config.dedicated {
-            self.ops.get(&uuid).copied().unwrap_or(self.everyone_level)
-        } else if self.config.player_commands {
-            2
-        } else {
-            0
-        }
+        self.ops.get(&uuid).copied().unwrap_or(self.everyone_level)
     }
 
     /// The levels of a server, in MinecraftServer.levelKeys order.
@@ -929,15 +917,7 @@ impl Hub {
     fn send_commands(&self, i: usize) {
         let g = &self.players[i];
         let mut packet = match &self.sync.commands {
-            Some(tree) => {
-                let dedicated = self.config.dedicated;
-                tree.packet_with(
-                    g.permission,
-                    dedicated,
-                    &self.sync.builtin,
-                    &self.mod_commands.0,
-                )
-            }
+            Some(tree) => tree.packet_with(g.permission, &self.sync.builtin, &self.mod_commands.0),
             None => play::Commands {
                 nodes: vec![play::CommandNode {
                     kind: 0,
@@ -2280,7 +2260,6 @@ impl Hub {
     ) {
         let (frozen, (check, elytra_check)) = (self.ticking.1, self.movement_checks);
         let g = &mut self.players[i];
-        let owner = self.singleplayer_owner == Some(g.uuid);
         let to = [
             to[0].clamp(-3.0E7, 3.0E7),
             to[1].clamp(-2.0E7, 2.0E7),
@@ -2309,8 +2288,8 @@ impl Hub {
             if packets > 5 {
                 packets = 1;
             }
-            // shouldCheckPlayerMovement (never the single-player owner).
-            if !owner && check && (!g.fall_flying || elytra_check) {
+            // shouldCheckPlayerMovement.
+            if check && (!g.fall_flying || elytra_check) {
                 let limit = if g.fall_flying { 300.0 } else { 100.0 };
                 // `movedDist - expectedDist` (getDeltaMovement): the velocity
                 // the server last simulated for the player is expected

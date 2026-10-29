@@ -33,7 +33,7 @@ fn center(f: &ItemFrame) -> [f64; 3] {
     let (lo, hi) = f.bounds();
     std::array::from_fn(|i| (lo[i] + hi[i]) / 2.0)
 }
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// `ItemFrame.survives` (not fixed): no collision, a solid block behind
     /// (or a diode for wall frames), no overlapping hanging entity.
     fn frame_survives(&self, f: &ItemFrame) -> bool {

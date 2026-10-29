@@ -38,7 +38,7 @@ pub(super) struct AdvState {
     inventory_index: Option<(Arc<Tree>, Arc<adv::InventoryIndex>)>,
 }
 /// The game's world for predicates.
-struct View<'a, 'g>(&'a crate::game::Sim<'g>);
+struct View<'a, 'g>(&'a crate::game::Server<'g>);
 impl adv::World for View<'_, '_> {
     fn dimension(&self) -> &str {
         self.0.dim.id()
@@ -141,7 +141,7 @@ fn now_text() -> String {
         .map_or(0, |d| d.as_secs()) as i64;
     adv::date_text(secs)
 }
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// `ItemPredicate.test` (the `item_filter` of a filtered item modifier).
     pub(super) fn loot_item_filter(&self, predicate: &Value, s: &ItemStack) -> bool {
         adv::item(predicate, &item_view(s), &View(self))
@@ -161,7 +161,7 @@ pub(super) fn item_view(s: &ItemStack) -> ItemView {
         custom_name: s.custom_name().is_some(),
     }
 }
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     fn adv_path(&self) -> Option<std::path::PathBuf> {
         Some(super::stats::player_json(
             &self.world_root,
@@ -1181,7 +1181,7 @@ fn decorate_name(d: &adv::Display) -> Text {
     }
     text_of(&component).with_component(component)
 }
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// `AdvancementCommands.Action.GRANT` on one advancement (or one of
     /// its criteria): false when nothing changed.
     pub(super) fn grant_advancement(&mut self, index: usize, criterion: Option<&str>) -> bool {
@@ -1225,7 +1225,7 @@ impl crate::game::Sim<'_> {
         }
     }
 }
-impl crate::game::Sim<'_> {}
+impl crate::game::Server<'_> {}
 /// An advancement's title or description: a whole component (ComponentSerialization.CODEC),
 /// with its siblings and styles, as a plugin's `{"text":"","extra":[...]}` needs.
 pub(super) fn text_of(v: &Value) -> Text {

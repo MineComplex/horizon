@@ -125,7 +125,7 @@ fn splash_distance_sqr(at: Vec3, age: u32, bounds: Aabb) -> Option<f64> {
     let d2 = potion.distance_squared_to_box(bounds.inflate(Vec3::new(margin, margin, margin)));
     (d2 < 16.0).then_some(d2)
 }
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// `LivingEntity.triggerOnDeathMobEffects` (`onMobRemoved` with the reason
     /// KILLED) for what Oozing, Weaving and Wind Charged do when their bearer
     /// dies. `bearer` is the dying mob's id, `player` whether it is a player,
@@ -364,7 +364,7 @@ fn thrown_kind(stack: &ItemStack) -> &'static str {
     }
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// Right-click with a potion, splash/lingering potion or glass bottle.
     pub(super) fn use_potion_item(&mut self, stack: &ItemStack) -> crate::hc::Result<bool> {
         match &*stack.item {

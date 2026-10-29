@@ -27,7 +27,7 @@ impl Game<'_> {
     pub(super) fn tick_block_entity_anims(&mut self) {
         // A client of a server only animates what it is sent (the server
         // runs the conduit and gateway tickers in `tick_world`).
-        let Some(r) = &self.front.renderer else {
+        let Some(r) = &self.renderer else {
             return;
         };
         // Sorted by position: the order they tick in, and a quick lookup.
@@ -92,7 +92,7 @@ impl Game<'_> {
                         alive: p.alive,
                         raider: false,
                     });
-                    let mobs = &self.sim.mobs;
+                    let mobs = &self.mobs;
                     let entity = |h: u64| {
                         if h == PLAYER {
                             return player;
@@ -105,7 +105,6 @@ impl Game<'_> {
                         })
                     };
                     let tick = self
-                        .sim
                         .be_anims
                         .bells
                         .entry(pos)
@@ -126,10 +125,10 @@ impl Game<'_> {
                                 color: [channel(16), channel(8), channel(0), channel(24)],
                                 ..ParticleOptions::simple(ParticleType::EntityEffect)
                             };
-                            self.sim.particles.add(&options, p, [0.0; 3]);
+                            self.particles.add(&options, p, [0.0; 3]);
                         }
                         // makeRaidersGlow (the server's effect).
-                        for m in self.sim.mobs.iter_mut().filter(|_| false) {
+                        for m in self.mobs.iter_mut().filter(|_| false) {
                             if glow.contains(&u64::from(m.id)) {
                                 m.add_effect("minecraft:glowing", 60, 0);
                             }
@@ -138,9 +137,9 @@ impl Game<'_> {
                 }
                 Ticker::Conduit => {
                     let target = self.conduit_target(pos);
-                    let world = &self.sim.world;
-                    let facts = self.sim.res.facts();
-                    let registry = self.sim.pack.assets.registry;
+                    let world = &self.world;
+                    let facts = self.res.facts();
+                    let registry = self.pack.assets.registry;
                     let is_water = |p: [i32; 3]| {
                         facts.get(world.block(p[0], p[1], p[2])).fluid
                             == horizon_client::blocks::Fluid::Water
@@ -151,14 +150,14 @@ impl Game<'_> {
                             .is_some_and(|s| frames.contains(&s.name))
                     };
                     let time = world.game_time;
-                    let anims = &mut self.sim.be_anims;
+                    let anims = &mut self.be_anims;
                     let particles = anims.conduits.entry(pos).or_default().client_tick(
                         pos,
                         time,
                         is_water,
                         is_frame,
                         target,
-                        self.sim.particles.random(),
+                        self.particles.random(),
                     );
                     let nautilus = ParticleOptions::simple(ParticleType::Nautilus);
                     for (p, v) in particles {
@@ -169,7 +168,7 @@ impl Game<'_> {
                 Ticker::Gateway => {
                     // The server sends its copy's block event.
                     let initial = self.gateway_loaded(pos);
-                    let anims = &mut self.sim.be_anims;
+                    let anims = &mut self.be_anims;
                     anims.gateways.entry(pos).or_insert(initial).tick();
                 }
             }
@@ -203,7 +202,7 @@ impl Game<'_> {
         });
         if let Some((url, location)) = download {
             let mut downloads = self.skin_downloads.borrow_mut();
-            if self.front.gui.atlas.sprites.contains_key(&location) {
+            if self.gui.atlas.sprites.contains_key(&location) {
                 let _ = downloads.state(skins::Kind::Skin, &url);
                 return Some(location);
             }
@@ -215,7 +214,7 @@ impl Game<'_> {
         Some(skin.fallback.to_owned())
     }
 }
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     /// `BlockEntity.triggerEvent(a, b)` on the client copy of the block entity at `pos`.
     pub(super) fn block_entity_event(&mut self, pos: [i32; 3], a: i32, b: i32) {
         let state = self.world.block(pos[0], pos[1], pos[2]).0;

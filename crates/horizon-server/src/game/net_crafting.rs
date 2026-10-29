@@ -84,7 +84,7 @@ fn place_back(menu: &mut Menu, env: &Env, stacks: Vec<ItemStack>) {
     }
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     pub(super) fn menu_env(&self) -> Env<'_> {
         Env {
             items: self.res.items(),

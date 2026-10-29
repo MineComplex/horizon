@@ -26,7 +26,7 @@ impl VaultLevel for Players {
     }
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     fn vault_players(&self) -> Players {
         let net = self.player.as_ref().map(|p| VaultPlayer {
             uuid: self.acting_uuid(),

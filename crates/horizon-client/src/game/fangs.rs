@@ -29,7 +29,6 @@ impl Game<'_> {
             return;
         };
         let Some(r) = self
-            .front
             .gui
             .atlas
             .sprites
@@ -90,7 +89,7 @@ impl Game<'_> {
         }
     }
 }
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     pub(super) fn insert_fangs(
         &mut self,
         id: u32,

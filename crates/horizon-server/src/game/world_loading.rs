@@ -48,7 +48,7 @@ impl WorldRequest {
     ) -> Result<PreparedWorld> {
         // Before any chunk is read: a loaded container with a loot table is rolled as its chunk
         // is decoded (`save::roll_loaded_loot`), and the spawn chunks are read while the world
-        // opens. Every world opens here: in-frame, on the server thread, on a dedicated server.
+        // opens.
         crate::hc::structure_blocks::loot_data(&options.resources);
         let Self {
             save_root,
@@ -111,11 +111,11 @@ impl WorldRequest {
             level.dimension = d.clone();
             level.position = None;
         } else {
-            // A server opens on the Overworld (MinecraftServer.overworld), whatever level a
-            // single-player save or an older Horizon server wrote into level.dat.
+            // A server opens on the Overworld (MinecraftServer.overworld), whatever level
+            // an older save wrote into level.dat.
             level.dimension = "minecraft:overworld".to_owned();
         }
-        // A server's world has no single player whose file to write.
+        // A server's level.dat holds no player (players have their own files).
         level.server = true;
         let dim = Dim::from_id(&level.dimension);
         let (mut streaming, save, locator) =
@@ -231,8 +231,7 @@ pub(super) fn make_streaming(
     streaming.biome_zoom = BiomeZoom::new(obfuscate_seed(seed));
     streaming.sky_light = dim != Dim::Nether;
     streaming.nether_shading = dim == Dim::Nether;
-    // A server draws nothing: neither the integrated server nor the
-    // dedicated one meshes sections.
+    // A server draws nothing: no section meshes.
     streaming.mesh = false;
     Ok((streaming, save, locator))
 }

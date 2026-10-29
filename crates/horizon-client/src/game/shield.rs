@@ -8,7 +8,7 @@ use horizon_client::items::ItemStack;
 /// `Inventory.SLOT_OFFHAND`: the `using` slot of an off-hand item.
 pub(super) const OFFHAND_SLOT: usize = 40;
 
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     /// The stack in an inventory slot, the off hand at `OFFHAND_SLOT`.
     pub(super) fn stack_in(&self, slot: usize) -> Option<&ItemStack> {
         if slot == OFFHAND_SLOT {

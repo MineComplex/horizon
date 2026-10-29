@@ -14,7 +14,7 @@ fn num(n: impl std::fmt::Display) -> Text {
     Text::literal(n.to_string())
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     fn state_transforms(&self) -> Option<&'static StateTransforms> {
         static TRANSFORMS: OnceLock<Option<StateTransforms>> = OnceLock::new();
         TRANSFORMS

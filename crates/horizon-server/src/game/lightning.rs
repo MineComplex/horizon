@@ -27,7 +27,7 @@ pub(super) struct Bolt {
     /// the game, `Some(Some(conn))` for a player.
     pub cause: Option<Option<u32>>,
 }
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// `ServerChunkCache.tickSpawningChunk`: one `tickThunder` roll per
     /// spawning chunk (within 128 blocks of a player) that is in entity
     /// ticking range.

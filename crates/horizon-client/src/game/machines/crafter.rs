@@ -36,7 +36,7 @@ impl Game<'_> {
         // The background goes first, then the labels, then the slot decorations.
         let (background, rest) = draws.split_at(2.min(draws.len()));
         self.paint_screen(batch, ox, oy, background, true);
-        let atlas = &self.front.gui.atlas;
+        let atlas = &self.gui.atlas;
         let grey = rgba(64, 64, 64, 255);
         let title = self.container_title(self.translate("container.crafter", "Crafter"));
         let tw = HudBatch::text_width(atlas, &title);
@@ -53,7 +53,7 @@ impl Game<'_> {
         self.paint_screen(batch, ox, oy, rest, true);
     }
 }
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     /// `Level.setBlock` of one boolean property of the block at `pos`.
     pub(crate) fn set_bool_prop(&mut self, pos: Pos, key: &str, value: bool, flags: i32) {
         let registry = self.pack.assets.registry;

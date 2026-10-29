@@ -51,7 +51,7 @@ impl Game<'_> {
             return 0;
         };
         let m = &self.mobs[i];
-        let atlas = &self.front.gui.atlas;
+        let atlas = &self.gui.atlas;
         let hearts = horizon_client::hud_layout::vehicle_max_hearts(m.attrs.max_health);
         let draws = horizon_client::hud_layout::vehicle_health(w, h, hearts, m.health);
         horizon_client::hud_layout::paint(batch, atlas, &draws);
@@ -70,7 +70,7 @@ impl Game<'_> {
         hearts
     }
 }
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     fn mount_index(&self) -> Option<usize> {
         let id = self.riding?;
         self.mobs.iter().position(|m| m.id == id)

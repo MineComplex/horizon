@@ -33,7 +33,7 @@ impl Game<'_> {
         let Some(model) = self.cushion_model.as_ref() else {
             return;
         };
-        let sprites = &self.front.gui.atlas.sprites;
+        let sprites = &self.gui.atlas.sprites;
         for c in &self.cushions {
             let entity_start = out.len();
             let a = aabb(c.bounds());
@@ -78,7 +78,7 @@ impl Game<'_> {
         }
     }
 }
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     /// The cushion under the crosshair, its distance and the hit point.
     pub(super) fn cushion_hit(&self) -> Option<(usize, f64, [f64; 3])> {
         let eye = self.eye_position()?;

@@ -37,7 +37,7 @@ impl Game<'_> {
                 self.capture(true);
             }
         }
-        if self.front.screen_fx.portal == 0.0 {
+        if self.screen_fx.portal == 0.0 {
             let pitch = self.world.random.next_float() * 0.4 + 0.8;
             self.sounds
                 .play("minecraft:block.portal.trigger", None, 0.25, pitch);
@@ -49,7 +49,7 @@ impl Game<'_> {
 
     // ---- persistence ----
 }
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     /// The same on a server's client: `Entity.canUsePortal` (alive, not a
     /// passenger), then only the client's `setAsInsidePortal`, which drives
     /// the confusion effect (`client_portal_effect`).

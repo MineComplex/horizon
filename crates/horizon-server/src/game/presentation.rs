@@ -5,7 +5,7 @@
 use horizon_core::position::BlockPos;
 use horizon_world::registry::BlockStateId;
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// The window's pointer grab.
     pub(crate) fn capture(&mut self, _capture: bool) {}
     /// A block's particle sprite (the client's texture atlas).
@@ -31,7 +31,7 @@ impl crate::game::Sim<'_> {
 
 /// Particles the client spawns itself (`ItemParticle`, eating crumbs...): a
 /// server sends its particles as packets (game/net_particles.rs).
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     pub(crate) fn item_particle(
         &self,
         _stack: &crate::hc::items::ItemStack,

@@ -132,23 +132,22 @@ impl Game<'_> {
     /// DialogScreen over the pause menu: `menu.server_links.title`, the
     /// scrollable link buttons and `gui.back` in the footer.
     pub(super) fn draw_server_links(&mut self, batch: &mut HudBatch) {
-        let atlas = &self.front.gui.atlas;
+        let atlas = &self.gui.atlas;
         let (w, h) = (batch.width, batch.height);
         ui::menu_background(batch, atlas, 0.0, 0.0, w, h, true);
         let links = self.server_links().to_vec();
-        self.sim.links_ui.scroll = self
-            .sim
+        self.links_ui.scroll = self
             .links_ui
             .scroll
             .clamp(0.0, scroll_limit(h, links.len()));
-        let top = list_top(h, links.len()) - self.sim.links_ui.scroll.trunc();
+        let top = list_top(h, links.len()) - self.links_ui.scroll.trunc();
         // The title row: the title, then 10 pixels on the warning button.
         let title = Text::translate("menu.server_links.title", &[]);
         let tw = atlas.font.width_text(&title);
         let tx = ((w - tw - 30.0) / 2.0).floor();
         batch.text_styled(atlas, &title, tx, 12.0, u32::MAX, true);
         let (wx, wy) = warning_button(w, h, tw);
-        let wh = ui::hovered(self.front.cursor, wx, wy, WARNING_BUTTON, WARNING_BUTTON);
+        let wh = ui::hovered(self.cursor, wx, wy, WARNING_BUTTON, WARNING_BUTTON);
         horizon_client::widgets::record(
             "menu.custom_screen_info.tooltip",
             [wx, wy, WARNING_BUTTON, WARNING_BUTTON],
@@ -168,9 +167,9 @@ impl Game<'_> {
             u32::MAX,
         );
         let first = batch.vertices.len();
-        let inside = self.front.cursor.1 >= HEADER && self.front.cursor.1 < h - FOOTER;
+        let inside = self.cursor.1 >= HEADER && self.cursor.1 < h - FOOTER;
         for (link, (x, y)) in links.iter().zip(link_buttons(w, top, links.len())) {
-            let hover = inside && ui::hovered(self.front.cursor, x, y, LINK_WIDTH, 20.0);
+            let hover = inside && ui::hovered(self.cursor, x, y, LINK_WIDTH, 20.0);
             ui::button(
                 batch,
                 atlas,
@@ -194,7 +193,7 @@ impl Game<'_> {
             self.links_ui.scroll.trunc(),
         );
         let (bx, by) = back_button(w, h);
-        let hover = ui::hovered(self.front.cursor, bx, by, 200.0, 20.0);
+        let hover = ui::hovered(self.cursor, bx, by, 200.0, 20.0);
         ui::button(
             batch,
             atlas,
@@ -211,7 +210,7 @@ impl Game<'_> {
                 batch,
                 atlas,
                 &[Text::translate("menu.custom_screen_info.tooltip", &[])],
-                self.front.cursor,
+                self.cursor,
             );
         }
     }
@@ -220,27 +219,27 @@ impl Game<'_> {
         let (w, h) = self.gui_size();
         let links = self.server_links().to_vec();
         let top = list_top(h, links.len()) - self.links_ui.scroll.trunc();
-        let inside = self.front.cursor.1 >= HEADER && self.front.cursor.1 < h - FOOTER;
+        let inside = self.cursor.1 >= HEADER && self.cursor.1 < h - FOOTER;
         if inside
             && let Some(i) = link_buttons(w, top, links.len())
                 .iter()
-                .position(|(x, y)| ui::hovered(self.front.cursor, *x, *y, LINK_WIDTH, 20.0))
+                .position(|(x, y)| ui::hovered(self.cursor, *x, *y, LINK_WIDTH, 20.0))
         {
-            self.front.audio.play_button_click();
+            self.audio.play_button_click();
             self.click_link(&links[i].link);
             return Ok(());
         }
         let title = Text::translate("menu.server_links.title", &[]);
-        let tw = self.front.gui.atlas.font.width_text(&title);
+        let tw = self.gui.atlas.font.width_text(&title);
         let (wx, wy) = warning_button(w, h, tw);
-        if ui::hovered(self.front.cursor, wx, wy, WARNING_BUTTON, WARNING_BUTTON) {
-            self.front.audio.play_button_click();
+        if ui::hovered(self.cursor, wx, wy, WARNING_BUTTON, WARNING_BUTTON) {
+            self.audio.play_button_click();
             self.screen = Screen::DialogWarning;
             return Ok(());
         }
         let (bx, by) = back_button(w, h);
-        if ui::hovered(self.front.cursor, bx, by, 200.0, 20.0) {
-            self.front.audio.play_button_click();
+        if ui::hovered(self.cursor, bx, by, 200.0, 20.0) {
+            self.audio.play_button_click();
             self.screen = Screen::Paused;
         }
         Ok(())
@@ -255,7 +254,7 @@ impl Game<'_> {
     /// following website?", the link, the red warning, and Yes / Copy Link to
     /// Clipboard / No.
     pub(super) fn draw_confirm_link(&mut self, batch: &mut HudBatch) {
-        let atlas = &self.front.gui.atlas;
+        let atlas = &self.gui.atlas;
         let (w, h) = (batch.width, batch.height);
         ui::menu_background(batch, atlas, 0.0, 0.0, w, h, true);
         let url = self.links_ui.confirm.clone().unwrap_or_default();
@@ -265,7 +264,7 @@ impl Game<'_> {
         }
         let labels = ["gui.yes", "gui.copy_link_to_clipboard", "gui.no"];
         for ((x, y), key) in layout.buttons.iter().zip(labels) {
-            let hover = ui::hovered(self.front.cursor, *x, *y, 100.0, 20.0);
+            let hover = ui::hovered(self.cursor, *x, *y, 100.0, 20.0);
             ui::button(
                 batch,
                 atlas,
@@ -284,16 +283,16 @@ impl Game<'_> {
     pub(super) fn confirm_link_click(&mut self) {
         let (w, h) = self.gui_size();
         let url = self.links_ui.confirm.clone().unwrap_or_default();
-        let layout = confirm_link_layout(&self.front.gui.atlas, (w, h), &url);
+        let layout = confirm_link_layout(&self.gui.atlas, (w, h), &url);
         for (i, (x, y)) in layout.buttons.iter().enumerate() {
-            if !ui::hovered(self.front.cursor, *x, *y, 100.0, 20.0) {
+            if !ui::hovered(self.cursor, *x, *y, 100.0, 20.0) {
                 continue;
             }
-            self.front.audio.play_button_click();
+            self.audio.play_button_click();
             match i {
                 0 => open_uri(&url),
                 1 => {
-                    self.front.clipboard.set(&url);
+                    self.clipboard.set(&url);
                 }
                 _ => {}
             }
@@ -304,7 +303,7 @@ impl Game<'_> {
     /// `DialogScreen.WarningScreen`: the custom-screens note, a disconnect
     /// button ("Custom screen rejected" is the shown reason) and Back.
     pub(super) fn draw_dialog_warning(&mut self, batch: &mut HudBatch) {
-        let atlas = &self.front.gui.atlas;
+        let atlas = &self.gui.atlas;
         let (w, h) = (batch.width, batch.height);
         ui::menu_background(batch, atlas, 0.0, 0.0, w, h, true);
         let layout = dialog_warning_layout(atlas, (w, h));
@@ -317,7 +316,7 @@ impl Game<'_> {
             "menu.returnToMenu"
         };
         for ((x, y), key) in layout.buttons.into_iter().zip([quit, "gui.back"]) {
-            let hover = ui::hovered(self.front.cursor, x, y, 150.0, 20.0);
+            let hover = ui::hovered(self.cursor, x, y, 150.0, 20.0);
             ui::button(
                 batch,
                 atlas,
@@ -334,12 +333,12 @@ impl Game<'_> {
     /// WarningScreen's answer: disconnect, or back to Server Links.
     pub(super) fn dialog_warning_click(&mut self) -> Result<()> {
         let (w, h) = self.gui_size();
-        let layout = dialog_warning_layout(&self.front.gui.atlas, (w, h));
+        let layout = dialog_warning_layout(&self.gui.atlas, (w, h));
         for (i, (x, y)) in layout.buttons.iter().enumerate() {
-            if !ui::hovered(self.front.cursor, *x, *y, 150.0, 20.0) {
+            if !ui::hovered(self.cursor, *x, *y, 150.0, 20.0) {
                 continue;
             }
-            self.front.audio.play_button_click();
+            self.audio.play_button_click();
             if i == 0 {
                 // DialogConnectionAccess.disconnect: leave with the custom
                 // screens' reason.
@@ -356,7 +355,7 @@ impl Game<'_> {
         Ok(())
     }
 }
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     /// `connection.serverLinks()`: the links the open server sent (empty for
     /// a world without a connection or one that sent none).
     pub(super) fn server_links(&self) -> &[ServerLink] {

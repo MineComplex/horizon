@@ -1,10 +1,9 @@
-//! The dedicated server (net.minecraft.server.Main and DedicatedServer):
-//! `horizon-client --dedicated [--nogui] [--port N] [--world NAME]
-//! [--universe DIR] [--initSettings]`. It reads server.properties and
-//! eula.txt from the working directory, opens `<universe>/<level-name>` and
-//! runs the same game as single player, without a local player: the world,
-//! its simulation and the play-state hub that LAN hosting uses, configured
-//! from server.properties, with the operator, whitelist and ban lists and a
+//! The server program (net.minecraft.server.Main and DedicatedServer):
+//! `horizon-server [--nogui] [--port N] [--world NAME] [--universe DIR]
+//! [--initSettings]`. It reads server.properties and eula.txt from the
+//! working directory, opens `<universe>/<level-name>` and runs the world, its
+//! simulation and the players' network side, configured from
+//! server.properties, with the operator, whitelist and ban lists and a
 //! console on standard input.
 use super::{Options, server_net::NetSettings, world_loading::WorldRequest};
 use crate::hc::{
@@ -318,7 +317,7 @@ fn parse_identifier(text: &str) -> Option<String> {
     (valid(namespace, &[]) && valid(path, &['/'])).then(|| format!("{namespace}:{path}"))
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// DedicatedServerProperties.createDimensions for a world that doesn't
     /// exist yet: `level-type`'s preset, a flat world's `generator-settings`
     /// and `generate-structures`, written before the world opens so that
@@ -441,7 +440,7 @@ const BROADCAST: &[&str] = &[
     "commands.whitelist.remove.success",
 ];
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// The chunks to keep loaded: the players' (lan_update_streaming), or
     /// the spawn chunk while nobody is online.
     pub(super) fn update_dedicated_streaming(&mut self) {
@@ -1059,7 +1058,7 @@ fn png_size(bytes: &[u8]) -> Option<(u32, u32)> {
     Some((w, h))
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// DedicatedServer.initServer and MinecraftServer.runServer.
     pub(crate) fn run_dedicated(&mut self) -> Result<()> {
         // This thread ticks the server (MinecraftServer.spin's priority).
@@ -1184,7 +1183,7 @@ impl crate::game::Sim<'_> {
         if new_world {
             self.level.hardcore = props.hardcore;
         }
-        // The single-player game's state is not used: players have their own files.
+        // level.dat's player is not used: players have their own files.
         self.level.position = None;
         // DedicatedServer.initServer: worldData.setGameType; forceDifficulty.
         self.set_default_game_mode(game_mode);
@@ -1226,7 +1225,6 @@ impl crate::game::Sim<'_> {
             favicon,
             secure_chat: Some(secure_chat),
             accepts_transfers: props.accepts_transfers,
-            listen: true,
             bypasses_limit: Some(Arc::new(move |uuid| {
                 bypass_lists
                     .lock()
@@ -1271,7 +1269,6 @@ impl crate::game::Sim<'_> {
             dimension: self.dim.id().to_owned(),
             seed: self.level.seed,
             max_players: props.max_players.max(0) as usize,
-            dedicated: true,
         };
         let settings = NetSettings {
             port,
@@ -1383,8 +1380,8 @@ impl crate::game::Sim<'_> {
     }
 }
 
-impl crate::game::Sim<'_> {
-    /// Load the spawn area and find the world spawn as single player does,
+impl crate::game::Server<'_> {
+    /// Load the spawn area and find the world spawn,
     /// without keeping a player there.
     pub(crate) fn settle_spawn(&mut self) -> Result<()> {
         let deadline = Instant::now() + Duration::from_secs(600);

@@ -405,7 +405,7 @@ fn villager_data(m: &mut Mob, data: &[i32], builtin: &Builtin) {
     m.extra.variant3 = level.clamp(0, i32::from(u8::MAX)) as u8;
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     /// SetEntityData for a mob of the server's.
     pub(super) fn remote_mob_data(&mut self, id: i32, values: &[(u8, i32, Value)]) {
         let Some(r) = &self.remote else {

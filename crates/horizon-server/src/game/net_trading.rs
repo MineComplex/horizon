@@ -32,7 +32,7 @@ fn uuid_words(uuid: u128) -> [i32; 4] {
     ]
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// A trading screen the player's interaction opened (it opened as a
     /// station while the player acted): handed to the player.
     pub(super) fn net_open_merchant(

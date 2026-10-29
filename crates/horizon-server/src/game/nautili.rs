@@ -8,7 +8,7 @@ use crate::hc::{
 };
 use horizon_core::random::RandomSource;
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     fn item_tagged(&self, tag: &str, item: &str) -> bool {
         self.res
             .items()

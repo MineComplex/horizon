@@ -65,7 +65,7 @@ pub(super) fn bake_frame(root: &std::path::Path, name: &str) -> FrameModel {
 impl Game<'_> {
     /// ItemFrameRenderer: the frame model, then the item half size on its face.
     pub(super) fn frame_geometry(&mut self, camera: glam::DVec3, out: &mut Vec<Vertex>) {
-        let sprites = &self.front.gui.atlas.sprites;
+        let sprites = &self.gui.atlas.sprites;
         let mut maps: Vec<(i32, glam::Mat4, u32)> = Vec::new();
         let mut items: Vec<(ItemStack, u32, glam::Mat4, u8)> = Vec::new();
         // ItemFrame.shouldRenderAtSqrDistance: 1024 blocks at a view scale
@@ -223,7 +223,7 @@ impl Game<'_> {
         }
     }
 }
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     /// The frame under the crosshair within reach and its distance.
     pub(super) fn frame_hit(&self) -> Option<(usize, f64)> {
         let eye = self.eye_position()?;

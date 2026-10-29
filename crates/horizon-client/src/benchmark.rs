@@ -467,7 +467,7 @@ mod tests {
     #[test]
     fn the_load_waits_for_the_chunks_a_teleport_starts() {
         // Right after a teleport the game reports steady counts and nothing
-        // queued for over a second, before the integrated server has sent the
+        // queued for over a second, before the server has sent the
         // first chunk: the quiet rule alone would call that loaded, and the
         // scene would be measured over an empty view (#1749).
         const LATE: usize = 30;

@@ -244,7 +244,7 @@ impl Session {
         let deadline = Instant::now() + Duration::from_secs_f64(limit.max(0.0));
         loop {
             let status = self.game("status")?;
-            // On a server (single player's server thread too), also the
+            // On a server, also the
             // level around the player.
             if !status["player"].is_null()
                 && status["pending_chunks"] == 0

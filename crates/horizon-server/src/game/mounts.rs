@@ -38,7 +38,7 @@ impl MountState {
         self.jump_scale = 0.0;
     }
 }
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     fn mount_index(&self) -> Option<usize> {
         let id = self.riding?;
         self.mobs.iter().position(|m| m.id == id)
@@ -272,7 +272,8 @@ impl crate::game::Sim<'_> {
     /// `LocalPlayer.aiStep`'s riding jump: the bar charges while jump is
     /// held; on release, the jump's strength (0 when there is none).
     pub(super) fn charge_mount_jump(&mut self, i: usize, keys: Keys) -> f32 {
-        let saddled = self.mobs[i].extra.saddled && crate::game::Sim::jumps(self.mobs[i].species());
+        let saddled =
+            self.mobs[i].extra.saddled && crate::game::Server::jumps(self.mobs[i].species());
         let mut jump = 0.0;
         if saddled {
             let st = &mut self.mount;
@@ -492,7 +493,7 @@ impl crate::game::Sim<'_> {
     }
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// `PlayerRideableJumping`: horses, camels and nautili (the dash).
     pub(crate) fn jumps(species: Species) -> bool {
         equine::is_equine(species) || crate::hc::mobs::nautilus::is_nautilus(species)

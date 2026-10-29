@@ -78,7 +78,7 @@ fn duration(seconds: f64) -> String {
     }
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     pub(super) fn cmd_pregen(&mut self, id: &str, ctx: &Context) -> R<i32> {
         match id {
             "pregen.start" => {
@@ -87,7 +87,7 @@ impl crate::game::Sim<'_> {
                         "Pregeneration is already running: /pregen cancel stops it",
                     ));
                 }
-                let radius = crate::game::Sim::int(ctx, "radius").unwrap_or(0);
+                let radius = crate::game::Server::int(ctx, "radius").unwrap_or(0);
                 let shape = if ctx.literals.iter().any(|l| l == "circle") {
                     Shape::Circle
                 } else {
@@ -250,7 +250,7 @@ impl crate::game::Sim<'_> {
     }
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// Keep the workers fed until `until`: collect what they finished and
     /// hand them the next jobs as soon as each one is done, rather than once
     /// a tick.

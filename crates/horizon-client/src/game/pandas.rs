@@ -8,7 +8,7 @@ use horizon_client::{
     particles::{ParticleOptions, ParticleType},
 };
 
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     /// What a window draws of its pandas: the crumbs of a bite
     /// (`addEatingParticles`) and the sneeze's particle.
     pub(super) fn panda_effects(&mut self) {

@@ -57,10 +57,7 @@ impl Game<'_> {
     }
 
     fn dialog_closed(&mut self) {
-        if self.player.is_some()
-            && self.screen == super::Screen::Playing
-            && self.front.title.is_none()
-        {
+        if self.player.is_some() && self.screen == super::Screen::Playing && self.title.is_none() {
             self.capture(true);
         }
     }
@@ -105,7 +102,7 @@ impl Game<'_> {
             Some(Click::ShowDialog(dialog)) => self.show_dialog_ref(&dialog),
             Some(Click::CopyToClipboard(value)) => {
                 use horizon_client::clipboard::Clipboard;
-                self.front.clipboard.set(&value);
+                self.clipboard.set(&value);
             }
             Some(other) => log::info!("Horizon: dialog action {other:?} is not supported yet"),
             None => {}
@@ -120,7 +117,7 @@ impl Game<'_> {
         let open = self.dialogs.open.as_ref()?;
         Some(Layout::new(
             &open.dialog,
-            &self.front.gui.atlas.font,
+            &self.gui.atlas.font,
             self.gui_size(),
         ))
     }
@@ -130,8 +127,8 @@ impl Game<'_> {
             return;
         }
         let (w, h) = (batch.width, batch.height);
-        let cursor = self.front.cursor;
-        let atlas = &self.front.gui.atlas;
+        let cursor = self.cursor;
+        let atlas = &self.gui.atlas;
         if self.player.is_none() {
             // In place of the connecting screen, on its background.
             batch.fill(atlas, 0.0, 0.0, w, h, rgba(20, 20, 20, 255));
@@ -172,10 +169,10 @@ impl Game<'_> {
         let Some(layout) = self.dialog_layout() else {
             return;
         };
-        let Some(open) = self.sim.dialogs.open.as_mut() else {
+        let Some(open) = self.dialogs.open.as_mut() else {
             return;
         };
-        let atlas = &self.front.gui.atlas;
+        let atlas = &self.gui.atlas;
         let [ax, ay, aw, ah] = layout.area;
         open.scroll.clamp(ay, ay + ah, layout.content);
         batch.text_styled(
@@ -285,24 +282,19 @@ impl Game<'_> {
 
     /// A left click on a dialog screen.
     pub(super) fn dialog_click(&mut self) -> Result<()> {
-        let cursor = self.front.cursor;
+        let cursor = self.cursor;
         if self.dialogs.warning {
             let (title, message, _) = warning_texts();
-            let answer = Confirm::new(
-                &self.front.gui.atlas.font,
-                self.gui_size(),
-                &title,
-                &message,
-            )
-            .answer_at(cursor);
+            let answer = Confirm::new(&self.gui.atlas.font, self.gui_size(), &title, &message)
+                .answer_at(cursor);
             match answer {
                 Some(true) => {
-                    self.front.audio.play_button_click();
+                    self.audio.play_button_click();
                     let reason = Text::translate("menu.custom_screen_info.disconnect", &[]);
                     return self.leave_server(Some(reason.plain()));
                 }
                 Some(false) => {
-                    self.front.audio.play_button_click();
+                    self.audio.play_button_click();
                     self.dialogs.warning = false;
                     if !self.dialog_open() {
                         self.dialog_closed();
@@ -320,7 +312,7 @@ impl Game<'_> {
                 ((h - 53.0) / 2.0).trunc() + 33.0,
             );
             if active && ui::hovered(cursor, bx, by, 200.0, 20.0) {
-                self.front.audio.play_button_click();
+                self.audio.play_button_click();
                 self.dialogs.waiting = None;
                 self.dialog_closed();
             }
@@ -331,11 +323,11 @@ impl Game<'_> {
         };
         let [wx, wy, ww, wh] = layout.warning;
         if ui::hovered(cursor, wx, wy, ww, wh) {
-            self.front.audio.play_button_click();
-            self.sim.dialogs.warning = true;
+            self.audio.play_button_click();
+            self.dialogs.warning = true;
             return Ok(());
         }
-        let Some(open) = self.sim.dialogs.open.as_mut() else {
+        let Some(open) = self.dialogs.open.as_mut() else {
             return Ok(());
         };
         let [_, ay, _, ah] = layout.area;
@@ -353,7 +345,7 @@ impl Game<'_> {
                     open.focus = Some(input);
                     if let Some(Some(edit)) = open.fields.get_mut(input) {
                         edit.focused = true;
-                        edit.click(&self.front.gui.atlas, cursor.0, false, false);
+                        edit.click(&self.gui.atlas, cursor.0, false, false);
                     }
                 }
                 Part::Check {
@@ -377,7 +369,7 @@ impl Game<'_> {
         let Some(action) = action else {
             return Ok(());
         };
-        self.front.audio.play_button_click();
+        self.audio.play_button_click();
         let Some(index) = action else {
             return Ok(());
         };
@@ -432,9 +424,9 @@ impl Game<'_> {
             }
             return Ok(());
         }
-        let ctrl = self.front.modifiers.control_key() || self.front.modifiers.super_key();
-        let shift = self.front.modifiers.shift_key();
-        let Some(open) = self.sim.dialogs.open.as_mut() else {
+        let ctrl = self.modifiers.control_key() || self.modifiers.super_key();
+        let shift = self.modifiers.shift_key();
+        let Some(open) = self.dialogs.open.as_mut() else {
             return Ok(());
         };
         if escape {
@@ -467,7 +459,7 @@ impl Game<'_> {
             return Ok(());
         };
         if let Some(shortcut) = shortcut {
-            edit.shortcut(shortcut, &mut self.front.clipboard);
+            edit.shortcut(shortcut, &mut self.clipboard);
             return Ok(());
         }
         if edit.key(key, ctrl, shift) {
@@ -484,7 +476,7 @@ impl Game<'_> {
         Ok(())
     }
 }
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     /// Whether a dialog screen takes the input.
     pub(super) fn dialog_open(&self) -> bool {
         let d = &self.dialogs;

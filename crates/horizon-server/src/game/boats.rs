@@ -217,7 +217,7 @@ impl BoatModels {
         }
     }
 }
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     fn fluid_height(&self, x: i32, y: i32, z: i32) -> Option<(f32, bool)> {
         self.fluid_height_of(x, y, z, Some(Fluid::Water))
     }

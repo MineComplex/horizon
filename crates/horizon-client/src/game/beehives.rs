@@ -3,7 +3,7 @@
 //! player breaks the hive or fire reaches it.
 use horizon_client::beehive::{self};
 
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     /// The hive's honey level and front, from its block state.
     pub(super) fn hive_state(&self, at: [i32; 3]) -> Option<(Option<i32>, [i32; 2])> {
         let state = self.world.block(at[0], at[1], at[2]);

@@ -3,7 +3,7 @@
 //! the server answers with `Entity.getPickResult`.
 use crate::hc::items::ItemStack;
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// `Entity.getPickResult` of the entity `id`: a mob's spawn egg, the item
     /// of a boat, minecart, armor stand, cushion, painting, item frame (the
     /// framed item when it holds one) or end crystal.

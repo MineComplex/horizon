@@ -236,7 +236,7 @@ const FOOTER: f32 = 60.0;
 /// ServerSelectionList: rows 305 wide and 36 high.
 const ROW_WIDTH: f32 = 305.0;
 const ROW_HEIGHT: f32 = 36.0;
-/// One row of the list: a saved server (this client lists no LAN worlds).
+/// One row of the list: a saved server.
 #[derive(Clone, Copy, Debug, PartialEq)]
 enum Row {
     Server(usize),
@@ -376,7 +376,7 @@ impl Screen {
         };
         match self {
             // JoinMultiplayerScreen's footer: two rows of buttons, 4 apart,
-            // centred in the 60-pixel footer. Join needs a server or LAN game
+            // centred in the 60-pixel footer. Join needs a server
             // selected (onSelectedChange), Edit and Delete a saved server.
             Self::List {
                 servers, selected, ..

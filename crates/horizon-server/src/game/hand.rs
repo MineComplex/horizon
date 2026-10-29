@@ -9,7 +9,7 @@ use crate::hc::{
     first_person::{Hand, HandWorld, Hit, SwingAnimation, UseResult, swing_duration},
 };
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// Opening a screen stops breaking before the next game tick (which may pause).
     pub(super) fn stop_mining(&mut self) {
         let mut destroying = std::mem::take(&mut self.clicks.destroying);
@@ -124,7 +124,7 @@ impl crate::game::Sim<'_> {
 
 /// The game as `first_person`'s world: the crosshair, breaking and attacking.
 struct GameHands<'g, 'a> {
-    game: &'g mut crate::game::Sim<'a>,
+    game: &'g mut crate::game::Server<'a>,
     error: Option<Box<dyn std::error::Error>>,
 }
 impl GameHands<'_, '_> {

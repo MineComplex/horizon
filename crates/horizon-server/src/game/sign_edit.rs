@@ -10,7 +10,7 @@ pub(super) struct SignEditor {
     pub front: bool,
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// `SignBlockEntity.getSlotPlayerIsFacing`: whether the player stands in
     /// front of the sign's text (within 90 degrees of its facing).
     fn facing_sign_front(&self, pos: (i32, i32, i32)) -> bool {
@@ -235,7 +235,7 @@ fn strip_formatting(input: &str) -> String {
     out
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// `SignBlockEntity.openTextEdit`'s turn: the player edits this side (the
     /// server then opens the editor on their client, `net_open_sign_editor`).
     pub(super) fn open_sign_editor(&mut self, pos: (i32, i32, i32), front: bool) {

@@ -9,7 +9,7 @@ use horizon_client::particles::{ParticleEngine, ParticleOptions, ParticleType};
 use horizon_client::pose::Pose;
 use horizon_core::{geometry::Vec3, random::RandomSource};
 
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     pub(super) fn tick_client_ambient(&mut self) {
         let mut events = Vec::new();
         let random = self.particles.level_random();
@@ -25,7 +25,7 @@ impl crate::game::Sim<'_> {
                             .add(&ParticleOptions::simple(ty), at, velocity);
                     }
                 }
-                // Each player of a LAN host makes its own.
+                // Each client makes its own.
                 MobEvent::LocalSound(name, at, volume, pitch) => {
                     self.sounds
                         .play_unshared(&format!("minecraft:{name}"), Some(at), volume, pitch)

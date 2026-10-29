@@ -14,7 +14,7 @@ fn is_campfire(name: &str) -> bool {
     name == "minecraft:campfire" || name == "minecraft:soul_campfire"
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// `CampfireBlock.useItemOn` with a held item that is a campfire recipe's
     /// input (`RecipePropertySet.CAMPFIRE_INPUT`): on a server level the food
     /// goes into the first free slot (`placeFood`), and the use is consumed

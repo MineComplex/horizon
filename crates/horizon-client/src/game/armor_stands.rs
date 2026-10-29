@@ -185,7 +185,7 @@ impl Game<'_> {
                 continue;
             };
             let (Some(r), Some(part)) = (
-                self.front.gui.atlas.sprites.get(texture.as_str()),
+                self.gui.atlas.sprites.get(texture.as_str()),
                 assets.player.get(layer),
             ) else {
                 continue;
@@ -195,7 +195,7 @@ impl Game<'_> {
             // EquipmentLayerRenderer: the trim layer over the armour.
             if let Some(r) = stack
                 .and_then(|s| assets.trim_texture(&asset, kind, s))
-                .and_then(|t| self.front.gui.atlas.sprites.get(&t.sprite()))
+                .and_then(|t| self.gui.atlas.sprites.get(&t.sprite()))
             {
                 out.push((part, [r.u0, r.v0, r.u1, r.v1], 0xFFFF_FFFF));
             }
@@ -249,11 +249,11 @@ impl Game<'_> {
         for t in wanted {
             let name = t.sprite();
             // Entries the atlas no longer has (rebuilt by a resource reload) are free.
-            let sprites = &self.front.gui.atlas.sprites;
-            self.sim.trim_slots.retain(|(n, _)| sprites.contains_key(n));
-            if let Some(i) = self.sim.trim_slots.iter().position(|e| e.0 == name) {
-                let e = self.sim.trim_slots.remove(i);
-                self.sim.trim_slots.push(e);
+            let sprites = &self.gui.atlas.sprites;
+            self.trim_slots.retain(|(n, _)| sprites.contains_key(n));
+            if let Some(i) = self.trim_slots.iter().position(|e| e.0 == name) {
+                let e = self.trim_slots.remove(i);
+                self.trim_slots.push(e);
                 continue;
             }
             let Some((w, h, rgba)) = t.generate(&self.armor_stand_assets.root) else {
@@ -264,12 +264,11 @@ impl Game<'_> {
                 Some(free) => free,
                 None => {
                     let (old, slot) = self.trim_slots.remove(0);
-                    self.front.gui.atlas.sprites.remove(&old);
+                    self.gui.atlas.sprites.remove(&old);
                     slot
                 }
             };
             let Some(area) = self
-                .front
                 .gui
                 .atlas
                 .sprites
@@ -281,12 +280,9 @@ impl Game<'_> {
             if w > area.w || h > area.h {
                 continue;
             }
-            let (aw, ah) = (
-                self.front.gui.atlas.width as f32,
-                self.front.gui.atlas.height as f32,
-            );
+            let (aw, ah) = (self.gui.atlas.width as f32, self.gui.atlas.height as f32);
             let (x, y) = ((area.u0 * aw).round(), (area.v0 * ah).round());
-            self.front.map_patches.push(horizon_client::font::Patch {
+            self.map_patches.push(horizon_client::font::Patch {
                 x: x as u32,
                 y: y as u32,
                 width: w,
@@ -301,7 +297,7 @@ impl Game<'_> {
                 w,
                 h,
             };
-            self.front.gui.atlas.sprites.insert(name.clone(), rect);
+            self.gui.atlas.sprites.insert(name.clone(), rect);
             self.trim_slots.push((name, slot));
         }
     }
@@ -313,7 +309,7 @@ impl Game<'_> {
         out: &mut Vec<Vertex>,
     ) {
         let assets = &self.armor_stand_assets;
-        let sprites = &self.front.gui.atlas.sprites;
+        let sprites = &self.gui.atlas.sprites;
         let uv_of = |name: &str| sprites.get(name).map(|r| [r.u0, r.v0, r.u1, r.v1]);
         let Some(wood) = uv_of("entity/armorstand/armorstand") else {
             return;
@@ -486,7 +482,7 @@ impl Game<'_> {
         }
     }
 }
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     /// The armor stand under the crosshair, its distance and the hit point.
     pub(super) fn armor_stand_hit(&self) -> Option<(usize, f64, [f64; 3])> {
         let eye = self.eye_position()?;
@@ -633,7 +629,7 @@ impl Game<'_> {
                 &profile,
                 false,
                 pose,
-                &self.front.gui.atlas.sprites,
+                &self.gui.atlas.sprites,
                 &self.item_host(),
                 &mut sink,
             );

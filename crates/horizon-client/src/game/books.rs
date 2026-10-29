@@ -88,12 +88,12 @@ impl Game<'_> {
         self.page_lines(&Text::literal(page))
     }
     fn page_lines(&self, page: &Text) -> Vec<Text> {
-        self.front.gui.atlas.font.split(page, 114.0)
+        self.gui.atlas.font.split(page, 114.0)
     }
     /// `BookViewScreen.mouseClicked`: the click event of the text under the
     /// cursor on the page.
     fn book_link_at(&self, page: &Text, left: f32) -> Option<horizon_client::text::ClickEvent> {
-        let (mx, my) = self.front.cursor;
+        let (mx, my) = self.cursor;
         let row = ((my - 32.0) / 9.0).floor();
         if row < 0.0 || row >= LINES as f32 {
             return None;
@@ -105,7 +105,7 @@ impl Game<'_> {
             return None;
         }
         for (c, style) in line.chars() {
-            x -= self.front.gui.atlas.font.advance(c, style);
+            x -= self.gui.atlas.font.advance(c, style);
             if x < 0.0 {
                 return style.click.clone();
             }
@@ -147,7 +147,7 @@ impl Game<'_> {
             }
             ClickEvent::CopyToClipboard(value) => {
                 use horizon_client::clipboard::Clipboard;
-                self.front.clipboard.set(&value);
+                self.clipboard.set(&value);
             }
             // BookViewScreen.handleClickEvent: the rest is
             // Screen.defaultHandleGameClickEvent's.
@@ -255,13 +255,13 @@ impl Game<'_> {
     }
     /// Ctrl+A/C/V/X: the title box while signing, else the page.
     pub(super) fn book_shortcut(&mut self, shortcut: horizon_client::clipboard::EditShortcut) {
-        let signing = matches!(self.sim.book, Some(BookScreen::Edit { signing: true, .. }));
+        let signing = matches!(self.book, Some(BookScreen::Edit { signing: true, .. }));
         if signing {
             if let Some(BookScreen::Edit {
                 title, title_edit, ..
-            }) = self.sim.book.as_mut()
+            }) = self.book.as_mut()
             {
-                title_edit.shortcut(shortcut, &mut self.front.clipboard);
+                title_edit.shortcut(shortcut, &mut self.clipboard);
                 title.clone_from(&title_edit.value);
             }
             return;
@@ -274,8 +274,8 @@ impl Game<'_> {
             )),
             _ => None,
         };
-        if let Some(BookScreen::Edit { page_edit, .. }) = self.sim.book.as_mut() {
-            page_edit.shortcut(shortcut, &mut self.front.clipboard);
+        if let Some(BookScreen::Edit { page_edit, .. }) = self.book.as_mut() {
+            page_edit.shortcut(shortcut, &mut self.clipboard);
         }
         self.page_keep(before);
     }
@@ -340,14 +340,14 @@ impl Game<'_> {
         let (start, end) = rows[next];
         let chars: Vec<char> = text.chars().collect();
         let slice: String = chars[start..end].iter().collect();
-        let pos = start + self.front.gui.atlas.font.fit(&slice, x);
+        let pos = start + self.gui.atlas.font.fit(&slice, x);
         if let Some(BookScreen::Edit { page_edit, .. }) = self.book.as_mut() {
             page_edit.set_cursor(pos, shift);
         }
     }
     /// Wrapped rows of a page as character ranges, the same breaks as `font.split`.
     fn page_rows(&self, page: &str) -> Vec<(usize, usize)> {
-        let font = &self.front.gui.atlas.font;
+        let font = &self.gui.atlas.font;
         let chars: Vec<char> = page.chars().collect();
         let mut rows = Vec::new();
         let mut start = 0;
@@ -397,7 +397,7 @@ impl Game<'_> {
             if cursor <= end || i + 1 == rows.len() {
                 let take = cursor.saturating_sub(start).min(end.saturating_sub(start));
                 let prefix: String = chars.iter().skip(start).take(take).collect();
-                return (self.front.gui.atlas.font.width(&prefix), i);
+                return (self.gui.atlas.font.width(&prefix), i);
             }
         }
         (0.0, 0)
@@ -409,20 +409,20 @@ impl Game<'_> {
         let (start, end) = rows[line];
         let chars: Vec<char> = page.chars().collect();
         let slice: String = chars[start..end].iter().collect();
-        start + self.front.gui.atlas.font.fit(&slice, local_x.max(0.0))
+        start + self.gui.atlas.font.fit(&slice, local_x.max(0.0))
     }
     /// A click on the centred title (`EditBox.onClick`).
     fn book_title_click(&mut self, field_x: f32, mx: f32) {
         let shift = self.has_shift_down();
         let Some(BookScreen::Edit {
             title, title_edit, ..
-        }) = self.sim.book.as_mut()
+        }) = self.book.as_mut()
         else {
             return;
         };
-        let tx = field_x + ((114.0 - self.front.gui.atlas.font.width(title)) / 2.0).floor();
+        let tx = field_x + ((114.0 - self.gui.atlas.font.width(title)) / 2.0).floor();
         let rel = (mx - tx).max(0.0);
-        let pos = self.front.gui.atlas.font.fit(title, rel);
+        let pos = self.gui.atlas.font.fit(title, rel);
         title_edit.set_cursor(pos, shift);
     }
     /// A click on the open page.
@@ -440,7 +440,7 @@ impl Game<'_> {
     pub(super) fn book_click(&mut self, size: [u32; 2]) {
         let b = HudBatch::new(size);
         let (w, left) = (b.width, ((b.width - 192.0) / 2.0).floor());
-        let (mx, my) = self.front.cursor;
+        let (mx, my) = self.cursor;
         let inside =
             |x: f32, y: f32, bw: f32, bh: f32| mx >= x && my >= y && mx < x + bw && my < y + bh;
         let click = |game: &mut Self| {
@@ -516,9 +516,9 @@ impl Game<'_> {
     }
     pub(super) fn draw_book(&self, batch: &mut HudBatch) {
         let Some(book) = &self.book else { return };
-        let atlas = &self.front.gui.atlas;
+        let atlas = &self.gui.atlas;
         let (w, h) = (batch.width, batch.height);
-        let (mx, my) = self.front.cursor;
+        let (mx, my) = self.cursor;
         let hover =
             |x: f32, y: f32, bw: f32, bh: f32| mx >= x && my >= y && mx < x + bw && my < y + bh;
         batch.fill(atlas, 0.0, 0.0, w, h, rgba(16, 16, 16, 160));
@@ -775,7 +775,7 @@ impl Game<'_> {
         }
     }
 }
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     /// The screen a book in hand opens: `BookEditScreen` for a book and
     /// quill, `BookViewScreen` for a written book.
     fn book_screen(&self, stack: &ItemStack) -> Option<BookScreen> {

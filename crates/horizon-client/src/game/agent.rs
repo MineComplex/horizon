@@ -314,13 +314,13 @@ pub(super) enum Handled {
 
 impl Game<'_> {
     fn need_world(&self) -> Result<()> {
-        if self.front.title.is_some() {
+        if self.title.is_some() {
             return Err("no world open (title screen); use: open WORLD [SEED] [creative]".into());
         }
         Ok(())
     }
     fn playing(&self) -> Result<()> {
-        if self.front.title.is_some() {
+        if self.title.is_some() {
             return Err("no world open (title screen); use: open WORLD [SEED] [creative]".into());
         }
         if self.player.is_none() {
@@ -339,7 +339,7 @@ impl Game<'_> {
         if self.dialog_open() {
             return "dialog";
         }
-        if self.front.title.is_some() {
+        if self.title.is_some() {
             return "title";
         }
         if self.book.is_some() {
@@ -383,7 +383,7 @@ impl Game<'_> {
                 "fall_flying": p.fall_flying,
                 "sneaking": self.keys.contains(&KeyCode::ShiftLeft),
                 "sprinting": p.sprinting,
-                "fov_modifier": self.front.view.fov_modifier,
+                "fov_modifier": self.view.fov_modifier,
                 "health": p.health.health(),
                 "absorption": p.health.absorption(),
                 // The hurt animation's ticks left (the camera's hurt tilt).
@@ -401,8 +401,8 @@ impl Game<'_> {
         json!({
             "dialog": self.dialog_status(),
             "screen": self.screen_label(),
-            "menu": self.front.title.as_ref().map(|_| self.title_value()),
-            "world": (self.front.title.is_none())
+            "menu": self.title.as_ref().map(|_| self.title_value()),
+            "world": (self.title.is_none())
                 .then(|| self.server_world_name().unwrap_or_else(|| self.level.name.clone())),
             "dimension": self.dim.id(),
             "gamemode": format!("{:?}", self.mode).to_lowercase(),
@@ -416,10 +416,10 @@ impl Game<'_> {
             "swings": self.swings_started,
             "time": { "day_time": self.world.day_time, "day": self.world.day_time.div_euclid(24000), "time_of_day": self.world.day_time.rem_euclid(24000) },
             "weather": { "raining": self.world.weather.raining, "thundering": self.world.weather.thundering },
-            "paused": self.pause,
+            "paused": false,
             // Mouse movement turns the camera (`apply_mouse_look`): the real
             // pointer is grabbed, or an agent's `mouse-move` stands in for it.
-            "pointer_grabbed": self.front.captured || self.agent_pointer,
+            "pointer_grabbed": self.captured || self.agent_pointer,
             "player": player,
             "selected": self.selected + 1,
             "held": self.held().map(|s| self.stack_value(s)),
@@ -431,7 +431,7 @@ impl Game<'_> {
 
     fn title_value(&self) -> Value {
         use horizon_client::title::Mode;
-        let Some(title) = &self.front.title else {
+        let Some(title) = &self.title else {
             return Value::Null;
         };
         match &title.mode {
@@ -461,10 +461,10 @@ impl Game<'_> {
             v["chat_input"] = json!(chat.input.value);
             v["chat_suggestions"] = json!(chat.suggestions_visible());
         }
-        if self.front.title.is_some() {
+        if self.title.is_some() {
             v["menu"] = self.title_value();
         }
-        if self.screen == Screen::Inventory && self.front.title.is_none() {
+        if self.screen == Screen::Inventory && self.title.is_none() {
             let mut slots = Vec::new();
             for i in self.slots() {
                 let stack = if i == 200 {
@@ -544,9 +544,8 @@ impl Game<'_> {
         points: &[(f32, f32)],
         button: MouseButton,
     ) -> Result<()> {
-        let id = self.front.window.as_ref().ok_or("no window yet")?.id();
+        let id = self.window.as_ref().ok_or("no window yet")?.id();
         let scale = self
-            .front
             .renderer
             .as_ref()
             .map(|r| horizon_client::hud::HudBatch::new([r.config.width, r.config.height]).scale)
@@ -1100,9 +1099,8 @@ impl Game<'_> {
             "scroll-at" => {
                 let (x, y) = (a.f64(0, "X")? as f32, a.f64(1, "Y")? as f32);
                 let steps = a.f64(2, "STEPS")? as f32;
-                let id = self.front.window.as_ref().ok_or("no window yet")?.id();
+                let id = self.window.as_ref().ok_or("no window yet")?.id();
                 let scale = self
-                    .front
                     .renderer
                     .as_ref()
                     .map(|r| {
@@ -1142,7 +1140,7 @@ impl Game<'_> {
                 self.synth_click(event_loop, x, y, button)?;
                 ok(json!({ "ok": true, "screen": self.screen_label() }))
             }
-            "type" if self.front.title.is_some() => {
+            "type" if self.title.is_some() => {
                 // type [--field name|seed] [--replace] TEXT on the title screens.
                 let mut text = line
                     .trim_start()
@@ -1165,7 +1163,7 @@ impl Game<'_> {
                         break;
                     }
                 }
-                let title = self.front.title.as_mut().ok_or("no title screen")?;
+                let title = self.title.as_mut().ok_or("no title screen")?;
                 if field.is_some() {
                     return Err("--field: the title screen has no named fields".into());
                 }
@@ -1337,7 +1335,7 @@ impl Game<'_> {
         let due = (g.total.0 * f, g.total.1 * f);
         let step = (due.0 - g.fed.0, due.1 - g.fed.1);
         if step != (0.0, 0.0) {
-            self.front.mouse.add_motion(step.0, step.1);
+            self.mouse.add_motion(step.0, step.1);
             self.agent_pointer = true;
             g.fed = due;
             g.fed_frame = self.frames;
@@ -1382,7 +1380,7 @@ impl Game<'_> {
     /// One frame of a task: Some(reply) when it is over.
     fn step_task(&mut self, kind: &mut TaskKind, timed_out: bool) -> Option<Value> {
         // Leaving the world (death, a screen, the title) ends movement tasks.
-        let interrupted = if self.front.title.is_some() || self.player.is_none() {
+        let interrupted = if self.title.is_some() || self.player.is_none() {
             Some("the world closed")
         } else if self.screen == Screen::Dead {
             Some("the player died")
@@ -1467,8 +1465,7 @@ impl Game<'_> {
                     (Some(p), Some(b)) => self.world.block(p[0], p[1], p[2]) != b,
                     _ => false,
                 };
-                // A client of a server (single player's server thread, a LAN
-                // player) sees the block once the server's answer comes.
+                // The client sees the block once the server's answer comes.
                 if *place
                     && !changed
                     && self.remote.is_some()
@@ -1589,7 +1586,7 @@ impl Game<'_> {
         }))
     }
 }
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     pub(super) fn state_string(&self, state: BlockStateId) -> String {
         let Some(s) = self.pack.assets.registry.state(state) else {
             return "?".into();

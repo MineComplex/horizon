@@ -86,7 +86,7 @@ pub(super) enum AnchorUse {
     Other,
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     pub(super) fn is_anchor(&self, state: BlockStateId) -> bool {
         &*self.res.facts().get(state).name == "minecraft:respawn_anchor"
     }

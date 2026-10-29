@@ -19,7 +19,7 @@ use std::{cell::RefCell, collections::HashMap};
 
 /// The game's answers to what the resolver cannot read from the stack.
 pub(super) struct Env<'a, 'g> {
-    game: &'a crate::game::Sim<'g>,
+    game: &'a crate::game::Game<'g>,
 }
 impl ItemEnv for Env<'_, '_> {
     fn potion_effect_color(&self, contents: &Value) -> Option<i32> {
@@ -197,7 +197,7 @@ impl Game<'_> {
     pub(super) fn item_host(&self) -> Host<'_> {
         Host {
             banners: &self.res.stations().banners,
-            sprites: &self.front.gui.atlas.sprites,
+            sprites: &self.gui.atlas.sprites,
             skins: &self.skin_downloads,
             profiles: &self.skin_profiles,
         }
@@ -209,7 +209,7 @@ impl Game<'_> {
         item_render::gui::draw(
             &state,
             &self.pack.item_renderer,
-            &self.front.gui.atlas.sprites,
+            &self.gui.atlas.sprites,
             &self.item_host(),
             batch,
             x,
@@ -221,8 +221,7 @@ impl Game<'_> {
     }
     /// The `GLINT_TEXTURING` inputs the atlas and options provide.
     pub(super) fn glint(&self) -> Option<item_render::Glint> {
-        self.front
-            .gui
+        self.gui
             .atlas
             .sprites
             .get("misc/enchanted_glint_item")
@@ -251,7 +250,7 @@ impl Game<'_> {
         };
         state.submit(
             &self.pack.item_renderer,
-            &self.front.gui.atlas.sprites,
+            &self.gui.atlas.sprites,
             &self.item_host(),
             pose,
             &mut sink,
@@ -273,7 +272,7 @@ impl Game<'_> {
         };
         state.submit(
             &self.pack.item_renderer,
-            &self.front.gui.atlas.sprites,
+            &self.gui.atlas.sprites,
             &self.item_host(),
             pose,
             &mut sink,
@@ -352,7 +351,7 @@ impl Game<'_> {
         }
     }
 }
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     pub(super) fn item_env(&self) -> Env<'_, '_> {
         Env { game: self }
     }

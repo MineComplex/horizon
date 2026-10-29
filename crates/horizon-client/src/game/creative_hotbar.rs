@@ -2,7 +2,7 @@
 //! load key and press a hotbar key (`Minecraft.handleKeybinds`).
 use horizon_client::{hotbar, keybinds, text::Text};
 
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     /// Whether the key bound to `mapping` is held.
     pub(super) fn mapped_key_down(&self, mapping: &str) -> bool {
         keybinds::key_code(self.settings.keys.get(mapping))

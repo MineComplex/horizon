@@ -4,7 +4,7 @@ pub use crate::hc::world_data::{TimeMarker, WorldClock};
 use crate::hc::{gamerules::GameRules, text::Text};
 use std::collections::BTreeMap;
 
-/// The local player's name (offline single player).
+/// The name of the game's own player (the console, harnesses).
 pub const PLAYER_NAME: &str = "Player";
 
 /// What a server keeps of the chat state: the death message key a command set.
@@ -14,13 +14,13 @@ pub struct UiState {
     pub death_cause: Option<String>,
 }
 
-impl crate::game::Sim<'_> {
-    /// `PlayerList.isOp` for the single-player owner: the world's Allow Commands.
+impl crate::game::Server<'_> {
+    /// The world's `allowCommands` (level.dat).
     pub(super) fn allow_commands(&self) -> bool {
         self.level.allow_commands == Some(true)
     }
-    /// Commands the game issues itself (the server console, harnesses, the
-    /// control socket) run at the owner's level whatever Allow Commands says.
+    /// Commands the server issues itself (the console, harnesses, the
+    /// control socket) run at level 4 whatever `allowCommands` says.
     pub(super) fn as_console<T>(&mut self, f: impl FnOnce(&mut Self) -> T) -> T {
         let level = std::mem::replace(&mut self.world_data.registries.permission, 4);
         let out = f(self);
@@ -145,13 +145,13 @@ impl crate::game::Sim<'_> {
     }
 }
 
-/// `IntegratedServer.getProfilePermissions` for the owner: `OWNER` (4) when
-/// commands are allowed, else `ALL` (0).
-fn owner_permission(allow_commands: bool) -> u8 {
+/// The level of the server's own commands outside the console: 4 with the
+/// world's `allowCommands`, else 0.
+fn own_permission(allow_commands: bool) -> u8 {
     if allow_commands { 4 } else { 0 }
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// Load per-world command state when a world opens.
     pub(crate) fn load_world_state(&mut self) {
         self.world_data.rules = GameRules::load(&self.world_root);
@@ -186,10 +186,10 @@ impl crate::game::Sim<'_> {
     }
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// Registry contents for argument parsing (built when a world opens).
     pub(crate) fn build_registries(&mut self) {
-        let permission = owner_permission(self.allow_commands());
+        let permission = own_permission(self.allow_commands());
         let reg = &mut self.world_data.registries;
         reg.permission = permission;
         {

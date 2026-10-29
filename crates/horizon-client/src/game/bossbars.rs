@@ -8,8 +8,6 @@ impl Game<'_> {
 
     /// `ClientPacketListener.handleBossUpdate`.
     pub(super) fn apply_boss_event(&mut self, packet: &play::BossEvent) {
-        self.front
-            .boss_overlay
-            .apply(packet, boss_overlay::now_millis());
+        self.boss_overlay.apply(packet, boss_overlay::now_millis());
     }
 }

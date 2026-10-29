@@ -4,7 +4,7 @@ use crate::hc::command::args::GameMode;
 use crate::hc::text::Text;
 use serde_json::{Value, json};
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// The hurts and melee attacks each player logged since the last call
     /// (`PlayerMotion::hurt_log`, `attack_log`), taken out.
     pub(crate) fn control_hurt_log(&mut self) -> Value {
@@ -51,7 +51,7 @@ impl crate::game::Sim<'_> {
     }
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// A server's `flush_to_window`: it has no window, so what the game queued for one goes.
     pub(crate) fn drop_window_output(&mut self) {
         self.sounds.queue.clear();
@@ -60,7 +60,7 @@ impl crate::game::Sim<'_> {
     }
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// `isEyeInFluid(WATER)`: the eye inside the water of its block column.
     pub(crate) fn eye_in_water(&self, x: f64, eye_y: f64, z: f64) -> bool {
         let (bx, by, bz) = (x.floor() as i32, eye_y.floor() as i32, z.floor() as i32);
@@ -78,7 +78,7 @@ impl crate::game::Sim<'_> {
     }
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     pub(crate) fn state_string(&self, state: BlockStateId) -> String {
         let Some(s) = self.pack.assets.registry.state(state) else {
             return "?".into();
@@ -95,10 +95,10 @@ impl crate::game::Sim<'_> {
     }
 }
 
-impl crate::game::Sim<'_> {}
+impl crate::game::Server<'_> {}
 
-impl crate::game::Sim<'_> {
-    /// `ServerboundChangeGameModePacket` handled by the integrated server:
+impl crate::game::Server<'_> {
+    /// `ServerboundChangeGameModePacket` (F3+F4, an operator's):
     /// `GameModeCommand.setGameMode` with its feedback.
     pub(crate) fn change_game_mode(&mut self, mode: GameMode) {
         if self.set_game_mode(mode) {
@@ -108,7 +108,7 @@ impl crate::game::Sim<'_> {
     }
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// Their kind and place, for `status`.
     pub(crate) fn projectiles_status(&self) -> Vec<serde_json::Value> {
         use serde_json::json;
@@ -147,7 +147,7 @@ impl crate::game::Sim<'_> {
     }
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// `SpyglassItem.use`: start scoping.
     pub(crate) fn use_spyglass(&mut self) {
         if self.using.is_none() {
@@ -159,7 +159,7 @@ impl crate::game::Sim<'_> {
     }
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// `horizon-ctl save` and `save-all`.
     pub(crate) fn control_save(&mut self, all: bool) -> Result<()> {
         if all {

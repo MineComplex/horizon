@@ -166,7 +166,7 @@ impl Game<'_> {
             .map(hud_overlays::EffectIcon::from)
             .collect();
         let draws = hud_overlays::effects(batch.width as i32, false, &icons);
-        hud_layout::paint(batch, &self.front.gui.atlas, &draws);
+        hud_layout::paint(batch, &self.gui.atlas, &draws);
     }
     /// `EffectsInInventory`: panels to the right of survival/creative inventory.
     pub(super) fn draw_inventory_effects(
@@ -182,19 +182,19 @@ impl Game<'_> {
             &self.potions.effects.list,
             self.clock.rate(),
             &|key| self.pack.names.display_get(key),
-            &|text| self.front.gui.atlas.font.width(text).ceil() as i32,
+            &|text| self.gui.atlas.font.width(text).ceil() as i32,
         );
         if let Some(lines) = inventory_effects::paint(
             batch,
-            &self.front.gui.atlas,
+            &self.gui.atlas,
             &panels,
-            [self.front.cursor.0 as i32, self.front.cursor.1 as i32],
+            [self.cursor.0 as i32, self.cursor.1 as i32],
         ) {
-            self.draw_tooltip_lines(batch, &lines, self.front.cursor.0, self.front.cursor.1);
+            self.draw_tooltip_lines(batch, &lines, self.cursor.0, self.cursor.1);
         }
     }
 }
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     /// A client's own effects (`LivingEntity.tickEffects` on the client,
     /// `MobEffectInstance.tickClient`): they count down, and the server
     /// removes them. Their modifiers and flags move the predicted player.

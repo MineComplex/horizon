@@ -21,7 +21,7 @@ use horizon_client::Result;
 use serde_json::Value;
 
 /// The client's side: a test's client asks its server (`--server-control`).
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     /// Ask the server this client plays on `as NAME words`: None when the
     /// client was not given the server's control endpoint.
     pub(super) fn ask_server(&self, words: &str) -> Option<Result<Value>> {

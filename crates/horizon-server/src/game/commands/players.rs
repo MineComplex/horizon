@@ -26,7 +26,7 @@ fn mode_name(id: i32) -> &'static str {
     }
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// The player `conn`, while the hub is in `self.network`.
     pub(in crate::game) fn command_player(&self, conn: u32) -> Option<&ServerPlayer> {
         self.network.as_ref()?.hub.player(conn)

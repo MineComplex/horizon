@@ -159,11 +159,11 @@ impl Game<'_> {
         if let Some((station, item)) = recipe {
             // RecipeToast: black description under a purple title, the
             // station at 0.6 scale in the corner over the cycling result.
-            let atlas = &self.front.gui.atlas;
+            let atlas = &self.gui.atlas;
             batch.sprite(atlas, "gui/sprites/toast/recipe", x, y);
             let title = self.translate("recipe.toast.title", "New Recipe(s) Unlocked!");
             let description = self.translate("recipe.toast.description", "Check your recipe book");
-            let atlas = &self.front.gui.atlas;
+            let atlas = &self.gui.atlas;
             batch.text(atlas, &title, x + 30.0, y + 7.0, 0xFF50_0050, false);
             batch.text(atlas, &description, x + 30.0, y + 18.0, 0xFF00_0000, false);
             let start = batch.vertices.len();
@@ -172,7 +172,7 @@ impl Game<'_> {
             self.draw_item_model(batch, &item, x + 8.0, y + 8.0);
             return;
         }
-        let atlas = &self.front.gui.atlas;
+        let atlas = &self.gui.atlas;
         batch.sprite(atlas, "gui/sprites/toast/advancement", x, y);
         let (key, color) = match frame {
             Frame::Task => ("advancements.toast.task", 0xFF00_FFFF),
@@ -191,7 +191,7 @@ impl Game<'_> {
         self.draw_item(batch, &ItemStack::new(&icon, 1), x + 8.0, y + 8.0);
     }
 }
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     /// The slots held by shown advancement, recipe and pack toasts, as bits.
     pub(super) fn toast_slots_used(&self) -> u32 {
         let packs = self.server_packs.toast_slots();
@@ -203,7 +203,7 @@ impl crate::game::Sim<'_> {
             .fold(0, |used, slot| used | 1 << slot)
     }
 }
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     /// `ClientAdvancements.update` (ClientboundUpdateAdvancementsPacket):
     /// the server's advancements replace or join the tree, each changed one
     /// takes the progress sent, and one just done shows its toast. `icons`

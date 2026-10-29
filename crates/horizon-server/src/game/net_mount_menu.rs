@@ -23,7 +23,7 @@ pub(super) struct PlayerMount {
     sent: Option<(Vec<Option<ItemStack>>, Option<ItemStack>)>,
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// `ServerPlayer.openHorseInventory` for mount `mob`: the open menu
     /// closes, the client gets the mount screen and the menu's slots.
     pub(super) fn net_open_mount(&mut self, net: &mut Network, conn: u32, mob: u32) {
@@ -142,7 +142,7 @@ impl crate::game::Sim<'_> {
     fn net_mount_store(&mut self, index: usize, columns: usize, menu: &Menu) {
         let (_, body, _) = self.mount_contents(index);
         let body = body.map(|_| menu.slot(1).cloned());
-        let items = crate::game::Sim::net_store_slots(menu, columns);
+        let items = crate::game::Server::net_store_slots(menu, columns);
         self.mount_store(index, menu.slot(0).cloned(), body, items);
     }
     /// `AbstractContainerMenu.removed` of the player's mount menu (`window`;
@@ -209,7 +209,7 @@ impl crate::game::Sim<'_> {
     }
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// The engine menu's mount slots back on mount `index`.
     pub(crate) fn net_store_slots(menu: &Menu, columns: usize) -> Vec<Option<ItemStack>> {
         (0..columns * 3)

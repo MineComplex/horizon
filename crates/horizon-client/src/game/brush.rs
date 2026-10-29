@@ -5,7 +5,7 @@ use super::{Hit, view_vector};
 use horizon_client::particles::{ParticleOptions, ParticleType};
 use horizon_core::random::RandomSource;
 
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     /// `BrushItem.spawnDustParticles`.
     pub(super) fn brush_dust(&mut self, hit: &Hit, off_hand: bool) {
         let state = self.world.block(hit.pos[0], hit.pos[1], hit.pos[2]);

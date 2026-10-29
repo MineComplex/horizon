@@ -41,7 +41,7 @@ impl Game<'_> {
         (seconds.max(0.0) * 20.0).floor() as u32
     }
 }
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     /// `Player.getProjectile` for `weapon` (`projectile_slot`).
     pub(super) fn projectile_slot(&self, weapon: &str) -> Option<usize> {
         let hands = [OFFHAND_SLOT, self.selected].map(|slot| (slot, self.stack_in(slot)));

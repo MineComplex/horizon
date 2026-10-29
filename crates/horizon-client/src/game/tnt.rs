@@ -140,7 +140,7 @@ impl Game<'_> {
                     .pack
                     .layer_names
                     .get(&face.layer)
-                    .and_then(|name| self.front.gui.atlas.sprites.get(name).copied());
+                    .and_then(|name| self.gui.atlas.sprites.get(name).copied());
             }
         }
         let range = super::entity_culling::default_range(

@@ -1,4 +1,3 @@
-
 //! Fishing: `FishingRodItem.use` (cast / reel in), the `FishingHook` (flight,
 //! bobbing, lure and bite timers, open water, hooking mobs, retrieving the
 //! `gameplay/fishing` loot) and `FishingHookRenderer` (bobber and line).
@@ -64,7 +63,7 @@ fn bounds(p: Vec3) -> Aabb {
 fn triangle(r: &mut impl RandomSource, mode: f64, deviation: f64) -> f64 {
     mode + deviation * (f64::from(r.next_float()) - f64::from(r.next_float()))
 }
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     fn holds_rod(&self) -> bool {
         self.held()
             .is_some_and(|s| &*s.item == "minecraft:fishing_rod")
@@ -682,7 +681,7 @@ impl crate::game::Sim<'_> {
         self.network = Some(net);
     }
 }
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// The hooks drawn here, with their owners' ids (0 for this player's own).
     pub(super) fn hooks_status(&self) -> Vec<serde_json::Value> {
         let at = |p: Vec3| [p.x, p.y, p.z];
@@ -732,7 +731,7 @@ impl Hook {
     }
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// The hooks players track: the game's and each player's in the level.
     pub(super) fn net_hook_states(
         &self,

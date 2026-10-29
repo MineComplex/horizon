@@ -80,7 +80,7 @@ impl Game<'_> {
             let in_water =
                 horizon_client::fog::fog_type(&self.world, self.res.facts(), eye, self.forward())
                     == FogType::Water;
-            return self.front.fog.water_vision(in_water);
+            return self.fog.water_vision(in_water);
         }
         0.0
     }
@@ -91,7 +91,7 @@ impl Game<'_> {
 
     // ---- entity events ----
 }
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     fn state_property(&self, state: BlockStateId, key: &str) -> Option<&str> {
         self.pack
             .assets

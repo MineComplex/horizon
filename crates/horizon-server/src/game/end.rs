@@ -79,7 +79,7 @@ fn adopt_saved_exit(entity: &mut EndGateway, (exit, exact): ([i32; 3], bool)) ->
 }
 
 /// The end of `getPortalPosition`: the exit itself when the teleport is exact,
-/// else the spot [`crate::game::Sim::resolve_gateway`] finds around it (`findExitPosition`).
+/// else the spot [`crate::game::Server::resolve_gateway`] finds around it (`findExitPosition`).
 fn exit_target(exit: [i32; 3], exact: bool, find: impl FnOnce([i32; 3]) -> [i32; 3]) -> [i32; 3] {
     if exact { exit } else { find(exit) }
 }
@@ -198,7 +198,7 @@ impl EyeOfEnder {
     }
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     pub(super) fn block_name(&self, p: [i32; 3]) -> std::sync::Arc<str> {
         self.res
             .facts()
@@ -704,7 +704,7 @@ impl crate::game::Sim<'_> {
     }
     /// Where `gateway` leads (TheEndGatewayBlockEntity.getPortalPosition):
     /// its exit, or the search for one, and the spot to load before either
-    /// is resolved ([`crate::game::Sim::resolve_gateway`]).
+    /// is resolved ([`crate::game::Server::resolve_gateway`]).
     pub(super) fn gateway_job(&mut self, gateway: [i32; 3]) -> (GatewayJob, Vec3) {
         let mut known = self.gateway_exits().get(&gateway).copied();
         // Once the gateway's chunk is loaded its block entity is the source of truth: an exit the

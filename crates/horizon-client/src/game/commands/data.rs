@@ -2,7 +2,7 @@
 //! (`KeyboardHandler.copyRecreateCommand` without the server's data).
 use horizon_world::nbt::Tag;
 
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     /// The mob as the client has it, riders under `Passengers` (`saveWithoutId`).
     pub(in crate::game) fn entity_nbt(&mut self, id: u32) -> Option<Tag> {
         let i = self.mobs.iter().position(|m| m.id == id)?;

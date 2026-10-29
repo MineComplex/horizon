@@ -47,23 +47,12 @@ pub enum Dimension {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Play {
-    Singleplayer,
-    /// A server or someone else's LAN world. Its address and name are never shown.
-    Multiplayer,
-    /// This world is open to LAN or friends; `players` counts the game.
-    Hosting {
-        players: usize,
-    },
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Status {
     /// The player turned Rich Presence off: the activity is cleared.
     Off,
     Menus,
+    /// On a server (its address and name are never shown).
     World {
-        play: Play,
         dimension: Dimension,
         mode: GameMode,
     },
@@ -227,14 +216,10 @@ fn run() {
 /// The activity Discord shows for `status`; `None` clears it.
 fn activity(status: Status, since: Option<u64>) -> Option<Value> {
     let mut assets = json!({"large_image": "horizon", "large_text": "Horizon"});
-    let (details, state, party) = match status {
+    let (details, state) = match status {
         Status::Off => return None,
-        Status::Menus => ("In the menus", None, None),
-        Status::World {
-            play,
-            dimension,
-            mode,
-        } => {
+        Status::Menus => ("In the menus", None),
+        Status::World { dimension, mode } => {
             if MODE_IMAGES {
                 let (key, text) = match mode {
                     GameMode::Survival => ("survival", "Survival"),
@@ -250,12 +235,7 @@ fn activity(status: Status, since: Option<u64>) -> Option<Value> {
                 Dimension::Nether => "In the Nether",
                 Dimension::End => "In the End",
             };
-            let (details, party) = match play {
-                Play::Singleplayer => ("Singleplayer", None),
-                Play::Multiplayer => ("Multiplayer", None),
-                Play::Hosting { players } => ("Hosting a world", Some(players)),
-            };
-            (details, Some(place), party)
+            ("Multiplayer", Some(place))
         }
     };
     let mut a = json!({"details": details, "assets": assets});
@@ -264,13 +244,6 @@ fn activity(status: Status, since: Option<u64>) -> Option<Value> {
     }
     if let Some(start) = since {
         a["timestamps"] = json!({"start": start});
-    }
-    if let Some(players) = party {
-        let max = crate::server_net::MAX_PLAYERS;
-        a["party"] = json!({
-            "id": format!("horizon-{}", std::process::id()),
-            "size": [players.clamp(1, max), max],
-        });
     }
     Some(a)
 }
@@ -441,9 +414,8 @@ fn open(path: &std::path::Path) -> io::Result<Box<dyn Pipe>> {
 mod tests {
     use super::*;
 
-    fn world(play: Play, dimension: Dimension) -> Status {
+    fn world(dimension: Dimension) -> Status {
         Status::World {
-            play,
             dimension,
             mode: GameMode::Survival,
         }
@@ -520,22 +492,16 @@ mod tests {
         assert!(menus.get("state").is_none() && menus.get("timestamps").is_none());
         assert_eq!(menus["assets"]["large_image"], "horizon");
 
-        let single = activity(world(Play::Singleplayer, Dimension::Nether), Some(1000)).unwrap();
-        assert_eq!(single["details"], "Singleplayer");
-        assert_eq!(single["state"], "In the Nether");
-        assert_eq!(single["timestamps"]["start"], 1000);
-        assert!(single.get("party").is_none());
-        assert!(single["assets"].get("small_image").is_none());
+        let nether = activity(world(Dimension::Nether), Some(1000)).unwrap();
+        assert_eq!(nether["details"], "Multiplayer");
+        assert_eq!(nether["state"], "In the Nether");
+        assert_eq!(nether["timestamps"]["start"], 1000);
+        assert!(nether.get("party").is_none());
+        assert!(nether["assets"].get("small_image").is_none());
 
-        let multi = activity(world(Play::Multiplayer, Dimension::End), Some(5)).unwrap();
-        assert_eq!(multi["details"], "Multiplayer");
-        assert_eq!(multi["state"], "In the End");
-
-        let host = world(Play::Hosting { players: 3 }, Dimension::Overworld);
-        let host = activity(host, Some(5)).unwrap();
-        assert_eq!(host["details"], "Hosting a world");
-        assert_eq!(host["state"], "In the Overworld");
-        assert_eq!(host["party"]["size"], json!([3, 8]));
+        let end = activity(world(Dimension::End), Some(5)).unwrap();
+        assert_eq!(end["details"], "Multiplayer");
+        assert_eq!(end["state"], "In the End");
     }
 
     #[test]
@@ -545,15 +511,14 @@ mod tests {
             since: None,
         };
         assert!(!w.update(Status::Menus, 10));
-        assert!(w.update(world(Play::Singleplayer, Dimension::Overworld), 20));
+        assert!(w.update(world(Dimension::Overworld), 20));
         assert_eq!(w.since, Some(20));
-        // Another dimension, opening to LAN: the same visit.
-        assert!(w.update(world(Play::Singleplayer, Dimension::Nether), 30));
-        assert!(w.update(world(Play::Hosting { players: 1 }, Dimension::Nether), 40));
+        // Another dimension: the same visit.
+        assert!(w.update(world(Dimension::Nether), 30));
         assert_eq!(w.since, Some(20));
         assert!(w.update(Status::Menus, 50));
         assert_eq!(w.since, None);
-        assert!(w.update(world(Play::Multiplayer, Dimension::Overworld), 60));
+        assert!(w.update(world(Dimension::Overworld), 60));
         assert_eq!(w.since, Some(60));
         assert!(w.update(Status::Off, 70));
         assert_eq!(w.since, None);
@@ -609,7 +574,7 @@ mod tests {
             nonce: 0,
         };
         client.handshake().unwrap();
-        let shown = activity(world(Play::Singleplayer, Dimension::End), Some(7));
+        let shown = activity(world(Dimension::End), Some(7));
         client.set_activity(shown.clone()).unwrap();
         client.set_activity(None).unwrap();
         let got = server.join().unwrap();

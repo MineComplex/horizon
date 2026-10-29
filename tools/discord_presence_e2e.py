@@ -7,14 +7,14 @@ The client only plays on servers: it goes title -> a horizon-server's world -> N
 through horizon-ctl, and the activities must say "In the menus", "Multiplayer" in the Overworld,
 then the Nether, and be cleared on quit:
 
-    single     one client on a test server (horizon-ctl launch --world)
-    lan        a second client joins the same server: both show "Multiplayer"
+    world      one client on a test server (horizon-ctl launch --world)
+    players    a second client joins the same server: both show "Multiplayer"
     setting    off in horizon-extras.txt: nothing reaches Discord; the Horizon Settings switch
                turns it on (the activity appears) and off (it is cleared)
     late       Discord starts after the game: found within the 15 s retry
 
     python3 tools/discord_presence_e2e.py                    # all of them
-    python3 tools/discord_presence_e2e.py --check lan --bin-dir target/fast
+    python3 tools/discord_presence_e2e.py --check players --bin-dir target/fast
 
 macOS and Linux (Discord's Windows pipes aren't faked here). Games render offscreen, have no audio
 and use scratch homes (lab.game_env). Needs the prepared resources in .local/horizon-client.
@@ -159,7 +159,7 @@ class Game:
         shutil.rmtree(self.home, ignore_errors=True)
 
 
-def single(bins, args=()):
+def world(bins, args=()):
     title = Game(bins, 'title')
     try:
         title.discord.wait('title screen', shows('In the menus'))
@@ -168,7 +168,7 @@ def single(bins, args=()):
         title.quit()
     finally:
         title.close()
-    game = Game(bins, 'single', args=(*args, '--world', 'Presence', '--seed', '5', '--creative'))
+    game = Game(bins, 'world', args=(*args, '--world', 'Presence', '--seed', '5', '--creative'))
     d = game.discord
     try:
         game.ctl_run('wait-for', 'loaded', '--timeout', '300')
@@ -186,25 +186,26 @@ def single(bins, args=()):
         game.close()
 
 
-def lan(bins, host_args=()):
-    host = Game(bins, 'host', args=(*host_args, '--world', 'Hosted', '--seed', '5', '--creative'))
-    guest = None
+def players(bins, first_args=()):
+    """Two clients on one server: each shows Multiplayer and never the address."""
+    first = Game(bins, 'first', args=(*first_args, '--world', 'Shared', '--seed', '5', '--creative'))
+    second = None
     try:
-        host.ctl_run('wait-for', 'loaded', '--timeout', '300')
-        port = host.ctl_run('network', 'open')['port']
-        host.discord.wait('first player', shows('Multiplayer', 'In the Overworld'))
-        guest = Game(bins, 'guest')
-        guest.discord.wait('guest title screen', shows('In the menus'))
-        guest.ctl_run('connect', f'127.0.0.1:{port}', 'Guest')
-        guest.ctl_run('wait-for', 'loaded', '--timeout', '300')
-        guest.discord.wait('guest in the world', shows('Multiplayer', 'In the Overworld'))
-        assert '127.0.0.1' not in json.dumps(guest.discord.activities), guest.discord.activities
-        guest.quit()
-        guest.discord.wait('guest cleared on quit', lambda a: a is None)
-        host.quit()
-        host.discord.wait('host cleared on quit', lambda a: a is None)
+        first.ctl_run('wait-for', 'loaded', '--timeout', '300')
+        port = first.ctl_run('network', 'open')['port']
+        first.discord.wait('first player', shows('Multiplayer', 'In the Overworld'))
+        second = Game(bins, 'second')
+        second.discord.wait('second title screen', shows('In the menus'))
+        second.ctl_run('connect', f'127.0.0.1:{port}', 'Second')
+        second.ctl_run('wait-for', 'loaded', '--timeout', '300')
+        second.discord.wait('second in the world', shows('Multiplayer', 'In the Overworld'))
+        assert '127.0.0.1' not in json.dumps(second.discord.activities), second.discord.activities
+        second.quit()
+        second.discord.wait('second cleared on quit', lambda a: a is None)
+        first.quit()
+        first.discord.wait('first cleared on quit', lambda a: a is None)
     finally:
-        for g in (guest, host):
+        for g in (second, first):
             if g:
                 g.close()
 
@@ -247,7 +248,7 @@ def late(bins):
         game.close()
 
 
-CHECKS = {'single': single, 'lan': lan, 'setting': setting,
+CHECKS = {'world': world, 'players': players, 'setting': setting,
           'late': late}
 
 

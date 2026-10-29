@@ -21,7 +21,7 @@ use horizon_world::level::flags as level_flags;
 pub(super) enum BookScreen {
     View { lectern: Option<(i32, i32, i32)> },
 }
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// The book and quill at `slot` takes the pages, or with a title becomes
     /// the written book its writer signed.
     fn write_book(&mut self, slot: usize, pages: Vec<String>, title: Option<String>) {
@@ -206,7 +206,7 @@ pub(super) fn lectern_signal(world: &crate::hc::world::World, pos: BlockPos) -> 
     }
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// `WrittenBookItem.use`: a written book opens on its reader's client
     /// (`ServerPlayer.openItemGui`); a book and quill opens its editor there by itself.
     pub(super) fn use_book(&mut self, stack: &ItemStack) -> bool {

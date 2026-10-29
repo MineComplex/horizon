@@ -32,7 +32,6 @@ use horizon_protocol::{
     text::translatable,
 };
 use std::{
-    collections::HashSet,
     io,
     net::{SocketAddr, TcpListener, TcpStream},
     sync::{
@@ -43,9 +42,6 @@ use std::{
     thread::JoinHandle,
     time::Duration,
 };
-
-/// IntegratedServer.MAX_PLAYERS.
-pub const MAX_PLAYERS: usize = 8;
 
 /// Messages from the connection threads to the game thread.
 pub enum NetEvent {
@@ -98,8 +94,8 @@ pub struct NetLog {
     pub log_ips: bool,
 }
 
-/// How the server side of the network behaves: an integrated server's LAN
-/// uses the defaults, a dedicated server takes them from server.properties.
+/// How the server side of the network behaves: the defaults for tests, the
+/// rest from server.properties.
 #[derive(Clone)]
 pub struct NetConfig {
     /// server-ip (all interfaces when absent).
@@ -115,12 +111,9 @@ pub struct NetConfig {
     pub hide_online_players: bool,
     /// server-icon.png (64x64 PNG bytes).
     pub favicon: Option<Vec<u8>>,
-    /// Secure chat (a dedicated server; none on a LAN world).
+    /// Secure chat (`enforce-secure-profile`).
     pub secure_chat: Option<Arc<SecureChat>>,
     pub accepts_transfers: bool,
-    /// Accept connections from the network. Without it only local ones
-    /// (`Lan::connect_local`): an integrated server not open to the LAN.
-    pub listen: bool,
     /// Ops bypass a full server (ServerOpList.canBypassPlayerLimit).
     pub bypasses_limit: Option<Arc<dyn Fn(u128) -> bool + Send + Sync>>,
     pub gate: Option<LoginGate>,
@@ -142,7 +135,7 @@ impl NetConfig {
     pub fn enforces_secure_chat(&self) -> bool {
         self.secure_chat.as_ref().is_some_and(|s| s.enforced())
     }
-    /// IntegratedServer.publishServer.
+    /// The defaults: a port, a motd and the player limit.
     pub fn network(port: u16, motd: String, max_players: usize) -> Self {
         Self {
             bind: None,
@@ -155,7 +148,6 @@ impl NetConfig {
             favicon: None,
             secure_chat: None,
             accepts_transfers: false,
-            listen: true,
             bypasses_limit: None,
             gate: None,
             velocity: None,
@@ -215,8 +207,6 @@ pub struct Shared {
     max_players: AtomicUsize,
     /// PlayerList.players in join order: profile id and name.
     online: Mutex<Vec<(u128, String)>>,
-    /// Profiles held by the game (the LAN game's own name).
-    reserved: Mutex<HashSet<u128>>,
     next: AtomicU32,
     stop: AtomicBool,
     random: Mutex<u64>,
@@ -239,13 +229,10 @@ impl Shared {
         {
             return Some(reason);
         }
-        if self.reserved.lock().unwrap().contains(&uuid) {
-            return Some(translatable("multiplayer.disconnect.duplicate_login", &[]));
-        }
         {
             let online = self.online.lock().unwrap();
             let bypass = self.config.bypasses_limit.as_ref().is_some_and(|b| b(uuid));
-            let taken = online.len() + self.reserved.lock().unwrap().len();
+            let taken = online.len();
             if taken >= self.max_players() && !bypass {
                 return Some(translatable("multiplayer.disconnect.server_full", &[]));
             }
@@ -284,7 +271,7 @@ impl Shared {
         self.online.lock().unwrap().retain(|(u, _)| *u != uuid);
     }
     pub fn online(&self) -> usize {
-        self.online.lock().unwrap().len() + self.reserved.lock().unwrap().len()
+        self.online.lock().unwrap().len()
     }
     fn next_random(&self, bound: usize) -> usize {
         let mut r = self.random.lock().unwrap();
@@ -385,7 +372,7 @@ pub fn base64(data: &[u8]) -> String {
     out
 }
 
-/// A running LAN server.
+/// The server's listener and its connections.
 pub struct Listener {
     pub shared: Arc<Shared>,
     events: Receiver<NetEvent>,
@@ -407,14 +394,13 @@ impl Listener {
     /// ServerConnectionListener.startTcpServerListener with a configuration.
     pub fn start_with(sync: Arc<data::SyncData>, config: NetConfig) -> io::Result<Self> {
         let (tx, events) = channel();
-        let (listen, port) = (config.listen, config.port);
+        let port = config.port;
         let shared = Arc::new(Shared {
             sync,
             events: tx,
             motd: Mutex::new(config.motd.clone()),
             max_players: AtomicUsize::new(config.max_players),
             online: Mutex::new(Vec::new()),
-            reserved: Mutex::new(HashSet::new()),
             next: AtomicU32::new(1),
             stop: AtomicBool::new(false),
             random: Mutex::new(crate::server::java_properties::now_millis() as u64 | 1),
@@ -427,13 +413,11 @@ impl Listener {
             listener: None,
             listener_stop: Arc::new(AtomicBool::new(false)),
         };
-        if listen {
-            network.listen(port)?;
-        }
+        network.listen(port)?;
         Ok(network)
     }
     /// Start accepting connections on `port` (0 picks a free one). Returns
-    /// the port. Nothing is announced on the local network (no LanServerPinger).
+    /// the port.
     pub fn listen(&mut self, port: u16) -> io::Result<u16> {
         if self.listener.is_some() {
             return Err(io::Error::new(
@@ -484,29 +468,9 @@ impl Listener {
     pub fn listening(&self) -> bool {
         self.listener.is_some()
     }
-    /// `Connection.connectToLocalServer`: a connection through memory, its
-    /// server end served on its own thread like an accepted socket.
-    pub fn connect_local(&self) -> io::Result<horizon_protocol::connection::Pipe> {
-        let (client, server) = horizon_protocol::connection::Pipe::pair();
-        let shared = self.shared.clone();
-        std::thread::Builder::new()
-            .name("horizon-local-conn".into())
-            .spawn(move || {
-                if let Err(e) = conn::serve_local(server, shared)
-                    && std::env::var_os("HORIZON_NET_DEBUG").is_some()
-                {
-                    log::warn!("[network] local: {e}");
-                }
-            })?;
-        Ok(client)
-    }
     /// Everything the connection threads reported since the last call.
     pub fn poll(&self) -> Vec<NetEvent> {
         self.events.try_iter().collect()
-    }
-    /// Reserve a uuid for the game so a player cannot take the name.
-    pub fn reserve(&self, uuid: u128) {
-        self.shared.reserved.lock().unwrap().insert(uuid);
     }
     pub fn stop(&mut self) {
         self.shared.stop.store(true, Ordering::Relaxed);

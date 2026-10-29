@@ -34,7 +34,7 @@ fn completion_state(count: i32) -> i32 {
 
 pub(super) type Brushing = HashMap<[i32; 3], BrushState>;
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// `BrushItem.onUseTick` for a brush used `ticks` ticks so far, the
     /// hand of `slot` acting.
     pub(super) fn tick_brush(&mut self, slot: usize, ticks: u32) {

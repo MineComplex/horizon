@@ -75,7 +75,7 @@ impl WorldLaunch {
 
     /// `server.properties` for a test's server: offline, everyone welcome, the
     /// player an operator (ops.json), nothing protected, flight allowed, the
-    /// client's render distance, single player's difficulty, never paused.
+    /// client's render distance, normal difficulty, never paused.
     pub fn properties(&self, port: u16, level: &str, distance: &str) -> String {
         format!(
             "server-port={port}\nlevel-name={level}\nlevel-seed={}\nlevel-type={}\ngamemode={}\nonline-mode=false\n\

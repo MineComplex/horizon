@@ -18,7 +18,7 @@ fn rgb(c: [f32; 4]) -> [f32; 3] {
     [c[0], c[1], c[2]]
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     /// The options a server's particle stands for (None for a type or data
     /// this client doesn't draw).
     pub(super) fn received_particle(

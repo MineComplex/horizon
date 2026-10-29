@@ -77,9 +77,9 @@ pub(super) fn nearest_player(
 
 /// The game level as natural spawning reads it.
 pub(super) struct GameLevel<'g, 'a> {
-    pub(super) game: &'g crate::game::Sim<'a>,
+    pub(super) game: &'g crate::game::Server<'a>,
     pub(super) w: MobWorld<'g>,
-    /// Every player in the level ([`crate::game::Sim::level_players`]).
+    /// Every player in the level ([`crate::game::Server::level_players`]).
     pub(super) players: Vec<LevelPlayer>,
     /// Where the non-spectators among them are (`getNearestPlayer`).
     pub(super) nearest: Vec<[f64; 3]>,
@@ -94,7 +94,7 @@ pub(super) struct GameLevel<'g, 'a> {
     pub(super) box_queries: std::cell::Cell<u32>,
 }
 const SCANNED_QUERIES: u32 = 8;
-/// A mob not removed: its index in `crate::game::Sim::mobs`, box, alive, and whether
+/// A mob not removed: its index in `crate::game::Server::mobs`, box, alive, and whether
 /// it is a living shulker.
 type MobBox = (usize, Aabb, bool, bool);
 fn mob_box(i: usize, m: &Mob) -> MobBox {
@@ -366,7 +366,7 @@ impl crate::hc::mobs::spawner::SpawnerLevel for GameLevel<'_, '_> {
         mobs + pending
     }
 }
-impl<'a> crate::game::Sim<'a> {
+impl<'a> crate::game::Server<'a> {
     pub(super) fn natural_level(&self) -> GameLevel<'_, 'a> {
         let players = self.level_players();
         let nearest = players
@@ -386,7 +386,7 @@ impl<'a> crate::game::Sim<'a> {
         }
     }
     /// Creates a mob the spawner accepted, finalized the game's way; the
-    /// caller adds it with [`crate::game::Sim::add_spawned`].
+    /// caller adds it with [`crate::game::Server::add_spawned`].
     fn finalize_spawned(&self, r: &SpawnRequest, pending: &mut Vec<Mob>) -> Option<Spawned> {
         let kind = self.res.mob_types().get(r.entity)?.clone();
         let [x, y, z] = r.position;
@@ -416,8 +416,7 @@ impl<'a> crate::game::Sim<'a> {
             }
         }
     }
-    /// Every player in the level in place: the local player, and the LAN
-    /// players or server players in it.
+    /// Every player in the level in place.
     pub(super) fn level_players(&self) -> Vec<LevelPlayer> {
         let mut players: Vec<LevelPlayer> = self.network.as_ref().map_or_else(Vec::new, |h| {
             h.hub

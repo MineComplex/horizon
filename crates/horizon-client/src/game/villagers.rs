@@ -2,7 +2,7 @@
 //! reputation, sharing food and wares, picking up dropped items, making
 //! babies, calling iron golems and the prices they ask.
 
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     /// `handleEntityEvent(event)`'s particles about mob `id`
     /// (`Villager`, `TamableAnimal`, `AbstractHorse`, `Animal`, `Allay`).
     pub(super) fn entity_event_particles(&mut self, id: u32, event: i8) {

@@ -57,7 +57,7 @@ impl Game<'_> {
         let size = self.gui_scale().map(|b| [b.width, b.height]);
         let mut nodes = widgets::tree(&widgets::last_labelled(), &widgets::last_targets(), size);
         if matches!(self.screen, Screen::Inventory | Screen::Creative)
-            && self.front.title.is_none()
+            && self.title.is_none()
             && let Ok((ox, oy)) = self.gui_origin()
         {
             nodes.extend(self.slots().into_iter().map(|i| {
@@ -183,7 +183,7 @@ impl Game<'_> {
         }
     }
 }
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     fn node_value(&mut self, node: &Node) -> Value {
         let mut v = json!({
             "id": node.id,

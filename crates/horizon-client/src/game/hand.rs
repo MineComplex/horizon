@@ -35,7 +35,7 @@ impl Game<'_> {
     pub(super) fn tick_hand(&mut self) {
         // LocalPlayer.applyInput (the camera is the player's own).
         if self.player.is_some() {
-            self.front.sway.tick(self.pitch, self.yaw);
+            self.sway.tick(self.pitch, self.yaw);
         }
         self.swing.tick();
         let main = self.inventory[self.selected].clone();
@@ -70,9 +70,9 @@ impl Game<'_> {
         }
         let speed = self.main_hand_attack_speed();
         for hand in std::mem::take(&mut self.hands_used) {
-            self.front.heights.item_used(hand);
+            self.heights.item_used(hand);
         }
-        let replace = self.front.heights.tick(
+        let replace = self.heights.tick(
             self.hands_busy(),
             self.hand_strength.swap_scale(1.0, speed),
             changed,
@@ -84,7 +84,7 @@ impl Game<'_> {
         }
     }
 }
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     /// Opening a screen stops breaking before the next game tick (which may pause).
     pub(super) fn stop_mining(&mut self) {
         self.attack_clicks = 0;

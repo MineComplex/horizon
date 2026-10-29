@@ -30,7 +30,7 @@ fn average(a: u32, b: u32) -> u32 {
         .iter()
         .fold(0, |acc, &s| acc | ((ch(a, s) + ch(b, s)) / 2) << s)
 }
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// The beam color of a `BeaconBeamBlock` (stained glass and panes, the beacon).
     fn beam_color(&self, name: &str) -> Option<u32> {
         if name == "minecraft:beacon" {

@@ -179,7 +179,7 @@ impl Game<'_> {
     }
     pub(super) fn draw_stats(&mut self, batch: &mut HudBatch) {
         let (w, h) = (batch.width, batch.height);
-        let atlas = &self.front.gui.atlas;
+        let atlas = &self.gui.atlas;
         ui::menu_background(batch, atlas, 0.0, 0.0, w, h, true);
         let (top, bottom) = (TAB_H, h - FOOTER);
         ui::separators(batch, atlas, top, bottom, true);
@@ -191,7 +191,7 @@ impl Game<'_> {
         {
             let x = x0 + tw * i as f32;
             let selected = self.stats_ui.tab == i;
-            let hover = ui::hovered(self.front.cursor, x, 0.0, tw, TAB_H);
+            let hover = ui::hovered(self.cursor, x, 0.0, tw, TAB_H);
             let sprite = match (selected, hover) {
                 (true, true) => "gui/sprites/widget/tab_selected_highlighted",
                 (true, false) => "gui/sprites/widget/tab_selected",
@@ -217,9 +217,9 @@ impl Game<'_> {
         // The list.
         let (row_h, rows) = self.stats_rows();
         let content = row_h * rows as f32 + 4.0;
-        self.sim.stats_ui.scroll.clamp(top, bottom, content);
+        self.stats_ui.scroll.clamp(top, bottom, content);
         let left = ((w - 280.0) / 2.0).floor();
-        let scroll = self.sim.stats_ui.scroll.amount;
+        let scroll = self.stats_ui.scroll.amount;
         let row_y = |i: usize| top + 4.0 + i as f32 * row_h - scroll;
         let visible = |y: f32| y >= top && y + row_h <= bottom;
         match self.stats_ui.tab {
@@ -262,7 +262,7 @@ impl Game<'_> {
                 if visible(y) {
                     for (c, (_, sprite)) in COLUMNS.iter().enumerate() {
                         let x = left + 75.0 + 40.0 * c as f32 - 18.0;
-                        let hover = ui::hovered(self.front.cursor, x, y + 1.0, 18.0, 18.0);
+                        let hover = ui::hovered(self.cursor, x, y + 1.0, 18.0, 18.0);
                         let bg = if hover {
                             "gui/sprites/statistics/header"
                         } else {
@@ -270,7 +270,7 @@ impl Game<'_> {
                         };
                         batch.sprite(atlas, bg, x, y + 1.0);
                         batch.sprite(atlas, sprite, x, y + 1.0);
-                        if let Some((sc, order)) = self.sim.stats_ui.sort
+                        if let Some((sc, order)) = self.stats_ui.sort
                             && sc == c
                         {
                             let s = if order < 0 {
@@ -289,13 +289,13 @@ impl Game<'_> {
                     }
                     let stack = ItemStack::new(item, 1);
                     batch.sprite(
-                        &self.front.gui.atlas,
+                        &self.gui.atlas,
                         "gui/sprites/container/slot",
                         left + 1.0,
                         y + 1.0,
                     );
                     self.draw_item(batch, &stack, left + 2.0, y + 2.0);
-                    let atlas = &self.front.gui.atlas;
+                    let atlas = &self.gui.atlas;
                     let color = if (i + 1) % 2 == 0 {
                         u32::MAX
                     } else {
@@ -360,7 +360,7 @@ impl Game<'_> {
                 }
             }
         }
-        let atlas = &self.front.gui.atlas;
+        let atlas = &self.gui.atlas;
         ui::scrollbar(
             batch,
             atlas,
@@ -373,9 +373,9 @@ impl Game<'_> {
         self.draw_stats_footer(batch, w, h);
     }
     fn draw_stats_footer(&self, batch: &mut HudBatch, w: f32, h: f32) {
-        let atlas = &self.front.gui.atlas;
+        let atlas = &self.gui.atlas;
         let (bx, by) = ((w / 2.0 - 100.0).floor(), h - FOOTER + 6.0);
-        let hover = ui::hovered(self.front.cursor, bx, by, 200.0, 20.0);
+        let hover = ui::hovered(self.cursor, bx, by, 200.0, 20.0);
         ui::button(
             batch,
             atlas,
@@ -397,7 +397,7 @@ impl Game<'_> {
         let (w, h) = (b.width, b.height);
         let (x0, tw) = tabs(w);
         for i in 0..3 {
-            if ui::hovered(self.front.cursor, x0 + tw * i as f32, 0.0, tw, TAB_H)
+            if ui::hovered(self.cursor, x0 + tw * i as f32, 0.0, tw, TAB_H)
                 && self.stats_ui.tab != i
             {
                 self.stats_ui.tab = i;
@@ -408,7 +408,7 @@ impl Game<'_> {
             }
         }
         if ui::hovered(
-            self.front.cursor,
+            self.cursor,
             (w / 2.0 - 100.0).floor(),
             h - FOOTER + 6.0,
             200.0,
@@ -424,7 +424,7 @@ impl Game<'_> {
             let y = TAB_H + 4.0 - self.stats_ui.scroll.amount;
             for c in 0..COLUMNS.len() {
                 let x = left + 75.0 + 40.0 * c as f32 - 18.0;
-                if ui::hovered(self.front.cursor, x, y + 1.0, 18.0, 18.0) {
+                if ui::hovered(self.cursor, x, y + 1.0, 18.0, 18.0) {
                     // sortByColumn: descending, ascending, off.
                     self.stats_ui.sort = match self.stats_ui.sort {
                         Some((sc, -1)) if sc == c => Some((c, 1)),
@@ -451,28 +451,23 @@ impl Game<'_> {
         let b = HudBatch::new(size);
         let (w, h) = (b.width, b.height);
         let content = self.stats_content();
-        self.sim.stats_ui.scroll.press(
-            self.front.cursor,
-            Self::stats_bar(w),
-            TAB_H,
-            h - FOOTER,
-            content,
-        )
+        self.stats_ui
+            .scroll
+            .press(self.cursor, Self::stats_bar(w), TAB_H, h - FOOTER, content)
     }
     /// The pointer moved while the scrollbar is held.
     pub(super) fn stats_drag(&mut self) {
-        if !self.sim.stats_ui.scroll.held() {
+        if !self.stats_ui.scroll.held() {
             return;
         }
         let h = self.gui_size().1;
         let content = self.stats_content();
-        self.sim
-            .stats_ui
+        self.stats_ui
             .scroll
-            .drag(self.front.cursor.1, TAB_H, h - FOOTER, content);
+            .drag(self.cursor.1, TAB_H, h - FOOTER, content);
     }
 }
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     pub(super) fn open_stats(&mut self) {
         // StatsScreen.init: a server's client asks for its statistics.
         {

@@ -10,7 +10,7 @@ fn saves() -> Result<PathBuf> {
     Ok(std::env::current_dir()?.join("saves"))
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     /// Some(reply) for these commands (Some(None): the reply comes later), None for others.
     pub(super) fn saves_control(
         &mut self,

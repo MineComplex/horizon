@@ -14,7 +14,7 @@ use horizon_world::level::{flags, hit_slot};
 
 const BLOCK: &str = "minecraft:chiseled_bookshelf";
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// `useItemOn` with `held` in the acting hand, then `useWithoutItem` on
     /// the main hand's turn: None when the block passes the click, else
     /// whether the use succeeded and the arm swings (a click on an empty slot

@@ -66,7 +66,7 @@ impl ServerState {
     }
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     fn server_status(&self, state: &ServerState) -> Value {
         let millis = |nanos: u64| nanos as f64 / 1e6;
         let samples = self.clock.sorted_samples();
@@ -108,7 +108,7 @@ impl crate::game::Sim<'_> {
     }
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// Answers the requests waiting on the control endpoint.
     pub(super) fn poll_server_control(&mut self, state: &mut ServerState) {
         while let Some(request) = self.control.as_ref().and_then(|c| c.try_recv()) {

@@ -98,10 +98,9 @@ pub fn face(
     }
 }
 
-/// `Hud.extractTabList`: whether the list shows. A single-player world
-/// shows it only with another listed player or a `list` objective.
-pub fn visible(key_down: bool, local_server: bool, listed: usize, objective: bool) -> bool {
-    key_down && !(local_server && listed <= 1 && !objective)
+/// `Hud.extractTabList`: whether the list shows: while the key is held.
+pub fn visible(key_down: bool) -> bool {
+    key_down
 }
 
 /// `Options.getBackgroundColor(553648127)`: the row background.
@@ -613,8 +612,6 @@ mod tests {
         assert_eq!(ping_sprite(1000), "icon/ping_1");
         // UUID.hashCode of 0 is 0: the first default skin.
         assert_eq!(default_skin(0), "entity/player/slim/alex");
-        assert!(!visible(true, true, 1, false));
-        assert!(visible(true, true, 1, true));
-        assert!(visible(true, false, 1, false));
+        assert!(visible(true) && !visible(false));
     }
 }

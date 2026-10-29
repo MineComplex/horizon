@@ -56,7 +56,7 @@ pub const HELP: &[&str] = &[
     "network status                     the test server's port and players",
 ];
 
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     /// `horizon-ctl lan ...`: a test's client asks its server
     /// (`--server-control`), which is always open, on its own port.
     pub(super) fn net_control(&mut self, words: &[&str]) -> Result<Option<serde_json::Value>> {

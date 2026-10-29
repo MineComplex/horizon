@@ -53,7 +53,7 @@ pub(super) fn send_soul_particle(
     }
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// `SonicBoom.tick` uses `ServerLevel.sendParticles` for each ray point.
     /// Keep the local event's rendering; connected players receive one at rest.
     pub(super) fn net_sonic_boom(&self, options: &ParticleOptions, at: [f64; 3]) {
@@ -117,7 +117,7 @@ impl crate::game::Sim<'_> {
     }
     /// `LivingEntity.checkFallDamage`'s `ServerLevel.sendParticles` of the
     /// landing block's crumbs: drawn in this window, when it has one, and
-    /// sent to each player within 32 blocks. `host` is the hub of a player's
+    /// sent to each player within 32 blocks. `net` is the network of a player's
     /// turn, which is out of `self.network` meanwhile.
     pub(super) fn landing_dust(
         &mut self,
@@ -131,7 +131,7 @@ impl crate::game::Sim<'_> {
         let Some(hub) = net.or(self.network.as_ref()).map(|h| &h.hub) else {
             return;
         };
-        let Some(particle) = crate::game::Sim::hub_particle(
+        let Some(particle) = crate::game::Server::hub_particle(
             hub,
             &ParticleOptions::simple(ParticleType::Block),
             Some(state),
@@ -167,7 +167,7 @@ impl crate::game::Sim<'_> {
         options: &ParticleOptions,
         state: Option<BlockStateId>,
     ) -> Option<Particle> {
-        crate::game::Sim::hub_particle(&self.network.as_ref()?.hub, options, state)
+        crate::game::Server::hub_particle(&self.network.as_ref()?.hub, options, state)
     }
     /// `ServerLevel.sendParticles` for the players a server serves: one
     /// `ClientboundLevelParticlesPacket` to each player in the level whose
@@ -239,7 +239,7 @@ impl crate::game::Sim<'_> {
         block_count: usize,
     ) {
         // In a player's turn (their hit on an end crystal or a minecart) the
-        // host holds the players (`as_player`): the packet waits for the turn
+        // network is out of place (`as_player`): the packet waits for the turn
         // to end so that it reaches every player, the player too.
         if self.net_acting.is_some() && self.network.is_none() {
             self.creatures
@@ -362,7 +362,7 @@ impl crate::game::Sim<'_> {
     }
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// `network_particle` for a hub that is out of `self.network` meanwhile (a
     /// player's turn).
     pub(crate) fn hub_particle(

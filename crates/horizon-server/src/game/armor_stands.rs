@@ -10,7 +10,7 @@ use horizon_core::{
 };
 use std::sync::Arc;
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// `ArmorStandItem.useOn`.
     pub(super) fn place_armor_stand(&mut self, hit: &super::Hit, stack: &ItemStack) -> bool {
         if &*stack.item != "minecraft:armor_stand" || hit.face == [0, -1, 0] {
@@ -290,7 +290,7 @@ fn overlaps(a: Aabb, b: Aabb) -> bool {
     );
     a0.x < b1.x && b0.x < a1.x && a0.y < b1.y && b0.y < a1.y && a0.z < b1.z && b0.z < a1.z
 }
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// `Equippable.swapWithEquipmentSlot`: right-clicking armor swaps it into
     /// its slot (the worn piece comes back to the hand).
     pub(super) fn equip_from_hand(&mut self, stack: &ItemStack) -> bool {

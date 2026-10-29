@@ -153,7 +153,7 @@ const CLIENT_SOUNDS: &[&str] = &[
     "minecraft:entity.warden.heartbeat",
 ];
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// Run every scenario of `spec` ("SCENARIOS,OUTPUT") and write the results.
     pub(super) fn sculk_fixture(&mut self, spec: &str) -> Result<()> {
         let (input, output) = spec

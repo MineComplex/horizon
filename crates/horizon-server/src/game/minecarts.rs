@@ -207,7 +207,7 @@ impl Minecart {
         (total * 14.0).floor() as i32 + i32::from(total > 0.0)
     }
 }
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     pub(super) fn rail(&self, x: i32, y: i32, z: i32) -> Option<Rail> {
         let state = self.world.block(x, y, z);
         let name = self.res.facts().get(state).name.clone();
@@ -621,8 +621,7 @@ impl crate::game::Sim<'_> {
         });
     }
     /// `AbstractMinecart.push` from each player walking into a cart
-    /// (`LivingEntity.pushEntities`): the window's player and every server
-    /// player (single player's own on its server thread, players). A
+    /// (`LivingEntity.pushEntities`): every player. A
     /// player in a vehicle pushes nothing here. The quarter push the player
     /// gets back only moves the server's copy of it (`Entity.push` marks
     /// `needsSync`, which `ServerEntity` sends to the other players only),

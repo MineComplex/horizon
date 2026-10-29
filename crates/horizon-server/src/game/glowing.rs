@@ -2,9 +2,9 @@
 //! appear glowing, in which team colour, and their silhouettes for the renderer's entity
 //! outline (`OutlineBufferSource`).
 
-impl crate::game::Sim<'_> {}
+impl crate::game::Server<'_> {}
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// `Entity.isCurrentlyGlowing` of an entity that is not living (an item, a projectile):
     /// its `Glowing` tag.
     pub(super) fn entity_glowing(&self, id: u32) -> bool {

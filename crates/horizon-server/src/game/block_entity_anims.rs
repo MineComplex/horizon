@@ -2,7 +2,7 @@
 //! their client tickers (`Level.tickBlockEntities` on the client level) and
 //! the block events that drive them (`ClientboundBlockEventPacket` reaching
 //! `BlockEntity.triggerEvent`). The renderer reads the resulting state through
-//! [`crate::game::Sim::block_anim`] and [`crate::game::Sim::chest_lid`].
+//! [`crate::game::Server::block_anim`] and [`crate::game::Server::chest_lid`].
 use crate::hc::{
     block_entity_anim::{
         ConduitServer, EndGateway, Shulker, ShulkerStatus, Ticker, closer_to_center_than,
@@ -22,7 +22,7 @@ use horizon_world::nbt::Tag;
 /// The handle of the local player among a bell's gathered entities.
 const PLAYER: u64 = u64::MAX;
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// `BlockEntity.triggerEvent(a, b)` on the client copy of the block entity at `pos`.
     pub(super) fn block_entity_event(&mut self, pos: [i32; 3], a: i32, b: i32) {
         let state = self.world.block(pos[0], pos[1], pos[2]).0;

@@ -6,7 +6,7 @@ use horizon_client::{
     particles::{self, ParticleOptions, ParticleType},
 };
 
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     /// `ItemParticleOption(ITEM, stack)`: the layer particle sprites of the
     /// stack's model resolved for the ground, with seed 0.
     pub(super) fn item_particle(&self, stack: &ItemStack) -> ParticleOptions {

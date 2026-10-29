@@ -74,7 +74,7 @@ impl Game<'_> {
         let Some(open) = self.mount_menu.open.as_ref() else {
             return;
         };
-        let atlas = &self.front.gui.atlas;
+        let atlas = &self.gui.atlas;
         batch.sprite_region(
             atlas,
             "gui/container/horse",
@@ -155,8 +155,8 @@ impl Game<'_> {
         offset_y: f32,
     ) {
         let (cx, cy) = ((x0 + x1) / 2.0, (y0 + y1) / 2.0);
-        let x_angle = ((cx - self.front.cursor.0) / 40.0).atan();
-        let y_angle = ((cy - self.front.cursor.1) / 40.0).atan();
+        let x_angle = ((cx - self.cursor.0) / 40.0).atan();
+        let y_angle = ((cy - self.cursor.1) / 40.0).atan();
         let mut m = mob.clone();
         m.previous = m.position;
         m.body_yaw = 180.0 + x_angle * 20.0;
@@ -168,7 +168,7 @@ impl Game<'_> {
         m.hurt_time = 0;
         m.death_time = 0;
         let camera = glam::DVec3::new(m.position.x, m.position.y, m.position.z);
-        let atlas = &self.front.gui.atlas;
+        let atlas = &self.gui.atlas;
         let lookup = |name: &str| atlas.sprites.get(name).map(|r| [r.u0, r.v0, r.u1, r.v1]);
         let mut verts = Vec::new();
         horizon_client::mobs::render::render_with(
@@ -216,7 +216,7 @@ impl Game<'_> {
         batch.clip_since(start, x0, y0, x1, y1);
     }
 }
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     /// Whether the mount menu is the open screen.
     pub(super) fn mount_active(&self) -> bool {
         self.screen == Screen::Inventory && self.mount_menu.open.is_some()

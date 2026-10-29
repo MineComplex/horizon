@@ -38,7 +38,7 @@ pub(super) struct SpawnerState {
     displays: HashMap<Pos, (String, Mob)>,
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// `EntityType.byString`: the type is in the registry.
     pub(super) fn entity_type_exists(&self, id: &str) -> bool {
         self.spawners

@@ -325,7 +325,7 @@ impl Game<'_> {
         let Some(prompt) = &self.server_packs.prompt else {
             return;
         };
-        let atlas = &self.front.gui.atlas;
+        let atlas = &self.gui.atlas;
         let (w, h) = (batch.width, batch.height);
         if self.player.is_none() {
             // In place of the connecting screen, on its background.
@@ -342,14 +342,14 @@ impl Game<'_> {
         let (_, _, [yes, no]) = prompt.texts();
         prompt
             .layout(atlas, (w, h))
-            .draw(batch, atlas, self.front.cursor, [&yes, &no]);
+            .draw(batch, atlas, self.cursor, [&yes, &no]);
     }
     /// The download notifiers' toasts, each in a free 32-pixel slot of the
     /// `ToastManager` (`hidden`, F1, keeps them timing out undrawn).
     pub(super) fn draw_pack_toasts(&mut self, batch: &mut HudBatch, hidden: bool) {
-        let multiplier = f64::from(self.sim.settings.notification_display_time);
+        let multiplier = f64::from(self.settings.notification_display_time);
         let mut used = self.toast_slots_used();
-        for notifier in &mut self.sim.server_packs.notifiers {
+        for notifier in &mut self.server_packs.notifiers {
             let Some(toast) = &mut notifier.toast else {
                 continue;
             };
@@ -363,8 +363,7 @@ impl Game<'_> {
             let (sound, finished) = toast.update(multiplier);
             if let Some(show) = sound {
                 let event = if show { "ui.toast.in" } else { "ui.toast.out" };
-                self.sim
-                    .sounds
+                self.sounds
                     .play(&format!("minecraft:{event}"), None, 1.0, 1.0);
             }
             if finished {
@@ -372,7 +371,7 @@ impl Game<'_> {
                 continue;
             }
             if let (false, Some(slot)) = (hidden, toast.slot) {
-                toast.draw(&self.front.gui.atlas, batch, 32.0 * slot as f32);
+                toast.draw(&self.gui.atlas, batch, 32.0 * slot as f32);
             }
         }
     }
@@ -382,31 +381,25 @@ impl Game<'_> {
             return Ok(());
         };
         let answer = prompt
-            .layout(&self.front.gui.atlas, self.gui_size())
-            .answer_at(self.front.cursor);
+            .layout(&self.gui.atlas, self.gui_size())
+            .answer_at(self.cursor);
         match answer {
             Some(yes) => {
-                self.front.audio.play_button_click();
+                self.audio.play_button_click();
                 self.answer_pack_prompt(yes)
             }
             None => Ok(()),
         }
     }
 }
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     /// `ConnectScreen`: the server's setting decides what its packs do
-    /// (`configureForServerControl`); single player's own server takes them
-    /// all, quietly (`configureForLocalWorld`).
-    pub(super) fn server_packs_connect(&mut self, address: Option<&str>, user: (String, u128)) {
+    /// (`configureForServerControl`).
+    pub(super) fn server_packs_connect(&mut self, address: &str, user: (String, u128)) {
         let state = &mut self.server_packs;
         state.user = user;
         state.prompt = None;
         state.notifiers.clear();
-        let Some(address) = address else {
-            state.address = None;
-            state.packs.local_world();
-            return;
-        };
         let file = multiplayer::servers_file(&saves());
         let entry = servers::load(&file).into_iter().find(|s| s.ip == address);
         let setting = entry.as_ref().and_then(|e| e.accept_textures);

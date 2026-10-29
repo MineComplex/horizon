@@ -4,7 +4,7 @@
 use horizon_client::mobs::happy_ghast;
 use horizon_core::geometry::Aabb;
 
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     /// Client `EntityGetter.getEntityCollisions` for the player: the
     /// entities that `canBeCollidedWith` it, solid happy ghasts and boats
     /// (`AbstractBoat.canBeCollidedWith`), except the player's own vehicle.

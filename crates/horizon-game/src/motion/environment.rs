@@ -95,7 +95,7 @@ impl MotionWorld<'_, '_, '_> {
         }
         Ok(())
     }
-    /// What a server's `LivingEntity.baseTick` adds for a player it hosts:
+    /// What a server's `LivingEntity.baseTick` adds for one of its players:
     /// the void (`Entity.checkBelowWorld`, 4 a tick, which creative players
     /// take too) and suffocation (`isInWall`, which the caller decides from
     /// the blocks at the eyes).

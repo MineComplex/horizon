@@ -23,7 +23,7 @@ fn zombie_kind(s: Species) -> bool {
     )
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// `Entity.startRiding` for two mobs.
     pub(super) fn mount_mob(&mut self, rider: u32, vehicle: u32) {
         if rider == vehicle {

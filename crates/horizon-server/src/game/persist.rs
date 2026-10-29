@@ -70,7 +70,7 @@ fn chunk_of(p: Vec3) -> (i32, i32) {
     ((p.x.floor() as i32) >> 4, (p.z.floor() as i32) >> 4)
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// Saved ticks and the save time for a chunk about to be written.
     pub(super) fn attach_save_data(&self, chunk: &mut Chunk) {
         let pos = ChunkPos::new(chunk.x, chunk.z);

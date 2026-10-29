@@ -296,8 +296,8 @@ impl HudAtlas {
             vec![0; 2048 * 1024 * 4],
         ));
     }
-    /// Only the font's metrics, for a game that draws nothing (the
-    /// integrated server): text measures as with the full atlas, without
+    /// Only the font's metrics, for what draws no textures (tests, the
+    /// startup menu's measures): text measures as with the full atlas, without
     /// holding its textures. The pixels are dropped once the glyph widths are
     /// read, since nothing uploads them.
     pub fn fonts(root: &Path) -> Result<Self> {

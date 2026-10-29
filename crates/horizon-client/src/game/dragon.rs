@@ -185,23 +185,22 @@ impl Game<'_> {
     /// (or a server's packets) put on this client's overlay.
     pub(super) fn draw_boss_bars(&self, batch: &mut HudBatch) {
         let bars = self
-            .front
             .boss_overlay
             .bars(horizon_client::boss_overlay::now_millis());
         let draws = hud_overlays::boss_overlay(
             batch.width as i32,
             batch.height as i32,
             &bars,
-            &self.front.gui.atlas.font,
+            &self.gui.atlas.font,
         );
-        hud_layout::paint(batch, &self.front.gui.atlas, &draws);
+        hud_layout::paint(batch, &self.gui.atlas, &draws);
     }
     /// `BossHealthOverlay.shouldPlayMusic`.
     pub(super) fn boss_music(&self) -> bool {
-        self.front.boss_overlay.should_play_music()
+        self.boss_overlay.should_play_music()
     }
 }
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     /// Targets for projectiles: dragon parts and crystals.
     pub(super) fn special_targets(&self) -> Vec<(u32, Aabb)> {
         let mut out = Vec::new();
@@ -380,8 +379,7 @@ impl Game<'_> {
         };
         let a = alpha as f32;
         let sprite = |n: &str| {
-            self.front
-                .gui
+            self.gui
                 .atlas
                 .sprites
                 .get(n)
@@ -552,7 +550,7 @@ impl Game<'_> {
     }
     /// `submitRays`: the death rays from a fixed seed, fading in white to magenta.
     fn dragon_rays(&self, base: glam::Mat4, t: f32, out: &mut Vec<Vertex>) {
-        let white = self.front.gui.atlas.font.white();
+        let white = self.gui.atlas.font.white();
         let uv = [white.u0, white.v0];
         let over = if t > 0.8 {
             ((t - 0.8) / 0.2).min(1.0)
@@ -610,7 +608,6 @@ impl Game<'_> {
         out: &mut Vec<Vertex>,
     ) {
         let Some(s) = self
-            .front
             .gui
             .atlas
             .sprites
@@ -675,7 +672,6 @@ impl Game<'_> {
         out: &mut Vec<Vertex>,
     ) {
         let Some(s) = self
-            .front
             .gui
             .atlas
             .sprites
@@ -718,7 +714,7 @@ impl Game<'_> {
 /// Saving and loading the dragon and the crystals as chunk entities.
 /// Respawning the dragon with end crystals on the exit portal
 /// (`EndCrystalItem.useOn`, `EnderDragonFight.tryRespawn`, `DragonRespawnStage`).
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     /// `EnderDragon.checkCrystals`' search: the nearest crystal whose box
     /// meets the dragon's box grown by 32.
     fn nearest_crystal_to(&self, p: Vec3) -> Option<usize> {
@@ -755,7 +751,7 @@ impl crate::game::Sim<'_> {
 /// and the client side of `EnderDragon.aiStep`): the server flies it and
 /// sends its moves, health and phase; the client flaps its wings, keeps
 /// its flight history and places its parts, so it can be drawn and hit.
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     /// `handleAddEntity` for `minecraft:ender_dragon`. Its constructor
     /// sets the full health and the hovering phase until the server's
     /// synched data says otherwise.

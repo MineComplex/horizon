@@ -305,7 +305,7 @@ pub(super) fn mob_set_slot(m: &mut Mob, slot: Slot, stack: ItemStack) {
     }
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     fn prop(&self, state: BlockStateId, key: &str) -> Option<String> {
         self.pack
             .assets
@@ -350,7 +350,7 @@ impl crate::game::Sim<'_> {
     /// firework shoot, 1018 blaze shoot and 2000 smoke shot out of the front.
     pub(super) fn dispenser_event(&mut self, id: i32, pos: Pos, data: i32) {
         super::dispense_fixture::record(|| format!("L {id} {},{},{} {data}", pos.0, pos.1, pos.2));
-        let c = crate::game::Sim::center(pos);
+        let c = crate::game::Server::center(pos);
         match id {
             1000 => self
                 .sounds
@@ -440,7 +440,7 @@ impl crate::game::Sim<'_> {
         accuracy: i32,
     ) {
         let s = step(facing);
-        let p = crate::game::Sim::dispense_position(pos, facing, 0.7, [0.0; 3]);
+        let p = crate::game::Server::dispense_position(pos, facing, 0.7, [0.0; 3]);
         let mut at = [p.x, p.y, p.z];
         at[1] -= if s[1] != 0 { 0.125 } else { 0.156_25 };
         let r = &mut self.world.random;
@@ -887,19 +887,24 @@ impl crate::game::Sim<'_> {
         // ProjectileItem.DispenseConfig per item: position, uncertainty, power, event.
         let (at, uncertainty, power, event) = match item.as_str() {
             "minecraft:firework_rocket" => (
-                crate::game::Sim::dispense_position(pos, facing, 0.500_009_999_999_747_4, [0.0; 3]),
+                crate::game::Server::dispense_position(
+                    pos,
+                    facing,
+                    0.500_009_999_999_747_4,
+                    [0.0; 3],
+                ),
                 1.0,
                 0.5,
                 1004,
             ),
             "minecraft:fire_charge" => (
-                crate::game::Sim::dispense_position(pos, facing, 1.0, [0.0; 3]),
+                crate::game::Server::dispense_position(pos, facing, 1.0, [0.0; 3]),
                 6.666_666_5,
                 1.0,
                 1018,
             ),
             "minecraft:wind_charge" => (
-                crate::game::Sim::dispense_position(pos, facing, 1.0, [0.0; 3]),
+                crate::game::Server::dispense_position(pos, facing, 1.0, [0.0; 3]),
                 6.666_666_5,
                 1.0,
                 1051,
@@ -907,13 +912,13 @@ impl crate::game::Sim<'_> {
             "minecraft:experience_bottle"
             | "minecraft:splash_potion"
             | "minecraft:lingering_potion" => (
-                crate::game::Sim::dispense_position(pos, facing, 0.7, [0.0, 0.1, 0.0]),
+                crate::game::Server::dispense_position(pos, facing, 0.7, [0.0, 0.1, 0.0]),
                 3.0,
                 1.375,
                 LAUNCH,
             ),
             _ => (
-                crate::game::Sim::dispense_position(pos, facing, 0.7, [0.0, 0.1, 0.0]),
+                crate::game::Server::dispense_position(pos, facing, 0.7, [0.0, 0.1, 0.0]),
                 6.0,
                 1.1,
                 LAUNCH,
@@ -1048,7 +1053,7 @@ impl crate::game::Sim<'_> {
         };
         let front = offset(pos, facing);
         let s = step(facing);
-        let c = crate::game::Sim::center(pos);
+        let c = crate::game::Server::center(pos);
         // Boat width 1.375.
         let outside = 0.5625 + 1.375 / 2.0;
         let (x, y, z) = (
@@ -1087,7 +1092,7 @@ impl crate::game::Sim<'_> {
             return (self.dispense_default(pos, facing, stack), CLICK);
         };
         let s = step(facing);
-        let c = crate::game::Sim::center(pos);
+        let c = crate::game::Server::center(pos);
         let (x, base_y, z) = (
             c[0] + f64::from(s[0]) * 1.125,
             c[1].floor() + f64::from(s[1]),
@@ -1131,7 +1136,7 @@ impl crate::game::Sim<'_> {
         let target = offset(pos, facing);
         let (content, sound, mob) =
             crate::hc::items::bucket_contents(&item).expect("filled bucket dispatcher");
-        let target_pos = crate::game::Sim::pos_of(target);
+        let target_pos = crate::game::Server::pos_of(target);
         let emptied = self
             .with_level(|b, level, ticks| b.bucket_empty(level, ticks, target_pos, content, sound));
         self.process_level_events()?;
@@ -1145,7 +1150,7 @@ impl crate::game::Sim<'_> {
             )
         {
             // The water evaporates in a cloud of smoke.
-            let c = crate::game::Sim::center(target);
+            let c = crate::game::Server::center(target);
             for _ in 0..8 {
                 let r = self.particles.random();
                 let p = [
@@ -1190,7 +1195,7 @@ impl crate::game::Sim<'_> {
         facing: Direction,
         stack: ItemStack,
     ) -> Result<Dispensed> {
-        let target = crate::game::Sim::pos_of(offset(pos, facing));
+        let target = crate::game::Server::pos_of(offset(pos, facing));
         let picked = self.with_level(|b, level, ticks| b.bucket_pickup(level, ticks, target));
         self.process_level_events()?;
         match picked {
@@ -1217,7 +1222,7 @@ impl crate::game::Sim<'_> {
         stack: ItemStack,
     ) -> Result<Dispensed> {
         let target = offset(pos, facing);
-        let target_pos = crate::game::Sim::pos_of(target);
+        let target_pos = crate::game::Server::pos_of(target);
         let state = self.block_at(target);
         let name = self.dispenser_block_name(target);
         let mut success = true;
@@ -1304,7 +1309,7 @@ impl crate::game::Sim<'_> {
         stack: ItemStack,
     ) -> Result<Dispensed> {
         let target = offset(pos, facing);
-        let target_pos = crate::game::Sim::pos_of(target);
+        let target_pos = crate::game::Server::pos_of(target);
         // BlockFertilizeEvent, with no player: a cancelled one keeps the meal.
         let grown = self.with_level(|b, level, ticks| {
             b.grow_crop(level, ticks, target_pos)
@@ -1336,7 +1341,7 @@ impl crate::game::Sim<'_> {
         }
         set_success("tnt", true);
         // new PrimedTnt(level, x + 0.5, y, z + 0.5, null), its sound and ENTITY_PLACE.
-        let target = crate::game::Sim::pos_of(front);
+        let target = crate::game::Server::pos_of(front);
         let rot = self.world.random.next_double() * f64::from(std::f32::consts::TAU);
         self.add_primed_tnt(target, rot, 80);
         self.sounds.play(
@@ -1477,7 +1482,7 @@ impl crate::game::Sim<'_> {
             .is_air(self.block_at((front.0, front.1 - 1, front.2)));
         let clicked_face = if below_empty { facing } else { Direction::Up };
         let ctx = PlaceContext {
-            clicked_pos: crate::game::Sim::pos_of(front),
+            clicked_pos: crate::game::Server::pos_of(front),
             face: clicked_face,
             hit: Vec3::new(
                 f64::from(front.0) + 0.5,
@@ -1575,7 +1580,7 @@ impl crate::game::Sim<'_> {
                 }
                 self.sounds.play(
                     "minecraft:block.respawn_anchor.charge",
-                    Some(crate::game::Sim::center(target)),
+                    Some(crate::game::Server::center(target)),
                     1.0,
                     1.0,
                 );
@@ -1619,7 +1624,7 @@ impl crate::game::Sim<'_> {
         }
         self.sounds.play(
             "minecraft:block.beehive.shear",
-            Some(crate::game::Sim::center(target)),
+            Some(crate::game::Server::center(target)),
             1.0,
             1.0,
         );
@@ -2025,13 +2030,13 @@ impl crate::game::Sim<'_> {
         self.level_events
             .push(horizon_world::level::LevelEvent::LevelEvent {
                 id: 3003,
-                pos: crate::game::Sim::pos_of(target),
+                pos: crate::game::Server::pos_of(target),
                 data: 0,
             });
         self.process_level_events()?;
         self.sounds.play(
             "minecraft:item.honeycomb.wax_on",
-            Some(crate::game::Sim::center(target)),
+            Some(crate::game::Server::center(target)),
             1.0,
             1.0,
         );
@@ -2064,7 +2069,7 @@ impl crate::game::Sim<'_> {
         }
         self.sounds.play(
             "minecraft:item.bottle.empty",
-            Some(crate::game::Sim::center(pos)),
+            Some(crate::game::Server::center(pos)),
             1.0,
             1.0,
         );
@@ -2093,13 +2098,13 @@ pub(super) fn tipped_effect(stack: &ItemStack) -> Option<(&'static str, i32)> {
         })
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     pub(crate) fn pos_of(p: Pos) -> BlockPos {
         BlockPos::new(p.0, p.1, p.2)
     }
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     pub(crate) fn center(p: Pos) -> [f64; 3] {
         [
             f64::from(p.0) + 0.5,
@@ -2109,7 +2114,7 @@ impl crate::game::Sim<'_> {
     }
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// `DispenserBlock.getDispensePosition(source, scale, offset)`.
     pub(crate) fn dispense_position(
         pos: Pos,

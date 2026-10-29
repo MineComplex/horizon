@@ -29,7 +29,7 @@ fn overlaps(a: Aabb, b: Aabb) -> bool {
 }
 use crate::hc::cushion::blocks_in;
 
-struct PlacementWorld<'a, 'r>(&'a crate::game::Sim<'r>);
+struct PlacementWorld<'a, 'r>(&'a crate::game::Server<'r>);
 impl crate::hc::cushion::World for PlacementWorld<'_, '_> {
     fn outline_bounds(&self, p: [i32; 3]) -> Option<Aabb> {
         let boxes = self.0.outline_boxes(p);
@@ -103,7 +103,7 @@ impl crate::hc::cushion::World for PlacementWorld<'_, '_> {
     }
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// The cushion under the crosshair, its distance and the hit point.
     pub(super) fn cushion_hit(&self) -> Option<(usize, f64, [f64; 3])> {
         let eye = self.eye_position()?;

@@ -329,8 +329,7 @@ def ui_scenario(d, out):
     assert d('click', id='back-to-game')['screen'] == 'playing'
 
     # 3. The inventory's slots are widgets too, with their stacks.
-    d('give', item='oak_log', count=2)
-    d('wait', ticks=2)  # single player's server thread gives them
+    give(d, 'oak_log', 2)
     d('open_inventory')
     tree = widgets(d)
     log = next(w for w in tree.values() if w['kind'] == 'slot' and (w.get('stack') or {}).get('item') == 'minecraft:oak_log')
@@ -409,6 +408,28 @@ def events_scenario(d, out):
     return {'events': len(events)}
 
 
+def give(d, item, count=1):
+    """`give` runs on the server: wait for its inventory packet, as a player would."""
+    d('give', item=item, count=count)
+    name = item if ':' in item else f'minecraft:{item}'
+    for _ in range(80):
+        stacks = d('inventory')['hotbar'] + d('inventory').get('main', [])
+        if any(s and s.get('item') == name for s in stacks):
+            return
+        d('wait', ticks=5)
+    raise AssertionError(f'{name} never reached the inventory')
+
+
+def wait_hotbar(d, item, ticks=400):
+    """The hotbar once it holds `item` (the server's answer to an action)."""
+    for _ in range(ticks // 5):
+        items = {s.get('item') for s in d('inventory')['hotbar'] if s}
+        if item in items:
+            return items
+        d('wait', ticks=5)
+    return items
+
+
 def consume_scenario(d, out):
     # Consumables finish as vanilla's Consumable.onConsume: always-edible food at full hunger with its
     # effects, milk and honey (no food or drink sounds) with their effects and use remainders, and
@@ -417,9 +438,18 @@ def consume_scenario(d, out):
 
     def consume(item, seconds):
         d('command', command='clear @s')
-        d('give', item=item, count=1)
+        give(d, item)
+        d('wait', ticks=20)
         d('use_item', hold=seconds)
-        d('wait', ticks=5)
+        # The server finishes the use: wait for the hand it sends back, then
+        # for its effect packets.
+        name = f'minecraft:{item}'
+        for _ in range(80):
+            state = d('state')
+            if not state['held'] or state['held']['item'] != name:
+                break
+            d('wait', ticks=5)
+        d('wait', ticks=10)
         state = d('state')
         return state, {e['id'] for e in state['player']['effects']}
 
@@ -455,7 +485,7 @@ def pick_scenario(d, out):
     d('wait_for', condition='loaded', timeout=400)
     d('command', command='gamemode creative')
     d('command', command='clear @s')
-    d('give', item='oak_log', count=2)
+    give(d, 'oak_log', 2)
 
     def carried():
         return d('inventory')['carried']
@@ -469,7 +499,7 @@ def pick_scenario(d, out):
     assert widgets(d)['slot-0']['stack']['count'] == 2
     d('close')
     d('command', command='clear @s')
-    d('give', item='oak_log', count=2)
+    give(d, 'oak_log', 2)
 
     # 2. The tab's own display slot gives a full stack too, not one item.
     d('open_inventory')
@@ -481,7 +511,7 @@ def pick_scenario(d, out):
     # 3. Survival: the middle button over a slot does nothing.
     d('command', command='gamemode survival')
     d('command', command='clear @s')
-    d('give', item='oak_log', count=2)
+    give(d, 'oak_log', 2)
     assert d('open_inventory')['screen'] == 'inventory'
     d('click', id='slot-0', middle=True)
     # The clone of step 2 lived only on this client: ItemPickerMenu's carried stack is the
@@ -532,17 +562,17 @@ def suggestions_scenario(d, out):
 
 def manage_scenario(d, out):
     # The commands that close the audit's gaps: status (F3), entities by right-click, effects and xp,
-    # LAN status, options pages by name, then from the title screen the worlds list, Make Backup,
+    # the network status, options pages by name, then from the title screen the worlds list, Make Backup,
     # rename and a delete that needs the player's confirmation.
     d('wait_for', condition='loaded', timeout=400)
     assert d('status')['player'] is not None
-    d('give', item='bucket')
+    give(d, 'bucket')
     d('select', slot='bucket')
     pos = d('state')['player']['position']
     cow = d('summon', kind='cow', x=pos[0], y=pos[1], z=pos[2] + 2)['id']
     d('wait', ticks=5)
     d('interact_entity', id=cow)
-    items = {s.get('item') for s in d('inventory')['hotbar'] if s}
+    items = wait_hotbar(d, 'minecraft:milk_bucket')
     assert 'minecraft:milk_bucket' in items, items
     d('effect', id='speed', seconds=30, amplifier=1)
     d('wait', ticks=5)  # the server's effect packet

@@ -84,7 +84,7 @@ enum Target {
     Stand(u32),
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// Run every case of `spec` ("CASES,OUTPUT") and write the results.
     pub(super) fn dispense_fixture(&mut self, spec: &str) -> Result<()> {
         let (input, output) = spec

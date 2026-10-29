@@ -9,7 +9,7 @@ use horizon_core::{geometry::Vec3, random::RandomSource};
 
 const TICK_DELAY: i32 = 1200;
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// `CatSpawner.tick` (the overworld's custom spawner).
     pub(super) fn tick_cat_spawner(&mut self) {
         if self.dim != Dim::Overworld {

@@ -17,7 +17,7 @@ use horizon_protocol::packets::play::{self, Clientbound as C};
 /// let it through, by argument name (CommandSigningContext.SignedArguments).
 type Signed = Vec<(String, ChatMessage)>;
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// CommandDispatcher.parse with the player's permission level.
     fn parse_as(&mut self, permission: u8, command: &str) -> ParseResults {
         let level = std::mem::replace(&mut self.world_data.registries.permission, permission);

@@ -116,7 +116,6 @@ impl Game<'_> {
             return;
         };
         let Some(uv) = self
-            .front
             .gui
             .atlas
             .sprites
@@ -173,7 +172,7 @@ impl Game<'_> {
         }
     }
 }
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     /// `TridentItem.use`: start the throw unless one more use would break it.
     pub(super) fn use_trident(&mut self, stack: &ItemStack) -> bool {
         if &*stack.item != "minecraft:trident" {

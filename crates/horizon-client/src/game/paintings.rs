@@ -56,7 +56,7 @@ impl Game<'_> {
     /// PaintingRenderer: the variant on the front, the back texture behind and
     /// on the edges.
     pub(super) fn painting_geometry(&self, camera: glam::DVec3, out: &mut Vec<Vertex>) {
-        let sprites = &self.front.gui.atlas.sprites;
+        let sprites = &self.gui.atlas.sprites;
         let Some(back) = sprites.get("painting/back").copied() else {
             return;
         };
@@ -188,7 +188,7 @@ impl Game<'_> {
         }
     }
 }
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     /// The painting under the crosshair within reach and its distance.
     pub(super) fn painting_hit(&self) -> Option<(usize, f64)> {
         let eye = self.eye_position()?;

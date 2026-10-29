@@ -14,7 +14,7 @@ pub(super) struct Bolt {
     flashes: i32,
     seed: i64,
 }
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     /// `ClientLevel.addEntity` for a server's lightning bolt: on a client it
     /// only flashes, sounds and draws (`LightningBolt.tick` off the server).
     pub(super) fn spawn_remote_bolt(&mut self, id: u32, at: [f64; 3]) {

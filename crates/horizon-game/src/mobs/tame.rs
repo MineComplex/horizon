@@ -187,8 +187,8 @@ fn is_owner(m: &Mob, w: &MobWorld) -> bool {
         .as_ref()
         .is_some_and(|p| owned_by(m.extra.owner, p.uuid))
 }
-/// Whether `uuid` is the saved owner. A host with no UUID yet owns what it
-/// tamed under the placeholder `[0, 0, 0, 1]`.
+/// Whether `uuid` is the saved owner. The placeholder `[0, 0, 0, 1]` (a
+/// player with no UUID yet) owns for the all-zero UUID.
 pub fn owned_by(owner: Option<[i32; 4]>, uuid: [i32; 4]) -> bool {
     owner.is_some_and(|o| o == uuid || (o == [0, 0, 0, 1] && uuid == [0; 4]))
 }

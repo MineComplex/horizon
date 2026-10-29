@@ -3,7 +3,7 @@ use super::{Arg, Context, R, Target, err};
 use crate::hc::{server_net::data::component_nbt, text::Text};
 use horizon_protocol::packets::play::{self, Clientbound as C};
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// ComponentArgument with selectors resolved for the source
     /// (ComponentUtils.updateForEntity: names joined by ", ").
     fn component_arg(&mut self, ctx: &Context, name: &str) -> R<Text> {

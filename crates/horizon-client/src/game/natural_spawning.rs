@@ -7,7 +7,7 @@ pub(super) struct LevelPlayer {
     pub(super) position: Vec3,
 }
 
-impl<'a> crate::game::Sim<'a> {
+impl<'a> crate::game::Game<'a> {
     /// The players in the level: the client's own.
     pub(super) fn level_players(&self) -> Vec<LevelPlayer> {
         let mut players: Vec<LevelPlayer> = (Vec::new)();

@@ -5,7 +5,7 @@ use horizon_core::position::BlockPos;
 use horizon_world::chunk::BlockState;
 use winit::keyboard::KeyCode;
 
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     /// The lit campfire at `pos` that `held` puts out, when the item is in
     /// `#minecraft:douses_campfires` (`CampfireBlock.useItemOn`).
     fn campfire_to_douse(&self, pos: [i32; 3], held: Option<&ItemStack>) -> Option<BlockState> {

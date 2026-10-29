@@ -62,7 +62,7 @@ impl PaintingVariants {
 fn overlaps(a: ([f64; 3], [f64; 3]), b: ([f64; 3], [f64; 3])) -> bool {
     (0..3).all(|i| a.0[i] < b.1[i] && b.0[i] < a.1[i])
 }
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// `HangingEntity.survives`: no block collision in the box, solid blocks
     /// (or diodes) behind it and no other painting overlapping it.
     pub(super) fn painting_survives(&self, p: &Painting) -> bool {

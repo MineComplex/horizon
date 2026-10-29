@@ -68,7 +68,7 @@ impl Game<'_> {
         let forward = glam::DVec3::from_array(view_vector(view_yaw, view_pitch));
         let right = forward.cross(glam::DVec3::Y).normalize_or_zero();
         let up = right.cross(forward).normalize_or_zero();
-        let white = self.front.gui.atlas.font.white();
+        let white = self.gui.atlas.font.white();
         let away = forward.as_vec3() * 0.002;
         for (text, lift) in lines {
             let o = (o + glam::DVec3::new(0.0, *lift, 0.0)).as_vec3();
@@ -92,7 +92,7 @@ impl Game<'_> {
                 .collect();
             let width: f32 = chars
                 .iter()
-                .map(|(c, _)| self.front.gui.atlas.glyph(*c).map_or(6.0, |g| g.1))
+                .map(|(c, _)| self.gui.atlas.glyph(*c).map_or(6.0, |g| g.1))
                 .sum();
             let x0 = -(width / 2.0).trunc();
             let y0 = if text.plain() == "deadmau5" {
@@ -131,7 +131,7 @@ impl Game<'_> {
             }
             let mut x = x0;
             for (ch, color) in chars {
-                let Some((g, advance)) = self.front.gui.atlas.glyph(ch) else {
+                let Some((g, advance)) = self.gui.atlas.glyph(ch) else {
                     x += 6.0;
                     continue;
                 };
@@ -149,7 +149,7 @@ impl Game<'_> {
         }
     }
 }
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     /// `Entity.belowNameDisplay`: the score holder's score in the objective
     /// shown below names, then a space and the objective's name.
     fn below_name_text(&self, holder: &str) -> Option<Text> {
@@ -168,8 +168,7 @@ impl crate::game::Sim<'_> {
         t.push(objective.display_text());
         Some(t)
     }
-    /// The other players' models and names: the players on a LAN host, the
-    /// players a server sends on a client.
+    /// The other players' models and names, as the server sends them.
     fn other_players(&self) -> Vec<(&Mob, String)> {
         let mut out = Vec::new();
         for (id, name) in self.remote_player_names() {

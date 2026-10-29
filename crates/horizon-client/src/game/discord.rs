@@ -1,6 +1,6 @@
 //! What the player is doing, for Discord Rich Presence (`horizon_client::discord_presence`).
 use super::*;
-use horizon_client::discord_presence::{self as presence, Dimension, Play, Status};
+use horizon_client::discord_presence::{self as presence, Dimension, Status};
 
 impl Game<'_> {
     /// Each frame: only a change reaches the presence thread.
@@ -11,16 +11,10 @@ impl Game<'_> {
         if !self.settings.extras.discord_presence {
             return Status::Off;
         }
-        if self.front.title.is_some() {
+        if self.title.is_some() {
             return Status::Menus;
         }
-        let play = if self.remote.is_some() {
-            Play::Multiplayer
-        } else {
-            Play::Singleplayer
-        };
         Status::World {
-            play,
             dimension: match self.dim {
                 Dim::Overworld => Dimension::Overworld,
                 Dim::Nether => Dimension::Nether,

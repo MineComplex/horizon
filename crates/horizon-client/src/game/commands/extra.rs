@@ -7,7 +7,7 @@ fn num(n: impl std::fmt::Display) -> Text {
     Text::literal(n.to_string())
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     /// `VersionCommand.dumpVersion`'s lines: Horizon reports the version it
     /// implements.
     pub(in crate::game) fn version_lines(&self) -> Vec<Text> {

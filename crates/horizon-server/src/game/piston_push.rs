@@ -49,7 +49,7 @@ struct Body {
     supported: bool,
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// Push whatever this tick's moving pistons ran into, in the order the
     /// pistons ticked: vanilla pushes from each block entity's own tick.
     pub(super) fn push_piston_entities(&mut self, pushes: Vec<Push>) {
@@ -221,8 +221,8 @@ impl crate::game::Sim<'_> {
         }
         StepHeights { player, players }
     }
-    /// The entities a moving block can run into: the window's player, the LAN
-    /// players in the level, then the mobs.
+    /// The entities a moving block can run into: the players in the level,
+    /// then the mobs.
     fn push_targets(&self) -> Vec<Target> {
         let mut targets = Vec::new();
         if self.player.is_some() {

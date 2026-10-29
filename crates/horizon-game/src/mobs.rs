@@ -785,7 +785,7 @@ pub struct Extra {
     /// the spin the rope's torque gives it.
     pub leash: Option<leash::Holder>,
     pub leash_pending: Option<leash::Pending>,
-    /// The UUID of the player behind `Holder::Player` (host or player).
+    /// The UUID of the player behind `Holder::Player`.
     pub leash_player: Option<[i32; 4]>,
     pub leash_spin: f64,
     /// More species scratch values.

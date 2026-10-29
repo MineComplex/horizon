@@ -7,7 +7,7 @@ use crate::hc::{
 };
 use horizon_core::{geometry::Vec3, random::RandomSource};
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// The egg item at the parent (`Sniffer.spawnChildFromBreeding`; the
     /// brain already played the plop and dropped the experience).
     pub(super) fn lay_sniffer_egg(&mut self, parent: &Mob) {

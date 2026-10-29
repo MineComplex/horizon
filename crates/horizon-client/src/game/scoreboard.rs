@@ -38,14 +38,14 @@ impl Game<'_> {
             batch.height as i32,
             board,
             objective,
-            &self.front.gui.atlas.font,
+            &self.gui.atlas.font,
             self.settings.text_background(0.3),
             self.settings.text_background(0.4),
         );
-        hud_layout::paint(batch, &self.front.gui.atlas, &draws);
+        hud_layout::paint(batch, &self.gui.atlas, &draws);
     }
 }
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     /// `Entity.getTeam` of a mob (a mob joins a team by its UUID).
     pub(super) fn mob_team(&self, id: u32) -> Option<&sb::Team> {
         let uuid = self.persist.uuids.get(&id)?;
@@ -129,13 +129,13 @@ impl Game<'_> {
         let key = self.screen == super::Screen::Playing
             && self.keys.contains(&winit::keyboard::KeyCode::Tab);
         let Some((players, online_mode, upside_down)) = self.remote_tab_players() else {
-            self.front.tab_list.set_visible(false);
+            self.tab_list.set_visible(false);
             return;
         };
-        let board = &self.sim.score.board;
+        let board = &self.score.board;
         let objective = board.display_objective(sb::SLOT_LIST);
-        let shown = tab_list::visible(key, false, players.len(), objective.is_some());
-        self.front.tab_list.set_visible(shown);
+        let shown = tab_list::visible(key);
+        self.tab_list.set_visible(shown);
         if !shown {
             return;
         }
@@ -150,14 +150,11 @@ impl Game<'_> {
             // Horizon has no "chat background only" option: vanilla's default (on).
             background: tab_list::row_background(
                 true,
-                f64::from(self.sim.settings.text_background_opacity),
+                f64::from(self.settings.text_background_opacity),
             ),
             upside_down: &up,
         };
-        let draws = self
-            .front
-            .tab_list
-            .layout(&inputs, &self.front.gui.atlas.font);
-        horizon_client::hud_layout::paint(batch, &self.front.gui.atlas, &draws);
+        let draws = self.tab_list.layout(&inputs, &self.gui.atlas.font);
+        horizon_client::hud_layout::paint(batch, &self.gui.atlas, &draws);
     }
 }

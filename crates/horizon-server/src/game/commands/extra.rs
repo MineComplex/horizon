@@ -1,7 +1,7 @@
-//! Commands that act on the player and the hosted game rather than the world:
+//! Commands that act on the player and the server rather than the world:
 //! `/spectate` (SpectateCommand), `/waypoint` (WaypointCommand), `/dialog`
 //! (DialogCommand), `/posteffect` (PostEffectCommand), `/kick`,
-//! `/fetchprofile`, `/publish`, `/unpublish`, `/debug`, `/jfr` and
+//! `/fetchprofile`, `/debug`, `/jfr` and
 //! `/version`, with vanilla's feedback and failures.
 use super::{Arg, Context, R, Target, err};
 use crate::game::keys::KeyCode;
@@ -98,7 +98,7 @@ fn civil(secs: i64) -> (i64, i64, i64, i64, i64, i64) {
     (y, m, d, rem / 3600, rem % 3600 / 60, rem % 60)
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// CommandSourceStack.getPlayerOrException.
     fn source_player(&self) -> R<Target> {
         match self.command_source.map(|s| s.entity) {
@@ -593,21 +593,18 @@ impl crate::game::Sim<'_> {
             end.z.floor() as i32,
         ])
     }
-    /// `KickCommand.kickPlayers`: only players of a published world can be
-    /// kicked; the owner never.
+    /// `KickCommand.kickPlayers`.
     pub(super) fn cmd_kick(&mut self, ctx: &Context) -> R<i32> {
         let selector = match ctx.get("targets") {
             Some(Arg::Entity(s)) => Some(s.clone()),
             _ => None,
         };
-        // EntityArgument.getPlayers runs before the published check.
         let net = self.entities(ctx, "targets", true).unwrap_or_default();
         let players: Vec<(u32, String)> = match (&self.network, &selector) {
             (Some(network), Some(s)) => network
                 .hub
                 .players
                 .iter()
-                .filter(|g| network.hub.singleplayer_owner != Some(g.uuid))
                 .filter(|g| match &s.player_name {
                     Some(name) => g.name.eq_ignore_ascii_case(name),
                     None => s.kind == 'a' || s.kind == 'e',
@@ -618,9 +615,6 @@ impl crate::game::Sim<'_> {
         };
         if net.is_empty() && players.is_empty() {
             return Err(err("argument.entity.notfound.player", &[]));
-        }
-        if self.network.is_none() {
-            return Err(err("commands.kick.singleplayer.failed", &[]));
         }
         let reason_raw = match ctx.get("reason") {
             Some(Arg::Str(s)) => Some(s.clone()),
@@ -947,7 +941,7 @@ impl crate::game::Sim<'_> {
     }
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// `ServerPlayer.openDialog`: the dialog screen for a dialog id or inline
     /// definition.
     pub(in crate::game) fn open_dialog(&mut self, dialog: &str) -> R<()> {
@@ -959,7 +953,7 @@ impl crate::game::Sim<'_> {
         self.cmds.dialog = None;
     }
 }
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// The player's profile id as `UUID.toString()`: the saved id, else the
     /// offline id of the player's name.
     pub(in crate::game) fn player_uuid_string(&self) -> String {

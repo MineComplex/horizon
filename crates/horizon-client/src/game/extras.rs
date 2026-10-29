@@ -32,8 +32,8 @@ impl Game<'_> {
     /// Once per frame: the frame's time, and keys let go behind screens.
     pub(super) fn extras_frame(&mut self) {
         // Under agent control the window may lack focus without pausing.
-        let focused = self.focused || self.front.control.is_some();
-        let playing = self.screen == Screen::Playing && self.front.title.is_none() && focused;
+        let focused = self.focused || self.control.is_some();
+        let playing = self.screen == Screen::Playing && self.title.is_none() && focused;
         if !playing {
             self.extras.mouse = [false; 2];
         }
@@ -44,7 +44,7 @@ impl Game<'_> {
         let Some(retry) = retry else {
             return;
         };
-        if let Some(title) = self.front.title.as_mut()
+        if let Some(title) = self.title.as_mut()
             && let Mode::Multiplayer(multiplayer::Screen::Disconnected { retry: slot, .. }) =
                 &mut title.mode
         {
@@ -61,7 +61,7 @@ impl Game<'_> {
     /// takes it from `auth::current()`, held in memory for the whole run
     /// (the launcher's session file is gone after the first read).
     pub(super) fn extras_retry(&mut self) -> horizon_client::Result<()> {
-        if let Some(retry) = self.front.title.as_mut().and_then(|t| t.due_retry()) {
+        if let Some(retry) = self.title.as_mut().and_then(|t| t.due_retry()) {
             self.connect_server(&retry.address, &retry.name)?;
         }
         Ok(())
@@ -70,7 +70,7 @@ impl Game<'_> {
     /// in GUI pixels and its view of the player.
     fn minimap_shown(&self) -> Option<(Corner, f32, View)> {
         let p = self.player.as_ref()?;
-        if self.front.title.is_some() || self.ui.hide_gui {
+        if self.title.is_some() || self.ui.hide_gui {
             return None;
         }
         // Mods set the minimap; none does now.
@@ -103,11 +103,10 @@ impl Game<'_> {
         };
         // The chunks the image can reach (its corners when it turns).
         let reach = minimap::SIZE as f32 / 2.0 * view.blocks_per_pixel * std::f32::consts::SQRT_2;
-        let radius =
-            ((reach / 16.0).ceil() as i32 + 1).min(self.sim.settings.render_distance.max(2));
-        self.sim.extras.minimap.update(
-            &self.sim.world,
-            self.sim.res.facts(),
+        let radius = ((reach / 16.0).ceil() as i32 + 1).min(self.settings.render_distance.max(2));
+        self.extras.minimap.update(
+            &self.world,
+            self.res.facts(),
             (bx >> 4, bz >> 4),
             radius,
             layer,
@@ -116,14 +115,11 @@ impl Game<'_> {
         if !self.extras.minimap.compose(view) {
             return;
         }
-        let Some(rect) = self.front.gui.atlas.sprites.get(MINIMAP_SPRITE).copied() else {
+        let Some(rect) = self.gui.atlas.sprites.get(MINIMAP_SPRITE).copied() else {
             return;
         };
-        let (w, h) = (
-            self.front.gui.atlas.width as f32,
-            self.front.gui.atlas.height as f32,
-        );
-        self.front.map_patches.push(horizon_client::font::Patch {
+        let (w, h) = (self.gui.atlas.width as f32, self.gui.atlas.height as f32);
+        self.map_patches.push(horizon_client::font::Patch {
             x: (rect.u0 * w).round() as u32,
             y: (rect.v0 * h).round() as u32,
             width: minimap::SIZE as u32,
@@ -140,7 +136,7 @@ impl Game<'_> {
         }
         let visible = |corner| !(self.debug && corner == Corner::TopLeft);
         let mut corners = Corners::new(batch.width, batch.height, self.effect_rows_height());
-        let atlas = &self.front.gui.atlas;
+        let atlas = &self.gui.atlas;
         if let Some((map_corner, map_size, view)) = map
             && visible(map_corner)
             && !self.extras.minimap.image.is_empty()
@@ -162,7 +158,7 @@ impl Game<'_> {
         }
     }
 }
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     /// Mouse buttons while playing, for mods' clicks.
     pub(super) fn extras_mouse(&mut self, button: MouseButton, pressed: bool) {
         let i = match button {

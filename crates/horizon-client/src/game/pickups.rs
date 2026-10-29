@@ -70,7 +70,7 @@ pub(super) fn position(p: &Pickup, partial: f64) -> [f64; 3] {
     })
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     /// `ItemPickupParticle.updatePosition`: the collector's x and z, halfway up to its eyes.
     fn collector_target(&self, collector: Collector) -> Option<[f64; 3]> {
         let (p, eye) = match collector {
@@ -92,8 +92,7 @@ impl crate::game::Sim<'_> {
             self.add_pickup_toward(taken, collector, target);
         }
     }
-    /// [`Self::add_pickup`] with the collector's first target given (a LAN
-    /// player's model while the game is taken out for its tick).
+    /// [`Self::add_pickup`] with the collector's first target given.
     pub(super) fn add_pickup_toward(
         &mut self,
         taken: Taken,

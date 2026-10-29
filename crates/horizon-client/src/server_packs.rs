@@ -193,12 +193,6 @@ impl ServerPacks {
             Prompt::Pending => self.prompt = Prompt::Pending,
         }
     }
-    /// `DownloadedPackSource.configureForLocalWorld`: single player's own
-    /// server; its packs are taken, and nothing is reported.
-    pub fn local_world(&mut self) {
-        self.reporting = false;
-        self.allow();
-    }
     /// `DownloadedPackSource.cleanupAfterDisconnect`: every pack goes, and
     /// the next server starts from its own setting.
     pub fn disconnect(&mut self) {

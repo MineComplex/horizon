@@ -48,7 +48,6 @@ impl Game<'_> {
     /// `LoomScreen.mouseDragged` on the scroller.
     pub(super) fn loom_drag(&mut self) {
         let Some(size) = self
-            .front
             .renderer
             .as_ref()
             .map(|r| [r.config.width, r.config.height])
@@ -56,7 +55,7 @@ impl Game<'_> {
             return;
         };
         let (_, oy) = self.inventory_origin(&HudBatch::new(size));
-        let cursor_y = self.front.cursor.1;
+        let cursor_y = self.cursor.1;
         let Some(l) = self.station.as_mut().map(|s| &mut s.loom) else {
             return;
         };
@@ -83,7 +82,7 @@ impl Game<'_> {
             .collect();
         horizon_client::item_render::gui::draw_banner_result(
             &self.pack.item_renderer,
-            &self.front.gui.atlas.sprites,
+            &self.gui.atlas.sprites,
             batch,
             x,
             y,
@@ -101,7 +100,7 @@ impl Game<'_> {
         draws: &[ScreenDraw],
         background: bool,
     ) -> Option<Vec<(horizon_client::text::Text, u32)>> {
-        let atlas = &self.front.gui.atlas;
+        let atlas = &self.gui.atlas;
         let mut tooltip = None;
         let mut sheet: Option<String> = None;
         for d in draws {
@@ -233,7 +232,7 @@ impl Game<'_> {
         self.paint_screen(batch, ox, oy, &draws, false)
     }
 }
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     /// `LoomScreen.containerChanged`: the error flag, whether the pattern
     /// buttons show (only when an input changed), and the scroller reset.
     pub(super) fn loom_screen_changed(&mut self) {

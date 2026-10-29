@@ -1077,7 +1077,7 @@ impl<C: MeshContext> Streaming<C> {
         let workers = self.threads.len();
         if self.decorates && self.order_area != Some((self.center, self.radius)) {
             let (decorated, chunks) = (&self.decorated, &world.chunks);
-            // The render distance is the server view distance in singleplayer.
+            // The radius is the server's view distance.
             self.decoration_order
                 .reassign(self.center, self.radius, |x, z| {
                     decorated.contains(&(x, z)) || chunks.contains_key(&(x, z))

@@ -6,7 +6,7 @@ mod terrain_cmds;
 
 use super::chat::PLAYER_NAME;
 
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     /// The player's name (`Player.getName`).
     pub(super) fn acting_player_name(&self) -> &str {
         PLAYER_NAME

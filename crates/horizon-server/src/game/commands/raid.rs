@@ -2,7 +2,7 @@
 use super::{R, Text, err};
 use crate::hc::{command::Context, mobs::raider};
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     pub(in crate::game) fn cmd_raid(&mut self, id: &str, ctx: &Context) -> R<i32> {
         let Some(player) = self.player.as_ref().map(|p| p.position) else {
             return Ok(0);
@@ -21,7 +21,7 @@ impl crate::game::Sim<'_> {
                     fail(self, "Raid already started close by");
                     return Ok(-1);
                 }
-                let level = crate::game::Sim::int(ctx, "omenlvl").unwrap_or(0);
+                let level = crate::game::Server::int(ctx, "omenlvl").unwrap_or(0);
                 match self.raid_command_create(at, level) {
                     true => self.feedback(Text::literal("Created a raid in your local village")),
                     false => fail(self, "Failed to create a raid in your local village"),
@@ -69,7 +69,7 @@ impl crate::game::Sim<'_> {
                 }
             }
             "raid.setomen" => {
-                let level = crate::game::Sim::int(ctx, "level").unwrap_or(0);
+                let level = crate::game::Server::int(ctx, "level").unwrap_or(0);
                 let Some(raid) = self.raiding_nearby(at) else {
                     fail(self, "No raid found here");
                     return Ok(1);

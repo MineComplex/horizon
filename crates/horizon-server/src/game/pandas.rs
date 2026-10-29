@@ -8,7 +8,7 @@ use crate::hc::{
 };
 use horizon_core::geometry::Vec3;
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// `Panda.canPickUpAndEat`'s tag.
     fn panda_eats_from_ground(&self, item: &str) -> bool {
         self.res

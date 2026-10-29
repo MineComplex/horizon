@@ -6,7 +6,7 @@ use horizon_client::mobs::riders;
 use horizon_core::geometry::Vec3;
 use std::collections::HashMap;
 
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     /// `Entity.positionRider` for every mob passenger: in its boat, then on
     /// its mob. A server's client places them itself too, as the server sends
     /// no passenger's position.

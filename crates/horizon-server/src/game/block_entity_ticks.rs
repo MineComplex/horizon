@@ -13,7 +13,7 @@ use crate::hc::{
 use horizon_core::position::BlockPos;
 use horizon_world::registry::BlockStateId;
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     pub(super) fn tick_block_entities(&mut self) -> Result<()> {
         self.tick_mount_menu();
         self.tick_craft_table();

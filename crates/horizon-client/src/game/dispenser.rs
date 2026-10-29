@@ -35,7 +35,7 @@ pub(super) fn entity_random() -> LegacyRandom {
     LegacyRandom::new(seed ^ nanos)
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     /// The same block with other properties (`withProperty`).
     pub(super) fn with_props(
         &self,

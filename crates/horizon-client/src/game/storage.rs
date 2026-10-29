@@ -7,7 +7,7 @@ use horizon_client::{containers::BlockEntity, items::ItemStack, text::Text};
 pub(super) fn is_shulker_box(name: &str) -> bool {
     name.ends_with("shulker_box")
 }
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     /// The custom name of the open container, or its default title
     /// (a double chest is named by whichever half has a name).
     pub(super) fn container_title(&self, default: String) -> String {
@@ -57,7 +57,7 @@ impl Game<'_> {
         oy: f32,
     ) {
         use horizon_client::hud::rgba;
-        let atlas = &self.front.gui.atlas;
+        let atlas = &self.gui.atlas;
         let grey = rgba(64, 64, 64, 255);
         if self
             .container_block()
@@ -113,7 +113,7 @@ impl Game<'_> {
         );
     }
 }
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     /// The other half of the open double chest and whether the open one is
     /// the right half (`ChestBlock.getConnectedDirection`).
     pub(super) fn chest_partner(&self, key: (i32, i32, i32)) -> Option<((i32, i32, i32), bool)> {

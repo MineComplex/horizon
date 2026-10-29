@@ -445,7 +445,7 @@ pub(super) fn shelf_signal(
     )
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     fn containers(&self) -> Containers<'_> {
         Containers {
             world: &self.world,
@@ -1039,4 +1039,4 @@ impl crate::game::Sim<'_> {
 
 // ---- hopper, dispenser and dropper screens ----
 
-impl crate::game::Sim<'_> {}
+impl crate::game::Server<'_> {}

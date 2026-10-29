@@ -12,7 +12,7 @@ type ItemConsumable = Consumable<String, ConsumeEffect>;
 /// `EntityEvent.USE_ITEM_COMPLETE`: the server finished the player's use.
 pub(super) const USE_ITEM_COMPLETE_EVENT: i8 = 9;
 
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     /// `Consumable.emitParticlesAndSounds(user.getRandom(), user, stack, count)`.
     pub(super) fn emit_consume(
         &mut self,
@@ -30,7 +30,7 @@ impl crate::game::Sim<'_> {
 }
 
 /// `Consumable.emitParticlesAndSounds` against the local player.
-struct Emitter<'a, 'g>(&'a mut crate::game::Sim<'g>);
+struct Emitter<'a, 'g>(&'a mut crate::game::Game<'g>);
 impl EmissionWorld for Emitter<'_, '_> {
     type Error = Infallible;
     type Stack = ItemStack;

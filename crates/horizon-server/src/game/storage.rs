@@ -7,7 +7,7 @@ use horizon_core::random::RandomSource;
 pub(super) fn is_shulker_box(name: &str) -> bool {
     name.ends_with("shulker_box")
 }
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// Opening an ender chest shows the player's ender inventory in its place.
     pub(super) fn open_ender_chest(&mut self, key: (i32, i32, i32)) {
         self.world
@@ -104,7 +104,7 @@ fn facing_step(facing: &str) -> (i32, i32) {
     }
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// The other half of the open double chest and whether the open one is
     /// the right half (`ChestBlock.getConnectedDirection`).
     pub(super) fn chest_partner(&self, key: (i32, i32, i32)) -> Option<((i32, i32, i32), bool)> {
@@ -302,4 +302,4 @@ impl crate::game::Sim<'_> {
     }
 }
 
-impl crate::game::Sim<'_> {}
+impl crate::game::Server<'_> {}

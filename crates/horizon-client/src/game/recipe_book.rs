@@ -109,8 +109,8 @@ fn sprite(name: &str) -> String {
 impl Game<'_> {
     /// Ctrl+A/C/V/X in the search box.
     pub(super) fn recipe_shortcut(&mut self, shortcut: horizon_client::clipboard::EditShortcut) {
-        if let Some(search) = self.sim.recipe_ui.search.as_mut() {
-            search.shortcut(shortcut, &mut self.front.clipboard);
+        if let Some(search) = self.recipe_ui.search.as_mut() {
+            search.shortcut(shortcut, &mut self.clipboard);
         }
     }
     /// A key press while the search box has focus.
@@ -150,7 +150,7 @@ impl Game<'_> {
         )
     }
     fn batch_for_size(&self) -> Option<HudBatch> {
-        let r = self.front.renderer.as_ref()?;
+        let r = self.renderer.as_ref()?;
         Some(HudBatch::new([r.config.width, r.config.height]))
     }
 
@@ -166,7 +166,7 @@ impl Game<'_> {
             return false;
         };
         self.ensure_book();
-        let cursor = self.front.cursor;
+        let cursor = self.cursor;
         let (ox, _) = self.inventory_origin(&batch);
         // Clicking a crafting slot drops the ghost recipe (`slotClicked`).
         if let Some(slot) = self.slot_at(&batch, cursor.0, cursor.1)
@@ -246,7 +246,7 @@ impl Game<'_> {
             return true;
         }
         // Search box.
-        if let Some(search) = self.sim.recipe_ui.search.as_mut() {
+        if let Some(search) = self.recipe_ui.search.as_mut() {
             search.x = xo + 25.0;
             search.y = yo + 13.0;
             let magnifier = inside(cursor, xo + 8.0, yo + 13.0, 17.0, 14.0);
@@ -254,7 +254,7 @@ impl Game<'_> {
                 search.focused = true;
                 search.reset_blink();
                 if !magnifier {
-                    let idx = search.index_at(&self.front.gui.atlas, cursor.0);
+                    let idx = search.index_at(&self.gui.atlas, cursor.0);
                     search.set_cursor(idx, false);
                 }
                 return true;
@@ -358,7 +358,7 @@ impl Game<'_> {
         let selected = self.recipe_ui.tab.unwrap_or(Tab::Search);
         let hovered = tabs.iter().position(|t| *t == selected).is_some_and(|n| {
             let (x, y) = self.tab_pos(xo, yo, n);
-            inside(self.front.cursor, x, y, 35.0, 27.0)
+            inside(self.cursor, x, y, 35.0, 27.0)
         });
         Some((true, hovered))
     }
@@ -378,14 +378,14 @@ impl Game<'_> {
         };
         self.ensure_book();
         if !self.shift_down_or_ctrl() {
-            self.recipe_ui.time += self.front.frame_ticks;
+            self.recipe_ui.time += self.frame_ticks;
         }
         let (ox, _) = self.inventory_origin(batch);
-        let cursor = self.front.cursor;
+        let cursor = self.cursor;
         let (bx, by) = self.book_button_pos(book_type, ox, batch);
         let hover = inside(cursor, bx, by, 20.0, 18.0);
         batch.sprite(
-            &self.front.gui.atlas,
+            &self.gui.atlas,
             &sprite(if hover {
                 "button_highlighted"
             } else {
@@ -429,9 +429,9 @@ impl Game<'_> {
     /// out by `horizon_client::recipe_book_screen`.
     fn draw_book_panel(&mut self, batch: &mut HudBatch, book_type: BookType) {
         let (xo, yo) = self.book_origin(batch);
-        let cursor = self.front.cursor;
-        let atlas = &self.front.gui.atlas;
-        let search = match self.sim.recipe_ui.search.as_mut() {
+        let cursor = self.cursor;
+        let atlas = &self.gui.atlas;
+        let search = match self.recipe_ui.search.as_mut() {
             Some(edit) => {
                 // The box's place, for clicks and typing.
                 edit.x = xo + 25.0;
@@ -534,7 +534,7 @@ impl Game<'_> {
         let calls = screen::draw(&layout);
         let tooltip = self.paint_book(batch, &calls);
         // The squeeze animations run down with the frames.
-        let frame = self.front.frame_ticks;
+        let frame = self.frame_ticks;
         for e in &mut self.recipe_ui.tab_anim {
             e.1 -= frame;
         }
@@ -557,7 +557,7 @@ impl Game<'_> {
         let mut tooltip: Option<Vec<(horizon_client::text::Text, u32)>> = None;
         for d in calls {
             let start = batch.vertices.len();
-            let atlas = &self.front.gui.atlas;
+            let atlas = &self.gui.atlas;
             match &d.call {
                 Call::Blit {
                     x, y, w, h, u, v, ..
@@ -689,7 +689,7 @@ impl Game<'_> {
         tooltip
     }
 }
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     /// The book the open screen has, if any.
     fn active_book(&self) -> Option<BookType> {
         if self.screen != Screen::Inventory || self.station.is_some() {

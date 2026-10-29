@@ -48,7 +48,7 @@ fn triggers(name: &str) -> bool {
         || n == "lever"
         || n == "bell"
 }
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// `WindChargeItem.use`.
     pub(super) fn throw_wind_charge(&mut self) -> Result<bool> {
         let (Some(eye), Some(p)) = (self.eye_position(), self.player.as_ref()) else {
@@ -316,7 +316,7 @@ impl crate::game::Sim<'_> {
             self.armor_stands = stands;
         }
         // Arrows and other projectiles (the charges themselves ignore it).
-        let push = |position: Vec3, velocity: &mut Vec3, game: &crate::game::Sim<'_>| {
+        let push = |position: Vec3, velocity: &mut Vec3, game: &crate::game::Server<'_>| {
             let feet = [position.x, position.y, position.z];
             let dist = distance(feet) / diameter;
             if dist > 1.0 {
@@ -423,7 +423,7 @@ impl crate::game::Sim<'_> {
         wind_charge: bool,
     ) -> Result<()> {
         // In a player's turn (their charge landing, their mace's burst) the
-        // host holds the other players (`as_player`): the burst waits for the
+        // network is out of place (`as_player`): the burst waits for the
         // turn to end so that it reaches every player, the player too.
         if self.net_acting.is_some() && self.network.is_none() {
             self.creatures.wind_bursts.push(Burst {

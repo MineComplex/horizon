@@ -22,7 +22,7 @@ fn slot_in_group(group: &str, slot: &str) -> bool {
         || (group == "armor" && matches!(slot, "feet" | "legs" | "chest" | "head" | "body"))
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// `getAttributeValue(KNOCKBACK_RESISTANCE)` of a mob: its own value plus
     /// the modifiers of the items it wears or holds in matching slots.
     pub(super) fn mob_knockback_resistance(&self, m: &Mob) -> f64 {

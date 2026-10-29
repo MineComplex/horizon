@@ -33,9 +33,9 @@ impl DebugHost for Host<'_, '_> {
         self.game.debug = !self.game.debug;
     }
     fn pause_game(&mut self, without_menu: bool) {
-        // Gui.setPauseScreen: PauseScreen(false) only when the game really
-        // pauses (single player, not open to the network). Escape alone opens
-        // the menu as it always has (key_pressed).
+        // Gui.setPauseScreen: a client of a server never really pauses, so
+        // the menu opens without pausing. Escape alone opens it as it always
+        // has (key_pressed).
         let g = &mut *self.game;
         if without_menu && g.screen == Screen::Playing {
             g.pause_menu = true;
@@ -51,7 +51,7 @@ impl DebugHost for Host<'_, '_> {
 
 impl Game<'_> {
     fn open_screen(&self) -> OpenScreen {
-        if self.front.title.is_some() {
+        if self.title.is_some() {
             return OpenScreen::Other;
         }
         match self.screen {
@@ -72,7 +72,7 @@ impl Game<'_> {
         let switcher_open = self.screen == Screen::GameModeSwitcher;
         if switcher_open && pressed {
             if name == self.settings.keys.get("key.debug.switchGameMode") {
-                if let Some(switcher) = &mut self.front.gamemode_switcher {
+                if let Some(switcher) = &mut self.gamemode_switcher {
                     switcher.cycle();
                 }
             } else if key == KeyCode::Escape {
@@ -95,7 +95,6 @@ impl Game<'_> {
             || self.recipe_search_focused()
             || self.station_typing()
             || self
-                .front
                 .title
                 .as_mut()
                 .is_some_and(|t| t.focused_field().is_some());
@@ -130,7 +129,7 @@ impl Game<'_> {
             || self.physical_keys.contains(&KeyCode::ShiftRight);
         let now = self.debug_millis();
         let binds = self.settings.keys.clone();
-        let mut keys = std::mem::take(&mut self.front.debug_keys);
+        let mut keys = std::mem::take(&mut self.debug_keys);
         let modifier_was_down = keys.modifier_down;
         let to_game = keys.key_press(
             &mut Host { game: self },
@@ -141,7 +140,7 @@ impl Game<'_> {
             crash_down,
             now,
         );
-        self.front.debug_keys = keys;
+        self.debug_keys = keys;
         if switcher_open {
             if name == binds.get("key.debug.modifier") {
                 self.close_gamemode_switcher(true);
@@ -165,7 +164,7 @@ impl Game<'_> {
     /// `KeyboardHandler.tick`: the debug crash countdown.
     pub(super) fn tick_debug_keys(&mut self) -> Result<()> {
         let now = self.debug_millis();
-        match self.front.debug_keys.tick(now) {
+        match self.debug_keys.tick(now) {
             None => {}
             Some(CrashNotice::Message) => {
                 let args = [
@@ -189,11 +188,11 @@ impl Game<'_> {
     /// The network charts' samples each tick: `PingDebugMonitor.tick` while
     /// they show, `BandwidthDebugMonitor.tick` always.
     pub(super) fn tick_debug_charts(&mut self) {
-        let shown = self.debug && self.front.debug_charts.network;
+        let shown = self.debug && self.debug_charts.network;
         let Some(r) = &self.remote else {
-            // The integrated server answers within the tick.
+            // Not connected: nothing to measure.
             if shown {
-                self.front.debug_charts.ping.log(0);
+                self.debug_charts.ping.log(0);
             }
             return;
         };
@@ -206,8 +205,8 @@ impl Game<'_> {
             ]
         });
         if let Some([bytes, sent, received]) = received {
-            self.front.debug_charts.log_bandwidth(bytes);
-            self.front.debug_charts.log_packets([sent, received]);
+            self.debug_charts.log_bandwidth(bytes);
+            self.debug_charts.log_packets([sent, received]);
         }
         if shown {
             use horizon_protocol::packets::{play::Serverbound, status::Ping};
@@ -238,7 +237,7 @@ impl Game<'_> {
             )
         };
         // `DebugScreenOverlay` on a server's client.
-        let c = &self.front.debug_charts;
+        let c = &self.debug_charts;
         [
             format!(
                 "Debug charts: {}; {};",
@@ -257,7 +256,7 @@ impl Game<'_> {
     /// entries, over everything the frame drew (menus too), at the debug GUI
     /// scale. F1 hides it unless a screen is open.
     pub(super) fn draw_debug_overlay(&self, batch: &mut HudBatch, size: [u32; 2]) {
-        let screen_open = self.front.title.is_some() || self.screen != Screen::Playing;
+        let screen_open = self.title.is_some() || self.screen != Screen::Playing;
         if !self.debug || (self.ui.hide_gui && !screen_open) {
             return;
         }
@@ -273,7 +272,6 @@ impl Game<'_> {
         // fps: DebugEntryFps.
         let limit = self.framerate_limit();
         let present = self
-            .front
             .renderer
             .as_ref()
             .map_or("", |r| match r.config.present_mode {
@@ -284,7 +282,6 @@ impl Game<'_> {
                 _ => "",
             });
         let refresh = self
-            .front
             .window
             .as_ref()
             .and_then(|w| w.current_monitor())
@@ -294,7 +291,7 @@ impl Game<'_> {
             });
         d.priority(format!(
             "{} fps T: {}{present} @{refresh}Hz",
-            self.front.fps.round() as i32,
+            self.fps.round() as i32,
             if limit == 260 {
                 "inf".into()
             } else {
@@ -337,14 +334,14 @@ impl Game<'_> {
         d.line("Filtering: None");
         d.line(format!(
             "Terrain Rendering: {}",
-            if self.front.renderer.as_ref().is_some_and(|r| r.multi_draw) {
+            if self.renderer.as_ref().is_some_and(|r| r.multi_draw) {
                 "multidrawindirect"
             } else {
                 "naive"
             }
         ));
         // system_specs (no Java line: Horizon has no JVM).
-        if let Some(r) = self.front.renderer.as_ref() {
+        if let Some(r) = self.renderer.as_ref() {
             static CPU: std::sync::OnceLock<String> = std::sync::OnceLock::new();
             d.group(
                 "system",
@@ -368,7 +365,7 @@ impl Game<'_> {
                     }
                 )],
             );
-            if let Some(w) = self.front.window.as_ref() {
+            if let Some(w) = self.window.as_ref() {
                 let density = w.scale_factor();
                 let logical = w.inner_size().to_logical::<f64>(density);
                 d.group(
@@ -403,7 +400,7 @@ impl Game<'_> {
             );
         }
         // Horizon's own: the shader pack's GPU time per pass (an empty group would move others).
-        let pass_lines = self.front.renderer.as_ref().map_or_else(Vec::new, |r| {
+        let pass_lines = self.renderer.as_ref().map_or_else(Vec::new, |r| {
             debug_overlay::shader_pass_lines(&r.shader_pass_times())
         });
         if !pass_lines.is_empty() {
@@ -411,11 +408,7 @@ impl Game<'_> {
         }
         // tps: DebugEntryTps for local and remote connections.
         if self.player.is_some() {
-            let [tx, rx] = self
-                .front
-                .debug_charts
-                .packet_rates
-                .map(|n| n.round() as i64);
+            let [tx, rx] = self.debug_charts.packet_rates.map(|n| n.round() as i64);
             let (_target, status) = if self.clock.sprinting() {
                 ("-".to_owned(), " (sprinting)")
             } else if self.clock.stepping() {
@@ -436,9 +429,9 @@ impl Game<'_> {
             }
         }
         let (left, right) = d.columns(&self.debug_chart_lines());
-        let atlas = &self.front.gui.atlas;
+        let atlas = &self.gui.atlas;
         let mut draws = debug_overlay::draw(&atlas.font, [&left, &right], scale, width);
-        let charts = self.front.debug_charts.draw(
+        let charts = self.debug_charts.draw(
             &atlas.font,
             width,
             height,
@@ -450,8 +443,8 @@ impl Game<'_> {
             scale, scale,
         )]));
         draws.extend(charts);
-        if self.front.debug_charts.lightmap
-            && let Some(r) = &self.front.renderer
+        if self.debug_charts.lightmap
+            && let Some(r) = &self.renderer
         {
             draws.extend(horizon_client::debug_chart::lightmap(
                 &r.lightmap_pixels,
@@ -583,15 +576,15 @@ impl Game<'_> {
                 true
             }
             DebugAction::FpsCharts => {
-                self.front.debug_charts.toggle_fps(&mut self.sim.debug);
+                self.debug_charts.toggle_fps(&mut self.debug);
                 true
             }
             DebugAction::NetworkCharts => {
-                self.front.debug_charts.toggle_network(&mut self.sim.debug);
+                self.debug_charts.toggle_network(&mut self.debug);
                 true
             }
             DebugAction::LightmapTexture => {
-                self.front.debug_charts.toggle_lightmap(&mut self.sim.debug);
+                self.debug_charts.toggle_lightmap(&mut self.debug);
                 true
             }
             // Screens and overlays Horizon does not draw yet (the debug
@@ -608,8 +601,8 @@ impl Game<'_> {
         }
     }
     /// `KeyboardHandler.copyRecreateCommand`: the targeted block or mob as a
-    /// `/setblock` or `/summon` command. In a single-player world the
-    /// server's data (no Shift) is the game's own.
+    /// `/setblock` or `/summon` command, from the client's own copy of the
+    /// data (vanilla asks the server with Shift).
     fn copy_recreate_command(&mut self, add_nbt: bool, from_server: bool) {
         use horizon_client::java_text::format_fixed2 as f2;
         let side = if add_nbt && from_server {
@@ -663,10 +656,10 @@ impl Game<'_> {
     /// `KeyboardHandler.setClipboard`.
     fn set_clipboard(&mut self, text: &str) {
         use horizon_client::clipboard::Clipboard;
-        self.front.clipboard.set(text);
+        self.clipboard.set(text);
     }
 }
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     /// `Util.getMillis` (positive: KeyboardHandler treats 0 as unset).
     pub(super) fn debug_millis(&self) -> i64 {
         self.started.elapsed().as_millis() as i64 + 1_000_000
@@ -718,8 +711,8 @@ impl crate::game::Sim<'_> {
         self.settings.save(&crate::game::Game::options_path());
         on
     }
-    /// `ServerboundChangeGameModePacket` handled by the integrated server:
-    /// `GameModeCommand.setGameMode` with its feedback.
+    /// `ServerboundChangeGameModePacket`: the server changes the game mode
+    /// (`GameModeCommand.setGameMode`, with its feedback).
     pub(super) fn change_game_mode(&mut self, mode: GameMode) {
         use horizon_protocol::packets::play::{ChangeGameMode, Serverbound};
         let mode = match mode {

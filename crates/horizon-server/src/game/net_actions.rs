@@ -1,10 +1,10 @@
-//! What players do in a server. The game's gameplay code is written for
-//! the one local player, so a player's action runs through it with the player's
+//! What players do on the server. The gameplay code is written for one
+//! player in place, so a player's action runs through it with the player's
 //! state swapped in for the duration of the call (position, inventory, game
 //! mode, experience, mining and item use): digging, placing, using items and
-//! blocks, attacking and the commands all behave exactly as they do for the
-//! host, and every world change they cause reaches all players through the
-//! block log, the level events and the entity tracker.
+//! blocks, attacking and the commands all behave the same for everyone, and
+//! every world change they cause reaches all players through the block log,
+//! the level events and the entity tracker.
 use super::{
     Dim, Hit, Mining, PlayerUse, Screen, respawn_anchor::RespawnConfig, server_net::Network,
 };
@@ -44,10 +44,10 @@ pub(super) struct PlayerPlay {
     /// `ServerGamePacketListenerImpl.dropSpamThrottler` (`TickThrottler(20, 1480)`): 20 for each
     /// item a creative player drops from the creative screen, one less each tick.
     creative_drops: u32,
-    /// The player's `Player.getCooldowns()` (`crate::game::Sim::cooldowns` for its turn).
+    /// The player's `Player.getCooldowns()` (`crate::game::Server::cooldowns` for its turn).
     pub(super) cooldowns: crate::hc::cooldowns::Cooldowns,
     attack_ticks: u32,
-    /// The main hand's item at the player's last tick (`crate::game::Sim::attack_item`).
+    /// The main hand's item at the player's last tick (`crate::game::Server::attack_item`).
     attack_item: Option<std::sync::Arc<str>>,
     swing: crate::hc::first_person::SwingState,
     /// The block being dug and the face the client aimed at.
@@ -143,7 +143,7 @@ pub(super) struct PlayerSwap {
     using: Option<(usize, u32)>,
     use_delay: u32,
     pub(super) shield_cooldown: u32,
-    /// The player's item cooldowns (`crate::game::Sim::cooldowns` for its turn).
+    /// The player's item cooldowns (`crate::game::Server::cooldowns` for its turn).
     cooldowns: crate::hc::cooldowns::Cooldowns,
     attack_ticks: u32,
     attack_item: Option<std::sync::Arc<str>>,
@@ -218,7 +218,7 @@ fn direction(face: i32) -> [i32; 3] {
     }
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// Run `f` as the player `conn`: the game's player state is swapped for theirs.
     pub(super) fn as_player<R>(
         &mut self,
@@ -1760,7 +1760,7 @@ impl crate::game::Sim<'_> {
         if net.hub.players[gi].spectator() {
             return;
         }
-        if let Some(victim) = crate::game::Sim::pvp_victim(net, conn, id) {
+        if let Some(victim) = crate::game::Server::pvp_victim(net, conn, id) {
             #[allow(unused_mut)]
             if let Some(Some(mut strike)) = self.as_player(net, conn, |g| g.pvp_strike())
                 && self.pvp_land(net, victim, &strike)
@@ -1932,11 +1932,6 @@ impl crate::game::Sim<'_> {
     /// operator gets them, and the console logs them as the server's own
     /// system messages (MinecraftServer.sendSystemMessage).
     pub(super) fn send_admin_feedback(&mut self, net: &mut Network, source: Option<u32>) {
-        // PlayerList.isOp for the game of a world open to LAN: the owner when
-        // the world allows commands, everyone when the LAN does.
-        let host_op = source.is_some()
-            && !net.hub.config.dedicated
-            && (self.allow_commands() || net.hub.config.player_commands);
         for (line, ops, console) in std::mem::take(&mut self.admin_feedback) {
             if ops {
                 let content = crate::hc::server_net::data::component_nbt(&line.component());
@@ -1950,9 +1945,6 @@ impl crate::game::Sim<'_> {
                         content: content.clone(),
                         overlay: false,
                     }));
-                }
-                if host_op {
-                    self.system_message(line.clone());
                 }
             }
             if console {
@@ -2957,8 +2949,8 @@ impl crate::game::Sim<'_> {
         }
         let _ = swinging;
     }
-    /// `level.destroyBlockProgress(id, pos, -1)` for a player: its crack on `pos` is gone, for the
-    /// host and the other players.
+    /// `level.destroyBlockProgress(id, pos, -1)` for a player: its crack on `pos` is gone, for
+    /// the other players.
     /// A player who dies digs and uses nothing any more: the block it was
     /// breaking, or had left to break (`hasDelayedDestroy`), stays, and its
     /// crack goes. Respawning gives it a new ServerPlayerGameMode (#1315).

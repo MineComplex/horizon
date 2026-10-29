@@ -1,6 +1,5 @@
 //! Workstation menus for players: the screen a player's use opens runs on
-//! the game's menu engine (`crate::hc::menu`), the one single player
-//! uses, with vanilla's packets: OpenScreen with the station's `MenuType`,
+//! the game's menu engine (`crate::hc::menu`), with vanilla's packets: OpenScreen with the station's `MenuType`,
 //! container clicks, `ServerboundContainerButtonClickPacket`, the content and
 //! data slot sync after each (`broadcastChanges`), and the inputs back into
 //! the inventory when the menu closes (`AbstractContainerMenu.clearContainer`).
@@ -31,7 +30,7 @@ pub(super) struct PlayerStation {
 }
 
 /// A player's open lectern: `LecternMenu` over the block entity, made on the
-/// menu engine for each click (`crate::game::Sim::lectern_menu`).
+/// menu engine for each click (`crate::game::Server::lectern_menu`).
 pub(super) struct PlayerLectern {
     window: i32,
     state: i32,
@@ -56,7 +55,7 @@ fn menu_of(kind: StationKind) -> Option<(&'static str, Kind, std::ops::Range<usi
     })
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// A workstation a player's use opened (`ServerPlayer.openMenu`); false
     /// when players can't use that one yet.
     pub(super) fn net_open_station(
@@ -594,7 +593,7 @@ impl crate::game::Sim<'_> {
     }
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// The players' lecterns each tick: `stillValid` (the block entity, its
     /// book, the reach) closes them, and `broadcastChanges` sends a book or
     /// page another player changed.

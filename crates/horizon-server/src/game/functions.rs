@@ -42,7 +42,7 @@ pub(super) enum Outcome {
     Fail,
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     fn datapack_settings_path(&self) -> std::path::PathBuf {
         self.world_root.join("datapacks.json")
     }

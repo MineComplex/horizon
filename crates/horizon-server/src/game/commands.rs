@@ -88,7 +88,7 @@ fn format_double(v: f64) -> String {
     format!("{v:.6}")
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// Commands.performCommand for a line without its slash.
     pub(super) fn run_command(&mut self, command: &str) -> bool {
         let d = vanilla::game_dispatcher();
@@ -190,8 +190,7 @@ impl crate::game::Sim<'_> {
         self.broadcast_to_admins(message);
     }
     /// CommandSourceStack.broadcastToAdmins (`sendSuccess` with `broadcast`)
-    /// for a player's command, the game's in a world open to LAN and the
-    /// dedicated server console's when `broadcast-console-to-ops` is on:
+    /// for a player's command, and the console's when `broadcast-console-to-ops` is on:
     /// `[name: message]`, gray and italic, for the other operators when
     /// `send_command_feedback`, and for a player's command on a dedicated
     /// server the console when `log_admin_commands`. Queued while the
@@ -904,7 +903,7 @@ impl crate::game::Sim<'_> {
             "locate.structure" | "locate.biome" => self.cmd_locate(id, ctx),
             "locate.poi" => self.cmd_locate_poi(ctx),
             "warden_spawn_tracker.clear" | "warden_spawn_tracker.set" => {
-                let level = crate::game::Sim::int(ctx, "warning_level");
+                let level = crate::game::Server::int(ctx, "warning_level");
                 self.cmd_warden_spawn_tracker(level);
                 Ok(1)
             }
@@ -1140,7 +1139,7 @@ impl crate::game::Sim<'_> {
             Some(Err(e)) => return Err(CommandError::new(Text::literal(e))),
             None => (0, None),
         };
-        let count = crate::game::Sim::int(ctx, "count").unwrap_or(1);
+        let count = crate::game::Server::int(ctx, "count").unwrap_or(1);
         let targets = self.entities(ctx, "targets", true)?;
         let max_stack = self.res.items().get(&id).map_or(64, |i| i.max_stack) as i32;
         if count > max_stack * 100 {
@@ -1522,7 +1521,7 @@ impl crate::game::Sim<'_> {
         let total = self.world.day_time;
         match id {
             "time.set" => {
-                let t = i64::from(crate::game::Sim::int(ctx, "time").unwrap_or(0));
+                let t = i64::from(crate::game::Server::int(ctx, "time").unwrap_or(0));
                 if total == t {
                     return Err(err("commands.time.set.already_at_time", &[&clock, &t]));
                 }
@@ -1556,7 +1555,7 @@ impl crate::game::Sim<'_> {
                 Ok((self.world.day_time % i64::from(i32::MAX)) as i32)
             }
             "time.add" => {
-                let t = i64::from(crate::game::Sim::int(ctx, "time").unwrap_or(0));
+                let t = i64::from(crate::game::Server::int(ctx, "time").unwrap_or(0));
                 self.world.day_time = (total + t).max(0);
                 let now = self.world.day_time;
                 self.feedback(Text::tr("commands.time.set.absolute", &[&clock, &now]));
@@ -1637,7 +1636,7 @@ impl crate::game::Sim<'_> {
         }
     }
     fn cmd_weather(&mut self, ctx: &Context) -> R<i32> {
-        let duration = crate::game::Sim::int(ctx, "duration");
+        let duration = crate::game::Server::int(ctx, "duration");
         let sample = |min: i32, max: i32, r: &mut horizon_core::random::LegacyRandom| {
             min + r.next_int_bound(max - min + 1).unwrap_or(0)
         };
@@ -2426,7 +2425,7 @@ impl crate::game::Sim<'_> {
             return Ok(value);
         }
         let targets = self.entities(ctx, "target", true)?;
-        let amount = crate::game::Sim::int(ctx, "amount").unwrap_or(0);
+        let amount = crate::game::Server::int(ctx, "amount").unwrap_or(0);
         let add = ctx.has("add");
         let op = if add { "add" } else { "set" };
         // Every target changes (a set of points can be refused for some).
@@ -2753,7 +2752,7 @@ impl crate::game::Sim<'_> {
                 components: None,
             },
         };
-        let max = crate::game::Sim::int(ctx, "maxCount").unwrap_or(-1);
+        let max = crate::game::Server::int(ctx, "maxCount").unwrap_or(-1);
         let counting = max == 0;
         // ClearInventoryCommands.clearInventory: each player on their own.
         let mut removed = 0i32;
@@ -3147,7 +3146,7 @@ fn split_top_level(s: &str, sep: char) -> Vec<&str> {
     out
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     pub(crate) fn int(ctx: &Context, name: &str) -> Option<i32> {
         match ctx.get(name) {
             Some(Arg::Int(v)) => Some(*v),

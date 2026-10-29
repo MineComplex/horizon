@@ -47,7 +47,7 @@ struct Body {
     supported: bool,
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     /// Push whatever this tick's moving pistons ran into, in the order the
     /// pistons ticked: vanilla pushes from each block entity's own tick.
     pub(super) fn push_piston_entities(&mut self, pushes: Vec<Push>) {

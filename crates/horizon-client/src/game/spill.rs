@@ -81,7 +81,7 @@ impl GameLevel<'_> {
     }
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     /// Follow up on the block entities the block behaviour removed: a song
     /// stops, an open container's screen closes.
     pub(super) fn flush_spill(&mut self) {

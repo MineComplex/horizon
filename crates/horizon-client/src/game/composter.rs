@@ -5,7 +5,7 @@
 use horizon_client::particles::{ParticleOptions, ParticleType};
 use horizon_core::{position::BlockPos, random::RandomSource};
 
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     /// The composter's `level` at `pos`, None when it isn't a composter.
     pub(super) fn composter_level(&self, pos: [i32; 3]) -> Option<i32> {
         let state = self.world.block(pos[0], pos[1], pos[2]);

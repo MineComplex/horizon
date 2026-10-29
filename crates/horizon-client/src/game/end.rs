@@ -100,20 +100,13 @@ impl Game<'_> {
     pub(super) fn end_flash_geometry(&self) -> Vec<Vertex> {
         let mut out = Vec::new();
         // The old combined sky/flash draw also skipped the flash without a sky sprite.
-        if !self
-            .front
-            .gui
-            .atlas
-            .sprites
-            .contains_key("environment/end_sky")
-        {
+        if !self.gui.atlas.sprites.contains_key("environment/end_sky") {
             return out;
         }
         // SkyRenderer.renderEndFlash: the end_flash sprite at height 100, scale 60.
         let intensity = self.end.flash.intensity(self.clock.fraction() as f32);
         if intensity > 1e-5
             && let Some(r) = self
-                .front
                 .gui
                 .atlas
                 .sprites
@@ -154,7 +147,7 @@ impl Game<'_> {
     pub(super) fn end_flash_sky(&self, sky: &mut horizon_client::environment::Sky, partial: f64) {
         if self.dim == Dim::End && !self.settings.file.bool("hideLightningFlashes") {
             let intensity = self.end.flash.intensity(partial as f32);
-            sky.sky_light_factor += if self.front.boss_overlay.should_create_world_fog() {
+            sky.sky_light_factor += if self.boss_overlay.should_create_world_fog() {
                 intensity / 3.0
             } else {
                 intensity
@@ -175,8 +168,7 @@ impl Game<'_> {
     fn end_crystal_geometry(&self, camera: glam::DVec3, out: &mut Vec<Vertex>) {
         let (Some(model), Some(r)) = (
             self.crystal_model.as_ref(),
-            self.front
-                .gui
+            self.gui
                 .atlas
                 .sprites
                 .get("entity/end_crystal/end_crystal")
@@ -230,7 +222,7 @@ impl Game<'_> {
 
     /// ThrownItemRenderer: the ender eye item facing the camera.
     fn eye_geometry(&self, camera: glam::DVec3, out: &mut Vec<Vertex>) {
-        let Some(r) = self.front.gui.atlas.sprites.get("item/ender_eye").copied() else {
+        let Some(r) = self.gui.atlas.sprites.get("item/ender_eye").copied() else {
             return;
         };
         let alpha = self.clock.fraction();
@@ -266,7 +258,7 @@ impl Game<'_> {
         }
     }
 }
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     /// The environment attributes of the current dimension.
     pub(super) fn dim_environment(&self) -> &Environment {
         match self.dim {

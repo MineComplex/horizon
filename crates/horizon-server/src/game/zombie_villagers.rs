@@ -31,7 +31,7 @@ fn infects(difficulty: Difficulty, coin: impl FnOnce() -> bool) -> bool {
     }
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// `Zombie.killedEntity`: a villager killed by a zombie may rise as a
     /// zombie villager keeping its profession, trades and gossip.
     pub(super) fn zombie_killed(&mut self, killer: u32, victim: u32) {

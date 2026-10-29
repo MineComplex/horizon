@@ -554,7 +554,7 @@ fn wrap64(d: f64) -> f64 {
     let r = d.rem_euclid(360.0);
     if r >= 180.0 { r - 360.0 } else { r }
 }
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     fn fight_path(&self) -> std::path::PathBuf {
         crate::hc::save::dimension_dir(&self.world_root, "minecraft:the_end").join(FIGHT_FILE)
     }
@@ -2342,7 +2342,7 @@ impl Breath {
             }
     }
 }
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     pub(super) fn fight_ready(&mut self) -> bool {
         self.load_fight();
         // spawnExitPortal runs from scanState and the dragon's death, both
@@ -2434,7 +2434,7 @@ impl Crystal {
         })
     }
 }
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// `ServerExplosion.hurtEntities`: crystals in reach are removed without
     /// another blast; explosions always hurt dragons.
     pub(super) fn explosion_hits_special(&mut self, center: [f64; 3], radius: f32) {
@@ -2470,7 +2470,7 @@ impl crate::game::Sim<'_> {
         }
     }
 }
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// The dragon as players track it (`EnderDragon.getAddEntityPacket` and
     /// the synched data that differs from the defaults: its health, defined
     /// as 1, and `DATA_PHASE`, defined as hovering). Vanilla pairs it with no
@@ -2508,8 +2508,8 @@ impl crate::game::Sim<'_> {
         })
     }
 }
-impl crate::game::Sim<'_> {}
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {}
+impl crate::game::Server<'_> {
     /// `EndCrystalItem.useOn`: on obsidian or bedrock with room above.
     pub(super) fn place_end_crystal(
         &mut self,
@@ -2938,4 +2938,4 @@ impl crate::game::Sim<'_> {
     }
 }
 
-impl crate::game::Sim<'_> {}
+impl crate::game::Server<'_> {}

@@ -68,7 +68,7 @@ impl Game<'_> {
         }
     }
 }
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     /// The moved block and, for a retracting piston, its extended base.
     fn moving_piston_blocks(
         &self,

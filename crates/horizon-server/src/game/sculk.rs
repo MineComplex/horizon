@@ -154,7 +154,7 @@ fn dist_sqr(a: [i32; 3], b: (i32, i32, i32)) -> i64 {
     d(a[0], b.0).pow(2) + d(a[1], b.1).pow(2) + d(a[2], b.2).pow(2)
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// Run `f` with the player as the cause of the block changes it makes.
     pub(super) fn with_player_actor<T>(&mut self, f: impl FnOnce(&mut Self) -> T) -> T {
         let prior = self.sculk.actor.replace(Who::Player);
@@ -314,7 +314,7 @@ impl crate::game::Sim<'_> {
                 self.world.block_entities.remove(&key);
             }
             self.sculk.index.remove(&key);
-            if let Some(e) = crate::game::Sim::entity_for_kind(new_kind) {
+            if let Some(e) = crate::game::Server::entity_for_kind(new_kind) {
                 self.world
                     .block_entities
                     .insert(key, BlockEntity::Sculk(Box::new(e)));
@@ -358,7 +358,7 @@ impl crate::game::Sim<'_> {
             if !matches!(
                 self.world.block_entities.get(&pos),
                 Some(BlockEntity::Sculk(_))
-            ) && let Some(e) = crate::game::Sim::entity_for_kind(self.kind_of_state(state))
+            ) && let Some(e) = crate::game::Server::entity_for_kind(self.kind_of_state(state))
             {
                 self.world
                     .block_entities
@@ -1596,7 +1596,7 @@ impl crate::game::Sim<'_> {
     }
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     pub(crate) fn entity_for_kind(kind: u8) -> Option<SculkEntity> {
         Some(SculkEntity::new(match kind {
             KIND_SENSOR => SculkKind::Sensor,

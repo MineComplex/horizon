@@ -25,7 +25,7 @@ impl Game<'_> {
             let server = control::Server::start(path)
                 .map_err(|e| format!("control socket {}: {e}", path.display()))?;
             log::info!("Horizon: control socket {}", server.path().display());
-            self.front.control = Some(server);
+            self.control = Some(server);
         } else if self.agent_control_on {
             self.open_agent_socket();
         }
@@ -39,7 +39,7 @@ impl Game<'_> {
         match control::Server::start(&path) {
             Ok(server) => {
                 log::info!("Horizon: control socket {}", server.path().display());
-                self.front.control = Some(server);
+                self.control = Some(server);
             }
             Err(e) => log::warn!("Horizon: control socket {}: {e}", path.display()),
         }
@@ -52,16 +52,15 @@ impl Game<'_> {
         let changed = wanted != self.agent_control_on;
         self.agent_control_on = wanted;
         let open = self
-            .front
             .control
             .as_ref()
             .is_some_and(|c| !c.path().as_os_str().is_empty());
         if self.settings.extras.no_ai || (changed && !wanted) {
             if open {
                 log::info!("Horizon: control socket closed");
-                self.front.control = None;
+                self.control = None;
             }
-        } else if changed && wanted && self.front.control.is_none() {
+        } else if changed && wanted && self.control.is_none() {
             self.open_agent_socket();
         }
     }
@@ -69,7 +68,6 @@ impl Game<'_> {
     /// The AI Agent page's lines: the state, then where agents connect.
     pub(super) fn agent_status_lines(&self) -> Vec<String> {
         let server = self
-            .front
             .control
             .as_ref()
             .filter(|c| !c.path().as_os_str().is_empty());
@@ -102,7 +100,7 @@ impl Game<'_> {
         lines
     }
 }
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     /// The endpoint: the one the command line gave, else the default horizon-ctl looks for.
     fn agent_socket_path(&self) -> PathBuf {
         self.options

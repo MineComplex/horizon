@@ -2,7 +2,7 @@
 //! bartering when the admiring is over, and anger at players who open
 //! their chests or mine their gold.
 
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     /// `PiglinAi.isWearingSafeArmor`.
     pub(super) fn wearing_gold(&self) -> bool {
         let tag = self

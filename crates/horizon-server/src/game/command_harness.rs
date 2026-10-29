@@ -41,7 +41,7 @@ pub(super) fn spans(text: &Text) -> Value {
     Value::Array(out.into_iter().map(|(t, s)| json!([t, s])).collect())
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     pub(crate) fn run_command_harness(&mut self, script: &Path, output: &Path) -> Result<()> {
         let deadline = Instant::now()
             + Duration::from_secs(
@@ -128,7 +128,7 @@ impl crate::game::Sim<'_> {
     }
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// The owner's authoritative body and level, using the same swaps as a
     /// server command. Always put them back, also when a script operation fails.
     pub(crate) fn harness_owner<T>(&mut self, f: impl FnOnce(&mut Self) -> Result<T>) -> Result<T> {
@@ -168,7 +168,7 @@ impl crate::game::Sim<'_> {
     }
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// The player's portal process finished in the nether portal it stands
     /// in (the oracle's player is not ticked, so neither is the wait).
     pub(crate) fn harness_portal(&mut self) -> Result<()> {
@@ -210,7 +210,7 @@ impl crate::game::Sim<'_> {
     }
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// Load terrain until the player stands in lit chunks.
     pub(crate) fn harness_settle(&mut self, deadline: Instant) -> Result<()> {
         loop {

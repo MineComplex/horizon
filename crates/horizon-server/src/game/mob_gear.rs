@@ -49,7 +49,7 @@ fn slot_item(m: &crate::hc::mobs::Mob, slot: usize) -> Option<std::sync::Arc<str
     }
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// `Mob.equip(EquipmentTable)` for a spawner's `equipment`: the loot table
     /// (the mob as `this`, its random sequence) is rolled and each stack goes
     /// in the slot `EquipmentUser.resolveSlot` picks, with the table's drop

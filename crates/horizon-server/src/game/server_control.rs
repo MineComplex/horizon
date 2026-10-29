@@ -23,7 +23,7 @@ use crate::hc::Result;
 use horizon_core::geometry::Vec3;
 use serde_json::{Value, json};
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// One control request beyond `server-status` and `console`; None when
     /// it is not one of them.
     pub(super) fn server_control(&mut self, line: &str) -> Option<Value> {
@@ -130,9 +130,9 @@ impl crate::game::Sim<'_> {
             _ => Err(format!("unknown request {line:?}").into()),
         }
     }
-    /// `horizon-ctl lan` on a server: it is always open, on its own port.
+    /// `horizon-ctl network` on a server: it always listens, on its own port.
     /// `commands` lets every player run commands, `force` forces the default
-    /// game mode (Open to LAN's options).
+    /// game mode.
     fn server_net(&mut self, words: &[&str]) -> Result<Value> {
         match words.first().copied() {
             Some("open") => {
@@ -221,7 +221,7 @@ impl crate::game::Sim<'_> {
     }
 }
 
-impl crate::game::Sim<'_> {}
+impl crate::game::Server<'_> {}
 
 /// What the control socket holds for a test (`server-hold`).
 #[derive(Default)]

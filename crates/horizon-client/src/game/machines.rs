@@ -294,7 +294,7 @@ pub(super) fn shelf_signal(
     )
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     fn containers(&self) -> Containers<'_> {
         Containers {
             world: &self.world,
@@ -327,7 +327,7 @@ impl Game<'_> {
         let Some(screen) = self.machine_screen() else {
             return false;
         };
-        let atlas = &self.front.gui.atlas;
+        let atlas = &self.gui.atlas;
         let key_is_cart = self
             .container
             .is_some_and(|k| k.1 == super::minecarts::CART_KEY_Y);
@@ -380,7 +380,7 @@ impl Game<'_> {
         true
     }
 }
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     fn machine_screen(&self) -> Option<Screen> {
         let key = self.container?;
         // A server's menu shows by its type, whatever block (or minecart) holds it.

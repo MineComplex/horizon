@@ -191,7 +191,7 @@ impl Game<'_> {
             self.close_command_block();
             return;
         }
-        let atlas = &self.front.gui.atlas;
+        let atlas = &self.gui.atlas;
         let (w, h) = (batch.width, batch.height);
         let mid = (w / 2.0).floor();
         ui::menu_background(batch, atlas, 0.0, 0.0, w, h, true);
@@ -217,7 +217,7 @@ impl Game<'_> {
             s.previous.draw(batch, atlas, None);
         }
         for (b, x, y, bw) in CommandBlockScreen::buttons(w, h) {
-            let hover = ui::hovered(self.front.cursor, x, y, bw, 20.0);
+            let hover = ui::hovered(self.cursor, x, y, bw, 20.0);
             ui::button(batch, atlas, x, y, bw, 20.0, &s.label(b), true, hover);
         }
         self.command_block_screen = Some(s);
@@ -227,17 +227,16 @@ impl Game<'_> {
             return;
         };
         let size = self
-            .front
             .renderer
             .as_ref()
             .map_or([1, 1], |r| [r.config.width, r.config.height]);
         let b = HudBatch::new(size);
         let hit = CommandBlockScreen::buttons(b.width, b.height)
             .into_iter()
-            .find(|(_, x, y, bw)| ui::hovered(self.front.cursor, *x, *y, *bw, 20.0))
+            .find(|(_, x, y, bw)| ui::hovered(self.cursor, *x, *y, *bw, 20.0))
             .map(|b| b.0);
         if hit.is_some() {
-            self.front.audio.play_button_click();
+            self.audio.play_button_click();
         }
         match hit {
             Some(Button::Output) => {
@@ -281,20 +280,20 @@ impl Game<'_> {
             }
             _ => {}
         }
-        let ctrl = self.sim.keys.contains(&KeyCode::ControlLeft);
-        let shift = self.sim.keys.contains(&KeyCode::ShiftLeft);
+        let ctrl = self.keys.contains(&KeyCode::ControlLeft);
+        let shift = self.keys.contains(&KeyCode::ShiftLeft);
         let shortcut = self.edit_shortcut(event);
-        let Some(s) = self.sim.command_block_screen.as_mut() else {
+        let Some(s) = self.command_block_screen.as_mut() else {
             return;
         };
         if let Some(shortcut) = shortcut {
-            s.command.shortcut(shortcut, &mut self.front.clipboard);
+            s.command.shortcut(shortcut, &mut self.clipboard);
         } else if !s.command.key(key, ctrl, shift) && !ctrl {
             self.command_block_type(event.text.as_deref().unwrap_or(""));
         }
     }
 }
-impl crate::game::Sim<'_> {
+impl crate::game::Game<'_> {
     /// `Player.canUseGameMasterBlocks`: creative with game master commands.
     pub(super) fn can_use_game_master_blocks(&self) -> bool {
         self.creative && self.world_data.registries.permission >= 2

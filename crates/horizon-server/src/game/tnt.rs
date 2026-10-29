@@ -107,7 +107,7 @@ impl PrimedTnt {
     }
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// `new PrimedTnt(level, x + 0.5, y, z + 0.5, owner)`; `short` applies
     /// `wasExploded`'s random short fuse. Plays `entity.tnt.primed` for primes.
     pub(super) fn spawn_primed_tnt(&mut self, pos: BlockPos, short: bool) {

@@ -117,7 +117,7 @@ pub(super) fn analog_signal(world: &World, pos: Pos) -> Option<i32> {
     }
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// `Player.canUseGameMasterBlocks`: creative with game master commands.
     pub(super) fn can_use_game_master_blocks(&self) -> bool {
         self.creative && self.world_data.registries.permission >= 2

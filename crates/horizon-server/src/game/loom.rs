@@ -1,7 +1,7 @@
 //! The loom screen (`LoomScreen`): the scrolling pattern list, the banner
 //! preview and the six-layer error. The menu itself (`LoomMenu`: slots,
 //! selectable patterns, the pattern buttons, quick moves, the result) runs on
-//! the verified engine, `crate::hc::menu`, through `crate::game::Sim::menu_session`.
+//! the verified engine, `crate::hc::menu`, through `crate::game::Server::menu_session`.
 use super::stations::Kind;
 use crate::hc::{
     banner::{self},
@@ -29,7 +29,7 @@ impl LoomState {
     }
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// `LoomScreen.containerChanged`: the error flag, whether the pattern
     /// buttons show (only when an input changed), and the scroller reset.
     pub(super) fn loom_screen_changed(&mut self) {

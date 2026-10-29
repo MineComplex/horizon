@@ -19,7 +19,7 @@ fn components(stack: &ItemStack) -> Compound {
     }
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// The block entity at `key` as vanilla saves it, with its custom name.
     fn saved_block_entity(&self, key: (i32, i32, i32)) -> Option<Tag> {
         let entity = self.world.block_entities.get(&key)?;

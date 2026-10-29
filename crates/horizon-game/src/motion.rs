@@ -3103,8 +3103,7 @@ mod tests {
         }
         let assets = Assets::load(&root).unwrap();
         let resources = MotionResources::load(&root, &assets).unwrap();
-        // Both abilities are set by creative/spectator mode changes for the
-        // resident player and for LAN/dedicated players.
+        // Both abilities are set by creative/spectator mode changes.
         for spectator in [false, true] {
             for food in [0, 1, 20] {
                 let mut player = PlayerMotion::new(&resources, Vec3::ZERO).unwrap();
@@ -3425,8 +3424,7 @@ mod tests {
             }
         }
     }
-    /// A client's own fall (multiplayer, a player, single player on its
-    /// server thread) plays its landing but never hurts it: only the server
+    /// A client's own fall plays its landing but never hurts it: only the server
     /// does (`Entity.hurt` on a client), so a server that cancels fall damage
     /// leaves the screen still.
     #[test]

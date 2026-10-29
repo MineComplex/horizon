@@ -69,9 +69,9 @@ fn stand_poses(a: &crate::hc::entities::ArmorStand) -> Vec<(u8, i32, Value)> {
     meta
 }
 
-impl crate::game::Sim<'_> {
-    /// Who rides what (`Entity.getPassengers`): mobs on mobs, and the
-    /// host in its boat or minecart.
+impl crate::game::Server<'_> {
+    /// Who rides what (`Entity.getPassengers`): mobs on mobs and in boats
+    /// and minecarts.
     pub(super) fn net_riding(&self, players: &[(u32, i32)], riding: &mut Riding) {
         riding.clear();
         // The server's players in their boats and minecarts.
@@ -254,7 +254,7 @@ impl crate::game::Sim<'_> {
     }
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// Gives the entities Horizon keeps without an id one (`Entity.id`, from
     /// the same counter as the rest) before they are first tracked.
     pub(super) fn net_assign_ids(&mut self) {
@@ -479,7 +479,7 @@ impl crate::game::Sim<'_> {
         // DATA_WAITING for its 20-tick wait, and DATA_PARTICLE): the
         // client draws them from these (`tick_remote_clouds`).
         // The hub is out of `self.network` meanwhile, so it is passed in.
-        let breath = crate::game::Sim::hub_particle(
+        let breath = crate::game::Server::hub_particle(
             hub,
             &crate::hc::particles::ParticleOptions::simple(
                 crate::hc::particles::ParticleType::DragonBreath,

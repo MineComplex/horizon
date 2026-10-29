@@ -2,7 +2,7 @@
 //!
 //! A server holds a level per dimension (game/levels.rs). A player who steps
 //! into a Nether or End portal moves to the destination's level, which opens
-//! if nobody was there: the swap is the in-frame path's portal plans and
+//! if nobody was there: the swap runs the portal plans and
 //! arrival search, and the player hears it as `ServerPlayer.teleport` into
 //! another level: a Respawn packet keeping all data, then a teleport to the
 //! exit once the destination has loaded around them.
@@ -125,7 +125,7 @@ impl Trip {
     }
 }
 
-impl crate::game::Sim<'_> {
+impl crate::game::Server<'_> {
     /// Whether `conn` is between two levels: the server leaves its body
     /// alone until it arrives.
     pub(super) fn on_server_trip(&self, conn: u32) -> bool {
