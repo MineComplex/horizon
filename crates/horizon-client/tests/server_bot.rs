@@ -386,14 +386,14 @@ fn sprint_commands_survive_keyboard_input_changes() {
 }
 
 #[test]
-fn status_and_join() {
+fn no_status_reply_then_join() {
     let Some(resources) = resources() else {
         return;
     };
     let mut s = server(&resources);
     let port = s.hub.network.port;
-    // Server list ping.
-    let json = run(&mut s, move || {
+    // A status ping gets no reply: the connection closes (Velocity answers pings).
+    let closed = run(&mut s, move || {
         let mut c = Connection::connect("127.0.0.1", port, Duration::from_secs(5))
             .map_err(|e| e.to_string())?;
         c.send(
@@ -406,23 +406,10 @@ fn status_and_join() {
             .encode(),
         )
         .unwrap();
-        c.send(&status::Serverbound::StatusRequest(Empty).encode())
-            .unwrap();
-        let (id, payload) = c.recv().map_err(|e| e.to_string())?;
-        let status::Clientbound::StatusResponse(r) =
-            status::Clientbound::decode(id, &payload).map_err(|e| e.to_string())?
-        else {
-            return Err("no status".into());
-        };
-        Ok(r.json)
+        let _ = c.send(&status::Serverbound::StatusRequest(Empty).encode());
+        Ok(c.recv().is_err())
     });
-    let v: serde_json::Value = serde_json::from_str(&json).unwrap();
-    assert_eq!(
-        v["version"]["protocol"],
-        horizon_core::version::PROTOCOL_VERSION
-    );
-    // ServerStatus.CODEC writes a plain literal MOTD as a bare string.
-    assert_eq!(v["description"], "Test - World");
+    assert!(closed, "the server answered a status ping");
 
     // Join, receive the world, place a block, see another player arrive.
     let report = run(&mut s, move || {

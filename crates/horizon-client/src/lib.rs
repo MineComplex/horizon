@@ -185,7 +185,6 @@ pub use horizon_game::vanillagen;
 pub use horizon_game::vault;
 pub mod weather;
 pub mod widgets;
-pub mod win_screen;
 pub use horizon_client_core::Result;
 pub use horizon_client_core::block_entity_nbt;
 pub use horizon_client_core::bossbar;

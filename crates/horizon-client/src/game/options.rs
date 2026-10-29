@@ -233,7 +233,6 @@ impl Game<'_> {
                     let _ = std::fs::create_dir_all(&dir);
                     super::packs::open_folder(&dir);
                 }
-                Event::Credits => self.open_win_screen(false, super::win::Finish::Options),
             }
         }
         Ok(())

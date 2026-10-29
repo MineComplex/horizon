@@ -365,7 +365,6 @@ impl Game<'_> {
             Screen::ConfirmLink => "confirm-link",
             Screen::DialogWarning => "dialog-warning",
             Screen::CommandBlock => "command-block",
-            Screen::Win => "win",
         }
     }
 

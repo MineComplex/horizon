@@ -141,7 +141,6 @@ mod tweaks;
 mod ui_control;
 mod vault;
 mod villagers;
-mod win;
 mod wind;
 mod wither;
 use horizon_client::{
@@ -467,8 +466,6 @@ enum Screen {
     ConfirmLink,
     /// DialogScreen.WarningScreen: the note about custom screens.
     DialogWarning,
-    /// WinScreen: the end poem and the credits (game/win.rs).
-    Win,
 }
 struct Mining {
     pos: [i32; 3],
@@ -1447,8 +1444,6 @@ struct Game<'a> {
     travelling: Option<(PlayerMotion, Vec3)>,
     /// Nether portals: the player's, items' and mobs' (game/nether_portal.rs).
     portals: nether_portal::Portals,
-    /// The open WinScreen (game/win.rs).
-    win: Option<win::Win>,
     end: end::EndState,
     block_ticks: Ticks,
     tickets: horizon_client::ticket_levels::ChunkTickets,
@@ -2141,10 +2136,6 @@ impl Game<'_> {
     fn hud_layers(&mut self, size: [u32; 2]) -> HudBatch {
         let mut batch = HudBatch::new(size);
         let (w, h) = (batch.width, batch.height);
-        if self.screen == Screen::Win {
-            self.draw_win_screen(&mut batch);
-            return batch;
-        }
         if self.screen == Screen::Options {
             self.draw_options(&mut batch);
             return batch;
@@ -2405,7 +2396,7 @@ impl Game<'_> {
                 self.draw_creative(&mut batch);
             }
             Screen::Chat => self.draw_chat_screen(&mut batch),
-            Screen::Playing | Screen::Options | Screen::Win => {}
+            Screen::Playing | Screen::Options => {}
         }
         self.draw_saving_indicator(&mut batch);
         // ToastManager.extractRenderState: F1 hides the toasts too.
@@ -4611,13 +4602,10 @@ impl Game<'_> {
     /// HUD, when `menuBackgroundBlurriness` is at least 1.
     fn menu_blur(&self) -> Option<f32> {
         let blurred = self.title.as_ref().is_some_and(|t| {
-            matches!(self.screen, Screen::Options | Screen::Win)
-                || !matches!(t.mode, horizon_client::title::Mode::Main)
+            self.screen == Screen::Options || !matches!(t.mode, horizon_client::title::Mode::Main)
         }) || (self.title.is_none()
             && self.player.is_some()
-            && (self.screen.blurs_background(self.pause_menu)
-                || self.dialog_open()
-                || (self.screen == Screen::Win && self.win_screen_pauses())));
+            && (self.screen.blurs_background(self.pause_menu) || self.dialog_open()));
         let radius = self.settings.menu_blur as f32;
         (blurred && radius >= 1.0).then_some(radius)
     }
@@ -4704,7 +4692,6 @@ impl Game<'_> {
                 Screen::Advancements => self.close_advancements(),
                 Screen::CommandBlock => self.close_command_block(),
                 Screen::Chat => self.close_chat(),
-                Screen::Win => self.close_win_screen()?,
             },
             KeyCode::Digit1
             | KeyCode::Digit2
@@ -7356,9 +7343,7 @@ impl ApplicationHandler for Game<'_> {
                     let d = scaled(raw_y) as f32;
                     if self.dialog_open() {
                         self.dialog_scroll(d);
-                    } else if let Some(title) = &mut self.title
-                        && self.screen != Screen::Win
-                    {
+                    } else if let Some(title) = &mut self.title {
                         let size = self
                             .window
                             .as_ref()
@@ -7437,7 +7422,6 @@ impl ApplicationHandler for Game<'_> {
                         self.dialog_click()?;
                     }
                 }
-                WindowEvent::MouseInput { .. } if self.screen == Screen::Win => {}
                 WindowEvent::MouseInput { state, button, .. } if self.screen == Screen::Options => {
                     if self.options_waiting_for_key() && state == ElementState::Pressed {
                         self.options_bind_mouse(button)?;
@@ -7735,9 +7719,6 @@ impl ApplicationHandler for Game<'_> {
                         self.station_text(event.text.as_deref(), backspace);
                     }
                 }
-                WindowEvent::KeyboardInput { event, .. } if self.screen == Screen::Win => {
-                    self.win_key(&event)?
-                }
                 WindowEvent::KeyboardInput { event, .. } if self.screen == Screen::CommandBlock => {
                     self.command_block_key(&event)
                 }
@@ -7871,7 +7852,6 @@ impl ApplicationHandler for Game<'_> {
                             self.tick_ambience();
                             self.tick_fov();
                         }
-                        self.tick_win_screen()?;
                         self.tick_music();
                         self.tick_sound_engine();
                         self.clock.record(started.elapsed());
@@ -8229,7 +8209,6 @@ impl<'a> Game<'a> {
             world_flat: false,
             travelling: None,
             portals: Default::default(),
-            win: None,
             end: Default::default(),
             block_ticks: Ticks::new(0),
             tickets: Default::default(),

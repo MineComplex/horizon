@@ -17,7 +17,7 @@ impl Game<'_> {
             self.music.set_frequency(frequency, music.as_ref());
         }
         // LevelLoadingScreen: no new track before the player is in the world.
-        let loading = self.title.is_none() && self.player.is_none() && self.win.is_none();
+        let loading = self.title.is_none() && self.player.is_none();
         self.music
             .tick(music.as_ref(), volume, loading, &mut self.audio);
     }
@@ -72,11 +72,8 @@ impl Game<'_> {
             None => (empty, 1.0),
         };
         let situation = Situation {
-            // WinScreen.getBackgroundMusic.
-            screen_music: self
-                .win
-                .is_some()
-                .then(horizon_client::music::Music::credits),
+            // No screen of this client has music of its own (no credits).
+            screen_music: None,
             in_world: eye.is_some(),
             in_end: self.dim == super::Dim::End,
             boss_music: self.boss_music(),

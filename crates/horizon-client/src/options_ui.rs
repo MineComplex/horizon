@@ -862,8 +862,6 @@ enum Act {
     /// Pick `s.shader_packs[i]`, or turn it off when it is the pick.
     PickShaderPack(usize),
     OpenShaderPackFolder,
-    /// Credits & Attribution's Credits button (WinScreen without the poem).
-    Credits,
     CopyAgentDetails,
 }
 enum WKind {
@@ -916,8 +914,6 @@ pub enum Event {
     /// A shader pack was picked or turned off: save and apply it.
     ShaderPack,
     OpenShaderPackFolder,
-    /// Roll the credits (`CreditsAndAttributionScreen.openCreditsScreen`).
-    Credits,
     /// Copy how an agent connects (the AI Agent page).
     CopyAgentDetails,
 }
@@ -1566,14 +1562,8 @@ impl OptionsUi {
                 });
                 let y = (33.0 + 30.0f32).min(h - 33.0 - 76.0);
                 let x = cx - 105.0;
-                out.push(button(
-                    x,
-                    y,
-                    210.0,
-                    tr("credits_and_attribution.button.credits"),
-                    Act::Credits,
-                ));
-                // ConfirmLinkScreen to minecraft.net: Horizon opens no links.
+                // No credits roll in this client. ConfirmLinkScreen to
+                // minecraft.net: Horizon opens no links.
                 for (i, key) in [
                     "credits_and_attribution.button.attribution",
                     "credits_and_attribution.button.licenses",
@@ -1581,7 +1571,7 @@ impl OptionsUi {
                 .into_iter()
                 .enumerate()
                 {
-                    let y = y + 28.0 * (i + 1) as f32;
+                    let y = y + 28.0 * i as f32;
                     out.push(inactive(button(x, y, 210.0, tr(key), Act::None)));
                 }
                 out.push(done(h - 27.0));
@@ -2479,7 +2469,6 @@ impl OptionsUi {
                             }
                         }
                         Act::OpenShaderPackFolder => events.push(Event::OpenShaderPackFolder),
-                        Act::Credits => events.push(Event::Credits),
                         Act::CopyAgentDetails => events.push(Event::CopyAgentDetails),
                         Act::None => {}
                     }

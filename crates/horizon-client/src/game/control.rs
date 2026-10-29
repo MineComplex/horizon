@@ -44,7 +44,6 @@ const HELP: &[&str] = &[
     "chat MESSAGE                   send chat or a /command to the server",
     "disconnect                     leave the server for the server list",
     "respawn                        respawn after death on a server",
-    "credits [poem] [SCROLL]        roll the credits (with the end poem), or hold them SCROLL pixels in",
     "quit                           save and exit",
 ];
 
@@ -653,25 +652,6 @@ impl Game<'_> {
                 self.connect_server(arg(1)?, &name)?;
                 ok()
             }
-            "credits" => {
-                let poem = words.get(1) == Some(&"poem");
-                let hold = words
-                    .get(1 + usize::from(poem))
-                    .map(|s| s.parse::<f32>())
-                    .transpose()?;
-                if self.screen != Screen::Win {
-                    let finish = if self.screen == Screen::Options {
-                        super::win::Finish::Options
-                    } else {
-                        super::win::Finish::Closed
-                    };
-                    self.open_win_screen(poem, finish);
-                }
-                if let Some(scroll) = hold {
-                    self.hold_win_screen(scroll);
-                }
-                ok()
-            }
             "respawn" => {
                 if self.remote.is_none() || self.screen != Screen::Dead {
                     return Err("respawn needs the death screen on a server".into());
@@ -729,9 +709,6 @@ impl Game<'_> {
     }
 
     fn screen_name(&self) -> &'static str {
-        if self.screen == Screen::Win {
-            return "win";
-        }
         if self.title.is_some() {
             return "title";
         }
@@ -750,7 +727,6 @@ impl Game<'_> {
             Screen::ConfirmLink => "confirm-link",
             Screen::DialogWarning => "dialog-warning",
             Screen::CommandBlock => "command-block",
-            Screen::Win => "win",
         }
     }
 
