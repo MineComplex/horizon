@@ -24,7 +24,6 @@ pub(super) type Push = (BlockPos, MovingPiston, f32);
 #[derive(Clone, Copy, Hash, PartialEq, Eq)]
 enum Target {
     Player,
-    Guest(u32),
     Mob(usize),
     Item(usize),
     Boat(usize),
@@ -209,8 +208,8 @@ impl crate::game::Sim<'_> {
             .map_or(0.6, |v| v as f32);
         StepHeights { player }
     }
-    /// The entities a moving block can run into: the window's player, the LAN
-    /// guests in the level, then the mobs.
+    /// The entities a moving block can run into: the player, then the mobs
+    /// (other players among them).
     fn push_targets(&self) -> Vec<Target> {
         let mut targets = Vec::new();
         if self.player.is_some() {
@@ -241,7 +240,6 @@ impl crate::game::Sim<'_> {
                     supported: p.ground.supporting_block == Some(pos),
                 })
             }
-            Target::Guest(_) => None,
             Target::Mob(i) => {
                 let m = &self.mobs[i];
                 if m.removed || !m.alive() {
@@ -358,7 +356,6 @@ impl crate::game::Sim<'_> {
                 let p = self.player.as_mut()?;
                 limit(&mut p.piston)
             }
-            Target::Guest(_) => None,
             Target::Mob(i) => limit(&mut self.mobs[i].piston),
             _ => limit(accumulators.entry(target).or_default()),
         }
@@ -370,7 +367,6 @@ impl crate::game::Sim<'_> {
                     p.position = p.position.add_vector(movement);
                 }
             }
-            Target::Guest(_conn) => {}
             Target::Mob(i) => {
                 let m = &mut self.mobs[i];
                 m.position = m.position.add_vector(movement);
@@ -397,7 +393,6 @@ impl crate::game::Sim<'_> {
                 let m = &mut self.mobs[i];
                 m.velocity = piston_push::bounce_velocity(movement, m.velocity);
             }
-            Target::Guest(_conn) => {}
             Target::Item(i) => {
                 self.dropped[i].velocity =
                     piston_push::bounce_velocity(movement, self.dropped[i].velocity)

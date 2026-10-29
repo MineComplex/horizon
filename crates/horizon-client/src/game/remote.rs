@@ -1538,6 +1538,15 @@ impl Game<'_> {
                 } else if let Some(orb) = self.orbs.iter().find(|o| o.id == p.item as u32).cloned()
                 {
                     self.add_pickup(super::pickups::Taken::Orb(Box::new(orb)), collector);
+                } else if let Some(arrow) = self
+                    .creatures
+                    .projectiles
+                    .iter()
+                    .find(|a| a.id == p.item as u32)
+                    .cloned()
+                {
+                    // An arrow picked up from the ground.
+                    self.add_pickup(super::pickups::Taken::Arrow(Box::new(arrow)), collector);
                 }
                 // An orb stays: the server may still hold merged ones in it.
                 if !orb {

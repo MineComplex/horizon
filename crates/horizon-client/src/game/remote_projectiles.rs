@@ -238,7 +238,6 @@ impl crate::game::Sim<'_> {
                 show_bottom: true,
                 time: 0,
                 beam: None,
-                invulnerable: false,
             }),
             _ => {
                 let Some(k) = projectile_kind(kind) else {

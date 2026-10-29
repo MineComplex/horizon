@@ -1,27 +1,18 @@
-//! Fishing: `FishingRodItem.use` (cast / reel in), the `FishingHook` (flight,
-//! bobbing, lure and bite timers, open water, hooking mobs, retrieving the
-//! `gameplay/fishing` loot) and `FishingHookRenderer` (bobber and line).
+//! Fishing on a client: the hooks a server tracks (this player's own and the
+//! others'), where it says they are, and `FishingHookRenderer` (bobber and
+//! line). The hook's flight, bites and loot are the server's.
 use super::{Game, view_vector};
 use horizon_client::{gizmos::Line, items::ItemStack, mesher::Vertex, pose::Pose};
 use horizon_core::geometry::{Vec3, trig};
 use horizon_protocol::entity_data::Value;
 
-#[derive(Clone, Copy, Debug, PartialEq)]
-enum State {
-    Flying,
-    Bobbing,
-    Hooked(u32),
-}
 pub(super) struct Hook {
     /// Its entity id, which a server's players track it under.
     id: u32,
     pub(super) position: Vec3,
     pub(super) previous: Vec3,
-    state: State,
+    /// `DATA_BITING`: 1 while a fish bites (the server's nibble).
     nibble: i32,
-    time_until_lured: i32,
-    time_until_hooked: i32,
-    open_water: bool,
 }
 impl Game<'_> {
     /// FishingHookRenderer: the bobbers (this player's and the others' a
@@ -208,13 +199,7 @@ impl crate::game::Sim<'_> {
     /// The hook for `horizon-ctl status`.
     pub(super) fn hook_status(&self) -> Option<serde_json::Value> {
         let h = self.hook.as_ref()?;
-        Some(serde_json::json!({
-            "state": format!("{:?}", h.state),
-            "nibble": h.nibble,
-            "lured_in": h.time_until_lured,
-            "hooked_in": h.time_until_hooked,
-            "open_water": h.open_water,
-        }))
+        Some(serde_json::json!({ "nibble": h.nibble }))
     }
 }
 
@@ -235,11 +220,7 @@ impl Hook {
             id,
             position: at,
             previous: at,
-            state: State::Flying,
             nibble: 0,
-            time_until_lured: 0,
-            time_until_hooked: 0,
-            open_water: true,
         }
     }
 }

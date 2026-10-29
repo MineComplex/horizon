@@ -1518,8 +1518,6 @@ struct Sim<'a> {
     armor_stands: Vec<horizon_client::entities::ArmorStand>,
     /// `Cushion` decoration entities (game/cushions.rs).
     cushions: Vec<horizon_client::entities::Cushion>,
-    /// Entities of types Horizon does not simulate.
-    others: Vec<commands::OtherEntity>,
     armor_stand_assets: armor_stands::ArmorStandAssets,
     /// The camera the last frame drew from (position, yaw, pitch, fov), for the locator bar.
     locator_camera: Option<([f64; 3], f32, f32, f32)>,
@@ -8886,7 +8884,6 @@ impl<'a> Game<'a> {
                 glow_map_frame_model: prepared.glow_map_frame_model,
                 armor_stands: Vec::new(),
                 cushions: Vec::new(),
-                others: Vec::new(),
                 armor_stand_assets: prepared.armor_stand_assets,
                 locator_camera: None,
                 experience_display: Default::default(),

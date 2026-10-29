@@ -66,7 +66,6 @@ pub(super) struct Minecart {
     pub velocity: Vec3,
     pub yaw: f32,
     pub previous_yaw: f32,
-    pub flipped: bool,
     pub(super) on_ground: bool,
     pub hurt_time: i32,
     pub hurt_dir: i32,
@@ -74,16 +73,8 @@ pub(super) struct Minecart {
     pub items: Vec<Option<ItemStack>>,
     /// Furnace minecarts: fuel ticks and the push direction.
     pub fuel: i32,
-    pub push: [f64; 2],
     /// TNT minecarts: ticks until the explosion, -1 when not primed.
     pub fuse: i32,
-    /// Hopper minecarts: an unpowered activator rail enables them.
-    pub enabled: bool,
-    /// Chest minecarts: the loot table rolled into `items` on load, saved
-    /// again while the items are still that roll.
-    pub loot: Option<horizon_client::save::RolledLoot>,
-    /// `Entity.firstTick`: not ticked yet (saved as `HasTicked`).
-    pub first_tick: bool,
 }
 pub(super) const WIDTH: f64 = 0.98;
 pub(super) const HEIGHT: f64 = 0.7;
@@ -161,18 +152,13 @@ impl Minecart {
             velocity: Vec3::ZERO,
             yaw: 0.0,
             previous_yaw: 0.0,
-            flipped: false,
             on_ground: false,
             hurt_time: 0,
             hurt_dir: 1,
             damage: 0.0,
             items: vec![None; kind.slots()],
             fuel: 0,
-            push: [0.0; 2],
             fuse: -1,
-            enabled: true,
-            loot: None,
-            first_tick: true,
         }
     }
     pub fn bounds(&self) -> Aabb {
@@ -682,62 +668,7 @@ impl crate::game::Sim<'_> {
     }
 }
 /// Saving and loading.
-impl Minecart {
-    pub fn to_nbt(
-        &self,
-        uuid: [i32; 4],
-        raw: Option<&horizon_world::nbt::Tag>,
-    ) -> horizon_world::nbt::Tag {
-        use horizon_world::nbt::{JavaString, Tag};
-        let mut tag = horizon_client::entity_nbt::vehicle_to_nbt(
-            self.kind.id(),
-            self.position,
-            self.velocity,
-            self.yaw,
-            uuid,
-            raw,
-        );
-        if let Tag::Compound(map) = &mut tag {
-            let mut put = |k: &str, v: Tag| {
-                map.insert(JavaString::from(k), v);
-            };
-            put("FlippedRotation", Tag::Byte(i8::from(self.flipped)));
-            // AbstractMinecart saves firstTick as HasTicked. A cart never burns:
-            // Entity.move sets -getFireImmuneTicks(), 0 for all but players.
-            put("HasTicked", Tag::Byte(i8::from(self.first_tick)));
-            put("Fire", Tag::Short(0));
-            match self.kind {
-                CartKind::Chest | CartKind::Hopper => {
-                    put("Items", horizon_client::save::encode_items(&self.items));
-                    if self.kind == CartKind::Hopper {
-                        put("Enabled", Tag::Byte(i8::from(self.enabled)));
-                    }
-                }
-                CartKind::Furnace => {
-                    put("PushX", Tag::Double(self.push[0].to_bits()));
-                    put("PushZ", Tag::Double(self.push[1].to_bits()));
-                    put("Fuel", Tag::Short(self.fuel as i16));
-                }
-                CartKind::Tnt => put("fuse", Tag::Int(self.fuse)),
-                // BaseCommandBlock.save of an empty command block.
-                CartKind::CommandBlock => {
-                    put("Command", Tag::String(JavaString::from("")));
-                    put("SuccessCount", Tag::Int(0));
-                    put("TrackOutput", Tag::Byte(1));
-                    put("UpdateLastExecution", Tag::Byte(1));
-                }
-                CartKind::Rideable => {}
-            }
-            // A loaded loot table goes back while the items are still its roll;
-            // otherwise the items replace it, as vanilla's unpackLootTable does.
-            if !self.loot.as_ref().is_some_and(|l| l.restore(map)) {
-                map.remove(&JavaString::from("LootTable"));
-                map.remove(&JavaString::from("LootTableSeed"));
-            }
-        }
-        tag
-    }
-}
+impl Minecart {}
 
 #[cfg(test)]
 mod tests {

@@ -18,7 +18,6 @@ use horizon_core::{
     random::{LegacyRandom, RandomSource},
 };
 use horizon_protocol::entity_data::Value;
-use horizon_world::nbt::Tag;
 
 /// Mob ids from here on are dragon parts (`SPECIAL + part`) and crystals
 /// (`SPECIAL + 16 + crystal`), so projectiles can target them.
@@ -35,129 +34,50 @@ pub(super) struct Crystal {
     /// EndCrystal.time (the bob and spin), starting random.
     pub time: i32,
     pub beam: Option<[i32; 3]>,
-    /// `setPermanentlyInvulnerable` (respawned spike crystals).
-    pub invulnerable: bool,
 }
-#[derive(Clone, Debug, Default)]
-struct Path {}
-#[derive(Clone, Debug, PartialEq)]
+/// `EnderDragonPhase`, as the server's `DATA_PHASE` names it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Phase {
-    Holding {
-        path: Option<PathBox>,
-        target: Option<Vec3>,
-        clockwise: bool,
-    },
-    Strafe {
-        charge: i32,
-        path: Option<PathBox>,
-        target: Option<Vec3>,
-        clockwise: bool,
-        /// `attackTarget`: the player it strafes.
-        player: Option<FightWho>,
-    },
-    LandingApproach {
-        path: Option<PathBox>,
-        target: Option<Vec3>,
-    },
-    Landing {
-        target: Option<Vec3>,
-    },
-    Takeoff {
-        first: bool,
-        path: Option<PathBox>,
-        target: Option<Vec3>,
-    },
-    Scanning {
-        time: i32,
-    },
-    Attacking {
-        ticks: i32,
-    },
-    Flaming {
-        ticks: i32,
-    },
-    Charging {
-        target: Option<Vec3>,
-        since: i32,
-    },
-    Dying {
-        target: Option<Vec3>,
-        time: i32,
-    },
-    Hover {
-        target: Option<Vec3>,
-    },
-}
-/// A path compared by identity only (phases compare by kind).
-#[derive(Clone, Debug)]
-struct PathBox(Path);
-impl PartialEq for PathBox {
-    fn eq(&self, _: &Self) -> bool {
-        true
-    }
+    Holding,
+    Strafe,
+    LandingApproach,
+    Landing,
+    Takeoff,
+    Flaming,
+    Scanning,
+    Attacking,
+    Charging,
+    Dying,
+    Hover,
 }
 impl Phase {
-    /// `EnderDragonPhase` ids.
-    fn id(&self) -> i32 {
-        match self {
-            Self::Holding { .. } => 0,
-            Self::Strafe { .. } => 1,
-            Self::LandingApproach { .. } => 2,
-            Self::Landing { .. } => 3,
-            Self::Takeoff { .. } => 4,
-            Self::Flaming { .. } => 5,
-            Self::Scanning { .. } => 6,
-            Self::Attacking { .. } => 7,
-            Self::Charging { .. } => 8,
-            Self::Dying { .. } => 9,
-            Self::Hover { .. } => 10,
-        }
+    /// `EnderDragonPhase` ids, in order.
+    const ALL: [Self; 11] = [
+        Self::Holding,
+        Self::Strafe,
+        Self::LandingApproach,
+        Self::Landing,
+        Self::Takeoff,
+        Self::Flaming,
+        Self::Scanning,
+        Self::Attacking,
+        Self::Charging,
+        Self::Dying,
+        Self::Hover,
+    ];
+    fn id(self) -> i32 {
+        self as i32
     }
     fn from_id(id: i32) -> Self {
-        match id {
-            1 => Self::Strafe {
-                charge: 0,
-                path: None,
-                target: None,
-                clockwise: false,
-                player: None,
-            },
-            2 => Self::LandingApproach {
-                path: None,
-                target: None,
-            },
-            3 => Self::Landing { target: None },
-            4 => Self::Takeoff {
-                first: true,
-                path: None,
-                target: None,
-            },
-            5 => Self::Flaming { ticks: 0 },
-            6 => Self::Scanning { time: 0 },
-            7 => Self::Attacking { ticks: 0 },
-            8 => Self::Charging {
-                target: None,
-                since: 0,
-            },
-            9 => Self::Dying {
-                target: None,
-                time: 0,
-            },
-            10 => Self::Hover { target: None },
-            _ => Self::Holding {
-                path: None,
-                target: None,
-                clockwise: false,
-            },
-        }
+        usize::try_from(id)
+            .ok()
+            .and_then(|i| Self::ALL.get(i).copied())
+            .unwrap_or(Self::Holding)
     }
-    fn sitting(&self) -> bool {
+    fn sitting(self) -> bool {
         matches!(
             self,
-            Self::Scanning { .. }
-                | Self::Attacking { .. }
-                | Self::Flaming { .. }
-                | Self::Hover { .. }
+            Self::Scanning | Self::Attacking | Self::Flaming | Self::Hover
         )
     }
 }
@@ -178,7 +98,6 @@ pub(super) struct Dragon {
     pub old_flap: f32,
     phase: Phase,
     flame_count: i32,
-    sitting_damage: f32,
     growl: i32,
     ticks: i32,
     /// DragonFlightHistory: (y, yRot) samples, newest at `head`.
@@ -188,13 +107,6 @@ pub(super) struct Dragon {
     pub parts: [(Vec3, Vec3); 8],
     nearest_crystal: Option<usize>,
     random: LegacyRandom,
-}
-/// A player in the fight: the window's own player, or a guest by
-/// connection (a LAN or server player).
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(super) enum FightWho {
-    Host,
-    Guest(u32),
 }
 const PART_SIZES: [(f64, f64); 8] = [
     (1.0, 1.0),
@@ -221,13 +133,8 @@ impl Dragon {
             death_time: 0,
             flap: 0.0,
             old_flap: 0.0,
-            phase: Phase::Holding {
-                path: None,
-                target: None,
-                clockwise: false,
-            },
+            phase: Phase::Holding,
             flame_count: 0,
-            sitting_damage: 0.0,
             growl: 100,
             ticks: 0,
             history: [(position.y, yaw); 64],
@@ -268,7 +175,7 @@ impl Dragon {
         if self.phase.id() == phase.id() && phase.id() != 1 {
             return;
         }
-        if let Phase::Flaming { .. } = phase {
+        if phase == Phase::Flaming {
             self.flame_count += 1;
         }
         self.phase = phase;
@@ -516,7 +423,7 @@ impl Game<'_> {
         let mut poses = horizon_client::mobs::anim::Poses::new(model);
         poses.get("jaw")[3] = (flap.sin() + 1.0) * 0.2;
         let sitting = d.phase.sitting();
-        let landing = matches!(d.phase, Phase::Landing { .. } | Phase::Takeoff { .. });
+        let landing = matches!(d.phase, Phase::Landing | Phase::Takeoff);
         let egg_dist = {
             let p = self.podium_top();
             ((p.x - d.position.x).powi(2)
@@ -815,51 +722,8 @@ impl Game<'_> {
 }
 impl crate::game::Sim<'_> {}
 /// Saving and loading the dragon and the crystals as chunk entities.
-impl Dragon {
-    pub(super) fn to_nbt(&self, uuid: [i32; 4], raw: Option<&Tag>) -> Tag {
-        let mut tag = horizon_client::entity_nbt::vehicle_to_nbt(
-            "minecraft:ender_dragon",
-            self.position,
-            self.velocity,
-            self.yaw,
-            uuid,
-            raw,
-        );
-        if let Tag::Compound(map) = &mut tag {
-            map.insert("Health".into(), Tag::Float(self.health.to_bits()));
-            map.insert("DragonPhase".into(), Tag::Int(self.phase.id()));
-            map.insert("DragonDeathTime".into(), Tag::Int(self.death_time));
-            map.insert(
-                "sitting_damage_received".into(),
-                Tag::Float(self.sitting_damage.to_bits()),
-            );
-        }
-        tag
-    }
-}
-impl Crystal {
-    pub(super) fn to_nbt(&self, uuid: [i32; 4], raw: Option<&Tag>) -> Tag {
-        let mut tag = horizon_client::entity_nbt::vehicle_to_nbt(
-            "minecraft:end_crystal",
-            self.position,
-            Vec3::ZERO,
-            0.0,
-            uuid,
-            raw,
-        );
-        if let Tag::Compound(map) = &mut tag {
-            map.insert("ShowBottom".into(), Tag::Byte(i8::from(self.show_bottom)));
-            if let Some(b) = self.beam {
-                map.insert("beam_target".into(), Tag::IntArray(b.to_vec()));
-            }
-            map.insert(
-                "Invulnerable".into(),
-                Tag::Byte(i8::from(self.invulnerable)),
-            );
-        }
-        tag
-    }
-}
+impl Dragon {}
+impl Crystal {}
 impl crate::game::Sim<'_> {}
 impl crate::game::Sim<'_> {}
 /// Respawning the dragon with end crystals on the exit portal
