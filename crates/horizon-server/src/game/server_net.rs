@@ -1747,14 +1747,11 @@ impl crate::game::Server<'_> {
 
 impl crate::game::Server<'_> {
     /// A hub's chat and log lines, in the server's log
-    /// (MinecraftServer.logChatMessage, `[Not Secure]` for unsigned or
-    /// expired messages).
+    /// (MinecraftServer.logChatMessage; no chat is signed, so no
+    /// `[Not Secure]` marker, as Leaf's "Do not log Not Secure marker").
     pub(super) fn net_log_event(&mut self, event: HostEvent) {
         match event {
-            HostEvent::Chat { line, secure } => {
-                let tag = if secure { "" } else { "[Not Secure] " };
-                super::dedicated::log("INFO", &format!("{tag}{line}"));
-            }
+            HostEvent::Chat { line, .. } => super::dedicated::log("INFO", &line),
             HostEvent::Warn(line) => super::dedicated::log("WARN", &line),
             HostEvent::Error(line) => super::dedicated::log("ERROR", &line),
             _ => {}

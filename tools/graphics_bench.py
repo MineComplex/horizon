@@ -61,7 +61,6 @@ def vscreen_env():
     env.pop("DISPLAY", None)
     # lab.game_env: no sound on the machine's speakers, and scratch folders instead of the player's.
     # Benchmark games do not reach the telemetry server (docs/telemetry.md).
-    env["HORIZON_TELEMETRY_URL"] = "off"
     return env
 
 

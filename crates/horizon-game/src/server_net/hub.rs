@@ -114,7 +114,7 @@ pub enum HostEvent {
     Left(Box<ServerPlayer>),
     Packet(u32, Box<S>),
     /// A chat line to show on the game (already broadcast to the players);
-    /// a dedicated server logs it, `[Not Secure]` unless signed and fresh.
+    /// the server logs it.
     Chat {
         line: String,
         secure: bool,
@@ -595,7 +595,7 @@ impl Hub {
             uuid,
             name: Some(name.to_owned()),
             properties: player.map(|g| g.properties.clone()).unwrap_or_default(),
-            chat_session: player.and_then(|g| g.chain.session()).map(|s| s.data()),
+            chat_session: None,
             game_mode: Some(mode),
             listed: Some(true),
             latency: Some(latency),
@@ -683,9 +683,9 @@ impl Hub {
             show_death_screen: !self.immediate_respawn,
             limited_crafting: false,
             spawn: self.spawn_info(i),
-            // MinecraftServer.usesAuthentication, enforceSecureProfile.
+            // MinecraftServer.usesAuthentication; no secure profile.
             online_mode: self.network.shared.config.velocity.is_some(),
-            enforces_secure_chat: self.enforces_secure_chat(),
+            enforces_secure_chat: false,
         }));
         g.send(&C::ChangeDifficulty(play::ChangeDifficulty {
             difficulty: ctx.difficulty,
@@ -2184,7 +2184,8 @@ impl Hub {
                 },
                 S::Chat(c) => self.handle_chat(i, c, events),
                 S::ChatAck(p) => self.chat_ack(i, p.offset, events),
-                S::ChatSessionUpdate(p) => self.chat_session_update(i, p, events),
+                // No signed chat: a client's chat session is ignored.
+                S::ChatSessionUpdate(_) => {}
                 // handlePlayerAction (a dig starting, stopping or finishing) is the
                 // game's, run after this pass. A move queued behind it is checked
                 // against the block the player just broke and falls through, so it

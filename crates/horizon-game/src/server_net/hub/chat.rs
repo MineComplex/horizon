@@ -1,11 +1,11 @@
 //! Chat on the server side, as ServerGamePacketListenerImpl and PlayerList
-//! handle it: chat sessions validated against the services' keys, signed
-//! messages checked link by link, the acknowledged window, and messages
-//! relayed with each connection's numbering and signature cache.
+//! handle it without signed chat (players sign in through MineComplex, not
+//! with Mojang's profile keys): the acknowledged window, and messages relayed
+//! with each connection's numbering.
 use super::{HostEvent, Hub};
 use horizon_protocol::{
     packets::play::{self, Clientbound as C},
-    secure_chat::{self, Body, Chain, ChatSession, DecodeError, ProfileKey, Signature, Unpacked},
+    secure_chat::{self, Body, DecodeError, Signature, Unpacked},
     text::{literal, translatable},
 };
 use horizon_world::nbt::{JavaString, Tag};
@@ -86,11 +86,6 @@ impl ChatMessage {
 }
 
 impl Hub {
-    /// MinecraftServer.enforceSecureProfile.
-    pub fn enforces_secure_chat(&self) -> bool {
-        self.network.shared.config.enforces_secure_chat()
-    }
-
     /// Component.getString in the server's language, for the log.
     pub(crate) fn english(&self, tag: &Tag) -> String {
         match &self.network.shared.config.log {
@@ -189,29 +184,18 @@ impl Hub {
         if !self.try_handle_chat(i, &c.message, false) {
             return;
         }
-        let (enforce, now) = (self.enforces_secure_chat(), now_millis());
+        let now = now_millis();
         let body = Body {
             content: &c.message,
             timestamp: c.timestamp,
             salt: c.salt,
             last_seen: &last_seen,
         };
-        let signature = c.signature.as_deref().and_then(secure_chat::signature);
-        let g = &mut self.players[i];
+        let g = &self.players[i];
         let (uuid, name) = (g.uuid, g.name.clone());
-        let message = match g
-            .chain
-            .unpack(uuid, signature.as_ref(), &body, enforce, now)
-        {
-            Ok(unpacked) => ChatMessage::new(uuid, unpacked, &body, now),
-            Err(e) => return self.decode_failure(i, e, events),
-        };
-        if message.signature.is_some() && message.expired(now) {
-            events.push(HostEvent::Warn(format!(
-                "Received expired chat: '{}'. Is the client/server system time unsynchronized?",
-                message.content
-            )));
-        }
+        // No chat is signed: players sign in through MineComplex, not with
+        // Mojang's profile keys (PlayerChatMessage.unsigned).
+        let message = ChatMessage::new(uuid, Unpacked::Unsigned, &body, now);
         if self.intercept_chat {
             events.push(HostEvent::ChatPending {
                 conn: self.players[i].conn,
@@ -254,66 +238,7 @@ impl Hub {
         events
     }
 
-    /// handleChatSessionUpdate: a new profile key, validated against the
-    /// services' keys, starts a new chain and is announced to everyone.
-    pub(super) fn chat_session_update(
-        &mut self,
-        i: usize,
-        p: play::ChatSessionUpdate,
-        events: &mut Vec<HostEvent>,
-    ) {
-        let key = ProfileKey {
-            expires_at: p.expires_at,
-            key: p.key,
-            signature: p.key_signature,
-        };
-        let g = &self.players[i];
-        let (conn, uuid) = (g.conn, g.uuid);
-        let old = g.chain.session().map(|s| s.profile_key.expires_at);
-        if g.chain.session().is_some_and(|s| s.profile_key == key) {
-            return;
-        }
-        if old.is_some_and(|old| key.expires_at < old) {
-            self.kick(
-                conn,
-                translatable("multiplayer.disconnect.expired_public_key", &[]),
-            );
-            return;
-        }
-        let secure = self.network.shared.config.secure_chat.clone();
-        let keys = secure.as_deref().map_or(&[][..], |s| s.keys());
-        if keys.is_empty() {
-            events.push(HostEvent::Warn(format!(
-                "Ignoring chat session from {} due to missing Services public key",
-                g.name
-            )));
-            return;
-        }
-        match ChatSession::validate(p.session, key, keys, uuid) {
-            Ok(session) => {
-                let data = session.data();
-                self.players[i].chain = Chain::keyed(session);
-                // resetPlayerChatState: INITIALIZE_CHAT to every player.
-                self.broadcast(&C::PlayerInfoUpdate(play::PlayerInfoUpdate {
-                    actions: 2,
-                    entries: vec![play::PlayerInfo {
-                        uuid,
-                        chat_session: Some(data),
-                        ..Default::default()
-                    }],
-                }));
-            }
-            Err(reason) => {
-                events.push(HostEvent::Error(
-                    "Failed to validate profile key".to_owned(),
-                ));
-                self.kick(conn, translatable(reason, &[]));
-            }
-        }
-    }
-
-    /// PlayerList.broadcastChatMessage: logged (`[Not Secure]` unless signed
-    /// and fresh), then sent to every player.
+    /// PlayerList.broadcastChatMessage: logged, then sent to every player.
     pub fn broadcast_chat(
         &mut self,
         message: &ChatMessage,
@@ -383,23 +308,22 @@ impl Hub {
         }
     }
 
-    /// collectSignedArguments, or collectUnsignedArguments when the client
-    /// signed none: each of the command's message arguments (`parsed`, by
-    /// name) through the sender's chain.
+    /// collectUnsignedArguments: each of the command's message arguments
+    /// (`parsed`, by name) as an unsigned message, whatever signatures the
+    /// client sent (no chat is signed here).
     pub fn signed_arguments(
         &mut self,
         i: usize,
-        p: &play::ChatCommandSigned,
+        _p: &play::ChatCommandSigned,
         parsed: &[(String, String)],
-        last_seen: &[Signature],
-        events: &mut Vec<HostEvent>,
+        _last_seen: &[Signature],
+        _events: &mut Vec<HostEvent>,
     ) -> Result<Vec<(String, ChatMessage)>, DecodeError> {
-        let (enforce, now) = (self.enforces_secure_chat(), now_millis());
-        let g = &mut self.players[i];
-        let uuid = g.uuid;
-        let mut out = Vec::new();
-        if p.arguments.is_empty() {
-            for (name, value) in parsed {
+        let now = now_millis();
+        let uuid = self.players[i].uuid;
+        Ok(parsed
+            .iter()
+            .map(|(name, value)| {
                 // SignedMessageBody.unsigned.
                 let body = Body {
                     content: value,
@@ -407,44 +331,12 @@ impl Hub {
                     salt: 0,
                     last_seen: &[],
                 };
-                let unpacked = g.chain.unpack(uuid, None, &body, enforce, now)?;
-                out.push((name.clone(), ChatMessage::new(uuid, unpacked, &body, now)));
-            }
-            return Ok(out);
-        }
-        let mismatch = |events: &mut Vec<HostEvent>| {
-            let names = |l: &mut dyn Iterator<Item = &String>| {
-                l.map(String::as_str).collect::<Vec<_>>().join(", ")
-            };
-            events.push(HostEvent::Error(format!(
-                "Signed command mismatch between server and client ('{}'): got [{}] from client, but expected [{}]",
-                p.command,
-                names(&mut p.arguments.iter().map(|a| &a.0)),
-                names(&mut parsed.iter().map(|a| &a.0)),
-            )));
-            DecodeError::InvalidCommandSignature
-        };
-        for (name, signature) in &p.arguments {
-            let Some((_, value)) = parsed.iter().find(|(n, _)| n == name) else {
-                g.chain.set_broken();
-                return Err(mismatch(events));
-            };
-            let body = Body {
-                content: value,
-                timestamp: p.timestamp,
-                salt: p.salt,
-                last_seen,
-            };
-            let signature = secure_chat::signature(signature);
-            let unpacked = g
-                .chain
-                .unpack(uuid, signature.as_ref(), &body, enforce, now)?;
-            out.push((name.clone(), ChatMessage::new(uuid, unpacked, &body, now)));
-        }
-        if parsed.iter().any(|(n, _)| !out.iter().any(|(o, _)| o == n)) {
-            return Err(mismatch(events));
-        }
-        Ok(out)
+                (
+                    name.clone(),
+                    ChatMessage::new(uuid, Unpacked::Unsigned, &body, now),
+                )
+            })
+            .collect())
     }
 
     /// A message command's chat (SayCommand, EmoteCommands): to everyone,

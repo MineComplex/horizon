@@ -24,8 +24,6 @@ its feet, and leaves. The
 console then runs `list` and `say` and `stop`. Compared, all of them
 exactly:
 
-- the status response (MOTD, players, version, favicon) and the ping;
-- the legacy (pre-1.7, 0xFE) ping reply;
 - the login and configuration packets in order (compression, profile,
   brand, features, known packs, every registry, tags);
 - the play packets up to the first chunk batch, in order, with entity ids,
@@ -217,35 +215,6 @@ def wait_ticks(server, count, timeout=300):
         time.sleep(0.2)
 
 
-def legacy_ping(port):
-    """The reply to a 1.6 client's 0xFE 0x01 0xFA MC|PingHost query (LegacyQueryHandler)."""
-    host = 'localhost'
-    data = (b'\xfe\x01\xfa' + struct.pack('>H', 11) + 'MC|PingHost'.encode('utf-16-be')
-            + struct.pack('>H', 7 + 2 * len(host)) + bytes([78]) + struct.pack('>H', len(host))
-            + host.encode('utf-16-be') + struct.pack('>I', port))
-    with socket.create_connection(('127.0.0.1', port), timeout=10) as s:
-        s.sendall(data)
-        reply = b''
-        while True:
-            try:
-                chunk = s.recv(4096)
-            except TimeoutError:
-                return reply.hex() + ' <no close>'
-            if not chunk:
-                break
-            reply += chunk
-    return reply.hex()
-
-
-CONSOLE_LINE = re.compile(r'^\[\d\d:\d\d:\d\d\] \[([^\]]+)\]: (.*)$')
-KEPT = re.compile(r'Tester|\[Server\]|\[Not Secure\]|There are|Stopping|Saving|ThreadedAnvilChunkStorage|All dimensions|Unknown or incomplete')
-
-
-# Guests' death messages and advancement announcements aren't Horizon's yet (the client's
-# own transcript leaves the death message out as well).
-NOT_YET = re.compile(r'Tester was killed|Tester has made the advancement')
-
-
 def console_lines(lines):
     """The console lines the comparison covers, timestamps and ports aside."""
     out = []
@@ -255,6 +224,8 @@ def console_lines(lines):
             continue
         text = re.sub(r'/127\.0\.0\.1:\d+', '/127.0.0.1:_', m.group(2))
         text = re.sub(r'entity id \d+', 'entity id _', text)
+        # Vanilla marks unsigned chat; Horizon's server signs none and marks none.
+        text = text.replace('[Not Secure] ', '')
         out.append(f'[{m.group(1)}] {text}')
     # Vanilla saves its levels in the order of an identity-hashed map, which
     # changes between runs: each block of saves is compared sorted.
@@ -296,6 +267,10 @@ def server_files(directory):
             text = re.sub(r'^(#[^\n]*\n)#[^\n]*\n', r'\1#<date>\n', text)
             # Random per server, and each side has its own port.
             text = re.sub(r'\n(management-server-secret|server-port)=[^\n]*', r'\n\1=<varies>', text)
+            # What Horizon's server has none of (the management server, Query, RCON, JMX).
+            text = re.sub(r'\n(management-server-[a-z-]+|enable-query|query\.port|enable-rcon|rcon\.[a-z]+|'
+                          r'broadcast-rcon-to-ops|enable-jmx-monitoring|status-heartbeat-interval|enforce-secure-profile|'
+                          r'text-filtering-config|text-filtering-version|enable-status|hide-online-players)=[^\n]*', '', text)
         if name == 'usercache.json':
             # A month from when the player joined.
             text = re.sub(r'"expiresOn":"[^"]*"', '"expiresOn":"<a month on>"', text)
@@ -318,7 +293,6 @@ def run_side(label, command, directory, client):
         # has its chunks, both servers send the world as saved; blocks tick again from the chat on.
         server.console('tick freeze')
         port = int(PROPERTIES_PORTS[label])
-        legacy = legacy_ping(port)
         # The client asks to be made an operator once it has traded, runs /kill and respawns.
         failure = []
 
@@ -353,7 +327,7 @@ def run_side(label, command, directory, client):
     finally:
         server.stop()
     transcript = (directory.parent / f'{label}-client.txt').read_text(encoding='utf-8').splitlines()
-    return (['legacy-ping ' + legacy] + transcript + ['console ' + l for l in console_lines(server.lines)]
+    return (transcript + ['console ' + l for l in console_lines(server.lines)]
             + ['file ' + l for l in server_files(directory)])
 
 
@@ -394,7 +368,7 @@ def horizon_client_joins(vanilla_server, binary, world, build, reference):
         'chunks received': want_chunks,
         'own chat shown': True,
         '/list reply shown': True,
-        'server log': ['logged in', 'Tester joined the game', '[Not Secure] <Tester> hello from the horizon client',
+        'server log': ['logged in', 'Tester joined the game', '<Tester> hello from the horizon client',
                        'Tester lost connection: Disconnected', 'Tester left the game'],
     }
     log = '\n'.join(server.lines)
@@ -502,7 +476,7 @@ def main():
         schema=1, minecraft=lock['minecraft']['version'], platform=platform.platform(),
         java=subprocess.check_output(['java', '--version'], text=True).splitlines()[0],
         lines=len(vanilla), output_sha256=lab.digest(build / 'horizon.txt', 'sha256'),
-        scope='Dedicated server seen by a vanilla-codec client: status, legacy ping, login, configuration, play '
+        scope='Dedicated server seen by a vanilla-codec client: login, configuration, play '
               'start (recipes, advancements, command tree), chunks, chat, /list, failing commands\' replies, '
               'console list/say/stop, files written. Offline mode.'))
     print(f'dedicated server: {len(vanilla)} transcript lines identical')

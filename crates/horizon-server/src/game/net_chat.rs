@@ -5,10 +5,7 @@
 use super::server_net::Network;
 use crate::hc::{
     command::{Arg, ArgType, NodeKind, ParseResults, vanilla},
-    server_net::{
-        data::component_nbt,
-        hub::{HostEvent, chat::ChatMessage},
-    },
+    server_net::{data::component_nbt, hub::chat::ChatMessage},
     text::{self, Text},
 };
 use horizon_protocol::packets::play::{self, Clientbound as C};
@@ -52,29 +49,13 @@ impl crate::game::Server<'_> {
         }
         out
     }
-    /// handleChatCommand (performUnsignedChatCommand): refused when the
-    /// server enforces secure chat and the command has a message to sign.
+    /// handleChatCommand (performUnsignedChatCommand): no chat is signed, so
+    /// no command needs a signature.
     pub(super) fn player_chat_command(&mut self, net: &mut Network, conn: u32, command: &str) {
         let Some(i) = net.hub.players.iter().position(|g| g.conn == conn) else {
             return;
         };
         if !net.hub.try_handle_chat(i, command, true) {
-            return;
-        }
-        let permission = net.hub.players[i].permission;
-        if net.hub.enforces_secure_chat()
-            && !self.signable_arguments(permission, command).is_empty()
-        {
-            let name = net.hub.players[i].name.clone();
-            self.net_log_event(HostEvent::Error(format!(
-                "Received unsigned command packet from {name}, but the command requires signable arguments: {command}"
-            )));
-            let failure = Text::translate("chat.disabled.invalid_command_signature", &[])
-                .with_color(text::RED);
-            net.hub.players[i].send(&C::SystemChat(play::SystemChat {
-                content: component_nbt(&failure.component()),
-                overlay: false,
-            }));
             return;
         }
         self.player_command(net, conn, command, None);

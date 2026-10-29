@@ -45,10 +45,6 @@ fn lines(text: &str) -> Vec<String> {
 fn latin1(bytes: &[u8]) -> String {
     bytes.iter().map(|&b| char::from(b)).collect()
 }
-fn has_key(text: &str, key: &str) -> bool {
-    text.split('\n')
-        .any(|l| l.trim_matches(|c: char| c <= ' ').starts_with(key))
-}
 
 fn work(dir: &Path) -> std::io::Result<std::path::PathBuf> {
     let w = std::env::temp_dir().join(format!(
@@ -69,12 +65,9 @@ fn run_case(dir: &Path, out: &mut String) -> Result<(), Box<dyn std::error::Erro
     let w = work(dir)?;
     let props = w.join("server.properties");
     if dir.join("server.properties").exists() || dir.join("properties.default").exists() {
-        let before = std::fs::read(&props)
-            .map(|b| latin1(&b))
-            .unwrap_or_default();
         match ServerProperties::from_file(&props, &mut SystemEntropy::default()) {
             Ok(p) => {
-                print_properties(&p, &before, out)?;
+                print_properties(&p, out)?;
                 p.store(&props)?;
                 writeln!(out, "stored:")?;
                 for (i, line) in lines(&std::fs::read_to_string(&props)?)
@@ -83,10 +76,6 @@ fn run_case(dir: &Path, out: &mut String) -> Result<(), Box<dyn std::error::Erro
                 {
                     let line = if i == 1 && line.starts_with('#') {
                         "#DATE".to_owned()
-                    } else if line.starts_with("management-server-secret=")
-                        && !has_key(&before, "management-server-secret")
-                    {
-                        "management-server-secret=<random>".to_owned()
                     } else {
                         line
                     };
@@ -210,12 +199,7 @@ fn run_case(dir: &Path, out: &mut String) -> Result<(), Box<dyn std::error::Erro
     Ok(())
 }
 
-fn print_properties(p: &ServerProperties, before: &str, out: &mut String) -> std::fmt::Result {
-    let secret = if has_key(before, "management-server-secret") {
-        p.management_server_secret.clone()
-    } else {
-        "<random>".into()
-    };
+fn print_properties(p: &ServerProperties, out: &mut String) -> std::fmt::Result {
     let pack = p.resource_pack.as_ref().map_or_else(
         || "none".to_owned(),
         |i| {
@@ -248,40 +232,9 @@ fn print_properties(p: &ServerProperties, before: &str, out: &mut String) -> std
         ("level-name", p.level_name.clone()),
         ("server-port", p.server_port.to_string()),
         (
-            "management-server-enabled",
-            p.management_server_enabled.to_string(),
-        ),
-        ("management-server-host", p.management_server_host.clone()),
-        (
-            "management-server-port",
-            p.management_server_port.to_string(),
-        ),
-        ("management-server-secret", secret),
-        (
-            "management-server-tls-enabled",
-            p.management_server_tls_enabled.to_string(),
-        ),
-        (
-            "management-server-tls-keystore",
-            p.management_server_tls_keystore.clone(),
-        ),
-        (
-            "management-server-tls-keystore-password",
-            p.management_server_tls_keystore_password.clone(),
-        ),
-        (
-            "management-server-allowed-origins",
-            p.management_server_allowed_origins.clone(),
-        ),
-        (
             "announce-player-achievements",
             opt_bool(p.announce_player_achievements),
         ),
-        ("enable-query", p.enable_query.to_string()),
-        ("query.port", p.query_port.to_string()),
-        ("enable-rcon", p.enable_rcon.to_string()),
-        ("rcon.port", p.rcon_port.to_string()),
-        ("rcon.password", p.rcon_password.clone()),
         ("hardcore", p.hardcore.to_string()),
         ("use-native-transport", p.use_native_transport.to_string()),
         ("spawn-protection", p.spawn_protection.to_string()),
@@ -311,7 +264,6 @@ fn print_properties(p: &ServerProperties, before: &str, out: &mut String) -> std
             "network-compression-threshold",
             p.network_compression_threshold.to_string(),
         ),
-        ("broadcast-rcon-to-ops", p.broadcast_rcon_to_ops.to_string()),
         (
             "broadcast-console-to-ops",
             p.broadcast_console_to_ops.to_string(),
@@ -319,28 +271,12 @@ fn print_properties(p: &ServerProperties, before: &str, out: &mut String) -> std
         ("max-world-size", p.max_world_size.to_string()),
         ("sync-chunk-writes", p.sync_chunk_writes.to_string()),
         ("region-file-compression", p.region_file_compression.clone()),
-        ("enable-jmx-monitoring", p.enable_jmx_monitoring.to_string()),
-        ("enable-status", p.enable_status.to_string()),
-        ("hide-online-players", p.hide_online_players.to_string()),
         (
             "entity-broadcast-range-percentage",
             p.entity_broadcast_range_percentage.to_string(),
         ),
-        ("text-filtering-config", p.text_filtering_config.clone()),
-        (
-            "text-filtering-version",
-            p.text_filtering_version.to_string(),
-        ),
         ("player-idle-timeout", p.player_idle_timeout.to_string()),
-        (
-            "status-heartbeat-interval",
-            p.status_heartbeat_interval.to_string(),
-        ),
         ("white-list", p.white_list.to_string()),
-        (
-            "enforce-secure-profile",
-            p.enforce_secure_profile.to_string(),
-        ),
         ("log-ips", p.log_ips.to_string()),
         (
             "pause-when-empty-seconds",

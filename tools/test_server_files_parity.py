@@ -23,6 +23,23 @@ except ImportError:
     import test_rust_parity as base
 
 NAME = 'server-files-parity'
+# Keys of what Horizon's server has none of (the management server's JSON-RPC, Query, RCON, JMX):
+# vanilla's lines for them are left out of the comparison.
+REMOVED_KEYS = (
+    'management-server-enabled', 'management-server-host', 'management-server-port', 'management-server-secret',
+    'management-server-tls-enabled', 'management-server-tls-keystore', 'management-server-tls-keystore-password',
+    'management-server-allowed-origins', 'enable-query', 'query.port', 'enable-rcon', 'rcon.port', 'rcon.password',
+    'broadcast-rcon-to-ops', 'enable-jmx-monitoring', 'status-heartbeat-interval',
+    # Secure chat, text filtering and the status reply: MineComplex signs players in, Velocity answers pings.
+    'enforce-secure-profile', 'text-filtering-config', 'text-filtering-version', 'enable-status', 'hide-online-players',
+)
+
+
+def drop_removed(path):
+    """`path` without the lines of the removed keys."""
+    lines = path.read_text(encoding='utf-8', errors='replace').splitlines(keepends=True)
+    kept = [l for l in lines if not any(l.startswith(k + '=') for k in REMOVED_KEYS)]
+    path.write_text(''.join(kept), encoding='utf-8')
 U1 = '069a79f4-44e9-4726-a5be-fca90e38aaf5'
 U2 = '853c80ef-3c37-49fd-aa49-938b674adae6'
 U3 = '61699b2e-d327-4a01-9f1e-0ea8c3f06bc6'
@@ -209,6 +226,7 @@ def main():
     oh.run_logged(['java', '-Xmx1g', '-Duser.timezone=UTC', '-Djava.awt.headless=true', '-cp',
                    str(classes) + os.pathsep + dependencies, 'dev.horizonlab.parity.VanillaServerFilesOracle',
                    cases, build / 'server.txt'], build, 'server')
+    drop_removed(build / 'server.txt')
     try:
         matched = base.compare(build / 'server.txt', build / 'rust.txt')
     except AssertionError as error:

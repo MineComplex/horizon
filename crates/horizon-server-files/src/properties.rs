@@ -38,20 +38,7 @@ pub struct ServerProperties {
     pub game_mode: i32,
     pub level_name: String,
     pub server_port: i32,
-    pub management_server_enabled: bool,
-    pub management_server_host: String,
-    pub management_server_port: i32,
-    pub management_server_secret: String,
-    pub management_server_tls_enabled: bool,
-    pub management_server_tls_keystore: String,
-    pub management_server_tls_keystore_password: String,
-    pub management_server_allowed_origins: String,
     pub announce_player_achievements: Option<bool>,
-    pub enable_query: bool,
-    pub query_port: i32,
-    pub enable_rcon: bool,
-    pub rcon_port: i32,
-    pub rcon_password: String,
     pub hardcore: bool,
     pub use_native_transport: bool,
     pub spawn_protection: i32,
@@ -66,21 +53,13 @@ pub struct ServerProperties {
     pub simulation_distance: i32,
     pub max_players: i32,
     pub network_compression_threshold: i32,
-    pub broadcast_rcon_to_ops: bool,
     pub broadcast_console_to_ops: bool,
     pub max_world_size: i32,
     pub sync_chunk_writes: bool,
     pub region_file_compression: String,
-    pub enable_jmx_monitoring: bool,
-    pub enable_status: bool,
-    pub hide_online_players: bool,
     pub entity_broadcast_range_percentage: i32,
-    pub text_filtering_config: String,
-    pub text_filtering_version: i32,
     pub player_idle_timeout: i32,
-    pub status_heartbeat_interval: i32,
     pub white_list: bool,
-    pub enforce_secure_profile: bool,
     pub log_ips: bool,
     pub pause_when_empty_seconds: i32,
     pub accepts_transfers: bool,
@@ -107,8 +86,6 @@ pub const GAME_MODES: [&str; 4] = ["survival", "creative", "adventure", "spectat
 pub trait Entropy {
     /// RandomSource.create().nextLong() (WorldOptions.randomSeed).
     fn next_long(&mut self) -> i64;
-    /// SecureRandom.nextInt(bound).
-    fn next_int(&mut self, bound: u32) -> u32;
 }
 /// Entropy from the operating system (/dev/urandom), else the clock.
 pub struct SystemEntropy(u64);
@@ -139,17 +116,6 @@ impl Entropy for SystemEntropy {
     fn next_long(&mut self) -> i64 {
         self.next() as i64
     }
-    fn next_int(&mut self, bound: u32) -> u32 {
-        (self.next() % u64::from(bound)) as u32
-    }
-}
-
-/// SecurityConfig.generateSecretKey.
-pub fn generate_secret_key(entropy: &mut dyn Entropy) -> String {
-    const ALPHABET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-    (0..40)
-        .map(|_| char::from(ALPHABET[entropy.next_int(ALPHABET.len() as u32) as usize]))
-        .collect()
 }
 
 /// UUID.nameUUIDFromBytes.
@@ -275,24 +241,9 @@ impl ServerProperties {
         );
         let level_name = r.string("level-name", "world");
         let server_port = r.int("server-port", 25565);
-        let management_server_enabled = r.boolean("management-server-enabled", false);
-        let management_server_host = r.string("management-server-host", "localhost");
-        let management_server_port = r.int("management-server-port", 0);
-        let secret = generate_secret_key(entropy);
-        let management_server_secret = r.string("management-server-secret", &secret);
-        let management_server_tls_enabled = r.boolean("management-server-tls-enabled", true);
-        let management_server_tls_keystore = r.string("management-server-tls-keystore", "");
-        let management_server_tls_keystore_password =
-            r.string("management-server-tls-keystore-password", "");
-        let management_server_allowed_origins = r.string("management-server-allowed-origins", "");
         let announce_player_achievements = r
             .legacy("announce-player-achievements")
             .map(|s| java_bool(&s));
-        let enable_query = r.boolean("enable-query", false);
-        let query_port = r.int("query.port", 25565);
-        let enable_rcon = r.boolean("enable-rcon", false);
-        let rcon_port = r.int("rcon.port", 25575);
-        let rcon_password = r.string("rcon.password", "");
         let hardcore = r.boolean("hardcore", false);
         let use_native_transport = r.boolean("use-native-transport", true);
         let spawn_protection = r.int("spawn-protection", 16);
@@ -307,7 +258,6 @@ impl ServerProperties {
         let simulation_distance = r.int("simulation-distance", 10);
         let max_players = r.int("max-players", 20);
         let network_compression_threshold = r.int("network-compression-threshold", 256);
-        let broadcast_rcon_to_ops = r.boolean("broadcast-rcon-to-ops", true);
         let broadcast_console_to_ops = r.boolean("broadcast-console-to-ops", true);
         let max_world_size = r.get(
             "max-world-size",
@@ -317,9 +267,6 @@ impl ServerProperties {
         );
         let sync_chunk_writes = r.boolean("sync-chunk-writes", true);
         let region_file_compression = r.string("region-file-compression", "deflate");
-        let enable_jmx_monitoring = r.boolean("enable-jmx-monitoring", false);
-        let enable_status = r.boolean("enable-status", true);
-        let hide_online_players = r.boolean("hide-online-players", false);
         // Its deserializer is not wrapped: a non-number throws out of the constructor.
         let entity_broadcast_range_percentage = match r.raw("entity-broadcast-range-percentage") {
             Some(s) => s.parse::<i32>().map(|v| v.clamp(10, 1000)).map_err(|_| {
@@ -331,12 +278,8 @@ impl ServerProperties {
             "entity-broadcast-range-percentage",
             entity_broadcast_range_percentage.to_string(),
         );
-        let text_filtering_config = r.string("text-filtering-config", "");
-        let text_filtering_version = r.int("text-filtering-version", 0);
         let player_idle_timeout = r.int("player-idle-timeout", 0);
-        let status_heartbeat_interval = r.int("status-heartbeat-interval", 0);
         let white_list = r.boolean("white-list", true);
-        let enforce_secure_profile = r.boolean("enforce-secure-profile", true);
         let log_ips = r.boolean("log-ips", true);
         let pause_when_empty_seconds = r.int("pause-when-empty-seconds", 60);
         let accepts_transfers = r.boolean("accepts-transfers", false);
@@ -401,20 +344,7 @@ impl ServerProperties {
             game_mode,
             level_name,
             server_port,
-            management_server_enabled,
-            management_server_host,
-            management_server_port,
-            management_server_secret,
-            management_server_tls_enabled,
-            management_server_tls_keystore,
-            management_server_tls_keystore_password,
-            management_server_allowed_origins,
             announce_player_achievements,
-            enable_query,
-            query_port,
-            enable_rcon,
-            rcon_port,
-            rcon_password,
             hardcore,
             use_native_transport,
             spawn_protection,
@@ -429,21 +359,13 @@ impl ServerProperties {
             simulation_distance,
             max_players,
             network_compression_threshold,
-            broadcast_rcon_to_ops,
             broadcast_console_to_ops,
             max_world_size,
             sync_chunk_writes,
             region_file_compression,
-            enable_jmx_monitoring,
-            enable_status,
-            hide_online_players,
             entity_broadcast_range_percentage,
-            text_filtering_config,
-            text_filtering_version,
             player_idle_timeout,
-            status_heartbeat_interval,
             white_list,
-            enforce_secure_profile,
             log_ips,
             pause_when_empty_seconds,
             accepts_transfers,
@@ -597,9 +519,6 @@ mod tests {
         fn next_long(&mut self) -> i64 {
             7
         }
-        fn next_int(&mut self, _: u32) -> u32 {
-            0
-        }
     }
     #[test]
     fn defaults_match_vanilla_init_settings() {
@@ -609,12 +528,11 @@ mod tests {
             "#Minecraft server properties\n#Thu Jan 01 00:00:00 UTC 1970\naccepts-transfers=false\n"
         ));
         assert!(stored.contains("\nlevel-type=minecraft\\:normal\n"));
-        assert!(
-            stored
-                .contains("\nmanagement-server-secret=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\n")
-        );
         assert!(stored.ends_with("\nview-distance=10\nwhite-list=true\n"));
-        assert_eq!(stored.lines().count(), 71);
+        // Vanilla's 71 lines but the 21 keys of what Horizon has none of: the
+        // management server (JSON-RPC), Query, RCON, JMX, secure chat, text
+        // filtering and the status reply (Velocity answers pings).
+        assert_eq!(stored.lines().count(), 50);
         assert!(p.random_seed);
         assert_eq!(p.seed, 7);
     }

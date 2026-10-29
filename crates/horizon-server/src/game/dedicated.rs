@@ -846,10 +846,10 @@ impl crate::game::Server<'_> {
                 ));
             }
             "say" if !rest.is_empty() => {
-                // SayCommand from the console: an unsigned system chat
-                // message of type say_command, logged as not secure.
+                // SayCommand from the console: a system chat message of
+                // type say_command (no `[Not Secure]` marker: no chat is signed).
                 let message = rest.join(" ");
-                log("INFO", &format!("[Not Secure] [Server] {message}"));
+                log("INFO", &format!("[Server] {message}"));
                 if let Some(h) = &self.network {
                     h.hub.say("Server", &message);
                 }
@@ -1107,9 +1107,6 @@ impl crate::game::Server<'_> {
         // Nobody is looked up at Mojang: names nobody has resolve offline.
         cache.resolve_offline_users = true;
         *USER_CACHE.lock().unwrap() = Some(cache);
-        // No chat keys are checked: this server never fetches Mojang's
-        // services' public keys (Services.create), so chat is not enforced.
-        let secure_chat = Arc::new(crate::hc::server_net::SecureChat::new(false, Vec::new));
         // Paper's config/paper-global.yml: proxies.velocity puts the server
         // behind a Velocity proxy, which authenticates the players.
         let velocity_settings = paper_global::load(std::path::Path::new("config/paper-global.yml"))
@@ -1220,10 +1217,7 @@ impl crate::game::Server<'_> {
             motd: props.motd.clone(),
             max_players: props.max_players.max(0) as usize,
             compression_threshold: props.network_compression_threshold,
-            enable_status: props.enable_status,
-            hide_online_players: props.hide_online_players,
             favicon,
-            secure_chat: Some(secure_chat),
             accepts_transfers: props.accepts_transfers,
             bypasses_limit: Some(Arc::new(move |uuid| {
                 bypass_lists

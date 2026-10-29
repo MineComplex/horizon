@@ -237,6 +237,8 @@ static TABLE: LazyLock<Vec<Def>> = LazyLock::new(|| {
         b("allowServerListing", true),
         b("inGameNotification", false),
         n("sharePresence", PRESENCE, 2),
+        // Vanilla's keys for signed chat and Mojang's telemetry, kept so the
+        // file stays vanilla's: Horizon has neither.
         b("onlyShowSecureChat", false),
         b("saveChatDrafts", false),
         u("panoramaScrollSpeed", 1.0),

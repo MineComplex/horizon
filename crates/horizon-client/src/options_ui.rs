@@ -92,10 +92,8 @@ impl Opt {
             Opt::Narrator
                 | Opt::NarratorHotkey
                 | Opt::ChatDelay
-                // Stored, but there are no blocked players, signed chat or
-                // chat drafts yet.
+                // Stored, but there are no blocked players or chat drafts yet.
                 | Opt::HideMatchedNames
-                | Opt::OnlySecureChat
                 | Opt::SaveChatDrafts
                 | Opt::DistortionEffects
                 | Opt::MonochromeLogo
@@ -112,7 +110,6 @@ impl Opt {
             Opt::TextBackground => "backgroundForChatOnly",
             Opt::ChatDelay => "chatDelay",
             Opt::HideMatchedNames => "hideMatchedNames",
-            Opt::OnlySecureChat => "onlyShowSecureChat",
             Opt::SaveChatDrafts => "saveChatDrafts",
             Opt::DistortionEffects => "screenEffectScale",
             Opt::FovEffects => "fovEffectScale",
@@ -185,7 +182,6 @@ impl Opt {
             Opt::ChatLineSpacing => "options.chat.line_spacing",
             Opt::AutoSuggestions => "options.autoSuggestCommands",
             Opt::HideMatchedNames => "options.hideMatchedNames",
-            Opt::OnlySecureChat => "options.onlyShowSecureChat",
             Opt::SaveChatDrafts => "options.chat.drafts",
             Opt::ReducedDebugInfo => "options.reducedDebugInfo",
             Opt::HighContrast => "options.accessibility.high_contrast",
@@ -460,7 +456,7 @@ impl Opt {
             Opt::HideLightningFlashes => on_off(s.file.bool("hideLightningFlashes")),
             Opt::MonochromeLogo => on_off(s.file.bool("darkMojangStudiosBackground")),
             Opt::HideSplashTexts => on_off(s.file.bool("hideSplashTexts")),
-            Opt::HideMatchedNames | Opt::OnlySecureChat | Opt::SaveChatDrafts => {
+            Opt::HideMatchedNames | Opt::SaveChatDrafts => {
                 on_off(s.file.bool(self.file_key().unwrap()))
             }
             Opt::NarratorHotkey => on_off(s.file.bool("narratorHotkey")),
@@ -668,7 +664,6 @@ impl Opt {
             | Opt::HideSplashTexts
             | Opt::HighContrastBlockOutlines
             | Opt::HideMatchedNames
-            | Opt::OnlySecureChat
             | Opt::SaveChatDrafts => {
                 let key = self.file_key().unwrap();
                 s.file
@@ -1450,7 +1445,6 @@ impl OptionsUi {
                 Opt::AutoSuggestions,
                 Opt::HideMatchedNames,
                 Opt::ReducedDebugInfo,
-                Opt::OnlySecureChat,
                 Opt::SaveChatDrafts,
             ]),
             Page::Accessibility => {

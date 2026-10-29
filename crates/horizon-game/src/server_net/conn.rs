@@ -1,7 +1,7 @@
-//! One accepted connection: handshake, status ping, login (offline, or online
-//! with encryption and the session service's verdict) and the
-//! configuration phase (ServerStatusPacketListenerImpl,
-//! ServerLoginPacketListenerImpl, ServerConfigurationPacketListenerImpl). A
+//! One accepted connection: handshake, login (offline, or behind Velocity)
+//! and the configuration phase (ServerLoginPacketListenerImpl,
+//! ServerConfigurationPacketListenerImpl). Status pings get no reply: the
+//! proxy answers them (`enable-status=false`). A
 //! player that completes configuration continues in the play state: the
 //! reader forwards decoded packets to the game thread while a writer thread
 //! frames, compresses and encrypts what the game queues, and answers the
@@ -17,7 +17,7 @@ use horizon_protocol::{
     packets::{
         Empty,
         configuration::{self as cfg, ClientInformation, KnownPack},
-        handshake, login, play, status,
+        handshake, login, play,
     },
     text::translatable,
 };
@@ -353,91 +353,12 @@ fn post(batch: Vec<Posted>) {
     unsent.into_iter().flatten().for_each(Posted::hand_over);
 }
 
-/// LegacyQueryHandler: the pre-1.7 server list ping. What the first read
-/// holds decides the reply (1.3 and older: no more bytes; 1.4 and 1.5: 0x01;
-/// 1.6: 0x01 then the MC|PingHost payload); anything else gets no reply.
-fn serve_legacy(mut stream: TcpStream, shared: &Shared) -> Result<(), String> {
-    use std::io::{Read, Write};
-    let _ = stream.set_read_timeout(Some(Duration::from_millis(100)));
-    let mut data = Vec::new();
-    let mut chunk = [0u8; 1024];
-    // The bytes of the first read: what arrived together.
-    if let Ok(n) = stream.read(&mut chunk) {
-        data.extend_from_slice(&chunk[..n]);
-    }
-    let in_string = |d: &[u8], at: &mut usize| -> Option<String> {
-        let len = usize::from(u16::from_be_bytes([*d.get(*at)?, *d.get(*at + 1)?]));
-        let bytes = d.get(*at + 2..*at + 2 + len * 2)?;
-        *at += 2 + len * 2;
-        Some(String::from_utf16_lossy(
-            &bytes
-                .chunks(2)
-                .map(|c| u16::from_be_bytes([c[0], c[1]]))
-                .collect::<Vec<_>>(),
-        ))
-    };
-    let motd = shared.motd();
-    let (online, max) = (shared.online(), shared.max_players());
-    let body = if data.len() == 1 {
-        format!("{motd}\u{a7}{online}\u{a7}{max}")
-    } else {
-        if data[1] != 1 {
-            return Ok(());
-        }
-        if data.len() > 2 {
-            // readCustomPayloadPacket.
-            let mut at = 3;
-            let valid = data[2] == 0xFA
-                && in_string(&data, &mut at).as_deref() == Some("MC|PingHost")
-                && data
-                    .get(at..at + 2)
-                    .map(|b| usize::from(u16::from_be_bytes([b[0], b[1]])))
-                    == Some(data.len().saturating_sub(at + 2))
-                && {
-                    at += 2;
-                    data.get(at).is_some_and(|v| *v >= 73)
-                }
-                && {
-                    at += 1;
-                    in_string(&data, &mut at).is_some()
-                }
-                && data
-                    .get(at..at + 4)
-                    .is_some_and(|b| i32::from_be_bytes([b[0], b[1], b[2], b[3]]) <= 65535);
-            if !valid {
-                return Ok(());
-            }
-        }
-        format!(
-            "\u{a7}1\0127\0{}\0{motd}\0{online}\0{max}",
-            horizon_core::VANILLA_VERSION
-        )
-    };
-    let units: Vec<u16> = body.encode_utf16().collect();
-    let mut out = vec![0xFF];
-    out.extend_from_slice(&(units.len() as u16).to_be_bytes());
-    for u in units {
-        out.extend_from_slice(&u.to_be_bytes());
-    }
-    stream.write_all(&out).map_err(|e| e.to_string())?;
-    let _ = stream.shutdown(std::net::Shutdown::Both);
-    Ok(())
-}
-
 pub fn serve(
     stream: TcpStream,
     address: std::net::SocketAddr,
     shared: Arc<Shared>,
 ) -> Result<(), String> {
     let e = |e: horizon_protocol::Error| e.to_string();
-    // LegacyQueryHandler, ahead of the frame decoder while status is on.
-    let mut first = [0u8; 1];
-    if shared.config.enable_status
-        && stream.peek(&mut first).is_ok_and(|n| n == 1)
-        && first[0] == 0xFE
-    {
-        return serve_legacy(stream, &shared);
-    }
     serve_connection(Connection::from_stream(stream).map_err(e)?, address, shared)
 }
 
@@ -458,8 +379,7 @@ fn serve_connection(
     match intention.intent {
         // ServerHandshakePacketListenerImpl: a server that does not reply
         // to status requests closes the connection.
-        handshake::STATUS if !shared.config.enable_status => Ok(()),
-        handshake::STATUS => serve_status(&mut c, &shared),
+        handshake::STATUS => Ok(()),
         handshake::TRANSFER if !shared.config.accepts_transfers => {
             login_disconnect(
                 &mut c,
@@ -487,32 +407,6 @@ fn serve_connection(
             serve_login(c, address, &shared)
         }
         other => Err(format!("unknown intent {other}")),
-    }
-}
-
-fn serve_status(c: &mut Connection, shared: &Shared) -> Result<(), String> {
-    let e = |e: horizon_protocol::Error| e.to_string();
-    let mut requested = false;
-    loop {
-        let (id, payload) = c.recv().map_err(e)?;
-        match status::Serverbound::decode(id, &payload).map_err(e)? {
-            // ServerStatusPacketListenerImpl: a second request disconnects.
-            status::Serverbound::StatusRequest(_) if requested => return Ok(()),
-            status::Serverbound::StatusRequest(_) => {
-                requested = true;
-                let json = shared.status_json();
-                c.send(
-                    &status::Clientbound::StatusResponse(status::StatusResponse { json }).encode(),
-                )
-                .map_err(e)?;
-            }
-            status::Serverbound::PingRequest(p) => {
-                c.send(&status::Clientbound::PongResponse(p).encode())
-                    .map_err(e)?;
-                return Ok(());
-            }
-            status::Serverbound::Unknown(..) => return Ok(()),
-        }
     }
 }
 

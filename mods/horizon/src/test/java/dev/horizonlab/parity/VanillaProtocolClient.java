@@ -95,8 +95,7 @@ import net.minecraft.world.phys.Vec3;
  * vanilla dedicated server and at Horizon's, with the same settings and
  * world, and compares the transcripts.
  *
- * <p>{@code VanillaProtocolClient HOST PORT NAME OUT} pings the server (status
- * and ping), joins as NAME in offline mode, goes through login and
+ * <p>{@code VanillaProtocolClient HOST PORT NAME OUT} joins as NAME in offline mode, goes through login and
  * configuration, accepts the spawn teleport, waits for the chunks around the
  * spawn, sends a chat message and the {@code /list} command, and leaves.
  * Each transcript line is a section and a summary: the login and
@@ -126,7 +125,8 @@ public final class VanillaProtocolClient {
         VanillaProtocolClient client = new VanillaProtocolClient();
         if (args.length > 4 && args[4].equals("entities")) client.entities = new EntityTranscript();
         try {
-            client.status(host, port);
+            // No status ping: behind Velocity the proxy answers them, and
+            // Horizon's server does not.
             client.join(host, port, name);
         } catch (Exception e) {
             // With its causes: a decoder error names the field it could not read there.

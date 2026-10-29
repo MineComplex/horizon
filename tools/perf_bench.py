@@ -391,7 +391,7 @@ def run_horizon(args, distance):
     if args.offscreen:
         command.append("--offscreen")
     # Benchmark runs stay out of the live count and send nothing (docs/telemetry.md).
-    env = lab.game_env(HORIZON_TELEMETRY_URL="off")
+    env = lab.game_env()
     if args.warm:
         # A first start to the title screen builds what later starts reuse (the content-mod
         # root, the block behaviour snapshot). It is not measured: players see it once.

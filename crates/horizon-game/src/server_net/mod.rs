@@ -27,10 +27,7 @@ pub mod waypoints;
 
 pub use conn::{Holding, PlayerSender, flush_all};
 use horizon_protocol::packets::play;
-use horizon_protocol::{
-    GAME_VERSION, PROTOCOL_VERSION, crypto::uuid_string, packets::configuration::ClientInformation,
-    text::translatable,
-};
+use horizon_protocol::{packets::configuration::ClientInformation, text::translatable};
 use std::{
     io,
     net::{SocketAddr, TcpListener, TcpStream},
@@ -106,13 +103,8 @@ pub struct NetConfig {
     pub max_players: usize,
     /// network-compression-threshold; negative disables compression.
     pub compression_threshold: i32,
-    /// enable-status: answer status pings.
-    pub enable_status: bool,
-    pub hide_online_players: bool,
     /// server-icon.png (64x64 PNG bytes).
     pub favicon: Option<Vec<u8>>,
-    /// Secure chat (`enforce-secure-profile`).
-    pub secure_chat: Option<Arc<SecureChat>>,
     pub accepts_transfers: bool,
     /// Ops bypass a full server (ServerOpList.canBypassPlayerLimit).
     pub bypasses_limit: Option<Arc<dyn Fn(u128) -> bool + Send + Sync>>,
@@ -131,10 +123,6 @@ pub struct NetConfig {
     pub server_links: Vec<horizon_protocol::packets::configuration::ServerLink>,
 }
 impl NetConfig {
-    /// MinecraftServer.enforceSecureProfile.
-    pub fn enforces_secure_chat(&self) -> bool {
-        self.secure_chat.as_ref().is_some_and(|s| s.enforced())
-    }
     /// The defaults: a port, a motd and the player limit.
     pub fn network(port: u16, motd: String, max_players: usize) -> Self {
         Self {
@@ -143,10 +131,7 @@ impl NetConfig {
             motd,
             max_players,
             compression_threshold: 256,
-            enable_status: true,
-            hide_online_players: false,
             favicon: None,
-            secure_chat: None,
             accepts_transfers: false,
             bypasses_limit: None,
             gate: None,
@@ -155,46 +140,6 @@ impl NetConfig {
             resource_pack: None,
             server_links: Vec::new(),
         }
-    }
-}
-
-/// A dedicated server's secure chat (DedicatedServer.enforceSecureProfile,
-/// Services.profileKeySignatureValidator): the services' profile-key keys,
-/// fetched in the background from startup and waited for by their first
-/// use, as authlib's RetryableFetch does.
-pub struct SecureChat {
-    /// enforce-secure-profile, in online mode.
-    pub enforce: bool,
-    keys: std::sync::OnceLock<Vec<horizon_protocol::rsa::RsaPublicKey>>,
-    fetch: Mutex<Option<JoinHandle<Vec<horizon_protocol::rsa::RsaPublicKey>>>>,
-}
-
-impl SecureChat {
-    pub fn new(
-        enforce: bool,
-        fetch: impl FnOnce() -> Vec<horizon_protocol::rsa::RsaPublicKey> + Send + 'static,
-    ) -> Self {
-        let handle = std::thread::Builder::new()
-            .name("Services keys".into())
-            .spawn(fetch)
-            .ok();
-        Self {
-            enforce,
-            keys: std::sync::OnceLock::new(),
-            fetch: Mutex::new(handle),
-        }
-    }
-    /// The keys players' chat keys must be signed by (none when the
-    /// services couldn't be reached).
-    pub fn keys(&self) -> &[horizon_protocol::rsa::RsaPublicKey] {
-        self.keys.get_or_init(|| {
-            let handle = self.fetch.lock().ok().and_then(|mut h| h.take());
-            handle.and_then(|h| h.join().ok()).unwrap_or_default()
-        })
-    }
-    /// enforceSecureProfile: enforced, and able to check keys.
-    pub fn enforced(&self) -> bool {
-        self.enforce && !self.keys().is_empty()
     }
 }
 
@@ -209,7 +154,6 @@ pub struct Shared {
     online: Mutex<Vec<(u128, String)>>,
     next: AtomicU32,
     stop: AtomicBool,
-    random: Mutex<u64>,
 }
 impl Shared {
     pub fn next_id(&self) -> u32 {
@@ -273,76 +217,6 @@ impl Shared {
     pub fn online(&self) -> usize {
         self.online.lock().unwrap().len()
     }
-    fn next_random(&self, bound: usize) -> usize {
-        let mut r = self.random.lock().unwrap();
-        *r = r
-            .wrapping_mul(6_364_136_223_846_793_005)
-            .wrapping_add(1_442_695_040_888_963_407);
-        ((*r >> 33) as usize) % bound.max(1)
-    }
-    /// The status response (MinecraftServer.buildServerStatus encoded with
-    /// ServerStatus.CODEC): description, players with up to 12 shuffled
-    /// names, version, favicon and enforcesSecureChat when true.
-    pub fn status_json(&self) -> String {
-        use crate::server::json::Json;
-        let motd = self.motd.lock().unwrap().clone();
-        let online: Vec<(u128, String)> = self.online.lock().unwrap().clone();
-        let count = self.online();
-        let mut players = vec![
-            (
-                "max".to_owned(),
-                Json::Number(self.max_players().to_string()),
-            ),
-            ("online".to_owned(), Json::Number(count.to_string())),
-        ];
-        if !self.config.hide_online_players && !online.is_empty() {
-            let size = online.len().min(12);
-            let offset = self.next_random(online.len() - size + 1);
-            let mut sample: Vec<(u128, String)> = online[offset..offset + size].to_vec();
-            for i in (1..sample.len()).rev() {
-                let j = self.next_random(i + 1);
-                sample.swap(i, j);
-            }
-            players.push((
-                "sample".to_owned(),
-                Json::Array(
-                    sample
-                        .into_iter()
-                        .map(|(u, n)| {
-                            Json::Object(vec![
-                                ("id".to_owned(), Json::String(uuid_string(u))),
-                                ("name".to_owned(), Json::String(n)),
-                            ])
-                        })
-                        .collect(),
-                ),
-            ));
-        }
-        let mut status = vec![
-            ("description".to_owned(), Json::String(motd)),
-            ("players".to_owned(), Json::Object(players)),
-            (
-                "version".to_owned(),
-                Json::Object(vec![
-                    ("name".to_owned(), Json::String(GAME_VERSION.to_owned())),
-                    (
-                        "protocol".to_owned(),
-                        Json::Number(PROTOCOL_VERSION.to_string()),
-                    ),
-                ]),
-            ),
-        ];
-        if let Some(icon) = &self.config.favicon {
-            status.push((
-                "favicon".to_owned(),
-                Json::String(format!("data:image/png;base64,{}", base64(icon))),
-            ));
-        }
-        if self.config.enforces_secure_chat() {
-            status.push(("enforcesSecureChat".to_owned(), Json::Bool(true)));
-        }
-        Json::Object(status).compact()
-    }
 }
 
 /// java.util.Base64.getEncoder (padded, no line breaks).
@@ -403,7 +277,6 @@ impl Listener {
             online: Mutex::new(Vec::new()),
             next: AtomicU32::new(1),
             stop: AtomicBool::new(false),
-            random: Mutex::new(crate::server::java_properties::now_millis() as u64 | 1),
             config,
         });
         let mut network = Self {

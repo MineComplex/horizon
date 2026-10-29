@@ -591,7 +591,6 @@ pub enum Opt {
     AutoSuggestions,
     HideMatchedNames,
     ReducedDebugInfo,
-    OnlySecureChat,
     SaveChatDrafts,
     HighContrast,
     ShowSubtitles,

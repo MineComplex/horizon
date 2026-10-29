@@ -134,7 +134,7 @@ class Game:
         self.discord = FakeDiscord()
         if discord_running:
             self.discord.start()
-        extra = {'HORIZON_HOME': self.home, 'HORIZON_TELEMETRY_URL': 'off', 'HORIZON_DISCORD_IPC_DIR': self.discord.dir}
+        extra = {'HORIZON_HOME': self.home, 'HORIZON_DISCORD_IPC_DIR': self.discord.dir}
         self.env = lab.game_env(**extra)
         self.ctl_run('launch', '--offscreen', '--game', str(bins / 'horizon-client'),
                      '--resources', str(lab.RESOURCES.resolve()), *args)

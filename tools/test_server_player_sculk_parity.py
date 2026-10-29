@@ -83,7 +83,7 @@ def main():
         lan.CHECK_FNS[name] = lambda h, g, o, role=role: check_walk(h, g, o, role)
     # Use the runner's current display (xvfb on Linux), with fresh isolated homes.
     lan.game_env = lambda _screen, home: lab.game_env(
-        HORIZON_HOME=home, HORIZON_TELEMETRY_URL='off')
+        HORIZON_HOME=home)
     reports = {}
     for threaded in (True, False):
         lan.SERVER_THREAD = threaded
