@@ -1771,7 +1771,7 @@ impl crate::game::Sim<'_> {
         };
         let cost = s.offers.costs[button];
         let lapis_needed = button as u32 + 1;
-        let Some(item) = s.inputs[0].clone() else {
+        let Some(_item) = s.inputs[0].clone() else {
             return;
         };
         let lapis = s.inputs[1].as_ref().map_or(0, |l| l.count);
@@ -1786,7 +1786,6 @@ impl crate::game::Sim<'_> {
         }
         // EnchantmentScreen.mouseClicked: the client menu took it, the server enchants.
         self.remote_station_button(button as i32);
-        return;
     }
     /// Mouse click while a station or the brewing stand is open. True when handled.
     /// A station's own buttons a controller can focus besides its slots

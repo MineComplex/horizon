@@ -725,10 +725,6 @@ pub(super) fn skull_kind(item: &str) -> Option<&'static str> {
 }
 
 #[cfg(test)]
-mod burn_drop_tests {
-    use super::*;
-}
-#[cfg(test)]
 mod layer_color_tests {
     use super::*;
     #[test]

@@ -60,11 +60,11 @@ impl crate::game::Sim<'_> {
         {
             return false;
         }
-        { self.remote_storage_open() }
+        self.remote_storage_open()
     }
     /// One ordinary click on a game slot. False when nothing took it.
     pub(super) fn tweak_click(&mut self, slot: usize, button: i32, input: Input) -> bool {
-        return self.remote_menu_ops(&[(Some(slot), button, input)]);
+        self.remote_menu_ops(&[(Some(slot), button, input)])
     }
     /// A press on `slot`: true when the tweaks took it (a right-drag
     /// placing), else vanilla's press runs and the tweaks watch the drag.

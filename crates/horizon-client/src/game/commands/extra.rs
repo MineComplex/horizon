@@ -242,7 +242,7 @@ impl crate::game::Sim<'_> {
         alive
             .into_iter()
             .map(|t| match t {
-                Target::Guest(conn) if None::<u32> == Some(conn) => Target::Player,
+                Target::Guest(conn) if Some(conn).is_none() => Target::Player,
                 _ => t,
             })
             .collect()
@@ -568,7 +568,7 @@ impl crate::game::Sim<'_> {
         if host.is_empty() && guests.is_empty() {
             return Err(err("argument.entity.notfound.player", &[]));
         }
-        return Err(err("commands.kick.singleplayer.failed", &[]));
+        Err(err("commands.kick.singleplayer.failed", &[]))
     }
     /// `FetchProfileCommand`: Horizon resolves no profiles over the network,
     /// so name and id lookups fail like an unreachable profile service; an

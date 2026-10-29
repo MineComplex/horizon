@@ -413,7 +413,7 @@ impl crate::game::Sim<'_> {
                         horizon_client::audio::Audio::stop_selection(sound.as_deref(), source);
                     self.sounds.stop_sounds(sound.as_deref(), source, selection);
                 }
-                Target::Guest(conn) => {}
+                Target::Guest(_conn) => {}
                 _ => {}
             }
         }
@@ -576,7 +576,7 @@ impl crate::game::Sim<'_> {
         let viewers = if ctx.get("viewers").is_some() {
             self.entities(ctx, "viewers", true)?
         } else {
-            let acting = None::<u32>;
+            let _acting = None::<u32>;
             self.player
                 .as_ref()
                 .map(|_| Target::Player)
@@ -622,7 +622,7 @@ impl crate::game::Sim<'_> {
                     self.guest_packets.push(p.clone());
                 }
                 (Target::Player, _) => local = true,
-                (Target::Guest(conn), Some(p)) => {}
+                (Target::Guest(_conn), Some(_p)) => {}
                 _ => {}
             }
         }

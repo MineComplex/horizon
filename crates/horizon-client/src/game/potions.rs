@@ -93,7 +93,7 @@ impl crate::game::Sim<'_> {
         stack: ItemStack,
         position: Vec3,
         velocity: Vec3,
-        owner: Option<Text>,
+        _owner: Option<Text>,
     ) {
         self.potions.thrown.push(ThrownPotion {
             id: 0,

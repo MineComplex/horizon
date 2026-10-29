@@ -19,9 +19,6 @@ impl crate::game::Sim<'_> {
         if let Some((i, d)) = self.mob_hit() {
             offer(d, Some(self.mobs[i].id as i32));
         }
-        if let Some((_, d)) = self.guest_hit() {
-            offer(d, None);
-        }
         if let Some((_, d)) = self.redirectable_hit() {
             offer(d, None);
         }

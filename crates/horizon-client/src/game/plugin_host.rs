@@ -104,7 +104,7 @@ impl crate::game::Sim<'_> {
     }
     /// The player whose turn it is (`as_guest`).
     fn plugin_acting(&self) -> Option<PlayerRef> {
-        return None;
+        None
     }
     fn plugins_listen<E: Event>(&self) -> bool {
         self.plugins.as_ref().is_some_and(|h| h.listens::<E>())

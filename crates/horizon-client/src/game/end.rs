@@ -444,9 +444,3 @@ impl crate::game::Sim<'_> {
         }
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use horizon_client::containers::EndGateway;
-}

@@ -825,7 +825,6 @@ impl crate::game::Sim<'_> {
         // Connected to a server (single player's own included), the chat on
         // screen is the connection's: the game's own messages join it.
         self.chat_line(text, ChatSource::Server);
-        return;
     }
     /// ChatScreen.handleChatInput: history, then a command or a chat line.
     /// The Chat option's restrictions stop the message here too, so a
@@ -838,7 +837,6 @@ impl crate::game::Sim<'_> {
         // On a server (single player's own included) the server runs it,
         // unless a client mod owns the command.
         self.send_chat(message);
-        return;
     }
     /// `Screen.clickUrlAction`: nothing with Web Links off, else the link
     /// opens, after the confirmation unless Prompt on Links is off.

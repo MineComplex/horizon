@@ -292,7 +292,7 @@ impl crate::game::Sim<'_> {
                         local(&mut self.titles);
                     }
                 }
-                Target::Guest(conn) => {}
+                Target::Guest(_conn) => {}
                 _ => {}
             }
         }

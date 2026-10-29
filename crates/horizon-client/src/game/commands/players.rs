@@ -130,7 +130,7 @@ impl crate::game::Sim<'_> {
     ) -> Option<T> {
         let conn = match t {
             Target::Player => return Some(f(self)),
-            Target::Guest(conn) if None::<u32> == Some(conn) => return Some(f(self)),
+            Target::Guest(conn) if Some(conn).is_none() => return Some(f(self)),
             Target::Guest(conn) => conn,
             _ => return None,
         };

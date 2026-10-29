@@ -98,7 +98,6 @@ impl Game<'_> {
         } else {
             return false;
         }
-        self.mount_sync();
         true
     }
     /// The inventory slot ids in menu order.
@@ -356,13 +355,7 @@ impl crate::game::Sim<'_> {
     }
     /// Closing the screen keeps what is in the slots on the mount.
     pub(super) fn mount_closed(&mut self) {
-        self.mount_sync();
         self.mount_menu.open = None;
-    }
-    /// Writes the menu slots to the mount, with the equip sounds. A
-    /// server's menu is the server's to write.
-    fn mount_sync(&mut self) {
-        return;
     }
     pub(super) fn mount_slots(&self) -> Option<Vec<usize>> {
         let open = self

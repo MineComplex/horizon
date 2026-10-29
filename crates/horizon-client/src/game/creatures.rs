@@ -977,7 +977,6 @@ impl crate::game::Sim<'_> {
                         let options = horizon_client::particles::ParticleOptions::simple(ty);
                         self.particles
                             .send_particles(&options, at, spread, speed, count);
-                        self.lan_level_particles(&options, at, spread, speed, count);
                     }
                 }
                 MobEvent::Sound(name, at, volume, pitch)
@@ -1404,9 +1403,7 @@ impl crate::game::Sim<'_> {
                             self.ensure_item_particle_sprites();
                         }
                         let options = horizon_client::particles::ParticleOptions::simple(ty);
-                        if ty == horizon_client::particles::ParticleType::SonicBoom {
-                            self.lan_sonic_boom(&options, at);
-                        }
+
                         // Count 0: one particle exactly there, at rest.
                         if count == 0 {
                             self.particles.add(&options, at, [0.0; 3]);

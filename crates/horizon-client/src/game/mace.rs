@@ -303,7 +303,6 @@ impl crate::game::Sim<'_> {
         if push.attacker.is_some() {
             self.smash_push_player(push);
         }
-        self.each_guest_hit_except(push.attacker, |g| g.smash_push_player(push));
     }
     /// `MaceItem.knockback` on the player here (the host, or the guest swapped
     /// in): not a spectator, an ally of the attacker (`isAlliedTo`: the same

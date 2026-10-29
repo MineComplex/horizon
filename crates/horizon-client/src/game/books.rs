@@ -10,13 +10,11 @@ use horizon_client::{
     hud::{HudBatch, rgba},
     item_data::{StackData, WrittenBook},
     items::ItemStack,
-    menu::{Kind, Menu},
     text::Text,
     ui,
 };
 use horizon_core::position::BlockPos;
 use horizon_protocol::packets::play::{self, Serverbound as S};
-use horizon_world::level::flags as level_flags;
 use winit::{
     event::{ElementState, KeyEvent},
     keyboard::{KeyCode, PhysicalKey},
@@ -981,32 +979,6 @@ impl crate::game::Sim<'_> {
         self.sounds
             .play("minecraft:item.book.page_turn", None, 1.0, 1.0);
     }
-    fn set_lectern_powered(&mut self, key: (i32, i32, i32), powered: bool) {
-        self.set_lectern_property(key, "powered", powered);
-        let p = BlockPos::new(key.0, key.1, key.2);
-        let state = self.world.block(key.0, key.1, key.2);
-        self.with_level(|b, level, ticks| {
-            let block = b.block(state);
-            b.update_neighbors_at(level, ticks, BlockPos::new(p.x, p.y - 1, p.z), block);
-        });
-    }
-    fn set_lectern_property(&mut self, key: (i32, i32, i32), name: &str, value: bool) {
-        let state = self.world.block(key.0, key.1, key.2);
-        let registry = self.pack.assets.registry;
-        let Some(mut s) = registry.state(state).cloned() else {
-            return;
-        };
-        if !s.properties.contains_key(name) {
-            return;
-        }
-        s.properties.insert(name.into(), value.to_string());
-        if let Some(new) = registry.id(&s) {
-            let p = BlockPos::new(key.0, key.1, key.2);
-            self.with_level(|b, level, ticks| {
-                b.set_block(level, ticks, p, new, level_flags::UPDATE_ALL)
-            });
-        }
-    }
     /// `LecternBlock.openScreen`: reading the lectern's book.
     pub(super) fn open_lectern(&mut self, pos: [i32; 3]) -> bool {
         let key = (pos[0], pos[1], pos[2]);
@@ -1027,42 +999,17 @@ impl crate::game::Sim<'_> {
     /// A `LecternMenu` button of the open lectern screen: on a server it is
     /// sent (`handleInventoryButtonClick`); here the lectern's menu takes it
     /// with the player's inventory, and the screen follows the block entity.
-    fn lectern_button(&mut self, key: (i32, i32, i32), id: i32) {
-        {
-            if let Some((container, _)) = self.remote.as_ref().and_then(|r| r.menu.as_ref()) {
-                self.send(
-                    horizon_protocol::packets::play::Serverbound::ContainerButtonClick(
-                        horizon_protocol::packets::play::ContainerButtonClick {
-                            container: *container,
-                            button: id,
-                        },
-                    ),
-                );
-            }
-            return;
+    fn lectern_button(&mut self, _key: (i32, i32, i32), id: i32) {
+        if let Some((container, _)) = self.remote.as_ref().and_then(|r| r.menu.as_ref()) {
+            self.send(
+                horizon_protocol::packets::play::Serverbound::ContainerButtonClick(
+                    horizon_protocol::packets::play::ContainerButtonClick {
+                        container: *container,
+                        button: id,
+                    },
+                ),
+            );
         }
-        let Some(mut menu) = self.lectern_menu(key) else {
-            return;
-        };
-        for i in 0..36 {
-            menu.set_player_item(i, self.inventory[i].clone());
-        }
-        menu.set_player_item(40, self.offhand.clone());
-        menu.creative = self.creative;
-        menu.selected = self.selected;
-        menu.may_build = self.may_build();
-        if !menu.button(&self.menu_env(), id) {
-            return;
-        }
-        for i in 0..36 {
-            self.inventory[i] = menu.player_item(i).cloned();
-        }
-        self.offhand = menu.player_item(40).cloned();
-        for stack in std::mem::take(&mut menu.dropped) {
-            self.player_drop(stack);
-        }
-        self.lectern_menu_done(key, &menu);
-        self.follow_lectern();
     }
     /// The `book` control command: a button of the open book or lectern
     /// screen (the page arrows, Take Book, Done), then its page.
@@ -1169,51 +1116,6 @@ impl crate::game::Sim<'_> {
         self.book = None;
         self.capture(true);
         true
-    }
-    /// `LecternMenu` over the lectern at `key` (the menu engine, for the
-    /// local player and LAN guests alike): its book and page.
-    pub(super) fn lectern_menu(&self, key: (i32, i32, i32)) -> Option<Menu> {
-        let Some(BlockEntity::Lectern(l)) = self.world.block_entities.get(&key) else {
-            return None;
-        };
-        let mut menu = Menu::new(Kind::Lectern);
-        menu.set_slot(&self.menu_env(), 0, l.book.clone());
-        menu.data[0] = l.page;
-        Some(menu)
-    }
-    /// The lectern menu's book and page back in the block entity: a new page
-    /// is `LecternBlock.signalPageChange` (the 2-tick pulse, level event
-    /// 1043), a book gone `onBookItemRemove` (`resetBookState`).
-    pub(super) fn lectern_menu_done(&mut self, key: (i32, i32, i32), menu: &Menu) {
-        let Some(BlockEntity::Lectern(l)) = self.world.block_entities.get_mut(&key) else {
-            return;
-        };
-        let (had, before) = (l.book.is_some(), l.page);
-        l.book = menu.slot(0).cloned();
-        l.page = menu.data[0];
-        if had && l.book.is_none() {
-            self.set_lectern_powered(key, false);
-            self.set_lectern_property(key, "has_book", false);
-            self.container_changed(key);
-        } else if menu.data[0] != before {
-            self.set_lectern_powered(key, true);
-            self.lectern_pulses.push((key, 2));
-            self.level_event_at(1043, [key.0, key.1, key.2], 0);
-            self.container_changed(key);
-        }
-    }
-    /// The open lectern screen follows its block entity (`LecternScreen`'s
-    /// menu listener): the page, and closing once the book is gone.
-    pub(super) fn follow_lectern(&mut self) {
-        let Some(BookScreen::View {
-            lectern: Some(key),
-            page,
-            pages,
-        }) = self.book.as_mut()
-        else {
-            return;
-        };
-        return;
     }
 }
 /// `LecternBlockEntity.getRedstoneSignal`.

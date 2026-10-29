@@ -498,7 +498,7 @@ impl crate::game::Sim<'_> {
         }
         let s = self.pack.assets.registry.state(state)?;
         let shape = Shape::parse(s.properties.get("shape").map_or("", String::as_str));
-        let powered = s.properties.get("powered").is_some_and(|v| v == "true");
+        let _powered = s.properties.get("powered").is_some_and(|v| v == "true");
         Some(Rail { shape })
     }
     /// `getCurrentBlockPosOrRailBelow`.

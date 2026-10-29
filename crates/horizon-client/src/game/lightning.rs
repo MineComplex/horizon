@@ -336,7 +336,6 @@ impl crate::game::Sim<'_> {
             }
         };
         strike(self);
-        self.each_guest_hit(strike);
         // Dropped items burn up (ItemEntity health 5), save fire-resistant ones.
         self.dropped.retain(|e| {
             !inside([e.position.x, e.position.y, e.position.z])

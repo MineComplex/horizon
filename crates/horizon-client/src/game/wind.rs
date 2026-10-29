@@ -166,7 +166,7 @@ impl crate::game::Sim<'_> {
         // each swapped in as the player. In a guest's turn (a mace's wind
         // burst) the player is that guest.
         let own = self.wind_push_player(center, radius, multiplier, wind_charge);
-        let mut pushed: Vec<_> = None::<u32>.zip(own).into_iter().collect();
+        let pushed: Vec<_> = None::<u32>.zip(own).into_iter().collect();
         let multiplier = f64::from(multiplier);
         let mut mobs = std::mem::take(&mut self.mobs);
         for m in mobs.iter_mut().filter(|m| m.alive()) {
@@ -340,8 +340,8 @@ impl crate::game::Sim<'_> {
         let mut targets = self.wind_positions(center, radius);
         // ServerExplosion.shouldAffectBlocklikeEntities
         let blocklike = !breeze && !wind_charge && self.world_data.rules.bool("mob_griefing");
-        let pushed = self.wind_knockback(center, radius, multiplier, wind_charge, blocklike);
-        let block_count = targets.len();
+        let _pushed = self.wind_knockback(center, radius, multiplier, wind_charge, blocklike);
+        let _block_count = targets.len();
         // Explosion.canTriggerBlocks: a breeze's charge needs mob griefing.
         if !breeze || self.world_data.rules.bool("mob_griefing") {
             // Util.shuffle(list, level.random)
@@ -370,7 +370,6 @@ impl crate::game::Sim<'_> {
         };
         self.particles
             .add(&ParticleOptions::simple(ty), center, [1.0, 0.0, 0.0]);
-        self.lan_wind_burst(center, radius, sound, block_count, &pushed);
         Ok(())
     }
     /// `BlockBehaviour.onExplosionHit` for `TRIGGER_BLOCK`: doors, gates,

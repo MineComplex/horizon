@@ -388,6 +388,5 @@ impl crate::game::Sim<'_> {
         let id = |e: Option<usize>| e.and_then(|e| self.remote_effect_network_id(EFFECTS[e].0));
         let (primary, secondary) = (id(sel[0]), id(sel[1]));
         self.send(S::SetBeacon(play::SetBeacon { primary, secondary }));
-        return;
     }
 }

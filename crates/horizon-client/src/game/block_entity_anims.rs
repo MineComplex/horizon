@@ -112,7 +112,7 @@ impl Game<'_> {
                         .entry(pos)
                         .or_default()
                         .tick(pos, entity);
-                    let centre = [
+                    let _centre = [
                         f64::from(pos[0]) + 0.5,
                         f64::from(pos[1]) + 0.5,
                         f64::from(pos[2]) + 0.5,
@@ -246,7 +246,7 @@ impl crate::game::Sim<'_> {
             }
             Some(Ticker::Bell) => {
                 let gathered = self.bell_gather(pos);
-                let rung =
+                let _rung =
                     self.be_anims
                         .bells
                         .entry(pos)

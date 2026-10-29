@@ -1469,8 +1469,6 @@ struct Sim<'a> {
     sign_edit: Option<sign_edit::SignEditor>,
     /// An open book, book and quill or lectern screen.
     book: Option<books::BookScreen>,
-    /// Lecterns whose page-turn pulse is running (ticks left).
-    lectern_pulses: Vec<((i32, i32, i32), i32)>,
     /// LevelLoadingScreen.smoothedProgress while the player is not placed yet.
     loading_progress: f32,
     /// Chunks a respawn search waits for this tick, kept loading beside the
@@ -1979,7 +1977,7 @@ impl Game<'_> {
         }
         self.tick_debug_keys()?;
         self.tick_debug_charts();
-        return self.tick_remote();
+        self.tick_remote()
     }
     /// Keep the held-key state of toggled sneak and sprint in step with their mapping.
     fn sync_toggle(&mut self, slot: usize) {
@@ -3173,7 +3171,7 @@ impl Game<'_> {
         if self.station_click(right) {
             return;
         }
-        return self.remote_click(right);
+        self.remote_click(right)
     }
     /// ItemEntityRenderer: items bob and spin; blocks render as small cubes.
     fn entity_geometry(
@@ -3298,7 +3296,6 @@ impl Game<'_> {
         self.mark_player(out.len(), self.camera_type.first_person());
         self.player_model_geometry(camera, self.clock.camera_fraction(), &mut out);
         self.mark_entity(out.len(), "minecraft:player");
-        self.guest_model_geometry(camera, alpha, &mut out);
         self.mark_entity(out.len(), "minecraft:evoker_fangs");
         self.fangs_geometry(camera, alpha, &mut out);
         let mut see_through = std::mem::take(&mut self.front.see_through_vertices);
@@ -3742,7 +3739,6 @@ impl Game<'_> {
             return Ok(());
         }
         self.close_container();
-        self.lan_close(false);
         self.save_game()?;
         if let Some(mut remote) = self.remote.take() {
             // Minecraft.disconnect closes the connection, so the host sees a clean leave.
@@ -3761,7 +3757,7 @@ impl Game<'_> {
         // lets go of its track.
         self.front.music.stop_playing(None, &mut self.front.audio);
         self.front.audio.stop_all();
-        return self.leave_server(None);
+        self.leave_server(None)
     }
     /// FirstPersonHandsAndItemsRenderer: the right arm or the held items of
     /// both hands in view space, converted to camera-relative world space.
@@ -5187,7 +5183,7 @@ impl Game<'_> {
             }
             return Ok(());
         }
-        return self.remote_mouse(button, pressed);
+        self.remote_mouse(button, pressed)
     }
     /// LOD Distance as far terrain uses it (`graphics::lod_distance_capped`).
     fn lod_distance(&self) -> u32 {
@@ -7319,7 +7315,7 @@ impl crate::game::Sim<'_> {
         self.close_station();
         self.mount_closed();
         self.recipe_ui.reset_screen();
-        return self.remote_close_container();
+        self.remote_close_container()
     }
     /// `AbstractContainerMenu.clicked` on the open inventory, crafting table,
     /// chest, hopper, dispenser or furnace menu, run by the verified menu
@@ -7962,13 +7958,12 @@ impl crate::game::Sim<'_> {
     /// `PICKUP` drops the carried stack (left) or one of it (right), thrown
     /// from the hand (`AbstractContainerMenu.doClick`, `LivingEntity.drop`).
     fn throw_click(&mut self, right: bool, input: horizon_client::menu::Input) {
-        let button = i32::from(right);
+        let _button = i32::from(right);
         if self.screen == Screen::Creative {
             self.remote_creative_drop(right);
         } else {
             self.remote_throw(right, input);
         }
-        return;
     }
     /// `Camera.setRotation`: the camera's orientation, turned round in
     /// third-person front view.
@@ -8189,9 +8184,6 @@ impl crate::game::Sim<'_> {
                     .insert(self.mobs[i].id, None::<u32>);
             }
         }
-        // `getEntitiesOfClass(LivingEntity.class)` takes the other players too.
-        let mut sweep = self.player_sweep(sweep_damage, scale);
-        sweep.hit_box = hit_box;
     }
     /// `Player.attack`'s sounds when a vehicle takes the hit (it always does,
     /// and can't be hit critically): knockback when sprinting at full
@@ -8250,7 +8242,6 @@ impl crate::game::Sim<'_> {
             || self.attack_boat(hand_damage)
             || self.attack_cart(hand_damage)
             || self.attack_dragon()
-            || self.attack_guest()
         {
             return true;
         }
@@ -8919,13 +8910,8 @@ impl crate::game::Sim<'_> {
         self.stats.reset("custom", "minecraft:time_since_rest");
     }
     fn wake_up(&mut self) {
-        {
-            // InBedChatScreen.sendWakeUp: the server wakes the player.
-            self.remote_stop_sleeping();
-            return;
-        }
-        self.sleeping = None;
-        self.sleep_timer = 100;
+        // InBedChatScreen.sendWakeUp: the server wakes the player.
+        self.remote_stop_sleeping();
     }
     /// A creative tab's title: `itemGroup.*`, else the export's English title.
     fn creative_tab_title(&self, tab: &horizon_client::creative::Tab) -> String {
@@ -9029,8 +9015,8 @@ impl crate::game::Sim<'_> {
     /// The autosave doesn't `wait` for the chunks to be on disk: every
     /// generated chunk is saved, hundreds at a time, encoded and written on
     /// the region writer meanwhile.
-    fn save_game_with(&mut self, wait: bool) -> Result<()> {
-        return Ok(());
+    fn save_game_with(&mut self, _wait: bool) -> Result<()> {
+        Ok(())
     }
     fn save_game_metadata(&mut self) -> Result<()> {
         self.save_maps();
@@ -9045,7 +9031,6 @@ impl crate::game::Sim<'_> {
         self.save_schedule();
         self.save_warden_tracker();
         self.sync_level();
-        self.store_owner();
         self.level.write(&self.world_root)?;
         self.save_world_state();
         self.message = Some(("Saved the game".into(), Instant::now()));
@@ -9905,7 +9890,7 @@ impl ApplicationHandler for Game<'_> {
                         }
                         let started = Instant::now();
                         if self.front.title.is_none() && !self.pause {
-                            let tick = Instant::now();
+                            let _tick = Instant::now();
                             horizon_client::spans::time("tick", || self.tick())?;
                             self.tick_ambience();
                             self.tick_fov();
@@ -10266,7 +10251,6 @@ impl<'a> Game<'a> {
                 pickups: Default::default(),
                 sign_edit: None,
                 book: None,
-                lectern_pulses: Vec::new(),
                 loading_progress: 0.0,
                 spawn_wait: Vec::new(),
                 mobs: Vec::new(),
@@ -11890,11 +11874,6 @@ mod startup_cpu_tests {
         // No documents from the old generation remain available to reload.
         assert!(GameCpuResources::load(&root).is_err());
     }
-}
-
-#[cfg(test)]
-mod runtime_reset_tests {
-    use super::*;
 }
 
 #[cfg(test)]

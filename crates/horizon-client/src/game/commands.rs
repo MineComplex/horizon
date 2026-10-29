@@ -195,11 +195,7 @@ impl crate::game::Sim<'_> {
     /// server the console when `log_admin_commands`. Queued while the
     /// command runs; `send_admin_feedback` sends it.
     pub(super) fn broadcast_to_admins(&mut self, message: Text) {
-        let informs = match self.console_broadcast {
-            Some(broadcast) => broadcast,
-            // While a guest acts the host's LanHost is out of `self.lan`.
-            None => false,
-        };
+        let informs = self.console_broadcast.unwrap_or_default();
         if !informs
             || message
                 .translation_key()
@@ -231,8 +227,8 @@ impl crate::game::Sim<'_> {
     /// Player.getDisplayName: the name (team-formatted), suggesting a
     /// `/tell`, showing the player on hover, inserting the name.
     pub(super) fn player_display_name(&self) -> Text {
-        let name = self.acting_player_name().to_owned();
-        return self.target_name(Target::Player);
+        let _name = self.acting_player_name().to_owned();
+        self.target_name(Target::Player)
     }
     fn source_position(&self) -> [f64; 3] {
         if let Some(s) = &self.command_source {
@@ -1336,7 +1332,7 @@ impl crate::game::Sim<'_> {
             let dest = self.entities(ctx, "destination", false)?[0];
             let pos = self.target_position(dest).unwrap_or(self.source_position());
             // Into the destination's level.
-            let level = self.target_level(dest);
+            let _level = self.target_level(dest);
             // TeleportCommand.teleportToEntity: the destination's rotation too.
             let rotation = Some(self.target_rotation(dest));
             for &t in &targets {
@@ -1411,7 +1407,7 @@ impl crate::game::Sim<'_> {
         // A server's player in another level than the source's (`execute
         // in`, the console's Overworld) moves there (ServerPlayer.teleport
         // into another level), after the command.
-        let source_level = match self.command_source.and_then(|s| s.level) {
+        let _source_level = match self.command_source.and_then(|s| s.level) {
             Some(level) => level,
             None if self.source_entity().is_none() => super::Dim::Overworld,
             None => self.dim,

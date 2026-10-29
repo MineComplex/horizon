@@ -17,6 +17,5 @@ impl crate::game::Sim<'_> {
         if self.player.is_some() {
             f(self);
         }
-        return;
     }
 }

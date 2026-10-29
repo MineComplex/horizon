@@ -657,20 +657,13 @@ impl crate::game::Sim<'_> {
     }
     /// `MerchantMenu.tryMoveItems` for the selected offer (the select trade packet).
     fn try_move_items(&mut self, index: usize) {
-        {
-            // ServerboundSelectTradePacket; the server moves the items.
-            if let Some(m) = self.station.as_mut().and_then(|s| s.merchant.as_mut()) {
-                m.session.selection_hint = index;
-            }
-            self.send(horizon_protocol::packets::play::Serverbound::SelectTrade(
-                horizon_protocol::packets::play::SelectTrade { item: index as i32 },
-            ));
-            return;
+        // ServerboundSelectTradePacket; the server moves the items.
+        if let Some(m) = self.station.as_mut().and_then(|s| s.merchant.as_mut()) {
+            m.session.selection_hint = index;
         }
-        self.menu_session(|menu, env, _| {
-            menu.merchant_select(env, index);
-            Some(true)
-        });
+        self.send(horizon_protocol::packets::play::Serverbound::SelectTrade(
+            horizon_protocol::packets::play::SelectTrade { item: index as i32 },
+        ));
     }
     /// Clicks on the offer list; true when one was hit.
     pub(super) fn merchant_click(&mut self, local: (f32, f32)) -> bool {

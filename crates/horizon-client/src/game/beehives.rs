@@ -192,7 +192,7 @@ impl crate::game::Sim<'_> {
         bees.retain(|&i| self.mobs[i].ai.target.is_none());
         for i in bees {
             // Util.getRandom over the players.
-            let pick = self
+            let _pick = self
                 .world
                 .random
                 .next_int_bound(players.len() as i32)

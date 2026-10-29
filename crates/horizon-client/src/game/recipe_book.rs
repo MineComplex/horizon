@@ -810,51 +810,35 @@ impl crate::game::Sim<'_> {
     /// The items the book counts (`RecipeBookComponent.updateStackedContents`):
     /// the inventory and the menu's crafting slots, as the menu engine counts them.
     fn book_available(&mut self, _book: BookType) -> Stacked {
-        {
-            // A server's menu: the slots it last sent, counted the same way.
-            use horizon_client::menu::{Env, Kind, Menu};
-            let table = self.craft_size == 3;
-            let grid: Vec<_> = (0..self.craft_size * self.craft_size)
-                .map(|k| self.slot_mut(100 + k).clone())
-                .collect();
-            let mut menu = Menu::new(if table {
-                Kind::Crafting
-            } else {
-                Kind::Inventory
-            });
-            let env = Env {
-                items: self.res.items(),
-                recipes: self.res.recipes(),
-                brewing: &self.res.stations().brewing,
-                banners: &self.res.stations().banners,
-                station_recipes: &self.res.stations().recipes,
-                enchantments: &self.res.stations().enchantments,
-                names: &self.pack.names,
-                trade: None,
-                maps: None,
-            };
-            for i in 0..36 {
-                menu.set_player_item(i, self.inventory[i].clone());
-            }
-            for (k, stack) in grid.into_iter().enumerate() {
-                menu.set_slot(&env, 1 + k, stack);
-            }
-            return menu.stacked_contents(&env);
-        }
-        let mut out = Stacked::default();
-        let stock = &mut out;
-        self.menu_session(|menu, env, _| {
-            *stock = menu.stacked_contents(env);
-            Some(false)
+        // A server's menu: the slots it last sent, counted the same way.
+        use horizon_client::menu::{Env, Kind, Menu};
+        let table = self.craft_size == 3;
+        let grid: Vec<_> = (0..self.craft_size * self.craft_size)
+            .map(|k| self.slot_mut(100 + k).clone())
+            .collect();
+        let mut menu = Menu::new(if table {
+            Kind::Crafting
+        } else {
+            Kind::Inventory
         });
-        out
-    }
-    /// Sends the client book what changed in the server's: the first time a
-    /// replacing batch (vanilla's server iterates an identity hash set; this
-    /// one goes in id order), then each unlock and removal.
-    fn sync_client_book(&mut self) {
-        // On a server the book is the server's packets' (remote_recipe_book_*).
-        return;
+        let env = Env {
+            items: self.res.items(),
+            recipes: self.res.recipes(),
+            brewing: &self.res.stations().brewing,
+            banners: &self.res.stations().banners,
+            station_recipes: &self.res.stations().recipes,
+            enchantments: &self.res.stations().enchantments,
+            names: &self.pack.names,
+            trade: None,
+            maps: None,
+        };
+        for i in 0..36 {
+            menu.set_player_item(i, self.inventory[i].clone());
+        }
+        for (k, stack) in grid.into_iter().enumerate() {
+            menu.set_slot(&env, 1 + k, stack);
+        }
+        menu.stacked_contents(&env)
     }
     fn ensure_book(&mut self) {
         if self.recipe_ui.book.is_none() {
@@ -873,7 +857,6 @@ impl crate::game::Sim<'_> {
     /// Rebuilds the tab and button lists when anything they depend on changed.
     fn refresh_book_view(&mut self, book_type: BookType) {
         self.ensure_book();
-        self.sync_client_book();
         let mut h = std::collections::hash_map::DefaultHasher::new();
         for s in self.inventory.iter().flatten() {
             (&s.item, s.count, s.damage).hash(&mut h);
@@ -1140,7 +1123,7 @@ impl crate::game::Sim<'_> {
     /// `ServerboundPlaceRecipePacket`: the server places the recipe
     /// (`ServerPlaceRecipe` on the menu engine) and answers with a ghost
     /// recipe when the items are missing.
-    fn place_recipe(&mut self, book_type: BookType, entry_index: usize, use_max: bool) {
+    fn place_recipe(&mut self, _book_type: BookType, entry_index: usize, use_max: bool) {
         let Some(entry) = self
             .recipe_ui
             .book
@@ -1159,7 +1142,6 @@ impl crate::game::Sim<'_> {
                 use_max,
             },
         ));
-        return;
     }
     /// ClientboundRecipeBookAddPacket (`ClientRecipeBook.add`): the
     /// displays join the book, highlighted when new, and the recipes whose

@@ -429,7 +429,7 @@ impl Game<'_> {
                 .debug_charts
                 .packet_rates
                 .map(|n| n.round() as i64);
-            let (target, status) = if self.clock.sprinting() {
+            let (_target, status) = if self.clock.sprinting() {
                 ("-".to_owned(), " (sprinting)")
             } else if self.clock.stepping() {
                 (
@@ -734,21 +734,14 @@ impl crate::game::Sim<'_> {
     /// `ServerboundChangeGameModePacket` handled by the integrated server:
     /// `GameModeCommand.setGameMode` with its feedback.
     pub(super) fn change_game_mode(&mut self, mode: GameMode) {
-        {
-            use horizon_protocol::packets::play::{ChangeGameMode, Serverbound};
-            let mode = match mode {
-                GameMode::Survival => 0,
-                GameMode::Creative => 1,
-                GameMode::Adventure => 2,
-                GameMode::Spectator => 3,
-            };
-            self.send(Serverbound::ChangeGameMode(ChangeGameMode { mode }));
-            return;
-        }
-        if self.set_game_mode(mode) {
-            let name = Text::translate(&format!("gameMode.{}", mode.name()), &[]);
-            self.feedback(Text::translate("commands.gamemode.success.self", &[name]));
-        }
+        use horizon_protocol::packets::play::{ChangeGameMode, Serverbound};
+        let mode = match mode {
+            GameMode::Survival => 0,
+            GameMode::Creative => 1,
+            GameMode::Adventure => 2,
+            GameMode::Spectator => 3,
+        };
+        self.send(Serverbound::ChangeGameMode(ChangeGameMode { mode }));
     }
     /// The debug renderers' gizmos for a frame (`DebugRenderer.emitGizmos`).
     pub(super) fn debug_gizmos(&self, alpha: f32) -> Gizmos {

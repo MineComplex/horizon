@@ -13,8 +13,7 @@
 //! game rules, the scoreboard, the maps and the entities waiting to arrive
 //! through a portal.
 
-use super::{Dim, lan::LanHost};
-use horizon_client::Result;
+use super::Dim;
 use std::collections::HashMap;
 
 /// A level that is not in place: every per-level field of `Game`.
@@ -34,29 +33,9 @@ impl Levels {
 }
 
 impl crate::game::Sim<'_> {
-    /// Put `target`'s level in place, opening it first if it is not loaded.
-    /// The level that was in place is kept with the others; the shared
-    /// clock and weather go with the swap. `host` is the hub when the caller
-    /// holds it (`self.lan` is taken during the network tick).
-    pub(super) fn enter_level(&mut self, host: Option<&mut LanHost>, target: Dim) -> Result<()> {
-        // The in-frame game keeps its one level (`enter_dimension`).
-        return Ok(());
-    }
-    /// Put `dim`'s level in place for a command whose source is there
-    /// (`execute in`, `execute at` a player in another level), opening it if
-    /// nobody is in it; returns the level to put back afterwards. Only a
-    /// server holds other levels.
-    pub(super) fn enter_command_level(&mut self, dim: Dim) -> Option<Dim> {
-        if true || dim == self.dim {
-            return None;
-        }
-        let back = self.dim;
-        match self.enter_level(None, dim) {
-            Ok(()) => Some(back),
-            Err(e) => {
-                log::error!("could not open {}: {e}", dim.id());
-                None
-            }
-        }
+    /// The level a command's source is in: a client holds only its own, so
+    /// nothing is swapped in (the server runs the commands of other levels).
+    pub(super) fn enter_command_level(&mut self, _dim: Dim) -> Option<Dim> {
+        None
     }
 }

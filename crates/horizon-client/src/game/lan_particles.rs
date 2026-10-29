@@ -19,31 +19,14 @@ fn rgb(c: [f32; 4]) -> [f32; 3] {
 }
 
 impl crate::game::Sim<'_> {
-    /// `SonicBoom.tick` uses `ServerLevel.sendParticles` for each ray point.
-    /// Keep the local event's rendering; connected players receive one at rest.
-    pub(super) fn lan_sonic_boom(&self, options: &ParticleOptions, at: [f64; 3]) {
-        return;
-    }
-    /// `ServerLevel.sendParticles` of a mob's particles: a packet to each
-    /// player within 32 blocks. The window draws its own copy.
-    pub(super) fn lan_level_particles(
-        &self,
-        options: &ParticleOptions,
-        at: [f64; 3],
-        spread: [f64; 3],
-        speed: f64,
-        count: u32,
-    ) {
-        return;
-    }
     /// `ParticleTypes.STREAM_CODEC`'s value for `options`: the type's
     /// network id and the data it carries (`state` for the block particles).
     /// None while not serving, or for a particle whose data isn't sent from
     /// here (items, vibrations, trails).
     pub(super) fn network_particle(
         &self,
-        options: &ParticleOptions,
-        state: Option<BlockStateId>,
+        _options: &ParticleOptions,
+        _state: Option<BlockStateId>,
     ) -> Option<Particle> {
         None
     }
@@ -190,73 +173,5 @@ impl crate::game::Sim<'_> {
                 .lan_particles
                 .push((options.clone(), at, spread, speed, count));
         }
-        return;
-    }
-    /// `ServerLevel.explode`'s packet to each player within 64 blocks. The
-    /// sound and the push reach them on their own (the level's sounds, the
-    /// motion a hurt player is sent), so the packet carries neither.
-    pub(super) fn lan_explode(
-        &mut self,
-        center: [f64; 3],
-        small: bool,
-        radius: f32,
-        block_count: usize,
-    ) {
-        // In a guest's turn (their hit on an end crystal or a minecart) the
-        // host holds the players (`as_guest`): the packet waits for the turn
-        // to end so that it reaches every player, the guest too.
-        let emitter = if small {
-            "minecraft:explosion"
-        } else {
-            "minecraft:explosion_emitter"
-        };
-        let sound = "minecraft:entity.generic.explode";
-        if let Some(packet) =
-            self.explosion_packet(center, radius, block_count, emitter, sound, true)
-        {
-            self.send_explosion(packet, &[]);
-        }
-    }
-    /// A wind charge's burst (`AbstractWindCharge.explode`): gust emitters,
-    /// no block particles, and for each player it pushed the push
-    /// (`ServerExplosion.hitPlayers`), which only that client applies, as
-    /// nothing hurt them.
-    pub(super) fn lan_wind_burst(
-        &self,
-        center: [f64; 3],
-        radius: f32,
-        sound: &str,
-        block_count: usize,
-        pushed: &[(u32, [f64; 3])],
-    ) {
-        let emitter = if radius < 2.0 {
-            "minecraft:gust_emitter_small"
-        } else {
-            "minecraft:gust_emitter_large"
-        };
-        if let Some(packet) =
-            self.explosion_packet(center, radius, block_count, emitter, sound, false)
-        {
-            self.send_explosion(packet, pushed);
-        }
-    }
-    /// `ClientboundExplodePacket` without a push, or None while not serving.
-    /// The sound is the level's, which the players hear already, so it isn't
-    /// played from the packet.
-    fn explosion_packet(
-        &self,
-        center: [f64; 3],
-        radius: f32,
-        block_count: usize,
-        emitter: &str,
-        sound: &str,
-        block_particles: bool,
-    ) -> Option<play::Explode> {
-        return None;
-    }
-    /// `packet` to each player within 64 blocks of its centre, with the push
-    /// `pushed` holds for them.
-    fn send_explosion(&self, mut packet: play::Explode, pushed: &[(u32, [f64; 3])]) {
-        return;
     }
 }

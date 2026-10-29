@@ -90,7 +90,6 @@ impl crate::game::Sim<'_> {
                 b.value = b.value.min(b.max);
             }
         }
-        self.publish_boss_bars();
     }
     fn bar_checked(&self, ctx: &Context) -> R<String> {
         let id = crate::game::Game::bar_id(ctx);
@@ -103,7 +102,6 @@ impl crate::game::Sim<'_> {
         self.load_bossbars();
         let result = self.bossbar_command(id, ctx);
         self.world_data.registries.bossbars = self.bosses.bars.ids();
-        self.publish_boss_bars();
         result
     }
     fn bossbar_command(&mut self, id: &str, ctx: &Context) -> R<i32> {
@@ -389,15 +387,9 @@ impl crate::game::Sim<'_> {
     fn player_target_uuid(&self, target: Target) -> Option<[i32; 4]> {
         match target {
             Target::Player => Some(self.acting_uuid()),
-            Target::Guest(conn) => None,
+            Target::Guest(_conn) => None,
             _ => None,
         }
-    }
-    /// Tell every viewer the boss events they should be seeing. The window
-    /// that simulates the world applies them to its own overlay; everyone
-    /// else gets `ClientboundBossEventPacket`s.
-    pub(super) fn publish_boss_bars(&mut self) {
-        return;
     }
 }
 

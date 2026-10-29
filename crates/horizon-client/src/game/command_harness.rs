@@ -17,10 +17,9 @@ impl Game<'_> {
     /// connection without predicting movement, so the player stays where
     /// commands put it, until the server ends the connection.
     pub(super) fn run_stationary_client(&mut self) -> Result<()> {
-        while true {
+        loop {
             self.poll_stationary_client()?;
             std::thread::sleep(Duration::from_millis(2));
         }
-        Ok(())
     }
 }

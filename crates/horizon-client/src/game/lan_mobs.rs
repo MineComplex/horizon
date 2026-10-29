@@ -5,26 +5,12 @@
 //! (hits, pushes, fire, its projectiles) runs with that guest swapped in.
 
 impl crate::game::Sim<'_> {
-    /// Runs `f` as each guest in play here, for what strikes every player in
-    /// an area (`Level.getEntities`), not only the window's own.
-    pub(super) fn each_guest_hit(&mut self, f: impl FnMut(&mut Self)) {
-        self.each_guest_hit_except(None, f);
-    }
-    /// [`Self::each_guest_hit`] leaving out the guest `except` (the one a
-    /// firework rocket is attached to, which it hurts on its own).
-    pub(super) fn each_guest_hit_except(
-        &mut self,
-        except: Option<u32>,
-        mut f: impl FnMut(&mut Self),
-    ) {
-        return;
-    }
     /// The guests' boxes for the blocks entities trigger (pressure plates,
     /// tripwires, detector rails): `Entity.checkInsideBlocks` and
     /// `Level.getEntities` see every player in the level, but not spectators
     /// (`Entity.isIgnoringBlockTriggers`).
     pub(super) fn lan_block_trigger_boxes(&self) -> Vec<([f64; 3], [f64; 3])> {
-        return Vec::new();
+        Vec::new()
     }
 }
 

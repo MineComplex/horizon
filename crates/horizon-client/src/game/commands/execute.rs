@@ -660,9 +660,7 @@ impl crate::game::Sim<'_> {
                     .find(|p| p.id == id)
                     .and_then(|p| match (p.owner?, p.guest) {
                         // A guest's shot: `Who::Player` is them.
-                        (horizon_client::mobs::Who::Player, Some(conn))
-                            if None::<u32> == Some(conn) =>
-                        {
+                        (horizon_client::mobs::Who::Player, Some(conn)) if Some(conn).is_none() => {
                             Some(Target::Player)
                         }
                         (horizon_client::mobs::Who::Player, Some(conn)) => {

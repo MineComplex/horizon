@@ -213,7 +213,7 @@ impl crate::game::Sim<'_> {
         let Some(stack) = self.held().cloned() else {
             return;
         };
-        let Some(eye) = self.eye_position() else {
+        let Some(_eye) = self.eye_position() else {
             return;
         };
         let riptide = stack.enchantment_level("minecraft:riptide");
@@ -268,9 +268,7 @@ impl crate::game::Sim<'_> {
                 let sound = format!("minecraft:item.trident.riptide_{}", riptide.min(3));
                 self.sounds.play(&sound, at, 1.0, 1.0);
             }
-            return;
         }
-        // The server throws the trident.
-        return;
+        // Otherwise the server throws the trident.
     }
 }

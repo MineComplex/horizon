@@ -223,7 +223,7 @@ impl crate::game::Sim<'_> {
         }
     }
     /// The console and the player who started the task get the progress.
-    fn pregen_report(&mut self, owner: Option<u32>, message: Text) {
+    fn pregen_report(&mut self, _owner: Option<u32>, message: Text) {
         {
             log::info!("{}", message.plain());
         }
