@@ -10,9 +10,6 @@ use crate::hc::mobs::{
 };
 use crate::hc::{items::ItemStack, merchant::{self, MerchantOffer, TradeContext}};
 
-/// The merchant screen is 100 px wider than the 176-px menus it shares an origin with.
-const SHIFT: f32 = -50.0;
-const GREY: u32 = 0xFF40_4040;
 
 pub(super) struct MerchantState {
     /// The merchant's side of the menu: offers, experience, level, the
@@ -28,20 +25,6 @@ pub(super) struct MerchantState {
     pub(super) name: Option<String>,
 }
 impl MerchantState {
-    /// `Merchant.showProgressBar`: villagers only.
-    pub(super) fn progress(&self) -> bool {
-        self.session.show_progress()
-    }
-}
-/// Player inventory slot positions in `MerchantMenu` (x from 108).
-pub(super) fn inventory_slot(i: usize) -> (f32, f32) {
-    match i {
-        0..9 => (108.0 + SHIFT + i as f32 * 18.0, 142.0),
-        _ => (
-            108.0 + SHIFT + ((i - 9) % 9) as f32 * 18.0,
-            84.0 + ((i - 9) / 9) as f32 * 18.0,
-        ),
-    }
 }
 
 /// `ExplorationMapFunction` in the game world: the nearest structure of the
@@ -327,48 +310,6 @@ impl crate::game::Sim<'_> {
             self.villager_traded(id);
         }
     }
-    /// Opens a merchant menu without a mob (horizon-ctl `trade`).
-    pub(super) fn open_merchant(&mut self, profession: &str, variant: &str, level: i32) {
-        let profession = format!("minecraft:{}", profession.trim_start_matches("minecraft:"));
-        let variant = format!("minecraft:{}", variant.trim_start_matches("minecraft:"));
-        let level = level.clamp(1, 5);
-        let origin = self
-            .player
-            .as_ref()
-            .map_or([0.0; 3], |p| [p.position.x, p.position.y, p.position.z]);
-        let mut offers = Vec::new();
-        for l in 1..=level {
-            let set = merchant::Trades::set_for(&profession, l);
-            offers.extend(self.offers_from_set(&set, &variant, origin));
-        }
-        let mut session = merchant::Session::new(offers, true);
-        session.profession = profession;
-        session.variant = variant;
-        session.level = level;
-        session.xp = merchant::min_xp(level);
-        session.origin = origin;
-        self.open_merchant_state(MerchantState {
-            session: Box::new(session),
-            scroll: 0,
-            focused: None,
-            mob: None,
-            name: None,
-        });
-    }
-    /// A server's trading window (no mob here: the server keeps it).
-    pub(super) fn open_remote_merchant(
-        &mut self,
-        session: merchant::Session,
-        name: Option<String>,
-    ) {
-        self.open_merchant_state(MerchantState {
-            session: Box::new(session),
-            scroll: 0,
-            focused: None,
-            mob: None,
-            name,
-        });
-    }
     fn open_merchant_state(&mut self, state: MerchantState) {
         let mut s = Station::new_kind(Kind::Merchant, [0, 0, 0]);
         s.merchant = Some(Box::new(state));
@@ -477,57 +418,5 @@ impl crate::game::Sim<'_> {
             menu.merchant_update(env);
             Some(true)
         });
-    }
-    /// `MerchantMenu.tryMoveItems` for the selected offer (the select trade packet).
-    fn try_move_items(&mut self, index: usize) {
-        
-        self.menu_session(|menu, env, _| {
-            menu.merchant_select(env, index);
-            Some(true)
-        });
-    }
-    /// Clicks on the offer list; true when one was hit.
-    pub(super) fn merchant_click(&mut self, local: (f32, f32)) -> bool {
-        let Some(m) = self.station.as_ref().and_then(|s| s.merchant.as_ref()) else {
-            return false;
-        };
-        for i in 0..7 {
-            let (x, y) = (5.0 + SHIFT, 18.0 + 20.0 * i as f32);
-            if local.0 >= x
-                && local.0 < x + 88.0
-                && local.1 >= y
-                && local.1 < y + 20.0
-                && i + m.scroll < m.session.offers.len()
-            {
-                let index = i + m.scroll;
-                if let Some(m) = self.station.as_mut().and_then(|s| s.merchant.as_mut()) {
-                    m.focused = Some(i);
-                }
-                self.sounds
-                    .play("minecraft:ui.button.click", None, 0.25, 1.0);
-                self.try_move_items(index);
-                return true;
-            }
-        }
-        false
-    }
-    /// The offer buttons a controller can focus (GUI origin relative).
-    pub(super) fn merchant_targets(&self) -> Vec<[f32; 4]> {
-        let Some(m) = self.station.as_ref().and_then(|s| s.merchant.as_ref()) else {
-            return Vec::new();
-        };
-        (0..7)
-            .filter(|i| i + m.scroll < m.session.offers.len())
-            .map(|i| [5.0 + SHIFT, 18.0 + 20.0 * i as f32, 88.0, 20.0])
-            .collect()
-    }
-    pub(super) fn merchant_scroll(&mut self, d: f32) {
-        let Some(m) = self.station.as_mut().and_then(|s| s.merchant.as_mut()) else {
-            return;
-        };
-        if m.session.offers.len() > 7 {
-            let max = m.session.offers.len() - 7;
-            m.scroll = (m.scroll as i32 - d.signum() as i32).clamp(0, max as i32) as usize;
-        }
     }
 }

@@ -69,13 +69,6 @@ struct Open {
 fn can_wear_horse_armor(species: Species) -> bool {
     matches!(species, Species::Horse | Species::ZombieHorse)
 }
-/// Whether `item` fits the body slot of the species (`isEquippableInSlot`).
-fn body_armor_fits(species: Species, item: &str) -> bool {
-    if llama::is_llama(species) {
-        return item.ends_with("_carpet");
-    }
-    can_wear_horse_armor(species) && item.ends_with("_horse_armor")
-}
 
 impl crate::game::Sim<'_> {
     /// Whether the mount menu is the open screen.
@@ -99,16 +92,6 @@ impl crate::game::Sim<'_> {
         }
         self.open_mount_menu(index);
         true
-    }
-    /// Riding a mount that has a horse inventory (`HasCustomInventoryScreen`).
-    pub(super) fn riding_mount_with_menu(&self) -> bool {
-        self.riding
-            .and_then(|id| self.mount_mob_index(id))
-            .is_some_and(|i| has_mount_menu(self.mobs[i].species()))
-    }
-    /// A server closed its window: the screen's copy goes.
-    pub(super) fn mount_menu_reset(&mut self) {
-        self.mount_menu.open = None;
     }
     /// The entity type of the open mount menu's mount (`minecraft:horse`).
     pub(super) fn mount_menu_entity(&self) -> Option<String> {
@@ -221,99 +204,12 @@ impl crate::game::Sim<'_> {
             self.sounds.play(&sound, Some(at), 0.5, 1.0);
         }
     }
-    pub(super) fn mount_slots(&self) -> Option<Vec<usize>> {
-        let open = self
-            .mount_menu
-            .open
-            .as_ref()
-            .filter(|_| self.mount_active())?;
-        let mut v: Vec<usize> = (0..36).collect();
-        if open.show_saddle {
-            v.push(SADDLE);
-        }
-        if open.show_armor {
-            v.push(ARMOR);
-        }
-        v.extend((0..open.columns * 3).map(|i| CHEST + i));
-        Some(v)
-    }
-    pub(super) fn mount_slot_position(&self, i: usize) -> Option<(f32, f32)> {
-        let open = self
-            .mount_menu
-            .open
-            .as_ref()
-            .filter(|_| self.mount_active())?;
-        match i {
-            SADDLE => Some((8.0, 18.0)),
-            ARMOR => Some((8.0, 36.0)),
-            _ if i >= CHEST => {
-                let n = i - CHEST;
-                (n < open.columns * 3).then(|| {
-                    (
-                        80.0 + (n % open.columns) as f32 * 18.0,
-                        18.0 + (n / open.columns) as f32 * 18.0,
-                    )
-                })
-            }
-            _ => None,
-        }
-    }
     pub(super) fn mount_slot_mut(&mut self, i: usize) -> &mut Option<ItemStack> {
         match self.mount_menu.open.as_mut() {
             Some(open) if i == SADDLE => &mut open.saddle,
             Some(open) if i == ARMOR => &mut open.armor,
             Some(open) if i >= CHEST && i - CHEST < CHEST_SIZE => &mut open.items[i - CHEST],
             _ => &mut self.scratch_slot,
-        }
-    }
-    /// `ArmorSlot.mayPlace` and the stack limits of the mount's slots.
-    pub(super) fn mount_slot_rules(&self, slot: usize, stack: &ItemStack) -> (bool, u32) {
-        let Some(open) = self.mount_menu.open.as_ref() else {
-            return (false, 64);
-        };
-        match slot {
-            SADDLE => (&*stack.item == "minecraft:saddle", 1),
-            ARMOR => (body_armor_fits(open.species, &stack.item), 1),
-            _ => (true, 64),
-        }
-    }
-    /// `AbstractMountInventoryMenu.quickMoveStack`.
-    fn mount_quick_move(&mut self, slot: usize) {
-        let Some(open) = self.mount_menu.open.as_ref() else {
-            return;
-        };
-        let (columns, show_saddle, show_armor) = (open.columns, open.show_saddle, open.show_armor);
-        let Some(mut stack) = self.slot_mut(slot).take() else {
-            return;
-        };
-        if slot >= SADDLE {
-            let player = crate::game::Sim::mount_player_slots();
-            self.move_to(&mut stack, &player, true);
-        } else {
-            let armor_free = self.mount_slot_mut(ARMOR).is_none();
-            let saddle_free = self.mount_slot_mut(SADDLE).is_none();
-            let armor_ok = show_armor && self.mount_slot_rules(ARMOR, &stack).0 && armor_free;
-            let saddle_ok = show_saddle && self.mount_slot_rules(SADDLE, &stack).0 && saddle_free;
-            if armor_ok {
-                self.move_to(&mut stack, &[ARMOR], false);
-            } else if saddle_ok {
-                self.move_to(&mut stack, &[SADDLE], false);
-            } else {
-                let chest: Vec<usize> = (0..columns * 3).map(|i| CHEST + i).collect();
-                let moved = columns > 0 && self.move_to(&mut stack, &chest, false);
-                if !moved {
-                    // Between the hotbar and the main inventory.
-                    let other: Vec<usize> = if slot < 9 {
-                        (9..36).collect()
-                    } else {
-                        (0..9).collect()
-                    };
-                    self.move_to(&mut stack, &other, false);
-                }
-            }
-        }
-        if stack.count > 0 {
-            *self.slot_mut(slot) = Some(stack);
         }
     }
 }
@@ -346,9 +242,5 @@ impl crate::game::Sim<'_> {
             show_saddle: shows_saddle(species),
             show_armor,
         });
-    }
-    /// The inventory slot ids in menu order.
-    fn mount_player_slots() -> Vec<usize> {
-        (9..36).chain(0..9).collect()
     }
 }

@@ -2,7 +2,6 @@
 //! pointer, local particles, screens, outlines, chat lines) does nothing here.
 //! Each call site is still to go (docs/crates.md); until then these keep the
 //! server's copy of that code building.
-use crate::hc::text::Text;
 use horizon_core::position::BlockPos;
 use horizon_world::registry::BlockStateId;
 
@@ -20,14 +19,10 @@ impl crate::game::Sim<'_> {
     pub(crate) fn totem_event(&mut self, _body: super::totem::Body, _own: bool) {}
     pub(crate) fn dripstone_drip_particle(&mut self, _pos: BlockPos) {}
     pub(crate) fn open_command_block(&mut self, _pos: (i32, i32, i32)) {}
-    pub(crate) fn creative_inventory_open(&self) -> bool {
-        false
-    }
     pub(crate) fn creative_tab_open(&self) -> bool {
         false
     }
     pub(crate) fn lan_update_models(&mut self, _host: &mut super::lan::LanHost) {}
-    pub(crate) fn local_chat_line(&mut self, _text: Text, _indicator: Option<u32>) {}
 }
 
 /// Particles the client spawns itself (`ItemParticle`, eating crumbs...): a

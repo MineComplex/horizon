@@ -5,9 +5,6 @@
 use crate::game::keys::KeyCode;
 use super::view_vector;
 
-fn at(p: horizon_core::geometry::Vec3) -> glam::DVec3 {
-    glam::DVec3::new(p.x, p.y, p.z)
-}
 use crate::hc::{blocks::Fluid, collisions::{EntityCollisions, SceneCollisions}, items::ItemStack, mobs::{Part, riders}};
 use horizon_core::{
     geometry::{Aabb, Vec3},
@@ -142,14 +139,6 @@ impl Boat {
             at,
             yaw,
         )
-    }
-    /// `getRowingTime`.
-    pub fn rowing_time(&self, side: usize, a: f32) -> f32 {
-        if self.paddling[side] {
-            self.paddles[side] - PI / 8.0 + a * PI / 8.0
-        } else {
-            0.0
-        }
     }
 }
 /// Item id -> (boat entity id, wood).

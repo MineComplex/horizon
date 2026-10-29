@@ -50,17 +50,6 @@ impl crate::game::Sim<'_> {
         }
         let _ = text;
     }
-    /// `Screen.clickCommandAction`: run a clicked command as the player
-    /// without adding it to the chat history. A client mod's command goes
-    /// first, as `ClientPacketListener.sendUnattendedCommand` lets client
-    /// commands take it. (Vanilla asks first when the command fails to
-    /// parse; here the server answers it.)
-    pub(super) fn click_command(&mut self, command: &str) {
-        let command = command.strip_prefix('/').unwrap_or(command);
-        {
-            self.run_command(command);
-        }
-    }
     /// Advance the overworld clock (ServerClockManager.tick) when
     /// `advance_time` allows it.
     pub(super) fn advance_clock(&mut self) {
@@ -168,37 +157,6 @@ impl crate::game::Sim<'_> {
         }
     }
 }
-/// `yyyy-MM-dd_HH.mm.ss[_n].png` (Util.getFilenameFormattedDateTime, local time
-/// approximated as UTC).
-pub fn screenshot_name(dir: &std::path::Path) -> String {
-    let secs = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map_or(0, |d| d.as_secs());
-    let days = (secs / 86400) as i64;
-    let (h, m, s) = ((secs % 86400) / 3600, (secs % 3600) / 60, secs % 60);
-    let z = days + 719_468;
-    let era = z.div_euclid(146_097);
-    let doe = z - era * 146_097;
-    let yoe = (doe - doe / 1460 + doe / 36524 - doe / 146_096) / 365;
-    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
-    let mp = (5 * doy + 2) / 153;
-    let d = doy - (153 * mp + 2) / 5 + 1;
-    let mo = if mp < 10 { mp + 3 } else { mp - 9 };
-    let y = yoe + era * 400 + i64::from(mo <= 2);
-    let base = format!("{y}-{mo:02}-{d:02}_{h:02}.{m:02}.{s:02}");
-    let mut n = 1;
-    loop {
-        let name = if n == 1 {
-            format!("{base}.png")
-        } else {
-            format!("{base}_{n}.png")
-        };
-        if !dir.join(&name).exists() {
-            return name;
-        }
-        n += 1;
-    }
-}
 
 /// `IntegratedServer.getProfilePermissions` for the owner: `OWNER` (4) when
 /// commands are allowed, else `ALL` (0).
@@ -206,9 +164,6 @@ fn owner_permission(allow_commands: bool) -> u8 {
     if allow_commands { 4 } else { 0 }
 }
 
-/// `ConfirmLinkScreen`'s buttons, left to right: yes, copy, no.
-const LINK_YES: usize = 0;
-const LINK_COPY: usize = 1;
 
 impl crate::game::Sim<'_> {
     /// Load per-world command state when a world opens.

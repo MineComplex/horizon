@@ -33,27 +33,6 @@ pub(super) struct ThrownTrident {
     guest: Option<u32>,
 }
 impl ThrownTrident {
-    /// A trident a server sent (`handleAddEntity`): placed and moved by it.
-    pub(super) fn remote(id: u32, position: Vec3, yaw: f32, pitch: f32) -> Self {
-        Self {
-            id,
-            stack: ItemStack::new("minecraft:trident", 1),
-            position,
-            previous: position,
-            velocity: Vec3::ZERO,
-            yaw,
-            pitch,
-            in_ground: false,
-            in_ground_time: 0,
-            dealt_damage: false,
-            loyalty: 0,
-            no_physics: false,
-            returning: 0,
-            creative_only: false,
-            owner: 0,
-            guest: None,
-        }
-    }
     /// `ThrownTrident.tick`'s Loyalty return: pulled up and towards the
     /// owner's eye.
     fn loyalty_pull(&mut self, owner_eye: Vec3) {
@@ -70,52 +49,6 @@ impl ThrownTrident {
             self.velocity.y * 0.95 + v.y / len * accel,
             self.velocity.z * 0.95 + v.z / len * accel,
         );
-    }
-    /// `ThrownTrident.tick` on a server's client: it flies on by itself
-    /// between the server's updates (`AbstractArrow.tick`: gravity and drag,
-    /// a block holds it), and Loyalty pulls it back to its owner; only the
-    /// server decides what it hits.
-    pub(super) fn remote_tick(&mut self, w: &impl ProjectileWorld, owner_eye: Option<Vec3>) {
-        self.previous = self.position;
-        if self.in_ground_time > 4 {
-            self.dealt_damage = true;
-        }
-        if self.loyalty > 0
-            && (self.dealt_damage || self.no_physics)
-            && let Some(eye) = owner_eye
-        {
-            self.no_physics = true;
-            self.in_ground = false;
-            self.loyalty_pull(eye);
-        }
-        if self.in_ground && !self.no_physics {
-            self.in_ground_time += 1;
-            return;
-        }
-        self.in_ground_time = 0;
-        let m = self.velocity;
-        let (x, z) = if self.no_physics {
-            (-m.x, -m.z)
-        } else {
-            (m.x, m.z)
-        };
-        self.yaw = x.atan2(z).to_degrees() as f32;
-        self.pitch = m.y.atan2(m.x.hypot(m.z)).to_degrees() as f32;
-        let to = self.position.add_vector(m);
-        if !self.no_physics
-            && let Some((at, _, _)) = w.clip(self.position, to)
-        {
-            self.position = at;
-            self.velocity = Vec3::ZERO;
-            self.in_ground = true;
-            return;
-        }
-        self.position = to;
-        // A trident's water inertia (0.99) equals the air drag.
-        self.velocity = self.velocity.scale(0.99);
-        if !self.no_physics {
-            self.velocity.y -= 0.05;
-        }
     }
 }
 const HALF: f64 = 0.25;

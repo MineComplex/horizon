@@ -416,18 +416,6 @@ impl crate::game::Sim<'_> {
         });
         (at, rotation)
     }
-    /// The same on a server's client: `Entity.canUsePortal` (alive, not a
-    /// passenger), then only the client's `setAsInsidePortal`, which drives
-    /// the confusion effect (`client_portal_effect`).
-    pub(super) fn client_inside_nether_portal(&mut self) {
-        let alive = self
-            .player
-            .as_ref()
-            .is_some_and(|p| !p.health.dead_or_dying());
-        if alive && self.riding.is_none() {
-            self.portals.client_inside = true;
-        }
-    }
     /// Where to wait for the destination of `plan` to load, once its level
     /// is open: the portal its points of interest lead to, or the
     /// approximate exit.

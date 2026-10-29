@@ -5,7 +5,7 @@
 //! `maps/last_id.dat`, the 128x128 texture in an atlas slot, the two-handed
 //! first-person view and maps in item frames.
 use super::lan::LanHost;
-use crate::hc::{blocks::{Fluid, MAP_COLORS}, items::ItemStack};
+use crate::hc::{blocks::Fluid, items::ItemStack};
 use horizon_world::nbt::Tag;
 use std::collections::HashMap;
 
@@ -276,17 +276,6 @@ pub(super) struct Maps {
     slots: Vec<(i32, usize)>,
     missing: std::collections::HashSet<i32>,
 }
-/// `MapColor.getColorFromPackedId` as RGBA bytes (NONE is transparent).
-fn packed_rgba(packed: u8) -> [u8; 4] {
-    let id = usize::from(packed >> 2);
-    if id == 0 || id >= MAP_COLORS.len() {
-        return [0; 4];
-    }
-    let modifier = [180u32, 220, 255, 135][usize::from(packed & 3)];
-    let col = MAP_COLORS[id];
-    let ch = |s: u32| ((col >> s & 255) * modifier / 255) as u8;
-    [ch(16), ch(8), ch(0), 255]
-}
 /// `has(DataComponents.MAP_ID)`: filled maps and the explorer map items
 /// (`buried_treasure_map`, `woodland_mansion_map`, ..., all `MapItem`s).
 pub(super) fn map_id(stack: &ItemStack) -> Option<i32> {
@@ -319,13 +308,6 @@ const DECORATION_TYPES: [(&str, &str); 24] = [
     ("mineshaft", "map/decorations/mineshaft"),
     ("ocean_ruin_warm", "map/decorations/warm_ocean_ruins"),
 ];
-/// `MapDecorationType.showOnItemFrame` is false for the player arrows and the two markers.
-fn shown_on_frame(sprite: &str) -> bool {
-    !matches!(
-        decoration_type(sprite),
-        Some("player" | "red_marker" | "blue_marker" | "player_off_map" | "player_off_limits")
-    )
-}
 /// The sprite of a decoration type that a `minecraft:map_decorations`
 /// entry or a server's packet names.
 fn decoration_sprite(id: &str) -> Option<&'static str> {
@@ -869,24 +851,6 @@ impl crate::game::Sim<'_> {
         for id in held {
             self.update_map(id);
         }
-    }
-    /// The maps the player carries, for `status`: how many of their pixels
-    /// are drawn, and their decorations.
-    pub(super) fn maps_status(&self) -> Vec<serde_json::Value> {
-        self.inventory
-            .iter()
-            .chain(std::iter::once(&self.offhand))
-            .flatten()
-            .filter_map(map_id)
-            .filter_map(|id| {
-                let m = self.maps.data.get(&id)?;
-                Some(serde_json::json!({
-                    "id": id,
-                    "pixels": m.colors.iter().filter(|&&c| c != 0).count(),
-                    "decorations": m.decorations.iter().map(|d| d.sprite).collect::<Vec<_>>(),
-                }))
-            })
-            .collect()
     }
     /// `ServerPlayer.synchronizeSpecialItemUpdates` for each map the guest
     /// carries, and every 10 ticks (`ServerEntity.sendChanges`) for each map

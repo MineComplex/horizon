@@ -1,6 +1,6 @@
 //! The wither on the game side: building it (`WitherSkullBlock.checkSpawn`),
 //! its boss bar, and its skulls hitting and exploding.
-use crate::hc::{items::ItemStack, mobs::{Damage, DamageKind, Species, Who}, projectiles::{Projectile, ProjectileKind}};
+use crate::hc::{items::ItemStack, mobs::{Damage, DamageKind, Species, Who}, projectiles::Projectile};
 use horizon_core::position::BlockPos;
 
 impl crate::game::Sim<'_> {
@@ -180,12 +180,5 @@ impl crate::game::Sim<'_> {
         let result = self.with_hive_emptying_blast(|g| g.explode(at, 1.0));
         self.combat.explosion_owner = None;
         result
-    }
-}
-/// Wither skulls drawn as the skull model, blue when dangerous.
-pub(super) fn skull_kind(p: &Projectile) -> Option<bool> {
-    match p.kind {
-        ProjectileKind::WitherSkull { dangerous } => Some(dangerous),
-        _ => None,
     }
 }

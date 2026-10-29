@@ -931,10 +931,6 @@ fn mob_equipment(
     }
 }
 
-pub const HELP: &[&str] = &[
-    "lan open [PORT] [commands] [force]  the test server's port; commands lets every player run commands",
-    "lan status                     the test server's port and players",
-];
 
 impl crate::game::Sim<'_> {
     /// `horizon-ctl lan status`.
@@ -1871,25 +1867,6 @@ impl crate::game::Sim<'_> {
             .filter(|g| host.hub.here(g))
             .map(|g| (g.chunk(), radius))
             .collect();
-    }
-    /// The bed at `head` as a sleeping model lies in it (`ints[1]`,
-    /// `villager::sleep_pose`): its `facing`.
-    pub(super) fn bed_facing(&self, head: [i32; 3]) -> i32 {
-        let state = self.world.block(head[0], head[1], head[2]);
-        let facing = self
-            .pack
-            .assets
-            .registry
-            .state(state)
-            .and_then(|s| s.properties.get("facing"))
-            .map(String::as_str);
-        crate::hc::mobs::villager::bed_facing_code(facing)
-    }
-    /// A chat line the host typed, for the guests.
-    pub(super) fn lan_host_chat(&mut self, message: &str) {
-        if let Some(host) = &self.lan {
-            host.hub.chat(&host.host_name, message);
-        }
     }
 }
 

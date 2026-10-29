@@ -3,7 +3,7 @@
 //! the block events that drive them (`ClientboundBlockEventPacket` reaching
 //! `BlockEntity.triggerEvent`). The renderer reads the resulting state through
 //! [`crate::game::Sim::block_anim`] and [`crate::game::Sim::chest_lid`].
-use crate::hc::{block_entity_anim::{BlockAnim, ConduitServer, ConduitTarget, EndGateway, Shulker, ShulkerStatus, Ticker,
+use crate::hc::{block_entity_anim::{ConduitServer, EndGateway, Shulker, ShulkerStatus, Ticker,
         closer_to_center_than,
     }, collisions::{SceneCollisions, no_collision_empty}, effects::EffectInstance, mobs::{Damage, DamageKind}, save::number};
 use horizon_core::{
@@ -471,17 +471,6 @@ impl crate::game::Sim<'_> {
             .unwrap_or(0);
         Some(candidates[pick as usize])
     }
-    /// The conduit's `destroyTarget` as the client draws it.
-    fn conduit_target(&self, pos: [i32; 3]) -> Option<ConduitTarget> {
-        let id = self.be_anims.conduit_servers.get(&pos)?.target?;
-        let m = self.mobs.iter().find(|m| m.id == id && !m.removed)?;
-        Some(ConduitTarget {
-            position: [m.position.x, m.position.y, m.position.z],
-            eye_y: m.eye_y(),
-            width: m.width(),
-            height: m.height(),
-        })
-    }
     /// `TheEndGatewayBlockEntity.portalTick` (the server ticker) of the
     /// gateways a server keeps a copy of, in block-ticking chunks
     /// (`Level.tickBlockEntities`): the cooldown an entry started runs out,
@@ -544,29 +533,5 @@ impl crate::game::Sim<'_> {
                         .eq(&pos.map(|v| Some(i64::from(v))))
                 })
             })
-    }
-    /// The renderer's view of the block entity at `pos`, with a decorated
-    /// pot's saved `sherds` (back, left, right, front).
-    pub(super) fn block_anim(&self, pos: [i32; 3], partial: f32) -> BlockAnim {
-        let state = self.world.block(pos[0], pos[1], pos[2]);
-        let sherds = if &*self.res.facts().get(state).name == "minecraft:decorated_pot" {
-            let sherds = self.saved_tag(pos).and_then(|t| t.get("sherds"));
-            ["back", "left", "right", "front"].map(|side| match sherds.and_then(|s| s.get(side)) {
-                // An item id, or the item stack the processed templates hold.
-                Some(Tag::String(id)) => Some(id.to_string_lossy()),
-                Some(stack) => {
-                    crate::hc::save::item_from_nbt(stack).map(|s| s.item.to_string())
-                }
-                None => None,
-            })
-        } else {
-            Default::default()
-        };
-        self.be_anims
-            .block_anim(pos, self.world.game_time, partial, sherds)
-    }
-    /// `ChestLidController.getOpenness(partial)` at `pos`.
-    pub(super) fn chest_lid(&self, pos: [i32; 3], partial: f32) -> f32 {
-        self.be_anims.lid(pos, partial)
     }
 }

@@ -11,7 +11,6 @@ use horizon_core::{
     geometry::{Aabb, Vec3, trig},
     random::RandomSource,
 };
-use horizon_world::registry::BlockStateId;
 use std::{collections::HashMap, sync::Arc};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -88,10 +87,6 @@ pub(super) struct Minecart {
 }
 pub(super) const WIDTH: f64 = 0.98;
 pub(super) const HEIGHT: f64 = 0.7;
-/// AbstractMinecart.getDefaultDisplayOffset, in sixteenths of a block.
-fn display_offset(kind: CartKind) -> f64 {
-    if kind == CartKind::Hopper { 1.0 } else { 6.0 }
-}
 /// The minecart's passenger attachment minus Player.DEFAULT_VEHICLE_ATTACHMENT.
 pub(super) const SEAT: f64 = 0.1875 - 0.6;
 /// The placeholder container key under which an open cart's items live.
@@ -299,26 +294,6 @@ impl crate::game::Sim<'_> {
             out[1] += 0.5;
         }
         Some(out)
-    }
-    /// `OldMinecartBehavior.getPosOffs`.
-    fn rail_pos_offs(&self, mut x: f64, y: f64, mut z: f64, offs: f64) -> Option<[f64; 3]> {
-        let [xt, yt, zt] = self.rail_block(Vec3::new(x, y, z));
-        let rail = self.rail(xt, yt, zt)?;
-        let mut y = f64::from(yt) + if rail.shape.is_slope() { 1.0 } else { 0.0 };
-        let (e0, e1) = rail.shape.exits();
-        let (mut xd, mut zd) = (f64::from(e1[0] - e0[0]), f64::from(e1[2] - e0[2]));
-        let dd = xd.hypot(zd);
-        xd /= dd;
-        zd /= dd;
-        x += xd * offs;
-        z += zd * offs;
-        let at = |e: [i32; 3]| x.floor() as i32 - xt == e[0] && z.floor() as i32 - zt == e[2];
-        if e0[1] != 0 && at(e0) {
-            y += f64::from(e0[1]);
-        } else if e1[1] != 0 && at(e1) {
-            y += f64::from(e1[1]);
-        }
-        self.rail_pos(x, y, z)
     }
     /// Entity.move for a cart: collisions zero the blocked components.
     fn move_cart(&self, c: &mut Minecart, delta: Vec3) {
@@ -1088,21 +1063,6 @@ impl crate::game::Sim<'_> {
             b.items = items;
         }
     }
-    /// The open cart's kind when a cart container is shown.
-    pub(super) fn open_cart_kind(&self) -> Option<CartKind> {
-        let key = self.container.filter(|k| k.1 == CART_KEY_Y)?;
-        // A chest boat's chest shows like a chest minecart's.
-        self.carts
-            .iter()
-            .find(|c| c.id as i32 == key.2)
-            .map(|c| c.kind)
-            .or_else(|| {
-                self.boats
-                    .iter()
-                    .any(|b| b.chest && b.id as i32 == key.2)
-                    .then_some(CartKind::Chest)
-            })
-    }
     /// `VehicleEntity.hurtServer` from the player's attack.
     pub(super) fn attack_cart(&mut self, damage: f32) -> bool {
         let Some((i, d)) = self.cart_hit() else {
@@ -1171,30 +1131,6 @@ impl crate::game::Sim<'_> {
                     }
                 }
             }
-        }
-    }
-    fn display_state(&self, c: &Minecart) -> Option<BlockStateId> {
-        let registry = &self.pack.assets.registry;
-        let with = |name: &str, props: &[(&str, &str)]| {
-            let mut s = registry.state(registry.default_state(name)?)?.clone();
-            for (k, v) in props {
-                s.properties.insert((*k).to_owned(), (*v).to_owned());
-            }
-            registry.id(&s)
-        };
-        match c.kind {
-            CartKind::Rideable => None,
-            CartKind::Chest => with("minecraft:chest", &[("facing", "north")]),
-            CartKind::Hopper => registry.default_state("minecraft:hopper"),
-            CartKind::Furnace => with(
-                "minecraft:furnace",
-                &[
-                    ("facing", "north"),
-                    ("lit", if c.fuel > 0 { "true" } else { "false" }),
-                ],
-            ),
-            CartKind::Tnt => registry.default_state("minecraft:tnt"),
-            CartKind::CommandBlock => registry.default_state("minecraft:command_block"),
         }
     }
 }

@@ -6,18 +6,6 @@ use crate::game::keys::KeyCode;
 use crate::hc::{items::ItemStack, mobs::leash::{self, Holder, Pending}};
 use horizon_world::nbt::Tag;
 
-/// `Vec3.yRot(angle)`.
-fn rot_y(v: glam::DVec3, angle: f64) -> glam::DVec3 {
-    let (s, c) = (angle.sin(), angle.cos());
-    glam::DVec3::new(v.x * c + v.z * s, v.y, v.z * c - v.x * s)
-}
-fn pack_light(light: u8) -> u32 {
-    (u32::from(light >> 4) * 16) | ((u32::from(light & 15) * 16) << 8)
-}
-fn abgr(r: f32, g: f32, b: f32) -> u32 {
-    let c = |v: f32| (v * 255.0) as u32 & 255;
-    0xFF00_0000 | c(b) << 16 | c(g) << 8 | c(r)
-}
 impl crate::game::Sim<'_> {
     fn lead_sound(&mut self, sound: &str, at: [f64; 3]) {
         self.sounds

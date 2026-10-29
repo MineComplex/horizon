@@ -8,7 +8,6 @@ use serde_json::Value;
 
 /// `CrafterBlock`'s crafting animation length.
 const CRAFTING_TICKS: i32 = 6;
-const RESULT_SLOT: usize = 309;
 
 fn center(pos: Pos) -> [f64; 3] {
     [
@@ -190,84 +189,5 @@ impl crate::game::Sim<'_> {
         }
         self.dispenser_event(1049, pos, 0);
         self.dispenser_event(2010, pos, facing as i32);
-    }
-    /// The grid's current recipe result (`CrafterMenu.refreshRecipeResult`).
-    pub(in crate::game) fn crafter_result(&self) -> Option<ItemStack> {
-        let key = self.container?;
-        let c = self.crafter_at(key)?;
-        self.res.recipes().craft(&c.items, 3)
-    }
-    fn crafter_open(&self) -> bool {
-        matches!(self.container_kind(), Some(BlockEntity::Crafter(_)))
-    }
-    /// `CrafterMenu` slot layout: the grid at (26, 17), the result at (134, 35).
-    pub(in crate::game) fn crafter_slot_position(&self, i: usize) -> Option<(f32, f32)> {
-        if !self.crafter_open() {
-            return None;
-        }
-        match i {
-            300..309 => Some((
-                26.0 + ((i - 300) % 3) as f32 * 18.0,
-                17.0 + ((i - 300) / 3) as f32 * 18.0,
-            )),
-            RESULT_SLOT => Some((134.0, 35.0)),
-            _ => None,
-        }
-    }
-    /// `gui.togglable_slot` over an empty, enabled grid slot.
-    pub(in crate::game) fn crafter_tooltip(&self, slot: usize) -> Option<String> {
-        let c = self.container.and_then(|k| self.crafter_at(k))?;
-        let i = slot.checked_sub(300).filter(|i| *i < 9)?;
-        (self.carried.is_none() && c.items[i].is_none() && !c.disabled[i] && !self.spectator())
-            .then(|| self.translate("gui.togglable_slot", "Click to disable slot"))
-    }
-    /// `CrafterScreen.slotClicked`: an empty grid slot is enabled by a click
-    /// (or a number key with a hotbar item) when disabled, and disabled by a
-    /// click with nothing carried; the menu then gets the click itself.
-    pub(in crate::game) fn crafter_slot_clicked(
-        &mut self,
-        slot: usize,
-        button: i32,
-        input: crate::hc::menu::Input,
-    ) {
-        use crate::hc::menu::Input;
-        if !self.crafter_open() || !(300..309).contains(&slot) || self.spectator() {
-            return;
-        }
-        let i = slot - 300;
-        let Some(c) = self.container.and_then(|k| self.crafter_at(k)) else {
-            return;
-        };
-        if c.items[i].is_some() {
-            return;
-        }
-        let disabled = c.disabled[i];
-        let enable = match input {
-            Input::Pickup if disabled => Some(true),
-            Input::Pickup if self.carried.is_none() => Some(false),
-            Input::Swap if disabled => usize::try_from(button)
-                .ok()
-                .and_then(|b| {
-                    if b == 40 {
-                        Some(&self.offhand)
-                    } else {
-                        self.inventory.get(b)
-                    }
-                })
-                .is_some_and(Option::is_some)
-                .then_some(true),
-            _ => None,
-        };
-        let Some(enabled) = enable else {
-            return;
-        };
-        // ServerboundContainerSlotStateChangedPacket: CrafterBlockEntity.setSlotState.
-        self.menu_session(|menu, _, _| {
-            menu.set_slot_state(i, enabled);
-            Some(true)
-        });
-        let pitch = if enabled { 1.0 } else { 0.75 };
-        self.sounds
-            .play("minecraft:ui.button.click", None, 0.4, pitch);
     }
 }

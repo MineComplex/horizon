@@ -8,23 +8,6 @@ pub(super) fn is_shulker_box(name: &str) -> bool {
     name.ends_with("shulker_box")
 }
 impl crate::game::Sim<'_> {
-    /// The custom name of the open container, or its default title
-    /// (a double chest is named by whichever half has a name).
-    pub(super) fn container_title(&self, default: String) -> String {
-        self.container_parts()
-            .iter()
-            .find_map(|(key, _)| self.world.block_names.get(key))
-            .cloned()
-            .unwrap_or(default)
-    }
-    /// ShulkerBoxSlot.mayPlace: no shulker box inside a shulker box.
-    pub(super) fn refuses(&self, slot: usize, stack: &ItemStack) -> bool {
-        (300..400).contains(&slot)
-            && is_shulker_box(&stack.item)
-            && self.container.is_some_and(|k| {
-                is_shulker_box(&self.res.facts().get(self.world.block(k.0, k.1, k.2)).name)
-            })
-    }
     /// Opening an ender chest shows the player's ender inventory in its place.
     pub(super) fn open_ender_chest(&mut self, key: (i32, i32, i32)) {
         self.world
@@ -316,21 +299,6 @@ impl crate::game::Sim<'_> {
             Some(slot) => slot,
             None => &mut self.scratch_slot,
         }
-    }
-    pub(super) fn container_block_is_shulker(&self) -> bool {
-        self.container_block()
-            .as_deref()
-            .is_some_and(is_shulker_box)
-    }
-    fn container_block(&self) -> Option<std::sync::Arc<str>> {
-        let k = self.container?;
-        Some(
-            self.res
-                .facts()
-                .get(self.world.block(k.0, k.1, k.2))
-                .name
-                .clone(),
-        )
     }
 }
 

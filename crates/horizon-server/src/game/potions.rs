@@ -347,53 +347,6 @@ impl PotionState {
             )
         })
     }
-    /// `handleAddEntity` for a thrown potion or bottle on a server's client:
-    /// drawn where the server says (its item comes in its entity data).
-    pub(super) fn add_remote_thrown(&mut self, id: u32, kind: &str, at: Vec3, velocity: Vec3) {
-        self.thrown.retain(|t| t.id != id);
-        let item = match kind {
-            "minecraft:lingering_potion" | "minecraft:experience_bottle" => kind,
-            _ => "minecraft:splash_potion",
-        };
-        self.thrown.push(ThrownPotion {
-            id,
-            stack: ItemStack::new(item, 1),
-            previous: at,
-            position: at,
-            velocity,
-            age: 0,
-            owner: None,
-        });
-    }
-    /// ThrowableItemProjectile.DATA_ITEM_STACK: the potion it shows.
-    pub(super) fn remote_thrown_item(&mut self, id: u32, stack: ItemStack) {
-        if let Some(t) = self.thrown.iter_mut().find(|t| t.id == id) {
-            t.stack = stack;
-        }
-    }
-    /// A server's move: thrown potions have no interpolation handler, so
-    /// `moveOrInterpolateTo` puts them there at once. False when `id` isn't one.
-    pub(super) fn move_remote_thrown(&mut self, id: u32, at: Vec3) -> bool {
-        let Some(t) = self.thrown.iter_mut().find(|t| t.id == id) else {
-            return false;
-        };
-        t.position = at;
-        true
-    }
-    /// `handleSetEntityMotion` for a thrown potion. False when `id` isn't one.
-    pub(super) fn remote_thrown_motion(&mut self, id: u32, velocity: Vec3) -> bool {
-        let Some(t) = self.thrown.iter_mut().find(|t| t.id == id) else {
-            return false;
-        };
-        t.velocity = velocity;
-        true
-    }
-    pub(super) fn remove_remote_thrown(&mut self, id: u32) {
-        self.thrown.retain(|t| t.id != id);
-    }
-    pub(super) fn has_thrown(&self, id: u32) -> bool {
-        self.thrown.iter().any(|t| t.id == id)
-    }
 }
 
 /// The entity type of a thrown potion or bottle.
@@ -679,15 +632,6 @@ impl crate::game::Sim<'_> {
             effect.visible = false;
             self.potions.effects.add(effect);
         }
-    }
-    /// A client's own effects (`LivingEntity.tickEffects` on the client,
-    /// `MobEffectInstance.tickClient`): they count down, and the server
-    /// removes them. Their modifiers and flags move the predicted player.
-    pub(super) fn tick_client_effects(&mut self) {
-        for e in &mut self.potions.effects.list {
-            e.tick_client();
-        }
-        self.apply_effect_status();
     }
     /// Add an active effect to the player and update attributes / absorption.
     pub(super) fn add_player_effect(&mut self, effect: EffectInstance) -> bool {
@@ -985,33 +929,6 @@ impl crate::game::Sim<'_> {
             t.velocity.z * inertia,
         );
     }
-    /// `ThrowableProjectile.tick` on a server's client: it falls and moves
-    /// by itself between the server's updates and stops at a block; only
-    /// the server breaks it.
-    pub(super) fn step_remote_thrown(&mut self) {
-        let mut thrown = std::mem::take(&mut self.potions.thrown);
-        for t in &mut thrown {
-            t.previous = t.position;
-            t.age += 1;
-            self.thrown_potion_motion(t);
-            let next = Vec3::new(
-                t.position.x + t.velocity.x,
-                t.position.y + t.velocity.y,
-                t.position.z + t.velocity.z,
-            );
-            let state = self.world.block(
-                next.x.floor() as i32,
-                next.y.floor() as i32,
-                next.z.floor() as i32,
-            );
-            if self.res.facts().get(state).full_collision {
-                t.velocity = Vec3::ZERO;
-            } else {
-                t.position = next;
-            }
-        }
-        self.potions.thrown = thrown;
-    }
     /// `HealOrHarmMobEffect.applyInstantaneousEffect` with a source (a
     /// potion or a cloud): indirectMagic, not plain magic.
     fn apply_indirect_effect_action(&mut self, a: EffectAction, source: &Text) {
@@ -1175,11 +1092,5 @@ impl crate::game::Sim<'_> {
     pub(super) fn restore_effects(&mut self) {
         self.potions = PotionState::default();
         self.potions.effects = PlayerEffects::from_saved(&self.level.active_effects);
-    }
-    pub(super) fn effects_json(&self) -> serde_json::Value {
-        serde_json::json!({
-            "active": self.potions.effects.list.iter().map(|e| serde_json::json!({ "id": e.id, "duration": e.duration, "amplifier": e.amplifier })).collect::<Vec<_>>(),
-            "thrown": self.potions.thrown.iter().map(|t| [t.position.x, t.position.y, t.position.z]).collect::<Vec<_>>(),
-        })
     }
 }

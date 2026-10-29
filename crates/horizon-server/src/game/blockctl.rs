@@ -5,12 +5,6 @@ use horizon_world::{chunk::BlockState, registry::BlockStateId};
 use serde_json::{Value, json};
 use std::collections::BTreeMap;
 
-pub(super) const HELP: &[&str] = &[
-    "setblock X Y Z BLOCK[props]    set a block with neighbour updates",
-    "fill X1 Y1 Z1 X2 Y2 Z2 BLOCK   set a box of blocks",
-    "getblock X Y Z                 block state at a position",
-    "container X Y Z [ITEM COUNT]   list a container, or add items to it",
-];
 
 fn parse_state(text: &str) -> Result<BlockState> {
     let (name, props) = match text.split_once('[') {

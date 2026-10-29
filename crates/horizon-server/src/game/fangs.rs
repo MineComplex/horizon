@@ -1,6 +1,6 @@
 //! Evoker fangs (`EvokerFangs`): rising out of the floor after a delay,
 //! biting what stands on them for 6 damage, sinking back after 22 ticks.
-use crate::hc::mobs::{Part, Species, anim::Poses};
+use crate::hc::mobs::{Part, Species};
 use horizon_core::geometry::Vec3;
 use std::sync::Arc;
 
@@ -39,28 +39,6 @@ impl crate::game::Sim<'_> {
             owner,
             started: false,
         });
-    }
-    /// `EvokerFangs.handleEntityEvent`: only event 4 starts a client attack.
-    pub(super) fn remote_fangs_event(&mut self, id: u32, event: i8) {
-        if event == 4
-            && let Some(f) = self.fangs.list.iter_mut().find(|f| f.id == id)
-        {
-            f.started = true;
-            self.sounds.play_unshared(
-                "minecraft:entity.evoker_fangs.attack",
-                Some(f.pos),
-                1.0,
-                1.0,
-            );
-        }
-    }
-    /// `EvokerFangs.tick`: clients only advance animation, never damage or discard.
-    pub(super) fn tick_remote_fangs(&mut self) {
-        for f in &mut self.fangs.list {
-            if f.started {
-                f.life -= 1;
-            }
-        }
     }
     /// `EvokerFangs.tick`.
     pub(super) fn tick_fangs(&mut self) {
@@ -152,7 +130,4 @@ impl crate::game::Sim<'_> {
             }
         }
     }
-}
-fn p_zrot(p: &mut Poses, part: &str, v: f32) {
-    p.zrot(part, v);
 }

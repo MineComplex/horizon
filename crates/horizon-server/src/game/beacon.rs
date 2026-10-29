@@ -3,12 +3,9 @@
 //! levels every 80 ticks, the primary/secondary effects for players in
 //! range, the activate/ambient/deactivate sounds, the 230x219 menu with its
 //! power buttons and payment slot, and the rotating, scrolling beam.
-use super::stations::{INPUT, Kind};
+use super::stations::Kind;
 use crate::hc::{containers::{Beacon, BlockEntity}, effects::EffectInstance, mobs::render::{DYE, DYE_NAMES}};
 
-/// The beacon screen is 54 px wider than the 176-px menus it shares an origin with.
-pub(super) const SHIFT: f32 = -27.0;
-pub(super) const HEIGHT: f32 = 219.0;
 /// `BEACON_EFFECTS` in order, with the pyramid level each needs.
 pub(super) const EFFECTS: [(&str, i32); 6] = [
     ("speed", 1),
@@ -18,37 +15,6 @@ pub(super) const EFFECTS: [(&str, i32); 6] = [
     ("strength", 3),
     ("regeneration", 4),
 ];
-const PAYMENT: [&str; 5] = [
-    "minecraft:iron_ingot",
-    "minecraft:gold_ingot",
-    "minecraft:emerald",
-    "minecraft:diamond",
-    "minecraft:netherite_ingot",
-];
-/// A power button: (effect index, x, y, primary) relative to the beacon's left edge.
-fn buttons() -> Vec<(usize, f32, f32, bool)> {
-    let mut out = Vec::new();
-    let tiers: [&[usize]; 3] = [&[0, 1], &[2, 3], &[4]];
-    for (tier, effects) in tiers.iter().enumerate() {
-        let count = effects.len() as i32;
-        let total = count * 22 + (count - 1) * 2;
-        for (c, &e) in effects.iter().enumerate() {
-            let x = 76 + c as i32 * 24 - total / 2;
-            out.push((e, x as f32, 22.0 + tier as f32 * 25.0, true));
-        }
-    }
-    // Tier 4: regeneration, then the upgrade (primary II) button.
-    let total = 2 * 22 + 2;
-    out.push((5, (167 - total / 2) as f32, 47.0, false));
-    out
-}
-fn upgrade_button() -> (f32, f32) {
-    let total = 2 * 22 + 2;
-    ((167 + 24 - total / 2) as f32, 47.0)
-}
-fn inside(p: (f32, f32), x: f32, y: f32, w: f32, h: f32) -> bool {
-    p.0 >= x && p.1 >= y && p.0 < x + w && p.1 < y + h
-}
 fn effect_id(name: &str) -> Option<&'static str> {
     let n = name.strip_prefix("minecraft:").unwrap_or(name);
     EFFECTS.iter().map(|(e, _)| *e).find(|e| *e == n)
@@ -253,136 +219,5 @@ impl crate::game::Sim<'_> {
             s.beacon = [index(p), index(sec)];
         }
     }
-    fn beacon_levels(&self) -> i32 {
-        let Some(s) = self.station.as_ref() else {
-            return 0;
-        };
-        if let Some(levels) = s.beacon_levels {
-            return levels;
-        }
-        let pos = s.pos;
-        match self.world.block_entities.get(&(pos[0], pos[1], pos[2])) {
-            Some(BlockEntity::Beacon(b)) => b.levels,
-            _ => 0,
-        }
-    }
-    /// Clicks on the power, confirm and cancel buttons.
-    /// The effect, upgrade, confirm and cancel buttons a controller can
-    /// focus (GUI origin relative).
-    pub(super) fn beacon_targets(&self) -> Vec<[f32; 4]> {
-        let (ux, uy) = upgrade_button();
-        buttons()
-            .into_iter()
-            .map(|(_, x, y, _)| (x, y))
-            .chain([(ux, uy), (164.0, 107.0), (190.0, 107.0)])
-            .map(|(x, y)| [x + SHIFT, y, 22.0, 22.0])
-            .collect()
-    }
-    pub(super) fn beacon_click(&mut self, local: (f32, f32)) -> bool {
-        let l = (local.0 - SHIFT, local.1);
-        let levels = self.beacon_levels();
-        let Some(sel) = self.station.as_ref().map(|s| s.beacon) else {
-            return false;
-        };
-        for (e, x, y, primary) in buttons() {
-            if !inside(l, x, y, 22.0, 22.0) {
-                continue;
-            }
-            let tier = EFFECTS[e].1;
-            let selected = if primary {
-                sel[0] == Some(e)
-            } else {
-                sel[1] == Some(e)
-            };
-            if tier <= levels.min(if primary { 3 } else { 4 })
-                && !selected
-                && (primary || levels >= 4)
-            {
-                if let Some(s) = self.station.as_mut() {
-                    if primary {
-                        s.beacon[0] = Some(e);
-                        if s.beacon[1] != Some(e) {
-                            s.beacon[1] = None;
-                        }
-                    } else {
-                        s.beacon[1] = Some(e);
-                    }
-                }
-                self.sounds
-                    .play("minecraft:ui.button.click", None, 0.25, 1.0);
-            }
-            return true;
-        }
-        let (ux, uy) = upgrade_button();
-        if inside(l, ux, uy, 22.0, 22.0) {
-            if levels >= 4
-                && let Some(p) = sel[0]
-                && sel[1] != Some(p)
-                && let Some(s) = self.station.as_mut()
-            {
-                s.beacon[1] = Some(p);
-                self.sounds
-                    .play("minecraft:ui.button.click", None, 0.25, 1.0);
-            }
-            return true;
-        }
-        if inside(l, 164.0, 107.0, 22.0, 22.0) {
-            let paid = self.station.as_ref().is_some_and(|s| s.inputs[0].is_some());
-            if paid && sel[0].is_some() {
-                self.sounds
-                    .play("minecraft:ui.button.click", None, 0.25, 1.0);
-                self.confirm_beacon(sel);
-                self.close_beacon_screen();
-            }
-            return true;
-        }
-        if inside(l, 190.0, 107.0, 22.0, 22.0) {
-            self.sounds
-                .play("minecraft:ui.button.click", None, 0.25, 1.0);
-            self.close_beacon_screen();
-            return true;
-        }
-        false
-    }
-    fn close_beacon_screen(&mut self) {
-        self.close_container();
-        self.screen = super::Screen::Playing;
-        self.capture(true);
-    }
-    /// `BeaconMenu.updateEffects`: spend the payment and set the powers. On
-    /// a server, `BeaconScreen`'s confirm button sends them
-    /// (`ServerboundSetBeaconPacket`) and the server's menu does it.
-    fn confirm_beacon(&mut self, sel: [Option<usize>; 2]) {
-        let Some(s) = self.station.as_mut() else {
-            return;
-        };
-        let pos = s.pos;
-        s.inputs[0] = None;
-        let name = |e: Option<usize>| e.map(|e| format!("minecraft:{}", EFFECTS[e].0));
-        let mut select_sound = false;
-        if let Some(BlockEntity::Beacon(b)) =
-            self.world.block_entities.get_mut(&(pos[0], pos[1], pos[2]))
-        {
-            b.primary = name(sel[0]);
-            b.secondary = name(sel[1]);
-            select_sound = !b.sections.is_empty();
-        }
-        if select_sound {
-            self.beacon_sound(pos, "minecraft:block.beacon.power_select");
-        }
-        self.world.modified.insert((pos[0] >> 4, pos[2] >> 4));
-    }
 }
 
-/// `BeaconMenu.PaymentSlot` and the player inventory, relative to the 176 origin.
-pub(super) fn slot_position(i: usize) -> Option<(f32, f32)> {
-    Some(match i {
-        0..9 => (36.0 + SHIFT + i as f32 * 18.0, 195.0),
-        9..36 => (
-            36.0 + SHIFT + ((i - 9) % 9) as f32 * 18.0,
-            137.0 + ((i - 9) / 9) as f32 * 18.0,
-        ),
-        INPUT => (136.0 + SHIFT, 110.0),
-        _ => return None,
-    })
-}

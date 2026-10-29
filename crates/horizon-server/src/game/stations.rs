@@ -28,24 +28,7 @@ pub(super) enum Kind {
     Loom,
 }
 impl Kind {
-    /// Whether the menu has a result slot after its inputs.
-    pub(super) fn has_result(self) -> bool {
-        self.result_pos().is_some()
-    }
 
-    fn result_pos(self) -> Option<(f32, f32)> {
-        match self {
-            Self::Enchanting => None,
-            Self::Anvil => Some((134.0, 47.0)),
-            Self::Grindstone => Some((129.0, 34.0)),
-            Self::Smithing => Some((98.0, 48.0)),
-            Self::Stonecutter => Some((143.0, 33.0)),
-            Self::Merchant => Some((170.0, 37.0)),
-            Self::Beacon => None,
-            Self::Cartography => Some((145.0, 39.0)),
-            Self::Loom => Some((143.0, 57.0)),
-        }
-    }
 
     pub(super) fn from_block(name: &str) -> Option<Self> {
         Some(match name {
@@ -69,19 +52,6 @@ impl Kind {
             _ => 2,
         }
     }
-    fn texture(self) -> &'static str {
-        match self {
-            Self::Enchanting => "gui/container/enchanting_table",
-            Self::Anvil => "gui/container/anvil",
-            Self::Grindstone => "gui/container/grindstone",
-            Self::Smithing => "gui/container/smithing",
-            Self::Stonecutter => "gui/container/stonecutter",
-            Self::Merchant => "gui/container/villager",
-            Self::Beacon => "gui/container/beacon",
-            Self::Cartography => "gui/container/cartography_table",
-            Self::Loom => "gui/container/loom",
-        }
-    }
     pub(super) fn title_key(self) -> &'static str {
         match self {
             Self::Enchanting => "container.enchant",
@@ -94,30 +64,6 @@ impl Kind {
             Self::Cartography => "container.cartography_table",
             Self::Loom => "container.loom",
         }
-    }
-    /// (titleLabelX, titleLabelY).
-    fn title_pos(self) -> (f32, f32) {
-        match self {
-            Self::Anvil => (60.0, 6.0),
-            Self::Smithing => (44.0, 15.0),
-            Self::Stonecutter => (8.0, 5.0),
-            Self::Cartography | Self::Loom => (8.0, 4.0),
-            _ => (8.0, 6.0),
-        }
-    }
-    fn input_pos(self, i: usize) -> (f32, f32) {
-        let table: &[(f32, f32)] = match self {
-            Self::Enchanting => &[(15.0, 47.0), (35.0, 47.0)],
-            Self::Anvil => &[(27.0, 47.0), (76.0, 47.0)],
-            Self::Grindstone => &[(49.0, 19.0), (49.0, 40.0)],
-            Self::Smithing => &[(8.0, 48.0), (26.0, 48.0), (44.0, 48.0)],
-            Self::Stonecutter => &[(20.0, 33.0)],
-            Self::Merchant => &[(86.0, 37.0), (112.0, 37.0)],
-            Self::Beacon => &[(109.0, 110.0)],
-            Self::Cartography => &[(15.0, 15.0), (15.0, 52.0)],
-            Self::Loom => &[(13.0, 26.0), (33.0, 26.0), (23.0, 45.0)],
-        };
-        table[i.min(table.len() - 1)]
     }
 }
 
@@ -185,92 +131,12 @@ impl Station {
     }
 }
 
-/// The 108x19 enchantment button `i` (relative to the GUI origin).
-fn enchant_button(i: usize) -> (f32, f32, f32, f32) {
-    (60.0, 14.0 + 19.0 * i as f32, 108.0, 19.0)
-}
-fn inside(p: (f32, f32), x: f32, y: f32, w: f32, h: f32) -> bool {
-    p.0 >= x && p.1 >= y && p.0 < x + w && p.1 < y + h
-}
-/// `EnchantmentNames` word list.
-const WORDS: &[&str] = &[
-    "the",
-    "elder",
-    "scrolls",
-    "klaatu",
-    "berata",
-    "niktu",
-    "xyzzy",
-    "bless",
-    "curse",
-    "light",
-    "darkness",
-    "fire",
-    "air",
-    "earth",
-    "water",
-    "hot",
-    "dry",
-    "cold",
-    "wet",
-    "ignite",
-    "snuff",
-    "embiggen",
-    "twist",
-    "shorten",
-    "stretch",
-    "fiddle",
-    "destroy",
-    "imbue",
-    "galvanize",
-    "enchant",
-    "free",
-    "limited",
-    "range",
-    "of",
-    "towards",
-    "inside",
-    "sphere",
-    "cube",
-    "self",
-    "other",
-    "ball",
-    "mental",
-    "physical",
-    "grow",
-    "shrink",
-    "demon",
-    "elemental",
-    "spirit",
-    "animal",
-    "creature",
-    "beast",
-    "humanoid",
-    "undead",
-    "fresh",
-    "stale",
-    "phnglui",
-    "mglwnafh",
-    "cthulhu",
-    "rlyeh",
-    "wgahnagl",
-    "fhtagn",
-    "baguette",
-];
-const GREY: u32 = 0xFF40_4040;
 
-/// A text style's `0xRRGGBB` colour from a HUD colour (`rgba`).
-fn rgb_of(rgba: u32) -> u32 {
-    (rgba & 0xFF) << 16 | (rgba >> 8 & 0xFF) << 8 | (rgba >> 16 & 0xFF)
-}
 impl crate::game::Sim<'_> {
     /// `Component.translatable`: the selected language (which `lang` layers
     /// over `en_us`), the caller's English text last.
     pub(super) fn translate(&self, key: &str, fallback: &str) -> String {
         crate::hc::lang::get_or(key, fallback)
-    }
-    fn brewing_open(&self) -> bool {
-        matches!(self.container_kind(), Some(BlockEntity::Brewing(_)))
     }
     /// Opens a workstation menu for the block; false when it is not one.
     pub(super) fn open_station(&mut self, pos: [i32; 3], name: &str) -> bool {
@@ -451,129 +317,6 @@ impl crate::game::Sim<'_> {
             .get(&stack.item)
             .map_or(64, |i| i.max_stack)
     }
-    /// `Slot.mayPlace` and `getMaxStackSize` for station slots.
-    fn slot_rules(&self, slot: usize, stack: &ItemStack) -> (bool, u32) {
-        if slot >= super::mount_menu::SADDLE {
-            return self.mount_slot_rules(slot, stack);
-        }
-        if let Some(BlockEntity::Crafter(c)) = self.container_kind()
-            && (300..309).contains(&slot)
-        {
-            // CrafterSlot.mayPlace: not a disabled slot.
-            return (!c.disabled[slot - 300], 64);
-        }
-        if (300..400).contains(&slot) && !self.brewing_open() && self.refuses(slot, stack) {
-            // ShulkerBoxSlot.mayPlace.
-            return (false, 64);
-        }
-        let Some(s) = self.station.as_ref() else {
-            return (true, 64);
-        };
-        if slot < 36 {
-            return (true, 64);
-        }
-        if slot == RESULT {
-            return (false, 64);
-        }
-        (s.kind != Kind::Loom, 64)
-    }
-    /// `AbstractContainerMenu.doClick` PICKUP on a filtered slot.
-    pub(super) fn click_filtered(&mut self, slot: usize, right: bool) {
-        let carried = self.carried.take();
-        let current = self.slot_mut(slot).take();
-        let (new_slot, new_carried) = match (carried, current) {
-            (None, None) => (None, None),
-            (None, Some(mut s)) => {
-                let take = if right { s.count.div_ceil(2) } else { s.count };
-                s.count -= take;
-                let taken = ItemStack {
-                    count: take,
-                    ..s.clone()
-                };
-                ((s.count > 0).then_some(s), Some(taken))
-            }
-            (Some(mut c), None) => {
-                let (ok, cap) = self.slot_rules(slot, &c);
-                if ok {
-                    let n = if right { 1 } else { c.count }.min(cap.min(self.max_stack(&c)));
-                    let placed = ItemStack {
-                        count: n,
-                        ..c.clone()
-                    };
-                    c.count -= n;
-                    (Some(placed), (c.count > 0).then_some(c))
-                } else {
-                    (None, Some(c))
-                }
-            }
-            (Some(mut c), Some(mut s)) => {
-                let (ok, cap) = self.slot_rules(slot, &c);
-                if ok && c.same_item_same_components(&s) {
-                    let room = cap.min(self.max_stack(&s)).saturating_sub(s.count);
-                    let n = if right { 1 } else { c.count }.min(room);
-                    s.count += n;
-                    c.count -= n;
-                    (Some(s), (c.count > 0).then_some(c))
-                } else if ok && c.count <= cap.min(self.max_stack(&c)) {
-                    (Some(c), Some(s))
-                } else if c.same_item_same_components(&s) {
-                    let n = s.count.min(self.max_stack(&c).saturating_sub(c.count));
-                    s.count -= n;
-                    c.count += n;
-                    ((s.count > 0).then_some(s), Some(c))
-                } else {
-                    (Some(s), Some(c))
-                }
-            }
-        };
-        *self.slot_mut(slot) = new_slot;
-        self.carried = new_carried;
-    }
-    /// `moveItemStackTo` over `targets` (menu order), merging first, then empty slots.
-    pub(super) fn move_to(
-        &mut self,
-        stack: &mut ItemStack,
-        targets: &[usize],
-        reverse: bool,
-    ) -> bool {
-        let order: Vec<usize> = if reverse {
-            targets.iter().rev().copied().collect()
-        } else {
-            targets.to_vec()
-        };
-        let start = stack.count;
-        if self.max_stack(stack) > 1 {
-            for &t in &order {
-                if stack.count == 0 {
-                    break;
-                }
-                let (_, cap) = self.slot_rules(t, stack);
-                let max = cap.min(self.max_stack(stack));
-                if let Some(s) = self.slot_mut(t).as_mut()
-                    && s.same_item_same_components(stack)
-                {
-                    let n = max.saturating_sub(s.count).min(stack.count);
-                    s.count += n;
-                    stack.count -= n;
-                }
-            }
-        }
-        for &t in &order {
-            if stack.count == 0 {
-                break;
-            }
-            let (ok, cap) = self.slot_rules(t, stack);
-            if self.slot_mut(t).is_none() && (t < 36 || ok) {
-                let n = cap.min(self.max_stack(stack)).min(stack.count);
-                *self.slot_mut(t) = Some(ItemStack {
-                    count: n,
-                    ..stack.clone()
-                });
-                stack.count -= n;
-            }
-        }
-        stack.count != start
-    }
     /// After an anvil or smithing click on the menu engine: the anvil's cost
     /// and state back into the station and the rename box following the
     /// input (`AnvilScreen.slotChanged`), then the rest of a taken result's
@@ -675,18 +418,6 @@ impl crate::game::Sim<'_> {
             xp.total = 0;
         }
     }
-    /// Whether the result slot may be taken (`mayPickup`).
-    fn may_take_result(&self) -> bool {
-        let Some(s) = self.station.as_ref() else {
-            return false;
-        };
-        match s.kind {
-            Kind::Anvil => {
-                (self.creative || self.experience.level >= s.anvil.cost) && s.anvil.cost > 0
-            }
-            _ => true,
-        }
-    }
     /// Recompute after slot changes; the anvil box follows its input item.
     fn station_after_input(&mut self) {
         let Some(s) = self.station.as_mut() else {
@@ -701,60 +432,6 @@ impl crate::game::Sim<'_> {
                 .unwrap_or_default();
         }
         self.station_changed();
-    }
-    /// `ItemStack.getHoverName`: the custom name, a written book's title, the
-    /// item name component, else the item's or potion's name.
-    fn stack_hover_name(&self, stack: &ItemStack) -> String {
-        if let Some(n) = stack.custom_name() {
-            n.to_owned()
-        } else if let Some(title) = stack
-            .data()
-            .and_then(|d| d.written.as_ref())
-            .map(|w| w.title.as_str())
-            .filter(|t| !t.trim().is_empty())
-        {
-            title.to_owned()
-        } else if let Some(n) = stack.item_name() {
-            n
-        } else if stack.data().is_some_and(|d| d.ominous_banner) {
-            self.translate("block.minecraft.ominous_banner", "Ominous Banner")
-        } else if stack.data().and_then(|d| d.potion.as_ref()).is_some()
-            || stack.item.ends_with("potion")
-            || &*stack.item == "minecraft:tipped_arrow"
-        {
-            let key = brewing::potion_name_key(&stack.item, stack.potion());
-            self.pack
-                .names
-                .display_get(&key)
-                .unwrap_or_else(|| self.pack.names.display_item(&stack.item))
-        } else {
-            self.pack.names.display_item(&stack.item)
-        }
-    }
-    /// Menu state for the control socket.
-    pub(super) fn station_info(&self) -> serde_json::Value {
-        let Some(s) = self.station.as_ref() else {
-            return match self.container_kind() {
-                Some(BlockEntity::Brewing(b)) => {
-                    serde_json::json!({ "brew_time": b.brew_time, "fuel": b.fuel })
-                }
-                _ => serde_json::Value::Null,
-            };
-        };
-        let recipes = &self.res.stations().recipes.stonecutting;
-        serde_json::json!({
-            "costs": s.offers.costs,
-            "clues": s.offers.clues.iter().map(|c| c.as_ref().map(|(e, l)| format!("{e} {l}"))).collect::<Vec<_>>(),
-            "bookcases": s.bookcases,
-            "anvil_cost": s.anvil.cost,
-            "result": s.result.as_ref().map(|r| format!("{} x{}", r.item, r.count)),
-            "recipes": s.stone.recipes.iter().map(|&i| recipes[i].id.clone()).collect::<Vec<_>>(),
-            "selected": s.selected,
-        })
-    }
-    /// Options.advancedItemTooltips (F3+H).
-    fn options_advanced_tooltips(&self) -> bool {
-        false
     }
     /// `BrewingStandBlockEntity.serverTick` of the brewing stand at `pos`, in
     /// its place among the level's block entity tickers.
@@ -798,6 +475,4 @@ impl crate::game::Sim<'_> {
     }
 }
 
-/// The anvil's rename box (`AnvilScreen`: `setMaxLength(50)`).
-const ANVIL_NAME_CHARS: usize = 50;
 

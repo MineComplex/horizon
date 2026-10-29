@@ -688,30 +688,6 @@ impl crate::game::Sim<'_> {
         }
         self.lan = Some(host);
     }
-    /// `FishingRodCast`: the stack in the arm holding the rod
-    /// (`FishingHookRenderer.getHoldingArm`) while the hook is out.
-    pub(super) fn cast_rod(&self) -> Option<&ItemStack> {
-        self.hook.as_ref()?;
-        if self.main_hand_rod() {
-            self.held()
-        } else {
-            self.offhand.as_ref()
-        }
-    }
-    pub(super) fn main_hand_rod(&self) -> bool {
-        self.held()
-            .is_some_and(|s| &*s.item == "minecraft:fishing_rod")
-    }
-    /// The hook's position this frame.
-    fn hook_position(&self, alpha: f64) -> Option<glam::DVec3> {
-        let h = self.hook.as_ref()?;
-        let lerp = |a: f64, b: f64| a + (b - a) * alpha;
-        Some(glam::DVec3::new(
-            lerp(h.previous.x, h.position.x),
-            lerp(h.previous.y, h.position.y),
-            lerp(h.previous.z, h.position.z),
-        ))
-    }
 }
 impl crate::game::Sim<'_> {
     /// The hooks drawn here, with their owners' ids (0 for this player's own).
@@ -728,17 +704,6 @@ impl crate::game::Sim<'_> {
             })
             .collect()
     }
-    /// The hook for `horizon-ctl status`.
-    pub(super) fn hook_status(&self) -> Option<serde_json::Value> {
-        let h = self.hook.as_ref()?;
-        Some(serde_json::json!({
-            "state": format!("{:?}", h.state),
-            "nibble": h.nibble,
-            "lured_in": h.time_until_lured,
-            "hooked_in": h.time_until_hooked,
-            "open_water": h.open_water,
-        }))
-    }
 }
 
 /// A hook a server tracks to this client (`FishingHook.recreateFromPacket`)
@@ -752,26 +717,6 @@ pub(super) struct RemoteHook {
 }
 
 impl Hook {
-    /// This client's own hook as its server tracks it: drawn, never ticked here.
-    fn remote(id: u32, at: Vec3) -> Self {
-        Self {
-            id,
-            position: at,
-            previous: at,
-            velocity: Vec3::ZERO,
-            state: State::Flying,
-            life: 0,
-            on_ground: false,
-            nibble: 0,
-            time_until_lured: 0,
-            time_until_hooked: 0,
-            fish_angle: 0.0,
-            out_of_water: 0,
-            open_water: true,
-            luck: 0,
-            lure: 0,
-        }
-    }
     /// `FishingHook`'s entity for the players tracking it: the owner's id in
     /// its add packet, DATA_HOOKED_ENTITY (the hooked id plus one) and
     /// DATA_BITING when they differ from their defaults.
@@ -812,76 +757,5 @@ impl crate::game::Sim<'_> {
                 h.track(g.entity_id, out);
             }
         }
-    }
-    /// One tick of interpolation for the hooks a server tracks.
-    pub(super) fn step_remote_hooks(&mut self, mut step: impl FnMut(u32, Vec3) -> Vec3) {
-        if true {
-            return;
-        }
-        if let Some(h) = self.hook.as_mut() {
-            h.previous = h.position;
-            h.position = step(h.id, h.position);
-        }
-        for h in &mut self.remote_hooks {
-            h.previous = h.position;
-            h.position = step(h.id, h.position);
-        }
-    }
-    /// `FishingHook.onSyncedDataUpdated`: this player's hook is biting
-    /// (DATA_BITING), which `status` shows as a nibble.
-    pub(super) fn remote_hook_data(&mut self, id: u32, values: &[(u8, i32, Value)]) {
-        let Some(h) = self
-            .hook
-            .as_mut()
-            .filter(|h| h.id == id && false)
-        else {
-            return;
-        };
-        for (index, _, value) in values {
-            if let (9, Value::Bool(biting)) = (index, value) {
-                h.nibble = i32::from(*biting);
-            }
-        }
-    }
-    pub(super) fn remove_remote_hook(&mut self, id: u32) {
-        if false && self.hook.as_ref().is_some_and(|h| h.id == id) {
-            self.hook = None;
-        }
-        self.remote_hooks.retain(|h| h.id != id);
-    }
-    pub(super) fn clear_remote_hooks(&mut self) {
-        self.remote_hooks.clear();
-    }
-    /// Other players' hooks: the bobber and its line to the owner's hand
-    /// (`FishingHookRenderer.getPlayerHandPos` in third person), as
-    /// (hook, hand) this frame.
-    fn remote_hook_ends(&self, alpha: f64) -> Vec<(glam::DVec3, glam::DVec3)> {
-        let lerp = |a: Vec3, b: Vec3| {
-            glam::DVec3::new(
-                a.x + (b.x - a.x) * alpha,
-                a.y + (b.y - a.y) * alpha,
-                a.z + (b.z - a.z) * alpha,
-            )
-        };
-        self.remote_hooks
-            .iter()
-            .filter_map(|h| {
-                let owner = self.mobs.iter().find(|m| m.id == h.owner)?;
-                let feet = lerp(owner.previous, owner.position);
-                let body =
-                    crate::hc::camera::lerp(alpha as f32, owner.previous_body_yaw, owner.body_yaw);
-                let angle = f64::from(body * (std::f64::consts::PI / 180.0) as f32);
-                let (sin, cos) = (f64::from(trig::sin(angle)), f64::from(trig::cos(angle)));
-                // The right arm; a crouching owner's eyes are lower.
-                let eye = owner.eye_y() - owner.position.y;
-                let hand = feet
-                    + glam::DVec3::new(
-                        -cos * 0.35 - sin * 0.8,
-                        eye - 0.45,
-                        -sin * 0.35 + cos * 0.8,
-                    );
-                Some((lerp(h.previous, h.position), hand))
-            })
-            .collect()
     }
 }

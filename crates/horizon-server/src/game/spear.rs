@@ -356,39 +356,4 @@ impl crate::game::Sim<'_> {
                 .play_unshared(kinetic.hit_sound, Some(at), 1.0, 1.0);
         }
     }
-    /// `getTicksSinceLastKineticHitFeedback` of this window's player.
-    pub(super) fn kinetic_hit_ticks(&self, partial: f32) -> f32 {
-        self.kinetic_feedback
-            .get(&OWN)
-            .map_or(0.0, |&t| (self.world.game_time - t) as f32 + partial)
-    }
-    /// `LivingEntity.handleEntityEvent(2)` on a server's client: the
-    /// player `id` (this one, or another) was hit by the spear it uses.
-    pub(super) fn remote_kinetic_hit(&mut self, id: i32) {
-        let own = false;
-        let (item, at) = if own {
-            let item = self
-                .using
-                .and_then(|(slot, _)| self.stack_in(slot))
-                .map(|s| s.item.clone());
-            let at = self.player.as_ref().map(|p| p.position);
-            (item, at)
-        } else {
-            let mob = self
-                .mobs
-                .iter()
-                .find(|m| m.id == id as u32 && m.extra.using_item > 0);
-            let item = mob.and_then(|m| {
-                if m.extra.using_off_hand {
-                    m.extra.off_hand.clone()
-                } else {
-                    m.extra.main_hand.clone()
-                }
-            });
-            (item, mob.map(|m| m.position))
-        };
-        if let (Some(kinetic), Some(at)) = (item.as_deref().and_then(Kinetic::of), at) {
-            self.kinetic_hit_feedback(if own { OWN } else { id }, &kinetic, [at.x, at.y, at.z]);
-        }
-    }
 }

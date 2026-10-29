@@ -226,12 +226,6 @@ pub enum Program {
     Server,
 }
 impl Program {
-    fn name(self) -> &'static str {
-        match self {
-            Self::Client => "horizon-client",
-            Self::Server => "horizon-server",
-        }
-    }
 }
 
 /// The server's test fixtures that run without `--dedicated`: synthetic
@@ -1125,9 +1119,6 @@ impl Resources {
     fn providers(&self) -> &Providers {
         &self.rest().providers
     }
-    fn animate(&self) -> &crate::hc::animate_tick::AnimateTables {
-        &self.rest().animate
-    }
     fn nether_environment(&self) -> &Environment {
         &self.rest().nether_environment
     }
@@ -1145,9 +1136,6 @@ impl Resources {
     }
     fn threads(&self) -> usize {
         self.core.threads
-    }
-    fn player_type(&self) -> &Option<Arc<crate::hc::mobs::MobType>> {
-        &self.rest().player_type
     }
     fn stations(&self) -> &crate::hc::stations::StationData {
         &self.rest().stations
@@ -1178,9 +1166,6 @@ impl PackResources {
 fn ticking_chunk(world: &World, x: i32, z: i32) -> bool {
     world.chunks.get(&(x, z)).is_some_and(|c| c.lit)
         && (-1..=1).all(|dz| (-1..=1).all(|dx| world.chunks.contains_key(&(x + dx, z + dz))))
-}
-fn drop_whole_stack(physical_keys: &HashSet<KeyCode>) -> bool {
-    physical_keys.contains(&KeyCode::ControlLeft) || physical_keys.contains(&KeyCode::ControlRight)
 }
 
 
@@ -1635,13 +1620,6 @@ impl Dim {
             Self::End => 256,
         }
     }
-    /// `Level.getMaxY`: the dimension type's minimum y plus height, less one.
-    fn max_y(self) -> i32 {
-        match self {
-            Self::Overworld => MIN_Y + HEIGHT - 1,
-            Self::Nether | Self::End => 255,
-        }
-    }
 }
 fn facing_offset(facing: &str) -> [i32; 3] {
     match facing {
@@ -1832,51 +1810,6 @@ impl crate::game::Sim<'_> {
             .iter()
             .flatten()
             .any(|s| immune.is_some_and(|t| t.contains(&*s.item)))
-    }
-    /// What the window decides for its player's body every tick, in frame and
-    /// on a server alike: the look (Player.travel steers sprint-swimming by
-    /// the pitch), Auto Jump (LocalPlayer.sendPosition), the slowdown of an
-    /// item in use (LocalPlayer.modifyInput), the helmet's Respiration
-    /// (decreaseAirSupply), the wings, leather boots on powder snow
-    /// (PowderSnowBlock.canEntityWalkOnPowderSnow), freeze-immune wear
-    /// (LivingEntity.canFreeze), the dimension's FAST_LAVA and the sleeping
-    /// pose.
-    pub(crate) fn sync_player_body(&mut self) {
-        let glider = self.glider_worn();
-        let sleeping = self.sleeping.is_some();
-        let item_use_speed = self
-            .using
-            .and_then(|(slot, _)| {
-                if slot == shield::OFFHAND_SLOT {
-                    self.offhand.as_ref()
-                } else {
-                    self.inventory.get(slot)?.as_ref()
-                }
-            })
-            .and_then(|s| self.res.items().get(&s.item))
-            .map(|i| i.use_speed);
-        let respiration = self.armor[0]
-            .as_ref()
-            .map_or(0, |s| s.enchantment_level("minecraft:respiration") as i32);
-        let leather_boots = self.armor[3]
-            .as_ref()
-            .is_some_and(|s| &*s.item == "minecraft:leather_boots");
-        let freeze_immune = self.wears_freeze_immune();
-        let burn_immune = self.wears_burn_from_stepping_immunity();
-        let Some(player) = self.player.as_mut() else {
-            return;
-        };
-        player.yaw = self.yaw;
-        player.pitch = self.pitch;
-        player.auto_jump_enabled = self.settings.auto_jump;
-        player.item_use_speed = item_use_speed;
-        player.respiration = respiration;
-        player.glider = glider;
-        let _ = player.set_sleeping(sleeping);
-        player.leather_boots = leather_boots;
-        player.freeze_immune = freeze_immune;
-        player.burn_from_stepping_immune = burn_immune;
-        player.fluids.fast_lava = self.dim == Dim::Nether;
     }
     fn held_slot(&self) -> usize {
         match self.hand {
@@ -4639,17 +4572,6 @@ impl crate::game::Sim<'_> {
         self.publish_boss_bars();
         Ok(())
     }
-    /// Whether a quick craft drag takes `slot`
-    /// (`shouldAddSlotToQuickCraft`); screens the menu engine doesn't
-    /// model take every slot.
-    fn quick_craft_accepts(&mut self, slot: usize, ty: i32, dragged: usize) -> bool {
-        let mut accepts = true;
-        self.menu_session(|menu, env, to_menu| {
-            accepts = to_menu(slot).is_some_and(|s| menu.quick_craft_accepts(env, s, ty, dragged));
-            Some(false)
-        });
-        accepts
-    }
     /// Slot ids: 0..36 player inventory, 100..109 crafting grid, 200 result.
     fn container_kind(&self) -> Option<&BlockEntity> {
         self.container
@@ -4677,19 +4599,6 @@ impl crate::game::Sim<'_> {
             &mut self.inventory[i]
         }
     }
-    /// What a slot shows: the crafting result slots are computed.
-    fn slot_view(&mut self, i: usize) -> Option<ItemStack> {
-        match i {
-            200 => self.craft_result(),
-            309 if matches!(self.container_kind(), Some(BlockEntity::Crafter(_))) => {
-                self.crafter_result()
-            }
-            _ => self.slot_mut(i).clone(),
-        }
-    }
-    fn craft_result(&self) -> Option<ItemStack> {
-        self.craft_recipe().map(|(_, result)| result)
-    }
     /// The recipe id and result of the crafting grid.
     /// `RecipeCraftingHolder.awardUsedRecipes`: a crafted recipe becomes known
     /// (special ones never do).
@@ -4697,15 +4606,6 @@ impl crate::game::Sim<'_> {
         let index = &self.res.stations().recipe_index;
         let (_, unlocked) = self.level.recipe_book.add_recipes(index, recipes);
         self.recipe_unlocked(&unlocked);
-    }
-    fn craft_recipe(&self) -> Option<(String, ItemStack)> {
-        let n = self.craft_size;
-        let grid: Vec<Option<ItemStack>> = (0..n * n).map(|i| self.craft_grid[i].clone()).collect();
-        let scale = |id: i32| self.maps.data.get(&id).map(|m| m.scale);
-        self.res
-            .recipes()
-            .find_with(&grid, n, &scale)
-            .map(|(name, result)| (name.to_owned(), result))
     }
     /// `AbstractContainerScreen` keeps `isQuickCrafting` and the drag it
     /// belongs to on the screen. Horizon keeps both on `Game` (`inv_clicks`,
@@ -4751,39 +4651,6 @@ impl crate::game::Sim<'_> {
             self.world.modified.insert((key.0 >> 4, key.2 >> 4));
         }
         self.close_ender_chest();
-    }
-    /// Several clicks on one menu instance (a quick craft drag is three).
-    fn menu_ops(&mut self, ops: &[(Option<usize>, i32, crate::hc::menu::Input)]) -> bool {
-        use crate::hc::menu::Input;
-        if let [(Some(slot), button, input)] = ops {
-            self.crafter_slot_clicked(*slot, *button, *input);
-        }
-        let ops = ops.to_vec();
-        self.menu_session(move |menu, env, to_menu| {
-            let mut clicks = Vec::new();
-            for &(slot, button, input) in &ops {
-                let menu_slot = match slot {
-                    Some(g) => {
-                        if g == 200 && input != Input::QuickMove {
-                            return None;
-                        }
-                        match to_menu(g) {
-                            Some(i) => i as i32,
-                            None => return None,
-                        }
-                    }
-                    None => -999,
-                };
-                clicks.push((menu_slot, button, input));
-            }
-            for (menu_slot, button, input) in clicks {
-                if menu.click(env, menu_slot, button, input).is_err() {
-                    // Vanilla's server throws: nothing of this click is kept.
-                    return Some(false);
-                }
-            }
-            Some(true)
-        })
     }
     /// A sound a menu click made the player play (a bundle's insert or
     /// remove): `Entity.playSound` at the player.
@@ -5297,18 +5164,6 @@ impl crate::game::Sim<'_> {
             self.register_made_maps(maps);
         }
         true
-    }
-    /// `Screen.hasShiftDown` / `InputWithModifiers.hasShiftDown`: the
-    /// physical Shift keys, whatever the sneak key is bound or toggled to.
-    pub(super) fn has_shift_down(&self) -> bool {
-        self.physical_keys.contains(&KeyCode::ShiftLeft)
-            || self.physical_keys.contains(&KeyCode::ShiftRight)
-    }
-    /// `Minecraft.hasControlDown`: the physical Control keys, whatever the
-    /// sprint key is bound or toggled to.
-    pub(super) fn has_control_down(&self) -> bool {
-        self.physical_keys.contains(&KeyCode::ControlLeft)
-            || self.physical_keys.contains(&KeyCode::ControlRight)
     }
     /// `LevelRenderer.destroyBlockProgress`: a player's crack on a block (0..=9), or none
     /// (any other progress). Cracks not updated for 400 ticks are dropped.
@@ -7369,32 +7224,6 @@ impl crate::game::Sim<'_> {
 impl crate::game::Sim<'_> {
 }
 
-/// `key.hotbar.1` to `key.hotbar.9` in a menu.
-const HOTBAR_DIGITS: [KeyCode; 9] = [
-    KeyCode::Digit1,
-    KeyCode::Digit2,
-    KeyCode::Digit3,
-    KeyCode::Digit4,
-    KeyCode::Digit5,
-    KeyCode::Digit6,
-    KeyCode::Digit7,
-    KeyCode::Digit8,
-    KeyCode::Digit9,
-];
-/// The other keys `InputConstants.Key.getNumericKeyValue` gives a digit.
-const NUMERIC_KEYS: [KeyCode; 11] = [
-    KeyCode::Digit0,
-    KeyCode::Numpad0,
-    KeyCode::Numpad1,
-    KeyCode::Numpad2,
-    KeyCode::Numpad3,
-    KeyCode::Numpad4,
-    KeyCode::Numpad5,
-    KeyCode::Numpad6,
-    KeyCode::Numpad7,
-    KeyCode::Numpad8,
-    KeyCode::Numpad9,
-];
 
 /// The synchronous launch loads both phases; an ordinary launch returns the
 /// core bundle while the rest worker keeps loading.

@@ -77,25 +77,6 @@ impl crate::game::Sim<'_> {
             self.particles.add(&bubble, p, velocity);
         }
     }
-    /// Entity event 67 from a server, for this client's own player or an
-    /// entity it draws.
-    pub(super) fn remote_drown(&mut self, id: i32) {
-        let own = false;
-        let body = if own {
-            self.player.as_ref().map(|p| {
-                let (at, v) = (p.position, p.velocity);
-                ([at.x, at.y, at.z], [v.x, v.y, v.z])
-            })
-        } else {
-            self.mobs.iter().find(|m| m.id == id as u32).map(|m| {
-                let (at, v) = (m.position, m.velocity);
-                ([at.x, at.y, at.z], [v.x, v.y, v.z])
-            })
-        };
-        if let Some((at, v)) = body {
-            self.drown_particles(at, v);
-        }
-    }
     /// The display name of a mob: its custom name or its type's name.
     pub(super) fn mob_display_name(&self, id: u32) -> Option<Text> {
         let m = self.mobs.iter().find(|m| m.id == id)?;

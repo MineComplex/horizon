@@ -25,20 +25,9 @@ impl LoomState {
     fn total_rows(&self) -> usize {
         self.patterns.len().div_ceil(4)
     }
-    fn offscreen_rows(&self) -> i32 {
-        self.total_rows() as i32 - 4
-    }
-    /// `startRow` for a scroller position.
-    fn row_for(&self, offs: f32) -> usize {
-        ((offs * self.offscreen_rows() as f32 + 0.5) as i32).max(0) as usize
-    }
 }
 
-const BUTTON: f32 = 14.0;
 
-fn inside(p: (f32, f32), x: f32, y: f32, w: f32, h: f32) -> bool {
-    p.0 >= x && p.1 >= y && p.0 < x + w && p.1 < y + h
-}
 impl crate::game::Sim<'_> {
     /// `LoomScreen.containerChanged`: the error flag, whether the pattern
     /// buttons show (only when an input changed), and the scroller reset.
@@ -81,39 +70,5 @@ impl crate::game::Sim<'_> {
             f64::from(pos[2]) + 0.5,
         ];
         self.sounds.play(sound, Some(at), 1.0, 1.0);
-    }
-    /// The pattern buttons a controller can focus (GUI origin relative).
-    pub(super) fn loom_targets(&self) -> Vec<[f32; 4]> {
-        let Some(loom) = self.station.as_ref().map(|s| &s.loom).filter(|l| l.display) else {
-            return Vec::new();
-        };
-        (0..16)
-            .filter(|i| (i / 4 + loom.start_row) * 4 + i % 4 < loom.patterns.len())
-            .map(|i| {
-                let (row, column) = (i / 4, i % 4);
-                [
-                    60.0 + column as f32 * BUTTON,
-                    13.0 + row as f32 * BUTTON,
-                    BUTTON,
-                    BUTTON,
-                ]
-            })
-            .collect()
-    }
-    pub(super) fn loom_release(&mut self) {
-        if let Some(s) = self.station.as_mut() {
-            s.loom.scrolling = false;
-        }
-    }
-    /// `LoomScreen.mouseScrolled`.
-    pub(super) fn loom_scroll(&mut self, d: f32) {
-        let Some(l) = self.station.as_mut().map(|s| &mut s.loom) else {
-            return;
-        };
-        let offscreen = l.offscreen_rows();
-        if l.display && offscreen > 0 {
-            l.scroll = (l.scroll - d / offscreen as f32).clamp(0.0, 1.0);
-            l.start_row = l.row_for(l.scroll);
-        }
     }
 }

@@ -3,7 +3,7 @@
 //! sky. The dragon fight itself lives in game/dragon.rs: the podium is
 //! inactive until the dragon dies.
 use super::Dim;
-use crate::hc::{Result, containers::{BlockEntity, EndGateway}, environment::Environment, items::ItemStack, particles::{ParticleOptions, ParticleType}, vanillagen::VanillaTerrain, world_spawn::PlayerSpawnFinder};
+use crate::hc::{Result, containers::{BlockEntity, EndGateway}, items::ItemStack, particles::{ParticleOptions, ParticleType}, vanillagen::VanillaTerrain, world_spawn::PlayerSpawnFinder};
 use horizon_core::{
     geometry::Vec3,
     random::{LegacyRandom, RandomSource},
@@ -130,9 +130,6 @@ impl EndFlash {
             self.sound_in = Some(30);
         }
     }
-    fn intensity(&self, partial: f32) -> f32 {
-        self.old_intensity + (self.intensity - self.old_intensity) * partial
-    }
 }
 impl EndState {
     pub(super) fn locator(&self) -> Option<Arc<VanillaTerrain>> {
@@ -154,53 +151,6 @@ impl EndState {
             .iter()
             .filter(|e| e.id != 0)
             .map(|e| (e.id, e.position.to_array(), e.velocity.to_array()))
-    }
-    /// `handleAddEntity` for an eye of ender on a server's client: it flies
-    /// where the server says.
-    pub(super) fn add_remote_eye(&mut self, id: u32, at: [f64; 3], velocity: [f64; 3]) {
-        self.eyes.retain(|e| e.id != id);
-        let at = glam::DVec3::from_array(at);
-        self.eyes.push(EyeOfEnder {
-            id,
-            position: at,
-            previous: at,
-            velocity: glam::DVec3::from_array(velocity),
-            target: at,
-            life: 0,
-            survive: false,
-        });
-    }
-    /// `EyeOfEnder.tick` on a server's client: it moves by its last known
-    /// motion; only the server steers it.
-    pub(super) fn step_remote_eyes(&mut self) {
-        for e in &mut self.eyes {
-            e.previous = e.position;
-            e.life += 1;
-            e.position += e.velocity;
-        }
-    }
-    /// A server's move: an eye has no interpolation handler, so
-    /// `moveOrInterpolateTo` puts it there at once. False when `id` isn't one.
-    pub(super) fn move_remote_eye(&mut self, id: u32, at: [f64; 3]) -> bool {
-        let Some(e) = self.eyes.iter_mut().find(|e| e.id == id) else {
-            return false;
-        };
-        e.position = glam::DVec3::from_array(at);
-        true
-    }
-    /// `handleSetEntityMotion` for an eye. False when `id` isn't one.
-    pub(super) fn remote_eye_motion(&mut self, id: u32, velocity: [f64; 3]) -> bool {
-        let Some(e) = self.eyes.iter_mut().find(|e| e.id == id) else {
-            return false;
-        };
-        e.velocity = glam::DVec3::from_array(velocity);
-        true
-    }
-    pub(super) fn remove_remote_eye(&mut self, id: u32) {
-        self.eyes.retain(|e| e.id != id);
-    }
-    pub(super) fn clear_remote_eyes(&mut self) {
-        self.eyes.clear();
     }
     /// Where each eye is, for `status`.
     pub(super) fn eye_positions(&self) -> impl Iterator<Item = (u32, [f64; 3])> {
@@ -242,14 +192,6 @@ impl EyeOfEnder {
 }
 
 impl crate::game::Sim<'_> {
-    /// The environment attributes of the current dimension.
-    pub(super) fn dim_environment(&self) -> &Environment {
-        match self.dim {
-            Dim::Overworld => self.res.environment(),
-            Dim::Nether => self.res.nether_environment(),
-            Dim::End => self.res.end_environment(),
-        }
-    }
     pub(super) fn block_name(&self, p: [i32; 3]) -> std::sync::Arc<str> {
         self.res
             .facts()
@@ -1070,35 +1012,6 @@ impl crate::game::Sim<'_> {
             self.particles.add(&portal, at, [c * -5.0, 0.0, s * -5.0]);
             self.particles.add(&portal, at, [c * -7.0, 0.0, s * -7.0]);
             angle += std::f64::consts::PI / 20.0;
-        }
-    }
-    /// `EyeOfEnder.tick` on a client: behind each eye (a quarter of its last
-    /// move back), four bubbles in water, else a portal particle.
-    pub(super) fn eye_particles(&mut self) {
-        for i in 0..self.end.eyes.len() {
-            let e = &self.end.eyes[i];
-            let movement = (e.position - e.previous).to_array();
-            let origin = (e.position - (e.position - e.previous) * 0.25).to_array();
-            let block = origin.map(|v| v.floor() as i32);
-            let water = self
-                .res
-                .facts()
-                .get(self.world.block(block[0], block[1], block[2]))
-                .fluid
-                == crate::hc::blocks::Fluid::Water;
-            if water {
-                let bubble = ParticleOptions::simple(ParticleType::Bubble);
-                for _ in 0..4 {
-                    self.particles.add(&bubble, origin, movement);
-                }
-            } else {
-                let r = self.particles.random();
-                let x = origin[0] + r.next_double() * 0.6 - 0.3;
-                let z = origin[2] + r.next_double() * 0.6 - 0.3;
-                let portal = ParticleOptions::simple(ParticleType::Portal);
-                self.particles
-                    .add(&portal, [x, origin[1] - 0.5, z], movement);
-            }
         }
     }
 }

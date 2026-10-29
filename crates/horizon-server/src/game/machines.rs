@@ -1034,13 +1034,6 @@ impl crate::game::Sim<'_> {
 
 // ---- hopper, dispenser and dropper screens ----
 
-/// Which machine screen the open container uses.
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum Screen {
-    Hopper,
-    Dispenser,
-    Dropper,
-}
 
 impl crate::game::Sim<'_> {
 }

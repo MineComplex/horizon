@@ -9,10 +9,6 @@ use horizon_core::position::BlockPos;
 use horizon_protocol::packets::play::{self, Clientbound as C};
 use horizon_world::level::flags as level_flags;
 
-const BLACK: u32 = 0xFF00_0000;
-const PAGE_CHARS: usize = 1024;
-const MAX_PAGES: usize = 100;
-const LINES: usize = 14;
 
 
 /// A book a player's turn opened: on a server only a lectern's

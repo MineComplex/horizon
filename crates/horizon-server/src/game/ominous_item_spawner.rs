@@ -7,10 +7,6 @@ use horizon_core::{geometry::Vec3, random::RandomSource};
 
 /// `TICKS_BEFORE_ABOUT_TO_SPAWN_SOUND`.
 const ABOUT_TO_SPAWN: i64 = 36;
-/// `OminousItemSpawnerRenderer`: grows over its first 50 ticks, turning 40
-/// degrees a tick.
-const TICKS_SCALING: f32 = 50.0;
-const ROTATION_SPEED: f32 = 40.0;
 
 pub(super) struct OminousItemSpawner {
     pub(super) item: ItemStack,

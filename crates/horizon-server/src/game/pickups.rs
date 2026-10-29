@@ -4,8 +4,6 @@
 //! state it had when it was taken (`extractEntity(from, 1.0F)`).
 use crate::hc::{entities::{ExperienceOrb, ItemEntity}, projectiles::Projectile};
 
-/// `ItemPickupParticle.LIFE_TIME`.
-const LIFE_TIME: u32 = 3;
 
 /// The taken entity, as it was when taken.
 pub(super) enum Taken {
@@ -14,15 +12,6 @@ pub(super) enum Taken {
     Arrow(Box<Projectile>),
 }
 impl Taken {
-    /// The render state's position: the entity's at partial tick 1.
-    fn position(&self) -> [f64; 3] {
-        let p = match self {
-            Taken::Item(i) => i.position,
-            Taken::Orb(o) => o.position,
-            Taken::Arrow(a) => a.position,
-        };
-        [p.x, p.y, p.z]
-    }
 }
 
 /// Whoever took it: the particle's `target`.
@@ -56,18 +45,6 @@ impl Pickups {
     }
 }
 
-/// `ItemPickupParticleGroup.ParticleInstance.fromParticle`: the position at
-/// `partial`, from the taken entity's to the collector's (lerped between ticks)
-/// along the square of the particle's age.
-pub(super) fn position(p: &Pickup, partial: f64) -> [f64; 3] {
-    let time = (p.life as f32 + partial as f32) / LIFE_TIME as f32;
-    let time = f64::from(time * time);
-    let from = p.taken.position();
-    std::array::from_fn(|i| {
-        let target = p.target_old[i] + partial * (p.target[i] - p.target_old[i]);
-        from[i] + time * (target - from[i])
-    })
-}
 
 /// A LAN guest's target, from the model the host draws for it.
 pub(super) fn guest_target(host: &super::lan::LanHost, id: u32) -> Option<[f64; 3]> {
@@ -116,23 +93,5 @@ impl crate::game::Sim<'_> {
             target,
             target_old: target,
         });
-    }
-    /// `ParticleEngine.tick` for the ITEM_PICKUP group: age (removed at
-    /// `LIFE_TIME`), follow the collector, then let the new particles in.
-    pub(super) fn tick_pickups(&mut self) {
-        let mut live = std::mem::take(&mut self.pickups.live);
-        live.retain_mut(|p| {
-            p.life += 1;
-            if p.life == LIFE_TIME {
-                return false;
-            }
-            p.target_old = p.target;
-            if let Some(t) = self.collector_target(p.collector) {
-                p.target = t;
-            }
-            true
-        });
-        live.append(&mut self.pickups.added);
-        self.pickups.live = live;
     }
 }

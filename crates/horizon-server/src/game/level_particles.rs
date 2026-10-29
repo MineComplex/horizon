@@ -8,7 +8,6 @@ use crate::hc::items::ItemStack;
 use crate::hc::particles::{self, ParticleOptions, ParticleType};
 use horizon_core::{geometry::trig, position::BlockPos, random::RandomSource};
 use horizon_world::level::LevelEvent;
-use horizon_world::registry::BlockStateId;
 
 impl crate::game::Sim<'_> {
     pub(super) fn dragon_egg_particles(&mut self, pos: [i32; 3], data: i32) {
@@ -212,17 +211,6 @@ impl crate::game::Sim<'_> {
                 pitch,
             );
         }
-    }
-    /// `SpeleothemBlock.isStalactite`: a speleothem whose tip points down.
-    fn is_stalactite(&self, state: BlockStateId) -> bool {
-        self.res.facts().get(state).has_class("SpeleothemBlock")
-            && self
-                .pack
-                .assets
-                .registry
-                .state(state)
-                .and_then(|s| s.properties.get("vertical_direction"))
-                .is_some_and(|d| d == "down")
     }
     /// `ServerLevel.globalLevelEvent`: heard by every player on the server
     /// (an end portal opening, the dragon's death roar): here, and sent to

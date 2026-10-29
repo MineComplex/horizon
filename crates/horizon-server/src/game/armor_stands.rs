@@ -3,27 +3,13 @@
 //! of `hurtServer` (creative breaks at once), and `ArmorStandRenderer` with
 //! the default pose, the hit wobble and humanoid armor layers.
 use super::view_vector;
-use crate::hc::{entities::ArmorStand, items::ItemStack, mobs::anim::Poses};
+use crate::hc::{entities::ArmorStand, items::ItemStack};
 use horizon_core::{
     geometry::{Aabb, Vec3},
     random::RandomSource,
 };
 use std::sync::Arc;
 
-/// `EquipmentLayerRenderer.getColorForLayer`: a dyeable layer (one with a
-/// colour when undyed) takes the stack's `minecraft:dyed_color`, else that
-/// colour; any other layer stays white, dyed or not. The result is in the
-/// renderer's byte order (R and B swapped).
-fn layer_color(undyed: Option<u32>, stack: Option<&ItemStack>) -> u32 {
-    let dyed = stack
-        .and_then(|s| s.data())
-        .and_then(|d| d.dyed_color)
-        .map(|c| c as u32 & 0xFF_FFFF);
-    undyed.map_or(0xFFFF_FFFF, |undyed| {
-        let c = dyed.unwrap_or(undyed);
-        0xFF00_0000 | (c & 0xFF) << 16 | (c & 0xFF00) | (c >> 16) & 0xFF
-    })
-}
 
 impl crate::game::Sim<'_> {
     /// `ArmorStandItem.useOn`.
@@ -296,33 +282,6 @@ impl crate::game::Sim<'_> {
         }
     }
 }
-/// The `Pose` rotations on the parts of an armor stand model or its armor
-/// (`ArmorStandArmorModel.setupAnim`); the body also turns the sticks.
-fn apply_pose(poses: &mut Poses, pose: &[[f32; 3]; 6]) {
-    let parts: [&[&str]; 6] = [
-        &["head"],
-        &[
-            "body",
-            "right_body_stick",
-            "left_body_stick",
-            "shoulder_stick",
-        ],
-        &["left_arm"],
-        &["right_arm"],
-        &["left_leg"],
-        &["right_leg"],
-    ];
-    for (names, rotation) in parts.into_iter().zip(pose) {
-        for name in names {
-            if poses.has(name) {
-                let part = poses.get(name);
-                part[3] = rotation[0].to_radians();
-                part[4] = rotation[1].to_radians();
-                part[5] = rotation[2].to_radians();
-            }
-        }
-    }
-}
 fn overlaps(a: Aabb, b: Aabb) -> bool {
     let (a0, a1, b0, b1) = (
         a.min_position(),
@@ -384,19 +343,6 @@ impl crate::game::Sim<'_> {
         self.swing_arm();
         true
     }
-}
-/// `AbstractSkullBlock.getType` of a skull item.
-pub(super) fn skull_kind(item: &str) -> Option<&'static str> {
-    Some(match item {
-        "minecraft:skeleton_skull" => "skeleton",
-        "minecraft:wither_skeleton_skull" => "wither_skeleton",
-        "minecraft:zombie_head" => "zombie",
-        "minecraft:creeper_head" => "creeper",
-        "minecraft:dragon_head" => "dragon",
-        "minecraft:piglin_head" => "piglin",
-        "minecraft:player_head" => "player",
-        _ => return None,
-    })
 }
 
 fn burnt_armor_stand_equipment(a: ArmorStand) -> ([i32; 3], Vec<ItemStack>) {

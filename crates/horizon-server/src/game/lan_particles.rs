@@ -11,11 +11,6 @@ use horizon_protocol::{
 };
 use horizon_world::registry::BlockStateId;
 
-/// An ARGB colour as the options' RGBA.
-fn rgba(argb: i32) -> [f32; 4] {
-    let c = |shift: i32| ((argb >> shift) & 255) as f32 / 255.0;
-    [c(16), c(8), c(0), c(24)]
-}
 /// The options' RGB as an RGB colour (`ARGB.colorFromFloat` without alpha).
 fn rgb_int(c: [f32; 3]) -> i32 {
     let b = |v: f32| ((v.clamp(0.0, 1.0) * 255.0).round() as i32) & 255;

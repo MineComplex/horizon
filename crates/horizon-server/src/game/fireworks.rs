@@ -35,35 +35,6 @@ pub(super) struct Rocket {
     pub(super) item: ItemStack,
 }
 impl Rocket {
-    /// A rocket a server sent (`handleAddEntity`): placed and moved by it.
-    pub(super) fn remote(id: u32, position: Vec3, velocity: Vec3) -> Self {
-        let item = ItemStack::new("minecraft:firework_rocket", 1);
-        let (_, explosions) = fireworks_of(&item);
-        Self {
-            id,
-            position,
-            previous: position,
-            velocity,
-            life: 0,
-            lifetime: i32::MAX,
-            explosions,
-            attached: false,
-            guest: None,
-            attached_to: None,
-            angled: false,
-            item,
-        }
-    }
-    /// One tick of a server's client: the rocket flies on by itself between
-    /// the server's updates (a rocket that follows an entity is placed by the
-    /// caller).
-    pub(super) fn remote_step(&mut self, scene: &mut SceneCollisions) {
-        self.previous = self.position;
-        if self.attached_to.is_none() {
-            self.free_flight(scene);
-        }
-        self.life += 1;
-    }
     /// `FireworkRocketEntity.tick` for a rocket attached to no entity: speed
     /// up (an angled one keeps its motion) and rise, then move. True when a
     /// block stopped it.
@@ -336,16 +307,6 @@ impl crate::game::Sim<'_> {
         let v = [r.velocity.x, r.velocity.y, r.velocity.z];
         self.particles
             .fireworks(at, v, r.explosions.clone(), camera);
-    }
-    /// FireworkRocketEntity.handleEntityEvent: use the synchronized item data.
-    pub(super) fn remote_firework_explosion(&mut self, id: i32) {
-        let camera = self.eye_position();
-        if let Some(r) = self.rockets.iter().find(|r| r.id == id as u32) {
-            let at = [r.position.x, r.position.y, r.position.z];
-            let v = [r.velocity.x, r.velocity.y, r.velocity.z];
-            self.particles
-                .fireworks(at, v, r.explosions.clone(), camera.unwrap_or(at));
-        }
     }
     /// `dealExplosionDamage` on a player that is not the rocket's
     /// `attachedToEntity`: within 5 blocks, when the rocket sees its feet or

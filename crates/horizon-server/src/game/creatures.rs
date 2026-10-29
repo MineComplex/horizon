@@ -266,38 +266,6 @@ impl crate::game::Sim<'_> {
         }
         Some(id)
     }
-    /// The `summon` command: spawn a mob in front of the player or at a position.
-    pub(super) fn summon(&mut self, kind: &str, at: Option<[f64; 3]>, baby: bool) -> Result<u32> {
-        let at = match at {
-            Some(a) => a,
-            None => {
-                let p = self.player.as_ref().ok_or("no player yet")?;
-                let d = view_vector(self.yaw, 0.0);
-                [
-                    p.position.x + d[0] * 3.0,
-                    p.position.y,
-                    p.position.z + d[2] * 3.0,
-                ]
-            }
-        };
-        let id = self
-            .spawn_mob_spawned(kind, at)
-            .ok_or_else(|| format!("unknown or unsupported mob {kind}"))?;
-        if baby && let Some(m) = self.mobs.iter_mut().find(|m| m.id == id) {
-            m.extra.age = if m.species() == Species::Sniffer {
-                crate::hc::mobs::sniffer::BABY_START_AGE
-            } else {
-                -24000
-            };
-        }
-        self.spawn_jockeys(id, false);
-        Ok(id)
-    }
-    /// The `mobs` command: nearby mobs with position, health and running goals.
-    pub(super) fn control_mobs(&self, radius: f64) -> serde_json::Value {
-        let center = self.player.as_ref().map_or(Vec3::ZERO, |p| p.position);
-        self.control_mobs_at(radius, center)
-    }
     pub(super) fn control_mobs_at(&self, radius: f64, center: Vec3) -> serde_json::Value {
         let list: Vec<serde_json::Value> = self
             .mobs

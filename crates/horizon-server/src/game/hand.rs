@@ -4,26 +4,9 @@
 //! (`LivingEntity.SwingState`) and the first-person equip heights
 //! (`FirstPersonHandsAndItems`) with the item swap ticker they read.
 use crate::game::keys::KeyCode;
-use super::minecarts::CartKind;
-use crate::hc::{Result, first_person::{Hand, HandWorld, Hit, SwingAnimation, UseResult, swing_duration}, items::ItemStack};
+use crate::hc::{Result, first_person::{Hand, HandWorld, Hit, SwingAnimation, UseResult, swing_duration}};
 
-/// The off hand's place in `visible_hands` (the main hand uses its hotbar slot).
-const OFFHAND: usize = usize::MAX;
 
-/// `AttackRange.isInRange`: float bounds, then inclusive double comparison.
-fn attack_range_contains(range: &serde_json::Value, distance: f64, creative: bool) -> bool {
-    let value = |key: &str, default: f32| range[key].as_f64().map_or(default, |v| v as f32);
-    let (min, max) = if creative {
-        (
-            value("min_creative_reach", 0.0),
-            value("max_creative_reach", 5.0),
-        )
-    } else {
-        (value("min_reach", 0.0), value("max_reach", 3.0))
-    };
-    let margin = value("hitbox_margin", 0.3);
-    distance >= f64::from(min - margin) && distance <= f64::from(max + margin)
-}
 
 impl crate::game::Sim<'_> {
     /// Opening a screen stops breaking before the next game tick (which may pause).
@@ -122,64 +105,6 @@ impl crate::game::Sim<'_> {
             .iter()
             .any(|k| self.keys.contains(k))
     }
-    /// `Hud.canRenderCrosshairForSpectator` for the nearest hit in reach: an
-    /// entity that is a `MenuProvider` (a chest or hopper minecart, a chest
-    /// boat), or a block whose `showAsInteractableInSpectatorMode` holds.
-    pub(super) fn spectator_crosshair(&self) -> bool {
-        let cart = self.cart_hit().map(|(i, d)| {
-            let kind = &self.carts[i].kind;
-            (d, matches!(kind, CartKind::Chest | CartKind::Hopper))
-        });
-        let boat = self.boat_hit().map(|(i, d)| (d, self.boats[i].chest));
-        let others = [
-            self.mob_hit().map(|h| h.1),
-            self.armor_stand_hit().map(|h| h.1),
-            self.cushion_hit().map(|h| h.1),
-            self.painting_hit().map(|h| h.1),
-            self.frame_hit().map(|h| h.1),
-            self.dragon_hit().map(|h| h.1),
-        ];
-        let nearest = cart
-            .into_iter()
-            .chain(boat)
-            .chain(others.into_iter().flatten().map(|d| (d, false)))
-            .min_by(|a, b| a.0.total_cmp(&b.0));
-        if let Some((distance, menu)) = nearest
-            && self.before_block(distance)
-        {
-            return menu;
-        }
-        let Some(hit) = self.pick() else {
-            return false;
-        };
-        let name = &*self
-            .res
-            .facts()
-            .get(self.world.block(hit.pos[0], hit.pos[1], hit.pos[2]))
-            .name;
-        let name = name.trim_start_matches("minecraft:");
-        match name {
-            // BlockBehaviour.getMenuProvider and `instanceof Portal`.
-            "crafting_table" | "enchanting_table" | "anvil" | "chipped_anvil" | "damaged_anvil"
-            | "stonecutter" | "loom" | "cartography_table" | "grindstone" | "smithing_table"
-            | "barrel" | "furnace" | "blast_furnace" | "smoker" | "brewing_stand" | "hopper"
-            | "dispenser" | "dropper" | "crafter" | "lectern" | "beacon" | "nether_portal"
-            | "end_portal" | "end_gateway" => true,
-            // ChestBlock.getMenuProvider: none while a redstone conductor
-            // sits on top of either half (a sitting cat aside).
-            "chest" | "trapped_chest" => {
-                let key = (hit.pos[0], hit.pos[1], hit.pos[2]);
-                let blocked = |p: (i32, i32, i32)| {
-                    let above = self.world.block(p.0, p.1 + 1, p.2);
-                    self.res.behaviours().facts(above).flags
-                        & horizon_world::level::data::state_flags::CONDUCTOR
-                        != 0
-                };
-                !blocked(key) && self.chest_other_half(key).is_none_or(|o| !blocked(o))
-            }
-            _ => name.ends_with("shulker_box"),
-        }
-    }
     /// `Attributes.ATTACK_SPEED` with the main-hand item's modifier and the
     /// Haste and Mining Fatigue modifiers (`ADD_MULTIPLIED_TOTAL`), clamped to
     /// the attribute's range.
@@ -199,29 +124,6 @@ impl crate::game::Sim<'_> {
     /// The item whose attack damage and speed modifiers the player has (`attack_item`).
     pub(super) fn attack_item_info(&self) -> Option<&crate::hc::items::ItemInfo> {
         self.res.items().get(self.attack_item.as_deref()?)
-    }
-    /// `evaluateWhichHandsToRender`: which of the main and off hand show.
-    pub(super) fn hands_to_render(&self) -> [bool; 2] {
-        let held = |slot| {
-            self.stack_in(slot)
-                .map(|s: &ItemStack| (&*s.item, s.data().is_some_and(|d| !d.charged.is_empty())))
-        };
-        let using = self.used_hand().zip(
-            self.using
-                .and_then(|(slot, _)| self.stack_in(slot))
-                .map(|s| &*s.item),
-        );
-        crate::hc::first_person::hands_to_render(
-            [held(self.selected), held(super::shield::OFFHAND_SLOT)],
-            using,
-        )
-    }
-    /// The visible main- and off-hand items.
-    pub(super) fn visible_hand_items(&self) -> [Option<ItemStack>; 2] {
-        [
-            self.visible_hands[0].1.clone(),
-            self.visible_hands[1].1.clone(),
-        ]
     }
 }
 

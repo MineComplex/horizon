@@ -167,17 +167,6 @@ impl crate::game::Sim<'_> {
         self.trigger_block("minecraft:item_used_on_block", pos, stack);
         true
     }
-    /// `AbstractSignEditScreen.removed`: a server's client sends what it
-    /// wrote (ServerboundSignUpdatePacket); the window's own world keeps it
-    /// and sends it to its guests (`sendBlockUpdated`).
-    pub(super) fn close_sign_editor(&mut self) {
-        if let Some(edit) = self.sign_edit.take() {
-            {
-                self.mark_block_entity_updated(edit.pos);
-            }
-        }
-        self.capture(true);
-    }
     /// `ServerPlayer.openTextEdit` for the guest whose action opened a sign:
     /// the block, then the editor, on its client, and the guest may write on it.
     pub(super) fn lan_open_sign_editor(&mut self, host: &mut LanHost, conn: u32, edit: SignEditor) {

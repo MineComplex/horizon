@@ -223,27 +223,6 @@ impl crate::game::Sim<'_> {
             cause: None,
         });
     }
-    /// `ClientLevel.addEntity` for a server's lightning bolt: on a client it
-    /// only flashes, sounds and draws (`LightningBolt.tick` off the server).
-    pub(super) fn spawn_remote_bolt(&mut self, id: u32, at: [f64; 3]) {
-        self.bolts.retain(|b| b.id != id);
-        let r = &mut self.world.random;
-        let seed = r.next_long();
-        let flashes = r.next_int_bound(3).unwrap_or(0) + 1;
-        self.lightning_seen[0] += 1;
-        self.bolts.push(Bolt {
-            id,
-            at,
-            life: 2,
-            flashes,
-            seed,
-            visual_only: true,
-            converted: Vec::new(),
-            hit: Vec::new(),
-            fires: 0,
-            cause: None,
-        });
-    }
     /// `spawnFire`: fire at the strike point and `extra` random neighbours,
     /// wherever `BaseFireBlock.getState` fire can survive. Returns how many
     /// blocks it set on fire.
