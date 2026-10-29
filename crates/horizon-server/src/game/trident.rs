@@ -4,7 +4,12 @@
 //! return to the owner, pickup) with `ThrownTridentRenderer`, and Channeling's
 //! lightning on a hit (`channeling.json`).
 use super::view_vector;
-use crate::hc::{collisions::SceneCollisions, enchant::EffectContext, items::ItemStack, mobs::{Damage, DamageKind, Who}, projectiles::ProjectileWorld};
+use crate::hc::{
+    collisions::SceneCollisions,
+    enchant::EffectContext,
+    items::ItemStack,
+    mobs::{Damage, DamageKind, Who},
+};
 use horizon_core::{
     geometry::{Aabb, Vec3, traverse_blocks},
     position::BlockPos,
@@ -27,8 +32,6 @@ pub(super) struct ThrownTrident {
     pub(super) no_physics: bool,
     returning: u32,
     creative_only: bool,
-    /// The entity id a server sent as its owner (the one Loyalty returns it to).
-    pub(super) owner: u32,
     /// The guest that threw it (`Projectile.getOwner`); `None` for the host.
     guest: Option<u32>,
 }
@@ -294,7 +297,6 @@ impl crate::game::Sim<'_> {
             no_physics: false,
             returning: 0,
             creative_only: self.creative,
-            owner: 0,
             guest: self.lan_acting,
         });
         self.player_projectile_shot();

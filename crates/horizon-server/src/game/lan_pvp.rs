@@ -7,7 +7,11 @@
 //! another player lands the same way.
 use super::{lan::LanHost, lan_mobs::guest_bounds, ray_box, view_vector};
 
-use crate::hc::{Result, mobs::Who, projectiles::{Hit, Projectile, ProjectileKind}};
+use crate::hc::{
+    Result,
+    mobs::Who,
+    projectiles::{Hit, Projectile, ProjectileKind},
+};
 use horizon_core::geometry::{Aabb, Vec3};
 
 /// The player projectiles that meet other players: arrows (their hurt), and
@@ -411,16 +415,6 @@ impl crate::game::Sim<'_> {
     pub(super) fn sweep_players(&mut self, host: &mut LanHost, sweep: &Sweep) {
         let from = Vec3::new(sweep.from[0], sweep.from[1], sweep.from[2]);
         let mut victims = Vec::new();
-        if sweep.attacker.is_some()
-            && self.options.dedicated.is_none()
-            && !self.spectator()
-            && let Some(p) = self.player.as_ref()
-            && !p.health.dead_or_dying()
-            && p.bounds().intersects(sweep.hit_box)
-            && p.position.distance_squared(from) < 9.0
-        {
-            victims.push((Victim::Host, self.player_team().cloned()));
-        }
         for g in &host.hub.guests {
             if host.hub.here(g)
                 && g.loaded

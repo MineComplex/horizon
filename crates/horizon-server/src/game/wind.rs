@@ -1,7 +1,12 @@
 //! Wind charges: the item a player throws (`WindChargeItem`), the charges
 //! breezes shoot, and the burst they make (`ServerExplosion` with
 //! `TRIGGER_BLOCK`: no damage, only knockback and the blocks that react).
-use crate::hc::{Result, mobs::{Damage, DamageKind, Species, Who}, particles::{ParticleOptions, ParticleType}, projectiles::{Hit, Projectile, ProjectileKind}};
+use crate::hc::{
+    Result,
+    mobs::{Damage, DamageKind, Species, Who},
+    particles::{ParticleOptions, ParticleType},
+    projectiles::{Hit, Projectile, ProjectileKind},
+};
 use horizon_core::{
     geometry::{Direction, Vec3},
     position::BlockPos,

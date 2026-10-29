@@ -4,8 +4,16 @@
 //! container clicks, `ServerboundContainerButtonClickPacket`, the content and
 //! data slot sync after each (`broadcastChanges`), and the inputs back into
 //! the inventory when the menu closes (`AbstractContainerMenu.clearContainer`).
-use super::{lan::LanHost, lan_crafting::input, stations::{Kind as StationKind, Station}};
-use crate::hc::{containers::BlockEntity, items::ItemStack, menu::{Kind, Menu}};
+use super::{
+    lan::LanHost,
+    lan_crafting::input,
+    stations::{Kind as StationKind, Station},
+};
+use crate::hc::{
+    containers::BlockEntity,
+    items::ItemStack,
+    menu::{Kind, Menu},
+};
 use horizon_core::random::RandomSource;
 use horizon_protocol::packets::play::{self, Clientbound as C};
 

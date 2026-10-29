@@ -2,7 +2,10 @@
 //! when it runs out a trader may appear near the player (or the nearest
 //! bell), bringing two llamas on leads, and wanders off after two days.
 use super::{Dim, creatures::Creatures};
-use crate::hc::{mobs::{Species, leash::Holder, spawning, trader}, save::{read_dat, write_dat}};
+use crate::hc::{
+    mobs::{Species, leash::Holder, spawning, trader},
+    save::{read_dat, write_dat},
+};
 use horizon_core::{geometry::Vec3, random::RandomSource};
 use horizon_world::nbt::Tag;
 

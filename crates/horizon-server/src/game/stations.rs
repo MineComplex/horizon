@@ -3,8 +3,13 @@
 //! colours and sounds follow the vanilla screens (`EnchantmentScreen`,
 //! `AnvilScreen`, `GrindstoneScreen`, `SmithingScreen`, `StonecutterScreen`,
 //! `BrewingStandScreen`); item rules live in `crate::hc::stations`.
-use super::{Screen};
-use crate::hc::{brewing, containers::BlockEntity, items::ItemStack, stations::{self, AnvilResult, EnchantOffers}};
+use super::Screen;
+use crate::hc::{
+    brewing,
+    containers::BlockEntity,
+    items::ItemStack,
+    stations::{self, AnvilResult, EnchantOffers},
+};
 use horizon_core::random::RandomSource;
 
 /// Slot ids of the open station: inputs from 600, the result at 650.
@@ -28,8 +33,6 @@ pub(super) enum Kind {
     Loom,
 }
 impl Kind {
-
-
     pub(super) fn from_block(name: &str) -> Option<Self> {
         Some(match name {
             "minecraft:enchanting_table" => Self::Enchanting,
@@ -84,15 +87,11 @@ pub(super) struct Station {
     start: usize,
     /// Anvil: the input the rename box was last filled from.
     anvil_last: Option<ItemStack>,
-    /// Anvil on a server: the name last sent (the client menu's `itemName`).
-    pub(super) anvil_sent: Option<String>,
     pub(super) last_sound: u64,
     /// Villager trading state.
     pub(super) merchant: Option<Box<super::trading::MerchantState>>,
     /// Beacon menu: the selected primary and secondary power (EFFECTS index).
     pub(super) beacon: [Option<usize>; 2],
-    /// A server's beacon menu: the pyramid's levels (its data slot 0).
-    pub(super) beacon_levels: Option<i32>,
     /// The loom's patterns, selection and scroller (game/loom.rs).
     pub(super) loom: super::loom::LoomState,
 }
@@ -111,11 +110,9 @@ impl Station {
             selected: None,
             start: 0,
             anvil_last: None,
-            anvil_sent: None,
             last_sound: 0,
             merchant: None,
             beacon: [None; 2],
-            beacon_levels: None,
             loom: Default::default(),
         }
     }
@@ -130,7 +127,6 @@ impl Station {
         }
     }
 }
-
 
 impl crate::game::Sim<'_> {
     /// `Component.translatable`: the selected language (which `lang` layers
@@ -322,11 +318,7 @@ impl crate::game::Sim<'_> {
     /// input (`AnvilScreen.slotChanged`), then the rest of a taken result's
     /// `onTake` (the levels, the anvil's wear, the use sound) unless a
     /// server does it.
-    pub(super) fn combiner_session_end(
-        &mut self,
-        menu: &crate::hc::menu::Menu,
-        predicting: bool,
-    ) {
+    pub(super) fn combiner_session_end(&mut self, menu: &crate::hc::menu::Menu, predicting: bool) {
         let Some(s) = self.station.as_mut() else {
             return;
         };
@@ -435,10 +427,7 @@ impl crate::game::Sim<'_> {
     }
     /// `BrewingStandBlockEntity.serverTick` of the brewing stand at `pos`, in
     /// its place among the level's block entity tickers.
-    pub(super) fn tick_brewing_stand(
-        &mut self,
-        pos: (i32, i32, i32),
-    ) -> crate::hc::Result<()> {
+    pub(super) fn tick_brewing_stand(&mut self, pos: (i32, i32, i32)) -> crate::hc::Result<()> {
         let Some(BlockEntity::Brewing(b)) = self.world.block_entities.get_mut(&pos) else {
             return Ok(());
         };
@@ -474,5 +463,3 @@ impl crate::game::Sim<'_> {
         Ok(())
     }
 }
-
-

@@ -3,7 +3,12 @@
 //! through the command system with the block's output, and
 //! `CommandBlockEditScreen` with what `handleSetCommandBlock` does with it.
 use super::{commands::execute::Source, lan::LanHost};
-use crate::hc::{command_block::{self, CommandBlock, Mode}, containers::BlockEntity, text::{self, Text}, world::World};
+use crate::hc::{
+    command_block::{self, CommandBlock, Mode},
+    containers::BlockEntity,
+    text::{self, Text},
+    world::World,
+};
 use horizon_core::position::BlockPos;
 use horizon_protocol::packets::play::{self};
 use horizon_world::{
@@ -14,7 +19,6 @@ use horizon_world::{
 
 type Pos = (i32, i32, i32);
 
-
 /// What `ServerboundSetCommandBlockPacket` carries.
 struct CommandBlockEdit {
     pos: Pos,
@@ -24,9 +28,6 @@ struct CommandBlockEdit {
     conditional: bool,
     auto: bool,
 }
-
-
-
 
 fn state_of(registry: &BlockRegistry, state: BlockStateId) -> Option<&BlockState> {
     registry.state(state)

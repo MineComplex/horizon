@@ -4,12 +4,17 @@
 //! side of them.
 use super::Dim;
 use crate::hc::mobs::villager as mobs_villager;
-use crate::hc::{effects::{EffectInstance, OmenTick}, mobs::{
+use crate::hc::{
+    effects::{EffectInstance, OmenTick},
+    mobs::{
         Mob, Species, raider,
         spawn_rules::{self, SpawnLevel},
         spawn_selection::{Heightmap, NaturalLevel},
         spawning,
-    }, patrol::{GameplayAttributes, Member, PatrolLevel, PatrolSpawner}, raid::{self, Action, BarName, RaidLevel, RaidPlayer, RaiderInfo, RaiderType, Raids, Spawn}};
+    },
+    patrol::{GameplayAttributes, Member, PatrolLevel, PatrolSpawner},
+    raid::{self, Action, BarName, RaidLevel, RaidPlayer, RaiderInfo, RaiderType, Raids, Spawn},
+};
 use horizon_core::{geometry::Vec3, random::RandomSource};
 use horizon_world::nbt::Tag;
 use std::collections::{HashMap, HashSet};
@@ -776,7 +781,6 @@ impl crate::game::Sim<'_> {
             .map(|(i, e)| (i, e.id, e.position))
             .collect();
         let mut taken: Vec<usize> = Vec::new();
-        let mut collectors: Vec<(usize, u32)> = Vec::new();
         let mut recruit: Vec<(i32, Vec3)> = Vec::new();
         let mut joins: Vec<(u32, i32, f32)> = Vec::new();
         let mut new_leaders: Vec<(i32, i32, u32)> = Vec::new();
@@ -886,7 +890,7 @@ impl crate::game::Sim<'_> {
                     if p.distance_squared(position) < 1.414 * 1.414 {
                         // pickUpItem: the banner becomes the wave's leader.
                         taken.push(*i);
-                        collectors.push((*i, m.id));
+
                         leaders.insert((id, s.wave));
                         new_leaders.push((id, s.wave, m.id));
                         s.banner_at = None;
@@ -896,13 +900,6 @@ impl crate::game::Sim<'_> {
                     }
                 }
             }
-        }
-        for (i, mob) in collectors {
-            let item = self.dropped[i].clone();
-            self.add_pickup(
-                super::pickups::Taken::Item(Box::new(item)),
-                super::pickups::Collector::Mob(mob),
-            );
         }
         taken.sort_unstable();
         for i in taken.into_iter().rev() {

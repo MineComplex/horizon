@@ -13,8 +13,16 @@
 //! game rules, the scoreboard, the maps and the entities waiting to arrive
 //! through a portal.
 
-use super::{Dim, ExperienceOrb, FallingBlock, ItemEntity, Mob, boats, commands, creaking::CreakingState, dragon, fireworks, lan::LanHost, lightning, machines, minecarts, ominous_item_spawner, persist, raids::Raiding, sculk::SculkState, tnt, trident};
-use crate::hc::{Result, random_tick_sections::RandomTickSections, save::SaveDir, streaming::Streaming, tick_chunk_membership::TickChunkMembership, ticket_levels::ChunkTickets, vanillagen::VanillaTerrain, world::World};
+use super::{
+    Dim, ExperienceOrb, FallingBlock, ItemEntity, Mob, boats, commands, creaking::CreakingState,
+    dragon, fireworks, lan::LanHost, lightning, machines, minecarts, ominous_item_spawner, persist,
+    raids::Raiding, sculk::SculkState, tnt, trident,
+};
+use crate::hc::{
+    Result, random_tick_sections::RandomTickSections, save::SaveDir, streaming::Streaming,
+    tick_chunk_membership::TickChunkMembership, ticket_levels::ChunkTickets,
+    vanillagen::VanillaTerrain, world::World,
+};
 use horizon_world::level::{LevelEvent, Ticks};
 use std::{
     collections::HashMap,
@@ -239,17 +247,12 @@ impl crate::game::Sim<'_> {
         self.creaking.swap_level(&mut p.creaking);
         // What only the client draws starts over.
         self.particles.clear();
-        self.pickups.clear();
     }
     /// Put `target`'s level in place, opening it first if it is not loaded.
     /// The level that was in place is kept with the others; the shared
     /// clock and weather go with the swap. `host` is the hub when the caller
     /// holds it (`self.lan` is taken during the network tick).
     pub(super) fn enter_level(&mut self, host: Option<&mut LanHost>, target: Dim) -> Result<()> {
-        // The in-frame game keeps its one level (`enter_dimension`).
-        if self.options.execution_role.is_client() {
-            return Ok(());
-        }
         if target != self.dim {
             let (mut p, opened) = match self.levels.parked.remove(&target) {
                 Some(p) => (p, false),
@@ -302,7 +305,7 @@ impl crate::game::Sim<'_> {
     /// nobody is in it; returns the level to put back afterwards. Only a
     /// server holds other levels.
     pub(super) fn enter_command_level(&mut self, dim: Dim) -> Option<Dim> {
-        if self.options.execution_role.is_client() || dim == self.dim {
+        if dim == self.dim {
             return None;
         }
         let back = self.dim;

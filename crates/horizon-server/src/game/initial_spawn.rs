@@ -3,9 +3,16 @@
 //! getOrigin, then PlayerSpawnFinder.findSpawn picks a free column around
 //! the world spawn within the respawn radius.
 use super::dispenser::entity_random;
-use crate::hc::{Result, assets::Properties, chunk::{HEIGHT, MIN_Y}, collisions::{SceneCollisions, no_collision_or_liquid}, world::World, world_spawn::{
+use crate::hc::{
+    Result,
+    assets::Properties,
+    chunk::{HEIGHT, MIN_Y},
+    collisions::{SceneCollisions, no_collision_or_liquid},
+    world::World,
+    world_spawn::{
         PlayerSpawnFinder, SpawnCandidate, SpawnLevel, level_respawn_pos, spawn_pos_in_chunk,
-    }};
+    },
+};
 use horizon_core::{
     geometry::{Aabb, Direction, ShapeOp, Vec3, VoxelShape},
     position::BlockPos,

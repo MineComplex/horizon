@@ -3,7 +3,15 @@
 //! entities for. A behaviour returns what is left in the slot and the level
 //! event it plays (`DefaultDispenseItemBehavior.dispense` then plays that
 //! event and the smoke animation, event 2000).
-use crate::hc::{Result, collisions::SceneCollisions, containers::BlockEntity, items::ItemStack, mobs::{Mob, Species, sulfur_cube}, particles::{ParticleOptions, ParticleType}, projectiles::{Projectile, ProjectileKind}};
+use crate::hc::{
+    Result,
+    collisions::SceneCollisions,
+    containers::BlockEntity,
+    items::ItemStack,
+    mobs::{Mob, Species, sulfur_cube},
+    particles::{ParticleOptions, ParticleType},
+    projectiles::{Projectile, ProjectileKind},
+};
 use horizon_core::{
     geometry::{Aabb, Direction, Vec3},
     position::BlockPos,

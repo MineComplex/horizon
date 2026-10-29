@@ -80,8 +80,6 @@ struct Arrival {
 pub(super) struct Portals {
     /// The player's.
     pub(super) player: PortalState,
-    /// `LocalPlayer.portalProcess.isInsidePortalThisTick`.
-    client_inside: bool,
     /// Items and mobs, by entity id.
     entities: HashMap<u32, PortalState>,
     /// Positions before this tick's moves, by entity id.
@@ -544,7 +542,7 @@ impl crate::game::Sim<'_> {
     /// portal: only a server moves players between its levels. Elsewhere a
     /// ridden vehicle stays, rather than leave its rider behind.
     fn carries_riders(&self) -> bool {
-        self.options.dedicated.is_some()
+        true
     }
     /// The vehicles that went through a portal in `dim` with server players
     /// on them.

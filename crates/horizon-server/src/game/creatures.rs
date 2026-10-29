@@ -2,14 +2,23 @@
 //! chunk-generation spawning (`NaturalSpawner`), mob events (attacks,
 //! breeding, conversions, drops), projectiles, player interactions
 //! (feeding, shearing, milking, spawn eggs, throwing) and rendering.
-use crate::game::keys::KeyCode;
 use super::{Dim, view_vector};
-use crate::hc::{Result, arrows::EntityHit, blocks::Fluid, collisions::SceneCollisions, items::ItemStack, mobs::{
+use crate::game::keys::KeyCode;
+use crate::hc::{
+    Result,
+    arrows::EntityHit,
+    blocks::Fluid,
+    collisions::SceneCollisions,
+    items::ItemStack,
+    mobs::{
         Damage, DamageKind, Mob, MobEvent, MobWorld, PlayerView, Seen, SpawnSetup, Species, Who,
         ai::{eating_sound, feed_animal},
         farm::Climate,
         spawning::{self, BiomeFacts},
-    }, projectiles::{Hit, Projectile, ProjectileKind, ProjectileWorld}, text::Text};
+    },
+    projectiles::{Hit, Projectile, ProjectileKind, ProjectileWorld},
+    text::Text,
+};
 use horizon_core::{
     geometry::{Aabb, Direction, Vec3, traverse_blocks},
     position::BlockPos,
@@ -2276,12 +2285,6 @@ impl crate::game::Sim<'_> {
             !taken
         });
         self.creatures.projectiles = projectiles;
-        for shot in picked {
-            self.add_pickup(
-                super::pickups::Taken::Arrow(Box::new(shot)),
-                super::pickups::Collector::Player,
-            );
-        }
     }
     fn tick_projectiles(&mut self) -> Result<()> {
         let mut projectiles = std::mem::take(&mut self.creatures.projectiles);
@@ -3436,8 +3439,8 @@ impl crate::game::Sim<'_> {
             .is_some_and(|t| t.contains(&*item));
         let player_at = self.eye_position();
         let acting = self.acting_player_uuid();
-        let sneaking = self.keys.contains(&KeyCode::ShiftLeft)
-            || self.keys.contains(&KeyCode::ShiftRight);
+        let sneaking =
+            self.keys.contains(&KeyCode::ShiftLeft) || self.keys.contains(&KeyCode::ShiftRight);
         let held_damage = held.as_ref().map_or(0, |h| h.damage as i32);
         let held_extra = held.as_ref().and_then(|h| h.extra.clone());
         let m = &mut self.mobs[index];

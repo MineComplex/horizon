@@ -1,13 +1,16 @@
 //! Enchanting what mobs spawn with (`Mob.populateDefaultEquipmentEnchantments`
 //! through the `mob_spawn_equipment` provider) and the raid buffs
 //! (`Raider.applyRaidBuffs`).
-use crate::hc::{mobs::{
+use crate::hc::{
+    mobs::{
         Species,
         drops::{self, SLOTS},
         finalize::equip_stack,
         gear::{self, ARMOR, MAIN},
         spawner::equipment_table,
-    }, raid::{self, RaiderType}};
+    },
+    raid::{self, RaiderType},
+};
 use horizon_core::random::RandomSource;
 use horizon_world::{loot::EntityLootParams, nbt::Tag};
 

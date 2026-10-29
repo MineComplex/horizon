@@ -2,7 +2,11 @@
 //! it reads, the spawning chunks and caps of `ServerChunkCache.tickChunks`,
 //! and the mobs it adds (finalized with the game's `finalizeSpawn`).
 use super::Dim;
-use crate::hc::{biome::{BiomeInfo, SpawnEntry}, blocks::BlockFacts, collisions::{SceneCollisions, no_collision_empty}, mobs::{
+use crate::hc::{
+    biome::{BiomeInfo, SpawnEntry},
+    blocks::BlockFacts,
+    collisions::{SceneCollisions, no_collision_empty},
+    mobs::{
         Mob, MobWorld, Species,
         data::{self, MobData},
         seen_grid::SeenGrid,
@@ -11,7 +15,8 @@ use crate::hc::{biome::{BiomeInfo, SpawnEntry}, blocks::BlockFacts, collisions::
             self, Category, Counted, Heightmap, NaturalLevel, SpawnCost, SpawnPlayer, SpawnRequest,
             SpawnState, Spawned, StructureAt, StructureSpawns,
         },
-    }};
+    },
+};
 use horizon_core::{
     geometry::{Aabb, Vec3},
     random::{LegacyRandom, RandomSource, WorldgenRandom},

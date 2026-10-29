@@ -1,11 +1,8 @@
 //! Server methods that lived in the client's mixed files.
 use super::*;
-use crate::hc::text::Text;
 use crate::hc::command::args::GameMode;
+use crate::hc::text::Text;
 use serde_json::{Value, json};
-
-
-
 
 impl crate::game::Sim<'_> {
     /// The hurts and melee attacks each player logged since the last call
@@ -66,7 +63,6 @@ impl crate::game::Sim<'_> {
     }
 }
 
-
 impl crate::game::Sim<'_> {
     /// `isEyeInFluid(WATER)`: the eye inside the water of its block column.
     pub(crate) fn eye_in_water(&self, x: f64, eye_y: f64, z: f64) -> bool {
@@ -85,13 +81,6 @@ impl crate::game::Sim<'_> {
     }
 }
 
-
-
-
-
-
-
-
 impl crate::game::Sim<'_> {
     pub(crate) fn state_string(&self, state: BlockStateId) -> String {
         let Some(s) = self.pack.assets.registry.state(state) else {
@@ -109,15 +98,12 @@ impl crate::game::Sim<'_> {
     }
 }
 
-
-impl crate::game::Sim<'_> {
-}
+impl crate::game::Sim<'_> {}
 
 impl crate::game::Sim<'_> {
     /// `ServerboundChangeGameModePacket` handled by the integrated server:
     /// `GameModeCommand.setGameMode` with its feedback.
     pub(crate) fn change_game_mode(&mut self, mode: GameMode) {
-        
         if self.set_game_mode(mode) {
             let name = Text::translate(&format!("gameMode.{}", mode.name()), &[]);
             self.feedback(Text::translate("commands.gamemode.success.self", &[name]));

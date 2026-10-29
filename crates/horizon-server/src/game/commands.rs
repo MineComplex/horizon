@@ -17,11 +17,16 @@ mod text_commands;
 mod world_cmds;
 
 use super::{Dim, Screen, chat::PLAYER_NAME};
-use crate::hc::{command::{
+use crate::hc::{
+    command::{
         Arg, CommandError, Context, Reader,
         args::{BlockInput, Coordinates, GameMode, ItemInput, Selector, Sort},
         vanilla::{self, DIFFICULTIES},
-    }, gamerules::{self, Value}, items::ItemStack, text::{self, Style, Text}};
+    },
+    gamerules::{self, Value},
+    items::ItemStack,
+    text::{self, Style, Text},
+};
 use horizon_core::{geometry::Vec3, random::RandomSource};
 use horizon_world::registry::BlockStateId;
 
@@ -208,7 +213,6 @@ impl crate::game::Sim<'_> {
         // MinecraftServer.sendSystemMessage, unless the server is the source.
         let console = self.console_broadcast.is_none()
             && self.lan_acting.is_some()
-            && self.options.dedicated.is_some()
             && self.world_data.rules.bool("log_admin_commands");
         if !ops && !console {
             return;
@@ -928,11 +932,7 @@ impl crate::game::Sim<'_> {
     }
     fn cmd_help(&mut self, ctx: &Context) -> R<i32> {
         // A dedicated server lists its own commands too (Commands.CommandSelection.DEDICATED).
-        let d = if self.options.dedicated.is_some() {
-            vanilla::dedicated_help_dispatcher()
-        } else {
-            vanilla::game_dispatcher()
-        };
+        let d = vanilla::dedicated_help_dispatcher();
         let level = self.world_data.registries.permission;
         match ctx.get("command") {
             None => {
@@ -1360,7 +1360,7 @@ impl crate::game::Sim<'_> {
             _ => None,
         };
         let at = self.target_level(t);
-        let Some(conn) = conn.filter(|_| at != level && self.options.dedicated.is_some()) else {
+        let Some(conn) = conn.filter(|_| at != level) else {
             return false;
         };
         self.level_teleports

@@ -3,7 +3,14 @@
 //! the first time the item is read (`RandomizableContainer.unpackLootTable`),
 //! and `DecoratedPotBlock.useItemOn` / `useWithoutItem`.
 use super::spill;
-use crate::hc::{first_person::Hand, items::ItemStack, mobs::Who, particles::{ParticleOptions, ParticleType}, random_sequences::RandomSequences, save};
+use crate::hc::{
+    first_person::Hand,
+    items::ItemStack,
+    mobs::Who,
+    particles::{ParticleOptions, ParticleType},
+    random_sequences::RandomSequences,
+    save,
+};
 use horizon_core::random::LegacyRandom;
 use horizon_world::{loot::LootData, nbt::Tag};
 

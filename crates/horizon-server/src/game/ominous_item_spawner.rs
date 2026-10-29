@@ -2,7 +2,10 @@
 //! fight. It floats, growing and turning (`OminousItemSpawnerRenderer`), for
 //! 60 to 120 ticks, then falls as an item or is fired straight down as a
 //! projectile (`spawnItem`). Saved with its chunk's entities (persist.rs).
-use crate::hc::{items::ItemStack, particles::{ParticleOptions, ParticleType}};
+use crate::hc::{
+    items::ItemStack,
+    particles::{ParticleOptions, ParticleType},
+};
 use horizon_core::{geometry::Vec3, random::RandomSource};
 
 /// `TICKS_BEFORE_ABOUT_TO_SPAWN_SOUND`.

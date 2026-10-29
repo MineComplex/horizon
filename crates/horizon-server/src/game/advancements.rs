@@ -2,7 +2,11 @@
 //! events (`CriteriaTriggers`), awarding with rewards, the toast and the
 //! chat announcement, and `players/advancements/<uuid>.json`.
 use super::Dim;
-use crate::hc::{advancements::{self as adv, EntityView, Frame, ItemView, Progress, Tree}, items::ItemStack, text::{self, Style, Text}};
+use crate::hc::{
+    advancements::{self as adv, EntityView, Frame, ItemView, Progress, Tree},
+    items::ItemStack,
+    text::{self, Style, Text},
+};
 use horizon_core::geometry::Vec3;
 use serde_json::Value;
 use std::{
@@ -13,9 +17,6 @@ use std::{
 #[derive(Default)]
 pub(super) struct AdvState {
     pub(super) tree: Arc<Tree>,
-    /// `ClientAdvancements`: a server's tree carries each advancement's
-    /// place on its tab (`DisplayInfo` x, y), in tree order.
-    pub(super) positions: Option<Vec<(f32, f32)>>,
     pub(super) progress: Progress,
     pub(super) loaded: bool,
     /// Awards skip the toast (`/advancement grant ... everything`).
@@ -171,7 +172,7 @@ impl crate::game::Sim<'_> {
     /// A server with no player of its own and nobody it acts for: there is
     /// no player for advancements and statistics.
     pub(super) fn no_player_here(&self) -> bool {
-        self.options.dedicated.is_some() && self.lan_acting.is_none()
+        self.lan_acting.is_none()
     }
     /// The advancement tree, loaded once.
     pub(super) fn advancement_tree(&mut self) -> Arc<Tree> {
@@ -474,32 +475,30 @@ impl crate::game::Sim<'_> {
                 }
             }
         }
-        if let Some(d) = &a.display {
-            // A network player's client shows its own toast.
-            if d.show_toast && !self.adv.quiet && self.lan_acting.is_none() {
-            }
-            if d.announce && self.world_data.rules.bool("show_advancement_messages") {
-                let key = match d.frame {
-                    Frame::Task => "chat.type.advancement.task",
-                    Frame::Goal => "chat.type.advancement.goal",
-                    Frame::Challenge => "chat.type.advancement.challenge",
-                };
-                let name = adv_name(a);
-                // PlayerList.broadcastSystemMessage: everyone hears of a
-                // network player's advancement.
-                match self.lan_acting_name.clone() {
-                    // Player.getDisplayName.
-                    Some(_) => {
-                        let player = self.target_name(super::commands::Target::Player);
-                        self.adv
-                            .announced
-                            .push(Text::translate(key, &[player, name]));
-                    }
-                    None => self.system_message(Text::translate(
-                        key,
-                        &[Text::literal(super::chat::PLAYER_NAME), name],
-                    )),
+        if let Some(d) = &a.display
+            && d.announce
+            && self.world_data.rules.bool("show_advancement_messages")
+        {
+            let key = match d.frame {
+                Frame::Task => "chat.type.advancement.task",
+                Frame::Goal => "chat.type.advancement.goal",
+                Frame::Challenge => "chat.type.advancement.challenge",
+            };
+            let name = adv_name(a);
+            // PlayerList.broadcastSystemMessage: everyone hears of a
+            // network player's advancement.
+            match self.lan_acting_name.clone() {
+                // Player.getDisplayName.
+                Some(_) => {
+                    let player = self.target_name(super::commands::Target::Player);
+                    self.adv
+                        .announced
+                        .push(Text::translate(key, &[player, name]));
                 }
+                None => self.system_message(Text::translate(
+                    key,
+                    &[Text::literal(super::chat::PLAYER_NAME), name],
+                )),
             }
         }
         self.recipe_unlocked(&unlocked);
@@ -1226,8 +1225,7 @@ impl crate::game::Sim<'_> {
         }
     }
 }
-impl crate::game::Sim<'_> {
-}
+impl crate::game::Sim<'_> {}
 /// An advancement's title or description: a whole component (ComponentSerialization.CODEC),
 /// with its siblings and styles, as a plugin's `{"text":"","extra":[...]}` needs.
 pub(super) fn text_of(v: &Value) -> Text {

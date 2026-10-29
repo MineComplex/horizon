@@ -1,7 +1,11 @@
 //! What villagers do with each other and with the player: gossip and
 //! reputation, sharing food and wares, picking up dropped items, making
 //! babies, calling iron golems and the prices they ask.
-use crate::hc::{gossip::{self, GossipType}, items::ItemStack, mobs::{Mob, Species, spawning, villager, villager_brain}};
+use crate::hc::{
+    gossip::{self, GossipType},
+    items::ItemStack,
+    mobs::{Mob, Species, spawning, villager, villager_brain},
+};
 use horizon_core::geometry::Vec3;
 
 fn block_of(p: Vec3) -> [i32; 3] {
@@ -333,15 +337,7 @@ impl crate::game::Sim<'_> {
                     j += 1;
                     continue;
                 }
-                let before = self.dropped[j].clone();
                 let rest = villager::ext_mut(&mut self.mobs[i]).add_item(stack, max);
-                if rest.as_ref().is_none_or(|r| r.count < before.stack.count) {
-                    let id = self.mobs[i].id;
-                    self.add_pickup(
-                        super::pickups::Taken::Item(Box::new(before)),
-                        super::pickups::Collector::Mob(id),
-                    );
-                }
                 match rest {
                     None => {
                         self.dropped.remove(j);

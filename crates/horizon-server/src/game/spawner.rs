@@ -2,12 +2,17 @@
 //! `clientTick` for every spawner (`mobs::spawner`), the mobs they add, a
 //! spawn egg used on one (`SpawnEggItem.useOn`), their events and the mob
 //! spinning inside (`SpawnerRenderer`).
-use crate::hc::{Result, containers::BlockEntity, mobs::{
+use crate::hc::{
+    Result,
+    containers::BlockEntity,
+    mobs::{
         Mob, Who,
         spawner::{Spawner, SpawnerAdded, SpawnerEvent, SpawnerSpawn},
         spawning,
         trial_spawner::TrialState,
-    }, particles::{ParticleOptions, ParticleType}};
+    },
+    particles::{ParticleOptions, ParticleType},
+};
 use horizon_core::{geometry::Vec3, random::RandomSource};
 use horizon_world::nbt::Tag;
 use std::collections::{HashMap, HashSet};
@@ -74,20 +79,6 @@ impl crate::game::Sim<'_> {
             .block_entities
             .put(key, BlockEntity::Spawner(spawner));
         result
-    }
-    /// The client ticks of these spawners, then the shown mobs of spawners
-    /// that are gone go.
-    pub(super) fn client_tick_spawners(&mut self, keys: &[Pos]) {
-        for &key in keys {
-            self.client_tick_spawner(key);
-        }
-        let entities = &self.world.block_entities;
-        self.spawners.displays.retain(|k, _| {
-            matches!(
-                entities.get(k),
-                Some(BlockEntity::Spawner(_) | BlockEntity::TrialSpawner(_))
-            )
-        });
     }
     fn server_tick_spawner(&mut self, key: Pos, spawner: &mut Spawner) -> Result<()> {
         let pos = [key.0, key.1, key.2];
@@ -292,73 +283,6 @@ impl crate::game::Sim<'_> {
             self.particles.add(&smoke, [x, y, z], [0.0; 3]);
             self.particles.add(&flame, [x, y, z], [0.0; 3]);
         }
-    }
-    /// The client copy's tick: particles and the spin while a player is near.
-    fn client_tick_spawner(&mut self, key: Pos) {
-        let near = {
-            let Some(BlockEntity::Spawner(s)) = self.world.block_entities.get(&key) else {
-                return;
-            };
-            let range = f64::from(s.required_player_range);
-            let center = [
-                f64::from(key.0) + 0.5,
-                f64::from(key.1) + 0.5,
-                f64::from(key.2) + 0.5,
-            ];
-            self.player.as_ref().is_some_and(|p| {
-                let d = (p.position.x - center[0]).powi(2)
-                    + (p.position.y - center[1]).powi(2)
-                    + (p.position.z - center[2]).powi(2);
-                !p.health.dead_or_dying() && !self.spectator() && (range < 0.0 || d < range * range)
-            })
-        };
-        let display = self.update_spawner_display(key);
-        let pos = [key.0, key.1, key.2];
-        let random = self.particles.level_random();
-        let Some(BlockEntity::Spawner(s)) = self.world.block_entities.get_mut(&key) else {
-            return;
-        };
-        if let Some(p) = s.client_tick(near, display, random, pos) {
-            self.particles
-                .add(&ParticleOptions::simple(ParticleType::Smoke), p, [0.0; 3]);
-            self.particles
-                .add(&ParticleOptions::simple(ParticleType::Flame), p, [0.0; 3]);
-        }
-    }
-    /// `getOrCreateDisplayEntity`: the mob shown in the spawner, made again
-    /// when its type changes. False when there is none.
-    pub(super) fn update_spawner_display(&mut self, key: Pos) -> bool {
-        let Some(kind) = self.spawner_display_kind(key) else {
-            self.spawners.displays.remove(&key);
-            return false;
-        };
-        if self
-            .spawners
-            .displays
-            .get(&key)
-            .is_none_or(|(k, _)| *k != kind)
-        {
-            let Some(t) = self.res.mob_types().get(&kind).cloned() else {
-                return false;
-            };
-            let mob = Mob::new(u32::MAX, t, Vec3::ZERO, 0.0);
-            self.spawners.displays.insert(key, (kind, mob));
-        }
-        true
-    }
-    /// The type of the mob a spawner shows: its next data's id, when the game
-    /// knows the mob.
-    /// A trial spawner shows one only in the states with a spinning mob.
-    fn spawner_display_kind(&self, key: Pos) -> Option<String> {
-        let id = match self.world.block_entities.get(&key)? {
-            BlockEntity::Spawner(s) => s.next_data()?.id()?,
-            BlockEntity::TrialSpawner(s) => {
-                self.trial_spawner_block(key)?.0.spinning_mob_speed()?;
-                s.next_spawn_data.as_ref()?.id()?
-            }
-            _ => return None,
-        };
-        self.res.mob_types().contains_key(&id).then_some(id)
     }
     /// `SpawnEggItem.useOn` on a spawner: the egg sets its mob. None when the
     /// clicked block has no spawner.

@@ -1,7 +1,10 @@
 //! Sniffers on the game side: the egg a bred pair lays
 //! (`Sniffer.spawnChildFromBreeding`), the snifflet that hatches from an
 //! egg block (`SnifferEggBlock.tick`) and the dust and sound of digging.
-use crate::hc::{items::ItemStack, mobs::{Mob, Species, sniffer}};
+use crate::hc::{
+    items::ItemStack,
+    mobs::{Mob, Species, sniffer},
+};
 use horizon_core::{geometry::Vec3, random::RandomSource};
 
 impl crate::game::Sim<'_> {

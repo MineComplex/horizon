@@ -110,13 +110,13 @@ impl WorldRequest {
         if let Some(d) = &options.dimension {
             level.dimension = d.clone();
             level.position = None;
-        } else if options.dedicated.is_some() {
+        } else {
             // A server opens on the Overworld (MinecraftServer.overworld), whatever level a
             // single-player save or an older Horizon server wrote into level.dat.
             level.dimension = "minecraft:overworld".to_owned();
         }
         // A server's world has no single player whose file to write.
-        level.server = options.dedicated.is_some();
+        level.server = true;
         let dim = Dim::from_id(&level.dimension);
         let (mut streaming, save, locator) =
             make_streaming(res, pack, options, settings, &save_root, dim, level.seed)?;
@@ -233,6 +233,6 @@ pub(super) fn make_streaming(
     streaming.nether_shading = dim == Dim::Nether;
     // A server draws nothing: neither the integrated server nor the
     // dedicated one meshes sections.
-    streaming.mesh = options.execution_role.is_client();
+    streaming.mesh = false;
     Ok((streaming, save, locator))
 }

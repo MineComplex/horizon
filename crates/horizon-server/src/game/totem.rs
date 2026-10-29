@@ -29,8 +29,6 @@ impl crate::game::Sim<'_> {
         let _ = p.set_health(1.0, false);
         let body = Body {
             at: [p.position.x, p.position.y, p.position.z],
-            width: f64::from(p.dimensions.width),
-            height: f64::from(p.dimensions.height),
         };
         let slot = if self.held().is_some_and(|s| &*s.item == TOTEM) {
             Some(self.selected)
@@ -86,6 +84,4 @@ impl crate::game::Sim<'_> {
 #[derive(Clone, Copy)]
 pub(super) struct Body {
     pub at: [f64; 3],
-    width: f64,
-    height: f64,
 }

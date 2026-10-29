@@ -1,7 +1,7 @@
 //! The component fixtures (`HORIZON_DISPENSE_FIXTURE`, `HORIZON_SCULK_FIXTURE`)
 //! run on `horizon-server`: their own synthetic levels and entity phases on a
 //! server Game, without a client.
-use super::{Options, PackResources, Resources, Settings, execution_role::ExecutionRole};
+use super::{Options, PackResources, Resources, Settings};
 use crate::hc::Result;
 use std::sync::Arc;
 
@@ -13,9 +13,7 @@ pub(super) enum ComponentHarness {
 impl crate::game::Sim<'_> {
     pub(super) fn run_component_harness(&self, fixture: ComponentHarness) -> Result<()> {
         let (res, pack, settings) = (self.res.clone(), self.pack.clone(), self.settings.clone());
-        let mut options = self.options.clone();
-        options.execution_role = ExecutionRole::DedicatedServer;
-        options.dedicated = Some(Vec::new());
+        let options = self.options.clone();
         let result = std::thread::Builder::new()
             .name("Server thread".into())
             .spawn(move || {

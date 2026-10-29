@@ -4,9 +4,10 @@
 //! (`LivingEntity.SwingState`) and the first-person equip heights
 //! (`FirstPersonHandsAndItems`) with the item swap ticker they read.
 use crate::game::keys::KeyCode;
-use crate::hc::{Result, first_person::{Hand, HandWorld, Hit, SwingAnimation, UseResult, swing_duration}};
-
-
+use crate::hc::{
+    Result,
+    first_person::{Hand, HandWorld, Hit, SwingAnimation, UseResult, swing_duration},
+};
 
 impl crate::game::Sim<'_> {
     /// Opening a screen stops breaking before the next game tick (which may pause).
@@ -96,14 +97,9 @@ impl crate::game::Sim<'_> {
     fn hands_busy(&self) -> bool {
         self.riding
             .is_some_and(|id| self.boats.iter().any(|b| b.id == id))
-            && [
-                KeyCode::KeyW,
-                KeyCode::KeyS,
-                KeyCode::KeyA,
-                KeyCode::KeyD,
-            ]
-            .iter()
-            .any(|k| self.keys.contains(k))
+            && [KeyCode::KeyW, KeyCode::KeyS, KeyCode::KeyA, KeyCode::KeyD]
+                .iter()
+                .any(|k| self.keys.contains(k))
     }
     /// `Attributes.ATTACK_SPEED` with the main-hand item's modifier and the
     /// Haste and Mining Fatigue modifiers (`ADD_MULTIPLIED_TOTAL`), clamped to

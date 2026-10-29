@@ -4,43 +4,22 @@
 //! reading written books, and lecterns (placing a book, turning its pages
 //! with a redstone pulse, the comparator output and taking the book).
 use super::lan::LanHost;
-use crate::hc::{containers::{BlockEntity, Lectern}, first_person::Hand, item_data::{StackData, WrittenBook}, items::ItemStack, menu::{Kind, Menu}, text::Text};
+use crate::hc::{
+    containers::{BlockEntity, Lectern},
+    first_person::Hand,
+    item_data::WrittenBook,
+    items::ItemStack,
+    menu::{Kind, Menu},
+};
 use horizon_core::position::BlockPos;
 use horizon_protocol::packets::play::{self, Clientbound as C};
 use horizon_world::level::flags as level_flags;
-
-
 
 /// A book a player's turn opened: on a server only a lectern's
 /// (`LecternBlock.openScreen`), which the server then opens on the player's
 /// client (game/lan_actions.rs, `lan_open_lectern`).
 pub(super) enum BookScreen {
-    View {
-        pages: Vec<Text>,
-        page: usize,
-        lectern: Option<(i32, i32, i32)>,
-    },
-}
-/// The pages a book screen reads: a written book's components (so their
-/// click events stay), else a writable book's text.
-fn view_pages(data: Option<&StackData>) -> Vec<Text> {
-    let Some(data) = data else { return Vec::new() };
-    let Some(w) = &data.written else {
-        return data.writable_pages.iter().map(Text::literal).collect();
-    };
-    let tagged = w.page_tags.len() == w.pages.len();
-    w.pages
-        .iter()
-        .enumerate()
-        .map(|(i, page)| match tagged.then(|| &w.page_tags[i]) {
-            // A component object, or a component list (`ComponentSerialization`
-            // takes both; servers behind ViaVersion send the list form).
-            Some(
-                tag @ (horizon_world::nbt::Tag::Compound(_) | horizon_world::nbt::Tag::List(_)),
-            ) => crate::hc::entity_nbt::name_text(tag),
-            _ => Text::literal(page),
-        })
-        .collect()
+    View { lectern: Option<(i32, i32, i32)> },
 }
 impl crate::game::Sim<'_> {
     /// The book and quill at `slot` takes the pages, or with a title becomes
@@ -238,7 +217,8 @@ impl crate::game::Sim<'_> {
         };
         if self.lan_acting.is_some() && written {
             let hand = i32::from(self.hand == Hand::Off);
-            self.guest_packets.push(C::OpenBook(play::OpenBook { hand }));
+            self.guest_packets
+                .push(C::OpenBook(play::OpenBook { hand }));
         }
         self.swing_arm();
         true
@@ -249,15 +229,11 @@ impl crate::game::Sim<'_> {
         let Some(BlockEntity::Lectern(l)) = self.world.block_entities.get(&key) else {
             return false;
         };
-        let Some(book) = &l.book else { return false };
-        let pages = view_pages(book.data());
-        let page = (l.page.max(0) as usize).min(pages.len().saturating_sub(1));
+        if l.book.is_none() {
+            return false;
+        }
         self.stats.custom("interact_with_lectern", 1);
-        self.book = Some(BookScreen::View {
-            pages,
-            page,
-            lectern: Some(key),
-        });
+        self.book = Some(BookScreen::View { lectern: Some(key) });
         true
     }
 }

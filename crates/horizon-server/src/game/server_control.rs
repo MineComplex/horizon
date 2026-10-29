@@ -193,8 +193,7 @@ impl crate::game::Sim<'_> {
     }
 }
 
-impl crate::game::Sim<'_> {
-}
+impl crate::game::Sim<'_> {}
 
 /// What the control socket holds for a test (`server-hold`).
 #[derive(Default)]

@@ -110,7 +110,7 @@ impl crate::game::Sim<'_> {
 
 impl crate::game::Sim<'_> {
     /// Answers the requests waiting on the control endpoint.
-    pub(crate) fn poll_server_control(&mut self, state: &mut ServerState) {
+    pub(super) fn poll_server_control(&mut self, state: &mut ServerState) {
         while let Some(request) = self.control.as_ref().and_then(|c| c.try_recv()) {
             let reply = match request.line.trim().split_once(' ') {
                 _ if request.line.trim() == "server-status" => self.server_status(state),

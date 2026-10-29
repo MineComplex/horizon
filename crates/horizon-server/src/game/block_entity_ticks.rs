@@ -4,7 +4,12 @@
 //! ticker, in vanilla's list order (`crate::hc::block_entities`), in
 //! chunks that tick blocks. Sculk, brewing stands and pistons tick in their
 //! own passes.
-use crate::hc::{Result, block_entities::{Pos, Ticking}, containers::{BlockEntity, FurnaceKind, HOPPER_SLOTS}, furnace::FurnaceCooking};
+use crate::hc::{
+    Result,
+    block_entities::{Pos, Ticking},
+    containers::{BlockEntity, FurnaceKind, HOPPER_SLOTS},
+    furnace::FurnaceCooking,
+};
 use horizon_core::position::BlockPos;
 use horizon_world::registry::BlockStateId;
 
@@ -65,13 +70,6 @@ impl crate::game::Sim<'_> {
         self.item_columns = None;
         self.update_song_volumes();
         self.scan_for_hearts();
-        // The client ticks (particles, sounds, the turning mob) are for a
-        // window; a dedicated or integrated server has none.
-        if self.options.dedicated.is_none() {
-            self.client_tick_spawners(&spawners);
-            for _key in trial_spawners {
-            }
-        }
         Ok(())
     }
     /// `BlockState.getTicker` of every state, for the block entities ticked

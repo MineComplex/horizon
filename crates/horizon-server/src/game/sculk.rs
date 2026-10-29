@@ -4,12 +4,17 @@
 //! (`SculkShriekerBlockEntity`, `SpawnUtil`), catalysts feeding the sculk
 //! spreader from deaths, and the darkness wardens and shriekers cast.
 use super::Result;
-use crate::hc::{containers::BlockEntity, fast_hash::{FxHashMap, FxHashSet}, mobs::{Mob, Species, Who, warden}, particles::{ParticleOptions, ParticleType}, sculk::{self, Context, Info, SculkEntity, SculkKind, WardenSpawnTracker}};
+use crate::game::keys::KeyCode;
+use crate::hc::{
+    containers::BlockEntity,
+    fast_hash::{FxHashMap, FxHashSet},
+    mobs::{Mob, Species, Who, warden},
+    particles::{ParticleOptions, ParticleType},
+    sculk::{self, Context, Info, SculkEntity, SculkKind, WardenSpawnTracker},
+};
 use horizon_core::{geometry::Direction, position::BlockPos, random::RandomSource};
 use horizon_world::registry::BlockStateId;
 use std::collections::HashSet;
-use crate::game::keys::KeyCode;
-
 
 /// The sculk block kinds by state id, built once.
 #[derive(Default)]

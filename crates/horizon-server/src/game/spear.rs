@@ -8,7 +8,14 @@
 //! players around as entity event 2. A left click jabs instead
 //! (`PiercingWeapon.attack`), which Lunge turns into a dash.
 use super::view_vector;
-use crate::hc::{attack_strength::delay, collisions::SceneCollisions, first_person::Hand, items::ItemStack, mobs::Damage, spear::{HIT_FEEDBACK_TICKS, Kinetic, REACH}};
+use crate::hc::{
+    attack_strength::delay,
+    collisions::SceneCollisions,
+    first_person::Hand,
+    items::ItemStack,
+    mobs::Damage,
+    spear::{HIT_FEEDBACK_TICKS, Kinetic, REACH},
+};
 use horizon_core::{
     geometry::{Aabb, Vec3, traverse_blocks},
     position::BlockPos,

@@ -302,5 +302,4 @@ impl crate::game::Sim<'_> {
     }
 }
 
-impl crate::game::Sim<'_> {
-}
+impl crate::game::Sim<'_> {}

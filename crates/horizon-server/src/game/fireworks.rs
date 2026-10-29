@@ -3,7 +3,12 @@
 //! acceleration and 0.04 lift, the flight-duration lifetime, explosion
 //! damage with line of sight, and the client explosion (`createFireworks`).
 use super::{Hit, view_vector};
-use crate::hc::{collisions::SceneCollisions, items::ItemStack, mobs::{Damage, DamageKind}, particles::{FireworkExplosion, ParticleOptions, ParticleType}};
+use crate::hc::{
+    collisions::SceneCollisions,
+    items::ItemStack,
+    mobs::{Damage, DamageKind},
+    particles::{FireworkExplosion, ParticleOptions, ParticleType},
+};
 use horizon_core::{
     geometry::{Aabb, Vec3},
     random::RandomSource,
@@ -25,9 +30,6 @@ pub(super) struct Rocket {
     /// On a server, the player it boosts when not this game's own: a guest's
     /// connection.
     pub(super) guest: Option<u32>,
-    /// `DATA_ATTACHED_TO_TARGET`: the server entity the rocket follows;
-    /// boosting happens when it is the local player.
-    pub(super) attached_to: Option<u32>,
     /// `DATA_SHOT_AT_ANGLE` (dispensers): constant velocity, exploding on
     /// the first block it hits.
     pub(super) angled: bool,
@@ -120,7 +122,6 @@ impl crate::game::Sim<'_> {
             explosions,
             attached,
             guest: None,
-            attached_to: None,
             angled: false,
             item: stack.clone(),
         }

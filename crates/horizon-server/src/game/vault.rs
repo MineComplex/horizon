@@ -2,7 +2,12 @@
 //! (`vault`), the block's state as it changes, the rewards it ejects, the
 //! keys players insert (`VaultBlock.useItemOn`) and the display item spinning
 //! inside (`VaultRenderer`).
-use crate::hc::{Result, containers::BlockEntity, items::ItemStack, vault::{Vault, VaultEvent, VaultLevel, VaultPlayer, VaultState}};
+use crate::hc::{
+    Result,
+    containers::BlockEntity,
+    items::ItemStack,
+    vault::{Vault, VaultEvent, VaultLevel, VaultPlayer, VaultState},
+};
 use horizon_core::random::LegacyRandom;
 
 type Pos = (i32, i32, i32);
@@ -120,8 +125,6 @@ impl crate::game::Sim<'_> {
         });
         if let Some(result) = ticked {
             result?;
-        }
-        if self.options.dedicated.is_none() {
         }
         Ok(())
     }

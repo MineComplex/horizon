@@ -4,14 +4,20 @@
 //! `MinecartItem` placement, `VehicleEntity` breaking, the chest, hopper,
 //! furnace and TNT variants, saving, and `AbstractMinecartRenderer`'s old
 //! rail-following render with the display block.
-use crate::game::keys::KeyCode;
 use super::{Hit, Keys, explosion::BlockInteraction, view_vector};
-use crate::hc::{blocks::Fluid, collisions::SceneCollisions, containers::BlockEntity, items::{ItemStack, Items}, mobs::Part, particles::{ParticleOptions, ParticleType}};
+use crate::game::keys::KeyCode;
+use crate::hc::{
+    blocks::Fluid,
+    collisions::SceneCollisions,
+    containers::BlockEntity,
+    items::{ItemStack, Items},
+    particles::{ParticleOptions, ParticleType},
+};
 use horizon_core::{
     geometry::{Aabb, Vec3, trig},
     random::RandomSource,
 };
-use std::{collections::HashMap, sync::Arc};
+use std::sync::Arc;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub(super) enum CartKind {
@@ -199,26 +205,6 @@ impl Minecart {
         total /= slots.len().max(1) as f32;
         // Mth.lerpDiscrete(total, 0, 15)
         (total * 14.0).floor() as i32 + i32::from(total > 0.0)
-    }
-}
-pub(super) struct CartModels {
-    pub models: HashMap<CartKind, Part>,
-}
-impl CartModels {
-    pub fn load(document: Option<&crate::hc::mobs::EntityModelDocument>) -> Self {
-        let kinds = [
-            CartKind::Rideable,
-            CartKind::Chest,
-            CartKind::Hopper,
-            CartKind::Furnace,
-            CartKind::Tnt,
-            CartKind::CommandBlock,
-        ];
-        let models = kinds
-            .into_iter()
-            .filter_map(|k| document?.model(&format!("{}#main", k.id())).map(|m| (k, m)))
-            .collect();
-        Self { models }
     }
 }
 impl crate::game::Sim<'_> {

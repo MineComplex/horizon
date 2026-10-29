@@ -4,7 +4,12 @@
 //! comparator signals (`AbstractContainerMenu.getRedstoneSignalFromContainer`).
 
 mod crafter;
-use crate::hc::{Result, containers::{BlockEntity, HOPPER_SLOTS}, items::{ItemStack, Items}, world::World};
+use crate::hc::{
+    Result,
+    containers::{BlockEntity, HOPPER_SLOTS},
+    items::{ItemStack, Items},
+    world::World,
+};
 use horizon_core::{geometry::Direction, position::BlockPos, random::RandomSource};
 use horizon_world::{level::Behaviours, registry::BlockStateId};
 
@@ -1034,6 +1039,4 @@ impl crate::game::Sim<'_> {
 
 // ---- hopper, dispenser and dropper screens ----
 
-
-impl crate::game::Sim<'_> {
-}
+impl crate::game::Sim<'_> {}

@@ -4,7 +4,11 @@
 //! range, the activate/ambient/deactivate sounds, the 230x219 menu with its
 //! power buttons and payment slot, and the rotating, scrolling beam.
 use super::stations::Kind;
-use crate::hc::{containers::{Beacon, BlockEntity}, effects::EffectInstance, mobs::render::{DYE, DYE_NAMES}};
+use crate::hc::{
+    containers::{Beacon, BlockEntity},
+    effects::EffectInstance,
+    mobs::render::{DYE, DYE_NAMES},
+};
 
 /// `BEACON_EFFECTS` in order, with the pyramid level each needs.
 pub(super) const EFFECTS: [(&str, i32); 6] = [
@@ -220,4 +224,3 @@ impl crate::game::Sim<'_> {
         }
     }
 }
-

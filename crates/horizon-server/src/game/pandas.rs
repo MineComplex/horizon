@@ -2,8 +2,10 @@
 //! (`Mob.aiStep`, `Panda.pickUpItem`), the bamboo a player gives them
 //! (`Panda.mobInteract`), the start a sneeze gives the grown pandas about,
 //! and the crumbs and the sneeze a window draws.
-use super::pickups::{Collector, Taken};
-use crate::hc::{items::ItemStack, mobs::{Species, panda}};
+use crate::hc::{
+    items::ItemStack,
+    mobs::{Species, panda},
+};
 use horizon_core::geometry::Vec3;
 
 impl crate::game::Sim<'_> {
@@ -24,7 +26,6 @@ impl crate::game::Sim<'_> {
             if m.species() != Species::Panda || !m.alive() {
                 continue;
             }
-            let id = m.id;
             let wants = |g: &Self, e: &crate::hc::entities::ItemEntity| {
                 e.pickup_delay == 0 && g.panda_eats_from_ground(&e.stack.item)
             };
@@ -37,7 +38,6 @@ impl crate::game::Sim<'_> {
                     .position(|e| wants(self, e) && reach.intersects(e.bounds()));
                 if let Some(j) = taken {
                     let e = self.dropped.remove(j);
-                    self.add_pickup(Taken::Item(Box::new(e.clone())), Collector::Mob(id));
                     panda::hold(&mut self.mobs[i], &e.stack.item, e.stack.count, true);
                 }
             }

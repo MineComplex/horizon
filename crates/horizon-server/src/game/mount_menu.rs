@@ -5,8 +5,11 @@
 //! server the screen shows the server's menu (`ClientboundMountScreenOpenPacket`)
 //! and its clicks go out as container clicks; a server's players get theirs
 //! from game/lan_mount_menu.rs.
-use super::{Screen};
-use crate::hc::{items::ItemStack, mobs::{Mob, Species, equine, llama}};
+use super::Screen;
+use crate::hc::{
+    items::ItemStack,
+    mobs::{Mob, Species, equine, llama},
+};
 
 /// Menu slot ids: the saddle, the body armour and the chest from 710.
 pub(super) const SADDLE: usize = 700;
@@ -32,11 +35,6 @@ pub(super) fn mount_columns(m: &Mob) -> usize {
 pub(super) fn has_mount_menu(species: Species) -> bool {
     equine::is_equine(species) || llama::is_llama(species)
 }
-/// The saddle slot is active (`canUseSlot(SADDLE)` and `CAN_EQUIP_SADDLE`):
-/// not on llamas.
-fn shows_saddle(species: Species) -> bool {
-    !llama::is_llama(species)
-}
 /// The body slot is active: horse armour, or a llama's carpet.
 fn shows_body(species: Species) -> bool {
     can_wear_horse_armor(species) || llama::is_llama(species)
@@ -55,13 +53,10 @@ impl MountMenu {
 }
 struct Open {
     mob: u32,
-    species: Species,
     columns: usize,
     saddle: Option<ItemStack>,
     armor: Option<ItemStack>,
     items: Vec<Option<ItemStack>>,
-    /// `shouldRenderSaddleSlot` / `shouldRenderArmorSlot`.
-    show_saddle: bool,
     show_armor: bool,
 }
 
@@ -107,7 +102,7 @@ impl crate::game::Sim<'_> {
     /// (`AbstractMountInventoryMenu.stillValid`).
     pub(super) fn tick_mount_menu(&mut self) {
         // A server's menu ends when the server closes it.
-        
+
         let Some(open) = self.mount_menu.open.as_ref() else {
             return;
         };
@@ -134,7 +129,6 @@ impl crate::game::Sim<'_> {
     /// Writes the menu slots to the mount, with the equip sounds. A
     /// server's menu is the server's to write.
     fn mount_sync(&mut self) {
-        
         let Some(open) = self.mount_menu.open.as_ref() else {
             return;
         };
@@ -229,7 +223,6 @@ impl crate::game::Sim<'_> {
         let show_armor = shows_body(species);
         self.mount_menu.open = Some(Open {
             mob: m.id,
-            species,
             columns: mount_columns(m),
             saddle: m.saddle_item(),
             armor: m
@@ -239,7 +232,6 @@ impl crate::game::Sim<'_> {
                 .filter(|_| show_armor)
                 .map(|i| ItemStack::new(i, 1)),
             items,
-            show_saddle: shows_saddle(species),
             show_armor,
         });
     }

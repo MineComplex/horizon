@@ -3,7 +3,11 @@
 //! (`LocalPlayer.aiStep`'s riding jump), positioning, dismounting, and the
 //! mount's health and jump bar on the HUD.
 use crate::game::keys::KeyCode;
-use crate::hc::{items::ItemStack, mobs::{MobEvent, Species, equine}, sprint::Keys};
+use crate::hc::{
+    items::ItemStack,
+    mobs::{MobEvent, Species, equine},
+    sprint::Keys,
+};
 use horizon_core::{geometry::Vec3, random::RandomSource};
 
 /// `passengerAttachments` minus the player's 0.6 vehicle attachment.
@@ -137,8 +141,7 @@ impl crate::game::Sim<'_> {
         // AbstractHorse.mobInteract: shift + use opens a tamed adult's inventory.
         if !m.is_baby()
             && m.extra.tame
-            && (self.keys.contains(&KeyCode::ShiftLeft)
-                || self.keys.contains(&KeyCode::ShiftRight))
+            && (self.keys.contains(&KeyCode::ShiftLeft) || self.keys.contains(&KeyCode::ShiftRight))
         {
             self.open_mount_menu(index);
             return true;

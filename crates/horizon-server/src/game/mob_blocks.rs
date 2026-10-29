@@ -3,8 +3,6 @@
 //! dropped block items. Also the block models mobs wear (`SnowGolemHeadLayer`,
 //! `MushroomCowMushroomLayer`).
 
-
-
 /// `ElderGuardianParticle.lifetime`.
 pub(super) const APPARITION_TICKS: i32 = 30;
 

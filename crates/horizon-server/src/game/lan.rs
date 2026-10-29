@@ -3,14 +3,20 @@
 //! tick and turns what the guests do into gameplay. A world that is not open
 //! costs one `Option` check per tick.
 use super::shield::OFFHAND_SLOT;
-use crate::hc::{Result, items::ItemStack, lan::{
+use crate::hc::{
+    Result,
+    items::ItemStack,
+    lan::{
         self, Lan, NetConfig,
         chunks::ChunkEncoder,
         data::SyncData,
         entity::{EntityState, States},
         hub::{BodyFlags, HostEvent, HostState, Hub, HubConfig, TickCtx},
         playerdata,
-    }, mobs::{Mob, Species, Who, leash::Holder}, text::Text};
+    },
+    mobs::{Mob, Species, Who, leash::Holder},
+    text::Text,
+};
 use horizon_protocol::{
     entity_data::{Value, serializer},
     packets::play::{self, Clientbound as C},
@@ -931,7 +937,6 @@ fn mob_equipment(
     }
 }
 
-
 impl crate::game::Sim<'_> {
     /// `horizon-ctl lan status`.
     pub(super) fn lan_status(&self) -> serde_json::Value {
@@ -1048,7 +1053,7 @@ impl crate::game::Sim<'_> {
             host_swings: self.swings_started,
             host_crack: None,
             host_uuid,
-            host_name: self.options.player_name(),
+            host_name: "Server".to_owned(),
             models: HashMap::new(),
             host_mode: self.mode_id(),
             play: HashMap::new(),
@@ -1438,9 +1443,7 @@ impl crate::game::Sim<'_> {
                         let first_join = self.plugin_first_join(&host, conn);
                         self.lan_guest_joined(&mut host, conn, state.as_ref(), entities, spawn);
                         self.plugin_joined(&mut host, conn, first_join);
-                        if self.options.dedicated.is_some()
-                            && let Some(g) = host.hub.guest(conn)
-                        {
+                        if let Some(g) = host.hub.guest(conn) {
                             // PlayerList.placeNewPlayer, then the broadcast join message.
                             super::dedicated::player_joined(g.uuid, &g.name);
                             let [x, y, z] = g.position;
@@ -1496,7 +1499,7 @@ impl crate::game::Sim<'_> {
                         host.models.remove(&guest.conn);
                         host.play.remove(&guest.conn);
                         self.guest_combat.remove(&guest.conn);
-                        if self.options.dedicated.is_some() && guest.placed {
+                        if guest.placed {
                             super::dedicated::log(
                                 "INFO",
                                 &format!("{} lost connection: {}", guest.name, guest.left_reason),
@@ -1600,7 +1603,7 @@ impl crate::game::Sim<'_> {
         // (`PlayerList.placeNewPlayer`); the in-frame game has one.
         let back = self.dim;
         let level = super::Dim::from_id(&g.dimension);
-        let elsewhere = self.options.dedicated.is_some() && level != back;
+        let elsewhere = level != back;
         if !elsewhere {
             g.dimension = in_place;
         }
@@ -1875,7 +1878,7 @@ impl crate::game::Sim<'_> {
     /// (MinecraftServer.logChatMessage, `[Not Secure]` for unsigned or
     /// expired messages); a LAN host shows the chat.
     pub(super) fn lan_log_event(&mut self, event: HostEvent) {
-        let dedicated = self.options.dedicated.is_some();
+        let dedicated = true;
         match event {
             HostEvent::Chat { line, secure } if dedicated => {
                 let tag = if secure { "" } else { "[Not Secure] " };

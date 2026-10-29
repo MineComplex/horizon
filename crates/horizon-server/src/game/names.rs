@@ -28,4 +28,3 @@ impl crate::game::Sim<'_> {
         true
     }
 }
-

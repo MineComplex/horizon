@@ -6,7 +6,10 @@
 //! handler returns (`apply_plugin_actions`), through the server's own commands
 //! so every change reaches the players as any other does.
 use super::lan::LanHost;
-use crate::hc::{lan::{guest::Guest, hub::HostEvent}, text::Text};
+use crate::hc::{
+    lan::{guest::Guest, hub::HostEvent},
+    text::Text,
+};
 use horizon_protocol::packets::play::{self, Clientbound as C};
 use horizon_server_api::{
     self as api, Action, BlockPos, CommandSender, Location, PlayerRef, Plugin, PluginHost,

@@ -4,7 +4,14 @@
 //! moment vanilla draws them. The item entities they make are added to the
 //! world as soon as the behaviour returns, within the same tick.
 use super::{GameLevel, Screen, dispenser::new_item_motion, storage::is_shulker_box};
-use crate::hc::{block_entity_item, block_entity_nbt, containers::{Banner, BlockEntity}, furnace::FurnaceCooking, item_data, items::ItemStack, save};
+use crate::hc::{
+    block_entity_item, block_entity_nbt,
+    containers::{Banner, BlockEntity},
+    furnace::FurnaceCooking,
+    item_data,
+    items::ItemStack,
+    save,
+};
 use horizon_core::position::BlockPos;
 use horizon_core::random::RandomSource;
 use horizon_world::{

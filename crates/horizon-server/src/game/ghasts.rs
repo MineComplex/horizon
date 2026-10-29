@@ -2,7 +2,10 @@
 //! off), riding, getting off on top, and the ghastling a dried ghast block
 //! hatches.
 use crate::game::keys::KeyCode;
-use crate::hc::{items::ItemStack, mobs::{MobEvent, happy_ghast}};
+use crate::hc::{
+    items::ItemStack,
+    mobs::{MobEvent, happy_ghast},
+};
 use horizon_core::geometry::{Aabb, Vec3};
 use horizon_world::registry::BlockStateId;
 

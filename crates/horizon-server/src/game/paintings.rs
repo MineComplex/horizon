@@ -13,7 +13,6 @@ use std::sync::Arc;
 #[derive(Clone, Debug)]
 pub(super) struct Variant {
     pub id: Arc<str>,
-    pub asset: String,
     pub width: i32,
     pub height: i32,
 }
@@ -41,11 +40,6 @@ impl PaintingVariants {
                 };
                 all.push(Variant {
                     id: Arc::from(format!("minecraft:{name}")),
-                    asset: v["asset_id"]
-                        .as_str()
-                        .unwrap_or(name)
-                        .trim_start_matches("minecraft:")
-                        .to_owned(),
                     width: v["width"].as_i64().unwrap_or(1) as i32,
                     height: v["height"].as_i64().unwrap_or(1) as i32,
                 });

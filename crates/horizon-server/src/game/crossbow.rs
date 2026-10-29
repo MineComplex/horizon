@@ -5,7 +5,12 @@
 //! fanned Multishot angles and their shot pitches. `Player.getProjectile`
 //! finds the ammo for bows and crossbows.
 use super::{shield::OFFHAND_SLOT, view_vector};
-use crate::hc::{enchant::EffectContext, items::ItemStack, mobs::Who, projectiles::{Projectile, ProjectileKind}};
+use crate::hc::{
+    enchant::EffectContext,
+    items::ItemStack,
+    mobs::Who,
+    projectiles::{Projectile, ProjectileKind},
+};
 use horizon_core::{geometry::Vec3, random::RandomSource};
 
 const CROSSBOW: &str = "minecraft:crossbow";

@@ -4,7 +4,6 @@
 //! `ItemFrameRenderer` (the frame model and the item at a 45 degree step).
 use super::{Hit, view_vector};
 use crate::hc::{entities::ItemFrame, items::ItemStack};
-use horizon_assets::{bake::bake_model, model::CuboidModel, resolve::ModelLibrary};
 use horizon_core::{
     geometry::{Aabb, Vec3},
     position::BlockPos,
@@ -12,62 +11,6 @@ use horizon_core::{
 };
 use std::sync::Arc;
 
-/// A baked frame model: (corners in block units, unit UVs, sprite) per quad.
-pub(super) type FrameModel = Vec<([[f32; 3]; 4], [[f32; 2]; 4], String)>;
-
-/// Bake `block/<name>` (item_frame / glow_item_frame) from the resources.
-pub(super) fn bake_frame(root: &std::path::Path, name: &str) -> FrameModel {
-    let mut models = std::collections::BTreeMap::new();
-    let mut pending = vec![format!("minecraft:block/{name}")];
-    while let Some(model) = pending.pop() {
-        let Some((ns, path)) = model.split_once(':') else {
-            continue;
-        };
-        let Ok(text) =
-            std::fs::read_to_string(root.join(format!("assets/{ns}/models/{path}.json")))
-        else {
-            continue;
-        };
-        let Ok(m) = CuboidModel::from_json(&text) else {
-            continue;
-        };
-        if let Some(parent) = &m.parent {
-            pending.push(parent.clone());
-        }
-        models.insert(model, m);
-    }
-    let Ok(library) = ModelLibrary::new(models) else {
-        return Vec::new();
-    };
-    let Ok(resolved) = library.resolve(&format!("minecraft:block/{name}")) else {
-        return Vec::new();
-    };
-    let Ok(quads) = bake_model(&resolved) else {
-        return Vec::new();
-    };
-    let unit = if quads
-        .iter()
-        .flat_map(|q| q.positions)
-        .any(|p| p.iter().any(|v| *v > 1.5))
-    {
-        16.0
-    } else {
-        1.0
-    };
-    quads
-        .into_iter()
-        .map(|q| {
-            (
-                q.positions.map(|p| p.map(|v| v / unit)),
-                q.uv,
-                q.material
-                    .sprite
-                    .trim_start_matches("minecraft:")
-                    .to_owned(),
-            )
-        })
-        .collect()
-}
 fn facing_of(face: [i32; 3]) -> u8 {
     match face {
         [0, -1, 0] => 0,

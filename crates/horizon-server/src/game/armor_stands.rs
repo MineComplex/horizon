@@ -10,7 +10,6 @@ use horizon_core::{
 };
 use std::sync::Arc;
 
-
 impl crate::game::Sim<'_> {
     /// `ArmorStandItem.useOn`.
     pub(super) fn place_armor_stand(&mut self, hit: &super::Hit, stack: &ItemStack) -> bool {

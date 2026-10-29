@@ -1,6 +1,10 @@
 //! `/effect` (EffectCommands) and `/enchant` (EnchantCommand).
 use super::{Arg, Context, R, Target, err, texts};
-use crate::hc::{brewing::{self, namespaced}, effects::EffectInstance, text::{self, Style, Text}};
+use crate::hc::{
+    brewing::{self, namespaced},
+    effects::EffectInstance,
+    text::{self, Style, Text},
+};
 
 /// `CommandResponseTracker` over targets: elements with a non-zero result.
 #[derive(Default)]

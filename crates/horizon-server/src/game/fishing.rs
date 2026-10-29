@@ -4,7 +4,12 @@
 use super::{lan::LanHost, lan_mobs::guest_bounds};
 use crate::hc::advancements::EntityView;
 use crate::hc::lan::{entity::States, hub::Hub};
-use crate::hc::{blocks::Fluid, collisions::SceneCollisions, items::ItemStack, particles::{ParticleOptions, ParticleType}};
+use crate::hc::{
+    blocks::Fluid,
+    collisions::SceneCollisions,
+    items::ItemStack,
+    particles::{ParticleOptions, ParticleType},
+};
 use horizon_core::{
     geometry::{Aabb, Vec3, trig},
     position::BlockPos,
@@ -636,20 +641,9 @@ impl crate::game::Sim<'_> {
         self.hook = Some(h);
     }
     /// The players a hook can catch: everyone but spectators and the dead
-    /// (`Projectile.canHitEntity`), the host and the guests in the level.
+    /// (`Projectile.canHitEntity`), the players in the level.
     pub(super) fn refresh_hook_targets(&mut self, host: &LanHost) {
         let mut targets = Vec::new();
-        if self.options.dedicated.is_none()
-            && !self.spectator()
-            && let Some(p) = self.player.as_ref()
-            && !p.health.dead_or_dying()
-        {
-            targets.push(HookTarget {
-                id: host.host_entity as u32,
-                conn: None,
-                bounds: p.bounds(),
-            });
-        }
         for g in &host.hub.guests {
             if host.hub.here(g) && g.loaded && !g.dead && !g.spectator() {
                 targets.push(HookTarget {
@@ -713,7 +707,6 @@ pub(super) struct RemoteHook {
     id: u32,
     owner: u32,
     pub(super) position: Vec3,
-    pub(super) previous: Vec3,
 }
 
 impl Hook {

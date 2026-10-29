@@ -3,7 +3,10 @@
 //! `applyItemBlocking` inputs, and what follows a block: item damage,
 //! the block sound, attacker knockback (`blockedByItem`) and axes disabling
 //! the shield (`Player.blockUsingItem`, `BlocksAttacks.disable`).
-use crate::hc::{health::{BlockOutcome, Blocking}, items::ItemStack};
+use crate::hc::{
+    health::{BlockOutcome, Blocking},
+    items::ItemStack,
+};
 use horizon_core::random::RandomSource;
 use horizon_world::blocking_rules::{BlockingRules, DamageReduction, ItemDamageFunction};
 

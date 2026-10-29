@@ -2,10 +2,15 @@
 //! ticks each heart (spawning, letting go of and bleeding for its creaking)
 //! and this applies what it reports to the world, the mobs and the speakers.
 use super::creatures::seen;
-use crate::hc::{Result, containers::{BlockEntity, CreakingHeart}, mobs::{
+use crate::hc::{
+    Result,
+    containers::{BlockEntity, CreakingHeart},
+    mobs::{
         Mob, MobType,
         creaking_heart::{self, HeartEvent, HeartHost},
-    }, particles::{ParticleOptions, ParticleType}};
+    },
+    particles::{ParticleOptions, ParticleType},
+};
 use horizon_core::{
     geometry::Vec3,
     position::BlockPos,

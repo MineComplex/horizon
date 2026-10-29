@@ -2,10 +2,15 @@
 //! paddling controls, collisions, riding (`positionRider`, `clampRotation`,
 //! dismounting), `BoatItem` placement, `VehicleEntity.hurtServer` breaking,
 //! saving and `AbstractBoatRenderer` with animated paddles.
-use crate::game::keys::KeyCode;
 use super::view_vector;
+use crate::game::keys::KeyCode;
 
-use crate::hc::{blocks::Fluid, collisions::{EntityCollisions, SceneCollisions}, items::ItemStack, mobs::{Part, riders}};
+use crate::hc::{
+    blocks::Fluid,
+    collisions::{EntityCollisions, SceneCollisions},
+    items::ItemStack,
+    mobs::{Part, riders},
+};
 use horizon_core::{
     geometry::{Aabb, Vec3},
     random::RandomSource,
@@ -175,8 +180,6 @@ pub(super) fn boat_wood(item: &str) -> Option<&str> {
 pub(super) struct BoatModels {
     pub models: HashMap<String, Part>,
     pub chest_models: HashMap<String, Part>,
-    /// `ModelLayers.BOAT_WATER_PATCH`, shared by every boat (not rafts).
-    pub water_patch: Option<Part>,
 }
 impl BoatModels {
     /// Whether a boat of this wood (with or without a chest) can be drawn.
@@ -211,7 +214,6 @@ impl BoatModels {
         Self {
             models,
             chest_models,
-            water_patch: document.and_then(|d| d.model("minecraft:boat#water_patch")),
         }
     }
 }

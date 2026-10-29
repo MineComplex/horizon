@@ -8,12 +8,7 @@ use horizon_protocol::packets::play::{self, Clientbound as C};
 pub(super) struct SignEditor {
     pub pos: (i32, i32, i32),
     pub front: bool,
-    pub line: usize,
-    /// `AbstractSignEditScreen.messages`: the side's lines as edited, sent
-    /// when the editor closes, even if the sign is gone by then.
-    lines: [String; 4],
 }
-
 
 impl crate::game::Sim<'_> {
     /// `SignBlockEntity.getSlotPlayerIsFacing`: whether the player stands in
@@ -244,16 +239,11 @@ impl crate::game::Sim<'_> {
     /// `SignBlockEntity.openTextEdit`'s turn: the player edits this side (the
     /// server then opens the editor on their client, `lan_open_sign_editor`).
     pub(super) fn open_sign_editor(&mut self, pos: (i32, i32, i32), front: bool) {
-        let lines = match self.world.block_entities.get(&pos) {
+        let _lines = match self.world.block_entities.get(&pos) {
             Some(BlockEntity::Sign(sign)) if front => sign.front.lines.clone(),
             Some(BlockEntity::Sign(sign)) => sign.back.lines.clone(),
             _ => Default::default(),
         };
-        self.sign_edit = Some(SignEditor {
-            pos,
-            front,
-            line: 0,
-            lines,
-        });
+        self.sign_edit = Some(SignEditor { pos, front });
     }
 }

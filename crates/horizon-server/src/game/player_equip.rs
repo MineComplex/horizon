@@ -8,7 +8,6 @@ use crate::hc::items::ItemStack;
 /// the armour (`Player.doesEmitEquipEvent`: these emit the game event) and
 /// the off hand.
 const ARMOR: [&str; 4] = ["head", "chest", "legs", "feet"];
-const OFFHAND: &str = "offhand";
 
 /// `ItemStack.isSameItemSameComponents` over optional stacks.
 fn same(a: Option<&ItemStack>, b: Option<&ItemStack>) -> bool {
@@ -20,21 +19,6 @@ fn same(a: Option<&ItemStack>, b: Option<&ItemStack>) -> bool {
 }
 
 impl crate::game::Sim<'_> {
-    /// The armour (head first) and the off hand, in `EquipmentSlot` order of
-    /// the inventory menu's slots.
-    pub(super) fn player_equipment(&self) -> [Option<ItemStack>; 5] {
-        let [head, chest, legs, feet] = self.armor.clone();
-        [head, chest, legs, feet, self.offhand.clone()]
-    }
-    /// `onEquipItem` for every slot that changed since `before`: what the
-    /// server does for the creative screen, which sends each changed slot
-    /// (`handleSetCreativeModeSlot` sets it by player).
-    pub(super) fn player_equipment_changed(&mut self, before: &[Option<ItemStack>; 5]) {
-        let after = self.player_equipment();
-        for (i, slot) in ARMOR.into_iter().chain([OFFHAND]).enumerate() {
-            self.player_on_equip(slot, before[i].as_ref(), after[i].as_ref());
-        }
-    }
     /// `LivingEntity.onEquipItem(slot, old, new)` for the player in place
     /// (the host, or a guest inside `as_guest`).
     pub(super) fn player_on_equip(

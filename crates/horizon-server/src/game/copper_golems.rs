@@ -2,10 +2,13 @@
 //! does to chests (opener counts, the lid block events, slots), the openers
 //! recheck, turning into statues, and the hand-over, waxing, scraping and
 //! shearing interactions.
-use crate::hc::{items::ItemStack, mobs::{
+use crate::hc::{
+    items::ItemStack,
+    mobs::{
         Mob, Species,
         transport_items::{held, set_held},
-    }};
+    },
+};
 use horizon_core::random::RandomSource;
 use horizon_world::chunk::BlockState;
 

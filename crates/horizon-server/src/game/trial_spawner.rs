@@ -2,14 +2,19 @@
 //! spawner (`mobs::trial_spawner`), the block's state as it changes, the mobs
 //! it adds and the rewards it ejects.
 use super::{natural_spawning::GameLevel, spawner::Planned};
-use crate::hc::{Result, containers::BlockEntity, items::ItemStack, mobs::{
+use crate::hc::{
+    Result,
+    containers::BlockEntity,
+    items::ItemStack,
+    mobs::{
         Who,
         spawner::SpawnerSpawn,
         trial_spawner::{
             Omen, TRIAL_OMEN_TICKS_PER_LEVEL, TrialEvent, TrialPlayer, TrialSpawner,
             TrialSpawnerLevel, TrialState, Uuid,
         },
-    }};
+    },
+};
 use horizon_core::{
     geometry::Vec3,
     random::{LegacyRandom, RandomSource},

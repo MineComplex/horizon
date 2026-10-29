@@ -2,11 +2,11 @@
 //! `remove`): feeding babies, swallowing a held block, shearing it back
 //! out, lighting an explosive one, swallowing blocks from the ground and
 //! splitting into two babies.
-use crate::hc::{items::ItemStack, mobs::{Mob, Species, sulfur_cube}};
+use crate::hc::{
+    items::ItemStack,
+    mobs::{Mob, Species, sulfur_cube},
+};
 use horizon_core::random::RandomSource;
-
-
-
 
 impl crate::game::Sim<'_> {
     fn sulfur_sound(&mut self, index: usize, sound: &str) {
@@ -130,11 +130,6 @@ impl crate::game::Sim<'_> {
                 .is_some_and(|uuid| Some(uuid) == self.level.player_uuid);
             let mut swallowed = e.stack.clone();
             swallowed.count = 1;
-            let (taken_item, id) = (e.clone(), self.mobs[i].id);
-            self.add_pickup(
-                super::pickups::Taken::Item(Box::new(taken_item)),
-                super::pickups::Collector::Mob(id),
-            );
             let e = &mut self.dropped[j];
             e.stack.count -= 1;
             if e.stack.count == 0 {

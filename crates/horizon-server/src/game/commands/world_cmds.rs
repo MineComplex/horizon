@@ -2,7 +2,11 @@
 //! `/particle`, `/attribute`, `/ride` and `/spreadplayers`.
 use super::{Arg, Context, R, Target, err};
 use crate::hc::sound_source::SOUND_SOURCES;
-use crate::hc::{mobs::{Damage, DamageKind, Who}, scoreboard_cmd::{Holder, Tracker}, text::Text};
+use crate::hc::{
+    mobs::{Damage, DamageKind, Who},
+    scoreboard_cmd::{Holder, Tracker},
+    text::Text,
+};
 use horizon_core::random::RandomSource;
 use horizon_protocol::packets::play::{self, Clientbound as C};
 use horizon_world::attribute_map::ValueKind;

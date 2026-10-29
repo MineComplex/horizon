@@ -4,7 +4,10 @@
 //! guest it targets until it lets go. What it then does to `Who::Player`
 //! (hits, pushes, fire, its projectiles) runs with that guest swapped in.
 use super::lan::LanHost;
-use crate::hc::{mobs::{Mob, MobEvent, PlayerView, Species, Who}, projectiles::{Hit, Projectile}};
+use crate::hc::{
+    mobs::{Mob, MobEvent, PlayerView, Species, Who},
+    projectiles::{Hit, Projectile},
+};
 use horizon_core::geometry::{Aabb, Vec3};
 use horizon_protocol::packets::play::{self, Clientbound as C};
 

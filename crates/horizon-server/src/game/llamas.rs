@@ -2,7 +2,10 @@
 //! `Llama.handleEating` (wheat and hay), chests, carpets, shearing a carpet
 //! off and riding.
 use crate::game::keys::KeyCode;
-use crate::hc::{items::ItemStack, mobs::{equine, llama}};
+use crate::hc::{
+    items::ItemStack,
+    mobs::{equine, llama},
+};
 use horizon_core::random::RandomSource;
 
 impl crate::game::Sim<'_> {

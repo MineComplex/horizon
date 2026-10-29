@@ -4,7 +4,20 @@
 //! around it) through `dispense_from` on a fresh headless world and prints what
 //! changed in the format of `VanillaDispenserOracle`.
 use super::dispenser::{Slot, body_in_head, mob_set_slot, mob_slot_item};
-use crate::hc::{Result, chunk::Chunk, command::args::GameMode, containers::BlockEntity, gamerules::Value as RuleValue, item_data::{canon_stack, parse_stack}, items::ItemStack, mobs::{Mob, Species}, motion::PlayerMotion, projectiles::ProjectileKind, world::World};
+use crate::game::keys::KeyCode;
+use crate::hc::{
+    Result,
+    chunk::Chunk,
+    command::args::GameMode,
+    containers::BlockEntity,
+    gamerules::Value as RuleValue,
+    item_data::{canon_stack, parse_stack},
+    items::ItemStack,
+    mobs::{Mob, Species},
+    motion::PlayerMotion,
+    projectiles::ProjectileKind,
+    world::World,
+};
 use horizon_core::{
     position::BlockPos,
     random::{LegacyRandom, RandomSource},
@@ -12,7 +25,6 @@ use horizon_core::{
 use horizon_world::{level::Ticks, registry::BlockStateId};
 use serde_json::Value;
 use std::{cell::RefCell, collections::HashMap, fmt::Write as _, io::Write as _, sync::Arc};
-use crate::game::keys::KeyCode;
 
 thread_local! {
     /// Level and game events recorded while a fixture case runs.
@@ -75,10 +87,6 @@ enum Target {
 impl crate::game::Sim<'_> {
     /// Run every case of `spec` ("CASES,OUTPUT") and write the results.
     pub(super) fn dispense_fixture(&mut self, spec: &str) -> Result<()> {
-        assert!(
-            !self.options.execution_role.is_client(),
-            "fixture requires a server crate::game::Sim"
-        );
         let (input, output) = spec
             .split_once(',')
             .ok_or("HORIZON_DISPENSE_FIXTURE=CASES,OUTPUT")?;

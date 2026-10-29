@@ -2,7 +2,12 @@
 //! inserting a `jukebox_playable` disc, ejecting it, the song with its
 //! "Now Playing" overlay, note particles every second, the redstone
 //! signal while playing, the comparator output, and saving.
-use crate::hc::{containers::{BlockEntity, Jukebox}, items::ItemStack, mobs::Species, particles::{ParticleOptions, ParticleType}};
+use crate::hc::{
+    containers::{BlockEntity, Jukebox},
+    items::ItemStack,
+    mobs::Species,
+    particles::{ParticleOptions, ParticleType},
+};
 use horizon_core::{
     geometry::{Aabb, Vec3},
     position::BlockPos,

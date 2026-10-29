@@ -2,7 +2,10 @@
 //! `BrushableBlockEntity`. The block's loot table stays in its saved block
 //! entity (like a decorated pot's) until the first counted stroke rolls it.
 use super::{Hit, decorated_pot, spill, view_vector};
-use crate::hc::{particles::{ParticleOptions, ParticleType}, save};
+use crate::hc::{
+    particles::{ParticleOptions, ParticleType},
+    save,
+};
 use horizon_core::random::RandomSource;
 use std::collections::HashMap;
 

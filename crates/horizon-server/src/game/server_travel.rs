@@ -145,9 +145,6 @@ impl crate::game::Sim<'_> {
     pub(super) fn tick_server_travel(&mut self, host: &mut LanHost) {
         // Outside a server only the respawns at the world spawn wait for chunks.
         self.arrive_server_trips(host);
-        if self.options.dedicated.is_none() {
-            return;
-        }
         self.carry_riders_through_portals(host);
         let conns: Vec<u32> = host
             .hub

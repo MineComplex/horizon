@@ -122,22 +122,6 @@ impl crate::game::Sim<'_> {
         speed: f64,
     ) {
         let at = [at.x, at.y, at.z];
-        if self.options.dedicated.is_none() {
-            let block = [
-                at[0].floor() as i32,
-                (at[1] - 0.2).floor() as i32,
-                at[2].floor() as i32,
-            ];
-            if let Some((sprite, tint)) = self.particle_sprite(state, block) {
-                self.particles.send_particles(
-                    &ParticleOptions::block(ParticleType::Block, sprite, tint),
-                    at,
-                    [0.0; 3],
-                    speed,
-                    count as u32,
-                );
-            }
-        }
         let Some(hub) = host.or(self.lan.as_ref()).map(|h| &h.hub) else {
             return;
         };

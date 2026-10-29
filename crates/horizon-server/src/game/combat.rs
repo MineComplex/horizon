@@ -1,6 +1,11 @@
 //! The player's `CombatTracker`: the damage taken lately, who dealt it and
 //! where the player fell from, turned into the vanilla death message.
-use crate::hc::{health::HealthEvent, motion::MotionEvent, particles::{ParticleOptions, ParticleType}, text::Text};
+use crate::hc::{
+    health::HealthEvent,
+    motion::MotionEvent,
+    particles::{ParticleOptions, ParticleType},
+    text::Text,
+};
 use horizon_core::random::RandomSource;
 
 /// `EntityEvent.DROWN_PARTICLES`: broadcast with the drowning damage.

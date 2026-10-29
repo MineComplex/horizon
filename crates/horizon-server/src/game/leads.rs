@@ -3,7 +3,10 @@
 //! `LeashFenceKnotEntity.interact`), loading and saving who holds what,
 //! breaking, and drawing the rope (`LeashFeatureRenderer`) and the knot.
 use crate::game::keys::KeyCode;
-use crate::hc::{items::ItemStack, mobs::leash::{self, Holder, Pending}};
+use crate::hc::{
+    items::ItemStack,
+    mobs::leash::{self, Holder, Pending},
+};
 use horizon_world::nbt::Tag;
 
 impl crate::game::Sim<'_> {

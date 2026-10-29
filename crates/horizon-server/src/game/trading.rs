@@ -8,24 +8,21 @@ use crate::hc::mobs::{
     render::{PROFESSIONS, VILLAGER_TYPES},
     villager,
 };
-use crate::hc::{items::ItemStack, merchant::{self, MerchantOffer, TradeContext}};
-
+use crate::hc::{
+    items::ItemStack,
+    merchant::{self, MerchantOffer, TradeContext},
+};
 
 pub(super) struct MerchantState {
     /// The merchant's side of the menu: offers, experience, level, the
     /// selection hint and active offer (`crate::hc::merchant::Session`).
     pub(super) session: Box<merchant::Session>,
-    /// The offer list's scroll offset.
-    pub(super) scroll: usize,
-    /// The offer button that keeps focus after a click (drawn highlighted).
-    pub(super) focused: Option<usize>,
     /// The trading mob (its offers and experience are written back on
     /// close) and its custom name.
     pub(super) mob: Option<u32>,
     pub(super) name: Option<String>,
 }
-impl MerchantState {
-}
+impl MerchantState {}
 
 /// `ExplorationMapFunction` in the game world: the nearest structure of the
 /// tag through the generator's `/locate`, a new map centred on it with its
@@ -196,11 +193,7 @@ impl crate::game::Sim<'_> {
     }
     /// `Villager.mobInteract` / `WanderingTrader.mobInteract`: shake the
     /// head without offers, else open the trading screen.
-    pub(super) fn interact_trader(
-        &mut self,
-        index: usize,
-        item: &str,
-    ) -> crate::hc::Result<bool> {
+    pub(super) fn interact_trader(&mut self, index: usize, item: &str) -> crate::hc::Result<bool> {
         let m = &self.mobs[index];
         let species = m.species();
         if !matches!(species, Species::Villager | Species::WanderingTrader)
@@ -278,8 +271,6 @@ impl crate::game::Sim<'_> {
         self.mobs[index].extra.flag2 = true;
         self.open_merchant_state(MerchantState {
             session: Box::new(session),
-            scroll: 0,
-            focused: None,
             mob: Some(id),
             name,
         });

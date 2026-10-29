@@ -1,14 +1,17 @@
 //! The game side of piglins (`PiglinAi`): spotting and picking up gold,
 //! bartering when the admiring is over, and anger at players who open
 //! their chests or mine their gold.
-use crate::hc::{items::ItemStack, mobs::{
+use crate::hc::{
+    items::ItemStack,
+    mobs::{
         Mob, Species, Who,
         finalize::{
             SLOT_NAMES, set_drop_chance, set_item, set_slot_enchantments, slot_enchantments,
             stored_drop_chance,
         },
         piglin::{ADMIRE, ATE_RECENTLY},
-    }};
+    },
+};
 use horizon_core::{geometry::Vec3, random::RandomSource};
 
 impl crate::game::Sim<'_> {
@@ -217,12 +220,7 @@ impl crate::game::Sim<'_> {
                 continue;
             }
             // Nuggets come whole, anything else one at a time.
-            let (taken_item, id) = (e.clone(), self.mobs[i].id);
             let item = e.stack.item.clone();
-            self.add_pickup(
-                super::pickups::Taken::Item(Box::new(taken_item)),
-                super::pickups::Collector::Mob(id),
-            );
             let stack = if &*item == "minecraft:gold_nugget" {
                 self.dropped.remove(j).stack
             } else {

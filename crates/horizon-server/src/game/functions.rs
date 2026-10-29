@@ -4,7 +4,13 @@ use super::commands::{
     R, err,
     execute::{ExecState, Source},
 };
-use crate::hc::{command::{Arg, Context}, datapack::{self, DataPack, DataStore, Function}, save, scoreboard::bracketed, text::{self, Text}};
+use crate::hc::{
+    command::{Arg, Context},
+    datapack::{self, DataPack, DataStore, Function},
+    save,
+    scoreboard::bracketed,
+    text::{self, Text},
+};
 use horizon_world::nbt::Tag;
 use std::collections::BTreeSet;
 

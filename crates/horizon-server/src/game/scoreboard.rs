@@ -3,10 +3,16 @@
 //! entities, the selector options `scores=`, `team=` and `tag=`, the
 //! commands' [`Env`] and the sidebar.
 use super::{chat::PLAYER_NAME, commands::Target};
-use crate::hc::{command::{
+use crate::hc::{
+    command::{
         Context,
         args::{IntRange, Selector},
-    }, save::{self, uuid_from_text, uuid_text}, scoreboard::{self as sb, Comp, Scoreboard, literal}, scoreboard_cmd::{self, Env, Holder}, text::Text};
+    },
+    save::{self, uuid_from_text, uuid_text},
+    scoreboard::{self as sb, Comp, Scoreboard, literal},
+    scoreboard_cmd::{self, Env, Holder},
+    text::Text,
+};
 use horizon_world::nbt::Tag;
 use std::collections::HashSet;
 
@@ -553,7 +559,6 @@ impl crate::game::Sim<'_> {
         names.join(", ")
     }
 }
-
 
 /// The commands' view of the game.
 struct GameEnv<'a, 'b> {

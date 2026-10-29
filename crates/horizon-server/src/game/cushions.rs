@@ -7,10 +7,10 @@
 //! only an entity whose `Pos` is the click point's height. Placement uses
 //! outline bounds, collision shapes and suffocation predicates.
 use super::{Hit, view_vector};
+use crate::game::keys::KeyCode;
 use crate::hc::entities::{Cushion, dye_index};
 use crate::hc::items::ItemStack;
 use horizon_core::geometry::{Aabb, Vec3};
-use crate::game::keys::KeyCode;
 
 /// `Direction.fromYRot(yaw).toYRot()`: the nearest 90 degree step.
 pub(crate) fn snap_yaw(yaw: f32) -> f32 {

@@ -4,7 +4,11 @@
 //! workers do the work; chunks behind the band unload and are saved as any
 //! chunk the players leave.
 use super::{CommandError, Context, Dim, R};
-use crate::hc::{lan::data::component_nbt, pregen::{Pregen, Shape}, text::{self, Text}};
+use crate::hc::{
+    lan::data::component_nbt,
+    pregen::{Pregen, Shape},
+    text::{self, Text},
+};
 use horizon_protocol::packets::play::{self, Clientbound as C};
 use std::time::{Duration, Instant};
 
@@ -234,20 +238,14 @@ impl crate::game::Sim<'_> {
     }
     /// The console and the player who started the task get the progress.
     fn pregen_report(&mut self, owner: Option<u32>, message: Text) {
-        if self.options.dedicated.is_some() {
-            super::super::dedicated::log("INFO", &message.plain());
-        } else {
-            log::info!("{}", message.plain());
-        }
-        if let Some(host) = &self.lan {
-            if let Some(g) = owner.and_then(|c| host.hub.guest(c)) {
-                g.send(&C::SystemChat(play::SystemChat {
-                    content: component_nbt(&message.component()),
-                    overlay: false,
-                }));
-            }
-        } else if self.options.dedicated.is_none() {
-            self.system_message(message);
+        super::super::dedicated::log("INFO", &message.plain());
+        if let Some(host) = &self.lan
+            && let Some(g) = owner.and_then(|c| host.hub.guest(c))
+        {
+            g.send(&C::SystemChat(play::SystemChat {
+                content: component_nbt(&message.component()),
+                overlay: false,
+            }));
         }
     }
 }

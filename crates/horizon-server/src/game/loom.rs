@@ -3,7 +3,10 @@
 //! selectable patterns, the pattern buttons, quick moves, the result) runs on
 //! the verified engine, `crate::hc::menu`, through `crate::game::Sim::menu_session`.
 use super::stations::Kind;
-use crate::hc::{banner::{self}, items::ItemStack};
+use crate::hc::{
+    banner::{self},
+    items::ItemStack,
+};
 use std::sync::Arc;
 
 /// Per-menu loom state: `selectablePatterns`, the selected index and the
@@ -17,7 +20,6 @@ pub(super) struct LoomState {
     pub(super) has_max: bool,
     pub(super) scroll: f32,
     pub(super) start_row: usize,
-    pub(super) scrolling: bool,
     /// The inputs the screen last saw (`bannerStack`, `dyeStack`, `patternStack`).
     last_inputs: [Option<ItemStack>; 3],
 }
@@ -26,7 +28,6 @@ impl LoomState {
         self.patterns.len().div_ceil(4)
     }
 }
-
 
 impl crate::game::Sim<'_> {
     /// `LoomScreen.containerChanged`: the error flag, whether the pattern

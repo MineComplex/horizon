@@ -7,7 +7,10 @@
 //! from server.properties, with the operator, whitelist and ban lists and a
 //! console on standard input.
 use super::{Options, lan::LanSettings, world_loading::WorldRequest};
-use crate::hc::{Result, lan::{LoginGate, NetConfig, NetLog, hub::HubConfig, velocity::Velocity}, server::{
+use crate::hc::{
+    Result,
+    lan::{LoginGate, NetConfig, NetLog, hub::HubConfig, velocity::Velocity},
+    server::{
         eula, paper_global,
         properties::{GAME_MODES, ServerProperties, SystemEntropy},
         user_cache::UserCache,
@@ -15,7 +18,9 @@ use crate::hc::{Result, lan::{LoginGate, NetConfig, NetLog, hub::HubConfig, velo
             BanEntry, BanList, IpBanList, NameAndId, OpEntry, OpList, WhiteEntry, WhiteList,
             format_date,
         },
-    }, text::Text};
+    },
+    text::Text,
+};
 use horizon_protocol::text::translatable;
 use horizon_world::nbt::{JavaString, Tag};
 use std::{
@@ -108,7 +113,7 @@ fn capture_log(f: impl FnOnce()) -> Vec<String> {
 /// Main.main up to the server start: arguments, server.properties (stored
 /// back at once), eula.txt. False when the process should stop here.
 pub(super) fn preflight(options: &mut Options) -> Result<bool> {
-    let args = options.dedicated.clone().unwrap_or_default();
+    let args = options.dedicated.clone();
     let mut universe = PathBuf::from(".");
     let mut world = None;
     let mut port = None;

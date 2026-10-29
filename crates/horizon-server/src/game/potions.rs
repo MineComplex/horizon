@@ -3,7 +3,13 @@
 //! filling glass bottles (`BottleItem`), the per-tick effect application,
 //! effect attribute modifiers and the HUD effect icons (`Hud.extractEffects`).
 use super::dragon::{Breath, FightPlayer, FightWho};
-use crate::hc::{brewing, effects::{EffectAction, EffectInstance, PlayerEffects}, items::ItemStack, particles::{ParticleOptions, ParticleType}, text::Text};
+use crate::hc::{
+    brewing,
+    effects::{EffectAction, EffectInstance, PlayerEffects},
+    items::ItemStack,
+    particles::{ParticleOptions, ParticleType},
+    text::Text,
+};
 use horizon_core::{
     geometry::{Aabb, Direction, Vec3},
     random::{LegacyRandom, RandomSource},

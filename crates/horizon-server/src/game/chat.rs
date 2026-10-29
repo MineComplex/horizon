@@ -4,7 +4,6 @@ pub use crate::hc::world_data::{TimeMarker, WorldClock};
 use crate::hc::{gamerules::GameRules, text::Text};
 use std::collections::BTreeMap;
 
-
 /// The local player's name (offline single player).
 pub const PLAYER_NAME: &str = "Player";
 
@@ -164,7 +163,6 @@ fn owner_permission(allow_commands: bool) -> u8 {
     if allow_commands { 4 } else { 0 }
 }
 
-
 impl crate::game::Sim<'_> {
     /// Load per-world command state when a world opens.
     pub(crate) fn load_world_state(&mut self) {
@@ -236,10 +234,7 @@ impl crate::game::Sim<'_> {
             self.world_data.registries.damage_types = dir("damage_type");
             self.world_data.registries.loot_tables = dir("loot_table");
             self.world_data.registries.templates = {
-                let root = self
-                    .options
-                    .resources
-                    .join("worldgen/structure/minecraft");
+                let root = self.options.resources.join("worldgen/structure/minecraft");
                 let mut out = Vec::new();
                 let mut stack = vec![root.clone()];
                 while let Some(d) = stack.pop() {
@@ -484,7 +479,11 @@ impl crate::game::Sim<'_> {
 /// (`/playsound`'s suggestions).
 fn sound_event_names(root: &std::path::Path) -> Vec<String> {
     let mut out = Vec::new();
-    for entry in std::fs::read_dir(root.join("assets")).into_iter().flatten().flatten() {
+    for entry in std::fs::read_dir(root.join("assets"))
+        .into_iter()
+        .flatten()
+        .flatten()
+    {
         let namespace = entry.file_name().to_string_lossy().into_owned();
         let Ok(bytes) = std::fs::read(entry.path().join("sounds.json")) else {
             continue;

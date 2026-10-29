@@ -99,7 +99,7 @@ fn main() {
         crash::install(home.clone(), "server");
     }
     game::set_plugins(plugins::installed());
-    if let Err(error) = game::run_with(game::Program::Server, game_args(horizon, server, fixture)) {
+    if let Err(error) = game::run_with(game_args(horizon, server, fixture)) {
         log::error!("{error}");
         if !help {
             crash::report_error(&home, "server", &*error);

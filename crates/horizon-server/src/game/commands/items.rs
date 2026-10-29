@@ -1,7 +1,12 @@
 //! `/item` (ItemCommands) and `if items`/`if slots`: addressing the item
 //! slots of the player, mobs, armor stands, item frames and containers.
 use super::{Arg, Context, R, Target, err};
-use crate::hc::{command::{CommandError, args::ItemInput}, items::ItemStack, scoreboard_cmd::{Holder, Tracker}, text::Text};
+use crate::hc::{
+    command::{CommandError, args::ItemInput},
+    items::ItemStack,
+    scoreboard_cmd::{Holder, Tracker},
+    text::Text,
+};
 use horizon_world::nbt::Tag;
 
 /// One addressable slot.
@@ -420,7 +425,9 @@ impl crate::game::Sim<'_> {
                                 c.insert("minecraft:item_name".into(), name);
                             });
                         } else {
-                            let t = crate::hc::component::to_text(&m["name"], &mut |k| crate::hc::text::Text::literal(k));
+                            let t = crate::hc::component::to_text(&m["name"], &mut |k| {
+                                crate::hc::text::Text::literal(k)
+                            });
                             stack.extra.get_or_insert_with(Default::default).custom_name =
                                 Some(t.plain());
                         }

@@ -3,7 +3,11 @@
 //! fruit) for the local player. The level random stands in for the player's
 //! own, as for every other player draw.
 use super::Dim;
-use crate::hc::{items::{ConsumeEffect, ItemInfo, ItemStack}, mobs::Who, particles::{ParticleOptions, ParticleType}};
+use crate::hc::{
+    items::{ConsumeEffect, ItemInfo, ItemStack},
+    mobs::Who,
+    particles::{ParticleOptions, ParticleType},
+};
 use horizon_core::{
     geometry::Vec3, position::BlockPos, random::LegacyRandom, random::RandomSource,
 };

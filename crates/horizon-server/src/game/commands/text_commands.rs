@@ -278,7 +278,12 @@ impl crate::game::Sim<'_> {
     }
     /// TitleCommand's `connection.send` for each player: a guest is sent the
     /// packet, the window's own player shows it.
-    fn titles_or_packet(&mut self, players: &[Target], _local: impl FnOnce(&mut NoTitles), packet: C) {
+    fn titles_or_packet(
+        &mut self,
+        players: &[Target],
+        _local: impl FnOnce(&mut NoTitles),
+        packet: C,
+    ) {
         for &t in players {
             match t {
                 Target::Player if self.lan_acting.is_some() => {

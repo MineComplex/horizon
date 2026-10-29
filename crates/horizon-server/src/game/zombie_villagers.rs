@@ -2,7 +2,11 @@
 //! into zombie villagers (`Zombie.killedEntity`), the golden apple that starts
 //! a cure (`ZombieVillager.mobInteract`), and the cured villager that
 //! remembers who saved it (`ZombieVillager.finishConversion`).
-use crate::hc::{advancements as adv, gossip::GossipType, mobs::{Mob, Species, villager, zombie_villager}};
+use crate::hc::{
+    advancements as adv,
+    gossip::GossipType,
+    mobs::{Mob, Species, villager, zombie_villager},
+};
 use horizon_core::random::RandomSource;
 use horizon_world::food::Difficulty;
 

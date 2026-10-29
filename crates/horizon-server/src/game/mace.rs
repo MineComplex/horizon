@@ -3,7 +3,12 @@
 //! stops the fall, cancels its damage and knocks the creatures around the
 //! target away. The rest of a weapon hit (`Player.itemAttackInteraction`)
 //! is here too: `hurtEnemy`, the post-attack enchantments and `postHurtEnemy`.
-use crate::hc::{enchant::EffectContext, items::ItemStack, mobs::{Damage, Mob, Species}, particles::{ParticleOptions, ParticleType}};
+use crate::hc::{
+    enchant::EffectContext,
+    items::ItemStack,
+    mobs::{Damage, Mob, Species},
+    particles::{ParticleOptions, ParticleType},
+};
 use horizon_core::{geometry::Vec3, position::BlockPos, random::RandomSource};
 
 /// `MaceItem.SMASH_ATTACK_FALL_THRESHOLD`.

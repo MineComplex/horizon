@@ -5,7 +5,6 @@ use horizon_world::{chunk::BlockState, registry::BlockStateId};
 use serde_json::{Value, json};
 use std::collections::BTreeMap;
 
-
 fn parse_state(text: &str) -> Result<BlockState> {
     let (name, props) = match text.split_once('[') {
         Some((name, rest)) => (name, rest.trim_end_matches(']')),

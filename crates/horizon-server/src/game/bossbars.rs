@@ -1,6 +1,17 @@
 //! `/bossbar` (BossBarCommands) and drawing the custom boss bars.
-use super::{Dim, commands::{R, Target, err}};
-use crate::hc::{bossbar::{self, BossBars}, command::{Arg, Context}, mobs::Species, save, scoreboard::{self as sb, Comp, json_to_tag}, scoreboard_cmd::format_list, text::Text};
+use super::{
+    Dim,
+    commands::{R, Target, err},
+};
+use crate::hc::{
+    bossbar::{self, BossBars},
+    command::{Arg, Context},
+    mobs::Species,
+    save,
+    scoreboard::{self as sb, Comp, json_to_tag},
+    scoreboard_cmd::format_list,
+    text::Text,
+};
 use horizon_core::random::RandomSource;
 use horizon_protocol::packets::play::{self, BossAction, Clientbound as C};
 use horizon_world::nbt::Tag;
@@ -415,7 +426,7 @@ impl crate::game::Sim<'_> {
         let mut out = Vec::new();
         // While `as_guest` has swapped a guest in, the host's own position
         // is not in place. Their overlay updates once the tick puts it back.
-        let local = self.options.dedicated.is_none() && self.lan_acting.is_none();
+        let local = false;
         if local && let Some(p) = &self.player {
             let ints = self.level.player_uuid.unwrap_or_else(|| self.acting_uuid());
             out.push(Viewer {

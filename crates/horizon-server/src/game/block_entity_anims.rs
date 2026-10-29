@@ -3,9 +3,15 @@
 //! the block events that drive them (`ClientboundBlockEventPacket` reaching
 //! `BlockEntity.triggerEvent`). The renderer reads the resulting state through
 //! [`crate::game::Sim::block_anim`] and [`crate::game::Sim::chest_lid`].
-use crate::hc::{block_entity_anim::{ConduitServer, EndGateway, Shulker, ShulkerStatus, Ticker,
-        closer_to_center_than,
-    }, collisions::{SceneCollisions, no_collision_empty}, effects::EffectInstance, mobs::{Damage, DamageKind}, save::number};
+use crate::hc::{
+    block_entity_anim::{
+        ConduitServer, EndGateway, Shulker, ShulkerStatus, Ticker, closer_to_center_than,
+    },
+    collisions::{SceneCollisions, no_collision_empty},
+    effects::EffectInstance,
+    mobs::{Damage, DamageKind},
+    save::number,
+};
 use horizon_core::{
     geometry::{Aabb, Vec3},
     position::BlockPos,
@@ -319,8 +325,7 @@ impl crate::game::Sim<'_> {
                 .get("minecraft:conduit_effect_block");
             // Level.isWaterAt: the fluid at the position is water.
             let is_water = |p: [i32; 3]| {
-                facts.get(world.block(p[0], p[1], p[2])).fluid
-                    == crate::hc::blocks::Fluid::Water
+                facts.get(world.block(p[0], p[1], p[2])).fluid == crate::hc::blocks::Fluid::Water
             };
             let is_frame = |p: [i32; 3]| {
                 registry

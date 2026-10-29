@@ -1,15 +1,11 @@
 //! The playable game loop: streaming world, player simulation at 20 ticks/s,
 //! block interaction, inventory and HUD.
-mod shared;
-mod keys;
-mod block_entity_anims;
-mod trading;
 mod advancements;
 mod allays;
 mod armor_stands;
-mod banners;
 mod beacon;
 mod beehives;
+mod block_entity_anims;
 mod block_entity_ticks;
 mod block_items;
 mod blockctl;
@@ -19,7 +15,6 @@ mod books;
 mod bossbars;
 mod breezes;
 mod brush;
-mod bundles;
 mod campfire;
 mod campfire_douse;
 mod cartography;
@@ -45,7 +40,6 @@ mod dispenser;
 mod dragon;
 mod enchant_effects;
 mod end;
-mod execution_role;
 mod explosion;
 mod falling_damage;
 mod fangs;
@@ -62,6 +56,7 @@ mod growth;
 mod hand;
 mod initial_spawn;
 mod jukebox;
+mod keys;
 mod lan;
 mod lan_actions;
 mod lan_attributes;
@@ -88,9 +83,8 @@ mod maps;
 mod minecarts;
 mod mob_blocks;
 mod mob_gear;
-mod mob_sounds;
+mod mount_menu;
 mod mounts;
-mod moving_pistons;
 mod names;
 mod natural_spawning;
 mod nautili;
@@ -101,7 +95,6 @@ mod pandas;
 mod passengers;
 mod persist;
 mod pick_entity;
-mod pickups;
 mod piglins;
 mod piston_push;
 mod player_equip;
@@ -109,14 +102,14 @@ mod plugin_host;
 mod postprocess;
 mod potions;
 mod powder_snow;
+mod presentation;
 mod pumpkin;
 mod raids;
-mod presentation;
-mod mount_menu;
-mod stations;
 mod respawn_anchor;
-mod saving;
 mod scoreboard;
+mod shared;
+mod stations;
+mod trading;
 pub use plugin_host::set_plugins;
 mod sculk;
 mod sculk_fixture;
@@ -133,7 +126,6 @@ mod stats;
 mod storage;
 mod structures;
 mod sulfur_cubes;
-mod text_displays;
 mod tnt;
 mod totem;
 mod trial_spawner;
@@ -146,7 +138,33 @@ mod wither;
 mod world_loading;
 mod zombie_reinforcements;
 mod zombie_villagers;
-use crate::hc::{Result, assets::Assets, biome::Biomes, blocks::{BlockFacts, Fluid}, chunk::{HEIGHT, MIN_Y}, clock::FixedStep, collisions, containers::{BlockEntity, Providers}, crafting::Recipes, entities::{Experience, ExperienceOrb, ItemEntity}, environment::Environment, first_person::{Hand, SwingAnimation}, furnace::FurnaceCooking, items::{ItemStack, Items}, light::LightTables, mobs::{Mob, MobType, MobTypes}, motion::{MotionEvent, MotionResources, PlayerMotion}, particles::Particle, save::{Level, Persistent, SaveDir}, sprint::Keys, streaming::Streaming, testgen::TestTerrain, vanillagen::VanillaTerrain, world::World};
+use crate::game::keys::KeyCode;
+use crate::hc::{
+    Result,
+    assets::Assets,
+    biome::Biomes,
+    blocks::{BlockFacts, Fluid},
+    chunk::{HEIGHT, MIN_Y},
+    clock::FixedStep,
+    collisions,
+    containers::{BlockEntity, Providers},
+    crafting::Recipes,
+    entities::{Experience, ExperienceOrb, ItemEntity},
+    environment::Environment,
+    first_person::{Hand, SwingAnimation},
+    furnace::FurnaceCooking,
+    items::{ItemStack, Items},
+    light::LightTables,
+    mobs::{Mob, MobType, MobTypes},
+    motion::{MotionEvent, MotionResources, PlayerMotion},
+    particles::Particle,
+    save::{Level, Persistent, SaveDir},
+    sprint::Keys,
+    streaming::Streaming,
+    testgen::TestTerrain,
+    vanillagen::VanillaTerrain,
+    world::World,
+};
 use horizon_core::{
     biome::{BiomeZoom, obfuscate_seed},
     geometry::{Aabb, Direction},
@@ -164,107 +182,50 @@ use horizon_world::{
     registry::BlockStateId,
 };
 use std::{
-    cell::RefCell,
     collections::{HashMap, HashSet},
     path::PathBuf,
     sync::Arc,
-    time::{Duration, Instant},
+    time::Instant,
 };
-use crate::game::keys::KeyCode;
 
 #[derive(Clone)]
 struct Options {
+    /// `--resources DIR`: the prepared 26.3 data (`horizon-prepare`).
     resources: PathBuf,
+    /// The view distance before server.properties is read; `--render-distance`
+    /// (a test's) sets it for good.
     distance: i32,
     distance_override: Option<i32>,
-    /// The server's `--test-terrain`: simple terrain instead of vanilla generation.
+    /// `--test-terrain`: simple terrain instead of vanilla generation.
     test_terrain: bool,
-    frames: Option<u64>,
-    /// `--world-frames N`: exit after N frames drawn in the world (smoke runs; the world may load slowly).
-    world_frames: Option<u64>,
-    screenshot_after: Option<u64>,
-    timeout: Duration,
-    report: Option<PathBuf>,
-    /// The server's `--time`, `--weather` and `--dimension`: the world's at start
-    /// (a test's), the spawn dimension of its level.
+    /// `--time`, `--weather` and `--dimension`: the world's at start (a
+    /// test's), the spawn dimension of its level.
     time: Option<i64>,
     weather: Option<String>,
     dimension: Option<String>,
-    /// Options.pauseOnLostFocus off (F3+P), for scripted testing.
-    no_pause: bool,
-    /// Control socket path (`--control`), for `horizon-ctl`.
+    /// `--control-socket PATH`: what `horizon-ctl` and a test client's
+    /// `--server-control` ask (game/server_control.rs).
     control: Option<PathBuf>,
-    /// `HORIZON_SPIKES=MS`: print the timed spans of frames slower than MS.
+    /// `HORIZON_SPIKES=MS`: print the timed spans of ticks slower than MS.
     spikes: Option<f32>,
-    /// Render into a texture instead of the window (`--offscreen`), so a
-    /// GPU the display cannot present from can still be benchmarked.
-    offscreen: bool,
-    /// `--width` and `--height` (vanilla's own arguments): the window's
-    /// starting size, 1280x720 by default.
-    window_size: [u32; 2],
-    /// Multiplayer: `--server HOST[:PORT]` joins at start; `--name` is the offline player name.
-    server: Option<String>,
-    /// `--name`, `HORIZON_PLAYER_NAME` or the signed-in account's name; else
-    /// [`Options::player_name`] uses the kept offline name.
-    player_name: Option<String>,
-    /// `--dedicated`: run as a dedicated server; vanilla's server arguments
-    /// (`--nogui`, `--port`, `--world`, `--universe`, `--initSettings`) follow.
-    dedicated: Option<Vec<String>>,
-    /// What this Game executes; independent of its current server connection.
-    execution_role: execution_role::ExecutionRole,
-    /// `--server-control PATH`: the control endpoint of the server this
-    /// client joins (a test's `horizon-server --control-socket`), which
-    /// `horizon-ctl` asks what only the server knows (game/server_control.rs).
-    server_control: Option<std::path::PathBuf>,
+    /// Vanilla's server arguments (`--nogui`, `--port`, `--world`, `--universe`,
+    /// `--initSettings`), after `--dedicated`.
+    dedicated: Vec<String>,
 }
 
-/// The program the game runs as: `horizon-client`, which only joins servers
-/// (no single player, no LAN, no world of its own), or `horizon-server`.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Program {
-    Client,
-    Server,
-}
-impl Program {
-}
-
-/// The server's test fixtures that run without `--dedicated`: synthetic
-/// levels, no players (game/fixtures.rs).
+/// The server's test fixtures: synthetic levels, no players (game/fixtures.rs).
 const COMPONENT_FIXTURES: &[&str] = &["HORIZON_DISPENSE_FIXTURE", "HORIZON_SCULK_FIXTURE"];
 
-/// Why `program` may not run with these arguments: a client runs no server
-/// and no fixture; a server runs dedicated, or one of its fixtures.
-fn refusal(program: Program, args: &[String], fixture: impl Fn(&str) -> bool) -> Option<String> {
-    match program {
-        Program::Client => {
-            COMPONENT_FIXTURES
-                .iter()
-                .chain(&["HORIZON_COMMAND_SCRIPT"])
-                .find(|v| fixture(v))
-                .map(|v| format!("{v} is a server fixture: run horizon-server"))
-        }
-        Program::Server => (!args.iter().any(|a| a == "--dedicated")
-            && !COMPONENT_FIXTURES.iter().any(|v| fixture(v)))
-        .then(|| "horizon-server runs dedicated (--dedicated)".to_owned()),
-    }
-}
-
 impl Options {
-    /// The name to join servers with: the one given, else the offline name kept
-    /// next to options.txt (created on first use).
-    fn player_name(&self) -> String {
-        self.player_name.clone().unwrap_or_else(|| {
-            std::env::current_dir().map_or_else(
-                |_| crate::hc::offline_name::generate(0),
-                |dir| crate::hc::offline_name::load_or_create(&dir),
-            )
-        })
-    }
-    fn read(program: Program, args: Vec<String>) -> Result<Option<Self>> {
-        if !args.iter().any(|a| a == "--help" || a == "-h")
-            && let Some(why) = refusal(program, &args, |v| std::env::var_os(v).is_some())
+    fn read(args: Vec<String>) -> Result<Option<Self>> {
+        if !args
+            .iter()
+            .any(|a| a == "--help" || a == "-h" || a == "--dedicated")
+            && !COMPONENT_FIXTURES
+                .iter()
+                .any(|v| std::env::var_os(v).is_some())
         {
-            return Err(why.into());
+            return Err("horizon-server runs dedicated (--dedicated)".into());
         }
         let sibling = std::env::current_exe()?
             .parent()
@@ -279,54 +240,30 @@ impl Options {
             distance: 12,
             distance_override: None,
             test_terrain: false,
-            frames: None,
-            world_frames: None,
-            screenshot_after: None,
-            timeout: Duration::from_secs(120),
-            report: None,
             time: None,
             weather: None,
             dimension: None,
-            no_pause: false,
             control: None,
-            offscreen: false,
-            window_size: [1280, 720],
             spikes: std::env::var("HORIZON_SPIKES")
                 .ok()
                 .and_then(|v| v.parse().ok()),
-            server: None,
-            player_name: std::env::var("HORIZON_PLAYER_NAME")
-                .ok()
-                .filter(|n| !n.is_empty()),
-            dedicated: None,
-            execution_role: execution_role::ExecutionRole::Client,
-            server_control: None,
+            dedicated: Vec::new(),
         };
-        // The MineComplex launcher's identity, passed as vanilla's arguments.
-        let (mut launcher_uuid, mut launcher_token) = (None::<String>, None::<String>);
         let mut args = args.into_iter();
         while let Some(arg) = args.next() {
             match arg.as_str() {
                 "--help" | "-h" => {
-                    let usage = match program {
-                        Program::Client => {
-                            "Horizon — Minecraft Java Edition {} in Rust\n\n  --resources PATH        Prepared resources (horizon-prepare)\n  --render-distance N     Chunks, 2..64 (default 12)\n  --width N, --height N   Window size (default 1280 x 720)\n  --frames N              Exit after N frames (testing)\n  --world-frames N        Exit after N frames drawn in the world (testing)\n  --smoke-report PATH     Write a JSON report on exit\n  --control               Accept horizon-ctl commands on a local socket\n  --control-socket PATH   Control socket path (default $XDG_RUNTIME_DIR/horizon-control.sock)\n  --server HOST[:PORT]    Join a server at start\n  --server-control PATH   The server's control endpoint, for horizon-ctl (tests)\n  --quickPlayMultiplayer HOST[:PORT]  The same as --server (vanilla's name)\n  --name NAME             Player name for multiplayer (default: generated once, kept in horizon-player.txt)\n  --pregen                Add Horizon's /pregen command (docs/pregeneration.md)\n\nControls: mouse look, WASD move, Space jump, Left Shift sneak, Left Ctrl sprint,\nleft click break, right click place/use, 1-9/scroll hotbar, E inventory,\nQ drop, F3 debug, Esc pause."
-                        }
-                        Program::Server => {
-                            "Horizon server — Minecraft Java Edition {} in Rust\n\n  --resources PATH        Prepared resources (horizon-prepare)\n  --control-socket PATH   Accept control requests (tests, horizon-ctl)\n  --test-terrain          Simple test terrain instead of vanilla generation\n  --time TICKS            The time of day at start\n  --weather clear|rain|thunder  The weather at start\n  --dimension DIM         The level a new world's player starts in\n\nThen vanilla's server options (--nogui, --port, --world, --universe, --initSettings)."
-                        }
-                    };
-                    println!("{}", usage.replacen("{}", horizon_core::VANILLA_VERSION, 1));
+                    println!(
+                        "Horizon server — Minecraft Java Edition {} in Rust\n\n  --resources PATH        Prepared resources (horizon-prepare)\n  --control-socket PATH   Accept control requests (tests, horizon-ctl)\n  --test-terrain          Simple test terrain instead of vanilla generation\n  --time TICKS            The time of day at start\n  --weather clear|rain|thunder  The weather at start\n  --dimension DIM         The level a new world's player starts in\n\nThen vanilla's server options (--nogui, --port, --world, --universe, --initSettings).",
+                        horizon_core::VANILLA_VERSION
+                    );
                     return Ok(None);
                 }
                 "--dedicated" => {
-                    o.execution_role = execution_role::ExecutionRole::DedicatedServer;
-                    o.dedicated = Some(args.by_ref().collect());
+                    o.dedicated = args.by_ref().collect();
                     break;
                 }
-                "--test-terrain" if program == Program::Server => o.test_terrain = true,
-                "--no-pause" => o.no_pause = true,
-                "--offscreen" => o.offscreen = true,
+                "--test-terrain" => o.test_terrain = true,
                 // Horizon's own commands (/pregen), off by default as on vanilla.
                 "--pregen" => crate::hc::command::vanilla::set_horizon_commands(true),
                 _ => {
@@ -342,26 +279,10 @@ impl Options {
                                 return Err("render distance must be 2..64".into());
                             }
                         }
-                        "--frames" => o.frames = Some(value.parse()?),
-                        "--world-frames" => {
-                            o.world_frames = Some(value.parse()?);
-                            // A frame-limited run in every other respect; --timeout-seconds still applies.
-                            o.frames.get_or_insert(u64::MAX);
-                        }
-                        "--timeout-seconds" => o.timeout = Duration::from_secs(value.parse()?),
-                        "--smoke-report" => o.report = Some(value.into()),
-                        "--screenshot-after" => o.screenshot_after = Some(value.parse()?),
-                        "--width" => o.window_size[0] = value.parse::<u32>()?.max(1),
-                        "--height" => o.window_size[1] = value.parse::<u32>()?.max(1),
-                        "--server" | "--quickPlayMultiplayer" => o.server = Some(value),
-                        "--name" | "--username" => o.player_name = Some(value),
-                        "--uuid" => launcher_uuid = Some(value),
-                        "--accessToken" => launcher_token = Some(value),
                         "--control-socket" => o.control = Some(value.into()),
-                        "--server-control" => o.server_control = Some(value.into()),
-                        "--time" if program == Program::Server => o.time = Some(value.parse()?),
-                        "--weather" if program == Program::Server => o.weather = Some(value),
-                        "--dimension" if program == Program::Server => {
+                        "--time" => o.time = Some(value.parse()?),
+                        "--weather" => o.weather = Some(value),
+                        "--dimension" => {
                             o.dimension = Some(if value.contains(':') {
                                 value
                             } else {
@@ -373,52 +294,15 @@ impl Options {
                 }
             }
         }
-        // The MineComplex launcher: its access token in MINECOMPLEX_GAME_TOKEN
-        // or --accessToken, checked by the proxy on login.
-        let token = crate::hc::minecomplex::game_token(launcher_token.as_deref());
-        if let Some(token) = token {
-            let name = o.player_name.as_deref().unwrap_or_default();
-            let uuid = launcher_uuid
-                .as_deref()
-                .and_then(crate::hc::auth::parse_uuid);
-            match uuid {
-                Some(uuid) if crate::hc::minecomplex::is_player_name(name) => {
-                    crate::hc::auth::set_current(crate::hc::auth::AuthSession::minecomplex(
-                        name, uuid, &token,
-                    ));
-                }
-                _ => eprintln!(
-                    "Horizon: not signed in: the launcher passed no valid --username and --uuid"
-                ),
-            }
-        }
         Ok(Some(o))
     }
 }
+/// The menu a player has open, as far as the server's gameplay asks.
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Screen {
     Playing,
-    GameModeSwitcher,
-    Paused,
-    Options,
-    Chat,
-    Creative,
     Inventory,
     Dead,
-    /// The Statistics screen.
-    Stats,
-    /// The Advancements screen.
-    Advancements,
-    /// CommandBlockEditScreen (game/command_blocks.rs).
-    CommandBlock,
-    /// ServerLinksDialogScreen: a server's links (game/server_links.rs).
-    ServerLinks,
-    /// ConfirmLinkScreen for a server link (game/server_links.rs).
-    ConfirmLink,
-    /// DialogScreen.WarningScreen: the note about custom screens.
-    DialogWarning,
-    /// WinScreen: the end poem and the credits (game/win.rs).
-    Win,
 }
 struct Mining {
     pos: [i32; 3],
@@ -1078,11 +962,9 @@ struct WorldRest {
     mob_types: HashMap<String, Arc<MobType>>,
     mob_data: crate::hc::mobs::MobData,
     providers: Providers,
-    animate: crate::hc::animate_tick::AnimateTables,
     nether_environment: Environment,
     end_environment: Environment,
     behaviours: Behaviours,
-    player_type: Option<Arc<crate::hc::mobs::MobType>>,
     stations: crate::hc::stations::StationData,
 }
 
@@ -1168,16 +1050,12 @@ fn ticking_chunk(world: &World, x: i32, z: i32) -> bool {
         && (-1..=1).all(|dz| (-1..=1).all(|dx| world.chunks.contains_key(&(x + dx, z + dz))))
 }
 
-
 /// Everything of `Game` but the window (`Frontend`): what a server runs.
 struct Sim<'a> {
     /// Block entities' ticking fields (lids, bells, shulker boxes, gateways, conduits).
     be_anims: crate::hc::block_entity_anim::BlockEntityAnims,
     /// Shared with an integrated server; `collision` and `motion` borrow from it.
     res: Arc<Resources>,
-    pending_pack_reload: bool,
-    /// The link a chat click asks to open (`ConfirmLinkScreen`).
-    link_prompt: Option<String>,
     collision: &'a BlockCollisionRegistry<'a>,
     motion: &'a MotionResources,
     /// This game's resource packs (`reload_packs` replaces them).
@@ -1204,9 +1082,6 @@ struct Sim<'a> {
     inv_drag: Option<(i32, Vec<usize>)>,
     /// The last inventory click, for the double click that gathers a stack.
     last_inv_click: Option<(std::time::Instant, usize, bool)>,
-    /// `lastQuickMoved`: what the last Shift click moved, which a Shift
-    /// double click moves every stack of.
-    last_quick_moved: Option<ItemStack>,
     /// Open container block entity, if any.
     container: Option<(i32, i32, i32)>,
     /// Open workstation menu (enchanting table, anvil, ...).
@@ -1225,29 +1100,9 @@ struct Sim<'a> {
     mode: crate::hc::command::args::GameMode,
     keys: HashSet<KeyCode>,
     // Physical input is separate from remapped and toggled movement keys.
-    physical_keys: HashSet<KeyCode>,
     left: bool,
     right: bool,
-    focused: bool,
-    /// An agent moved the mouse (`mouse-move`) since the pointer was last
-    /// grabbed or released: its motion turns the view like a grabbed pointer.
-    agent_pointer: bool,
-    /// A world screen with the pointer captured was open last frame.
-    was_playing: bool,
-    /// Minecraft.pause: a single-player screen that pauses the game is open.
-    pause: bool,
-    debug: bool,
     screen: Screen,
-    started: Instant,
-    previous: Instant,
-    frames: u64,
-    /// `item_level` for one frame, game time, day time and dimension.
-    item_level_cache: std::cell::RefCell<
-        Option<(
-            (u64, i64, i64, &'static str),
-            horizon_assets::item_model::LevelState,
-        )>,
-    >,
     ticks: u64,
     /// What ends the game with an error; kept as it is, so main can tell a debug crash.
     error: Option<Box<dyn std::error::Error>>,
@@ -1263,23 +1118,16 @@ struct Sim<'a> {
     hands_used: Vec<crate::hc::first_person::Hand>,
     /// The pointer grab a screen change asked for (`capture`), for the window to apply.
     pointer_grab: Option<bool>,
-    /// Bees whose buzz is playing, and whether it is the aggressive one.
-    bee_sounds: HashMap<u32, bool>,
-    /// Guardians whose attack hum is playing.
-    guardian_sounds: HashSet<u32>,
     dropped: Vec<ItemEntity>,
     next_entity: u32,
     particles: crate::hc::particles::ParticleEngine,
     /// `ItemPickupParticle`s: taken items, orbs and arrows flying to their collector.
-    pickups: pickups::Pickups,
     /// Sign text being edited (`SignEditScreen`).
     sign_edit: Option<sign_edit::SignEditor>,
     /// An open book, book and quill or lectern screen.
     book: Option<books::BookScreen>,
     /// Lecterns whose page-turn pulse is running (ticks left).
     lectern_pulses: Vec<((i32, i32, i32), i32)>,
-    /// LevelLoadingScreen.smoothedProgress while the player is not placed yet.
-    loading_progress: f32,
     /// The world spawn search's origin chunk and fallback height, once known.
     spawn_origin: Option<((i32, i32), i32)>,
     spawn_spiral: crate::hc::world_spawn::ChunkSpiral,
@@ -1309,9 +1157,6 @@ struct Sim<'a> {
     armor: [Option<ItemStack>; 4],
     /// The off hand (Inventory slot 40, saved as slot 150; menu slot 504 here).
     offhand: Option<ItemStack>,
-    /// `ItemStack.popTime` of the nine hotbar stacks, then the off hand: set to 5
-    /// when a slot gains items, counted down each tick.
-    hotbar_pop: [u8; 10],
     /// The hand an item use acts with (`InteractionHand`): the off hand only
     /// for its turn in `use_item` and while its item is being used.
     hand: Hand,
@@ -1333,18 +1178,13 @@ struct Sim<'a> {
     /// The arm swing (`LivingEntity.SwingState`) and how many swings started.
     swing: crate::hc::first_person::SwingState,
     swings_started: u32,
-    visible_hands: [(usize, Option<ItemStack>); 2],
     /// `Minecraft`'s attack handling, attack clicks since the last tick and
     /// the attack strength tickers the hand reads.
     clicks: crate::hc::first_person::Clicks,
     attack_clicks: u32,
     hand_strength: crate::hc::attack_strength::AttackStrength,
     settings: Settings,
-    /// Where the options screen returns: true = title, false = pause menu.
-    options_from_title: bool,
     flash: u32,
-    /// `ClientLevel.rainSoundTime`: ticks of rain since the last rain sound.
-    rain_sound_time: i32,
     /// Bolts that struck here and sky flashes they made, in total (`status`).
     lightning_seen: [u32; 2],
     /// The head of the bed while sleeping; the visual timer also survives waking.
@@ -1370,8 +1210,6 @@ struct Sim<'a> {
     level_pass: levels::Pass,
     /// Nether portals: the player's, items' and mobs' (game/nether_portal.rs).
     portals: nether_portal::Portals,
-    /// The pending travel goes through an End portal (EndPortalBlock destinations).
-    end_travel: bool,
     /// The respawn point when it is not the world spawn or a bed: a respawn
     /// anchor (`game/respawn_anchor.rs`).
     respawn_config: Option<respawn_anchor::RespawnConfig>,
@@ -1389,26 +1227,13 @@ struct Sim<'a> {
     paintings: Vec<crate::hc::entities::Painting>,
     painting_variants: paintings::PaintingVariants,
     item_frames: Vec<crate::hc::entities::ItemFrame>,
-    frame_model: frames::FrameModel,
-    glow_frame_model: frames::FrameModel,
-    /// The `map=true` frame variants.
-    map_frame_model: frames::FrameModel,
-    glow_map_frame_model: frames::FrameModel,
     armor_stands: Vec<crate::hc::entities::ArmorStand>,
     /// `Cushion` decoration entities (game/cushions.rs).
     cushions: Vec<crate::hc::entities::Cushion>,
     /// Entities of types Horizon does not simulate.
     others: Vec<commands::OtherEntity>,
-    /// The camera the last frame drew from (position, yaw, pitch, fov), for the locator bar.
-    locator_camera: Option<([f64; 3], f32, f32, f32)>,
-    /// `LocalPlayer.experienceDisplayStartTick`: (last progress, seen a change, tick).
-    experience_display: (f32, bool, u64),
     boats: Vec<boats::Boat>,
     boat_models: boats::BoatModels,
-    /// EndCrystalModel's baked layer.
-    crystal_model: Option<crate::hc::mobs::Part>,
-    /// CushionModel's baked layer.
-    cushion_model: Option<crate::hc::mobs::Part>,
     carts: Vec<minecarts::Minecart>,
     /// Songs playing from jukeboxes (tracked sound handles).
     jukebox_sounds: HashSet<(i32, i32, i32)>,
@@ -1420,24 +1245,9 @@ struct Sim<'a> {
     crystals: Vec<dragon::Crystal>,
     dragon_fireballs: Vec<dragon::DragonFireball>,
     breath_clouds: Vec<dragon::Breath>,
-    dragon_model: Option<crate::hc::mobs::Part>,
-    text_displays: std::collections::HashMap<i32, text_displays::RemoteTextDisplay>,
-    /// The fence knots a server tracks to this client, by entity id, at their
-    /// block (`LeashFenceKnotEntity`).
-    remote_knots: HashMap<u32, [i32; 3]>,
     /// The entity ids a hosted server gives the knots its mobs hang on, by
     /// block, while a lead is tied there.
     knot_ids: HashMap<[i32; 3], u32>,
-    /// Player skin downloads, and which skin each atlas skin slot holds
-    /// (least recently shown first).
-    skin_downloads: RefCell<crate::hc::skins::Downloader>,
-    /// `ProfileResolver.Cached`: `Dynamic` profiles (name- or id-only heads
-    /// and mannequins) resolve through the services in the background.
-    skin_profiles: RefCell<crate::hc::skins::Resolver>,
-    skin_slots: Vec<(String, usize)>,
-    /// Atlas trim slots in use: (sprite name, slot), least recently drawn first.
-    trim_slots: Vec<(String, usize)>,
-    cart_models: minecarts::CartModels,
     /// The boat the player rides.
     riding: Option<u32>,
     /// The ender inventory (27 slots) and the ender chest showing it.
@@ -1463,19 +1273,10 @@ struct Sim<'a> {
     spawners: spawner::SpawnerState,
     /// Reused candidate buffers for natural spawning.
     spawn_scratch: natural_spawning::SpawnScratch,
-    trident_model: Option<crate::hc::mobs::Part>,
-    arrow_model: Option<crate::hc::mobs::Part>,
     tnts: Vec<tnt::PrimedTnt>,
     hoppers: HashMap<(i32, i32, i32), machines::HopperState>,
     /// Where item entities are, while the block entities tick (hoppers).
     item_columns: Option<machines::ItemColumns>,
-    /// The Agent Control setting the socket was last opened or closed for (`agent_settings`).
-    agent_control_on: bool,
-    /// When an agent's last command came.
-    agent_last: Option<Instant>,
-    /// Control replies waiting for a rendered frame or a benchmark deadline.
-    pending_screenshot: Option<std::sync::mpsc::Sender<String>>,
-    pending_bench: Option<(Instant, std::sync::mpsc::Sender<String>)>,
     /// The running agent action from the control socket (game/agent.rs).
     agent: server_control::Agent,
     /// The control endpoint a test or horizon-ctl asks the server through (`--control-socket`).
@@ -1485,8 +1286,6 @@ struct Sim<'a> {
     persist: persist::EntityMemory,
     /// This world is open to the network (game/lan.rs).
     lan: Option<lan::LanHost>,
-    /// The server's world name (`--server-control`), once asked.
-    server_world: std::cell::OnceCell<String>,
     /// horizon-server's plugins (game/plugin_host.rs), what they asked for
     /// that waits for the hub, and the players they last saw.
     plugins: Option<Box<horizon_server_api::PluginHost>>,
@@ -1494,15 +1293,8 @@ struct Sim<'a> {
     plugin_seen: Vec<horizon_server_api::PlayerRef>,
     /// Blocks a plugin kept from a player's break: the connection, where, the state.
     plugin_resend: Vec<(u32, [i32; 3], i32)>,
-    show_hitboxes: bool,
-    show_chunk_borders: bool,
-    /// PauseScreen.showPauseMenu (false after F3+Escape).
-    pause_menu: bool,
     /// MultiPlayerGameMode.previousLocalPlayerMode (F3+N goes back to it).
     previous_mode: Option<crate::hc::command::args::GameMode>,
-    /// The world was saved for the application ending (`save_for_exit`).
-    saved_for_exit: bool,
-    pending_save: Option<saving::ClosingSave>,
     /// The block a guest is acting on (game/lan_actions.rs).
     forced_hit: Option<Hit>,
     /// The part of a right click a guest's packet asks for (game/lan_actions.rs).
@@ -1580,8 +1372,6 @@ struct Sim<'a> {
     adv: advancements::AdvState,
     restore_player_state: bool,
     fangs: fangs::FangState,
-    /// The local player as a model (third person, the inventory).
-    player_model: Option<Mob>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -2212,10 +2002,6 @@ impl crate::game::Sim<'_> {
                 match self.give(item.stack.clone()) {
                     None => {
                         self.stats.add("picked_up", &kind, before as i32);
-                        self.add_pickup(
-                            pickups::Taken::Item(Box::new(item)),
-                            pickups::Collector::Player,
-                        );
                         let pitch = ((self.world.random.next_float()
                             - self.world.random.next_float())
                             * 0.7
@@ -2229,10 +2015,6 @@ impl crate::game::Sim<'_> {
                         if rest.count < before {
                             self.stats
                                 .add("picked_up", &kind, (before - rest.count) as i32);
-                            self.add_pickup(
-                                pickups::Taken::Item(Box::new(item.clone())),
-                                pickups::Collector::Player,
-                            );
                             // handleTakeItemEntity: the random pitch of a full pickup.
                             let pitch = ((self.world.random.next_float()
                                 - self.world.random.next_float())
@@ -2482,15 +2264,12 @@ impl crate::game::Sim<'_> {
                 (p.position.z.floor() as i32) >> 4,
             ));
         }
-        let sources =
-            (!self.options.execution_role.is_client() || !players.is_empty()).then(|| {
-                crate::hc::ticket_levels::Sources {
-                    players,
-                    forced: self.streaming.forced.iter().copied().collect(),
-                    view_distance: self.settings.render_distance.clamp(2, 32),
-                    simulation_distance: self.settings.simulation_distance.max(2),
-                }
-            });
+        let sources = Some(crate::hc::ticket_levels::Sources {
+            players,
+            forced: self.streaming.forced.iter().copied().collect(),
+            view_distance: self.settings.render_distance.clamp(2, 32),
+            simulation_distance: self.settings.simulation_distance.max(2),
+        });
         self.tickets.update(sources);
     }
     /// `ServerLevel.startTickingChunk`: a loaded chunk's saved ticks are
@@ -2857,7 +2636,9 @@ impl crate::game::Sim<'_> {
                     self.sniffer_egg_crack_particles(pos)
                 }
                 // The trial spawner's and vault's flames and smoke: the clients draw them.
-                LevelEvent::LevelEvent { id: 3011..=3021, .. } => {}
+                LevelEvent::LevelEvent {
+                    id: 3011..=3021, ..
+                } => {}
                 LevelEvent::LevelEvent { id, pos, .. } => {
                     let c = Some([
                         f64::from(pos.x) + 0.5,
@@ -4918,7 +4699,6 @@ impl crate::game::Sim<'_> {
         let creative = self.creative;
         // CreativeModeInventoryScreen clicks the menu itself and sends every
         // changed slot, which the server sets by player.
-        let equipment_before = (self.screen == Screen::Creative).then(|| self.player_equipment());
         let station_menu = self.station.as_ref().map(|s| {
             (
                 s.loom.selected.map_or(-1, |i| i as i32),
@@ -5151,13 +4931,8 @@ impl crate::game::Sim<'_> {
             // AbstractFurnaceBlockEntity.setItem: only a new input restarts cooking.
             f.input_clicked(self.res.recipes(), before[0].clone());
         }
-        match equipment_before {
-            Some(before) => self.player_equipment_changed(&before),
-            None => {
-                for (slot, stack) in equipped {
-                    self.player_equipped(slot, stack.as_ref());
-                }
-            }
+        for (slot, stack) in equipped {
+            self.player_equipped(slot, stack.as_ref());
         }
         self.apply_equipment();
         if let Some(maps) = level_maps {
@@ -5768,7 +5543,6 @@ impl crate::game::Sim<'_> {
         self.rockets.clear();
         self.bolts.clear();
         self.particles.clear();
-        self.pickups.clear();
         self.riding = None;
         self.persist = Default::default();
     }
@@ -6649,9 +6423,6 @@ impl crate::game::Sim<'_> {
             });
         }
         self.orbs = orbs;
-        for o in taken {
-            self.add_pickup(pickups::Taken::Orb(Box::new(o)), pickups::Collector::Player);
-        }
         if gained > 0 {
             gained = self.mending(gained);
         }
@@ -6986,9 +6757,7 @@ impl crate::game::Sim<'_> {
     fn tick_sleep(&mut self) {
         self.sleep_timer = tick_sleep_timer(self.sleep_timer, self.sleeping.is_some());
         if let Some(head) = self.sleeping {
-            // Vanilla has no Shift wake-up: the chat screen's capitals must
-            // not get the sleeper up.
-            if (self.screen != Screen::Chat && self.keys.contains(&KeyCode::ShiftLeft))
+            if self.keys.contains(&KeyCode::ShiftLeft)
                 || self
                     .player
                     .as_ref()
@@ -7041,8 +6810,9 @@ impl crate::game::Sim<'_> {
         level.creative = self.creative;
         level.game_mode = mode;
         // PrimaryLevelData.setDifficulty: /difficulty and the options button change it.
-        level.difficulty =
-            crate::hc::world_options::DIFFICULTIES[usize::from(self.world_data.difficulty) & 3].into();
+        level.difficulty = crate::hc::world_options::DIFFICULTIES
+            [usize::from(self.world_data.difficulty) & 3]
+            .into();
         level.time = self.world.game_time;
         level.weather = self.world.weather;
         level.day_time = self.world.day_time;
@@ -7110,9 +6880,6 @@ impl crate::game::Sim<'_> {
         }
         // A server's main level is always the Overworld (MinecraftServer.overworld): the level
         // it happens to be in while saving is not the world's.
-        if self.options.dedicated.is_none() {
-            level.dimension = self.dim.id().to_owned();
-        }
         // An open ender chest holds the live copy.
         if let Some(key) = self.ender_open
             && let Some(BlockEntity::Chest(items)) = self.world.block_entities.get(&key)
@@ -7221,9 +6988,7 @@ impl crate::game::Sim<'_> {
     }
 }
 
-impl crate::game::Sim<'_> {
-}
-
+impl crate::game::Sim<'_> {}
 
 /// The synchronous launch loads both phases; an ordinary launch returns the
 /// core bundle while the rest worker keeps loading.
@@ -7236,20 +7001,25 @@ struct Loaded {
 
 fn load_resources(root: &std::path::Path, settings: &Settings, started: Instant) -> Result<Loaded> {
     let threads = settings.worker_threads();
-    let assets = Arc::new(Assets::load(&root.to_path_buf()).map_err(|e| {
-        format!("{e}\nPrepare resources with horizon-prepare --prepare")
-    })?);
+    let assets = Arc::new(
+        Assets::load(root)
+            .map_err(|e| format!("{e}\nPrepare resources with horizon-prepare --prepare"))?,
+    );
     log::info!("load assets: {:.2}s", started.elapsed().as_secs_f32());
     let behaviour_json: serde_json::Value = serde_json::from_reader(std::io::BufReader::new(
         std::fs::File::open(root.join("block-behaviours.json"))?,
     ))?;
     let registry = assets.registry;
-    let (facts, gameplay_projection) = BlockFacts::load_with_projection(root, registry, &behaviour_json)?;
+    let (facts, gameplay_projection) =
+        BlockFacts::load_with_projection(root, registry, &behaviour_json)?;
     let biomes = Arc::new(Biomes::load(root)?);
     let environment = Environment::load(root)?;
     let light = Arc::new(LightTables::load(root, assets.registry, &facts)?);
     let pack = PackResources::load(root, assets.clone(), light);
-    crate::hc::lang::set(crate::hc::lang::Language::load(&[&root.to_path_buf()], &settings.language));
+    crate::hc::lang::set(crate::hc::lang::Language::load(
+        &[&root.to_path_buf()],
+        &settings.language,
+    ));
     let collision = collisions::load(root, assets.registry)?;
     let motion = MotionResources::load_with_facts(root, &assets, &facts)?;
     let resources = Arc::new(Resources {
@@ -7263,7 +7033,14 @@ fn load_resources(root: &std::path::Path, settings: &Settings, started: Instant)
         },
         rest: std::sync::OnceLock::new(),
     });
-    let rest = load_world_rest(root, &resources, &assets, &behaviour_json, &gameplay_projection, started)?;
+    let rest = load_world_rest(
+        root,
+        &resources,
+        &assets,
+        &behaviour_json,
+        &gameplay_projection,
+        started,
+    )?;
     resources
         .rest
         .set(rest)
@@ -7299,7 +7076,7 @@ fn load_world_rest(
         threads
     );
     let stations = crate::hc::stations::StationData::load(root, &items);
-    let animate =
+    let _animate =
         crate::hc::animate_tick::AnimateTables::load(root, registry_owner.registry, biomes)?;
     Ok(WorldRest {
         stations,
@@ -7307,7 +7084,6 @@ fn load_world_rest(
         recipes,
         transformers,
         providers: Providers::load(root),
-        animate,
         nether_environment: Environment::load_dimension(root, "the_nether", false)?,
         end_environment: Environment::load_dimension(root, "the_end", false)?,
         behaviours: Behaviours::load_with_gameplay(
@@ -7322,97 +7098,21 @@ fn load_world_rest(
             .map(|(k, v)| (k, Arc::new(v)))
             .collect(),
         mob_data,
-        player_type: player_type(root),
-    })
-}
-
-/// The player's entity type, from its model's size.
-fn player_type(root: &std::path::Path) -> Option<Arc<MobType>> {
-    crate::hc::mobs::load_model(root, "minecraft:player#main").map(|model| {
-        Arc::new(MobType {
-            id: "minecraft:player".into(),
-            // Players render as a humanoid; the species only drives local AI.
-            species: crate::hc::mobs::Species::Zombie,
-            width: 0.6,
-            height: 1.8,
-            eye_height: 1.62,
-            category: "misc".into(),
-            max_health: 20.0,
-            speed: 0.1,
-            flying_speed: 0.02,
-            attack_damage: 1.0,
-            attack_knockback: 0.0,
-            follow_range: 0.0,
-            step_height: 0.6,
-            armor: 0.0,
-            armor_toughness: 0.0,
-            knockback_resistance: 0.0,
-            jump_strength: 0.42,
-            attributes: Default::default(),
-            gravity: 0.08,
-            safe_fall_distance: 3.0,
-            fall_damage_multiplier: 1.0,
-            water_efficiency: 0.0,
-            water_slowdown: 0.8,
-            air_speed: 0.02,
-            baby_scale: 0.5,
-            head_rot_speed: 10.0,
-            max_head_x_rot: 40.0,
-            max_head_y_rot: 75.0,
-            ambient_interval: 80,
-            flags: Default::default(),
-            model: Arc::new(model),
-            // PlayerModel's slim arms, for slim skins.
-            layers: crate::hc::mobs::load_model(root, "minecraft:player_slim#main")
-                .map(|slim| [("player_slim#main".to_owned(), Arc::new(slim))].into())
-                .unwrap_or_default(),
-            texture: "entity/player/wide/steve".into(),
-            brain: crate::hc::mobs::Brain::Passive,
-            anim: crate::hc::mobs::Anim::Humanoid { zombie_arms: false },
-            sounds: [
-                "entity.player.hurt",
-                "entity.player.hurt",
-                "entity.player.death",
-            ],
-            step_sound: None,
-            food: Arc::from([]),
-            tempt: Arc::from([]),
-        })
     })
 }
 
 /// The models a server's entities keep (frames, boats, carts, the dragon's parts).
 struct GameCpuResources {
     painting_variants: paintings::PaintingVariants,
-    frame_model: frames::FrameModel,
-    glow_frame_model: frames::FrameModel,
-    map_frame_model: frames::FrameModel,
-    glow_map_frame_model: frames::FrameModel,
     boat_models: boats::BoatModels,
-    cart_models: minecarts::CartModels,
-    crystal_model: Option<crate::hc::mobs::Part>,
-    cushion_model: Option<crate::hc::mobs::Part>,
-    dragon_model: Option<crate::hc::mobs::Part>,
-    arrow_model: Option<crate::hc::mobs::Part>,
-    trident_model: Option<crate::hc::mobs::Part>,
 }
 impl GameCpuResources {
     fn load(root: &std::path::Path) -> Result<Self> {
         let document = crate::hc::mobs::EntityModelDocument::load(root).ok();
-        let model = |key| document.as_ref().and_then(|document| document.model(key));
+        let _model = |key| document.as_ref().and_then(|document| document.model(key));
         Ok(Self {
             painting_variants: paintings::PaintingVariants::load(root),
-            frame_model: frames::bake_frame(root, "item_frame"),
-            glow_frame_model: frames::bake_frame(root, "glow_item_frame"),
-            map_frame_model: frames::bake_frame(root, "item_frame_map"),
-            glow_map_frame_model: frames::bake_frame(root, "glow_item_frame_map"),
             boat_models: boats::BoatModels::load(document.as_ref()),
-            cart_models: minecarts::CartModels::load(document.as_ref()),
-            crystal_model: model("minecraft:end_crystal#main"),
-            cushion_model: model("minecraft:cushion#main"),
-            dragon_model: model("minecraft:ender_dragon#main"),
-            arrow_model: model("minecraft:arrow#main"),
-            trident_model: model("minecraft:trident#main"),
         })
     }
 }
@@ -7420,8 +7120,8 @@ impl GameCpuResources {
 /// `Main.main` for the server: the arguments, server.properties and the
 /// EULA, the resources, then `DedicatedServer.initServer` and its loop (or a
 /// component fixture a test asked for).
-pub fn run_with(program: Program, args: Vec<String>) -> Result<()> {
-    let Some(mut options) = Options::read(program, args)? else {
+pub fn run_with(args: Vec<String>) -> Result<()> {
+    let Some(mut options) = Options::read(args)? else {
         return Ok(());
     };
     let fixture = if let Ok(spec) = std::env::var("HORIZON_DISPENSE_FIXTURE") {
@@ -7472,11 +7172,9 @@ fn reset_world_progress(adv: &mut advancements::AdvState, stats: &mut stats::Sta
     *stats = Default::default();
 }
 
-impl crate::game::Sim<'_> {
-}
+impl crate::game::Sim<'_> {}
 
-impl crate::game::Sim<'_> {
-}
+impl crate::game::Sim<'_> {}
 
 impl<'a> Sim<'a> {
     /// The server's game: its state, before a world opens (`run_dedicated` loads it).
@@ -7508,7 +7206,7 @@ impl<'a> Sim<'a> {
         let world = World::new(res.facts().air, 0);
         let creative = false;
         let inventory = vec![None; 36];
-        let now = Instant::now();
+        let _now = Instant::now();
         // The server draws no particles: it only hears of them (and sends them on).
         let particles =
             crate::hc::particles::ParticleEngine::new(&root, &HashMap::new(), &HashSet::new());
@@ -7519,8 +7217,6 @@ impl<'a> Sim<'a> {
                 anims
             },
             res: res.clone(),
-            pending_pack_reload: false,
-            link_prompt: None,
             collision: res.collision(),
             motion: res.motion(),
             pack,
@@ -7543,7 +7239,6 @@ impl<'a> Sim<'a> {
             craft_table: None,
             inv_drag: None,
             last_inv_click: None,
-            last_quick_moved: None,
             container: None,
             station: None,
             potions: Default::default(),
@@ -7559,19 +7254,9 @@ impl<'a> Sim<'a> {
                 crate::hc::command::args::GameMode::Survival
             },
             keys: HashSet::new(),
-            physical_keys: HashSet::new(),
             left: false,
             right: false,
-            focused: true,
-            agent_pointer: false,
-            was_playing: false,
-            pause: false,
-            debug: false,
             screen: Screen::Playing,
-            started: now,
-            previous: now,
-            frames: 0,
-            item_level_cache: Default::default(),
             ticks: 0,
             error: None,
             message: None,
@@ -7581,16 +7266,12 @@ impl<'a> Sim<'a> {
             sounds: crate::hc::sound_out::SoundOut::new(unique_seed()),
             hands_used: Vec::new(),
             pointer_grab: None,
-            bee_sounds: HashMap::new(),
-            guardian_sounds: HashSet::new(),
             dropped: Vec::new(),
             next_entity: 0,
             particles,
-            pickups: Default::default(),
             sign_edit: None,
             book: None,
             lectern_pulses: Vec::new(),
-            loading_progress: 0.0,
             spawn_origin: None,
             spawn_spiral: Default::default(),
             player_spawn: None,
@@ -7606,7 +7287,6 @@ impl<'a> Sim<'a> {
             using: None,
             armor: [None, None, None, None],
             offhand: None,
-            hotbar_pop: [0; 10],
             hand: Hand::Main,
             shield_cooldown: 0,
             cooldowns: Default::default(),
@@ -7619,14 +7299,11 @@ impl<'a> Sim<'a> {
             last_level_up: 0,
             swing: Default::default(),
             swings_started: 0,
-            visible_hands: [(0, None), (0, None)],
             clicks: Default::default(),
             attack_clicks: 0,
             hand_strength: Default::default(),
             settings,
-            options_from_title: false,
             flash: 0,
-            rain_sound_time: 0,
             lightning_seen: [0; 2],
             sleeping: None,
             sleep_timer: 0,
@@ -7640,7 +7317,6 @@ impl<'a> Sim<'a> {
             levels: Default::default(),
             level_pass: Default::default(),
             portals: Default::default(),
-            end_travel: false,
             respawn_config: None,
             respawn_travel: None,
             end_portal_travel: false,
@@ -7654,19 +7330,11 @@ impl<'a> Sim<'a> {
             paintings: Vec::new(),
             painting_variants: prepared.painting_variants,
             item_frames: Vec::new(),
-            frame_model: prepared.frame_model,
-            glow_frame_model: prepared.glow_frame_model,
-            map_frame_model: prepared.map_frame_model,
-            glow_map_frame_model: prepared.glow_map_frame_model,
             armor_stands: Vec::new(),
             cushions: Vec::new(),
             others: Vec::new(),
-            locator_camera: None,
-            experience_display: Default::default(),
             boats: Vec::new(),
             boat_models: prepared.boat_models,
-            crystal_model: prepared.crystal_model,
-            cushion_model: prepared.cushion_model,
             carts: Vec::new(),
             jukebox_sounds: HashSet::new(),
             bolts: Vec::new(),
@@ -7676,19 +7344,7 @@ impl<'a> Sim<'a> {
             crystals: Vec::new(),
             dragon_fireballs: Vec::new(),
             breath_clouds: Vec::new(),
-            dragon_model: prepared.dragon_model,
-            text_displays: Default::default(),
-            remote_knots: Default::default(),
             knot_ids: Default::default(),
-            skin_downloads: RefCell::new(crate::hc::skins::Downloader::new(
-                std::env::current_dir()
-                    .unwrap_or_default()
-                    .join("assets/skins"),
-            )),
-            skin_profiles: RefCell::new(crate::hc::skins::Resolver::new()),
-            skin_slots: Vec::new(),
-            trim_slots: Vec::new(),
-            cart_models: prepared.cart_models,
             riding: None,
             ender_items: vec![None; 27],
             ender_open: None,
@@ -7703,31 +7359,19 @@ impl<'a> Sim<'a> {
             creaking: Default::default(),
             spawners: Default::default(),
             spawn_scratch: Default::default(),
-            trident_model: prepared.trident_model,
-            arrow_model: prepared.arrow_model,
             tnts: Vec::new(),
             hoppers: HashMap::new(),
             item_columns: None,
-            agent_control_on: false,
-            agent_last: None,
-            pending_screenshot: None,
-            pending_bench: None,
             agent: server_control::Agent::default(),
             control: None,
             sky_darken_memo: Default::default(),
             persist: Default::default(),
             lan: None,
-            server_world: Default::default(),
             plugins: None,
             plugin_actions: Vec::new(),
             plugin_seen: Vec::new(),
             plugin_resend: Vec::new(),
-            show_hitboxes: false,
-            show_chunk_borders: false,
-            pause_menu: true,
             previous_mode: None,
-            saved_for_exit: false,
-            pending_save: None,
             forced_hit: None,
             guest_use: None,
             lan_events: Vec::new(),
@@ -7768,7 +7412,6 @@ impl<'a> Sim<'a> {
             adv: Default::default(),
             restore_player_state: true,
             fangs: Default::default(),
-            player_model: None,
         })
     }
 }
@@ -7785,7 +7428,6 @@ pub struct Settings {
     pub cutout_leaves: bool,
     pub particles: u8,
     pub main_hand_left: bool,
-    pub auto_jump: bool,
     pub language: String,
     /// Worker threads; 0 picks vanilla's count (every core but one).
     pub workers: usize,
@@ -7800,7 +7442,6 @@ impl Default for Settings {
             cutout_leaves: true,
             particles: 0,
             main_hand_left: false,
-            auto_jump: false,
             language: "en_us".into(),
             workers: 0,
         }
@@ -7870,8 +7511,7 @@ impl crate::game::Sim<'_> {
                 // before the first save must not become it.
                 self.level.world_spawn.get_or_insert([x, y, z]);
                 // The "Bonus Chest" create-world option, placed once with the spawn.
-                if crate::hc::save::WorldGen::read(&self.world_root)
-                    .is_some_and(|g| g.bonus_chest)
+                if crate::hc::save::WorldGen::read(&self.world_root).is_some_and(|g| g.bonus_chest)
                 {
                     self.place_bonus_chest([x, y, z])?;
                 }
@@ -7960,10 +7600,7 @@ impl crate::game::Sim<'_> {
             locator,
         } = prepared;
         let dim = Dim::from_id(&level.dimension);
-        crate::hc::crash::set_detail(
-            "World",
-            format!("{} ({})", level.name, save_root.display()),
-        );
+        crate::hc::crash::set_detail("World", format!("{} ({})", level.name, save_root.display()));
         self.session_lock = Some(session_lock);
         self.end.set_locator(locator);
         self.share_spawn_conditions();

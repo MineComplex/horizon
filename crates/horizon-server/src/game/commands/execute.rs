@@ -2,7 +2,11 @@
 //! filtering command sources, then run the final command once per source,
 //! reporting each result to the `store` callbacks of its source.
 use super::{Arg, Context, Dim, R, Target, data::DataRef, err};
-use crate::hc::{command::{CommandError, vanilla}, nbt_path::NbtPath, text::Text};
+use crate::hc::{
+    command::{CommandError, vanilla},
+    nbt_path::NbtPath,
+    text::Text,
+};
 use horizon_world::nbt::Tag;
 
 /// `CommandSourceStack` fields Horizon models: the executing entity (None for

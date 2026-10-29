@@ -6,18 +6,26 @@
 //! host, and every world change they cause reaches all players through the
 //! block log, the level events and the entity tracker.
 use super::{Dim, GuestUse, Hit, Mining, Screen, lan::LanHost, respawn_anchor::RespawnConfig};
-use crate::hc::{command::vanilla, containers::BlockEntity, entities::Experience, first_person::{Hand, SwingAnimation}, items::ItemStack, lan::{
+use crate::game::keys::KeyCode;
+use crate::hc::{
+    command::vanilla,
+    containers::BlockEntity,
+    entities::Experience,
+    first_person::{Hand, SwingAnimation},
+    items::ItemStack,
+    lan::{
         guest::SPECTATOR,
         hub::TickCtx,
         menu::{Rules, Slots},
-    }, motion::{MotionEvent, MotionWorld, PlayerMotion}};
+    },
+    motion::{MotionEvent, MotionWorld, PlayerMotion},
+};
 use horizon_core::{geometry::Vec3, random::RandomSource};
 use horizon_protocol::{
     packets::play::{self, Clientbound as C, Serverbound as S},
     text::literal,
 };
 use horizon_world::entity_move::EntityMoveWorld;
-use crate::game::keys::KeyCode;
 
 /// Per-guest state of the gameplay code that lives outside `Guest`.
 #[derive(Default)]
@@ -958,7 +966,7 @@ impl crate::game::Sim<'_> {
     fn under_spawn_protection(&self, host: &LanHost, gi: usize, pos: [i32; 3]) -> bool {
         let g = &host.hub.guests[gi];
         let radius = host.hub.spawn_protection;
-        if self.options.dedicated.is_none() || radius <= 0 || g.dimension != "minecraft:overworld" {
+        if radius <= 0 || g.dimension != "minecraft:overworld" {
             return false;
         }
         let Some(spawn) = self.level.world_spawn else {
@@ -1410,9 +1418,6 @@ impl crate::game::Sim<'_> {
                                 }));
                             }
                         }
-                        if self.options.dedicated.is_none() && self.allow_commands() {
-                            self.system_message(message);
-                        }
                     }
                 }
                 self.sync_rules();
@@ -1545,39 +1550,23 @@ impl crate::game::Sim<'_> {
     /// player: the host's own, or a guest in the world.
     fn guest_spectate_teleport(&mut self, host: &mut LanHost, gi: usize, uuid: u128) {
         let own = host.hub.guests[gi].conn;
-        let host_player = self
-            .player
-            .as_ref()
-            .filter(|_| self.options.dedicated.is_none() && uuid == host.host_uuid)
-            .map(|p| {
-                (
-                    [p.position.x, p.position.y, p.position.z],
-                    self.yaw,
-                    self.pitch,
-                    self.dim,
-                )
-            });
-        let target = host_player.or_else(|| {
-            host.hub
-                .guests
-                .iter()
-                .find(|g| g.placed && g.conn != own && g.uuid == uuid)
-                .map(|g| (g.position, g.yaw, g.pitch, Dim::from_id(&g.dimension)))
-        });
+        let target = host
+            .hub
+            .guests
+            .iter()
+            .find(|g| g.placed && g.conn != own && g.uuid == uuid)
+            .map(|g| (g.position, g.yaw, g.pitch, Dim::from_id(&g.dimension)));
         let Some((at, yaw, pitch, dim)) = target else {
             return;
         };
         if Dim::from_id(&host.hub.guests[gi].dimension) != dim {
-            // Only a dedicated server keeps its players in different levels.
-            if self.options.dedicated.is_some() {
-                self.level_teleports
-                    .push(super::server_travel::LevelTeleport {
-                        conn: own,
-                        dim,
-                        at,
-                        rotation: Some([yaw, pitch]),
-                    });
-            }
+            self.level_teleports
+                .push(super::server_travel::LevelTeleport {
+                    conn: own,
+                    dim,
+                    at,
+                    rotation: Some([yaw, pitch]),
+                });
             return;
         }
         let g = &mut host.hub.guests[gi];
@@ -1808,8 +1797,7 @@ impl crate::game::Sim<'_> {
         // ListPlayersCommand needs no permission and lists every player.
         let words: Vec<&str> = command.trim_start_matches('/').split(' ').collect();
         if words[0] == "list" && (words.len() == 1 || words[1..] == ["uuids"]) {
-            let me = (self.options.dedicated.is_none() && self.player.is_some())
-                .then_some((host.host_uuid, host.host_name.as_str()));
+            let me = None;
             let content = host.hub.list_reply(me, words.len() == 2);
             host.hub.send_to(
                 conn,
@@ -1825,7 +1813,7 @@ impl crate::game::Sim<'_> {
         // follows its Allow Commands, and a dedicated server leaves it to
         // the ops list (the guest's permission level).
         let integrated = host.hub.config.integrated;
-        let allowed = self.options.dedicated.is_some() || self.allow_commands();
+        let allowed = true;
         if !integrated && (!host.settings.guest_commands || !allowed) {
             host.hub.send_to(
                 conn,
@@ -2002,7 +1990,7 @@ impl crate::game::Sim<'_> {
         // point's level: the Overworld, where the world spawn and beds are,
         // or another one's anchor or forced point, which its block resolves
         // once the level has loaded around it.
-        let server = self.options.dedicated.is_some();
+        let server = true;
         let own = host.hub.guests[i]
             .respawn_elsewhere
             .as_ref()
@@ -2300,11 +2288,7 @@ impl crate::game::Sim<'_> {
                 let team = self.score.board.players_team(&name);
                 if crate::hc::scoreboard::own_death_message_shown(team) {
                     host.hub.system_message(message.clone());
-                    if self.options.dedicated.is_some() {
-                        super::dedicated::log("INFO", &format!("System chat: {}", text.plain()));
-                    } else if self.player.is_some() {
-                        self.system_message(text);
-                    }
+                    super::dedicated::log("INFO", &format!("System chat: {}", text.plain()));
                 }
                 message
             } else {
@@ -2410,7 +2394,7 @@ impl crate::game::Sim<'_> {
         self.sleep_seen = (active, sleeping);
         let changed = (old_sleeping > 0 || sleeping > 0)
             && (old_active != active || old_sleeping != sleeping);
-        let published = self.lan.is_some() || self.options.dedicated.is_some();
+        let published = true;
         if !changed || !published {
             return;
         }
@@ -2449,9 +2433,6 @@ impl crate::game::Sim<'_> {
         for text in std::mem::take(&mut self.adv.announced) {
             host.hub
                 .system_message(crate::hc::lan::data::component_nbt(&text.component()));
-            if self.options.dedicated.is_none() {
-                self.system_message(text);
-            }
         }
     }
     /// The guest's body on the server each tick: ServerPlayer.tick's damage
@@ -2997,13 +2978,10 @@ impl crate::game::Sim<'_> {
             let rest = self.as_guest(host, conn, |g| g.give(stack)).flatten();
             match rest {
                 None => {
-                    let item = self.dropped.remove(i);
-                    self.guest_pickup(host, id, item);
+                    self.dropped.remove(i);
                     taken.push((item_id, before));
                 }
                 Some(rest) if rest.count < before => {
-                    let stack = self.dropped[i].clone();
-                    self.guest_pickup(host, id, stack);
                     self.dropped[i].stack = rest;
                     taken.push((item_id, before - self.dropped[i].stack.count));
                 }
@@ -3078,31 +3056,12 @@ impl crate::game::Sim<'_> {
             pitch,
         );
         let value = orb.value;
-        if let Some(target) = super::pickups::guest_target(host, id as u32) {
-            use super::pickups::{Collector, Taken};
-            self.add_pickup_toward(
-                Taken::Orb(Box::new(orb)),
-                Collector::Guest(id as u32),
-                target,
-            );
-        }
         self.as_guest(host, conn, |game| {
             let rest = game.mending(value);
             if rest > 0 {
                 game.give_orb_points(rest);
             }
         });
-    }
-    /// The host's own `ItemPickupParticle` toward the guest's model.
-    fn guest_pickup(&mut self, host: &LanHost, id: i32, item: crate::hc::entities::ItemEntity) {
-        use super::pickups::{Collector, Taken, guest_target};
-        if let Some(target) = guest_target(host, id as u32) {
-            self.add_pickup_toward(
-                Taken::Item(Box::new(item)),
-                Collector::Guest(id as u32),
-                target,
-            );
-        }
     }
     /// `level.playSound(player, ...)` of a guest's use it predicted (`remote::hand_operated`
     /// blocks only, as the guest decides): the others hear it now, the guest already did.
@@ -3141,9 +3100,9 @@ impl crate::game::Sim<'_> {
             }
         }
         if changed.is_empty()
-            || !changed.iter().all(|&(x, y, z)| {
-                hand_operated(&facts.get(self.world.block(x, y, z)).name)
-            })
+            || !changed
+                .iter()
+                .all(|&(x, y, z)| hand_operated(&facts.get(self.world.block(x, y, z)).name))
         {
             return;
         }

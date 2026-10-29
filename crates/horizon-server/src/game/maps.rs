@@ -272,8 +272,6 @@ pub(super) struct Maps {
     pub data: HashMap<i32, MapData>,
     /// The highest map id handed out (`maps/last_id.dat`), loaded on first use.
     last_id: Option<i32>,
-    /// (map id, atlas slot), most recently shown last.
-    slots: Vec<(i32, usize)>,
     missing: std::collections::HashSet<i32>,
 }
 /// `has(DataComponents.MAP_ID)`: filled maps and the explorer map items

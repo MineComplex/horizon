@@ -7,7 +7,10 @@
 //! plus one), wing knockback, block breaking, the death flight and rays, the
 //! exit portal, the egg and the next gateway; and its rendering and boss bar.
 use super::Dim;
-use crate::hc::{particles::{ParticleOptions, ParticleType}, text::Text};
+use crate::hc::{
+    particles::{ParticleOptions, ParticleType},
+    text::Text,
+};
 use horizon_core::{
     geometry::{Aabb, Vec3},
     random::{LegacyRandom, RandomSource},
@@ -2314,8 +2317,7 @@ pub(super) struct DragonFireball {
     pub(super) velocity: Vec3,
     age: i32,
 }
-impl DragonFireball {
-}
+impl DragonFireball {}
 pub(super) struct Breath {
     /// Its entity id once a server's players track it (0 until then).
     pub(super) id: u32,
@@ -2505,8 +2507,7 @@ impl crate::game::Sim<'_> {
         })
     }
 }
-impl crate::game::Sim<'_> {
-}
+impl crate::game::Sim<'_> {}
 impl crate::game::Sim<'_> {
     /// `EndCrystalItem.useOn`: on obsidian or bedrock with room above.
     pub(super) fn place_end_crystal(
@@ -2936,5 +2937,4 @@ impl crate::game::Sim<'_> {
     }
 }
 
-impl crate::game::Sim<'_> {
-}
+impl crate::game::Sim<'_> {}
