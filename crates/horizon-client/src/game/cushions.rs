@@ -7,8 +7,6 @@
 //! only an entity whose `Pos` is the click point's height. Placement uses
 //! outline bounds, collision shapes and suffocation predicates.
 use super::{Game, view_vector};
-use horizon_client::entities::Cushion;
-use horizon_client::items::ItemStack;
 use horizon_client::mobs::anim::Poses;
 use horizon_core::geometry::{Aabb, Vec3};
 
@@ -96,73 +94,5 @@ impl crate::game::Sim<'_> {
             }
         }
         best
-    }
-    /// `Cushion.hurtServer` from a player: killed, then the item dropped.
-    pub(super) fn attack_cushion(&mut self) -> bool {
-        let Some((i, d, _)) = self.cushion_hit() else {
-            return false;
-        };
-        if !self.before_block(d) || self.mob_hit().is_some_and(|m| m.1 < d) {
-            return false;
-        }
-        // `skipAttackInteraction` when `mayInteract` is false.
-        if !self.may_build() {
-            return true;
-        }
-        self.break_cushion(i, true);
-        true
-    }
-    /// `Cushion.dropItem`: the break sound and particles, then the coloured
-    /// item unless drops are off or the breaker has infinite materials.
-    pub(super) fn break_cushion(&mut self, index: usize, by_player: bool) {
-        let c = self.cushions.remove(index);
-        let p = c.position;
-        self.world.modified.insert((c.pos[0] >> 4, c.pos[2] >> 4));
-        if self.riding == Some(c.id) {
-            self.riding = None;
-        }
-        self.sounds.play(
-            "minecraft:entity.cushion.break",
-            Some([p.x, p.y, p.z]),
-            1.0,
-            1.0,
-        );
-        self.cushion_break_particles(&c);
-        if !self.world_data.rules.bool("entity_drops") || (by_player && self.creative) {
-            return;
-        }
-        let stack = ItemStack {
-            item: std::sync::Arc::from(c.item()),
-            count: 1,
-            damage: 0,
-            extra: None,
-        };
-        self.spawn_item(stack, [p.x, p.y, p.z], [0.0; 3], 10);
-    }
-    /// `Cushion.showBreakingParticles`: ten of the matching wool block.
-    fn cushion_break_particles(&mut self, c: &Cushion) {
-        let name = format!("minecraft:{}_wool", c.color_name());
-        let Some(state) = self.pack.assets.registry.default_state(&name) else {
-            return;
-        };
-        let p = c.position;
-        // Entity.getY(2/3) is relative to the cushion's quarter-block height.
-        let particle_at = [p.x, p.y + 0.25 * (2.0 / 3.0), p.z];
-        // Guest actions temporarily take self.lan; flush once the hub is back.
-        // Queue before resolving a sprite: a dedicated server has no renderer.
-        if self.sounds.capture.is_some() {
-            self.lan_cushion_breaks.push((state, particle_at));
-        }
-        let at = [p.x.floor() as i32, p.y.floor() as i32, p.z.floor() as i32];
-        let Some((sprite, tint)) = self.particle_sprite(state, at) else {
-            return;
-        };
-        let options = horizon_client::particles::ParticleOptions::block(
-            horizon_client::particles::ParticleType::Block,
-            sprite,
-            tint,
-        );
-        self.particles
-            .send_particles(&options, particle_at, [0.25, 0.0625, 0.25], 0.05, 10);
     }
 }

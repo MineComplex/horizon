@@ -3,7 +3,7 @@
 //! chat announcement, and `players/advancements/<uuid>.json`.
 use super::Game;
 use horizon_client::{
-    advancements::{self as adv, EntityView, Frame, ItemView, Progress, Tree},
+    advancements::{self as adv, Frame, Progress, Tree},
     hud::HudBatch,
     items::ItemStack,
     text::{self, Style, Text},
@@ -195,20 +195,6 @@ fn now_text() -> String {
         .map_or(0, |d| d.as_secs()) as i64;
     adv::date_text(secs)
 }
-pub(super) fn item_view(s: &ItemStack) -> ItemView {
-    ItemView {
-        id: s.item.to_string(),
-        count: s.count,
-        damage: s.damage,
-        enchantments: s
-            .enchantments()
-            .iter()
-            .map(|(id, l)| (id.to_string(), *l))
-            .collect(),
-        potion: s.potion().map(str::to_owned),
-        custom_name: s.custom_name().is_some(),
-    }
-}
 impl Game<'_> {
     /// `ToastManager.SLOT_COUNT`.
     pub(super) const TOAST_SLOTS: usize = 5;
@@ -379,116 +365,6 @@ impl crate::game::Sim<'_> {
         let tree = self.adv.tree.clone();
         self.adv.progress = progress;
         self.world_data.registries.advancements = tree.list.iter().map(|a| a.id.clone()).collect();
-    }
-    /// The player as predicates see it.
-    /// The predicate view of a command target.
-    pub(super) fn entity_view_of(&self, t: super::commands::Target) -> EntityView {
-        use super::commands::Target;
-        match t {
-            Target::Player => self.player_entity(),
-            Target::Mob(id) => self
-                .mobs
-                .iter()
-                .find(|m| m.id == id)
-                .map(|m| self.mob_entity(m))
-                .unwrap_or_default(),
-            other => EntityView {
-                kind: self.target_type(other),
-                position: self.target_position(other).unwrap_or_default(),
-                ..EntityView::default()
-            },
-        }
-    }
-    /// A `ContextAwarePredicate` for `this` at `origin`.
-    pub(super) fn conditions_hold(
-        &self,
-        v: &Value,
-        this: Option<&EntityView>,
-        origin: [f64; 3],
-    ) -> bool {
-        adv::conditions(
-            v,
-            &adv::Entities {
-                this,
-                origin,
-                tool: None,
-                block_pos: None,
-            },
-            &View(self),
-        )
-    }
-    pub(super) fn player_entity(&self) -> EntityView {
-        let Some(p) = self.player.as_ref() else {
-            return EntityView::default();
-        };
-        let mut eq: [Option<ItemView>; 7] = Default::default();
-        eq[0] = self.held().map(item_view);
-        eq[1] = self.offhand.as_ref().map(item_view);
-        for (i, a) in self.armor.iter().enumerate() {
-            eq[2 + i] = a.as_ref().map(item_view);
-        }
-        let vehicle = self.riding.and_then(|id| {
-            self.mobs
-                .iter()
-                .find(|m| m.id == id)
-                .map(|m| Box::new(self.mob_entity(m)))
-        });
-        EntityView {
-            kind: "minecraft:player".into(),
-            position: [p.position.x, p.position.y, p.position.z],
-            sneaking: p.pose == horizon_client::pose::Pose::Crouching,
-            sprinting: p.sprinting,
-            swimming: p.pose == horizon_client::pose::Pose::Swimming,
-            flying: p.flying,
-            on_ground: p.ground.on_ground,
-            equipment: eq,
-            vehicle,
-            effects: self
-                .potions
-                .effects
-                .list
-                .iter()
-                .map(|e| (format!("minecraft:{}", e.id), e.amplifier, e.duration))
-                .collect(),
-            gamemode: Some(self.mode.name().to_owned()),
-            ..Default::default()
-        }
-    }
-    pub(super) fn mob_entity(&self, m: &horizon_client::mobs::Mob) -> EntityView {
-        // mainhand, offhand, head, chest, legs, feet.
-        let slot = |i: &Option<std::sync::Arc<str>>| {
-            i.as_ref().map(|id| item_view(&ItemStack::new(id, 1)))
-        };
-        let mut equipment: [Option<ItemView>; 7] = Default::default();
-        if !horizon_client::mobs::equine::is_equine(m.species()) {
-            equipment[0] = slot(&m.extra.main_hand);
-            equipment[1] = slot(&m.extra.off_hand);
-            equipment[2] = slot(&m.extra.head);
-            equipment[3] = slot(&m.extra.chest);
-            equipment[4] = slot(&m.extra.legs);
-            equipment[5] = slot(&m.extra.feet);
-        }
-        // A wolf's armor is its body slot, with its durability.
-        if m.species() == horizon_client::mobs::Species::Wolf {
-            equipment[6] = m.extra.head.as_ref().map(|id| {
-                let mut armor = ItemStack::new(id, 1);
-                armor.damage = m.extra.body_damage.max(0) as u32;
-                item_view(&armor)
-            });
-        }
-        EntityView {
-            kind: m.kind.id.clone(),
-            position: [m.position.x, m.position.y, m.position.z],
-            on_fire: m.fire_ticks > 0,
-            baby: m.is_baby(),
-            on_ground: m.on_ground,
-            equipment,
-            components: horizon_client::mobs::finalize::variant_component(m)
-                .map(|(id, value)| (id.to_owned(), value))
-                .into_iter()
-                .collect(),
-            ..Default::default()
-        }
     }
     /// `trigger` for some of a trigger's criteria: (advancement, criterion)
     /// indexes in `tree`, in tree order.

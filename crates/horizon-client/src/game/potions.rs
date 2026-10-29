@@ -5,13 +5,10 @@
 use super::{Game, Screen, item_draw::owner_at};
 use horizon_assets::item_model::DisplayContext;
 use horizon_client::{
-    block_entity_render::vertex_light, brewing, effects::PlayerEffects, hud::HudBatch, hud_layout,
+    block_entity_render::vertex_light, effects::PlayerEffects, hud::HudBatch, hud_layout,
     hud_overlays, inventory_effects, items::ItemStack, mesher::Vertex,
 };
-use horizon_core::{
-    geometry::Vec3,
-    random::{LegacyRandom, RandomSource},
-};
+use horizon_core::geometry::Vec3;
 
 /// A thrown splash or lingering potion in flight.
 #[derive(Clone, Debug)]
@@ -25,62 +22,7 @@ pub(super) struct ThrownPotion {
     velocity: Vec3,
     age: u32,
 }
-/// A mob's effect ids carry the `minecraft:` namespace.
-pub(super) fn mob_effect_id(id: &str) -> Option<&'static str> {
-    use std::{collections::HashMap, sync::OnceLock};
-    static IDS: OnceLock<HashMap<&'static str, &'static str>> = OnceLock::new();
-    let id = id.trim_start_matches("minecraft:");
-    IDS.get_or_init(|| {
-        brewing::EFFECTS
-            .iter()
-            .map(|e| {
-                let full: &'static str = Box::leak(format!("minecraft:{}", e.id).into_boxed_str());
-                (e.id, full)
-            })
-            .collect()
-    })
-    .get(id)
-    .copied()
-}
-impl crate::game::Sim<'_> {
-    /// A living mob's own random (`Entity.random`), else the world's.
-    fn bearer_random(&mut self, bearer: Option<u32>) -> &mut LegacyRandom {
-        match bearer.and_then(|id| self.mobs.iter().position(|m| m.id == id)) {
-            Some(i) => &mut self.mobs[i].random,
-            None => &mut self.world.random,
-        }
-    }
-    /// `InfestedMobEffect.onMobHurt`: a 10% chance of one or two silverfish at
-    /// `at` (half the bearer's height up), thrown along its look direction.
-    /// The draws are the bearer's (`mob.getRandom()`): `bearer` is the mob,
-    /// none for the player (the world's random).
-    pub(super) fn infested_hurt(&mut self, at: [f64; 3], look: [f64; 3], bearer: Option<u32>) {
-        if self.bearer_random(bearer).next_float() > 0.1 {
-            return;
-        }
-        let count = 1 + self.bearer_random(bearer).next_int_bound(2).unwrap_or(0);
-        for _ in 0..count {
-            // Mth.randomBetween(-PI / 2, PI / 2), then the look direction
-            // scaled by (0.3, 0.45, 0.3) and turned about the y axis.
-            let half = std::f32::consts::FRAC_PI_2;
-            let angle = self.bearer_random(bearer).next_float() * (2.0 * half) - half;
-            let (sin, cos) = angle.sin_cos();
-            let (x, z) = (look[0] * 0.3, look[2] * 0.3);
-            let velocity = Vec3::new(
-                f64::from(x as f32 * cos + z as f32 * sin),
-                look[1] * 0.3 * 1.5,
-                f64::from(-x as f32 * sin + z as f32 * cos),
-            );
-            if let Some(id) = self.spawn_mob_for("minecraft:silverfish", at, false, true)
-                && let Some(m) = self.mobs.iter_mut().find(|m| m.id == id)
-            {
-                m.velocity = velocity;
-            }
-            self.sounds
-                .play("minecraft:entity.silverfish.hurt", Some(at), 1.0, 1.0);
-        }
-    }
-}
+impl crate::game::Sim<'_> {}
 /// Effects, thrown potions and the attribute modifiers last applied.
 #[derive(Default)]
 pub(super) struct PotionState {

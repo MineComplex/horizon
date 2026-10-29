@@ -5,9 +5,8 @@
 //! (`FirstPersonHandsAndItems`) with the item swap ticker they read.
 use super::{Game, minecarts::CartKind};
 use horizon_client::{
-    Result,
     attack_strength::HeldStack,
-    first_person::{Hand, HandWorld, Hit, SwingAnimation, UseResult, swing_duration},
+    first_person::{Hand, SwingAnimation, swing_duration},
     items::ItemStack,
 };
 
@@ -88,12 +87,6 @@ impl Game<'_> {
 impl crate::game::Sim<'_> {
     /// Opening a screen stops breaking before the next game tick (which may pause).
     pub(super) fn stop_mining(&mut self) {
-        let mut destroying = std::mem::take(&mut self.clicks.destroying);
-        destroying.stop(&mut GameHands {
-            game: self,
-            error: None,
-        });
-        self.clicks.destroying = destroying;
         self.attack_clicks = 0;
         self.request_remote_mining_stop();
         self.mining = None;
@@ -320,168 +313,6 @@ impl crate::game::Sim<'_> {
             self.visible_hands[1].1.clone(),
         ]
     }
-}
-
-/// The game as `first_person`'s world: the crosshair, breaking and attacking.
-struct GameHands<'g, 'a> {
-    game: &'g mut crate::game::Sim<'a>,
-    error: Option<Box<dyn std::error::Error>>,
-}
-impl GameHands<'_, '_> {
-    /// The main-hand item's `kinetic_weapon` and `piercing_weapon`, a spear's.
-    fn attack_kinetic(&self) -> Option<horizon_client::spear::Kinetic> {
-        self.game
-            .held()
-            .and_then(|s| horizon_client::spear::Kinetic::of(&s.item))
-    }
-    fn keep(&mut self, r: Result<()>) {
-        if let Err(e) = r
-            && self.error.is_none()
-        {
-            self.error = Some(e);
-        }
-    }
-}
-impl HandWorld for GameHands<'_, '_> {
-    fn hit(&mut self) -> Hit {
-        if self.game.entity_targeted() {
-            return Hit::Entity;
-        }
-        match self.game.pick() {
-            Some(h) => Hit::Block {
-                pos: h.pos,
-                face: match h.face {
-                    [0, -1, 0] => 0,
-                    [0, 1, 0] => 1,
-                    [0, 0, -1] => 2,
-                    [0, 0, 1] => 3,
-                    [-1, 0, 0] => 4,
-                    _ => 5,
-                },
-            },
-            None => Hit::Miss,
-        }
-    }
-    fn is_air(&mut self, pos: [i32; 3]) -> bool {
-        let state = self.game.world.block(pos[0], pos[1], pos[2]);
-        self.game.res.facts().get(state).name.ends_with("air")
-    }
-    fn creative(&self) -> bool {
-        self.game.creative
-    }
-    fn spectator(&self) -> bool {
-        self.game.spectator()
-    }
-    fn instabuild(&self) -> bool {
-        self.game.creative
-    }
-    fn hands_busy(&self) -> bool {
-        self.game.hands_busy()
-    }
-    fn using_item(&self) -> bool {
-        self.game.using.is_some()
-    }
-    fn item_enabled(&mut self, _: Hand) -> bool {
-        true
-    }
-    fn held_empty(&mut self, hand: Hand) -> bool {
-        match hand {
-            Hand::Main => self.game.held().is_none(),
-            Hand::Off => self.game.offhand.is_none(),
-        }
-    }
-    fn held_count(&mut self, hand: Hand) -> i32 {
-        let stack = match hand {
-            Hand::Main => self.game.held(),
-            Hand::Off => self.game.offhand.as_ref(),
-        };
-        stack.map_or(0, |s| s.count as i32)
-    }
-    fn infinite_materials(&self) -> bool {
-        self.game.creative
-    }
-    fn cannot_attack(&mut self) -> bool {
-        let ticker = self.game.hand_strength.ticker;
-        self.game.cannot_attack_with_item(ticker, 0)
-    }
-    fn piercing_weapon(&mut self) -> bool {
-        self.attack_kinetic().is_some()
-    }
-    fn attack_animation(&mut self) -> SwingAnimation {
-        self.attack_kinetic()
-            .map_or(SwingAnimation::DEFAULT, |k| k.attack_animation())
-    }
-    fn interact_animation(&mut self, _: Hand) -> SwingAnimation {
-        SwingAnimation::DEFAULT
-    }
-    fn piercing_attack(&mut self, _: SwingAnimation) {
-        // The server's part (`PiercingWeapon.attack`), then the client's:
-        // the sound `MultiPlayerGameMode.piercingAttack` plays.
-        if let Some(sound) = self.game.jab() {
-            self.game.play_at_feet(sound);
-        }
-        self.game.hand_strength.reset_attack();
-    }
-    fn attack_entity(&mut self) -> bool {
-        self.game.attack()
-    }
-    fn block_action_restricted(&mut self, _: [i32; 3]) -> bool {
-        !self.game.may_build()
-    }
-    fn within_border(&mut self, _: [i32; 3]) -> bool {
-        true
-    }
-    fn attack_block(&mut self, pos: [i32; 3]) {
-        let result = self.game.attack_block(pos);
-        self.keep(result);
-    }
-    fn destroy_progress(&mut self, pos: [i32; 3]) -> f32 {
-        self.game.destroy_progress(pos)
-    }
-    fn destroy_block(&mut self, pos: [i32; 3]) -> bool {
-        if self.is_air(pos) {
-            return false;
-        }
-        // Item.canDestroyBlock: swords, tridents and maces cannot break
-        // blocks in creative.
-        let held = self.game.held().map(|s| s.item.to_string());
-        if self.game.creative
-            && held.is_some_and(|i| {
-                i.ends_with("_sword") || i == "minecraft:trident" || i == "minecraft:mace"
-            })
-        {
-            return false;
-        }
-        let r = self.game.break_block(pos);
-        self.keep(r);
-        true
-    }
-    fn main_hand_key(&mut self) -> String {
-        self.game.main_hand_key()
-    }
-    fn destroy_stage(&mut self, _: [i32; 3], _: Option<i32>) {}
-    fn swing(&mut self, hand: Hand, animation: SwingAnimation) {
-        self.game.swing_hand(hand, animation);
-    }
-    fn reset_attack_strength(&mut self) {
-        self.game.reset_attack_strength();
-    }
-    fn entity_within_border(&mut self) -> bool {
-        true
-    }
-    fn use_on_entity(&mut self, _: Hand) -> Option<UseResult> {
-        None
-    }
-    fn use_on_block(&mut self, _: Hand) -> UseResult {
-        UseResult::Pass
-    }
-    fn use_item(&mut self, _: Hand) -> UseResult {
-        UseResult::Pass
-    }
-    fn item_used(&mut self, hand: Hand) {
-        self.game.hands_used.push(hand);
-    }
-    fn release_using(&mut self) {}
 }
 
 #[cfg(test)]

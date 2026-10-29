@@ -10,8 +10,7 @@ use horizon_client::{
     mobs::{Mob, Part, anim::Poses},
     trims::{TrimOverride, TrimRegistry, TrimTexture},
 };
-use horizon_core::random::RandomSource;
-use std::{collections::HashMap, path::PathBuf, sync::Arc};
+use std::{collections::HashMap, path::PathBuf};
 
 /// `EquipmentLayerRenderer.getColorForLayer`: a dyeable layer (one with a
 /// colour when undyed) takes the stack's `minecraft:dyed_color`, else that
@@ -520,56 +519,6 @@ impl crate::game::Sim<'_> {
             }
         }
         best
-    }
-    /// `ArmorStand.hurtServer` from a player attack.
-    pub(super) fn attack_armor_stand(&mut self) -> bool {
-        let Some((i, d, _)) = self.armor_stand_hit() else {
-            return false;
-        };
-        if !self.before_block(d) || self.mob_hit().is_some_and(|m| m.1 < d) {
-            return false;
-        }
-        let time = self.world.game_time;
-        let at = self.armor_stands[i].position;
-        let at = [at.x, at.y, at.z];
-        if self.creative {
-            self.armor_stands.remove(i);
-            self.sounds
-                .play("minecraft:entity.armor_stand.break", Some(at), 1.0, 1.0);
-            return true;
-        }
-        if time - self.armor_stands[i].last_hit > 5 {
-            // First hit: entity event 32, the wobble and the hit sound.
-            self.armor_stands[i].last_hit = time;
-            self.sounds
-                .play("minecraft:entity.armor_stand.hit", Some(at), 0.3, 1.0);
-            return true;
-        }
-        // brokenByPlayer: the stand item, then brokenByAnything: the equipment.
-        let a = self.armor_stands.remove(i);
-        self.sounds
-            .play("minecraft:entity.armor_stand.break", Some(at), 1.0, 1.0);
-        let center = [at[0], at[1] + if a.small { 0.4875 } else { 0.9875 }, at[2]];
-        let stand = ItemStack {
-            item: Arc::from("minecraft:armor_stand"),
-            count: 1,
-            damage: 0,
-            extra: None,
-        };
-        self.spawn_item(stand, center, [0.0; 3], 10);
-        for stack in a.equipment.into_iter().flatten() {
-            let r = &mut self.world.random;
-            let v = [
-                f64::from(r.next_float()) * 0.2 - 0.1,
-                0.2,
-                f64::from(r.next_float()) * 0.2 - 0.1,
-            ];
-            self.spawn_item(stack, center, v, 10);
-        }
-        self.world
-            .modified
-            .insert(((at[0].floor() as i32) >> 4, (at[2].floor() as i32) >> 4));
-        true
     }
 }
 /// The `Pose` rotations on the parts of an armor stand model or its armor

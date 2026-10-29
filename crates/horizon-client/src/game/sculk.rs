@@ -6,7 +6,6 @@
 use super::Game;
 use horizon_client::{
     containers::BlockEntity,
-    mobs::{Who, warden},
     particles::{ParticleOptions, ParticleType},
     sculk::SculkKind,
 };
@@ -39,8 +38,6 @@ pub(super) fn sensor_signal(
 pub(super) struct SculkState {
     /// The darkness effect's blend factor, previous and current tick.
     darkness: (f32, f32),
-    /// Who causes the block changes being processed (the player's actions).
-    pub actor: Option<Who>,
 }
 
 fn center(p: (i32, i32, i32)) -> [f64; 3] {
@@ -96,13 +93,6 @@ impl Game<'_> {
     // ---- entity events ----
 }
 impl crate::game::Sim<'_> {
-    /// Run `f` with the player as the cause of the block changes it makes.
-    pub(super) fn with_player_actor<T>(&mut self, f: impl FnOnce(&mut Self) -> T) -> T {
-        let prior = self.sculk.actor.replace(Who::Player);
-        let out = f(self);
-        self.sculk.actor = prior;
-        out
-    }
     fn state_property(&self, state: BlockStateId, key: &str) -> Option<&str> {
         self.pack
             .assets
@@ -149,35 +139,6 @@ impl crate::game::Sim<'_> {
         let pulse =
             ((self.ticks as f32 - partial) * std::f32::consts::PI * 0.025).cos() * 0.45 * modifier;
         (modifier, pulse.max(0.0) * scale)
-    }
-    /// `Warden.applyDarknessAround` / `MobEffectUtil.addEffectToPlayersAround`.
-    pub(super) fn apply_darkness(&mut self, at: [f64; 3], radius: f64) {
-        self.for_each_player(|g| g.darkness_on_player(at, radius));
-    }
-    fn darkness_on_player(&mut self, at: [f64; 3], radius: f64) {
-        if self.creative || self.spectator() {
-            return;
-        }
-        let Some(p) = self.player.as_ref() else {
-            return;
-        };
-        let d = [
-            p.position.x - at[0],
-            p.position.y - at[1],
-            p.position.z - at[2],
-        ];
-        if d[0] * d[0] + d[1] * d[1] + d[2] * d[2] >= radius * radius {
-            return;
-        }
-        if let Some(active) = self.potions.effects.get("darkness")
-            && active.duration > warden::DARKNESS_REAPPLY - 1
-        {
-            return;
-        }
-        let mut effect =
-            horizon_client::effects::EffectInstance::new("darkness", warden::DARKNESS_DURATION, 0);
-        effect.visible = false;
-        self.potions.effects.add(effect);
     }
     /// `LevelEvent` 3006: charge cursors moving over sculk, or popping.
     pub(super) fn sculk_charge_event(&mut self, pos: BlockPos, data: i32) {
@@ -308,38 +269,6 @@ impl crate::game::Sim<'_> {
                 2.0,
                 pitch,
             );
-        }
-    }
-    fn vibration_particle(&mut self, from: [f64; 3], to: [f64; 3], ticks: i32) {
-        self.particles.vibration(from, to, ticks);
-    }
-    /// A vibration travelling to a warden (`MobEvent::Vibration`).
-    pub(super) fn mob_vibration_particle(&mut self, from: [f64; 3], to: [f64; 3], ticks: i32) {
-        self.vibration_particle(from, to, ticks);
-    }
-    /// `Warden.clientDiggingParticles`: thirty crumbs of the block underfoot.
-    pub(super) fn warden_dig_particles(&mut self, at: [f64; 3]) {
-        let below = (
-            at[0].floor() as i32,
-            (at[1] - 0.2).floor() as i32,
-            at[2].floor() as i32,
-        );
-        let state = self.world.block(below.0, below.1, below.2);
-        let Some((sprite, tint)) = self.particle_sprite(state, [below.0, below.1, below.2]) else {
-            return;
-        };
-        for _ in 0..30 {
-            // Client-side (LevelEventHandler / particles): the client random.
-            let r = self.particles.random();
-            let off = |v: f32| f64::from(v * 1.4 - 0.7);
-            let p = [
-                at[0] + off(r.next_float()),
-                at[1],
-                at[2] + off(r.next_float()),
-            ];
-            let particle =
-                horizon_client::particles::Particle::terrain(r, p, [0.0; 3], sprite.clone(), tint);
-            self.particles.push(particle);
         }
     }
 }

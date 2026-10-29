@@ -141,26 +141,4 @@ impl crate::game::Sim<'_> {
             );
         }
     }
-    /// `ServerLevel.sendParticles` for the players a server serves: one
-    /// `ClientboundLevelParticlesPacket` to each player in the level whose
-    /// block is within 32 blocks of `at`. The window's own player is not
-    /// sent it (the caller draws it in this window). While the host holds
-    /// the players (a guest's turn through `as_guest`, a host's hit on a
-    /// guest) the packet waits for the turn to end so that it reaches every
-    /// player, the guest too.
-    pub(super) fn lan_send_particles(
-        &mut self,
-        options: &ParticleOptions,
-        at: [f64; 3],
-        spread: [f64; 3],
-        speed: f64,
-        count: u32,
-    ) {
-        // The server is running (its sounds are captured for the guests).
-        if self.sounds.capture.is_some() {
-            self.creatures
-                .lan_particles
-                .push((options.clone(), at, spread, speed, count));
-        }
-    }
 }

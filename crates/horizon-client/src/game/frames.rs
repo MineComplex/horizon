@@ -4,9 +4,7 @@
 //! `ItemFrameRenderer` (the frame model and the item at a 45 degree step).
 use super::{Game, view_vector};
 use horizon_assets::{bake::bake_model, model::CuboidModel, resolve::ModelLibrary};
-use horizon_client::{entities::ItemFrame, items::ItemStack, mesher::Vertex};
-use horizon_core::{position::BlockPos, random::RandomSource};
-use std::sync::Arc;
+use horizon_client::{items::ItemStack, mesher::Vertex};
 
 /// A baked frame model: (corners in block units, unit UVs, sprite) per quad.
 pub(super) type FrameModel = Vec<([[f32; 3]; 4], [[f32; 2]; 4], String)>;
@@ -63,18 +61,6 @@ pub(super) fn bake_frame(root: &std::path::Path, name: &str) -> FrameModel {
             )
         })
         .collect()
-}
-fn sound(f: &ItemFrame, what: &str) -> String {
-    let prefix = if f.glow {
-        "glow_item_frame"
-    } else {
-        "item_frame"
-    };
-    format!("minecraft:entity.{prefix}.{what}")
-}
-fn center(f: &ItemFrame) -> [f64; 3] {
-    let (lo, hi) = f.bounds();
-    std::array::from_fn(|i| (lo[i] + hi[i]) / 2.0)
 }
 impl Game<'_> {
     /// ItemFrameRenderer: the frame model, then the item half size on its face.
@@ -276,68 +262,5 @@ impl crate::game::Sim<'_> {
                 .sqrt()
                 > distance
         })
-    }
-    /// `ItemFrame.hurtServer` from the player: the item comes out first.
-    pub(super) fn attack_frame(&mut self) -> bool {
-        let Some((i, d)) = self.frame_hit() else {
-            return false;
-        };
-        if !self.before_block(d) || self.mob_hit().is_some_and(|m| m.1 < d) {
-            return false;
-        }
-        if self.item_frames[i].fixed {
-            return true;
-        }
-        let with_frame = self.item_frames[i].item.is_none();
-        let at = center(&self.item_frames[i]);
-        let f = if with_frame {
-            self.item_frames.remove(i)
-        } else {
-            self.item_frames[i].clone()
-        };
-        self.sounds.play(
-            &sound(&f, if with_frame { "break" } else { "remove_item" }),
-            Some(at),
-            1.0,
-            1.0,
-        );
-        if !with_frame {
-            self.item_frames[i].item = None;
-        }
-        self.drop_frame_items(&f, with_frame, true);
-        self.world.modified.insert((f.pos[0] >> 4, f.pos[2] >> 4));
-        if f.item.is_some() {
-            self.frame_output_changed(f.pos);
-        }
-        true
-    }
-    /// `ItemFrame.setItem` / `setRotation`: `updateNeighbourForOutputSignal`, so
-    /// the comparators reading the frame take its new signal.
-    fn frame_output_changed(&mut self, pos: [i32; 3]) {
-        let at = BlockPos::new(pos[0], pos[1], pos[2]);
-        self.with_level(|b, level, ticks| b.update_neighbour_for_output_signal(level, ticks, at));
-    }
-    /// `ItemFrame.dropItem`: the frame (when breaking) and the held item.
-    fn drop_frame_items(&mut self, f: &ItemFrame, with_frame: bool, by_player: bool) {
-        if !self.world_data.rules.bool("entity_drops") || (by_player && self.creative) {
-            return;
-        }
-        let s = f.step().map(f64::from);
-        let c = center(f);
-        let at = [c[0] + s[0] * 0.15, c[1], c[2] + s[2] * 0.15];
-        if with_frame {
-            let frame = ItemStack {
-                item: Arc::from(f.kind()),
-                count: 1,
-                damage: 0,
-                extra: None,
-            };
-            self.spawn_item(frame, at, [0.0; 3], 10);
-        }
-        if let Some(item) = f.item.clone()
-            && self.world.random.next_float() < f.drop_chance
-        {
-            self.spawn_item(item, at, [0.0; 3], 10);
-        }
     }
 }

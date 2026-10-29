@@ -9,15 +9,13 @@ use horizon_client::{
     particles::{ParticleOptions, ParticleType},
 };
 use horizon_core::random::RandomSource;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 type Pos = (i32, i32, i32);
 
 /// What the spawner code keeps between ticks.
 #[derive(Default)]
 pub(super) struct SpawnerState {
-    /// Every entity type id (`EntityType.byString`), read once.
-    entity_types: Option<HashSet<String>>,
     /// The mob shown in each spawner and the id it was made for
     /// (`getOrCreateDisplayEntity`).
     displays: HashMap<Pos, (String, Mob)>,
@@ -82,22 +80,6 @@ impl Game<'_> {
     }
 }
 impl crate::game::Sim<'_> {
-    /// `EntityType.byString`: the type is in the registry.
-    pub(super) fn entity_type_exists(&self, id: &str) -> bool {
-        self.spawners
-            .entity_types
-            .as_ref()
-            .is_some_and(|t| t.contains(id))
-    }
-    /// `LivingEntity.makePoofParticles` (entity event 20) for a mob.
-    pub(super) fn mob_poof(&mut self, id: u32) {
-        let Some(m) = self.mobs.iter().find(|m| m.id == id) else {
-            return;
-        };
-        let at = m.position;
-        self.lan_entity_event(id as i32, 20, [at.x, at.y, at.z]);
-        self.poof_particles(id);
-    }
     /// `Mob.handleEntityEvent` 20 (`spawnAnim` on a client): the poof about
     /// mob `id`.
     pub(super) fn poof_particles(&mut self, id: u32) {

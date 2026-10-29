@@ -11,18 +11,13 @@
 //! through waits as an `Arrival` (its saved compound and where it stood in its
 //! portal) until the player is in that dimension and its exit is loaded.
 use super::{Game, Screen};
-use horizon_client::nether_portal::PortalState;
 use horizon_core::random::RandomSource;
-use horizon_world::nbt::Tag;
-use std::collections::HashMap;
 
 /// The nether portal state of the world (`Game::portals`).
 #[derive(Default)]
 pub(super) struct Portals {
     /// `LocalPlayer.portalProcess.isInsidePortalThisTick`.
     client_inside: bool,
-    /// Items and mobs, by entity id.
-    entities: HashMap<u32, PortalState>,
     /// Per-chunk portal palette masks, kept across ticks (portal_sections).
     pub(super) sections: horizon_client::portal_sections::PortalSections,
 }
@@ -74,21 +69,6 @@ impl crate::game::Sim<'_> {
             .is_some_and(|p| !p.health.dead_or_dying());
         if alive && self.riding.is_none() {
             self.portals.client_inside = true;
-        }
-    }
-    /// `Entity.load`: the saved `PortalCooldown` (an entity that just came
-    /// through stands in its exit portal for 300 ticks without going back).
-    pub(super) fn restore_portal_cooldown(&mut self, id: u32, tag: &Tag) {
-        if let Some(Tag::Int(cooldown)) = tag.get("PortalCooldown")
-            && *cooldown > 0
-        {
-            self.portals.entities.insert(
-                id,
-                PortalState {
-                    cooldown: *cooldown,
-                    process: None,
-                },
-            );
         }
     }
 }

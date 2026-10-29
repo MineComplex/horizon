@@ -6,13 +6,6 @@
 use super::Game;
 use horizon_client::text::Text;
 
-/// Server-side player and server state these commands keep.
-#[derive(Default)]
-pub(in crate::game) struct CommandExtras {
-    /// The running `/pregen` task.
-    pub pregen: Option<super::pregen::PregenTask>,
-}
-
 use horizon_core::version::{BUILD_TIME, DATA_VERSION, STABLE, VANILLA_VERSION, VERSION_ID};
 
 fn num(n: impl std::fmt::Display) -> Text {

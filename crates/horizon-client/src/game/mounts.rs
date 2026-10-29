@@ -5,7 +5,7 @@
 use super::Game;
 use horizon_client::{
     hud::HudBatch,
-    mobs::{MobEvent, Species, equine},
+    mobs::{Species, equine},
     sprint::Keys,
 };
 use horizon_core::geometry::Vec3;
@@ -164,71 +164,6 @@ impl crate::game::Sim<'_> {
             p.position = at;
             p.velocity = Vec3::ZERO;
             p.fall_distance = 0.0;
-        }
-    }
-    /// `removePassenger` + `getDismountLocationForPassenger`: beside the mount.
-    pub(super) fn dismount_mount(&mut self) {
-        let Some(id) = self.riding.take() else {
-            return;
-        };
-        let Some(m) = self.mobs.iter_mut().find(|m| m.id == id) else {
-            return;
-        };
-        m.rider = None;
-        if m.species() == Species::HappyGhast {
-            let id = m.id;
-            self.dismount_happy_ghast(id);
-            return;
-        }
-        let yaw = m.yaw.to_radians();
-        let side = Vec3::new(f64::from(yaw.cos()), 0.0, f64::from(yaw.sin()));
-        let w = f64::from(m.width()) / 2.0 + 0.4;
-        let base = m.position;
-        let candidates = [
-            Vec3::new(base.x - side.x * w, base.y, base.z - side.z * w),
-            Vec3::new(base.x + side.x * w, base.y, base.z + side.z * w),
-            Vec3::new(base.x, base.y + f64::from(m.height()), base.z),
-        ];
-        let spot = candidates
-            .into_iter()
-            .find(|c| {
-                let f = |dy: i32| {
-                    self.res
-                        .facts()
-                        .get(self.world.block(
-                            c.x.floor() as i32,
-                            c.y.floor() as i32 + dy,
-                            c.z.floor() as i32,
-                        ))
-                        .full_collision
-                };
-                !f(0) && !f(1)
-            })
-            .unwrap_or(candidates[2]);
-        if let Some(p) = self.player.as_mut() {
-            p.position = spot;
-            p.velocity = Vec3::ZERO;
-        }
-    }
-    pub(super) fn mount_event(&mut self, e: &MobEvent) {
-        match *e {
-            MobEvent::Tamed { mob } => {
-                let owner = self.level.player_uuid.or(Some([0, 0, 0, 1]));
-                if let Some(m) = self.mobs.iter_mut().find(|m| m.id == mob) {
-                    m.extra.owner = owner;
-                    m.persistent = true;
-                    // AbstractHorse.tameWithName: entity event 7, spawnTamingParticles(true).
-                    self.mob_event_particles(mob, 7);
-                }
-            }
-            MobEvent::Buck { mob } => {
-                if self.riding == Some(mob) {
-                    self.dismount_mount();
-                }
-                // RunAroundLikeCrazyGoal.tick: entity event 6, smoke.
-                self.mob_event_particles(mob, 6);
-            }
-            _ => {}
         }
     }
     /// `Player.jumpableVehicle`: a saddled mount that jumps (not a pig or a

@@ -4,10 +4,7 @@
 //! along the player's view and is the player's now (`Projectile.deflect`
 //! sets the owner), so a ghast it meets dies of it (`Ghast.isReflectedFireball`).
 use super::{ray_box, view_vector};
-use horizon_client::{
-    mobs::Who,
-    projectiles::{Projectile, ProjectileKind},
-};
+use horizon_client::projectiles::{Projectile, ProjectileKind};
 use horizon_core::geometry::{Aabb, Vec3};
 
 /// `AbstractHurtingProjectile.getPickRadius`: the crosshair finds it a block
@@ -61,57 +58,6 @@ impl crate::game::Sim<'_> {
             .filter(|(_, p)| redirectable(p))
             .filter_map(|(i, p)| ray_box(eye, dir, reach, pick_box(p)).map(|t| (i, t)))
             .min_by(|a, b| a.1.total_cmp(&b.1))
-    }
-    /// `Player.attack` on a redirectable projectile nearer than any mob or
-    /// block in view: `AIM_DEFLECT` (its movement the unit view vector), the
-    /// player its owner, its acceleration power back to 0.1
-    /// (`onDeflection` by an attack), and the no-damage sound. True when a
-    /// projectile was turned.
-    pub(super) fn attack_redirectable(&mut self) -> bool {
-        let Some((i, t)) = self.redirectable_hit() else {
-            return false;
-        };
-        if self.mob_hit().is_some_and(|(_, d)| d < t) {
-            return false;
-        }
-        if let (Some(hit), Some(eye)) = (self.pick(), self.eye_position()) {
-            let d = (0..3)
-                .map(|a| (hit.point[a] - eye[a]).powi(2))
-                .sum::<f64>()
-                .sqrt();
-            if d < t {
-                return false;
-            }
-        }
-        self.deflect(i);
-        true
-    }
-    /// `Projectile.deflect(AIM_DEFLECT, player, player, true)`.
-    pub(super) fn deflect(&mut self, i: usize) {
-        let dir = view_vector(self.yaw, self.pitch);
-        let guest = None::<u32>;
-        let p = &mut self.creatures.projectiles[i];
-        p.velocity = Vec3::new(dir[0], dir[1], dir[2]);
-        p.yaw = dir[0].atan2(dir[2]).to_degrees() as f32;
-        p.pitch = dir[1].atan2(dir[0].hypot(dir[2])).to_degrees() as f32;
-        p.owner = Some(Who::Player);
-        // On a server, the guest who struck it (their projectile now).
-        p.guest = guest;
-        // Not into the one who turned it on its way out.
-        p.left_owner = false;
-        // `AbstractHurtingProjectile.onDeflection` by an attack, and the
-        // `needsSync` that `AIM_DEFLECT` sets: a server's players see it turn
-        // at once, not at the fireball's next update ten ticks later.
-        p.acceleration = 0.1;
-        p.needs_sync = true;
-        self.reset_attack_strength();
-        self.swing_arm();
-        let from = self
-            .player
-            .as_ref()
-            .map(|p| [p.position.x, p.position.y, p.position.z]);
-        self.sounds
-            .play("minecraft:entity.player.attack.nodamage", from, 1.0, 1.0);
     }
 }
 

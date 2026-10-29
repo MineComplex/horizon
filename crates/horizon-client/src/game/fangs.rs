@@ -91,10 +91,6 @@ impl Game<'_> {
     }
 }
 impl crate::game::Sim<'_> {
-    pub(super) fn add_fangs(&mut self, at: [f64; 3], yaw: f32, delay: i32, owner: u32) {
-        self.next_entity += 1;
-        self.insert_fangs(self.next_entity, at, yaw, delay, owner);
-    }
     pub(super) fn insert_fangs(
         &mut self,
         id: u32,

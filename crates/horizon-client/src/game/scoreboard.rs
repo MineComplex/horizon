@@ -2,13 +2,13 @@
 //! player (health, food, xp, deaths, kills, statistics), score holders for
 //! entities, the selector options `scores=`, `team=` and `tag=`, the
 //! commands' [`Env`] and the sidebar.
-use super::{Game, chat::PLAYER_NAME, commands::Target};
+use super::{Game, chat::PLAYER_NAME};
 use horizon_client::{
     hud::HudBatch,
     hud_layout, hud_overlays,
     lan::guest::Guest,
     save::uuid_text,
-    scoreboard::{self as sb, Comp, Scoreboard, literal},
+    scoreboard::{self as sb, Scoreboard},
     tab_list::TabPlayer,
 };
 use std::collections::HashSet;
@@ -48,49 +48,6 @@ impl Game<'_> {
     }
 }
 impl crate::game::Sim<'_> {
-    /// `ScoreHolder.getScoreboardName`: the player's name, an entity's UUID.
-    pub(super) fn holder_name(&mut self, t: Target) -> Option<String> {
-        match t {
-            Target::Player => Some(self.acting_player_name().to_owned()),
-            Target::Guest(conn) => self.command_guest(conn).map(|g| g.name.clone()),
-            Target::Mob(id)
-            | Target::Item(id)
-            | Target::Stand(id)
-            | Target::Frame(id)
-            | Target::Painting(id)
-            | Target::Boat(id)
-            | Target::Cart(id)
-            | Target::Crystal(id)
-            | Target::Dragon(id)
-            | Target::Other(id) => Some(uuid_text(self.uuid_for(id))),
-            // Orbs and projectiles have no UUID here.
-            Target::Orb(_) | Target::Projectile(_) => None,
-        }
-    }
-    /// `ServerPlayer.awardKillScore`: total kills and the team kill counts.
-    pub(super) fn score_player_killed(&mut self, victim: Target) {
-        let victim_name = self.holder_name(victim);
-        let display = self.player_display_comp();
-        let me = self.acting_player_name().to_owned();
-        let board = &mut self.score.board;
-        let inc = |v: i32| v.wrapping_add(1);
-        board.for_all_objectives_with(sb::CRITERIA_TOTAL_KILLS, &me, Some(&display), inc);
-        if victim == Target::Player {
-            board.for_all_objectives_with(sb::CRITERIA_PLAYER_KILLS, &me, Some(&display), inc);
-        }
-        let color_of =
-            |board: &Scoreboard, name: &str| board.players_team(name).and_then(|t| t.color.clone());
-        if let Some(victim_name) = victim_name {
-            if let Some(color) = color_of(board, &victim_name) {
-                let criteria = format!("teamkill.{color}");
-                board.for_all_objectives_with(&criteria, &me, Some(&display), inc);
-            }
-            if let Some(color) = color_of(board, &me) {
-                let criteria = format!("killedByTeam.{color}");
-                board.for_all_objectives(&criteria, &victim_name, inc);
-            }
-        }
-    }
     /// `Entity.getTeam` of a mob (a mob joins a team by its UUID).
     pub(super) fn mob_team(&self, id: u32) -> Option<&sb::Team> {
         let uuid = self.persist.uuids.get(&id)?;
@@ -126,14 +83,6 @@ impl crate::game::Sim<'_> {
             .filter(|(_, uuid)| team.players.contains(&uuid_text(**uuid)))
             .map(|(id, _)| *id)
             .collect()
-    }
-    /// `Player.getDisplayName`: the name with the team's prefix, suffix and colour.
-    pub(super) fn player_display_comp(&self) -> Comp {
-        let name = literal(self.acting_player_name());
-        match self.player_team() {
-            Some(t) => t.formatted_name_comp(&name),
-            None => name,
-        }
     }
     /// The objective in the player's team's sidebar slot, else the sidebar's.
     fn sidebar_objective(&self) -> Option<&sb::Objective> {

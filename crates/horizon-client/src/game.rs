@@ -50,7 +50,6 @@ mod enchant_effects;
 mod end;
 mod entity_culling;
 mod events;
-mod explosion;
 mod extras;
 mod fangs;
 mod fireworks;
@@ -107,7 +106,6 @@ mod pick_entity;
 mod pickups;
 mod piglins;
 mod piston_push;
-mod plugin_host;
 mod potions;
 mod raids;
 mod recipe_book;
@@ -125,7 +123,6 @@ mod render_tick;
 mod respawn_anchor;
 mod saves_control;
 mod scoreboard;
-pub use plugin_host::set_plugins;
 mod screens;
 mod sculk;
 mod server_control;
@@ -165,7 +162,6 @@ mod win;
 mod wind;
 mod wither;
 mod zombie_reinforcements;
-mod zombie_villagers;
 use horizon_client::{
     Result,
     assets::Assets,
@@ -505,11 +501,8 @@ struct Hit {
 /// What a falling block's tick did (`FallingBlockEntity.tick`).
 enum FallStep {
     Falling,
-    Gone,
-    /// Gave up falling: drops itself as an item here.
-    Dropped(Vec3),
-    /// Hit the ground in this block.
-    Landed([i32; 3]),
+    /// Hit the ground.
+    Landed,
 }
 
 /// The client world as seen by the vanilla block-behaviour library.
@@ -1104,15 +1097,10 @@ struct FallingBlock {
     age: i32,
     /// `Entity.isNoGravity`.
     no_gravity: bool,
-    /// `FallingBlockEntity.dropItem`.
-    drop_item: bool,
     /// `Entity.fallDistance` (powder snow holds a block that fell far at 0.9).
     fall_distance: f64,
     /// `Entity.stuckSpeedMultiplier`: a cobweb it is in scales its next move.
     stuck: Vec3,
-    damage: horizon_client::falling_block::Damage,
-    /// The UUID and compound it was loaded with, kept while it moves.
-    saved: Option<Box<([i32; 4], horizon_world::nbt::Tag)>>,
 }
 /// The data loaded once at startup and never changed: blocks, items,
 /// recipes, biomes, mobs, collision and motion. Read-only and `Send + Sync`,
@@ -1464,9 +1452,6 @@ struct Sim<'a> {
     book: Option<books::BookScreen>,
     /// LevelLoadingScreen.smoothedProgress while the player is not placed yet.
     loading_progress: f32,
-    /// Chunks a respawn search waits for this tick, kept loading beside the
-    /// player's own (taken by `update_world`).
-    spawn_wait: Vec<(i32, i32)>,
     mobs: Vec<Mob>,
     creatures: creatures::Creatures,
     sculk: sculk::SculkState,
@@ -1476,9 +1461,6 @@ struct Sim<'a> {
     /// swap just before an attack keeps them, with the new item's enchantments
     /// (attribute swapping).
     attack_item: Option<Arc<str>>,
-    /// Mobs a player hurt (`LivingEntity.lastHurtByPlayer`), with the guest
-    /// it was by connection (None: the host).
-    last_hurt_by_player: HashMap<u32, Option<u32>>,
     /// Client-ticked block-entity animation state (`game/block_entity_anims.rs`).
     be_anims: horizon_client::block_entity_anim::BlockEntityAnims,
     /// Item being used (eaten): hotbar slot and ticks used.
@@ -1582,8 +1564,6 @@ struct Sim<'a> {
     jukebox_sounds: HashSet<(i32, i32, i32)>,
     bolts: Vec<lightning::Bolt>,
     maps: maps::Maps,
-    /// The ender dragon fight (game/dragon.rs).
-    fight: dragon::Fight,
     dragon: Option<dragon::Dragon>,
     crystals: Vec<dragon::Crystal>,
     dragon_fireballs: Vec<dragon::DragonFireball>,
@@ -1654,11 +1634,6 @@ struct Sim<'a> {
     remote: Option<remote::Remote>,
     /// The server's world name (`--server-control`), once asked.
     server_world: std::cell::OnceCell<String>,
-    /// horizon-server's plugins (game/plugin_host.rs), what they asked for
-    /// that waits for the hub, and the players they last saw.
-    plugins: Option<Box<horizon_server_api::PluginHost>>,
-    plugin_actions: Vec<horizon_server_api::Action>,
-    plugin_seen: Vec<horizon_server_api::PlayerRef>,
     command_block_screen: Option<command_blocks::CommandBlockScreen>,
     show_hitboxes: bool,
     show_chunk_borders: bool,
@@ -1676,13 +1651,10 @@ struct Sim<'a> {
     /// Jukebox level events 1010 (song name) and 1011 (`None`) for the guests;
     /// the song's network id is only known once the hub is in hand.
     lan_songs: Vec<([i32; 3], Option<String>)>,
-    lan_cushion_breaks: Vec<(horizon_world::registry::BlockStateId, [f64; 3])>,
     /// Block events (position, b0, b1, state) and entity events (id, event,
     /// position) for the guests.
     lan_block_events: Vec<([i32; 3], i32, i32, u32)>,
     lan_entity_events: Vec<(i32, i8, [f64; 3])>,
-    /// Successful crits (attacking guest, hit entity), queued while the hub is taken.
-    lan_critical_hits: Vec<(Option<u32>, i32, bool)>,
     /// `LivingEntity.lastKineticHitFeedbackTime` of the entities that felt a
     /// spear's hit (`spear::OWN` is this window's player), in game time.
     kinetic_feedback: HashMap<i32, i64>,
@@ -1699,8 +1671,6 @@ struct Sim<'a> {
     /// the operators (`DedicatedServer.shouldInformAdmins`,
     /// `broadcast-console-to-ops`).
     console_broadcast: Option<bool>,
-    /// State of `/spectate`, `/posteffect`, `/debug`, `/waypoint` and friends.
-    cmds: commands::extra::CommandExtras,
     ui: chat::UiState,
     /// Game rules, difficulty, the clock and the command registries (vanilla's `ServerLevelData`).
     world_data: horizon_client::world_data::WorldData,
@@ -5814,42 +5784,6 @@ impl crate::game::Sim<'_> {
             ticks: 0,
         });
     }
-    /// `Block.getDrops` for a block a player breaks: the block's loot table
-    /// with the player as `this`, drawing from its server random sequence
-    /// (`LootContext.Builder.create`), else the level random.
-    fn block_loot_at(
-        &mut self,
-        pos: [i32; 3],
-        state: BlockStateId,
-        held: Option<&ItemStack>,
-    ) -> Vec<ItemStack> {
-        let registry = self.pack.assets.registry;
-        let dynamic = self.pending.dynamic(pos);
-        match self.res.items().block_loot_sequence(registry, state) {
-            Some(sequence) => {
-                let random = self.rand_sequences.get(&sequence, self.level.seed);
-                self.res
-                    .items()
-                    .block_drops_by_player(registry, state, held, &dynamic, random)
-            }
-            None => self.res.items().block_drops_by_player(
-                registry,
-                state,
-                held,
-                &dynamic,
-                &mut self.world.random,
-            ),
-        }
-    }
-    /// Block.popResource
-    fn pop_resource(&mut self, pos: [i32; 3], mut stack: ItemStack) {
-        self.pending.attach(pos, &mut stack);
-        // Block.popResource: Mth.nextDouble offsets from the level random; the
-        // motion is `new ItemEntity(..)`'s own, from the item's random.
-        let p = spill::pop_position(&mut self.world.random, pos);
-        let v = dispenser::new_item_motion();
-        self.spawn_item(stack, p, v, 10);
-    }
     /// Player.drop: thrown from the eyes along the view direction.
     fn drop_held(&mut self, all: bool) {
         if self.eye_position().is_none() {
@@ -6053,16 +5987,6 @@ impl crate::game::Sim<'_> {
                 level_flags::UPDATE_ALL,
             );
         });
-        self.process_level_events()
-    }
-    fn attack_block(&mut self, pos: [i32; 3]) -> Result<()> {
-        let note = self.with_level(|b, level, ticks| {
-            b.attack_block(level, ticks, BlockPos::new(pos[0], pos[1], pos[2]))
-        });
-        // NoteBlock.attack awards the statistic.
-        if note {
-            self.stats.custom("play_noteblock", 1);
-        }
         self.process_level_events()
     }
     /// Copies the moving-piston block entities into the world, where the
@@ -6463,7 +6387,7 @@ impl crate::game::Sim<'_> {
         self.right = false;
     }
     /// One `FallingBlockEntity.tick` move of `f`.
-    fn fall_step(&self, f: &mut FallingBlock, entity_drops: bool) -> Result<FallStep> {
+    fn fall_step(&self, f: &mut FallingBlock) -> Result<FallStep> {
         f.previous = f.position;
         f.age = f.age.wrapping_add(1);
         if !f.no_gravity {
@@ -6508,30 +6432,15 @@ impl crate::game::Sim<'_> {
             f.position.y + movement.y,
             f.position.z + movement.z,
         );
+        // FallingBlockEntity.tick: only the server places it or gives up.
         let on_ground = wanted.y < 0.0 && movement.y != wanted.y;
-        // FallingBlockEntity.tick: off the ground, it gives up after 600
-        // ticks (100 outside the world) and drops itself as an item.
-        let y = next.y.floor() as i32;
-        let outside = y <= horizon_client::chunk::MIN_Y || y >= horizon_client::chunk::MIN_Y + 384;
-        if !on_ground && (f.age > 100 && outside || f.age > 600) {
-            return Ok(if f.drop_item && entity_drops {
-                FallStep::Dropped(next)
-            } else {
-                FallStep::Gone
-            });
-        }
         if next.y < f.position.y {
             f.fall_distance += f.position.y - next.y;
         }
         let from = f.position;
         f.position = next;
         if on_ground {
-            let pos = [
-                f.position.x.floor() as i32,
-                f.position.y.floor() as i32,
-                f.position.z.floor() as i32,
-            ];
-            return Ok(FallStep::Landed(pos));
+            return Ok(FallStep::Landed);
         }
         // applyEffectsFromBlocks: WebBlock.entityInside makes it stuck
         // (Entity.makeStuckInBlock, which forgets the fall). Entity.move
@@ -6564,244 +6473,6 @@ impl crate::game::Sim<'_> {
             f.velocity.z * 0.98,
         );
         Ok(FallStep::Falling)
-    }
-    /// `DecoratedPotBlock.playerWillDestroy`: a pot mined with an item in
-    /// `breaks_decorated_pots`, unless an enchantment prevents shattering, is
-    /// cracked first (flags 260), so it shatters into its sherds.
-    fn crack_mined_pot(&mut self, pos: [i32; 3], state: BlockStateId) -> BlockStateId {
-        let registry = &self.pack.assets.registry;
-        let Some(mut pot) = registry
-            .state(state)
-            .filter(|s| s.name == "minecraft:decorated_pot")
-            .cloned()
-        else {
-            return state;
-        };
-        let Some(held) = self.held() else {
-            return state;
-        };
-        let breaks = self
-            .res
-            .items()
-            .item_tags
-            .get("minecraft:breaks_decorated_pots")
-            .is_some_and(|t| t.contains(&*held.item));
-        let enchantments = &self.res.stations().enchantments;
-        let kept = held
-            .enchantments()
-            .iter()
-            .any(|(e, _)| enchantments.in_tag("minecraft:prevents_decorated_pot_shattering", e));
-        if !breaks || kept {
-            return state;
-        }
-        pot.properties.insert("cracked".into(), "true".into());
-        let Ok(cracked) = registry.resolve(&pot) else {
-            return state;
-        };
-        let at = BlockPos::new(pos[0], pos[1], pos[2]);
-        self.with_level(|b, level, ticks| b.set_block(level, ticks, at, cracked, 260));
-        cracked
-    }
-    /// `ItemStack.mineBlock` for the held stack once a survival player has
-    /// mined the block `name`: an item with a `tool` component counts as used
-    /// and loses its `damage_per_block` on a block that doesn't break
-    /// instantly (`ShearsItem`: on any block but fire).
-    fn mine_block_with_held(&mut self, name: &str, hardness: f32) {
-        let Some(stack) = self.inventory[self.selected].clone() else {
-            return;
-        };
-        let Some((per_block, max)) = self
-            .res
-            .items()
-            .get(&stack.item)
-            .and_then(|i| Some((i.tool_damage_per_block?, i.max_damage)))
-        else {
-            return;
-        };
-        let wears = if &*stack.item == "minecraft:shears" {
-            !self.res.items().block_in_tag("minecraft:fire", name)
-        } else {
-            hardness != 0.0
-        };
-        if wears && per_block > 0 && max > 0 {
-            let loss = self.durability_loss(&stack, per_block);
-            if let Some(held) = self.inventory[self.selected].as_mut() {
-                held.damage += loss;
-                if held.damage >= max {
-                    self.inventory[self.selected] = None;
-                }
-            }
-        }
-        self.stats.add("used", &stack.item, 1);
-    }
-    fn break_block(&mut self, pos: [i32; 3]) -> Result<()> {
-        self.with_player_actor(|game| game.break_block_as_player(pos))
-    }
-    fn break_block_as_player(&mut self, pos: [i32; 3]) -> Result<()> {
-        if !self
-            .res
-            .items()
-            .can_destroy_block(self.held(), self.creative)
-        {
-            return Ok(());
-        }
-        // BlockBreakEvent (a server's player): a plugin may keep the block, or
-        // break it without its drops.
-        let Some(drops) = self.plugin_block_break(pos) else {
-            return Ok(());
-        };
-        if drops {
-            return self.destroy_block_as_player(pos);
-        }
-        let rule = self.world_data.rules.bool("block_drops");
-        let no = horizon_client::gamerules::Value::Bool(false);
-        self.world_data.rules.set("block_drops", no);
-        let result = self.destroy_block_as_player(pos);
-        let was = horizon_client::gamerules::Value::Bool(rule);
-        self.world_data.rules.set("block_drops", was);
-        result
-    }
-    /// ServerPlayerGameMode.destroyBlock once the block may go.
-    fn destroy_block_as_player(&mut self, pos: [i32; 3]) -> Result<()> {
-        self.rumbles
-            .push(horizon_client::gamepad::Rumble::BlockBroken);
-        // ServerPlayerGameMode.destroyBlock.
-        let state = self.world.block(pos[0], pos[1], pos[2]);
-        let broken = state;
-        let facts = self.res.facts().get(state).clone();
-        let state = self.crack_mined_pot(pos, state);
-        // Block.playerWillDestroy: mining their gold angers all nearby piglins.
-        if self.guarded_by_piglins(&facts.name) {
-            self.anger_piglins(false);
-        }
-        // The block entity as it was, for what the drops copy from it.
-        let key = (pos[0], pos[1], pos[2]);
-        if let Some(entity) = self.world.block_entities.get(&key).cloned() {
-            let name = self.world.block_names.get(&key).cloned();
-            self.pending.record(pos, &entity, &facts.name, name);
-        } else if let Some(tag) = spill::saved_entity(&self.world, pos) {
-            self.pending.record_saved(pos, &tag);
-        }
-        self.creaking_heart_broken(pos, true);
-        let hive = match self.world.block_entities.get(&key) {
-            Some(BlockEntity::Beehive(h)) => self.hive_state(pos).map(|s| ((**h).clone(), s)),
-            _ => None,
-        };
-        // playerWillDestroy and Level.removeBlock through the vanilla behaviour
-        // library: the block entity's side effects (containers spill), neighbour
-        // and shape updates, and the destroy event (particles, sound).
-        let creative = self.creative;
-        // TripWireBlock.playerWillDestroy: shears disarm the string first (flags
-        // 260), so taking it down does not trip the hook.
-        if &*facts.name == "minecraft:tripwire"
-            && self.held().is_some_and(|s| &*s.item == "minecraft:shears")
-            && let Some(disarmed) = self.with_props(state, &[("disarmed", "true")])
-        {
-            let at = BlockPos::new(pos[0], pos[1], pos[2]);
-            self.with_level(|b, level, ticks| b.set_block(level, ticks, at, disarmed, 260));
-        }
-        // BeehiveBlock.playerWillDestroy: a creative break still drops the hive
-        // with its bees and honey level.
-        if creative
-            && self.world_data.rules.bool("block_drops")
-            && let Some((h, (honey, _))) = &hive
-            && (!h.bees.is_empty() || honey.is_some_and(|l| l > 0))
-            && let Some(stack) = self.picked_stack(pos, true)
-        {
-            let at = pos.map(f64::from);
-            self.spawn_item(stack, at, dispenser::new_item_motion(), 10);
-        }
-        let correct_tool =
-            !facts.requires_tool || self.res.items().correct_for_drops(self.held(), &facts.name);
-        let removed = self.with_level(|b, level, ticks| {
-            b.player_destroy_block(
-                level,
-                ticks,
-                BlockPos::new(pos[0], pos[1], pos[2]),
-                creative,
-                correct_tool,
-            )
-        });
-        if removed && !creative {
-            let held = self.held().cloned();
-            self.mine_block_with_held(&facts.name, facts.hardness);
-            let harvest = !facts.requires_tool
-                || self
-                    .res
-                    .items()
-                    .correct_for_drops(held.as_ref(), &facts.name);
-            if harvest {
-                // Block.playerDestroy: the mined statistic, the exhaustion and the drops.
-                self.stats.add("mined", &facts.name, 1);
-                if let Some(p) = self.player.as_mut() {
-                    p.cause_food_exhaustion(0.005);
-                }
-                let drops = self.block_loot_at(pos, state, held.as_ref());
-                let silk = held
-                    .as_ref()
-                    .is_some_and(|h| h.enchantment_level("minecraft:silk_touch") > 0);
-                for d in drops {
-                    if &*d.item != "minecraft:air" {
-                        self.pop_resource(pos, d);
-                    }
-                }
-                // BeehiveBlock.playerDestroy: silk touch keeps the bees in;
-                // otherwise they come out.
-                if let Some((hive, (honey, facing))) = hive
-                    && !silk
-                {
-                    self.hive_broken_by_player(pos, hive, honey, facing);
-                }
-                // InfestedBlock.spawnAfterBreak: its silverfish comes out unless the
-                // tool has silk touch (#prevents_infested_spawns) or blocks don't drop.
-                if facts.name.starts_with("minecraft:infested_")
-                    && !silk
-                    && self.world_data.rules.bool("block_drops")
-                {
-                    let at = [
-                        f64::from(pos[0]) + 0.5,
-                        f64::from(pos[1]),
-                        f64::from(pos[2]) + 0.5,
-                    ];
-                    if let Some(id) = self.spawn_mob("minecraft:silverfish", at, false) {
-                        self.mob_poof(id);
-                    }
-                }
-                // SpawnerBlock.spawnAfterBreak pops its experience whatever the tool.
-                let xp = if silk && &*facts.name != "minecraft:spawner" {
-                    0
-                } else {
-                    self.block_experience(&facts.name)
-                };
-                if xp > 0 {
-                    self.spawn_orbs(
-                        [
-                            f64::from(pos[0]) + 0.5,
-                            f64::from(pos[1]) + 0.5,
-                            f64::from(pos[2]) + 0.5,
-                        ],
-                        xp,
-                    );
-                }
-            }
-            // IceBlock.playerDestroy: the ice melts back into water (the
-            // #prevents_ice_melting tool tag holds only silk touch).
-            let prevents_melting = held
-                .as_ref()
-                .is_some_and(|h| h.enchantment_level("minecraft:silk_touch") > 0);
-            self.with_level(|b, level, ticks| {
-                b.ice_destroyed_by_player(
-                    level,
-                    ticks,
-                    BlockPos::new(pos[0], pos[1], pos[2]),
-                    broken,
-                    prevents_melting,
-                );
-            });
-        }
-        self.pending.clear(pos);
-        self.process_level_events()?;
-        Ok(())
     }
     /// `ItemStack.applyAfterUseComponentSideEffects`: a used stack with a
     /// `use_cooldown` component starts its entry (`UseCooldown.apply`). A
@@ -7842,394 +7513,6 @@ impl crate::game::Sim<'_> {
         }
         best
     }
-    /// `Player.attack`'s damage against `target_kind` (with the attack
-    /// strength and whether it is a critical hit): the weapon and effects
-    /// scaled by the attack strength, a mace's smash, the critical hit, then
-    /// enchantments.
-    pub(super) fn melee_damage(&mut self, target_kind: &str) -> (f32, f32, bool, bool) {
-        let hand_damage = 1.0 + self.attack_item_info().map_or(0.0, |i| i.attack_damage);
-        // Riptide's spin replaces the attack damage attribute.
-        let spin = self.player.as_ref().map_or(0.0, |p| p.auto_spin_attack_dmg);
-        let damage = if spin > 0.0 {
-            spin
-        } else {
-            hand_damage + self.effect_attack_bonus()
-        };
-        let scale = self.attack_strength_scale();
-        let mut amount = damage * (0.2 + scale * scale * 0.8);
-        // Item.getAttackDamageBonus (a mace's smash), before the critical hit.
-        amount += self.smash_damage_bonus(target_kind);
-        let player = self.player.as_ref();
-        // Player.canCriticalAttack: falling, off the ground, not in water,
-        // not blind (isMobilityRestricted), not riding, not sprinting.
-        let falling = player.is_some_and(|p| {
-            !p.ground.on_ground
-                && p.fall_distance > 0.0
-                && !p.fluids.was_touching_water
-                && !p.sprinting
-        });
-        let restricted = self.potions.effects.get("blindness").is_some() || self.riding.is_some();
-        let crit = scale > 0.9 && falling && !restricted;
-        if crit {
-            amount *= 1.5;
-        }
-        // Enchantment damage (sharpness, smite, bane) scaled by the attack strength.
-        let magic_boost = self.enchant_damage_bonus(target_kind) * scale;
-        amount += magic_boost;
-        // A plugin's EntityDamageEvent changed the hit under way.
-        (amount, scale, crit, magic_boost > 0.0)
-    }
-    /// `Player.getAttackStrengthScale(0.5)`.
-    fn attack_strength_scale(&self) -> f32 {
-        let delay = horizon_client::attack_strength::delay(self.main_hand_attack_speed());
-        ((self.attack_ticks as f32 + 0.5) / delay).clamp(0.0, 1.0)
-    }
-    /// `Player.isSweepAttack`: a charged, grounded sword hit below the movement limit.
-    pub(super) fn sweep_attack_position(&self, scale: f32, crit: bool) -> Option<[f64; 3]> {
-        let p = self.player.as_ref()?;
-        let sword = self.held().is_some_and(|s| {
-            self.res
-                .items()
-                .item_tags
-                .get("minecraft:swords")
-                .is_some_and(|tag| tag.contains(&*s.item))
-        });
-        if !p.is_sweep_attack(scale, crit, sword) {
-            return None;
-        }
-        let yaw = f64::from(self.yaw.to_radians());
-        Some([
-            p.position.x - yaw.sin(),
-            p.position.y + f64::from(p.dimensions.height) * 0.5,
-            p.position.z + yaw.cos(),
-        ])
-    }
-    /// The visual and sound part of `Player.doSweepAttack` after a successful hit.
-    pub(super) fn sweep_attack(&mut self, at: [f64; 3], from: Option<[f64; 3]>) {
-        let sweep = horizon_client::particles::ParticleOptions::simple(
-            horizon_client::particles::ParticleType::SweepAttack,
-        );
-        self.particles.add(&sweep, at, [0.0; 3]);
-        // Player.sweepAttack's `sendParticles(SWEEP_ATTACK, ..., 0, dx, 0, dz, 0)`:
-        // the offset is the one from the player to the particle.
-        let origin = from.unwrap_or(at);
-        let spread = [at[0] - origin[0], 0.0, at[2] - origin[2]];
-        self.lan_send_particles(&sweep, at, spread, 0.0, 0);
-        self.sounds
-            .play("minecraft:entity.player.attack.sweep", from, 1.0, 1.0);
-    }
-    /// What `Player.doSweepAttack` deals before the target's enchantment
-    /// bonus and the attack strength: `1 + sweeping_damage_ratio * baseDamage`.
-    pub(super) fn sweep_base_damage(&self, scale: f32) -> f32 {
-        // `baseDamage` of `Player.attack` before a critical hit (a sweep has
-        // none) and the enchantments: the attack damage attribute with the
-        // strength and weakness effects, scaled by the attack strength.
-        let hand_damage = 1.0 + self.attack_item_info().map_or(0.0, |i| i.attack_damage);
-        let base_damage = (hand_damage + self.effect_attack_bonus()) * (0.2 + scale * scale * 0.8);
-        // The enchantment's attribute modifier on the attribute's 0 to 1 range.
-        let ratio = self
-            .res
-            .stations()
-            .enchantments
-            .attribute_add(
-                self.inventory[self.selected].as_ref(),
-                "minecraft:sweeping_damage_ratio",
-            )
-            .clamp(0.0, 1.0) as f32;
-        1.0 + ratio * base_damage
-    }
-    /// The damage and knockback part of `Player.doSweepAttack` after a sweep
-    /// hit on the mob at `target`: every other living mob in its box grown by
-    /// (1, 0.25, 1) and closer than 3 blocks (`distanceToSqr < 9`, in creative
-    /// too), but the player's allies
-    /// (`isAlliedTo`), takes `1 + sweeping_damage_ratio * baseDamage` with the
-    /// weapon's enchantments, scaled by the attack strength, and is pushed 0.4
-    /// along the player's yaw.
-    pub(super) fn sweep_damage(&mut self, target: usize, scale: f32) {
-        let Some(p) = self.player.as_ref() else {
-            return;
-        };
-        let from = [p.position.x, p.position.y, p.position.z];
-        let sweep_damage = self.sweep_base_damage(scale);
-        let hit_box = self.mobs[target]
-            .bounds()
-            .inflate(horizon_core::geometry::Vec3::new(1.0, 0.25, 1.0));
-        let (uuid, allies) = (
-            self.level.player_uuid.or(Some([0, 0, 0, 1])),
-            self.player_allies(),
-        );
-        let nearby: Vec<usize> = self
-            .mobs
-            .iter()
-            .enumerate()
-            .filter(|(i, m)| {
-                *i != target
-                    && m.alive()
-                    && !m.removed
-                    && !allies.contains(&m.id)
-                    && !mace::ally_of_player(m, uuid)
-                    && m.bounds().intersects(hit_box)
-                    && m.position.distance_squared(p.position) < 9.0
-            })
-            .map(|(i, _)| i)
-            .collect();
-        let (xd, zd) = self.extra_knockback_direction();
-        for i in nearby {
-            let kind = self.mobs[i].kind.id.clone();
-            let kind = format!("minecraft:{}", kind.trim_start_matches("minecraft:"));
-            let damage = (sweep_damage + self.enchant_damage_bonus(&kind)) * scale;
-            let source = self.attack_source(from);
-            if self.hurt_by_player(i, damage, source) {
-                self.mobs[i].knockback(0.4, xd, zd);
-                self.last_hurt_by_player
-                    .insert(self.mobs[i].id, None::<u32>);
-            }
-        }
-    }
-    /// `Player.attack`'s sounds when a vehicle takes the hit (it always does,
-    /// and can't be hit critically): knockback when sprinting at full
-    /// strength, then strong or weak. Before `swing_arm` resets the charge.
-    pub(super) fn vehicle_attack_sounds(&mut self) {
-        let full = self.attack_strength_scale() > 0.9;
-        let player = self.player.as_ref();
-        let from = player.map(|p| [p.position.x, p.position.y, p.position.z]);
-        if full && player.is_some_and(|p| p.sprinting) {
-            self.sounds
-                .play("minecraft:entity.player.attack.knockback", from, 1.0, 1.0);
-        }
-        let sound = if full {
-            "minecraft:entity.player.attack.strong"
-        } else {
-            "minecraft:entity.player.attack.weak"
-        };
-        if let Some(at) = self.sweep_attack_position(self.attack_strength_scale(), false) {
-            self.sweep_attack(at, from);
-        } else {
-            self.sounds.play(sound, from, 1.0, 1.0);
-        }
-    }
-    /// Player.attack with the attack-strength charge, crits and knockback.
-    fn attack(&mut self) -> bool {
-        if self.spectator() {
-            return false;
-        }
-        // A painting nearer than the targeted block and mob breaks instead.
-        if let Some((i, d)) = self.painting_hit()
-            && self.mob_hit().is_none_or(|m| d < m.1)
-            && self.pick().is_none_or(|h| {
-                let eye = self.eye_position().unwrap_or_default();
-                (0..3)
-                    .map(|a| (h.point[a] - eye[a]).powi(2))
-                    .sum::<f64>()
-                    .sqrt()
-                    > d
-            })
-        {
-            self.break_painting(i, true);
-            return true;
-        }
-        // A ghast's fireball or a wind charge in front: turned back.
-        if self.attack_redirectable() {
-            return true;
-        }
-        let hand_damage = 1.0
-            + self
-                .held()
-                .and_then(|h| self.res.items().get(&h.item))
-                .map_or(0.0, |i| i.attack_damage);
-        if self.attack_frame()
-            || self.attack_armor_stand()
-            || self.attack_cushion()
-            || self.attack_boat(hand_damage)
-            || self.attack_cart(hand_damage)
-            || self.attack_dragon()
-        {
-            return true;
-        }
-        let Some((index, distance)) = self.mob_hit() else {
-            return false;
-        };
-        if let Some(hit) = self.pick() {
-            let eye = self.eye_position().unwrap_or_default();
-            let d = ((hit.point[0] - eye[0]).powi(2)
-                + (hit.point[1] - eye[1]).powi(2)
-                + (hit.point[2] - eye[2]).powi(2))
-            .sqrt();
-            if d < distance {
-                return false;
-            }
-        }
-        self.attack_mob(index);
-        // Minecraft.startAttack swings after the attack.
-        self.swing_arm();
-        true
-    }
-    /// `Player.attack` on a mob: the damage, knockback, sweep, particles and
-    /// sounds.
-    pub(super) fn attack_mob(&mut self, index: usize) {
-        let target_kind = self.mobs[index].kind.id.clone();
-        let target_kind = format!("minecraft:{}", target_kind.trim_start_matches("minecraft:"));
-        let (amount, scale, crit, magic) = self.melee_damage(&target_kind);
-        let sweep = self.sweep_attack_position(scale, crit);
-        let (knockback, knockback_attack) = self.extra_knockback(&target_kind, scale);
-        self.attack_ticks = 0;
-        let player = self.player.as_ref();
-        let from = player.map(|p| [p.position.x, p.position.y, p.position.z]);
-        if knockback_attack {
-            self.sounds
-                .play("minecraft:entity.player.attack.knockback", from, 1.0, 1.0);
-        }
-        // LivingEntity.setLastHurtMob (tamed wolves join in).
-        self.combat.last_hurt_mob = Some((self.mobs[index].id, self.world.game_time));
-        let old_health = self.mobs[index].health;
-        let source = match from {
-            Some(f) => self.attack_source(f),
-            None => horizon_client::mobs::Damage::of(horizon_client::mobs::DamageKind::Generic),
-        };
-        let landed = self.hurt_by_player(index, amount, source);
-        if let Some(p) = self.player.as_mut() {
-            if p.attack_log.len() >= 64 {
-                p.attack_log.remove(0);
-            }
-            p.attack_log.push(horizon_client::health::AttackRecord {
-                game_time: p.health.game_time(),
-                target: target_kind.clone(),
-                id: self.mobs[index].id,
-                killed: landed && !self.mobs[index].alive(),
-                amount,
-                scale,
-                crit,
-                landed,
-                dealt: old_health - self.mobs[index].health,
-            });
-        }
-        if landed {
-            if knockback > 0.0 {
-                let (xd, zd) = self.extra_knockback_direction();
-                self.mobs[index].knockback(f64::from(knockback), xd, zd);
-                self.stop_sprint_after_extra_knockback();
-            }
-            let mob = &self.mobs[index];
-            // Player.damageStatsAndHearts: the damage the hit actually did.
-            let actual = old_health - mob.health;
-            // Player.attack: crit emitter and damage indicator hearts.
-            let (feet, width, height) = (
-                [mob.position.x, mob.position.y, mob.position.z],
-                mob.kind.width,
-                mob.kind.height,
-            );
-            self.stats
-                .custom("damage_dealt", (actual * 10.0).round() as i32);
-            if crit {
-                let (acting, target) = (None::<u32>, self.mobs[index].id as i32);
-                self.critical_hit(acting, target, feet, width, height, false);
-            }
-            // Player.attackVisualEffects: magicCrit when the enchantments added damage.
-            if magic {
-                let (acting, target) = (None::<u32>, self.mobs[index].id as i32);
-                self.critical_hit(acting, target, feet, width, height, true);
-            }
-            if actual > 2.0 {
-                let indicator = horizon_client::particles::ParticleOptions::simple(
-                    horizon_client::particles::ParticleType::DamageIndicator,
-                );
-                self.particles.send_particles(
-                    &indicator,
-                    [feet[0], feet[1] + height * 0.5, feet[2]],
-                    [0.1, 0.0, 0.1],
-                    0.2,
-                    (actual * 0.5) as u32,
-                );
-                // The players a server serves are sent them too.
-                self.lan_send_particles(
-                    &indicator,
-                    [feet[0], feet[1] + height * 0.5, feet[2]],
-                    [0.1, 0.0, 0.1],
-                    0.2,
-                    (actual * 0.5) as u32,
-                );
-            }
-            self.last_hurt_by_player
-                .insert(self.mobs[index].id, None::<u32>);
-            let sound = if crit {
-                "minecraft:entity.player.attack.crit"
-            } else if scale > 0.9 {
-                "minecraft:entity.player.attack.strong"
-            } else {
-                "minecraft:entity.player.attack.weak"
-            };
-            // Player.playServerSideSound: at the player.
-            if let Some(at) = sweep {
-                self.sweep_attack(at, from);
-                self.sweep_damage(index, scale);
-            } else {
-                self.sounds.play(sound, from, 1.0, 1.0);
-            }
-            // The hurt or death sound the mob raised (getHurtSound / getDeathSound,
-            // its voice pitch from its own random).
-            let queued = std::mem::take(&mut self.mobs[index].outbox);
-            let mut infested = false;
-            for event in queued {
-                match event {
-                    horizon_client::mobs::MobEvent::Sound(s, at, volume, pitch) => {
-                        self.sounds
-                            .play(&format!("minecraft:{s}"), Some(at), volume, pitch);
-                    }
-                    horizon_client::mobs::MobEvent::Infested { .. } => infested = true,
-                    other => {
-                        // Left for the end of the tick.
-                        self.mobs[index].outbox.push(other);
-                    }
-                }
-            }
-            if infested {
-                let id = self.mobs[index].id;
-                self.mob_infested(id);
-            }
-            self.weapon_hit(index);
-            // Player.attack: causeFoodExhaustion(0.1F) only when the hit hurt
-            // (inside `if (wasHurt)`), after damageStatsAndHearts.
-            if let Some(p) = self.player.as_mut()
-                && !self.creative
-            {
-                p.cause_food_exhaustion(0.1);
-            }
-        } else {
-            self.sounds
-                .play("minecraft:entity.player.attack.nodamage", from, 1.0, 1.0);
-        }
-    }
-    /// ServerExplosion: rays from a 16^3 grid lose (resistance + 0.3) * 0.3 per step.
-    /// A mob explosion (`ServerLevel.explode` with `ExplosionInteraction.MOB`:
-    /// blocks are kept without mobGriefing, else the mob_explosion_drop_decay
-    /// rule picks decay).
-    fn explode(&mut self, center: [f64; 3], radius: f32) -> Result<()> {
-        let interaction = if !self.world_data.rules.bool("mob_griefing") {
-            explosion::BlockInteraction::Keep
-        } else if self.world_data.rules.bool("mob_explosion_drop_decay") {
-            explosion::BlockInteraction::DestroyWithDecay
-        } else {
-            explosion::BlockInteraction::Destroy
-        };
-        self.server_explode(center, radius, interaction, false)
-    }
-    /// Copies of a save batch carrying its live block entities and save data.
-    fn with_entities<'a>(
-        &self,
-        chunks: impl IntoIterator<Item = &'a Arc<horizon_client::chunk::Chunk>>,
-    ) -> Vec<Arc<horizon_client::chunk::Chunk>> {
-        horizon_client::save::chunks_with_block_entities(
-            chunks,
-            &self.world.block_entities,
-            &self.world.block_names,
-        )
-        .into_iter()
-        .map(|mut c| {
-            self.attach_save_data(&mut c);
-            Arc::new(c)
-        })
-        .collect()
-    }
     /// Equipment attribute modifiers (LivingEntity.collectEquipmentChanges).
     fn apply_equipment(&mut self) {
         let Some(player) = self.player.as_mut() else {
@@ -8366,38 +7649,6 @@ impl crate::game::Sim<'_> {
         self.level_set(pos, id)?;
         Ok(true)
     }
-    fn damage_held(&mut self, amount: u32) {
-        if self.creative {
-            return;
-        }
-        let amount = match self.held().cloned() {
-            Some(held) => self.durability_loss(&held, amount),
-            None => amount,
-        };
-        let max = self
-            .held()
-            .and_then(|s| self.res.items().get(&s.item))
-            .map_or(0, |i| i.max_damage);
-        let cell = self.held_mut();
-        if let Some(stack) = cell.as_mut()
-            && max > 0
-        {
-            stack.damage += amount;
-            if stack.damage >= max {
-                let broken = stack.item.clone();
-                *cell = None;
-                self.stats.add("broken", &broken, 1);
-                if let Some(eye) = self.eye_position() {
-                    self.sounds.play(
-                        "minecraft:entity.item.break",
-                        Some(eye),
-                        0.8,
-                        0.8 + self.world.random.next_float() * 0.4,
-                    );
-                }
-            }
-        }
-    }
     /// `ItemStack.hurtWithoutBreaking`: Unbreaking applies, but the stack stops at
     /// one point of durability left instead of breaking.
     fn hurt_held_without_breaking(&mut self, amount: u32) {
@@ -8470,33 +7721,6 @@ impl crate::game::Sim<'_> {
             count: 1,
             ticks: 0,
         });
-    }
-    /// DropExperienceBlock / RedStoneOreBlock / SculkBlock experience ranges.
-    fn block_experience(&mut self, name: &str) -> u32 {
-        let (min, max) = match name.trim_start_matches("minecraft:") {
-            "coal_ore" | "deepslate_coal_ore" => (0, 2),
-            "nether_gold_ore" => (0, 1),
-            "lapis_ore" | "deepslate_lapis_ore" | "nether_quartz_ore" => (2, 5),
-            "diamond_ore" | "deepslate_diamond_ore" | "emerald_ore" | "deepslate_emerald_ore" => {
-                (3, 7)
-            }
-            "redstone_ore" | "deepslate_redstone_ore" => (1, 5),
-            "sculk" => (1, 1),
-            "sculk_catalyst" | "sculk_sensor" | "calibrated_sculk_sensor" | "sculk_shrieker" => {
-                (5, 5)
-            }
-            // SpawnerBlock.spawnAfterBreak: 15 + nextInt(15) + nextInt(15).
-            "spawner" => {
-                let r = &mut self.world.random;
-                let a = r.next_int_bound(15).unwrap_or(0);
-                return (15 + a + r.next_int_bound(15).unwrap_or(0)) as u32;
-            }
-            _ => (0, 0),
-        };
-        if max == 0 {
-            return 0;
-        }
-        (min + self.world.random.next_int_bound(max - min + 1).unwrap_or(0)) as u32
     }
     /// `FurnaceResultSlot.checkTakeAchievements`: the player took from the output of the
     /// furnace at `pos`, which pops the experience of what it made at them
@@ -8686,22 +7910,10 @@ impl crate::game::Sim<'_> {
                 (p.position.z.floor() as i32) >> 4,
             );
         }
-        self.tick_pregen();
-        let areas = self.streaming.extra.len();
-        let waiting = std::mem::take(&mut self.spawn_wait);
-        self.streaming
-            .extra
-            .extend(waiting.into_iter().map(|chunk| (chunk, 0)));
         let (uploads, unloaded) =
             horizon_client::spans::time("streaming", || self.streaming.update(&mut self.world));
-        self.streaming.extra.truncate(areas);
-        let dirty: Vec<_> = unloaded
-            .iter()
-            .filter(|c| self.world.modified.remove(&(c.x, c.z)))
-            .cloned()
-            .collect();
-        let modified = horizon_client::spans::time("with_entities", || self.with_entities(&dirty));
-        horizon_client::spans::time("unload_entities", || self.unload_entities(&unloaded));
+        // ClientLevel.unload: the chunk's block entities go with it; the
+        // world is the server's to save.
         if !unloaded.is_empty() {
             let gone: horizon_client::fast_hash::FxHashSet<(i32, i32)> =
                 unloaded.iter().map(|c| (c.x, c.z)).collect();
@@ -8711,14 +7923,6 @@ impl crate::game::Sim<'_> {
             self.world
                 .block_names
                 .retain(|p, _| !gone.contains(&(p.0 >> 4, p.2 >> 4)));
-        }
-        if !modified.is_empty()
-            && let Err(e) = horizon_client::spans::time("save_chunks", || {
-                self.save
-                    .save_later(&modified, self.pack.assets.registry, self.res.biomes())
-            })
-        {
-            log::warn!("Horizon: failed to save unloaded chunks: {e}");
         }
         (uploads, unloaded)
     }
@@ -9826,13 +9030,11 @@ impl<'a> Game<'a> {
                 sign_edit: None,
                 book: None,
                 loading_progress: 0.0,
-                spawn_wait: Vec::new(),
                 mobs: Vec::new(),
                 creatures: Default::default(),
                 sculk: Default::default(),
                 attack_ticks: 100,
                 attack_item: None,
-                last_hurt_by_player: HashMap::new(),
                 be_anims: {
                     let mut anims = horizon_client::block_entity_anim::BlockEntityAnims::default();
                     anims.classify(registry);
@@ -9901,7 +9103,6 @@ impl<'a> Game<'a> {
                 jukebox_sounds: HashSet::new(),
                 bolts: Vec::new(),
                 maps: maps::Maps::default(),
-                fight: dragon::Fight::default(),
                 dragon: None,
                 crystals: Vec::new(),
                 dragon_fireballs: Vec::new(),
@@ -9947,9 +9148,6 @@ impl<'a> Game<'a> {
                 persist: Default::default(),
                 remote: None,
                 server_world: Default::default(),
-                plugins: None,
-                plugin_actions: Vec::new(),
-                plugin_seen: Vec::new(),
                 command_block_screen: None,
                 show_hitboxes: false,
                 show_chunk_borders: false,
@@ -9959,16 +9157,13 @@ impl<'a> Game<'a> {
                 quitting: false,
                 forced_hit: None,
                 lan_songs: Vec::new(),
-                lan_cushion_breaks: Vec::new(),
                 lan_block_events: Vec::new(),
                 lan_entity_events: Vec::new(),
-                lan_critical_hits: Vec::new(),
                 kinetic_feedback: HashMap::new(),
                 lid_openers: HashMap::new(),
                 chat_capture: None,
                 admin_feedback: Vec::new(),
                 console_broadcast: None,
-                cmds: Default::default(),
                 ui: chat::UiState::new(),
                 world_data: Default::default(),
                 combat: Default::default(),

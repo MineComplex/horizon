@@ -2,11 +2,7 @@
 //! server threads and the play-state hub, feeds it the world's entities each
 //! tick and turns what the guests do into gameplay. A world that is not open
 //! costs one `Option` check per tick.
-use horizon_client::{Result, lan::hub::Hub};
-
-pub(super) struct LanHost {
-    pub hub: Hub,
-}
+use horizon_client::Result;
 
 /// The SynchedEntityData index of the baby flag: AgeableMob.DATA_BABY_ID and
 /// Zombie.DATA_BABY_ID are both the first entry after Mob's (16); Piglin's
@@ -87,30 +83,6 @@ impl crate::game::Sim<'_> {
     pub(super) fn lan_entity_event(&mut self, id: i32, event: i8, at: [f64; 3]) {
         if self.sounds.capture.is_some() {
             self.lan_entity_events.push((id, event, at));
-        }
-    }
-    /// `ServerPlayer.crit` (or `magicCrit` when `magic`): this window's
-    /// emitter, and an animation for the attacker's client and observers once
-    /// the hub is back in place.
-    pub(super) fn critical_hit(
-        &mut self,
-        attacker: Option<u32>,
-        id: i32,
-        feet: [f64; 3],
-        width: f64,
-        height: f64,
-        magic: bool,
-    ) {
-        use horizon_client::particles::{ParticleOptions, ParticleType};
-        let particle = if magic {
-            ParticleType::EnchantedHit
-        } else {
-            ParticleType::Crit
-        };
-        self.particles
-            .tracking_emitter(ParticleOptions::simple(particle), feet, width, height);
-        if self.sounds.capture.is_some() {
-            self.lan_critical_hits.push((attacker, id, magic));
         }
     }
     /// The bed at `head` as a sleeping model lies in it (`ints[1]`,

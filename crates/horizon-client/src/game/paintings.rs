@@ -2,7 +2,7 @@
 //! variant choice, `HangingEntity.survives` checks every 100 ticks,
 //! breaking by attack (`dropItem`), saving, and `PaintingRenderer` quads.
 use super::{Game, view_vector};
-use horizon_client::{items::ItemStack, mesher::Vertex};
+use horizon_client::mesher::Vertex;
 use std::sync::Arc;
 
 /// A `painting_variant` and whether `#placeable` lists it (in tag order).
@@ -216,38 +216,5 @@ impl crate::game::Sim<'_> {
             }
         }
         best
-    }
-    /// `Painting.hurtServer` -> kill and `dropItem`.
-    pub(super) fn break_painting(&mut self, index: usize, by_player: bool) {
-        let p = self.paintings.remove(index);
-        let (lo, hi) = p.bounds();
-        let at = [
-            (lo[0] + hi[0]) / 2.0,
-            (lo[1] + hi[1]) / 2.0,
-            (lo[2] + hi[2]) / 2.0,
-        ];
-        self.world.modified.insert((p.pos[0] >> 4, p.pos[2] >> 4));
-        if !self.world_data.rules.bool("entity_drops") {
-            return;
-        }
-        self.sounds
-            .play("minecraft:entity.painting.break", Some(at), 1.0, 1.0);
-        if by_player && self.creative {
-            return;
-        }
-        // HangingEntity.spawnAtLocation: 0.15 out from the wall.
-        let s = p.step().map(f64::from);
-        let stack = ItemStack {
-            item: Arc::from("minecraft:painting"),
-            count: 1,
-            damage: 0,
-            extra: None,
-        };
-        self.spawn_item(
-            stack,
-            [at[0] + s[0] * 0.15, at[1], at[2] + s[2] * 0.15],
-            [0.0; 3],
-            10,
-        );
     }
 }

@@ -4,11 +4,7 @@
 //! event it plays (`DefaultDispenseItemBehavior.dispense` then plays that
 //! event and the smoke animation, event 2000).
 use super::Game;
-use horizon_client::items::ItemStack;
-use horizon_core::{
-    geometry::Vec3,
-    random::{LegacyRandom, RandomSource},
-};
+use horizon_core::random::{LegacyRandom, RandomSource};
 use horizon_world::registry::BlockStateId;
 
 thread_local! {
@@ -84,49 +80,4 @@ impl crate::game::Sim<'_> {
         }
         self.pack.assets.registry.resolve(&s).ok()
     }
-    /// `LootTable.getRandomItems` of `table` in the context of `parent`: the
-    /// draws come from `parent`'s server random sequence when it names one (a
-    /// nested `loot_table` entry shares its parent's context), else the level's.
-    pub(super) fn sequence_loot(
-        &mut self,
-        parent: &str,
-        table: &str,
-        held: Option<&ItemStack>,
-    ) -> Vec<ItemStack> {
-        match self.res.items().loot_sequence(parent) {
-            Some(sequence) => {
-                let random = self.rand_sequences.get(&sequence, self.level.seed);
-                self.res.items().loot_table_from(table, false, held, random)
-            }
-            None => self
-                .res
-                .items()
-                .loot_table(table, false, held, &mut self.world.random),
-        }
-    }
-    /// `Entity.spawnAtLocation(level, stack, offset)`: an item at the entity's
-    /// feet plus the offset, moving as `new ItemEntity` makes it.
-    pub(super) fn spawn_at_location(
-        &mut self,
-        at: Vec3,
-        y_offset: f64,
-        stack: ItemStack,
-    ) -> [f64; 3] {
-        let v = new_item_motion();
-        self.spawn_item(stack, [at.x, at.y + y_offset, at.z], v, 10);
-        v
-    }
-}
-/// A tipped arrow's lasting effect at an eighth of the potion's duration
-/// (`Arrow.doPostHurtEffects`).
-pub(super) fn tipped_effect(stack: &ItemStack) -> Option<(&'static str, i32)> {
-    stack
-        .potion()
-        .and_then(horizon_client::brewing::potion)
-        .and_then(|def| {
-            def.effects
-                .iter()
-                .find(|(id, _, _)| !horizon_client::brewing::effect(id).is_some_and(|e| e.instant))
-                .map(|(id, duration, _)| (*id, (duration / 8).max(1)))
-        })
 }

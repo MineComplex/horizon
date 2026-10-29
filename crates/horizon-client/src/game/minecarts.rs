@@ -12,10 +12,7 @@ use horizon_client::{
     mobs::{Part, anim::Poses},
     sound_engine::{CartSound, SoundEngine, SoundInstance, Sounds},
 };
-use horizon_core::{
-    geometry::{Aabb, Vec3},
-    random::RandomSource,
-};
+use horizon_core::geometry::{Aabb, Vec3};
 use horizon_world::registry::BlockStateId;
 use std::collections::HashMap;
 
@@ -558,15 +555,6 @@ impl crate::game::Sim<'_> {
         }
         self.rail_pos(x, y, z)
     }
-    fn prime_cart(&mut self, c: &mut Minecart) {
-        if !self.world_data.rules.bool("tnt_explodes") {
-            return;
-        }
-        c.fuse = 80;
-        let at = [c.position.x, c.position.y, c.position.z];
-        self.sounds
-            .play("minecraft:entity.tnt.primed", Some(at), 1.0, 1.0);
-    }
     /// `getDismountLocationForPassenger`: beside the cart (across its facing), else on top.
     pub(super) fn dismount_cart(&mut self, i: usize) {
         self.riding = None;
@@ -668,56 +656,6 @@ impl crate::game::Sim<'_> {
                     .then_some(CartKind::Chest)
             })
     }
-    /// `VehicleEntity.hurtServer` from the player's attack.
-    pub(super) fn attack_cart(&mut self, damage: f32) -> bool {
-        let Some((i, d)) = self.cart_hit() else {
-            return false;
-        };
-        if !self.before_block(d) || self.mob_hit().is_some_and(|m| m.1 < d) {
-            return false;
-        }
-        let burning = self
-            .held()
-            .is_some_and(|s| s.enchantment_level("minecraft:fire_aspect") > 0);
-        self.vehicle_attack_sounds();
-        let creative = self.creative;
-        self.hurt_cart(i, damage, creative, burning);
-        self.swing_arm();
-        true
-    }
-    /// `VehicleEntity.hurtServer`: shake, add the damage, break past 40 (at
-    /// once for creative players); TNT minecarts prime instead when moving
-    /// or hurt by fire or an explosion (`damageSourceIgnitesTnt`).
-    pub(super) fn hurt_cart(&mut self, i: usize, damage: f32, creative: bool, fire: bool) {
-        let c = &mut self.carts[i];
-        c.hurt_dir = -c.hurt_dir;
-        c.hurt_time = 10;
-        c.damage += damage * 10.0;
-        let destroyed = creative || c.damage > 40.0;
-        if destroyed {
-            let mut c = self.carts.remove(i);
-            let speed = c.velocity.x * c.velocity.x + c.velocity.z * c.velocity.z;
-            if c.kind == CartKind::Tnt && (fire || speed >= f64::from(0.01f32)) {
-                // MinecartTNT.destroy: prime instead of breaking.
-                if c.fuse < 0 {
-                    self.prime_cart(&mut c);
-                    let r = &mut self.world.random;
-                    c.fuse = r.next_int_bound(20).unwrap_or(0) + r.next_int_bound(20).unwrap_or(0);
-                }
-                self.carts.insert(i, c);
-            } else {
-                let at = [c.position.x, c.position.y, c.position.z];
-                if self.world_data.rules.bool("entity_drops") {
-                    for s in c.items.iter().flatten() {
-                        self.spawn_item(s.clone(), at, [0.0, 0.1, 0.0], 10);
-                    }
-                    if !creative {
-                        self.spawn_item(ItemStack::new(c.kind.id(), 1), at, [0.0, 0.1, 0.0], 10);
-                    }
-                }
-            }
-        }
-    }
     fn display_state(&self, c: &Minecart) -> Option<BlockStateId> {
         let registry = &self.pack.assets.registry;
         let with = |name: &str, props: &[(&str, &str)]| {
@@ -799,34 +737,6 @@ impl Minecart {
         }
         tag
     }
-    pub fn from_nbt(tag: &horizon_world::nbt::Tag, id: u32, kind: CartKind) -> Option<Self> {
-        use horizon_world::nbt::Tag;
-        let (position, velocity, yaw) = horizon_client::entity_nbt::boat_from_nbt(tag)?;
-        let mut c = Self::new(id, kind, position);
-        c.velocity = velocity;
-        c.yaw = yaw;
-        c.previous_yaw = yaw;
-        let int = |k: &str| match tag.get(k) {
-            Some(Tag::Byte(v)) => Some(i32::from(*v)),
-            Some(Tag::Short(v)) => Some(i32::from(*v)),
-            Some(Tag::Int(v)) => Some(*v),
-            _ => None,
-        };
-        let double = |k: &str| match tag.get(k) {
-            Some(Tag::Double(v)) => f64::from_bits(*v),
-            _ => 0.0,
-        };
-        c.flipped = int("FlippedRotation").unwrap_or(0) != 0;
-        c.first_tick = int("HasTicked").unwrap_or(0) != 0;
-        if kind.slots() > 0 {
-            c.items = horizon_client::save::decode_items(tag.get("Items"), kind.slots());
-        }
-        c.enabled = int("Enabled").unwrap_or(1) != 0;
-        c.fuel = int("Fuel").unwrap_or(0);
-        c.push = [double("PushX"), double("PushZ")];
-        c.fuse = int("fuse").unwrap_or(-1);
-        Some(c)
-    }
 }
 
 #[cfg(test)]
@@ -841,31 +751,5 @@ mod tests {
         assert_eq!(display_offset(CartKind::Tnt), 6.0);
         assert_eq!(display_offset(CartKind::CommandBlock), 6.0);
         assert_eq!(display_offset(CartKind::Rideable), 6.0);
-    }
-
-    #[test]
-    fn a_cart_saves_as_never_ticked_until_it_ticks() {
-        use horizon_world::nbt::Tag;
-        let generated = Tag::compound([
-            ("id", Tag::String("minecraft:chest_minecart".into())),
-            (
-                "Pos",
-                Tag::List(
-                    [0.5f64, 40.5, 0.5]
-                        .map(|v| Tag::Double(v.to_bits()))
-                        .to_vec(),
-                ),
-            ),
-            ("HasTicked", Tag::Byte(1)),
-            ("Fire", Tag::Short(0)),
-        ]);
-        let mut cart = Minecart::from_nbt(&generated, 1, CartKind::Chest).unwrap();
-        let saved = cart.to_nbt([0; 4], Some(&generated));
-        assert_eq!(saved.get("HasTicked"), Some(&Tag::Byte(1)));
-        assert_eq!(saved.get("Fire"), Some(&Tag::Short(0)));
-        cart.first_tick = false;
-        let saved = cart.to_nbt([0; 4], Some(&generated));
-        assert_eq!(saved.get("HasTicked"), Some(&Tag::Byte(0)));
-        assert_eq!(saved.get("Fire"), Some(&Tag::Short(0)));
     }
 }

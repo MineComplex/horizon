@@ -77,15 +77,6 @@ impl Game<'_> {
     }
 }
 impl crate::game::Sim<'_> {
-    pub(super) fn biome_name_at(&self, p: Vec3) -> Option<String> {
-        let (x, y, z) = (p.x.floor() as i32, p.y.floor() as i32, p.z.floor() as i32);
-        let c = self.world.chunks.get(&(x >> 4, z >> 4))?;
-        Some(
-            self.res.biomes().list[c.biome(x, y, z) as usize]
-                .name
-                .clone(),
-        )
-    }
     /// `FishingRodCast`: the stack in the arm holding the rod
     /// (`FishingHookRenderer.getHoldingArm`) while the hook is out.
     pub(super) fn cast_rod(&self) -> Option<&ItemStack> {

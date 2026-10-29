@@ -6,10 +6,6 @@ use super::{
     Game,
     stations::{INPUT, Kind, RESULT, Station},
 };
-use horizon_client::mobs::{
-    Species,
-    render::{PROFESSIONS, VILLAGER_TYPES},
-};
 use horizon_client::{
     hud::{HudBatch, rgba},
     items::ItemStack,
@@ -440,46 +436,6 @@ impl crate::game::Sim<'_> {
         self.rand_sequences.give_back(sequence, random);
         self.register_exploration_maps(made);
         offers
-    }
-    /// `AbstractVillager.getOffers`: generated on first use.
-    pub(super) fn ensure_offers(&mut self, index: usize) {
-        let species = self.mobs[index].species();
-        let unset = self.mobs[index]
-            .extra
-            .trade
-            .as_ref()
-            .is_none_or(|t| t.unset);
-        if unset {
-            let m = &self.mobs[index];
-            let variant = format!(
-                "minecraft:{}",
-                VILLAGER_TYPES[m.extra.variant as usize % VILLAGER_TYPES.len()]
-            );
-            let origin = [m.position.x, m.position.y, m.position.z];
-            let offers = if species == Species::WanderingTrader {
-                let mut v = Vec::new();
-                for set in ["buying", "uncommon", "common"] {
-                    v.extend(self.offers_from_set(
-                        &format!("minecraft:wandering_trader/{set}"),
-                        &variant,
-                        origin,
-                    ));
-                }
-                v
-            } else {
-                let profession = PROFESSIONS[m.extra.variant2 as usize % PROFESSIONS.len()];
-                let level = i32::from(m.extra.variant3.max(1));
-                let set = merchant::Trades::set_for(profession, level);
-                if self.res.stations().trades.sets.contains_key(&set) {
-                    self.offers_from_set(&set, &variant, origin)
-                } else {
-                    Vec::new()
-                }
-            };
-            let trade = self.mobs[index].extra.trade.get_or_insert_default();
-            trade.offers = offers;
-            trade.unset = false;
-        }
     }
     /// `Villager.setTradingPlayer(null)`: the session goes back to the mob
     /// (special prices stay as they were), the borrowed sequences to the world.

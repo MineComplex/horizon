@@ -197,11 +197,8 @@ impl crate::game::Sim<'_> {
                 velocity,
                 age: 0,
                 no_gravity: false,
-                drop_item: false,
                 fall_distance: 0.0,
                 stuck: Vec3::ZERO,
-                damage: Default::default(),
-                saved: None,
             }),
             "minecraft:trident" => {
                 let mut t = super::trident::ThrownTrident::remote(id, at, yaw, pitch);
@@ -431,7 +428,7 @@ impl crate::game::Sim<'_> {
         // where it lands for the server to place it and remove it.
         let mut falling = std::mem::take(&mut self.falling);
         for f in &mut falling {
-            if let Ok(FallStep::Landed(_)) = self.fall_step(f, false) {
+            if let Ok(FallStep::Landed) = self.fall_step(f) {
                 // Block.updateEntityMovementAfterFallOn, then the air drag.
                 f.velocity = Vec3::new(f.velocity.x * 0.98, 0.0, f.velocity.z * 0.98);
             }

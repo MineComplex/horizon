@@ -8,10 +8,7 @@ use horizon_client::{
     block_entity_render::vertex_light, collisions::SceneCollisions, items::ItemStack,
     mesher::Vertex, particles::FireworkExplosion,
 };
-use horizon_core::{
-    geometry::{Aabb, Vec3},
-    random::RandomSource,
-};
+use horizon_core::geometry::{Aabb, Vec3};
 
 pub(super) const FIREWORK_EXPLODE_EVENT: i8 = 17;
 
@@ -164,28 +161,6 @@ impl Game<'_> {
     }
 }
 impl crate::game::Sim<'_> {
-    pub(super) fn new_rocket(&mut self, at: Vec3, stack: &ItemStack, attached: bool) -> Rocket {
-        let (flight, explosions) = fireworks_of(stack);
-        // FireworkRocketEntity: motion and lifetime come from the rocket's own random.
-        let r = &mut super::dispenser::entity_random();
-        let tri = |r: &mut horizon_core::random::LegacyRandom| r.triangle(0.0, 0.002297);
-        let velocity = Vec3::new(tri(r), 0.05, tri(r));
-        let _lifetime = 10 * (1 + i32::from(flight))
-            + r.next_int_bound(6).unwrap_or(0)
-            + r.next_int_bound(7).unwrap_or(0);
-        Rocket {
-            id: 0,
-            position: at,
-            previous: at,
-            velocity,
-            life: 0,
-            explosions,
-            attached,
-            attached_to: None,
-            angled: false,
-            item: stack.clone(),
-        }
-    }
     /// FireworkRocketEntity.handleEntityEvent: use the synchronized item data.
     pub(super) fn remote_firework_explosion(&mut self, id: i32) {
         let camera = self.eye_position();

@@ -4,7 +4,6 @@
 //! inactive until the dragon dies.
 use super::{Dim, Game};
 use horizon_client::{
-    Result,
     environment::Environment,
     items::ItemStack,
     mesher::Vertex,
@@ -291,99 +290,6 @@ impl crate::game::Sim<'_> {
             .get(self.world.block(p[0], p[1], p[2]))
             .name
             .clone()
-    }
-    /// The portal level of the podium around the centre column, read from the
-    /// bedrock that EndPodiumFeature places (rim at the portal level, disc
-    /// below it, the torch column) so a broken column does not hide it.
-    fn podium_level(&self) -> Option<i32> {
-        let mut offsets: Vec<[i32; 3]> = (0..4).map(|dy| [0, dy, 0]).collect();
-        for z in -4..=4i32 {
-            for x in -4..=4i32 {
-                let flat = f64::from(x * x + z * z);
-                if (6.25..12.25).contains(&flat) {
-                    offsets.push([x, 0, z]);
-                } else if flat + 1.0 < 6.25 {
-                    offsets.push([x, -1, z]);
-                }
-            }
-        }
-        (1..253)
-            .map(|y| {
-                let score = offsets
-                    .iter()
-                    .filter(|o| &*self.block_name([o[0], y + o[1], o[2]]) == "minecraft:bedrock")
-                    .count();
-                (score, y)
-            })
-            .filter(|&(score, _)| score >= 3)
-            .max()
-            .map(|(_, y)| y)
-    }
-    /// `spawnExitPortal(true)` after the dragon dies.
-    pub(super) fn activate_exit_portal(&mut self) -> Result<()> {
-        let origin = match self.exit_portal() {
-            Some(o) => o,
-            None => {
-                // The rim's level, found without assuming the centre column is intact.
-                [0, self.podium_level().unwrap_or(61), 0]
-            }
-        };
-        self.place_podium(origin, true)
-    }
-    /// EndPodiumFeature(active).place at `origin` (the portal level).
-    pub(super) fn place_podium(&mut self, origin: [i32; 3], active: bool) -> Result<()> {
-        for y in origin[1] - 1..=origin[1] + 32 {
-            for z in origin[2] - 4..=origin[2] + 4 {
-                for x in origin[0] - 4..=origin[0] + 4 {
-                    let d =
-                        (x - origin[0]).pow(2) + (y - origin[1]).pow(2) + (z - origin[2]).pow(2);
-                    let d = f64::from(d);
-                    let inside_rim = d < 2.5 * 2.5;
-                    if !(inside_rim || d < 3.5 * 3.5) {
-                        continue;
-                    }
-                    let name = if y < origin[1] {
-                        if inside_rim {
-                            "minecraft:bedrock"
-                        } else {
-                            "minecraft:end_stone"
-                        }
-                    } else if y > origin[1] {
-                        "minecraft:air"
-                    } else if !inside_rim {
-                        "minecraft:bedrock"
-                    } else if active {
-                        "minecraft:end_portal"
-                    } else {
-                        "minecraft:air"
-                    };
-                    self.set_state_named([x, y, z], name, &[])?;
-                }
-            }
-        }
-        for dy in 0..4 {
-            self.set_state_named(
-                [origin[0], origin[1] + dy, origin[2]],
-                "minecraft:bedrock",
-                &[],
-            )?;
-        }
-        let registry = self.pack.assets.registry;
-        for (facing, d) in [
-            ("north", [0, -1]),
-            ("south", [0, 1]),
-            ("west", [-1, 0]),
-            ("east", [1, 0]),
-        ] {
-            let Some(default) = registry.default_state("minecraft:wall_torch") else {
-                continue;
-            };
-            let mut state = registry.state(default).cloned().ok_or("wall torch")?;
-            state.properties.insert("facing".into(), facing.into());
-            let id = registry.resolve(&state)?;
-            self.level_set([origin[0] + d[0], origin[1] + 2, origin[2] + d[1]], id)?;
-        }
-        Ok(())
     }
     /// `LevelEventHandler` 2003: a shattered eye's item crumbs and two rings
     /// of portal particles drawn in towards it.

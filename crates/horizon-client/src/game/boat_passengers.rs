@@ -11,8 +11,6 @@ use horizon_client::{
 };
 use horizon_core::geometry::{Aabb, Vec3};
 
-/// `Entity.boardingCooldown` once a mob leaves its boat.
-pub(super) const BOARDING_COOLDOWN: i32 = 60;
 /// `Player.DEFAULT_VEHICLE_ATTACHMENT`: how far below the seat a player's
 /// feet are.
 const PLAYER_RIDING_OFFSET: f64 = 0.6;
@@ -204,27 +202,6 @@ impl crate::game::Sim<'_> {
                 let d = wrap_degrees(body - m.head_yaw);
                 m.head_yaw += d - d.clamp(-limit, limit);
             }
-        }
-    }
-    /// `ejectPassengers` for the mobs in boat `i`: each gets out where
-    /// `getDismountLocationForPassenger` puts it (beside the boat when it
-    /// broke: `LivingEntity.dismountVehicle`) and can't board for a while.
-    pub(super) fn eject_boat_mobs(&mut self, i: usize, broken: bool) {
-        let b = &self.boats[i];
-        let (id, y) = (b.id, b.position.y);
-        for j in self.boat_mobs(id) {
-            let m = &self.mobs[j];
-            let at = if broken {
-                Vec3::new(m.position.x, m.position.y.max(y), m.position.z)
-            } else {
-                self.boat_dismount_target(i, f64::from(m.width()), m.yaw)
-            };
-            let m = &mut self.mobs[j];
-            m.extra.mount = None;
-            m.extra.passenger = false;
-            m.extra.boarding_cooldown = BOARDING_COOLDOWN;
-            m.position = at;
-            m.previous = at;
         }
     }
 }

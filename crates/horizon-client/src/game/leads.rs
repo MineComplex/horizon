@@ -4,7 +4,6 @@
 //! breaking, and drawing the rope (`LeashFeatureRenderer`) and the knot.
 use super::Game;
 use horizon_client::{
-    items::ItemStack,
     mesher::Vertex,
     mobs::leash::{self, Holder, Pending},
 };
@@ -161,34 +160,6 @@ impl Game<'_> {
     }
 }
 impl crate::game::Sim<'_> {
-    fn lead_sound(&mut self, sound: &str, at: [f64; 3]) {
-        self.sounds
-            .play(&format!("minecraft:item.lead.{sound}"), Some(at), 1.0, 1.0);
-    }
-    /// `Entity.spawnAtLocation(level, Items.LEAD)`: the item entity draws its
-    /// motion from its own random, not the level's.
-    fn drop_lead_item(&mut self, at: [f64; 3]) {
-        let v = super::dispenser::new_item_motion();
-        self.spawn_item(ItemStack::new("minecraft:lead", 1), at, v, 10);
-    }
-    /// `Leashable.dropLeash` / `removeLeash`: the lead falls as an item.
-    pub(super) fn break_leash(&mut self, id: u32, drop: bool, sound: bool) {
-        let Some(m) = self.mobs.iter_mut().find(|m| m.id == id) else {
-            return;
-        };
-        if horizon_client::mobs::leash::remove(m).is_none() {
-            return;
-        }
-        // Leashable.tickLeash gates a dying entity's lead drop on entity_drops.
-        let drop = drop && (m.alive() || self.world_data.rules.bool("entity_drops"));
-        let at = [m.position.x, m.position.y, m.position.z];
-        if sound {
-            self.lead_sound("break", at);
-        }
-        if drop {
-            self.drop_lead_item(at);
-        }
-    }
     /// The `leash` tag of a mob about to be saved.
     pub(super) fn write_leash(&mut self, tag: &mut Tag, index: usize) {
         let Tag::Compound(map) = tag else { return };

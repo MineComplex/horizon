@@ -4392,7 +4392,18 @@ impl crate::game::Sim<'_> {
             d.tick(world, facts, collision, false, &self.res.motion().fluids);
         }
         head_lerps.retain(|_, (_, steps)| *steps > 0);
-        let _ = self.handle_mob_events(mob_fx);
+        // The client-side mob ticks only draw particles.
+        for e in mob_fx {
+            match e {
+                horizon_client::mobs::MobEvent::Particles { kind, at, count } => {
+                    self.mob_particles(kind, at, count)
+                }
+                horizon_client::mobs::MobEvent::ParticleAt { kind, at, velocity } => {
+                    self.mob_particle_at(kind, at, velocity)
+                }
+                _ => {}
+            }
+        }
         for (item, ticks, at, eye, pitch, yaw) in using {
             self.remote_player_eating(&item, ticks, at, eye, pitch, yaw);
         }

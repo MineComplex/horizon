@@ -14,28 +14,4 @@ impl crate::game::Sim<'_> {
     }
 }
 
-/// A guest as the blocks that look for players see them
-/// (`PlayerDetector`, `level.getPlayers`: the dead ones too).
-pub(super) struct Present {
-    pub uuid: [i32; 4],
-    pub position: [f64; 3],
-    pub eye: [f64; 3],
-    pub height: f32,
-    pub creative: bool,
-    pub spectator: bool,
-    pub alive: bool,
-}
-
-impl crate::game::Sim<'_> {
-    /// Every guest in the world (`ServerLevel.getPlayers` past the host).
-    pub(super) fn lan_present(&self) -> Vec<Present> {
-        Vec::new()
-    }
-    /// The UUID of the player acting: the guest `as_guest` runs, else the host.
-    pub(super) fn acting_uuid(&self) -> [i32; 4] {
-        None::<u128>
-            .map(horizon_client::lan::playerdata::uuid_ints)
-            .or(self.level.player_uuid)
-            .unwrap_or_default()
-    }
-}
+impl crate::game::Sim<'_> {}

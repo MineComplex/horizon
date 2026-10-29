@@ -9,8 +9,6 @@ use super::{Game, Target};
 #[derive(Clone, Copy, Debug)]
 pub(in crate::game) struct Source {
     pub entity: Option<Target>,
-    pub pos: [f64; 3],
-    pub rot: [f32; 2],
     /// `withSuppressedOutput`: functions do not print feedback.
     pub silent: bool,
     /// The command block whose output this source is
@@ -23,16 +21,4 @@ impl Game<'_> {
 
     // ---- conditions ----------------------------------------------------------
 }
-impl crate::game::Sim<'_> {
-    /// The source a command typed by the player starts from.
-    pub(in crate::game) fn player_source(&self) -> Source {
-        Source {
-            // The server console has no entity (CommandSourceStack of the server).
-            entity: self.player.is_some().then_some(Target::Player),
-            pos: self.source_position(),
-            rot: self.source_rotation(),
-            silent: false,
-            block: None,
-        }
-    }
-}
+impl crate::game::Sim<'_> {}

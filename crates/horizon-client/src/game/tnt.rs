@@ -233,24 +233,7 @@ impl Game<'_> {
         }
     }
 }
-impl crate::game::Sim<'_> {
-    /// Adds primed TNT at the block's bottom centre, pushed along `rot`.
-    pub(super) fn add_primed_tnt(&mut self, pos: BlockPos, rot: f64, fuse: i32) {
-        let position = Vec3::new(
-            f64::from(pos.x) + 0.5,
-            f64::from(pos.y),
-            f64::from(pos.z) + 0.5,
-        );
-        self.tnts.push(PrimedTnt {
-            id: 0,
-            position,
-            previous: position,
-            velocity: Vec3::new(-rot.sin() * 0.02, f64::from(0.2f32), -rot.cos() * 0.02),
-            fuse,
-            on_ground: false,
-        });
-    }
-}
+impl crate::game::Sim<'_> {}
 
 use horizon_world::{
     entity_fluid::{
