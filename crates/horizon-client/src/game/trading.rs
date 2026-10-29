@@ -1,7 +1,6 @@
 //! The merchant (villager trading) menu: `MerchantMenu` / `MerchantScreen`
 //! layout (276x166, drawn 50 px left of the usual 176-wide origin), offer
-//! buttons, payment slots, the result slot's `onTake`, villager experience and
-//! level-ups with new offers from the next trade set.
+//! buttons and payment slots over the server's offers (`ClientSideMerchant`).
 use super::{
     Game,
     stations::{INPUT, Kind, RESULT, Station},
@@ -41,76 +40,6 @@ pub(super) fn inventory_slot(i: usize) -> (f32, f32) {
             108.0 + SHIFT + ((i - 9) % 9) as f32 * 18.0,
             84.0 + ((i - 9) / 9) as f32 * 18.0,
         ),
-    }
-}
-
-/// `ExplorationMapFunction` in the game world: the nearest structure of the
-/// tag through the generator's `/locate`, a new map centred on it with its
-/// target decoration.
-pub(super) struct GameMaps<'a> {
-    pub(super) terrain: Option<std::sync::Arc<horizon_client::vanillagen::VanillaTerrain>>,
-    /// Structure tag -> its structures.
-    pub(super) structure_tag: &'a dyn Fn(&str) -> Vec<String>,
-    /// Maps made, for the caller to register: (map id, centre x, z, scale, target).
-    pub(super) made: std::cell::RefCell<Vec<(i32, [i32; 3], u8, String)>>,
-    pub(super) next_id: std::cell::Cell<i32>,
-}
-impl merchant::MapMaker for GameMaps<'_> {
-    fn exploration_map(
-        &self,
-        stack: ItemStack,
-        map: &merchant::ExplorationMap,
-        origin: [f64; 3],
-    ) -> ItemStack {
-        let Some(terrain) = self.terrain.as_ref() else {
-            return stack;
-        };
-        let names = (self.structure_tag)(&map.destination);
-        if names.is_empty() {
-            return stack;
-        }
-        let from = [
-            origin[0].floor() as i32,
-            origin[1].floor() as i32,
-            origin[2].floor() as i32,
-        ];
-        let Some((_, at)) = terrain.locate(&names, from, map.search_radius) else {
-            return stack;
-        };
-        let id = self.next_id.get();
-        self.next_id.set(id + 1);
-        self.made
-            .borrow_mut()
-            .push((id, at, map.zoom, map.decoration.clone()));
-        // The trade's own map item (woodland_mansion_map, ...) keeps its id.
-        let mut out = stack;
-        let d = out.data_mut();
-        d.map_id = Some(id);
-        d.other.push((
-            "minecraft:map_decorations".into(),
-            horizon_world::nbt::Tag::compound([(
-                "+",
-                horizon_world::nbt::Tag::compound([
-                    (
-                        "type",
-                        horizon_world::nbt::Tag::String(map.decoration.as_str().into()),
-                    ),
-                    (
-                        "x",
-                        horizon_world::nbt::Tag::Double(f64::from(at[0]).to_bits()),
-                    ),
-                    (
-                        "z",
-                        horizon_world::nbt::Tag::Double(f64::from(at[2]).to_bits()),
-                    ),
-                    (
-                        "rotation",
-                        horizon_world::nbt::Tag::Float(180.0f32.to_bits()),
-                    ),
-                ]),
-            )]),
-        ));
-        out
     }
 }
 
@@ -398,14 +327,6 @@ impl Game<'_> {
     }
 }
 impl crate::game::Sim<'_> {
-    /// `Villager.setTradingPlayer(null)`: the session goes back to the mob
-    /// (special prices stay as they were), the borrowed sequences to the world.
-    pub(super) fn merchant_closed(&mut self, state: &mut MerchantState) {
-        let session = &mut state.session;
-        for (id, r) in std::mem::take(&mut session.sequences) {
-            self.rand_sequences.give_back(id, r);
-        }
-    }
     /// A server's trading window (no mob here: the server keeps it).
     pub(super) fn open_remote_merchant(
         &mut self,

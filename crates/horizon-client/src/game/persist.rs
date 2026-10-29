@@ -1,6 +1,5 @@
-//! Saving and loading the game state that lives outside chunk blocks:
-//! entities (`entities/*.mca`, per chunk like vanilla's `EntityStorage`) and
-//! scheduled block/fluid ticks (chunk `block_ticks`/`fluid_ticks`).
+//! What the client knows of its entities' identity and saved form: their
+//! UUIDs and the raw data they arrived with, for F3 + I's copied command.
 use horizon_client::{entity_nbt, save::random_uuid};
 use horizon_world::nbt::Tag;
 use std::collections::HashMap;

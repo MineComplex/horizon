@@ -1,6 +1,6 @@
-//! The player's advancements in the game: criteria triggered from game
-//! events (`CriteriaTriggers`), awarding with rewards, the toast and the
-//! chat announcement, and `players/advancements/<uuid>.json`.
+//! The player's advancements as the server sends them
+//! (`ClientboundUpdateAdvancementsPacket`, `ClientAdvancements`) and their
+//! toasts. Triggering and awarding them is the server's.
 use super::Game;
 use horizon_client::{
     advancements::{self as adv, Frame, Progress, Tree},
@@ -192,7 +192,6 @@ impl Game<'_> {
     }
 }
 impl crate::game::Sim<'_> {
-    pub(super) fn load_advancements(&mut self) {}
     /// The slots held by shown advancement, recipe and pack toasts, as bits.
     pub(super) fn toast_slots_used(&self) -> u32 {
         let packs = self.server_packs.toast_slots();

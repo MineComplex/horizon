@@ -1,9 +1,7 @@
-//! Maps (`EmptyMapItem`, `MapItem`, `MapItemSavedData`, `MapRenderer`):
-//! creating a map centred on the player's grid cell, revealing it while held
-//! (`MapItem.update`: dominant map colour per pixel, height and water-depth
-//! shading, the dithered edge), the player marker, `data/minecraft/maps/<id>.dat` and
-//! `maps/last_id.dat`, the 128x128 texture in an atlas slot, the two-handed
-//! first-person view and maps in item frames.
+//! Maps as the server sends them (`ClientboundMapItemDataPacket`, the
+//! client's `MapItemSavedData`) and `MapRenderer`: the 128x128 texture in an
+//! atlas slot, the two-handed first-person view and maps in item frames.
+//! Making and revealing maps is the server's.
 use super::Game;
 use horizon_client::{
     blocks::MAP_COLORS,
@@ -11,7 +9,6 @@ use horizon_client::{
     items::ItemStack,
     mesher::Vertex,
 };
-use horizon_world::nbt::Tag;
 use std::collections::HashMap;
 
 /// A decoration: sprite, map position (-128..127, half pixels) and rotation
@@ -24,35 +21,21 @@ pub(super) struct Decoration {
     pub rot: u8,
     pub holder: Option<u32>,
 }
-/// A player carrying a map, or seeing it framed
-/// (`MapItemSavedData.HoldingPlayer`): the column sweep's step, and what
-/// changed since the last `ClientboundMapItemDataPacket` it was sent.
-struct Holder {
-    /// The changed pixels' box (min x, min y, max x, max y).
-    dirty: Option<[i32; 4]>,
-}
 pub(super) struct MapData {
     pub scale: u8,
     pub locked: bool,
     pub colors: Vec<u8>,
     pub decorations: Vec<Decoration>,
-    holders: Vec<Holder>,
-    /// Changed since the last save / texture upload.
-    dirty: bool,
     texture_dirty: bool,
 }
 impl MapData {
-    /// `MapItemSavedData.createFresh`: centred on the scale's grid cell.
-    pub(super) fn fresh(_x: f64, _z: f64, scale: u8, _dimension: &str) -> Self {
-        let size = 128 * (1 << scale);
-        let _cell = |v: f64| (v.floor() as i32 + 64).div_euclid(size) * size + size / 2 - 64;
+    /// A map the client has not heard of yet: blank.
+    fn blank(scale: u8) -> Self {
         Self {
             scale,
             locked: false,
             colors: vec![0; 128 * 128],
             decorations: Vec::new(),
-            holders: Vec::new(),
-            dirty: true,
             texture_dirty: true,
         }
     }
@@ -62,52 +45,15 @@ impl MapData {
             return false;
         }
         self.colors[i] = color;
-        self.dirty = true;
         self.texture_dirty = true;
-        // setColorsDirty: every holder's next packet carries it.
-        for h in &mut self.holders {
-            h.dirty = Some(match h.dirty {
-                Some([x0, y0, x1, y1]) => [x0.min(x), y0.min(y), x1.max(x), y1.max(y)],
-                None => [x, y, x, y],
-            });
-        }
         true
-    }
-    fn from_nbt(tag: &Tag) -> Option<Self> {
-        let d = tag.get("data")?;
-        let int = |k: &str| match d.get(k) {
-            Some(Tag::Int(v)) => Some(*v),
-            Some(Tag::Byte(v)) => Some(i32::from(*v)),
-            _ => None,
-        };
-        let _dimension = match d.get("dimension") {
-            Some(Tag::String(s)) => s.to_string_lossy(),
-            _ => "minecraft:overworld".to_owned(),
-        };
-        let mut colors = match d.get("colors") {
-            Some(Tag::ByteArray(c)) => c.clone(),
-            _ => Vec::new(),
-        };
-        colors.resize(128 * 128, 0);
-        Some(Self {
-            scale: int("scale").unwrap_or(0).clamp(0, 4) as u8,
-            locked: int("locked").unwrap_or(0) != 0,
-            colors,
-            decorations: Vec::new(),
-            holders: Vec::new(),
-            dirty: false,
-            texture_dirty: true,
-        })
     }
 }
 #[derive(Default)]
 pub(super) struct Maps {
     pub data: HashMap<i32, MapData>,
-    /// The highest map id handed out (`maps/last_id.dat`), loaded on first use.
-    last_id: Option<i32>,
     /// (map id, atlas slot), most recently shown last.
     slots: Vec<(i32, usize)>,
-    missing: std::collections::HashSet<i32>,
 }
 /// `MapColor.getColorFromPackedId` as RGBA bytes (NONE is transparent).
 fn packed_rgba(packed: u8) -> [u8; 4] {
@@ -383,30 +329,8 @@ impl Game<'_> {
     }
 }
 impl crate::game::Sim<'_> {
-    fn dimension_id(&self) -> &'static str {
-        match self.dim {
-            super::Dim::Nether => "minecraft:the_nether",
-            super::Dim::End => "minecraft:the_end",
-            _ => "minecraft:overworld",
-        }
-    }
-    fn map_path(&self, name: &str) -> std::path::PathBuf {
-        self.world_root.join("data/minecraft/maps").join(name)
-    }
-    /// The map's data, loaded from `data/minecraft/maps/<id>.dat` on first use.
+    /// The map's data, as the server last sent it.
     pub(super) fn map(&mut self, id: i32) -> Option<&mut MapData> {
-        if !self.maps.data.contains_key(&id) && !self.maps.missing.contains(&id) {
-            let loaded = horizon_client::save::read_dat(&self.map_path(&format!("{id}.dat")))
-                .and_then(|t| MapData::from_nbt(&t));
-            match loaded {
-                Some(m) => {
-                    self.maps.data.insert(id, m);
-                }
-                None => {
-                    self.maps.missing.insert(id);
-                }
-            }
-        }
         self.maps.data.get_mut(&id)
     }
     /// `ClientboundMapItemDataPacket.handle`: the server's colours and
@@ -432,18 +356,16 @@ impl crate::game::Sim<'_> {
                 })
                 .collect()
         });
-        let dimension = self.dimension_id();
         let map = self
             .maps
             .data
             .entry(p.map_id)
-            .or_insert_with(|| MapData::fresh(0.0, 0.0, p.scale.max(0) as u8, dimension));
+            .or_insert_with(|| MapData::blank(p.scale.max(0) as u8));
         map.locked = p.locked;
         if let Some(decorations) = decorations {
             map.decorations = decorations;
         }
         let Some(patch) = &p.patch else {
-            map.dirty = false;
             return;
         };
         for x in 0..patch.width {
@@ -457,26 +379,6 @@ impl crate::game::Sim<'_> {
                 }
             }
         }
-        // The server owns a remote map: only the texture has to change.
-        map.dirty = false;
-    }
-    fn next_map_id(&mut self) -> i32 {
-        let last = *self.maps.last_id.get_or_insert_with(|| {
-            horizon_client::save::read_dat(&self.world_root.join("data/minecraft/maps/last_id.dat"))
-                .and_then(|t| match t.get("data")?.get("map")? {
-                    Tag::Int(v) => Some(*v),
-                    _ => None,
-                })
-                .unwrap_or(-1)
-        });
-        self.maps.last_id = Some(last + 1);
-        last + 1
-    }
-    /// The id the next new map gets, without taking it.
-    pub(super) fn peek_map_id(&mut self) -> i32 {
-        let id = self.next_map_id();
-        self.maps.last_id = Some(id - 1);
-        id
     }
     /// The maps the player carries, for `status`: how many of their pixels
     /// are drawn, and their decorations.

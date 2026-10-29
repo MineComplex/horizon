@@ -1302,19 +1302,10 @@ impl crate::game::Sim<'_> {
     fn brewing_open(&self) -> bool {
         matches!(self.container_kind(), Some(BlockEntity::Brewing(_)))
     }
-    /// `AbstractContainerMenu.clearContainer`: inputs go back to the player.
+    /// The station's screen closes. What its `removed()` gives back
+    /// (`clearContainer`, a merchant's payment) is the server's.
     pub(super) fn close_station(&mut self) {
-        let Some(mut station) = self.station.take() else {
-            return;
-        };
-        if station.kind != Kind::Merchant {
-            // A server's workstation: its removed() gives the inputs back.
-            return;
-        }
-        // MerchantMenu.removed gives the payment back on the server only.
-        if let Some(m) = station.merchant.as_mut() {
-            self.merchant_closed(m);
-        }
+        self.station = None;
     }
     pub(super) fn station_slots(&self) -> Option<Vec<usize>> {
         let mut v: Vec<usize> = (0..36).collect();

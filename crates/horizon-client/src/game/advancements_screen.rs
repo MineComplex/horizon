@@ -665,7 +665,6 @@ impl Game<'_> {
 }
 impl crate::game::Sim<'_> {
     pub(super) fn open_advancements(&mut self, from_pause: bool) {
-        self.load_advancements();
         let tab = self.adv_ui.tab;
         self.adv_ui = AdvUi {
             cache: self.adv_ui.cache.take(),

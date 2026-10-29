@@ -8,15 +8,11 @@ use horizon_client::{
     items::ItemStack,
     mesher::Vertex,
     particles::{ParticleOptions, ParticleType},
-    vanillagen::VanillaTerrain,
 };
 use horizon_core::random::RandomSource;
-use std::sync::Arc;
 
 #[derive(Default)]
 pub(super) struct EndState {
-    /// The Overworld generator, for stronghold positions (ServerLevel.findNearestMapStructure).
-    locator: std::sync::Mutex<Option<Arc<VanillaTerrain>>>,
     /// Thrown eyes of ender in flight.
     eyes: Vec<EyeOfEnder>,
     flash: EndFlash,
@@ -36,11 +32,7 @@ impl EndFlash {
         self.old_intensity + (self.intensity - self.old_intensity) * partial
     }
 }
-impl EndState {
-    pub(super) fn locator(&self) -> Option<Arc<VanillaTerrain>> {
-        self.locator.lock().unwrap().clone()
-    }
-}
+impl EndState {}
 
 impl EndState {
     /// `handleAddEntity` for an eye of ender on a server's client: it flies

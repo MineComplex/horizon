@@ -1474,7 +1474,6 @@ struct Sim<'a> {
     sleeping: Option<[i32; 3]>,
     sleep_timer: u32,
     dim: Dim,
-    world_root: PathBuf,
     /// The world is superflat (`ServerLevel.isFlat`, for every dimension).
     world_flat: bool,
     /// A player carried through a portal, re-placed once the destination loads.
@@ -1614,7 +1613,6 @@ struct Sim<'a> {
     mount: mounts::MountState,
     stats: stats::Stats,
     score: scoreboard::ScoreState,
-    rand_sequences: horizon_client::random_sequences::RandomSequences,
     border: horizon_client::worldborder::WorldBorder,
     adv: advancements::AdvState,
     stats_ui: stats_screen::StatsUi,
@@ -6807,19 +6805,6 @@ impl crate::game::Sim<'_> {
             .as_ref()
             .and_then(|s| s.merchant.as_ref())
             .map(|m| m.session.clone());
-        let next_map = if merchant_open { self.peek_map_id() } else { 0 };
-        let tag = |t: &str| self.structure_tag(t);
-        let maps = trading::GameMaps {
-            terrain: self.end.locator(),
-            structure_tag: &tag,
-            made: Default::default(),
-            next_id: std::cell::Cell::new(next_map),
-        };
-        let trade_env = horizon_client::merchant::TradeEnv {
-            trades: &self.res.stations().trades,
-            enchantments: &self.res.stations().enchantments,
-            maps: Some(&maps),
-        };
         let env = Env {
             items: self.res.items(),
             recipes: self.res.recipes(),
@@ -6828,7 +6813,9 @@ impl crate::game::Sim<'_> {
             station_recipes: &self.res.stations().recipes,
             enchantments: &self.res.stations().enchantments,
             names: &self.pack.names,
-            trade: Some(&trade_env),
+            // ClientSideMerchant.notifyTrade only counts the use: new offers,
+            // their maps and the level-up are the server's.
+            trade: None,
             // The client menu's ContainerLevelAccess.NULL: no level maps.
             maps: None,
         };
@@ -8406,7 +8393,6 @@ impl<'a> Game<'a> {
                 sleeping: None,
                 sleep_timer: 0,
                 dim: Dim::Overworld,
-                world_root: PathBuf::new(),
                 world_flat: false,
                 travelling: None,
                 portals: Default::default(),
@@ -8497,7 +8483,6 @@ impl<'a> Game<'a> {
                 mount: Default::default(),
                 stats: Default::default(),
                 score: Default::default(),
-                rand_sequences: Default::default(),
                 border: Default::default(),
                 adv: Default::default(),
                 stats_ui: Default::default(),

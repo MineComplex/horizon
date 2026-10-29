@@ -1,11 +1,6 @@
-//! The ender dragon fight (`EnderDragonFight`, `EnderDragon`, its phases,
-//! `EndCrystal`, `DragonFireball`): the fight state saved in the End's
-//! `ender_dragon_fight.dat`, the dragon spawned over the island, the
-//! holding pattern over the 24-node path graph, strafing with fireballs,
-//! landing on the podium to breathe and charge, healing from the crystals on
-//! the spikes, its parts (head and neck take full damage, the rest a quarter
-//! plus one), wing knockback, block breaking, the death flight and rays, the
-//! exit portal, the egg and the next gateway; and its rendering and boss bar.
+//! The ender dragon as the server sends it (`EnderDragon` on a client): its
+//! phase, flight history and parts, the crystals' beams, fireballs, the
+//! death rays, the boss bar and its rendering. The fight is the server's.
 use super::Game;
 use horizon_client::{
     hud::HudBatch,

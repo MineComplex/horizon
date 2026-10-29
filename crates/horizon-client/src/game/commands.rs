@@ -41,39 +41,4 @@ impl crate::game::Sim<'_> {
             .get(tag)
             .is_some_and(|s| s.contains(block))
     }
-    /// The structures of a `worldgen/structure` tag, nested tags expanded.
-    pub(super) fn structure_tag(&self, tag: &str) -> Vec<String> {
-        self.tag_entries("worldgen/structure", tag)
-    }
-    /// The entries of a data pack tag of `registry`, nested tags expanded.
-    pub(super) fn tag_entries(&self, registry: &str, tag: &str) -> Vec<String> {
-        let mut out = Vec::new();
-        let mut pending = vec![tag.to_owned()];
-        let mut seen = std::collections::HashSet::new();
-        while let Some(t) = pending.pop() {
-            if !seen.insert(t.clone()) {
-                continue;
-            }
-            let (ns, path) = t.split_once(':').unwrap_or(("minecraft", &t));
-            let file = self
-                .options
-                .resources
-                .join(format!("data/{ns}/tags/{registry}/{path}.json"));
-            let Ok(v) = std::fs::read(file)
-                .map_err(|_| ())
-                .and_then(|b| serde_json::from_slice::<serde_json::Value>(&b).map_err(|_| ()))
-            else {
-                continue;
-            };
-            for e in v["values"].as_array().into_iter().flatten() {
-                let id = e.as_str().or_else(|| e["id"].as_str()).unwrap_or_default();
-                match id.strip_prefix('#') {
-                    Some(nested) => pending.push(nested.to_owned()),
-                    None if !id.is_empty() => out.push(id.to_owned()),
-                    None => {}
-                }
-            }
-        }
-        out
-    }
 }

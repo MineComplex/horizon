@@ -1,6 +1,6 @@
-//! Primed TNT (`PrimedTnt`): 80-tick fuse, gravity and drag, explosion of
-//! power 4, `TntRenderer` swell and white flash, and `TntBlock.useItemOn`
-//! (flint and steel / fire charge).
+//! Primed TNT on the client (`PrimedTnt.tick`): the fuse, gravity, drag and
+//! fluid pushing, and `TntRenderer`'s swell and white flash. The explosion is
+//! the server's.
 use super::Game;
 use horizon_client::{Result, collisions::SceneCollisions, mesher::Vertex};
 use horizon_core::{
