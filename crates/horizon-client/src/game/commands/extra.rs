@@ -1,9 +1,4 @@
-//! Commands that act on the player and the hosted game rather than the world:
-//! `/spectate` (SpectateCommand), `/waypoint` (WaypointCommand), `/dialog`
-//! (DialogCommand), `/posteffect` (PostEffectCommand), `/kick`,
-//! `/fetchprofile`, `/publish`, `/unpublish`, `/debug`, `/jfr` and
-//! `/version`, with vanilla's feedback and failures.
-use super::Game;
+//! `/version`'s lines (VersionCommand), which F3 + V prints on a client.
 use horizon_client::text::Text;
 
 use horizon_core::version::{BUILD_TIME, DATA_VERSION, STABLE, VANILLA_VERSION, VERSION_ID};
@@ -12,23 +7,6 @@ fn num(n: impl std::fmt::Display) -> Text {
     Text::literal(n.to_string())
 }
 
-impl Game<'_> {
-    // ---- /spectate ------------------------------------------------------
-
-    // ---- /waypoint ------------------------------------------------------
-
-    // ---- /dialog --------------------------------------------------------
-
-    // ---- /posteffect ----------------------------------------------------
-
-    // ---- /test ----------------------------------------------------------
-
-    // ---- /kick ----------------------------------------------------------
-
-    // ---- /fetchprofile --------------------------------------------------
-
-    // ---- /debug, /jfr, /version -----------------------------------------
-}
 impl crate::game::Sim<'_> {
     /// `VersionCommand.dumpVersion`'s lines: Horizon reports the version it
     /// implements.

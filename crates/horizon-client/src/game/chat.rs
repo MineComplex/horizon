@@ -816,12 +816,7 @@ impl crate::game::Sim<'_> {
     }
     /// A chat message from the game (ChatComponent.addServerSystemMessage).
     pub(super) fn system_message(&mut self, text: Text) {
-        if let Some(capture) = self.chat_capture.as_mut() {
-            capture.push(text);
-            return;
-        }
-        // Connected to a server (single player's own included), the chat on
-        // screen is the connection's: the game's own messages join it.
+        // The chat on screen is the connection's: the game's own messages join it.
         self.chat_line(text, ChatSource::Server);
     }
     /// ChatScreen.handleChatInput: history, then a command or a chat line.

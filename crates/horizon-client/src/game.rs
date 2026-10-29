@@ -72,7 +72,6 @@ mod lan_mobs;
 mod lan_particles;
 mod leads;
 mod level_particles;
-mod levels;
 mod lightning;
 mod locator_bar;
 mod loom;
@@ -120,7 +119,6 @@ mod remote_stations;
 mod remote_vehicles;
 mod render_control;
 mod render_tick;
-mod respawn_anchor;
 mod saves_control;
 mod scoreboard;
 mod screens;
@@ -176,7 +174,7 @@ use horizon_client::{
     creative::{Creative, Names},
     entities::{Experience, ExperienceOrb, ItemEntity},
     environment::Environment,
-    first_person::{Hand, SwingAnimation},
+    first_person::Hand,
     furnace::FurnaceCooking,
     gfx::{Frame, Renderer},
     hud::{HudAtlas, HudBatch, rgba},
@@ -540,10 +538,6 @@ struct GameLevel<'w> {
     seed: i64,
     behaviours: &'w Behaviours,
     items: &'w Items,
-    /// Cooking recipes' experience, which a removed furnace pays out.
-    recipes: &'w horizon_client::crafting::Recipes,
-    /// Container loot tables (`unpackLootTable`).
-    loot: Option<std::sync::Arc<horizon_world::loot::LootData>>,
     registry: &'static horizon_world::registry::BlockRegistry,
     rules: horizon_world::level::GameRules,
     /// `Difficulty.getId()` (peaceful 0 .. hard 3).
@@ -551,8 +545,6 @@ struct GameLevel<'w> {
     /// The feet of the players who keep fire spreading around them: the local
     /// player and the LAN guests in this level, spectators aside.
     fire_players: Vec<[f64; 3]>,
-    /// Block loot random sequences (`ServerLevel.getRandomSequence`).
-    rand_sequences: &'w mut horizon_client::random_sequences::RandomSequences,
     spill: &'w mut spill::Spill,
     /// Where the chunk tickets let blocks tick.
     tickets: horizon_client::ticket_levels::Levels,
@@ -1455,8 +1447,6 @@ struct Sim<'a> {
     /// `itemDecorations` shades a slot by. A server's players have their own
     /// (`GuestPlay::cooldowns`), swapped in for their turn.
     cooldowns: horizon_client::cooldowns::Cooldowns,
-    /// The source of a command run through /execute (the player otherwise).
-    command_source: Option<commands::execute::Source>,
     titles: titles::Titles,
     /// This game's world is autosaving this tick (`MinecraftServer.isSaving`).
     autosaving: bool,
@@ -1489,14 +1479,8 @@ struct Sim<'a> {
     world_flat: bool,
     /// A player carried through a portal, re-placed once the destination loads.
     travelling: Option<(PlayerMotion, Vec3)>,
-    /// Players a command sends to another level, once it has run.
-    /// A server's levels other than the one in place (game/levels.rs).
-    levels: levels::Levels,
     /// Nether portals: the player's, items' and mobs' (game/nether_portal.rs).
     portals: nether_portal::Portals,
-    /// The respawn point when it is not the world spawn or a bed: a respawn
-    /// anchor (`game/respawn_anchor.rs`).
-    respawn_config: Option<respawn_anchor::RespawnConfig>,
     /// The open WinScreen (game/win.rs).
     win: Option<win::Win>,
     end: end::EndState,
@@ -1552,9 +1536,6 @@ struct Sim<'a> {
     cart_models: minecarts::CartModels,
     /// The boat the player rides.
     riding: Option<u32>,
-    /// The ender inventory (27 slots) and the ender chest showing it.
-    ender_items: Vec<Option<ItemStack>>,
-    ender_open: Option<(i32, i32, i32)>,
     /// Item entities spawned and block entities removed while the block
     /// behaviour ran (spilled contents, popped resources).
     spill: spill::Spill,
@@ -1626,16 +1607,6 @@ struct Sim<'a> {
     /// `ContainerOpenersCounter`: how many players (the host and the guests)
     /// have each chest open.
     lid_openers: HashMap<(i32, i32, i32), i32>,
-    /// Command feedback to forward to a guest.
-    chat_capture: Option<Vec<horizon_client::text::Text>>,
-    /// `broadcastToAdmins` lines a guest's command queued, sent once it
-    /// returns: the line, whether operators get it and whether the console
-    /// logs it.
-    admin_feedback: Vec<(horizon_client::text::Text, bool, bool)>,
-    /// The server console is running a command: whether its feedback goes to
-    /// the operators (`DedicatedServer.shouldInformAdmins`,
-    /// `broadcast-console-to-ops`).
-    console_broadcast: Option<bool>,
     ui: chat::UiState,
     /// Game rules, difficulty, the clock and the command registries (vanilla's `ServerLevelData`).
     world_data: horizon_client::world_data::WorldData,
@@ -4941,8 +4912,11 @@ impl Game<'_> {
                 self.using = None;
             }
             KeyCode::KeyQ if self.screen == Screen::Playing => {
-                let all = drop_whole_stack(&self.physical_keys);
-                self.drop_held(all);
+                if !self.spectator()
+                    && let Some(r) = self.remote.as_mut()
+                {
+                    r.pending_keys.push(key);
+                }
             }
             KeyCode::Digit1
             | KeyCode::Digit2
@@ -5617,92 +5591,6 @@ impl crate::game::Sim<'_> {
         particle.scale(0.6);
         self.particles.push(particle);
     }
-    fn spawn_item(
-        &mut self,
-        stack: ItemStack,
-        position: [f64; 3],
-        velocity: [f64; 3],
-        pickup_delay: u32,
-    ) {
-        self.next_entity += 1;
-        let p = Vec3::new(position[0], position[1], position[2]);
-        // ItemEntity.bobOffs comes from the entity's own random, not the level's.
-        let bob = self.particles.random().next_float() * std::f32::consts::PI * 2.0;
-        self.dropped.push(ItemEntity {
-            health: 5,
-            fire_ticks: 0,
-            thrower: None,
-            target: None,
-            id: self.next_entity,
-            stack,
-            position: p,
-            previous: p,
-            velocity: Vec3::new(velocity[0], velocity[1], velocity[2]),
-            on_ground: false,
-            age: 0,
-            pickup_delay,
-            bob_offset: bob,
-            ticks: 0,
-        });
-    }
-    /// Player.drop: thrown from the eyes along the view direction.
-    fn drop_held(&mut self, all: bool) {
-        if self.eye_position().is_none() {
-            return;
-        }
-        let spectator = self.spectator();
-        let Some(thrown) = horizon_client::items::take_held_drop(
-            &mut self.inventory[self.selected],
-            all,
-            spectator,
-        ) else {
-            return;
-        };
-        self.player_drop(thrown);
-    }
-    /// `Player.drop`: the statistics and a thrown item entity in front of the player.
-    pub(super) fn player_drop(&mut self, thrown: ItemStack) {
-        let Some(eye) = self.eye_position() else {
-            return;
-        };
-        // LivingEntity.drop: every drop swings the main hand, a menu's
-        // THROW and a creative tab's drop included.
-        self.swing_hand(Hand::Main, SwingAnimation::DEFAULT);
-        // Player.drop: the drop statistics.
-        self.stats.add("dropped", &thrown.item, thrown.count as i32);
-        self.stats.custom("drop", 1);
-        self.throw_from_eyes(thrown, eye, true);
-    }
-    /// `Player.createItemStackToDrop`: an item entity thrown from the eyes
-    /// along the view direction. `thrown_from_hand` (`drop(stack, true)`, the
-    /// drop key) names the player as the thrower; `drop(stack, false)`, for
-    /// what no longer fits in the inventory, does not.
-    fn throw_from_eyes(&mut self, thrown: ItemStack, eye: [f64; 3], thrown_from_hand: bool) {
-        let (yaw, pitch) = (
-            f64::from(self.yaw).to_radians(),
-            f64::from(self.pitch).to_radians(),
-        );
-        let r = &mut self.world.random;
-        let spread = f64::from(r.next_float()) * std::f64::consts::TAU;
-        let strength = 0.02 * f64::from(r.next_float());
-        let v = [
-            -yaw.sin() * pitch.cos() * 0.3 + spread.cos() * strength,
-            -pitch.sin() * 0.3 + 0.1 + f64::from(r.next_float() - r.next_float()) * 0.1,
-            yaw.cos() * pitch.cos() * 0.3 + spread.sin() * strength,
-        ];
-        self.spawn_item(thrown, [eye[0], eye[1] - 0.3, eye[2]], v, 40);
-        if thrown_from_hand {
-            let uuid = self.acting_player_uuid();
-            self.dropped.last_mut().unwrap().thrower = Some(uuid);
-        }
-    }
-    /// The UUID of the player acting: the guest whose turn it is, else the host.
-    pub(super) fn acting_player_uuid(&mut self) -> [i32; 4] {
-        match None::<u128> {
-            Some(guest) => horizon_client::lan::playerdata::uuid_ints(guest),
-            None => self.level.ensure_player_uuid(),
-        }
-    }
     /// Run vanilla block behaviour against the world through `LevelAccess`.
     fn with_level<R>(
         &mut self,
@@ -5812,15 +5700,12 @@ impl crate::game::Sim<'_> {
             seed: self.level.seed,
             behaviours: self.res.behaviours(),
             items: self.res.items(),
-            recipes: self.res.recipes(),
             // A client rolls no loot (LootTable.getRandomItems needs a
             // ServerLevel): it doesn't load the tables on its game thread.
-            loot: { None },
             registry: self.pack.assets.registry,
             rules,
             difficulty: i32::from(self.world_data.difficulty),
             fire_players,
-            rand_sequences: &mut self.rand_sequences,
             spill: &mut self.spill,
             tickets: self.tickets.levels(),
             lid_openers: &self.lid_openers,
@@ -6594,7 +6479,7 @@ impl crate::game::Sim<'_> {
                 self.inventory[i] = Some(stack);
             }
             DisplayClick::Offhand(stack) => self.offhand = Some(stack),
-            DisplayClick::Drop(stack) => self.player_drop(stack),
+            DisplayClick::Drop(stack) => self.creative_item_drop(stack),
             _ => {}
         }
     }
@@ -7309,50 +7194,6 @@ impl crate::game::Sim<'_> {
             _ => {}
         }
     }
-    /// `ExperienceOrb.tryMergeToExisting`: an orb of the same value within a
-    /// 1 block box of `at`, whose id is a multiple of 40 from `merge_id`, takes
-    /// the new one as one more in its count (and restarts its age); otherwise
-    /// a fresh orb spawns.
-    fn award_orb(&mut self, at: [f64; 3], value: u32, merge_id: i32) {
-        let centre = Vec3::new(at[0], at[1], at[2]);
-        let half = Vec3::new(0.5, 0.5, 0.5);
-        let area = Aabb::new(centre.subtract(half), centre.add_vector(half));
-        // A server's orbs are its own; a LAN or server guest only shows them.
-        let target = false.then(|| {
-            self.orbs
-                .iter_mut()
-                .find(|o| o.can_merge(merge_id as u32, value) && o.bounds().intersects(area))
-        });
-        if let Some(Some(orb)) = target {
-            orb.count += 1;
-            orb.age = 0;
-        } else {
-            self.add_orb(at, value);
-        }
-    }
-    /// `new ExperienceOrb(level, pos, Vec3.ZERO, value)`: yaw and motion from
-    /// the orb's own random.
-    fn add_orb(&mut self, at: [f64; 3], value: u32) {
-        let mut r = dispenser::entity_random();
-        let _yaw = r.next_float();
-        let p = Vec3::new(at[0], at[1], at[2]);
-        self.next_entity += 1;
-        self.orbs.push(ExperienceOrb {
-            id: self.next_entity,
-            position: p,
-            previous: p,
-            velocity: Vec3::new(
-                (r.next_double() * 0.2 - 0.1) * 2.0,
-                r.next_double() * 0.2 * 2.0,
-                (r.next_double() * 0.2 - 0.1) * 2.0,
-            ),
-            value,
-            age: 0,
-            on_ground: false,
-            count: 1,
-            ticks: 0,
-        });
-    }
     /// The streaming's radius and meshing options from the settings.
     fn apply_streaming_settings(&mut self) {
         self.streaming.radius = self.settings.render_distance;
@@ -7402,97 +7243,6 @@ impl crate::game::Sim<'_> {
     fn creative_tab_title(&self, tab: &horizon_client::creative::Tab) -> String {
         horizon_client::creative::item_group_key(&tab.id)
             .map_or_else(|| tab.title.clone(), |key| self.translate(key, &tab.title))
-    }
-    /// Copy the live player and world state into the `Level` that gets saved.
-    pub(super) fn sync_level(&mut self) {
-        // Level.write saves the game rules (game_rules.dat) with the rest.
-        self.level.game_rules = self.world_data.rules.by_name();
-        self.level.selected_slot = self.selected as i32;
-        let mode = self.mode_id();
-        let level = &mut self.level;
-        level.creative = self.creative;
-        level.game_mode = mode;
-        // PrimaryLevelData.setDifficulty: /difficulty and the options button change it.
-        level.difficulty =
-            horizon_client::title::DIFFICULTIES[usize::from(self.world_data.difficulty) & 3].into();
-        level.time = self.world.game_time;
-        level.weather = self.world.weather;
-        level.day_time = self.world.day_time;
-        level.spawn = self.spawn.map(|s| [s.x, s.y, s.z]);
-        level.respawn_elsewhere = self.respawn_config.map(|c| c.saved());
-        level.rotation = [self.yaw, self.pitch];
-        level.xp_level = self.experience.level;
-        level.xp_progress = self.experience.progress;
-        level.xp_total = self.experience.total;
-        if let Some(p) = &self.player {
-            level.position = Some([p.position.x, p.position.y, p.position.z]);
-            level.health = p.health.health();
-            level.absorption = p.health.absorption();
-            let extra = level
-                .player_extra
-                .get_or_insert_with(|| horizon_world::nbt::Tag::Compound(Default::default()));
-            if let horizon_world::nbt::Tag::Compound(map) = extra {
-                map.insert(
-                    "Fire".into(),
-                    horizon_world::nbt::Tag::Short(
-                        p.fire_ticks.clamp(i32::from(i16::MIN), i32::from(i16::MAX)) as i16,
-                    ),
-                );
-                map.insert("Air".into(), horizon_world::nbt::Tag::Short(p.air as i16));
-            }
-            level.fall_distance = p.fall_distance;
-
-            level.food = p.health.food.food;
-            level.saturation = p.health.food.saturation;
-            level.flying = p.flying;
-        }
-        level.inventory = self
-            .inventory
-            .iter()
-            .enumerate()
-            .filter_map(|(i, s)| {
-                s.as_ref()
-                    .map(|s| (i as u8, s.item.to_string(), s.count, s.damage))
-            })
-            .collect();
-        level.inventory_components = self
-            .inventory
-            .iter()
-            .enumerate()
-            .filter_map(|(i, s)| Some((i as u8, s.as_ref()?.extra.clone()?)))
-            .collect();
-        if let Some(s) = &self.offhand {
-            level
-                .inventory
-                .push((150, s.item.to_string(), s.count, s.damage));
-            if let Some(extra) = s.extra.clone() {
-                level.inventory_components.insert(150, extra);
-            }
-        }
-        // Vanilla stores armor in slots 100 (feet) to 103 (head).
-        for (i, s) in self.armor.iter().enumerate() {
-            if let Some(s) = s {
-                level
-                    .inventory
-                    .push((103 - i as u8, s.item.to_string(), s.count, s.damage));
-                if let Some(extra) = s.extra.clone() {
-                    level.inventory_components.insert(103 - i as u8, extra);
-                }
-            }
-        }
-        // A server's main level is always the Overworld (MinecraftServer.overworld): the level
-        // it happens to be in while saving is not the world's.
-        {
-            level.dimension = self.dim.id().to_owned();
-        }
-        // An open ender chest holds the live copy.
-        if let Some(key) = self.ender_open
-            && let Some(BlockEntity::Chest(items)) = self.world.block_entities.get(&key)
-        {
-            self.ender_items = items.clone();
-        }
-        level.ender_items = self.ender_items.clone();
-        level.active_effects = self.potions.effects.saved();
     }
     /// LOD Distance and Far Detail Reduced as chosen: the player's LOD
     /// Distance when it is on, else a mod's far terrain
@@ -8295,9 +8045,6 @@ impl ApplicationHandler for Game<'_> {
                         self.tick_sound_engine();
                         self.clock.record(started.elapsed());
                         spent += started.elapsed();
-                        if let Some(report) = self.clock.take_sprint_report() {
-                            self.sprint_report(&report);
-                        }
                     }
                     self.extras_frame();
                     self.extras_retry()?;
@@ -8640,7 +8387,6 @@ impl<'a> Game<'a> {
                 hand: Hand::Main,
                 shield_cooldown: 0,
                 cooldowns: Default::default(),
-                command_source: None,
                 titles: Default::default(),
                 autosaving: false,
                 applied_modifiers: Vec::new(),
@@ -8663,9 +8409,7 @@ impl<'a> Game<'a> {
                 world_root: PathBuf::new(),
                 world_flat: false,
                 travelling: None,
-                levels: Default::default(),
                 portals: Default::default(),
-                respawn_config: None,
                 win: None,
                 end: Default::default(),
                 block_ticks: Ticks::new(0),
@@ -8709,8 +8453,6 @@ impl<'a> Game<'a> {
                 trim_slots: Vec::new(),
                 cart_models: prepared.cart_models,
                 riding: None,
-                ender_items: vec![None; 27],
-                ender_open: None,
                 spill: Default::default(),
                 recipe_ui: Default::default(),
                 mount_menu: Default::default(),
@@ -8749,9 +8491,6 @@ impl<'a> Game<'a> {
                 lan_block_events: Vec::new(),
                 kinetic_feedback: HashMap::new(),
                 lid_openers: HashMap::new(),
-                chat_capture: None,
-                admin_feedback: Vec::new(),
-                console_broadcast: None,
                 ui: chat::UiState::new(),
                 world_data: Default::default(),
                 combat: Default::default(),

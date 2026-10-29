@@ -7,7 +7,7 @@ use horizon_client::{
     command_block::{self, CommandBlock, Mode},
     containers::BlockEntity,
     hud::{HudBatch, rgba},
-    text::{self, Text},
+    text::Text,
     ui::{self, EditBox},
     world::World,
 };
@@ -320,39 +320,6 @@ impl crate::game::Sim<'_> {
     fn block_state_at(&self, pos: Pos) -> Option<&'static BlockState> {
         let registry = self.pack.assets.registry;
         state_of(registry, self.world.block(pos.0, pos.1, pos.2))
-    }
-    /// `CloseableCommandBlockSource.sendSystemMessage`: the block's last
-    /// output, stamped with the time. Nothing when it doesn't track output
-    /// (`CommandSource.NULL`).
-    pub(super) fn command_block_output(&mut self, pos: Pos, message: Text) {
-        if let Some(c) = command_block_mut(&mut self.world, pos)
-            && c.track_output
-        {
-            let time = chrono::Local::now().format("[%H:%M:%S] ").to_string();
-            c.last_output = Some(Text::literal(time).append(message));
-        }
-    }
-    /// `CommandSourceStack.sendSuccess` from a command block: its output when
-    /// `send_command_feedback`, and `broadcastToAdmins` when
-    /// `command_block_output`.
-    pub(super) fn command_block_success(&mut self, pos: Pos, message: Text) {
-        let Some(name) = self
-            .command_block(pos)
-            .filter(|c| c.track_output)
-            .map(CommandBlock::name)
-        else {
-            return;
-        };
-        let feedback = self.world_data.rules.bool("send_command_feedback");
-        if feedback {
-            self.command_block_output(pos, message.clone());
-        }
-        if feedback && self.world_data.rules.bool("command_block_output") {
-            let broadcast = Text::translate("chat.type.admin", &[name, message])
-                .with_color(text::GRAY)
-                .italic();
-            self.system_message(broadcast);
-        }
     }
     /// `LocalPlayer.openCommandBlock`.
     pub(super) fn open_command_block(&mut self, pos: Pos) {

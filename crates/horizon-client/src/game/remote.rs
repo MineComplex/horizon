@@ -5540,7 +5540,7 @@ impl crate::game::Sim<'_> {
     }
     /// MultiPlayerGameMode.dropItem (key.drop): predict the removal, then send
     /// the action; swing only if a nonempty stack was removed.
-    fn remote_drop(&mut self, all: bool) {
+    pub(super) fn remote_drop(&mut self, all: bool) {
         let dropped =
             horizon_client::items::take_held_drop(&mut self.inventory[self.selected], all, false);
         self.send(S::PlayerAction(play::PlayerAction {
@@ -5718,6 +5718,12 @@ impl crate::game::Sim<'_> {
         } else {
             self.carried.take().expect("carried")
         };
+        self.creative_item_drop(thrown);
+    }
+    /// `MultiPlayerGameMode.handleCreativeModeItemDrop`: a SetCreativeModeSlot
+    /// to slot -1, the server throws the stack; the hand swings as `Player.drop`
+    /// predicts.
+    pub(super) fn creative_item_drop(&mut self, thrown: ItemStack) {
         if !self.creative {
             return;
         }

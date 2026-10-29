@@ -474,7 +474,6 @@ impl Game<'_> {
 }
 impl crate::game::Sim<'_> {
     pub(super) fn open_stats(&mut self) {
-        self.load_stats();
         // StatsScreen.init: a server's client asks for its statistics.
         {
             self.send(horizon_protocol::packets::play::Serverbound::ClientCommand(

@@ -4,7 +4,7 @@
 //! event it plays (`DefaultDispenseItemBehavior.dispense` then plays that
 //! event and the smoke animation, event 2000).
 use super::Game;
-use horizon_core::random::{LegacyRandom, RandomSource};
+use horizon_core::random::LegacyRandom;
 use horizon_world::registry::BlockStateId;
 
 thread_local! {
@@ -37,13 +37,6 @@ pub(super) fn entity_random() -> LegacyRandom {
         .duration_since(std::time::UNIX_EPOCH)
         .map_or(0, |d| d.as_nanos() as i64);
     LegacyRandom::new(seed ^ nanos)
-}
-/// `new ItemEntity(level, x, y, z, stack)`'s motion, from the item's own random.
-pub(super) fn new_item_motion() -> [f64; 3] {
-    let mut r = entity_random();
-    let x = r.next_double() * 0.2 - 0.1;
-    let z = r.next_double() * 0.2 - 0.1;
-    [x, 0.2, z]
 }
 
 impl Game<'_> {

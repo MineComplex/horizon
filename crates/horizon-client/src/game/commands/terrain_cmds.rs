@@ -1,15 +1,5 @@
-//! `/forceload`, `/fillbiome`, `/worldborder` and `/loot`.
-use super::Game;
+//! The world border the player's movement collides with.
 
-impl Game<'_> {
-    // ---- /forceload ----------------------------------------------------------
-
-    // ---- /fillbiome ----------------------------------------------------------------
-
-    // ---- /worldborder -----------------------------------------------------------------------
-
-    // ---- /loot ---------------------------------------------------------------------------------
-}
 impl crate::game::Sim<'_> {
     /// The player's movement collides with the border as it is now
     /// (`CollisionGetter.borderCollision`): from inside, its walls stop it.

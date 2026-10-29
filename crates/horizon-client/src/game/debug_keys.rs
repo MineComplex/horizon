@@ -625,7 +625,7 @@ impl Game<'_> {
                 (m.kind.id.clone(), m.position, m.id)
             };
             let mut command = format!("/summon {id} {} {} {}", f2(pos.x), f2(pos.y), f2(pos.z));
-            if add_nbt && let Some(mut tag) = self.entity_nbt(super::commands::Target::Mob(mob)) {
+            if add_nbt && let Some(mut tag) = self.entity_nbt(mob) {
                 if let horizon_world::nbt::Tag::Compound(c) = &mut tag {
                     for key in ["id", "UUID", "Pos"] {
                         c.remove(&key.into());

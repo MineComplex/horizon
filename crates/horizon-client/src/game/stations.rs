@@ -1304,17 +1304,6 @@ impl crate::game::Sim<'_> {
     }
     /// `AbstractContainerMenu.clearContainer`: inputs go back to the player.
     pub(super) fn close_station(&mut self) {
-        if self
-            .station
-            .as_ref()
-            .is_some_and(|s| s.kind == Kind::Merchant)
-        {
-            // MerchantMenu.removed: the carried stack and the payment go back.
-            self.menu_session(|menu, env, _| {
-                menu.merchant_close(env);
-                Some(true)
-            });
-        }
         let Some(mut station) = self.station.take() else {
             return;
         };
@@ -1322,11 +1311,9 @@ impl crate::game::Sim<'_> {
             // A server's workstation: its removed() gives the inputs back.
             return;
         }
+        // MerchantMenu.removed gives the payment back on the server only.
         if let Some(m) = station.merchant.as_mut() {
             self.merchant_closed(m);
-        }
-        for stack in station.inputs.into_iter().flatten() {
-            self.give_or_drop(stack);
         }
     }
     pub(super) fn station_slots(&self) -> Option<Vec<usize>> {
@@ -1469,14 +1456,6 @@ impl crate::game::Sim<'_> {
             s.anvil.result = s.result.clone();
         }
         self.station_after_input();
-    }
-    pub(super) fn give_or_drop(&mut self, stack: ItemStack) {
-        if let Some(rest) = self.give(stack)
-            && let Some(eye) = self.eye_position()
-        {
-            // Inventory.placeItemBackInInventory: `player.drop(stack, false)`.
-            self.throw_from_eyes(rest, eye, false);
-        }
     }
     /// Whether the result slot may be taken (`mayPickup`).
     fn may_take_result(&self) -> bool {

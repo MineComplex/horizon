@@ -1042,7 +1042,9 @@ impl Game<'_> {
                 self.playing()?;
                 let all = a.pos.first() == Some(&"all");
                 let before = self.held().map(|s| self.stack_value(s));
-                self.drop_held(all);
+                if !self.spectator() {
+                    self.remote_drop(all);
+                }
                 ok(
                     json!({ "ok": true, "dropped_from": before, "held": self.held().map(|s| self.stack_value(s)) }),
                 )
