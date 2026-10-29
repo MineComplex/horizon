@@ -30,8 +30,6 @@ pub(super) struct Creatures {
     pub projectiles: Vec<Projectile>,
     /// Ticks left of the elder guardian's apparition (MobAppearanceParticle).
     pub elder_apparition: i32,
-    /// The wandering trader spawner's clock.
-    pub trader: super::wandering_trader::Spawner,
     /// When each player last put a parrot on a shoulder (`timeEntitySatOnShoulder`).
     pub shoulder_time: std::collections::HashMap<[i32; 4], i64>,
     /// Particles from a guest's turn, waiting for it to end

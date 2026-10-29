@@ -924,24 +924,6 @@ impl crate::game::Sim<'_> {
         }
         out.into_iter().collect()
     }
-    pub(super) fn prune_entity_memory(&mut self) {
-        // Forget entities that no longer exist.
-        let alive: HashSet<u32> = self
-            .mobs
-            .iter()
-            .map(|m| m.id)
-            .chain(self.dropped.iter().map(|e| e.id))
-            .chain(self.boats.iter().map(|e| e.id))
-            .chain(self.carts.iter().map(|e| e.id))
-            .chain(self.armor_stands.iter().map(|e| e.id))
-            .chain(self.cushions.iter().map(|e| e.id))
-            .chain(self.item_frames.iter().map(|e| e.id))
-            .chain(self.paintings.iter().map(|e| e.id))
-            .chain(self.others.iter().map(|e| e.id))
-            .collect();
-        self.persist.uuids.retain(|id, _| alive.contains(id));
-        self.persist.raw.retain(|id, _| alive.contains(id));
-    }
     /// Save and remove the entities of chunks that unloaded.
     pub(super) fn unload_entities(&mut self, unloaded: &[Arc<Chunk>]) {
         if unloaded.is_empty() {

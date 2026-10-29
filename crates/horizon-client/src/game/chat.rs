@@ -902,57 +902,6 @@ impl crate::game::Sim<'_> {
             _ => Difficulty::Normal,
         };
     }
-    /// Save the clock beside level.dat (Level.write saves the game rules: a
-    /// second writer of game_rules.dat could leave it with the rules loaded
-    /// when the world opened).
-    pub(super) fn save_world_state(&mut self) {
-        if self.world_root.as_os_str().is_empty() {
-            return;
-        }
-        use horizon_world::nbt::Tag;
-        let c = self.world_data.clock;
-        // The other clocks stay as saved; the overworld one keeps the fields Horizon
-        // does not model, and (like vanilla's codec) omits rate, partial tick and
-        // pause while they have their defaults.
-        let path = self.world_root.join("data/minecraft/world_clocks.dat");
-        let existing = horizon_client::save::read_dat(&path);
-        let mut data = match existing.as_ref().and_then(|r| r.get("data")) {
-            Some(d @ Tag::Compound(_)) => d.clone(),
-            _ => Tag::Compound(Default::default()),
-        };
-        let mut clock = match data.get("minecraft:overworld") {
-            Some(c @ Tag::Compound(_)) => c.clone(),
-            _ => Tag::Compound(Default::default()),
-        };
-        if let Tag::Compound(map) = &mut clock {
-            map.insert("total_ticks".into(), Tag::Long(self.world.day_time));
-            for (key, value, default) in [
-                (
-                    "partial_tick",
-                    Tag::Float(c.partial.to_bits()),
-                    c.partial == 0.0,
-                ),
-                ("rate", Tag::Float(c.rate.to_bits()), c.rate == 1.0),
-                ("paused", Tag::Byte(i8::from(c.paused)), !c.paused),
-            ] {
-                if default {
-                    map.remove(&key.into());
-                } else {
-                    map.insert(key.into(), value);
-                }
-            }
-        }
-        if let Tag::Compound(map) = &mut data {
-            map.insert("minecraft:overworld".into(), clock);
-        }
-        let root = Tag::compound([
-            ("data", data),
-            ("DataVersion", Tag::Int(horizon_world::DATA_VERSION)),
-        ]);
-        if let Err(e) = horizon_client::save::write_dat(&path, root) {
-            log::warn!("the world clocks were not written: {e}");
-        }
-    }
     /// F1 hides the HUD (see `hud`); the screenshot key still works.
     pub(super) fn toggle_hide_gui(&mut self) {
         self.ui.hide_gui = !self.ui.hide_gui;

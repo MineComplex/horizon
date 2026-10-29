@@ -388,24 +388,6 @@ impl crate::game::Sim<'_> {
         self.adv.progress = progress;
         self.world_data.registries.advancements = tree.list.iter().map(|a| a.id.clone()).collect();
     }
-    pub(super) fn save_advancements(&self) {
-        if !self.adv.loaded || true || self.no_player_here() {
-            return;
-        }
-        let Some(path) = self.adv_path() else {
-            return;
-        };
-        let json = self
-            .adv
-            .progress
-            .to_json(&self.adv.tree, horizon_world::DATA_VERSION);
-        if let Some(dir) = path.parent() {
-            let _ = std::fs::create_dir_all(dir);
-        }
-        if let Ok(text) = serde_json::to_string_pretty(&json) {
-            let _ = std::fs::write(path, text);
-        }
-    }
     /// The player as predicates see it.
     /// The predicate view of a command target.
     pub(super) fn entity_view_of(&self, t: super::commands::Target) -> EntityView {

@@ -179,13 +179,9 @@ impl Game<'_> {
                 &[Text::literal(seconds.to_string())],
             )),
             Some(CrashNotice::Crash) => {
-                // Minecraft.emergencySaveAndCrash: the world is saved, then the
-                // game stops; main writes the crash report.
-                let crash = horizon_client::crash::DebugCrash::new();
-                if let Err(e) = self.save_game() {
-                    log::error!("the emergency save before the crash failed: {e}");
-                }
-                return Err(crash.into());
+                // Minecraft.emergencySaveAndCrash: the game stops (the world
+                // is the server's); main writes the crash report.
+                return Err(horizon_client::crash::DebugCrash::new().into());
             }
         }
         Ok(())

@@ -175,43 +175,6 @@ impl crate::game::Sim<'_> {
             });
         }
     }
-    pub(super) fn save_schedule(&self) {
-        if !self.fns.loaded || true {
-            return;
-        }
-        let mut events = self.fns.schedule.clone();
-        events.sort_by_key(|e| (e.time, e.seq));
-        let list = events
-            .iter()
-            .map(|e| {
-                let (kind, name) = match e.id.strip_prefix('#') {
-                    Some(tag) => ("minecraft:function_tag", tag),
-                    None => ("minecraft:function", e.id.as_str()),
-                };
-                Tag::compound([
-                    ("trigger_time", Tag::Long(e.time)),
-                    ("id", Tag::String(e.id.as_str().into())),
-                    (
-                        "callback",
-                        Tag::compound([
-                            ("type", Tag::String(kind.into())),
-                            ("id", Tag::String(name.into())),
-                        ]),
-                    ),
-                ])
-            })
-            .collect();
-        if events.is_empty() && !self.schedule_path().exists() {
-            return;
-        }
-        let _ = save::write_dat(
-            &self.schedule_path(),
-            Tag::compound([
-                ("data", Tag::compound([("events", Tag::List(list))])),
-                ("DataVersion", Tag::Int(horizon_world::DATA_VERSION)),
-            ]),
-        );
-    }
     /// Run one function with `source`: its commands in order, until a `return`.
     pub(in crate::game) fn run_function(
         &mut self,

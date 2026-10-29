@@ -129,7 +129,6 @@ mod render_control;
 mod render_tick;
 mod respawn_anchor;
 mod saves_control;
-mod saving;
 mod scoreboard;
 pub use plugin_host::set_plugins;
 mod screens;
@@ -167,7 +166,6 @@ mod tweaks;
 mod ui_control;
 mod vault;
 mod villagers;
-mod wandering_trader;
 mod win;
 mod wind;
 mod wither;
@@ -1675,9 +1673,11 @@ struct Sim<'a> {
     pause_menu: bool,
     /// MultiPlayerGameMode.previousLocalPlayerMode (F3+N goes back to it).
     previous_mode: Option<horizon_client::command::args::GameMode>,
-    /// The world was saved for the application ending (`save_for_exit`).
-    saved_for_exit: bool,
-    pending_save: Option<saving::ClosingSave>,
+    /// The client left for the application ending (`leave_for_exit`).
+    left_for_exit: bool,
+    /// Closing the window, `quit` or a stop signal asked the game to end:
+    /// the next event-loop turn leaves the server and exits.
+    quitting: bool,
     /// The block a guest is acting on (game/lan_actions.rs).
     forced_hit: Option<Hit>,
     /// Level events of this tick for the guests, and the guest acting now.
@@ -3723,40 +3723,25 @@ impl Game<'_> {
         (out, stars)
     }
 
-    /// Leaving the game with a world open (window closed, Quit, `quit`):
-    /// menu items go back (Player.closeContainer), then the world is saved,
-    /// once.
-    pub(super) fn save_for_exit(&mut self) -> Result<()> {
-        // Native application termination can bypass CloseRequested. Finish any
-        // save screen synchronously here, before the process can go away.
-        while self.pending_save.is_some() {
-            self.poll_closing_save()?;
-            if self.pending_save.is_some() {
-                std::thread::sleep(Duration::from_millis(1));
-            }
-        }
-        if self.front.title.is_some() || self.saved_for_exit {
-            return Ok(());
+    /// Leaving the game while on a server (window closed, Quit, `quit`):
+    /// menu items go back (Player.closeContainer), then the connection
+    /// closes (Minecraft.disconnect), once. The world is the server's.
+    pub(super) fn leave_for_exit(&mut self) {
+        if self.front.title.is_some() || self.left_for_exit {
+            return;
         }
         self.close_container();
-        self.save_game()?;
         if let Some(mut remote) = self.remote.take() {
-            // Minecraft.disconnect closes the connection, so the host sees a clean leave.
+            // A clean leave for the server.
             remote.session.disconnect();
         }
-        self.saved_for_exit = true;
-        Ok(())
+        self.left_for_exit = true;
     }
     fn close_world(&mut self) -> Result<()> {
         self.clear_waypoints();
-        self.begin_closing_save(false)
-    }
-    fn finish_close_world(&mut self) -> Result<()> {
-        self.front.ambience.clear(&mut self.front.audio);
-        // updateLevelInEngines(null): every sound stops; the music manager
-        // lets go of its track.
-        self.front.music.stop_playing(None, &mut self.front.audio);
-        self.front.audio.stop_all();
+        if self.front.title.is_some() {
+            return Ok(());
+        }
         self.leave_server(None)
     }
     /// FirstPersonHandsAndItemsRenderer: the right arm or the held items of
@@ -9009,33 +8994,6 @@ impl crate::game::Sim<'_> {
         level.ender_items = self.ender_items.clone();
         level.active_effects = self.potions.effects.saved();
     }
-    fn save_game(&mut self) -> Result<()> {
-        self.save_game_with(true)
-    }
-    /// The autosave doesn't `wait` for the chunks to be on disk: every
-    /// generated chunk is saved, hundreds at a time, encoded and written on
-    /// the region writer meanwhile.
-    fn save_game_with(&mut self, _wait: bool) -> Result<()> {
-        Ok(())
-    }
-    fn save_game_metadata(&mut self) -> Result<()> {
-        self.save_maps();
-        self.save_random_sequences();
-        self.save_fight();
-        self.save_wandering_trader();
-        self.save_portal_arrivals();
-        self.save_stats();
-        self.save_advancements();
-        self.save_scoreboard();
-        self.save_bossbars();
-        self.save_schedule();
-        self.save_warden_tracker();
-        self.sync_level();
-        self.level.write(&self.world_root)?;
-        self.save_world_state();
-        self.message = Some(("Saved the game".into(), Instant::now()));
-        Ok(())
-    }
     /// LOD Distance and Far Detail Reduced as chosen: the player's LOD
     /// Distance when it is on, else a mod's far terrain
     /// (`render.set-far-terrain`).
@@ -9233,37 +9191,9 @@ impl ApplicationHandler for Game<'_> {
         {
             return;
         }
-        if self.pending_save.is_some() {
-            match event {
-                WindowEvent::CloseRequested => {
-                    self.pending_save.as_mut().unwrap().quit = true;
-                }
-                WindowEvent::Focused(focused) => {
-                    self.focused = focused;
-                    if !focused {
-                        self.capture(false);
-                    }
-                }
-                WindowEvent::Resized(size) => {
-                    if let Some(r) = &mut self.front.renderer {
-                        r.resize(size.width, size.height);
-                    }
-                }
-                WindowEvent::RedrawRequested => {
-                    if let Err(error) = self.render_closing_save() {
-                        self.error = Some(error);
-                        event_loop.exit();
-                    }
-                }
-                _ => {}
-            }
-            return;
-        }
         let result: Result<()> = (|| {
             match event {
-                WindowEvent::CloseRequested => {
-                    self.begin_closing_save(true)?;
-                }
+                WindowEvent::CloseRequested => self.quitting = true,
                 WindowEvent::Resized(size) => {
                     if let Some(r) = &mut self.front.renderer {
                         r.resize(size.width, size.height);
@@ -10029,7 +9959,7 @@ impl ApplicationHandler for Game<'_> {
         }
     }
     fn device_event(&mut self, _: &ActiveEventLoop, _: DeviceId, event: DeviceEvent) {
-        if self.pending_save.is_none()
+        if !self.quitting
             && self.front.captured
             && self.focused
             && self.screen == Screen::Playing
@@ -10042,33 +9972,13 @@ impl ApplicationHandler for Game<'_> {
     }
     fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
         self.flush_to_window();
-        if horizon_threads::stop_requests() > 0
-            && self.pending_save.as_ref().is_none_or(|save| !save.quit)
-        {
-            // SIGTERM, SIGINT or SIGHUP: the shutdown hook's server halt, as a window close.
-            if let Err(error) = self.begin_closing_save(true) {
-                self.error = Some(error);
-                event_loop.exit();
-                return;
-            }
+        if horizon_threads::stop_requests() > 0 {
+            // SIGTERM, SIGINT or SIGHUP: the shutdown hook's halt, as a window close.
+            self.quitting = true;
         }
-        if self.pending_save.is_some() {
-            match self.poll_closing_save() {
-                Ok(true) => event_loop.exit(),
-                Ok(false) => {
-                    if let Some(window) = &self.front.window {
-                        window.request_redraw();
-                    }
-                    // Yield between polls even when disk I/O is slow.
-                    event_loop.set_control_flow(ControlFlow::WaitUntil(
-                        Instant::now() + Duration::from_millis(4),
-                    ));
-                }
-                Err(error) => {
-                    self.error = Some(error);
-                    event_loop.exit();
-                }
-            }
+        if self.quitting {
+            self.leave_for_exit();
+            event_loop.exit();
             return;
         }
         if let Err(error) = self.resume_world_entry() {
@@ -10078,7 +9988,7 @@ impl ApplicationHandler for Game<'_> {
         }
         self.tick_server_packs();
         self.poll_control(event_loop);
-        if self.pending_save.is_some() {
+        if self.quitting {
             return;
         }
         self.poll_pads(event_loop);
@@ -10104,9 +10014,7 @@ impl ApplicationHandler for Game<'_> {
     /// window turns it into a window close, so Minecraft.stop saves the world.
     fn exiting(&mut self, _event_loop: &ActiveEventLoop) {
         self.pad_close_output();
-        if let Err(e) = self.save_for_exit() {
-            log::warn!("Horizon: failed to save the world on exit: {e}");
-        }
+        self.leave_for_exit();
     }
 }
 /// clouds.png as filled cells (`CloudRenderer.prepare`: alpha 10 or more).
@@ -10383,8 +10291,8 @@ impl<'a> Game<'a> {
                 show_chunk_borders: false,
                 pause_menu: true,
                 previous_mode: None,
-                saved_for_exit: false,
-                pending_save: None,
+                left_for_exit: false,
+                quitting: false,
                 forced_hit: None,
                 lan_events: Vec::new(),
                 lan_songs: Vec::new(),

@@ -10,38 +10,14 @@
 //! once the other dimension has loaded around it. An item or mob that goes
 //! through waits as an `Arrival` (its saved compound and where it stood in its
 //! portal) until the player is in that dimension and its exit is loaded.
-use super::{Dim, Game, Screen};
+use super::{Game, Screen};
 use horizon_client::nether_portal::PortalState;
-use horizon_core::{geometry::Vec3, position::BlockPos, random::RandomSource};
+use horizon_core::random::RandomSource;
 use horizon_world::nbt::Tag;
 use std::collections::HashMap;
 
 /// `Entity.getDimensionChangingDelay`.
 const ENTITY_DELAY: i32 = 300;
-
-/// Where in its portal a traveller stood, and where its exit is to be found.
-#[derive(Clone, Copy, Debug)]
-pub(super) struct Plan {
-    pub(super) dim: Dim,
-    /// The border-clamped, scaled position (`approximateExitPos`).
-    pub(super) approximate: BlockPos,
-    entry_x_axis: bool,
-    offset: Vec3,
-    width: f32,
-    height: f32,
-    /// Through an End portal: `approximate` is the End's spawn point, or the
-    /// Overworld's shared spawn.
-    pub(super) end: bool,
-}
-
-impl Plan {}
-
-/// An entity on its way to a dimension that isn't loaded.
-#[derive(Clone, Debug)]
-struct Arrival {
-    plan: Plan,
-    tag: Tag,
-}
 
 /// The nether portal state of the world (`Game::portals`).
 #[derive(Default)]
@@ -50,29 +26,8 @@ pub(super) struct Portals {
     client_inside: bool,
     /// Items and mobs, by entity id.
     entities: HashMap<u32, PortalState>,
-    arrivals: Vec<Arrival>,
-    dirty: bool,
     /// Per-chunk portal palette masks, kept across ticks (portal_sections).
     pub(super) sections: horizon_client::portal_sections::PortalSections,
-}
-
-/// A waiting entity as `horizon_portal_arrivals.dat` keeps it.
-fn arrival_tag(a: &Arrival) -> Tag {
-    let p = &a.plan;
-    Tag::compound([
-        ("dimension", Tag::String(p.dim.id().into())),
-        ("x", Tag::Int(p.approximate.x)),
-        ("y", Tag::Int(p.approximate.y)),
-        ("z", Tag::Int(p.approximate.z)),
-        ("x_axis", Tag::Int(i32::from(p.entry_x_axis))),
-        ("right", Tag::Double(p.offset.x.to_bits())),
-        ("up", Tag::Double(p.offset.y.to_bits())),
-        ("forward", Tag::Double(p.offset.z.to_bits())),
-        ("width", Tag::Float(p.width.to_bits())),
-        ("height", Tag::Float(p.height.to_bits())),
-        ("end", Tag::Int(i32::from(p.end))),
-        ("entity", a.tag.clone()),
-    ])
 }
 
 impl Game<'_> {
@@ -149,21 +104,5 @@ impl crate::game::Sim<'_> {
                 process: None,
             },
         );
-    }
-    fn arrivals_path(&self) -> std::path::PathBuf {
-        self.world_root
-            .join("data")
-            .join("horizon_portal_arrivals.dat")
-    }
-    /// Write the waiting entities when they changed.
-    pub(super) fn save_portal_arrivals(&mut self) {
-        if !self.portals.dirty || true {
-            return;
-        }
-        let list = self.portals.arrivals.iter().map(arrival_tag).collect();
-        let root = Tag::compound([("arrivals", Tag::List(list))]);
-        if horizon_client::save::write_dat(&self.arrivals_path(), root).is_ok() {
-            self.portals.dirty = false;
-        }
     }
 }

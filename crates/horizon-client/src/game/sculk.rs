@@ -66,7 +66,6 @@ pub(super) struct SculkState {
     darkness: (f32, f32),
     /// Who causes the block changes being processed (the player's actions).
     pub actor: Option<Who>,
-    pub tracker_loaded: bool,
 }
 
 impl SculkState {}
@@ -237,20 +236,6 @@ impl crate::game::Sim<'_> {
                 key,
                 &[Text::literal(super::chat::PLAYER_NAME)],
             ));
-        }
-    }
-    /// Write the tracker into the player data being saved.
-    pub(super) fn save_warden_tracker(&mut self) {
-        if !self.sculk.tracker_loaded {
-            return;
-        }
-        let tag = self.sculk.tracker.to_nbt();
-        let extra = self
-            .level
-            .player_extra
-            .get_or_insert_with(|| horizon_world::nbt::Tag::Compound(Default::default()));
-        if let horizon_world::nbt::Tag::Compound(map) = extra {
-            map.insert("warden_spawn_tracker".into(), tag);
         }
     }
     /// Who is causing the block changes being processed.

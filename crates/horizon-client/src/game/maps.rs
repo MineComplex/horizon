@@ -82,27 +82,6 @@ impl MapData {
         }
         true
     }
-    fn to_nbt(&self) -> Tag {
-        let flag = |b: bool| Tag::Byte(i8::from(b));
-        Tag::compound([
-            (
-                "data",
-                Tag::compound([
-                    ("dimension", Tag::String(self.dimension.as_str().into())),
-                    ("xCenter", Tag::Int(self.center[0])),
-                    ("zCenter", Tag::Int(self.center[1])),
-                    ("scale", Tag::Byte(self.scale as i8)),
-                    ("locked", flag(self.locked)),
-                    ("trackingPosition", flag(self.tracking)),
-                    ("unlimitedTracking", flag(self.unlimited)),
-                    ("colors", Tag::ByteArray(self.colors.clone())),
-                    ("banners", Tag::List(Vec::new())),
-                    ("frames", Tag::List(Vec::new())),
-                ]),
-            ),
-            ("DataVersion", Tag::Int(horizon_world::DATA_VERSION)),
-        ])
-    }
     fn from_nbt(tag: &Tag) -> Option<Self> {
         let d = tag.get("data")?;
         let int = |k: &str| match d.get(k) {
@@ -715,30 +694,6 @@ impl crate::game::Sim<'_> {
                 }))
             })
             .collect()
-    }
-    /// Writes changed maps and the id counter (`MapItemSavedData`, `MapIndex`).
-    pub(super) fn save_maps(&mut self) {
-        for (id, m) in &mut self.maps.data {
-            if m.dirty {
-                let path = self
-                    .world_root
-                    .join("data/minecraft/maps")
-                    .join(format!("{id}.dat"));
-                if horizon_client::save::write_dat(&path, m.to_nbt()).is_ok() {
-                    m.dirty = false;
-                }
-            }
-        }
-        if let Some(last) = self.maps.last_id {
-            let tag = Tag::compound([
-                ("data", Tag::compound([("map", Tag::Int(last))])),
-                ("DataVersion", Tag::Int(horizon_world::DATA_VERSION)),
-            ]);
-            let _ = horizon_client::save::write_dat(
-                &self.world_root.join("data/minecraft/maps/last_id.dat"),
-                tag,
-            );
-        }
     }
 }
 

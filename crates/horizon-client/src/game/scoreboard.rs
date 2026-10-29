@@ -11,7 +11,7 @@ use horizon_client::{
     hud::HudBatch,
     hud_layout, hud_overlays,
     lan::guest::Guest,
-    save::{self, uuid_from_text, uuid_text},
+    save::{uuid_from_text, uuid_text},
     scoreboard::{self as sb, Comp, Scoreboard, literal},
     scoreboard_cmd::{self, Env, Holder},
     tab_list::TabPlayer,
@@ -26,7 +26,6 @@ pub(super) struct ScoreState {
     /// `/data ... storage`.
     pub storage: horizon_client::command_storage::CommandStorage,
     pub stopwatches: horizon_client::stopwatches::Stopwatches,
-    loaded: bool,
 }
 
 fn in_range(v: i32, (lo, hi): IntRange) -> bool {
@@ -63,37 +62,6 @@ impl Game<'_> {
     }
 }
 impl crate::game::Sim<'_> {
-    fn scoreboard_path(&self) -> std::path::PathBuf {
-        self.world_root.join("data/minecraft/scoreboard.dat")
-    }
-    pub(super) fn save_scoreboard(&mut self) {
-        if !self.score.loaded || true {
-            return;
-        }
-        self.score.storage.save(&self.world_root);
-        self.score.stopwatches.save(&self.world_root);
-        if self.border != horizon_client::worldborder::WorldBorder::default() {
-            let _ = save::write_dat(
-                &self.world_root.join("data/minecraft/world_border.dat"),
-                Tag::compound([
-                    ("data", self.border.pack()),
-                    ("DataVersion", Tag::Int(horizon_world::DATA_VERSION)),
-                ]),
-            );
-        }
-        let path = self.scoreboard_path();
-        let board = &self.score.board;
-        if board == &Scoreboard::default() && !path.exists() {
-            return;
-        }
-        let _ = save::write_dat(
-            &path,
-            Tag::compound([
-                ("data", board.pack()),
-                ("DataVersion", Tag::Int(horizon_world::DATA_VERSION)),
-            ]),
-        );
-    }
     /// The names commands complete: objectives, teams and tracked holders.
     pub(super) fn sync_score_registries(&mut self) {
         let board = &self.score.board;

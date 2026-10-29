@@ -24,24 +24,17 @@ use horizon_world::nbt::Tag;
 /// (`SPECIAL + 16 + crystal`), so projectiles can target them.
 pub(super) const SPECIAL: u32 = u32::MAX - 4096;
 const CRYSTAL_IDS: u32 = SPECIAL + 16;
-const FIGHT_FILE: &str = "data/minecraft/ender_dragon_fight.dat";
 const MAX_HEALTH: f32 = 200.0;
 /// `Mob.getAmbientSoundInterval`.
 const AMBIENT_INTERVAL: i32 = 80;
 
 #[derive(Default)]
 pub(super) struct Fight {
-    loaded: bool,
-    needs_scan: bool,
     pub killed: bool,
-    pub previously_killed: bool,
-    gateways: Vec<i32>,
     exit_portal: Option<[i32; 3]>,
     alive_crystals: i32,
     crystal_scan: i32,
     players: bool,
-    /// The spikes' crystals have been placed (worldgen does not place entities here).
-    crystals_placed: bool,
     /// The respawn sequence (`DragonRespawnStage`) and its tick count.
     respawn: Option<(Respawn, i32)>,
     /// The four crystals on the exit portal driving the respawn.
@@ -487,47 +480,6 @@ impl Game<'_> {
     }
 }
 impl crate::game::Sim<'_> {
-    fn fight_path(&self) -> std::path::PathBuf {
-        horizon_client::save::dimension_dir(&self.world_root, "minecraft:the_end").join(FIGHT_FILE)
-    }
-    pub(super) fn save_fight(&mut self) {
-        if !self.fight.loaded || !self.fight.dirty {
-            return;
-        }
-
-        let f = &self.fight;
-        let b = |v: bool| Tag::Byte(i8::from(v));
-        let mut data = vec![
-            ("needs_state_scanning", b(f.needs_scan)),
-            ("dragon_killed", b(f.killed)),
-            ("previously_killed", b(f.previously_killed)),
-            ("respawn_time", Tag::Int(f.respawn.map_or(0, |r| r.1))),
-            ("gateways", Tag::IntArray(f.gateways.clone())),
-            ("horizon_crystals_placed", b(f.crystals_placed)),
-        ];
-        if let Some(p) = f.exit_portal {
-            data.push(("exit_portal_location", Tag::IntArray(p.to_vec())));
-        }
-        if let Some((stage, _)) = f.respawn {
-            data.push(("respawn_stage", Tag::String(stage.name().into())));
-            data.push((
-                "horizon_respawn_crystals",
-                Tag::IntArray(
-                    f.respawn_crystals
-                        .iter()
-                        .flat_map(|p| [p.x.floor() as i32, p.y.floor() as i32, p.z.floor() as i32])
-                        .collect(),
-                ),
-            ));
-        }
-        let tag = Tag::compound([
-            ("data", Tag::compound(data)),
-            ("DataVersion", Tag::Int(horizon_world::DATA_VERSION)),
-        ]);
-        if horizon_client::save::write_dat(&self.fight_path(), tag).is_ok() {
-            self.fight.dirty = false;
-        }
-    }
     /// The player acting now: the guest whose turn it is, else the host.
     fn acting_player(&self) -> FightWho {
         None::<u32>.map_or(FightWho::Host, FightWho::Guest)

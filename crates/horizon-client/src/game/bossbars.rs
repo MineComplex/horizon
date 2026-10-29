@@ -14,7 +14,6 @@ use horizon_client::{
 };
 use horizon_core::random::RandomSource;
 use horizon_protocol::packets::play;
-use horizon_world::nbt::Tag;
 
 #[derive(Default)]
 pub(super) struct BossState {
@@ -59,23 +58,6 @@ impl crate::game::Sim<'_> {
             self.bosses.bars = BossBars::unpack(data);
         }
         self.world_data.registries.bossbars = self.bosses.bars.ids();
-    }
-    pub(super) fn save_bossbars(&self) {
-        if !self.bosses.loaded || true {
-            return;
-        }
-        if self.bosses.bars.bars.is_empty() && !self.bossbar_path().exists() {
-            return;
-        }
-        if let Err(e) = save::write_dat(
-            &self.bossbar_path(),
-            Tag::compound([
-                ("data", self.bosses.bars.pack()),
-                ("DataVersion", Tag::Int(horizon_world::DATA_VERSION)),
-            ]),
-        ) {
-            log::warn!("boss bars were not written: {e}");
-        }
     }
     pub(in crate::game) fn bossbar_exists(&self, id: &str) -> bool {
         self.bosses.bars.get(id).is_some()

@@ -119,7 +119,7 @@ impl Game<'_> {
         while let Some(request) = self.front.control.as_ref().and_then(|c| c.try_recv()) {
             self.agent_command_seen();
             self.answer(request, event_loop);
-            if self.pending_save.is_some() {
+            if self.quitting {
                 break;
             }
         }
@@ -150,8 +150,8 @@ impl Game<'_> {
         event_loop: &ActiveEventLoop,
     ) -> Result<Option<Value>> {
         let words: Vec<&str> = line.split_whitespace().collect();
-        if self.pending_save.is_some() && words.first() != Some(&"quit") {
-            return Err("a world save is in progress".into());
+        if self.quitting && words.first() != Some(&"quit") {
+            return Err("the game is quitting".into());
         }
         let arg = |i: usize| {
             words
@@ -738,19 +738,11 @@ impl Game<'_> {
             }
             "save" | "save-all" => {
                 self.require_world()?;
-                // `save-all` is like `save-all flush`: it also rewrites chunks
-                // that were not modified (the save round-trip harness compares
-                // them with vanilla's files).
-                let all = words[0] == "save-all";
                 // The world is the server's.
-                if let Some(reply) = self.ask_server(words[0]) {
-                    reply?;
-                } else if self.remote.is_none() {
-                    self.begin_control_save(all, reply.clone())?;
-                    return Ok(None);
-                } else {
-                    self.control_save(all)?;
-                }
+                let reply = self
+                    .ask_server(words[0])
+                    .ok_or("saves are the server's: start it with --server-control")?;
+                reply?;
                 ok()
             }
             "dragon-hurt" => {
@@ -760,7 +752,7 @@ impl Game<'_> {
                 ok()
             }
             "quit" => {
-                self.begin_closing_save(true)?;
+                self.quitting = true;
                 ok()
             }
             other => match self.station_command(&words)? {
@@ -983,14 +975,6 @@ impl Game<'_> {
     }
 }
 impl crate::game::Sim<'_> {
-    /// `horizon-ctl save` and `save-all`.
-    pub(super) fn control_save(&mut self, all: bool) -> Result<()> {
-        if all {
-            let keys: Vec<_> = self.world.chunks.keys().copied().collect();
-            self.world.modified.extend(keys);
-        }
-        self.save_game()
-    }
     /// The hurts and melee attacks each player logged since the last call
     /// (`PlayerMotion::hurt_log`, `attack_log`), taken out.
     pub(super) fn control_hurt_log(&mut self) -> Value {

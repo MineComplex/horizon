@@ -105,29 +105,6 @@ impl Stats {
         }
         stats
     }
-    /// `ServerStatsCounter.save`.
-    pub(super) fn write(&self, path: &Path) {
-        let stats: serde_json::Map<String, serde_json::Value> = self
-            .values
-            .iter()
-            .filter(|(_, m)| !m.is_empty())
-            .map(|(ty, m)| {
-                let entries: serde_json::Map<String, serde_json::Value> =
-                    m.iter().map(|(k, v)| (k.clone(), (*v).into())).collect();
-                (ty.clone(), serde_json::Value::Object(entries))
-            })
-            .collect();
-        let json = serde_json::json!({
-            "stats": stats,
-            "DataVersion": horizon_world::DATA_VERSION,
-        });
-        if let Some(dir) = path.parent() {
-            let _ = std::fs::create_dir_all(dir);
-        }
-        if let Ok(text) = serde_json::to_string_pretty(&json) {
-            let _ = std::fs::write(path, text);
-        }
-    }
 }
 /// `players/<dir>/<uuid>.json` of a world (advancements, stats).
 pub(super) fn player_json(world: &Path, dir: &str, uuid: [i32; 4]) -> PathBuf {
@@ -158,15 +135,6 @@ impl crate::game::Sim<'_> {
         self.stats.loaded = true;
         if let Some(path) = self.stats_path() {
             self.stats.values = Stats::read(&path).values;
-        }
-    }
-    /// `ServerStatsCounter.save`.
-    pub(super) fn save_stats(&self) {
-        if !self.stats.loaded || true || self.no_player_here() {
-            return;
-        }
-        if let Some(path) = self.stats_path() {
-            self.stats.write(&path);
         }
     }
 }
