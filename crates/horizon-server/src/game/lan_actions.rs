@@ -25,6 +25,7 @@ use horizon_protocol::{
     packets::play::{self, Clientbound as C, Serverbound as S},
     text::literal,
 };
+use horizon_server_api::event::{Hand as ApiHand, InteractAction};
 use horizon_world::entity_move::EntityMoveWorld;
 
 /// Per-guest state of the gameplay code that lives outside `Guest`.
@@ -1027,6 +1028,21 @@ impl crate::game::Sim<'_> {
                         self.spawn_protection_message(host, conn, a.pos);
                         return;
                     }
+                    // PlayerInteractEvent LEFT_CLICK_BLOCK: a plugin may stop the dig.
+                    if !self.plugin_interact(
+                        host,
+                        conn,
+                        InteractAction::LeftClickBlock,
+                        ApiHand::Main,
+                        Some((a.pos, i32::from(a.direction))),
+                    ) {
+                        let state = self.world.block(a.pos[0], a.pos[1], a.pos[2]).0 as i32;
+                        host.hub.send_to(
+                            conn,
+                            &C::BlockUpdate(play::BlockUpdate { pos: a.pos, state }),
+                        );
+                        return;
+                    }
                     let face = direction(i32::from(a.direction));
                     let play = host.play.entry(conn).or_default();
                     play.digging = Some((a.pos, face));
@@ -1158,8 +1174,21 @@ impl crate::game::Sim<'_> {
                 let hand = if p.hand == 1 { Hand::Off } else { Hand::Main };
                 // handleUseItemOn: under spawn protection nothing is used or
                 // placed; the player is told and the blocks below go back.
+                let api_hand = if p.hand == 1 {
+                    ApiHand::Off
+                } else {
+                    ApiHand::Main
+                };
                 if self.under_spawn_protection(host, gi, p.pos) {
                     self.spawn_protection_message(host, conn, p.pos);
+                } else if !self.plugin_interact(
+                    host,
+                    conn,
+                    InteractAction::RightClickBlock,
+                    api_hand,
+                    Some((p.pos, p.face)),
+                ) {
+                    // PlayerInteractEvent cancelled: nothing is used or placed.
                 } else {
                     let logged = self.world.block_log.as_ref().map_or(0, Vec::len);
                     let heard = self.sounds.capture.as_ref().map_or(0, Vec::len);
@@ -1196,6 +1225,15 @@ impl crate::game::Sim<'_> {
                 let hand = if p.hand == 1 { Hand::Off } else { Hand::Main };
                 let g = &mut host.hub.guests[gi];
                 (g.yaw, g.pitch) = (p.yaw, p.pitch);
+                let api_hand = if p.hand == 1 {
+                    ApiHand::Off
+                } else {
+                    ApiHand::Main
+                };
+                if !self.plugin_interact(host, conn, InteractAction::RightClickAir, api_hand, None)
+                {
+                    return;
+                }
                 let swung = self.as_guest(host, conn, |g| {
                     g.guest_use = Some(GuestUse::Item(hand));
                     let swings = g.swings_started;
@@ -2059,6 +2097,20 @@ impl crate::game::Sim<'_> {
             border: &self.border,
         };
         host.hub.respawn(i, spawn, &ctx);
+        // PlayerRespawnEvent: a plugin may put the player somewhere else.
+        let own_spawn = own.is_some() || host.hub.guests[i].spawn.is_some();
+        if let Some(to) = self.plugin_respawn(host, i, level.id(), spawn, own_spawn) {
+            if self.level.hardcore {
+                host.hub.set_game_mode(conn, SPECTATOR);
+            }
+            let uuid = host.hub.guests[i].uuid;
+            self.plugin_actions
+                .push(horizon_server_api::Action::Teleport { player: uuid, to });
+            if away && let Err(e) = self.enter_level(Some(host), back) {
+                log::error!("could not reopen {}: {e}", back.id());
+            }
+            return;
+        }
         // ServerGamePacketListenerImpl.handleClientCommand: a hardcore world's
         // respawned player only watches.
         if self.level.hardcore {
@@ -2100,6 +2152,7 @@ impl crate::game::Sim<'_> {
     }
     /// Per tick, for every guest: dig, use items, pick up drops, die.
     pub(super) fn tick_guests(&mut self, host: &mut LanHost) {
+        self.plugin_moves(host);
         self.lan_merchant_tick(host);
         self.lan_stations_tick(host);
         self.lan_tables_tick(host);

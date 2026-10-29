@@ -1,6 +1,6 @@
 //! Events (`org.bukkit.event`): what happened, what a listener may change,
 //! and `cancelled` where Bukkit's event is `Cancellable`.
-use crate::server::{BlockPos, ItemStack, PlayerRef, World};
+use crate::server::{BlockPos, ItemStack, Location, PlayerRef, World};
 use std::any::Any;
 
 /// `EventPriority`: listeners run from `Lowest` to `Monitor`; `Monitor`
@@ -145,3 +145,104 @@ pub struct PlayerDeathEvent {
     pub keep_inventory: bool,
 }
 event!(PlayerDeathEvent, "PlayerDeathEvent");
+
+/// `PlayerMoveEvent`: a player moved or turned this tick, from `from` to
+/// `to`. Cancelling puts the player back at `from`; changing `to` moves them
+/// there instead.
+#[derive(Clone, Debug)]
+pub struct PlayerMoveEvent {
+    pub player: PlayerRef,
+    pub from: Location,
+    pub to: Location,
+    pub cancelled: bool,
+}
+cancellable!(PlayerMoveEvent, "PlayerMoveEvent");
+
+/// `PlayerRespawnEvent`: a dead player comes back. `respawn_location` starts
+/// where the server would put them (their bed or anchor, else the world
+/// spawn); changing it puts them there.
+#[derive(Clone, Debug)]
+pub struct PlayerRespawnEvent {
+    pub player: PlayerRef,
+    pub respawn_location: Location,
+    /// `isBedSpawn` / `isAnchorSpawn`: the point is the player's own.
+    pub own_spawn: bool,
+}
+event!(PlayerRespawnEvent, "PlayerRespawnEvent");
+
+/// `org.bukkit.event.block.Action`: what a `PlayerInteractEvent` was.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum InteractAction {
+    LeftClickBlock,
+    RightClickBlock,
+    RightClickAir,
+}
+
+/// `BlockFace` of the six directions.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum BlockFace {
+    Down,
+    Up,
+    North,
+    South,
+    West,
+    East,
+}
+impl BlockFace {
+    /// The face of vanilla's `Direction` id (0 down .. 5 east).
+    pub fn from_id(id: i32) -> Self {
+        match id {
+            0 => Self::Down,
+            1 => Self::Up,
+            2 => Self::North,
+            3 => Self::South,
+            4 => Self::West,
+            _ => Self::East,
+        }
+    }
+}
+
+/// `EquipmentSlot.HAND` / `OFF_HAND`: the hand an interaction uses.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum Hand {
+    Main,
+    Off,
+}
+
+/// `PlayerInteractEvent`: a player starts breaking a block (left click),
+/// uses an item on a block or uses an item in the air (right click).
+/// Cancelling stops it: no block is used or placed, no item used, no dig
+/// started; the player's client gets the blocks and the inventory back.
+#[derive(Clone, Debug)]
+pub struct PlayerInteractEvent {
+    pub player: PlayerRef,
+    pub action: InteractAction,
+    pub hand: Hand,
+    /// The item in that hand.
+    pub item: Option<ItemStack>,
+    pub world: World,
+    /// The block clicked (None in the air) and the face.
+    pub block: Option<(BlockPos, BlockFace)>,
+    pub cancelled: bool,
+}
+cancellable!(PlayerInteractEvent, "PlayerInteractEvent");
+
+/// `PlayerDropItemEvent`: a player throws an item out of their hand (the
+/// drop key). Cancelling keeps it in the hand.
+#[derive(Clone, Debug)]
+pub struct PlayerDropItemEvent {
+    pub player: PlayerRef,
+    pub item: ItemStack,
+    pub cancelled: bool,
+}
+cancellable!(PlayerDropItemEvent, "PlayerDropItemEvent");
+
+/// `PlayerGameModeChangeEvent`: a player's game mode changes (0 survival,
+/// 1 creative, 2 adventure, 3 spectator). Cancelling keeps the old one.
+#[derive(Clone, Debug)]
+pub struct PlayerGameModeChangeEvent {
+    pub player: PlayerRef,
+    pub new_game_mode: u8,
+    pub cancelled: bool,
+}
+cancellable!(PlayerGameModeChangeEvent, "PlayerGameModeChangeEvent");

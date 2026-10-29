@@ -1293,6 +1293,11 @@ struct Sim<'a> {
     plugin_seen: Vec<horizon_server_api::PlayerRef>,
     /// Blocks a plugin kept from a player's break: the connection, where, the state.
     plugin_resend: Vec<(u32, [i32; 3], i32)>,
+    /// Players whose inventory a plugin kept as it was (a cancelled drop):
+    /// their client is sent it again.
+    plugin_resync: Vec<u32>,
+    /// Where each player last was for `PlayerMoveEvent`, by connection.
+    plugin_last_moves: HashMap<u32, horizon_server_api::Location>,
     /// MultiPlayerGameMode.previousLocalPlayerMode (F3+N goes back to it).
     previous_mode: Option<crate::hc::command::args::GameMode>,
     /// The block a guest is acting on (game/lan_actions.rs).
@@ -1818,11 +1823,17 @@ impl crate::game::Sim<'_> {
             return;
         }
         let spectator = self.spectator();
+        let before = self.inventory[self.selected].clone();
         let Some(thrown) =
             crate::hc::items::take_held_drop(&mut self.inventory[self.selected], all, spectator)
         else {
             return;
         };
+        // PlayerDropItemEvent: a plugin may keep it in the hand.
+        if !self.plugin_drop_item(&thrown) {
+            self.inventory[self.selected] = before;
+            return;
+        }
         self.player_drop(thrown);
     }
     /// `Player.drop`: the statistics and a thrown item entity in front of the player.
@@ -7371,6 +7382,8 @@ impl<'a> Sim<'a> {
             plugin_actions: Vec::new(),
             plugin_seen: Vec::new(),
             plugin_resend: Vec::new(),
+            plugin_resync: Vec::new(),
+            plugin_last_moves: HashMap::new(),
             previous_mode: None,
             forced_hit: None,
             guest_use: None,

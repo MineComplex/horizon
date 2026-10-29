@@ -966,6 +966,16 @@ impl crate::game::Sim<'_> {
         if self.mode == mode {
             return false;
         }
+        // PlayerGameModeChangeEvent: a plugin may keep the old mode.
+        let id = match mode {
+            GameMode::Survival => 0,
+            GameMode::Creative => 1,
+            GameMode::Adventure => 2,
+            GameMode::Spectator => 3,
+        };
+        if !self.plugin_game_mode_change(id) {
+            return false;
+        }
         self.set_mode(mode);
         if self.screen == Screen::Inventory && (self.creative || self.spectator()) {
             self.screen = Screen::Playing;

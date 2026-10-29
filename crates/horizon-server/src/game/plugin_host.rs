@@ -223,6 +223,14 @@ impl crate::game::Sim<'_> {
                     .send_to(conn, &C::BlockUpdate(play::BlockUpdate { pos, state }));
             }
         }
+        // Inventories a plugin kept, which their client changed already.
+        if let Some(h) = self.lan.as_mut() {
+            for conn in std::mem::take(&mut self.plugin_resync) {
+                if let Some(i) = h.hub.guests.iter().position(|g| g.conn == conn) {
+                    h.hub.send_inventory(i);
+                }
+            }
+        }
         let mut rounds = 0;
         while !self.plugin_actions.is_empty() && rounds < 8 {
             rounds += 1;
@@ -560,6 +568,179 @@ impl crate::game::Sim<'_> {
         self.plugin_fire(Some(host), &mut event);
         let changed = (event.death_message != message).then_some(event.death_message);
         (changed, event.keep_inventory)
+    }
+}
+
+impl crate::game::Sim<'_> {
+    /// `PlayerInteractEvent` for the player of `conn`; false when a plugin
+    /// cancelled it (the caller then sends their client the truth back).
+    pub(super) fn plugin_interact(
+        &mut self,
+        host: &mut LanHost,
+        conn: u32,
+        action: ev::InteractAction,
+        hand: ev::Hand,
+        block: Option<([i32; 3], i32)>,
+    ) -> bool {
+        if !self.plugins_listen::<ev::PlayerInteractEvent>() {
+            return true;
+        }
+        let Some(g) = host.hub.guest(conn) else {
+            return true;
+        };
+        let held = match hand {
+            ev::Hand::Main => g.inventory.get(g.selected).cloned().flatten(),
+            ev::Hand::Off => g.offhand.clone(),
+        };
+        let mut event = ev::PlayerInteractEvent {
+            player: crate::game::Sim::plugin_player(g),
+            action,
+            hand,
+            item: held.map(|s| api::ItemStack::new(&s.item, s.count)),
+            world: g.dimension.clone(),
+            block: block.map(|(p, face)| {
+                (
+                    BlockPos::new(p[0], p[1], p[2]),
+                    ev::BlockFace::from_id(face),
+                )
+            }),
+            cancelled: false,
+        };
+        self.plugin_fire(Some(host), &mut event);
+        if event.cancelled
+            && let Some(i) = host.hub.guests.iter().position(|g| g.conn == conn)
+        {
+            host.hub.send_inventory(i);
+        }
+        !event.cancelled
+    }
+    /// `PlayerDropItemEvent` for what the player whose turn it is throws
+    /// from their hand; false when a plugin keeps it there (their client,
+    /// which took it out already, gets the inventory back).
+    pub(super) fn plugin_drop_item(&mut self, item: &crate::hc::items::ItemStack) -> bool {
+        if !self.plugins_listen::<ev::PlayerDropItemEvent>() {
+            return true;
+        }
+        let Some(player) = self.plugin_acting() else {
+            return true;
+        };
+        let mut event = ev::PlayerDropItemEvent {
+            player,
+            item: api::ItemStack::new(&item.item, item.count),
+            cancelled: false,
+        };
+        self.plugin_fire(None, &mut event);
+        if event.cancelled
+            && let Some(conn) = self.lan_acting
+        {
+            self.plugin_resync.push(conn);
+        }
+        !event.cancelled
+    }
+    /// `PlayerGameModeChangeEvent` for the player whose turn it is; false
+    /// when a plugin keeps the old mode.
+    pub(super) fn plugin_game_mode_change(&mut self, mode: u8) -> bool {
+        if !self.plugins_listen::<ev::PlayerGameModeChangeEvent>() {
+            return true;
+        }
+        let Some(player) = self.plugin_acting() else {
+            return true;
+        };
+        let mut event = ev::PlayerGameModeChangeEvent {
+            player,
+            new_game_mode: mode,
+            cancelled: false,
+        };
+        self.plugin_fire(None, &mut event);
+        !event.cancelled
+    }
+    /// `PlayerRespawnEvent` for the player at `i`, coming back at `at` in
+    /// `world`. The location a plugin chose instead, if it changed it.
+    pub(super) fn plugin_respawn(
+        &mut self,
+        host: &mut LanHost,
+        i: usize,
+        world: &str,
+        at: [f64; 3],
+        own_spawn: bool,
+    ) -> Option<Location> {
+        if !self.plugins_listen::<ev::PlayerRespawnEvent>() {
+            return None;
+        }
+        let g = &host.hub.guests[i];
+        let start = Location {
+            world: world.to_owned(),
+            x: at[0],
+            y: at[1],
+            z: at[2],
+            yaw: g.yaw,
+            pitch: g.pitch,
+        };
+        let mut event = ev::PlayerRespawnEvent {
+            player: crate::game::Sim::plugin_player(g),
+            respawn_location: start.clone(),
+            own_spawn,
+        };
+        self.plugin_fire(Some(host), &mut event);
+        (event.respawn_location != start).then_some(event.respawn_location)
+    }
+    /// `PlayerMoveEvent` once a tick for each player who moved or turned
+    /// since the last: a cancelled move puts them back, a changed `to` moves
+    /// them there.
+    pub(super) fn plugin_moves(&mut self, host: &mut LanHost) {
+        if !self.plugins_listen::<ev::PlayerMoveEvent>() {
+            self.plugin_last_moves.clear();
+            return;
+        }
+        for i in 0..host.hub.guests.len() {
+            let g = &host.hub.guests[i];
+            if !g.placed || g.dead {
+                continue;
+            }
+            let now = crate::game::Sim::plugin_player(g).location;
+            let conn = g.conn;
+            let Some(from) = self.plugin_last_moves.insert(conn, now.clone()) else {
+                continue;
+            };
+            // PlayerConnection's thresholds: 1/256 of a block, 10 degrees.
+            let moved = from.world == now.world
+                && ((from.x - now.x).powi(2) + (from.y - now.y).powi(2) + (from.z - now.z).powi(2)
+                    > 1.0 / 256.0
+                    || (from.yaw - now.yaw).abs() > 10.0
+                    || (from.pitch - now.pitch).abs() > 10.0);
+            if !moved {
+                // Below the thresholds the last place the plugins saw stays.
+                self.plugin_last_moves.insert(conn, from);
+                continue;
+            }
+            let mut event = ev::PlayerMoveEvent {
+                player: crate::game::Sim::plugin_player(&host.hub.guests[i]),
+                from: from.clone(),
+                to: now.clone(),
+                cancelled: false,
+            };
+            self.plugin_fire(Some(host), &mut event);
+            let place = if event.cancelled {
+                Some(from)
+            } else {
+                (event.to != now).then_some(event.to)
+            };
+            let Some(place) = place else {
+                continue;
+            };
+            if place.world == now.world {
+                let g = &mut host.hub.guests[i];
+                (g.yaw, g.pitch) = (place.yaw, place.pitch);
+                host.hub.teleport(i, Some([place.x, place.y, place.z]));
+            } else {
+                let uuid = host.hub.guests[i].uuid;
+                self.plugin_actions.push(Action::Teleport {
+                    player: uuid,
+                    to: place.clone(),
+                });
+            }
+            self.plugin_last_moves.insert(conn, place);
+        }
     }
 }
 
