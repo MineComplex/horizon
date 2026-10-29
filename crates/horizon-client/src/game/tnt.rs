@@ -6,7 +6,6 @@ use horizon_client::{Result, collisions::SceneCollisions, mesher::Vertex};
 use horizon_core::{
     geometry::{Aabb, Vec3},
     position::BlockPos,
-    random::RandomSource,
 };
 
 #[derive(Clone, Debug)]
@@ -235,32 +234,6 @@ impl Game<'_> {
     }
 }
 impl crate::game::Sim<'_> {
-    /// `new PrimedTnt(level, x + 0.5, y, z + 0.5, owner)`; `short` applies
-    /// `wasExploded`'s random short fuse. Plays `entity.tnt.primed` for primes.
-    pub(super) fn spawn_primed_tnt(&mut self, pos: BlockPos, short: bool) {
-        // PrimedTnt: the fuse is lit.
-        let who = self.sculk_actor();
-        self.post_block_game_event("minecraft:prime_fuse", [pos.x, pos.y, pos.z], who, None);
-        let r = &mut self.world.random;
-        let rot = r.next_double() * f64::from(std::f32::consts::TAU);
-        let fuse = if short {
-            // PrimedTnt.getRandomShortFuse
-            r.next_int_bound(20).unwrap_or(0) + 10
-        } else {
-            self.sounds.play(
-                "minecraft:entity.tnt.primed",
-                Some([
-                    f64::from(pos.x) + 0.5,
-                    f64::from(pos.y),
-                    f64::from(pos.z) + 0.5,
-                ]),
-                1.0,
-                1.0,
-            );
-            80
-        };
-        self.add_primed_tnt(pos, rot, fuse);
-    }
     /// Adds primed TNT at the block's bottom centre, pushed along `rot`.
     pub(super) fn add_primed_tnt(&mut self, pos: BlockPos, rot: f64, fuse: i32) {
         let position = Vec3::new(

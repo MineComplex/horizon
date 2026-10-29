@@ -67,14 +67,6 @@ impl Stats {
             .copied()
             .unwrap_or(0)
     }
-    pub(super) fn reset(&mut self, ty: &str, key: &str) {
-        if let Some(m) = self.values.get_mut(&format!("minecraft:{ty}")) {
-            m.insert(key.to_owned(), 0);
-        }
-        self.mark_dirty(&format!("minecraft:{ty}"), key);
-        self.events
-            .push((format!("minecraft:{ty}"), key.to_owned(), None));
-    }
     pub(super) fn custom(&mut self, key: &str, n: i32) {
         namespaced(key, |key| self.add("custom", key, n));
     }

@@ -1598,39 +1598,6 @@ impl crate::game::Sim<'_> {
         }
         Ok(())
     }
-    /// `TurtleEggBlock.randomTick` at the last hatch stage: one baby turtle
-    /// per egg, a day from grown, with the egg as its home (the sound, the
-    /// crumbs and the block's removal came from the level).
-    pub(super) fn hatch_turtles(
-        &mut self,
-        pos: [i32; 3],
-        state: horizon_world::registry::BlockStateId,
-    ) {
-        let eggs = self
-            .pack
-            .assets
-            .registry
-            .state(state)
-            .and_then(|s| s.properties.get("eggs"))
-            .and_then(|v| v.parse::<i32>().ok())
-            .unwrap_or(1);
-        for i in 0..eggs {
-            let at = [
-                f64::from(pos[0]) + 0.3 + f64::from(i) * 0.2,
-                f64::from(pos[1]),
-                f64::from(pos[2]) + 0.3,
-            ];
-            if let Some(id) = self.spawn_mob("minecraft:turtle", at, true)
-                && let Some(m) = self.mobs.iter_mut().find(|m| m.id == id)
-            {
-                m.extra.age = -24000;
-                m.extra.home = Some(pos);
-                m.yaw = 0.0;
-                m.body_yaw = 0.0;
-                m.head_yaw = 0.0;
-            }
-        }
-    }
     fn apply_setup(&mut self, id: u32, setup: &SpawnSetup) {
         let Some(m) = self.mobs.iter_mut().find(|m| m.id == id) else {
             return;
@@ -2226,48 +2193,4 @@ fn from_loot(stack: &horizon_world::loot::LootStack) -> ItemStack {
         item.data_mut().set_loot_name(id, text);
     }
     item
-}
-impl crate::game::Sim<'_> {
-    /// The rest of `NetherPortalBlock.randomTick` after a won roll: with a
-    /// player close enough for spawning, a zombified piglin spawns on the block
-    /// under the portal column when it is a valid spawn.
-    pub(super) fn portal_spawn(&mut self, pos: [i32; 3]) {
-        // ChunkMap.anyPlayerCloseEnoughForSpawning: a non-spectator within 128
-        // blocks of the chunk centre.
-        let centre = [
-            f64::from((pos[0] >> 4) * 16 + 8),
-            f64::from((pos[2] >> 4) * 16 + 8),
-        ];
-        let close = self.level_players().iter().any(|p| {
-            let (dx, dz) = (p.position.x - centre[0], p.position.z - centre[1]);
-            !p.spectator && dx * dx + dz * dz < 16384.0
-        });
-        if !close {
-            return;
-        }
-        let mut y = pos[1];
-        while &*self
-            .res
-            .facts()
-            .get(self.world.block(pos[0], y, pos[2]))
-            .name
-            == "minecraft:nether_portal"
-        {
-            y -= 1;
-        }
-        // isValidSpawn: a sturdy top face (portal frames emit no light).
-        let below = self.res.facts().get(self.world.block(pos[0], y, pos[2]));
-        if below.sturdy_full & (1 << 1) == 0 {
-            return;
-        }
-        let at = [
-            f64::from(pos[0]) + 0.5,
-            f64::from(y + 1),
-            f64::from(pos[2]) + 0.5,
-        ];
-        // setPortalCooldown: the new piglin does not travel at once.
-        if let Some(id) = self.spawn_mob("minecraft:zombified_piglin", at, false) {
-            self.set_portal_cooldown(id);
-        }
-    }
 }

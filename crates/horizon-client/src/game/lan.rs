@@ -76,40 +76,6 @@ impl crate::game::Sim<'_> {
             }
         }
     }
-    /// Level events the game queued, for the guests (`process_level_events`).
-    pub(super) fn lan_record_events(&mut self, events: &[horizon_world::level::LevelEvent]) {
-        if self.sounds.capture.is_none() {
-            return;
-        }
-        for e in events {
-            match e {
-                horizon_world::level::LevelEvent::LevelEvent { id, pos, data } => {
-                    // The acting guest does not predict the egg's teleport
-                    // particles, bone meal's growth, anvil result sounds, or a
-                    // finished brushing (these levelEvent calls name no
-                    // excluded player), nor the digger's own crack and hit
-                    // sound (2019, 2020).
-                    let except = if matches!(*id, 2015 | 1505 | 1029 | 1030 | 2019 | 2020 | 3008) {
-                        None
-                    } else {
-                        None::<u32>
-                    };
-                    self.lan_events
-                        .push((*id, [pos.x, pos.y, pos.z], *data, except));
-                }
-                // `ServerLevel.runBlockEvents` broadcasts a handled block
-                // event (`ClientboundBlockEventPacket`): the guest re-runs
-                // the block's `triggerEvent` — a piston's `moveBlocks` is
-                // what animates the move there. `state` is the block the
-                // event named, read before it ran (the packet's `block`).
-                horizon_world::level::LevelEvent::BlockEntityEvent { pos, state, a, b } => {
-                    self.lan_block_events
-                        .push(([pos.x, pos.y, pos.z], *a, *b, state.0));
-                }
-                _ => {}
-            }
-        }
-    }
     /// `Level.blockEvent` for the guests (`ClientboundBlockEventPacket`).
     pub(super) fn lan_block_event(&mut self, pos: [i32; 3], b0: i32, b1: i32) {
         if self.sounds.capture.is_some() {

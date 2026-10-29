@@ -24,41 +24,6 @@ impl crate::game::Sim<'_> {
     fn compostable(&self, stack: &ItemStack) -> Option<serde_json::Value> {
         self.res.items().get(&stack.item)?.compostable.clone()
     }
-    /// `ComposterBlock.addLayer` and level event 1500: the provider is
-    /// evaluated in the composter's block-interaction loot context (its
-    /// state; the level random), then the layer is added. True when it was.
-    fn composter_add(&mut self, pos: [i32; 3], layers: &serde_json::Value) -> bool {
-        let context = ComputeContext { block: Some(pos) };
-        let layers = self.provider_int(layers, &context, 0).unwrap_or(0);
-        let before = self.world.block(pos[0], pos[1], pos[2]);
-        let at = BlockPos::new(pos[0], pos[1], pos[2]);
-        let after = self.with_level(|b, level, ticks| b.composter_insert(level, ticks, at, layers));
-        self.world.modified.insert((pos[0] >> 4, pos[2] >> 4));
-        // The game event and level event 1500 happen here, before the caller goes on.
-        let _ = self.process_level_events();
-        after != before
-    }
-    /// `HopperBlockEntity.addItem` into the composter's `InputContainer`
-    /// (levels 0 to 6; one item, compostable, from above): the remainder.
-    pub(super) fn composter_container_insert(
-        &mut self,
-        pos: [i32; 3],
-        mut stack: ItemStack,
-        from_above: bool,
-    ) -> Option<ItemStack> {
-        let level = self.composter_level(pos)?;
-        if !from_above || level >= 7 {
-            return Some(stack);
-        }
-        let Some(layers) = self.compostable(&stack) else {
-            return Some(stack);
-        };
-        // InputContainer.getMaxStackSize is 1: one item goes in, and its
-        // setChanged composts it at once.
-        stack.count -= 1;
-        self.composter_add(pos, &layers);
-        (stack.count > 0).then_some(stack)
-    }
     /// `WorkAtComposter.compostItems` for the villager at `mob`: a full
     /// composter is emptied, then up to 20 wheat or beetroot seeds go in
     /// (keeping 10 of each kind) until the composter reaches level 7. Level

@@ -63,7 +63,6 @@ mod game_mode;
 mod gamemode_switcher;
 mod ghasts;
 mod glowing;
-mod golems;
 mod hand;
 mod item_draw;
 mod item_particles;
@@ -1632,7 +1631,6 @@ struct Sim<'a> {
     trident_model: Option<horizon_client::mobs::Part>,
     arrow_model: Option<horizon_client::mobs::Part>,
     tnts: Vec<tnt::PrimedTnt>,
-    hoppers: HashMap<(i32, i32, i32), machines::HopperState>,
     creative_screen: Creative,
     /// The Agent Control setting the socket was last opened or closed for (`agent_settings`).
     agent_control_on: bool,
@@ -1677,8 +1675,6 @@ struct Sim<'a> {
     quitting: bool,
     /// The block a guest is acting on (game/lan_actions.rs).
     forced_hit: Option<Hit>,
-    /// Level events of this tick for the guests, and the guest acting now.
-    lan_events: Vec<(i32, [i32; 3], i32, Option<u32>)>,
     /// Jukebox level events 1010 (song name) and 1011 (`None`) for the guests;
     /// the song's network id is only known once the hub is in hand.
     lan_songs: Vec<([i32; 3], Option<String>)>,
@@ -1715,8 +1711,6 @@ struct Sim<'a> {
     stats: stats::Stats,
     score: scoreboard::ScoreState,
     rand_sequences: horizon_client::random_sequences::RandomSequences,
-    /// `BrushableBlockEntity`'s brush counts of the blocks being brushed.
-    brushing: brush::Brushing,
     border: horizon_client::worldborder::WorldBorder,
     adv: advancements::AdvState,
     stats_ui: stats_screen::StatsUi,
@@ -6100,8 +6094,6 @@ impl crate::game::Sim<'_> {
     /// Side effects reported by the behaviour library, in vanilla order.
     fn process_level_events(&mut self) -> Result<()> {
         let events = std::mem::take(&mut self.level_events);
-        self.lan_record_events(&events);
-        dispense_fixture::record_events(&events);
         for event in events {
             match event {
                 LevelEvent::LevelEvent {
@@ -6347,135 +6339,6 @@ impl crate::game::Sim<'_> {
                     };
                     self.sounds.play(&name, Some(c), volume, pitch);
                 }
-                // Handled as the behaviour emits it (GameLevel::emit).
-                LevelEvent::DropResources { pos, state } => {
-                    self.with_level(|_, level, _| level.drop_resources_now(pos, state));
-                }
-                LevelEvent::FallingBlock { pos, state } => {
-                    let p = Vec3::new(
-                        f64::from(pos.x) + 0.5,
-                        f64::from(pos.y),
-                        f64::from(pos.z) + 0.5,
-                    );
-                    self.falling.push(FallingBlock {
-                        id: 0,
-                        state,
-                        start_pos: pos,
-                        position: p,
-                        previous: p,
-                        velocity: Vec3::ZERO,
-                        age: 0,
-                        no_gravity: false,
-                        drop_item: true,
-                        fall_distance: 0.0,
-                        stuck: Vec3::ZERO,
-                        damage: horizon_client::falling_block::Damage::falling(
-                            &self.res.facts().get(state).name,
-                        ),
-                        saved: None,
-                    });
-                }
-                LevelEvent::Player { pos, effect, .. } => match effect {
-                    PlayerEffect::OpenMenu => self.open_menu([pos.x, pos.y, pos.z]),
-                    PlayerEffect::Sleep if self.beds_destroy_on_use() => {
-                        self.destroy_bed_on_use([pos.x, pos.y, pos.z])?
-                    }
-                    PlayerEffect::Sleep => self.try_sleep([pos.x, pos.y, pos.z]),
-                    PlayerEffect::GiveItem(item) => {
-                        if let Some(rest) = self.give(ItemStack {
-                            item,
-                            count: 1,
-                            damage: 0,
-                            extra: None,
-                        }) {
-                            self.pop_resource([pos.x, pos.y, pos.z], rest);
-                        }
-                    }
-                    // Popped as the behaviour emits it (GameLevel::emit).
-                    PlayerEffect::DropItem(_) => {}
-                    PlayerEffect::EatCake => {
-                        // CakeBlock.eat
-                        self.stats.custom("eat_cake_slice", 1);
-                        if let Some(p) = self.player.as_mut() {
-                            let food = &mut p.health.food;
-                            food.food = (food.food + 2).min(20);
-                            food.saturation = (food.saturation + 0.4).min(food.food as f32);
-                        }
-                    }
-                    PlayerEffect::RespawnAnchor => {
-                        self.respawn_anchor_used([pos.x, pos.y, pos.z])?
-                    }
-                    PlayerEffect::InteractLoot(_) => {}
-                },
-                LevelEvent::PrimeTnt { pos, rot } => self.add_primed_tnt(pos, rot, 80),
-                LevelEvent::BlockEvent {
-                    pos,
-                    state,
-                    kind: "dispense",
-                } => self.dispense_from(pos, state)?,
-                LevelEvent::BlockEvent {
-                    pos, kind: "golem", ..
-                } => self.check_golem_spawn([pos.x, pos.y, pos.z])?,
-                LevelEvent::BlockEvent {
-                    pos,
-                    kind: "brushable",
-                    ..
-                } => self.brushable_tick([pos.x, pos.y, pos.z]),
-                LevelEvent::BlockEvent {
-                    pos, kind: "hatch", ..
-                } => {
-                    // FrogspawnBlock.hatchFrogspawn: 2-5 tadpoles.
-                    let at = [
-                        f64::from(pos.x) + 0.5,
-                        f64::from(pos.y) + 0.5,
-                        f64::from(pos.z) + 0.5,
-                    ];
-                    self.sounds
-                        .play("minecraft:block.frogspawn.hatch", Some(at), 1.0, 1.0);
-                    let count = 2 + self.world.random.next_int_bound(4).unwrap_or(0);
-                    for _ in 0..count {
-                        // getRandomTadpolePositionOffset: 0.2..0.8 inside the block.
-                        let r = &mut self.world.random;
-                        let off = |r: &mut horizon_core::random::LegacyRandom| {
-                            f64::from(r.next_float()) * 0.6 + 0.2
-                        };
-                        let (dx, dz) = (off(r), off(r));
-                        let spawn = [
-                            f64::from(pos.x) + dx,
-                            f64::from(pos.y) - 0.5,
-                            f64::from(pos.z) + dz,
-                        ];
-                        let _ = self.spawn_mob("minecraft:tadpole", spawn, true);
-                    }
-                }
-                LevelEvent::BlockEvent {
-                    pos,
-                    kind: "hatch_sniffer",
-                    ..
-                } => self.hatch_sniffer([pos.x, pos.y, pos.z]),
-                LevelEvent::BlockEvent {
-                    pos,
-                    state,
-                    kind: "hatch_turtles",
-                } => self.hatch_turtles([pos.x, pos.y, pos.z], state),
-                LevelEvent::BlockEvent {
-                    pos,
-                    kind: "portal_spawn",
-                    ..
-                } => self.portal_spawn([pos.x, pos.y, pos.z]),
-                LevelEvent::BlockEvent {
-                    pos,
-                    state,
-                    kind: "spawn_ghastling",
-                } => self.spawn_ghastling([pos.x, pos.y, pos.z], state),
-                LevelEvent::GameEvent { pos, event, state } => {
-                    self.sculk_level_event(pos, event, state)
-                }
-                LevelEvent::BlockEvent {
-                    pos,
-                    state,
-                    kind: "shrieker_respond",
-                } => self.shrieker_block_event(pos, state),
                 // LeavesDecay, BlockBurn, Form and FadeEvent before the change.
                 LevelEvent::Pending(change) => {
                     let _ = change;
@@ -6512,9 +6375,10 @@ impl crate::game::Sim<'_> {
                         [note / 24.0, 0.0, 0.0],
                     );
                 }
-                LevelEvent::GrowTree { .. }
-                | LevelEvent::PlaceFeature { .. }
-                | LevelEvent::BlockEvent { .. } => {}
+                // What a level does beyond its effects (drops, falling blocks,
+                // the player's actions, dispensers, hatching, game events) is
+                // the server's: its results arrive as packets.
+                _ => {}
             }
         }
         Ok(())
@@ -8740,147 +8604,6 @@ impl crate::game::Sim<'_> {
             HeightmapType::MotionBlocking.is_opaque(properties.heightmap_state(s))
         })
     }
-    /// A translated message for the player the game acts for: `overlay` is
-    /// `sendOverlayMessage` (the action bar), else `sendSystemMessage` (chat).
-    /// A guest gets a packet, so its own client translates it.
-    fn tell_sleeper(&mut self, key: &str, fallback: &str, overlay: bool) {
-        if overlay {
-            self.message = Some((self.translate(key, fallback), Instant::now()));
-        } else {
-            self.system_message(horizon_client::text::Text::translate(key, &[]));
-        }
-    }
-    /// ServerPlayer.startSleepInBed: in reach, not obstructed, night or thunder,
-    /// and (outside creative) no monsters within 8 blocks; the bed becomes the
-    /// respawn point either way.
-    fn try_sleep(&mut self, pos: [i32; 3]) {
-        let Some((position, yaw)) = self.player.as_ref().map(|p| (p.position, p.yaw)) else {
-            return;
-        };
-        let time = self.world.day_time.rem_euclid(24000);
-        let night = (12542..23460).contains(&time) || self.world.weather.thundering;
-        let state = self.world.block(pos[0], pos[1], pos[2]);
-        let props = self
-            .pack
-            .assets
-            .registry
-            .state(state)
-            .map(|s| s.properties.clone())
-            .unwrap_or_default();
-        // The head and the foot: the block faces from the foot to the head.
-        let d = facing_offset(props.get("facing").map_or("north", String::as_str));
-        let (head, foot) = if props.get("part").map(String::as_str) == Some("foot") {
-            ([pos[0] + d[0], pos[1], pos[2] + d[2]], pos)
-        } else {
-            (pos, [pos[0] - d[0], pos[1], pos[2] - d[2]])
-        };
-        // ServerPlayer.bedInRange / isReachableBedBlock: within 3 blocks
-        // sideways and 2 vertically of the head or the foot.
-        let reachable = |bed: [i32; 3]| {
-            (position.x - f64::from(bed[0]) - 0.5).abs() <= 3.0
-                && (position.y - f64::from(bed[1])).abs() <= 2.0
-                && (position.z - f64::from(bed[2]) - 0.5).abs() <= 3.0
-        };
-        if !reachable(head) && !reachable(foot) {
-            self.tell_sleeper(
-                "block.minecraft.bed.too_far_away",
-                "You may not rest now; the bed is too far away",
-                true,
-            );
-            return;
-        }
-        // ServerPlayer.bedBlocked: Player.freeAt (not suffocating) for the
-        // blocks above the head and the foot, as `in_wall` reads suffocating.
-        let blocked = [head, foot].iter().any(|bed| {
-            let f = self
-                .res
-                .facts()
-                .get(self.world.block(bed[0], bed[1] + 1, bed[2]));
-            f.full_collision && f.solid_render
-        });
-        if blocked {
-            self.tell_sleeper(
-                "block.minecraft.bed.obstructed",
-                "This bed is obstructed",
-                true,
-            );
-            return;
-        }
-        // PlayerBedEnterEvent: cancelled, the bed does nothing.
-        // In reach (bedInRange), day or night: setRespawnPosition(
-        // RespawnConfig(the head, the player's yaw), not forced). It replaces
-        // an anchor or a spawnpoint; respawning checks the bed is still there
-        // and finds where to stand up (findRespawnAndUseSpawnBlock).
-        // Straw beds never set it (`straw_bed_rule`).
-        if self.bed_sets_spawn(state) {
-            let config = respawn_anchor::RespawnConfig::wrapped(self.dim, head, yaw, false);
-            // ServerPlayer.setRespawnPosition: the chat message only when the
-            // point moved (`isSamePosition`).
-            let moved = self
-                .respawn_config
-                .is_none_or(|c| (c.dim, c.pos) != (config.dim, config.pos));
-            self.respawn_config = Some(config);
-            if moved {
-                self.tell_sleeper("block.minecraft.set_spawn", "Respawn point set", false);
-            }
-            // The fallback becomes the world spawn: a guest's is none of its
-            // own, so it follows `setworldspawn`.
-            self.spawn = {
-                self.level
-                    .world_spawn
-                    .map(|[x, y, z]| {
-                        Vec3::new(f64::from(x) + 0.5, f64::from(y), f64::from(z) + 0.5)
-                    })
-                    .or(self.spawn)
-            };
-        }
-        if !night {
-            self.tell_sleeper(
-                "block.minecraft.bed.no_sleep",
-                "You can sleep only at night or during thunderstorms",
-                true,
-            );
-            return;
-        }
-        // Creative players skip the monster check (`!this.isCreative()`).
-        let monsters = !self.creative
-            && self.mobs.iter().any(|m| {
-                // `Monster.class` entities that `isPreventingPlayerRest`: a
-                // zombified piglin only while it is angry.
-                horizon_client::mobs::ai::is_monster(m.species())
-                    && (m.species() != horizon_client::mobs::Species::ZombifiedPiglin
-                        || (m.extra.anger > 0 && m.ai.target.is_some()))
-                    && m.alive()
-                    && (m.position.x - position.x).abs() < 8.0
-                    && (m.position.y - position.y).abs() < 5.0
-                    && (m.position.z - position.z).abs() < 8.0
-            });
-        if monsters {
-            self.tell_sleeper(
-                "block.minecraft.bed.not_safe",
-                "You may not rest now; there are monsters nearby",
-                true,
-            );
-            return;
-        }
-        // ServerPlayer.startSleepInBed: a percentage above 100 cannot skip the night.
-        if self.world_data.rules.int("players_sleeping_percentage") > 100 {
-            self.tell_sleeper(
-                "sleep.not_possible",
-                "No amount of rest can pass this night",
-                true,
-            );
-        }
-        self.stop_mining();
-        self.left = false;
-        self.right = false;
-        self.using = None;
-        self.sleeping = Some(head);
-        self.sleep_timer = 0;
-        self.stats.custom("sleep_in_bed", 1);
-        self.trigger_player("minecraft:slept_in_bed");
-        self.stats.reset("custom", "minecraft:time_since_rest");
-    }
     fn wake_up(&mut self) {
         // InBedChatScreen.sendWakeUp: the server wakes the player.
         self.remote_stop_sleeping();
@@ -10254,7 +9977,6 @@ impl<'a> Game<'a> {
                 trident_model: prepared.trident_model,
                 arrow_model: prepared.arrow_model,
                 tnts: Vec::new(),
-                hoppers: HashMap::new(),
                 creative_screen: prepared.creative_screen,
                 agent_control_on: false,
                 agent_last: None,
@@ -10280,7 +10002,6 @@ impl<'a> Game<'a> {
                 left_for_exit: false,
                 quitting: false,
                 forced_hit: None,
-                lan_events: Vec::new(),
                 lan_songs: Vec::new(),
                 lan_cushion_breaks: Vec::new(),
                 lan_block_events: Vec::new(),
@@ -10299,7 +10020,6 @@ impl<'a> Game<'a> {
                 stats: Default::default(),
                 score: Default::default(),
                 rand_sequences: Default::default(),
-                brushing: Default::default(),
                 border: Default::default(),
                 adv: Default::default(),
                 stats_ui: Default::default(),

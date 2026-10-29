@@ -186,14 +186,6 @@ impl crate::game::Sim<'_> {
             item: stack.clone(),
         }
     }
-    /// A rocket shot at an angle (`DATA_SHOT_AT_ANGLE`): out of a dispenser
-    /// (`FireworkRocketItem.asProjectile`) or a crossbow.
-    pub(super) fn launch_angled_rocket(&mut self, at: Vec3, velocity: Vec3, stack: &ItemStack) {
-        let mut rocket = self.new_rocket(at, stack, false);
-        rocket.velocity = velocity;
-        rocket.angled = true;
-        self.rockets.push(rocket);
-    }
     /// FireworkRocketEntity.handleEntityEvent: use the synchronized item data.
     pub(super) fn remote_firework_explosion(&mut self, id: i32) {
         let camera = self.eye_position();

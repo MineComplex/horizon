@@ -3,13 +3,9 @@
 //! block entity's data on Ctrl in creative, and the data and components a
 //! placed item gives its block entity.
 use horizon_client::{
-    Result, block_entity_item, block_entity_nbt, containers::BlockEntity, item_data,
-    items::ItemStack, save,
+    block_entity_item, block_entity_nbt, containers::BlockEntity, item_data, items::ItemStack, save,
 };
-use horizon_world::{
-    nbt::{Compound, Tag},
-    registry::BlockStateId,
-};
+use horizon_world::nbt::{Compound, Tag};
 
 /// The component patch of `stack`.
 fn components(stack: &ItemStack) -> Compound {
@@ -77,77 +73,5 @@ impl crate::game::Sim<'_> {
             (stack.damage, stack.extra) = item_data::decode_components(Some(&Tag::Compound(all)));
         }
         Some(stack)
-    }
-    /// `BlockItem.updateBlockStateFromTag`: the properties of the item's
-    /// `block_state` component (a hive's honey level, a statue's pose) set on
-    /// the block just placed at `pos`. Returns the state it has now.
-    pub(super) fn apply_item_block_state(
-        &mut self,
-        pos: [i32; 3],
-        state: BlockStateId,
-        stack: &ItemStack,
-    ) -> Result<BlockStateId> {
-        let Some(Tag::Compound(saved)) =
-            stack.data().and_then(|d| d.other("minecraft:block_state"))
-        else {
-            return Ok(state);
-        };
-        let Some(current) = self.pack.assets.registry.state(state) else {
-            return Ok(state);
-        };
-        // Only the properties the block has.
-        let props: Vec<(String, String)> = saved
-            .iter()
-            .filter_map(|(k, v)| match v {
-                Tag::String(v) => Some((k.to_string_lossy(), v.to_string_lossy())),
-                _ => None,
-            })
-            .filter(|(k, v)| current.properties.get(k).is_some_and(|old| old != v))
-            .collect();
-        let props: Vec<(&str, &str)> = props.iter().map(|(k, v)| (&**k, &**v)).collect();
-        match self.with_props(state, &props) {
-            Some(new) if !props.is_empty() && new != state => {
-                self.level_set(pos, new)?;
-                Ok(new)
-            }
-            _ => Ok(state),
-        }
-    }
-    /// `BlockItem.updateCustomBlockEntityTag` and `updateBlockEntityComponents`
-    /// for the block entity just placed at `pos` from `stack`; `game_master`:
-    /// the placer can use game master blocks (a dispenser can't).
-    pub(super) fn apply_placed_item(
-        &mut self,
-        pos: [i32; 3],
-        stack: &ItemStack,
-        game_master: bool,
-    ) {
-        let key = (pos[0], pos[1], pos[2]);
-        self.pending.banner.remove(&pos);
-        let Some(saved) = self.saved_block_entity(key) else {
-            return;
-        };
-        let placed = block_entity_item::place(&saved, &components(stack), game_master);
-        if placed == saved {
-            return;
-        }
-        let Some((_, mut entity)) = save::decode_block_entity(&placed) else {
-            return;
-        };
-        // The new crafter's state flag (CrafterBlock.newBlockEntity), which
-        // its saved data has no part of.
-        if let (BlockEntity::Crafter(new), Some(BlockEntity::Crafter(old))) =
-            (&mut entity, self.world.block_entities.get(&key))
-        {
-            new.state_triggered = old.state_triggered;
-        }
-        // Banners and signs keep their name themselves.
-        if !matches!(entity, BlockEntity::Banner(_) | BlockEntity::Sign(_)) {
-            match save::text(placed.get("CustomName")) {
-                Some(name) => self.world.block_names.insert(key, name),
-                None => self.world.block_names.remove(&key),
-            };
-        }
-        self.world.block_entities.insert(key, entity);
     }
 }

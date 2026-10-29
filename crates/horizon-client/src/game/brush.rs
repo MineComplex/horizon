@@ -4,27 +4,6 @@
 use super::{Hit, view_vector};
 use horizon_client::particles::{ParticleOptions, ParticleType};
 use horizon_core::random::RandomSource;
-use std::collections::HashMap;
-
-/// A brushable block's counters. Vanilla never saves them: the block's
-/// `dusted` state is all that is left after a reload.
-#[derive(Default)]
-pub(super) struct BrushState {
-    count: i32,
-    resets_at: i64,
-}
-
-/// `BrushableBlockEntity.getCompletionState`: the `dusted` property.
-fn completion_state(count: i32) -> i32 {
-    match count {
-        0 => 0,
-        1..=2 => 1,
-        3..=5 => 2,
-        _ => 3,
-    }
-}
-
-pub(super) type Brushing = HashMap<[i32; 3], BrushState>;
 
 impl crate::game::Sim<'_> {
     /// `BrushItem.spawnDustParticles`.
@@ -60,44 +39,6 @@ impl crate::game::Sim<'_> {
                 dz * flip * 3.0 * random.next_double(),
             ];
             self.particles.add(&options, [x, hit.point[1], z], v);
-        }
-    }
-    fn set_dusted(&mut self, pos: [i32; 3], dusted: i32) {
-        let registry = self.pack.assets.registry;
-        let Some(mut state) = registry
-            .state(self.world.block(pos[0], pos[1], pos[2]))
-            .cloned()
-        else {
-            return;
-        };
-        state.properties.insert("dusted".into(), dusted.to_string());
-        if let Ok(state) = registry.resolve(&state) {
-            let _ = self.level_set(pos, state);
-        }
-    }
-    fn schedule_brushable_tick(&mut self, pos: [i32; 3]) {
-        let at = horizon_core::position::BlockPos::new(pos[0], pos[1], pos[2]);
-        self.with_level(|b, level, ticks| b.schedule_tick(level, ticks, at, 2));
-    }
-    /// `BrushableBlockEntity.checkReset`, from `BrushableBlock.tick`: a block
-    /// left alone loses two counts, again every four ticks.
-    pub(super) fn brushable_tick(&mut self, pos: [i32; 3]) {
-        let time = self.world.game_time;
-        let Some(mut brush) = self.brushing.remove(&pos) else {
-            return;
-        };
-        let before = completion_state(brush.count);
-        if brush.count != 0 && time >= brush.resets_at {
-            brush.count = (brush.count - 2).max(0);
-            brush.resets_at = time + 4;
-        }
-        let after = completion_state(brush.count);
-        if brush.count != 0 {
-            self.brushing.insert(pos, brush);
-            self.schedule_brushable_tick(pos);
-        }
-        if before != after {
-            self.set_dusted(pos, after);
         }
     }
     /// Level event 3008 (`LevelEventHandler`): the finished block's sound

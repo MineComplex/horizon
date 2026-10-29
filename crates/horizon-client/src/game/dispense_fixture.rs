@@ -18,11 +18,3 @@ pub(super) fn record(line: impl FnOnce() -> String) {
         }
     });
 }
-/// `Level.levelEvent` lines for the level events the behaviour library reported.
-pub(super) fn record_events(events: &[horizon_world::level::LevelEvent]) {
-    for event in events {
-        if let horizon_world::level::LevelEvent::LevelEvent { id, pos, data } = event {
-            record(|| format!("L {id} {},{},{} {data}", pos.x, pos.y, pos.z));
-        }
-    }
-}

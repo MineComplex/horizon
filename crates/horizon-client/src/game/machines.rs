@@ -6,30 +6,14 @@ use super::Game;
 
 mod crafter;
 use horizon_client::{
-    Result,
     containers::BlockEntity,
     items::{ItemStack, Items},
     world::World,
 };
-use horizon_core::{geometry::Direction, position::BlockPos, random::RandomSource};
+use horizon_core::{geometry::Direction, position::BlockPos};
 use horizon_world::{level::Behaviours, registry::BlockStateId};
 
 type Pos = (i32, i32, i32);
-
-/// `HopperBlockEntity` transient state (`TransferCooldown`, `tickedGameTime`).
-#[derive(Clone, Copy, Debug)]
-pub(super) struct HopperState {
-    cooldown: i32,
-    ticked: i64,
-}
-impl Default for HopperState {
-    fn default() -> Self {
-        Self {
-            cooldown: -1,
-            ticked: 0,
-        }
-    }
-}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Kind {
@@ -66,21 +50,6 @@ impl View {
             slot -= size;
         }
         None
-    }
-    /// `WorldlyContainer.getSlotsForFace` or every slot.
-    fn slots_for_face(&self, face: Option<Direction>) -> Vec<usize> {
-        match (self.kind, face) {
-            (Kind::Furnace, Some(Direction::Down)) => vec![2, 1],
-            (Kind::Furnace, Some(Direction::Up)) => vec![0],
-            (Kind::Furnace, Some(_)) => vec![1],
-            (Kind::Brewing, Some(Direction::Up)) => vec![3],
-            (Kind::Brewing, Some(Direction::Down)) => vec![0, 1, 2, 3],
-            (Kind::Brewing, Some(_)) => vec![0, 1, 2, 4],
-            (Kind::Composter(8), Some(Direction::Down)) => vec![0],
-            (Kind::Composter(level), Some(Direction::Up)) if level < 7 => vec![0],
-            (Kind::Composter(_), _) => vec![],
-            _ => (0..self.len()).collect(),
-        }
     }
 }
 
@@ -125,8 +94,6 @@ struct Containers<'a> {
     behaviours: &'a Behaviours,
     items: &'a Items,
     registry: &'static horizon_world::registry::BlockRegistry,
-    /// Brewing recipes, for what a brewing stand accepts (not needed for signals).
-    brewing: Option<&'a horizon_client::brewing::Brewing>,
     /// The stack of a full composter's `OutputContainer`.
     bone_meal: ItemStack,
 }
@@ -238,68 +205,6 @@ impl Containers<'_> {
             .get(i)?
             .as_ref()
     }
-    fn is_empty(&self, view: &View) -> bool {
-        (0..view.len()).all(|i| self.get(view, i).is_none())
-    }
-    /// `Container.canPlaceItem` (+ `canPlaceItemThroughFace` for furnaces).
-    fn can_place(&self, view: &View, slot: usize, stack: &ItemStack) -> bool {
-        if view.kind == Kind::Crafter {
-            return match self.world.block_entities.get(&view.parts[0].0) {
-                Some(BlockEntity::Crafter(c)) => {
-                    // The slot's own stack sets the limit (`slotStack.getMaxStackSize`).
-                    let max = c.items.get(slot).and_then(Option::as_ref).unwrap_or(stack);
-                    c.can_place(slot, stack, self.max_stack(max))
-                }
-                _ => false,
-            };
-        }
-        if view.kind == Kind::Bookshelf {
-            // ListBackedContainer.canPlaceItem: `acceptsItemType` (the books)
-            // and a free slot, as `getMaxStackSize` is 1.
-            return self
-                .items
-                .item_tags
-                .get("minecraft:bookshelf_books")
-                .is_some_and(|m| m.contains(&*stack.item))
-                && self.get(view, slot).is_none();
-        }
-        if view.kind == Kind::Brewing {
-            // BrewingStandBlockEntity.canPlaceItem
-            return match slot {
-                4 => self
-                    .items
-                    .get(&stack.item)
-                    .is_some_and(|i| i.brewing_fuel.is_some()),
-                3 => self.brewing.is_some_and(|b| b.is_reagent(stack)),
-                _ => {
-                    let input = self.brewing.is_some_and(|b| b.is_bottle(stack))
-                        || self
-                            .items
-                            .item_tags
-                            .get("minecraft:brewing_potion_inputs")
-                            .is_some_and(|m| m.contains(&*stack.item));
-                    input && self.get(view, slot).is_none()
-                }
-            };
-        }
-        if view.kind != Kind::Furnace {
-            return true;
-        }
-        match slot {
-            2 => false,
-            1 => {
-                let fuel = self
-                    .items
-                    .get(&stack.item)
-                    .is_some_and(|i| i.fuel.is_some());
-                let current_bucket = self
-                    .get(view, 1)
-                    .is_some_and(|s| &*s.item == "minecraft:bucket");
-                fuel || (&*stack.item == "minecraft:bucket" && !current_bucket)
-            }
-            _ => true,
-        }
-    }
     /// `AbstractContainerMenu.getRedstoneSignalFromContainer`.
     fn signal(&self, view: &View) -> i32 {
         if view.kind == Kind::Crafter {
@@ -343,7 +248,6 @@ pub(super) fn container_signal(
         behaviours,
         items,
         registry,
-        brewing: None,
         bone_meal: bone_meal(),
     };
     c.view((pos.x, pos.y, pos.z), true)
@@ -400,26 +304,7 @@ impl crate::game::Sim<'_> {
             behaviours: self.res.behaviours(),
             items: self.res.items(),
             registry: self.pack.assets.registry,
-            brewing: Some(&self.res.stations().brewing),
             bone_meal: bone_meal(),
-        }
-    }
-    fn slot_mut_at(&mut self, view: &View, slot: usize) -> Option<&mut Option<ItemStack>> {
-        let (pos, i) = view.locate(slot)?;
-        self.world
-            .block_entities
-            .get_mut(&pos)?
-            .slots_mut()
-            .get_mut(i)
-    }
-    /// `BlockEntity.setChanged` for every block entity of a container.
-    fn view_changed(&mut self, view: &View) {
-        // A composter's containers change its block state instead.
-        if let Kind::Composter(_) = view.kind {
-            return;
-        }
-        for &(pos, _) in &view.parts {
-            self.container_changed(pos);
         }
     }
     /// `BlockEntity.setChanged` at `pos`: comparators re-read the container.
@@ -438,158 +323,6 @@ impl crate::game::Sim<'_> {
                 b.container_changed(level, ticks, BlockPos::new(pos.0, pos.1, pos.2))
             });
         }
-    }
-    /// `HopperBlockEntity.tryMoveInItem`.
-    fn try_move_in_item(
-        &mut self,
-        from_hopper: Option<Pos>,
-        view: &View,
-        mut stack: ItemStack,
-        slot: usize,
-    ) -> Option<ItemStack> {
-        let c = self.containers();
-        if !c.can_place(view, slot, &stack) {
-            return Some(stack);
-        }
-        let was_empty = c.is_empty(view);
-        let max = c.max_stack(&stack);
-        let mut success = false;
-        let target = self.slot_mut_at(view, slot)?;
-        match target {
-            None => {
-                *target = Some(stack.clone());
-                stack.count = 0;
-                success = true;
-            }
-            Some(current)
-                // HopperBlockEntity.canMergeItems
-                if current.count <= max && current.same_item_same_components(&stack) =>
-            {
-                let space = max.saturating_sub(current.count);
-                let count = stack.count.min(space);
-                stack.count -= count;
-                current.count += count;
-                success = count > 0;
-            }
-            Some(_) => {}
-        }
-        if success {
-            if was_empty && view.kind == Kind::Hopper {
-                let dest = view.parts[0].0;
-                let from_ticked = from_hopper.and_then(|p| self.hoppers.get(&p).map(|h| h.ticked));
-                let state = self.hoppers.entry(dest).or_default();
-                if state.cooldown <= 8 {
-                    let skip = i32::from(from_ticked.is_some_and(|t| state.ticked >= t));
-                    state.cooldown = 8 - skip;
-                }
-            }
-            self.view_changed(view);
-        }
-        (stack.count > 0).then_some(stack)
-    }
-    /// `HopperBlockEntity.addItem(from, container, stack, direction)`; the remainder.
-    fn add_item(
-        &mut self,
-        from_hopper: Option<Pos>,
-        view: &View,
-        stack: ItemStack,
-        face: Option<Direction>,
-    ) -> Option<ItemStack> {
-        if let Kind::Composter(_) = view.kind {
-            let (x, y, z) = view.parts[0].0;
-            return self.composter_container_insert([x, y, z], stack, face == Some(Direction::Up));
-        }
-        let slots = if matches!(view.kind, Kind::Furnace | Kind::Brewing) && face.is_some() {
-            view.slots_for_face(face)
-        } else {
-            (0..view.len()).collect()
-        };
-        let mut rest = Some(stack);
-        for slot in slots {
-            let Some(stack) = rest.take() else { break };
-            rest = self.try_move_in_item(from_hopper, view, stack, slot);
-        }
-        rest
-    }
-    /// `DispenserBlock.dispenseFrom` / `DropperBlock.dispenseFrom`.
-    pub(super) fn dispense_from(&mut self, pos: BlockPos, state: BlockStateId) -> Result<()> {
-        let key = (pos.x, pos.y, pos.z);
-        let name = self.res.facts().get(state).name.clone();
-        if &*name == "minecraft:crafter" {
-            return self.crafter_dispense(pos, state);
-        }
-        let dropper = &*name == "minecraft:dropper";
-        if !dropper && &*name != "minecraft:dispenser" {
-            return Ok(());
-        }
-        let Some(view) = self.containers().view(key, false) else {
-            return Ok(());
-        };
-        // DispenserBlockEntity.getRandomSlot
-        let mut slot = None;
-        let mut odds = 1;
-        for i in 0..view.len() {
-            if self.containers().get(&view, i).is_some() {
-                if self.world.random.next_int_bound(odds).unwrap_or(1) == 0 {
-                    slot = Some(i);
-                }
-                odds += 1;
-            }
-        }
-        let Some(slot) = slot else {
-            self.dispenser_event(1001, key, 0);
-            if !dropper {
-                self.post_block_game_event(
-                    "minecraft:block_activate",
-                    [pos.x, pos.y, pos.z],
-                    None,
-                    Some(state),
-                );
-            }
-            return Ok(());
-        };
-        let Some(facing) = self
-            .containers()
-            .prop(state, "facing")
-            .and_then(dir_from_name)
-        else {
-            return Ok(());
-        };
-        let Some(stack) = self.containers().get(&view, slot).cloned() else {
-            return Ok(());
-        };
-        let target = offset(key, facing);
-        let remaining = if dropper {
-            match self.containers().view(target, false) {
-                None => self.dispense_default(key, facing, stack),
-                Some(into) => {
-                    let one = ItemStack {
-                        count: 1,
-                        ..stack.clone()
-                    };
-                    if self
-                        .add_item(None, &into, one, Some(facing.opposite()))
-                        .is_none()
-                    {
-                        self.view_changed(&into);
-                        Some(ItemStack {
-                            count: stack.count - 1,
-                            ..stack
-                        })
-                        .filter(|s| s.count > 0)
-                    } else {
-                        Some(stack)
-                    }
-                }
-            }
-        } else {
-            self.dispense_item(key, facing, stack)?
-        };
-        if let Some(entry) = self.slot_mut_at(&view, slot) {
-            *entry = remaining;
-        }
-        self.container_changed(key);
-        Ok(())
     }
 }
 

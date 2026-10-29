@@ -16,9 +16,6 @@ use horizon_core::random::RandomSource;
 use horizon_world::nbt::Tag;
 use std::collections::HashMap;
 
-/// `Entity.getDimensionChangingDelay`.
-const ENTITY_DELAY: i32 = 300;
-
 /// The nether portal state of the world (`Game::portals`).
 #[derive(Default)]
 pub(super) struct Portals {
@@ -93,16 +90,5 @@ impl crate::game::Sim<'_> {
                 },
             );
         }
-    }
-    /// `Entity.setPortalCooldown` on an entity that has just spawned in a
-    /// portal: it stands in the portal for 300 ticks without going through.
-    pub(super) fn set_portal_cooldown(&mut self, id: u32) {
-        self.portals.entities.insert(
-            id,
-            PortalState {
-                cooldown: ENTITY_DELAY,
-                process: None,
-            },
-        );
     }
 }

@@ -3,7 +3,6 @@
 //! hatches.
 use horizon_client::mobs::{MobEvent, happy_ghast};
 use horizon_core::geometry::{Aabb, Vec3};
-use horizon_world::registry::BlockStateId;
 
 impl crate::game::Sim<'_> {
     /// Client `EntityGetter.getEntityCollisions` for the player: the
@@ -51,36 +50,5 @@ impl crate::game::Sim<'_> {
             p.velocity = Vec3::ZERO;
         }
         let _ = self.handle_mob_events(vec![up]);
-    }
-    /// `DriedGhastBlock.spawnGhastling`: a ghastling facing the way the block did.
-    pub(super) fn spawn_ghastling(&mut self, pos: [i32; 3], state: BlockStateId) {
-        let at = [
-            f64::from(pos[0]) + 0.5,
-            f64::from(pos[1]),
-            f64::from(pos[2]) + 0.5,
-        ];
-        let facing = self
-            .pack
-            .assets
-            .registry
-            .state(state)
-            .and_then(|s| s.properties.get("facing").cloned());
-        let yaw = match facing.as_deref() {
-            Some("north") => 180.0,
-            Some("east") => 270.0,
-            Some("west") => 90.0,
-            _ => 0.0,
-        };
-        if let Some(id) = self.spawn_mob("minecraft:happy_ghast", at, true)
-            && let Some(m) = self.mobs.iter_mut().find(|m| m.id == id)
-        {
-            m.extra.age = -24000;
-            m.yaw = yaw;
-            m.body_yaw = yaw;
-            m.head_yaw = yaw;
-            let at = m.center();
-            self.sounds
-                .play("minecraft:entity.ghastling.spawn", Some(at), 1.0, 1.0);
-        }
     }
 }

@@ -6,7 +6,7 @@ use super::{Game, Screen, item_draw::owner_at};
 use horizon_assets::item_model::DisplayContext;
 use horizon_client::{
     block_entity_render::vertex_light, brewing, effects::PlayerEffects, hud::HudBatch, hud_layout,
-    hud_overlays, inventory_effects, items::ItemStack, mesher::Vertex, text::Text,
+    hud_overlays, inventory_effects, items::ItemStack, mesher::Vertex,
 };
 use horizon_core::{
     geometry::Vec3,
@@ -79,24 +79,6 @@ impl crate::game::Sim<'_> {
             self.sounds
                 .play("minecraft:entity.silverfish.hurt", Some(at), 1.0, 1.0);
         }
-    }
-    /// A splash potion, lingering potion or experience bottle in flight (the
-    /// player's throws and dispensers both end up here).
-    pub(super) fn launch_thrown(
-        &mut self,
-        stack: ItemStack,
-        position: Vec3,
-        velocity: Vec3,
-        _owner: Option<Text>,
-    ) {
-        self.potions.thrown.push(ThrownPotion {
-            id: 0,
-            stack,
-            previous: position,
-            position,
-            velocity,
-            age: 0,
-        });
     }
 }
 /// Effects, thrown potions and the attribute modifiers last applied.
