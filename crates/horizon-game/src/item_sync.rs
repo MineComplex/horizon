@@ -2,7 +2,8 @@
 //! patch read back as vanilla's `components` compound, so the decoder the saved
 //! and command item NBT use fills every field. Both sides use it: a client for
 //! what its server sends, a server for a creative client's
-//! `SetCreativeModeSlot`. The other direction is `lan::player::stack_to_network`.
+//! `SetCreativeModeSlot`; and the other direction, a stack as it goes out
+//! (`stack_to_network`).
 use crate::items::ItemStack;
 use horizon_protocol::item::{Component, Profile, Stack, component};
 use horizon_protocol::registry::{Builtin, Dynamic};
@@ -260,6 +261,323 @@ fn profile_tag(p: &Profile) -> Tag {
     Tag::compound(entries)
 }
 
+/// `FireworkExplosion.STREAM_CODEC`'s fields (`Shape` by its BY_ID order).
+fn network_explosion(
+    e: &crate::particles::FireworkExplosion,
+) -> horizon_protocol::item::FireworkExplosion {
+    horizon_protocol::item::FireworkExplosion {
+        shape: e.shape as i32,
+        colors: e.colors.iter().map(|c| *c as i32).collect(),
+        fade: e.fade.iter().map(|c| *c as i32).collect(),
+        trail: e.trail,
+        twinkle: e.twinkle,
+    }
+}
+
+/// A rocket's `minecraft:fireworks` and a star's `minecraft:firework_explosion`.
+pub fn firework_components(
+    d: &crate::item_data::StackData,
+) -> Vec<(i32, horizon_protocol::item::Component)> {
+    use horizon_protocol::item::{Component, component};
+    let mut out = Vec::new();
+    if let Some((flight, explosions)) = &d.fireworks {
+        out.push((
+            component::FIREWORKS,
+            Component::Fireworks {
+                flight: i32::from(*flight),
+                explosions: explosions.iter().map(network_explosion).collect(),
+            },
+        ));
+    }
+    if let Some(e) = &d.firework_explosion {
+        out.push((
+            component::FIREWORK_EXPLOSION,
+            Component::FireworkExplosion(network_explosion(e)),
+        ));
+    }
+    out
+}
+
+/// The off hand slot is conventionally 40 in saves and 45 in the menu.
+/// `synced_id` names an entry of a synced registry (enchantments, trim
+/// materials and patterns) by its id on this connection.
+pub fn stack_to_network(
+    item_id: impl Fn(&str) -> i32,
+    synced_id: impl Fn(&str, &str) -> Option<i32>,
+    s: &Option<ItemStack>,
+) -> Option<Stack> {
+    network_stack(&item_id, &synced_id, s)
+}
+fn network_stack(
+    item_id: &dyn Fn(&str) -> i32,
+    synced_id: &dyn Fn(&str, &str) -> Option<i32>,
+    s: &Option<ItemStack>,
+) -> Option<Stack> {
+    let enchantment_id = |name: &str| synced_id("minecraft:enchantment", name);
+    let s = s.as_ref()?;
+    let mut stack = Stack::new(item_id(&s.item), s.count as i32);
+    if s.damage > 0 {
+        stack.added.push((
+            horizon_protocol::item::component::DAMAGE,
+            horizon_protocol::item::Component::Int(s.damage as i32),
+        ));
+    }
+    let enchantments: Vec<(i32, i32)> = s
+        .enchantments()
+        .iter()
+        .filter_map(|(e, level)| Some((enchantment_id(e)?, *level as i32)))
+        .collect();
+    if !enchantments.is_empty() {
+        stack.added.push((
+            horizon_protocol::item::component::ENCHANTMENTS,
+            horizon_protocol::item::Component::Enchantments(enchantments),
+        ));
+    }
+    let stored: Vec<(i32, i32)> = s
+        .stored_enchantments()
+        .iter()
+        .filter_map(|(e, level)| Some((enchantment_id(e)?, *level as i32)))
+        .collect();
+    if !stored.is_empty() {
+        stack.added.push((
+            horizon_protocol::item::component::STORED_ENCHANTMENTS,
+            horizon_protocol::item::Component::Enchantments(stored),
+        ));
+    }
+    if let Some(d) = s.data() {
+        if let Some(rgb) = d.dyed_color {
+            stack.added.push((
+                horizon_protocol::item::component::DYED_COLOR,
+                horizon_protocol::item::Component::Int(rgb),
+            ));
+        }
+        // ArmorTrim: both holders as references into the synced registries.
+        if let Some((material, pattern)) = &d.trim {
+            let id = |registry: &str, name: &str| {
+                if name.contains(':') {
+                    synced_id(registry, name)
+                } else {
+                    synced_id(registry, &format!("minecraft:{name}"))
+                }
+            };
+            if let (Some(material), Some(pattern)) = (
+                id("minecraft:trim_material", material),
+                id("minecraft:trim_pattern", pattern),
+            ) {
+                stack.added.push((
+                    horizon_protocol::item::component::TRIM,
+                    horizon_protocol::item::Component::Trim { material, pattern },
+                ));
+            }
+        }
+        if let Some(id) = d.map_id {
+            stack.added.push((
+                horizon_protocol::item::component::MAP_ID,
+                horizon_protocol::item::Component::Int(id),
+            ));
+        }
+        if d.repair_cost > 0 {
+            stack.added.push((
+                horizon_protocol::item::component::REPAIR_COST,
+                horizon_protocol::item::Component::Int(d.repair_cost as i32),
+            ));
+        }
+        if let Some(mode) = d.map_post_processing {
+            stack.added.push((
+                horizon_protocol::item::component::MAP_POST_PROCESSING,
+                horizon_protocol::item::Component::Int(i32::from(mode)),
+            ));
+        }
+        stack.added.extend(firework_components(d));
+        // The compass's lodestone target.
+        if let Some(t) = d.other("minecraft:lodestone_tracker") {
+            let target = t.get("target").and_then(|g| {
+                let Some(horizon_world::nbt::Tag::IntArray(pos)) = g.get("pos") else {
+                    return None;
+                };
+                let dimension = crate::save::text(g.get("dimension"))?;
+                Some((dimension, [*pos.first()?, *pos.get(1)?, *pos.get(2)?]))
+            });
+            let tracked = crate::save::number(t.get("tracked")).is_none_or(|v| v != 0);
+            stack.added.push((
+                horizon_protocol::item::component::LODESTONE_TRACKER,
+                horizon_protocol::item::Component::LodestoneTracker { target, tracked },
+            ));
+        }
+        // PotionContents: the potion by its `minecraft:potion` id.
+        if let Some(id) = (d.potion.as_deref()).and_then(|potion| {
+            synced_id(
+                "minecraft:potion",
+                &horizon_world::ident::namespaced(potion),
+            )
+        }) {
+            stack.added.push((
+                horizon_protocol::item::component::POTION_CONTENTS,
+                horizon_protocol::item::Component::Potion {
+                    potion: Some(id),
+                    color: None,
+                    rest: Vec::new(),
+                },
+            ));
+        }
+        // A loaded crossbow's ammunition.
+        if !d.charged.is_empty() {
+            let charged = d
+                .charged
+                .iter()
+                .filter_map(|c| network_stack(item_id, synced_id, &Some(c.clone())))
+                .collect();
+            stack.added.push((
+                horizon_protocol::item::component::CHARGED_PROJECTILES,
+                horizon_protocol::item::Component::Stacks(charged),
+            ));
+        }
+        // What a bundle holds, for its tooltip (ClientBundleTooltip).
+        if !d.bundle_contents.is_empty() {
+            let contents = d
+                .bundle_contents
+                .iter()
+                .filter_map(|c| network_stack(item_id, synced_id, &Some(c.clone())))
+                .collect();
+            stack.added.push((
+                horizon_protocol::item::component::BUNDLE_CONTENTS,
+                horizon_protocol::item::Component::Stacks(contents),
+            ));
+        }
+        // The books a lectern shows and a player reads.
+        if !d.writable_pages.is_empty() {
+            stack.added.push((
+                horizon_protocol::item::component::WRITABLE_BOOK_CONTENT,
+                horizon_protocol::item::Component::WritableBook(d.writable_pages.clone()),
+            ));
+        }
+        if let Some(w) = &d.written {
+            stack.added.push((
+                horizon_protocol::item::component::WRITTEN_BOOK_CONTENT,
+                horizon_protocol::item::Component::WrittenBook(
+                    horizon_protocol::item::WrittenBook {
+                        title: w.title.clone(),
+                        author: w.author.clone(),
+                        generation: i32::from(w.generation),
+                        pages: if w.page_tags.len() == w.pages.len() {
+                            w.page_tags.clone()
+                        } else {
+                            w.pages
+                                .iter()
+                                .map(|p| horizon_protocol::text::literal(p))
+                                .collect()
+                        },
+                        resolved: true,
+                    },
+                ),
+            ));
+        }
+    }
+    if let Some(name) = s.custom_name() {
+        let text = s
+            .custom_name_rich()
+            .cloned()
+            .unwrap_or_else(|| horizon_protocol::text::literal(name));
+        stack.added.push((
+            horizon_protocol::item::component::CUSTOM_NAME,
+            horizon_protocol::item::Component::Text(text),
+        ));
+    }
+    // Components Horizon keeps as loaded that clients show (a plugin's menu
+    // items: lore, glint, models, hidden tooltips), as vanilla syncs them.
+    if let Some(d) = s.data() {
+        use horizon_protocol::item::{Component as P, component as id};
+        use horizon_world::nbt::Tag;
+        if let Some(Tag::List(lines)) = d.other("minecraft:lore") {
+            stack.added.push((id::LORE, P::Lore(lines.clone())));
+        }
+        if d.other("minecraft:unbreakable").is_some() {
+            stack.added.push((id::UNBREAKABLE, P::Unit));
+        }
+        if let Some(Tag::Byte(b)) = d.other("minecraft:enchantment_glint_override") {
+            stack
+                .added
+                .push((id::ENCHANTMENT_GLINT_OVERRIDE, P::Bool(*b != 0)));
+        }
+        if let Some(Tag::Int(v)) = d.other("minecraft:max_stack_size") {
+            stack.added.push((id::MAX_STACK_SIZE, P::Int(*v)));
+        }
+        if let Some(Tag::Int(v)) = d.other("minecraft:max_damage") {
+            stack.added.push((id::MAX_DAMAGE, P::Int(*v)));
+        }
+        if let Some(c @ Tag::Compound(_)) = d.other("minecraft:custom_data") {
+            stack.added.push((id::CUSTOM_DATA, P::Nbt(c.clone())));
+        }
+        if let Some(c) = d.other("minecraft:custom_model_data") {
+            let list = |k: &str| match c.get(k) {
+                Some(Tag::List(l)) => l.clone(),
+                _ => Vec::new(),
+            };
+            stack.added.push((
+                id::CUSTOM_MODEL_DATA,
+                P::CustomModelData {
+                    floats: list("floats")
+                        .iter()
+                        .filter_map(|t| match t {
+                            Tag::Float(v) => Some(f32::from_bits(*v)),
+                            Tag::Double(v) => Some(f64::from_bits(*v) as f32),
+                            Tag::Int(v) => Some(*v as f32),
+                            _ => None,
+                        })
+                        .collect(),
+                    flags: list("flags")
+                        .iter()
+                        .filter_map(|t| match t {
+                            Tag::Byte(b) => Some(*b != 0),
+                            _ => None,
+                        })
+                        .collect(),
+                    strings: list("strings")
+                        .iter()
+                        .filter_map(|t| match t {
+                            Tag::String(s) => Some(s.to_string_lossy()),
+                            _ => None,
+                        })
+                        .collect(),
+                    colors: list("colors")
+                        .iter()
+                        .filter_map(|t| match t {
+                            Tag::Int(v) => Some(*v),
+                            _ => None,
+                        })
+                        .collect(),
+                },
+            ));
+        }
+        if let Some(c) = d.other("minecraft:tooltip_display") {
+            let hide = matches!(c.get("hide_tooltip"), Some(Tag::Byte(1)));
+            let hidden = match c.get("hidden_components") {
+                Some(Tag::List(l)) => l
+                    .iter()
+                    .filter_map(|t| match t {
+                        Tag::String(s) => {
+                            synced_id("minecraft:data_component_type", &s.to_string_lossy())
+                        }
+                        _ => None,
+                    })
+                    .collect(),
+                _ => Vec::new(),
+            };
+            stack
+                .added
+                .push((id::TOOLTIP_DISPLAY, P::TooltipDisplay { hide, hidden }));
+        }
+    }
+    // The component as loaded, so a translatable name stays one.
+    if let Some(name) = s.data().and_then(|d| d.other("minecraft:item_name")) {
+        stack.added.push((
+            horizon_protocol::item::component::ITEM_NAME,
+            horizon_protocol::item::Component::Text(name.clone()),
+        ));
+    }
+    Some(stack)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -292,7 +610,7 @@ mod tests {
         };
         let dynamic = Dynamic::default();
         let water = ItemStack::new("minecraft:potion", 1).with_potion("minecraft:water");
-        let wire = crate::server_net::player::stack_to_network(
+        let wire = super::stack_to_network(
             |name| builtin.get("minecraft:item").unwrap().id(name).unwrap(),
             |registry, name| builtin.get(registry)?.id(name),
             &Some(water.clone()),
@@ -369,7 +687,7 @@ mod tests {
         };
         let mut bundle = ItemStack::new("minecraft:bundle", 1);
         bundle.data_mut().bundle_contents = vec![ItemStack::new("minecraft:stone", 32)];
-        let wire = crate::server_net::player::stack_to_network(
+        let wire = super::stack_to_network(
             |name| items.iter().position(|i| *i == name).unwrap_or(0) as i32,
             |_, _| None,
             &Some(bundle),
@@ -463,7 +781,7 @@ mod tests {
                 .and_then(|ids| ids.id(name))
                 .or_else(|| dynamic.id(registry, name))
         };
-        let wire = crate::server_net::player::stack_to_network(
+        let wire = super::stack_to_network(
             |name| {
                 builtin
                     .get("minecraft:item")
@@ -493,7 +811,7 @@ mod tests {
         // PotionContents: the potion is a built-in registry, as a hub's
         // `SyncData::id` treats it, so the id has to come from there.
         let potion = ItemStack::new("minecraft:splash_potion", 1).with_potion("swiftness");
-        let wire = crate::server_net::player::stack_to_network(
+        let wire = super::stack_to_network(
             |name| id("minecraft:item", name).unwrap_or(0),
             id,
             &Some(potion),
@@ -503,5 +821,52 @@ mod tests {
             from_network(&wire, &builtin, &dynamic).potion(),
             Some("minecraft:swiftness")
         );
+    }
+}
+
+#[cfg(test)]
+mod network_tests {
+    use super::*;
+    use horizon_protocol::item::{Component, component};
+
+    #[test]
+    fn potions_go_as_potion_registry_ids() {
+        let synced_id = |registry: &str, name: &str| match (registry, name) {
+            ("minecraft:potion", "minecraft:swiftness") => Some(14),
+            _ => None,
+        };
+        let potion = ItemStack::new("minecraft:splash_potion", 1).with_potion("swiftness");
+        let stack = stack_to_network(|_| 7, synced_id, &Some(potion)).unwrap();
+        assert_eq!(
+            stack.component(component::POTION_CONTENTS),
+            Some(&Component::Potion {
+                potion: Some(14),
+                color: None,
+                rest: Vec::new(),
+            })
+        );
+    }
+
+    #[test]
+    fn trims_go_as_synced_registry_references() {
+        let mut chestplate = ItemStack::new("minecraft:diamond_chestplate", 1);
+        chestplate.data_mut().trim = Some(("minecraft:gold".into(), "coast".into()));
+        let synced_id = |registry: &str, name: &str| match (registry, name) {
+            ("minecraft:trim_material", "minecraft:gold") => Some(4),
+            ("minecraft:trim_pattern", "minecraft:coast") => Some(1),
+            _ => None,
+        };
+        let stack = stack_to_network(|_| 7, synced_id, &Some(chestplate.clone())).unwrap();
+        assert_eq!(
+            stack.component(component::TRIM),
+            Some(&Component::Trim {
+                material: 4,
+                pattern: 1
+            })
+        );
+        // A name the connection's registry lacks sends no trim.
+        chestplate.data_mut().trim = Some(("minecraft:x".into(), "coast".into()));
+        let stack = stack_to_network(|_| 7, synced_id, &Some(chestplate)).unwrap();
+        assert_eq!(stack.component(component::TRIM), None);
     }
 }

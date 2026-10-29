@@ -24,7 +24,7 @@ pub fn main() -> Result<()> {
             .ok()
             .and_then(|(w, h, rgba)| horizon_client::skins::process_legacy_skin(w, h, &rgba));
         match result {
-            Some(rgba) => writeln!(out, "{}", horizon_client::server_net::base64(&rgba))?,
+            Some(rgba) => writeln!(out, "{}", horizon_client::wire::base64(&rgba))?,
             None => writeln!(out, "refused")?,
         }
     }

@@ -1,8 +1,8 @@
-use horizon_client::{
+use horizon_core::geometry::{Aabb, ShapeOp, Vec3, VoxelShape};
+use horizon_server_core::{
     Result,
     cushion::{self, World},
 };
-use horizon_core::geometry::{Aabb, ShapeOp, Vec3, VoxelShape};
 use serde_json::Value;
 use std::{
     collections::HashMap,

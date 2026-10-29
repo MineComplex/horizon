@@ -837,8 +837,6 @@ pub enum Page {
     Controller,
     PadBinds,
     Extras,
-    /// CreditsAndAttributionScreen.
-    Credits,
     /// Horizon Settings: every page Horizon adds, as a mod's settings
     /// screen hangs off vanilla's Options.
     Horizon,
@@ -1149,7 +1147,6 @@ impl OptionsUi {
             Page::Controller => "Controller Settings",
             Page::PadBinds => "Controller Binds",
             Page::Extras => "Horizon Extras",
-            Page::Credits => "credits_and_attribution.screen.title",
             Page::Horizon => "Horizon Settings",
             Page::Agent => "AI Agent",
         }
@@ -1527,10 +1524,9 @@ impl OptionsUi {
                     ("options.chat", Some(Page::Chat)),
                     ("options.resourcepack", Some(Page::Packs)),
                     ("options.accessibility", Some(Page::Accessibility)),
-                    // Vanilla's Telemetry Data slot: Horizon's settings.
-                    // Credits & Attribution (WinScreen's credits) follows.
+                    // Vanilla's Telemetry Data slot: Horizon's settings. No
+                    // Credits & Attribution in this client.
                     ("Horizon Settings...", Some(Page::Horizon)),
-                    ("options.credits_and_attribution", Some(Page::Credits)),
                 ];
                 let rows = entries.len().div_ceil(2) as f32;
                 let gy = (61.0 + 30.0f32).min(h - 33.0 - rows * 24.0);
@@ -1539,40 +1535,6 @@ impl OptionsUi {
                     let y = gy + (i / 2) as f32 * 24.0;
                     let b = button(x, y, 150.0, tr(key), page.map_or(Act::None, Act::Push));
                     out.push(if page.is_some() { b } else { inactive(b) });
-                }
-                out.push(done(h - 27.0));
-                top = 0.0;
-                bottom = 0.0;
-            }
-            Page::Credits => {
-                // CreditsAndAttributionScreen: the title header, three 210-wide
-                // buttons 8 apart (HeaderAndFooterLayout: 30 below the header
-                // unless the footer is closer), Done.
-                out.push(Widget {
-                    x: 0.0,
-                    y: 12.0,
-                    w,
-                    h: 9.0,
-                    kind: WKind::Text {
-                        text: tr(Self::title(page)),
-                        color: u32::MAX,
-                        centered: true,
-                    },
-                    list: false,
-                });
-                let y = (33.0 + 30.0f32).min(h - 33.0 - 76.0);
-                let x = cx - 105.0;
-                // No credits roll in this client. ConfirmLinkScreen to
-                // minecraft.net: Horizon opens no links.
-                for (i, key) in [
-                    "credits_and_attribution.button.attribution",
-                    "credits_and_attribution.button.licenses",
-                ]
-                .into_iter()
-                .enumerate()
-                {
-                    let y = y + 28.0 * i as f32;
-                    out.push(inactive(button(x, y, 210.0, tr(key), Act::None)));
                 }
                 out.push(done(h - 27.0));
                 top = 0.0;
@@ -3933,10 +3895,9 @@ mod tests {
                 })
                 .collect()
         };
-        // Vanilla's Options buttons, Horizon's in the Telemetry slot, then
-        // Credits & Attribution (WinScreen's credits).
+        // Vanilla's Options buttons, Horizon's in the Telemetry slot last.
         let main = pushes(&mut ui);
-        assert_eq!(&main[main.len() - 2..], [Page::Horizon, Page::Credits]);
+        assert_eq!(main.last(), Some(&Page::Horizon));
         ui.push(Page::Horizon);
         assert_eq!(
             pushes(&mut ui),

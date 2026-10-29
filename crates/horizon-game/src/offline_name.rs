@@ -13,8 +13,13 @@ pub const FILE: &str = "horizon-player.txt";
 const KEY: &str = "name:";
 
 /// StringUtil.isValidPlayerName, plus not empty (the login screen sends at least one character).
+/// StringUtil.isValidPlayerName.
+pub fn valid_name(name: &str) -> bool {
+    (1..=16).contains(&name.len()) && name.chars().all(|c| c as u32 > 32 && (c as u32) < 127)
+}
+
 pub fn is_valid(name: &str) -> bool {
-    crate::server_net::conn::valid_name(name)
+    valid_name(name)
 }
 
 /// `Player` and five digits (vanilla's default has three: one shared name in a

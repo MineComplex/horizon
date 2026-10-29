@@ -12,8 +12,8 @@
 use horizon_client::{
     assets::Assets, biome::Biomes, blocks::BlockFacts, collisions, crafting::Recipes, items::Items,
     light::LightTables, mesher::MeshTables, models, motion::MotionResources,
-    vanillagen::VanillaTerrain,
 };
+use horizon_server_core::vanillagen::VanillaTerrain;
 use std::{
     alloc::{GlobalAlloc, Layout, System},
     sync::atomic::{AtomicUsize, Ordering::Relaxed},

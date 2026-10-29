@@ -2,17 +2,6 @@
 //! handshake, status, offline login, configuration (registries and tags),
 //! then the play state (login, chunks with light, player list, entities,
 //! block changes). Needs the prepared resources; skipped without them.
-use horizon_client::{
-    chunk::{Chunk, MIN_Y},
-    server_net::{
-        Listener,
-        chunks::ChunkEncoder,
-        data::SyncData,
-        entity::EntityState,
-        hub::{HostEvent, Hub, HubConfig, TickCtx},
-    },
-    world::World,
-};
 use horizon_protocol::{
     PROTOCOL_VERSION,
     connection::Connection,
@@ -24,6 +13,17 @@ use horizon_protocol::{
         play::{self, Clientbound as C, Serverbound as S},
         status,
     },
+};
+use horizon_server_core::{
+    chunk::{Chunk, MIN_Y},
+    server_net::{
+        Listener,
+        chunks::ChunkEncoder,
+        data::SyncData,
+        entity::EntityState,
+        hub::{HostEvent, Hub, HubConfig, TickCtx},
+    },
+    world::World,
 };
 use horizon_world::registry::BlockStateId;
 use std::{
@@ -181,7 +181,7 @@ impl Server {
             tick_frozen: false,
             tick_steps: (0, 0),
             collision: None,
-            border: &horizon_client::worldborder::WorldBorder::default(),
+            border: &horizon_server_core::worldborder::WorldBorder::default(),
         };
         let events = self.hub.tick(&mut ctx);
         for event in events {
@@ -303,9 +303,9 @@ fn recipe_settings_packets_update_only_the_players_book_and_survive_save() {
                     }
                 );
             }
-            let mut saved = horizon_client::save::Level::default();
-            horizon_client::server_net::playerdata::store(&s.hub.players[0], &mut saved);
-            let mut reopened = horizon_client::save::Level::default();
+            let mut saved = horizon_server_core::save::Level::default();
+            horizon_server_core::server_net::playerdata::store(&s.hub.players[0], &mut saved);
+            let mut reopened = horizon_server_core::save::Level::default();
             reopened.read_player(&saved.player_tag());
             assert_eq!(reopened.recipe_book.open, settings.open);
             assert_eq!(reopened.recipe_book.filtering, settings.filtering);

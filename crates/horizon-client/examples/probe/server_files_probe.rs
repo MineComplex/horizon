@@ -2,13 +2,13 @@
 //! directory the way VanillaServerFilesOracle does (server.properties,
 //! eula.txt, the four user lists and scripted list changes) and prints the
 //! same report. `server_files_probe CASES OUTPUT`.
-use horizon_client::server::{
+use horizon_protocol::crypto::uuid_string;
+use horizon_server_core::server::{
     eula,
     java_properties::now_millis,
     properties::{DIFFICULTIES, GAME_MODES, ServerProperties, SystemEntropy},
     user_lists::{BanEntry, BanList, IpBanList, NameAndId, OpEntry, OpList, WhiteEntry, WhiteList},
 };
-use horizon_protocol::crypto::uuid_string;
 use std::{fmt::Write as _, path::Path};
 
 pub fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -130,7 +130,7 @@ fn run_case(dir: &Path, out: &mut String) -> Result<(), Box<dyn std::error::Erro
         for line in actions.lines().filter(|l| !l.trim().is_empty()) {
             let a: Vec<&str> = line.split('\t').collect();
             let user = |n: &str, u: &str| NameAndId {
-                id: horizon_client::server::properties::parse_uuid(u).unwrap(),
+                id: horizon_server_core::server::properties::parse_uuid(u).unwrap(),
                 name: n.to_owned(),
             };
             fn ban<T>(

@@ -5,7 +5,8 @@ servers. There is no single player, no Open to LAN and no world inside the clien
 
 | Crate | Job |
 |---|---|
-| `horizon-game` | The game without a window: chunks, world, streaming and generation binding, blocks, items, menus, mobs, motion, saves, the server's network side (`server_net/`: connections, the play-state hub, `ServerPlayer`, entity tracking), the world's rules and clock (`world_data`). No wgpu, winit, audio or controllers |
+| `horizon-game` | What the client and the server share: chunks, world, streaming, blocks, items, menus, mobs, motion, saves, what both put on the wire (`item_sync`, `attribute_sync`, `entity_tracking`, `wire`), the world's rules and clock (`world_data`). No wgpu, winit, audio or controllers |
+| `horizon-server-core` | The server's half, which the client never links: the network side (`server_net/`), world generation binding (`vanillagen/`, `flatgen`), raids, patrols, server commands, datapacks, pregeneration |
 | `horizon-client` | The client: window, rendering, section meshing (`streaming::WorkerContext`), audio, input, screens, and its `Game` (`src/game.rs` + `src/game/`), which only follows a server; re-exports every `horizon-game` module under its old path |
 | `horizon-server` | The server, Leaf-style ([server.md](server.md)): its `Server` (`src/game.rs` + `src/game/`) runs the worlds, the players and the plugins |
 | `horizon-server-api` | The server's plugin API, Bukkit-shaped ([plugins.md](plugins.md)) |

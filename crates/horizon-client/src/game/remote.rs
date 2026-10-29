@@ -1151,10 +1151,9 @@ impl Game<'_> {
                     }
                 }
                 // Entity.getTeam: a mob is on a team by its UUID.
-                self.persist.uuids.insert(
-                    p.id as u32,
-                    horizon_client::server_net::playerdata::uuid_ints(p.uuid),
-                );
+                self.persist
+                    .uuids
+                    .insert(p.id as u32, horizon_client::wire::uuid_ints(p.uuid));
                 self.spawn_entity(p.id, &kind, p.position, rotation);
                 // Entity.recreateFromPacket: setDeltaMovement(packet.getMovement()).
                 self.remote_motion(p.id, p.velocity);
@@ -1709,7 +1708,7 @@ impl Game<'_> {
             // Then the received health again, which the old maximum clamped.
             C::UpdateAttributes(p) if self.remote.as_ref().is_some_and(|r| r.entity_id == p.id) => {
                 if let Some(pl) = self.player.as_mut() {
-                    horizon_client::server_net::attributes::apply(&mut pl.attributes, &p.values);
+                    horizon_client::attribute_sync::apply(&mut pl.attributes, &p.values);
                 }
                 self.apply_remote_health();
             }
@@ -2940,7 +2939,7 @@ impl crate::game::Game<'_> {
     /// the server's echo doesn't hand back a bare item.
     fn to_network(&self, s: &Option<ItemStack>) -> Option<Stack> {
         let r = self.remote.as_ref()?;
-        horizon_client::server_net::player::stack_to_network(
+        horizon_client::item_sync::stack_to_network(
             |name| self.item_id(name),
             // Built-in first, as a hub's `SyncData::id` does: potions are one.
             |registry, name| {
@@ -3338,7 +3337,7 @@ impl crate::game::Game<'_> {
                     d[0] * d[0] + d[1] * d[1] + d[2] * d[2] > 4096.0
                 };
                 let handler = r.stepped.entry(id).or_insert_with(|| {
-                    let interval = horizon_client::server_net::tracking::settings(&m.kind.id).1;
+                    let interval = horizon_client::entity_tracking::settings(&m.kind.id).1;
                     SteppedInterpolation::new(interval as i32)
                 });
                 let snap = if far {

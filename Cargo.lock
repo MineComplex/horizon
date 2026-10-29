@@ -1095,8 +1095,7 @@ dependencies = [
  "horizon-hdr",
  "horizon-items",
  "horizon-protocol",
- "horizon-server-api",
- "horizon-server-files",
+ "horizon-server-core",
  "horizon-shader-api",
  "horizon-shaders",
  "horizon-theme",
@@ -1182,7 +1181,6 @@ dependencies = [
  "horizon-core",
  "horizon-items",
  "horizon-protocol",
- "horizon-server-files",
  "horizon-threads",
  "horizon-world",
  "log",
@@ -1293,6 +1291,7 @@ dependencies = [
  "horizon-plugin-example",
  "horizon-protocol",
  "horizon-server-api",
+ "horizon-server-core",
  "horizon-server-files",
  "horizon-threads",
  "horizon-world",
@@ -1309,6 +1308,36 @@ dependencies = [
 [[package]]
 name = "horizon-server-api"
 version = "0.1.0"
+
+[[package]]
+name = "horizon-server-core"
+version = "0.1.0"
+dependencies = [
+ "bytemuck",
+ "chrono",
+ "flate2",
+ "glam",
+ "hmac",
+ "horizon-assets",
+ "horizon-client-core",
+ "horizon-command",
+ "horizon-core",
+ "horizon-game",
+ "horizon-items",
+ "horizon-protocol",
+ "horizon-server-files",
+ "horizon-threads",
+ "horizon-world",
+ "log",
+ "miniz_oxide 0.8.9",
+ "png",
+ "rustix 1.1.5",
+ "serde",
+ "serde_json",
+ "sha2",
+ "ureq",
+ "zip",
+]
 
 [[package]]
 name = "horizon-server-files"

@@ -297,7 +297,7 @@ pub fn main() -> Result<()> {
         player.block_effects = false;
         // Entity.portalCooldown and portalProcess, and the entry of the last
         // portal_tick that went through.
-        let mut portal = horizon_client::nether_portal::PortalState::default();
+        let mut portal = horizon_server_core::nether_portal::PortalState::default();
         let mut travel: Option<horizon_core::position::BlockPos> = None;
         for op in f["ops"].as_array().unwrap() {
             let mut world = MotionWorld {

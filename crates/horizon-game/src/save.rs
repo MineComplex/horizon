@@ -285,8 +285,8 @@ impl SaveTables {
         }
     }
     /// Tables with only the heightmaps' state facts, for tests.
-    #[cfg(test)]
-    pub(crate) fn for_heightmaps(heightmaps: crate::assets::Properties) -> Self {
+    #[cfg(any(test, feature = "test-support"))]
+    pub fn for_heightmaps(heightmaps: crate::assets::Properties) -> Self {
         Self {
             block_names: Vec::new(),
             block_ids: HashMap::new(),
@@ -4496,12 +4496,6 @@ mod tests {
             panic!("not a campfire");
         };
         assert_eq!(*back, c);
-        // The update tag a server's clients get: the items alone.
-        let update = crate::server_net::chunks::entity_tag(
-            &crate::containers::BlockEntity::Campfire(Box::new(c)),
-        )
-        .expect("update tag");
-        assert!(update.get("Items").is_some() && update.get("CookingTimes").is_none());
     }
     #[test]
     fn spawner_block_entity_round_trips() {

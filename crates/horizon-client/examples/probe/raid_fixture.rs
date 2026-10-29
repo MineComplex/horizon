@@ -1,10 +1,11 @@
 //! Pillager patrols and raids for differential tests against vanilla
 //! (tools/test_raid_parity.py): reads the cases of `VanillaRaidOracle` and
-//! prints what `horizon_client::patrol` and `horizon_client::raid` do, in the
+//! prints what `horizon_server_core::patrol` and `horizon_server_core::raid` do, in the
 //! oracle's order and format.
 //!
 //! usage: raid_fixture RESOURCES INPUT OUTPUT
-use horizon_client::{
+use horizon_core::random::{LegacyRandom, RandomSource};
+use horizon_server_core::{
     assets::Assets,
     blocks::BlockFacts,
     items::Items,
@@ -18,7 +19,6 @@ use horizon_client::{
     patrol::{self, GameplayAttributes, Member, PatrolLevel, PatrolSpawner},
     raid::{self, Action, BarName, RaidLevel, RaidPlayer, RaiderInfo, Raids},
 };
-use horizon_core::random::{LegacyRandom, RandomSource};
 use horizon_world::{chunk::BlockState, nbt::Tag, registry::BlockStateId};
 use std::{
     cell::RefCell,

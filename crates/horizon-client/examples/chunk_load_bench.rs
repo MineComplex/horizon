@@ -22,10 +22,10 @@ use horizon_client::{
     models,
     spans::thread_cpu,
     streaming::{Streaming, WorkerContext},
-    vanillagen::VanillaTerrain,
     world::World,
 };
 use horizon_core::biome::{BiomeZoom, obfuscate_seed};
+use horizon_server_core::vanillagen::VanillaTerrain;
 use horizon_world::registry::BlockStateId;
 use std::{
     hash::{DefaultHasher, Hash, Hasher},

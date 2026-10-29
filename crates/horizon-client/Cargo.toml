@@ -21,9 +21,6 @@ horizon-threads = { path = "../horizon-threads" }
 horizon-hdr = { path = "../horizon-hdr" }
 horizon-world = { path = "../horizon-world" }
 horizon-protocol = { path = "../horizon-protocol" }
-# server.properties, eula.txt and the user lists, shared with horizon-server.
-horizon-server-files = { path = "../horizon-server-files" }
-horizon-server-api = { path = "../horizon-server-api" }
 # Shader packs: reading them and turning their GLSL into naga modules.
 horizon-shaders = { path = "../horizon-shaders" }
 # Horizon's own shader packs: the format, the stages and the check (docs/shaders.md).
@@ -101,6 +98,9 @@ path = "examples/probe/main.rs"
 workspace = true
 
 [dev-dependencies]
+# The server's half of the game, for the probes and tests of server logic only:
+# the client itself never links it.
+horizon-server-core = { path = "../horizon-server-core" }
 horizon-items = { path = "../horizon-items", features = ["test-support"] }
 # Every WGSL shader translated as wgpu's DirectX 12 backend does (gfx.rs tests).
 naga = { version = "30.0.1", features = ["wgsl-in", "hlsl-out", "msl-out", "spv-out"] }

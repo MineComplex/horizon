@@ -36,7 +36,8 @@ Game workspace (root `Cargo.toml`). This fork has no launcher (MineComplex's own
 | Crate | Owns |
 |---|---|
 | `horizon-client` | The client: a lib (`src/lib.rs`: window, rendering, audio, input, screens, ~100 flat modules, the `horizon-game` modules re-exported, and `game` = `game.rs` + `game/`, the client's game, which only follows a server) and the bin (`src/main.rs`), plus `horizon-ctl` (`src/bin/horizon-ctl/`) |
-| `horizon-game` | The game without a window: chunks, world, streaming and generation binding, blocks, items, menus, mobs, motion, saves, the server's network side (`server_net/`). No wgpu, winit, audio or controllers. `horizon-client`'s lib re-exports every module under its old path (`horizon_client::mobs`...). Streaming is generic over `streaming::MeshContext`: the client's `WorkerContext` (`horizon-client/src/streaming.rs`) builds section meshes; mob and particle vertices are still built here on the CPU |
+| `horizon-game` | The game without a window: chunks, world, streaming and generation binding, blocks, items, menus, mobs, motion, saves, what both sides put on the wire (`item_sync`, `attribute_sync`, `entity_tracking`, `wire`). No wgpu, winit, audio or controllers. `horizon-client`'s lib re-exports every module under its old path (`horizon_client::mobs`...). Streaming is generic over `streaming::MeshContext`: the client's `WorkerContext` (`horizon-client/src/streaming.rs`) builds section meshes; mob and particle vertices are still built here on the CPU |
+| `horizon-server-core` | The server's half of the game, which the client never links: the network side and its players (`server_net/`: connections, the play-state hub, `ServerPlayer`, tracking, commands' tree), world generation binding (`vanillagen/`, `flatgen`), raids and patrols, `/scoreboard`, `/data`, datapacks, pregeneration. Re-exports all of `horizon-game`, so its modules keep `crate::` paths |
 | `horizon-items` | Blocks and items below gameplay: `blocks.rs` (block facts), `items.rs`, `item_data.rs` (components), `enchant.rs`, `cooldowns.rs`, `bundle.rs`, `item_nbt.rs`. Re-exported as `horizon_client::items`... |
 | `horizon-command` | Command parsing (Brigadier): the vanilla tree, argument types, selectors, suggestions, the tree's network form. Re-exported as `horizon_client::command` |
 | `horizon-client-core` | The client lib's bottom layer: `text.rs`, `lang.rs`, `snbt.rs`, `nbt_path.rs`, `component.rs`, `scoreboard.rs`, `bossbar.rs`, `gamerules.rs`, `block_entity_nbt.rs`, registry/particle/sound tables. Re-exported under the old paths (`horizon_client::text`...) |
@@ -86,7 +87,7 @@ python3 tools/agent_control_e2e.py         # horizon-ctl / MCP end to end
 - Probes build into `.local/parity-target/`; harnesses find binaries via `lab.cargo_target()`, never `target/`.
 - What a change reruns (of 329 harnesses, measured 2026-10-23): a file of the game binary (`game.rs`, `game/`)
   ~25, a file of the client lib ~103, of `horizon-world` ~103–109, of `horizon-core` ~119. Plan for it.
-- Rust integration tests: `crates/horizon-client/tests/` (`server_bot.rs`, `generation_saves.rs`, `streaming_meshes.rs`).
+- Rust integration tests: `crates/horizon-client/tests/` (`generation_saves.rs`, `streaming_meshes.rs`), `crates/horizon-server-core/tests/server_bot.rs`.
 - Linux needs `libasound2-dev libudev-dev`; `--no-default-features` drops audio and controllers (the server build).
 - Two programs: `horizon-client` (only joins servers: no single player, no LAN, no world of its own) and
   `horizon-server`. Tests run both (docs/crates.md).
@@ -109,7 +110,7 @@ python3 tools/agent_control_e2e.py         # horizon-ctl / MCP end to end
 
 ## horizon-client: where things live
 
-`L:` = lib: `crates/horizon-game/src/` for gameplay (chunks, world, items, mobs, motion, save, server_net...), `crates/horizon-client/src/` for the window, rendering, audio, input and screens (it re-exports the game modules under the same names); `G:` = the client's game (`crates/horizon-client/src/game/`); `S:` = the server's own copy of the game (`crates/horizon-server/src/game.rs` + `game/`: the world, its simulation, players, commands, saving). The lib can't see
+`L:` = lib: `crates/horizon-game/src/` for gameplay shared by both (chunks, world, items, mobs, motion, save...), `crates/horizon-server-core/src/` for the server's alone (server_net, vanillagen...), `crates/horizon-client/src/` for the window, rendering, audio, input and screens (it re-exports the game modules under the same names); `G:` = the client's game (`crates/horizon-client/src/game/`); `S:` = the server's own copy of the game (`crates/horizon-server/src/game.rs` + `game/`: the world, its simulation, players, commands, saving). The lib can't see
 `Game`; bin code reaches the lib as `horizon_client::<module>`.
 
 | Subsystem | Files |
@@ -126,7 +127,7 @@ python3 tools/agent_control_e2e.py         # horizon-ctl / MCP end to end
 | Commands | parse: crate `horizon-command` (`args.rs`, `selector.rs`, `tree_*.rs`, `vanilla.rs`); run (only on the server): S: `commands.rs` (dispatch) + `commands/*.rs` (`admin`, `execute`, `items`, `players`, `world_cmds`...), `functions.rs`, `command_blocks.rs`; L: `scoreboard_cmd.rs`, `data_cmd.rs`; `horizon-client-core`: `nbt_path.rs`, `scoreboard.rs`; G: `chat.rs` sends them, `command_blocks.rs` (the edit screen) |
 | UI screens | `Screen` enum in game.rs; L: `title.rs` + `title/`, `options_ui.rs`, `multiplayer.rs`, `pack_screen.rs`, `graphics_ui.rs`, `screen_draw.rs`, `ui.rs` (widgets), `hud.rs`, `hud_layout.rs`, `hud_overlays.rs`, `chat.rs`, `tab_list.rs`; G: `startup_menu.rs`, `screens.rs` (pause, death), `options.rs`, `chat.rs`, `sign_edit.rs`, `books.rs` |
 | Multiplayer client | L: `net.rs` (network thread); G: `remote.rs` (`fn handle_packet`, `fn tick_remote`), `remote_*.rs` (mob data, objects, projectiles, vehicles, stations) |
-| Server network side, players | L: `server_net/` (`conn.rs` handshake + login threads, `hub.rs` + `hub/` play state, `chunks.rs`, `entity.rs`, `tracking.rs`, `player.rs` (`ServerPlayer`), `playerdata.rs`); S: `server_net.rs` (`Network`), `net_actions.rs` (`fn as_player`, `fn tick_players`), `net_*.rs` per feature, `net_entities.rs` (tracked entities) |
+| Server network side, players | `horizon-server-core/src/server_net/` (`conn.rs` handshake + login threads, `hub.rs` + `hub/` play state, `chunks.rs`, `entity.rs`, `player.rs` (`ServerPlayer`), `playerdata.rs`; the tracking table is `horizon-game/src/entity_tracking.rs`); S: `server_net.rs` (`Network`), `net_actions.rs` (`fn as_player`, `fn tick_players`), `net_*.rs` per feature, `net_entities.rs` (tracked entities) |
 | Server levels, test control | S: `levels.rs` (one level per dimension, `fn tick_server`), `server_travel.rs`, `server_control.rs` (the control socket's requests), `fixtures.rs`; G: `server_control.rs` (`ask_server`, `server_command`: the client's way to it) |
 | Dedicated server | S: `dedicated.rs`, `dedicated/status.rs`, `plugin_host.rs` (plugin events), `crates/horizon-server/src/plugins.rs`; crate `horizon-server-files` ([docs/server.md](docs/server.md)) |
 | Save and load | L: `save.rs` (level.dat, regions, playerdata), `entity_nbt.rs`, `options_file.rs`; `horizon-client-core/src/block_entity_nbt.rs`; S: `persist.rs` (entities), game.rs `fn save_game`; `crates/horizon-world/src/{region.rs,nbt.rs}` |
@@ -149,7 +150,7 @@ python3 tools/agent_control_e2e.py         # horizon-ctl / MCP end to end
 - On the server, players run through the gameplay code one at a time: `as_player` swaps the player's
   state (position, inventory, mode, mining, item use) into `Game` for one call (`game/net_actions.rs`), and
   `levels.rs` swaps whole dimensions in the same way. Changes reach clients through the block log, level
-  events and the entity tracker (`server_net/tracking.rs`, `game/net_entities.rs`).
+  events and the entity tracker (`horizon-server-core/src/server_net/entity.rs`, `game/net_entities.rs`).
 - Shared read-only data: `Resources` (`res`: blocks, items, recipes, mob types, biomes) and `PackResources`
   (`pack`), both in game.rs.
 

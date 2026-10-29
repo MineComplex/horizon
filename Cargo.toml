@@ -23,6 +23,7 @@ members = [
     "crates/horizon-server-api",
     "crates/horizon-plugin-example",
     "crates/horizon-game",
+    "crates/horizon-server-core",
     "crates/horizon-shaders",
     "crates/horizon-shader-api",
     "crates/horizon-release-sign",

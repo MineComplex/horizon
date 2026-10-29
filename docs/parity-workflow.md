@@ -173,7 +173,7 @@ The game-binary fixture audit keeps these complementary direct rule tests:
 - `net_harness.rs`: already a real network client of a dedicated server; keep
   its handshake, world loading, chat and command packet assertions.
 
-Library probes, `lan_bot`'s protocol hub fixture, generation/save tests and
+Library probes, `server_bot`'s protocol hub fixture, generation/save tests and
 streaming/mesh tests remain fast deterministic coverage. They do not become
 full game launches. Setup and authoritative reads use the owning server;
 interactions stay on the client. `server-hold on|off` provides a prediction-test

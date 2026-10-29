@@ -876,7 +876,7 @@ fn custom_name(tag: &Tag) -> Option<String> {
 }
 pub use horizon_client_core::component::name_text;
 /// Mob.finalizeSpawn's follow range bonus in the saved attributes.
-pub(crate) fn spawn_bonus(tag: &Tag) -> Option<f64> {
+pub fn spawn_bonus(tag: &Tag) -> Option<f64> {
     let Some(Tag::List(attrs)) = tag.get("attributes") else {
         return None;
     };

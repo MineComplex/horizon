@@ -19,6 +19,7 @@ horizon-command = { path = "../horizon-command" }
 horizon-items = { path = "../horizon-items" }
 horizon-core = { path = "../horizon-core" }
 horizon-game = { path = "../horizon-game" }
+horizon-server-core = { path = "../horizon-server-core" }
 horizon-threads = { path = "../horizon-threads" }
 horizon-world = { path = "../horizon-world" }
 horizon-protocol = { path = "../horizon-protocol" }

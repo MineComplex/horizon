@@ -243,10 +243,8 @@ fn chunks_left_behind_keep_their_decoration() {
 /// chunks generated again finishes into the same columns.
 #[test]
 fn saved_proto_chunks_restore_exactly() {
-    use horizon_client::{
-        save::{Persistent, SaveDir},
-        vanillagen::VanillaTerrain,
-    };
+    use horizon_client::save::{Persistent, SaveDir};
+    use horizon_server_core::vanillagen::VanillaTerrain;
     let Some(root) = resources() else {
         return;
     };
@@ -319,10 +317,8 @@ fn saved_proto_chunks_restore_exactly() {
 
 #[test]
 fn saved_proto_block_entities_keep_their_id() {
-    use horizon_client::{
-        save::{Persistent, SaveDir},
-        vanillagen::VanillaTerrain,
-    };
+    use horizon_client::save::{Persistent, SaveDir};
+    use horizon_server_core::vanillagen::VanillaTerrain;
     use horizon_world::{
         nbt::{Limits, Tag},
         region::RegionFile,

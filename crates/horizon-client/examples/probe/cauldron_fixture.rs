@@ -2,7 +2,7 @@
 //! case per line and prints "result TAB events TAB inventory".
 //!
 //! usage: cauldron_fixture RESOURCES INPUT OUTPUT
-use horizon_client::{
+use horizon_server_core::{
     cauldron::{Outcome, Player, interact, removes_dye},
     crafting::Recipes,
     item_data::{canon_stack, parse_stack},

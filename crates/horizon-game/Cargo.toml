@@ -16,8 +16,6 @@ horizon-world = { path = "../horizon-world" }
 horizon-items = { path = "../horizon-items" }
 horizon-assets = { path = "../horizon-assets" }
 horizon-protocol = { path = "../horizon-protocol" }
-# server.properties, eula.txt and the user lists (`horizon_game::server`).
-horizon-server-files = { path = "../horizon-server-files" }
 # Section and mob meshes are built on the CPU here (plain vertex data, no GPU): `mesher`, `mobs::render`.
 bytemuck = { version = "1.24", features = ["derive"] }
 glam = "0.30"
@@ -37,6 +35,10 @@ zip = { version = "2", default-features = false, features = ["deflate"] }
 
 [target.'cfg(unix)'.dependencies]
 rustix = { version = "1", default-features = false, features = ["std", "time"] }
+
+[features]
+# Test helpers for the crates built on this one (horizon-server-core's tests).
+test-support = []
 
 [dev-dependencies]
 horizon-items = { path = "../horizon-items", features = ["test-support"] }

@@ -18,20 +18,7 @@ pub fn path(world: &Path, uuid: u128) -> PathBuf {
         .join(format!("{}.dat", uuid_string(uuid)))
 }
 
-/// `UUIDUtil.uuidToIntArray`.
-pub fn uuid_ints(uuid: u128) -> [i32; 4] {
-    [
-        (uuid >> 96) as i32,
-        (uuid >> 64) as i32,
-        (uuid >> 32) as i32,
-        uuid as i32,
-    ]
-}
-/// `UUIDUtil.uuidFromIntArray`.
-pub fn ints_uuid(ints: [i32; 4]) -> u128 {
-    ints.iter()
-        .fold(0, |acc, &i| acc << 32 | u128::from(i as u32))
-}
+pub use crate::wire::{ints_uuid, uuid_ints};
 
 /// Whether a saved file exists for this player.
 pub fn exists(world: &Path, uuid: u128) -> bool {
