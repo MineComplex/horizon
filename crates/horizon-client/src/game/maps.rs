@@ -500,19 +500,6 @@ impl crate::game::Sim<'_> {
         self.maps.last_id = Some(id - 1);
         id
     }
-    /// Maps made by exploration map trades: (id, target, zoom, decoration).
-    pub(super) fn register_exploration_maps(&mut self, made: Vec<(i32, [i32; 3], u8, String)>) {
-        let dimension = self.dimension_id().to_owned();
-        for (id, at, zoom, _) in made {
-            // MapItem.applyNewSavedData: tracking, unlimited tracking.
-            let mut data = MapData::fresh(f64::from(at[0]), f64::from(at[2]), zoom, &dimension);
-            data.unlimited = true;
-            self.maps.data.insert(id, data);
-            let last = self.maps.last_id.unwrap_or(-1).max(id);
-            self.maps.last_id = Some(last);
-            self.render_biome_preview(id);
-        }
-    }
     /// `ExplorationMapFunction.run` for an item a generated chest still holds
     /// unsearched (`structure_blocks::take_pending_map`): the nearest
     /// structure of the tag around `origin`, a new map centred on it with its

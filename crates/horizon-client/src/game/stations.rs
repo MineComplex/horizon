@@ -148,7 +148,6 @@ pub(super) struct Station {
     anvil_last: Option<ItemStack>,
     /// Anvil on a server: the name last sent (the client menu's `itemName`).
     pub(super) anvil_sent: Option<String>,
-    pub(super) last_sound: u64,
     /// Villager trading state.
     pub(super) merchant: Option<Box<super::trading::MerchantState>>,
     /// Beacon menu: the selected primary and secondary power (EFFECTS index).
@@ -175,7 +174,6 @@ impl Station {
             start: 0,
             anvil_last: None,
             anvil_sent: None,
-            last_sound: 0,
             merchant: None,
             beacon: [None; 2],
             beacon_levels: None,
@@ -1505,78 +1503,19 @@ impl crate::game::Sim<'_> {
     }
     /// After an anvil or smithing click on the menu engine: the anvil's cost
     /// and state back into the station and the rename box following the
-    /// input (`AnvilScreen.slotChanged`), then the rest of a taken result's
-    /// `onTake` (the levels, the anvil's wear, the use sound) unless a
-    /// server does it.
-    pub(super) fn combiner_session_end(
-        &mut self,
-        menu: &horizon_client::menu::Menu,
-        predicting: bool,
-    ) {
+    /// input (`AnvilScreen.slotChanged`). A taken result's `onTake` (the
+    /// levels, the anvil's wear, the use sound) is the server's.
+    pub(super) fn combiner_session_end(&mut self, menu: &horizon_client::menu::Menu) {
         let Some(s) = self.station.as_mut() else {
             return;
         };
-        let (pos, kind) = (s.pos, s.kind);
-        if kind == Kind::Anvil {
+        if s.kind == Kind::Anvil {
             s.anvil.cost = menu.data[0];
             s.anvil.repair_item_count_cost = menu.anvil.repair_count;
             s.anvil.only_renaming = menu.anvil.only_renaming;
             s.anvil.result = s.result.clone();
         }
         self.station_after_input();
-        if !menu.combined || predicting {
-            return;
-        }
-        if kind == Kind::Smithing {
-            self.level_event_at(1044, pos, 0);
-            return;
-        }
-        self.give_levels(menu.level_change);
-        if self.anvil_used(pos, self.creative) {
-            self.close_station();
-            self.screen = Screen::Playing;
-            self.capture(true);
-        }
-    }
-    /// `AnvilMenu.onTake`'s level part: out of creative a 12% chance
-    /// (`AnvilBlock.damage`) to wear the anvil a stage, or break a damaged one
-    /// (level event 1029); otherwise level event 1030. True when it broke.
-    pub(super) fn anvil_used(&mut self, pos: [i32; 3], creative: bool) -> bool {
-        let state = self.world.block(pos[0], pos[1], pos[2]);
-        let name = self.res.facts().get(state).name.clone();
-        let anvil = matches!(
-            &*name,
-            "minecraft:anvil" | "minecraft:chipped_anvil" | "minecraft:damaged_anvil"
-        );
-        if !creative && anvil && self.world.random.next_float() < 0.12 {
-            match &*name {
-                "minecraft:anvil" => {
-                    let _ = self.set_state_named(pos, "minecraft:chipped_anvil", &["facing"]);
-                }
-                "minecraft:chipped_anvil" => {
-                    let _ = self.set_state_named(pos, "minecraft:damaged_anvil", &["facing"]);
-                }
-                _ => {
-                    let _ = self.world.set(pos[0], pos[1], pos[2], self.world.air);
-                    self.world.modified.insert((pos[0] >> 4, pos[2] >> 4));
-                    self.level_event_at(1029, pos, 0);
-                    return true;
-                }
-            }
-        }
-        self.level_event_at(1030, pos, 0);
-        false
-    }
-    /// The grindstone result's `onTake` with a level (`amount`: the menu's
-    /// `getExperienceAmount` sum): the orbs at the block's centre
-    /// (`ExperienceOrb.award`), then level event 1042, the grindstone's sound
-    /// for everyone around.
-    pub(super) fn grindstone_taken(&mut self, pos: [i32; 3], amount: i32) {
-        let xp = stations::grindstone_xp_roll(amount, &mut self.world.random);
-        if xp > 0 {
-            self.spawn_orbs(pos.map(|v| f64::from(v) + 0.5), xp);
-        }
-        self.level_event_at(1042, pos, 0);
     }
     pub(super) fn give_or_drop(&mut self, stack: ItemStack) {
         if let Some(rest) = self.give(stack)

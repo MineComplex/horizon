@@ -1622,7 +1622,6 @@ struct Sim<'a> {
     /// Block events (position, b0, b1, state) and entity events (id, event,
     /// position) for the guests.
     lan_block_events: Vec<([i32; 3], i32, i32, u32)>,
-    lan_entity_events: Vec<(i32, i8, [f64; 3])>,
     /// `LivingEntity.lastKineticHitFeedbackTime` of the entities that felt a
     /// spear's hit (`spear::OWN` is this window's player), in game time.
     kinetic_feedback: HashMap<i32, i64>,
@@ -6626,13 +6625,6 @@ impl crate::game::Sim<'_> {
         self.craft_recipe().map(|(_, result)| result)
     }
     /// The recipe id and result of the crafting grid.
-    /// `RecipeCraftingHolder.awardUsedRecipes`: a crafted recipe becomes known
-    /// (special ones never do).
-    fn award_crafted(&mut self, recipes: &[String]) {
-        let index = &self.res.stations().recipe_index;
-        let (_, unlocked) = self.level.recipe_book.add_recipes(index, recipes);
-        self.recipe_unlocked(&unlocked);
-    }
     fn craft_recipe(&self) -> Option<(String, ItemStack)> {
         let n = self.craft_size;
         let grid: Vec<Option<ItemStack>> = (0..n * n).map(|i| self.craft_grid[i].clone()).collect();
@@ -7029,14 +7021,11 @@ impl crate::game::Sim<'_> {
             _ => None,
         };
         // The merchant's session, lent to the menu for this click.
-        let mut session = self
+        let session = self
             .station
             .as_ref()
             .and_then(|s| s.merchant.as_ref())
-            .map(|m| (m.session.clone(), m.mob));
-        if let Some((s, mob)) = session.as_mut() {
-            self.merchant_sync_in(s, *mob);
-        }
+            .map(|m| m.session.clone());
         let next_map = if merchant_open { self.peek_map_id() } else { 0 };
         let tag = |t: &str| self.structure_tag(t);
         let maps = trading::GameMaps {
@@ -7115,36 +7104,28 @@ impl crate::game::Sim<'_> {
         menu.drops.clear();
         if kind == Kind::Merchant {
             // Attached after the slots were set: setting them is not a click.
-            menu.merchant = session.map(|(s, _)| s);
+            menu.merchant = session;
         }
         // `FurnaceResultSlot.checkTakeAchievements` pays out on what left the output slot.
         let outcome = run(&mut menu, &env, &to_menu);
-        let made = maps.made.take();
         match outcome {
             None => return false,
             Some(false) => return true,
             Some(true) => {}
         }
-        // On a server the clicks only predict: the server drops, crafts and
-        // makes maps itself.
-        let predicting = true;
-        if !predicting {
-            self.register_exploration_maps(made);
-        }
+        // The clicks only predict: the server drops, crafts, makes maps and
+        // plays the stations' sounds itself.
         if let Some(s) = menu.merchant.take() {
             self.merchant_sync_out(s);
         }
         let after: Vec<Option<ItemStack>> = (0..total).map(|i| menu.slot(i).cloned()).collect();
         // Only a furnace has a result slot to compare: an enchanting table has two slots.
         let carried = menu.carried.take();
-        let dropped = std::mem::take(&mut menu.dropped);
-        let sounds = std::mem::take(&mut menu.sounds);
         // A bundle's sounds are the player's own (`Entity.playSound`): the
-        // client plays them as it clicks, predicting or not.
+        // client plays them as it clicks.
         for sound in std::mem::take(&mut menu.player_sounds) {
             self.player_menu_sound(sound);
         }
-        let crafted = std::mem::take(&mut menu.crafted);
         for (i, stack) in after.into_iter().enumerate() {
             if let Some(g) = game_of[i] {
                 *self.slot_mut(g) = stack;
@@ -7154,43 +7135,21 @@ impl crate::game::Sim<'_> {
         if !offhand_mapped {
             self.offhand = menu.player_item(40).cloned();
         }
-        if !predicting {
-            for stack in dropped {
-                self.player_drop(stack);
-            }
-            self.award_crafted(&crafted);
-        }
         if kind == Kind::Loom {
             if let Some(s) = self.station.as_mut() {
                 s.loom.selected = usize::try_from(menu.data[0]).ok();
                 s.loom.patterns = std::mem::take(&mut menu.loom_patterns);
             }
-            // A server's loom plays its own sounds (the client's menu has no level).
-            for sound in sounds.into_iter().filter(|_| !predicting) {
-                self.station_sound(sound);
-            }
             self.loom_screen_changed();
-        } else if kind == Kind::Cartography {
-            for sound in sounds.into_iter().filter(|_| !predicting) {
-                self.station_sound(sound);
-            }
-        } else if kind == Kind::Stonecutter {
-            if let Some(s) = self.station.as_mut() {
-                s.selected = usize::try_from(menu.data[0]).ok();
-                s.stone = std::mem::take(&mut menu.stone);
-                s.stonecutter_changed();
-            }
-            for sound in sounds.into_iter().filter(|_| !predicting) {
-                self.station_sound(sound);
-            }
-        }
-        if let Some(amount) = menu.ground.take().filter(|_| !predicting)
-            && let Some(pos) = self.station.as_ref().map(|s| s.pos)
+        } else if kind == Kind::Stonecutter
+            && let Some(s) = self.station.as_mut()
         {
-            self.grindstone_taken(pos, amount);
+            s.selected = usize::try_from(menu.data[0]).ok();
+            s.stone = std::mem::take(&mut menu.stone);
+            s.stonecutter_changed();
         }
         if kind == Kind::Anvil || kind == Kind::Smithing {
-            self.combiner_session_end(&menu, predicting);
+            self.combiner_session_end(&menu);
         }
         if kind == Kind::Enchanting && (menu.enchant_changed || before[0] != menu.slot(0).cloned())
         {
@@ -7471,35 +7430,6 @@ impl crate::game::Sim<'_> {
         let id = registry.resolve(&state).unwrap_or(default);
         self.level_set(pos, id)?;
         Ok(true)
-    }
-    /// `ItemStack.hurtWithoutBreaking`: Unbreaking applies, but the stack stops at
-    /// one point of durability left instead of breaking.
-    fn hurt_held_without_breaking(&mut self, amount: u32) {
-        if self.creative {
-            return;
-        }
-        let Some(held) = self.held().cloned() else {
-            return;
-        };
-        let amount = self.durability_loss(&held, amount);
-        let max = self.res.items().get(&held.item).map_or(0, |i| i.max_damage);
-        if amount == 0 || max == 0 {
-            return;
-        }
-        if let Some(stack) = self.held_mut().as_mut() {
-            stack.damage = (stack.damage + amount).min(max - 1);
-        }
-    }
-    /// `ExperienceOrb.award`: orbs of the largest sizes; each draws the id
-    /// `tryMergeToExisting` compares from the level random, then moves with
-    /// its own random.
-    fn spawn_orbs(&mut self, at: [f64; 3], mut value: u32) {
-        while value > 0 {
-            let v = ExperienceOrb::split(value);
-            value -= v;
-            let merge_id = self.world.random.next_int_bound(40).unwrap_or(0);
-            self.award_orb(at, v, merge_id);
-        }
     }
     /// `ExperienceOrb.tryMergeToExisting`: an orb of the same value within a
     /// 1 block box of `at`, whose id is a multiple of 40 from `merge_id`, takes
@@ -8473,17 +8403,8 @@ impl ApplicationHandler for Game<'_> {
                     // For the "I'm playing" ping: an atomic, sent on when it changes.
                     self.update_discord_presence();
                     let steps = self.clock.advance(elapsed);
-                    // The world ticking in the frame: once its ticks took a
-                    // tick's length, the rest are dropped (`FixedStep::tick_fits`).
-                    let in_frame = false;
                     let mut spent = Duration::ZERO;
-                    for step in 0..steps {
-                        if in_frame && !self.clock.tick_fits(spent) {
-                            if let Some(warning) = self.clock.drop_ticks(steps - step) {
-                                log::warn!("{warning}");
-                            }
-                            break;
-                        }
+                    for _ in 0..steps {
                         let started = Instant::now();
                         if self.front.title.is_none() && !self.pause {
                             let _tick = Instant::now();
@@ -8949,7 +8870,6 @@ impl<'a> Game<'a> {
                 forced_hit: None,
                 lan_songs: Vec::new(),
                 lan_block_events: Vec::new(),
-                lan_entity_events: Vec::new(),
                 kinetic_feedback: HashMap::new(),
                 lid_openers: HashMap::new(),
                 chat_capture: None,

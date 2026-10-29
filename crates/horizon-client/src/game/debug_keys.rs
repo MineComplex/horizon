@@ -237,26 +237,17 @@ impl Game<'_> {
                 if on { "visible" } else { "hidden" }
             )
         };
-        // `DebugScreenOverlay`: the single-player variants for a local server.
-        let remote = true;
+        // `DebugScreenOverlay` on a server's client.
         let c = &self.front.debug_charts;
         [
             format!(
                 "Debug charts: {}; {};",
                 chart("key.debug.profilingChart", "Profiler", false),
-                chart(
-                    "key.debug.fpsCharts",
-                    if remote { "fps" } else { "fps + tps" },
-                    c.fps
-                ),
+                chart("key.debug.fpsCharts", "fps", c.fps),
             ),
             format!(
                 "{}; {}",
-                chart(
-                    "key.debug.networkCharts",
-                    if remote { "Bandwidth + Ping" } else { "Ping" },
-                    c.network
-                ),
+                chart("key.debug.networkCharts", "Bandwidth + Ping", c.network),
                 chart("key.debug.lightmapTexture", "Lightmap", c.lightmap),
             ),
             format!("To edit: press {}", key("key.debug.debugOptions")),

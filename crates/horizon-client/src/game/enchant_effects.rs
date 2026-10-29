@@ -6,7 +6,7 @@
 //! the armor attribute effects (respiration, depth strider, ...), Soul
 //! Speed's `location_changed` and `tick` effects and the
 //! `minecraft:location_changed` disk effect (frost walker).
-use horizon_client::{enchant::EffectContext, items::ItemStack};
+use horizon_client::items::ItemStack;
 
 impl crate::game::Sim<'_> {
     /// `Player.getDestroySpeed` after the tool speed: mining efficiency, haste
@@ -33,26 +33,6 @@ impl crate::game::Sim<'_> {
             }
         }
         (0.2 * (1.0 + total)) as f32
-    }
-    /// `EnchantmentHelper.processDurabilityChange` (unbreaking) for `amount` points.
-    pub(super) fn durability_loss(&mut self, stack: &ItemStack, amount: u32) -> u32 {
-        let e = &self.res.stations().enchantments;
-        if !e.has_component(stack, "minecraft:item_damage") {
-            return amount;
-        }
-        let ctx = EffectContext {
-            tool: Some(&stack.item),
-            items: Some(self.res.items()),
-            ..Default::default()
-        };
-        e.modify_value(
-            Some(stack),
-            "minecraft:item_damage",
-            &ctx,
-            &mut self.world.random,
-            amount as f32,
-        )
-        .max(0.0) as u32
     }
     /// Whether a worn enchantment gives immunity to `#burn_from_stepping`
     /// damage (frost walker's `minecraft:damage_immunity`).

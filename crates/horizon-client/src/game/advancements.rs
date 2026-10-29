@@ -193,11 +193,6 @@ impl Game<'_> {
 }
 impl crate::game::Sim<'_> {
     pub(super) fn load_advancements(&mut self) {}
-    /// After `ServerRecipeBook.addRecipes`: the toast and the
-    /// `recipe_unlocked` trigger of each recipe now known.
-    pub(super) fn recipe_unlocked(&mut self, unlocked: &[String]) {
-        self.recipe_toast(unlocked);
-    }
     /// The slots held by shown advancement, recipe and pack toasts, as bits.
     pub(super) fn toast_slots_used(&self) -> u32 {
         let packs = self.server_packs.toast_slots();

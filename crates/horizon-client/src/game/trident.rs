@@ -217,21 +217,13 @@ impl crate::game::Sim<'_> {
             return;
         };
         let riptide = stack.enchantment_level("minecraft:riptide");
-        let at = self
-            .player
-            .as_ref()
-            .map(|p| [p.position.x, p.position.y, p.position.z]);
         if riptide > 0 {
             // `isInWaterOrRain() && !isPassenger()`.
             if !self.in_water_or_rain() || self.riding.is_some() {
                 return;
             }
-            // `hurtWithoutBreaking` and the sound belong to the server; a server's
+            // `hurtWithoutBreaking` and the sound belong to the server; a
             // client only launches.
-            let server_client = true;
-            if !server_client {
-                self.hurt_held_without_breaking(1);
-            }
             // trident_spin_attack_strength: 1.5 + 0.75 per level above the first.
             let strength = 1.5 + 0.75 * (riptide as f32 - 1.0);
             let d = view_vector(self.yaw, self.pitch);
@@ -263,10 +255,6 @@ impl crate::game::Sim<'_> {
                 if let Some(p) = self.player.as_mut() {
                     p.position.y += moved.y;
                 }
-            }
-            if !server_client {
-                let sound = format!("minecraft:item.trident.riptide_{}", riptide.min(3));
-                self.sounds.play(&sound, at, 1.0, 1.0);
             }
         }
         // Otherwise the server throws the trident.

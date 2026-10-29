@@ -79,12 +79,6 @@ impl crate::game::Sim<'_> {
             self.lan_block_events.push((pos, b0, b1, state));
         }
     }
-    /// `Level.broadcastEntityEvent` for the guests.
-    pub(super) fn lan_entity_event(&mut self, id: i32, event: i8, at: [f64; 3]) {
-        if self.sounds.capture.is_some() {
-            self.lan_entity_events.push((id, event, at));
-        }
-    }
     /// The bed at `head` as a sleeping model lies in it (`ints[1]`,
     /// `villager::sleep_pose`): its `facing`.
     pub(super) fn bed_facing(&self, head: [i32; 3]) -> i32 {

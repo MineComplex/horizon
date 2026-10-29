@@ -9,7 +9,7 @@ use super::{
 use horizon_client::{
     hud::{HudBatch, rgba},
     items::ItemStack,
-    merchant::{self, MerchantOffer, TradeContext},
+    merchant::{self, MerchantOffer},
 };
 
 /// The merchant screen is 100 px wider than the 176-px menus it shares an origin with.
@@ -24,9 +24,7 @@ pub(super) struct MerchantState {
     pub(super) scroll: usize,
     /// The offer button that keeps focus after a click (drawn highlighted).
     pub(super) focused: Option<usize>,
-    /// The trading mob (its offers and experience are written back on
-    /// close) and its custom name.
-    pub(super) mob: Option<u32>,
+    /// The merchant's custom name.
     pub(super) name: Option<String>,
 }
 impl MerchantState {
@@ -400,43 +398,6 @@ impl Game<'_> {
     }
 }
 impl crate::game::Sim<'_> {
-    /// `AbstractVillager.addOffersFromTradeSet` with the world's random
-    /// sequence of the set, at the merchant's position.
-    fn offers_from_set(
-        &mut self,
-        set: &str,
-        variant: &str,
-        origin: [f64; 3],
-    ) -> Vec<MerchantOffer> {
-        let Some(sequence) = self.res.stations().trades.sequence(set) else {
-            return Vec::new();
-        };
-        let mut random = self.rand_sequences.lend(&sequence, self.level.seed);
-        let next_map = self.peek_map_id();
-        let tag = |t: &str| self.structure_tag(t);
-        let maps = GameMaps {
-            terrain: self.end.locator(),
-            structure_tag: &tag,
-            made: Default::default(),
-            next_id: std::cell::Cell::new(next_map),
-        };
-        let ctx = TradeContext {
-            items: self.res.items(),
-            enchantments: &self.res.stations().enchantments,
-            variant,
-            origin,
-            maps: Some(&maps),
-        };
-        let offers = self
-            .res
-            .stations()
-            .trades
-            .offers_from_set(&ctx, set, &mut random);
-        let made = maps.made.into_inner();
-        self.rand_sequences.give_back(sequence, random);
-        self.register_exploration_maps(made);
-        offers
-    }
     /// `Villager.setTradingPlayer(null)`: the session goes back to the mob
     /// (special prices stay as they were), the borrowed sequences to the world.
     pub(super) fn merchant_closed(&mut self, state: &mut MerchantState) {
@@ -444,51 +405,6 @@ impl crate::game::Sim<'_> {
         for (id, r) in std::mem::take(&mut session.sequences) {
             self.rand_sequences.give_back(id, r);
         }
-        let traded = std::mem::take(&mut session.last_traded);
-        let Some(id) = state.mob else { return };
-        let Some(m) = self.mobs.iter_mut().find(|m| m.id == id) else {
-            return;
-        };
-        if session.villager {
-            m.extra.variant3 = session.level.clamp(1, 5) as u8;
-        }
-        m.extra.flag2 = false;
-        m.random = session.random.clone();
-        m.ambient_timer = session.ambient_sound_time;
-        let trade = m.extra.trade.get_or_insert_default();
-        trade.xp = session.xp;
-        trade.offers = session.offers.clone();
-        if traded && session.villager {
-            self.villager_traded(id);
-        }
-    }
-    /// Opens a merchant menu without a mob (horizon-ctl `trade`).
-    pub(super) fn open_merchant(&mut self, profession: &str, variant: &str, level: i32) {
-        let profession = format!("minecraft:{}", profession.trim_start_matches("minecraft:"));
-        let variant = format!("minecraft:{}", variant.trim_start_matches("minecraft:"));
-        let level = level.clamp(1, 5);
-        let origin = self
-            .player
-            .as_ref()
-            .map_or([0.0; 3], |p| [p.position.x, p.position.y, p.position.z]);
-        let mut offers = Vec::new();
-        for l in 1..=level {
-            let set = merchant::Trades::set_for(&profession, l);
-            offers.extend(self.offers_from_set(&set, &variant, origin));
-        }
-        let mut session = merchant::Session::new(offers, true);
-        session.profession = profession;
-        session.variant = variant;
-        session.level = level;
-        session.xp = merchant::min_xp(level);
-        session.origin = origin;
-        self.open_merchant_state(MerchantState {
-            session: Box::new(session),
-            scroll: 0,
-            focused: None,
-            mob: None,
-            name: None,
-        });
     }
     /// A server's trading window (no mob here: the server keeps it).
     pub(super) fn open_remote_merchant(
@@ -500,7 +416,6 @@ impl crate::game::Sim<'_> {
             session: Box::new(session),
             scroll: 0,
             focused: None,
-            mob: None,
             name,
         });
     }
@@ -512,71 +427,14 @@ impl crate::game::Sim<'_> {
         self.capture(false);
         self.right = false;
     }
-    /// The trading mob's random before a menu click (it ticks meanwhile).
-    pub(super) fn merchant_sync_in(&self, session: &mut merchant::Session, mob: Option<u32>) {
-        if let Some(m) = mob.and_then(|id| self.mobs.iter().find(|m| m.id == id)) {
-            session.random = m.random.clone();
-            session.ambient_sound_time = m.ambient_timer;
-            session.origin = [m.position.x, m.position.y, m.position.z];
-        }
-    }
-    /// After a menu click: the session back to the station, its random to
-    /// the mob, and what it did (orbs, level-ups, the yes/no voice).
-    pub(super) fn merchant_sync_out(&mut self, session: Box<merchant::Session>) {
-        let mob = self
-            .station
-            .as_ref()
-            .and_then(|s| s.merchant.as_ref())
-            .and_then(|m| m.mob);
-        let (session, _) = self.merchant_apply(session, mob);
+    /// After a menu click: the session back to the station. A client's
+    /// merchant (`ClientSideMerchant`) hears of no trade: the orbs, the
+    /// level-up and the yes/no voice are the server's.
+    pub(super) fn merchant_sync_out(&mut self, mut session: Box<merchant::Session>) {
+        session.events.clear();
         if let Some(m) = self.station.as_mut().and_then(|s| s.merchant.as_mut()) {
             m.session = session;
         }
-    }
-    /// What a menu click's session did, applied to the world and its mob;
-    /// with the result of each trade made, for `merchant_traded`.
-    pub(super) fn merchant_apply(
-        &mut self,
-        session: Box<merchant::Session>,
-        mob: Option<u32>,
-    ) -> (Box<merchant::Session>, Vec<ItemStack>) {
-        let mut session = session;
-        let mut traded = Vec::new();
-        let events = std::mem::take(&mut session.events);
-        let (villager, origin) = (session.villager, session.origin);
-        if let Some(m) = mob.and_then(|id| self.mobs.iter_mut().find(|m| m.id == id)) {
-            m.random = session.random.clone();
-            m.ambient_timer = session.ambient_sound_time;
-            if villager {
-                m.extra.variant3 = session.level.clamp(1, 5) as u8;
-            }
-        }
-        for e in events {
-            match e {
-                merchant::Event::Orb(v) => {
-                    self.add_orb([origin[0], origin[1] + 0.5, origin[2]], v as u32)
-                }
-                merchant::Event::LevelUp(_) => {
-                    if let Some(m) = mob.and_then(|id| self.mobs.iter_mut().find(|m| m.id == id)) {
-                        m.add_effect("minecraft:regeneration", 200, 0);
-                    }
-                }
-                merchant::Event::TradeUpdated(yes, pitch) => {
-                    let sound = match (villager, yes) {
-                        (true, true) => "minecraft:entity.villager.yes",
-                        (true, false) => "minecraft:entity.villager.no",
-                        (false, true) => "minecraft:entity.wandering_trader.yes",
-                        (false, false) => "minecraft:entity.wandering_trader.no",
-                    };
-                    self.sounds.play(sound, Some(origin), 1.0, pitch);
-                }
-                merchant::Event::Traded(index) => {
-                    traded.extend(session.offers.get(index).map(|o| o.result.clone()));
-                }
-                merchant::Event::TradeSound => {}
-            }
-        }
-        (session, traded)
     }
     /// `MerchantMenu.tryMoveItems` for the selected offer (the select trade packet).
     fn try_move_items(&mut self, index: usize) {
