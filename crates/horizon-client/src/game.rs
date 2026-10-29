@@ -1428,8 +1428,6 @@ struct Sim<'a> {
     sign_edit: Option<sign_edit::SignEditor>,
     /// An open book, book and quill or lectern screen.
     book: Option<books::BookScreen>,
-    /// LevelLoadingScreen.smoothedProgress while the player is not placed yet.
-    loading_progress: f32,
     mobs: Vec<Mob>,
     creatures: creatures::Creatures,
     sculk: sculk::SculkState,
@@ -1498,13 +1496,9 @@ struct Sim<'a> {
     levels: levels::Levels,
     /// Nether portals: the player's, items' and mobs' (game/nether_portal.rs).
     portals: nether_portal::Portals,
-    /// The pending travel goes through an End portal (EndPortalBlock destinations).
-    end_travel: bool,
     /// The respawn point when it is not the world spawn or a bed: a respawn
     /// anchor (`game/respawn_anchor.rs`).
     respawn_config: Option<respawn_anchor::RespawnConfig>,
-    /// A respawn travelling to its anchor's dimension and chunks.
-    respawn_travel: Option<respawn_anchor::RespawnConfig>,
     /// The open WinScreen (game/win.rs).
     win: Option<win::Win>,
     end: end::EndState,
@@ -2274,11 +2268,6 @@ impl Game<'_> {
             self.draw_pack_toasts(&mut batch, false);
             return batch;
         }
-        if let Some(reason) = self.loading_reason() {
-            self.draw_level_loading(&mut batch, reason);
-            self.draw_pack_toasts(&mut batch, false);
-            return batch;
-        }
         // Hud.extractRenderState: F1 (keyToggleGui) hides camera overlays, the
         // crosshair, hotbar, effects, bars, sidebar, action bar, titles and chat;
         // the sleep overlay, debug screen and open screens still draw.
@@ -2893,14 +2882,6 @@ impl Game<'_> {
             }
             return;
         }
-        // mouseClicked: an empty hand's PICKUP is the menu's click at once
-        // (a right click on a bundle takes its first stack out).
-        if let (Some(input), Some(_)) = (input, slot)
-            && false
-            && self.menu_click(slot, i32::from(right), input)
-        {
-            return;
-        }
         self.click_inventory(right);
     }
     /// Mouse movement while a quick craft drag is running.
@@ -3079,9 +3060,6 @@ impl Game<'_> {
         }
     }
     fn click_inventory(&mut self, right: bool) {
-        if self.mount_click(right) {
-            return;
-        }
         if self.recipe_book_click(right) {
             return;
         }
@@ -4530,9 +4508,7 @@ impl Game<'_> {
             Vec::new()
         };
         let mut hud = horizon_client::spans::time("hud", || self.hud(size));
-        // LevelLoadingScreen (Reason.OTHER) draws the title's panorama.
-        let title = self.front.title.is_some()
-            || self.loading_reason() == Some(horizon_client::level_loading::Reason::Other);
+        let title = self.front.title.is_some();
         let (yaw, pitch) = if title {
             // PanoramaRenderer: the title cube spins at 0.1 degrees per tick, pitched 10 degrees.
             (
@@ -4788,67 +4764,17 @@ impl Game<'_> {
         self.front.see_through_vertices = see_through;
         result
     }
-    /// The LevelLoadingScreen shown while the player waits for its chunks:
-    /// opening a world, or after a portal or a respawn into another dimension.
-    fn loading_reason(&self) -> Option<horizon_client::level_loading::Reason> {
-        use horizon_client::level_loading::Reason;
-        if self.front.title.is_some() || true || self.player.is_some() {
-            return None;
-        }
-        Some(
-            if self.travelling.is_none() || self.respawn_travel.is_some() {
-                Reason::Other
-            } else if self.end_travel {
-                Reason::EndPortal
-            } else {
-                Reason::NetherPortal
-            },
-        )
-    }
-    /// `LevelLoadingScreen.extractBackground` and `extractRenderState`.
-    fn draw_level_loading(
-        &self,
-        batch: &mut HudBatch,
-        reason: horizon_client::level_loading::Reason,
-    ) {
-        use horizon_client::level_loading::{self, Reason, STATUS_RADIUS};
-        let atlas = &self.front.gui.atlas;
-        let (w, h) = (batch.width, batch.height);
-        match reason {
-            // The panorama and its blur are drawn by the renderer.
-            Reason::Other => {
-                horizon_client::ui::menu_background(batch, atlas, 0.0, 0.0, w, h, false)
-            }
-            Reason::NetherPortal => {
-                let overlay = hud_overlays::portal_overlay(w as i32, h as i32, 1.0);
-                hud_layout::paint(batch, atlas, &[overlay]);
-            }
-            Reason::EndPortal => batch.fill(atlas, 0.0, 0.0, w, h, rgba(20, 20, 20, 255)),
-        }
-        let (cx, cz) = self.streaming.center;
-        let status = |x: i32, z: i32| {
-            self.streaming.latest_status(
-                &self.world,
-                cx + x - STATUS_RADIUS,
-                cz + z - STATUS_RADIUS,
-            )
-        };
-        level_loading::draw(batch, atlas, Some(&status), Some(self.loading_progress));
-    }
     /// `Screen.extractBlurredBackground` over the panorama or the world and
     /// HUD, when `menuBackgroundBlurriness` is at least 1.
     fn menu_blur(&self) -> Option<f32> {
-        let loading = self.loading_reason() == Some(horizon_client::level_loading::Reason::Other);
-        let blurred = loading
-            || self.front.title.as_ref().is_some_and(|t| {
-                matches!(self.screen, Screen::Options | Screen::Win)
-                    || !matches!(t.mode, horizon_client::title::Mode::Main)
-            })
-            || (self.front.title.is_none()
-                && self.player.is_some()
-                && (self.screen.blurs_background(self.pause_menu)
-                    || self.dialog_open()
-                    || (self.screen == Screen::Win && self.win_screen_pauses())));
+        let blurred = self.front.title.as_ref().is_some_and(|t| {
+            matches!(self.screen, Screen::Options | Screen::Win)
+                || !matches!(t.mode, horizon_client::title::Mode::Main)
+        }) || (self.front.title.is_none()
+            && self.player.is_some()
+            && (self.screen.blurs_background(self.pause_menu)
+                || self.dialog_open()
+                || (self.screen == Screen::Win && self.win_screen_pauses())));
         let radius = self.settings.menu_blur as f32;
         (blurred && radius >= 1.0).then_some(radius)
     }
@@ -5107,30 +5033,9 @@ impl Game<'_> {
         }
     }
     fn prepare_lod(&mut self) {
-        let enabled = self.far_terrain_choice().0 > 0
-            && self.front.renderer.is_some()
-            && self.player.is_some()
-            && self.front.title.is_none()
-            && false;
-        if !enabled {
-            if self.front.lod.is_some() || self.front.lod_source_attempted {
-                self.clear_lod();
-            }
-            return;
-        }
-        if self.front.lod_source_attempted {
-            return;
-        }
-        self.front.lod_source_attempted = true;
-        {
-            let source = self.sim.streaming.lod_source();
-            self.front.lod = Some(horizon_client::lod::Lod::new(
-                source,
-                self.sim.pack.context.clone(),
-            ));
-            self.front
-                .lod_observe
-                .extend(self.sim.world.chunks.keys().copied());
+        // Far terrain needs a world generator, which a client does not have.
+        if self.front.lod.is_some() || self.front.lod_source_attempted {
+            self.clear_lod();
         }
     }
     fn update_world(&mut self) {
@@ -5143,8 +5048,6 @@ impl Game<'_> {
                 self.front.lod_observe.insert((x >> 4, z >> 4));
             }
         }
-        // The loading screen's chunk map fills ring by ring, as vanilla's.
-        self.sim.streaming.loading = self.loading_reason().is_some();
         let (uploads, unloaded) = self.stream_world();
         if let Some(lod) = &mut self.front.lod {
             self.front
@@ -7136,18 +7039,6 @@ impl crate::game::Sim<'_> {
         if let Some((s, mob)) = session.as_mut() {
             self.merchant_sync_in(s, *mob);
         }
-        // The cartography table reads and makes the level's maps; a
-        // server's (the client menu's ContainerLevelAccess.NULL) doesn't.
-        let level_maps = (kind == Kind::Cartography && false).then(|| {
-            let held: Vec<ItemStack> = before
-                .iter()
-                .flatten()
-                .chain(self.inventory.iter().flatten())
-                .chain(self.carried.iter())
-                .cloned()
-                .collect();
-            self.level_maps(&held)
-        });
         let next_map = if merchant_open { self.peek_map_id() } else { 0 };
         let tag = |t: &str| self.structure_tag(t);
         let maps = trading::GameMaps {
@@ -7170,9 +7061,8 @@ impl crate::game::Sim<'_> {
             enchantments: &self.res.stations().enchantments,
             names: &self.pack.names,
             trade: Some(&trade_env),
-            maps: level_maps
-                .as_ref()
-                .map(|m| m as &dyn horizon_client::menu::Maps),
+            // The client menu's ContainerLevelAccess.NULL: no level maps.
+            maps: None,
         };
         menu.creative = creative;
         menu.selected = self.selected;
@@ -7230,11 +7120,6 @@ impl crate::game::Sim<'_> {
             menu.merchant = session.map(|(s, _)| s);
         }
         // `FurnaceResultSlot.checkTakeAchievements` pays out on what left the output slot.
-        let furnace_before = if matches!(kind, Kind::Furnace(_)) {
-            menu.slot(2).cloned().map_or(0, |s| s.count)
-        } else {
-            0
-        };
         let outcome = run(&mut menu, &env, &to_menu);
         let made = maps.made.take();
         match outcome {
@@ -7253,11 +7138,6 @@ impl crate::game::Sim<'_> {
         }
         let after: Vec<Option<ItemStack>> = (0..total).map(|i| menu.slot(i).cloned()).collect();
         // Only a furnace has a result slot to compare: an enchanting table has two slots.
-        let furnace_after = if matches!(kind, Kind::Furnace(_)) {
-            after[2].as_ref().map_or(0, |s| s.count)
-        } else {
-            0
-        };
         let carried = menu.carried.take();
         let dropped = std::mem::take(&mut menu.dropped);
         let sounds = std::mem::take(&mut menu.sounds);
@@ -7281,13 +7161,6 @@ impl crate::game::Sim<'_> {
                 self.player_drop(stack);
             }
             self.award_crafted(&crafted);
-            if furnace_before > furnace_after
-                && false
-                && let (Some(pos), Some(p)) = (self.container, self.player.as_ref())
-            {
-                let at = [p.position.x, p.position.y, p.position.z];
-                self.award_furnace_recipes(pos, at);
-            }
         }
         if kind == Kind::Loom {
             if let Some(s) = self.station.as_mut() {
@@ -7344,9 +7217,6 @@ impl crate::game::Sim<'_> {
             f.input_clicked(self.res.recipes(), before[0].clone());
         }
         self.apply_equipment();
-        if let Some(maps) = level_maps {
-            self.register_made_maps(maps);
-        }
         true
     }
     /// `Screen.hasShiftDown` / `InputWithModifiers.hasShiftDown`: the
@@ -7676,27 +7546,6 @@ impl crate::game::Sim<'_> {
             count: 1,
             ticks: 0,
         });
-    }
-    /// `FurnaceResultSlot.checkTakeAchievements`: the player took from the output of the
-    /// furnace at `pos`, which pops the experience of what it made at them
-    /// (`awardUsedRecipesAndPopExperience`) and forgets it.
-    pub(super) fn award_furnace_recipes(&mut self, pos: (i32, i32, i32), at: [f64; 3]) {
-        let used = match self.world.block_entities.get_mut(&pos) {
-            Some(BlockEntity::Furnace(f)) => {
-                let used = f.recipe_experience(self.res.recipes());
-                f.recipes_used.clear();
-                used
-            }
-            _ => return,
-        };
-        for (count, experience) in used {
-            let xp = horizon_client::containers::create_experience(
-                count,
-                experience,
-                &mut self.world.random,
-            );
-            self.spawn_orbs(at, xp);
-        }
     }
     /// The streaming's radius and meshing options from the settings.
     fn apply_streaming_settings(&mut self) {
@@ -8978,7 +8827,6 @@ impl<'a> Game<'a> {
                 pickups: Default::default(),
                 sign_edit: None,
                 book: None,
-                loading_progress: 0.0,
                 mobs: Vec::new(),
                 creatures: Default::default(),
                 sculk: Default::default(),
@@ -9021,9 +8869,7 @@ impl<'a> Game<'a> {
                 travelling: None,
                 levels: Default::default(),
                 portals: Default::default(),
-                end_travel: false,
                 respawn_config: None,
-                respawn_travel: None,
                 win: None,
                 end: Default::default(),
                 block_ticks: Ticks::new(0),

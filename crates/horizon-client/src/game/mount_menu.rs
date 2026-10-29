@@ -67,42 +67,8 @@ struct Open {
 fn can_wear_horse_armor(species: Species) -> bool {
     matches!(species, Species::Horse | Species::ZombieHorse)
 }
-/// Whether `item` fits the body slot of the species (`isEquippableInSlot`).
-fn body_armor_fits(species: Species, item: &str) -> bool {
-    if llama::is_llama(species) {
-        return item.ends_with("_carpet");
-    }
-    can_wear_horse_armor(species) && item.ends_with("_horse_armor")
-}
 
 impl Game<'_> {
-    /// A click in the mount menu before the generic handling.
-    pub(super) fn mount_click(&mut self, right: bool) -> bool {
-        // A server's menu: the click goes out like any container click.
-        if !self.mount_active() || true {
-            return false;
-        }
-        let Some(r) = self.front.renderer.as_ref() else {
-            return true;
-        };
-        let batch = HudBatch::new([r.config.width, r.config.height]);
-        let Some(slot) = self.slot_at(&batch, self.front.cursor.0, self.front.cursor.1) else {
-            return true;
-        };
-        let shift = self.has_shift_down();
-        if shift {
-            self.mount_quick_move(slot);
-        } else if slot >= SADDLE {
-            self.click_filtered(slot, right);
-        } else {
-            return false;
-        }
-        true
-    }
-    /// The inventory slot ids in menu order.
-    fn mount_player_slots() -> Vec<usize> {
-        (9..36).chain(0..9).collect()
-    }
     /// `HorseInventoryScreen`'s background, slot frames and the mount.
     pub(super) fn draw_mount_background(&self, batch: &mut HudBatch, ox: f32, oy: f32) {
         let Some(open) = self.mount_menu.open.as_ref() else {
@@ -400,92 +366,5 @@ impl crate::game::Sim<'_> {
             Some(open) if i >= CHEST && i - CHEST < CHEST_SIZE => &mut open.items[i - CHEST],
             _ => &mut self.scratch_slot,
         }
-    }
-    /// `ArmorSlot.mayPlace` and the stack limits of the mount's slots.
-    pub(super) fn mount_slot_rules(&self, slot: usize, stack: &ItemStack) -> (bool, u32) {
-        let Some(open) = self.mount_menu.open.as_ref() else {
-            return (false, 64);
-        };
-        match slot {
-            SADDLE => (&*stack.item == "minecraft:saddle", 1),
-            ARMOR => (body_armor_fits(open.species, &stack.item), 1),
-            _ => (true, 64),
-        }
-    }
-    /// `AbstractMountInventoryMenu.quickMoveStack`.
-    fn mount_quick_move(&mut self, slot: usize) {
-        let Some(open) = self.mount_menu.open.as_ref() else {
-            return;
-        };
-        let (columns, show_saddle, show_armor) = (open.columns, open.show_saddle, open.show_armor);
-        let Some(mut stack) = self.slot_mut(slot).take() else {
-            return;
-        };
-        if slot >= SADDLE {
-            let player = crate::game::Game::mount_player_slots();
-            self.move_to(&mut stack, &player, true);
-        } else {
-            let armor_free = self.mount_slot_mut(ARMOR).is_none();
-            let saddle_free = self.mount_slot_mut(SADDLE).is_none();
-            let armor_ok = show_armor && self.mount_slot_rules(ARMOR, &stack).0 && armor_free;
-            let saddle_ok = show_saddle && self.mount_slot_rules(SADDLE, &stack).0 && saddle_free;
-            if armor_ok {
-                self.move_to(&mut stack, &[ARMOR], false);
-            } else if saddle_ok {
-                self.move_to(&mut stack, &[SADDLE], false);
-            } else {
-                let chest: Vec<usize> = (0..columns * 3).map(|i| CHEST + i).collect();
-                let moved = columns > 0 && self.move_to(&mut stack, &chest, false);
-                if !moved {
-                    // Between the hotbar and the main inventory.
-                    let other: Vec<usize> = if slot < 9 {
-                        (9..36).collect()
-                    } else {
-                        (0..9).collect()
-                    };
-                    self.move_to(&mut stack, &other, false);
-                }
-            }
-        }
-        if stack.count > 0 {
-            *self.slot_mut(slot) = Some(stack);
-        }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn only_horses_wear_horse_armour() {
-        assert!(body_armor_fits(
-            Species::Horse,
-            "minecraft:iron_horse_armor"
-        ));
-        assert!(body_armor_fits(
-            Species::ZombieHorse,
-            "minecraft:diamond_horse_armor"
-        ));
-        assert!(!body_armor_fits(
-            Species::Donkey,
-            "minecraft:iron_horse_armor"
-        ));
-        assert!(!body_armor_fits(
-            Species::Horse,
-            "minecraft:iron_chestplate"
-        ));
-    }
-
-    #[test]
-    fn llamas_wear_carpets_and_no_saddle() {
-        assert!(body_armor_fits(Species::Llama, "minecraft:red_carpet"));
-        assert!(!body_armor_fits(
-            Species::Llama,
-            "minecraft:iron_horse_armor"
-        ));
-        assert!(shows_body(Species::TraderLlama));
-        assert!(!shows_saddle(Species::Llama));
-        assert!(shows_saddle(Species::Donkey) && !shows_body(Species::Donkey));
     }
 }

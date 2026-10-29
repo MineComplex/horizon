@@ -168,18 +168,10 @@ impl Game<'_> {
                 }
                 Ticker::Pot => {}
                 Ticker::Gateway => {
-                    // The server copy's portalTick runs first; its block event
-                    // reaches the client copy before the client ticks it.
+                    // The server sends its copy's block event.
                     let initial = self.gateway_loaded(pos);
                     let anims = &mut self.sim.be_anims;
-                    let server = anims.gateway_servers.entry(pos).or_insert(initial);
-                    // A server sends its copy's block event instead.
-                    let triggered = false && server.portal_tick();
-                    let client = anims.gateways.entry(pos).or_insert(initial);
-                    if triggered {
-                        client.trigger_event(1, 0);
-                    }
-                    client.tick();
+                    anims.gateways.entry(pos).or_insert(initial).tick();
                 }
             }
         }

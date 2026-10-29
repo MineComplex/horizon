@@ -18,14 +18,6 @@ impl crate::game::Sim<'_> {
             .cloned()
             .unwrap_or(default)
     }
-    /// ShulkerBoxSlot.mayPlace: no shulker box inside a shulker box.
-    pub(super) fn refuses(&self, slot: usize, stack: &ItemStack) -> bool {
-        (300..400).contains(&slot)
-            && is_shulker_box(&stack.item)
-            && self.container.is_some_and(|k| {
-                is_shulker_box(&self.res.facts().get(self.world.block(k.0, k.1, k.2)).name)
-            })
-    }
     /// Opening an ender chest shows the player's ender inventory in its place.
     pub(super) fn open_ender_chest(&mut self, key: (i32, i32, i32)) {
         self.world

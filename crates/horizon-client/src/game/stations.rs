@@ -284,7 +284,7 @@ fn rgb_of(rgba: u32) -> u32 {
 impl Game<'_> {
     pub(super) fn station_click(&mut self, right: bool) -> bool {
         // A server's brewing stand: its slots are the server's.
-        if self.station.is_none() && (!self.brewing_open() || true) {
+        if self.station.is_none() {
             return false;
         }
         let Some(size) = self
@@ -1423,29 +1423,6 @@ impl crate::game::Sim<'_> {
             _ => &mut self.scratch_slot,
         }
     }
-    pub(super) fn count_bookshelves(&self, pos: [i32; 3]) -> i32 {
-        let tags = &self.res.items().block_tags;
-        let is = |p: [i32; 3], tag: &str| {
-            let name = &self
-                .res
-                .facts()
-                .get(self.world.block(p[0], p[1], p[2]))
-                .name;
-            tags.get(tag).is_some_and(|t| t.contains(&**name))
-        };
-        stations::bookshelf_offsets()
-            .into_iter()
-            .filter(|o| {
-                is(
-                    [pos[0] + o[0], pos[1] + o[1], pos[2] + o[2]],
-                    "minecraft:enchantment_power_provider",
-                ) && is(
-                    [pos[0] + o[0] / 2, pos[1] + o[1], pos[2] + o[2] / 2],
-                    "minecraft:enchantment_power_transmitter",
-                )
-            })
-            .count() as i32
-    }
     /// The anvil name the menu works with (`AnvilScreen.onNameChanged`).
     pub(super) fn anvil_item_name(&self, s: &Station) -> String {
         match &s.inputs[0] {
@@ -1470,23 +1447,13 @@ impl crate::game::Sim<'_> {
         match s.kind {
             // A server's table: its data slots carry the offers, and its
             // client menu only clears them without an enchantable item.
-            Kind::Enchanting if true => {
+            Kind::Enchanting => {
                 let enchantable = s.inputs[0].as_ref().is_some_and(|i| {
                     data.enchantments.enchantable(&i.item) > 0 && i.enchantments().is_empty()
                 });
                 if !enchantable {
                     s.offers = Default::default();
                 }
-            }
-            Kind::Enchanting => {
-                s.bookcases = self.count_bookshelves(s.pos);
-                s.offers = stations::enchant_offers(
-                    &data.enchantments,
-                    items,
-                    self.level.xp_seed,
-                    s.bookcases,
-                    s.inputs[0].as_ref(),
-                );
             }
             Kind::Anvil => {
                 let name = self.anvil_item_name(&s);
@@ -1535,129 +1502,6 @@ impl crate::game::Sim<'_> {
             .items()
             .get(&stack.item)
             .map_or(64, |i| i.max_stack)
-    }
-    /// `Slot.mayPlace` and `getMaxStackSize` for station slots.
-    fn slot_rules(&self, slot: usize, stack: &ItemStack) -> (bool, u32) {
-        if slot >= super::mount_menu::SADDLE {
-            return self.mount_slot_rules(slot, stack);
-        }
-        if let Some(BlockEntity::Crafter(c)) = self.container_kind()
-            && (300..309).contains(&slot)
-        {
-            // CrafterSlot.mayPlace: not a disabled slot.
-            return (!c.disabled[slot - 300], 64);
-        }
-        if (300..400).contains(&slot) && !self.brewing_open() && self.refuses(slot, stack) {
-            // ShulkerBoxSlot.mayPlace.
-            return (false, 64);
-        }
-        let Some(s) = self.station.as_ref() else {
-            return (true, 64);
-        };
-        if slot < 36 {
-            return (true, 64);
-        }
-        if slot == RESULT {
-            return (false, 64);
-        }
-        (s.kind != Kind::Loom, 64)
-    }
-    /// `AbstractContainerMenu.doClick` PICKUP on a filtered slot.
-    pub(super) fn click_filtered(&mut self, slot: usize, right: bool) {
-        let carried = self.carried.take();
-        let current = self.slot_mut(slot).take();
-        let (new_slot, new_carried) = match (carried, current) {
-            (None, None) => (None, None),
-            (None, Some(mut s)) => {
-                let take = if right { s.count.div_ceil(2) } else { s.count };
-                s.count -= take;
-                let taken = ItemStack {
-                    count: take,
-                    ..s.clone()
-                };
-                ((s.count > 0).then_some(s), Some(taken))
-            }
-            (Some(mut c), None) => {
-                let (ok, cap) = self.slot_rules(slot, &c);
-                if ok {
-                    let n = if right { 1 } else { c.count }.min(cap.min(self.max_stack(&c)));
-                    let placed = ItemStack {
-                        count: n,
-                        ..c.clone()
-                    };
-                    c.count -= n;
-                    (Some(placed), (c.count > 0).then_some(c))
-                } else {
-                    (None, Some(c))
-                }
-            }
-            (Some(mut c), Some(mut s)) => {
-                let (ok, cap) = self.slot_rules(slot, &c);
-                if ok && c.same_item_same_components(&s) {
-                    let room = cap.min(self.max_stack(&s)).saturating_sub(s.count);
-                    let n = if right { 1 } else { c.count }.min(room);
-                    s.count += n;
-                    c.count -= n;
-                    (Some(s), (c.count > 0).then_some(c))
-                } else if ok && c.count <= cap.min(self.max_stack(&c)) {
-                    (Some(c), Some(s))
-                } else if c.same_item_same_components(&s) {
-                    let n = s.count.min(self.max_stack(&c).saturating_sub(c.count));
-                    s.count -= n;
-                    c.count += n;
-                    ((s.count > 0).then_some(s), Some(c))
-                } else {
-                    (Some(s), Some(c))
-                }
-            }
-        };
-        *self.slot_mut(slot) = new_slot;
-        self.carried = new_carried;
-    }
-    /// `moveItemStackTo` over `targets` (menu order), merging first, then empty slots.
-    pub(super) fn move_to(
-        &mut self,
-        stack: &mut ItemStack,
-        targets: &[usize],
-        reverse: bool,
-    ) -> bool {
-        let order: Vec<usize> = if reverse {
-            targets.iter().rev().copied().collect()
-        } else {
-            targets.to_vec()
-        };
-        let start = stack.count;
-        if self.max_stack(stack) > 1 {
-            for &t in &order {
-                if stack.count == 0 {
-                    break;
-                }
-                let (_, cap) = self.slot_rules(t, stack);
-                let max = cap.min(self.max_stack(stack));
-                if let Some(s) = self.slot_mut(t).as_mut()
-                    && s.same_item_same_components(stack)
-                {
-                    let n = max.saturating_sub(s.count).min(stack.count);
-                    s.count += n;
-                    stack.count -= n;
-                }
-            }
-        }
-        for &t in &order {
-            if stack.count == 0 {
-                break;
-            }
-            let (ok, cap) = self.slot_rules(t, stack);
-            if self.slot_mut(t).is_none() && (t < 36 || ok) {
-                let n = cap.min(self.max_stack(stack)).min(stack.count);
-                *self.slot_mut(t) = Some(ItemStack {
-                    count: n,
-                    ..stack.clone()
-                });
-                stack.count -= n;
-            }
-        }
-        stack.count != start
     }
     /// After an anvil or smithing click on the menu engine: the anvil's cost
     /// and state back into the station and the rename box following the

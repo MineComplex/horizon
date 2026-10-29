@@ -89,13 +89,7 @@ impl crate::game::Sim<'_> {
         {
             return;
         }
-        let ops = self.world_data.rules.bool("send_command_feedback");
-        // MinecraftServer.sendSystemMessage, unless the server is the source.
-        let console = self.console_broadcast.is_none()
-            && false
-            && false
-            && self.world_data.rules.bool("log_admin_commands");
-        if !ops && !console {
+        if !self.world_data.rules.bool("send_command_feedback") {
             return;
         }
         // getDisplayName: the entity the command runs as (`execute as`), or
@@ -108,7 +102,7 @@ impl crate::game::Sim<'_> {
         let line = Text::translate("chat.type.admin", &[who, message])
             .with_color(text::GRAY)
             .italic();
-        self.admin_feedback.push((line, ops, console));
+        self.admin_feedback.push((line, true, false));
     }
     /// Player.getDisplayName: the name (team-formatted), suggesting a
     /// `/tell`, showing the player on hover, inserting the name.

@@ -2,16 +2,12 @@
 //! mined, items used/crafted/broken/picked up/dropped and mobs killed or
 //! killed by, saved to `players/stats/<uuid>.json`, plus the phantom
 //! spawner that reads the time since rest (`PhantomSpawner`).
-use std::{
-    collections::{BTreeMap, BTreeSet},
-    path::{Path, PathBuf},
-};
+use std::collections::{BTreeMap, BTreeSet};
 
 /// `stats[type][key]`, with `type` and `key` namespaced ids.
 #[derive(Default)]
 pub(super) struct Stats {
     pub(super) values: BTreeMap<String, BTreeMap<String, i32>>,
-    pub(super) loaded: bool,
     /// Statistic changes (type, key, amount; `None` = reset) for the
     /// scoreboard criteria to follow.
     pub(super) events: Vec<(String, String, Option<i32>)>,
@@ -70,63 +66,8 @@ impl Stats {
     pub(super) fn custom(&mut self, key: &str, n: i32) {
         namespaced(key, |key| self.add("custom", key, n));
     }
-    /// `ServerStatsCounter.parseLocal`: the counters of a stats file.
-    pub(super) fn read(path: &Path) -> Self {
-        let mut stats = Self {
-            loaded: true,
-            ..Self::default()
-        };
-        let Some(json) = std::fs::read_to_string(path)
-            .ok()
-            .and_then(|t| serde_json::from_str::<serde_json::Value>(&t).ok())
-        else {
-            return stats;
-        };
-        if let Some(all) = json.get("stats").and_then(|s| s.as_object()) {
-            for (ty, entries) in all {
-                let Some(entries) = entries.as_object() else {
-                    continue;
-                };
-                let map = stats.values.entry(ty.clone()).or_default();
-                for (key, v) in entries {
-                    if let Some(n) = v.as_i64() {
-                        map.insert(key.clone(), n as i32);
-                    }
-                }
-            }
-        }
-        stats
-    }
-}
-/// `players/<dir>/<uuid>.json` of a world (advancements, stats).
-pub(super) fn player_json(world: &Path, dir: &str, uuid: [i32; 4]) -> PathBuf {
-    let hex: String = uuid.iter().map(|v| format!("{:08x}", *v as u32)).collect();
-    let text = format!(
-        "{}-{}-{}-{}-{}",
-        &hex[0..8],
-        &hex[8..12],
-        &hex[12..16],
-        &hex[16..20],
-        &hex[20..32]
-    );
-    world.join("players").join(dir).join(format!("{text}.json"))
 }
 impl crate::game::Sim<'_> {
-    fn stats_path(&self) -> Option<PathBuf> {
-        Some(player_json(
-            &self.world_root,
-            "stats",
-            self.level.player_uuid?,
-        ))
-    }
     /// `ServerStatsCounter.parseLocal`.
-    pub(super) fn load_stats(&mut self) {
-        if self.stats.loaded || true || self.no_player_here() {
-            return;
-        }
-        self.stats.loaded = true;
-        if let Some(path) = self.stats_path() {
-            self.stats.values = Stats::read(&path).values;
-        }
-    }
+    pub(super) fn load_stats(&mut self) {}
 }

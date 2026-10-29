@@ -6,7 +6,7 @@ use horizon_client::{
     advancements::{self as adv, Frame, Progress, Tree},
     hud::HudBatch,
     items::ItemStack,
-    text::{self, Style, Text},
+    text::Text,
     toasts::Slide,
 };
 use serde_json::Value;
@@ -80,120 +80,9 @@ pub(super) struct AdvState {
     /// place on its tab (`DisplayInfo` x, y), in tree order.
     pub(super) positions: Option<Vec<(f32, f32)>>,
     pub(super) progress: Progress,
-    pub(super) loaded: bool,
     pub(super) toasts: VecDeque<Toast>,
     /// Awards skip the toast (`/advancement grant ... everything`).
     pub(super) quiet: bool,
-    pub(super) announced: Vec<Text>,
-    /// The tree being read on another thread since the world opened
-    /// (`prefetch_advancement_tree`), taken by the first `advancement_tree`.
-    pub(super) pending_tree: Option<std::thread::JoinHandle<Tree>>,
-    /// `inventory_changed`'s criteria by item, built for `tree`.
-    inventory_index: Option<(Arc<Tree>, Arc<adv::InventoryIndex>)>,
-}
-/// The game's world for predicates.
-struct View<'a, 'g>(&'a crate::game::Sim<'g>);
-impl adv::World for View<'_, '_> {
-    fn dimension(&self) -> &str {
-        self.0.dim.id()
-    }
-    fn biome(&self, p: [i32; 3]) -> String {
-        self.0
-            .world
-            .chunks
-            .get(&(p[0] >> 4, p[2] >> 4))
-            .map(|c| {
-                self.0
-                    .res
-                    .biomes()
-                    .get(c.biome(p[0], p[1], p[2]))
-                    .name
-                    .clone()
-            })
-            .unwrap_or_default()
-    }
-    fn structures(&self, p: [i32; 3]) -> Vec<String> {
-        self.0.structures_at(p)
-    }
-    fn block(&self, p: [i32; 3]) -> (String, BTreeMap<String, String>) {
-        let state = self.0.world.block(p[0], p[1], p[2]);
-        let name = self.0.res.facts().get(state).name.to_string();
-        let props = self
-            .0
-            .pack
-            .assets
-            .registry
-            .state(state)
-            .map(|s| {
-                s.properties
-                    .iter()
-                    .map(|(k, v)| (k.to_string(), v.to_string()))
-                    .collect()
-            })
-            .unwrap_or_default();
-        (name, props)
-    }
-    fn fluid(&self, p: [i32; 3]) -> Option<String> {
-        match self
-            .0
-            .res
-            .facts()
-            .get(self.0.world.block(p[0], p[1], p[2]))
-            .fluid
-        {
-            horizon_client::blocks::Fluid::Water => Some("minecraft:water".into()),
-            horizon_client::blocks::Fluid::Lava => Some("minecraft:lava".into()),
-            _ => None,
-        }
-    }
-    fn can_see_sky(&self, p: [i32; 3]) -> bool {
-        (p[1] + 1..p[1] + 200).all(|y| {
-            !self
-                .0
-                .res
-                .facts()
-                .get(self.0.world.block(p[0], y, p[2]))
-                .full_collision
-        })
-    }
-    fn light(&self, p: [i32; 3]) -> i32 {
-        let l = self.0.world.light(p[0], p[1], p[2]);
-        i32::from((l >> 4).max(l & 15))
-    }
-    fn smokey(&self, p: [i32; 3]) -> bool {
-        (1..=5).any(|d| {
-            self.0
-                .res
-                .facts()
-                .get(self.0.world.block(p[0], p[1] - d, p[2]))
-                .name
-                .ends_with("campfire")
-        })
-    }
-    fn in_tag(&self, registry: &str, tag: &str, id: &str) -> bool {
-        let items = &self.0.res.items();
-        match registry {
-            "item" => items.item_tags.get(tag).is_some_and(|t| t.contains(id)),
-            "block" => items.block_tags.get(tag).is_some_and(|t| t.contains(id)),
-            "entity_type" => self.0.res.mob_data().entity_has(tag, id),
-            "worldgen/biome" => self.0.res.mob_data().biome_has(tag, id),
-            "damage_type" => self
-                .0
-                .res
-                .stations()
-                .enchantments
-                .damage_tags
-                .get(tag)
-                .is_some_and(|t| t.contains(id)),
-            _ => false,
-        }
-    }
-}
-fn now_text() -> String {
-    let secs = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map_or(0, |d| d.as_secs()) as i64;
-    adv::date_text(secs)
 }
 impl Game<'_> {
     /// `ToastManager.SLOT_COUNT`.
@@ -303,194 +192,11 @@ impl Game<'_> {
     }
 }
 impl crate::game::Sim<'_> {
-    fn adv_path(&self) -> Option<std::path::PathBuf> {
-        Some(super::stats::player_json(
-            &self.world_root,
-            "advancements",
-            self.level.player_uuid?,
-        ))
-    }
-    /// A server with no player of its own and nobody it acts for: there is
-    /// no player for advancements and statistics.
-    pub(super) fn no_player_here(&self) -> bool {
-        false
-    }
-    /// The advancement tree, loaded once.
-    pub(super) fn advancement_tree(&mut self) -> Arc<Tree> {
-        if self.adv.tree.list.is_empty() {
-            let tree = match self.adv.pending_tree.take().map(|h| h.join()) {
-                Some(Ok(tree)) => tree,
-                _ => Tree::load(&self.options.resources.join("data")),
-            };
-            self.adv.tree = Arc::new(tree);
-            // With the tree, while the world loads: built on the first
-            // inventory change it cost that tick ~10 ms.
-            self.inventory_index();
-        }
-        self.adv.tree.clone()
-    }
-    /// `inventory_changed`'s criteria by item, for the tree in place.
-    fn inventory_index(&mut self) -> Arc<adv::InventoryIndex> {
-        let tree = self.adv.tree.clone();
-        if let Some((built, index)) = &self.adv.inventory_index
-            && Arc::ptr_eq(built, &tree)
-        {
-            return index.clone();
-        }
-        let items = self.res.items();
-        let index = Arc::new(adv::InventoryIndex::build(&tree, |tag| {
-            items
-                .item_tags
-                .get(tag)
-                .map(|t| t.iter().map(String::as_str).collect())
-                .unwrap_or_default()
-        }));
-        self.adv.inventory_index = Some((tree, index.clone()));
-        index
-    }
-    pub(super) fn load_advancements(&mut self) {
-        if self.adv.loaded || true || self.no_player_here() {
-            return;
-        }
-        self.adv.loaded = true;
-        self.advancement_tree();
-        let progress = self
-            .adv_path()
-            .and_then(|p| std::fs::read_to_string(p).ok())
-            .and_then(|t| serde_json::from_str::<Value>(&t).ok())
-            .map(|v| Progress::from_json(&v))
-            .unwrap_or_default();
-        // The known recipes are the player's own (`recipeBook`), not the
-        // rewards of done advancements: /recipe take sticks.
-        let tree = self.adv.tree.clone();
-        self.adv.progress = progress;
-        self.world_data.registries.advancements = tree.list.iter().map(|a| a.id.clone()).collect();
-    }
-    /// `trigger` for some of a trigger's criteria: (advancement, criterion)
-    /// indexes in `tree`, in tree order.
-    fn trigger_criteria(
-        &mut self,
-        tree: &Tree,
-        list: &[(usize, usize)],
-        test: impl Fn(&Value, &dyn adv::World) -> bool,
-    ) {
-        let mut hits = Vec::new();
-        {
-            let view = View(self);
-            for &(ai, ci) in list {
-                let a = &tree.list[ai];
-                let c = &a.criteria[ci];
-                if self.adv.progress.has(&a.id, &c.name) || self.adv.progress.done(a) {
-                    continue;
-                }
-                if test(&c.conditions, &view) {
-                    hits.push((ai, ci));
-                }
-            }
-        }
-        if hits.is_empty() {
-            return;
-        }
-        let date = now_text();
-        for (ai, ci) in hits {
-            let a = &tree.list[ai];
-            let was = self.adv.progress.done(a);
-            self.adv.progress.grant(&a.id, &a.criteria[ci].name, &date);
-            if !was && self.adv.progress.done(a) {
-                self.award(ai);
-            }
-        }
-    }
+    pub(super) fn load_advancements(&mut self) {}
     /// After `ServerRecipeBook.addRecipes`: the toast and the
     /// `recipe_unlocked` trigger of each recipe now known.
     pub(super) fn recipe_unlocked(&mut self, unlocked: &[String]) {
-        {
-            self.recipe_toast(unlocked);
-        }
-        if unlocked.is_empty() || true || self.no_player_here() {
-            return;
-        }
-        self.load_advancements();
-        let tree = self.adv.tree.clone();
-        for r in unlocked {
-            let list = tree.recipe_criteria(r);
-            self.trigger_criteria(&tree, &list, |c, _| {
-                c["recipes"].as_str() == Some(r.as_str())
-            });
-        }
-    }
-    /// `PlayerAdvancements.award` once done: rewards, toast, announcement.
-    fn award(&mut self, index: usize) {
-        let tree = self.adv.tree.clone();
-        let a = &tree.list[index];
-        // AdvancementRewards.grant
-        if a.rewards.experience > 0 {
-            self.experience.give(a.rewards.experience);
-        }
-        // ServerPlayer.awardRecipesByKey: the rewards that name a recipe.
-        let rewards: Vec<String> = a
-            .rewards
-            .recipes
-            .iter()
-            .filter(|r| self.res.stations().recipe_index.contains(r))
-            .cloned()
-            .collect();
-        let (_, unlocked) = self
-            .level
-            .recipe_book
-            .add_recipes(&self.res.stations().recipe_index, &rewards);
-        for table in &a.rewards.loot {
-            let items = self
-                .res
-                .items()
-                .loot_table(table, false, None, &mut self.world.random);
-            for s in items {
-                if let Some(rest) = self.give(s)
-                    && let Some(eye) = self.eye_position()
-                {
-                    self.spawn_item(rest, eye, [0.0; 3], 0);
-                }
-            }
-        }
-        if let Some(d) = &a.display {
-            // A network player's client shows its own toast.
-            if d.show_toast && !self.adv.quiet {
-                self.adv.toasts.push_back(Toast {
-                    icon: d.icon.clone(),
-                    frame: d.frame,
-                    title: text_of(&d.title),
-                    slide: Slide::default(),
-                    slot: None,
-                    recipes: Vec::new(),
-                    changed: false,
-                    last_changed: 0,
-                });
-            }
-            if d.announce && self.world_data.rules.bool("show_advancement_messages") {
-                let key = match d.frame {
-                    Frame::Task => "chat.type.advancement.task",
-                    Frame::Goal => "chat.type.advancement.goal",
-                    Frame::Challenge => "chat.type.advancement.challenge",
-                };
-                let name = adv_name(a);
-                // PlayerList.broadcastSystemMessage: everyone hears of a
-                // network player's advancement.
-                match None::<String>.clone() {
-                    // Player.getDisplayName.
-                    Some(_) => {
-                        let player = self.target_name(super::commands::Target::Player);
-                        self.adv
-                            .announced
-                            .push(Text::translate(key, &[player, name]));
-                    }
-                    None => self.system_message(Text::translate(
-                        key,
-                        &[Text::literal(super::chat::PLAYER_NAME), name],
-                    )),
-                }
-            }
-        }
-        self.recipe_unlocked(&unlocked);
+        self.recipe_toast(unlocked);
     }
     /// The slots held by shown advancement, recipe and pack toasts, as bits.
     pub(super) fn toast_slots_used(&self) -> u32 {
@@ -502,46 +208,6 @@ impl crate::game::Sim<'_> {
             .chain(packs)
             .fold(0, |used, slot| used | 1 << slot)
     }
-}
-/// `Advancement.name`: the bracketed title in the frame's colour, with the
-/// description on hover; the id when there is no display.
-pub(super) fn adv_name(a: &adv::Advancement) -> Text {
-    let Some(d) = &a.display else {
-        return Text::literal(a.id.clone());
-    };
-    let color = frame_color(d.frame);
-    let title = text_of(&d.title).with_style(&Style {
-        hover: Some(Box::new(decorate_name(d))),
-        ..Style::default()
-    });
-    Text::translate("chat.square_brackets", &[title]).with_color(color)
-}
-fn frame_color(frame: Frame) -> u32 {
-    match frame {
-        Frame::Challenge => text::DARK_PURPLE,
-        _ => text::GREEN,
-    }
-}
-/// `Advancement.decorateName`: a copy of the title with the frame's colour
-/// under its own style (mergeStyles), then a new line and the description
-/// after the title's own siblings, so both inherit the title's root style.
-/// Built on the title's JSON (a list as its first element with the rest as
-/// siblings): a parsed Text moves a styled root's style down a level once it
-/// has siblings.
-fn decorate_name(d: &adv::Display) -> Text {
-    let mut component = match horizon_client::scoreboard::canonical_component(&d.title) {
-        Value::String(s) => serde_json::json!({ "text": s }),
-        c => c,
-    };
-    if let Some(o) = component.as_object_mut() {
-        let frame = Text::empty().with_color(frame_color(d.frame)).component();
-        o.entry("color").or_insert_with(|| frame["color"].clone());
-        let extra = o.entry("extra").or_insert_with(|| serde_json::json!([]));
-        if let Some(extra) = extra.as_array_mut() {
-            extra.extend(["\n".into(), d.description.clone()]);
-        }
-    }
-    text_of(&component).with_component(component)
 }
 impl crate::game::Sim<'_> {
     /// `ClientAdvancements.update` (ClientboundUpdateAdvancementsPacket):
@@ -690,7 +356,7 @@ mod tests {
             "extra": [{"text": "Quest ", "color": "gold"}, "Board"],
         }));
         assert_eq!(title.plain(), "Quest Board");
-        assert_eq!(title.spans[0].style.color, Some(text::GOLD));
+        assert_eq!(title.spans[0].style.color, Some(horizon_client::text::GOLD));
         assert_eq!(title.spans[1].style.color, None);
         let vanilla = text_of(&serde_json::json!({"translate": "advancements.story.root.title"}));
         assert_eq!(
@@ -700,85 +366,6 @@ mod tests {
         assert_eq!(
             vanilla.translation_key(),
             Some("advancements.story.root.title")
-        );
-    }
-
-    fn announced(title: Value, description: Value) -> adv::Advancement {
-        adv::Advancement {
-            id: "quests:board".into(),
-            parent: None,
-            display: Some(adv::Display {
-                icon: "minecraft:book".into(),
-                title,
-                description,
-                frame: Frame::Task,
-                background: None,
-                show_toast: true,
-                announce: true,
-                hidden: false,
-            }),
-            criteria: Vec::new(),
-            requirements: Vec::new(),
-            rewards: adv::Rewards::default(),
-        }
-    }
-    /// The chat hover: the JSON a client receives, and the spans drawn here.
-    fn hover(a: &adv::Advancement) -> (Value, Text) {
-        let local = decorate_name(a.display.as_ref().unwrap());
-        let sent = adv_name(a).component()["with"][0]["hover_event"]["value"].clone();
-        (sent, local)
-    }
-
-    #[test]
-    fn chat_hover_keeps_the_titles_siblings_before_the_description() {
-        let a = announced(
-            serde_json::json!({"text": "", "extra": [{"text": "Quest ", "color": "gold"}, "Board"]}),
-            serde_json::json!("Open the board"),
-        );
-        let (sent, local) = hover(&a);
-        let sent = horizon_client::scoreboard::comp_text(&sent);
-        assert_eq!(sent.plain(), "Quest Board\nOpen the board");
-        let colors = |t: &Text| t.spans.iter().map(|s| s.style.color).collect::<Vec<_>>();
-        let (gold, green) = (Some(text::GOLD), Some(text::GREEN));
-        assert_eq!(colors(&sent), [gold, green, green, green]);
-        // The spans drawn here come from the same JSON a client receives.
-        assert_eq!(colors(&local), colors(&sent));
-    }
-
-    #[test]
-    fn chat_hover_description_takes_a_styled_titles_own_style() {
-        // mergeStyles keeps the title's gold; the description inherits it.
-        let object = announced(
-            serde_json::json!({"text": "Quest", "color": "gold", "bold": true, "extra": [" Board"]}),
-            serde_json::json!("Open the board"),
-        );
-        let list = announced(
-            serde_json::json!([{"text": "Quest", "color": "gold", "bold": true}, " Board"]),
-            serde_json::json!("Open the board"),
-        );
-        for a in [object, list] {
-            let (sent, local) = hover(&a);
-            let sent = horizon_client::scoreboard::comp_text(&sent);
-            assert_eq!(sent.plain(), "Quest Board\nOpen the board");
-            let last = &sent.spans.last().unwrap().style;
-            assert_eq!((last.color, last.bold), (Some(text::GOLD), Some(true)));
-            assert_eq!(local.spans.last().unwrap().style, *last);
-        }
-    }
-
-    #[test]
-    fn chat_hover_of_a_vanilla_advancement() {
-        let a = announced(
-            serde_json::json!({"translate": "advancements.story.root.title"}),
-            serde_json::json!({"translate": "advancements.story.root.description"}),
-        );
-        assert_eq!(
-            hover(&a).0,
-            serde_json::json!({
-                "translate": "advancements.story.root.title",
-                "color": "green",
-                "extra": ["\n", {"translate": "advancements.story.root.description"}],
-            })
         );
     }
 
