@@ -553,17 +553,11 @@ struct GameLevel<'w> {
     fire_players: Vec<[f64; 3]>,
     /// Block loot random sequences (`ServerLevel.getRandomSequence`).
     rand_sequences: &'w mut horizon_client::random_sequences::RandomSequences,
-    pending: &'w mut spill::Pending,
     spill: &'w mut spill::Spill,
     /// Where the chunk tickets let blocks tick.
     tickets: horizon_client::ticket_levels::Levels,
     /// Players with each chest open (a trapped chest's signal).
     lid_openers: &'w HashMap<(i32, i32, i32), i32>,
-    /// `Level.isClientSide`: a client's copy of the level (a guest of a LAN
-    /// world, a window on its server thread, a dedicated server's client).
-    client_side: bool,
-    /// Plugins hear of blocks changing by themselves (`LevelEvent::Changed`).
-    change_events: bool,
 }
 struct PlayerCollision {
     y: f64,
@@ -751,10 +745,11 @@ impl GameLevel<'_> {
 }
 impl LevelAccess for GameLevel<'_> {
     fn is_client_side(&self) -> bool {
-        self.client_side
+        // The client's copy of the level.
+        true
     }
     fn reports_changes(&self) -> bool {
-        self.change_events
+        false
     }
     fn world_surface(&self, x: i32, z: i32) -> i32 {
         self.world.world_surface(x, z, |s| self.facts.is_air(s))
@@ -1032,36 +1027,19 @@ impl LevelAccess for GameLevel<'_> {
     }
     fn emit(&mut self, event: LevelEvent) {
         match event {
-            // Block.dropResources draws its loot and spots right away.
-            // `popResource` only drops server-side (`!level.isClientSide`):
-            // a client's moveBlocks (a piston's block event) skips it.
-            LevelEvent::DropResources { pos, state } if !self.client_side => {
-                self.drop_resources_now(pos, state)
-            }
-            LevelEvent::DropResources { .. } => {}
-            // `ClientLevel.playSeededSound` plays only when the excluded
-            // player is this client's own: the block's `playSound(null, ...)`
-            // (a piston's move, a note) reaches it from the server instead.
-            LevelEvent::Sound { .. } if self.client_side => {}
-            // Block.popResource of the block's own item (tall flowers, flower beds).
-            LevelEvent::BlockEvent {
-                pos,
-                state,
+            // The drops and loot (`popResource`, `extractProduce`, the
+            // interact loot) are the server's; so is a block's
+            // `playSound(null, ...)`, which reaches the client from it.
+            LevelEvent::DropResources { .. }
+            | LevelEvent::Sound { .. }
+            | LevelEvent::BlockEvent {
                 kind: "pop_block_item",
-            } => self.pop_block_item(pos, state),
-            // ComposterBlock.extractProduce: bone meal above the composter.
-            LevelEvent::Player {
-                pos,
-                effect: PlayerEffect::DropItem(item),
                 ..
-            } => self.pop_above(pos, item),
-            // Picking a sweet berry bush or cave vines: the harvest loot,
-            // popped before the pick sound draws its pitch.
-            LevelEvent::Player {
-                pos,
-                state,
-                effect: PlayerEffect::InteractLoot(table),
-            } => self.drop_interact_loot(pos, state, table),
+            }
+            | LevelEvent::Player {
+                effect: PlayerEffect::DropItem(_) | PlayerEffect::InteractLoot(_),
+                ..
+            } => {}
             event => self.events.push(event),
         }
     }
@@ -1587,8 +1565,6 @@ struct Sim<'a> {
     /// The ender inventory (27 slots) and the ender chest showing it.
     ender_items: Vec<Option<ItemStack>>,
     ender_open: Option<(i32, i32, i32)>,
-    /// Block entity data of broken blocks waiting for their dropped item.
-    pending: spill::Pending,
     /// Item entities spawned and block entities removed while the block
     /// behaviour ran (spilled contents, popped resources).
     spill: spill::Spill,
@@ -2787,7 +2763,7 @@ impl Game<'_> {
             return false;
         };
         let digit = HOTBAR_DIGITS.iter().position(|k| *k == key);
-        let done = match (digit, key) {
+        match (digit, key) {
             (Some(n), _) => self.menu_click(Some(slot), n as i32, Input::Swap),
             (None, KeyCode::KeyF) => self.menu_click(Some(slot), 40, Input::Swap),
             (None, KeyCode::KeyQ) => {
@@ -2795,11 +2771,7 @@ impl Game<'_> {
                 self.menu_click(Some(slot), i32::from(all), Input::Throw)
             }
             _ => false,
-        };
-        if done && let Some(key) = self.container {
-            self.container_changed(key);
         }
-        done
     }
     /// The plain inventory mouse press: starts a quick craft drag when a
     /// stack is held, gathers on a double click, else the normal click.
@@ -2927,9 +2899,6 @@ impl Game<'_> {
             && false
             && self.menu_click(slot, i32::from(right), input)
         {
-            if let Some(key) = self.container {
-                self.container_changed(key);
-            }
             return;
         }
         self.click_inventory(right);
@@ -3020,9 +2989,6 @@ impl Game<'_> {
                 if !self.menu_click(Some(slot), i32::from(right), input) {
                     self.click_inventory(right);
                 }
-                if let Some(key) = self.container {
-                    self.container_changed(key);
-                }
             }
             _ => self.inv_drag = None,
         }
@@ -3110,9 +3076,6 @@ impl Game<'_> {
                 // Not a menu the engine models: the drag is a plain click.
                 self.click_inventory(ty == 1);
             }
-        }
-        if let Some(key) = self.container {
-            self.container_changed(key);
         }
     }
     fn click_inventory(&mut self, right: bool) {
@@ -5922,7 +5885,6 @@ impl crate::game::Sim<'_> {
             tnts: &self.tnts,
             falling: &self.falling,
         };
-        let change_events = self.plugin_change_events();
         let mut level = GameLevel {
             cart_boxes,
             item_frames: &self.item_frames,
@@ -5961,20 +5923,13 @@ impl crate::game::Sim<'_> {
             difficulty: i32::from(self.world_data.difficulty),
             fire_players,
             rand_sequences: &mut self.rand_sequences,
-            pending: &mut self.pending,
             spill: &mut self.spill,
             tickets: self.tickets.levels(),
             lid_openers: &self.lid_openers,
-            client_side: true,
-            change_events,
         };
         let result = f(self.res.behaviours(), &mut level, &mut self.block_ticks);
         self.flush_spill();
         result
-    }
-    /// Plugins hear of blocks growing, spreading, forming and fading.
-    fn plugin_change_events(&self) -> bool {
-        false
     }
     /// Level.setBlock(pos, state, UPDATE_ALL) with neighbour/shape updates.
     fn level_set(&mut self, pos: [i32; 3], state: BlockStateId) -> Result<()> {
@@ -8374,16 +8329,10 @@ impl ApplicationHandler for Game<'_> {
                                 } else {
                                     self.inventory_pick_release();
                                 }
-                                if let Some(key) = self.container {
-                                    self.container_changed(key);
-                                }
                             }
                         }
                         Screen::Inventory if pressed => {
                             self.inventory_press(button == MouseButton::Right);
-                            if let Some(key) = self.container {
-                                self.container_changed(key);
-                            }
                         }
                         Screen::Inventory => {
                             self.inventory_mouse_release(button == MouseButton::Right);
@@ -9121,7 +9070,6 @@ impl<'a> Game<'a> {
                 riding: None,
                 ender_items: vec![None; 27],
                 ender_open: None,
-                pending: Default::default(),
                 spill: Default::default(),
                 recipe_ui: Default::default(),
                 mount_menu: Default::default(),

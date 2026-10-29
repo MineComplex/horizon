@@ -3,15 +3,8 @@
 //! block drops (`Block.dropResources`), drawn from the level random at the
 //! moment vanilla draws them. The item entities they make are added to the
 //! world as soon as the behaviour returns, within the same tick.
-use super::{GameLevel, Screen, dispenser::new_item_motion, storage::is_shulker_box};
-use horizon_client::{
-    block_entity_item, block_entity_nbt,
-    containers::{Banner, BlockEntity},
-    furnace::FurnaceCooking,
-    item_data,
-    items::ItemStack,
-    save,
-};
+use super::{GameLevel, Screen, dispenser::new_item_motion};
+use horizon_client::{containers::BlockEntity, furnace::FurnaceCooking, items::ItemStack};
 use horizon_core::position::BlockPos;
 use horizon_core::random::RandomSource;
 use horizon_world::{
@@ -19,189 +12,8 @@ use horizon_world::{
         LevelEvent,
         removal::{self, PreRemove},
     },
-    nbt::{Compound, JavaString, Tag},
     registry::BlockStateId,
 };
-use std::collections::HashMap;
-
-/// What a broken block's entity gives its own dropped item (`copy_components`
-/// in the block loot tables): a shulker box's contents, a banner's layers, a
-/// container's custom name.
-#[derive(Default)]
-pub(super) struct Pending {
-    pub(super) shulker: HashMap<[i32; 3], Vec<(u8, ItemStack)>>,
-    pub(super) banner: HashMap<[i32; 3], Banner>,
-    /// The block's item and the custom name.
-    pub(super) names: HashMap<[i32; 3], (String, String)>,
-    /// A decorated pot's sherds (back, left, right, front).
-    pub(super) pot: HashMap<[i32; 3], [Option<ItemStack>; 4]>,
-    /// A head's profile, note block sound and name, or a hive's bees: the
-    /// dropped item and the component patch it takes.
-    pub(super) copied: HashMap<[i32; 3], (String, Compound)>,
-}
-impl Pending {
-    /// Remember what the block entity at `pos` copies into the drops of `block`.
-    pub(super) fn record(
-        &mut self,
-        pos: [i32; 3],
-        entity: &BlockEntity,
-        block: &str,
-        name: Option<String>,
-    ) {
-        if let BlockEntity::Banner(banner) = entity {
-            self.banner.insert(pos, banner.clone());
-            return;
-        }
-        if let Some(name) = name {
-            self.names.insert(pos, (block.to_owned(), name));
-        }
-        // `copy_components` from the block entity: the head tables copy the
-        // profile (player heads), note block sound and name, the hive tables
-        // the bees.
-        let include: &[&str] = match entity {
-            BlockEntity::Skull(_) if block.starts_with("minecraft:player_") => &[
-                "minecraft:profile",
-                "minecraft:note_block_sound",
-                "minecraft:custom_name",
-            ],
-            BlockEntity::Skull(_) => &["minecraft:custom_name"],
-            BlockEntity::Beehive(_) => &["minecraft:bees"],
-            _ => &[],
-        };
-        if !include.is_empty() {
-            let saved = save::encode_block_entity((pos[0], pos[1], pos[2]), entity, block);
-            let mut patch = block_entity_nbt::canonical(&saved)
-                .map(|saved| block_entity_item::pick(&saved))
-                .unwrap_or_default();
-            patch.retain(|k, _| include.contains(&k.to_string_lossy().as_str()));
-            if !patch.is_empty() {
-                // `Blocks.wallVariant`: a wall head drops the standing item.
-                let item = block.replacen("_wall_", "_", 1);
-                self.copied.insert(pos, (item, patch));
-            }
-        }
-        if is_shulker_box(block)
-            && let BlockEntity::Chest(items) = entity
-        {
-            let kept = items
-                .iter()
-                .enumerate()
-                .filter_map(|(i, s)| Some((i as u8, s.clone()?)))
-                .collect();
-            self.shulker.insert(pos, kept);
-        }
-    }
-    /// Copy what was remembered for `pos` into a drop of the block.
-    pub(super) fn attach(&mut self, pos: [i32; 3], stack: &mut ItemStack) {
-        if is_shulker_box(&stack.item)
-            && let Some(contents) = self.shulker.remove(&pos)
-            && !contents.is_empty()
-        {
-            stack.data_mut().container = contents;
-        }
-        if self
-            .names
-            .get(&pos)
-            .is_some_and(|(item, _)| **item == *stack.item)
-            && let Some((_, name)) = self.names.remove(&pos)
-        {
-            stack.data_mut().custom_name = Some(name);
-        }
-        if self
-            .copied
-            .get(&pos)
-            .is_some_and(|(item, _)| **item == *stack.item)
-            && let Some((_, copied)) = self.copied.remove(&pos)
-        {
-            let mut patch = match item_data::encode_components(stack) {
-                Some(Tag::Compound(c)) => c,
-                _ => Default::default(),
-            };
-            patch.extend(copied);
-            (stack.damage, stack.extra) = item_data::decode_components(Some(&Tag::Compound(patch)));
-        }
-        if &*stack.item == "minecraft:decorated_pot" {
-            // The pot's block entity always copies its decorations, empty or not.
-            let sides = self.pot.remove(&pos).unwrap_or_default();
-            stack.data_mut().pot_decorations = Some(Box::new(sides));
-        }
-        if stack.item.ends_with("_banner")
-            && let Some(Banner {
-                layers,
-                name,
-                components,
-            }) = self.banner.remove(&pos)
-        {
-            let mut patch = match item_data::encode_components(stack) {
-                Some(Tag::Compound(c)) => c,
-                _ => Default::default(),
-            };
-            // The remaining components in the banner loot table's copy_components.
-            for key in [
-                "minecraft:item_name",
-                "minecraft:rarity",
-                "minecraft:tooltip_display",
-            ] {
-                if let Some(value) = components.get(&JavaString::from(key)) {
-                    patch.insert(key.into(), value.clone());
-                }
-            }
-            patch.insert(
-                "minecraft:banner_patterns".into(),
-                horizon_client::banner::layers_to_nbt(&layers),
-            );
-            if let Some(name) = name {
-                patch.insert(
-                    "minecraft:custom_name".into(),
-                    Tag::String(name.as_str().into()),
-                );
-            }
-            (stack.damage, stack.extra) = item_data::decode_components(Some(&Tag::Compound(patch)));
-        }
-    }
-    /// Remember a decorated pot's sherds from its saved block entity.
-    pub(super) fn record_saved(&mut self, pos: [i32; 3], tag: &horizon_world::nbt::Tag) {
-        use horizon_world::nbt::Tag;
-        if tag.get("id") != Some(&Tag::String("minecraft:decorated_pot".into())) {
-            return;
-        }
-        let sherds = tag.get("sherds");
-        let side = |name: &str| match sherds.and_then(|s| s.get(name)) {
-            Some(Tag::String(id)) => Some(ItemStack {
-                item: std::sync::Arc::from(id.to_string_lossy().as_str()),
-                count: 1,
-                damage: 0,
-                extra: None,
-            }),
-            Some(t) => horizon_client::save::item_from_nbt(t),
-            None => None,
-        };
-        self.pot.insert(
-            pos,
-            [side("back"), side("left"), side("right"), side("front")],
-        );
-    }
-    /// The block entity's dynamic drops: a decorated pot's sherds, left,
-    /// back, front then right (`DecoratedPotBlock.getDrops`).
-    pub(super) fn dynamic(&self, pos: [i32; 3]) -> Vec<ItemStack> {
-        self.pot
-            .get(&pos)
-            .map_or_else(Vec::new, |[back, left, right, front]| {
-                [left, back, front, right]
-                    .into_iter()
-                    .flatten()
-                    .cloned()
-                    .collect()
-            })
-    }
-    pub(super) fn clear(&mut self, pos: [i32; 3]) {
-        self.pot.remove(&pos);
-        self.shulker.remove(&pos);
-        self.banner.remove(&pos);
-        self.names.remove(&pos);
-        self.copied.remove(&pos);
-    }
-}
 
 /// An item entity to add: where, its motion (None: `new ItemEntity`'s own
 /// random motion) and its pickup delay.
@@ -221,21 +33,6 @@ pub(super) struct Spill {
     /// Block entities the behaviour removed, for the game's own follow-ups
     /// (open screens, playing songs).
     pub(super) removed: Vec<([i32; 3], BlockEntity)>,
-}
-
-/// `Block.popResource`: a spot around the block's centre from the level random.
-pub(super) fn pop_position(
-    random: &mut impl horizon_core::random::RandomSource,
-    pos: [i32; 3],
-) -> [f64; 3] {
-    let mut offset = || -0.25 + random.next_double() * 0.5;
-    // EntityTypes.ITEM is 0.25 high.
-    let half_height = f64::from(0.25f32) / 2.0;
-    [
-        f64::from(pos[0]) + 0.5 + offset(),
-        f64::from(pos[1]) + 0.5 + offset() - half_height,
-        f64::from(pos[2]) + 0.5 + offset(),
-    ]
 }
 
 /// The block entity at `pos` Horizon keeps as it was loaded, if any
@@ -262,101 +59,6 @@ pub(super) fn saved_entity(
 }
 
 impl GameLevel<'_> {
-    /// `Block.popResource(level, pos, stack)` with the broken block's copied components.
-    fn pop_resource(&mut self, pos: [i32; 3], mut stack: ItemStack) {
-        self.pending.attach(pos, &mut stack);
-        let at = pop_position(&mut self.world.random, pos);
-        self.spill.spawns.push(Spawn {
-            stack,
-            pos: at,
-            motion: None,
-            delay: 10,
-        });
-    }
-    /// `Block.popResource(level, pos, new ItemStack(block))`.
-    pub(super) fn pop_block_item(&mut self, pos: BlockPos, state: BlockStateId) {
-        let item = self.facts.get(state).item.clone();
-        if &*item != "minecraft:air" {
-            self.pop_resource([pos.x, pos.y, pos.z], ItemStack::new(&item, 1));
-        }
-    }
-    /// An item `atLowerCornerWithOffset(pos, 0.5, 1.01, 0.5).offsetRandomXZ(random,
-    /// 0.7)` with the default pickup delay (`ComposterBlock.extractProduce`).
-    pub(super) fn pop_above(&mut self, pos: BlockPos, item: std::sync::Arc<str>) {
-        let at = removal::jukebox_pop_position(&mut self.world.random, pos);
-        self.spill.spawns.push(Spawn {
-            stack: ItemStack::new(&item, 1),
-            pos: at,
-            motion: None,
-            delay: 10,
-        });
-    }
-    /// `Block.dropFromBlockInteractLootTable` with `Block.popResource` of
-    /// every stack.
-    pub(super) fn drop_interact_loot(&mut self, pos: BlockPos, state: BlockStateId, table: &str) {
-        let drops = self.items.interact_loot(
-            table,
-            self.registry,
-            state,
-            &mut self.world.random,
-            self.rand_sequences,
-            self.seed,
-        );
-        for stack in drops {
-            if &*stack.item != "minecraft:air" && stack.count > 0 {
-                self.pop_resource([pos.x, pos.y, pos.z], stack);
-            }
-        }
-    }
-    /// `Block.dropResources(state, level, pos, blockEntity)`: the block's loot
-    /// (from its random sequence, else the level random), with what its block
-    /// entity copies into it, popped at once.
-    pub(super) fn drop_resources_now(&mut self, pos: BlockPos, state: BlockStateId) {
-        let key = (pos.x, pos.y, pos.z);
-        let at = [pos.x, pos.y, pos.z];
-        if let Some(entity) = self.world.block_entities.get(&key) {
-            let entity = entity.clone();
-            let name = self.world.block_names.get(&key).cloned();
-            let block = self.facts.get(state).name.clone();
-            self.pending.record(at, &entity, &block, name);
-        } else if let Some(tag) = saved_entity(self.world, [pos.x, pos.y, pos.z]) {
-            self.pending.record_saved(at, &tag);
-        }
-        let dynamic = self.pending.dynamic(at);
-        let drops = match self.items.block_loot_sequence(self.registry, state) {
-            Some(sequence) => {
-                let random = self.rand_sequences.get(&sequence, self.seed);
-                self.items
-                    .block_drops_with(self.registry, state, None, &dynamic, random)
-            }
-            None => self.items.block_drops_with(
-                self.registry,
-                state,
-                None,
-                &dynamic,
-                &mut self.world.random,
-            ),
-        };
-        for stack in drops {
-            if &*stack.item != "minecraft:air" && stack.count > 0 {
-                self.pop_resource(at, stack);
-            }
-        }
-        self.pending.clear(at);
-        // BlockBehaviour.spawnAfterBreak with no tool: ores, sculk and spawners
-        // award experience at the block's centre.
-        let name = self.facts.get(state).name.clone();
-        if let Some(xp) = removal::break_experience(&mut self.world.random, &name)
-            && self.rules.block_drops
-        {
-            let centre = [
-                f64::from(pos.x) + 0.5,
-                f64::from(pos.y) + 0.5,
-                f64::from(pos.z) + 0.5,
-            ];
-            self.award_orbs(centre, xp);
-        }
-    }
     /// `ExperienceOrb.award`: orbs of the largest sizes, each drawing the id
     /// `tryMergeToExisting` compares from the level random.
     pub(super) fn award_orbs(&mut self, at: [f64; 3], mut amount: u32) {
@@ -617,52 +319,6 @@ impl crate::game::Sim<'_> {
                 self.container = None;
                 self.screen = Screen::Playing;
             }
-        }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use horizon_client::{block_entity_item, item_data, mobs::raider, save};
-    use horizon_world::nbt::Tag;
-
-    #[test]
-    fn ominous_banner_survives_placement_save_and_drop() {
-        let original = raider::ominous_banner();
-        let Tag::Compound(components) = item_data::encode_components(&original).unwrap() else {
-            panic!("banner components");
-        };
-        for block in ["minecraft:white_banner", "minecraft:white_wall_banner"] {
-            let pos = (1, 64, 2);
-            let fresh = BlockEntity::for_block(block).unwrap();
-            let fresh = save::encode_block_entity(pos, &fresh, block);
-            let placed = block_entity_item::place(&fresh, &components, false);
-            let (_, placed) = save::decode_block_entity(&placed).unwrap();
-            let saved = save::encode_block_entity(pos, &placed, block);
-            let (_, loaded) = save::decode_block_entity(&saved).unwrap();
-            let BlockEntity::Banner(banner) = &loaded else {
-                panic!("placed banner");
-            };
-            assert_eq!(banner.layers.len(), item_data::OMINOUS_LAYERS.len());
-            let mut pending = Pending::default();
-            pending.record([pos.0, pos.1, pos.2], &loaded, block, None);
-            let mut dropped = ItemStack::new("minecraft:white_banner", 1);
-            pending.attach([pos.0, pos.1, pos.2], &mut dropped);
-            assert!(dropped.data().unwrap().ominous_banner);
-            assert!(horizon_client::banner::tooltip_layers(&dropped).is_empty());
-            assert_eq!(
-                horizon_client::item_tooltip::name_line(&dropped, &|_| None),
-                "Ominous Banner"
-            );
-            assert_eq!(
-                horizon_client::item_tooltip::rarity(&dropped, "common"),
-                "uncommon"
-            );
-            assert_eq!(
-                item_data::encode_components(&dropped),
-                Some(Tag::Compound(components.clone()))
-            );
         }
     }
 }

@@ -307,23 +307,6 @@ impl crate::game::Sim<'_> {
             bone_meal: bone_meal(),
         }
     }
-    /// `BlockEntity.setChanged` at `pos`: comparators re-read the container.
-    pub(super) fn container_changed(&mut self, pos: Pos) {
-        if pos.1 == super::minecarts::CART_KEY_Y {
-            return;
-        }
-        self.chiseled_bookshelf_synced(pos);
-        // A double chest's other half changes with it.
-        let halves: Vec<Pos> = std::iter::once(pos)
-            .chain(self.chest_other_half(pos))
-            .collect();
-        for pos in halves {
-            self.world.modified.insert((pos.0 >> 4, pos.2 >> 4));
-            self.with_level(|b, level, ticks| {
-                b.container_changed(level, ticks, BlockPos::new(pos.0, pos.1, pos.2))
-            });
-        }
-    }
 }
 
 // ---- hopper, dispenser and dropper screens ----
