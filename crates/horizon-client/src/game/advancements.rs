@@ -84,8 +84,6 @@ pub(super) struct AdvState {
     pub(super) toasts: VecDeque<Toast>,
     /// Awards skip the toast (`/advancement grant ... everything`).
     pub(super) quiet: bool,
-    /// The inventory last seen by `inventory_changed`.
-    pub(super) last_inventory: u64,
     pub(super) announced: Vec<Text>,
     /// The tree being read on another thread since the world opened
     /// (`prefetch_advancement_tree`), taken by the first `advancement_tree`.
@@ -196,12 +194,6 @@ fn now_text() -> String {
         .duration_since(std::time::UNIX_EPOCH)
         .map_or(0, |d| d.as_secs()) as i64;
     adv::date_text(secs)
-}
-impl crate::game::Sim<'_> {
-    /// `ItemPredicate.test` (the `item_filter` of a filtered item modifier).
-    pub(super) fn loot_item_filter(&self, predicate: &Value, s: &ItemStack) -> bool {
-        adv::item(predicate, &item_view(s), &View(self))
-    }
 }
 pub(super) fn item_view(s: &ItemStack) -> ItemView {
     ItemView {
@@ -637,81 +629,6 @@ impl crate::game::Sim<'_> {
         }
         self.recipe_unlocked(&unlocked);
     }
-    /// `InventoryChangeTrigger`, checked when the inventory changes.
-    pub(super) fn check_inventory_trigger(&mut self) {
-        use std::hash::{Hash, Hasher};
-        let mut h = std::collections::hash_map::DefaultHasher::new();
-        for s in self
-            .inventory
-            .iter()
-            .chain(self.armor.iter())
-            .chain(std::iter::once(&self.offhand))
-        {
-            s.as_ref().map(|s| (&s.item, s.count)).hash(&mut h);
-        }
-        let key = h.finish();
-        if key == self.adv.last_inventory {
-            return;
-        }
-        self.adv.last_inventory = key;
-        let stacks: Vec<ItemView> = self
-            .inventory
-            .iter()
-            .chain(self.armor.iter())
-            .chain(std::iter::once(&self.offhand))
-            .flatten()
-            .map(item_view)
-            .collect();
-        // InventoryChangeTrigger slots: occupied, full and empty counts.
-        let all: Vec<&Option<ItemStack>> = self
-            .inventory
-            .iter()
-            .chain(self.armor.iter())
-            .chain(std::iter::once(&self.offhand))
-            .collect();
-        let occupied = all.iter().filter(|s| s.is_some()).count() as f64;
-        let empty = all.len() as f64 - occupied;
-        let full = all
-            .iter()
-            .filter_map(|s| s.as_ref())
-            .filter(|s| {
-                self.res
-                    .items()
-                    .get(&s.item)
-                    .is_some_and(|i| s.count >= i.max_stack)
-            })
-            .count() as f64;
-        // Only the criteria the items held could pass (`InventoryIndex`).
-        if true || self.no_player_here() {
-            return;
-        }
-        self.load_advancements();
-        let tree = self.adv.tree.clone();
-        let index = self.inventory_index();
-        let list = index.candidates(stacks.iter().map(|s| s.id.as_str()));
-        self.trigger_criteria(&tree, &list, move |c, w| {
-            let slots = &c["slots"];
-            let range = |k: &str, v: f64| {
-                let r = &slots[k];
-                r.is_null()
-                    || r.as_f64().is_some_and(|n| (n - v).abs() < 0.5)
-                    || r.is_object()
-                        && r["min"].as_f64().is_none_or(|m| v >= m)
-                        && r["max"].as_f64().is_none_or(|m| v <= m)
-            };
-            if !(range("occupied", occupied) && range("full", full) && range("empty", empty)) {
-                return false;
-            }
-            let mut wanted: Vec<&Value> = c["items"]
-                .as_array()
-                .map(|a| a.iter().collect())
-                .unwrap_or_default();
-            for s in &stacks {
-                wanted.retain(|p| !adv::item(p, s, w));
-            }
-            wanted.is_empty()
-        });
-    }
     /// A player condition plus one entity (`player`, `entity` keys).
     pub(super) fn trigger_entity(&mut self, name: &str, key: &str, target: &EntityView) {
         let me = self.player_entity();
@@ -1054,48 +971,6 @@ fn decorate_name(d: &adv::Display) -> Text {
         }
     }
     text_of(&component).with_component(component)
-}
-impl crate::game::Sim<'_> {
-    /// `AdvancementCommands.Action.GRANT` on one advancement (or one of
-    /// its criteria): false when nothing changed.
-    pub(super) fn grant_advancement(&mut self, index: usize, criterion: Option<&str>) -> bool {
-        let tree = self.adv.tree.clone();
-        let a = &tree.list[index];
-        if criterion.is_none() && self.adv.progress.done(a) {
-            return false;
-        }
-        let names: Vec<&str> = match criterion {
-            Some(c) => vec![c],
-            None => a.criteria.iter().map(|c| c.name.as_str()).collect(),
-        };
-        let date = now_text();
-        let mut changed = false;
-        for c in names {
-            let was = self.adv.progress.done(a);
-            if self.adv.progress.grant(&a.id, c, &date) {
-                changed = true;
-                if !was && self.adv.progress.done(a) {
-                    self.award(index);
-                }
-            }
-        }
-        changed || criterion.is_none()
-    }
-    /// `AdvancementCommands.Action.REVOKE`.
-    pub(super) fn revoke_advancement(&mut self, index: usize, criterion: Option<&str>) -> bool {
-        let tree = self.adv.tree.clone();
-        let a = &tree.list[index];
-        match criterion {
-            Some(c) => self.adv.progress.revoke(&a.id, c),
-            None => {
-                let mut any = false;
-                for c in &a.criteria {
-                    any |= self.adv.progress.revoke(&a.id, &c.name);
-                }
-                any
-            }
-        }
-    }
 }
 impl crate::game::Sim<'_> {
     /// `ClientAdvancements.update` (ClientboundUpdateAdvancementsPacket):

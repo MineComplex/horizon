@@ -28,10 +28,7 @@ impl crate::game::Sim<'_> {
     /// evaluated in the composter's block-interaction loot context (its
     /// state; the level random), then the layer is added. True when it was.
     fn composter_add(&mut self, pos: [i32; 3], layers: &serde_json::Value) -> bool {
-        let context = ComputeContext {
-            block: Some(pos),
-            target: None,
-        };
+        let context = ComputeContext { block: Some(pos) };
         let layers = self.provider_int(layers, &context, 0).unwrap_or(0);
         let before = self.world.block(pos[0], pos[1], pos[2]);
         let at = BlockPos::new(pos[0], pos[1], pos[2]);
@@ -123,10 +120,7 @@ impl crate::game::Sim<'_> {
         let Some(layers) = self.compostable(stack) else {
             return;
         };
-        let context = ComputeContext {
-            block: Some(pos),
-            target: None,
-        };
+        let context = ComputeContext { block: Some(pos) };
         let layers = self.provider_int(&layers, &context, 0).unwrap_or(0);
         let at = BlockPos::new(pos[0], pos[1], pos[2]);
         self.with_level(|b, level, ticks| b.composter_layer(level, ticks, at, layers));

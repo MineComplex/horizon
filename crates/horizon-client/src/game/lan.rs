@@ -2,14 +2,11 @@
 //! server threads and the play-state hub, feeds it the world's entities each
 //! tick and turns what the guests do into gameplay. A world that is not open
 //! costs one `Option` check per tick.
-use super::Game;
 use horizon_client::{Result, lan::hub::Hub};
 
 pub(super) struct LanHost {
     pub hub: Hub,
 }
-
-impl LanHost {}
 
 /// The SynchedEntityData index of the baby flag: AgeableMob.DATA_BABY_ID and
 /// Zombie.DATA_BABY_ID are both the first entry after Mob's (16); Piglin's
@@ -65,7 +62,6 @@ pub const HELP: &[&str] = &[
     "lan status                     the test server's port and players",
 ];
 
-impl Game<'_> {}
 impl crate::game::Sim<'_> {
     /// `horizon-ctl lan ...`: a test's client asks its server
     /// (`--server-control`), which is always open, on its own port.
@@ -79,11 +75,6 @@ impl crate::game::Sim<'_> {
                 Err("lan: this client has no server control endpoint (--server-control)".into())
             }
         }
-    }
-    /// The world's default game mode (`defaultgamemode`).
-    pub(super) fn set_default_game_mode(&mut self, mode: i32) {
-        self.level.game_mode = mode;
-        self.level.creative = mode == 1;
     }
     /// Level events the game queued, for the guests (`process_level_events`).
     pub(super) fn lan_record_events(&mut self, events: &[horizon_world::level::LevelEvent]) {

@@ -2,7 +2,7 @@
 //! tick (`execute`, `executeChain`), `BaseCommandBlock.performCommand`
 //! through the command system with the block's output, and
 //! `CommandBlockEditScreen` with what `handleSetCommandBlock` does with it.
-use super::{Game, Screen, commands::execute::Source};
+use super::{Game, Screen};
 use horizon_client::{
     command_block::{self, CommandBlock, Mode},
     containers::BlockEntity,
@@ -11,7 +11,6 @@ use horizon_client::{
     ui::{self, EditBox},
     world::World,
 };
-use horizon_core::position::BlockPos;
 use horizon_protocol::packets::play::{self, Serverbound as S};
 use horizon_world::{
     chunk::BlockState,
@@ -114,15 +113,6 @@ fn facing_step(state: &BlockState) -> [i32; 3] {
         Some("west") => [-1, 0, 0],
         Some("east") => [1, 0, 0],
         _ => [0, 0, -1],
-    }
-}
-/// `Direction.toYRot`: south 0, west 90, north 180, east (and up/down) 270.
-fn facing_yaw(state: &BlockState) -> f32 {
-    match state.properties.get("facing").map(String::as_str) {
-        Some("south") => 0.0,
-        Some("west") => 90.0,
-        Some("north") => 180.0,
-        _ => 270.0,
     }
 }
 fn conditional(state: &BlockState) -> bool {
@@ -330,159 +320,6 @@ impl crate::game::Sim<'_> {
     fn block_state_at(&self, pos: Pos) -> Option<&'static BlockState> {
         let registry = self.pack.assets.registry;
         state_of(registry, self.world.block(pos.0, pos.1, pos.2))
-    }
-    fn schedule_command_block(&mut self, pos: Pos) {
-        let at = BlockPos::new(pos.0, pos.1, pos.2);
-        self.with_level(|b, level, ticks| b.schedule_tick(level, ticks, at, 1));
-    }
-    fn update_output_signal(&mut self, pos: Pos) {
-        let at = BlockPos::new(pos.0, pos.1, pos.2);
-        self.with_level(|b, level, ticks| b.update_neighbour_for_output_signal(level, ticks, at));
-    }
-    /// `CommandBlock.tick`.
-    pub(super) fn command_block_tick(&mut self, pos: BlockPos) {
-        let key = (pos.x, pos.y, pos.z);
-        let Some(state) = self.block_state_at(key) else {
-            return;
-        };
-        let Some(mode) = Mode::of_block(&state.name) else {
-            return;
-        };
-        let Some(was_met) = self.command_block(key).map(|c| c.condition_met) else {
-            return;
-        };
-        if mode == Mode::Auto {
-            mark_condition_met(&mut self.world, self.pack.assets.registry, key);
-        }
-        match command_block::tick_action(mode, was_met, conditional(state)) {
-            Some(true) => self.command_block_execute(key, state),
-            Some(false) => {
-                if let Some(c) = command_block_mut(&mut self.world, key) {
-                    c.success_count = 0;
-                }
-            }
-            None => {}
-        }
-        if let Some(c) = self.command_block(key)
-            && command_block::repeats(mode, c.powered, c.auto)
-        {
-            self.schedule_command_block(key);
-        }
-        self.update_output_signal(key);
-    }
-    /// `CommandBlock.execute`: the command (or no successes without one),
-    /// then the chain in front.
-    fn command_block_execute(&mut self, pos: Pos, state: &BlockState) {
-        let has_command = self
-            .command_block(pos)
-            .is_some_and(|c| !c.command.is_empty());
-        if has_command {
-            self.perform_command_block(pos);
-        } else if let Some(c) = command_block_mut(&mut self.world, pos) {
-            c.success_count = 0;
-        }
-        self.execute_chain(pos, facing_step(state));
-    }
-    /// `CommandBlock.executeChain`: the chain command blocks in front, each
-    /// facing on to the next, up to `max_command_sequence_length`.
-    fn execute_chain(&mut self, start: Pos, mut step: [i32; 3]) {
-        let registry = self.pack.assets.registry;
-        let limit = self.world_data.rules.int("max_command_sequence_length");
-        let mut remaining = limit;
-        let mut pos = start;
-        while remaining > 0 {
-            remaining -= 1;
-            pos = offset(pos, step);
-            let Some(state) = self.block_state_at(pos) else {
-                break;
-            };
-            if Mode::of_block(&state.name) != Some(Mode::Sequence) {
-                break;
-            }
-            let Some(c) = self.command_block(pos) else {
-                break;
-            };
-            if c.powered || c.auto {
-                if mark_condition_met(&mut self.world, registry, pos) {
-                    if !self.perform_command_block(pos) {
-                        break;
-                    }
-                    self.update_output_signal(pos);
-                } else if conditional(state)
-                    && let Some(c) = command_block_mut(&mut self.world, pos)
-                {
-                    c.success_count = 0;
-                }
-            }
-            step = facing_step(state);
-        }
-        if remaining <= 0 {
-            log::warn!(
-                "Command Block chain tried to execute more than {} steps!",
-                limit.max(0)
-            );
-        }
-    }
-    /// `BaseCommandBlock.performCommand`: runs the command as the block, at
-    /// game master level, counting the successful results. False when it
-    /// already ran this game tick.
-    fn perform_command_block(&mut self, pos: Pos) -> bool {
-        let game_time = self.world.game_time;
-        let Some(c) = command_block_mut(&mut self.world, pos) else {
-            return false;
-        };
-        if c.last_execution == game_time {
-            return false;
-        }
-        if c.command.eq_ignore_ascii_case("Searge") {
-            c.last_output = Some(Text::literal("#itzlipofutzli"));
-            c.success_count = 1;
-            return true;
-        }
-        c.success_count = 0;
-        let command = c.command.clone();
-        if self.world_data.rules.bool("command_blocks_work") && !command.is_empty() {
-            if let Some(c) = command_block_mut(&mut self.world, pos) {
-                c.last_output = None;
-            }
-            let Some(state) = self.block_state_at(pos) else {
-                return false;
-            };
-            let source = Source {
-                entity: None,
-                pos: [
-                    f64::from(pos.0) + 0.5,
-                    f64::from(pos.1) + 0.5,
-                    f64::from(pos.2) + 0.5,
-                ],
-                rot: [facing_yaw(state), 0.0],
-                eyes: false,
-                silent: false,
-                store: None,
-                dimension: self.dim,
-                level: None,
-                block: Some(pos),
-            };
-            // performPrefixedCommand: a leading slash is allowed.
-            let line = command.strip_prefix('/').unwrap_or(&command).to_owned();
-            let outer = self.cmds.results.replace(Vec::new());
-            let level = std::mem::replace(&mut self.world_data.registries.permission, 2);
-            self.with_source(source, |g| g.run_command(&line));
-            self.world_data.registries.permission = level;
-            let results = std::mem::replace(&mut self.cmds.results, outer).unwrap_or_default();
-            let successes = results.iter().filter(|(success, _)| *success).count();
-            if let Some(c) = command_block_mut(&mut self.world, pos) {
-                c.success_count = successes as i32;
-            }
-        }
-        if let Some(c) = command_block_mut(&mut self.world, pos) {
-            c.last_execution = if c.update_last_execution {
-                game_time
-            } else {
-                -1
-            };
-        }
-        true
     }
     /// `CloseableCommandBlockSource.sendSystemMessage`: the block's last
     /// output, stamped with the time. Nothing when it doesn't track output

@@ -27,19 +27,6 @@ impl crate::game::Sim<'_> {
             .as_ref()
             .map(|p| [p.position.x, p.position.y, p.position.z])
     }
-    /// `LivingEntity.stopRiding`.
-    pub(super) fn stop_riding(&mut self) {
-        let Some(id) = self.riding else {
-            return;
-        };
-        if let Some(i) = self.boats.iter().position(|b| b.id == id) {
-            self.dismount(i);
-        } else if let Some(i) = self.carts.iter().position(|c| c.id == id) {
-            self.dismount_cart(i);
-        } else {
-            self.dismount_mount();
-        }
-    }
 }
 
 /// `Consumable.emitParticlesAndSounds` against the local player.

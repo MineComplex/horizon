@@ -32,7 +32,6 @@ pub(super) struct MountState {
     pub(super) jump_scale: f32,
     was_jumping: bool,
 }
-impl MountState {}
 impl Game<'_> {
     /// `PlayerRideableJumping`: horses, camels and nautili (the dash).
     fn jumps(species: Species) -> bool {

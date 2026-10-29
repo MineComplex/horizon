@@ -38,8 +38,6 @@ pub struct UiState {
     pub in_bed_chat: bool,
     /// F1: hide the HUD.
     pub hide_gui: bool,
-    /// Death message key set by the cause of death (e.g. /kill).
-    pub death_cause: Option<String>,
     /// Path of an F2 screenshot waiting for its frame.
     pub screenshot_message: Option<std::path::PathBuf>,
     /// The options screens.
@@ -884,23 +882,6 @@ impl crate::game::Sim<'_> {
             fire_spread_radius_around_player: r.int("fire_spread_radius_around_player"),
             spread_vines: r.bool("spread_vines"),
         }
-    }
-    /// Apply rules mirrored in other state (natural regeneration, difficulty).
-    pub(super) fn sync_rules(&mut self) {
-        self.world.health_rules.natural_regeneration =
-            self.world_data.rules.bool("natural_health_regeneration");
-        // Player.isInvulnerableTo: the damage-type rules.
-        self.world.health_rules.drowning_damage = self.world_data.rules.bool("drowning_damage");
-        self.world.health_rules.fall_damage = self.world_data.rules.bool("fall_damage");
-        self.world.health_rules.fire_damage = self.world_data.rules.bool("fire_damage");
-        self.world.health_rules.freeze_damage = self.world_data.rules.bool("freeze_damage");
-        use horizon_world::food::Difficulty;
-        self.world.health_rules.difficulty = match self.world_data.difficulty {
-            0 => Difficulty::Peaceful,
-            1 => Difficulty::Easy,
-            3 => Difficulty::Hard,
-            _ => Difficulty::Normal,
-        };
     }
     /// F1 hides the HUD (see `hud`); the screenshot key still works.
     pub(super) fn toggle_hide_gui(&mut self) {

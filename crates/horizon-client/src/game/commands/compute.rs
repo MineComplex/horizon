@@ -1,8 +1,7 @@
 //! `/compute` (ComputeCommand): context number providers
 //! (`context_int_provider`, `context_float_provider`) evaluated in a loot
 //! context of the source, optionally with a block or a target entity.
-use super::{Arg, Context, Game, R, Target, err};
-use horizon_client::{command::CommandError, text::Text};
+use super::Game;
 use horizon_core::random::RandomSource;
 use serde_json::Value;
 
@@ -11,8 +10,6 @@ use serde_json::Value;
 pub(in crate::game) struct ComputeContext {
     /// `BLOCK_STATE` (`compute block <pos>`).
     pub block: Option<[i32; 3]>,
-    /// `TARGET_ENTITY` (`compute entity <target>`).
-    pub target: Option<Target>,
 }
 
 /// An ArithmeticException's message.
@@ -26,32 +23,6 @@ impl Game<'_> {
     // ---- evaluation ---------------------------------------------------------------
 }
 impl crate::game::Sim<'_> {
-    /// A provider argument: its registry id (None when inline) and value.
-    pub(in crate::game) fn provider_arg(
-        &self,
-        ctx: &Context,
-        registry: &str,
-    ) -> R<(Option<String>, Value)> {
-        let raw = match ctx.get("provider") {
-            Some(Arg::Resource(s) | Arg::Str(s)) => s.clone(),
-            _ => return Err(err("command.failed", &[])),
-        };
-        let first = raw.trim_start().chars().next().unwrap_or(' ');
-        if first == '{' || first == '[' || first == '-' || first.is_ascii_digit() || first == '"' {
-            let (tag, _) = horizon_world::nbt::parse_snbt(&raw)
-                .map_err(|e| err("argument.nbt.invalid", &[&e]))?;
-            return Ok((None, horizon_client::scoreboard::tag_to_json(&tag)));
-        }
-        let id = if raw.contains(':') {
-            raw
-        } else {
-            format!("minecraft:{raw}")
-        };
-        let value = self
-            .provider_file(registry, &id)
-            .ok_or_else(|| err("argument.resource_or_id.no_such_element", &[&id, &registry]))?;
-        Ok((Some(id), value))
-    }
     /// A registered provider's definition.
     fn provider_file(&self, registry: &str, id: &str) -> Option<Value> {
         let (ns, path) = id.split_once(':').unwrap_or(("minecraft", id));
@@ -61,90 +32,6 @@ impl crate::game::Sim<'_> {
             .resources
             .join(format!("data/{ns}/{dir}/{path}.json"));
         serde_json::from_slice(&std::fs::read(file).ok()?).ok()
-    }
-    /// The compute context the command's source literal selects.
-    pub(in crate::game) fn compute_context(&mut self, ctx: &Context) -> R<ComputeContext> {
-        let mut c = ComputeContext::default();
-        if ctx.literals.iter().any(|l| l == "block") && ctx.get("computePos").is_some() {
-            c.block = Some(self.block_pos_arg(ctx, "computePos")?);
-        }
-        if ctx.get("computeTarget").is_some() {
-            let t = self.entities(ctx, "computeTarget", false)?;
-            if t.len() > 1 {
-                return Err(err("argument.entity.toomany", &[]));
-            }
-            c.target = t.first().copied();
-        }
-        Ok(c)
-    }
-    /// `ComputeCommand.computeAsInt` / `computeAsFloat`.
-    pub(super) fn cmd_compute(&mut self, ctx: &Context) -> R<i32> {
-        let integer = ctx.literals.iter().any(|l| l == "integer");
-        let registry = if integer {
-            "minecraft:context_int_provider"
-        } else {
-            "minecraft:context_float_provider"
-        };
-        let (id, provider) = self.provider_arg(ctx, registry)?;
-        let c = self.compute_context(ctx)?;
-        let invalid = |value: String| -> CommandError {
-            match &id {
-                Some(id) => CommandError::new(Text::translate(
-                    "command.compute.result.named.invalid",
-                    &[Text::literal(id.clone()), Text::literal(value)],
-                )),
-                None => CommandError::new(Text::translate(
-                    "command.compute.result.unnamed.invalid",
-                    &[Text::literal(value)],
-                )),
-            }
-        };
-        let exact = |result: i32| match &id {
-            Some(id) => Text::translate(
-                "command.compute.result.named.exact",
-                &[Text::literal(id.clone()), Text::literal(result.to_string())],
-            ),
-            None => Text::translate(
-                "command.compute.result.unnamed.exact",
-                &[Text::literal(result.to_string())],
-            ),
-        };
-        if integer {
-            let result = self.provider_int(&provider, &c, 0).map_err(invalid)?;
-            self.feedback(exact(result));
-            return Ok(result);
-        }
-        let scale = match ctx.get("scale") {
-            Some(Arg::Float(s)) => *s,
-            _ => 1.0,
-        };
-        let original = self.provider_float(&provider, &c, 0).map_err(invalid)?;
-        if !original.is_finite() {
-            return Err(invalid(java_float(original)));
-        }
-        // Mth.floor(original * scale)
-        let result = (original * scale).floor() as i32;
-        if result as f32 == original {
-            self.feedback(exact(result));
-        } else {
-            let original_text = Text::literal(java_float(original));
-            let message = match &id {
-                Some(id) => Text::translate(
-                    "command.compute.result.named.rounded",
-                    &[
-                        Text::literal(id.clone()),
-                        original_text,
-                        Text::literal(result.to_string()),
-                    ],
-                ),
-                None => Text::translate(
-                    "command.compute.result.unnamed.rounded",
-                    &[original_text, Text::literal(result.to_string())],
-                ),
-            };
-            self.feedback(message);
-        }
-        Ok(result)
     }
     /// `ContextIntProvider.getIntUnsafe`.
     pub(in crate::game) fn provider_int(

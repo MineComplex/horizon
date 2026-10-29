@@ -71,10 +71,8 @@ mod jukebox;
 mod lan;
 mod lan_actions;
 mod lan_attributes;
-mod lan_crafting;
 mod lan_mobs;
 mod lan_particles;
-mod lan_pvp;
 mod leads;
 mod level_particles;
 mod levels;
@@ -1475,7 +1473,6 @@ struct Sim<'a> {
     mobs: Vec<Mob>,
     creatures: creatures::Creatures,
     sculk: sculk::SculkState,
-    raiding: raids::Raiding,
     attack_ticks: u32,
     /// The main hand's item at the last player tick, whose attack damage and
     /// speed modifiers apply (`LivingEntity.detectEquipmentUpdates`): a hotbar
@@ -1700,8 +1697,6 @@ struct Sim<'a> {
     lid_openers: HashMap<(i32, i32, i32), i32>,
     /// Command feedback to forward to a guest.
     chat_capture: Option<Vec<horizon_client::text::Text>>,
-    /// Packets for the guest acting now, sent once its action returns.
-    guest_packets: Vec<horizon_protocol::packets::play::Clientbound>,
     /// `broadcastToAdmins` lines a guest's command queued, sent once it
     /// returns: the line, whether operators get it and whether the console
     /// logs it.
@@ -1719,9 +1714,6 @@ struct Sim<'a> {
     mount: mounts::MountState,
     stats: stats::Stats,
     score: scoreboard::ScoreState,
-    fns: functions::FnState,
-    bosses: bossbars::BossState,
-    exec: commands::execute::ExecState,
     rand_sequences: horizon_client::random_sequences::RandomSequences,
     /// `BrushableBlockEntity`'s brush counts of the blocks being brushed.
     brushing: brush::Brushing,
@@ -6426,11 +6418,6 @@ impl crate::game::Sim<'_> {
                 } => self.check_golem_spawn([pos.x, pos.y, pos.z])?,
                 LevelEvent::BlockEvent {
                     pos,
-                    kind: "command_block",
-                    ..
-                } => self.command_block_tick(pos),
-                LevelEvent::BlockEvent {
-                    pos,
                     kind: "brushable",
                     ..
                 } => self.brushable_tick([pos.x, pos.y, pos.z]),
@@ -10164,7 +10151,6 @@ impl<'a> Game<'a> {
                 mobs: Vec::new(),
                 creatures: Default::default(),
                 sculk: Default::default(),
-                raiding: Default::default(),
                 attack_ticks: 100,
                 attack_item: None,
                 last_hurt_by_player: HashMap::new(),
@@ -10302,7 +10288,6 @@ impl<'a> Game<'a> {
                 lan_critical_hits: Vec::new(),
                 kinetic_feedback: HashMap::new(),
                 lid_openers: HashMap::new(),
-                guest_packets: Vec::new(),
                 chat_capture: None,
                 admin_feedback: Vec::new(),
                 console_broadcast: None,
@@ -10313,9 +10298,6 @@ impl<'a> Game<'a> {
                 mount: Default::default(),
                 stats: Default::default(),
                 score: Default::default(),
-                fns: Default::default(),
-                bosses: Default::default(),
-                exec: Default::default(),
                 rand_sequences: Default::default(),
                 brushing: Default::default(),
                 border: Default::default(),

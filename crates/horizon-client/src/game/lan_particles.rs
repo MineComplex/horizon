@@ -19,17 +19,6 @@ fn rgb(c: [f32; 4]) -> [f32; 3] {
 }
 
 impl crate::game::Sim<'_> {
-    /// `ParticleTypes.STREAM_CODEC`'s value for `options`: the type's
-    /// network id and the data it carries (`state` for the block particles).
-    /// None while not serving, or for a particle whose data isn't sent from
-    /// here (items, vibrations, trails).
-    pub(super) fn network_particle(
-        &self,
-        _options: &ParticleOptions,
-        _state: Option<BlockStateId>,
-    ) -> Option<Particle> {
-        None
-    }
     /// The options a server's particle stands for (None for a type or data
     /// this client doesn't draw).
     pub(super) fn received_particle(

@@ -5,14 +5,8 @@
 use super::{Game, Screen, item_draw::owner_at};
 use horizon_assets::item_model::DisplayContext;
 use horizon_client::{
-    block_entity_render::vertex_light,
-    brewing,
-    effects::{EffectInstance, PlayerEffects},
-    hud::HudBatch,
-    hud_layout, hud_overlays, inventory_effects,
-    items::ItemStack,
-    mesher::Vertex,
-    text::Text,
+    block_entity_render::vertex_light, brewing, effects::PlayerEffects, hud::HudBatch, hud_layout,
+    hud_overlays, inventory_effects, items::ItemStack, mesher::Vertex, text::Text,
 };
 use horizon_core::{
     geometry::Vec3,
@@ -286,21 +280,6 @@ impl crate::game::Sim<'_> {
             e.tick_client();
         }
         self.apply_effect_status();
-    }
-    /// Add an active effect to the player and update attributes / absorption.
-    pub(super) fn add_player_effect(&mut self, effect: EffectInstance) -> bool {
-        let id = effect.id;
-        let amp = effect.amplifier;
-        let changed = self.potions.effects.add(effect);
-        self.apply_effect_status();
-        if id == "absorption"
-            && let Some(p) = self.player.as_mut()
-        {
-            let target = 4.0 * (amp + 1) as f32;
-            let current = p.health.absorption();
-            let _ = p.set_health(current.max(target), true);
-        }
-        changed
     }
     /// The effects' attribute modifiers, armor protection and status flags
     /// on `self.player`.

@@ -68,7 +68,6 @@ pub(super) struct SculkState {
     pub actor: Option<Who>,
 }
 
-impl SculkState {}
 /// An insertion-ordered set of block positions (`Level.blockEntityTickers`
 /// keeps the order block entities were added in).
 #[derive(Default)]
@@ -216,27 +215,6 @@ impl crate::game::Sim<'_> {
             "darkness": self.sculk.darkness.1,
             "chunks_known": self.sculk.known.len(),
         })
-    }
-    /// `WardenSpawnTrackerCommand`: clear the player's tracker or set its
-    /// warning level.
-    pub(super) fn cmd_warden_spawn_tracker(&mut self, level: Option<i32>) {
-        use horizon_client::text::Text;
-        let key = match level {
-            Some(level) => {
-                self.sculk.tracker.set_warning_level(level);
-                "commands.warden_spawn_tracker.set.success.single"
-            }
-            None => {
-                self.sculk.tracker.reset();
-                "commands.warden_spawn_tracker.clear.success.single"
-            }
-        };
-        if self.world_data.rules.bool("send_command_feedback") {
-            self.system_message(Text::translate(
-                key,
-                &[Text::literal(super::chat::PLAYER_NAME)],
-            ));
-        }
     }
     /// Who is causing the block changes being processed.
     pub(super) fn sculk_actor(&self) -> Option<Who> {

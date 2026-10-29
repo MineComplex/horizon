@@ -3,9 +3,9 @@
 //! lives on the server and hands its band to the level's streaming, whose
 //! workers do the work; chunks behind the band unload and are saved as any
 //! chunk the players leave.
-use super::{CommandError, Context, Dim, R};
+use super::Dim;
 use horizon_client::{
-    pregen::{Pregen, Shape},
+    pregen::Pregen,
     text::{self, Text},
 };
 use std::time::{Duration, Instant};
@@ -62,10 +62,6 @@ impl PregenTask {
     }
 }
 
-fn failure(message: &str) -> CommandError {
-    CommandError::new(Text::literal(message))
-}
-
 /// `1h 02m 03s`.
 fn duration(seconds: f64) -> String {
     let s = seconds.round() as u64;
@@ -77,98 +73,6 @@ fn duration(seconds: f64) -> String {
 }
 
 impl crate::game::Sim<'_> {
-    pub(super) fn cmd_pregen(&mut self, id: &str, ctx: &Context) -> R<i32> {
-        match id {
-            "pregen.start" => {
-                if self.cmds.pregen.is_some() {
-                    return Err(failure(
-                        "Pregeneration is already running: /pregen cancel stops it",
-                    ));
-                }
-                let radius = crate::game::Game::int(ctx, "radius").unwrap_or(0);
-                let shape = if ctx.literals.iter().any(|l| l == "circle") {
-                    Shape::Circle
-                } else {
-                    Shape::Square
-                };
-                let [x, z] = if ctx.get("center").is_some() {
-                    self.column_arg(ctx, "center")?
-                } else {
-                    let p = self.source_position();
-                    [p[0].floor() as i32, p[2].floor() as i32]
-                };
-                let pregen = Pregen::new((x >> 4, z >> 4), radius >> 4, shape);
-                let now = Instant::now();
-                let total = pregen.total;
-                self.feedback(Text::literal(format!(
-                    "Pregenerating {total} chunks of {}: a {} of radius {radius} around {x} {z}",
-                    self.dim.id(),
-                    match shape {
-                        Shape::Square => "square",
-                        Shape::Circle => "circle",
-                    },
-                )));
-                self.cmds.pregen = Some(PregenTask {
-                    pregen,
-                    dim: self.dim,
-                    paused: false,
-                    ran: Duration::ZERO,
-                    resumed: now,
-                    reported: now,
-                    moved: now,
-                    owner: None::<u32>,
-                });
-                Ok(total as i32)
-            }
-            "pregen.pause" | "pregen.continue" => {
-                let pause = id == "pregen.pause";
-                let task = self
-                    .cmds
-                    .pregen
-                    .as_mut()
-                    .ok_or_else(|| failure("No pregeneration is running"))?;
-                if task.paused != pause {
-                    task.paused = pause;
-                    if pause {
-                        task.ran += task.resumed.elapsed();
-                    } else {
-                        task.resumed = Instant::now();
-                    }
-                }
-                let (progress, dim) = (task.progress(), task.dim);
-                if pause && self.dim == dim {
-                    self.streaming.set_band(None);
-                }
-                self.feedback(
-                    Text::literal(if pause { "Paused. " } else { "Continuing. " }).append(progress),
-                );
-                Ok(1)
-            }
-            "pregen.cancel" => {
-                let task = self
-                    .cmds
-                    .pregen
-                    .take()
-                    .ok_or_else(|| failure("No pregeneration is running"))?;
-                if self.dim == task.dim {
-                    self.streaming.set_band(None);
-                }
-                self.feedback(Text::literal("Cancelled. ").append(task.progress()));
-                Ok(task.pregen.done as i32)
-            }
-            _ => {
-                let task = self
-                    .cmds
-                    .pregen
-                    .as_ref()
-                    .ok_or_else(|| failure("No pregeneration is running"))?;
-                let progress = task.progress();
-                let done = task.pregen.done as i32;
-                self.feedback(progress);
-                Ok(done)
-            }
-        }
-    }
     /// Move the task's band past the rows that are lit and hand it to the
     /// level's streaming, and report the progress now and then. Runs before
     /// each streaming update of the level in place.

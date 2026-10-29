@@ -6,98 +6,12 @@
 //! swapped in (`for_player`), as their own turn, what it tells them going to
 //! their chat.
 use super::Target;
-use horizon_client::{command::args::Selector, lan::guest::Guest, text::Text};
-
-impl Target {
-    /// A player, in place or not (`instanceof ServerPlayer`).
-    pub(in crate::game) fn is_player(self) -> bool {
-        matches!(self, Target::Player | Target::Guest(_))
-    }
-}
-
-/// GameType.getName for a guest's game mode id.
-fn mode_name(id: i32) -> &'static str {
-    match id {
-        1 => "creative",
-        2 => "adventure",
-        3 => "spectator",
-        _ => "survival",
-    }
-}
+use horizon_client::{lan::guest::Guest, text::Text};
 
 impl crate::game::Sim<'_> {
     /// The guest `conn`, while the hub is in `self.lan`.
     pub(in crate::game) fn command_guest(&self, _conn: u32) -> Option<&Guest> {
         None
-    }
-    /// `PlayerList.getPlayers` but the player in place: the guests who
-    /// joined the world.
-    fn command_players(&self) -> impl Iterator<Item = &Guest> {
-        std::iter::empty()
-    }
-    /// The entity the command runs as (`CommandSourceStack.getEntity`): a
-    /// command typed by the player in place runs as them, the server
-    /// console's as nobody.
-    pub(in crate::game) fn source_entity(&self) -> Option<Target> {
-        match self.command_source {
-            Some(s) => s.entity,
-            None => self.player.is_some().then_some(Target::Player),
-        }
-    }
-    /// `CommandSourceStack.getPlayerOrException` for the commands whose
-    /// player argument is optional: the source's player (the player in
-    /// place when it has none, as before).
-    pub(in crate::game) fn implied_player(&self) -> Target {
-        self.source_entity()
-            .filter(|t| t.is_player())
-            .unwrap_or(Target::Player)
-    }
-    /// `PlayerList.getPlayerByName`: names are not case sensitive.
-    pub(super) fn player_named(&self, name: &str) -> Option<Target> {
-        if self.player.is_some() && name.eq_ignore_ascii_case(self.acting_player_name()) {
-            return Some(Target::Player);
-        }
-        self.command_players()
-            .find(|g| g.name.eq_ignore_ascii_case(name))
-            .map(|g| Target::Guest(g.conn))
-    }
-    /// `EntitySelector.findEntities` with a UUID: the player with it, else
-    /// the entity.
-    pub(super) fn target_by_uuid(&self, uuid: u128) -> Option<Target> {
-        let own = None::<u128>.or_else(|| {
-            self.level.player_uuid.map(|[a, b, c, d]| {
-                (u128::from(a as u32) << 96)
-                    | (u128::from(b as u32) << 64)
-                    | (u128::from(c as u32) << 32)
-                    | u128::from(d as u32)
-            })
-        });
-        if self.player.is_some() && own == Some(uuid) {
-            return Some(Target::Player);
-        }
-        if let Some(g) = self.command_players().find(|g| g.uuid == uuid) {
-            return Some(Target::Guest(g.conn));
-        }
-        let words = [96, 64, 32, 0].map(|shift| (uuid >> shift) as u32 as i32);
-        self.target_with_uuid(words)
-    }
-    /// The guests a selector looks at, in join order (`PlayerList.getPlayers`),
-    /// the one in place as `Target::Player`: all of them, or those in the
-    /// source's level when it limits the search to a place
-    /// (`isWorldLimited`); `@e` and `@n` skip the dead (`Entity::isAlive`).
-    pub(super) fn player_candidates(&self, s: &Selector) -> Vec<Target> {
-        let limited = s.distance.is_some()
-            || s.pos.iter().any(Option::is_some)
-            || s.delta.iter().any(Option::is_some);
-        let alive = matches!(s.kind, 'e' | 'n');
-        let here = self.dim.id();
-        let _ = (limited, alive, here);
-        Vec::new()
-    }
-    /// A guest's experience level and game mode, for `level=` and `gamemode=`.
-    pub(super) fn guest_level_and_mode(&self, conn: u32) -> Option<(i32, &'static str)> {
-        self.command_guest(conn)
-            .map(|g| (g.xp_level, mode_name(g.game_mode)))
     }
     /// `Player.getDisplayName`: the name as its team shows it, suggesting a
     /// `/tell`, showing the player on hover, inserting the name.

@@ -31,7 +31,6 @@ struct Holder {
     /// The changed pixels' box (min x, min y, max x, max y).
     dirty: Option<[i32; 4]>,
 }
-impl Holder {}
 pub(super) struct MapData {
     pub center: [i32; 2],
     pub scale: u8,

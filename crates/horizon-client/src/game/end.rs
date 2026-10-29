@@ -104,7 +104,6 @@ struct EyeOfEnder {
     velocity: glam::DVec3,
     life: u32,
 }
-impl EyeOfEnder {}
 
 impl Game<'_> {
     /// SkyRenderer.renderEndFlash, drawn after the renderer's resident sky mesh.

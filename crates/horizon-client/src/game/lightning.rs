@@ -28,28 +28,6 @@ pub(super) struct Bolt {
     pub cause: Option<Option<u32>>,
 }
 impl crate::game::Sim<'_> {
-    pub(super) fn spawn_bolt(&mut self, at: [f64; 3], visual_only: bool) {
-        if !visual_only {
-            let ctx = horizon_client::sculk::Context::default();
-            self.post_game_event("minecraft:lightning_strike", at, ctx);
-        }
-        let r = &mut self.world.random;
-        let seed = r.next_long();
-        let flashes = r.next_int_bound(3).unwrap_or(0) + 1;
-        self.lightning_seen[0] += 1;
-        self.bolts.push(Bolt {
-            id: 0,
-            at,
-            life: 2,
-            flashes,
-            seed,
-            visual_only,
-            converted: Vec::new(),
-            hit: Vec::new(),
-            fires: 0,
-            cause: None,
-        });
-    }
     /// `ClientLevel.addEntity` for a server's lightning bolt: on a client it
     /// only flashes, sounds and draws (`LightningBolt.tick` off the server).
     pub(super) fn spawn_remote_bolt(&mut self, id: u32, at: [f64; 3]) {

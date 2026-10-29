@@ -75,7 +75,6 @@ pub(super) struct Crystal {
 }
 #[derive(Clone, Debug, Default)]
 struct Path {}
-impl Path {}
 #[derive(Clone, Debug, PartialEq)]
 enum Phase {
     Holding {
@@ -1334,21 +1333,6 @@ impl crate::game::Sim<'_> {
 /// Respawning the dragon with end crystals on the exit portal
 /// (`EndCrystalItem.useOn`, `EnderDragonFight.tryRespawn`, `DragonRespawnStage`).
 impl crate::game::Sim<'_> {
-    /// `EndCrystal.kill` (`/kill`): the crystal is removed, without a blast
-    /// (`Entity.kill` does not hurt it).
-    pub(super) fn kill_crystal(&mut self, id: u32) {
-        if let Some(i) = self.crystals.iter().position(|c| c.id == id) {
-            self.destroy_crystal(i, None, CrystalDamage::Explosion);
-        }
-    }
-    /// `EnderDragon.kill` (`/kill`): `Entity.kill` removes the entity, it
-    /// does not hurt it (the dragon flies its death flight when its health
-    /// runs out).
-    pub(super) fn kill_dragon(&mut self, id: u32) {
-        if self.dragon.as_ref().is_some_and(|d| d.id == id) {
-            self.dragon = None;
-        }
-    }
     /// `resetSpikeCrystals`: spike crystals lose their beams and protection.
     fn reset_spike_crystals(&mut self) {
         let spikes = horizon_world::worldgen::end_spike::spikes_for_seed(self.level.seed);
