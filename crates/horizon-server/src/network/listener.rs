@@ -551,12 +551,20 @@ mod tests {
                 .unwrap();
         }
         client.writer.socket.write_all(&flood).await.unwrap();
-        tokio::time::sleep(Duration::from_millis(200)).await;
+        // Wait for what fits in the budget (however slow the machine), then check that nothing
+        // more is queued while those are held: only a broken budget could fail this.
         let mut held = Vec::new();
-        while let Ok(Incoming::Packet(packet)) = connection.incoming.try_recv() {
+        while held.len() < INBOUND_BUDGET / 100_000 {
+            let Some(Incoming::Packet(packet)) = connection.incoming.recv().await else {
+                panic!("expected a packet")
+            };
             held.push(packet);
         }
-        assert_eq!(held.len(), INBOUND_BUDGET / 100_000);
+        tokio::time::sleep(Duration::from_millis(200)).await;
+        assert!(
+            connection.incoming.try_recv().is_err(),
+            "a packet was queued past the budget"
+        );
         drop(held);
         for _ in 0..30 - INBOUND_BUDGET / 100_000 {
             let Some(Incoming::Packet(packet)) = connection.incoming.recv().await else {
