@@ -36,6 +36,11 @@ borrow checker. Every `Arc`, lock and trait object has a concrete reason, writte
     `command.exception`;
   - no packet-rate kick, as in Leaf (it deletes Paper's limiter); our own per-connection inbound byte
     budget only applies backpressure.
+- The world generator is **copied** from `crates/horizon-world`/`horizon-core` into horizon-server and
+  adapted (`docs/worldgen-plan.md`), not shared with or depended on (decided by the user, 2026-10-31).
+  This is the accepted exception to PORTING_RULES §16 (no duplicate implementations): horizon-server
+  stays independent of the other Horizon crates; inside horizon-server there is still one
+  implementation per responsibility.
 - `src/azalea/`: code taken from azalea (MIT) as modules, not dependencies.
 
 ## What gets ported, and what never does
