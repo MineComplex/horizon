@@ -3,9 +3,8 @@
 use crate::prelude::*;
 use crate::com::mojang::brigadier::Command;
 use crate::com::mojang::brigadier::suggestion::SuggestionProvider;
-use crate::java::util::function::Predicate;
 use crate::api_prelude::*;
 
 // ---- interface com.destroystokyo.paper.brigadier.BukkitBrigadierCommand (paper-api/src/main/java/com/destroystokyo/paper/brigadier/BukkitBrigadierCommand.java:14)
-pub trait BukkitBrigadierCommand<S: JGeneric>: Command<S> + Predicate<S> + SuggestionProvider<S> {
+pub trait BukkitBrigadierCommand<S: JGeneric>: Command<S> + SuggestionProvider<S> {
 }

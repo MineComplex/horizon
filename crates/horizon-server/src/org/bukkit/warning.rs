@@ -68,8 +68,8 @@ impl WarningWarningState {
     }
     pub fn print_for(self, warning: Option<&Warning>) -> bool {
         // Boolean.getBoolean: the system property is "true", ignoring case.
-        // PORT: Java system properties (-D flags) need java.lang.System's port.
-        if crate::java::lang::System::get_property("paper.alwaysPrintWarningState").is_some_and(|v| v.eq_ignore_ascii_case("true")) {
+        // PORT: Java system properties (-D flags) need java.lang.()'s port.
+        if System::get_property("paper.alwaysPrintWarningState").is_some_and(|v| v.eq_ignore_ascii_case("true")) {
             return true; // Paper
         }
         if self == WarningWarningState::DEFAULT {

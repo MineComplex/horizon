@@ -4,7 +4,6 @@ use crate::prelude::*;
 use crate::io::papermc::paper::plugin::provider::classloader::class_loader_access::ClassLoaderAccess;
 use crate::io::papermc::paper::plugin::provider::classloader::configured_plugin_class_loader::ConfiguredPluginClassLoader;
 use crate::io::papermc::paper::plugin::provider::classloader::plugin_class_loader_group::PluginClassLoaderGroup;
-use crate::java::lang::Class;
 
 // ---- class io.papermc.paper.plugin.entrypoint.classloader.group.SingletonPluginClassLoaderGroup (paper-server/src/main/java/io/papermc/paper/plugin/entrypoint/classloader/group/SingletonPluginClassLoaderGroup.java:9)
 pub struct SingletonPluginClassLoaderGroup {
@@ -15,7 +14,7 @@ pub struct SingletonPluginClassLoaderGroup {
 impl SingletonPluginClassLoaderGroup {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(configured_plugin_class_loader: JRef<dyn ConfiguredPluginClassLoader>) -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/entrypoint/classloader/group/SingletonPluginClassLoaderGroup.java:15
-    pub fn get_class_by_name(&self, name: &str, resolve: bool, requester: JRef<dyn ConfiguredPluginClassLoader>) -> Option<Class> { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/entrypoint/classloader/group/SingletonPluginClassLoaderGroup.java:20
+    pub fn get_class_by_name(&self, name: &str, resolve: bool, requester: JRef<dyn ConfiguredPluginClassLoader>) -> Option<crate::rt::Class> { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/entrypoint/classloader/group/SingletonPluginClassLoaderGroup.java:20
     pub fn remove(&self, configured_plugin_class_loader: JRef<dyn ConfiguredPluginClassLoader>) { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/entrypoint/classloader/group/SingletonPluginClassLoaderGroup.java:30
     pub fn add(&self, configured_plugin_class_loader: JRef<dyn ConfiguredPluginClassLoader>) { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/entrypoint/classloader/group/SingletonPluginClassLoaderGroup.java:34
     pub fn get_access(&self) -> JRef<dyn ClassLoaderAccess> { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/entrypoint/classloader/group/SingletonPluginClassLoaderGroup.java:38
@@ -24,7 +23,7 @@ impl SingletonPluginClassLoaderGroup {
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl PluginClassLoaderGroup for SingletonPluginClassLoaderGroup {
-    fn get_class_by_name(&self, name: &str, resolve: bool, requester: JRef<dyn ConfiguredPluginClassLoader>) -> Option<Class> { SingletonPluginClassLoaderGroup::get_class_by_name(self, name, resolve, requester) }
+    fn get_class_by_name(&self, name: &str, resolve: bool, requester: JRef<dyn ConfiguredPluginClassLoader>) -> Option<crate::rt::Class> { SingletonPluginClassLoaderGroup::get_class_by_name(self, name, resolve, requester) }
     fn remove(&self, configured_plugin_class_loader: JRef<dyn ConfiguredPluginClassLoader>) { SingletonPluginClassLoaderGroup::remove(self, configured_plugin_class_loader) }
     fn add(&self, configured_plugin_class_loader: JRef<dyn ConfiguredPluginClassLoader>) { SingletonPluginClassLoaderGroup::add(self, configured_plugin_class_loader) }
     fn get_access(&self) -> JRef<dyn ClassLoaderAccess> { SingletonPluginClassLoaderGroup::get_access(self) }

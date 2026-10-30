@@ -3,7 +3,6 @@
 use crate::prelude::*;
 use crate::com::mojang::serialization::Codec;
 use crate::com::mojang::serialization::MapCodec;
-use crate::java::util::concurrent::CompletableFuture;
 use crate::net::minecraft::core::registry::Registry;
 use crate::net::minecraft::data::cached_output::CachedOutput;
 use crate::net::minecraft::data::data_provider::DataProvider;
@@ -24,7 +23,7 @@ pub static REGISTRY_KEY_CODEC: LazyLock<JRef<dyn Codec<JRef<ResourceKey<JRef<dyn
 impl DatapackStructureReport {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(output: JRef<PackOutput>) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/data/info/DatapackStructureReport.java:35
-    pub fn run(&self, cache: JRef<dyn CachedOutput>) -> CompletableFuture<JObjectRef> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/data/info/DatapackStructureReport.java:39
+    pub fn run(&self, cache: JRef<dyn CachedOutput>) -> crate::rt::CompletableFuture<JObjectRef> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/data/info/DatapackStructureReport.java:39
     pub fn get_name(&self) -> String { todo!() } // leaf-server/src/minecraft/java/net/minecraft/data/info/DatapackStructureReport.java:46
     pub fn put_if_not_present(&self, output: &HashMap<JRef<ResourceKey<JRef<dyn Registry<JObjectRef>>>>, DatapackStructureReportEntry>, key: JRef<ResourceKey<JRef<dyn Registry<JObjectRef>>>>, entry: DatapackStructureReportEntry) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/data/info/DatapackStructureReport.java:51
     pub fn list_registries(&self) -> HashMap<JRef<ResourceKey<JRef<dyn Registry<JObjectRef>>>>, DatapackStructureReportEntry> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/data/info/DatapackStructureReport.java:62
@@ -32,7 +31,7 @@ impl DatapackStructureReport {
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl DataProvider for DatapackStructureReport {
-    fn run(&self, cache: JRef<dyn CachedOutput>) -> CompletableFuture<JObjectRef> { DatapackStructureReport::run(self, cache) }
+    fn run(&self, cache: JRef<dyn CachedOutput>) -> crate::rt::CompletableFuture<JObjectRef> { DatapackStructureReport::run(self, cache) }
     fn get_name(&self) -> String { DatapackStructureReport::get_name(self) }
 }
 crate::jobject!(DatapackStructureReport: dyn DataProvider);

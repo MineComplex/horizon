@@ -3,10 +3,6 @@
 use crate::prelude::*;
 use crate::com::mojang::brigadier::command_dispatcher::CommandDispatcher;
 use crate::com::mojang::brigadier::exceptions::SimpleCommandExceptionType;
-use crate::java::lang::Throwable;
-use crate::java::util::function::BiConsumer;
-use crate::java::util::function::BiPredicate;
-use crate::java::util::function::ToIntFunction;
 use crate::net::minecraft::commands::command_source_stack::CommandSourceStack;
 use crate::net::minecraft::network::chat::component::Component;
 use crate::net::minecraft::server::commands::command_response_tracker::CommandResponseTrackerMessagesWithArg;
@@ -22,8 +18,8 @@ impl ExperienceCommand {
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ExperienceCommand.java:20
     pub fn register(dispatcher: JRef<CommandDispatcher<JRef<CommandSourceStack>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ExperienceCommand.java:25
     pub fn query_experience(source: JRef<CommandSourceStack>, target: JRef<ServerPlayer>, type_: ExperienceCommandType) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ExperienceCommand.java:125
-    pub fn add_experience(source: JRef<CommandSourceStack>, players: &Vec<JRef<ServerPlayer>>, amount: i32, type_: ExperienceCommandType) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ExperienceCommand.java:131
-    pub fn set_experience(source: JRef<CommandSourceStack>, players: &Vec<JRef<ServerPlayer>>, amount: i32, type_: ExperienceCommandType) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ExperienceCommand.java:144
+    pub fn add_experience(source: JRef<CommandSourceStack>, players: &Vec<JRef<ServerPlayer>>, amount: i32, type_: ExperienceCommandType) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ExperienceCommand.java:131
+    pub fn set_experience(source: JRef<CommandSourceStack>, players: &Vec<JRef<ServerPlayer>>, amount: i32, type_: ExperienceCommandType) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ExperienceCommand.java:144
 }
 crate::jobject!(ExperienceCommand);
 // ---- enum net.minecraft.server.commands.ExperienceCommand.Type (leaf-server/src/minecraft/java/net/minecraft/server/commands/ExperienceCommand.java:156)
@@ -34,9 +30,9 @@ pub enum ExperienceCommandType {
 }
 /// The fields each ExperienceCommandType constant is built with (Java: the enum constructor).
 pub struct ExperienceCommandTypeData {
-    pub add: JRef<dyn BiConsumer<JRef<ServerPlayer>, i32>>,
-    pub set: JRef<dyn BiPredicate<JRef<ServerPlayer>, i32>>,
-    pub query: JRef<dyn ToIntFunction<JRef<ServerPlayer>>>,
+    pub add: Arc<dyn Fn(JRef<ServerPlayer>, i32) + Send + Sync>,
+    pub set: Arc<dyn Fn(JRef<ServerPlayer>, i32) -> bool + Send + Sync>,
+    pub query: Arc<dyn Fn(JRef<ServerPlayer>) -> i32 + Send + Sync>,
     pub query_translation_key: String,
     pub add_response: CommandResponseTrackerMessagesWithArg<JRef<ServerPlayer>, i32>,
     pub set_response: CommandResponseTrackerMessagesWithArg<JRef<ServerPlayer>, i32>,

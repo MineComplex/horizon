@@ -4,8 +4,6 @@ use crate::prelude::*;
 use crate::com::mojang::brigadier::command_dispatcher::CommandDispatcher;
 use crate::com::mojang::brigadier::exceptions::DynamicCommandExceptionType;
 use crate::com::mojang::brigadier::exceptions::command_syntax_exception::CommandSyntaxExceptionTrait;
-use crate::java::lang::Throwable;
-use crate::java::util::function::Predicate;
 use crate::net::minecraft::commands::command_build_context::CommandBuildContext;
 use crate::net::minecraft::commands::command_source_stack::CommandSourceStack;
 use crate::net::minecraft::server::commands::command_response_tracker::CommandResponseTrackerDispatch;
@@ -26,7 +24,7 @@ impl ClearInventoryCommands {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ClearInventoryCommands.java:19
     pub fn register(dispatcher: JRef<CommandDispatcher<JRef<CommandSourceStack>>>, context: JRef<dyn CommandBuildContext>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ClearInventoryCommands.java:38
-    pub fn clear_unlimited(source: JRef<CommandSourceStack>, players: &Vec<JRef<ServerPlayer>>, predicate: JRef<dyn Predicate<JRef<ItemStack>>>) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ClearInventoryCommands.java:69
-    pub fn clear_inventory(source: JRef<CommandSourceStack>, players: &Vec<JRef<ServerPlayer>>, predicate: JRef<dyn Predicate<JRef<ItemStack>>>, max_count: i32) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ClearInventoryCommands.java:73
+    pub fn clear_unlimited(source: JRef<CommandSourceStack>, players: &Vec<JRef<ServerPlayer>>, predicate: Arc<dyn Fn(JRef<ItemStack>) -> bool + Send + Sync>) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ClearInventoryCommands.java:69
+    pub fn clear_inventory(source: JRef<CommandSourceStack>, players: &Vec<JRef<ServerPlayer>>, predicate: Arc<dyn Fn(JRef<ItemStack>) -> bool + Send + Sync>, max_count: i32) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ClearInventoryCommands.java:73
 }
 crate::jobject!(ClearInventoryCommands);

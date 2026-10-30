@@ -3,7 +3,6 @@
 use crate::prelude::*;
 use crate::com::mojang::serialization::Codec;
 use crate::com::mojang::serialization::MapCodec;
-use crate::io::netty::buffer::ByteBuf;
 use crate::net::minecraft::core::block_pos::BlockPos;
 use crate::net::minecraft::core::global_pos::GlobalPos;
 use crate::net::minecraft::crash_report_category::CrashReportCategory;
@@ -32,7 +31,7 @@ pub struct LevelDataRespawnData {
 pub static RESPAWN_DATA_DEFAULT: LazyLock<LevelDataRespawnData> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/level/storage/LevelData.java:34
 pub static RESPAWN_DATA_MAP_CODEC: LazyLock<MapCodec<LevelDataRespawnData>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/level/storage/LevelData.java:35
 pub static RESPAWN_DATA_CODEC: LazyLock<JRef<dyn Codec<LevelDataRespawnData>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/level/storage/LevelData.java:43
-pub static RESPAWN_DATA_STREAM_CODEC: LazyLock<JRef<dyn StreamCodec<ByteBuf, LevelDataRespawnData>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/level/storage/LevelData.java:44
+pub static RESPAWN_DATA_STREAM_CODEC: LazyLock<JRef<dyn StreamCodec<bytes::BytesMut, LevelDataRespawnData>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/level/storage/LevelData.java:44
 impl LevelDataRespawnData {
     pub fn new() -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/storage/LevelData.java:33
     pub fn new_3(global_pos: GlobalPos, yaw: f32, pitch: f32) -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/storage/LevelData.java:33

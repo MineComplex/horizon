@@ -3,7 +3,6 @@
 use crate::prelude::*;
 use crate::com::mojang::brigadier::command_dispatcher::CommandDispatcher;
 use crate::com::mojang::brigadier::exceptions::SimpleCommandExceptionType;
-use crate::java::lang::Throwable;
 use crate::net::minecraft::commands::command_build_context::CommandBuildContext;
 use crate::net::minecraft::commands::command_source_stack::CommandSourceStack;
 use crate::net::minecraft::core::holder::Holder;
@@ -28,9 +27,9 @@ impl EffectCommands {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/EffectCommands.java:24
     pub fn register(dispatcher: JRef<CommandDispatcher<JRef<CommandSourceStack>>>, context: JRef<dyn CommandBuildContext>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/EffectCommands.java:52
-    pub fn give_effect(source: JRef<CommandSourceStack>, entities: &Vec<JRef<dyn EntityTrait>>, effect_holder: JRef<dyn Holder<JRef<dyn MobEffectTrait>>>, seconds: Option<i32>, amplifier: i32, particles: bool) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/EffectCommands.java:172
+    pub fn give_effect(source: JRef<CommandSourceStack>, entities: &Vec<JRef<dyn EntityTrait>>, effect_holder: JRef<dyn Holder<JRef<dyn MobEffectTrait>>>, seconds: Option<i32>, amplifier: i32, particles: bool) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/EffectCommands.java:172
     pub fn compute_duration_in_ticks(seconds: Option<i32>, effect: JRef<dyn MobEffectTrait>) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/EffectCommands.java:194
-    pub fn clear_effects(source: JRef<CommandSourceStack>, entities: &Vec<JRef<dyn EntityTrait>>) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/EffectCommands.java:206
-    pub fn clear_effect(source: JRef<CommandSourceStack>, entities: &Vec<JRef<dyn EntityTrait>>, effect_holder: JRef<dyn Holder<JRef<dyn MobEffectTrait>>>) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/EffectCommands.java:218
+    pub fn clear_effects(source: JRef<CommandSourceStack>, entities: &Vec<JRef<dyn EntityTrait>>) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/EffectCommands.java:206
+    pub fn clear_effect(source: JRef<CommandSourceStack>, entities: &Vec<JRef<dyn EntityTrait>>, effect_holder: JRef<dyn Holder<JRef<dyn MobEffectTrait>>>) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/EffectCommands.java:218
 }
 crate::jobject!(EffectCommands);

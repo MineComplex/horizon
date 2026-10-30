@@ -3,8 +3,6 @@
 use crate::prelude::*;
 use crate::io::papermc::paper::command::paper_subcommand::PaperSubcommand;
 use crate::io::papermc::paper::world::chunk::chunk_generation_state::ChunkGenerationState;
-use crate::java::util::concurrent::CompletableFuture;
-use crate::java::util::concurrent::Executor;
 use crate::net::minecraft::nbt::compound_tag::CompoundTag;
 use crate::net::minecraft::server::level::server_level::ServerLevel;
 use crate::net::minecraft::server::level::server_player::ServerPlayer;
@@ -52,9 +50,9 @@ impl FeatureHooks {
     pub fn set_send_view_distance_2(player: JRef<ServerPlayer>, distance: i32) { todo!() } // leaf-server/src/minecraft/java/io/papermc/paper/FeatureHooks.java:219
     pub fn tick_entity_manager(level: JRef<ServerLevel>) { todo!() } // leaf-server/src/minecraft/java/io/papermc/paper/FeatureHooks.java:199
     pub fn close_entity_manager(level: JRef<ServerLevel>, save: bool) { todo!() } // leaf-server/src/minecraft/java/io/papermc/paper/FeatureHooks.java:203
-    pub fn get_worldgen_executor() -> JRef<dyn Executor> { todo!() } // leaf-server/src/minecraft/java/io/papermc/paper/FeatureHooks.java:207
+    pub fn get_worldgen_executor() -> crate::rt::Executor { todo!() } // leaf-server/src/minecraft/java/io/papermc/paper/FeatureHooks.java:207
     pub fn get_chunk_generation_state(level: JRef<ServerLevel>, chunk_x: i32, chunk_z: i32) -> ChunkGenerationState { todo!() } // leaf-server/src/minecraft/java/io/papermc/paper/FeatureHooks.java:223
-    pub fn get_chunk_generation_state_async(level: JRef<ServerLevel>, chunk_x: i32, chunk_z: i32) -> CompletableFuture<ChunkGenerationState> { todo!() } // leaf-server/src/minecraft/java/io/papermc/paper/FeatureHooks.java:255
+    pub fn get_chunk_generation_state_async(level: JRef<ServerLevel>, chunk_x: i32, chunk_z: i32) -> crate::rt::CompletableFuture<ChunkGenerationState> { todo!() } // leaf-server/src/minecraft/java/io/papermc/paper/FeatureHooks.java:255
     pub fn get_loaded_chunk_generation_state(level: JRef<ServerLevel>, chunk_x: i32, chunk_z: i32) -> ChunkGenerationState { todo!() } // leaf-server/src/minecraft/java/io/papermc/paper/FeatureHooks.java:288
     pub fn classify_chunk_generation_state(data: JRef<CompoundTag>, chunk_x: i32, chunk_z: i32) -> ChunkGenerationState { todo!() } // leaf-server/src/minecraft/java/io/papermc/paper/FeatureHooks.java:303
     pub fn flush_async_appenders() { todo!() } // leaf-server/src/minecraft/java/io/papermc/paper/FeatureHooks.java:340

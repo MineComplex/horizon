@@ -4,14 +4,6 @@ use crate::prelude::*;
 use crate::ca::spottedleaf::moonrise::patches::chunk_system::io::moonrise_region_file_io::MoonriseRegionFileIORegionDataControllerWriteData;
 use crate::ca::spottedleaf::moonrise::patches::chunk_system::storage::chunk_system_chunk_buffer::ChunkSystemChunkBuffer;
 use crate::ca::spottedleaf::moonrise::patches::chunk_system::storage::chunk_system_region_file::ChunkSystemRegionFile;
-use crate::java::io::ByteArrayInputStream;
-use crate::java::io::DataInputStream;
-use crate::java::io::DataOutputStream;
-use crate::java::io::InputStream;
-use crate::java::lang::Throwable;
-use crate::java::nio::ByteBuffer;
-use crate::java::nio::IntBuffer;
-use crate::java::nio::channels::FileChannel;
 use crate::net::minecraft::nbt::compound_tag::CompoundTag;
 use crate::net::minecraft::world::level::chunk::storage::region_bitmap::RegionBitmap;
 use crate::net::minecraft::world::level::chunk::storage::region_file_version::RegionFileVersion;
@@ -23,12 +15,12 @@ pub struct RegionFile {
     pub this: Weak<Self>,
     pub info: RegionStorageInfo, // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:37
     pub path: std::path::PathBuf, // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:38
-    pub file: FileChannel, // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:39
+    pub file: std::fs::File, // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:39
     pub external_file_dir: std::path::PathBuf, // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:40
     pub version: JRef<RegionFileVersion>, // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:41
-    pub header: ByteBuffer, // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:42
-    pub offsets: IntBuffer, // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:43
-    pub timestamps: IntBuffer, // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:44
+    pub header: bytes::BytesMut, // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:42
+    pub offsets: (), // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:43
+    pub timestamps: (), // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:44
     pub used_sectors: JRef<RegionBitmap>, // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:45
     pub recalculate_count: std::sync::atomic::AtomicI32, // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:126
     pub can_recalc_header: bool, // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:402
@@ -40,7 +32,7 @@ pub const SECTOR_BYTES: i32 = 4096; // leaf-server/src/minecraft/java/net/minecr
 pub const SECTOR_INTS: i32 = 1024; // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:28
 pub const CHUNK_HEADER_SIZE: i32 = 5; // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:30
 pub const HEADER_OFFSET: i32 = 0; // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:31
-pub static PADDING_BUFFER: LazyLock<ByteBuffer> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:32
+pub static PADDING_BUFFER: LazyLock<bytes::BytesMut> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:32
 pub const EXTERNAL_FILE_EXTENSION: &str = ".mcc"; // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:33
 pub const EXTERNAL_STREAM_FLAG: i32 = 128; // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:34
 pub const EXTERNAL_CHUNK_THRESHOLD: i32 = 256; // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:35
@@ -48,26 +40,26 @@ pub const CHUNK_NOT_PRESENT: i32 = 0; // leaf-server/src/minecraft/java/net/mine
 pub static OVERSIZED_COMPOUND: LazyLock<JRef<CompoundTag>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:56
 impl RegionFile {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(info: RegionStorageInfo, path: std::path::PathBuf, external_file_dir: std::path::PathBuf, sync: bool) -> Result<JRef<Self>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:420
-    pub fn new_5(info: RegionStorageInfo, path: std::path::PathBuf, external_file_dir: std::path::PathBuf, version: JRef<RegionFileVersion>, sync: bool) -> Result<JRef<Self>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:424
+    pub fn new(info: RegionStorageInfo, path: std::path::PathBuf, external_file_dir: std::path::PathBuf, sync: bool) -> Result<JRef<Self>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:420
+    pub fn new_5(info: RegionStorageInfo, path: std::path::PathBuf, external_file_dir: std::path::PathBuf, version: JRef<RegionFileVersion>, sync: bool) -> Result<JRef<Self>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:424
     pub fn get_recalculate_count(&self) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:128
-    pub fn recalculate_header(&self) -> Result<bool, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:132
-    pub fn moonrise_start_write(&self, data: JRef<CompoundTag>, pos: ChunkPos) -> Result<MoonriseRegionFileIORegionDataControllerWriteData, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:406
+    pub fn recalculate_header(&self) -> Result<bool, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:132
+    pub fn moonrise_start_write(&self, data: JRef<CompoundTag>, pos: ChunkPos) -> Result<MoonriseRegionFileIORegionDataControllerWriteData, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:406
     pub fn get_path(&self) -> std::path::PathBuf { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:531
-    pub fn get_chunk_data_input_stream(&self, pos: ChunkPos) -> Result<Option<DataInputStream>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:564
+    pub fn get_chunk_data_input_stream(&self, pos: ChunkPos) -> Result<Option<Box<dyn std::io::Read + Send>>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:564
     pub fn does_chunk_exist(&self, pos: ChunkPos) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:721
-    pub fn get_chunk_data_output_stream(&self, pos: ChunkPos) -> Result<DataOutputStream, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:770
-    pub fn flush(&self) -> Result<(), Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:774
-    pub fn clear(&self, pos: ChunkPos) -> Result<(), Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:778
-    pub fn write(&self, pos: ChunkPos, data: ByteBuffer) -> Result<(), Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:790
+    pub fn get_chunk_data_output_stream(&self, pos: ChunkPos) -> Result<Box<dyn std::io::Write + Send>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:770
+    pub fn flush(&self) -> Result<(), anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:774
+    pub fn clear(&self, pos: ChunkPos) -> Result<(), anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:778
+    pub fn write(&self, pos: ChunkPos, data: bytes::BytesMut) -> Result<(), anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:790
     pub fn has_chunk(&self, pos: ChunkPos) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:860
-    pub fn close(&self) -> Result<(), Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:868
+    pub fn close(&self) -> Result<(), anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:868
     pub fn is_oversized(&self, x: i32, z: i32) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:973
-    pub fn set_oversized(&self, x: i32, z: i32, oversized: bool) -> Result<(), Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:977
-    pub fn get_oversized_data(&self, x: i32, z: i32) -> Result<JRef<CompoundTag>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:1016
+    pub fn set_oversized(&self, x: i32, z: i32, oversized: bool) -> Result<(), anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:977
+    pub fn get_oversized_data(&self, x: i32, z: i32) -> Result<JRef<CompoundTag>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:1016
     pub fn round_to_sectors(bytes: i64) -> i64 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:49
-    pub fn attempt_read(&self, sector: i64, chunk_data_length: i32, file_length: i64) -> Result<JRef<CompoundTag>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:58
-    pub fn get_length(&self, sector: i64) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:96
+    pub fn attempt_read(&self, sector: i64, chunk_data_length: i32, file_length: i64) -> Result<JRef<CompoundTag>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:58
+    pub fn get_length(&self, sector: i64) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:96
     pub fn backup_region_file(&self) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:105
     pub fn backup_region_file_1(&self, to: std::path::PathBuf) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:110
     pub fn in_same_regionfile(first: ChunkPos, second: ChunkPos) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:121
@@ -76,46 +68,46 @@ impl RegionFile {
     pub fn get_timestamp() -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:650
     pub fn is_external_stream_chunk(version: i8) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:654
     pub fn get_external_chunk_version(version: i8) -> i8 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:658
-    pub fn create_chunk_input_stream(&self, pos: ChunkPos, version_id: i8, chunk_stream: InputStream) -> Result<Option<DataInputStream>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:662
-    pub fn create_external_chunk_input_stream(&self, pos: ChunkPos, version_id: i8) -> Result<Option<DataInputStream>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:682
-    pub fn create_external_chunk_input_stream0(&self, pos: ChunkPos, version_id: i8) -> Result<Option<DataInputStream>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:690
-    pub fn create_stream(buffer: ByteBuffer, length: i32) -> ByteArrayInputStream { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:701
+    pub fn create_chunk_input_stream(&self, pos: ChunkPos, version_id: i8, chunk_stream: Box<dyn std::io::Read + Send>) -> Result<Option<Box<dyn std::io::Read + Send>>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:662
+    pub fn create_external_chunk_input_stream(&self, pos: ChunkPos, version_id: i8) -> Result<Option<Box<dyn std::io::Read + Send>>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:682
+    pub fn create_external_chunk_input_stream0(&self, pos: ChunkPos, version_id: i8) -> Result<Option<Box<dyn std::io::Read + Send>>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:690
+    pub fn create_stream(buffer: bytes::BytesMut, length: i32) -> () { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:701
     pub fn pack_sector_offset(&self, index: i32, size: i32) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:705
     pub fn get_num_sectors(offset: i32) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:709
     pub fn get_sector_number(offset: i32) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:713
     pub fn size_to_sectors(size: i32) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:717
-    pub fn create_external_stub(&self) -> ByteBuffer { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:822
-    pub fn create_external_stub_1(&self, version: JRef<RegionFileVersion>) -> ByteBuffer { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:826
-    pub fn write_to_external_file(&self, path: std::path::PathBuf, data: ByteBuffer) -> Result<JRef<dyn RegionFileCommitOp>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:835
-    pub fn write_header(&self) -> Result<(), Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:851
+    pub fn create_external_stub(&self) -> bytes::BytesMut { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:822
+    pub fn create_external_stub_1(&self, version: JRef<RegionFileVersion>) -> bytes::BytesMut { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:826
+    pub fn write_to_external_file(&self, path: std::path::PathBuf, data: bytes::BytesMut) -> Result<JRef<dyn RegionFileCommitOp>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:835
+    pub fn write_header(&self) -> Result<(), anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:851
     pub fn get_offset(&self, pos: ChunkPos) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:856
     pub fn get_offset_index(pos: ChunkPos) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:864
-    pub fn pad_to_full_sector(&self) -> Result<(), Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:881
-    pub fn init_oversized_state(&self) -> Result<(), Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:958
+    pub fn pad_to_full_sector(&self) -> Result<(), anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:881
+    pub fn init_oversized_state(&self) -> Result<(), anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:958
     pub fn get_chunk_index(x: i32, z: i32) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:969
-    pub fn write_oversized_meta(&self) -> Result<(), Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:1004
+    pub fn write_oversized_meta(&self) -> Result<(), anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:1004
     pub fn get_oversized_meta_file(&self) -> std::path::PathBuf { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:1008
     pub fn get_oversized_file(&self, x: i32, z: i32) -> std::path::PathBuf { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:1012
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl ChunkSystemRegionFile for RegionFile {
-    fn moonrise_start_write(&self, data: JRef<CompoundTag>, pos: ChunkPos) -> Result<MoonriseRegionFileIORegionDataControllerWriteData, Throwable> { crate::net::minecraft::world::level::chunk::storage::region_file::RegionFile::moonrise_start_write(self, data, pos) }
+    fn moonrise_start_write(&self, data: JRef<CompoundTag>, pos: ChunkPos) -> Result<MoonriseRegionFileIORegionDataControllerWriteData, anyhow::Error> { crate::net::minecraft::world::level::chunk::storage::region_file::RegionFile::moonrise_start_write(self, data, pos) }
 }
 impl crate::me::earthme::luminol::data::region_file::RegionFile for RegionFile {
     fn get_path(&self) -> std::path::PathBuf { crate::net::minecraft::world::level::chunk::storage::region_file::RegionFile::get_path(self) }
-    fn get_chunk_data_input_stream(&self, pos: ChunkPos) -> Result<DataInputStream, Throwable> { crate::net::minecraft::world::level::chunk::storage::region_file::RegionFile::get_chunk_data_input_stream(self, pos) }
-    fn does_chunk_exist(&self, pos: ChunkPos) -> Result<bool, Throwable> { crate::net::minecraft::world::level::chunk::storage::region_file::RegionFile::does_chunk_exist(self, pos) }
-    fn get_chunk_data_output_stream(&self, pos: ChunkPos) -> Result<DataOutputStream, Throwable> { crate::net::minecraft::world::level::chunk::storage::region_file::RegionFile::get_chunk_data_output_stream(self, pos) }
-    fn flush(&self) -> Result<(), Throwable> { crate::net::minecraft::world::level::chunk::storage::region_file::RegionFile::flush(self) }
-    fn clear(&self, pos: ChunkPos) -> Result<(), Throwable> { crate::net::minecraft::world::level::chunk::storage::region_file::RegionFile::clear(self, pos) }
+    fn get_chunk_data_input_stream(&self, pos: ChunkPos) -> Result<Box<dyn std::io::Read + Send>, anyhow::Error> { crate::net::minecraft::world::level::chunk::storage::region_file::RegionFile::get_chunk_data_input_stream(self, pos) }
+    fn does_chunk_exist(&self, pos: ChunkPos) -> Result<bool, anyhow::Error> { crate::net::minecraft::world::level::chunk::storage::region_file::RegionFile::does_chunk_exist(self, pos) }
+    fn get_chunk_data_output_stream(&self, pos: ChunkPos) -> Result<Box<dyn std::io::Write + Send>, anyhow::Error> { crate::net::minecraft::world::level::chunk::storage::region_file::RegionFile::get_chunk_data_output_stream(self, pos) }
+    fn flush(&self) -> Result<(), anyhow::Error> { crate::net::minecraft::world::level::chunk::storage::region_file::RegionFile::flush(self) }
+    fn clear(&self, pos: ChunkPos) -> Result<(), anyhow::Error> { crate::net::minecraft::world::level::chunk::storage::region_file::RegionFile::clear(self, pos) }
     fn has_chunk(&self, pos: ChunkPos) -> bool { crate::net::minecraft::world::level::chunk::storage::region_file::RegionFile::has_chunk(self, pos) }
-    fn close(&self) -> Result<(), Throwable> { crate::net::minecraft::world::level::chunk::storage::region_file::RegionFile::close(self) }
-    fn write(&self, pos: ChunkPos, buf: ByteBuffer) -> Result<(), Throwable> { crate::net::minecraft::world::level::chunk::storage::region_file::RegionFile::write(self, pos, buf) }
-    fn get_oversized_data(&self, x: i32, z: i32) -> Result<JRef<CompoundTag>, Throwable> { crate::net::minecraft::world::level::chunk::storage::region_file::RegionFile::get_oversized_data(self, x, z) }
+    fn close(&self) -> Result<(), anyhow::Error> { crate::net::minecraft::world::level::chunk::storage::region_file::RegionFile::close(self) }
+    fn write(&self, pos: ChunkPos, buf: bytes::BytesMut) -> Result<(), anyhow::Error> { crate::net::minecraft::world::level::chunk::storage::region_file::RegionFile::write(self, pos, buf) }
+    fn get_oversized_data(&self, x: i32, z: i32) -> Result<JRef<CompoundTag>, anyhow::Error> { crate::net::minecraft::world::level::chunk::storage::region_file::RegionFile::get_oversized_data(self, x, z) }
     fn is_oversized(&self, x: i32, z: i32) -> bool { crate::net::minecraft::world::level::chunk::storage::region_file::RegionFile::is_oversized(self, x, z) }
-    fn recalculate_header(&self) -> Result<bool, Throwable> { crate::net::minecraft::world::level::chunk::storage::region_file::RegionFile::recalculate_header(self) }
-    fn set_oversized(&self, x: i32, z: i32, oversized: bool) -> Result<(), Throwable> { crate::net::minecraft::world::level::chunk::storage::region_file::RegionFile::set_oversized(self, x, z, oversized) }
+    fn recalculate_header(&self) -> Result<bool, anyhow::Error> { crate::net::minecraft::world::level::chunk::storage::region_file::RegionFile::recalculate_header(self) }
+    fn set_oversized(&self, x: i32, z: i32, oversized: bool) -> Result<(), anyhow::Error> { crate::net::minecraft::world::level::chunk::storage::region_file::RegionFile::set_oversized(self, x, z, oversized) }
     fn get_recalculate_count(&self) -> i32 { crate::net::minecraft::world::level::chunk::storage::region_file::RegionFile::get_recalculate_count(self) }
 }
 crate::jobject!(RegionFile: dyn ChunkSystemRegionFile, dyn crate::me::earthme::luminol::data::region_file::RegionFile);
@@ -132,23 +124,23 @@ impl RegionFileChunkBuffer {
     pub fn new(pos: ChunkPos) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:913
     pub fn moonrise_get_write_on_close(&self) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:897
     pub fn moonrise_set_write_on_close(&self, value: bool) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:902
-    pub fn moonrise_write(&self, region_file: JRef<dyn crate::me::earthme::luminol::data::region_file::RegionFile>) -> Result<(), Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:907
+    pub fn moonrise_write(&self, region_file: JRef<dyn crate::me::earthme::luminol::data::region_file::RegionFile>) -> Result<(), anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:907
     pub fn write(&self, b: i32) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:924
     pub fn write_3(&self, b: &Vec<i8>, off: i32, len: i32) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:932
-    pub fn close(&self) -> Result<(), Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:941
+    pub fn close(&self) -> Result<(), anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:941
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl ChunkSystemChunkBuffer for RegionFileChunkBuffer {
     fn moonrise_get_write_on_close(&self) -> bool { RegionFileChunkBuffer::moonrise_get_write_on_close(self) }
     fn moonrise_set_write_on_close(&self, value: bool) { RegionFileChunkBuffer::moonrise_set_write_on_close(self, value) }
-    fn moonrise_write(&self, region_file: JRef<dyn crate::me::earthme::luminol::data::region_file::RegionFile>) -> Result<(), Throwable> { RegionFileChunkBuffer::moonrise_write(self, region_file) }
+    fn moonrise_write(&self, region_file: JRef<dyn crate::me::earthme::luminol::data::region_file::RegionFile>) -> Result<(), anyhow::Error> { RegionFileChunkBuffer::moonrise_write(self, region_file) }
 }
 crate::jobject!(RegionFileChunkBuffer: dyn ChunkSystemChunkBuffer);
 // ---- interface net.minecraft.world.level.chunk.storage.RegionFile.CommitOp (leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:950)
 pub trait RegionFileCommitOp: Send + Sync + 'static {
-    fn run(&self) -> Result<(), Throwable>; // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:951
+    fn run(&self) -> Result<(), anyhow::Error>; // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFile.java:951
 }
-impl<F: Fn() -> Result<(), Throwable> + Send + Sync + 'static> RegionFileCommitOp for F {
-    fn run(&self) -> Result<(), Throwable> { self() }
+impl<F: Fn() -> Result<(), anyhow::Error> + Send + Sync + 'static> RegionFileCommitOp for F {
+    fn run(&self) -> Result<(), anyhow::Error> { self() }
 }

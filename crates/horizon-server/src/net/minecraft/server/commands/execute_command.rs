@@ -13,12 +13,6 @@ use crate::com::mojang::brigadier::exceptions::DynamicCommandExceptionType;
 use crate::com::mojang::brigadier::exceptions::SimpleCommandExceptionType;
 use crate::com::mojang::brigadier::tree::command_node::CommandNodeTrait;
 use crate::com::mojang::brigadier::tree::literal_command_node::LiteralCommandNodeTrait;
-use crate::java::lang::Throwable;
-use crate::java::util::function::Function;
-use crate::java::util::function::IntFunction;
-use crate::java::util::function::IntPredicate;
-use crate::java::util::function::Predicate;
-use crate::java::util::stream::Stream;
 use crate::net::minecraft::advancements::predicates::min_max_bounds::MinMaxBoundsInts;
 use crate::net::minecraft::commands::arguments::nbt_path_argument::NbtPathArgumentNbtPath;
 use crate::net::minecraft::commands::arguments::slot_source_argument::SlotSourceArgumentResult;
@@ -62,48 +56,48 @@ impl ExecuteCommand {
     pub fn wrap_stores(execute: JRef<dyn LiteralCommandNodeTrait<JRef<CommandSourceStack>>>, literal: LiteralArgumentBuilder<JRef<CommandSourceStack>>, store_result: bool) -> JRef<dyn ArgumentBuilderTrait<JRef<CommandSourceStack>, JObjectRef>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ExecuteCommand.java:272
     pub fn store_value(source: JRef<CommandSourceStack>, names: &Vec<JRef<dyn ScoreHolder>>, objective: JRef<Objective>, store_result: bool) -> JRef<CommandSourceStack> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ExecuteCommand.java:412
     pub fn store_value_4(source: JRef<CommandSourceStack>, event: JRef<CustomBossEvent>, store_into_value: bool, store_result: bool) -> JRef<CommandSourceStack> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ExecuteCommand.java:425
-    pub fn store_data(source: JRef<CommandSourceStack>, accessor: JRef<dyn DataAccessor>, path: JRef<NbtPathArgumentNbtPath>, constructor: JRef<dyn IntFunction<JRef<dyn Tag>>>, store_result: bool) -> JRef<CommandSourceStack> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ExecuteCommand.java:438
+    pub fn store_data(source: JRef<CommandSourceStack>, accessor: JRef<dyn DataAccessor>, path: JRef<NbtPathArgumentNbtPath>, constructor: Arc<dyn Fn(i32) -> JRef<dyn Tag> + Send + Sync>, store_result: bool) -> JRef<CommandSourceStack> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ExecuteCommand.java:438
     pub fn is_chunk_loaded(level: JRef<ServerLevel>, pos: BlockPos) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ExecuteCommand.java:456
     pub fn add_conditionals(execute: JRef<dyn CommandNodeTrait<JRef<CommandSourceStack>>>, parent: LiteralArgumentBuilder<JRef<CommandSourceStack>>, expected: bool, context: JRef<dyn CommandBuildContext>) -> JRef<dyn ArgumentBuilderTrait<JRef<CommandSourceStack>, JObjectRef>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ExecuteCommand.java:462
-    pub fn count_items(source: JRef<CommandSourceStack>, accessor: JRef<dyn ItemAccessor<JObjectRef>>, slot_source: JRef<dyn SlotSourceArgumentResult>, predicate: JRef<dyn Predicate<JRef<ItemStack>>>) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ExecuteCommand.java:730
-    pub fn count_slots(source: JRef<CommandSourceStack>, accessor: JRef<dyn ItemAccessor<JObjectRef>>, slot_source: JRef<dyn SlotSourceArgumentResult>) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ExecuteCommand.java:737
+    pub fn count_items(source: JRef<CommandSourceStack>, accessor: JRef<dyn ItemAccessor<JObjectRef>>, slot_source: JRef<dyn SlotSourceArgumentResult>, predicate: Arc<dyn Fn(JRef<ItemStack>) -> bool + Send + Sync>) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ExecuteCommand.java:730
+    pub fn count_slots(source: JRef<CommandSourceStack>, accessor: JRef<dyn ItemAccessor<JObjectRef>>, slot_source: JRef<dyn SlotSourceArgumentResult>) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ExecuteCommand.java:737
     pub fn create_numeric_conditional_handler(expected: bool, condition: JRef<dyn ExecuteCommandCommandNumericPredicate>) -> JRef<dyn Command<JRef<CommandSourceStack>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ExecuteCommand.java:742
-    pub fn check_matching_data(accessor: JRef<dyn DataAccessor>, path: JRef<NbtPathArgumentNbtPath>) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ExecuteCommand.java:762
-    pub fn check_score(context: CommandContext<JRef<CommandSourceStack>>, operation: JRef<dyn ExecuteCommandIntBiPredicate>) -> Result<bool, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ExecuteCommand.java:766
-    pub fn check_score_2(context: CommandContext<JRef<CommandSourceStack>>, range: MinMaxBoundsInts) -> Result<bool, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ExecuteCommand.java:777
+    pub fn check_matching_data(accessor: JRef<dyn DataAccessor>, path: JRef<NbtPathArgumentNbtPath>) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ExecuteCommand.java:762
+    pub fn check_score(context: CommandContext<JRef<CommandSourceStack>>, operation: JRef<dyn ExecuteCommandIntBiPredicate>) -> Result<bool, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ExecuteCommand.java:766
+    pub fn check_score_2(context: CommandContext<JRef<CommandSourceStack>>, range: MinMaxBoundsInts) -> Result<bool, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ExecuteCommand.java:777
     pub fn check_custom_predicate(source: JRef<CommandSourceStack>, predicate: JRef<dyn Holder<JRef<dyn LootItemCondition>>>) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ExecuteCommand.java:785
     pub fn expect(context: CommandContext<JRef<CommandSourceStack>>, expected: bool, result: bool) -> Vec<JRef<CommandSourceStack>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ExecuteCommand.java:796
     pub fn add_conditional(root: JRef<dyn CommandNodeTrait<JRef<CommandSourceStack>>>, argument: JRef<dyn ArgumentBuilderTrait<JRef<CommandSourceStack>, JObjectRef>>, expected: bool, predicate: JRef<dyn ExecuteCommandCommandPredicate>) -> JRef<dyn ArgumentBuilderTrait<JRef<CommandSourceStack>, JObjectRef>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ExecuteCommand.java:800
     pub fn add_if_blocks_conditional(root: JRef<dyn CommandNodeTrait<JRef<CommandSourceStack>>>, argument: JRef<dyn ArgumentBuilderTrait<JRef<CommandSourceStack>, JObjectRef>>, expected: bool, skip_air: bool) -> JRef<dyn ArgumentBuilderTrait<JRef<CommandSourceStack>, JObjectRef>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ExecuteCommand.java:816
-    pub fn check_if_regions(context: CommandContext<JRef<CommandSourceStack>>, skip_air: bool) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ExecuteCommand.java:823
-    pub fn check_unless_regions(context: CommandContext<JRef<CommandSourceStack>>, skip_air: bool) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ExecuteCommand.java:833
-    pub fn check_regions(context: CommandContext<JRef<CommandSourceStack>>, skip_air: bool) -> Result<Option<i32>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ExecuteCommand.java:843
-    pub fn check_regions_5(level: JRef<ServerLevel>, start_pos: BlockPos, end_pos: BlockPos, dest_pos: BlockPos, skip_air: bool) -> Result<Option<i32>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ExecuteCommand.java:853
-    pub fn expand_one_to_one_entity_relation(unpacker: JRef<dyn Function<JRef<dyn EntityTrait>, Option<JRef<dyn EntityTrait>>>>) -> JRef<dyn RedirectModifier<JRef<CommandSourceStack>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ExecuteCommand.java:919
-    pub fn expand_one_to_many_entity_relation(unpacker: JRef<dyn Function<JRef<dyn EntityTrait>, Stream<JRef<dyn EntityTrait>>>>) -> JRef<dyn RedirectModifier<JRef<CommandSourceStack>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ExecuteCommand.java:927
+    pub fn check_if_regions(context: CommandContext<JRef<CommandSourceStack>>, skip_air: bool) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ExecuteCommand.java:823
+    pub fn check_unless_regions(context: CommandContext<JRef<CommandSourceStack>>, skip_air: bool) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ExecuteCommand.java:833
+    pub fn check_regions(context: CommandContext<JRef<CommandSourceStack>>, skip_air: bool) -> Result<Option<i32>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ExecuteCommand.java:843
+    pub fn check_regions_5(level: JRef<ServerLevel>, start_pos: BlockPos, end_pos: BlockPos, dest_pos: BlockPos, skip_air: bool) -> Result<Option<i32>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ExecuteCommand.java:853
+    pub fn expand_one_to_one_entity_relation(unpacker: Arc<dyn Fn(JRef<dyn EntityTrait>) -> Option<JRef<dyn EntityTrait>> + Send + Sync>) -> JRef<dyn RedirectModifier<JRef<CommandSourceStack>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ExecuteCommand.java:919
+    pub fn expand_one_to_many_entity_relation(unpacker: Arc<dyn Fn(JRef<dyn EntityTrait>) -> Stream<JRef<dyn EntityTrait>> + Send + Sync>) -> JRef<dyn RedirectModifier<JRef<CommandSourceStack>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ExecuteCommand.java:927
     pub fn create_relation_operations(execute: JRef<dyn CommandNodeTrait<JRef<CommandSourceStack>>>, on: LiteralArgumentBuilder<JRef<CommandSourceStack>>) -> LiteralArgumentBuilder<JRef<CommandSourceStack>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ExecuteCommand.java:935
-    pub fn spawn_entity_and_redirect(source: JRef<CommandSourceStack>, type_: JRef<dyn HolderReferenceTrait<JRef<EntityType<JObjectRef>>>>) -> Result<JRef<CommandSourceStack>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ExecuteCommand.java:982
-    pub fn schedule_function_conditions_and_test<T: JGeneric>(original_source: T, current_sources: &Vec<T>, function_context_modifier: JRef<dyn Function<T, T>>, check: JRef<dyn IntPredicate>, current_step: ContextChain<T>, parameters: Option<JRef<CompoundTag>>, output: JRef<dyn ExecutionControl<T>>, function_getter: JRef<dyn InCommandFunction<CommandContext<T>, Vec<JRef<dyn CommandFunction<T>>>>>, modifiers: ChainModifiers) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ExecuteCommand.java:987
+    pub fn spawn_entity_and_redirect(source: JRef<CommandSourceStack>, type_: JRef<dyn HolderReferenceTrait<JRef<EntityType<JObjectRef>>>>) -> Result<JRef<CommandSourceStack>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ExecuteCommand.java:982
+    pub fn schedule_function_conditions_and_test<T: JGeneric>(original_source: T, current_sources: &Vec<T>, function_context_modifier: Arc<dyn Fn(T) -> T + Send + Sync>, check: Arc<dyn Fn(i32) -> bool + Send + Sync>, current_step: ContextChain<T>, parameters: Option<JRef<CompoundTag>>, output: JRef<dyn ExecutionControl<T>>, function_getter: JRef<dyn InCommandFunction<CommandContext<T>, Vec<JRef<dyn CommandFunction<T>>>>>, modifiers: ChainModifiers) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ExecuteCommand.java:987
 }
 crate::jobject!(ExecuteCommand);
 // ---- interface net.minecraft.server.commands.ExecuteCommand.CommandNumericPredicate (leaf-server/src/minecraft/java/net/minecraft/server/commands/ExecuteCommand.java:1046)
 pub trait ExecuteCommandCommandNumericPredicate: Send + Sync + 'static {
-    fn test(&self, c: CommandContext<JRef<CommandSourceStack>>) -> Result<i32, Throwable>; // leaf-server/src/minecraft/java/net/minecraft/server/commands/ExecuteCommand.java:1048
+    fn test(&self, c: CommandContext<JRef<CommandSourceStack>>) -> Result<i32, anyhow::Error>; // leaf-server/src/minecraft/java/net/minecraft/server/commands/ExecuteCommand.java:1048
 }
-impl<F: Fn(CommandContext<JRef<CommandSourceStack>>) -> Result<i32, Throwable> + Send + Sync + 'static> ExecuteCommandCommandNumericPredicate for F {
-    fn test(&self, c: CommandContext<JRef<CommandSourceStack>>) -> Result<i32, Throwable> { self(c) }
+impl<F: Fn(CommandContext<JRef<CommandSourceStack>>) -> Result<i32, anyhow::Error> + Send + Sync + 'static> ExecuteCommandCommandNumericPredicate for F {
+    fn test(&self, c: CommandContext<JRef<CommandSourceStack>>) -> Result<i32, anyhow::Error> { self(c) }
 }
 // ---- interface net.minecraft.server.commands.ExecuteCommand.CommandPredicate (leaf-server/src/minecraft/java/net/minecraft/server/commands/ExecuteCommand.java:1051)
 pub trait ExecuteCommandCommandPredicate: Send + Sync + 'static {
-    fn test(&self, c: CommandContext<JRef<CommandSourceStack>>) -> Result<bool, Throwable>; // leaf-server/src/minecraft/java/net/minecraft/server/commands/ExecuteCommand.java:1053
+    fn test(&self, c: CommandContext<JRef<CommandSourceStack>>) -> Result<bool, anyhow::Error>; // leaf-server/src/minecraft/java/net/minecraft/server/commands/ExecuteCommand.java:1053
 }
-impl<F: Fn(CommandContext<JRef<CommandSourceStack>>) -> Result<bool, Throwable> + Send + Sync + 'static> ExecuteCommandCommandPredicate for F {
-    fn test(&self, c: CommandContext<JRef<CommandSourceStack>>) -> Result<bool, Throwable> { self(c) }
+impl<F: Fn(CommandContext<JRef<CommandSourceStack>>) -> Result<bool, anyhow::Error> + Send + Sync + 'static> ExecuteCommandCommandPredicate for F {
+    fn test(&self, c: CommandContext<JRef<CommandSourceStack>>) -> Result<bool, anyhow::Error> { self(c) }
 }
 // ---- class net.minecraft.server.commands.ExecuteCommand.ExecuteIfFunctionCustomModifier (leaf-server/src/minecraft/java/net/minecraft/server/commands/ExecuteCommand.java:1056)
 pub struct ExecuteCommandExecuteIfFunctionCustomModifier {
     pub this: Weak<Self>,
-    pub check: JRef<dyn IntPredicate>, // leaf-server/src/minecraft/java/net/minecraft/server/commands/ExecuteCommand.java:1057
+    pub check: Arc<dyn Fn(i32) -> bool + Send + Sync>, // leaf-server/src/minecraft/java/net/minecraft/server/commands/ExecuteCommand.java:1057
 }
 impl ExecuteCommandExecuteIfFunctionCustomModifier {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }

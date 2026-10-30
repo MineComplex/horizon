@@ -3,7 +3,6 @@
 use crate::prelude::*;
 use crate::io::papermc::paper::registry::data::util::conversions::Conversions;
 use crate::io::papermc::paper::registry::holder::registry_holder::RegistryHolder;
-use crate::java::util::function::Function;
 use crate::net::minecraft::core::holder::Holder;
 
 // ---- class io.papermc.paper.registry.holder.PaperRegistryHolders (paper-server/src/main/java/io/papermc/paper/registry/holder/PaperRegistryHolders.java:8)
@@ -13,7 +12,7 @@ pub struct PaperRegistryHolders {
 impl PaperRegistryHolders {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/holder/PaperRegistryHolders.java:25
-    pub fn create<API: JGeneric, ENTRY: JGeneric, M: JGeneric>(holder: JRef<dyn Holder<M>>, entry_creator: JRef<dyn Function<M, ENTRY>>) -> JRef<dyn RegistryHolder<API, ENTRY>> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/holder/PaperRegistryHolders.java:10
+    pub fn create<API: JGeneric, ENTRY: JGeneric, M: JGeneric>(holder: JRef<dyn Holder<M>>, entry_creator: Arc<dyn Fn(M) -> ENTRY + Send + Sync>) -> JRef<dyn RegistryHolder<API, ENTRY>> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/holder/PaperRegistryHolders.java:10
     pub fn convert<API: JGeneric, ENTRY: JGeneric, M: JGeneric>(holder: JRef<dyn RegistryHolder<API, ENTRY>>, conversions: JRef<Conversions>) -> JRef<dyn Holder<M>> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/holder/PaperRegistryHolders.java:18
 }
 crate::jobject!(PaperRegistryHolders);

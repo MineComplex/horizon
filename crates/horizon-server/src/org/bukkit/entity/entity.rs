@@ -8,15 +8,12 @@ use crate::io::papermc::paper::entity::teleport_flag::TeleportFlag;
 use crate::io::papermc::paper::math::angle::Angle;
 use crate::io::papermc::paper::math::position::Position;
 use crate::io::papermc::paper::threadedregions::scheduler::entity_scheduler::EntityScheduler;
-use crate::java::util::concurrent::CompletableFuture;
-use crate::java::util::function::UnaryOperator;
 use crate::net::kyori::adventure::sound::SoundEmitter;
 use crate::net::kyori::adventure::text::Component;
 use crate::net::kyori::adventure::text::event::HoverEvent;
 use crate::net::kyori::adventure::text::event::HoverEventShowEntity;
 use crate::net::kyori::adventure::text::event::HoverEventSource;
 use crate::net::kyori::adventure::util::TriState;
-use crate::net::md_5::bungee::api::chat::BaseComponent;
 use crate::org::bukkit::block::block_face::BlockFace;
 use crate::org::bukkit::block::piston_move_reaction::PistonMoveReaction;
 use crate::org::bukkit::chunk::Chunk;
@@ -102,14 +99,14 @@ pub trait Entity:
         self.look_at_4(position.x(), position.y(), position.z(), entity_anchor)
     } // default, paper-api/src/main/java/org/bukkit/entity/Entity.java:204
     fn look_at_4(&self, x: f64, y: f64, z: f64, entity_anchor: LookAnchor); // paper-api/src/main/java/org/bukkit/entity/Entity.java:196
-    fn teleport_async(&self, loc: JRef<Location>) -> CompletableFuture<bool> {
+    fn teleport_async(&self, loc: JRef<Location>) -> crate::rt::CompletableFuture<bool> {
         self.teleport_async_2(loc, PlayerTeleportEventTeleportCause::PLUGIN)
     } // default, paper-api/src/main/java/org/bukkit/entity/Entity.java:273
     fn teleport_async_1(
         &self,
         loc: JRef<Location>,
         teleport_flags: &Vec<JRef<dyn TeleportFlag>>,
-    ) -> CompletableFuture<bool> {
+    ) -> crate::rt::CompletableFuture<bool> {
         self.teleport_async_2_2(
             loc,
             PlayerTeleportEventTeleportCause::PLUGIN,
@@ -120,7 +117,7 @@ pub trait Entity:
         &self,
         loc: JRef<Location>,
         cause: PlayerTeleportEventTeleportCause,
-    ) -> CompletableFuture<bool> {
+    ) -> crate::rt::CompletableFuture<bool> {
         // final class Holder { static final TeleportFlag[] EMPTY_FLAGS = new TeleportFlag[0]; }
         self.teleport_async_2_2(loc, cause, &Vec::new())
     } // default, paper-api/src/main/java/org/bukkit/entity/Entity.java:289
@@ -129,7 +126,7 @@ pub trait Entity:
         loc: JRef<Location>,
         cause: PlayerTeleportEventTeleportCause,
         teleport_flags: &Vec<JRef<dyn TeleportFlag>>,
-    ) -> CompletableFuture<bool>; // paper-api/src/main/java/org/bukkit/entity/Entity.java:326
+    ) -> crate::rt::CompletableFuture<bool>; // paper-api/src/main/java/org/bukkit/entity/Entity.java:326
     fn get_nearby_entities(&self, x: f64, y: f64, z: f64) -> Vec<JRef<dyn Entity>>; // paper-api/src/main/java/org/bukkit/entity/Entity.java:337
     fn get_entity_id(&self) -> i32; // paper-api/src/main/java/org/bukkit/entity/Entity.java:349
     fn get_fire_ticks(&self) -> i32; // paper-api/src/main/java/org/bukkit/entity/Entity.java:357
@@ -231,7 +228,7 @@ pub trait Entity:
     fn team_display_name(&self) -> Component; // paper-api/src/main/java/org/bukkit/entity/Entity.java:1172
     fn as_hover_event(
         &self,
-        op: JRef<dyn UnaryOperator<HoverEventShowEntity>>,
+        op: Arc<dyn Fn(HoverEventShowEntity) -> HoverEventShowEntity + Send + Sync>,
     ) -> HoverEvent<HoverEventShowEntity> {
         // PORT: Adventure's HoverEvent.showEntity(ShowEntity) / ShowEntity.showEntity(Key, UUID, Component); NamespacedKey as Key
         HoverEvent::show_entity(op.apply(HoverEventShowEntity::show_entity_3(
@@ -335,16 +332,16 @@ impl CommandSenderSpigotTrait for EntitySpigot {
     fn as_command_sender_spigot(&self) -> &CommandSenderSpigot {
         self
     }
-    fn send_message(&self, component: BaseComponent) {
+    fn send_message(&self, component: ()) {
         CommandSenderSpigot::send_message(self, component)
     }
-    fn send_message_1(&self, components: &Vec<BaseComponent>) {
+    fn send_message_1(&self, components: &Vec<()>) {
         CommandSenderSpigot::send_message_1(self, components)
     }
-    fn send_message_2(&self, sender: Option<Uuid>, component: BaseComponent) {
+    fn send_message_2(&self, sender: Option<Uuid>, component: ()) {
         CommandSenderSpigot::send_message_2(self, sender, component)
     }
-    fn send_message_2_2(&self, sender: Option<Uuid>, components: &Vec<BaseComponent>) {
+    fn send_message_2_2(&self, sender: Option<Uuid>, components: &Vec<()>) {
         CommandSenderSpigot::send_message_2_2(self, sender, components)
     }
 }

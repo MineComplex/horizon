@@ -3,9 +3,6 @@
 use crate::prelude::*;
 use crate::ca::spottedleaf::moonrise::patches::blockstate_propertyaccess::property_access::PropertyAccess;
 use crate::com::mojang::serialization::Codec;
-use crate::java::lang::Class;
-use crate::java::util::function::Predicate;
-use crate::java::util::stream::Stream;
 use crate::net::minecraft::world::level::block::state::properties::property::Property;
 use crate::net::minecraft::world::level::block::state::properties::property::PropertyTrait;
 use crate::net::minecraft::world::level::block::state::properties::property::PropertyValue;
@@ -27,7 +24,7 @@ impl<T: JGeneric> std::ops::Deref for EnumProperty<T> {
 }
 impl<T: JGeneric> EnumProperty<T> {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(name: &str, clazz: Class, values: &Vec<T>) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/properties/EnumProperty.java:46
+    pub fn new(name: &str, clazz: crate::rt::Class, values: &Vec<T>) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/properties/EnumProperty.java:46
     pub fn moonrise_get_id_for(&self, value: T) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/properties/EnumProperty.java:21
     pub fn get_possible_values(&self) -> Vec<T> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/properties/EnumProperty.java:71
     pub fn get_value(&self, name: &str) -> Option<T> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/properties/EnumProperty.java:76
@@ -36,10 +33,10 @@ impl<T: JGeneric> EnumProperty<T> {
     pub fn generate_hash_code(&self) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/properties/EnumProperty.java:95
     pub fn init(&self) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/properties/EnumProperty.java:27
     pub fn equals_unused(&self, o: JObjectRef) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/properties/EnumProperty.java:91
-    pub fn create<T: JGeneric>(name: &str, clazz: Class) -> JRef<EnumProperty<T>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/properties/EnumProperty.java:101
-    pub fn create_3<T: JGeneric>(name: &str, clazz: Class, filter: JRef<dyn Predicate<T>>) -> JRef<EnumProperty<T>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/properties/EnumProperty.java:105
-    pub fn create_3_2<T: JGeneric>(name: &str, clazz: Class, values: &Vec<T>) -> JRef<EnumProperty<T>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/properties/EnumProperty.java:109
-    pub fn create_3_3<T: JGeneric>(name: &str, clazz: Class, values: &Vec<T>) -> JRef<EnumProperty<T>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/properties/EnumProperty.java:114
+    pub fn create<T: JGeneric>(name: &str, clazz: crate::rt::Class) -> JRef<EnumProperty<T>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/properties/EnumProperty.java:101
+    pub fn create_3<T: JGeneric>(name: &str, clazz: crate::rt::Class, filter: Arc<dyn Fn(T) -> bool + Send + Sync>) -> JRef<EnumProperty<T>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/properties/EnumProperty.java:105
+    pub fn create_3_2<T: JGeneric>(name: &str, clazz: crate::rt::Class, values: &Vec<T>) -> JRef<EnumProperty<T>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/properties/EnumProperty.java:109
+    pub fn create_3_3<T: JGeneric>(name: &str, clazz: crate::rt::Class, values: &Vec<T>) -> JRef<EnumProperty<T>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/properties/EnumProperty.java:114
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
@@ -47,12 +44,12 @@ impl<T: JGeneric> PropertyTrait<JObjectRef> for EnumProperty<T> {
     fn as_property(&self) -> &Property<JObjectRef> { self }
     fn value(&self, value: T) -> PropertyValue<T> { Property::value(self, value) }
     fn value_1(&self, state_holder: JRef<dyn StateHolderTrait<JObjectRef, JObjectRef>>) -> PropertyValue<T> { Property::value_1(self, state_holder) }
-    fn get_all_values(&self) -> Stream<PropertyValue<T>> { Property::get_all_values(self) }
+    fn get_all_values(&self) -> Box<dyn Iterator<Item = PropertyValue<T>> + Send> { Property::get_all_values(self) }
     fn codec(&self) -> JRef<dyn Codec<T>> { Property::codec(self) }
     fn value_codec(&self) -> JRef<dyn Codec<PropertyValue<T>>> { Property::value_codec(self) }
     fn get_name(&self) -> String { Property::get_name(self) }
     fn get_name_1(&self, value: T) -> String { EnumProperty::get_name_1(self, value) }
-    fn get_value_class(&self) -> Class { Property::get_value_class(self) }
+    fn get_value_class(&self) -> crate::rt::Class { Property::get_value_class(self) }
     fn get_possible_values(&self) -> Vec<T> { EnumProperty::get_possible_values(self) }
     fn get_value(&self, name: &str) -> Option<T> { EnumProperty::get_value(self, name) }
     fn get_internal_index(&self, value: T) -> i32 { EnumProperty::get_internal_index(self, value) }

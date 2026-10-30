@@ -3,14 +3,13 @@
 use crate::prelude::*;
 use crate::com::mojang::serialization::Codec;
 use crate::com::mojang::serialization::MapCodec;
-use crate::java::util::function::Consumer;
 use crate::net::minecraft::core::block_pos::BlockPos;
 use crate::net::minecraft::util::random_source::RandomSource;
 use crate::net::minecraft::world::level::levelgen::placement::placement_context::PlacementContext;
 
 // ---- interface net.minecraft.world.level.levelgen.placement.PlacementModifier (leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/placement/PlacementModifier.java:11)
 pub trait PlacementModifier: JObject {
-    fn modify(&self, context: JRef<PlacementContext>, random: JRef<dyn RandomSource>, origin: BlockPos, output: JRef<dyn Consumer<BlockPos>>); // leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/placement/PlacementModifier.java:14
+    fn modify(&self, context: JRef<PlacementContext>, random: JRef<dyn RandomSource>, origin: BlockPos, output: Arc<dyn Fn(BlockPos) + Send + Sync>); // leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/placement/PlacementModifier.java:14
     fn codec(&self) -> MapCodec<JRef<dyn PlacementModifier>>; // leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/placement/PlacementModifier.java:16
 }
 pub static CODEC: LazyLock<JRef<dyn Codec<JRef<dyn PlacementModifier>>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/placement/PlacementModifier.java:12

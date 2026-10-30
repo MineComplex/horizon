@@ -6,8 +6,6 @@ use crate::com::mojang::brigadier::context::CommandContext;
 use crate::com::mojang::brigadier::exceptions::DynamicCommandExceptionType;
 use crate::com::mojang::brigadier::suggestion::Suggestions;
 use crate::com::mojang::brigadier::suggestion::SuggestionsBuilder;
-use crate::java::lang::Throwable;
-use crate::java::util::concurrent::CompletableFuture;
 use crate::net::minecraft::commands::command_source_stack::CommandSourceStack;
 use crate::net::minecraft::world::level::game_type::GameType;
 
@@ -21,10 +19,10 @@ pub static ERROR_INVALID: LazyLock<DynamicCommandExceptionType> = LazyLock::new(
 impl GameModeArgument {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/GameModeArgument.java:20
-    pub fn parse(&self, reader: StringReader) -> Result<GameType, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/GameModeArgument.java:27
-    pub fn list_suggestions<S: JGeneric>(&self, context: CommandContext<S>, builder: SuggestionsBuilder) -> CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/GameModeArgument.java:38
+    pub fn parse(&self, reader: StringReader) -> Result<GameType, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/GameModeArgument.java:27
+    pub fn list_suggestions<S: JGeneric>(&self, context: CommandContext<S>, builder: SuggestionsBuilder) -> crate::rt::CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/GameModeArgument.java:38
     pub fn get_examples(&self) -> Vec<String> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/GameModeArgument.java:45
     pub fn game_mode() -> JRef<GameModeArgument> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/GameModeArgument.java:50
-    pub fn get_game_mode(context: CommandContext<JRef<CommandSourceStack>>, name: &str) -> Result<GameType, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/GameModeArgument.java:54
+    pub fn get_game_mode(context: CommandContext<JRef<CommandSourceStack>>, name: &str) -> Result<GameType, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/GameModeArgument.java:54
 }
 crate::jobject!(GameModeArgument);

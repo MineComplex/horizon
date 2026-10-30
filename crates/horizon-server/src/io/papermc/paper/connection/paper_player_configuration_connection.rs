@@ -13,7 +13,6 @@ use crate::io::papermc::paper::connection::readable_player_cookie_connection::Re
 use crate::io::papermc::paper::connection::readable_player_cookie_connection_impl::ReadablePlayerCookieConnectionImpl;
 use crate::io::papermc::paper::connection::readable_player_cookie_connection_impl::ReadablePlayerCookieConnectionImplTrait;
 use crate::io::papermc::paper::connection::writable_player_cookie_connection::WritablePlayerCookieConnection;
-use crate::java::util::concurrent::CompletableFuture;
 use crate::net::kyori::adventure::audience::Audience;
 use crate::net::kyori::adventure::dialog::DialogLike;
 use crate::net::kyori::adventure::pointer::Pointers;
@@ -96,7 +95,7 @@ impl PlayerConnection for PaperPlayerConfigurationConnection {
     fn get_virtual_host(&self) -> Option<std::net::SocketAddr> { PaperCommonConnection::get_virtual_host(self) }
 }
 impl ReadablePlayerCookieConnection for PaperPlayerConfigurationConnection {
-    fn retrieve_cookie(&self, key: JRef<NamespacedKey>) -> CompletableFuture<Vec<i8>> { ReadablePlayerCookieConnectionImpl::retrieve_cookie(self, key) }
+    fn retrieve_cookie(&self, key: JRef<NamespacedKey>) -> crate::rt::CompletableFuture<Vec<i8>> { ReadablePlayerCookieConnectionImpl::retrieve_cookie(self, key) }
 }
 impl PluginMessageRecipient for PaperPlayerConfigurationConnection {
     fn send_plugin_message(&self, source: JRef<dyn Plugin>, channel: &str, message: &Vec<i8>) { PaperPlayerConfigurationConnection::send_plugin_message(self, source, channel, message) }

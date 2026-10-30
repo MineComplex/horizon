@@ -5,7 +5,6 @@ use crate::com::mojang::brigadier::builder::LiteralArgumentBuilder;
 use crate::com::mojang::brigadier::command_dispatcher::CommandDispatcher;
 use crate::com::mojang::brigadier::context::CommandContext;
 use crate::com::mojang::brigadier::exceptions::Dynamic2CommandExceptionType;
-use crate::java::lang::Throwable;
 use crate::net::minecraft::commands::command_build_context::CommandBuildContext;
 use crate::net::minecraft::commands::command_source_stack::CommandSourceStack;
 use crate::net::minecraft::world::level::gamerules::game_rule::GameRule;
@@ -20,7 +19,7 @@ impl GameRuleCommand {
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/GameRuleCommand.java:16
     pub fn register(dispatcher: JRef<CommandDispatcher<JRef<CommandSourceStack>>>, context: JRef<dyn CommandBuildContext>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/GameRuleCommand.java:21
     pub fn build_rule_arguments<T: JGeneric>(game_rule: JRef<GameRule<T>>, rule_literal: LiteralArgumentBuilder<JRef<CommandSourceStack>>) -> LiteralArgumentBuilder<JRef<CommandSourceStack>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/GameRuleCommand.java:34
-    pub fn set_rule<T: JGeneric>(context: CommandContext<JRef<CommandSourceStack>>, game_rule: JRef<GameRule<T>>) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/GameRuleCommand.java:41
+    pub fn set_rule<T: JGeneric>(context: CommandContext<JRef<CommandSourceStack>>, game_rule: JRef<GameRule<T>>) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/GameRuleCommand.java:41
     pub fn query_rule<T: JGeneric>(source: JRef<CommandSourceStack>, game_rule: JRef<GameRule<T>>) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/GameRuleCommand.java:55
 }
 crate::jobject!(GameRuleCommand);

@@ -7,10 +7,6 @@ use crate::io::papermc::paper::registry::entry::registry_entry_meta::RegistryEnt
 use crate::io::papermc::paper::registry::entry::registry_type_mapper::RegistryTypeMapper;
 use crate::io::papermc::paper::registry::paper_registry_builder::PaperRegistryBuilderFiller;
 use crate::io::papermc::paper::registry::registry_key::RegistryKey;
-use crate::java::lang::Class;
-use crate::java::util::function::BiFunction;
-use crate::java::util::function::Function;
-use crate::java::util::function::Supplier;
 use crate::net::minecraft::core::holder::Holder;
 use crate::net::minecraft::resources::resource_key::ResourceKey;
 use crate::org::bukkit::namespaced_key::NamespacedKey;
@@ -24,9 +20,9 @@ pub struct RegistryEntryBuilder<M: JGeneric, A: JGeneric> {
 }
 pub trait RegistryEntryBuilderTrait<M: JGeneric, A: JGeneric>: JObject {
     fn as_registry_entry_builder(&self) -> &RegistryEntryBuilder<M, A>;
-    fn api_only(&self, api_registry_supplier: JRef<dyn Supplier<JRef<dyn crate::org::bukkit::registry::Registry<A>>>>) -> JRef<dyn RegistryEntry<M, A>>; // paper-server/src/main/java/io/papermc/paper/registry/entry/RegistryEntryBuilder.java:36
-    fn craft(&self, class_to_preload: Class, minecraft_to_bukkit: JRef<dyn Function<JRef<dyn Holder<M>>, A>>) -> JRef<RegistryEntryBuilderCraftStage<M, A>>; // paper-server/src/main/java/io/papermc/paper/registry/entry/RegistryEntryBuilder.java:40
-    fn craft_3(&self, class_to_preload: Class, minecraft_to_bukkit: JRef<dyn Function<JRef<dyn Holder<M>>, A>>, allow_direct: bool) -> JRef<RegistryEntryBuilderCraftStage<M, A>>; // paper-server/src/main/java/io/papermc/paper/registry/entry/RegistryEntryBuilder.java:44
+    fn api_only(&self, api_registry_supplier: Arc<dyn Fn() -> JRef<dyn crate::org::bukkit::registry::Registry<A>> + Send + Sync>) -> JRef<dyn RegistryEntry<M, A>>; // paper-server/src/main/java/io/papermc/paper/registry/entry/RegistryEntryBuilder.java:36
+    fn craft(&self, class_to_preload: crate::rt::Class, minecraft_to_bukkit: Arc<dyn Fn(JRef<dyn Holder<M>>) -> A + Send + Sync>) -> JRef<RegistryEntryBuilderCraftStage<M, A>>; // paper-server/src/main/java/io/papermc/paper/registry/entry/RegistryEntryBuilder.java:40
+    fn craft_3(&self, class_to_preload: crate::rt::Class, minecraft_to_bukkit: Arc<dyn Fn(JRef<dyn Holder<M>>) -> A + Send + Sync>, allow_direct: bool) -> JRef<RegistryEntryBuilderCraftStage<M, A>>; // paper-server/src/main/java/io/papermc/paper/registry/entry/RegistryEntryBuilder.java:44
 }
 impl<M: JGeneric, A: JGeneric> std::ops::Deref for dyn RegistryEntryBuilderTrait<M, A> {
     type Target = RegistryEntryBuilder<M, A>;
@@ -37,36 +33,36 @@ impl<M: JGeneric, A: JGeneric> RegistryEntryBuilder<M, A> {
     pub fn new_base<S: RegistryEntryBuilderTrait<M, A> + 'static>(this: &Weak<S>, mc_key: JRef<ResourceKey<JRef<dyn crate::net::minecraft::core::registry::Registry<M>>>>, api_key: JRef<dyn RegistryKey<A>>) -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/entry/RegistryEntryBuilder.java:31
     pub fn new(mc_key: JRef<ResourceKey<JRef<dyn crate::net::minecraft::core::registry::Registry<M>>>>, api_key: JRef<dyn RegistryKey<A>>) -> JRef<Self> { Arc::new_cyclic(|this| Self::new_base(this, mc_key, api_key)) }
     pub fn start<M: JGeneric, A: JGeneric>(mc_key: JRef<ResourceKey<JRef<dyn crate::net::minecraft::core::registry::Registry<M>>>>, api_key: JRef<dyn RegistryKey<A>>) -> JRef<dyn RegistryEntryBuilderTrait<M, A>> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/entry/RegistryEntryBuilder.java:21
-    pub fn api_only(&self, api_registry_supplier: JRef<dyn Supplier<JRef<dyn crate::org::bukkit::registry::Registry<A>>>>) -> JRef<dyn RegistryEntry<M, A>> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/entry/RegistryEntryBuilder.java:36
-    pub fn craft(&self, class_to_preload: Class, minecraft_to_bukkit: JRef<dyn Function<JRef<dyn Holder<M>>, A>>) -> JRef<RegistryEntryBuilderCraftStage<M, A>> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/entry/RegistryEntryBuilder.java:40
-    pub fn craft_3(&self, class_to_preload: Class, minecraft_to_bukkit: JRef<dyn Function<JRef<dyn Holder<M>>, A>>, allow_direct: bool) -> JRef<RegistryEntryBuilderCraftStage<M, A>> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/entry/RegistryEntryBuilder.java:44
+    pub fn api_only(&self, api_registry_supplier: Arc<dyn Fn() -> JRef<dyn crate::org::bukkit::registry::Registry<A>> + Send + Sync>) -> JRef<dyn RegistryEntry<M, A>> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/entry/RegistryEntryBuilder.java:36
+    pub fn craft(&self, class_to_preload: crate::rt::Class, minecraft_to_bukkit: Arc<dyn Fn(JRef<dyn Holder<M>>) -> A + Send + Sync>) -> JRef<RegistryEntryBuilderCraftStage<M, A>> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/entry/RegistryEntryBuilder.java:40
+    pub fn craft_3(&self, class_to_preload: crate::rt::Class, minecraft_to_bukkit: Arc<dyn Fn(JRef<dyn Holder<M>>) -> A + Send + Sync>, allow_direct: bool) -> JRef<RegistryEntryBuilderCraftStage<M, A>> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/entry/RegistryEntryBuilder.java:44
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl<M: JGeneric, A: JGeneric> RegistryEntryBuilderTrait<JObjectRef, JObjectRef> for RegistryEntryBuilder<M, A> {
     fn as_registry_entry_builder(&self) -> &RegistryEntryBuilder<JObjectRef, JObjectRef> { self }
-    fn api_only(&self, api_registry_supplier: JRef<dyn Supplier<JRef<dyn crate::org::bukkit::registry::Registry<A>>>>) -> JRef<dyn RegistryEntry<M, A>> { RegistryEntryBuilder::api_only(self, api_registry_supplier) }
-    fn craft(&self, class_to_preload: Class, minecraft_to_bukkit: JRef<dyn Function<JRef<dyn Holder<M>>, A>>) -> JRef<RegistryEntryBuilderCraftStage<M, A>> { RegistryEntryBuilder::craft(self, class_to_preload, minecraft_to_bukkit) }
-    fn craft_3(&self, class_to_preload: Class, minecraft_to_bukkit: JRef<dyn Function<JRef<dyn Holder<M>>, A>>, allow_direct: bool) -> JRef<RegistryEntryBuilderCraftStage<M, A>> { RegistryEntryBuilder::craft_3(self, class_to_preload, minecraft_to_bukkit, allow_direct) }
+    fn api_only(&self, api_registry_supplier: Arc<dyn Fn() -> JRef<dyn crate::org::bukkit::registry::Registry<A>> + Send + Sync>) -> JRef<dyn RegistryEntry<M, A>> { RegistryEntryBuilder::api_only(self, api_registry_supplier) }
+    fn craft(&self, class_to_preload: crate::rt::Class, minecraft_to_bukkit: Arc<dyn Fn(JRef<dyn Holder<M>>) -> A + Send + Sync>) -> JRef<RegistryEntryBuilderCraftStage<M, A>> { RegistryEntryBuilder::craft(self, class_to_preload, minecraft_to_bukkit) }
+    fn craft_3(&self, class_to_preload: crate::rt::Class, minecraft_to_bukkit: Arc<dyn Fn(JRef<dyn Holder<M>>) -> A + Send + Sync>, allow_direct: bool) -> JRef<RegistryEntryBuilderCraftStage<M, A>> { RegistryEntryBuilder::craft_3(self, class_to_preload, minecraft_to_bukkit, allow_direct) }
 }
 // ---- class io.papermc.paper.registry.entry.RegistryEntryBuilder.CraftStage (paper-server/src/main/java/io/papermc/paper/registry/entry/RegistryEntryBuilder.java:48)
 pub struct RegistryEntryBuilderCraftStage<M: JGeneric, A: JGeneric> {
     pub base: RegistryEntryBuilder<M, A>,
     pub this: Weak<Self>,
-    pub class_to_preload: Class, // paper-server/src/main/java/io/papermc/paper/registry/entry/RegistryEntryBuilder.java:52
+    pub class_to_preload: crate::rt::Class, // paper-server/src/main/java/io/papermc/paper/registry/entry/RegistryEntryBuilder.java:52
     pub minecraft_to_bukkit: JRef<RegistryTypeMapper<M, A>>, // paper-server/src/main/java/io/papermc/paper/registry/entry/RegistryEntryBuilder.java:53
-    pub serialization_updater: Mut<JRef<dyn BiFunction<JRef<NamespacedKey>, JRef<ApiVersion>, JRef<NamespacedKey>>>>, // paper-server/src/main/java/io/papermc/paper/registry/entry/RegistryEntryBuilder.java:54
+    pub serialization_updater: Mut<Arc<dyn Fn(JRef<NamespacedKey>, JRef<ApiVersion>) -> JRef<NamespacedKey> + Send + Sync>>, // paper-server/src/main/java/io/papermc/paper/registry/entry/RegistryEntryBuilder.java:54
     pub _phantom: std::marker::PhantomData<(M, A,)>,
 }
 impl<M: JGeneric, A: JGeneric> std::ops::Deref for RegistryEntryBuilderCraftStage<M, A> {
     type Target = RegistryEntryBuilder<M, A>;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static CRAFT_STAGE_EMPTY: LazyLock<JRef<dyn BiFunction<JRef<NamespacedKey>, JRef<ApiVersion>, JRef<NamespacedKey>>>> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/registry/entry/RegistryEntryBuilder.java:50
+pub static CRAFT_STAGE_EMPTY: LazyLock<Arc<dyn Fn(JRef<NamespacedKey>, JRef<ApiVersion>) -> JRef<NamespacedKey> + Send + Sync>> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/registry/entry/RegistryEntryBuilder.java:50
 impl<M: JGeneric, A: JGeneric> RegistryEntryBuilderCraftStage<M, A> {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(mc_key: JRef<ResourceKey<JRef<dyn crate::net::minecraft::core::registry::Registry<M>>>>, api_key: JRef<dyn RegistryKey<A>>, class_to_preload: Class, minecraft_to_bukkit: JRef<RegistryTypeMapper<M, A>>) -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/entry/RegistryEntryBuilder.java:56
-    pub fn serialization_updater(&self, serialization_updater: JRef<dyn BiFunction<JRef<NamespacedKey>, JRef<ApiVersion>, JRef<NamespacedKey>>>) -> JRef<RegistryEntryBuilderCraftStage<M, A>> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/entry/RegistryEntryBuilder.java:67
+    pub fn new(mc_key: JRef<ResourceKey<JRef<dyn crate::net::minecraft::core::registry::Registry<M>>>>, api_key: JRef<dyn RegistryKey<A>>, class_to_preload: crate::rt::Class, minecraft_to_bukkit: JRef<RegistryTypeMapper<M, A>>) -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/entry/RegistryEntryBuilder.java:56
+    pub fn serialization_updater(&self, serialization_updater: Arc<dyn Fn(JRef<NamespacedKey>, JRef<ApiVersion>) -> JRef<NamespacedKey> + Send + Sync>) -> JRef<RegistryEntryBuilderCraftStage<M, A>> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/entry/RegistryEntryBuilder.java:67
     pub fn build(&self) -> JRef<dyn RegistryEntry<M, A>> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/entry/RegistryEntryBuilder.java:72
     pub fn modifiable<B: JGeneric>(&self, filler: JRef<dyn PaperRegistryBuilderFiller<M, A, B>>) -> JRef<dyn RegistryEntry<M, A>> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/entry/RegistryEntryBuilder.java:76
     pub fn addable<B: JGeneric>(&self, filler: JRef<dyn PaperRegistryBuilderFiller<M, A, B>>) -> JRef<dyn RegistryEntry<M, A>> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/entry/RegistryEntryBuilder.java:80
@@ -77,7 +73,7 @@ impl<M: JGeneric, A: JGeneric> RegistryEntryBuilderCraftStage<M, A> {
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl<M: JGeneric, A: JGeneric> RegistryEntryBuilderTrait<JObjectRef, JObjectRef> for RegistryEntryBuilderCraftStage<M, A> {
     fn as_registry_entry_builder(&self) -> &RegistryEntryBuilder<JObjectRef, JObjectRef> { self }
-    fn api_only(&self, api_registry_supplier: JRef<dyn Supplier<JRef<dyn crate::org::bukkit::registry::Registry<A>>>>) -> JRef<dyn RegistryEntry<M, A>> { RegistryEntryBuilder::api_only(self, api_registry_supplier) }
-    fn craft(&self, class_to_preload: Class, minecraft_to_bukkit: JRef<dyn Function<JRef<dyn Holder<M>>, A>>) -> JRef<RegistryEntryBuilderCraftStage<M, A>> { RegistryEntryBuilder::craft(self, class_to_preload, minecraft_to_bukkit) }
-    fn craft_3(&self, class_to_preload: Class, minecraft_to_bukkit: JRef<dyn Function<JRef<dyn Holder<M>>, A>>, allow_direct: bool) -> JRef<RegistryEntryBuilderCraftStage<M, A>> { RegistryEntryBuilder::craft_3(self, class_to_preload, minecraft_to_bukkit, allow_direct) }
+    fn api_only(&self, api_registry_supplier: Arc<dyn Fn() -> JRef<dyn crate::org::bukkit::registry::Registry<A>> + Send + Sync>) -> JRef<dyn RegistryEntry<M, A>> { RegistryEntryBuilder::api_only(self, api_registry_supplier) }
+    fn craft(&self, class_to_preload: crate::rt::Class, minecraft_to_bukkit: Arc<dyn Fn(JRef<dyn Holder<M>>) -> A + Send + Sync>) -> JRef<RegistryEntryBuilderCraftStage<M, A>> { RegistryEntryBuilder::craft(self, class_to_preload, minecraft_to_bukkit) }
+    fn craft_3(&self, class_to_preload: crate::rt::Class, minecraft_to_bukkit: Arc<dyn Fn(JRef<dyn Holder<M>>) -> A + Send + Sync>, allow_direct: bool) -> JRef<RegistryEntryBuilderCraftStage<M, A>> { RegistryEntryBuilder::craft_3(self, class_to_preload, minecraft_to_bukkit, allow_direct) }
 }

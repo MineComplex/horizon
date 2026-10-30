@@ -3,7 +3,6 @@
 use crate::prelude::*;
 use crate::io::papermc::paper::registry::legacy::delayed_registry::DelayedRegistry;
 use crate::io::papermc::paper::registry::legacy::delayed_registry_entry::DelayedRegistryEntry;
-use crate::java::util::function::Supplier;
 
 // ---- interface io.papermc.paper.registry.RegistryHolder (paper-server/src/main/java/io/papermc/paper/registry/RegistryHolder.java:10)
 pub trait RegistryHolder<B: JGeneric>: Send + Sync + 'static {
@@ -15,12 +14,12 @@ impl<B: JGeneric, F: Fn() -> JRef<dyn crate::org::bukkit::registry::Registry<B>>
 // ---- class io.papermc.paper.registry.RegistryHolder.Memoized (paper-server/src/main/java/io/papermc/paper/registry/RegistryHolder.java:14)
 pub struct RegistryHolderMemoized<B: JGeneric, R: JGeneric> {
     pub this: Weak<Self>,
-    pub memoized_supplier: JRef<dyn Supplier<R>>, // paper-server/src/main/java/io/papermc/paper/registry/RegistryHolder.java:16
+    pub memoized_supplier: Arc<dyn Fn() -> R + Send + Sync>, // paper-server/src/main/java/io/papermc/paper/registry/RegistryHolder.java:16
     pub _phantom: std::marker::PhantomData<(B, R,)>,
 }
 impl<B: JGeneric, R: JGeneric> RegistryHolderMemoized<B, R> {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(supplier: JRef<dyn Supplier<R>>) -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/RegistryHolder.java:18
+    pub fn new(supplier: Arc<dyn Fn() -> R + Send + Sync>) -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/RegistryHolder.java:18
     pub fn get(&self) -> JRef<dyn crate::org::bukkit::registry::Registry<B>> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/RegistryHolder.java:22
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that

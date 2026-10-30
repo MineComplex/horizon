@@ -8,7 +8,6 @@ use crate::net::minecraft::world::level::levelgen::densityfunction::density_samp
 use crate::net::minecraft::world::level::levelgen::densityfunction::density_sampler_set::DensitySamplerSet;
 use crate::net::minecraft::world::level::levelgen::densityfunction::density_volume::DensityVolume;
 use crate::net::minecraft::world::level::levelgen::positional_random_factory::PositionalRandomFactory;
-use crate::org::apache::commons::lang3::mutable::MutableDouble;
 
 // ---- interface net.minecraft.world.level.levelgen.Aquifer (leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/Aquifer.java:26)
 pub trait Aquifer: JObject {
@@ -106,7 +105,7 @@ impl AquiferNoiseBasedAquifer {
     pub fn max_surface_level(&self, min_block_x: i32, min_block_z: i32, max_block_x: i32, max_block_z: i32) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/Aquifer.java:172
     pub fn get_index(&self, grid_x: i32, grid_y: i32, grid_z: i32) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/Aquifer.java:198
     pub fn similarity(distance_sqr1: i32, distance_sqr2: i32) -> f64 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/Aquifer.java:359
-    pub fn calculate_pressure(&self, block_x: i32, block_y: i32, block_z: i32, barrier_noise_value: MutableDouble, status_closest1: AquiferFluidStatus, status_closest2: AquiferFluidStatus) -> f64 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/Aquifer.java:364
+    pub fn calculate_pressure(&self, block_x: i32, block_y: i32, block_z: i32, barrier_noise_value: f64, status_closest1: AquiferFluidStatus, status_closest2: AquiferFluidStatus) -> f64 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/Aquifer.java:364
     pub fn grid_x(block_coord: i32) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/Aquifer.java:428
     pub fn from_grid_x(grid_coord: i32, block_offset: i32) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/Aquifer.java:432
     pub fn grid_y(block_coord: i32) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/Aquifer.java:436

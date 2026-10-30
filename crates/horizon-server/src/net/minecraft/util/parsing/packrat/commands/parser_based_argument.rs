@@ -6,8 +6,6 @@ use crate::com::mojang::brigadier::arguments::ArgumentType;
 use crate::com::mojang::brigadier::context::CommandContext;
 use crate::com::mojang::brigadier::suggestion::Suggestions;
 use crate::com::mojang::brigadier::suggestion::SuggestionsBuilder;
-use crate::java::lang::Throwable;
-use crate::java::util::concurrent::CompletableFuture;
 use crate::net::minecraft::util::parsing::packrat::commands::command_argument_parser::CommandArgumentParser;
 
 // ---- class net.minecraft.util.parsing.packrat.commands.ParserBasedArgument (leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/ParserBasedArgument.java:11)
@@ -18,7 +16,7 @@ pub struct ParserBasedArgument<T: JGeneric> {
 }
 pub trait ParserBasedArgumentTrait<T: JGeneric>: ArgumentType<T> {
     fn as_parser_based_argument(&self) -> &ParserBasedArgument<T>;
-    fn parse(&self, reader: StringReader) -> Result<T, Throwable>; // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/ParserBasedArgument.java:18
+    fn parse(&self, reader: StringReader) -> Result<T, anyhow::Error>; // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/ParserBasedArgument.java:18
 }
 impl<T: JGeneric> std::ops::Deref for dyn ParserBasedArgumentTrait<T> {
     type Target = ParserBasedArgument<T>;
@@ -27,6 +25,6 @@ impl<T: JGeneric> std::ops::Deref for dyn ParserBasedArgumentTrait<T> {
 impl<T: JGeneric> ParserBasedArgument<T> {
     pub fn this(&self) -> JRef<dyn ParserBasedArgumentTrait<T>> { self.this.upgrade().expect("this") }
     pub fn new_base<S: ParserBasedArgumentTrait<T> + 'static>(this: &Weak<S>, parser: JRef<dyn CommandArgumentParser<T>>) -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/ParserBasedArgument.java:14
-    pub fn parse(&self, reader: StringReader) -> Result<T, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/ParserBasedArgument.java:18
-    pub fn list_suggestions<S: JGeneric>(&self, context: CommandContext<S>, builder: SuggestionsBuilder) -> CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/ParserBasedArgument.java:23
+    pub fn parse(&self, reader: StringReader) -> Result<T, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/ParserBasedArgument.java:18
+    pub fn list_suggestions<S: JGeneric>(&self, context: CommandContext<S>, builder: SuggestionsBuilder) -> crate::rt::CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/ParserBasedArgument.java:23
 }

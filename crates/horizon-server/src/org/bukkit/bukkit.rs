@@ -8,14 +8,8 @@ use crate::io::papermc::paper::math::position::Position;
 use crate::io::papermc::paper::threadedregions::scheduler::async_scheduler::AsyncScheduler;
 use crate::io::papermc::paper::threadedregions::scheduler::global_region_scheduler::GlobalRegionScheduler;
 use crate::io::papermc::paper::threadedregions::scheduler::region_scheduler::RegionScheduler;
-use crate::java::lang::Class;
-use crate::java::lang::Throwable;
-use crate::java::util::JIterator;
-use crate::java::util::function::Consumer;
-use crate::java::util::logging::Logger;
 use crate::net::kyori::adventure::key::Key;
 use crate::net::kyori::adventure::text::Component;
-use crate::net::md_5::bungee::api::chat::BaseComponent;
 use crate::org::bukkit::WarningWarningState;
 use crate::org::bukkit::advancement::advancement::Advancement;
 use crate::org::bukkit::block::block::Block;
@@ -214,10 +208,10 @@ impl Bukkit {
     pub fn broadcast_message(message: &str) -> i32 {
         Self::server().broadcast_message(message)
     } // paper-api/src/main/java/org/bukkit/Bukkit.java:462
-    pub fn broadcast(component: BaseComponent) {
+    pub fn broadcast(component: ()) {
         Self::server().broadcast(component);
     } // paper-api/src/main/java/org/bukkit/Bukkit.java:474
-    pub fn broadcast_1(components: &Vec<BaseComponent>) {
+    pub fn broadcast_1(components: &Vec<()>) {
         Self::server().broadcast_1(components);
     } // paper-api/src/main/java/org/bukkit/Bukkit.java:485
     pub fn broadcast_1_2(message: Component) -> i32 {
@@ -378,7 +372,7 @@ impl Bukkit {
     pub fn update_recipes() {
         Self::server().update_recipes();
     } // paper-api/src/main/java/org/bukkit/Bukkit.java:1056
-    pub fn get_logger() -> Logger {
+    pub fn get_logger() -> () {
         Self::server().get_logger()
     } // paper-api/src/main/java/org/bukkit/Bukkit.java:1071
     pub fn get_plugin_command(name: &str) -> Option<JRef<PluginCommand>> {
@@ -390,7 +384,7 @@ impl Bukkit {
     pub fn dispatch_command(
         sender: JRef<dyn CommandSender>,
         command_line: &str,
-    ) -> Result<bool, Throwable> {
+    ) -> Result<bool, anyhow::Error> {
         Self::server().dispatch_command(sender, command_line)
     } // paper-api/src/main/java/org/bukkit/Bukkit.java:1109
     pub fn add_recipe(recipe: Option<JRef<dyn Recipe>>) -> bool {
@@ -440,7 +434,7 @@ impl Bukkit {
     ) -> JRef<ItemStack> {
         Self::server().craft_item_3(crafting_matrix, world, player)
     } // paper-api/src/main/java/org/bukkit/Bukkit.java:1283
-    pub fn recipe_iterator() -> JIterator<JRef<dyn Recipe>> {
+    pub fn recipe_iterator() -> Box<dyn Iterator<Item = JRef<dyn Recipe>> + Send> {
         Self::server().recipe_iterator()
     } // paper-api/src/main/java/org/bukkit/Bukkit.java:1316
     pub fn clear_recipes() {
@@ -570,7 +564,7 @@ impl Bukkit {
         Self::server().get_console_sender()
     } // paper-api/src/main/java/org/bukkit/Bukkit.java:1776
     pub fn create_command_sender(
-        feedback: JRef<dyn Consumer<JObjectRef>>,
+        feedback: Arc<dyn Fn(JObjectRef) + Send + Sync>,
     ) -> JRef<dyn CommandSender> {
         Self::server().create_command_sender(feedback)
     } // paper-api/src/main/java/org/bukkit/Bukkit.java:1789
@@ -595,7 +589,7 @@ impl Bukkit {
     pub fn create_inventory_2(
         owner: Option<JRef<dyn InventoryHolder>>,
         size: i32,
-    ) -> Result<JRef<dyn Inventory>, Throwable> {
+    ) -> Result<JRef<dyn Inventory>, anyhow::Error> {
         Self::server().create_inventory_2(owner, size)
     } // paper-api/src/main/java/org/bukkit/Bukkit.java:1937
     pub fn create_inventory_3(
@@ -616,14 +610,14 @@ impl Bukkit {
         owner: Option<JRef<dyn InventoryHolder>>,
         size: i32,
         title: Component,
-    ) -> Result<JRef<dyn Inventory>, Throwable> {
+    ) -> Result<JRef<dyn Inventory>, anyhow::Error> {
         Self::server().create_inventory_3_3(owner, size, title)
     } // paper-api/src/main/java/org/bukkit/Bukkit.java:1954
     pub fn create_inventory_3_4(
         owner: Option<JRef<dyn InventoryHolder>>,
         size: i32,
         title: &str,
-    ) -> Result<JRef<dyn Inventory>, Throwable> {
+    ) -> Result<JRef<dyn Inventory>, anyhow::Error> {
         Self::server().create_inventory_3_4(owner, size, title)
     } // paper-api/src/main/java/org/bukkit/Bukkit.java:1972
     pub fn create_merchant() -> JRef<dyn Merchant> {
@@ -718,7 +712,7 @@ impl Bukkit {
     ) -> JRef<dyn KeyedBossBar> {
         Self::server().create_boss_bar_5(key, title, color, style, flags)
     } // paper-api/src/main/java/org/bukkit/Bukkit.java:2397
-    pub fn get_boss_bars() -> JIterator<JRef<dyn KeyedBossBar>> {
+    pub fn get_boss_bars() -> Box<dyn Iterator<Item = JRef<dyn KeyedBossBar>> + Send> {
         Self::server().get_boss_bars()
     } // paper-api/src/main/java/org/bukkit/Bukkit.java:2416
     pub fn get_boss_bar(key: JRef<NamespacedKey>) -> Option<JRef<dyn KeyedBossBar>> {
@@ -760,37 +754,37 @@ impl Bukkit {
     pub fn get_advancement(key: JRef<NamespacedKey>) -> Option<JRef<dyn Advancement>> {
         Self::server().get_advancement(key)
     } // paper-api/src/main/java/org/bukkit/Bukkit.java:2556
-    pub fn advancement_iterator() -> JIterator<JRef<dyn Advancement>> {
+    pub fn advancement_iterator() -> Box<dyn Iterator<Item = JRef<dyn Advancement>> + Send> {
         Self::server().advancement_iterator()
     } // paper-api/src/main/java/org/bukkit/Bukkit.java:2567
     pub fn create_block_data(material: Material) -> JRef<dyn BlockData> {
         Self::server().create_block_data(material)
     } // paper-api/src/main/java/org/bukkit/Bukkit.java:2579
-    pub fn create_block_data_1(data: &str) -> Result<JRef<dyn BlockData>, Throwable> {
+    pub fn create_block_data_1(data: &str) -> Result<JRef<dyn BlockData>, anyhow::Error> {
         Self::server().create_block_data_1(data)
     } // paper-api/src/main/java/org/bukkit/Bukkit.java:2605
     pub fn create_block_data_2(
         material: Material,
-        consumer: Option<JRef<dyn Consumer<JObjectRef>>>,
+        consumer: Option<Arc<dyn Fn(JObjectRef) + Send + Sync>>,
     ) -> JRef<dyn BlockData> {
         Self::server().create_block_data_2(material, consumer)
     } // paper-api/src/main/java/org/bukkit/Bukkit.java:2592
     pub fn create_block_data_2_2(
         material: Option<Material>,
         data: Option<String>,
-    ) -> Result<JRef<dyn BlockData>, Throwable> {
+    ) -> Result<JRef<dyn BlockData>, anyhow::Error> {
         Self::server().create_block_data_2_2(material, data)
     } // paper-api/src/main/java/org/bukkit/Bukkit.java:2620
     pub fn get_tag(
         registry: &str,
         tag: JRef<NamespacedKey>,
-        clazz: Class,
+        clazz: crate::rt::Class,
     ) -> Option<JRef<dyn Tag<JRef<dyn crate::org::bukkit::keyed::Keyed>>>> {
         Self::server().get_tag(registry, tag, clazz)
     } // paper-api/src/main/java/org/bukkit/Bukkit.java:2644
     pub fn get_tags(
         registry: &str,
-        clazz: Class,
+        clazz: crate::rt::Class,
     ) -> Vec<JRef<dyn Tag<JRef<dyn crate::org::bukkit::keyed::Keyed>>>> {
         Self::server().get_tags(registry, clazz)
     } // paper-api/src/main/java/org/bukkit/Bukkit.java:2662
@@ -800,14 +794,14 @@ impl Bukkit {
     pub fn select_entities(
         sender: JRef<dyn CommandSender>,
         selector: &str,
-    ) -> Result<Vec<JRef<dyn Entity>>, Throwable> {
+    ) -> Result<Vec<JRef<dyn Entity>>, anyhow::Error> {
         Self::server().select_entities(sender, selector)
     } // paper-api/src/main/java/org/bukkit/Bukkit.java:2698
     pub fn get_structure_manager() -> JRef<dyn StructureManager> {
         Self::server().get_structure_manager()
     } // paper-api/src/main/java/org/bukkit/Bukkit.java:2708
     pub fn get_registry(
-        t_class: Class,
+        t_class: crate::rt::Class,
     ) -> Option<JRef<dyn Registry<JRef<dyn crate::org::bukkit::keyed::Keyed>>>> {
         Self::server().get_registry(t_class)
     } // paper-api/src/main/java/org/bukkit/Bukkit.java:2727

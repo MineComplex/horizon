@@ -11,7 +11,6 @@ use crate::io::papermc::paper::command::brigadier::command_registration_flag::Co
 use crate::io::papermc::paper::command::brigadier::command_source_stack::CommandSourceStack;
 use crate::io::papermc::paper::plugin::configuration::plugin_meta::PluginMeta;
 use crate::io::papermc::paper::plugin::lifecycle::event::registrar::registrar::Registrar;
-use crate::java::util::function::Predicate;
 use crate::prelude::*;
 
 // ---- interface io.papermc.paper.command.brigadier.Commands (paper-api/src/main/java/io/papermc/paper/command/brigadier/Commands.java:62)
@@ -103,12 +102,12 @@ pub fn argument<T: JGeneric>(
     RequiredArgumentBuilder::argument(name, argument_type)
 } // paper-api/src/main/java/io/papermc/paper/command/brigadier/Commands.java:83
 pub fn restricted(
-    predicate: JRef<dyn Predicate<JRef<dyn CommandSourceStack>>>,
-) -> JRef<dyn Predicate<JRef<dyn CommandSourceStack>>> {
+    predicate: Arc<dyn Fn(JRef<dyn CommandSourceStack>) -> bool + Send + Sync>,
+) -> Arc<dyn Fn(JRef<dyn CommandSourceStack>) -> bool + Send + Sync> {
     crate::io::papermc::paper::internal_api_bridge::get().restricted(predicate, true)
 } // paper-api/src/main/java/io/papermc/paper/command/brigadier/Commands.java:99
 pub fn unrestricted(
-    predicate: JRef<dyn Predicate<JRef<dyn CommandSourceStack>>>,
-) -> JRef<dyn Predicate<JRef<dyn CommandSourceStack>>> {
+    predicate: Arc<dyn Fn(JRef<dyn CommandSourceStack>) -> bool + Send + Sync>,
+) -> Arc<dyn Fn(JRef<dyn CommandSourceStack>) -> bool + Send + Sync> {
     crate::io::papermc::paper::internal_api_bridge::get().restricted(predicate, false)
 } // paper-api/src/main/java/io/papermc/paper/command/brigadier/Commands.java:115

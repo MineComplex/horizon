@@ -3,8 +3,6 @@
 use crate::prelude::*;
 use crate::com::mojang::brigadier::arguments::ArgumentType;
 use crate::com::mojang::serialization::Codec;
-use crate::java::util::function::ToIntFunction;
-use crate::java::util::stream::Stream;
 use crate::net::minecraft::core::registry::Registry;
 use crate::net::minecraft::server::level::server_level::ServerLevel;
 use crate::net::minecraft::world::flag::feature_flag_set::FeatureFlagSet;
@@ -84,7 +82,7 @@ impl GameRules {
     pub fn new_1(rules: &Vec<JRef<GameRule<JObjectRef>>>) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/gamerules/GameRules.java:116
     pub fn new_2(enabled_features: FeatureFlagSet, map: JRef<GameRuleMap>) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/gamerules/GameRules.java:99
     pub fn codec(enabled_features: FeatureFlagSet) -> JRef<dyn Codec<JRef<GameRules>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/gamerules/GameRules.java:95
-    pub fn available_rules(&self) -> Stream<JRef<GameRule<JObjectRef>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/gamerules/GameRules.java:120
+    pub fn available_rules(&self) -> Box<dyn Iterator<Item = JRef<GameRule<JObjectRef>>> + Send> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/gamerules/GameRules.java:120
     pub fn get<T: JGeneric>(&self, game_rule: JRef<GameRule<T>>) -> T { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/gamerules/GameRules.java:131
     pub fn get_2<T: JGeneric>(&self, rule: JRef<GameRule<T>>, game_rule_override: bool) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/gamerules/GameRules.java:124
     pub fn set<T: JGeneric>(&self, game_rule: JRef<GameRule<T>>, value: T, level: JRef<ServerLevel>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/gamerules/GameRules.java:140
@@ -97,7 +95,7 @@ impl GameRules {
     pub fn register_integer(id: &str, category: GameRuleCategory, default_value: i32, min: i32) -> JRef<GameRule<i32>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/gamerules/GameRules.java:196
     pub fn register_integer_5(id: &str, category: GameRuleCategory, default_value: i32, min: i32, max: i32) -> JRef<GameRule<i32>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/gamerules/GameRules.java:200
     pub fn register_integer_6(id: &str, category: GameRuleCategory, default_value: i32, min: i32, max: i32, required_features: FeatureFlagSet) -> JRef<GameRule<i32>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/gamerules/GameRules.java:204
-    pub fn register<T: JGeneric>(id: &str, category: GameRuleCategory, type_hint: GameRuleType, argument_type: JRef<dyn ArgumentType<T>>, codec: JRef<dyn Codec<T>>, default_value: T, required_features: FeatureFlagSet, visitor_caller: JRef<dyn GameRulesVisitorCaller<T>>, command_result_function: JRef<dyn ToIntFunction<T>>) -> JRef<GameRule<T>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/gamerules/GameRules.java:220
+    pub fn register<T: JGeneric>(id: &str, category: GameRuleCategory, type_hint: GameRuleType, argument_type: JRef<dyn ArgumentType<T>>, codec: JRef<dyn Codec<T>>, default_value: T, required_features: FeatureFlagSet, visitor_caller: JRef<dyn GameRulesVisitorCaller<T>>, command_result_function: Arc<dyn Fn(T) -> i32 + Send + Sync>) -> JRef<GameRule<T>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/gamerules/GameRules.java:220
     pub fn bootstrap(registry: JRef<dyn Registry<JRef<GameRule<JObjectRef>>>>) -> JRef<GameRule<JObjectRef>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/gamerules/GameRules.java:238
     pub fn get_as_string<T: JGeneric>(&self, game_rule: JRef<GameRule<T>>) -> String { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/gamerules/GameRules.java:242
 }

@@ -5,8 +5,6 @@ use crate::api_impl::util::waitable::Waitable;
 use crate::io::papermc::paper::chat::chat_renderer::ChatRenderer;
 use crate::io::papermc::paper::chat::chat_renderer::ChatRendererDefault;
 use crate::io::papermc::paper::event::player::abstract_chat_event::AbstractChatEventTrait;
-use crate::java::util::BitSet;
-use crate::java::util::function::Function;
 use crate::net::kyori::adventure::audience::Audience;
 use crate::net::minecraft::network::chat::outgoing_chat_message::OutgoingChatMessage;
 use crate::net::minecraft::network::chat::player_chat_message::PlayerChatMessage;
@@ -27,7 +25,7 @@ pub struct ChatProcessor {
     pub craftbukkit_original_message: String, // paper-server/src/main/java/io/papermc/paper/adventure/ChatProcessor.java:59
     pub paper_original_message: crate::net::kyori::adventure::text::Component, // paper-server/src/main/java/io/papermc/paper/adventure/ChatProcessor.java:60
     pub outgoing: JRef<dyn OutgoingChatMessage>, // paper-server/src/main/java/io/papermc/paper/adventure/ChatProcessor.java:61
-    pub flags: Mut<BitSet>, // paper-server/src/main/java/io/papermc/paper/adventure/ChatProcessor.java:66
+    pub flags: Mut<bit_set::BitSet>, // paper-server/src/main/java/io/papermc/paper/adventure/ChatProcessor.java:66
 }
 pub static PAPER_RAW: LazyLock<JRef<ResourceKey<crate::net::minecraft::network::chat::chat_type::ChatType>>> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/adventure/ChatProcessor.java:53
 pub const DEFAULT_LEGACY_FORMAT: &str = "<%1$s> %2$s"; // paper-server/src/main/java/io/papermc/paper/adventure/ChatProcessor.java:54
@@ -96,11 +94,11 @@ impl ChatProcessorViewersOutgoingChat {
     pub fn send_format_changed_viewer_aware(&self, player: JRef<dyn Player>, display_name: crate::net::kyori::adventure::text::Component, message: crate::net::kyori::adventure::text::Component, renderer: JRef<dyn ChatRenderer>, viewers: &HashSet<JRef<dyn Audience>>, chat_type: crate::net::minecraft::network::chat::chat_type::ChatTypeBound) { todo!() } // paper-server/src/main/java/io/papermc/paper/adventure/ChatProcessor.java:240
     pub fn send_message_changed(&self, player: JRef<dyn Player>, rendered_message: JRef<dyn crate::net::minecraft::network::chat::component::Component>, viewers: &HashSet<JRef<dyn Audience>>, chat_type: crate::net::minecraft::network::chat::chat_type::ChatTypeBound) { todo!() } // paper-server/src/main/java/io/papermc/paper/adventure/ChatProcessor.java:245
     pub fn send_original(&self, player: JRef<dyn Player>, viewers: &HashSet<JRef<dyn Audience>>, chat_type: crate::net::minecraft::network::chat::chat_type::ChatTypeBound) { todo!() } // paper-server/src/main/java/io/papermc/paper/adventure/ChatProcessor.java:250
-    pub fn broadcast_to_viewers(&self, viewers: &Vec<JRef<dyn Audience>>, chat_type: crate::net::minecraft::network::chat::chat_type::ChatTypeBound, msg_function: Option<JRef<dyn Function<JRef<dyn Audience>, JRef<dyn crate::net::minecraft::network::chat::component::Component>>>>) { todo!() } // paper-server/src/main/java/io/papermc/paper/adventure/ChatProcessor.java:255
+    pub fn broadcast_to_viewers(&self, viewers: &Vec<JRef<dyn Audience>>, chat_type: crate::net::minecraft::network::chat::chat_type::ChatTypeBound, msg_function: Option<Arc<dyn Fn(JRef<dyn Audience>) -> JRef<dyn crate::net::minecraft::network::chat::component::Component> + Send + Sync>>) { todo!() } // paper-server/src/main/java/io/papermc/paper/adventure/ChatProcessor.java:255
     pub fn adventure(&self, chat_type: crate::net::minecraft::network::chat::chat_type::ChatTypeBound) -> crate::net::kyori::adventure::chat::ChatTypeBound { todo!() } // paper-server/src/main/java/io/papermc/paper/adventure/ChatProcessor.java:281
     pub fn accepts_native(viewer: JRef<dyn Audience>) -> bool { todo!() } // paper-server/src/main/java/io/papermc/paper/adventure/ChatProcessor.java:296
-    pub fn send_native(&self, viewer: JRef<dyn Audience>, chat_type: crate::net::minecraft::network::chat::chat_type::ChatTypeBound, msg_function: Option<JRef<dyn Function<JRef<dyn Audience>, JRef<dyn crate::net::minecraft::network::chat::component::Component>>>>) { todo!() } // paper-server/src/main/java/io/papermc/paper/adventure/ChatProcessor.java:306
-    pub fn send_to_server(&self, chat_type: crate::net::minecraft::network::chat::chat_type::ChatTypeBound, msg_function: Option<JRef<dyn Function<JRef<dyn Audience>, JRef<dyn crate::net::minecraft::network::chat::component::Component>>>>) { todo!() } // paper-server/src/main/java/io/papermc/paper/adventure/ChatProcessor.java:318
+    pub fn send_native(&self, viewer: JRef<dyn Audience>, chat_type: crate::net::minecraft::network::chat::chat_type::ChatTypeBound, msg_function: Option<Arc<dyn Fn(JRef<dyn Audience>) -> JRef<dyn crate::net::minecraft::network::chat::component::Component> + Send + Sync>>) { todo!() } // paper-server/src/main/java/io/papermc/paper/adventure/ChatProcessor.java:306
+    pub fn send_to_server(&self, chat_type: crate::net::minecraft::network::chat::chat_type::ChatTypeBound, msg_function: Option<Arc<dyn Fn(JRef<dyn Audience>) -> JRef<dyn crate::net::minecraft::network::chat::component::Component> + Send + Sync>>) { todo!() } // paper-server/src/main/java/io/papermc/paper/adventure/ChatProcessor.java:318
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

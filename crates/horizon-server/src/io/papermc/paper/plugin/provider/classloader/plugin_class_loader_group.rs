@@ -3,12 +3,11 @@
 use crate::prelude::*;
 use crate::io::papermc::paper::plugin::provider::classloader::class_loader_access::ClassLoaderAccess;
 use crate::io::papermc::paper::plugin::provider::classloader::configured_plugin_class_loader::ConfiguredPluginClassLoader;
-use crate::java::lang::Class;
 use crate::api_prelude::*;
 
 // ---- interface io.papermc.paper.plugin.provider.classloader.PluginClassLoaderGroup (paper-api/src/main/java/io/papermc/paper/plugin/provider/classloader/PluginClassLoaderGroup.java:14)
 pub trait PluginClassLoaderGroup: JObject {
-    fn get_class_by_name(&self, name: &str, resolve: bool, requester: JRef<dyn ConfiguredPluginClassLoader>) -> Option<Class>; // paper-api/src/main/java/io/papermc/paper/plugin/provider/classloader/PluginClassLoaderGroup.java:32
+    fn get_class_by_name(&self, name: &str, resolve: bool, requester: JRef<dyn ConfiguredPluginClassLoader>) -> Option<crate::rt::Class>; // paper-api/src/main/java/io/papermc/paper/plugin/provider/classloader/PluginClassLoaderGroup.java:32
     fn remove(&self, configured_plugin_class_loader: JRef<dyn ConfiguredPluginClassLoader>); // paper-api/src/main/java/io/papermc/paper/plugin/provider/classloader/PluginClassLoaderGroup.java:40
     fn add(&self, configured_plugin_class_loader: JRef<dyn ConfiguredPluginClassLoader>); // paper-api/src/main/java/io/papermc/paper/plugin/provider/classloader/PluginClassLoaderGroup.java:52
     fn get_access(&self) -> JRef<dyn ClassLoaderAccess>; // paper-api/src/main/java/io/papermc/paper/plugin/provider/classloader/PluginClassLoaderGroup.java:64

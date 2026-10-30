@@ -4,10 +4,6 @@ use crate::prelude::*;
 use crate::com::mojang::serialization::Codec;
 use crate::com::mojang::serialization::DynamicOps;
 use crate::com::mojang::serialization::MapCodec;
-use crate::java::io::DataInput;
-use crate::java::io::DataOutput;
-use crate::java::lang::Throwable;
-use crate::java::util::function::BiConsumer;
 use crate::net::minecraft::nbt::list_tag::ListTag;
 use crate::net::minecraft::nbt::nbt_accounter::NbtAccounter;
 use crate::net::minecraft::nbt::stream_tag_visitor::StreamTagVisitor;
@@ -29,7 +25,7 @@ impl CompoundTag {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/nbt/CompoundTag.java:167
     pub fn new_1(tags: &HashMap<String, JRef<dyn Tag>>) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/nbt/CompoundTag.java:163
-    pub fn write(&self, output: JRef<dyn DataOutput>) -> Result<(), Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/nbt/CompoundTag.java:171
+    pub fn write(&self, output: Box<dyn std::io::Write + Send>) -> Result<(), anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/nbt/CompoundTag.java:171
     pub fn size_in_bytes(&self) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/nbt/CompoundTag.java:181
     pub fn get_id(&self) -> i8 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/nbt/CompoundTag.java:210
     pub fn get_type(&self) -> JRef<dyn TagType<JRef<CompoundTag>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/nbt/CompoundTag.java:215
@@ -41,7 +37,7 @@ impl CompoundTag {
     pub fn key_set(&self) -> HashSet<String> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/nbt/CompoundTag.java:194
     pub fn entry_set(&self) -> HashSet<(String, JRef<dyn Tag>)> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/nbt/CompoundTag.java:198
     pub fn values(&self) -> Vec<JRef<dyn Tag>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/nbt/CompoundTag.java:202
-    pub fn for_each(&self, consumer: JRef<dyn BiConsumer<String, JRef<dyn Tag>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/nbt/CompoundTag.java:206
+    pub fn for_each(&self, consumer: Arc<dyn Fn(String, JRef<dyn Tag>) + Send + Sync>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/nbt/CompoundTag.java:206
     pub fn size(&self) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/nbt/CompoundTag.java:220
     pub fn put(&self, name: &str, tag: JRef<dyn Tag>) -> Option<JRef<dyn Tag>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/nbt/CompoundTag.java:224
     pub fn put_byte(&self, name: &str, value: i8) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/nbt/CompoundTag.java:228
@@ -86,8 +82,8 @@ impl CompoundTag {
     pub fn shallow_copy(&self) -> JRef<CompoundTag> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/nbt/CompoundTag.java:391
     pub fn equals(&self, obj: JObjectRef) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/nbt/CompoundTag.java:414
     pub fn hash_code(&self) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/nbt/CompoundTag.java:419
-    pub fn write_named_tag(name: &str, tag: JRef<dyn Tag>, output: JRef<dyn DataOutput>) -> Result<(), Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/nbt/CompoundTag.java:424
-    pub fn read_named_tag_data(type_: JRef<dyn TagType<JObjectRef>>, name: &str, input: DataInput, accounter: JRef<NbtAccounter>) -> JRef<dyn Tag> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/nbt/CompoundTag.java:432
+    pub fn write_named_tag(name: &str, tag: JRef<dyn Tag>, output: Box<dyn std::io::Write + Send>) -> Result<(), anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/nbt/CompoundTag.java:424
+    pub fn read_named_tag_data(type_: JRef<dyn TagType<JObjectRef>>, name: &str, input: Box<dyn std::io::Read + Send>, accounter: JRef<NbtAccounter>) -> JRef<dyn Tag> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/nbt/CompoundTag.java:432
     pub fn merge(&self, other: JRef<CompoundTag>) -> JRef<CompoundTag> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/nbt/CompoundTag.java:444
     pub fn store<T: JGeneric>(&self, codec: MapCodec<T>, value: T) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/nbt/CompoundTag.java:519
     pub fn store_3<T: JGeneric>(&self, name: &str, codec: JRef<dyn Codec<T>>, value: T) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/nbt/CompoundTag.java:499
@@ -107,7 +103,7 @@ impl CompoundTag {
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl Tag for CompoundTag {
-    fn write(&self, output: JRef<dyn DataOutput>) -> Result<(), Throwable> { CompoundTag::write(self, output) }
+    fn write(&self, output: Box<dyn std::io::Write + Send>) -> Result<(), anyhow::Error> { CompoundTag::write(self, output) }
     fn to_string(&self) -> String { CompoundTag::to_string(self) }
     fn get_id(&self) -> i8 { CompoundTag::get_id(self) }
     fn get_type(&self) -> JRef<dyn TagType<JObjectRef>> { CompoundTag::get_type(self) }

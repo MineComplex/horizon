@@ -3,7 +3,6 @@
 use crate::prelude::*;
 use crate::com::mojang::serialization::Codec;
 use crate::com::mojang::serialization::MapCodec;
-use crate::java::lang::Throwable;
 use crate::net::minecraft::commands::arguments::nbt_path_argument::NbtPathArgumentNbtPath;
 use crate::net::minecraft::network::chat::component::Component;
 use crate::net::minecraft::network::chat::component_contents::ComponentContents;
@@ -26,13 +25,13 @@ pub static MAP_CODEC: LazyLock<MapCodec<NbtContents>> = LazyLock::new(|| todo!()
 impl NbtContents {
     pub fn new() -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/chat/contents/NbtContents.java:30
     pub fn new_5(nbt_path: JRef<CompilableString<JRef<NbtPathArgumentNbtPath>>>, interpreting: bool, plain: bool, separator: Option<JRef<dyn Component>>, data_source: JRef<dyn DataSource>) -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/chat/contents/NbtContents.java:30
-    pub fn resolve(&self, context: ResolutionContext, recursion_depth: i32) -> Result<JRef<MutableComponent>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/chat/contents/NbtContents.java:59
+    pub fn resolve(&self, context: ResolutionContext, recursion_depth: i32) -> Result<JRef<MutableComponent>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/chat/contents/NbtContents.java:59
     pub fn codec(&self) -> MapCodec<NbtContents> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/chat/contents/NbtContents.java:104
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl ComponentContents for NbtContents {
-    fn resolve(&self, context: ResolutionContext, recursion_depth: i32) -> Result<JRef<MutableComponent>, Throwable> { NbtContents::resolve(self, context, recursion_depth) }
+    fn resolve(&self, context: ResolutionContext, recursion_depth: i32) -> Result<JRef<MutableComponent>, anyhow::Error> { NbtContents::resolve(self, context, recursion_depth) }
     fn codec(&self) -> MapCodec<JRef<dyn ComponentContents>> { NbtContents::codec(self) }
 }
 crate::jobject!(NbtContents: dyn ComponentContents);

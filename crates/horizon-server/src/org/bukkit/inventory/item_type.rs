@@ -5,8 +5,6 @@ use crate::com::destroystokyo::paper::inventory::meta::armor_stand_meta::ArmorSt
 use crate::io::papermc::paper::datacomponent::data_component_type::DataComponentType;
 use crate::io::papermc::paper::datacomponent::data_component_type::DataComponentTypeValued;
 use crate::io::papermc::paper::world::flag::feature_dependant::FeatureDependant;
-use crate::java::lang::Class;
-use crate::java::util::function::Consumer;
 use crate::org::bukkit::attribute::attribute::Attribute;
 use crate::org::bukkit::attribute::attribute_modifier::AttributeModifier;
 use crate::org::bukkit::block::block_type::BlockType;
@@ -48,12 +46,12 @@ use crate::org::bukkit::registry;
 // ---- interface org.bukkit.inventory.ItemType (paper-api/src/main/java/org/bukkit/inventory/ItemType.java:49)
 pub trait ItemType: Keyed + crate::org::bukkit::translatable::Translatable + crate::net::kyori::adventure::translation::Translatable + FeatureDependant {
     fn typed(&self) -> JRef<dyn ItemTypeTyped<JRef<dyn ItemMeta>>>; // paper-api/src/main/java/org/bukkit/inventory/ItemType.java:3427
-    fn typed_1<M: JGeneric>(&self, item_meta_type: Class) -> JRef<dyn ItemTypeTyped<M>> where Self: Sized; // paper-api/src/main/java/org/bukkit/inventory/ItemType.java:3438
+    fn typed_1<M: JGeneric>(&self, item_meta_type: crate::rt::Class) -> JRef<dyn ItemTypeTyped<M>> where Self: Sized; // paper-api/src/main/java/org/bukkit/inventory/ItemType.java:3438
     fn create_item_stack(&self) -> JRef<ItemStack>; // paper-api/src/main/java/org/bukkit/inventory/ItemType.java:3446
     fn create_item_stack_1(&self, amount: i32) -> JRef<ItemStack>; // paper-api/src/main/java/org/bukkit/inventory/ItemType.java:3454
     fn has_block_type(&self) -> bool; // paper-api/src/main/java/org/bukkit/inventory/ItemType.java:3462
     fn get_block_type(&self) -> JRef<dyn BlockType>; // paper-api/src/main/java/org/bukkit/inventory/ItemType.java:3474
-    fn get_item_meta_class(&self) -> Class; // paper-api/src/main/java/org/bukkit/inventory/ItemType.java:3481
+    fn get_item_meta_class(&self) -> crate::rt::Class; // paper-api/src/main/java/org/bukkit/inventory/ItemType.java:3481
     fn get_max_stack_size(&self) -> i32; // paper-api/src/main/java/org/bukkit/inventory/ItemType.java:3489
     fn get_max_durability(&self) -> i16; // paper-api/src/main/java/org/bukkit/inventory/ItemType.java:3496
     fn is_edible(&self) -> bool; // paper-api/src/main/java/org/bukkit/inventory/ItemType.java:3504
@@ -1738,5 +1736,5 @@ pub fn get_item_type<M: ?Sized + 'static>(key: &str) -> JRef<M> {
 } // paper-api/src/main/java/org/bukkit/inventory/ItemType.java:3415
 // ---- interface org.bukkit.inventory.ItemType.Typed (paper-api/src/main/java/org/bukkit/inventory/ItemType.java:60)
 pub trait ItemTypeTyped<M: JGeneric>: ItemType {
-    fn create_item_stack_2(&self, amount: i32, meta_configurator: Option<JRef<dyn Consumer<JObjectRef>>>) -> JRef<ItemStack>; // paper-api/src/main/java/org/bukkit/inventory/ItemType.java:91
+    fn create_item_stack_2(&self, amount: i32, meta_configurator: Option<Arc<dyn Fn(JObjectRef) + Send + Sync>>) -> JRef<ItemStack>; // paper-api/src/main/java/org/bukkit/inventory/ItemType.java:91
 }

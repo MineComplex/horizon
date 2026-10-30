@@ -4,7 +4,6 @@ use crate::prelude::*;
 use crate::api_impl::persistence::craft_persistent_data_type_registry::CraftPersistentDataTypeRegistry;
 use crate::com::mojang::serialization::Codec;
 use crate::com::mojang::serialization::MapCodec;
-use crate::java::util::function::Predicate;
 use crate::net::minecraft::core::block_pos::BlockPos;
 use crate::net::minecraft::core::component::data_component_patch::DataComponentPatch;
 use crate::net::minecraft::core::holder_getter::HolderGetter;
@@ -90,7 +89,7 @@ impl Raid {
     pub fn get_all_raiders(&self) -> HashSet<JRef<dyn RaiderTrait>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/raid/Raid.java:211
     pub fn is_started(&self) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/raid/Raid.java:221
     pub fn get_groups_spawned(&self) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/raid/Raid.java:225
-    pub fn valid_player(&self) -> JRef<dyn Predicate<JRef<ServerPlayer>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/raid/Raid.java:229
+    pub fn valid_player(&self) -> Arc<dyn Fn(JRef<ServerPlayer>) -> bool + Send + Sync> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/raid/Raid.java:229
     pub fn update_players(&self, level: JRef<ServerLevel>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/raid/Raid.java:236
     pub fn get_max_raid_omen_level(&self) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/raid/Raid.java:253
     pub fn get_raid_omen_level(&self) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/raid/Raid.java:257

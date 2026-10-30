@@ -6,21 +6,12 @@ use crate::io::papermc::paper::configuration::configurations::ConfigurationsCont
 use crate::io::papermc::paper::configuration::configurations::ConfigurationsContextMapBuilder;
 use crate::io::papermc::paper::configuration::configurations::ConfigurationsTrait;
 use crate::io::papermc::paper::configuration::transformation::transformations::TransformationsDefaultsAware;
-use crate::java::lang::Throwable;
-use crate::java::lang::reflect::Type;
-use crate::java::util::function::Function;
 use crate::net::minecraft::core::registry_access::RegistryAccess;
 use crate::net::minecraft::server::level::server_level::ServerLevel;
 use crate::net::minecraft::server::minecraft_server::MinecraftServerTrait;
 use crate::org::bukkit::configuration::file::yaml_configuration::YamlConfiguration;
 use crate::org::galemc::gale::configuration::gale_global_configuration::GaleGlobalConfiguration;
 use crate::org::galemc::gale::configuration::gale_world_configuration::GaleWorldConfiguration;
-use crate::org::spongepowered::configurate::ConfigurationNode;
-use crate::org::spongepowered::configurate::ConfigurationOptions;
-use crate::org::spongepowered::configurate::objectmapping::ObjectMapper;
-use crate::org::spongepowered::configurate::serialize::SerializationException;
-use crate::org::spongepowered::configurate::util::CheckedFunction;
-use crate::org::spongepowered::configurate::yaml::YamlConfigurationLoaderBuilder;
 
 // ---- class org.galemc.gale.configuration.GaleConfigurations (leaf-server/src/main/java/org/galemc/gale/configuration/GaleConfigurations.java:57)
 pub struct GaleConfigurations {
@@ -37,57 +28,57 @@ pub const WORLD_CONFIG_FILE_NAME: &str = "gale-world.yml"; // leaf-server/src/ma
 pub const CONFIG_DIR: &str = "config"; // leaf-server/src/main/java/org/galemc/gale/configuration/GaleConfigurations.java:65
 pub static GLOBAL_HEADER: LazyLock<String> = LazyLock::new(|| todo!()); // leaf-server/src/main/java/org/galemc/gale/configuration/GaleConfigurations.java:67
 pub static WORLD_DEFAULTS_HEADER: LazyLock<String> = LazyLock::new(|| todo!()); // leaf-server/src/main/java/org/galemc/gale/configuration/GaleConfigurations.java:81
-pub static WORLD_HEADER: LazyLock<JRef<dyn Function<JRef<ConfigurationsContextMap>, String>>> = LazyLock::new(|| todo!()); // leaf-server/src/main/java/org/galemc/gale/configuration/GaleConfigurations.java:95
+pub static WORLD_HEADER: LazyLock<Arc<dyn Fn(JRef<ConfigurationsContextMap>) -> String + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/main/java/org/galemc/gale/configuration/GaleConfigurations.java:95
 pub static MOVED_NOTICE: LazyLock<String> = LazyLock::new(|| todo!()); // leaf-server/src/main/java/org/galemc/gale/configuration/GaleConfigurations.java:105
 pub static DEFAULT_AWARE_TRANSFORMATIONS: LazyLock<Vec<JRef<dyn TransformationsDefaultsAware>>> = LazyLock::new(|| todo!()); // leaf-server/src/main/java/org/galemc/gale/configuration/GaleConfigurations.java:234
 impl GaleConfigurations {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(global_folder: std::path::PathBuf) -> JRef<Self> { todo!() } // leaf-server/src/main/java/org/galemc/gale/configuration/GaleConfigurations.java:113
-    pub fn create_loader_builder(&self) -> YamlConfigurationLoaderBuilder { todo!() } // leaf-server/src/main/java/org/galemc/gale/configuration/GaleConfigurations.java:117
+    pub fn create_loader_builder(&self) -> () { todo!() } // leaf-server/src/main/java/org/galemc/gale/configuration/GaleConfigurations.java:117
     pub fn create_global_object_mapper_factory_builder(&self) -> ObjectMapper::FactoryBuilder { todo!() } // leaf-server/src/main/java/org/galemc/gale/configuration/GaleConfigurations.java:140
-    pub fn create_global_loader_builder(&self, registry_access: JRef<dyn RegistryAccess>) -> YamlConfigurationLoaderBuilder { todo!() } // leaf-server/src/main/java/org/galemc/gale/configuration/GaleConfigurations.java:149
-    pub fn initialize_global_configuration(&self, registry_access: JRef<dyn RegistryAccess>) -> Result<JRef<GaleGlobalConfiguration>, Throwable> { todo!() } // leaf-server/src/main/java/org/galemc/gale/configuration/GaleConfigurations.java:163
+    pub fn create_global_loader_builder(&self, registry_access: JRef<dyn RegistryAccess>) -> () { todo!() } // leaf-server/src/main/java/org/galemc/gale/configuration/GaleConfigurations.java:149
+    pub fn initialize_global_configuration(&self, registry_access: JRef<dyn RegistryAccess>) -> Result<JRef<GaleGlobalConfiguration>, anyhow::Error> { todo!() } // leaf-server/src/main/java/org/galemc/gale/configuration/GaleConfigurations.java:163
     pub fn create_default_context_map(&self, registry_access: JRef<dyn RegistryAccess>) -> JRef<ConfigurationsContextMapBuilder> { todo!() } // leaf-server/src/main/java/org/galemc/gale/configuration/GaleConfigurations.java:170
     pub fn create_world_object_mapper_factory_builder(&self, context_map: JRef<ConfigurationsContextMap>) -> ObjectMapper::FactoryBuilder { todo!() } // leaf-server/src/main/java/org/galemc/gale/configuration/GaleConfigurations.java:176
-    pub fn create_world_config_loader_builder(&self, context_map: JRef<ConfigurationsContextMap>) -> YamlConfigurationLoaderBuilder { todo!() } // leaf-server/src/main/java/org/galemc/gale/configuration/GaleConfigurations.java:184
-    pub fn apply_world_config_transformations(&self, context_map: JRef<ConfigurationsContextMap>, node: ConfigurationNode, defaults_node: Option<ConfigurationNode>) -> Result<(), Throwable> { todo!() } // leaf-server/src/main/java/org/galemc/gale/configuration/GaleConfigurations.java:204
-    pub fn apply_global_config_transformations(&self, node: ConfigurationNode) -> Result<(), Throwable> { todo!() } // leaf-server/src/main/java/org/galemc/gale/configuration/GaleConfigurations.java:222
-    pub fn apply_defaults_aware_world_config_transformations(&self, context_map: JRef<ConfigurationsContextMap>, world_node: ConfigurationNode, defaults_node: ConfigurationNode) -> Result<(), Throwable> { todo!() } // leaf-server/src/main/java/org/galemc/gale/configuration/GaleConfigurations.java:236
+    pub fn create_world_config_loader_builder(&self, context_map: JRef<ConfigurationsContextMap>) -> () { todo!() } // leaf-server/src/main/java/org/galemc/gale/configuration/GaleConfigurations.java:184
+    pub fn apply_world_config_transformations(&self, context_map: JRef<ConfigurationsContextMap>, node: serde_yaml::Value, defaults_node: Option<serde_yaml::Value>) -> Result<(), anyhow::Error> { todo!() } // leaf-server/src/main/java/org/galemc/gale/configuration/GaleConfigurations.java:204
+    pub fn apply_global_config_transformations(&self, node: serde_yaml::Value) -> Result<(), anyhow::Error> { todo!() } // leaf-server/src/main/java/org/galemc/gale/configuration/GaleConfigurations.java:222
+    pub fn apply_defaults_aware_world_config_transformations(&self, context_map: JRef<ConfigurationsContextMap>, world_node: serde_yaml::Value, defaults_node: serde_yaml::Value) -> Result<(), anyhow::Error> { todo!() } // leaf-server/src/main/java/org/galemc/gale/configuration/GaleConfigurations.java:236
     pub fn create_world_config(&self, context_map: JRef<ConfigurationsContextMap>) -> JRef<GaleWorldConfiguration> { todo!() } // leaf-server/src/main/java/org/galemc/gale/configuration/GaleConfigurations.java:251
-    pub fn is_config_type(&self, type_: Type) -> bool { todo!() } // leaf-server/src/main/java/org/galemc/gale/configuration/GaleConfigurations.java:261
+    pub fn is_config_type(&self, type_: ()) -> bool { todo!() } // leaf-server/src/main/java/org/galemc/gale/configuration/GaleConfigurations.java:261
     pub fn global_config_version(&self) -> i32 { todo!() } // leaf-server/src/main/java/org/galemc/gale/configuration/GaleConfigurations.java:287
     pub fn world_config_version(&self) -> i32 { todo!() } // leaf-server/src/main/java/org/galemc/gale/configuration/GaleConfigurations.java:292
     pub fn get_world_configuration_current_version(&self) -> i32 { todo!() } // leaf-server/src/main/java/org/galemc/gale/configuration/GaleConfigurations.java:297
-    pub fn default_options(options: ConfigurationOptions) -> ConfigurationOptions { todo!() } // leaf-server/src/main/java/org/galemc/gale/configuration/GaleConfigurations.java:123
+    pub fn default_options(options: ()) -> () { todo!() } // leaf-server/src/main/java/org/galemc/gale/configuration/GaleConfigurations.java:123
     pub fn default_global_factory_builder(builder: ObjectMapper::FactoryBuilder) -> ObjectMapper::FactoryBuilder { todo!() } // leaf-server/src/main/java/org/galemc/gale/configuration/GaleConfigurations.java:145
-    pub fn default_global_options(registry_access: JRef<dyn RegistryAccess>, options: ConfigurationOptions) -> ConfigurationOptions { todo!() } // leaf-server/src/main/java/org/galemc/gale/configuration/GaleConfigurations.java:155
+    pub fn default_global_options(registry_access: JRef<dyn RegistryAccess>, options: ()) -> () { todo!() } // leaf-server/src/main/java/org/galemc/gale/configuration/GaleConfigurations.java:155
     pub fn reload_configs(&self, server: JRef<dyn MinecraftServerTrait>) { todo!() } // leaf-server/src/main/java/org/galemc/gale/configuration/GaleConfigurations.java:266
-    pub fn setup(config_dir: std::path::PathBuf) -> Result<JRef<GaleConfigurations>, Throwable> { todo!() } // leaf-server/src/main/java/org/galemc/gale/configuration/GaleConfigurations.java:278
+    pub fn setup(config_dir: std::path::PathBuf) -> Result<JRef<GaleConfigurations>, anyhow::Error> { todo!() } // leaf-server/src/main/java/org/galemc/gale/configuration/GaleConfigurations.java:278
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl ConfigurationsTrait<JObjectRef, JObjectRef> for GaleConfigurations {
     fn as_configurations(&self) -> &Configurations<JObjectRef, JObjectRef> { self }
     fn create_object_mapper(&self) -> ObjectMapper::FactoryBuilder { Configurations::create_object_mapper(self) }
-    fn create_loader_builder(&self) -> YamlConfigurationLoaderBuilder { GaleConfigurations::create_loader_builder(self) }
-    fn is_config_type(&self, type_: Type) -> bool { GaleConfigurations::is_config_type(self, type_) }
+    fn create_loader_builder(&self) -> () { GaleConfigurations::create_loader_builder(self) }
+    fn is_config_type(&self, type_: ()) -> bool { GaleConfigurations::is_config_type(self, type_) }
     fn global_config_version(&self) -> i32 { GaleConfigurations::global_config_version(self) }
     fn world_config_version(&self) -> i32 { GaleConfigurations::world_config_version(self) }
     fn create_global_object_mapper_factory_builder(&self) -> ObjectMapper::FactoryBuilder { GaleConfigurations::create_global_object_mapper_factory_builder(self) }
-    fn create_global_loader_builder(&self, registry_access: JRef<dyn RegistryAccess>) -> YamlConfigurationLoaderBuilder { GaleConfigurations::create_global_loader_builder(self, registry_access) }
-    fn initialize_global_configuration(&self, registry_access: JRef<dyn RegistryAccess>) -> Result<G, Throwable> { GaleConfigurations::initialize_global_configuration(self, registry_access) }
-    fn initialize_global_configuration_2(&self, registry_access: JRef<dyn RegistryAccess>, creator: JRef<dyn CheckedFunction<ConfigurationNode, G, SerializationException>>) -> Result<G, Throwable> { Configurations::initialize_global_configuration_2(self, registry_access, creator) }
-    fn verify_global_config_version(&self, global_node: ConfigurationNode) { Configurations::verify_global_config_version(self, global_node) }
-    fn apply_global_config_transformations(&self, node: ConfigurationNode) -> Result<(), Throwable> { GaleConfigurations::apply_global_config_transformations(self, node) }
+    fn create_global_loader_builder(&self, registry_access: JRef<dyn RegistryAccess>) -> () { GaleConfigurations::create_global_loader_builder(self, registry_access) }
+    fn initialize_global_configuration(&self, registry_access: JRef<dyn RegistryAccess>) -> Result<G, anyhow::Error> { GaleConfigurations::initialize_global_configuration(self, registry_access) }
+    fn initialize_global_configuration_2(&self, registry_access: JRef<dyn RegistryAccess>, creator: ()) -> Result<G, anyhow::Error> { Configurations::initialize_global_configuration_2(self, registry_access, creator) }
+    fn verify_global_config_version(&self, global_node: serde_yaml::Value) { Configurations::verify_global_config_version(self, global_node) }
+    fn apply_global_config_transformations(&self, node: serde_yaml::Value) -> Result<(), anyhow::Error> { GaleConfigurations::apply_global_config_transformations(self, node) }
     fn create_default_context_map(&self, registry_access: JRef<dyn RegistryAccess>) -> JRef<ConfigurationsContextMapBuilder> { GaleConfigurations::create_default_context_map(self, registry_access) }
-    fn initialize_world_defaults_configuration(&self, registry_access: JRef<dyn RegistryAccess>) -> Result<(), Throwable> { Configurations::initialize_world_defaults_configuration(self, registry_access) }
+    fn initialize_world_defaults_configuration(&self, registry_access: JRef<dyn RegistryAccess>) -> Result<(), anyhow::Error> { Configurations::initialize_world_defaults_configuration(self, registry_access) }
     fn create_world_object_mapper_factory_builder(&self, context_map: JRef<ConfigurationsContextMap>) -> ObjectMapper::FactoryBuilder { GaleConfigurations::create_world_object_mapper_factory_builder(self, context_map) }
-    fn create_world_config_loader_builder(&self, context_map: JRef<ConfigurationsContextMap>) -> YamlConfigurationLoaderBuilder { GaleConfigurations::create_world_config_loader_builder(self, context_map) }
-    fn create_world_config(&self, context_map: JRef<ConfigurationsContextMap>) -> Result<W, Throwable> { GaleConfigurations::create_world_config(self, context_map) }
-    fn create_world_config_2(&self, context_map: JRef<ConfigurationsContextMap>, creator: JRef<dyn CheckedFunction<ConfigurationNode, W, SerializationException>>) -> Result<W, Throwable> { Configurations::create_world_config_2(self, context_map, creator) }
-    fn verify_world_config_version(&self, context_map: JRef<ConfigurationsContextMap>, world_node: ConfigurationNode) { Configurations::verify_world_config_version(self, context_map, world_node) }
-    fn apply_world_config_transformations(&self, context_map: JRef<ConfigurationsContextMap>, node: ConfigurationNode, defaults_node: Option<ConfigurationNode>) -> Result<(), Throwable> { GaleConfigurations::apply_world_config_transformations(self, context_map, node, defaults_node) }
-    fn apply_defaults_aware_world_config_transformations(&self, context_map: JRef<ConfigurationsContextMap>, world_node: ConfigurationNode, defaults_node: ConfigurationNode) -> Result<(), Throwable> { GaleConfigurations::apply_defaults_aware_world_config_transformations(self, context_map, world_node, defaults_node) }
+    fn create_world_config_loader_builder(&self, context_map: JRef<ConfigurationsContextMap>) -> () { GaleConfigurations::create_world_config_loader_builder(self, context_map) }
+    fn create_world_config(&self, context_map: JRef<ConfigurationsContextMap>) -> Result<W, anyhow::Error> { GaleConfigurations::create_world_config(self, context_map) }
+    fn create_world_config_2(&self, context_map: JRef<ConfigurationsContextMap>, creator: ()) -> Result<W, anyhow::Error> { Configurations::create_world_config_2(self, context_map, creator) }
+    fn verify_world_config_version(&self, context_map: JRef<ConfigurationsContextMap>, world_node: serde_yaml::Value) { Configurations::verify_world_config_version(self, context_map, world_node) }
+    fn apply_world_config_transformations(&self, context_map: JRef<ConfigurationsContextMap>, node: serde_yaml::Value, defaults_node: Option<serde_yaml::Value>) -> Result<(), anyhow::Error> { GaleConfigurations::apply_world_config_transformations(self, context_map, node, defaults_node) }
+    fn apply_defaults_aware_world_config_transformations(&self, context_map: JRef<ConfigurationsContextMap>, world_node: serde_yaml::Value, defaults_node: serde_yaml::Value) -> Result<(), anyhow::Error> { GaleConfigurations::apply_defaults_aware_world_config_transformations(self, context_map, world_node, defaults_node) }
     fn get_world_config_file(&self, level: JRef<ServerLevel>) -> std::path::PathBuf { Configurations::get_world_config_file(self, level) }
     fn get_global_config_file(&self) -> std::path::PathBuf { Configurations::get_global_config_file(self) }
     fn create_legacy_object(&self, server: JRef<dyn MinecraftServerTrait>) -> JRef<YamlConfiguration> { Configurations::create_legacy_object(self, server) }

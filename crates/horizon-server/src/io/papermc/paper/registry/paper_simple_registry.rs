@@ -3,10 +3,6 @@
 use crate::prelude::*;
 use crate::io::papermc::paper::registry::tag::tag::Tag;
 use crate::io::papermc::paper::registry::tag::tag_key::TagKey;
-use crate::java::lang::Class;
-use crate::java::util::JIterator;
-use crate::java::util::function::Predicate;
-use crate::java::util::stream::Stream;
 use crate::org::bukkit::entity::entity_type::EntityType;
 use crate::org::bukkit::namespaced_key::NamespacedKey;
 use crate::org::bukkit::particle::Particle;
@@ -29,8 +25,8 @@ impl<T: JGeneric, M: JGeneric> std::ops::Deref for PaperSimpleRegistry<T, M> {
 }
 impl<T: JGeneric, M: JGeneric> PaperSimpleRegistry<T, M> {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(type_: Class, nms_registry: JRef<dyn crate::net::minecraft::core::registry::Registry<M>>) -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/PaperSimpleRegistry.java:34
-    pub fn new_3(type_: Class, predicate: JRef<dyn Predicate<T>>, nms_registry: JRef<dyn crate::net::minecraft::core::registry::Registry<M>>) -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/PaperSimpleRegistry.java:39
+    pub fn new(type_: crate::rt::Class, nms_registry: JRef<dyn crate::net::minecraft::core::registry::Registry<M>>) -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/PaperSimpleRegistry.java:34
+    pub fn new_3(type_: crate::rt::Class, predicate: Arc<dyn Fn(T) -> bool + Send + Sync>, nms_registry: JRef<dyn crate::net::minecraft::core::registry::Registry<M>>) -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/PaperSimpleRegistry.java:39
     pub fn has_tag(&self, key: JRef<dyn TagKey<T>>) -> bool { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/PaperSimpleRegistry.java:44
     pub fn get_tag(&self, key: JRef<dyn TagKey<T>>) -> JRef<dyn Tag<T>> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/PaperSimpleRegistry.java:50
     pub fn get_tags(&self) -> Vec<JRef<dyn Tag<T>>> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/PaperSimpleRegistry.java:56
@@ -42,8 +38,8 @@ impl<T: JGeneric, M: JGeneric> PaperSimpleRegistry<T, M> {
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl<T: JGeneric, M: JGeneric> RegistrySimpleRegistryTrait<JObjectRef> for PaperSimpleRegistry<T, M> {
     fn as_registry_simple_registry(&self) -> &RegistrySimpleRegistry<JObjectRef> { self }
-    fn iterator(&self) -> JIterator<T> { RegistrySimpleRegistry::iterator(self) }
-    fn get_type(&self) -> Class { RegistrySimpleRegistry::get_type(self) }
+    fn iterator(&self) -> Box<dyn Iterator<Item = T> + Send> { RegistrySimpleRegistry::iterator(self) }
+    fn get_type(&self) -> crate::rt::Class { RegistrySimpleRegistry::get_type(self) }
 }
 impl<T: JGeneric, M: JGeneric> RegistryNotARegistryTrait<JObjectRef> for PaperSimpleRegistry<T, M> {
     fn as_registry_not_a_registry(&self) -> &RegistryNotARegistry<JObjectRef> { self }
@@ -54,7 +50,7 @@ impl<T: JGeneric, M: JGeneric> crate::org::bukkit::registry::Registry<A> for Pap
     fn has_tag(&self, key: JRef<dyn TagKey<T>>) -> bool { PaperSimpleRegistry::has_tag(self, key) }
     fn get_tag(&self, key: JRef<dyn TagKey<T>>) -> JRef<dyn Tag<T>> { PaperSimpleRegistry::get_tag(self, key) }
     fn get_tags(&self) -> Vec<JRef<dyn Tag<T>>> { PaperSimpleRegistry::get_tags(self) }
-    fn stream(&self) -> Stream<T> { RegistryNotARegistry::stream(self) }
-    fn key_stream(&self) -> Stream<JRef<NamespacedKey>> { RegistrySimpleRegistry::key_stream(self) }
+    fn stream(&self) -> Box<dyn Iterator<Item = T> + Send> { RegistryNotARegistry::stream(self) }
+    fn key_stream(&self) -> Box<dyn Iterator<Item = JRef<NamespacedKey>> + Send> { RegistrySimpleRegistry::key_stream(self) }
     fn size(&self) -> i32 { RegistrySimpleRegistry::size(self) }
 }

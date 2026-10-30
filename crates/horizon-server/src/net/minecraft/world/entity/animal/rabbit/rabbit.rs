@@ -6,16 +6,7 @@ use crate::ca::spottedleaf::moonrise::patches::chunk_system::entity::chunk_syste
 use crate::ca::spottedleaf::moonrise::patches::chunk_system::level::chunk::chunk_data::ChunkData;
 use crate::ca::spottedleaf::moonrise::patches::entity_tracker::entity_tracker_entity::EntityTrackerEntity;
 use crate::com::mojang::serialization::Codec;
-use crate::io::netty::buffer::ByteBuf;
 use crate::io::papermc::paper::event::entity::entity_knockback_event::EntityKnockbackEventCause;
-use crate::java::lang::Class;
-use crate::java::util::function::BiConsumer;
-use crate::java::util::function::BiPredicate;
-use crate::java::util::function::Consumer;
-use crate::java::util::function::Function;
-use crate::java::util::function::IntFunction;
-use crate::java::util::function::Predicate;
-use crate::java::util::stream::Stream;
 use crate::net::caffeinemc::mods::lithium::common::ai::non_poi_block_search::lithium_move_to_block_goal::LithiumMoveToBlockGoal;
 use crate::net::caffeinemc::mods::lithium::common::world::in_world_tracking::maybe_in_level_object::MaybeInLevelObject;
 use crate::net::minecraft::commands::arguments::entity_anchor_argument::EntityAnchorArgumentAnchor;
@@ -201,7 +192,6 @@ use crate::org::bukkit::event::entity::entity_regain_health_event::EntityRegainH
 use crate::org::bukkit::event::entity::entity_remove_event::EntityRemoveEventCause;
 use crate::org::bukkit::event::entity::entity_target_event::EntityTargetEventTargetReason;
 use crate::org::bukkit::event::player::player_teleport_event::PlayerTeleportEventTeleportCause;
-use crate::org::joml::Quaternionf;
 use crate::org::purpurmc::purpur::controller::move_controller_wasd::MoveControllerWASD;
 use crate::org::purpurmc::purpur::controller::move_controller_wasd::MoveControllerWASDTrait;
 
@@ -417,7 +407,7 @@ impl MobTrait for Rabbit {
     fn guaranteed_to_drop_undamaged(&self, slot: EquipmentSlot) -> bool { Mob::guaranteed_to_drop_undamaged(self, slot) }
     fn get_drop_chances(&self) -> DropChances { Mob::get_drop_chances(self) }
     fn drop_preserved_equipment(&self, level: JRef<ServerLevel>) { Mob::drop_preserved_equipment(self, level) }
-    fn drop_preserved_equipment_2(&self, level: JRef<ServerLevel>, should_drop: JRef<dyn Predicate<JRef<ItemStack>>>) -> HashSet<EquipmentSlot> { Mob::drop_preserved_equipment_2(self, level, should_drop) }
+    fn drop_preserved_equipment_2(&self, level: JRef<ServerLevel>, should_drop: Arc<dyn Fn(JRef<ItemStack>) -> bool + Send + Sync>) -> HashSet<EquipmentSlot> { Mob::drop_preserved_equipment_2(self, level, should_drop) }
     fn equip_1(&self, equipment: EquipmentTable) { Mob::equip_1(self, equipment) }
     fn populate_default_equipment_slots(&self, random: JRef<dyn RandomSource>, difficulty: DifficultyInstance) { Mob::populate_default_equipment_slots(self, random, difficulty) }
     fn populate_default_equipment_enchantments(&self, level: JRef<dyn ServerLevelAccessor>, random: JRef<dyn RandomSource>, local_difficulty: DifficultyInstance) { Mob::populate_default_equipment_enchantments(self, level, random, local_difficulty) }
@@ -449,7 +439,7 @@ impl MobTrait for Rabbit {
     fn get_attack_bounding_box(&self, horizontal_expansion: f64) -> AABB { Mob::get_attack_bounding_box(self, horizontal_expansion) }
     fn remove_free_will(&self) { Mob::remove_free_will(self) }
     fn get_goal_selector(&self) -> JRef<GoalSelector> { Mob::get_goal_selector(self) }
-    fn remove_all_goals(&self, predicate: JRef<dyn Predicate<JRef<dyn GoalTrait>>>) { Mob::remove_all_goals(self, predicate) }
+    fn remove_all_goals(&self, predicate: Arc<dyn Fn(JRef<dyn GoalTrait>) -> bool + Send + Sync>) { Mob::remove_all_goals(self, predicate) }
     fn charge_speed_modifier(&self) -> f32 { Mob::charge_speed_modifier(self) }
     fn swing_for_attack(&self, hand: InteractionHand) { Mob::swing_for_attack(self, hand) }
     fn swing_2(&self, hand: InteractionHand, animation: SwingAnimation) { Mob::swing_2(self, hand, animation) }
@@ -509,8 +499,8 @@ impl LivingEntityTrait for Rabbit {
     fn on_equip_item_4(&self, slot: EquipmentSlot, old_stack: JRef<ItemStack>, stack: JRef<ItemStack>, silent: bool) { LivingEntity::on_equip_item_4(self, slot, old_stack, stack, silent) }
     fn get_equip_sound(&self, slot: EquipmentSlot, stack: JRef<ItemStack>, equippable: Equippable) -> JRef<dyn Holder<SoundEvent>> { LivingEntity::get_equip_sound(self, slot, stack, equippable) }
     fn trigger_on_death_mob_effects(&self, level: JRef<ServerLevel>, reason: EntityRemovalReason) { LivingEntity::trigger_on_death_mob_effects(self, level, reason) }
-    fn drop_5(&self, item_stack: JRef<ItemStack>, thrown_from_hand: bool, prediction: Prediction, call_event: bool, entity_operation: JRef<dyn Consumer<JRef<dyn Item>>>) -> Option<JRef<ItemEntity>> { LivingEntity::drop_5(self, item_stack, thrown_from_hand, prediction, call_event, entity_operation) }
-    fn drop_6(&self, item_stack: JRef<ItemStack>, thrown_from_hand: bool, prediction: Prediction, randomly: bool, call_event: bool, entity_operation: JRef<dyn Consumer<JRef<dyn Item>>>) -> Option<JRef<ItemEntity>> { LivingEntity::drop_6(self, item_stack, thrown_from_hand, prediction, randomly, call_event, entity_operation) }
+    fn drop_5(&self, item_stack: JRef<ItemStack>, thrown_from_hand: bool, prediction: Prediction, call_event: bool, entity_operation: Arc<dyn Fn(JRef<dyn Item>) + Send + Sync>) -> Option<JRef<ItemEntity>> { LivingEntity::drop_5(self, item_stack, thrown_from_hand, prediction, call_event, entity_operation) }
+    fn drop_6(&self, item_stack: JRef<ItemStack>, thrown_from_hand: bool, prediction: Prediction, randomly: bool, call_event: bool, entity_operation: Arc<dyn Fn(JRef<dyn Item>) + Send + Sync>) -> Option<JRef<ItemEntity>> { LivingEntity::drop_6(self, item_stack, thrown_from_hand, prediction, randomly, call_event, entity_operation) }
     fn tick_effects(&self) { LivingEntity::tick_effects(self) }
     fn update_invisibility_status(&self) { LivingEntity::update_invisibility_status(self) }
     fn get_visibility_percent(&self, server_level: JRef<ServerLevel>, targeting_entity: Option<JRef<dyn EntityTrait>>) -> f64 { LivingEntity::get_visibility_percent(self, server_level, targeting_entity) }
@@ -574,11 +564,11 @@ impl LivingEntityTrait for Rabbit {
     fn get_knockback(&self, target: JRef<dyn EntityTrait>, damage_source: JRef<DamageSource>) -> f32 { LivingEntity::get_knockback(self, target, damage_source) }
     fn drop_from_loot_table(&self, level: JRef<ServerLevel>, source: JRef<DamageSource>, player_killed: bool) { Mob::drop_from_loot_table(self, level, source, player_killed) }
     fn drop_from_loot_table_4(&self, level: JRef<ServerLevel>, source: JRef<DamageSource>, player_killed: bool, loot_table: JRef<ResourceKey<JRef<LootTable>>>) { LivingEntity::drop_from_loot_table_4(self, level, source, player_killed, loot_table) }
-    fn drop_from_loot_table_4_2(&self, level: JRef<ServerLevel>, key: JRef<ResourceKey<JRef<LootTable>>>, params_builder: JRef<dyn Function<JRef<LootParamsBuilder>, JRef<LootParams>>>, consumer: JRef<dyn BiConsumer<JRef<ServerLevel>, JRef<ItemStack>>>) -> bool { LivingEntity::drop_from_loot_table_4_2(self, level, key, params_builder, consumer) }
-    fn drop_from_loot_table_5(&self, level: JRef<ServerLevel>, source: JRef<DamageSource>, player_killed: bool, loot_table: JRef<ResourceKey<JRef<LootTable>>>, item_stack_consumer: JRef<dyn Consumer<JRef<ItemStack>>>) { LivingEntity::drop_from_loot_table_5(self, level, source, player_killed, loot_table, item_stack_consumer) }
-    fn drop_from_entity_interact_loot_table(&self, level: JRef<ServerLevel>, key: JRef<ResourceKey<JRef<LootTable>>>, interacting_entity: Option<JRef<dyn EntityTrait>>, tool: JRef<dyn ItemInstance>, consumer: JRef<dyn BiConsumer<JRef<ServerLevel>, JRef<ItemStack>>>) -> bool { LivingEntity::drop_from_entity_interact_loot_table(self, level, key, interacting_entity, tool, consumer) }
-    fn drop_from_gift_loot_table(&self, level: JRef<ServerLevel>, key: JRef<ResourceKey<JRef<LootTable>>>, consumer: JRef<dyn BiConsumer<JRef<ServerLevel>, JRef<ItemStack>>>) -> bool { LivingEntity::drop_from_gift_loot_table(self, level, key, consumer) }
-    fn drop_from_shearing_loot_table(&self, level: JRef<ServerLevel>, key: JRef<ResourceKey<JRef<LootTable>>>, tool: JRef<dyn ItemInstance>, consumer: JRef<dyn BiConsumer<JRef<ServerLevel>, JRef<ItemStack>>>) { LivingEntity::drop_from_shearing_loot_table(self, level, key, tool, consumer) }
+    fn drop_from_loot_table_4_2(&self, level: JRef<ServerLevel>, key: JRef<ResourceKey<JRef<LootTable>>>, params_builder: Arc<dyn Fn(JRef<LootParamsBuilder>) -> JRef<LootParams> + Send + Sync>, consumer: Arc<dyn Fn(JRef<ServerLevel>, JRef<ItemStack>) + Send + Sync>) -> bool { LivingEntity::drop_from_loot_table_4_2(self, level, key, params_builder, consumer) }
+    fn drop_from_loot_table_5(&self, level: JRef<ServerLevel>, source: JRef<DamageSource>, player_killed: bool, loot_table: JRef<ResourceKey<JRef<LootTable>>>, item_stack_consumer: Arc<dyn Fn(JRef<ItemStack>) + Send + Sync>) { LivingEntity::drop_from_loot_table_5(self, level, source, player_killed, loot_table, item_stack_consumer) }
+    fn drop_from_entity_interact_loot_table(&self, level: JRef<ServerLevel>, key: JRef<ResourceKey<JRef<LootTable>>>, interacting_entity: Option<JRef<dyn EntityTrait>>, tool: JRef<dyn ItemInstance>, consumer: Arc<dyn Fn(JRef<ServerLevel>, JRef<ItemStack>) + Send + Sync>) -> bool { LivingEntity::drop_from_entity_interact_loot_table(self, level, key, interacting_entity, tool, consumer) }
+    fn drop_from_gift_loot_table(&self, level: JRef<ServerLevel>, key: JRef<ResourceKey<JRef<LootTable>>>, consumer: Arc<dyn Fn(JRef<ServerLevel>, JRef<ItemStack>) + Send + Sync>) -> bool { LivingEntity::drop_from_gift_loot_table(self, level, key, consumer) }
+    fn drop_from_shearing_loot_table(&self, level: JRef<ServerLevel>, key: JRef<ResourceKey<JRef<LootTable>>>, tool: JRef<dyn ItemInstance>, consumer: Arc<dyn Fn(JRef<ServerLevel>, JRef<ItemStack>) + Send + Sync>) { LivingEntity::drop_from_shearing_loot_table(self, level, key, tool, consumer) }
     fn knockback(&self, power: f64, xd: f64, zd: f64, source: JRef<DamageSource>, damage: f32) { LivingEntity::knockback(self, power, xd, zd, source, damage) }
     fn knockback_6(&self, power: f64, xd: f64, zd: f64, source: JRef<DamageSource>, damage: f32, comes_from_effect: bool) { LivingEntity::knockback_6(self, power, xd, zd, source, damage, comes_from_effect) }
     fn knockback_7(&self, power: f64, xd: f64, zd: f64, source: JRef<DamageSource>, damage: f32, attacker: Option<JRef<dyn EntityTrait>>, event_cause: EntityKnockbackEventCause) { LivingEntity::knockback_7(self, power, xd, zd, source, damage, attacker, event_cause) }
@@ -628,7 +618,7 @@ impl LivingEntityTrait for Rabbit {
     fn get_attack_range_with(&self, weapon_item: JRef<ItemStack>) -> AttackRange { LivingEntity::get_attack_range_with(self, weapon_item) }
     fn get_active_item(&self) -> JRef<ItemStack> { LivingEntity::get_active_item(self) }
     fn is_holding(&self, item: JRef<dyn ItemTrait>) -> bool { LivingEntity::is_holding(self, item) }
-    fn is_holding_1(&self, item_predicate: JRef<dyn Predicate<JRef<ItemStack>>>) -> bool { LivingEntity::is_holding_1(self, item_predicate) }
+    fn is_holding_1(&self, item_predicate: Arc<dyn Fn(JRef<ItemStack>) -> bool + Send + Sync>) -> bool { LivingEntity::is_holding_1(self, item_predicate) }
     fn get_item_in_hand(&self, hand: InteractionHand) -> JRef<ItemStack> { LivingEntity::get_item_in_hand(self, hand) }
     fn set_item_in_hand(&self, hand: InteractionHand, item_stack: JRef<ItemStack>) { LivingEntity::set_item_in_hand(self, hand, item_stack) }
     fn has_item_in_slot(&self, slot: EquipmentSlot) -> bool { LivingEntity::has_item_in_slot(self, slot) }
@@ -672,7 +662,7 @@ impl LivingEntityTrait for Rabbit {
     fn play_attack_sound(&self) { Rabbit::play_attack_sound(self) }
     fn was_recently_stabbed(&self, target: JRef<dyn EntityTrait>, allowed_time: i32) -> bool { LivingEntity::was_recently_stabbed(self, target, allowed_time) }
     fn remember_stabbed_entity(&self, target: JRef<dyn EntityTrait>) { LivingEntity::remember_stabbed_entity(self, target) }
-    fn stabbed_entities(&self, filter: JRef<dyn Predicate<JRef<dyn EntityTrait>>>) -> i32 { LivingEntity::stabbed_entities(self, filter) }
+    fn stabbed_entities(&self, filter: Arc<dyn Fn(JRef<dyn EntityTrait>) -> bool + Send + Sync>) -> i32 { LivingEntity::stabbed_entities(self, filter) }
     fn stab_attack(&self, weapon_slot: EquipmentSlot, target: JRef<dyn EntityTrait>, base_damage: f32, deals_damage: bool, deals_knockback: bool, dismounts: bool) -> bool { LivingEntity::stab_attack(self, weapon_slot, target, base_damage, deals_damage, deals_knockback, dismounts) }
     fn on_attack(&self) { LivingEntity::on_attack(self) }
     fn on_attack_1(&self, entity: JRef<dyn EntityTrait>) { LivingEntity::on_attack_1(self, entity) }
@@ -733,9 +723,9 @@ impl LivingEntityTrait for Rabbit {
     fn is_fall_flying(&self) -> bool { LivingEntity::is_fall_flying(self) }
     fn get_fall_flying_ticks(&self) -> i32 { LivingEntity::get_fall_flying_ticks(self) }
     fn random_teleport(&self, xx: f64, yy: f64, zz: f64, show_particles: bool, avoidance_tag: TagKey<JRef<dyn BlockTrait>>) -> bool { LivingEntity::random_teleport(self, xx, yy, zz, show_particles, avoidance_tag) }
-    fn random_teleport_5(&self, xx: f64, yy: f64, zz: f64, show_particles: bool, is_invalid_position: JRef<dyn Predicate<JRef<BlockState>>>) -> bool { LivingEntity::random_teleport_5(self, xx, yy, zz, show_particles, is_invalid_position) }
+    fn random_teleport_5(&self, xx: f64, yy: f64, zz: f64, show_particles: bool, is_invalid_position: Arc<dyn Fn(JRef<BlockState>) -> bool + Send + Sync>) -> bool { LivingEntity::random_teleport_5(self, xx, yy, zz, show_particles, is_invalid_position) }
     fn random_teleport_6(&self, xx: f64, yy: f64, zz: f64, show_particles: bool, avoidance_tag: TagKey<JRef<dyn BlockTrait>>, cause: PlayerTeleportEventTeleportCause) -> LivingEntityRandomTeleportResult { LivingEntity::random_teleport_6(self, xx, yy, zz, show_particles, avoidance_tag, cause) }
-    fn random_teleport_6_2(&self, xx: f64, yy: f64, zz: f64, show_particles: bool, is_invalid_position: JRef<dyn Predicate<JRef<BlockState>>>, cause: PlayerTeleportEventTeleportCause) -> LivingEntityRandomTeleportResult { LivingEntity::random_teleport_6_2(self, xx, yy, zz, show_particles, is_invalid_position, cause) }
+    fn random_teleport_6_2(&self, xx: f64, yy: f64, zz: f64, show_particles: bool, is_invalid_position: Arc<dyn Fn(JRef<BlockState>) -> bool + Send + Sync>, cause: PlayerTeleportEventTeleportCause) -> LivingEntityRandomTeleportResult { LivingEntity::random_teleport_6_2(self, xx, yy, zz, show_particles, is_invalid_position, cause) }
     fn can_randomly_teleport_to(&self, x: f64, y: f64, z: f64) -> bool { LivingEntity::can_randomly_teleport_to(self, x, y, z) }
     fn is_affected_by_potions(&self) -> bool { LivingEntity::is_affected_by_potions(self) }
     fn attackable(&self) -> bool { LivingEntity::attackable(self) }
@@ -971,7 +961,7 @@ impl EntityTrait for Rabbit {
     fn spawn_at_location_2_2(&self, level: JRef<ServerLevel>, entity: JRef<ItemEntity>) -> Option<JRef<ItemEntity>> { crate::net::minecraft::world::entity::entity::Entity::spawn_at_location_2_2(self, level, entity) }
     fn spawn_at_location_3(&self, level: JRef<ServerLevel>, item_stack: JRef<ItemStack>, offset: Vec3) -> Option<JRef<ItemEntity>> { crate::net::minecraft::world::entity::entity::Entity::spawn_at_location_3(self, level, item_stack, offset) }
     fn spawn_at_location_3_2(&self, level: JRef<ServerLevel>, item_stack: JRef<ItemStack>, offset: f32) -> Option<JRef<ItemEntity>> { crate::net::minecraft::world::entity::entity::Entity::spawn_at_location_3_2(self, level, item_stack, offset) }
-    fn spawn_at_location_4(&self, level: JRef<ServerLevel>, item_stack: JRef<ItemStack>, offset: Vec3, delayed_add_consumer: JRef<dyn Consumer<JObjectRef>>) -> Option<JRef<ItemEntity>> { crate::net::minecraft::world::entity::entity::Entity::spawn_at_location_4(self, level, item_stack, offset, delayed_add_consumer) }
+    fn spawn_at_location_4(&self, level: JRef<ServerLevel>, item_stack: JRef<ItemStack>, offset: Vec3, delayed_add_consumer: Arc<dyn Fn(JObjectRef) + Send + Sync>) -> Option<JRef<ItemEntity>> { crate::net::minecraft::world::entity::entity::Entity::spawn_at_location_4(self, level, item_stack, offset, delayed_add_consumer) }
     fn is_alive(&self) -> bool { LivingEntity::is_alive(self) }
     fn is_in_wall(&self) -> bool { LivingEntity::is_in_wall(self) }
     fn interact(&self, player: JRef<dyn PlayerTrait>, hand: InteractionHand, location: Vec3) -> JRef<dyn InteractionResult> { Mob::interact(self, player, hand, location) }
@@ -1008,7 +998,7 @@ impl EntityTrait for Rabbit {
     fn lerp_head_to(&self, y_rot: f32, steps: i32) { LivingEntity::lerp_head_to(self, y_rot, steps) }
     fn get_pick_radius(&self) -> f32 { crate::net::minecraft::world::entity::entity::Entity::get_pick_radius(self) }
     fn get_look_angle(&self) -> Vec3 { crate::net::minecraft::world::entity::entity::Entity::get_look_angle(self) }
-    fn get_look_quaternion(&self) -> Quaternionf { crate::net::minecraft::world::entity::entity::Entity::get_look_quaternion(self) }
+    fn get_look_quaternion(&self) -> glam::Quat { crate::net::minecraft::world::entity::entity::Entity::get_look_quaternion(self) }
     fn get_head_look_angle(&self) -> Vec3 { crate::net::minecraft::world::entity::entity::Entity::get_head_look_angle(self) }
     fn get_hand_holding_item_angle(&self, item: JRef<dyn ItemTrait>) -> Vec3 { crate::net::minecraft::world::entity::entity::Entity::get_hand_holding_item_angle(self, item) }
     fn get_rotation_vector(&self) -> Vec2 { crate::net::minecraft::world::entity::entity::Entity::get_rotation_vector(self) }
@@ -1043,7 +1033,7 @@ impl EntityTrait for Rabbit {
     fn is_invisible(&self) -> bool { crate::net::minecraft::world::entity::entity::Entity::is_invisible(self) }
     fn is_invisible_to(&self, player: JRef<dyn PlayerTrait>) -> bool { crate::net::minecraft::world::entity::entity::Entity::is_invisible_to(self, player) }
     fn is_on_rails(&self) -> bool { crate::net::minecraft::world::entity::entity::Entity::is_on_rails(self) }
-    fn update_dynamic_game_event_listener(&self, action: JRef<dyn BiConsumer<JRef<DynamicGameEventListener<JObjectRef>>, JRef<ServerLevel>>>) { crate::net::minecraft::world::entity::entity::Entity::update_dynamic_game_event_listener(self, action) }
+    fn update_dynamic_game_event_listener(&self, action: Arc<dyn Fn(JRef<DynamicGameEventListener<JObjectRef>>, JRef<ServerLevel>) + Send + Sync>) { crate::net::minecraft::world::entity::entity::Entity::update_dynamic_game_event_listener(self, action) }
     fn get_team(&self) -> Option<JRef<PlayerTeam>> { crate::net::minecraft::world::entity::entity::Entity::get_team(self) }
     fn is_allied_to_1(&self, other: Option<JRef<dyn TeamTrait>>) -> bool { crate::net::minecraft::world::entity::entity::Entity::is_allied_to_1(self, other) }
     fn considers_entity_as_ally(&self, other: JRef<dyn EntityTrait>) -> bool { crate::net::minecraft::world::entity::entity::Entity::considers_entity_as_ally(self, other) }
@@ -1129,7 +1119,7 @@ impl EntityTrait for Rabbit {
     fn get_controlling_passenger(&self) -> Option<JRef<dyn LivingEntityTrait>> { Mob::get_controlling_passenger(self) }
     fn get_first_passenger(&self) -> Option<JRef<dyn EntityTrait>> { crate::net::minecraft::world::entity::entity::Entity::get_first_passenger(self) }
     fn has_passenger(&self, entity: JRef<dyn EntityTrait>) -> bool { crate::net::minecraft::world::entity::entity::Entity::has_passenger(self, entity) }
-    fn has_passenger_1(&self, test: JRef<dyn Predicate<JRef<dyn EntityTrait>>>) -> bool { crate::net::minecraft::world::entity::entity::Entity::has_passenger_1(self, test) }
+    fn has_passenger_1(&self, test: Arc<dyn Fn(JRef<dyn EntityTrait>) -> bool + Send + Sync>) -> bool { crate::net::minecraft::world::entity::entity::Entity::has_passenger_1(self, test) }
     fn get_indirect_passengers(&self) -> Vec<JRef<dyn EntityTrait>> { crate::net::minecraft::world::entity::entity::Entity::get_indirect_passengers(self) }
     fn count_player_passengers(&self) -> i32 { crate::net::minecraft::world::entity::entity::Entity::count_player_passengers(self) }
     fn has_exactly_one_player_passenger(&self) -> bool { crate::net::minecraft::world::entity::entity::Entity::has_exactly_one_player_passenger(self) }
@@ -1265,8 +1255,8 @@ impl EntityAccess for Rabbit {
     fn block_position(&self) -> BlockPos { crate::net::minecraft::world::entity::entity::Entity::block_position(self) }
     fn get_bounding_box(&self) -> AABB { crate::net::minecraft::world::entity::entity::Entity::get_bounding_box(self) }
     fn set_level_callback(&self, callback: JRef<dyn EntityInLevelCallback>) { crate::net::minecraft::world::entity::entity::Entity::set_level_callback(self, callback) }
-    fn get_self_and_passengers(&self) -> Stream<JRef<dyn EntityAccess>> { crate::net::minecraft::world::entity::entity::Entity::get_self_and_passengers(self) }
-    fn get_passengers_and_self(&self) -> Stream<JRef<dyn EntityAccess>> { crate::net::minecraft::world::entity::entity::Entity::get_passengers_and_self(self) }
+    fn get_self_and_passengers(&self) -> Box<dyn Iterator<Item = JRef<dyn EntityAccess>> + Send> { crate::net::minecraft::world::entity::entity::Entity::get_self_and_passengers(self) }
+    fn get_passengers_and_self(&self) -> Box<dyn Iterator<Item = JRef<dyn EntityAccess>> + Send> { crate::net::minecraft::world::entity::entity::Entity::get_passengers_and_self(self) }
     fn set_removed_2(&self, removal_reason: EntityRemovalReason, event_cause: EntityRemoveEventCause) { crate::net::minecraft::world::entity::entity::Entity::set_removed_2(self, removal_reason, event_cause) }
     fn should_be_saved(&self) -> bool { crate::net::minecraft::world::entity::entity::Entity::should_be_saved(self) }
     fn is_always_ticking(&self) -> bool { crate::net::minecraft::world::entity::entity::Entity::is_always_ticking(self) }
@@ -1332,7 +1322,7 @@ impl<T: JGeneric> std::ops::Deref for RabbitRabbitAvoidEntityGoal<T> {
 }
 impl<T: JGeneric> RabbitRabbitAvoidEntityGoal<T> {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(rabbit: JRef<Rabbit>, avoid_class: Class, max_dist: f32, walk_speed_modifier: f64, sprint_speed_modifier: f64) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/animal/rabbit/Rabbit.java:613
+    pub fn new(rabbit: JRef<Rabbit>, avoid_class: crate::rt::Class, max_dist: f32, walk_speed_modifier: f64, sprint_speed_modifier: f64) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/animal/rabbit/Rabbit.java:613
     pub fn can_use(&self) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/animal/rabbit/Rabbit.java:620
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
@@ -1544,7 +1534,7 @@ impl GoalTrait for RabbitRaidGardenGoal {
     fn adjusted_tick_delay(&self, ticks: i32) -> i32 { Goal::adjusted_tick_delay(self, ticks) }
 }
 impl LithiumMoveToBlockGoal for RabbitRaidGardenGoal {
-    fn lithium_find_nearest_block(&self, required_block: JRef<dyn Predicate<JRef<BlockState>>>, lithium_is_valid_target: JRef<dyn BiPredicate<JRef<dyn ChunkAccessTrait>, BlockPosMutableBlockPos>>, should_chunk_load: bool) -> bool { MoveToBlockGoal::lithium_find_nearest_block(self, required_block, lithium_is_valid_target, should_chunk_load) }
+    fn lithium_find_nearest_block(&self, required_block: Arc<dyn Fn(JRef<BlockState>) -> bool + Send + Sync>, lithium_is_valid_target: Arc<dyn Fn(JRef<dyn ChunkAccessTrait>, BlockPosMutableBlockPos) -> bool + Send + Sync>, should_chunk_load: bool) -> bool { MoveToBlockGoal::lithium_find_nearest_block(self, required_block, lithium_is_valid_target, should_chunk_load) }
 }
 crate::jobject!(RabbitRaidGardenGoal: dyn MoveToBlockGoalTrait, dyn GoalTrait, dyn LithiumMoveToBlockGoal);
 // ---- enum net.minecraft.world.entity.animal.rabbit.Rabbit.Variant (leaf-server/src/minecraft/java/net/minecraft/world/entity/animal/rabbit/Rabbit.java:795)
@@ -1564,10 +1554,10 @@ pub struct RabbitVariantData {
     pub name: String,
 }
 pub static VARIANT_DEFAULT: LazyLock<RabbitVariant> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/entity/animal/rabbit/Rabbit.java:804
-pub static VARIANT_BY_ID: LazyLock<JRef<dyn IntFunction<RabbitVariant>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/entity/animal/rabbit/Rabbit.java:805
+pub static VARIANT_BY_ID: LazyLock<Arc<dyn Fn(i32) -> RabbitVariant + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/entity/animal/rabbit/Rabbit.java:805
 pub static VARIANT_CODEC: LazyLock<JRef<dyn Codec<RabbitVariant>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/entity/animal/rabbit/Rabbit.java:806
 pub static VARIANT_LEGACY_CODEC: LazyLock<JRef<dyn Codec<RabbitVariant>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/entity/animal/rabbit/Rabbit.java:807
-pub static VARIANT_STREAM_CODEC: LazyLock<JRef<dyn StreamCodec<ByteBuf, RabbitVariant>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/entity/animal/rabbit/Rabbit.java:809
+pub static VARIANT_STREAM_CODEC: LazyLock<JRef<dyn StreamCodec<bytes::BytesMut, RabbitVariant>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/entity/animal/rabbit/Rabbit.java:809
 impl RabbitVariant {
     pub const VALUES: [RabbitVariant; 7] = [RabbitVariant::BROWN, RabbitVariant::WHITE, RabbitVariant::BLACK, RabbitVariant::WHITE_SPLOTCHED, RabbitVariant::GOLD, RabbitVariant::SALT, RabbitVariant::EVIL];
     pub fn ordinal(self) -> i32 { self as i32 }

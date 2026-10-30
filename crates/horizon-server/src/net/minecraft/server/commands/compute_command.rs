@@ -6,7 +6,6 @@ use crate::com::mojang::brigadier::context::CommandContext;
 use crate::com::mojang::brigadier::exceptions::Dynamic2CommandExceptionType;
 use crate::com::mojang::brigadier::exceptions::DynamicCommandExceptionType;
 use crate::com::mojang::brigadier::exceptions::command_syntax_exception::CommandSyntaxExceptionTrait;
-use crate::java::lang::Throwable;
 use crate::net::minecraft::commands::command_build_context::CommandBuildContext;
 use crate::net::minecraft::commands::command_source_stack::CommandSourceStack;
 use crate::net::minecraft::core::holder::Holder;
@@ -26,8 +25,8 @@ impl ComputeCommand {
     pub fn register(dispatcher: JRef<CommandDispatcher<JRef<CommandSourceStack>>>, context: JRef<dyn CommandBuildContext>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ComputeCommand.java:29
     pub fn print_exact_output(source: JRef<CommandSourceStack>, provider: JRef<dyn Holder<JObjectRef>>, result: i32) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ComputeCommand.java:64
     pub fn print_rounded_output(source: JRef<CommandSourceStack>, provider: JRef<dyn Holder<JObjectRef>>, result: i32, original: f32) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ComputeCommand.java:73
-    pub fn compute_as_int(context: CommandContext<JRef<CommandSourceStack>>, decorator: JRef<dyn LootContextSourcesContextDecorator>, provider: JRef<dyn Holder<JRef<dyn ContextIntProvider>>>) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ComputeCommand.java:82
-    pub fn compute_as_float(context: CommandContext<JRef<CommandSourceStack>>, decorator: JRef<dyn LootContextSourcesContextDecorator>, provider: JRef<dyn Holder<JRef<dyn ContextFloatProvider>>>, scale: f32) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ComputeCommand.java:97
+    pub fn compute_as_int(context: CommandContext<JRef<CommandSourceStack>>, decorator: JRef<dyn LootContextSourcesContextDecorator>, provider: JRef<dyn Holder<JRef<dyn ContextIntProvider>>>) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ComputeCommand.java:82
+    pub fn compute_as_float(context: CommandContext<JRef<CommandSourceStack>>, decorator: JRef<dyn LootContextSourcesContextDecorator>, provider: JRef<dyn Holder<JRef<dyn ContextFloatProvider>>>, scale: f32) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ComputeCommand.java:97
     pub fn throw_invalid_value(provider: JRef<dyn Holder<JObjectRef>>, invalid_value: &str) -> JRef<dyn CommandSyntaxExceptionTrait> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ComputeCommand.java:128
 }
 crate::jobject!(ComputeCommand);

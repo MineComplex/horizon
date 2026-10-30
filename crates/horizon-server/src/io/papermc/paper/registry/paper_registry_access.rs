@@ -5,7 +5,6 @@ use crate::io::papermc::paper::registry::registry_access::RegistryAccess;
 use crate::io::papermc::paper::registry::registry_holder::RegistryHolder;
 use crate::io::papermc::paper::registry::registry_key::RegistryKey;
 use crate::io::papermc::paper::registry::writable_craft_registry::WritableCraftRegistry;
-use crate::java::lang::Class;
 use crate::net::minecraft::resources::resource_key::ResourceKey;
 
 // ---- class io.papermc.paper.registry.PaperRegistryAccess (paper-server/src/main/java/io/papermc/paper/registry/PaperRegistryAccess.java:20)
@@ -16,7 +15,7 @@ pub struct PaperRegistryAccess {
 impl PaperRegistryAccess {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/PaperRegistryAccess.java:20
-    pub fn get_registry<T: JGeneric>(&self, type_: Class) -> JRef<dyn crate::org::bukkit::registry::Registry<T>> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/PaperRegistryAccess.java:41
+    pub fn get_registry<T: JGeneric>(&self, type_: crate::rt::Class) -> JRef<dyn crate::org::bukkit::registry::Registry<T>> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/PaperRegistryAccess.java:41
     pub fn get_registry_1<T: JGeneric>(&self, key: JRef<dyn RegistryKey<T>>) -> JRef<dyn crate::org::bukkit::registry::Registry<T>> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/PaperRegistryAccess.java:70
     pub fn instance() -> JRef<PaperRegistryAccess> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/PaperRegistryAccess.java:29
     pub fn get_loaded_server_backed_registries(&self) -> HashSet<JRef<dyn RegistryKey<JObjectRef>>> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/PaperRegistryAccess.java:33
@@ -26,12 +25,12 @@ impl PaperRegistryAccess {
     pub fn register_registry<M: JGeneric>(&self, registry: JRef<dyn crate::net::minecraft::core::registry::Registry<M>>) { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/PaperRegistryAccess.java:104
     pub fn register_registry_2<M: JGeneric, B: JGeneric, R: JGeneric>(&self, registry: JRef<dyn crate::net::minecraft::core::registry::Registry<M>>, replace: bool) { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/PaperRegistryAccess.java:117
     pub fn lock_reference_holders<M: JGeneric>(&self, resource_key: JRef<ResourceKey<JRef<dyn crate::net::minecraft::core::registry::Registry<M>>>>) { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/PaperRegistryAccess.java:108
-    pub fn by_type<T: JGeneric>(type_: Class) -> JRef<dyn RegistryKey<T>> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/PaperRegistryAccess.java:137
+    pub fn by_type<T: JGeneric>(type_: crate::rt::Class) -> JRef<dyn RegistryKey<T>> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/PaperRegistryAccess.java:137
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl RegistryAccess for PaperRegistryAccess {
-    fn get_registry<T: JGeneric>(&self, type_: Class) -> JRef<dyn crate::org::bukkit::registry::Registry<T>> where Self: Sized { PaperRegistryAccess::get_registry::<T>(self, type_) }
+    fn get_registry<T: JGeneric>(&self, type_: crate::rt::Class) -> JRef<dyn crate::org::bukkit::registry::Registry<T>> where Self: Sized { PaperRegistryAccess::get_registry::<T>(self, type_) }
     fn get_registry_1<T: JGeneric>(&self, registry_key: JRef<dyn RegistryKey<T>>) -> JRef<dyn crate::org::bukkit::registry::Registry<T>> where Self: Sized { PaperRegistryAccess::get_registry_1::<T>(self, registry_key) }
 }
 crate::jobject!(PaperRegistryAccess: dyn RegistryAccess);

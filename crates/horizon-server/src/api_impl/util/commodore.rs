@@ -4,10 +4,6 @@ use crate::prelude::*;
 use crate::api_impl::legacy::reroute::reroute::Reroute;
 use crate::api_impl::legacy::reroute::reroute_method_data::RerouteMethodData;
 use crate::api_impl::util::api_version::ApiVersion;
-use crate::java::util::function::Consumer;
-use crate::java::util::function::Predicate;
-use crate::org::objectweb::asm::AnnotationVisitor;
-use crate::org::objectweb::asm::Type;
 use crate::api_prelude::*;
 
 // ---- class org.bukkit.craftbukkit.util.Commodore (paper-server/src/main/java/org/bukkit/craftbukkit/util/Commodore.java:52)
@@ -26,15 +22,15 @@ pub static CB_PACKAGE_PREFIX: LazyLock<String> = LazyLock::new(|| todo!()); // p
 impl Commodore {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/util/Commodore.java:106
-    pub fn new_1(compatibility_present: JRef<dyn Predicate<String>>) -> JRef<Self> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/util/Commodore.java:109
-    pub fn update_reroute(&self, compatibility_present: JRef<dyn Predicate<String>>) { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/util/Commodore.java:113
+    pub fn new_1(compatibility_present: Arc<dyn Fn(String) -> bool + Send + Sync>) -> JRef<Self> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/util/Commodore.java:109
+    pub fn update_reroute(&self, compatibility_present: Arc<dyn Fn(String) -> bool + Send + Sync>) { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/util/Commodore.java:113
     pub fn get_reroutes(&self) -> Vec<JRef<Reroute>> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/util/Commodore.java:130
     pub fn runtime_cb_pkg_prefix() -> String { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/util/Commodore.java:137
     pub fn main(args: &Vec<String>) { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/util/Commodore.java:143
     pub fn convert(in_: std::path::PathBuf, out: std::path::PathBuf, commodore: JRef<Commodore>) { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/util/Commodore.java:171
     pub fn convert_4(&self, b: &Vec<i8>, plugin_name: &str, plugin_version: JRef<ApiVersion>, active_compatibilities: &HashSet<String>) -> Vec<i8> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/util/Commodore.java:207
-    pub fn create_annotation_visitor(api_version: JRef<ApiVersion>, api: i32, delegate: AnnotationVisitor) -> AnnotationVisitor { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/util/Commodore.java:667
-    pub fn reroute_methods(plugin_version: JRef<ApiVersion>, reroute: JRef<Reroute>, static_call: bool, owner: &str, name: &str, desc: &str, consumer: JRef<dyn Consumer<RerouteMethodData>>) -> bool { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/util/Commodore.java:686
+    pub fn create_annotation_visitor(api_version: JRef<ApiVersion>, api: i32, delegate: ()) -> () { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/util/Commodore.java:667
+    pub fn reroute_methods(plugin_version: JRef<ApiVersion>, reroute: JRef<Reroute>, static_call: bool, owner: &str, name: &str, desc: &str, consumer: Arc<dyn Fn(RerouteMethodData) + Send + Sync>) -> bool { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/util/Commodore.java:686
     pub fn get_method_signatures(clazz: &Vec<i8>) -> Vec<String> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/util/Commodore.java:690
     pub fn build_method_name(reroute_method_data: RerouteMethodData) -> String { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/util/Commodore.java:704
     pub fn build_method_desc(reroute_method_data: RerouteMethodData) -> String { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/util/Commodore.java:708
@@ -42,8 +38,8 @@ impl Commodore {
 crate::jobject!(Commodore);
 // ---- interface org.bukkit.craftbukkit.util.Commodore.MethodPrinter (paper-server/src/main/java/org/bukkit/craftbukkit/util/Commodore.java:712)
 pub trait CommodoreMethodPrinter: Send + Sync + 'static {
-    fn visit(&self, opcode: i32, owner: &str, name: &str, description: &str, itf: bool, sam_method_type: Type, instantiated_method_type: Type); // paper-server/src/main/java/org/bukkit/craftbukkit/util/Commodore.java:715
+    fn visit(&self, opcode: i32, owner: &str, name: &str, description: &str, itf: bool, sam_method_type: (), instantiated_method_type: ()); // paper-server/src/main/java/org/bukkit/craftbukkit/util/Commodore.java:715
 }
-impl<F: Fn(i32, &str, &str, &str, bool, Type, Type) + Send + Sync + 'static> CommodoreMethodPrinter for F {
-    fn visit(&self, opcode: i32, owner: &str, name: &str, description: &str, itf: bool, sam_method_type: Type, instantiated_method_type: Type) { self(opcode, owner, name, description, itf, sam_method_type, instantiated_method_type) }
+impl<F: Fn(i32, &str, &str, &str, bool, (), ()) + Send + Sync + 'static> CommodoreMethodPrinter for F {
+    fn visit(&self, opcode: i32, owner: &str, name: &str, description: &str, itf: bool, sam_method_type: (), instantiated_method_type: ()) { self(opcode, owner, name, description, itf, sam_method_type, instantiated_method_type) }
 }

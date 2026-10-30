@@ -6,8 +6,6 @@ use crate::com::mojang::brigadier::context::CommandContext;
 use crate::com::mojang::brigadier::exceptions::SimpleCommandExceptionType;
 use crate::com::mojang::brigadier::suggestion::Suggestions;
 use crate::com::mojang::brigadier::suggestion::SuggestionsBuilder;
-use crate::java::lang::Throwable;
-use crate::java::util::concurrent::CompletableFuture;
 use crate::net::minecraft::commands::arguments::coordinates::coordinates::Coordinates;
 use crate::net::minecraft::commands::command_source_stack::CommandSourceStack;
 use crate::net::minecraft::world::phys::vec2::Vec2;
@@ -24,8 +22,8 @@ impl Vec2Argument {
     pub fn vec2() -> Vec2Argument { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/Vec2Argument.java:30
     pub fn vec2_1(center_correct: bool) -> Vec2Argument { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/Vec2Argument.java:34
     pub fn get_vec2(context: CommandContext<JRef<CommandSourceStack>>, name: &str) -> Vec2 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/Vec2Argument.java:38
-    pub fn parse(&self, reader: StringReader) -> Result<JRef<dyn Coordinates>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/Vec2Argument.java:43
-    pub fn list_suggestions<S: JGeneric>(&self, context: CommandContext<S>, builder: SuggestionsBuilder) -> CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/Vec2Argument.java:61
+    pub fn parse(&self, reader: StringReader) -> Result<JRef<dyn Coordinates>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/Vec2Argument.java:43
+    pub fn list_suggestions<S: JGeneric>(&self, context: CommandContext<S>, builder: SuggestionsBuilder) -> crate::rt::CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/Vec2Argument.java:61
     pub fn get_examples(&self) -> Vec<String> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/Vec2Argument.java:78
 }
 crate::jobject!(Vec2Argument);

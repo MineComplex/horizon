@@ -4,8 +4,6 @@ use crate::prelude::*;
 use crate::ca::spottedleaf::moonrise::patches::blockstate_propertyaccess::property_access_state_holder::PropertyAccessStateHolder;
 use crate::ca::spottedleaf::moonrise::patches::fluid::fluid_fluid_state::FluidFluidState;
 use crate::com::mojang::serialization::Codec;
-use crate::java::lang::Comparable;
-use crate::java::util::stream::Stream;
 use crate::net::minecraft::core::block_pos::BlockPos;
 use crate::net::minecraft::core::direction::Direction;
 use crate::net::minecraft::core::holder::Holder;
@@ -53,10 +51,10 @@ pub const AMOUNT_MAX: i32 = 9; // leaf-server/src/minecraft/java/net/minecraft/w
 pub const AMOUNT_FULL: i32 = 8; // leaf-server/src/minecraft/java/net/minecraft/world/level/material/FluidState.java:27
 impl FluidState {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(owner: JRef<dyn FluidTrait>, property_keys: &Vec<JRef<dyn PropertyTrait<JObjectRef>>>, property_values: &Vec<JRef<dyn Comparable<JObjectRef>>>) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/material/FluidState.java:53
+    pub fn new(owner: JRef<dyn FluidTrait>, property_keys: &Vec<JRef<dyn PropertyTrait<JObjectRef>>>, property_values: &Vec<()>) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/material/FluidState.java:53
     pub fn moonrise_init_caches(&self) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/material/FluidState.java:38
     pub fn type_holder(&self) -> JRef<dyn Holder<JRef<dyn FluidTrait>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/material/FluidState.java:152
-    pub fn tags(&self) -> Stream<TagKey<JRef<dyn FluidTrait>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/material/FluidState.java:158
+    pub fn tags(&self) -> Box<dyn Iterator<Item = TagKey<JRef<dyn FluidTrait>>> + Send> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/material/FluidState.java:158
     pub fn is(&self, tag: TagKey<JRef<dyn FluidTrait>>) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/material/FluidState.java:163
     pub fn is_1(&self, set: JRef<dyn HolderSet<JRef<dyn FluidTrait>>>) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/material/FluidState.java:168
     pub fn is_1_3(&self, type_: JRef<dyn Holder<JRef<dyn FluidTrait>>>) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/material/FluidState.java:178
@@ -95,11 +93,11 @@ impl StateHolderTrait<JObjectRef, JObjectRef> for FluidState {
     fn has_property(&self, property: JRef<dyn PropertyTrait<JObjectRef>>) -> bool { StateHolder::has_property(self, property) }
     fn initialize_neighbors(&self, neighbors: &Vec<Vec<S>>) { StateHolder::initialize_neighbors(self, neighbors) }
     fn is_singleton_state(&self) -> bool { StateHolder::is_singleton_state(self) }
-    fn get_values(&self) -> Stream<PropertyValue<JObjectRef>> { StateHolder::get_values(self) }
+    fn get_values(&self) -> Box<dyn Iterator<Item = PropertyValue<JObjectRef>> + Send> { StateHolder::get_values(self) }
 }
 impl TypedInstance<JRef<dyn FluidTrait>> for FluidState {
     fn type_holder(&self) -> JRef<dyn Holder<T>> { FluidState::type_holder(self) }
-    fn tags(&self) -> Stream<TagKey<T>> { FluidState::tags(self) }
+    fn tags(&self) -> Box<dyn Iterator<Item = TagKey<T>> + Send> { FluidState::tags(self) }
     fn is(&self, tag: TagKey<T>) -> bool { FluidState::is(self, tag) }
     fn is_1(&self, set: JRef<dyn HolderSet<T>>) -> bool { FluidState::is_1(self, set) }
     fn is_1_3(&self, type_: JRef<dyn Holder<T>>) -> bool { FluidState::is_1_3(self, type_) }

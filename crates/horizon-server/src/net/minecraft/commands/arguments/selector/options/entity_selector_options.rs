@@ -5,8 +5,6 @@ use crate::com::mojang::brigadier::exceptions::DynamicCommandExceptionType;
 use crate::com::mojang::brigadier::exceptions::SimpleCommandExceptionType;
 use crate::com::mojang::brigadier::exceptions::command_syntax_exception::CommandSyntaxExceptionTrait;
 use crate::com::mojang::brigadier::suggestion::SuggestionsBuilder;
-use crate::java::lang::Throwable;
-use crate::java::util::function::Predicate;
 use crate::net::minecraft::commands::arguments::selector::entity_selector_parser::EntitySelectorParser;
 use crate::net::minecraft::network::chat::component::Component;
 
@@ -15,7 +13,7 @@ pub struct EntitySelectorOptions {
     pub this: Weak<Self>,
 }
 pub static OPTIONS: LazyLock<HashMap<String, EntitySelectorOptionsOption>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/options/EntitySelectorOptions.java:58
-pub static ALWAYS_AVAILABLE: LazyLock<JRef<dyn Predicate<JRef<EntitySelectorParser>>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/options/EntitySelectorOptions.java:59
+pub static ALWAYS_AVAILABLE: LazyLock<Arc<dyn Fn(JRef<EntitySelectorParser>) -> bool + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/options/EntitySelectorOptions.java:59
 pub static ERROR_UNKNOWN_OPTION: LazyLock<DynamicCommandExceptionType> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/options/EntitySelectorOptions.java:60
 pub static ERROR_INAPPLICABLE_OPTION: LazyLock<DynamicCommandExceptionType> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/options/EntitySelectorOptions.java:63
 pub static ERROR_RANGE_NEGATIVE: LazyLock<SimpleCommandExceptionType> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/options/EntitySelectorOptions.java:66
@@ -27,30 +25,30 @@ pub static ERROR_ENTITY_TYPE_INVALID: LazyLock<DynamicCommandExceptionType> = La
 impl EntitySelectorOptions {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/options/EntitySelectorOptions.java:56
-    pub fn register(name: &str, modifier: JRef<dyn EntitySelectorOptionsModifier>, predicate: JRef<dyn Predicate<JRef<EntitySelectorParser>>>, description: JRef<dyn Component>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/options/EntitySelectorOptions.java:85
+    pub fn register(name: &str, modifier: JRef<dyn EntitySelectorOptionsModifier>, predicate: Arc<dyn Fn(JRef<EntitySelectorParser>) -> bool + Send + Sync>, description: JRef<dyn Component>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/options/EntitySelectorOptions.java:85
     pub fn boot_strap() { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/options/EntitySelectorOptions.java:91
     pub fn rollback_and_throw(parser: JRef<EntitySelectorParser>, start: i32, type_: SimpleCommandExceptionType) -> JRef<dyn CommandSyntaxExceptionTrait> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/options/EntitySelectorOptions.java:503
     pub fn rollback_and_throw_4(parser: JRef<EntitySelectorParser>, start: i32, type_: DynamicCommandExceptionType, argument: &str) -> JRef<dyn CommandSyntaxExceptionTrait> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/options/EntitySelectorOptions.java:508
-    pub fn get(parser: JRef<EntitySelectorParser>, key: &str, start: i32) -> Result<JRef<dyn EntitySelectorOptionsModifier>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/options/EntitySelectorOptions.java:515
+    pub fn get(parser: JRef<EntitySelectorParser>, key: &str, start: i32) -> Result<JRef<dyn EntitySelectorOptionsModifier>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/options/EntitySelectorOptions.java:515
     pub fn suggest_names(parser: JRef<EntitySelectorParser>, builder: SuggestionsBuilder) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/options/EntitySelectorOptions.java:528
 }
 crate::jobject!(EntitySelectorOptions);
 // ---- interface net.minecraft.commands.arguments.selector.options.EntitySelectorOptions.Modifier (leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/options/EntitySelectorOptions.java:538)
 pub trait EntitySelectorOptionsModifier: Send + Sync + 'static {
-    fn handle(&self, parser: JRef<EntitySelectorParser>) -> Result<(), Throwable>; // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/options/EntitySelectorOptions.java:540
+    fn handle(&self, parser: JRef<EntitySelectorParser>) -> Result<(), anyhow::Error>; // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/options/EntitySelectorOptions.java:540
 }
-impl<F: Fn(JRef<EntitySelectorParser>) -> Result<(), Throwable> + Send + Sync + 'static> EntitySelectorOptionsModifier for F {
-    fn handle(&self, parser: JRef<EntitySelectorParser>) -> Result<(), Throwable> { self(parser) }
+impl<F: Fn(JRef<EntitySelectorParser>) -> Result<(), anyhow::Error> + Send + Sync + 'static> EntitySelectorOptionsModifier for F {
+    fn handle(&self, parser: JRef<EntitySelectorParser>) -> Result<(), anyhow::Error> { self(parser) }
 }
 // ---- record net.minecraft.commands.arguments.selector.options.EntitySelectorOptions.Option (leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/options/EntitySelectorOptions.java:543)
 #[derive(Clone)]
 pub struct EntitySelectorOptionsOption {
     pub modifier: JRef<dyn EntitySelectorOptionsModifier>,
-    pub can_use: JRef<dyn Predicate<JRef<EntitySelectorParser>>>,
+    pub can_use: Arc<dyn Fn(JRef<EntitySelectorParser>) -> bool + Send + Sync>,
     pub description: JRef<dyn Component>,
 }
 impl EntitySelectorOptionsOption {
     pub fn new() -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/options/EntitySelectorOptions.java:543
-    pub fn new_3(modifier: JRef<dyn EntitySelectorOptionsModifier>, can_use: JRef<dyn Predicate<JRef<EntitySelectorParser>>>, description: JRef<dyn Component>) -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/options/EntitySelectorOptions.java:543
+    pub fn new_3(modifier: JRef<dyn EntitySelectorOptionsModifier>, can_use: Arc<dyn Fn(JRef<EntitySelectorParser>) -> bool + Send + Sync>, description: JRef<dyn Component>) -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/options/EntitySelectorOptions.java:543
 }
 crate::jobject!(EntitySelectorOptionsOption);

@@ -3,7 +3,6 @@
 use crate::prelude::*;
 use crate::com::mojang::brigadier::exceptions::SimpleCommandExceptionType;
 use crate::com::mojang::brigadier::exceptions::command_syntax_exception::CommandSyntaxExceptionTrait;
-use crate::java::lang::Throwable;
 use crate::net::minecraft::commands::command_source_stack::CommandSourceStack;
 use crate::net::minecraft::network::chat::component::Component;
 
@@ -39,12 +38,12 @@ impl<Element: JGeneric> CommandResponseTracker<Element> {
     pub fn dispatch<Result: JGeneric>(&self, element_type: CommandResponseTrackerElementType, dispatch: CommandResponseTrackerDispatch<Result, JObjectRef>) -> Result { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/CommandResponseTracker.java:85
     pub fn dispatch_3<Result: JGeneric, Arg: JGeneric>(&self, element_type: CommandResponseTrackerElementType, dispatch: CommandResponseTrackerDispatchWithArg<Result, JObjectRef, Arg>, argument: Arg) -> Result { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/CommandResponseTracker.java:132
     pub fn dispatch_4<Result: JGeneric, Arg0: JGeneric, Arg1: JGeneric>(&self, element_type: CommandResponseTrackerElementType, messages: CommandResponseTrackerDispatchWithArgs<Result, JObjectRef, Arg0, Arg1>, argument0: Arg0, argument1: Arg1) -> Result { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/CommandResponseTracker.java:189
-    pub fn send_feedback(&self, source_stack: JRef<CommandSourceStack>, broadcast: bool, messages: CommandResponseTrackerMessages<JObjectRef>) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/CommandResponseTracker.java:105
-    pub fn send_feedback_4(&self, source_stack: JRef<CommandSourceStack>, broadcast: bool, element_type: CommandResponseTrackerElementType, messages: CommandResponseTrackerMessages<JObjectRef>) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/CommandResponseTracker.java:94
-    pub fn send_feedback_4_2<Arg: JGeneric>(&self, source_stack: JRef<CommandSourceStack>, broadcast: bool, messages: CommandResponseTrackerMessagesWithArg<JObjectRef, Arg>, argument: Arg) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/CommandResponseTracker.java:155
-    pub fn send_feedback_5<Arg: JGeneric>(&self, source_stack: JRef<CommandSourceStack>, broadcast: bool, element_type: CommandResponseTrackerElementType, messages: CommandResponseTrackerMessagesWithArg<JObjectRef, Arg>, argument: Arg) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/CommandResponseTracker.java:143
-    pub fn send_feedback_5_2<Arg0: JGeneric, Arg1: JGeneric>(&self, source_stack: JRef<CommandSourceStack>, broadcast: bool, messages: CommandResponseTrackerMessagesWithArgs<JObjectRef, Arg0, Arg1>, argument0: Arg0, argument1: Arg1) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/CommandResponseTracker.java:214
-    pub fn send_feedback_6<Arg0: JGeneric, Arg1: JGeneric>(&self, source_stack: JRef<CommandSourceStack>, broadcast: bool, element_type: CommandResponseTrackerElementType, messages: CommandResponseTrackerMessagesWithArgs<JObjectRef, Arg0, Arg1>, argument0: Arg0, argument1: Arg1) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/CommandResponseTracker.java:201
+    pub fn send_feedback(&self, source_stack: JRef<CommandSourceStack>, broadcast: bool, messages: CommandResponseTrackerMessages<JObjectRef>) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/CommandResponseTracker.java:105
+    pub fn send_feedback_4(&self, source_stack: JRef<CommandSourceStack>, broadcast: bool, element_type: CommandResponseTrackerElementType, messages: CommandResponseTrackerMessages<JObjectRef>) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/CommandResponseTracker.java:94
+    pub fn send_feedback_4_2<Arg: JGeneric>(&self, source_stack: JRef<CommandSourceStack>, broadcast: bool, messages: CommandResponseTrackerMessagesWithArg<JObjectRef, Arg>, argument: Arg) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/CommandResponseTracker.java:155
+    pub fn send_feedback_5<Arg: JGeneric>(&self, source_stack: JRef<CommandSourceStack>, broadcast: bool, element_type: CommandResponseTrackerElementType, messages: CommandResponseTrackerMessagesWithArg<JObjectRef, Arg>, argument: Arg) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/CommandResponseTracker.java:143
+    pub fn send_feedback_5_2<Arg0: JGeneric, Arg1: JGeneric>(&self, source_stack: JRef<CommandSourceStack>, broadcast: bool, messages: CommandResponseTrackerMessagesWithArgs<JObjectRef, Arg0, Arg1>, argument0: Arg0, argument1: Arg1) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/CommandResponseTracker.java:214
+    pub fn send_feedback_6<Arg0: JGeneric, Arg1: JGeneric>(&self, source_stack: JRef<CommandSourceStack>, broadcast: bool, element_type: CommandResponseTrackerElementType, messages: CommandResponseTrackerMessagesWithArgs<JObjectRef, Arg0, Arg1>, argument0: Arg0, argument1: Arg1) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/CommandResponseTracker.java:201
 }
 // ---- record net.minecraft.server.commands.CommandResponseTracker.Dispatch (leaf-server/src/minecraft/java/net/minecraft/server/commands/CommandResponseTracker.java:224)
 #[derive(Clone)]
@@ -125,7 +124,7 @@ pub struct CommandResponseTrackerMessages<Element: JGeneric> {
 impl<Element: JGeneric> CommandResponseTrackerMessages<Element> {
     pub fn new() -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/CommandResponseTracker.java:260
     pub fn new_2(on_zero: JRef<dyn CommandResponseTrackerErrorHandler>, on_success: CommandResponseTrackerDispatch<JRef<dyn Component>, Element>) -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/CommandResponseTracker.java:260
-    pub fn throw_if_zero(&self, value: i32) -> Result<(), Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/CommandResponseTracker.java:261
+    pub fn throw_if_zero(&self, value: i32) -> Result<(), anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/CommandResponseTracker.java:261
 }
 // ---- record net.minecraft.server.commands.CommandResponseTracker.MessagesWithArg (leaf-server/src/minecraft/java/net/minecraft/server/commands/CommandResponseTracker.java:268)
 #[derive(Clone)]
@@ -137,7 +136,7 @@ pub struct CommandResponseTrackerMessagesWithArg<Element: JGeneric, Arg: JGeneri
 impl<Element: JGeneric, Arg: JGeneric> CommandResponseTrackerMessagesWithArg<Element, Arg> {
     pub fn new() -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/CommandResponseTracker.java:268
     pub fn new_2(on_zero: JRef<dyn CommandResponseTrackerErrorHandlerWithArg<Arg>>, on_success: CommandResponseTrackerDispatchWithArg<JRef<dyn Component>, Element, Arg>) -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/CommandResponseTracker.java:268
-    pub fn throw_if_zero(&self, value: i32, argument: Arg) -> Result<(), Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/CommandResponseTracker.java:271
+    pub fn throw_if_zero(&self, value: i32, argument: Arg) -> Result<(), anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/CommandResponseTracker.java:271
 }
 // ---- record net.minecraft.server.commands.CommandResponseTracker.MessagesWithArgs (leaf-server/src/minecraft/java/net/minecraft/server/commands/CommandResponseTracker.java:278)
 #[derive(Clone)]
@@ -149,7 +148,7 @@ pub struct CommandResponseTrackerMessagesWithArgs<Element: JGeneric, Arg0: JGene
 impl<Element: JGeneric, Arg0: JGeneric, Arg1: JGeneric> CommandResponseTrackerMessagesWithArgs<Element, Arg0, Arg1> {
     pub fn new() -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/CommandResponseTracker.java:278
     pub fn new_2(on_zero: JRef<dyn CommandResponseTrackerErrorHandlerWithArgs<Arg0, Arg1>>, on_success: CommandResponseTrackerDispatchWithArgs<JRef<dyn Component>, Element, Arg0, Arg1>) -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/CommandResponseTracker.java:278
-    pub fn throw_if_zero(&self, value: i32, argument0: Arg0, argument1: Arg1) -> Result<(), Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/CommandResponseTracker.java:282
+    pub fn throw_if_zero(&self, value: i32, argument0: Arg0, argument1: Arg1) -> Result<(), anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/CommandResponseTracker.java:282
 }
 // ---- interface net.minecraft.server.commands.CommandResponseTracker.MultipleHandler (leaf-server/src/minecraft/java/net/minecraft/server/commands/CommandResponseTracker.java:289)
 pub trait CommandResponseTrackerMultipleHandler<Result: JGeneric>: Send + Sync + 'static {

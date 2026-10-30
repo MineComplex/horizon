@@ -4,7 +4,6 @@ use crate::prelude::*;
 use crate::com::mojang::brigadier::StringReader;
 use crate::com::mojang::brigadier::context::CommandContext;
 use crate::com::mojang::brigadier::exceptions::SimpleCommandExceptionType;
-use crate::java::lang::Throwable;
 use crate::net::minecraft::commands::command_source_stack::CommandSourceStack;
 
 // ---- class net.minecraft.commands.arguments.UuidArgument (leaf-server/src/minecraft/java/net/minecraft/commands/arguments/UuidArgument.java:16)
@@ -19,7 +18,7 @@ impl UuidArgument {
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/UuidArgument.java:16
     pub fn get_uuid(source: CommandContext<JRef<CommandSourceStack>>, name: &str) -> Uuid { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/UuidArgument.java:21
     pub fn uuid() -> JRef<UuidArgument> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/UuidArgument.java:25
-    pub fn parse(&self, reader: StringReader) -> Result<Uuid, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/UuidArgument.java:29
+    pub fn parse(&self, reader: StringReader) -> Result<Uuid, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/UuidArgument.java:29
     pub fn get_examples(&self) -> Vec<String> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/UuidArgument.java:47
 }
 crate::jobject!(UuidArgument);

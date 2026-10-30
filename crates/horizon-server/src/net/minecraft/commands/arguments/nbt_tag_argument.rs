@@ -3,7 +3,6 @@
 use crate::prelude::*;
 use crate::com::mojang::brigadier::StringReader;
 use crate::com::mojang::brigadier::context::CommandContext;
-use crate::java::lang::Throwable;
 use crate::net::minecraft::nbt::tag::Tag;
 use crate::net::minecraft::util::parsing::packrat::commands::command_argument_parser::CommandArgumentParser;
 use crate::net::minecraft::util::parsing::packrat::commands::parser_based_argument::ParserBasedArgument;
@@ -31,6 +30,6 @@ impl NbtTagArgument {
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl ParserBasedArgumentTrait<JObjectRef> for NbtTagArgument {
     fn as_parser_based_argument(&self) -> &ParserBasedArgument<JObjectRef> { self }
-    fn parse(&self, reader: StringReader) -> Result<T, Throwable> { ParserBasedArgument::parse(self, reader) }
+    fn parse(&self, reader: StringReader) -> Result<T, anyhow::Error> { ParserBasedArgument::parse(self, reader) }
 }
 crate::jobject!(NbtTagArgument);

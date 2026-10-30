@@ -7,15 +7,12 @@ use crate::com::mojang::brigadier::suggestion::Suggestions;
 use crate::com::mojang::brigadier::tree::RootCommandNode;
 use crate::com::mojang::brigadier::tree::command_node::CommandNodeTrait;
 use crate::com::mojang::brigadier::tree::literal_command_node::LiteralCommandNodeTrait;
-use crate::java::lang::Throwable;
-use crate::java::util::concurrent::CompletableFuture;
-use crate::java::util::function::Predicate;
 
 // ---- class com.mojang.brigadier.CommandDispatcher (leaf-server/src/minecraft/java/com/mojang/brigadier/CommandDispatcher.java:38)
 pub struct CommandDispatcher<S: JGeneric> {
     pub this: Weak<Self>,
     pub root: RootCommandNode<S>, // leaf-server/src/minecraft/java/com/mojang/brigadier/CommandDispatcher.java:59
-    pub has_command: JRef<dyn Predicate<JRef<dyn CommandNodeTrait<S>>>>, // leaf-server/src/minecraft/java/com/mojang/brigadier/CommandDispatcher.java:61
+    pub has_command: Arc<dyn Fn(JRef<dyn CommandNodeTrait<S>>) -> bool + Send + Sync>, // leaf-server/src/minecraft/java/com/mojang/brigadier/CommandDispatcher.java:61
     pub consumer: Mut<JObjectRef /* ResultConsumer */>, // leaf-server/src/minecraft/java/com/mojang/brigadier/CommandDispatcher.java:67
     pub _phantom: std::marker::PhantomData<(S,)>,
 }
@@ -32,9 +29,9 @@ impl<S: JGeneric> CommandDispatcher<S> {
     pub fn new_1(root: RootCommandNode<S>) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/com/mojang/brigadier/CommandDispatcher.java:77
     pub fn register(&self, command: LiteralArgumentBuilder<S>) -> JRef<dyn LiteralCommandNodeTrait<S>> { todo!() } // leaf-server/src/minecraft/java/com/mojang/brigadier/CommandDispatcher.java:98
     pub fn set_consumer(&self, consumer: JObjectRef /* ResultConsumer */) { todo!() } // leaf-server/src/minecraft/java/com/mojang/brigadier/CommandDispatcher.java:109
-    pub fn execute(&self, parse: JObjectRef /* ParseResults */) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/com/mojang/brigadier/CommandDispatcher.java:208
-    pub fn execute_2(&self, input: &str, source: S) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/com/mojang/brigadier/CommandDispatcher.java:143
-    pub fn execute_2_2(&self, input: JObjectRef /* StringReader */, source: S) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/com/mojang/brigadier/CommandDispatcher.java:177
+    pub fn execute(&self, parse: JObjectRef /* ParseResults */) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/com/mojang/brigadier/CommandDispatcher.java:208
+    pub fn execute_2(&self, input: &str, source: S) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/com/mojang/brigadier/CommandDispatcher.java:143
+    pub fn execute_2_2(&self, input: JObjectRef /* StringReader */, source: S) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/com/mojang/brigadier/CommandDispatcher.java:177
     pub fn parse(&self, command: &str, source: S) -> JObjectRef /* ParseResults */ { todo!() } // leaf-server/src/minecraft/java/com/mojang/brigadier/CommandDispatcher.java:258
     pub fn parse_2(&self, command: JObjectRef /* StringReader */, source: S) -> JObjectRef /* ParseResults */ { todo!() } // leaf-server/src/minecraft/java/com/mojang/brigadier/CommandDispatcher.java:289
     pub fn parse_nodes(&self, node: JRef<dyn CommandNodeTrait<S>>, original_reader: JObjectRef /* StringReader */, context_so_far: CommandContextBuilder<S>) -> JObjectRef /* ParseResults */ { todo!() } // leaf-server/src/minecraft/java/com/mojang/brigadier/CommandDispatcher.java:294
@@ -42,8 +39,8 @@ impl<S: JGeneric> CommandDispatcher<S> {
     pub fn get_all_usage_5(&self, node: JRef<dyn CommandNodeTrait<S>>, source: S, result: &mut Vec<String>, prefix: &str, restricted: bool) { todo!() } // leaf-server/src/minecraft/java/com/mojang/brigadier/CommandDispatcher.java:407
     pub fn get_smart_usage(&self, node: JRef<dyn CommandNodeTrait<S>>, source: S) -> HashMap<JRef<dyn CommandNodeTrait<S>>, String> { todo!() } // leaf-server/src/minecraft/java/com/mojang/brigadier/CommandDispatcher.java:447
     pub fn get_smart_usage_4(&self, node: JRef<dyn CommandNodeTrait<S>>, source: S, optional: bool, deep: bool) -> String { todo!() } // leaf-server/src/minecraft/java/com/mojang/brigadier/CommandDispatcher.java:460
-    pub fn get_completion_suggestions(&self, parse: JObjectRef /* ParseResults */) -> CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/com/mojang/brigadier/CommandDispatcher.java:529
-    pub fn get_completion_suggestions_2(&self, parse: JObjectRef /* ParseResults */, cursor: i32) -> CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/com/mojang/brigadier/CommandDispatcher.java:533
+    pub fn get_completion_suggestions(&self, parse: JObjectRef /* ParseResults */) -> crate::rt::CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/com/mojang/brigadier/CommandDispatcher.java:529
+    pub fn get_completion_suggestions_2(&self, parse: JObjectRef /* ParseResults */, cursor: i32) -> crate::rt::CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/com/mojang/brigadier/CommandDispatcher.java:533
     pub fn get_root(&self) -> RootCommandNode<S> { todo!() } // leaf-server/src/minecraft/java/com/mojang/brigadier/CommandDispatcher.java:581
     pub fn get_path(&self, target: JRef<dyn CommandNodeTrait<S>>) -> Vec<String> { todo!() } // leaf-server/src/minecraft/java/com/mojang/brigadier/CommandDispatcher.java:599
     pub fn find_node(&self, path: &Vec<String>) -> JRef<dyn CommandNodeTrait<S>> { todo!() } // leaf-server/src/minecraft/java/com/mojang/brigadier/CommandDispatcher.java:629

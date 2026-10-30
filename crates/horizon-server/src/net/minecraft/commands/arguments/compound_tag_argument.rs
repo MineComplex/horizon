@@ -3,7 +3,6 @@
 use crate::prelude::*;
 use crate::com::mojang::brigadier::StringReader;
 use crate::com::mojang::brigadier::context::CommandContext;
-use crate::java::lang::Throwable;
 use crate::net::minecraft::nbt::compound_tag::CompoundTag;
 
 // ---- class net.minecraft.commands.arguments.CompoundTagArgument (leaf-server/src/minecraft/java/net/minecraft/commands/arguments/CompoundTagArgument.java:12)
@@ -16,7 +15,7 @@ impl CompoundTagArgument {
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/CompoundTagArgument.java:15
     pub fn compound_tag() -> JRef<CompoundTagArgument> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/CompoundTagArgument.java:18
     pub fn get_compound_tag<S: JGeneric>(context: CommandContext<S>, name: &str) -> JRef<CompoundTag> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/CompoundTagArgument.java:22
-    pub fn parse(&self, reader: StringReader) -> Result<JRef<CompoundTag>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/CompoundTagArgument.java:26
+    pub fn parse(&self, reader: StringReader) -> Result<JRef<CompoundTag>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/CompoundTagArgument.java:26
     pub fn get_examples(&self) -> Vec<String> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/CompoundTagArgument.java:31
 }
 crate::jobject!(CompoundTagArgument);

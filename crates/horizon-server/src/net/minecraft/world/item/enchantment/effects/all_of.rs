@@ -3,7 +3,6 @@
 use crate::prelude::*;
 use crate::com::mojang::serialization::Codec;
 use crate::com::mojang::serialization::MapCodec;
-use crate::java::util::function::Function;
 use crate::net::minecraft::server::level::server_level::ServerLevel;
 use crate::net::minecraft::util::random_source::RandomSource;
 use crate::net::minecraft::world::entity::entity::EntityTrait;
@@ -16,7 +15,7 @@ use crate::net::minecraft::world::phys::vec3::Vec3;
 // ---- interface net.minecraft.world.item.enchantment.effects.AllOf (leaf-server/src/minecraft/java/net/minecraft/world/item/enchantment/effects/AllOf.java:14)
 pub trait AllOf: JObject {
 }
-pub fn codec<T: JGeneric, A: JGeneric>(top_level_codec: JRef<dyn Codec<T>>, constructor: JRef<dyn Function<Vec<T>, A>>, accessor: JRef<dyn Function<A, Vec<T>>>) -> MapCodec<A> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/enchantment/effects/AllOf.java:15
+pub fn codec<T: JGeneric, A: JGeneric>(top_level_codec: JRef<dyn Codec<T>>, constructor: Arc<dyn Fn(Vec<T>) -> A + Send + Sync>, accessor: Arc<dyn Fn(A) -> Vec<T> + Send + Sync>) -> MapCodec<A> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/enchantment/effects/AllOf.java:15
 pub fn entity_effects(effects: &Vec<JRef<dyn EnchantmentEntityEffect>>) -> AllOfEntityEffects { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/enchantment/effects/AllOf.java:19
 pub fn location_based_effects(effects: &Vec<JRef<dyn EnchantmentLocationBasedEffect>>) -> AllOfLocationBasedEffects { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/enchantment/effects/AllOf.java:23
 pub fn value_effects(effects: &Vec<JRef<dyn EnchantmentValueEffect>>) -> AllOfValueEffects { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/enchantment/effects/AllOf.java:27

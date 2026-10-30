@@ -5,7 +5,6 @@ use crate::com::mojang::brigadier::Command;
 use crate::com::mojang::brigadier::context::CommandContext;
 use crate::com::mojang::brigadier::context::ContextChain;
 use crate::com::mojang::brigadier::exceptions::command_syntax_exception::CommandSyntaxExceptionTrait;
-use crate::java::lang::Throwable;
 use crate::net::minecraft::commands::execution::chain_modifiers::ChainModifiers;
 use crate::net::minecraft::commands::execution::execution_control::ExecutionControl;
 use crate::net::minecraft::commands::execution::trace_callbacks::TraceCallbacks;
@@ -19,7 +18,7 @@ impl<T: JGeneric, F: Fn(T, ContextChain<T>, ChainModifiers, JRef<dyn ExecutionCo
 }
 // ---- interface net.minecraft.commands.execution.CustomCommandExecutor.CommandAdapter (leaf-server/src/minecraft/java/net/minecraft/commands/execution/CustomCommandExecutor.java:13)
 pub trait CustomCommandExecutorCommandAdapter<T: JGeneric>: CustomCommandExecutor<T> + Command<T> {
-    fn run_1(&self, context: CommandContext<T>) -> Result<i32, Throwable> { todo!() } // default, leaf-server/src/minecraft/java/net/minecraft/commands/execution/CustomCommandExecutor.java:14
+    fn run_1(&self, context: CommandContext<T>) -> Result<i32, anyhow::Error> { todo!() } // default, leaf-server/src/minecraft/java/net/minecraft/commands/execution/CustomCommandExecutor.java:14
 }
 // ---- class net.minecraft.commands.execution.CustomCommandExecutor.WithErrorHandling (leaf-server/src/minecraft/java/net/minecraft/commands/execution/CustomCommandExecutor.java:20)
 pub struct CustomCommandExecutorWithErrorHandling<T: JGeneric> {
@@ -29,7 +28,7 @@ pub struct CustomCommandExecutorWithErrorHandling<T: JGeneric> {
 pub trait CustomCommandExecutorWithErrorHandlingTrait<T: JGeneric>: CustomCommandExecutor<T> {
     fn as_custom_command_executor_with_error_handling(&self) -> &CustomCommandExecutorWithErrorHandling<T>;
     fn on_error(&self, e: JRef<dyn CommandSyntaxExceptionTrait>, sender: T, modifiers: ChainModifiers, tracer: Option<JRef<dyn TraceCallbacks>>); // leaf-server/src/minecraft/java/net/minecraft/commands/execution/CustomCommandExecutor.java:31
-    fn run_guarded(&self, sender: T, current_step: ContextChain<T>, modifiers: ChainModifiers, output: JRef<dyn ExecutionControl<T>>) -> Result<(), Throwable>; // leaf-server/src/minecraft/java/net/minecraft/commands/execution/CustomCommandExecutor.java:35
+    fn run_guarded(&self, sender: T, current_step: ContextChain<T>, modifiers: ChainModifiers, output: JRef<dyn ExecutionControl<T>>) -> Result<(), anyhow::Error>; // leaf-server/src/minecraft/java/net/minecraft/commands/execution/CustomCommandExecutor.java:35
 }
 impl<T: JGeneric> std::ops::Deref for dyn CustomCommandExecutorWithErrorHandlingTrait<T> {
     type Target = CustomCommandExecutorWithErrorHandling<T>;

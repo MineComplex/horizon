@@ -19,10 +19,6 @@ use crate::io::papermc::paper::persistence::persistent_data_container_view::Pers
 use crate::io::papermc::paper::persistence::persistent_data_view_holder::PersistentDataViewHolder;
 use crate::io::papermc::paper::threadedregions::scheduler::entity_scheduler::EntityScheduler;
 use crate::io::papermc::paper::world::damagesource::combat_tracker::CombatTracker;
-use crate::java::lang::Class;
-use crate::java::lang::Throwable;
-use crate::java::util::concurrent::CompletableFuture;
-use crate::java::util::function::Consumer;
 use crate::net::kyori::adventure::key::Key;
 use crate::net::kyori::adventure::text::Component;
 use crate::net::kyori::adventure::util::TriState;
@@ -196,7 +192,7 @@ impl LivingEntity for PaperSchoolableFish {
     fn set_can_pickup_items(&self, pickup: bool) { todo!("abstract LivingEntity.setCanPickupItems") }
     fn get_can_pickup_items(&self) -> bool { todo!("abstract LivingEntity.getCanPickupItems") }
     fn is_leashed(&self) -> bool { todo!("abstract LivingEntity.isLeashed") }
-    fn get_leash_holder(&self) -> Result<JRef<dyn Entity>, Throwable> { todo!("abstract LivingEntity.getLeashHolder") }
+    fn get_leash_holder(&self) -> Result<JRef<dyn Entity>, anyhow::Error> { todo!("abstract LivingEntity.getLeashHolder") }
     fn set_leash_holder(&self, holder: Option<JRef<dyn Entity>>) -> bool { todo!("abstract LivingEntity.setLeashHolder") }
     fn is_gliding(&self) -> bool { todo!("abstract LivingEntity.isGliding") }
     fn set_gliding(&self, gliding: bool) { todo!("abstract LivingEntity.setGliding") }
@@ -299,7 +295,7 @@ impl Entity for PaperSchoolableFish {
     fn teleport_2_2(&self, location: JRef<Location>, cause: PlayerTeleportEventTeleportCause) -> bool { todo!("abstract Entity.teleport") }
     fn teleport_2_3(&self, destination: JRef<dyn Entity>, cause: PlayerTeleportEventTeleportCause) -> bool { todo!("abstract Entity.teleport") }
     fn look_at_4(&self, x: f64, y: f64, z: f64, entity_anchor: LookAnchor) { todo!("abstract Entity.lookAt") }
-    fn teleport_async_2_2(&self, loc: JRef<Location>, cause: PlayerTeleportEventTeleportCause) -> CompletableFuture<bool> { todo!("abstract Entity.teleportAsync") }
+    fn teleport_async_2_2(&self, loc: JRef<Location>, cause: PlayerTeleportEventTeleportCause) -> crate::rt::CompletableFuture<bool> { todo!("abstract Entity.teleportAsync") }
     fn get_nearby_entities(&self, x: f64, y: f64, z: f64) -> Vec<JRef<dyn Entity>> { todo!("abstract Entity.getNearbyEntities") }
     fn get_entity_id(&self) -> i32 { todo!("abstract Entity.getEntityId") }
     fn get_fire_ticks(&self) -> i32 { todo!("abstract Entity.getFireTicks") }
@@ -466,7 +462,7 @@ impl DataComponentView for PaperSchoolableFish {
     fn has_data(&self, type_: JRef<dyn DataComponentType>) -> bool { todo!("abstract DataComponentView.hasData") }
 }
 impl ProjectileSource for PaperSchoolableFish {
-    fn launch_projectile_3<T: JGeneric>(&self, projectile: Class, velocity: Option<JRef<dyn VectorTrait>>, function: JRef<dyn Consumer<JObjectRef>>) -> T where Self: Sized { todo!("abstract ProjectileSource.launchProjectile") }
+    fn launch_projectile_3<T: JGeneric>(&self, projectile: crate::rt::Class, velocity: Option<JRef<dyn VectorTrait>>, function: Arc<dyn Fn(JObjectRef) + Send + Sync>) -> T where Self: Sized { todo!("abstract ProjectileSource.launchProjectile") }
 }
 impl Frictional for PaperSchoolableFish {
     fn get_friction_state(&self) -> TriState { todo!("abstract Frictional.getFrictionState") }
@@ -481,7 +477,7 @@ impl Lootable for PaperSchoolableFish {
 }
 impl Leashable for PaperSchoolableFish {
     fn is_leashed(&self) -> bool { todo!("abstract Leashable.isLeashed") }
-    fn get_leash_holder(&self) -> Result<JRef<dyn Entity>, Throwable> { todo!("abstract Leashable.getLeashHolder") }
+    fn get_leash_holder(&self) -> Result<JRef<dyn Entity>, anyhow::Error> { todo!("abstract Leashable.getLeashHolder") }
     fn set_leash_holder(&self, holder: Option<JRef<dyn Entity>>) -> bool { todo!("abstract Leashable.setLeashHolder") }
 }
 impl Bucketable for PaperSchoolableFish {

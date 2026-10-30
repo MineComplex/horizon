@@ -4,6 +4,6 @@ use crate::prelude::*;
 use crate::api_prelude::*;
 
 // ---- interface org.bukkit.util.Consumer (paper-api/src/main/java/org/bukkit/util/Consumer.java:13)
-pub trait Consumer<T: JGeneric>: crate::java::util::function::Consumer<T> {
+pub trait Consumer<T: JGeneric>: Arc<dyn Fn(T) + Send + Sync> {
     fn accept(&self, t: T); // paper-api/src/main/java/org/bukkit/util/Consumer.java:21
 }

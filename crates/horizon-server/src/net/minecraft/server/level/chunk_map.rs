@@ -8,23 +8,7 @@ use crate::ca::spottedleaf::moonrise::patches::chunk_system::scheduling::chunk_h
 use crate::ca::spottedleaf::moonrise::patches::chunk_system::storage::chunk_system_simple_region_storage::ChunkSystemSimpleRegionStorage;
 use crate::ca::spottedleaf::moonrise::patches::chunk_tick_iteration::chunk_tick_distance_manager::ChunkTickDistanceManager;
 use crate::ca::spottedleaf::moonrise::patches::entity_tracker::entity_tracker_tracked_entity::EntityTrackerTrackedEntity;
-use crate::com::mojang::datafixers::DataFixer;
 use crate::com::mojang::serialization::dynamic::Dynamic;
-use crate::it::unimi::dsi::fastutil::longs::LongConsumer;
-use crate::java::io::Writer;
-use crate::java::lang::Runnable;
-use crate::java::lang::Throwable;
-use crate::java::util::JIterator;
-use crate::java::util::concurrent::CompletableFuture;
-use crate::java::util::concurrent::Executor;
-use crate::java::util::function::BooleanSupplier;
-use crate::java::util::function::Consumer;
-use crate::java::util::function::IntConsumer;
-use crate::java::util::function::IntFunction;
-use crate::java::util::function::IntSupplier;
-use crate::java::util::function::Predicate;
-use crate::java::util::function::Supplier;
-use crate::java::util::stream::Stream;
 use crate::net::minecraft::core::block_pos::BlockPos;
 use crate::net::minecraft::core::section_pos::SectionPos;
 use crate::net::minecraft::nbt::compound_tag::CompoundTag;
@@ -88,7 +72,7 @@ pub struct ChunkMap {
     pub this: Weak<Self>,
     pub level: JRef<ServerLevel>, // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:126
     pub light_engine: JRef<ThreadedLevelLightEngine>, // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:127
-    pub main_thread_executor: JRef<dyn BlockableEventLoopTrait<JRef<dyn Runnable>>>, // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:128
+    pub main_thread_executor: JRef<dyn BlockableEventLoopTrait<Arc<dyn Fn() + Send + Sync>>>, // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:128
     pub random_state: JRef<RandomState>, // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:129
     pub chunk_generator_state: JRef<ChunkGeneratorStructureState>, // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:130
     pub ticket_storage: JRef<TicketStorage>, // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:131
@@ -111,7 +95,7 @@ impl std::ops::Deref for ChunkMap {
     fn deref(&self) -> &Self::Target { &self.base }
 }
 pub static UNLOADED_CHUNK_LIST_RESULT: LazyLock<JRef<dyn ChunkResult<Vec<JRef<dyn ChunkAccessTrait>>>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:110
-pub static UNLOADED_CHUNK_LIST_FUTURE: LazyLock<CompletableFuture<JRef<dyn ChunkResult<Vec<JRef<dyn ChunkAccessTrait>>>>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:111
+pub static UNLOADED_CHUNK_LIST_FUTURE: LazyLock<crate::rt::CompletableFuture<JRef<dyn ChunkResult<Vec<JRef<dyn ChunkAccessTrait>>>>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:111
 pub const CHUNK_TYPE_REPLACEABLE: i8 = -1; // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:114
 pub const CHUNK_TYPE_UNKNOWN: i8 = 0; // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:115
 pub const CHUNK_TYPE_FULL: i8 = 1; // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:116
@@ -125,16 +109,16 @@ pub static FORCED_TICKET_LEVEL: LazyLock<i32> = LazyLock::new(|| todo!()); // le
 pub static EMPTY_ENTITY_ARRAY: LazyLock<Vec<JRef<dyn EntityTrait>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:1089
 impl ChunkMap {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(level: JRef<ServerLevel>, level_storage: JRef<LevelStorageSourceLevelStorageAccess>, data_fixer: DataFixer, structure_manager: JRef<StructureTemplateManager>, executor: JRef<dyn Executor>, main_thread_executor: JRef<dyn BlockableEventLoopTrait<JRef<dyn Runnable>>>, chunk_getter: JRef<dyn LightChunkGetter>, generator: JRef<dyn ChunkGeneratorTrait>, chunk_status_listener: JRef<dyn ChunkStatusUpdateListener>, ticket_storage: JRef<TicketStorage>, server_view_distance: i32, sync_writes: bool) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:172
-    pub fn close(&self) -> Result<(), Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:386
+    pub fn new(level: JRef<ServerLevel>, level_storage: JRef<LevelStorageSourceLevelStorageAccess>, data_fixer: (), structure_manager: JRef<StructureTemplateManager>, executor: crate::rt::Executor, main_thread_executor: JRef<dyn BlockableEventLoopTrait<Arc<dyn Fn() + Send + Sync>>>, chunk_getter: JRef<dyn LightChunkGetter>, generator: JRef<dyn ChunkGeneratorTrait>, chunk_status_listener: JRef<dyn ChunkStatusUpdateListener>, ticket_storage: JRef<TicketStorage>, server_view_distance: i32, sync_writes: bool) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:172
+    pub fn close(&self) -> Result<(), anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:386
     pub fn acquire_generation(&self, chunk_node: i64) -> JRef<dyn GenerationChunkHolderTrait> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:465
     pub fn release_generation(&self, chunk_holder: JRef<dyn GenerationChunkHolderTrait>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:470
-    pub fn apply_step(&self, chunk_holder: JRef<dyn GenerationChunkHolderTrait>, step: JRef<ChunkStep>, cache: JRef<StaticCache2D<JRef<dyn GenerationChunkHolderTrait>>>) -> CompletableFuture<JRef<dyn ChunkAccessTrait>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:475
+    pub fn apply_step(&self, chunk_holder: JRef<dyn GenerationChunkHolderTrait>, step: JRef<ChunkStep>, cache: JRef<StaticCache2D<JRef<dyn GenerationChunkHolderTrait>>>) -> crate::rt::CompletableFuture<JRef<dyn ChunkAccessTrait>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:475
     pub fn schedule_generation_task(&self, target_status: JRef<ChunkStatus>, pos: ChunkPos) -> JRef<ChunkGenerationTask> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:482
     pub fn run_generation_tasks(&self) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:491
-    pub fn read(&self, pos: ChunkPos) -> CompletableFuture<Option<JRef<CompoundTag>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:559
-    pub fn write_2(&self, pos: ChunkPos, tag: JRef<dyn Supplier<JRef<CompoundTag>>>) -> CompletableFuture<()> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:577
-    pub fn synchronize(&self, flush: bool) -> CompletableFuture<()> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:586
+    pub fn read(&self, pos: ChunkPos) -> crate::rt::CompletableFuture<Option<JRef<CompoundTag>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:559
+    pub fn write_2(&self, pos: ChunkPos, tag: Arc<dyn Fn() -> JRef<CompoundTag> + Send + Sync>) -> crate::rt::CompletableFuture<()> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:577
+    pub fn synchronize(&self, flush: bool) -> crate::rt::CompletableFuture<()> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:586
     pub fn get_players(&self, pos: ChunkPos, border_only: bool) -> Vec<JRef<ServerPlayer>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:973
     pub fn chunk_scanner(&self) -> JRef<dyn ChunkScanAccess> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:1055
     pub fn get_unloading_chunk_holder(&self, chunk_x: i32, chunk_z: i32) -> JRef<ChunkHolder> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:167
@@ -151,31 +135,31 @@ impl ChunkMap {
     pub fn get_updating_chunk_if_present(&self, key: i64) -> Option<JRef<ChunkHolder>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:303
     pub fn get_visible_chunk_if_present(&self, key: i64) -> Option<JRef<ChunkHolder>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:310
     pub fn get_latest_status(&self, key: i64) -> Option<JRef<ChunkStatus>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:317
-    pub fn get_chunk_queue_level(&self, pos: i64) -> JRef<dyn IntSupplier> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:322
+    pub fn get_chunk_queue_level(&self, pos: i64) -> Arc<dyn Fn() -> i32 + Send + Sync> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:322
     pub fn get_chunk_debug_data(&self, pos: ChunkPos) -> String { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:326
-    pub fn get_chunk_range_future(&self, center_chunk: JRef<ChunkHolder>, range: i32, distance_to_status: JRef<dyn IntFunction<JRef<ChunkStatus>>>) -> CompletableFuture<JRef<dyn ChunkResult<Vec<JRef<dyn ChunkAccessTrait>>>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:348
-    pub fn debug_futures_and_create_reported_exception(&self, exception: Throwable, details: &str) -> JRef<dyn ReportedExceptionTrait> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:354
-    pub fn prepare_entity_ticking_chunk(&self, chunk: JRef<ChunkHolder>) -> CompletableFuture<JRef<dyn ChunkResult<JRef<dyn LevelChunkTrait>>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:374
+    pub fn get_chunk_range_future(&self, center_chunk: JRef<ChunkHolder>, range: i32, distance_to_status: Arc<dyn Fn(i32) -> JRef<ChunkStatus> + Send + Sync>) -> crate::rt::CompletableFuture<JRef<dyn ChunkResult<Vec<JRef<dyn ChunkAccessTrait>>>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:348
+    pub fn debug_futures_and_create_reported_exception(&self, exception: anyhow::Error, details: &str) -> JRef<dyn ReportedExceptionTrait> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:354
+    pub fn prepare_entity_ticking_chunk(&self, chunk: JRef<ChunkHolder>) -> crate::rt::CompletableFuture<JRef<dyn ChunkResult<JRef<dyn LevelChunkTrait>>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:374
     pub fn update_chunk_scheduling(&self, node: i64, level: i32, chunk: Option<JRef<ChunkHolder>>, old_level: i32) -> Option<JRef<ChunkHolder>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:378
-    pub fn on_level_change(&self, pos: ChunkPos, old_level: JRef<dyn IntSupplier>, new_level: i32, set_queue_level: JRef<dyn IntConsumer>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:382
+    pub fn on_level_change(&self, pos: ChunkPos, old_level: Arc<dyn Fn() -> i32 + Send + Sync>, new_level: i32, set_queue_level: Arc<dyn Fn(i32) + Send + Sync>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:382
     pub fn save_all_chunks(&self, flush_storage: bool) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:391
     pub fn tick(&self) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:1125
-    pub fn tick_1(&self, have_time: JRef<dyn BooleanSupplier>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:399
+    pub fn tick_1(&self, have_time: Arc<dyn Fn() -> bool + Send + Sync>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:399
     pub fn has_work(&self) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:407
-    pub fn process_unloads(&self, have_time: JRef<dyn BooleanSupplier>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:411
-    pub fn save_chunks_eagerly(&self, have_time: JRef<dyn BooleanSupplier>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:416
+    pub fn process_unloads(&self, have_time: Arc<dyn Fn() -> bool + Send + Sync>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:411
+    pub fn save_chunks_eagerly(&self, have_time: Arc<dyn Fn() -> bool + Send + Sync>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:416
     pub fn schedule_unload(&self, pos: i64, chunk_holder: JRef<ChunkHolder>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:420
     pub fn promote_chunk_map(&self) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:424
-    pub fn schedule_chunk_load(&self, pos: ChunkPos) -> CompletableFuture<JRef<dyn ChunkAccessTrait>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:428
-    pub fn handle_chunk_load_failure(&self, throwable: Throwable, pos: ChunkPos) -> JRef<dyn ChunkAccessTrait> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:432
+    pub fn schedule_chunk_load(&self, pos: ChunkPos) -> crate::rt::CompletableFuture<JRef<dyn ChunkAccessTrait>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:428
+    pub fn handle_chunk_load_failure(&self, throwable: anyhow::Error, pos: ChunkPos) -> JRef<dyn ChunkAccessTrait> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:432
     pub fn create_empty_chunk(&self, pos: ChunkPos) -> JRef<dyn ChunkAccessTrait> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:452
     pub fn mark_position_replaceable(&self, pos: ChunkPos) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:457
     pub fn mark_position(&self, pos: ChunkPos, type_: ChunkType) -> i8 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:461
     pub fn run_generation_task(&self, task: JRef<ChunkGenerationTask>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:487
-    pub fn prepare_ticking_chunk(&self, chunk: JRef<ChunkHolder>) -> CompletableFuture<JRef<dyn ChunkResult<JRef<dyn LevelChunkTrait>>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:496
+    pub fn prepare_ticking_chunk(&self, chunk: JRef<ChunkHolder>) -> crate::rt::CompletableFuture<JRef<dyn ChunkResult<JRef<dyn LevelChunkTrait>>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:496
     pub fn on_chunk_ready_to_send(&self, chunk_holder: JRef<ChunkHolder>, chunk: JRef<dyn LevelChunkTrait>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:500
-    pub fn prepare_accessible_chunk(&self, chunk: JRef<ChunkHolder>) -> CompletableFuture<JRef<dyn ChunkResult<JRef<dyn LevelChunkTrait>>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:504
-    pub fn all_chunks_with_at_least_status(&self, status: JRef<ChunkStatus>) -> Stream<JRef<ChunkHolder>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:508
+    pub fn prepare_accessible_chunk(&self, chunk: JRef<ChunkHolder>) -> crate::rt::CompletableFuture<JRef<dyn ChunkResult<JRef<dyn LevelChunkTrait>>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:504
+    pub fn all_chunks_with_at_least_status(&self, status: JRef<ChunkStatus>) -> Box<dyn Iterator<Item = JRef<ChunkHolder>> + Send> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:508
     pub fn save_chunk_if_needed(&self, chunk: JRef<ChunkHolder>, now: i64) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:518
     pub fn save(&self, chunk: JRef<dyn ChunkAccessTrait>) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:522
     pub fn is_existing_chunk_full(&self, pos: ChunkPos) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:526
@@ -187,14 +171,14 @@ impl ChunkMap {
     pub fn get_chunk_to_send(&self, key: i64) -> Option<JRef<dyn LevelChunkTrait>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:600
     pub fn size(&self) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:605
     pub fn get_distance_manager(&self) -> JRef<dyn DistanceManagerTrait> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:609
-    pub fn dump_chunks(&self, output: Writer) -> Result<(), Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:613
-    pub fn print_future(future: CompletableFuture<JRef<dyn ChunkResult<JRef<dyn LevelChunkTrait>>>>) -> String { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:662
-    pub fn read_chunk(&self, pos: ChunkPos) -> CompletableFuture<Option<JRef<CompoundTag>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:677
+    pub fn dump_chunks(&self, output: Box<dyn std::io::Write + Send>) -> Result<(), anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:613
+    pub fn print_future(future: crate::rt::CompletableFuture<JRef<dyn ChunkResult<JRef<dyn LevelChunkTrait>>>>) -> String { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:662
+    pub fn read_chunk(&self, pos: ChunkPos) -> crate::rt::CompletableFuture<Option<JRef<CompoundTag>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:677
     pub fn upgrade_chunk_tag_1(&self, tag: JRef<CompoundTag>) -> JRef<CompoundTag> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:681
     pub fn get_chunk_data_fix_context_tag(dimension: JRef<ResourceKey<JRef<dyn LevelTrait>>>, generator_identifier: Option<JRef<Identifier>>, stem_key: JRef<ResourceKey<LevelStem>>) -> JRef<CompoundTag> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:690
     pub fn is_chunk_near_player(&self, chunk_map: JRef<ChunkMap>, chunk_pos: ChunkPos, level_chunk: JRef<dyn LevelChunkTrait>) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:699
     pub fn collect_spawning_chunks(&self, output: &mut Vec<JRef<dyn LevelChunkTrait>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:735
-    pub fn for_each_block_ticking_chunk(&self, ticking_chunk_consumer: JRef<dyn Consumer<JRef<dyn LevelChunkTrait>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:755
+    pub fn for_each_block_ticking_chunk(&self, ticking_chunk_consumer: Arc<dyn Fn(JRef<dyn LevelChunkTrait>) + Send + Sync>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:755
     pub fn any_player_close_enough_for_spawning(&self, pos: ChunkPos) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:767
     pub fn any_player_close_enough_for_spawning_2(&self, pos: ChunkPos, reduced_range: bool) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:772
     pub fn any_player_close_enough_to(&self, pos: BlockPos, max_distance: i32) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:778
@@ -216,29 +200,29 @@ impl ChunkMap {
     pub fn check_iterating_tracker_entities(&self) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:1093
     pub fn new_tracker_tick(&self) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:1102
     pub fn send_to_tracking_players(&self, entity: JRef<dyn EntityTrait>, packet: JRef<dyn Packet<JObjectRef>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:1168
-    pub fn send_to_tracking_players_filtered(&self, entity: JRef<dyn EntityTrait>, packet: JRef<dyn Packet<JObjectRef>>, target_predicate: JRef<dyn Predicate<JRef<ServerPlayer>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:1175
+    pub fn send_to_tracking_players_filtered(&self, entity: JRef<dyn EntityTrait>, packet: JRef<dyn Packet<JObjectRef>>, target_predicate: Arc<dyn Fn(JRef<ServerPlayer>) -> bool + Send + Sync>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:1175
     pub fn send_to_tracking_players_and_self(&self, entity: JRef<dyn EntityTrait>, packet: JRef<dyn Packet<JObjectRef>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:1184
     pub fn is_tracked_by_any_player(&self, entity: JRef<dyn EntityTrait>) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:1191
-    pub fn for_each_entity_tracked_by(&self, player: JRef<ServerPlayer>, consumer: JRef<dyn Consumer<JRef<dyn EntityTrait>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:1196
+    pub fn for_each_entity_tracked_by(&self, player: JRef<ServerPlayer>, consumer: Arc<dyn Fn(JRef<dyn EntityTrait>) + Send + Sync>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:1196
     pub fn resend_biomes_for_chunks(&self, chunks: &Vec<JRef<dyn ChunkAccessTrait>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:1204
     pub fn get_poi_manager(&self) -> JRef<PoiManager> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:1224
     pub fn on_full_chunk_status_change(&self, pos: ChunkPos, status: FullChunkStatus) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:1228
     pub fn wait_for_light_before_sending(&self, center_chunk: ChunkPos, chunk_radius: i32) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:1232
-    pub fn for_each_ready_to_send_chunk(&self, consumer: JRef<dyn Consumer<JRef<dyn LevelChunkTrait>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:1236
+    pub fn for_each_ready_to_send_chunk(&self, consumer: Arc<dyn Fn(JRef<dyn LevelChunkTrait>) + Send + Sync>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:1236
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl SimpleRegionStorageTrait for ChunkMap {
     fn as_simple_region_storage(&self) -> &SimpleRegionStorage { self }
     fn is_old_chunk_around(&self, pos: ChunkPos, range: i32) -> bool { SimpleRegionStorage::is_old_chunk_around(self, pos, range) }
-    fn read(&self, pos: ChunkPos) -> CompletableFuture<Option<JRef<CompoundTag>>> { ChunkMap::read(self, pos) }
-    fn write(&self, pos: ChunkPos, value: JRef<CompoundTag>) -> CompletableFuture<()> { SimpleRegionStorage::write(self, pos, value) }
-    fn write_2(&self, pos: ChunkPos, supplier: JRef<dyn Supplier<JRef<CompoundTag>>>) -> CompletableFuture<()> { ChunkMap::write_2(self, pos, supplier) }
+    fn read(&self, pos: ChunkPos) -> crate::rt::CompletableFuture<Option<JRef<CompoundTag>>> { ChunkMap::read(self, pos) }
+    fn write(&self, pos: ChunkPos, value: JRef<CompoundTag>) -> crate::rt::CompletableFuture<()> { SimpleRegionStorage::write(self, pos, value) }
+    fn write_2(&self, pos: ChunkPos, supplier: Arc<dyn Fn() -> JRef<CompoundTag> + Send + Sync>) -> crate::rt::CompletableFuture<()> { ChunkMap::write_2(self, pos, supplier) }
     fn upgrade_chunk_tag(&self, chunk_tag: JRef<CompoundTag>, default_version: i32) -> JRef<CompoundTag> { SimpleRegionStorage::upgrade_chunk_tag(self, chunk_tag, default_version) }
     fn upgrade_chunk_tag_2(&self, chunk_tag: JRef<Dynamic<JRef<dyn Tag>>>, default_version: i32) -> JRef<Dynamic<JRef<dyn Tag>>> { SimpleRegionStorage::upgrade_chunk_tag_2(self, chunk_tag, default_version) }
     fn upgrade_chunk_tag_4(&self, chunk_tag: JRef<CompoundTag>, default_version: i32, data_fix_context_tag: Option<JRef<CompoundTag>>, target_version: i32) -> JRef<CompoundTag> { SimpleRegionStorage::upgrade_chunk_tag_4(self, chunk_tag, default_version, data_fix_context_tag, target_version) }
-    fn synchronize(&self, flush: bool) -> CompletableFuture<()> { ChunkMap::synchronize(self, flush) }
-    fn close(&self) -> Result<(), Throwable> { ChunkMap::close(self) }
+    fn synchronize(&self, flush: bool) -> crate::rt::CompletableFuture<()> { ChunkMap::synchronize(self, flush) }
+    fn close(&self) -> Result<(), anyhow::Error> { ChunkMap::close(self) }
     fn chunk_scanner(&self) -> JRef<dyn ChunkScanAccess> { ChunkMap::chunk_scanner(self) }
     fn storage_info(&self) -> RegionStorageInfo { SimpleRegionStorage::storage_info(self) }
 }
@@ -248,7 +232,7 @@ impl ChunkHolderPlayerProvider for ChunkMap {
 impl GeneratingChunkMap for ChunkMap {
     fn acquire_generation(&self, chunk_node: i64) -> JRef<dyn GenerationChunkHolderTrait> { ChunkMap::acquire_generation(self, chunk_node) }
     fn release_generation(&self, chunk_holder: JRef<dyn GenerationChunkHolderTrait>) { ChunkMap::release_generation(self, chunk_holder) }
-    fn apply_step(&self, chunk_holder: JRef<dyn GenerationChunkHolderTrait>, step: JRef<ChunkStep>, cache: JRef<StaticCache2D<JRef<dyn GenerationChunkHolderTrait>>>) -> CompletableFuture<JRef<dyn ChunkAccessTrait>> { ChunkMap::apply_step(self, chunk_holder, step, cache) }
+    fn apply_step(&self, chunk_holder: JRef<dyn GenerationChunkHolderTrait>, step: JRef<ChunkStep>, cache: JRef<StaticCache2D<JRef<dyn GenerationChunkHolderTrait>>>) -> crate::rt::CompletableFuture<JRef<dyn ChunkAccessTrait>> { ChunkMap::apply_step(self, chunk_holder, step, cache) }
     fn schedule_generation_task(&self, target_status: JRef<ChunkStatus>, pos: ChunkPos) -> JRef<ChunkGenerationTask> { ChunkMap::schedule_generation_task(self, target_status, pos) }
     fn run_generation_tasks(&self) { ChunkMap::run_generation_tasks(self) }
 }
@@ -259,12 +243,12 @@ crate::jobject!(ChunkMap: dyn SimpleRegionStorageTrait, dyn ChunkHolderPlayerPro
 // ---- class net.minecraft.server.level.ChunkMap.CallbackExecutor (leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:147)
 pub struct ChunkMapCallbackExecutor {
     pub this: Weak<Self>,
-    pub queue: Mut<VecDeque<JRef<dyn Runnable>>>, // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:149
+    pub queue: Mut<VecDeque<Arc<dyn Fn() + Send + Sync>>>, // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:149
 }
 impl ChunkMapCallbackExecutor {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:147
-    pub fn execute(&self, runnable: JRef<dyn Runnable>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:151
+    pub fn execute(&self, runnable: Arc<dyn Fn() + Send + Sync>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:151
     pub fn run(&self) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:156
 }
 crate::jobject!(ChunkMapCallbackExecutor);
@@ -281,7 +265,7 @@ impl std::ops::Deref for ChunkMapDistanceManager {
 }
 impl ChunkMapDistanceManager {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(ticket_storage: JRef<TicketStorage>, executor: JRef<dyn Executor>, main_thread_executor: JRef<dyn Executor>) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:1246
+    pub fn new(ticket_storage: JRef<TicketStorage>, executor: crate::rt::Executor, main_thread_executor: crate::rt::Executor) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:1246
     pub fn moonrise_get_chunk_map(&self) -> JRef<ChunkMap> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:1251
     pub fn is_chunk_to_remove(&self, node: i64) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:1257
     pub fn get_chunk(&self, node: i64) -> Option<JRef<ChunkHolder>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:1262
@@ -304,8 +288,8 @@ impl DistanceManagerTrait for ChunkMapDistanceManager {
     fn update_simulation_distance(&self, new_distance: i32) { DistanceManager::update_simulation_distance(self, new_distance) }
     fn get_natural_spawn_chunk_count(&self) -> i32 { DistanceManager::get_natural_spawn_chunk_count(self) }
     fn has_players_nearby(&self, pos: i64) -> TriState { DistanceManager::has_players_nearby(self, pos) }
-    fn for_each_entity_ticking_chunk(&self, consumer: LongConsumer) { DistanceManager::for_each_entity_ticking_chunk(self, consumer) }
-    fn get_spawn_candidate_chunks(&self) -> JIterator<i64> { DistanceManager::get_spawn_candidate_chunks(self) }
+    fn for_each_entity_ticking_chunk(&self, consumer: Arc<dyn Fn(i64) + Send + Sync>) { DistanceManager::for_each_entity_ticking_chunk(self, consumer) }
+    fn get_spawn_candidate_chunks(&self) -> Box<dyn Iterator<Item = i64> + Send> { DistanceManager::get_spawn_candidate_chunks(self) }
     fn get_debug_status(&self) -> String { DistanceManager::get_debug_status(self) }
     fn has_tickets(&self) -> bool { DistanceManager::has_tickets(self) }
 }
@@ -345,7 +329,7 @@ impl ChunkMapTrackedEntity {
     pub fn moonrise_has_players(&self) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:1417
     pub fn send_to_tracking_players(&self, packet: JRef<dyn Packet<JObjectRef>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:1440
     pub fn send_to_tracking_players_and_self(&self, packet: JRef<dyn Packet<JObjectRef>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:1447
-    pub fn send_to_tracking_players_filtered(&self, packet: JRef<dyn Packet<JObjectRef>>, target_predicate: JRef<dyn Predicate<JRef<ServerPlayer>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:1455
+    pub fn send_to_tracking_players_filtered(&self, packet: JRef<dyn Packet<JObjectRef>>, target_predicate: Arc<dyn Fn(JRef<ServerPlayer>) -> bool + Send + Sync>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:1455
     pub fn seen_by(&self) -> Vec<JRef<dyn ServerPlayerConnection>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:1315
     pub fn seen_by_updated(&self) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:1322
     pub fn equals(&self, obj: JObjectRef) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkMap.java:1430
@@ -365,7 +349,7 @@ impl ChunkMapTrackedEntity {
 impl ServerEntitySynchronizer for ChunkMapTrackedEntity {
     fn send_to_tracking_players(&self, packet: JRef<dyn Packet<JObjectRef>>) { ChunkMapTrackedEntity::send_to_tracking_players(self, packet) }
     fn send_to_tracking_players_and_self(&self, packet: JRef<dyn Packet<JObjectRef>>) { ChunkMapTrackedEntity::send_to_tracking_players_and_self(self, packet) }
-    fn send_to_tracking_players_filtered(&self, packet: JRef<dyn Packet<JObjectRef>>, predicate: JRef<dyn Predicate<JRef<ServerPlayer>>>) { ChunkMapTrackedEntity::send_to_tracking_players_filtered(self, packet, predicate) }
+    fn send_to_tracking_players_filtered(&self, packet: JRef<dyn Packet<JObjectRef>>, predicate: Arc<dyn Fn(JRef<ServerPlayer>) -> bool + Send + Sync>) { ChunkMapTrackedEntity::send_to_tracking_players_filtered(self, packet, predicate) }
 }
 impl EntityTrackerTrackedEntity for ChunkMapTrackedEntity {
     fn moonrise_tick(&self, chunk: JRef<NearbyPlayersTrackedChunk>) { ChunkMapTrackedEntity::moonrise_tick(self, chunk) }

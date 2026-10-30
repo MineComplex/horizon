@@ -4,14 +4,11 @@ use crate::prelude::*;
 use crate::api_impl::util::handleable::Handleable;
 use crate::com::destroystokyo::paper::profile::player_profile::PlayerProfile;
 use crate::com::destroystokyo::paper::profile::profile_property::ProfileProperty;
-use crate::com::mojang::authlib::properties::PropertyMap;
 use crate::io::papermc::paper::datacomponent::data_component_builder::DataComponentBuilder;
 use crate::io::papermc::paper::datacomponent::item::resolvable_profile::ResolvableProfile;
 use crate::io::papermc::paper::datacomponent::item::resolvable_profile::ResolvableProfileBuilder;
 use crate::io::papermc::paper::datacomponent::item::resolvable_profile::ResolvableProfileSkinPatch;
 use crate::io::papermc::paper::datacomponent::item::resolvable_profile::ResolvableProfileSkinPatchBuilder;
-use crate::java::util::concurrent::CompletableFuture;
-use crate::java::util::function::Consumer;
 use crate::net::kyori::adventure::key::Key;
 use crate::net::kyori::adventure::text::object::PlayerHeadObjectContentsBuilder;
 use crate::net::minecraft::world::entity::player::player_skin::PlayerSkinPatch;
@@ -31,7 +28,7 @@ impl PaperResolvableProfile {
     pub fn name(&self) -> Option<String> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperResolvableProfile.java:51
     pub fn properties(&self) -> Vec<ProfileProperty> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperResolvableProfile.java:56
     pub fn dynamic(&self) -> bool { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperResolvableProfile.java:64
-    pub fn resolve(&self) -> CompletableFuture<JRef<dyn PlayerProfile>> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperResolvableProfile.java:69
+    pub fn resolve(&self) -> crate::rt::CompletableFuture<JRef<dyn PlayerProfile>> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperResolvableProfile.java:69
     pub fn skin_patch(&self) -> JRef<dyn ResolvableProfileSkinPatch> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperResolvableProfile.java:75
     pub fn to_api(profile: JRef<dyn PlayerProfile>) -> PaperResolvableProfile { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperResolvableProfile.java:37
     pub fn apply_skin_to_player_head_contents(&self, builder: PlayerHeadObjectContentsBuilder) { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperResolvableProfile.java:80
@@ -43,7 +40,7 @@ impl ResolvableProfile for PaperResolvableProfile {
     fn name(&self) -> Option<String> { PaperResolvableProfile::name(self) }
     fn properties(&self) -> Vec<ProfileProperty> { PaperResolvableProfile::properties(self) }
     fn dynamic(&self) -> bool { PaperResolvableProfile::dynamic(self) }
-    fn resolve(&self) -> CompletableFuture<JRef<dyn PlayerProfile>> { PaperResolvableProfile::resolve(self) }
+    fn resolve(&self) -> crate::rt::CompletableFuture<JRef<dyn PlayerProfile>> { PaperResolvableProfile::resolve(self) }
     fn skin_patch(&self) -> JRef<dyn ResolvableProfileSkinPatch> { PaperResolvableProfile::skin_patch(self) }
 }
 impl Handleable<JRef<dyn ResolvableProfileTrait>> for PaperResolvableProfile {
@@ -105,7 +102,7 @@ crate::jobject!(PaperResolvableProfileSkinPatchBuilderImpl: dyn ResolvableProfil
 // ---- class io.papermc.paper.datacomponent.item.PaperResolvableProfile.BuilderImpl (paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperResolvableProfile.java:171)
 pub struct PaperResolvableProfileBuilderImpl {
     pub this: Weak<Self>,
-    pub property_map: PropertyMap, // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperResolvableProfile.java:173
+    pub property_map: crate::rt::PropertyMap, // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperResolvableProfile.java:173
     pub name: Mut<Option<String>>, // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperResolvableProfile.java:174
     pub uuid: Mut<Option<Uuid>>, // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperResolvableProfile.java:175
     pub skin_patch: Mut<PaperResolvableProfilePaperSkinPatch>, // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperResolvableProfile.java:176
@@ -118,7 +115,7 @@ impl PaperResolvableProfileBuilderImpl {
     pub fn add_property(&self, property: ProfileProperty) -> JRef<dyn ResolvableProfileBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperResolvableProfile.java:193
     pub fn add_properties(&self, properties: &Vec<ProfileProperty>) -> JRef<dyn ResolvableProfileBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperResolvableProfile.java:206
     pub fn skin_patch(&self, patch: JRef<dyn ResolvableProfileSkinPatch>) -> JRef<dyn ResolvableProfileBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperResolvableProfile.java:212
-    pub fn skin_patch_1(&self, configure: JRef<dyn Consumer<JRef<dyn ResolvableProfileSkinPatchBuilder>>>) -> JRef<dyn ResolvableProfileBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperResolvableProfile.java:219
+    pub fn skin_patch_1(&self, configure: Arc<dyn Fn(JRef<dyn ResolvableProfileSkinPatchBuilder>) + Send + Sync>) -> JRef<dyn ResolvableProfileBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperResolvableProfile.java:219
     pub fn build(&self) -> JRef<dyn ResolvableProfile> { todo!() } // paper-server/src/main/java/io/papermc/paper/datacomponent/item/PaperResolvableProfile.java:232
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
@@ -129,7 +126,7 @@ impl ResolvableProfileBuilder for PaperResolvableProfileBuilderImpl {
     fn add_property(&self, property: ProfileProperty) -> JRef<dyn ResolvableProfileBuilder> { PaperResolvableProfileBuilderImpl::add_property(self, property) }
     fn add_properties(&self, properties: &Vec<ProfileProperty>) -> JRef<dyn ResolvableProfileBuilder> { PaperResolvableProfileBuilderImpl::add_properties(self, properties) }
     fn skin_patch(&self, patch: JRef<dyn ResolvableProfileSkinPatch>) -> JRef<dyn ResolvableProfileBuilder> { PaperResolvableProfileBuilderImpl::skin_patch(self, patch) }
-    fn skin_patch_1(&self, configure: JRef<dyn Consumer<JRef<dyn ResolvableProfileSkinPatchBuilder>>>) -> JRef<dyn ResolvableProfileBuilder> { PaperResolvableProfileBuilderImpl::skin_patch_1(self, configure) }
+    fn skin_patch_1(&self, configure: Arc<dyn Fn(JRef<dyn ResolvableProfileSkinPatchBuilder>) + Send + Sync>) -> JRef<dyn ResolvableProfileBuilder> { PaperResolvableProfileBuilderImpl::skin_patch_1(self, configure) }
 }
 impl DataComponentBuilder<JObjectRef> for PaperResolvableProfileBuilderImpl {
     fn build(&self) -> C { PaperResolvableProfileBuilderImpl::build(self) }

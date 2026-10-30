@@ -7,11 +7,6 @@ use crate::com::mojang::brigadier::exceptions::DynamicCommandExceptionType;
 use crate::com::mojang::brigadier::exceptions::SimpleCommandExceptionType;
 use crate::com::mojang::brigadier::exceptions::command_syntax_exception::CommandSyntaxExceptionTrait;
 use crate::com::mojang::serialization::Codec;
-use crate::java::lang::Throwable;
-use crate::java::util::function::BiConsumer;
-use crate::java::util::function::Function;
-use crate::java::util::function::Predicate;
-use crate::java::util::function::Supplier;
 use crate::net::minecraft::commands::command_source_stack::CommandSourceStack;
 use crate::net::minecraft::nbt::compound_tag::CompoundTag;
 use crate::net::minecraft::nbt::tag::Tag;
@@ -37,13 +32,13 @@ impl NbtPathArgument {
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:34
     pub fn nbt_path() -> JRef<NbtPathArgument> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:54
     pub fn get_path(context: CommandContext<JRef<CommandSourceStack>>, name: &str) -> JRef<NbtPathArgumentNbtPath> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:58
-    pub fn parse(&self, reader: StringReader) -> Result<JRef<NbtPathArgumentNbtPath>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:62
-    pub fn parse_node(reader: StringReader, first_node: bool) -> Result<JRef<dyn NbtPathArgumentNode>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:87
-    pub fn read_object_node(reader: StringReader, name: &str) -> Result<JRef<dyn NbtPathArgumentNode>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:118
-    pub fn read_unquoted_name(reader: StringReader) -> Result<String, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:129
+    pub fn parse(&self, reader: StringReader) -> Result<JRef<NbtPathArgumentNbtPath>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:62
+    pub fn parse_node(reader: StringReader, first_node: bool) -> Result<JRef<dyn NbtPathArgumentNode>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:87
+    pub fn read_object_node(reader: StringReader, name: &str) -> Result<JRef<dyn NbtPathArgumentNode>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:118
+    pub fn read_unquoted_name(reader: StringReader) -> Result<String, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:129
     pub fn get_examples(&self) -> Vec<String> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:143
     pub fn is_allowed_in_unquoted_name(c: char) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:148
-    pub fn create_tag_predicate(pattern: JRef<CompoundTag>) -> JRef<dyn Predicate<JRef<dyn Tag>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:152
+    pub fn create_tag_predicate(pattern: JRef<CompoundTag>) -> Arc<dyn Fn(JRef<dyn Tag>) -> bool + Send + Sync> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:152
 }
 crate::jobject!(NbtPathArgument);
 // ---- class net.minecraft.commands.arguments.NbtPathArgument.AllElementsNode (leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:156)
@@ -55,18 +50,18 @@ impl NbtPathArgumentAllElementsNode {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:156
     pub fn get_tag(&self, parent: JRef<dyn Tag>, output: &Vec<JRef<dyn Tag>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:159
-    pub fn get_or_create_tag(&self, parent: JRef<dyn Tag>, child: JRef<dyn Supplier<JRef<dyn Tag>>>, output: &mut Vec<JRef<dyn Tag>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:166
+    pub fn get_or_create_tag(&self, parent: JRef<dyn Tag>, child: Arc<dyn Fn() -> JRef<dyn Tag> + Send + Sync>, output: &mut Vec<JRef<dyn Tag>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:166
     pub fn create_preferred_parent_tag(&self) -> JRef<dyn Tag> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:180
-    pub fn set_tag(&self, parent: JRef<dyn Tag>, to_add: JRef<dyn Supplier<JRef<dyn Tag>>>) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:185
+    pub fn set_tag(&self, parent: JRef<dyn Tag>, to_add: Arc<dyn Fn() -> JRef<dyn Tag> + Send + Sync>) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:185
     pub fn remove_tag(&self, parent: JRef<dyn Tag>) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:215
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl NbtPathArgumentNode for NbtPathArgumentAllElementsNode {
     fn get_tag(&self, parent: JRef<dyn Tag>, output: &Vec<JRef<dyn Tag>>) { NbtPathArgumentAllElementsNode::get_tag(self, parent, output) }
-    fn get_or_create_tag(&self, parent: JRef<dyn Tag>, child: JRef<dyn Supplier<JRef<dyn Tag>>>, output: &Vec<JRef<dyn Tag>>) { NbtPathArgumentAllElementsNode::get_or_create_tag(self, parent, child, output) }
+    fn get_or_create_tag(&self, parent: JRef<dyn Tag>, child: Arc<dyn Fn() -> JRef<dyn Tag> + Send + Sync>, output: &Vec<JRef<dyn Tag>>) { NbtPathArgumentAllElementsNode::get_or_create_tag(self, parent, child, output) }
     fn create_preferred_parent_tag(&self) -> JRef<dyn Tag> { NbtPathArgumentAllElementsNode::create_preferred_parent_tag(self) }
-    fn set_tag(&self, parent: JRef<dyn Tag>, to_add: JRef<dyn Supplier<JRef<dyn Tag>>>) -> i32 { NbtPathArgumentAllElementsNode::set_tag(self, parent, to_add) }
+    fn set_tag(&self, parent: JRef<dyn Tag>, to_add: Arc<dyn Fn() -> JRef<dyn Tag> + Send + Sync>) -> i32 { NbtPathArgumentAllElementsNode::set_tag(self, parent, to_add) }
     fn remove_tag(&self, parent: JRef<dyn Tag>) -> i32 { NbtPathArgumentAllElementsNode::remove_tag(self, parent) }
 }
 crate::jobject!(NbtPathArgumentAllElementsNode: dyn NbtPathArgumentNode);
@@ -78,18 +73,18 @@ pub struct NbtPathArgumentCompoundChildNode {
 impl NbtPathArgumentCompoundChildNode {
     pub fn new(name: &str) -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:232
     pub fn get_tag(&self, parent: JRef<dyn Tag>, output: &mut Vec<JRef<dyn Tag>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:236
-    pub fn get_or_create_tag(&self, parent: JRef<dyn Tag>, child: JRef<dyn Supplier<JRef<dyn Tag>>>, output: &mut Vec<JRef<dyn Tag>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:246
+    pub fn get_or_create_tag(&self, parent: JRef<dyn Tag>, child: Arc<dyn Fn() -> JRef<dyn Tag> + Send + Sync>, output: &mut Vec<JRef<dyn Tag>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:246
     pub fn create_preferred_parent_tag(&self) -> JRef<dyn Tag> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:261
-    pub fn set_tag(&self, parent: JRef<dyn Tag>, to_add: JRef<dyn Supplier<JRef<dyn Tag>>>) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:266
+    pub fn set_tag(&self, parent: JRef<dyn Tag>, to_add: Arc<dyn Fn() -> JRef<dyn Tag> + Send + Sync>) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:266
     pub fn remove_tag(&self, parent: JRef<dyn Tag>) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:279
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl NbtPathArgumentNode for NbtPathArgumentCompoundChildNode {
     fn get_tag(&self, parent: JRef<dyn Tag>, output: &Vec<JRef<dyn Tag>>) { NbtPathArgumentCompoundChildNode::get_tag(self, parent, output) }
-    fn get_or_create_tag(&self, parent: JRef<dyn Tag>, child: JRef<dyn Supplier<JRef<dyn Tag>>>, output: &Vec<JRef<dyn Tag>>) { NbtPathArgumentCompoundChildNode::get_or_create_tag(self, parent, child, output) }
+    fn get_or_create_tag(&self, parent: JRef<dyn Tag>, child: Arc<dyn Fn() -> JRef<dyn Tag> + Send + Sync>, output: &Vec<JRef<dyn Tag>>) { NbtPathArgumentCompoundChildNode::get_or_create_tag(self, parent, child, output) }
     fn create_preferred_parent_tag(&self) -> JRef<dyn Tag> { NbtPathArgumentCompoundChildNode::create_preferred_parent_tag(self) }
-    fn set_tag(&self, parent: JRef<dyn Tag>, to_add: JRef<dyn Supplier<JRef<dyn Tag>>>) -> i32 { NbtPathArgumentCompoundChildNode::set_tag(self, parent, to_add) }
+    fn set_tag(&self, parent: JRef<dyn Tag>, to_add: Arc<dyn Fn() -> JRef<dyn Tag> + Send + Sync>) -> i32 { NbtPathArgumentCompoundChildNode::set_tag(self, parent, to_add) }
     fn remove_tag(&self, parent: JRef<dyn Tag>) -> i32 { NbtPathArgumentCompoundChildNode::remove_tag(self, parent) }
 }
 crate::jobject!(NbtPathArgumentCompoundChildNode: dyn NbtPathArgumentNode);
@@ -101,18 +96,18 @@ pub struct NbtPathArgumentIndexedElementNode {
 impl NbtPathArgumentIndexedElementNode {
     pub fn new(index: i32) -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:293
     pub fn get_tag(&self, parent: JRef<dyn Tag>, output: &mut Vec<JRef<dyn Tag>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:297
-    pub fn get_or_create_tag(&self, parent: JRef<dyn Tag>, child: JRef<dyn Supplier<JRef<dyn Tag>>>, output: &Vec<JRef<dyn Tag>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:308
+    pub fn get_or_create_tag(&self, parent: JRef<dyn Tag>, child: Arc<dyn Fn() -> JRef<dyn Tag> + Send + Sync>, output: &Vec<JRef<dyn Tag>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:308
     pub fn create_preferred_parent_tag(&self) -> JRef<dyn Tag> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:313
-    pub fn set_tag(&self, parent: JRef<dyn Tag>, to_add: JRef<dyn Supplier<JRef<dyn Tag>>>) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:318
+    pub fn set_tag(&self, parent: JRef<dyn Tag>, to_add: Arc<dyn Fn() -> JRef<dyn Tag> + Send + Sync>) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:318
     pub fn remove_tag(&self, parent: JRef<dyn Tag>) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:335
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl NbtPathArgumentNode for NbtPathArgumentIndexedElementNode {
     fn get_tag(&self, parent: JRef<dyn Tag>, output: &Vec<JRef<dyn Tag>>) { NbtPathArgumentIndexedElementNode::get_tag(self, parent, output) }
-    fn get_or_create_tag(&self, parent: JRef<dyn Tag>, child: JRef<dyn Supplier<JRef<dyn Tag>>>, output: &Vec<JRef<dyn Tag>>) { NbtPathArgumentIndexedElementNode::get_or_create_tag(self, parent, child, output) }
+    fn get_or_create_tag(&self, parent: JRef<dyn Tag>, child: Arc<dyn Fn() -> JRef<dyn Tag> + Send + Sync>, output: &Vec<JRef<dyn Tag>>) { NbtPathArgumentIndexedElementNode::get_or_create_tag(self, parent, child, output) }
     fn create_preferred_parent_tag(&self) -> JRef<dyn Tag> { NbtPathArgumentIndexedElementNode::create_preferred_parent_tag(self) }
-    fn set_tag(&self, parent: JRef<dyn Tag>, to_add: JRef<dyn Supplier<JRef<dyn Tag>>>) -> i32 { NbtPathArgumentIndexedElementNode::set_tag(self, parent, to_add) }
+    fn set_tag(&self, parent: JRef<dyn Tag>, to_add: Arc<dyn Fn() -> JRef<dyn Tag> + Send + Sync>) -> i32 { NbtPathArgumentIndexedElementNode::set_tag(self, parent, to_add) }
     fn remove_tag(&self, parent: JRef<dyn Tag>) -> i32 { NbtPathArgumentIndexedElementNode::remove_tag(self, parent) }
 }
 crate::jobject!(NbtPathArgumentIndexedElementNode: dyn NbtPathArgumentNode);
@@ -120,24 +115,24 @@ crate::jobject!(NbtPathArgumentIndexedElementNode: dyn NbtPathArgumentNode);
 pub struct NbtPathArgumentMatchElementNode {
     pub this: Weak<Self>,
     pub pattern: JRef<CompoundTag>, // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:351
-    pub predicate: JRef<dyn Predicate<JRef<dyn Tag>>>, // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:352
+    pub predicate: Arc<dyn Fn(JRef<dyn Tag>) -> bool + Send + Sync>, // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:352
 }
 impl NbtPathArgumentMatchElementNode {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(pattern: JRef<CompoundTag>) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:354
     pub fn get_tag(&self, parent: JRef<dyn Tag>, output: &Vec<JRef<dyn Tag>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:359
-    pub fn get_or_create_tag(&self, parent: JRef<dyn Tag>, child: JRef<dyn Supplier<JRef<dyn Tag>>>, output: &mut Vec<JRef<dyn Tag>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:366
+    pub fn get_or_create_tag(&self, parent: JRef<dyn Tag>, child: Arc<dyn Fn() -> JRef<dyn Tag> + Send + Sync>, output: &mut Vec<JRef<dyn Tag>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:366
     pub fn create_preferred_parent_tag(&self) -> JRef<dyn Tag> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:382
-    pub fn set_tag(&self, parent: JRef<dyn Tag>, to_add: JRef<dyn Supplier<JRef<dyn Tag>>>) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:387
+    pub fn set_tag(&self, parent: JRef<dyn Tag>, to_add: Arc<dyn Fn() -> JRef<dyn Tag> + Send + Sync>) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:387
     pub fn remove_tag(&self, parent: JRef<dyn Tag>) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:411
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl NbtPathArgumentNode for NbtPathArgumentMatchElementNode {
     fn get_tag(&self, parent: JRef<dyn Tag>, output: &Vec<JRef<dyn Tag>>) { NbtPathArgumentMatchElementNode::get_tag(self, parent, output) }
-    fn get_or_create_tag(&self, parent: JRef<dyn Tag>, child: JRef<dyn Supplier<JRef<dyn Tag>>>, output: &Vec<JRef<dyn Tag>>) { NbtPathArgumentMatchElementNode::get_or_create_tag(self, parent, child, output) }
+    fn get_or_create_tag(&self, parent: JRef<dyn Tag>, child: Arc<dyn Fn() -> JRef<dyn Tag> + Send + Sync>, output: &Vec<JRef<dyn Tag>>) { NbtPathArgumentMatchElementNode::get_or_create_tag(self, parent, child, output) }
     fn create_preferred_parent_tag(&self) -> JRef<dyn Tag> { NbtPathArgumentMatchElementNode::create_preferred_parent_tag(self) }
-    fn set_tag(&self, parent: JRef<dyn Tag>, to_add: JRef<dyn Supplier<JRef<dyn Tag>>>) -> i32 { NbtPathArgumentMatchElementNode::set_tag(self, parent, to_add) }
+    fn set_tag(&self, parent: JRef<dyn Tag>, to_add: Arc<dyn Fn() -> JRef<dyn Tag> + Send + Sync>) -> i32 { NbtPathArgumentMatchElementNode::set_tag(self, parent, to_add) }
     fn remove_tag(&self, parent: JRef<dyn Tag>) -> i32 { NbtPathArgumentMatchElementNode::remove_tag(self, parent) }
 }
 crate::jobject!(NbtPathArgumentMatchElementNode: dyn NbtPathArgumentNode);
@@ -146,48 +141,48 @@ pub struct NbtPathArgumentMatchObjectNode {
     pub this: Weak<Self>,
     pub name: String, // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:428
     pub pattern: JRef<CompoundTag>, // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:429
-    pub predicate: JRef<dyn Predicate<JRef<dyn Tag>>>, // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:430
+    pub predicate: Arc<dyn Fn(JRef<dyn Tag>) -> bool + Send + Sync>, // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:430
 }
 impl NbtPathArgumentMatchObjectNode {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(name: &str, pattern: JRef<CompoundTag>) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:432
     pub fn get_tag(&self, parent: JRef<dyn Tag>, output: &mut Vec<JRef<dyn Tag>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:438
-    pub fn get_or_create_tag(&self, parent: JRef<dyn Tag>, child: JRef<dyn Supplier<JRef<dyn Tag>>>, output: &mut Vec<JRef<dyn Tag>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:448
+    pub fn get_or_create_tag(&self, parent: JRef<dyn Tag>, child: Arc<dyn Fn() -> JRef<dyn Tag> + Send + Sync>, output: &mut Vec<JRef<dyn Tag>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:448
     pub fn create_preferred_parent_tag(&self) -> JRef<dyn Tag> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:462
-    pub fn set_tag(&self, parent: JRef<dyn Tag>, to_add: JRef<dyn Supplier<JRef<dyn Tag>>>) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:467
+    pub fn set_tag(&self, parent: JRef<dyn Tag>, to_add: Arc<dyn Fn() -> JRef<dyn Tag> + Send + Sync>) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:467
     pub fn remove_tag(&self, parent: JRef<dyn Tag>) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:483
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl NbtPathArgumentNode for NbtPathArgumentMatchObjectNode {
     fn get_tag(&self, parent: JRef<dyn Tag>, output: &Vec<JRef<dyn Tag>>) { NbtPathArgumentMatchObjectNode::get_tag(self, parent, output) }
-    fn get_or_create_tag(&self, parent: JRef<dyn Tag>, child: JRef<dyn Supplier<JRef<dyn Tag>>>, output: &Vec<JRef<dyn Tag>>) { NbtPathArgumentMatchObjectNode::get_or_create_tag(self, parent, child, output) }
+    fn get_or_create_tag(&self, parent: JRef<dyn Tag>, child: Arc<dyn Fn() -> JRef<dyn Tag> + Send + Sync>, output: &Vec<JRef<dyn Tag>>) { NbtPathArgumentMatchObjectNode::get_or_create_tag(self, parent, child, output) }
     fn create_preferred_parent_tag(&self) -> JRef<dyn Tag> { NbtPathArgumentMatchObjectNode::create_preferred_parent_tag(self) }
-    fn set_tag(&self, parent: JRef<dyn Tag>, to_add: JRef<dyn Supplier<JRef<dyn Tag>>>) -> i32 { NbtPathArgumentMatchObjectNode::set_tag(self, parent, to_add) }
+    fn set_tag(&self, parent: JRef<dyn Tag>, to_add: Arc<dyn Fn() -> JRef<dyn Tag> + Send + Sync>) -> i32 { NbtPathArgumentMatchObjectNode::set_tag(self, parent, to_add) }
     fn remove_tag(&self, parent: JRef<dyn Tag>) -> i32 { NbtPathArgumentMatchObjectNode::remove_tag(self, parent) }
 }
 crate::jobject!(NbtPathArgumentMatchObjectNode: dyn NbtPathArgumentNode);
 // ---- class net.minecraft.commands.arguments.NbtPathArgument.MatchRootObjectNode (leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:497)
 pub struct NbtPathArgumentMatchRootObjectNode {
     pub this: Weak<Self>,
-    pub predicate: JRef<dyn Predicate<JRef<dyn Tag>>>, // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:498
+    pub predicate: Arc<dyn Fn(JRef<dyn Tag>) -> bool + Send + Sync>, // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:498
 }
 impl NbtPathArgumentMatchRootObjectNode {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(pattern: JRef<CompoundTag>) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:500
     pub fn get_tag(&self, self_: JRef<dyn Tag>, output: &mut Vec<JRef<dyn Tag>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:504
-    pub fn get_or_create_tag(&self, self_: JRef<dyn Tag>, child: JRef<dyn Supplier<JRef<dyn Tag>>>, output: &Vec<JRef<dyn Tag>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:511
+    pub fn get_or_create_tag(&self, self_: JRef<dyn Tag>, child: Arc<dyn Fn() -> JRef<dyn Tag> + Send + Sync>, output: &Vec<JRef<dyn Tag>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:511
     pub fn create_preferred_parent_tag(&self) -> JRef<dyn Tag> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:516
-    pub fn set_tag(&self, parent: JRef<dyn Tag>, to_add: JRef<dyn Supplier<JRef<dyn Tag>>>) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:521
+    pub fn set_tag(&self, parent: JRef<dyn Tag>, to_add: Arc<dyn Fn() -> JRef<dyn Tag> + Send + Sync>) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:521
     pub fn remove_tag(&self, parent: JRef<dyn Tag>) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:526
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl NbtPathArgumentNode for NbtPathArgumentMatchRootObjectNode {
     fn get_tag(&self, parent: JRef<dyn Tag>, output: &Vec<JRef<dyn Tag>>) { NbtPathArgumentMatchRootObjectNode::get_tag(self, parent, output) }
-    fn get_or_create_tag(&self, parent: JRef<dyn Tag>, child: JRef<dyn Supplier<JRef<dyn Tag>>>, output: &Vec<JRef<dyn Tag>>) { NbtPathArgumentMatchRootObjectNode::get_or_create_tag(self, parent, child, output) }
+    fn get_or_create_tag(&self, parent: JRef<dyn Tag>, child: Arc<dyn Fn() -> JRef<dyn Tag> + Send + Sync>, output: &Vec<JRef<dyn Tag>>) { NbtPathArgumentMatchRootObjectNode::get_or_create_tag(self, parent, child, output) }
     fn create_preferred_parent_tag(&self) -> JRef<dyn Tag> { NbtPathArgumentMatchRootObjectNode::create_preferred_parent_tag(self) }
-    fn set_tag(&self, parent: JRef<dyn Tag>, to_add: JRef<dyn Supplier<JRef<dyn Tag>>>) -> i32 { NbtPathArgumentMatchRootObjectNode::set_tag(self, parent, to_add) }
+    fn set_tag(&self, parent: JRef<dyn Tag>, to_add: Arc<dyn Fn() -> JRef<dyn Tag> + Send + Sync>) -> i32 { NbtPathArgumentMatchRootObjectNode::set_tag(self, parent, to_add) }
     fn remove_tag(&self, parent: JRef<dyn Tag>) -> i32 { NbtPathArgumentMatchRootObjectNode::remove_tag(self, parent) }
 }
 crate::jobject!(NbtPathArgumentMatchRootObjectNode: dyn NbtPathArgumentNode);
@@ -202,16 +197,16 @@ pub static NBT_PATH_CODEC: LazyLock<JRef<dyn Codec<JRef<NbtPathArgumentNbtPath>>
 impl NbtPathArgumentNbtPath {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(original: &str, nodes: &Vec<JRef<dyn NbtPathArgumentNode>>, node_to_original_position: &HashMap<JRef<dyn NbtPathArgumentNode>, i32>) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:549
-    pub fn of(string: &str) -> Result<JRef<NbtPathArgumentNbtPath>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:545
-    pub fn get(&self, tag: JRef<dyn Tag>) -> Result<Vec<JRef<dyn Tag>>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:555
+    pub fn of(string: &str) -> Result<JRef<NbtPathArgumentNbtPath>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:545
+    pub fn get(&self, tag: JRef<dyn Tag>) -> Result<Vec<JRef<dyn Tag>>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:555
     pub fn count_matching(&self, tag: JRef<dyn Tag>) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:568
-    pub fn get_or_create_parents(&self, tag: JRef<dyn Tag>) -> Result<Vec<JRef<dyn Tag>>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:581
-    pub fn get_or_create(&self, tag: JRef<dyn Tag>, new_tag_value: JRef<dyn Supplier<JRef<dyn Tag>>>) -> Result<Vec<JRef<dyn Tag>>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:596
-    pub fn apply(targets: &Vec<JRef<dyn Tag>>, operation: JRef<dyn Function<JRef<dyn Tag>, i32>>) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:602
+    pub fn get_or_create_parents(&self, tag: JRef<dyn Tag>) -> Result<Vec<JRef<dyn Tag>>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:581
+    pub fn get_or_create(&self, tag: JRef<dyn Tag>, new_tag_value: Arc<dyn Fn() -> JRef<dyn Tag> + Send + Sync>) -> Result<Vec<JRef<dyn Tag>>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:596
+    pub fn apply(targets: &Vec<JRef<dyn Tag>>, operation: Arc<dyn Fn(JRef<dyn Tag>) -> i32 + Send + Sync>) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:602
     pub fn is_too_deep(tag: JRef<dyn Tag>, depth: i32) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:606
-    pub fn set(&self, tag: JRef<dyn Tag>, to_add: JRef<dyn Tag>) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:628
+    pub fn set(&self, tag: JRef<dyn Tag>, to_add: JRef<dyn Tag>) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:628
     pub fn estimate_path_depth(&self) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:651
-    pub fn insert(&self, index: i32, target: JRef<CompoundTag>, to_insert: &Vec<JRef<dyn Tag>>) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:655
+    pub fn insert(&self, index: i32, target: JRef<CompoundTag>, to_insert: &Vec<JRef<dyn Tag>>) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:655
     pub fn remove(&self, tag: JRef<dyn Tag>) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:696
     pub fn create_not_found_exception(&self, node: JRef<dyn NbtPathArgumentNode>) -> JRef<dyn CommandSyntaxExceptionTrait> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:707
     pub fn to_string(&self) -> String { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:712
@@ -221,11 +216,11 @@ crate::jobject!(NbtPathArgumentNbtPath);
 // ---- interface net.minecraft.commands.arguments.NbtPathArgument.Node (leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:722)
 pub trait NbtPathArgumentNode: JObject {
     fn get_tag(&self, parent: JRef<dyn Tag>, output: &Vec<JRef<dyn Tag>>); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:723
-    fn get_or_create_tag(&self, parent: JRef<dyn Tag>, child: JRef<dyn Supplier<JRef<dyn Tag>>>, output: &Vec<JRef<dyn Tag>>); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:725
+    fn get_or_create_tag(&self, parent: JRef<dyn Tag>, child: Arc<dyn Fn() -> JRef<dyn Tag> + Send + Sync>, output: &Vec<JRef<dyn Tag>>); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:725
     fn create_preferred_parent_tag(&self) -> JRef<dyn Tag>; // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:727
-    fn set_tag(&self, parent: JRef<dyn Tag>, to_add: JRef<dyn Supplier<JRef<dyn Tag>>>) -> i32; // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:729
+    fn set_tag(&self, parent: JRef<dyn Tag>, to_add: Arc<dyn Fn() -> JRef<dyn Tag> + Send + Sync>) -> i32; // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:729
     fn remove_tag(&self, parent: JRef<dyn Tag>) -> i32; // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:731
     fn get(&self, tags: &Vec<JRef<dyn Tag>>) -> Vec<JRef<dyn Tag>> { todo!() } // default, leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:733
-    fn get_or_create(&self, tags: &Vec<JRef<dyn Tag>>, child: JRef<dyn Supplier<JRef<dyn Tag>>>) -> Vec<JRef<dyn Tag>> { todo!() } // default, leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:737
-    fn collect(&self, tags: &Vec<JRef<dyn Tag>>, collector: JRef<dyn BiConsumer<JRef<dyn Tag>, Vec<JRef<dyn Tag>>>>) -> Vec<JRef<dyn Tag>> { todo!() } // default, leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:741
+    fn get_or_create(&self, tags: &Vec<JRef<dyn Tag>>, child: Arc<dyn Fn() -> JRef<dyn Tag> + Send + Sync>) -> Vec<JRef<dyn Tag>> { todo!() } // default, leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:737
+    fn collect(&self, tags: &Vec<JRef<dyn Tag>>, collector: Arc<dyn Fn(JRef<dyn Tag>, Vec<JRef<dyn Tag>>) + Send + Sync>) -> Vec<JRef<dyn Tag>> { todo!() } // default, leaf-server/src/minecraft/java/net/minecraft/commands/arguments/NbtPathArgument.java:741
 }

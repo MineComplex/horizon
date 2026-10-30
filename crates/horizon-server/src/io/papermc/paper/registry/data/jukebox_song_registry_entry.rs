@@ -7,7 +7,6 @@ use crate::io::papermc::paper::registry::holder::registry_holder::RegistryHolder
 use crate::io::papermc::paper::registry::registry_builder::RegistryBuilder;
 use crate::io::papermc::paper::registry::registry_builder_factory::RegistryBuilderFactory;
 use crate::io::papermc::paper::registry::typed_key::TypedKey;
-use crate::java::util::function::Consumer;
 use crate::net::kyori::adventure::text::Component;
 use crate::org::bukkit::jukebox_song::JukeboxSong;
 use crate::org::bukkit::sound::Sound;
@@ -23,7 +22,7 @@ pub trait JukeboxSongRegistryEntry: JObject {
 // ---- interface io.papermc.paper.registry.data.JukeboxSongRegistryEntry.Builder (paper-api/src/main/java/io/papermc/paper/registry/data/JukeboxSongRegistryEntry.java:67)
 pub trait JukeboxSongRegistryEntryBuilder: JukeboxSongRegistryEntry + RegistryBuilder<JRef<dyn JukeboxSong>> {
     fn sound_event_1(&self, sound_event: JRef<dyn TypedKey<JRef<dyn Sound>>>) -> JRef<dyn JukeboxSongRegistryEntryBuilder>; // paper-api/src/main/java/io/papermc/paper/registry/data/JukeboxSongRegistryEntry.java:79
-    fn sound_event_1_2(&self, sound_event: JRef<dyn Consumer<JRef<dyn RegistryBuilderFactory<JRef<dyn Sound>, JRef<dyn SoundEventRegistryEntryBuilder>>>>>) -> JRef<dyn JukeboxSongRegistryEntryBuilder>; // paper-api/src/main/java/io/papermc/paper/registry/data/JukeboxSongRegistryEntry.java:90
+    fn sound_event_1_2(&self, sound_event: Arc<dyn Fn(JRef<dyn RegistryBuilderFactory<JRef<dyn Sound>, JRef<dyn SoundEventRegistryEntryBuilder>>>) + Send + Sync>) -> JRef<dyn JukeboxSongRegistryEntryBuilder>; // paper-api/src/main/java/io/papermc/paper/registry/data/JukeboxSongRegistryEntry.java:90
     fn sound_event_1_3(&self, sound_event: JRef<dyn RegistryHolder<JRef<dyn Sound>, JRef<dyn SoundEventRegistryEntry>>>) -> JRef<dyn JukeboxSongRegistryEntryBuilder>; // paper-api/src/main/java/io/papermc/paper/registry/data/JukeboxSongRegistryEntry.java:102
     fn description_1(&self, description: Component) -> JRef<dyn JukeboxSongRegistryEntryBuilder>; // paper-api/src/main/java/io/papermc/paper/registry/data/JukeboxSongRegistryEntry.java:111
     fn length_in_seconds_1(&self, length_in_seconds: f32) -> JRef<dyn JukeboxSongRegistryEntryBuilder>; // paper-api/src/main/java/io/papermc/paper/registry/data/JukeboxSongRegistryEntry.java:120

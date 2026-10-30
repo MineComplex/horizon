@@ -4,7 +4,6 @@ use crate::prelude::*;
 use crate::com::mojang::brigadier::RedirectModifier;
 use crate::com::mojang::brigadier::context::CommandContext;
 use crate::com::mojang::brigadier::context::ContextChain;
-use crate::java::lang::Throwable;
 use crate::net::minecraft::commands::execution::chain_modifiers::ChainModifiers;
 use crate::net::minecraft::commands::execution::execution_control::ExecutionControl;
 
@@ -17,5 +16,5 @@ impl<T: JGeneric, F: Fn(T, &Vec<T>, ContextChain<T>, ChainModifiers, JRef<dyn Ex
 }
 // ---- interface net.minecraft.commands.execution.CustomModifierExecutor.ModifierAdapter (leaf-server/src/minecraft/java/net/minecraft/commands/execution/CustomModifierExecutor.java:13)
 pub trait CustomModifierExecutorModifierAdapter<T: JGeneric>: CustomModifierExecutor<T> + RedirectModifier<T> {
-    fn apply_1(&self, context: CommandContext<T>) -> Result<Vec<T>, Throwable> { todo!() } // default, leaf-server/src/minecraft/java/net/minecraft/commands/execution/CustomModifierExecutor.java:14
+    fn apply_1(&self, context: CommandContext<T>) -> Result<Vec<T>, anyhow::Error> { todo!() } // default, leaf-server/src/minecraft/java/net/minecraft/commands/execution/CustomModifierExecutor.java:14
 }

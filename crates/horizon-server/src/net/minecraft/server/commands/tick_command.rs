@@ -3,7 +3,6 @@
 use crate::prelude::*;
 use crate::com::mojang::brigadier::command_dispatcher::CommandDispatcher;
 use crate::com::mojang::brigadier::exceptions::SimpleCommandExceptionType;
-use crate::java::lang::Throwable;
 use crate::net::minecraft::commands::command_source_stack::CommandSourceStack;
 
 // ---- class net.minecraft.server.commands.TickCommand (leaf-server/src/minecraft/java/net/minecraft/server/commands/TickCommand.java:19)
@@ -24,8 +23,8 @@ impl TickCommand {
     pub fn tick_query(source: JRef<CommandSourceStack>) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TickCommand.java:81
     pub fn sprint(source: JRef<CommandSourceStack>, time: i32) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TickCommand.java:111
     pub fn set_freeze(source: JRef<CommandSourceStack>, freeze: bool) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TickCommand.java:121
-    pub fn step(source: JRef<CommandSourceStack>, advance: i32) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TickCommand.java:143
-    pub fn stop_stepping(source: JRef<CommandSourceStack>) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TickCommand.java:152
-    pub fn stop_sprinting(source: JRef<CommandSourceStack>) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TickCommand.java:161
+    pub fn step(source: JRef<CommandSourceStack>, advance: i32) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TickCommand.java:143
+    pub fn stop_stepping(source: JRef<CommandSourceStack>) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TickCommand.java:152
+    pub fn stop_sprinting(source: JRef<CommandSourceStack>) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TickCommand.java:161
 }
 crate::jobject!(TickCommand);

@@ -13,10 +13,6 @@ use crate::com::mojang::brigadier::suggestion::SuggestionsBuilder;
 use crate::com::mojang::brigadier::tree::literal_command_node::LiteralCommandNodeTrait;
 use crate::io::papermc::paper::command::brigadier::api_command_meta::APICommandMeta;
 use crate::io::papermc::paper::command::brigadier::command_source_stack::CommandSourceStack;
-use crate::java::lang::Comparable;
-use crate::java::lang::Throwable;
-use crate::java::util::concurrent::CompletableFuture;
-use crate::java::util::function::Predicate;
 
 // ---- class com.mojang.brigadier.tree.CommandNode (leaf-server/src/minecraft/java/com/mojang/brigadier/tree/CommandNode.java:26)
 pub struct CommandNode<S: JGeneric> {
@@ -24,7 +20,7 @@ pub struct CommandNode<S: JGeneric> {
     pub children: Mut<HashMap<String, JRef<dyn CommandNodeTrait<S>>>>, // leaf-server/src/minecraft/java/com/mojang/brigadier/tree/CommandNode.java:27
     pub literals: Mut<HashMap<String, JRef<dyn LiteralCommandNodeTrait<S>>>>, // leaf-server/src/minecraft/java/com/mojang/brigadier/tree/CommandNode.java:28
     pub arguments: Mut<HashMap<String, JObjectRef /* ArgumentCommandNode */>>, // leaf-server/src/minecraft/java/com/mojang/brigadier/tree/CommandNode.java:29
-    pub requirement: Mut<JRef<dyn Predicate<S>>>, // leaf-server/src/minecraft/java/com/mojang/brigadier/tree/CommandNode.java:30
+    pub requirement: Mut<Arc<dyn Fn(S) -> bool + Send + Sync>>, // leaf-server/src/minecraft/java/com/mojang/brigadier/tree/CommandNode.java:30
     pub redirect: JRef<dyn CommandNodeTrait<S>>, // leaf-server/src/minecraft/java/com/mojang/brigadier/tree/CommandNode.java:31
     pub modifier: JRef<dyn RedirectModifier<S>>, // leaf-server/src/minecraft/java/com/mojang/brigadier/tree/CommandNode.java:32
     pub forks: bool, // leaf-server/src/minecraft/java/com/mojang/brigadier/tree/CommandNode.java:33
@@ -35,7 +31,7 @@ pub struct CommandNode<S: JGeneric> {
     pub api_command_meta: Mut<APICommandMeta>, // leaf-server/src/minecraft/java/com/mojang/brigadier/tree/CommandNode.java:38
     pub _phantom: std::marker::PhantomData<(S,)>,
 }
-pub trait CommandNodeTrait<S: JGeneric>: Comparable<JRef<dyn CommandNodeTrait<S>>> {
+pub trait CommandNodeTrait<S: JGeneric>: JObject {
     fn as_command_node(&self) -> &CommandNode<S>;
     fn remove_command(&self, name: &str); // leaf-server/src/minecraft/java/com/mojang/brigadier/tree/CommandNode.java:40
     fn get_command(&self) -> JRef<dyn Command<S>>; // leaf-server/src/minecraft/java/com/mojang/brigadier/tree/CommandNode.java:55
@@ -49,11 +45,11 @@ pub trait CommandNodeTrait<S: JGeneric>: Comparable<JRef<dyn CommandNodeTrait<S>
     fn is_valid_input(&self, input: &str) -> bool; // leaf-server/src/minecraft/java/com/mojang/brigadier/tree/CommandNode.java:128
     fn equals(&self, o: JObjectRef) -> bool; // leaf-server/src/minecraft/java/com/mojang/brigadier/tree/CommandNode.java:130
     fn hash_code(&self) -> i32; // leaf-server/src/minecraft/java/com/mojang/brigadier/tree/CommandNode.java:143
-    fn get_requirement(&self) -> JRef<dyn Predicate<S>>; // leaf-server/src/minecraft/java/com/mojang/brigadier/tree/CommandNode.java:148
+    fn get_requirement(&self) -> Arc<dyn Fn(S) -> bool + Send + Sync>; // leaf-server/src/minecraft/java/com/mojang/brigadier/tree/CommandNode.java:148
     fn get_name(&self) -> String; // leaf-server/src/minecraft/java/com/mojang/brigadier/tree/CommandNode.java:152
     fn get_usage_text(&self) -> String; // leaf-server/src/minecraft/java/com/mojang/brigadier/tree/CommandNode.java:154
-    fn parse(&self, reader: StringReader, context_builder: CommandContextBuilder<S>) -> Result<(), Throwable>; // leaf-server/src/minecraft/java/com/mojang/brigadier/tree/CommandNode.java:156
-    fn list_suggestions(&self, context: CommandContext<S>, builder: SuggestionsBuilder) -> Result<CompletableFuture<Suggestions>, Throwable>; // leaf-server/src/minecraft/java/com/mojang/brigadier/tree/CommandNode.java:158
+    fn parse(&self, reader: StringReader, context_builder: CommandContextBuilder<S>) -> Result<(), anyhow::Error>; // leaf-server/src/minecraft/java/com/mojang/brigadier/tree/CommandNode.java:156
+    fn list_suggestions(&self, context: CommandContext<S>, builder: SuggestionsBuilder) -> Result<crate::rt::CompletableFuture<Suggestions>, anyhow::Error>; // leaf-server/src/minecraft/java/com/mojang/brigadier/tree/CommandNode.java:158
     fn create_builder(&self) -> JRef<dyn ArgumentBuilderTrait<S, JObjectRef>>; // leaf-server/src/minecraft/java/com/mojang/brigadier/tree/CommandNode.java:160
     fn get_sorted_key(&self) -> String; // leaf-server/src/minecraft/java/com/mojang/brigadier/tree/CommandNode.java:162
     fn get_relevant_nodes(&self, input: StringReader) -> Vec<JRef<dyn CommandNodeTrait<S>>>; // leaf-server/src/minecraft/java/com/mojang/brigadier/tree/CommandNode.java:164
@@ -69,7 +65,7 @@ impl<S: JGeneric> std::ops::Deref for dyn CommandNodeTrait<S> {
 }
 impl<S: JGeneric> CommandNode<S> {
     pub fn this(&self) -> JRef<dyn CommandNodeTrait<S>> { self.this.upgrade().expect("this") }
-    pub fn new_base<S: CommandNodeTrait<S> + 'static>(this: &Weak<S>, command: JRef<dyn Command<S>>, requirement: JRef<dyn Predicate<S>>, redirect: JRef<dyn CommandNodeTrait<S>>, modifier: JRef<dyn RedirectModifier<S>>, forks: bool) -> Self { todo!() } // leaf-server/src/minecraft/java/com/mojang/brigadier/tree/CommandNode.java:47
+    pub fn new_base<S: CommandNodeTrait<S> + 'static>(this: &Weak<S>, command: JRef<dyn Command<S>>, requirement: Arc<dyn Fn(S) -> bool + Send + Sync>, redirect: JRef<dyn CommandNodeTrait<S>>, modifier: JRef<dyn RedirectModifier<S>>, forks: bool) -> Self { todo!() } // leaf-server/src/minecraft/java/com/mojang/brigadier/tree/CommandNode.java:47
     pub fn remove_command(&self, name: &str) { todo!() } // leaf-server/src/minecraft/java/com/mojang/brigadier/tree/CommandNode.java:40
     pub fn get_command(&self) -> JRef<dyn Command<S>> { todo!() } // leaf-server/src/minecraft/java/com/mojang/brigadier/tree/CommandNode.java:55
     pub fn get_children(&self) -> Vec<JRef<dyn CommandNodeTrait<S>>> { todo!() } // leaf-server/src/minecraft/java/com/mojang/brigadier/tree/CommandNode.java:59
@@ -81,7 +77,7 @@ impl<S: JGeneric> CommandNode<S> {
     pub fn find_ambiguities(&self, consumer: AmbiguityConsumer<S>) { todo!() } // leaf-server/src/minecraft/java/com/mojang/brigadier/tree/CommandNode.java:103
     pub fn equals(&self, o: JObjectRef) -> bool { todo!() } // leaf-server/src/minecraft/java/com/mojang/brigadier/tree/CommandNode.java:130
     pub fn hash_code(&self) -> i32 { todo!() } // leaf-server/src/minecraft/java/com/mojang/brigadier/tree/CommandNode.java:143
-    pub fn get_requirement(&self) -> JRef<dyn Predicate<S>> { todo!() } // leaf-server/src/minecraft/java/com/mojang/brigadier/tree/CommandNode.java:148
+    pub fn get_requirement(&self) -> Arc<dyn Fn(S) -> bool + Send + Sync> { todo!() } // leaf-server/src/minecraft/java/com/mojang/brigadier/tree/CommandNode.java:148
     pub fn get_relevant_nodes(&self, input: StringReader) -> Vec<JRef<dyn CommandNodeTrait<S>>> { todo!() } // leaf-server/src/minecraft/java/com/mojang/brigadier/tree/CommandNode.java:164
     pub fn get_relevant_nodes_2(&self, input: StringReader, source: JObjectRef) -> Vec<JRef<dyn CommandNodeTrait<S>>> { todo!() } // leaf-server/src/minecraft/java/com/mojang/brigadier/tree/CommandNode.java:168
     pub fn compare_to(&self, o: JRef<dyn CommandNodeTrait<S>>) -> i32 { todo!() } // leaf-server/src/minecraft/java/com/mojang/brigadier/tree/CommandNode.java:203

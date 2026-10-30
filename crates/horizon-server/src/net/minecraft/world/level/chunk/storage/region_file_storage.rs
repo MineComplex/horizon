@@ -4,8 +4,6 @@ use crate::prelude::*;
 use crate::ca::spottedleaf::moonrise::patches::chunk_system::io::chunk_system_region_file_storage::ChunkSystemRegionFileStorage;
 use crate::ca::spottedleaf::moonrise::patches::chunk_system::io::moonrise_region_file_io::MoonriseRegionFileIORegionDataControllerReadData;
 use crate::ca::spottedleaf::moonrise::patches::chunk_system::io::moonrise_region_file_io::MoonriseRegionFileIORegionDataControllerWriteData;
-use crate::java::lang::AutoCloseable;
-use crate::java::lang::Throwable;
 use crate::me::earthme::luminol::data::region_file::RegionFile;
 use crate::net::minecraft::nbt::compound_tag::CompoundTag;
 use crate::net::minecraft::nbt::stream_tag_visitor::StreamTagVisitor;
@@ -22,13 +20,13 @@ pub struct RegionFileStorage {
     pub is_chunk_data: bool, // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFileStorage.java:31
     pub non_existing_region_files: Mut<IndexSet<i64>>, // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFileStorage.java:59
 }
-pub trait RegionFileStorageTrait: AutoCloseable + ChunkSystemRegionFileStorage {
+pub trait RegionFileStorageTrait: ChunkSystemRegionFileStorage {
     fn as_region_file_storage(&self) -> &RegionFileStorage;
-    fn read(&self, pos: ChunkPos) -> Result<Option<JRef<CompoundTag>>, Throwable>; // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFileStorage.java:353
-    fn scan_chunk(&self, pos: ChunkPos, scanner: JRef<dyn StreamTagVisitor>) -> Result<(), Throwable>; // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFileStorage.java:388
-    fn write(&self, pos: ChunkPos, value: Option<JRef<CompoundTag>>) -> Result<(), Throwable>; // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFileStorage.java:399
-    fn close(&self) -> Result<(), Throwable>; // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFileStorage.java:428
-    fn flush(&self) -> Result<(), Throwable>; // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFileStorage.java:448
+    fn read(&self, pos: ChunkPos) -> Result<Option<JRef<CompoundTag>>, anyhow::Error>; // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFileStorage.java:353
+    fn scan_chunk(&self, pos: ChunkPos, scanner: JRef<dyn StreamTagVisitor>) -> Result<(), anyhow::Error>; // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFileStorage.java:388
+    fn write(&self, pos: ChunkPos, value: Option<JRef<CompoundTag>>) -> Result<(), anyhow::Error>; // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFileStorage.java:399
+    fn close(&self) -> Result<(), anyhow::Error>; // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFileStorage.java:428
+    fn flush(&self) -> Result<(), anyhow::Error>; // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFileStorage.java:448
     fn info(&self) -> RegionStorageInfo; // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFileStorage.java:467
 }
 impl std::ops::Deref for dyn RegionFileStorageTrait {
@@ -45,49 +43,49 @@ impl RegionFileStorage {
     pub fn new(info: RegionStorageInfo, folder: std::path::PathBuf, sync: bool) -> JRef<Self> { Arc::new_cyclic(|this| Self::new_base(this, info, folder, sync)) }
     pub fn moonrise_does_region_file_not_exist_no_io(&self, chunk_x: i32, chunk_z: i32) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFileStorage.java:108
     pub fn moonrise_get_region_file_if_loaded(&self, chunk_x: i32, chunk_z: i32) -> JRef<dyn RegionFile> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFileStorage.java:113
-    pub fn moonrise_get_region_file_if_exists(&self, chunk_x: i32, chunk_z: i32) -> Result<JRef<dyn RegionFile>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFileStorage.java:119
-    pub fn moonrise_start_write(&self, chunk_x: i32, chunk_z: i32, compound: JRef<CompoundTag>) -> Result<MoonriseRegionFileIORegionDataControllerWriteData, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFileStorage.java:124
-    pub fn moonrise_finish_write(&self, chunk_x: i32, chunk_z: i32, write_data: MoonriseRegionFileIORegionDataControllerWriteData) -> Result<(), Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFileStorage.java:164
-    pub fn moonrise_read_data(&self, chunk_x: i32, chunk_z: i32) -> Result<MoonriseRegionFileIORegionDataControllerReadData, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFileStorage.java:181
-    pub fn moonrise_finish_read(&self, chunk_x: i32, chunk_z: i32, read_data: MoonriseRegionFileIORegionDataControllerReadData) -> Result<JRef<CompoundTag>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFileStorage.java:217
+    pub fn moonrise_get_region_file_if_exists(&self, chunk_x: i32, chunk_z: i32) -> Result<JRef<dyn RegionFile>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFileStorage.java:119
+    pub fn moonrise_start_write(&self, chunk_x: i32, chunk_z: i32, compound: JRef<CompoundTag>) -> Result<MoonriseRegionFileIORegionDataControllerWriteData, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFileStorage.java:124
+    pub fn moonrise_finish_write(&self, chunk_x: i32, chunk_z: i32, write_data: MoonriseRegionFileIORegionDataControllerWriteData) -> Result<(), anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFileStorage.java:164
+    pub fn moonrise_read_data(&self, chunk_x: i32, chunk_z: i32) -> Result<MoonriseRegionFileIORegionDataControllerReadData, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFileStorage.java:181
+    pub fn moonrise_finish_read(&self, chunk_x: i32, chunk_z: i32, read_data: MoonriseRegionFileIORegionDataControllerReadData) -> Result<JRef<CompoundTag>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFileStorage.java:217
     pub fn get_region_file_coordinates(file: std::path::PathBuf) -> Option<ChunkPos> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFileStorage.java:33
     pub fn get_region_file_name(chunk_x: i32, chunk_z: i32) -> String { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFileStorage.java:60
-    pub fn create_new(info: RegionStorageInfo, file_path: std::path::PathBuf, folder: std::path::PathBuf, sync: bool) -> Result<JRef<dyn RegionFile>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFileStorage.java:64
+    pub fn create_new(info: RegionStorageInfo, file_path: std::path::PathBuf, folder: std::path::PathBuf, sync: bool) -> Result<JRef<dyn RegionFile>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFileStorage.java:64
     pub fn get_extension_name() -> String { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFileStorage.java:77
     pub fn does_region_file_possibly_exist(&self, position: i64) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFileStorage.java:82
     pub fn create_region_file(&self, position: i64) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFileStorage.java:92
     pub fn mark_non_existing(&self, position: i64) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFileStorage.java:98
-    pub fn get_region_file(&self, pos: ChunkPos, create: bool) -> Result<JRef<dyn RegionFile>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFileStorage.java:261
-    pub fn get_or_create_region_file(&self, pos: ChunkPos) -> Result<JRef<dyn RegionFile>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFileStorage.java:312
+    pub fn get_region_file(&self, pos: ChunkPos, create: bool) -> Result<JRef<dyn RegionFile>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFileStorage.java:261
+    pub fn get_or_create_region_file(&self, pos: ChunkPos) -> Result<JRef<dyn RegionFile>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFileStorage.java:312
     pub fn print_oversized_log(msg: &str, file: std::path::PathBuf, x: i32, z: i32) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFileStorage.java:317
-    pub fn read_oversized_chunk(regionfile: JRef<dyn RegionFile>, chunk_coordinate: ChunkPos) -> Result<JRef<CompoundTag>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFileStorage.java:321
+    pub fn read_oversized_chunk(regionfile: JRef<dyn RegionFile>, chunk_coordinate: ChunkPos) -> Result<JRef<CompoundTag>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFileStorage.java:321
     pub fn merge_chunk_list(level: JRef<CompoundTag>, oversized_level: JRef<CompoundTag>, key: &str, oversized_key: &str) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFileStorage.java:342
-    pub fn read(&self, pos: ChunkPos) -> Result<Option<JRef<CompoundTag>>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFileStorage.java:353
-    pub fn scan_chunk(&self, pos: ChunkPos, scanner: JRef<dyn StreamTagVisitor>) -> Result<(), Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFileStorage.java:388
-    pub fn write(&self, pos: ChunkPos, value: Option<JRef<CompoundTag>>) -> Result<(), Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFileStorage.java:399
-    pub fn close(&self) -> Result<(), Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFileStorage.java:428
-    pub fn flush(&self) -> Result<(), Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFileStorage.java:448
+    pub fn read(&self, pos: ChunkPos) -> Result<Option<JRef<CompoundTag>>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFileStorage.java:353
+    pub fn scan_chunk(&self, pos: ChunkPos, scanner: JRef<dyn StreamTagVisitor>) -> Result<(), anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFileStorage.java:388
+    pub fn write(&self, pos: ChunkPos, value: Option<JRef<CompoundTag>>) -> Result<(), anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFileStorage.java:399
+    pub fn close(&self) -> Result<(), anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFileStorage.java:428
+    pub fn flush(&self) -> Result<(), anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFileStorage.java:448
     pub fn info(&self) -> RegionStorageInfo { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFileStorage.java:467
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl RegionFileStorageTrait for RegionFileStorage {
     fn as_region_file_storage(&self) -> &RegionFileStorage { self }
-    fn read(&self, pos: ChunkPos) -> Result<Option<JRef<CompoundTag>>, Throwable> { RegionFileStorage::read(self, pos) }
-    fn scan_chunk(&self, pos: ChunkPos, scanner: JRef<dyn StreamTagVisitor>) -> Result<(), Throwable> { RegionFileStorage::scan_chunk(self, pos, scanner) }
-    fn write(&self, pos: ChunkPos, value: Option<JRef<CompoundTag>>) -> Result<(), Throwable> { RegionFileStorage::write(self, pos, value) }
-    fn close(&self) -> Result<(), Throwable> { RegionFileStorage::close(self) }
-    fn flush(&self) -> Result<(), Throwable> { RegionFileStorage::flush(self) }
+    fn read(&self, pos: ChunkPos) -> Result<Option<JRef<CompoundTag>>, anyhow::Error> { RegionFileStorage::read(self, pos) }
+    fn scan_chunk(&self, pos: ChunkPos, scanner: JRef<dyn StreamTagVisitor>) -> Result<(), anyhow::Error> { RegionFileStorage::scan_chunk(self, pos, scanner) }
+    fn write(&self, pos: ChunkPos, value: Option<JRef<CompoundTag>>) -> Result<(), anyhow::Error> { RegionFileStorage::write(self, pos, value) }
+    fn close(&self) -> Result<(), anyhow::Error> { RegionFileStorage::close(self) }
+    fn flush(&self) -> Result<(), anyhow::Error> { RegionFileStorage::flush(self) }
     fn info(&self) -> RegionStorageInfo { RegionFileStorage::info(self) }
 }
 impl ChunkSystemRegionFileStorage for RegionFileStorage {
     fn moonrise_does_region_file_not_exist_no_io(&self, chunk_x: i32, chunk_z: i32) -> bool { RegionFileStorage::moonrise_does_region_file_not_exist_no_io(self, chunk_x, chunk_z) }
     fn moonrise_get_region_file_if_loaded(&self, chunk_x: i32, chunk_z: i32) -> JRef<dyn RegionFile> { RegionFileStorage::moonrise_get_region_file_if_loaded(self, chunk_x, chunk_z) }
-    fn moonrise_get_region_file_if_exists(&self, chunk_x: i32, chunk_z: i32) -> Result<JRef<dyn RegionFile>, Throwable> { RegionFileStorage::moonrise_get_region_file_if_exists(self, chunk_x, chunk_z) }
-    fn moonrise_start_write(&self, chunk_x: i32, chunk_z: i32, compound: JRef<CompoundTag>) -> Result<MoonriseRegionFileIORegionDataControllerWriteData, Throwable> { RegionFileStorage::moonrise_start_write(self, chunk_x, chunk_z, compound) }
-    fn moonrise_finish_write(&self, chunk_x: i32, chunk_z: i32, write_data: MoonriseRegionFileIORegionDataControllerWriteData) -> Result<(), Throwable> { RegionFileStorage::moonrise_finish_write(self, chunk_x, chunk_z, write_data) }
-    fn moonrise_read_data(&self, chunk_x: i32, chunk_z: i32) -> Result<MoonriseRegionFileIORegionDataControllerReadData, Throwable> { RegionFileStorage::moonrise_read_data(self, chunk_x, chunk_z) }
-    fn moonrise_finish_read(&self, chunk_x: i32, chunk_z: i32, read_data: MoonriseRegionFileIORegionDataControllerReadData) -> Result<JRef<CompoundTag>, Throwable> { RegionFileStorage::moonrise_finish_read(self, chunk_x, chunk_z, read_data) }
+    fn moonrise_get_region_file_if_exists(&self, chunk_x: i32, chunk_z: i32) -> Result<JRef<dyn RegionFile>, anyhow::Error> { RegionFileStorage::moonrise_get_region_file_if_exists(self, chunk_x, chunk_z) }
+    fn moonrise_start_write(&self, chunk_x: i32, chunk_z: i32, compound: JRef<CompoundTag>) -> Result<MoonriseRegionFileIORegionDataControllerWriteData, anyhow::Error> { RegionFileStorage::moonrise_start_write(self, chunk_x, chunk_z, compound) }
+    fn moonrise_finish_write(&self, chunk_x: i32, chunk_z: i32, write_data: MoonriseRegionFileIORegionDataControllerWriteData) -> Result<(), anyhow::Error> { RegionFileStorage::moonrise_finish_write(self, chunk_x, chunk_z, write_data) }
+    fn moonrise_read_data(&self, chunk_x: i32, chunk_z: i32) -> Result<MoonriseRegionFileIORegionDataControllerReadData, anyhow::Error> { RegionFileStorage::moonrise_read_data(self, chunk_x, chunk_z) }
+    fn moonrise_finish_read(&self, chunk_x: i32, chunk_z: i32, read_data: MoonriseRegionFileIORegionDataControllerReadData) -> Result<JRef<CompoundTag>, anyhow::Error> { RegionFileStorage::moonrise_finish_read(self, chunk_x, chunk_z, read_data) }
 }
 crate::jobject!(RegionFileStorage: dyn RegionFileStorageTrait, dyn ChunkSystemRegionFileStorage);
 // ---- class net.minecraft.world.level.chunk.storage.RegionFileStorage.RegionFileSizeException (leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/RegionFileStorage.java:472)

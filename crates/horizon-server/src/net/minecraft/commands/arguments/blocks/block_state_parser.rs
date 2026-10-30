@@ -8,11 +8,6 @@ use crate::com::mojang::brigadier::exceptions::DynamicCommandExceptionType;
 use crate::com::mojang::brigadier::exceptions::SimpleCommandExceptionType;
 use crate::com::mojang::brigadier::suggestion::Suggestions;
 use crate::com::mojang::brigadier::suggestion::SuggestionsBuilder;
-use crate::com::mojang::datafixers::util::either::EitherTrait;
-use crate::java::lang::Comparable;
-use crate::java::lang::Throwable;
-use crate::java::util::concurrent::CompletableFuture;
-use crate::java::util::function::Function;
 use crate::net::minecraft::core::holder_lookup::HolderLookup;
 use crate::net::minecraft::core::holder_set::HolderSet;
 use crate::net::minecraft::nbt::compound_tag::CompoundTag;
@@ -29,14 +24,14 @@ pub struct BlockStateParser {
     pub reader: StringReader, // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockStateParser.java:69
     pub for_testing: bool, // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockStateParser.java:70
     pub allow_nbt: bool, // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockStateParser.java:71
-    pub properties: Mut<HashMap<JRef<dyn PropertyTrait<JObjectRef>>, JRef<dyn Comparable<JObjectRef>>>>, // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockStateParser.java:72
+    pub properties: Mut<HashMap<JRef<dyn PropertyTrait<JObjectRef>>, ()>>, // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockStateParser.java:72
     pub vague_properties: Mut<HashMap<String, String>>, // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockStateParser.java:73
     pub id: Mut<JRef<Identifier>>, // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockStateParser.java:74
     pub definition: Mut<Option<JRef<StateDefinition<JRef<dyn BlockTrait>, JRef<BlockState>>>>>, // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockStateParser.java:75
     pub state: Mut<Option<JRef<BlockState>>>, // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockStateParser.java:76
     pub nbt: Mut<Option<JRef<CompoundTag>>>, // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockStateParser.java:77
     pub tag: Mut<Option<JRef<dyn HolderSet<JRef<dyn BlockTrait>>>>>, // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockStateParser.java:78
-    pub suggestions: Mut<JRef<dyn Function<SuggestionsBuilder, CompletableFuture<Suggestions>>>>, // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockStateParser.java:79
+    pub suggestions: Mut<Arc<dyn Fn(SuggestionsBuilder) -> CompletableFuture<Suggestions> + Send + Sync>>, // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockStateParser.java:79
 }
 pub static ERROR_NO_TAGS_ALLOWED: LazyLock<SimpleCommandExceptionType> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockStateParser.java:37
 pub static ERROR_UNKNOWN_BLOCK: LazyLock<DynamicCommandExceptionType> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockStateParser.java:40
@@ -52,37 +47,37 @@ pub const SYNTAX_END_PROPERTIES: char = ']'; // leaf-server/src/minecraft/java/n
 pub const SYNTAX_EQUALS: char = '='; // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockStateParser.java:64
 pub const SYNTAX_PROPERTY_SEPARATOR: char = ','; // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockStateParser.java:65
 pub const SYNTAX_TAG: char = '#'; // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockStateParser.java:66
-pub static SUGGEST_NOTHING: LazyLock<JRef<dyn Function<SuggestionsBuilder, CompletableFuture<Suggestions>>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockStateParser.java:67
+pub static SUGGEST_NOTHING: LazyLock<Arc<dyn Fn(SuggestionsBuilder) -> CompletableFuture<Suggestions> + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockStateParser.java:67
 impl BlockStateParser {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(blocks: JRef<dyn HolderLookup<JRef<dyn BlockTrait>>>, reader: StringReader, for_testing: bool, allow_nbt: bool) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockStateParser.java:81
-    pub fn parse_for_block(blocks: JRef<dyn HolderLookup<JRef<dyn BlockTrait>>>, value: &str, allow_nbt: bool) -> Result<BlockStateParserBlockResult, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockStateParser.java:88
-    pub fn parse_for_block_3(blocks: JRef<dyn HolderLookup<JRef<dyn BlockTrait>>>, reader: StringReader, allow_nbt: bool) -> Result<BlockStateParserBlockResult, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockStateParser.java:92
-    pub fn parse_for_testing(blocks: JRef<dyn HolderLookup<JRef<dyn BlockTrait>>>, value: &str, allow_nbt: bool) -> Result<JRef<dyn EitherTrait<BlockStateParserBlockResult, BlockStateParserTagResult>>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockStateParser.java:105
-    pub fn parse_for_testing_3(blocks: JRef<dyn HolderLookup<JRef<dyn BlockTrait>>>, reader: StringReader, allow_nbt: bool) -> Result<JRef<dyn EitherTrait<BlockStateParserBlockResult, BlockStateParserTagResult>>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockStateParser.java:111
-    pub fn fill_suggestions(blocks: JRef<dyn HolderLookup<JRef<dyn BlockTrait>>>, builder: SuggestionsBuilder, for_testing: bool, allow_nbt: bool) -> CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockStateParser.java:128
-    pub fn parse(&self) -> Result<(), Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockStateParser.java:143
-    pub fn suggest_property_name_or_end(&self, builder: SuggestionsBuilder) -> CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockStateParser.java:172
-    pub fn suggest_vague_property_name_or_end(&self, builder: SuggestionsBuilder) -> CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockStateParser.java:180
-    pub fn suggest_property_name(&self, builder: SuggestionsBuilder) -> CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockStateParser.java:188
-    pub fn suggest_vague_property_name(&self, builder: SuggestionsBuilder) -> CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockStateParser.java:200
-    pub fn suggest_open_nbt(&self, builder: SuggestionsBuilder) -> CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockStateParser.java:215
+    pub fn parse_for_block(blocks: JRef<dyn HolderLookup<JRef<dyn BlockTrait>>>, value: &str, allow_nbt: bool) -> Result<BlockStateParserBlockResult, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockStateParser.java:88
+    pub fn parse_for_block_3(blocks: JRef<dyn HolderLookup<JRef<dyn BlockTrait>>>, reader: StringReader, allow_nbt: bool) -> Result<BlockStateParserBlockResult, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockStateParser.java:92
+    pub fn parse_for_testing(blocks: JRef<dyn HolderLookup<JRef<dyn BlockTrait>>>, value: &str, allow_nbt: bool) -> Result<(), anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockStateParser.java:105
+    pub fn parse_for_testing_3(blocks: JRef<dyn HolderLookup<JRef<dyn BlockTrait>>>, reader: StringReader, allow_nbt: bool) -> Result<(), anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockStateParser.java:111
+    pub fn fill_suggestions(blocks: JRef<dyn HolderLookup<JRef<dyn BlockTrait>>>, builder: SuggestionsBuilder, for_testing: bool, allow_nbt: bool) -> crate::rt::CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockStateParser.java:128
+    pub fn parse(&self) -> Result<(), anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockStateParser.java:143
+    pub fn suggest_property_name_or_end(&self, builder: SuggestionsBuilder) -> crate::rt::CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockStateParser.java:172
+    pub fn suggest_vague_property_name_or_end(&self, builder: SuggestionsBuilder) -> crate::rt::CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockStateParser.java:180
+    pub fn suggest_property_name(&self, builder: SuggestionsBuilder) -> crate::rt::CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockStateParser.java:188
+    pub fn suggest_vague_property_name(&self, builder: SuggestionsBuilder) -> crate::rt::CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockStateParser.java:200
+    pub fn suggest_open_nbt(&self, builder: SuggestionsBuilder) -> crate::rt::CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockStateParser.java:215
     pub fn has_block_entity(&self) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockStateParser.java:223
-    pub fn suggest_equals(&self, builder: SuggestionsBuilder) -> CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockStateParser.java:239
-    pub fn suggest_next_property_or_end(&self, builder: SuggestionsBuilder) -> CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockStateParser.java:247
+    pub fn suggest_equals(&self, builder: SuggestionsBuilder) -> crate::rt::CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockStateParser.java:239
+    pub fn suggest_next_property_or_end(&self, builder: SuggestionsBuilder) -> crate::rt::CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockStateParser.java:247
     pub fn add_suggestions<T: JGeneric>(builder: SuggestionsBuilder, property: JRef<dyn PropertyTrait<T>>) -> SuggestionsBuilder { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockStateParser.java:259
-    pub fn suggest_vague_property_value(&self, builder: SuggestionsBuilder, key: &str) -> CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockStateParser.java:271
-    pub fn suggest_open_vague_properties_or_nbt(&self, builder: SuggestionsBuilder) -> CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockStateParser.java:300
-    pub fn suggest_open_properties_or_nbt(&self, builder: SuggestionsBuilder) -> CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockStateParser.java:326
-    pub fn suggest_tag(&self, builder: SuggestionsBuilder) -> CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockStateParser.java:340
-    pub fn suggest_item(&self, builder: SuggestionsBuilder) -> CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockStateParser.java:344
-    pub fn suggest_block_id_or_tag(&self, builder: SuggestionsBuilder) -> CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockStateParser.java:348
-    pub fn read_block(&self) -> Result<(), Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockStateParser.java:354
-    pub fn read_tag(&self) -> Result<(), Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockStateParser.java:365
-    pub fn read_properties(&self) -> Result<(), Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockStateParser.java:380
-    pub fn read_vague_properties(&self) -> Result<(), Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockStateParser.java:433
-    pub fn read_nbt(&self) -> Result<(), Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockStateParser.java:486
-    pub fn set_value<T: JGeneric>(&self, property: JRef<dyn PropertyTrait<T>>, raw: &str, start: i32) -> Result<(), Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockStateParser.java:490
+    pub fn suggest_vague_property_value(&self, builder: SuggestionsBuilder, key: &str) -> crate::rt::CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockStateParser.java:271
+    pub fn suggest_open_vague_properties_or_nbt(&self, builder: SuggestionsBuilder) -> crate::rt::CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockStateParser.java:300
+    pub fn suggest_open_properties_or_nbt(&self, builder: SuggestionsBuilder) -> crate::rt::CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockStateParser.java:326
+    pub fn suggest_tag(&self, builder: SuggestionsBuilder) -> crate::rt::CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockStateParser.java:340
+    pub fn suggest_item(&self, builder: SuggestionsBuilder) -> crate::rt::CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockStateParser.java:344
+    pub fn suggest_block_id_or_tag(&self, builder: SuggestionsBuilder) -> crate::rt::CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockStateParser.java:348
+    pub fn read_block(&self) -> Result<(), anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockStateParser.java:354
+    pub fn read_tag(&self) -> Result<(), anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockStateParser.java:365
+    pub fn read_properties(&self) -> Result<(), anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockStateParser.java:380
+    pub fn read_vague_properties(&self) -> Result<(), anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockStateParser.java:433
+    pub fn read_nbt(&self) -> Result<(), anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockStateParser.java:486
+    pub fn set_value<T: JGeneric>(&self, property: JRef<dyn PropertyTrait<T>>, raw: &str, start: i32) -> Result<(), anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockStateParser.java:490
     pub fn serialize(state: JRef<BlockState>) -> String { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockStateParser.java:501
 }
 crate::jobject!(BlockStateParser);
@@ -90,12 +85,12 @@ crate::jobject!(BlockStateParser);
 #[derive(Clone)]
 pub struct BlockStateParserBlockResult {
     pub block_state: JRef<BlockState>,
-    pub properties: HashMap<JRef<dyn PropertyTrait<JObjectRef>>, JRef<dyn Comparable<JObjectRef>>>,
+    pub properties: HashMap<JRef<dyn PropertyTrait<JObjectRef>>, ()>,
     pub nbt: Option<JRef<CompoundTag>>,
 }
 impl BlockStateParserBlockResult {
     pub fn new() -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockStateParser.java:526
-    pub fn new_3(block_state: JRef<BlockState>, properties: &HashMap<JRef<dyn PropertyTrait<JObjectRef>>, JRef<dyn Comparable<JObjectRef>>>, nbt: Option<JRef<CompoundTag>>) -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockStateParser.java:526
+    pub fn new_3(block_state: JRef<BlockState>, properties: &HashMap<JRef<dyn PropertyTrait<JObjectRef>>, ()>, nbt: Option<JRef<CompoundTag>>) -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockStateParser.java:526
 }
 crate::jobject!(BlockStateParserBlockResult);
 // ---- record net.minecraft.commands.arguments.blocks.BlockStateParser.TagResult (leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockStateParser.java:529)

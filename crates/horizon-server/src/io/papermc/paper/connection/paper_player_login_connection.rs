@@ -7,7 +7,6 @@ use crate::io::papermc::paper::connection::player_login_connection::PlayerLoginC
 use crate::io::papermc::paper::connection::readable_player_cookie_connection::ReadablePlayerCookieConnection;
 use crate::io::papermc::paper::connection::readable_player_cookie_connection_impl::ReadablePlayerCookieConnectionImpl;
 use crate::io::papermc::paper::connection::readable_player_cookie_connection_impl::ReadablePlayerCookieConnectionImplTrait;
-use crate::java::util::concurrent::CompletableFuture;
 use crate::net::kyori::adventure::text::Component;
 use crate::net::minecraft::network::protocol::cookie::serverbound_cookie_response_packet::ServerboundCookieResponsePacket;
 use crate::net::minecraft::server::network::server_login_packet_listener_impl::ServerLoginPacketListenerImpl;
@@ -47,7 +46,7 @@ impl PlayerLoginConnection for PaperPlayerLoginConnection {
     fn get_unsafe_profile(&self) -> Option<JRef<dyn PlayerProfile>> { PaperPlayerLoginConnection::get_unsafe_profile(self) }
 }
 impl ReadablePlayerCookieConnection for PaperPlayerLoginConnection {
-    fn retrieve_cookie(&self, key: JRef<NamespacedKey>) -> CompletableFuture<Vec<i8>> { ReadablePlayerCookieConnectionImpl::retrieve_cookie(self, key) }
+    fn retrieve_cookie(&self, key: JRef<NamespacedKey>) -> crate::rt::CompletableFuture<Vec<i8>> { ReadablePlayerCookieConnectionImpl::retrieve_cookie(self, key) }
 }
 impl PlayerConnection for PaperPlayerLoginConnection {
     fn disconnect(&self, component: Component) { PaperPlayerLoginConnection::disconnect(self, component) }

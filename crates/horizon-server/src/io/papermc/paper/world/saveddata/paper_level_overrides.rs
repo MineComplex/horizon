@@ -3,7 +3,6 @@
 use crate::prelude::*;
 use crate::com::mojang::serialization::Codec;
 use crate::com::mojang::serialization::dynamic::Dynamic;
-use crate::java::util::function::Consumer;
 use crate::net::minecraft::core::block_pos::BlockPos;
 use crate::net::minecraft::resources::resource_key::ResourceKey;
 use crate::net::minecraft::world::difficulty::Difficulty;
@@ -65,7 +64,7 @@ impl PaperLevelOverrides {
     pub fn set_difficulty_locked(&self, difficulty_locked: bool) { todo!() } // paper-server/src/main/java/io/papermc/paper/world/saveddata/PaperLevelOverrides.java:117
     pub fn root_data_or_throw(&self) -> JRef<PrimaryLevelData> { todo!() } // paper-server/src/main/java/io/papermc/paper/world/saveddata/PaperLevelOverrides.java:207
     pub fn set_difficulty_settings(&self, difficulty_settings: LevelSettingsDifficultySettings) { todo!() } // paper-server/src/main/java/io/papermc/paper/world/saveddata/PaperLevelOverrides.java:214
-    pub fn sync_root_data(&self, action: JRef<dyn Consumer<JRef<PrimaryLevelData>>>) { todo!() } // paper-server/src/main/java/io/papermc/paper/world/saveddata/PaperLevelOverrides.java:225
+    pub fn sync_root_data(&self, action: Arc<dyn Fn(JRef<PrimaryLevelData>) + Send + Sync>) { todo!() } // paper-server/src/main/java/io/papermc/paper/world/saveddata/PaperLevelOverrides.java:225
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

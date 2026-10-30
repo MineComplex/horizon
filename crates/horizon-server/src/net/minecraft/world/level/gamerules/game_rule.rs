@@ -4,8 +4,6 @@ use crate::prelude::*;
 use crate::com::mojang::brigadier::arguments::ArgumentType;
 use crate::com::mojang::serialization::Codec;
 use crate::com::mojang::serialization::DataResult;
-use crate::java::lang::Class;
-use crate::java::util::function::ToIntFunction;
 use crate::net::minecraft::resources::identifier::Identifier;
 use crate::net::minecraft::world::flag::feature_element::FeatureElement;
 use crate::net::minecraft::world::flag::feature_flag_set::FeatureFlagSet;
@@ -22,7 +20,7 @@ pub struct GameRule<T: JGeneric> {
     pub argument: JRef<dyn ArgumentType<T>>, // leaf-server/src/minecraft/java/net/minecraft/world/level/gamerules/GameRule.java:19
     pub visitor_caller: JRef<dyn GameRulesVisitorCaller<T>>, // leaf-server/src/minecraft/java/net/minecraft/world/level/gamerules/GameRule.java:20
     pub value_codec: JRef<dyn Codec<T>>, // leaf-server/src/minecraft/java/net/minecraft/world/level/gamerules/GameRule.java:21
-    pub command_result_function: JRef<dyn ToIntFunction<T>>, // leaf-server/src/minecraft/java/net/minecraft/world/level/gamerules/GameRule.java:22
+    pub command_result_function: Arc<dyn Fn(T) -> i32 + Send + Sync>, // leaf-server/src/minecraft/java/net/minecraft/world/level/gamerules/GameRule.java:22
     pub default_value: T, // leaf-server/src/minecraft/java/net/minecraft/world/level/gamerules/GameRule.java:23
     pub required_features: FeatureFlagSet, // leaf-server/src/minecraft/java/net/minecraft/world/level/gamerules/GameRule.java:24
     pub game_rule_index: i32, // leaf-server/src/minecraft/java/net/minecraft/world/level/gamerules/GameRule.java:48
@@ -31,7 +29,7 @@ pub struct GameRule<T: JGeneric> {
 pub static LAST_GAMERULE_INDEX: Mut<i32> = Mut::new(0); // leaf-server/src/minecraft/java/net/minecraft/world/level/gamerules/GameRule.java:49
 impl<T: JGeneric> GameRule<T> {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(category: GameRuleCategory, game_rule_type: GameRuleType, argument: JRef<dyn ArgumentType<T>>, visitor_caller: JRef<dyn GameRulesVisitorCaller<T>>, value_codec: JRef<dyn Codec<T>>, command_result_function: JRef<dyn ToIntFunction<T>>, default_value: T, required_features: FeatureFlagSet) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/gamerules/GameRule.java:26
+    pub fn new(category: GameRuleCategory, game_rule_type: GameRuleType, argument: JRef<dyn ArgumentType<T>>, visitor_caller: JRef<dyn GameRulesVisitorCaller<T>>, value_codec: JRef<dyn Codec<T>>, command_result_function: Arc<dyn Fn(T) -> i32 + Send + Sync>, default_value: T, required_features: FeatureFlagSet) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/gamerules/GameRule.java:26
     pub fn required_features(&self) -> FeatureFlagSet { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/gamerules/GameRule.java:119
     pub fn to_string(&self) -> String { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/gamerules/GameRule.java:52
     pub fn id(&self) -> String { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/gamerules/GameRule.java:57
@@ -40,7 +38,7 @@ impl<T: JGeneric> GameRule<T> {
     pub fn get_description_id(&self) -> String { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/gamerules/GameRule.java:69
     pub fn serialize(&self, value: T) -> String { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/gamerules/GameRule.java:73
     pub fn deserialize(&self, value: &str) -> DataResult<T> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/gamerules/GameRule.java:77
-    pub fn value_class(&self) -> Class { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/gamerules/GameRule.java:87
+    pub fn value_class(&self) -> crate::rt::Class { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/gamerules/GameRule.java:87
     pub fn call_visitor(&self, visitor: JRef<dyn GameRuleTypeVisitor>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/gamerules/GameRule.java:91
     pub fn get_command_result(&self, value: T) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/gamerules/GameRule.java:95
     pub fn category(&self) -> GameRuleCategory { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/gamerules/GameRule.java:99

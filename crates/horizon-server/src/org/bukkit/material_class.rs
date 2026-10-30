@@ -4,9 +4,6 @@ use crate::api_prelude::*;
 use crate::io::papermc::paper::datacomponent::data_component_type::DataComponentType;
 use crate::io::papermc::paper::datacomponent::data_component_type::DataComponentTypeValued;
 use crate::io::papermc::paper::inventory::item_rarity::ItemRarity;
-use crate::java::lang::Class;
-use crate::java::lang::Throwable;
-use crate::java::util::function::Consumer;
 use crate::org::bukkit::attribute::attribute::Attribute;
 use crate::org::bukkit::attribute::attribute_modifier::AttributeModifier;
 use crate::org::bukkit::block::block_type::BlockType;
@@ -2312,7 +2309,7 @@ pub struct MaterialData {
     /// `Constructor<? extends MaterialData>`: `data`'s `(Material, byte)` constructor when `data` is a
     /// `MaterialData` class.
     pub ctor: Option<fn(Material, i8) -> JRef<dyn MaterialDataTrait>>,
-    pub data: Class,
+    pub data: crate::rt::Class,
     pub legacy: bool,
     pub key: JRef<NamespacedKey>,
     /// `Suppliers.memoize(...)` (computed by `as_item_type`).
@@ -2320,12 +2317,12 @@ pub struct MaterialData {
     /// `Suppliers.memoize(...)` (computed by `as_block_type`).
     pub block_type: std::sync::OnceLock<Option<JRef<dyn BlockType>>>,
 }
-/// Java: `private Material(final int id, final Class<?> data, final String name)` (the shorter
+/// Java: `private Material(final int id, final crate::rt::Class data, final String name)` (the shorter
 /// constructors pass `MaterialData.class` and `null`).
 fn md(
     this: Material,
     id: i32,
-    data: Class,
+    data: crate::rt::Class,
     ctor: Option<fn(Material, i8) -> JRef<dyn MaterialDataTrait>>,
     name: Option<&str>,
 ) -> MaterialData {
@@ -9451,17 +9448,17 @@ impl Material {
     } // paper-api/src/main/java/org/bukkit/Material.java:3094
     pub fn create_block_data_1(
         self,
-        consumer: Option<JRef<dyn Consumer<JObjectRef>>>,
+        consumer: Option<Arc<dyn Fn(JObjectRef) + Send + Sync>>,
     ) -> JRef<dyn BlockData> {
         Bukkit::create_block_data_2(self, consumer)
     } // paper-api/src/main/java/org/bukkit/Material.java:3106
     pub fn create_block_data_1_2(
         self,
         data: Option<String>,
-    ) -> Result<JRef<dyn BlockData>, Throwable> {
+    ) -> Result<JRef<dyn BlockData>, anyhow::Error> {
         Bukkit::create_block_data_2_2(Some(self), data)
     } // paper-api/src/main/java/org/bukkit/Material.java:3120
-    pub fn get_data(self) -> Class {
+    pub fn get_data(self) -> crate::rt::Class {
         assert!(
             self.data().legacy,
             "Cannot get data class of Modern Material"

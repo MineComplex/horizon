@@ -6,8 +6,6 @@ use crate::com::mojang::brigadier::context::CommandContext;
 use crate::com::mojang::brigadier::exceptions::DynamicCommandExceptionType;
 use crate::com::mojang::brigadier::suggestion::Suggestions;
 use crate::com::mojang::brigadier::suggestion::SuggestionsBuilder;
-use crate::java::lang::Throwable;
-use crate::java::util::concurrent::CompletableFuture;
 use crate::net::minecraft::commands::command_source_stack::CommandSourceStack;
 
 // ---- class net.minecraft.commands.arguments.HexColorArgument (leaf-server/src/minecraft/java/net/minecraft/commands/arguments/HexColorArgument.java:18)
@@ -21,9 +19,9 @@ impl HexColorArgument {
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/HexColorArgument.java:24
     pub fn hex_color() -> JRef<HexColorArgument> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/HexColorArgument.java:27
     pub fn get_hex_color(context: CommandContext<JRef<CommandSourceStack>>, name: &str) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/HexColorArgument.java:31
-    pub fn parse(&self, reader: StringReader) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/HexColorArgument.java:35
+    pub fn parse(&self, reader: StringReader) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/HexColorArgument.java:35
     pub fn duplicate_digit(digit: i32) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/HexColorArgument.java:50
-    pub fn list_suggestions<S: JGeneric>(&self, context_builder: CommandContext<S>, builder: SuggestionsBuilder) -> CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/HexColorArgument.java:54
+    pub fn list_suggestions<S: JGeneric>(&self, context_builder: CommandContext<S>, builder: SuggestionsBuilder) -> crate::rt::CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/HexColorArgument.java:54
     pub fn get_examples(&self) -> Vec<String> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/HexColorArgument.java:59
 }
 crate::jobject!(HexColorArgument);

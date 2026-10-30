@@ -5,9 +5,6 @@ use crate::io::papermc::paper::math::block_position::BlockPosition;
 use crate::io::papermc::paper::math::fine_position::FinePosition;
 use crate::io::papermc::paper::math::position::Position;
 use crate::io::papermc::paper::math::rotation::Rotation;
-use crate::java::lang::Class;
-use crate::java::lang::Throwable;
-use crate::java::util::function::Predicate;
 use crate::org::bukkit::block::block::Block;
 use crate::org::bukkit::bukkit::Bukkit;
 use crate::org::bukkit::chunk::Chunk;
@@ -493,7 +490,7 @@ impl Location {
     pub fn get_nearby_living_entities_2_2(
         &self,
         radius: f64,
-        predicate: Option<JRef<dyn Predicate<JObjectRef>>>,
+        predicate: Option<Arc<dyn Fn(JObjectRef) -> bool + Send + Sync>>,
     ) -> Vec<JRef<dyn LivingEntity>> {
         self.get_nearby_entities_by_type_5(
             Some(Class::of::<dyn LivingEntity>()),
@@ -520,7 +517,7 @@ impl Location {
         &self,
         xz_radius: f64,
         y_radius: f64,
-        predicate: Option<JRef<dyn Predicate<JObjectRef>>>,
+        predicate: Option<Arc<dyn Fn(JObjectRef) -> bool + Send + Sync>>,
     ) -> Vec<JRef<dyn LivingEntity>> {
         self.get_nearby_entities_by_type_5(
             Some(Class::of::<dyn LivingEntity>()),
@@ -535,7 +532,7 @@ impl Location {
         x_radius: f64,
         y_radius: f64,
         z_radius: f64,
-        predicate: Option<JRef<dyn Predicate<JObjectRef>>>,
+        predicate: Option<Arc<dyn Fn(JObjectRef) -> bool + Send + Sync>>,
     ) -> Vec<JRef<dyn LivingEntity>> {
         self.get_nearby_entities_by_type_5(
             Some(Class::of::<dyn LivingEntity>()),
@@ -559,7 +556,7 @@ impl Location {
     pub fn get_nearby_players_2_2(
         &self,
         radius: f64,
-        predicate: Option<JRef<dyn Predicate<JObjectRef>>>,
+        predicate: Option<Arc<dyn Fn(JObjectRef) -> bool + Send + Sync>>,
     ) -> Vec<JRef<dyn Player>> {
         self.get_nearby_entities_by_type_5(
             Some(Class::of::<dyn Player>()),
@@ -586,7 +583,7 @@ impl Location {
         &self,
         xz_radius: f64,
         y_radius: f64,
-        predicate: Option<JRef<dyn Predicate<JObjectRef>>>,
+        predicate: Option<Arc<dyn Fn(JObjectRef) -> bool + Send + Sync>>,
     ) -> Vec<JRef<dyn Player>> {
         self.get_nearby_entities_by_type_5(
             Some(Class::of::<dyn Player>()),
@@ -601,7 +598,7 @@ impl Location {
         x_radius: f64,
         y_radius: f64,
         z_radius: f64,
-        predicate: Option<JRef<dyn Predicate<JObjectRef>>>,
+        predicate: Option<Arc<dyn Fn(JObjectRef) -> bool + Send + Sync>>,
     ) -> Vec<JRef<dyn Player>> {
         self.get_nearby_entities_by_type_5(
             Some(Class::of::<dyn Player>()),
@@ -613,14 +610,14 @@ impl Location {
     }
     pub fn get_nearby_entities_by_type<T: JGeneric>(
         &self,
-        clazz: Option<Class>,
+        clazz: Option<crate::rt::Class>,
         radius: f64,
     ) -> Vec<T> {
         self.get_nearby_entities_by_type_5(clazz, radius, radius, radius, None)
     }
     pub fn get_nearby_entities_by_type_3<T: JGeneric>(
         &self,
-        clazz: Option<Class>,
+        clazz: Option<crate::rt::Class>,
         xz_radius: f64,
         y_radius: f64,
     ) -> Vec<T> {
@@ -628,15 +625,15 @@ impl Location {
     }
     pub fn get_nearby_entities_by_type_3_2<T: JGeneric>(
         &self,
-        clazz: Option<Class>,
+        clazz: Option<crate::rt::Class>,
         radius: f64,
-        predicate: Option<JRef<dyn Predicate<JObjectRef>>>,
+        predicate: Option<Arc<dyn Fn(JObjectRef) -> bool + Send + Sync>>,
     ) -> Vec<T> {
         self.get_nearby_entities_by_type_5(clazz, radius, radius, radius, predicate)
     }
     pub fn get_nearby_entities_by_type_4<T: JGeneric>(
         &self,
-        clazz: Option<Class>,
+        clazz: Option<crate::rt::Class>,
         x_radius: f64,
         y_radius: f64,
         z_radius: f64,
@@ -645,20 +642,20 @@ impl Location {
     }
     pub fn get_nearby_entities_by_type_4_2<T: JGeneric>(
         &self,
-        clazz: Option<Class>,
+        clazz: Option<crate::rt::Class>,
         xz_radius: f64,
         y_radius: f64,
-        predicate: Option<JRef<dyn Predicate<JObjectRef>>>,
+        predicate: Option<Arc<dyn Fn(JObjectRef) -> bool + Send + Sync>>,
     ) -> Vec<T> {
         self.get_nearby_entities_by_type_5(clazz, xz_radius, y_radius, xz_radius, predicate)
     }
     pub fn get_nearby_entities_by_type_5<T: JGeneric>(
         &self,
-        clazz: Option<Class>,
+        clazz: Option<crate::rt::Class>,
         x_radius: f64,
         y_radius: f64,
         z_radius: f64,
-        predicate: Option<JRef<dyn Predicate<JObjectRef>>>,
+        predicate: Option<Arc<dyn Fn(JObjectRef) -> bool + Send + Sync>>,
     ) -> Vec<T> {
         let world = self.get_world_or_null();
         let Some(world) = world else {
@@ -775,7 +772,7 @@ impl Location {
             yaw: Mut::new(self.yaw.get()),
         })
     }
-    pub fn check_finite(&self) -> Result<(), Throwable> {
+    pub fn check_finite(&self) -> Result<(), anyhow::Error> {
         NumberConversions::check_finite(self.x.get(), "x not finite");
         NumberConversions::check_finite(self.y.get(), "y not finite");
         NumberConversions::check_finite(self.z.get(), "z not finite");

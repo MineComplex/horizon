@@ -3,7 +3,6 @@
 use crate::prelude::*;
 use crate::api_impl::persistence::craft_persistent_data_type_registry::CraftPersistentDataTypeRegistry;
 use crate::io::papermc::paper::persistence::persistent_data_container_view::PersistentDataContainerView;
-use crate::java::lang::Throwable;
 use crate::net::minecraft::nbt::compound_tag::CompoundTag;
 use crate::net::minecraft::nbt::tag::Tag;
 use crate::org::bukkit::namespaced_key::NamespacedKey;
@@ -37,5 +36,5 @@ impl PaperPersistentDataContainerView {
     pub fn is_empty(&self) -> bool { todo!() } // paper-server/src/main/java/io/papermc/paper/persistence/PaperPersistentDataContainerView.java:89
     pub fn copy_to(&self, other: JRef<dyn PersistentDataContainer>, replace: bool) { todo!() } // paper-server/src/main/java/io/papermc/paper/persistence/PaperPersistentDataContainerView.java:94
     pub fn get_adapter_context(&self) -> JRef<dyn PersistentDataAdapterContext> { todo!() } // paper-server/src/main/java/io/papermc/paper/persistence/PaperPersistentDataContainerView.java:106
-    pub fn serialize_to_bytes(&self) -> Result<Vec<i8>, Throwable> { todo!() } // paper-server/src/main/java/io/papermc/paper/persistence/PaperPersistentDataContainerView.java:111
+    pub fn serialize_to_bytes(&self) -> Result<Vec<i8>, anyhow::Error> { todo!() } // paper-server/src/main/java/io/papermc/paper/persistence/PaperPersistentDataContainerView.java:111
 }

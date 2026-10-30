@@ -11,7 +11,6 @@ use crate::io::papermc::paper::registry::paper_registry_builder::PaperRegistryBu
 use crate::io::papermc::paper::registry::registry_builder::RegistryBuilder;
 use crate::io::papermc::paper::registry::registry_builder_factory::RegistryBuilderFactory;
 use crate::io::papermc::paper::registry::typed_key::TypedKey;
-use crate::java::util::function::Consumer;
 use crate::net::minecraft::core::holder::Holder;
 use crate::net::minecraft::sounds::sound_event::SoundEvent;
 use crate::net::minecraft::world::item::instrument::Instrument;
@@ -71,7 +70,7 @@ impl PaperInstrumentRegistryEntryPaperBuilder {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(conversions: JRef<Conversions>, internal: Option<Instrument>) -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/PaperInstrumentRegistryEntry.java:77
     pub fn sound_event_1(&self, sound_event: JRef<dyn TypedKey<JRef<dyn Sound>>>) -> JRef<dyn InstrumentRegistryEntryBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/PaperInstrumentRegistryEntry.java:81
-    pub fn sound_event_1_2(&self, sound_event: JRef<dyn Consumer<JRef<dyn RegistryBuilderFactory<JRef<dyn Sound>, JRef<dyn SoundEventRegistryEntryBuilder>>>>>) -> JRef<dyn InstrumentRegistryEntryBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/PaperInstrumentRegistryEntry.java:87
+    pub fn sound_event_1_2(&self, sound_event: Arc<dyn Fn(JRef<dyn RegistryBuilderFactory<JRef<dyn Sound>, JRef<dyn SoundEventRegistryEntryBuilder>>>) + Send + Sync>) -> JRef<dyn InstrumentRegistryEntryBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/PaperInstrumentRegistryEntry.java:87
     pub fn sound_event_1_3(&self, sound_event: JRef<dyn RegistryHolder<JRef<dyn Sound>, JRef<dyn SoundEventRegistryEntry>>>) -> JRef<dyn InstrumentRegistryEntryBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/PaperInstrumentRegistryEntry.java:93
     pub fn duration_1(&self, duration: f32) -> JRef<dyn InstrumentRegistryEntryBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/PaperInstrumentRegistryEntry.java:99
     pub fn range_1(&self, range: f32) -> JRef<dyn InstrumentRegistryEntryBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/PaperInstrumentRegistryEntry.java:105
@@ -86,7 +85,7 @@ impl PaperInstrumentRegistryEntryTrait for PaperInstrumentRegistryEntryPaperBuil
 }
 impl InstrumentRegistryEntryBuilder for PaperInstrumentRegistryEntryPaperBuilder {
     fn sound_event_1(&self, sound_event: JRef<dyn TypedKey<JRef<dyn Sound>>>) -> JRef<dyn InstrumentRegistryEntryBuilder> { PaperInstrumentRegistryEntryPaperBuilder::sound_event_1(self, sound_event) }
-    fn sound_event_1_2(&self, sound_event: JRef<dyn Consumer<JRef<dyn RegistryBuilderFactory<JRef<dyn Sound>, JRef<dyn SoundEventRegistryEntryBuilder>>>>>) -> JRef<dyn InstrumentRegistryEntryBuilder> { PaperInstrumentRegistryEntryPaperBuilder::sound_event_1_2(self, sound_event) }
+    fn sound_event_1_2(&self, sound_event: Arc<dyn Fn(JRef<dyn RegistryBuilderFactory<JRef<dyn Sound>, JRef<dyn SoundEventRegistryEntryBuilder>>>) + Send + Sync>) -> JRef<dyn InstrumentRegistryEntryBuilder> { PaperInstrumentRegistryEntryPaperBuilder::sound_event_1_2(self, sound_event) }
     fn sound_event_1_3(&self, sound_event: JRef<dyn RegistryHolder<JRef<dyn Sound>, JRef<dyn SoundEventRegistryEntry>>>) -> JRef<dyn InstrumentRegistryEntryBuilder> { PaperInstrumentRegistryEntryPaperBuilder::sound_event_1_3(self, sound_event) }
     fn duration_1(&self, duration: f32) -> JRef<dyn InstrumentRegistryEntryBuilder> { PaperInstrumentRegistryEntryPaperBuilder::duration_1(self, duration) }
     fn range_1(&self, range: f32) -> JRef<dyn InstrumentRegistryEntryBuilder> { PaperInstrumentRegistryEntryPaperBuilder::range_1(self, range) }

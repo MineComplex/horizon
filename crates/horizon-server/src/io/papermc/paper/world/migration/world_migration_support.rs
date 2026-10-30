@@ -3,7 +3,6 @@
 use crate::prelude::*;
 use crate::com::mojang::serialization::dynamic::Dynamic;
 use crate::io::papermc::paper::world::saveddata::paper_world_pdc::PaperWorldPDC;
-use crate::java::lang::Throwable;
 use crate::net::minecraft::core::holder_lookup::HolderLookupProvider;
 use crate::net::minecraft::resources::identifier::Identifier;
 use crate::net::minecraft::world::level::saveddata::saved_data_type::SavedDataType;
@@ -23,14 +22,14 @@ impl WorldMigrationSupport {
     pub fn clear_legacy_pdc(level_data: JRef<Dynamic<JObjectRef>>) { todo!() } // paper-server/src/main/java/io/papermc/paper/world/migration/WorldMigrationSupport.java:48
     pub fn read_legacy_uuid(source_root: std::path::PathBuf) -> Option<Uuid> { todo!() } // paper-server/src/main/java/io/papermc/paper/world/migration/WorldMigrationSupport.java:52
     pub fn get_storage_folder(dimension: JRef<Identifier>, base_folder: std::path::PathBuf) -> std::path::PathBuf { todo!() } // paper-server/src/main/java/io/papermc/paper/world/migration/WorldMigrationSupport.java:66
-    pub fn migrate_paper_world_config(source_root: std::path::PathBuf, target_dimension_path: std::path::PathBuf) -> Result<(), Throwable> { todo!() } // paper-server/src/main/java/io/papermc/paper/world/migration/WorldMigrationSupport.java:70
-    pub fn migrate_dimension_directories(source_dimension_root: std::path::PathBuf, target_dimension_path: std::path::PathBuf) -> Result<(), Throwable> { todo!() } // paper-server/src/main/java/io/papermc/paper/world/migration/WorldMigrationSupport.java:86
-    pub fn merge_move(source: std::path::PathBuf, target: std::path::PathBuf) -> Result<(), Throwable> { todo!() } // paper-server/src/main/java/io/papermc/paper/world/migration/WorldMigrationSupport.java:103
-    pub fn try_delete_if_empty(path: std::path::PathBuf) -> Result<(), Throwable> { todo!() } // paper-server/src/main/java/io/papermc/paper/world/migration/WorldMigrationSupport.java:123
+    pub fn migrate_paper_world_config(source_root: std::path::PathBuf, target_dimension_path: std::path::PathBuf) -> Result<(), anyhow::Error> { todo!() } // paper-server/src/main/java/io/papermc/paper/world/migration/WorldMigrationSupport.java:70
+    pub fn migrate_dimension_directories(source_dimension_root: std::path::PathBuf, target_dimension_path: std::path::PathBuf) -> Result<(), anyhow::Error> { todo!() } // paper-server/src/main/java/io/papermc/paper/world/migration/WorldMigrationSupport.java:86
+    pub fn merge_move(source: std::path::PathBuf, target: std::path::PathBuf) -> Result<(), anyhow::Error> { todo!() } // paper-server/src/main/java/io/papermc/paper/world/migration/WorldMigrationSupport.java:103
+    pub fn try_delete_if_empty(path: std::path::PathBuf) -> Result<(), anyhow::Error> { todo!() } // paper-server/src/main/java/io/papermc/paper/world/migration/WorldMigrationSupport.java:123
     pub fn read_fixed_level_data(access: JRef<LevelStorageSourceLevelStorageAccess>) -> WorldMigrationSupportLevelDataResult { todo!() } // paper-server/src/main/java/io/papermc/paper/world/migration/WorldMigrationSupport.java:134
     pub fn saved_data_path(data_root: std::path::PathBuf, type_: SavedDataType<JObjectRef>) -> std::path::PathBuf { todo!() } // paper-server/src/main/java/io/papermc/paper/world/migration/WorldMigrationSupport.java:161
-    pub fn copy_saved_data_if_present(source_data_roots: &Vec<std::path::PathBuf>, target_data_root: std::path::PathBuf, type_: SavedDataType<JObjectRef>, overwrite: bool) -> Result<bool, Throwable> { todo!() } // paper-server/src/main/java/io/papermc/paper/world/migration/WorldMigrationSupport.java:165
-    pub fn copy_saved_data_file_if_present(target_data_root: std::path::PathBuf, source: Option<std::path::PathBuf>, type_: SavedDataType<JObjectRef>, overwrite: bool) -> Result<bool, Throwable> { todo!() } // paper-server/src/main/java/io/papermc/paper/world/migration/WorldMigrationSupport.java:174
+    pub fn copy_saved_data_if_present(source_data_roots: &Vec<std::path::PathBuf>, target_data_root: std::path::PathBuf, type_: SavedDataType<JObjectRef>, overwrite: bool) -> Result<bool, anyhow::Error> { todo!() } // paper-server/src/main/java/io/papermc/paper/world/migration/WorldMigrationSupport.java:165
+    pub fn copy_saved_data_file_if_present(target_data_root: std::path::PathBuf, source: Option<std::path::PathBuf>, type_: SavedDataType<JObjectRef>, overwrite: bool) -> Result<bool, anyhow::Error> { todo!() } // paper-server/src/main/java/io/papermc/paper/world/migration/WorldMigrationSupport.java:174
     pub fn find_saved_data_file(data_roots: &Vec<std::path::PathBuf>, type_: SavedDataType<JObjectRef>) -> Option<std::path::PathBuf> { todo!() } // paper-server/src/main/java/io/papermc/paper/world/migration/WorldMigrationSupport.java:194
 }
 crate::jobject!(WorldMigrationSupport);

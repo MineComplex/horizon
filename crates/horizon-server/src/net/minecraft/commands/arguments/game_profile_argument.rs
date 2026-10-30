@@ -6,8 +6,6 @@ use crate::com::mojang::brigadier::context::CommandContext;
 use crate::com::mojang::brigadier::exceptions::SimpleCommandExceptionType;
 use crate::com::mojang::brigadier::suggestion::Suggestions;
 use crate::com::mojang::brigadier::suggestion::SuggestionsBuilder;
-use crate::java::lang::Throwable;
-use crate::java::util::concurrent::CompletableFuture;
 use crate::net::minecraft::commands::arguments::selector::entity_selector::EntitySelector;
 use crate::net::minecraft::commands::command_source_stack::CommandSourceStack;
 use crate::net::minecraft::server::players::name_and_id::NameAndId;
@@ -21,21 +19,21 @@ pub static ERROR_UNKNOWN_PLAYER: LazyLock<SimpleCommandExceptionType> = LazyLock
 impl GameProfileArgument {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/GameProfileArgument.java:26
-    pub fn get_game_profiles(source: CommandContext<JRef<CommandSourceStack>>, name: &str) -> Result<Vec<NameAndId>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/GameProfileArgument.java:30
+    pub fn get_game_profiles(source: CommandContext<JRef<CommandSourceStack>>, name: &str) -> Result<Vec<NameAndId>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/GameProfileArgument.java:30
     pub fn game_profile() -> JRef<GameProfileArgument> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/GameProfileArgument.java:34
-    pub fn parse(&self, reader: StringReader) -> Result<JRef<dyn GameProfileArgumentResult>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/GameProfileArgument.java:43
-    pub fn parse_2<S: JGeneric>(&self, reader: StringReader, source: S) -> Result<JRef<dyn GameProfileArgumentResult>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/GameProfileArgument.java:38
-    pub fn parse_2_2(reader: StringReader, allow_selectors: bool) -> Result<JRef<dyn GameProfileArgumentResult>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/GameProfileArgument.java:48
-    pub fn list_suggestions<S: JGeneric>(&self, context_builder: CommandContext<S>, builder: SuggestionsBuilder) -> CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/GameProfileArgument.java:72
+    pub fn parse(&self, reader: StringReader) -> Result<JRef<dyn GameProfileArgumentResult>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/GameProfileArgument.java:43
+    pub fn parse_2<S: JGeneric>(&self, reader: StringReader, source: S) -> Result<JRef<dyn GameProfileArgumentResult>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/GameProfileArgument.java:38
+    pub fn parse_2_2(reader: StringReader, allow_selectors: bool) -> Result<JRef<dyn GameProfileArgumentResult>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/GameProfileArgument.java:48
+    pub fn list_suggestions<S: JGeneric>(&self, context_builder: CommandContext<S>, builder: SuggestionsBuilder) -> crate::rt::CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/GameProfileArgument.java:72
     pub fn get_examples(&self) -> Vec<String> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/GameProfileArgument.java:90
 }
 crate::jobject!(GameProfileArgument);
 // ---- interface net.minecraft.commands.arguments.GameProfileArgument.Result (leaf-server/src/minecraft/java/net/minecraft/commands/arguments/GameProfileArgument.java:95)
 pub trait GameProfileArgumentResult: Send + Sync + 'static {
-    fn get_names(&self, sender: JRef<CommandSourceStack>) -> Result<Vec<NameAndId>, Throwable>; // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/GameProfileArgument.java:97
+    fn get_names(&self, sender: JRef<CommandSourceStack>) -> Result<Vec<NameAndId>, anyhow::Error>; // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/GameProfileArgument.java:97
 }
-impl<F: Fn(JRef<CommandSourceStack>) -> Result<Vec<NameAndId>, Throwable> + Send + Sync + 'static> GameProfileArgumentResult for F {
-    fn get_names(&self, sender: JRef<CommandSourceStack>) -> Result<Vec<NameAndId>, Throwable> { self(sender) }
+impl<F: Fn(JRef<CommandSourceStack>) -> Result<Vec<NameAndId>, anyhow::Error> + Send + Sync + 'static> GameProfileArgumentResult for F {
+    fn get_names(&self, sender: JRef<CommandSourceStack>) -> Result<Vec<NameAndId>, anyhow::Error> { self(sender) }
 }
 // ---- class net.minecraft.commands.arguments.GameProfileArgument.SelectorResult (leaf-server/src/minecraft/java/net/minecraft/commands/arguments/GameProfileArgument.java:100)
 pub struct GameProfileArgumentSelectorResult {
@@ -45,11 +43,11 @@ pub struct GameProfileArgumentSelectorResult {
 impl GameProfileArgumentSelectorResult {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(selector: JRef<EntitySelector>) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/GameProfileArgument.java:103
-    pub fn get_names(&self, sender: JRef<CommandSourceStack>) -> Result<Vec<NameAndId>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/GameProfileArgument.java:107
+    pub fn get_names(&self, sender: JRef<CommandSourceStack>) -> Result<Vec<NameAndId>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/GameProfileArgument.java:107
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl GameProfileArgumentResult for GameProfileArgumentSelectorResult {
-    fn get_names(&self, sender: JRef<CommandSourceStack>) -> Result<Vec<NameAndId>, Throwable> { GameProfileArgumentSelectorResult::get_names(self, sender) }
+    fn get_names(&self, sender: JRef<CommandSourceStack>) -> Result<Vec<NameAndId>, anyhow::Error> { GameProfileArgumentSelectorResult::get_names(self, sender) }
 }
 crate::jobject!(GameProfileArgumentSelectorResult: dyn GameProfileArgumentResult);

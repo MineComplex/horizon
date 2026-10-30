@@ -5,10 +5,6 @@ use crate::api_impl::util::craft_structure_transformer::CraftStructureTransforme
 use crate::api_impl::util::delegated_level_accessor::DelegatedLevelAccessor;
 use crate::ca::spottedleaf::moonrise::patches::chunk_system::level::chunk_system_level_reader::ChunkSystemLevelReader;
 use crate::ca::spottedleaf::moonrise::patches::chunk_system::world::chunk_system_entity_getter::ChunkSystemEntityGetter;
-use crate::java::lang::Class;
-use crate::java::util::function::Predicate;
-use crate::java::util::function::Supplier;
-use crate::java::util::stream::Stream;
 use crate::net::minecraft::core::block_pos::BlockPos;
 use crate::net::minecraft::core::direction::Direction;
 use crate::net::minecraft::core::holder::Holder;
@@ -104,7 +100,7 @@ impl TransformerLevelAccessor {
 impl WorldGenLevel for TransformerLevelAccessor {
     fn get_seed(&self) -> i64 { DelegatedLevelAccessor::get_seed(self) }
     fn ensure_can_write(&self, pos: BlockPos) -> bool { DelegatedLevelAccessor::ensure_can_write(self, pos) }
-    fn set_currently_generating(&self, currently_generating: Option<JRef<dyn Supplier<String>>>) { DelegatedLevelAccessor::set_currently_generating(self, currently_generating) }
+    fn set_currently_generating(&self, currently_generating: Option<Arc<dyn Fn() -> String + Send + Sync>>) { DelegatedLevelAccessor::set_currently_generating(self, currently_generating) }
 }
 impl ServerLevelAccessor for TransformerLevelAccessor {
     fn get_level(&self) -> JRef<ServerLevel> { DelegatedLevelAccessor::get_level(self) }
@@ -144,7 +140,7 @@ impl LevelReader for TransformerLevelAccessor {
     fn get_biome_manager(&self) -> JRef<BiomeManager> { DelegatedLevelAccessor::get_biome_manager(self) }
     fn get_biome(&self, pos: BlockPos) -> JRef<dyn Holder<JRef<Biome>>> { DelegatedLevelAccessor::get_biome(self, pos) }
     fn get_biome_cached(&self, chunk: JRef<dyn LevelChunkTrait>, pos: BlockPos) -> JRef<dyn Holder<JRef<Biome>>> { DelegatedLevelAccessor::get_biome_cached(self, chunk, pos) }
-    fn get_block_states_if_loaded(&self, box_: AABB) -> Stream<JRef<crate::net::minecraft::world::level::block::state::block_state::BlockState>> { DelegatedLevelAccessor::get_block_states_if_loaded(self, box_) }
+    fn get_block_states_if_loaded(&self, box_: AABB) -> Box<dyn Iterator<Item = JRef<crate::net::minecraft::world::level::block::state::block_state::BlockState>> + Send> { DelegatedLevelAccessor::get_block_states_if_loaded(self, box_) }
     fn get_uncached_noise_biome(&self, quart_x: i32, quart_y: i32, quart_z: i32) -> JRef<dyn Holder<JRef<Biome>>> { DelegatedLevelAccessor::get_uncached_noise_biome(self, quart_x, quart_y, quart_z) }
     fn is_client_side(&self) -> bool { DelegatedLevelAccessor::is_client_side(self) }
     fn get_sea_level(&self) -> i32 { DelegatedLevelAccessor::get_sea_level(self) }
@@ -182,13 +178,13 @@ impl BlockGetter for TransformerLevelAccessor {
     fn get_fluid_if_loaded(&self, pos: BlockPos) -> Option<JRef<FluidState>> { DelegatedLevelAccessor::get_fluid_if_loaded(self, pos) }
     fn get_fluid_state(&self, pos: BlockPos) -> JRef<FluidState> { DelegatedLevelAccessor::get_fluid_state(self, pos) }
     fn get_light_emission(&self, pos: BlockPos) -> i32 { DelegatedLevelAccessor::get_light_emission(self, pos) }
-    fn get_block_states(&self, box_: AABB) -> Stream<JRef<crate::net::minecraft::world::level::block::state::block_state::BlockState>> { DelegatedLevelAccessor::get_block_states(self, box_) }
+    fn get_block_states(&self, box_: AABB) -> Box<dyn Iterator<Item = JRef<crate::net::minecraft::world::level::block::state::block_state::BlockState>> + Send> { DelegatedLevelAccessor::get_block_states(self, box_) }
     fn is_block_in_line(&self, c: JRef<ClipBlockStateContext>) -> JRef<BlockHitResult> { DelegatedLevelAccessor::is_block_in_line(self, c) }
     fn clip(&self, c: JRef<ClipContext>) -> JRef<BlockHitResult> { DelegatedLevelAccessor::clip(self, c) }
     fn clip_2(&self, c: JRef<ClipContext>, pos: BlockPos) -> JRef<BlockHitResult> { DelegatedLevelAccessor::clip_2(self, c, pos) }
     fn clip_with_interaction_override(&self, from: Vec3, to: Vec3, pos: BlockPos, block_shape: JRef<dyn VoxelShapeTrait>, block_state: JRef<crate::net::minecraft::world::level::block::state::block_state::BlockState>) -> Option<JRef<BlockHitResult>> { DelegatedLevelAccessor::clip_with_interaction_override(self, from, to, pos, block_shape, block_state) }
     fn get_block_floor_height(&self, pos: BlockPos) -> f64 { DelegatedLevelAccessor::get_block_floor_height(self, pos) }
-    fn get_block_floor_height_2(&self, block_shape: JRef<dyn VoxelShapeTrait>, below_block_shape: JRef<dyn Supplier<JRef<dyn VoxelShapeTrait>>>) -> f64 { DelegatedLevelAccessor::get_block_floor_height_2(self, block_shape, below_block_shape) }
+    fn get_block_floor_height_2(&self, block_shape: JRef<dyn VoxelShapeTrait>, below_block_shape: Arc<dyn Fn() -> JRef<dyn VoxelShapeTrait> + Send + Sync>) -> f64 { DelegatedLevelAccessor::get_block_floor_height_2(self, block_shape, below_block_shape) }
 }
 impl LevelHeightAccessor for TransformerLevelAccessor {
     fn get_height(&self) -> i32 { DelegatedLevelAccessor::get_height(self) }
@@ -242,8 +238,8 @@ impl ChunkSystemLevelReader for TransformerLevelAccessor {
 impl LevelSimulatedRW for TransformerLevelAccessor {
 }
 impl LevelSimulatedReader for TransformerLevelAccessor {
-    fn is_state_at_position(&self, pos: BlockPos, predicate: JRef<dyn Predicate<JRef<crate::net::minecraft::world::level::block::state::block_state::BlockState>>>) -> bool { DelegatedLevelAccessor::is_state_at_position(self, pos, predicate) }
-    fn is_fluid_at_position(&self, pos: BlockPos, predicate: JRef<dyn Predicate<JRef<FluidState>>>) -> bool { DelegatedLevelAccessor::is_fluid_at_position(self, pos, predicate) }
+    fn is_state_at_position(&self, pos: BlockPos, predicate: Arc<dyn Fn(JRef<crate::net::minecraft::world::level::block::state::block_state::BlockState>) -> bool + Send + Sync>) -> bool { DelegatedLevelAccessor::is_state_at_position(self, pos, predicate) }
+    fn is_fluid_at_position(&self, pos: BlockPos, predicate: Arc<dyn Fn(JRef<FluidState>) -> bool + Send + Sync>) -> bool { DelegatedLevelAccessor::is_fluid_at_position(self, pos, predicate) }
     fn get_block_entity<T: JGeneric>(&self, pos: BlockPos, type_: JRef<BlockEntityType<T>>) -> Option<T> where Self: Sized { DelegatedLevelAccessor::get_block_entity::<T>(self, pos, type_) }
     fn get_heightmap_pos(&self, type_: HeightmapTypes, pos: BlockPos) -> BlockPos { DelegatedLevelAccessor::get_heightmap_pos(self, type_, pos) }
 }
@@ -256,21 +252,21 @@ impl LevelWriter for TransformerLevelAccessor {
 }
 impl EntityGetter for TransformerLevelAccessor {
     fn get_entities(&self, except: Option<JRef<dyn EntityTrait>>, bb: AABB) -> Vec<JRef<dyn EntityTrait>> { DelegatedLevelAccessor::get_entities(self, except, bb) }
-    fn get_entities_3(&self, except: Option<JRef<dyn EntityTrait>>, bb: AABB, selector: JRef<dyn Predicate<JObjectRef>>) -> Vec<JRef<dyn EntityTrait>> { DelegatedLevelAccessor::get_entities_3(self, except, bb, selector) }
-    fn get_entities_3_2<T: JGeneric>(&self, type_: JRef<dyn EntityTypeTest<JRef<dyn EntityTrait>, T>>, bb: AABB, selector: JRef<dyn Predicate<JObjectRef>>) -> Vec<T> where Self: Sized { DelegatedLevelAccessor::get_entities_3_2::<T>(self, type_, bb, selector) }
-    fn get_entities_of_class<T: JGeneric>(&self, base_class: Class, bb: AABB) -> Vec<T> where Self: Sized { DelegatedLevelAccessor::get_entities_of_class::<T>(self, base_class, bb) }
-    fn get_entities_of_class_3<T: JGeneric>(&self, base_class: Class, bb: AABB, selector: JRef<dyn Predicate<JObjectRef>>) -> Vec<T> where Self: Sized { DelegatedLevelAccessor::get_entities_of_class_3::<T>(self, base_class, bb, selector) }
+    fn get_entities_3(&self, except: Option<JRef<dyn EntityTrait>>, bb: AABB, selector: Arc<dyn Fn(JObjectRef) -> bool + Send + Sync>) -> Vec<JRef<dyn EntityTrait>> { DelegatedLevelAccessor::get_entities_3(self, except, bb, selector) }
+    fn get_entities_3_2<T: JGeneric>(&self, type_: JRef<dyn EntityTypeTest<JRef<dyn EntityTrait>, T>>, bb: AABB, selector: Arc<dyn Fn(JObjectRef) -> bool + Send + Sync>) -> Vec<T> where Self: Sized { DelegatedLevelAccessor::get_entities_3_2::<T>(self, type_, bb, selector) }
+    fn get_entities_of_class<T: JGeneric>(&self, base_class: crate::rt::Class, bb: AABB) -> Vec<T> where Self: Sized { DelegatedLevelAccessor::get_entities_of_class::<T>(self, base_class, bb) }
+    fn get_entities_of_class_3<T: JGeneric>(&self, base_class: crate::rt::Class, bb: AABB, selector: Arc<dyn Fn(JObjectRef) -> bool + Send + Sync>) -> Vec<T> where Self: Sized { DelegatedLevelAccessor::get_entities_of_class_3::<T>(self, base_class, bb, selector) }
     fn players(&self) -> Vec<JRef<dyn PlayerTrait>> { DelegatedLevelAccessor::players(self) }
     fn is_unobstructed(&self, source: Option<JRef<dyn EntityTrait>>, shape: JRef<dyn VoxelShapeTrait>) -> bool { DelegatedLevelAccessor::is_unobstructed(self, source, shape) }
     fn get_entity_collisions(&self, source: Option<JRef<dyn EntityTrait>>, test_area: AABB) -> Vec<JRef<dyn VoxelShapeTrait>> { DelegatedLevelAccessor::get_entity_collisions(self, source, test_area) }
     fn get_nearest_player(&self, source: JRef<dyn EntityTrait>, max_dist: f64) -> Option<JRef<dyn PlayerTrait>> { DelegatedLevelAccessor::get_nearest_player(self, source, max_dist) }
-    fn get_nearest_player_5(&self, x: f64, y: f64, z: f64, range: f64, predicate: Option<JRef<dyn Predicate<JRef<dyn EntityTrait>>>>) -> Option<JRef<dyn PlayerTrait>> { DelegatedLevelAccessor::get_nearest_player_5(self, x, y, z, range, predicate) }
+    fn get_nearest_player_5(&self, x: f64, y: f64, z: f64, range: f64, predicate: Option<Arc<dyn Fn(JRef<dyn EntityTrait>) -> bool + Send + Sync>>) -> Option<JRef<dyn PlayerTrait>> { DelegatedLevelAccessor::get_nearest_player_5(self, x, y, z, range, predicate) }
     fn get_nearest_player_5_2(&self, x: f64, y: f64, z: f64, max_dist: f64, filter_out_creative: bool) -> Option<JRef<dyn PlayerTrait>> { DelegatedLevelAccessor::get_nearest_player_5_2(self, x, y, z, max_dist, filter_out_creative) }
     fn has_nearby_alive_player(&self, x: f64, y: f64, z: f64, range: f64) -> bool { DelegatedLevelAccessor::has_nearby_alive_player(self, x, y, z, range) }
     fn get_player_by_uuid(&self, uuid: Uuid) -> Option<JRef<dyn PlayerTrait>> { DelegatedLevelAccessor::get_player_by_uuid(self, uuid) }
 }
 impl ChunkSystemEntityGetter for TransformerLevelAccessor {
-    fn moonrise_get_hard_colliding_entities(&self, entity: JRef<dyn EntityTrait>, box_: AABB, predicate: JRef<dyn Predicate<JObjectRef>>) -> Vec<JRef<dyn EntityTrait>> { todo!("abstract ChunkSystemEntityGetter.moonrise$getHardCollidingEntities") }
+    fn moonrise_get_hard_colliding_entities(&self, entity: JRef<dyn EntityTrait>, box_: AABB, predicate: Arc<dyn Fn(JObjectRef) -> bool + Send + Sync>) -> Vec<JRef<dyn EntityTrait>> { todo!("abstract ChunkSystemEntityGetter.moonrise$getHardCollidingEntities") }
 }
 impl ScheduledTickAccess for TransformerLevelAccessor {
     fn create_tick<T: JGeneric>(&self, pos: BlockPos, type_: T, tick_delay: i32) -> ScheduledTick<T> where Self: Sized { todo!("abstract ScheduledTickAccess.createTick") }

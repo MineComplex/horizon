@@ -5,11 +5,6 @@ use crate::com::mojang::brigadier::command_dispatcher::CommandDispatcher;
 use crate::com::mojang::brigadier::exceptions::Dynamic2CommandExceptionType;
 use crate::com::mojang::brigadier::exceptions::SimpleCommandExceptionType;
 use crate::com::mojang::brigadier::exceptions::command_syntax_exception::CommandSyntaxExceptionTrait;
-use crate::com::mojang::datafixers::util::either::EitherTrait;
-use crate::java::lang::Throwable;
-use crate::java::util::function::Consumer;
-use crate::java::util::function::Predicate;
-use crate::java::util::function::Supplier;
 use crate::net::minecraft::commands::command_build_context::CommandBuildContext;
 use crate::net::minecraft::commands::command_source_stack::CommandSourceStack;
 use crate::net::minecraft::core::block_pos::BlockPos;
@@ -21,7 +16,6 @@ use crate::net::minecraft::world::level::biome::biome::Biome;
 use crate::net::minecraft::world::level::biome::biome_resolver::BiomeResolver;
 use crate::net::minecraft::world::level::chunk::chunk_access::ChunkAccessTrait;
 use crate::net::minecraft::world::level::levelgen::structure::bounding_box::BoundingBox;
-use crate::org::apache::commons::lang3::mutable::MutableInt;
 
 // ---- class net.minecraft.server.commands.FillBiomeCommand (leaf-server/src/minecraft/java/net/minecraft/server/commands/FillBiomeCommand.java:36)
 pub struct FillBiomeCommand {
@@ -36,9 +30,9 @@ impl FillBiomeCommand {
     pub fn register(dispatcher: JRef<CommandDispatcher<JRef<CommandSourceStack>>>, context: JRef<dyn CommandBuildContext>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/FillBiomeCommand.java:43
     pub fn quantize(block_coord: i32) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/FillBiomeCommand.java:83
     pub fn quantize_1(block: BlockPos) -> BlockPos { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/FillBiomeCommand.java:87
-    pub fn make_resolver(count: MutableInt, chunk: JRef<dyn ChunkAccessTrait>, region: JRef<BoundingBox>, to_fill: JRef<dyn Holder<JRef<Biome>>>, filter: JRef<dyn Predicate<JRef<dyn Holder<JRef<Biome>>>>>) -> JRef<dyn BiomeResolver> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/FillBiomeCommand.java:91
-    pub fn fill(level: JRef<ServerLevel>, raw_from: BlockPos, raw_to: BlockPos, biome: JRef<dyn Holder<JRef<Biome>>>) -> JRef<dyn EitherTrait<i32, JRef<dyn CommandSyntaxExceptionTrait>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/FillBiomeCommand.java:111
-    pub fn fill_5(source: JRef<CommandSourceStack>, raw_from: BlockPos, raw_to: BlockPos, biome: JRef<dyn HolderReferenceTrait<JRef<Biome>>>, filter: JRef<dyn Predicate<JRef<dyn Holder<JRef<Biome>>>>>) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/FillBiomeCommand.java:180
-    pub fn fill_6(level: JRef<ServerLevel>, raw_from: BlockPos, raw_to: BlockPos, biome: JRef<dyn Holder<JRef<Biome>>>, filter: JRef<dyn Predicate<JRef<dyn Holder<JRef<Biome>>>>>, success_message_consumer: JRef<dyn Consumer<JRef<dyn Supplier<JRef<dyn Component>>>>>) -> JRef<dyn EitherTrait<i32, JRef<dyn CommandSyntaxExceptionTrait>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/FillBiomeCommand.java:115
+    pub fn make_resolver(count: i32, chunk: JRef<dyn ChunkAccessTrait>, region: JRef<BoundingBox>, to_fill: JRef<dyn Holder<JRef<Biome>>>, filter: Arc<dyn Fn(JRef<dyn Holder<JRef<Biome>>>) -> bool + Send + Sync>) -> JRef<dyn BiomeResolver> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/FillBiomeCommand.java:91
+    pub fn fill(level: JRef<ServerLevel>, raw_from: BlockPos, raw_to: BlockPos, biome: JRef<dyn Holder<JRef<Biome>>>) -> () { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/FillBiomeCommand.java:111
+    pub fn fill_5(source: JRef<CommandSourceStack>, raw_from: BlockPos, raw_to: BlockPos, biome: JRef<dyn HolderReferenceTrait<JRef<Biome>>>, filter: Arc<dyn Fn(JRef<dyn Holder<JRef<Biome>>>) -> bool + Send + Sync>) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/FillBiomeCommand.java:180
+    pub fn fill_6(level: JRef<ServerLevel>, raw_from: BlockPos, raw_to: BlockPos, biome: JRef<dyn Holder<JRef<Biome>>>, filter: Arc<dyn Fn(JRef<dyn Holder<JRef<Biome>>>) -> bool + Send + Sync>, success_message_consumer: Arc<dyn Fn(JRef<dyn Supplier<JRef<dyn Component>>>) + Send + Sync>) -> () { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/FillBiomeCommand.java:115
 }
 crate::jobject!(FillBiomeCommand);

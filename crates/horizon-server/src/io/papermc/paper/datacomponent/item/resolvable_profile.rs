@@ -4,8 +4,6 @@ use crate::api_prelude::*;
 use crate::com::destroystokyo::paper::profile::player_profile::PlayerProfile;
 use crate::com::destroystokyo::paper::profile::profile_property::ProfileProperty;
 use crate::io::papermc::paper::datacomponent::data_component_builder::DataComponentBuilder;
-use crate::java::util::concurrent::CompletableFuture;
-use crate::java::util::function::Consumer;
 use crate::net::kyori::adventure::key::Key;
 use crate::net::kyori::adventure::text::object::PlayerHeadObjectContentsSkinSource;
 use crate::org::bukkit::profile::player_textures::PlayerTexturesSkinModel;
@@ -17,7 +15,7 @@ pub trait ResolvableProfile: PlayerHeadObjectContentsSkinSource {
     fn name(&self) -> Option<String>; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/ResolvableProfile.java:41
     fn properties(&self) -> Vec<ProfileProperty>; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/ResolvableProfile.java:45
     fn dynamic(&self) -> bool; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/ResolvableProfile.java:58
-    fn resolve(&self) -> CompletableFuture<JRef<dyn PlayerProfile>>; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/ResolvableProfile.java:100
+    fn resolve(&self) -> crate::rt::CompletableFuture<JRef<dyn PlayerProfile>>; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/ResolvableProfile.java:100
     fn skin_patch(&self) -> JRef<dyn ResolvableProfileSkinPatch>; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/ResolvableProfile.java:109
 }
 pub fn resolvable_profile() -> JRef<dyn ResolvableProfileBuilder> {
@@ -80,6 +78,6 @@ pub trait ResolvableProfileBuilder: DataComponentBuilder<JRef<dyn ResolvableProf
     ) -> JRef<dyn ResolvableProfileBuilder>; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/ResolvableProfile.java:274
     fn skin_patch_1(
         &self,
-        configure: JRef<dyn Consumer<JRef<dyn ResolvableProfileSkinPatchBuilder>>>,
+        configure: Arc<dyn Fn(JRef<dyn ResolvableProfileSkinPatchBuilder>) + Send + Sync>,
     ) -> JRef<dyn ResolvableProfileBuilder>; // paper-api/src/main/java/io/papermc/paper/datacomponent/item/ResolvableProfile.java:284
 }

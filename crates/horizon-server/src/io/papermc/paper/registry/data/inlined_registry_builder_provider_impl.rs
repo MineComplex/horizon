@@ -8,7 +8,6 @@ use crate::io::papermc::paper::registry::data::instrument_registry_entry::Instru
 use crate::io::papermc::paper::registry::data::trim_material_registry_entry::TrimMaterialRegistryEntryBuilder;
 use crate::io::papermc::paper::registry::data::trim_pattern_registry_entry::TrimPatternRegistryEntryBuilder;
 use crate::io::papermc::paper::registry::registry_builder_factory::RegistryBuilderFactory;
-use crate::java::util::function::Consumer;
 use crate::org::bukkit::inventory::meta::trim::trim_material::TrimMaterial;
 use crate::org::bukkit::inventory::meta::trim::trim_pattern::TrimPattern;
 use crate::org::bukkit::music_instrument::MusicInstrumentTrait;
@@ -20,17 +19,17 @@ pub struct InlinedRegistryBuilderProviderImpl {
 impl InlinedRegistryBuilderProviderImpl {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/InlinedRegistryBuilderProviderImpl.java:13
-    pub fn create_instrument(&self, value: JRef<dyn Consumer<JRef<dyn RegistryBuilderFactory<JRef<dyn MusicInstrumentTrait>, JRef<dyn InstrumentRegistryEntryBuilder>>>>>) -> JRef<dyn MusicInstrumentTrait> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/InlinedRegistryBuilderProviderImpl.java:15
-    pub fn create_dialog(&self, value: JRef<dyn Consumer<JRef<dyn RegistryBuilderFactory<JRef<dyn Dialog>, JRef<dyn DialogRegistryEntryBuilder>>>>>) -> JRef<dyn Dialog> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/InlinedRegistryBuilderProviderImpl.java:20
-    pub fn create_trim_material(&self, value: JRef<dyn Consumer<JRef<dyn RegistryBuilderFactory<JRef<dyn TrimMaterial>, JRef<dyn TrimMaterialRegistryEntryBuilder>>>>>) -> JRef<dyn TrimMaterial> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/InlinedRegistryBuilderProviderImpl.java:25
-    pub fn create_trim_pattern(&self, value: JRef<dyn Consumer<JRef<dyn RegistryBuilderFactory<JRef<dyn TrimPattern>, JRef<dyn TrimPatternRegistryEntryBuilder>>>>>) -> JRef<dyn TrimPattern> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/InlinedRegistryBuilderProviderImpl.java:30
+    pub fn create_instrument(&self, value: Arc<dyn Fn(JRef<dyn RegistryBuilderFactory<JRef<dyn MusicInstrumentTrait>, JRef<dyn InstrumentRegistryEntryBuilder>>>) + Send + Sync>) -> JRef<dyn MusicInstrumentTrait> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/InlinedRegistryBuilderProviderImpl.java:15
+    pub fn create_dialog(&self, value: Arc<dyn Fn(JRef<dyn RegistryBuilderFactory<JRef<dyn Dialog>, JRef<dyn DialogRegistryEntryBuilder>>>) + Send + Sync>) -> JRef<dyn Dialog> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/InlinedRegistryBuilderProviderImpl.java:20
+    pub fn create_trim_material(&self, value: Arc<dyn Fn(JRef<dyn RegistryBuilderFactory<JRef<dyn TrimMaterial>, JRef<dyn TrimMaterialRegistryEntryBuilder>>>) + Send + Sync>) -> JRef<dyn TrimMaterial> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/InlinedRegistryBuilderProviderImpl.java:25
+    pub fn create_trim_pattern(&self, value: Arc<dyn Fn(JRef<dyn RegistryBuilderFactory<JRef<dyn TrimPattern>, JRef<dyn TrimPatternRegistryEntryBuilder>>>) + Send + Sync>) -> JRef<dyn TrimPattern> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/InlinedRegistryBuilderProviderImpl.java:30
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl InlinedRegistryBuilderProvider for InlinedRegistryBuilderProviderImpl {
-    fn create_instrument(&self, value: JRef<dyn Consumer<JRef<dyn RegistryBuilderFactory<JRef<dyn MusicInstrumentTrait>, JRef<dyn InstrumentRegistryEntryBuilder>>>>>) -> JRef<dyn MusicInstrumentTrait> { InlinedRegistryBuilderProviderImpl::create_instrument(self, value) }
-    fn create_dialog(&self, value: JRef<dyn Consumer<JRef<dyn RegistryBuilderFactory<JRef<dyn Dialog>, JRef<dyn DialogRegistryEntryBuilder>>>>>) -> JRef<dyn Dialog> { InlinedRegistryBuilderProviderImpl::create_dialog(self, value) }
-    fn create_trim_material(&self, value: JRef<dyn Consumer<JRef<dyn RegistryBuilderFactory<JRef<dyn TrimMaterial>, JRef<dyn TrimMaterialRegistryEntryBuilder>>>>>) -> JRef<dyn TrimMaterial> { InlinedRegistryBuilderProviderImpl::create_trim_material(self, value) }
-    fn create_trim_pattern(&self, value: JRef<dyn Consumer<JRef<dyn RegistryBuilderFactory<JRef<dyn TrimPattern>, JRef<dyn TrimPatternRegistryEntryBuilder>>>>>) -> JRef<dyn TrimPattern> { InlinedRegistryBuilderProviderImpl::create_trim_pattern(self, value) }
+    fn create_instrument(&self, value: Arc<dyn Fn(JRef<dyn RegistryBuilderFactory<JRef<dyn MusicInstrumentTrait>, JRef<dyn InstrumentRegistryEntryBuilder>>>) + Send + Sync>) -> JRef<dyn MusicInstrumentTrait> { InlinedRegistryBuilderProviderImpl::create_instrument(self, value) }
+    fn create_dialog(&self, value: Arc<dyn Fn(JRef<dyn RegistryBuilderFactory<JRef<dyn Dialog>, JRef<dyn DialogRegistryEntryBuilder>>>) + Send + Sync>) -> JRef<dyn Dialog> { InlinedRegistryBuilderProviderImpl::create_dialog(self, value) }
+    fn create_trim_material(&self, value: Arc<dyn Fn(JRef<dyn RegistryBuilderFactory<JRef<dyn TrimMaterial>, JRef<dyn TrimMaterialRegistryEntryBuilder>>>) + Send + Sync>) -> JRef<dyn TrimMaterial> { InlinedRegistryBuilderProviderImpl::create_trim_material(self, value) }
+    fn create_trim_pattern(&self, value: Arc<dyn Fn(JRef<dyn RegistryBuilderFactory<JRef<dyn TrimPattern>, JRef<dyn TrimPatternRegistryEntryBuilder>>>) + Send + Sync>) -> JRef<dyn TrimPattern> { InlinedRegistryBuilderProviderImpl::create_trim_pattern(self, value) }
 }
 crate::jobject!(InlinedRegistryBuilderProviderImpl: dyn InlinedRegistryBuilderProvider);

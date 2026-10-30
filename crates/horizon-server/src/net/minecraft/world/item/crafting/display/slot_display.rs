@@ -3,8 +3,6 @@
 use crate::prelude::*;
 use crate::com::mojang::serialization::Codec;
 use crate::com::mojang::serialization::MapCodec;
-use crate::java::util::function::BinaryOperator;
-use crate::java::util::stream::Stream;
 use crate::net::minecraft::core::component::data_component_type::DataComponentType;
 use crate::net::minecraft::core::holder::Holder;
 use crate::net::minecraft::core::holder_set::HolderSet;
@@ -22,7 +20,7 @@ use crate::net::minecraft::world::item::item_stack_template::ItemStackTemplate;
 
 // ---- interface net.minecraft.world.item.crafting.display.SlotDisplay (leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/display/SlotDisplay.java:37)
 pub trait SlotDisplay: JObject {
-    fn resolve<T: JGeneric>(&self, context: JRef<ContextMap>, builder: JRef<dyn DisplayContentsFactory<T>>) -> Stream<T> where Self: Sized; // leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/display/SlotDisplay.java:42
+    fn resolve<T: JGeneric>(&self, context: JRef<ContextMap>, builder: JRef<dyn DisplayContentsFactory<T>>) -> Box<dyn Iterator<Item = T> + Send> where Self: Sized; // leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/display/SlotDisplay.java:42
     fn type_(&self) -> SlotDisplayType<JRef<dyn SlotDisplay>>; // leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/display/SlotDisplay.java:44
     fn is_enabled(&self, enabled_features: FeatureFlagSet) -> bool { todo!() } // default, leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/display/SlotDisplay.java:46
     fn resolve_for_stacks(&self, context: JRef<ContextMap>) -> Vec<JRef<ItemStack>> { todo!() } // default, leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/display/SlotDisplay.java:50
@@ -30,8 +28,8 @@ pub trait SlotDisplay: JObject {
 }
 pub static CODEC: LazyLock<JRef<dyn Codec<JRef<dyn SlotDisplay>>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/display/SlotDisplay.java:38
 pub static STREAM_CODEC: LazyLock<JRef<dyn StreamCodec<JRef<RegistryFriendlyByteBuf>, JRef<dyn SlotDisplay>>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/display/SlotDisplay.java:39
-pub fn apply_demo_transformation<T: JGeneric>(context: JRef<ContextMap>, factory: JRef<dyn DisplayContentsFactory<T>>, first_display: JRef<dyn SlotDisplay>, second_display: JRef<dyn SlotDisplay>, operation: JRef<dyn BinaryOperator<JRef<ItemStack>>>) -> Stream<T> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/display/SlotDisplay.java:83
-pub fn apply_demo_transformation_6<T: JGeneric>(context: JRef<ContextMap>, factory: JRef<dyn DisplayContentsFactory<T>>, first_display: JRef<dyn SlotDisplay>, second_display: JRef<dyn SlotDisplay>, random_source: JRef<dyn RandomSource>, operation: JRef<dyn BinaryOperator<JRef<ItemStack>>>) -> Stream<T> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/display/SlotDisplay.java:58
+pub fn apply_demo_transformation<T: JGeneric>(context: JRef<ContextMap>, factory: JRef<dyn DisplayContentsFactory<T>>, first_display: JRef<dyn SlotDisplay>, second_display: JRef<dyn SlotDisplay>, operation: Arc<dyn Fn(JRef<ItemStack>, JRef<ItemStack>) -> JRef<ItemStack> + Send + Sync>) -> Box<dyn Iterator<Item = T> + Send> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/display/SlotDisplay.java:83
+pub fn apply_demo_transformation_6<T: JGeneric>(context: JRef<ContextMap>, factory: JRef<dyn DisplayContentsFactory<T>>, first_display: JRef<dyn SlotDisplay>, second_display: JRef<dyn SlotDisplay>, random_source: JRef<dyn RandomSource>, operation: Arc<dyn Fn(JRef<ItemStack>, JRef<ItemStack>) -> JRef<ItemStack> + Send + Sync>) -> Box<dyn Iterator<Item = T> + Send> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/display/SlotDisplay.java:58
 // ---- class net.minecraft.world.item.crafting.display.SlotDisplay.AnyFuel (leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/display/SlotDisplay.java:115)
 pub struct SlotDisplayAnyFuel {
     pub this: Weak<Self>,
@@ -44,13 +42,13 @@ impl SlotDisplayAnyFuel {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/display/SlotDisplay.java:121
     pub fn type_(&self) -> SlotDisplayType<JRef<SlotDisplayAnyFuel>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/display/SlotDisplay.java:124
-    pub fn resolve<T: JGeneric>(&self, context: JRef<ContextMap>, factory: JRef<dyn DisplayContentsFactory<T>>) -> Stream<T> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/display/SlotDisplay.java:134
+    pub fn resolve<T: JGeneric>(&self, context: JRef<ContextMap>, factory: JRef<dyn DisplayContentsFactory<T>>) -> Box<dyn Iterator<Item = T> + Send> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/display/SlotDisplay.java:134
     pub fn to_string(&self) -> String { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/display/SlotDisplay.java:129
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl SlotDisplay for SlotDisplayAnyFuel {
-    fn resolve<T: JGeneric>(&self, context: JRef<ContextMap>, builder: JRef<dyn DisplayContentsFactory<T>>) -> Stream<T> where Self: Sized { SlotDisplayAnyFuel::resolve::<T>(self, context, builder) }
+    fn resolve<T: JGeneric>(&self, context: JRef<ContextMap>, builder: JRef<dyn DisplayContentsFactory<T>>) -> Box<dyn Iterator<Item = T> + Send> where Self: Sized { SlotDisplayAnyFuel::resolve::<T>(self, context, builder) }
     fn type_(&self) -> SlotDisplayType<JRef<dyn SlotDisplay>> { SlotDisplayAnyFuel::type_(self) }
 }
 crate::jobject!(SlotDisplayAnyFuel: dyn SlotDisplay);
@@ -66,13 +64,13 @@ impl SlotDisplayComposite {
     pub fn new() -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/display/SlotDisplay.java:147
     pub fn new_1(contents: &Vec<JRef<dyn SlotDisplay>>) -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/display/SlotDisplay.java:147
     pub fn type_(&self) -> SlotDisplayType<SlotDisplayComposite> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/display/SlotDisplay.java:156
-    pub fn resolve<T: JGeneric>(&self, context: JRef<ContextMap>, factory: JRef<dyn DisplayContentsFactory<T>>) -> Stream<T> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/display/SlotDisplay.java:161
+    pub fn resolve<T: JGeneric>(&self, context: JRef<ContextMap>, factory: JRef<dyn DisplayContentsFactory<T>>) -> Box<dyn Iterator<Item = T> + Send> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/display/SlotDisplay.java:161
     pub fn is_enabled(&self, enabled_features: FeatureFlagSet) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/display/SlotDisplay.java:166
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl SlotDisplay for SlotDisplayComposite {
-    fn resolve<T: JGeneric>(&self, context: JRef<ContextMap>, builder: JRef<dyn DisplayContentsFactory<T>>) -> Stream<T> where Self: Sized { SlotDisplayComposite::resolve::<T>(self, context, builder) }
+    fn resolve<T: JGeneric>(&self, context: JRef<ContextMap>, builder: JRef<dyn DisplayContentsFactory<T>>) -> Box<dyn Iterator<Item = T> + Send> where Self: Sized { SlotDisplayComposite::resolve::<T>(self, context, builder) }
     fn type_(&self) -> SlotDisplayType<JRef<dyn SlotDisplay>> { SlotDisplayComposite::type_(self) }
     fn is_enabled(&self, enabled_features: FeatureFlagSet) -> bool { SlotDisplayComposite::is_enabled(self, enabled_features) }
 }
@@ -90,12 +88,12 @@ impl SlotDisplayDyedSlotDemo {
     pub fn new() -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/display/SlotDisplay.java:172
     pub fn new_2(dye: JRef<dyn SlotDisplay>, target: JRef<dyn SlotDisplay>) -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/display/SlotDisplay.java:172
     pub fn type_(&self) -> SlotDisplayType<SlotDisplayDyedSlotDemo> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/display/SlotDisplay.java:185
-    pub fn resolve<T: JGeneric>(&self, context: JRef<ContextMap>, factory: JRef<dyn DisplayContentsFactory<T>>) -> Stream<T> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/display/SlotDisplay.java:190
+    pub fn resolve<T: JGeneric>(&self, context: JRef<ContextMap>, factory: JRef<dyn DisplayContentsFactory<T>>) -> Box<dyn Iterator<Item = T> + Send> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/display/SlotDisplay.java:190
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl SlotDisplay for SlotDisplayDyedSlotDemo {
-    fn resolve<T: JGeneric>(&self, context: JRef<ContextMap>, builder: JRef<dyn DisplayContentsFactory<T>>) -> Stream<T> where Self: Sized { SlotDisplayDyedSlotDemo::resolve::<T>(self, context, builder) }
+    fn resolve<T: JGeneric>(&self, context: JRef<ContextMap>, builder: JRef<dyn DisplayContentsFactory<T>>) -> Box<dyn Iterator<Item = T> + Send> where Self: Sized { SlotDisplayDyedSlotDemo::resolve::<T>(self, context, builder) }
     fn type_(&self) -> SlotDisplayType<JRef<dyn SlotDisplay>> { SlotDisplayDyedSlotDemo::type_(self) }
 }
 crate::jobject!(SlotDisplayDyedSlotDemo: dyn SlotDisplay);
@@ -111,13 +109,13 @@ impl SlotDisplayEmpty {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/display/SlotDisplay.java:206
     pub fn type_(&self) -> SlotDisplayType<JRef<SlotDisplayEmpty>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/display/SlotDisplay.java:209
-    pub fn resolve<T: JGeneric>(&self, context: JRef<ContextMap>, factory: JRef<dyn DisplayContentsFactory<T>>) -> Stream<T> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/display/SlotDisplay.java:219
+    pub fn resolve<T: JGeneric>(&self, context: JRef<ContextMap>, factory: JRef<dyn DisplayContentsFactory<T>>) -> Box<dyn Iterator<Item = T> + Send> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/display/SlotDisplay.java:219
     pub fn to_string(&self) -> String { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/display/SlotDisplay.java:214
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl SlotDisplay for SlotDisplayEmpty {
-    fn resolve<T: JGeneric>(&self, context: JRef<ContextMap>, builder: JRef<dyn DisplayContentsFactory<T>>) -> Stream<T> where Self: Sized { SlotDisplayEmpty::resolve::<T>(self, context, builder) }
+    fn resolve<T: JGeneric>(&self, context: JRef<ContextMap>, builder: JRef<dyn DisplayContentsFactory<T>>) -> Box<dyn Iterator<Item = T> + Send> where Self: Sized { SlotDisplayEmpty::resolve::<T>(self, context, builder) }
     fn type_(&self) -> SlotDisplayType<JRef<dyn SlotDisplay>> { SlotDisplayEmpty::type_(self) }
 }
 crate::jobject!(SlotDisplayEmpty: dyn SlotDisplay);
@@ -132,13 +130,13 @@ pub static ITEM_SLOT_DISPLAY_TYPE: LazyLock<SlotDisplayType<SlotDisplayItemSlotD
 impl SlotDisplayItemSlotDisplay {
     pub fn new(item: JRef<dyn ItemTrait>) -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/display/SlotDisplay.java:234
     pub fn type_(&self) -> SlotDisplayType<SlotDisplayItemSlotDisplay> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/display/SlotDisplay.java:238
-    pub fn resolve<T: JGeneric>(&self, context: JRef<ContextMap>, factory: JRef<dyn DisplayContentsFactory<T>>) -> Stream<T> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/display/SlotDisplay.java:243
+    pub fn resolve<T: JGeneric>(&self, context: JRef<ContextMap>, factory: JRef<dyn DisplayContentsFactory<T>>) -> Box<dyn Iterator<Item = T> + Send> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/display/SlotDisplay.java:243
     pub fn is_enabled(&self, enabled_features: FeatureFlagSet) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/display/SlotDisplay.java:248
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl SlotDisplay for SlotDisplayItemSlotDisplay {
-    fn resolve<T: JGeneric>(&self, context: JRef<ContextMap>, builder: JRef<dyn DisplayContentsFactory<T>>) -> Stream<T> where Self: Sized { SlotDisplayItemSlotDisplay::resolve::<T>(self, context, builder) }
+    fn resolve<T: JGeneric>(&self, context: JRef<ContextMap>, builder: JRef<dyn DisplayContentsFactory<T>>) -> Box<dyn Iterator<Item = T> + Send> where Self: Sized { SlotDisplayItemSlotDisplay::resolve::<T>(self, context, builder) }
     fn type_(&self) -> SlotDisplayType<JRef<dyn SlotDisplay>> { SlotDisplayItemSlotDisplay::type_(self) }
     fn is_enabled(&self, enabled_features: FeatureFlagSet) -> bool { SlotDisplayItemSlotDisplay::is_enabled(self, enabled_features) }
 }
@@ -173,13 +171,13 @@ impl SlotDisplayItemStackSlotDisplay {
     pub fn new() -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/display/SlotDisplay.java:263
     pub fn new_1(stack: ItemStackTemplate) -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/display/SlotDisplay.java:263
     pub fn type_(&self) -> SlotDisplayType<SlotDisplayItemStackSlotDisplay> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/display/SlotDisplay.java:273
-    pub fn resolve<T: JGeneric>(&self, context: JRef<ContextMap>, factory: JRef<dyn DisplayContentsFactory<T>>) -> Stream<T> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/display/SlotDisplay.java:278
+    pub fn resolve<T: JGeneric>(&self, context: JRef<ContextMap>, factory: JRef<dyn DisplayContentsFactory<T>>) -> Box<dyn Iterator<Item = T> + Send> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/display/SlotDisplay.java:278
     pub fn is_enabled(&self, enabled_features: FeatureFlagSet) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/display/SlotDisplay.java:283
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl SlotDisplay for SlotDisplayItemStackSlotDisplay {
-    fn resolve<T: JGeneric>(&self, context: JRef<ContextMap>, builder: JRef<dyn DisplayContentsFactory<T>>) -> Stream<T> where Self: Sized { SlotDisplayItemStackSlotDisplay::resolve::<T>(self, context, builder) }
+    fn resolve<T: JGeneric>(&self, context: JRef<ContextMap>, builder: JRef<dyn DisplayContentsFactory<T>>) -> Box<dyn Iterator<Item = T> + Send> where Self: Sized { SlotDisplayItemStackSlotDisplay::resolve::<T>(self, context, builder) }
     fn type_(&self) -> SlotDisplayType<JRef<dyn SlotDisplay>> { SlotDisplayItemStackSlotDisplay::type_(self) }
     fn is_enabled(&self, enabled_features: FeatureFlagSet) -> bool { SlotDisplayItemStackSlotDisplay::is_enabled(self, enabled_features) }
 }
@@ -196,13 +194,13 @@ pub static ONLY_WITH_COMPONENT_TYPE: LazyLock<SlotDisplayType<SlotDisplayOnlyWit
 impl SlotDisplayOnlyWithComponent {
     pub fn new() -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/display/SlotDisplay.java:289
     pub fn new_2(source: JRef<dyn SlotDisplay>, component: JRef<dyn DataComponentType<JObjectRef>>) -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/display/SlotDisplay.java:289
-    pub fn resolve<T: JGeneric>(&self, context: JRef<ContextMap>, builder: JRef<dyn DisplayContentsFactory<T>>) -> Stream<T> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/display/SlotDisplay.java:306
+    pub fn resolve<T: JGeneric>(&self, context: JRef<ContextMap>, builder: JRef<dyn DisplayContentsFactory<T>>) -> Box<dyn Iterator<Item = T> + Send> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/display/SlotDisplay.java:306
     pub fn type_(&self) -> SlotDisplayType<SlotDisplayOnlyWithComponent> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/display/SlotDisplay.java:313
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl SlotDisplay for SlotDisplayOnlyWithComponent {
-    fn resolve<T: JGeneric>(&self, context: JRef<ContextMap>, builder: JRef<dyn DisplayContentsFactory<T>>) -> Stream<T> where Self: Sized { SlotDisplayOnlyWithComponent::resolve::<T>(self, context, builder) }
+    fn resolve<T: JGeneric>(&self, context: JRef<ContextMap>, builder: JRef<dyn DisplayContentsFactory<T>>) -> Box<dyn Iterator<Item = T> + Send> where Self: Sized { SlotDisplayOnlyWithComponent::resolve::<T>(self, context, builder) }
     fn type_(&self) -> SlotDisplayType<JRef<dyn SlotDisplay>> { SlotDisplayOnlyWithComponent::type_(self) }
 }
 crate::jobject!(SlotDisplayOnlyWithComponent: dyn SlotDisplay);
@@ -220,12 +218,12 @@ impl SlotDisplaySmithingTrimDemoSlotDisplay {
     pub fn new() -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/display/SlotDisplay.java:319
     pub fn new_3(base: JRef<dyn SlotDisplay>, material: JRef<dyn SlotDisplay>, pattern: JRef<dyn Holder<TrimPattern>>) -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/display/SlotDisplay.java:319
     pub fn type_(&self) -> SlotDisplayType<SlotDisplaySmithingTrimDemoSlotDisplay> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/display/SlotDisplay.java:339
-    pub fn resolve<T: JGeneric>(&self, context: JRef<ContextMap>, factory: JRef<dyn DisplayContentsFactory<T>>) -> Stream<T> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/display/SlotDisplay.java:344
+    pub fn resolve<T: JGeneric>(&self, context: JRef<ContextMap>, factory: JRef<dyn DisplayContentsFactory<T>>) -> Box<dyn Iterator<Item = T> + Send> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/display/SlotDisplay.java:344
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl SlotDisplay for SlotDisplaySmithingTrimDemoSlotDisplay {
-    fn resolve<T: JGeneric>(&self, context: JRef<ContextMap>, builder: JRef<dyn DisplayContentsFactory<T>>) -> Stream<T> where Self: Sized { SlotDisplaySmithingTrimDemoSlotDisplay::resolve::<T>(self, context, builder) }
+    fn resolve<T: JGeneric>(&self, context: JRef<ContextMap>, builder: JRef<dyn DisplayContentsFactory<T>>) -> Box<dyn Iterator<Item = T> + Send> where Self: Sized { SlotDisplaySmithingTrimDemoSlotDisplay::resolve::<T>(self, context, builder) }
     fn type_(&self) -> SlotDisplayType<JRef<dyn SlotDisplay>> { SlotDisplaySmithingTrimDemoSlotDisplay::type_(self) }
 }
 crate::jobject!(SlotDisplaySmithingTrimDemoSlotDisplay: dyn SlotDisplay);
@@ -241,12 +239,12 @@ impl SlotDisplayTagSlotDisplay {
     pub fn new() -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/display/SlotDisplay.java:352
     pub fn new_1(tag: JRef<dyn HolderSet<JRef<dyn ItemTrait>>>) -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/display/SlotDisplay.java:352
     pub fn type_(&self) -> SlotDisplayType<SlotDisplayTagSlotDisplay> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/display/SlotDisplay.java:362
-    pub fn resolve<T: JGeneric>(&self, context: JRef<ContextMap>, factory: JRef<dyn DisplayContentsFactory<T>>) -> Stream<T> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/display/SlotDisplay.java:367
+    pub fn resolve<T: JGeneric>(&self, context: JRef<ContextMap>, factory: JRef<dyn DisplayContentsFactory<T>>) -> Box<dyn Iterator<Item = T> + Send> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/display/SlotDisplay.java:367
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl SlotDisplay for SlotDisplayTagSlotDisplay {
-    fn resolve<T: JGeneric>(&self, context: JRef<ContextMap>, builder: JRef<dyn DisplayContentsFactory<T>>) -> Stream<T> where Self: Sized { SlotDisplayTagSlotDisplay::resolve::<T>(self, context, builder) }
+    fn resolve<T: JGeneric>(&self, context: JRef<ContextMap>, builder: JRef<dyn DisplayContentsFactory<T>>) -> Box<dyn Iterator<Item = T> + Send> where Self: Sized { SlotDisplayTagSlotDisplay::resolve::<T>(self, context, builder) }
     fn type_(&self) -> SlotDisplayType<JRef<dyn SlotDisplay>> { SlotDisplayTagSlotDisplay::type_(self) }
 }
 crate::jobject!(SlotDisplayTagSlotDisplay: dyn SlotDisplay);
@@ -273,12 +271,12 @@ impl SlotDisplayWithAnyPotion {
     pub fn new() -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/display/SlotDisplay.java:376
     pub fn new_1(display: JRef<dyn SlotDisplay>) -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/display/SlotDisplay.java:376
     pub fn type_(&self) -> SlotDisplayType<SlotDisplayWithAnyPotion> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/display/SlotDisplay.java:385
-    pub fn resolve<T: JGeneric>(&self, context: JRef<ContextMap>, factory: JRef<dyn DisplayContentsFactory<T>>) -> Stream<T> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/display/SlotDisplay.java:390
+    pub fn resolve<T: JGeneric>(&self, context: JRef<ContextMap>, factory: JRef<dyn DisplayContentsFactory<T>>) -> Box<dyn Iterator<Item = T> + Send> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/display/SlotDisplay.java:390
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl SlotDisplay for SlotDisplayWithAnyPotion {
-    fn resolve<T: JGeneric>(&self, context: JRef<ContextMap>, builder: JRef<dyn DisplayContentsFactory<T>>) -> Stream<T> where Self: Sized { SlotDisplayWithAnyPotion::resolve::<T>(self, context, builder) }
+    fn resolve<T: JGeneric>(&self, context: JRef<ContextMap>, builder: JRef<dyn DisplayContentsFactory<T>>) -> Box<dyn Iterator<Item = T> + Send> where Self: Sized { SlotDisplayWithAnyPotion::resolve::<T>(self, context, builder) }
     fn type_(&self) -> SlotDisplayType<JRef<dyn SlotDisplay>> { SlotDisplayWithAnyPotion::type_(self) }
 }
 crate::jobject!(SlotDisplayWithAnyPotion: dyn SlotDisplay);
@@ -295,13 +293,13 @@ impl SlotDisplayWithRemainder {
     pub fn new() -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/display/SlotDisplay.java:410
     pub fn new_2(input: JRef<dyn SlotDisplay>, remainder: JRef<dyn SlotDisplay>) -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/display/SlotDisplay.java:410
     pub fn type_(&self) -> SlotDisplayType<SlotDisplayWithRemainder> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/display/SlotDisplay.java:427
-    pub fn resolve<T: JGeneric>(&self, context: JRef<ContextMap>, factory: JRef<dyn DisplayContentsFactory<T>>) -> Stream<T> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/display/SlotDisplay.java:432
+    pub fn resolve<T: JGeneric>(&self, context: JRef<ContextMap>, factory: JRef<dyn DisplayContentsFactory<T>>) -> Box<dyn Iterator<Item = T> + Send> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/display/SlotDisplay.java:432
     pub fn is_enabled(&self, enabled_features: FeatureFlagSet) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/display/SlotDisplay.java:442
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl SlotDisplay for SlotDisplayWithRemainder {
-    fn resolve<T: JGeneric>(&self, context: JRef<ContextMap>, builder: JRef<dyn DisplayContentsFactory<T>>) -> Stream<T> where Self: Sized { SlotDisplayWithRemainder::resolve::<T>(self, context, builder) }
+    fn resolve<T: JGeneric>(&self, context: JRef<ContextMap>, builder: JRef<dyn DisplayContentsFactory<T>>) -> Box<dyn Iterator<Item = T> + Send> where Self: Sized { SlotDisplayWithRemainder::resolve::<T>(self, context, builder) }
     fn type_(&self) -> SlotDisplayType<JRef<dyn SlotDisplay>> { SlotDisplayWithRemainder::type_(self) }
     fn is_enabled(&self, enabled_features: FeatureFlagSet) -> bool { SlotDisplayWithRemainder::is_enabled(self, enabled_features) }
 }

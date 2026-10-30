@@ -8,11 +8,6 @@ use crate::ca::spottedleaf::moonrise::patches::chunk_system::level::chunk::chunk
 use crate::ca::spottedleaf::moonrise::patches::entity_tracker::entity_tracker_entity::EntityTrackerEntity;
 use crate::com::mojang::serialization::Codec;
 use crate::io::papermc::paper::entity::activation::activation_type::ActivationType;
-use crate::java::util::function::BiConsumer;
-use crate::java::util::function::Consumer;
-use crate::java::util::function::Predicate;
-use crate::java::util::stream::Stream;
-use crate::javax::script::ScriptEngine;
 use crate::net::caffeinemc::mods::lithium::common::world::in_world_tracking::maybe_in_level_object::MaybeInLevelObject;
 use crate::net::kyori::adventure::util::TriState;
 use crate::net::minecraft::commands::arguments::entity_anchor_argument::EntityAnchorArgumentAnchor;
@@ -117,7 +112,6 @@ use crate::org::bukkit::event::entity::creature_spawn_event::CreatureSpawnEventS
 use crate::org::bukkit::event::entity::entity_remove_event::EntityRemoveEventCause;
 use crate::org::bukkit::event::player::player_teleport_event::PlayerTeleportEventTeleportCause;
 use crate::org::bukkit::projectiles::projectile_source::ProjectileSource;
-use crate::org::joml::Quaternionf;
 
 // ---- class net.minecraft.world.entity.Entity (leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:158)
 pub struct Entity {
@@ -456,7 +450,7 @@ pub trait EntityTrait: Nameable + EntityAccess + ScoreHolder + SyncedDataHolder 
     fn spawn_at_location_2_2(&self, level: JRef<ServerLevel>, entity: JRef<ItemEntity>) -> Option<JRef<ItemEntity>>; // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:3214
     fn spawn_at_location_3(&self, level: JRef<ServerLevel>, item_stack: JRef<crate::net::minecraft::world::item::item_stack::ItemStack>, offset: Vec3) -> Option<JRef<ItemEntity>>; // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:3171
     fn spawn_at_location_3_2(&self, level: JRef<ServerLevel>, item_stack: JRef<crate::net::minecraft::world::item::item_stack::ItemStack>, offset: f32) -> Option<JRef<ItemEntity>>; // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:3227
-    fn spawn_at_location_4(&self, level: JRef<ServerLevel>, item_stack: JRef<crate::net::minecraft::world::item::item_stack::ItemStack>, offset: Vec3, delayed_add_consumer: JRef<dyn Consumer<JObjectRef>>) -> Option<JRef<ItemEntity>>; // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:3190
+    fn spawn_at_location_4(&self, level: JRef<ServerLevel>, item_stack: JRef<crate::net::minecraft::world::item::item_stack::ItemStack>, offset: Vec3, delayed_add_consumer: Arc<dyn Fn(JObjectRef) + Send + Sync>) -> Option<JRef<ItemEntity>>; // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:3190
     fn is_alive(&self) -> bool; // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:3231
     fn is_in_wall(&self) -> bool; // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:3235
     fn interact(&self, player: JRef<dyn PlayerTrait>, hand: InteractionHand, location: Vec3) -> JRef<dyn InteractionResult>; // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:3342
@@ -493,7 +487,7 @@ pub trait EntityTrait: Nameable + EntityAccess + ScoreHolder + SyncedDataHolder 
     fn lerp_head_to(&self, y_rot: f32, steps: i32); // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:3929
     fn get_pick_radius(&self) -> f32; // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:3933
     fn get_look_angle(&self) -> Vec3; // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:3937
-    fn get_look_quaternion(&self) -> Quaternionf; // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:3941
+    fn get_look_quaternion(&self) -> glam::Quat; // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:3941
     fn get_head_look_angle(&self) -> Vec3; // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:3945
     fn get_hand_holding_item_angle(&self, item: JRef<dyn ItemTrait>) -> Vec3; // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:3949
     fn get_rotation_vector(&self) -> Vec2; // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:3959
@@ -528,7 +522,7 @@ pub trait EntityTrait: Nameable + EntityAccess + ScoreHolder + SyncedDataHolder 
     fn is_invisible(&self) -> bool; // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:4168
     fn is_invisible_to(&self, player: JRef<dyn PlayerTrait>) -> bool; // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:4172
     fn is_on_rails(&self) -> bool; // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:4181
-    fn update_dynamic_game_event_listener(&self, action: JRef<dyn BiConsumer<JRef<DynamicGameEventListener<JObjectRef>>, JRef<ServerLevel>>>); // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:4185
+    fn update_dynamic_game_event_listener(&self, action: Arc<dyn Fn(JRef<DynamicGameEventListener<JObjectRef>>, JRef<ServerLevel>) + Send + Sync>); // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:4185
     fn get_team(&self) -> Option<JRef<PlayerTeam>>; // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:4188
     fn is_allied_to_1(&self, other: Option<JRef<dyn TeamTrait>>) -> bool; // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:4201
     fn considers_entity_as_ally(&self, other: JRef<dyn EntityTrait>) -> bool; // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:4197
@@ -614,7 +608,7 @@ pub trait EntityTrait: Nameable + EntityAccess + ScoreHolder + SyncedDataHolder 
     fn get_controlling_passenger(&self) -> Option<JRef<dyn LivingEntityTrait>>; // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:5155
     fn get_first_passenger(&self) -> Option<JRef<dyn EntityTrait>>; // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:5167
     fn has_passenger(&self, entity: JRef<dyn EntityTrait>) -> bool; // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:5171
-    fn has_passenger_1(&self, test: JRef<dyn Predicate<JRef<dyn EntityTrait>>>) -> bool; // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:5175
+    fn has_passenger_1(&self, test: Arc<dyn Fn(JRef<dyn EntityTrait>) -> bool + Send + Sync>) -> bool; // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:5175
     fn get_indirect_passengers(&self) -> Vec<JRef<dyn EntityTrait>>; // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:5202
     fn count_player_passengers(&self) -> i32; // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:5216
     fn has_exactly_one_player_passenger(&self) -> bool; // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:5220
@@ -709,7 +703,7 @@ impl std::ops::Deref for dyn EntityTrait {
     type Target = Entity;
     fn deref(&self) -> &Entity { self.as_entity() }
 }
-pub static SCRIPT_ENGINE: LazyLock<Mut<ScriptEngine>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:167
+pub static SCRIPT_ENGINE: LazyLock<Mut<()>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:167
 pub const CURRENT_LEVEL: i32 = 2; // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:169
 pub static SHARED_RANDOM: LazyLock<Mut<JRef<dyn RandomSource>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:175
 pub const TAG_ID: &str = "id"; // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:224
@@ -803,8 +797,8 @@ impl Entity {
     pub fn on_synced_data_updated(&self, accessor: EntityDataAccessor<JObjectRef>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:4978
     pub fn get_bounding_box(&self) -> AABB { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:5048
     pub fn get_slot(&self, slot: i32) -> Option<JRef<dyn SlotAccess>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:5109
-    pub fn get_self_and_passengers(&self) -> Stream<JRef<dyn EntityTrait>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:5190
-    pub fn get_passengers_and_self(&self) -> Stream<JRef<dyn EntityTrait>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:5196
+    pub fn get_self_and_passengers(&self) -> Box<dyn Iterator<Item = JRef<dyn EntityTrait>> + Send> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:5190
+    pub fn get_passengers_and_self(&self) -> Box<dyn Iterator<Item = JRef<dyn EntityTrait>> + Send> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:5196
     pub fn position(&self) -> Vec3 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:5405
     pub fn block_position(&self) -> BlockPos { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:5414
     pub fn get_visual_rotation_y_in_degrees(&self) -> f32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:5643
@@ -1046,7 +1040,7 @@ impl Entity {
     pub fn get_y_rot(&self) -> f32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:5639
     pub fn get_y_rot_1(&self, partial_ticks: f32) -> f32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:2704
     pub fn calculate_view_vector(x_rot: f32, y_rot: f32) -> Vec3 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:2708
-    pub fn calculate_view_quaternion(x_rot: f32, y_rot: f32) -> Quaternionf { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:2718
+    pub fn calculate_view_quaternion(x_rot: f32, y_rot: f32) -> glam::Quat { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:2718
     pub fn get_up_vector(&self, a: f32) -> Vec3 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:2722
     pub fn calculate_up_vector(x_rot: f32, y_rot: f32) -> Vec3 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:2726
     pub fn get_eye_position(&self) -> Vec3 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:2730
@@ -1079,7 +1073,7 @@ impl Entity {
     pub fn spawn_at_location_2_2(&self, level: JRef<ServerLevel>, entity: JRef<ItemEntity>) -> Option<JRef<ItemEntity>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:3214
     pub fn spawn_at_location_3(&self, level: JRef<ServerLevel>, item_stack: JRef<crate::net::minecraft::world::item::item_stack::ItemStack>, offset: Vec3) -> Option<JRef<ItemEntity>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:3171
     pub fn spawn_at_location_3_2(&self, level: JRef<ServerLevel>, item_stack: JRef<crate::net::minecraft::world::item::item_stack::ItemStack>, offset: f32) -> Option<JRef<ItemEntity>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:3227
-    pub fn spawn_at_location_4(&self, level: JRef<ServerLevel>, item_stack: JRef<crate::net::minecraft::world::item::item_stack::ItemStack>, offset: Vec3, delayed_add_consumer: JRef<dyn Consumer<JObjectRef>>) -> Option<JRef<ItemEntity>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:3190
+    pub fn spawn_at_location_4(&self, level: JRef<ServerLevel>, item_stack: JRef<crate::net::minecraft::world::item::item_stack::ItemStack>, offset: Vec3, delayed_add_consumer: Arc<dyn Fn(JObjectRef) + Send + Sync>) -> Option<JRef<ItemEntity>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:3190
     pub fn is_alive(&self) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:3231
     pub fn is_in_wall(&self) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:3235
     pub fn interact(&self, player: JRef<dyn PlayerTrait>, hand: InteractionHand, location: Vec3) -> JRef<dyn InteractionResult> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:3342
@@ -1126,7 +1120,7 @@ impl Entity {
     pub fn lerp_head_to(&self, y_rot: f32, steps: i32) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:3929
     pub fn get_pick_radius(&self) -> f32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:3933
     pub fn get_look_angle(&self) -> Vec3 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:3937
-    pub fn get_look_quaternion(&self) -> Quaternionf { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:3941
+    pub fn get_look_quaternion(&self) -> glam::Quat { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:3941
     pub fn get_head_look_angle(&self) -> Vec3 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:3945
     pub fn get_hand_holding_item_angle(&self, item: JRef<dyn ItemTrait>) -> Vec3 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:3949
     pub fn get_rotation_vector(&self) -> Vec2 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:3959
@@ -1165,7 +1159,7 @@ impl Entity {
     pub fn is_invisible(&self) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:4168
     pub fn is_invisible_to(&self, player: JRef<dyn PlayerTrait>) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:4172
     pub fn is_on_rails(&self) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:4181
-    pub fn update_dynamic_game_event_listener(&self, action: JRef<dyn BiConsumer<JRef<DynamicGameEventListener<JObjectRef>>, JRef<ServerLevel>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:4185
+    pub fn update_dynamic_game_event_listener(&self, action: Arc<dyn Fn(JRef<DynamicGameEventListener<JObjectRef>>, JRef<ServerLevel>) + Send + Sync>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:4185
     pub fn get_team(&self) -> Option<JRef<PlayerTeam>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:4188
     pub fn is_allied_to(&self, other: Option<JRef<dyn EntityTrait>>) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:4193
     pub fn is_allied_to_1(&self, other: Option<JRef<dyn TeamTrait>>) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:4201
@@ -1270,8 +1264,8 @@ impl Entity {
     pub fn get_passengers(&self) -> Vec<JRef<dyn EntityTrait>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:5163
     pub fn get_first_passenger(&self) -> Option<JRef<dyn EntityTrait>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:5167
     pub fn has_passenger(&self, entity: JRef<dyn EntityTrait>) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:5171
-    pub fn has_passenger_1(&self, test: JRef<dyn Predicate<JRef<dyn EntityTrait>>>) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:5175
-    pub fn get_indirect_passengers_stream(&self) -> Stream<JRef<dyn EntityTrait>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:5185
+    pub fn has_passenger_1(&self, test: Arc<dyn Fn(JRef<dyn EntityTrait>) -> bool + Send + Sync>) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:5175
+    pub fn get_indirect_passengers_stream(&self) -> Box<dyn Iterator<Item = JRef<dyn EntityTrait>> + Send> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:5185
     pub fn get_indirect_passengers(&self) -> Vec<JRef<dyn EntityTrait>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:5202
     pub fn count_player_passengers(&self) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:5216
     pub fn has_exactly_one_player_passenger(&self) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:5220
@@ -1429,12 +1423,12 @@ crate::jobject!(EntityRandomRandomSource: dyn ThreadUnsafeRandomTrait, dyn BitRa
 pub struct EntityDefaultDrop {
     pub item: JRef<dyn ItemTrait>,
     pub stack: JRef<crate::org::bukkit::inventory::item_stack::ItemStack>,
-    pub drop_consumer: JRef<dyn Consumer<JRef<crate::net::minecraft::world::item::item_stack::ItemStack>>>,
+    pub drop_consumer: Arc<dyn Fn(JRef<crate::net::minecraft::world::item::item_stack::ItemStack>) + Send + Sync>,
 }
 impl EntityDefaultDrop {
-    pub fn new(stack: JRef<crate::net::minecraft::world::item::item_stack::ItemStack>, drop_consumer: JRef<dyn Consumer<JRef<crate::net::minecraft::world::item::item_stack::ItemStack>>>) -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:3177
-    pub fn new_3(item: JRef<dyn ItemTrait>, stack: JRef<crate::org::bukkit::inventory::item_stack::ItemStack>, drop_consumer: JRef<dyn Consumer<JRef<crate::net::minecraft::world::item::item_stack::ItemStack>>>) -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:3176
-    pub fn run_consumer(&self, fallback: JRef<dyn Consumer<JRef<crate::org::bukkit::inventory::item_stack::ItemStack>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:3181
+    pub fn new(stack: JRef<crate::net::minecraft::world::item::item_stack::ItemStack>, drop_consumer: Arc<dyn Fn(JRef<crate::net::minecraft::world::item::item_stack::ItemStack>) + Send + Sync>) -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:3177
+    pub fn new_3(item: JRef<dyn ItemTrait>, stack: JRef<crate::org::bukkit::inventory::item_stack::ItemStack>, drop_consumer: Arc<dyn Fn(JRef<crate::net::minecraft::world::item::item_stack::ItemStack>) + Send + Sync>) -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:3176
+    pub fn run_consumer(&self, fallback: Arc<dyn Fn(JRef<crate::org::bukkit::inventory::item_stack::ItemStack>) + Send + Sync>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:3181
 }
 crate::jobject!(EntityDefaultDrop);
 // ---- record net.minecraft.world.entity.Entity.EntityPathElement (leaf-server/src/minecraft/java/net/minecraft/world/entity/Entity.java:5910)

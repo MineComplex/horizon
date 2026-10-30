@@ -4,7 +4,6 @@ use crate::prelude::*;
 use crate::io::papermc::paper::raytracing::block_collision_mode::BlockCollisionMode;
 use crate::io::papermc::paper::raytracing::positioned_ray_trace_configuration_builder::PositionedRayTraceConfigurationBuilder;
 use crate::io::papermc::paper::raytracing::ray_trace_target::RayTraceTarget;
-use crate::java::util::function::Predicate;
 use crate::org::bukkit::fluid_collision_mode::FluidCollisionMode;
 use crate::org::bukkit::location::Location;
 use crate::org::bukkit::util::vector::VectorTrait;
@@ -18,8 +17,8 @@ pub struct PositionedRayTraceConfigurationBuilderImpl {
     pub fluid_collision_mode: Mut<FluidCollisionMode>, // paper-server/src/main/java/io/papermc/paper/raytracing/PositionedRayTraceConfigurationBuilderImpl.java:21
     pub block_collision_mode: Mut<BlockCollisionMode>, // paper-server/src/main/java/io/papermc/paper/raytracing/PositionedRayTraceConfigurationBuilderImpl.java:22
     pub ray_size: Mut<f64>, // paper-server/src/main/java/io/papermc/paper/raytracing/PositionedRayTraceConfigurationBuilderImpl.java:23
-    pub entity_filter: Mut<Option<JRef<dyn Predicate<JObjectRef>>>>, // paper-server/src/main/java/io/papermc/paper/raytracing/PositionedRayTraceConfigurationBuilderImpl.java:24
-    pub block_filter: Mut<Option<JRef<dyn Predicate<JObjectRef>>>>, // paper-server/src/main/java/io/papermc/paper/raytracing/PositionedRayTraceConfigurationBuilderImpl.java:25
+    pub entity_filter: Mut<Option<Arc<dyn Fn(JObjectRef) -> bool + Send + Sync>>>, // paper-server/src/main/java/io/papermc/paper/raytracing/PositionedRayTraceConfigurationBuilderImpl.java:24
+    pub block_filter: Mut<Option<Arc<dyn Fn(JObjectRef) -> bool + Send + Sync>>>, // paper-server/src/main/java/io/papermc/paper/raytracing/PositionedRayTraceConfigurationBuilderImpl.java:25
     pub targets: Mut<HashSet<RayTraceTarget>>, // paper-server/src/main/java/io/papermc/paper/raytracing/PositionedRayTraceConfigurationBuilderImpl.java:26
 }
 impl PositionedRayTraceConfigurationBuilderImpl {
@@ -32,8 +31,8 @@ impl PositionedRayTraceConfigurationBuilderImpl {
     pub fn block_collision_mode(&self, block_collision_mode: BlockCollisionMode) -> JRef<dyn PositionedRayTraceConfigurationBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/raytracing/PositionedRayTraceConfigurationBuilderImpl.java:56
     pub fn ignore_passable_blocks(&self, ignore_passable_blocks: bool) -> JRef<dyn PositionedRayTraceConfigurationBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/raytracing/PositionedRayTraceConfigurationBuilderImpl.java:63
     pub fn ray_size(&self, ray_size: f64) -> JRef<dyn PositionedRayTraceConfigurationBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/raytracing/PositionedRayTraceConfigurationBuilderImpl.java:69
-    pub fn entity_filter(&self, entity_filter: JRef<dyn Predicate<JObjectRef>>) -> JRef<dyn PositionedRayTraceConfigurationBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/raytracing/PositionedRayTraceConfigurationBuilderImpl.java:76
-    pub fn block_filter(&self, block_filter: JRef<dyn Predicate<JObjectRef>>) -> JRef<dyn PositionedRayTraceConfigurationBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/raytracing/PositionedRayTraceConfigurationBuilderImpl.java:83
+    pub fn entity_filter(&self, entity_filter: Arc<dyn Fn(JObjectRef) -> bool + Send + Sync>) -> JRef<dyn PositionedRayTraceConfigurationBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/raytracing/PositionedRayTraceConfigurationBuilderImpl.java:76
+    pub fn block_filter(&self, block_filter: Arc<dyn Fn(JObjectRef) -> bool + Send + Sync>) -> JRef<dyn PositionedRayTraceConfigurationBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/raytracing/PositionedRayTraceConfigurationBuilderImpl.java:83
     pub fn targets(&self, first: RayTraceTarget, others: &Vec<RayTraceTarget>) -> JRef<dyn PositionedRayTraceConfigurationBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/raytracing/PositionedRayTraceConfigurationBuilderImpl.java:90
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
@@ -46,8 +45,8 @@ impl PositionedRayTraceConfigurationBuilder for PositionedRayTraceConfigurationB
     fn block_collision_mode(&self, block_collision_mode: BlockCollisionMode) -> JRef<dyn PositionedRayTraceConfigurationBuilder> { PositionedRayTraceConfigurationBuilderImpl::block_collision_mode(self, block_collision_mode) }
     fn ignore_passable_blocks(&self, ignore_passable_blocks: bool) -> JRef<dyn PositionedRayTraceConfigurationBuilder> { PositionedRayTraceConfigurationBuilderImpl::ignore_passable_blocks(self, ignore_passable_blocks) }
     fn ray_size(&self, ray_size: f64) -> JRef<dyn PositionedRayTraceConfigurationBuilder> { PositionedRayTraceConfigurationBuilderImpl::ray_size(self, ray_size) }
-    fn entity_filter(&self, entity_filter: JRef<dyn Predicate<JObjectRef>>) -> JRef<dyn PositionedRayTraceConfigurationBuilder> { PositionedRayTraceConfigurationBuilderImpl::entity_filter(self, entity_filter) }
-    fn block_filter(&self, block_filter: JRef<dyn Predicate<JObjectRef>>) -> JRef<dyn PositionedRayTraceConfigurationBuilder> { PositionedRayTraceConfigurationBuilderImpl::block_filter(self, block_filter) }
+    fn entity_filter(&self, entity_filter: Arc<dyn Fn(JObjectRef) -> bool + Send + Sync>) -> JRef<dyn PositionedRayTraceConfigurationBuilder> { PositionedRayTraceConfigurationBuilderImpl::entity_filter(self, entity_filter) }
+    fn block_filter(&self, block_filter: Arc<dyn Fn(JObjectRef) -> bool + Send + Sync>) -> JRef<dyn PositionedRayTraceConfigurationBuilder> { PositionedRayTraceConfigurationBuilderImpl::block_filter(self, block_filter) }
     fn targets(&self, first: RayTraceTarget, others: &Vec<RayTraceTarget>) -> JRef<dyn PositionedRayTraceConfigurationBuilder> { PositionedRayTraceConfigurationBuilderImpl::targets(self, first, others) }
 }
 crate::jobject!(PositionedRayTraceConfigurationBuilderImpl: dyn PositionedRayTraceConfigurationBuilder);

@@ -3,7 +3,6 @@
 use crate::prelude::*;
 use crate::io::papermc::paper::registry::data::trim_material_registry_entry::TrimMaterialRegistryEntryBuilder;
 use crate::io::papermc::paper::registry::registry_builder_factory::RegistryBuilderFactory;
-use crate::java::util::function::Consumer;
 use crate::net::kyori::adventure::text::Component;
 use crate::org::bukkit::keyed::Keyed;
 use crate::org::bukkit::translatable::Translatable;
@@ -24,7 +23,7 @@ pub static NETHERITE: LazyLock<JRef<dyn TrimMaterial>> = LazyLock::new(|| get_tr
 pub static QUARTZ: LazyLock<JRef<dyn TrimMaterial>> = LazyLock::new(|| get_trim_material("quartz")); // paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimMaterial.java:51
 pub static REDSTONE: LazyLock<JRef<dyn TrimMaterial>> = LazyLock::new(|| get_trim_material("redstone")); // paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimMaterial.java:53
 pub static RESIN: LazyLock<JRef<dyn TrimMaterial>> = LazyLock::new(|| get_trim_material("resin")); // paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimMaterial.java:55
-pub fn create(value: JRef<dyn Consumer<JRef<dyn RegistryBuilderFactory<JRef<dyn TrimMaterial>, JRef<dyn TrimMaterialRegistryEntryBuilder>>>>>) -> JRef<dyn TrimMaterial> {
+pub fn create(value: Arc<dyn Fn(JRef<dyn RegistryBuilderFactory<JRef<dyn TrimMaterial>, JRef<dyn TrimMaterialRegistryEntryBuilder>>>) + Send + Sync>) -> JRef<dyn TrimMaterial> {
     crate::io::papermc::paper::registry::data::inlined_registry_builder_provider::instance().create_trim_material(value)
 } // paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimMaterial.java:30
 pub fn get_trim_material(key: &str) -> JRef<dyn TrimMaterial> {

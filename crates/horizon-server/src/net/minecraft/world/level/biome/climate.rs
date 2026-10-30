@@ -3,11 +3,8 @@
 use crate::prelude::*;
 use crate::ca::spottedleaf::moonrise::patches::chunk_gen::climate_rtree::chunk_gen_r_tree::ChunkGenRTree;
 use crate::ca::spottedleaf::moonrise::patches::chunk_gen::climate_rtree::r_tree_leaf_distance::RTreeLeafDistance;
-use crate::com::mojang::datafixers::util::Pair;
 use crate::com::mojang::serialization::Codec;
 use crate::com::mojang::serialization::MapCodec;
-use crate::java::lang::ThreadLocal;
-use crate::java::util::Comparator;
 use crate::net::minecraft::world::level::levelgen::densityfunction::density_sampler::DensitySamplerBound;
 
 // ---- class net.minecraft.world.level.biome.Climate (leaf-server/src/minecraft/java/net/minecraft/world/level/biome/Climate.java:24)
@@ -55,18 +52,18 @@ crate::jobject!(ClimateParameter);
 // ---- class net.minecraft.world.level.biome.Climate.ParameterList (leaf-server/src/minecraft/java/net/minecraft/world/level/biome/Climate.java:136)
 pub struct ClimateParameterList<T: JGeneric> {
     pub this: Weak<Self>,
-    pub values: Mut<Vec<Pair<ClimateParameterPoint, T>>>, // leaf-server/src/minecraft/java/net/minecraft/world/level/biome/Climate.java:137
+    pub values: Mut<Vec<(ClimateParameterPoint, T)>>, // leaf-server/src/minecraft/java/net/minecraft/world/level/biome/Climate.java:137
     pub index: JRef<ClimateRTree<T>>, // leaf-server/src/minecraft/java/net/minecraft/world/level/biome/Climate.java:138
     pub _phantom: std::marker::PhantomData<(T,)>,
 }
 pub const PARAMETER_LIST_DEBUG_PARAM_LOOKUP: bool = false; // leaf-server/src/minecraft/java/net/minecraft/world/level/biome/Climate.java:170
 impl<T: JGeneric> ClimateParameterList<T> {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(values: &Vec<Pair<ClimateParameterPoint, T>>) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/biome/Climate.java:151
-    pub fn new_2(values: &Vec<Pair<ClimateParameterPoint, T>>, children_per_node: i32) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/biome/Climate.java:155
+    pub fn new(values: &Vec<(ClimateParameterPoint, T)>) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/biome/Climate.java:151
+    pub fn new_2(values: &Vec<(ClimateParameterPoint, T)>, children_per_node: i32) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/biome/Climate.java:155
     pub fn codec<T: JGeneric>(value_codec: MapCodec<T>) -> JRef<dyn Codec<JRef<ClimateParameterList<T>>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/biome/Climate.java:140
     pub fn rebuild_with_children_per_node(&self, children_per_node: i32) -> JRef<ClimateParameterList<T>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/biome/Climate.java:160
-    pub fn values(&self) -> Vec<Pair<ClimateParameterPoint, T>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/biome/Climate.java:165
+    pub fn values(&self) -> Vec<(ClimateParameterPoint, T)> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/biome/Climate.java:165
     pub fn find_value(&self, target: ClimateTargetPoint) -> T { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/biome/Climate.java:173
     pub fn find_value_brute_force(&self, target: ClimateTargetPoint) -> T { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/biome/Climate.java:187
     pub fn find_value_index(&self, target: ClimateTargetPoint) -> T { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/biome/Climate.java:206
@@ -95,8 +92,8 @@ crate::jobject!(ClimateParameterPoint);
 pub struct ClimateRTree<T: JGeneric> {
     pub this: Weak<Self>,
     pub root: JRef<dyn ClimateRTreeNodeTrait<T>>, // leaf-server/src/minecraft/java/net/minecraft/world/level/biome/Climate.java:262
-    pub last_result: ThreadLocal<JRef<ClimateRTreeLeaf<T>>>, // leaf-server/src/minecraft/java/net/minecraft/world/level/biome/Climate.java:263
-    pub last_returned: ThreadLocal<JRef<RTreeLeafDistance<T>>>, // leaf-server/src/minecraft/java/net/minecraft/world/level/biome/Climate.java:266
+    pub last_result: thread_local::ThreadLocal<JRef<ClimateRTreeLeaf<T>>>, // leaf-server/src/minecraft/java/net/minecraft/world/level/biome/Climate.java:263
+    pub last_returned: thread_local::ThreadLocal<JRef<RTreeLeafDistance<T>>>, // leaf-server/src/minecraft/java/net/minecraft/world/level/biome/Climate.java:266
     pub _phantom: std::marker::PhantomData<(T,)>,
 }
 pub const R_TREE_CHILDREN_PER_NODE: i32 = 19; // leaf-server/src/minecraft/java/net/minecraft/world/level/biome/Climate.java:261
@@ -106,11 +103,11 @@ impl<T: JGeneric> ClimateRTree<T> {
     pub fn moonrise_find_nearest(&self, target: ClimateTargetPoint) -> T { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/biome/Climate.java:297
     pub fn find_nearest0(&self, params: &Vec<i64>, suggested: JRef<RTreeLeafDistance<T>>, node: JRef<ClimateRTreeSubTree<T>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/biome/Climate.java:270
     pub fn to_parameter_array(target: ClimateTargetPoint, params: &Vec<i64>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/biome/Climate.java:287
-    pub fn create<T: JGeneric>(values: &Vec<Pair<ClimateParameterPoint, T>>) -> JRef<ClimateRTree<T>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/biome/Climate.java:324
-    pub fn create_2<T: JGeneric>(values: &Vec<Pair<ClimateParameterPoint, T>>, children_per_node: i32) -> JRef<ClimateRTree<T>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/biome/Climate.java:328
+    pub fn create<T: JGeneric>(values: &Vec<(ClimateParameterPoint, T)>) -> JRef<ClimateRTree<T>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/biome/Climate.java:324
+    pub fn create_2<T: JGeneric>(values: &Vec<(ClimateParameterPoint, T)>, children_per_node: i32) -> JRef<ClimateRTree<T>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/biome/Climate.java:328
     pub fn build<T: JGeneric>(dimensions: i32, children: &mut Vec<JRef<dyn ClimateRTreeNodeTrait<T>>>, children_per_node: i32) -> JRef<dyn ClimateRTreeNodeTrait<T>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/biome/Climate.java:344
     pub fn sort<T: JGeneric>(children: &mut Vec<JRef<dyn ClimateRTreeNodeTrait<T>>>, dimensions: i32, dimension: i32, absolute: bool) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/biome/Climate.java:393
-    pub fn comparator<T: JGeneric>(dimension: i32, absolute: bool) -> JRef<dyn Comparator<JRef<dyn ClimateRTreeNodeTrait<T>>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/biome/Climate.java:403
+    pub fn comparator<T: JGeneric>(dimension: i32, absolute: bool) -> Arc<dyn Fn(&JRef<dyn ClimateRTreeNodeTrait<T>>, &JRef<dyn ClimateRTreeNodeTrait<T>>) -> std::cmp::Ordering + Send + Sync> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/biome/Climate.java:403
     pub fn bucketize<T: JGeneric>(nodes: &Vec<JRef<dyn ClimateRTreeNodeTrait<T>>>, children_per_node: i32) -> Vec<JRef<ClimateRTreeSubTree<T>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/biome/Climate.java:411
     pub fn cost(parameter_space: &Vec<ClimateParameter>) -> i64 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/biome/Climate.java:431
     pub fn build_parameter_space<T: JGeneric>(children: &Vec<JRef<dyn ClimateRTreeNodeTrait<T>>>) -> Vec<ClimateParameter> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/biome/Climate.java:441

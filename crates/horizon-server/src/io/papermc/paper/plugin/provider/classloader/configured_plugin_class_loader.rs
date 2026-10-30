@@ -3,16 +3,13 @@
 use crate::prelude::*;
 use crate::io::papermc::paper::plugin::configuration::plugin_meta::PluginMeta;
 use crate::io::papermc::paper::plugin::provider::classloader::plugin_class_loader_group::PluginClassLoaderGroup;
-use crate::java::io::Closeable;
-use crate::java::lang::Class;
-use crate::java::lang::Throwable;
 use crate::org::bukkit::plugin::java::java_plugin::JavaPluginTrait;
 use crate::api_prelude::*;
 
 // ---- interface io.papermc.paper.plugin.provider.classloader.ConfiguredPluginClassLoader (paper-api/src/main/java/io/papermc/paper/plugin/provider/classloader/ConfiguredPluginClassLoader.java:17)
-pub trait ConfiguredPluginClassLoader: Closeable {
+pub trait ConfiguredPluginClassLoader: JObject {
     fn get_configuration(&self) -> JRef<dyn PluginMeta>; // paper-api/src/main/java/io/papermc/paper/plugin/provider/classloader/ConfiguredPluginClassLoader.java:26
-    fn load_class(&self, name: &str, resolve: bool, check_global: bool, check_libraries: bool) -> Result<Class, Throwable>; // paper-api/src/main/java/io/papermc/paper/plugin/provider/classloader/ConfiguredPluginClassLoader.java:43
+    fn load_class(&self, name: &str, resolve: bool, check_global: bool, check_libraries: bool) -> Result<crate::rt::Class, anyhow::Error>; // paper-api/src/main/java/io/papermc/paper/plugin/provider/classloader/ConfiguredPluginClassLoader.java:43
     fn init(&self, plugin: JRef<dyn JavaPluginTrait>); // paper-api/src/main/java/io/papermc/paper/plugin/provider/classloader/ConfiguredPluginClassLoader.java:55
     fn get_plugin(&self) -> Option<JRef<dyn JavaPluginTrait>>; // paper-api/src/main/java/io/papermc/paper/plugin/provider/classloader/ConfiguredPluginClassLoader.java:62
     fn get_group(&self) -> Option<JRef<dyn PluginClassLoaderGroup>>; // paper-api/src/main/java/io/papermc/paper/plugin/provider/classloader/ConfiguredPluginClassLoader.java:69

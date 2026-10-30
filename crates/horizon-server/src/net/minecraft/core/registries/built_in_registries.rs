@@ -4,8 +4,6 @@ use crate::prelude::*;
 use crate::com::mojang::serialization::Codec;
 use crate::com::mojang::serialization::MapCodec;
 use crate::io::papermc::paper::registry::data::util::conversions::Conversions;
-use crate::java::lang::Runnable;
-use crate::java::util::function::Supplier;
 use crate::net::minecraft::advancements::predicates::entity::entity_sub_predicate::EntitySubPredicate;
 use crate::net::minecraft::advancements::triggers::criterion_trigger::CriterionTrigger;
 use crate::net::minecraft::commands::synchronization::argument_type_info::ArgumentTypeInfo;
@@ -106,7 +104,7 @@ use crate::net::minecraft::world::level::storage::loot::providers::score::scoreb
 pub struct BuiltInRegistries {
     pub this: Weak<Self>,
 }
-pub static LOADERS: LazyLock<HashMap<JRef<Identifier>, JRef<dyn Supplier<JObjectRef>>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/core/registries/BuiltInRegistries.java:175
+pub static LOADERS: LazyLock<HashMap<JRef<Identifier>, Arc<dyn Fn() -> JObjectRef + Send + Sync>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/core/registries/BuiltInRegistries.java:175
 pub static WRITABLE_REGISTRY: LazyLock<JRef<dyn WritableRegistry<JRef<dyn WritableRegistry<JObjectRef>>>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/core/registries/BuiltInRegistries.java:176
 pub static DATA_COMPONENT_INITIALIZERS: LazyLock<JRef<DataComponentInitializers>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/core/registries/BuiltInRegistries.java:179
 pub static GAME_EVENT: LazyLock<JRef<dyn DefaultedRegistry<GameEvent>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/core/registries/BuiltInRegistries.java:180
@@ -210,7 +208,7 @@ impl BuiltInRegistries {
     pub fn register_defaulted_with_intrusive_holders<T: JGeneric>(name: JRef<ResourceKey<JRef<dyn Registry<T>>>>, default_key: &str, loader: JRef<dyn BuiltInRegistriesRegistryBootstrap<T>>) -> JRef<dyn DefaultedRegistry<T>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/core/registries/BuiltInRegistries.java:373
     pub fn internal_register<T: JGeneric, R: JGeneric>(name: JRef<ResourceKey<JRef<dyn Registry<T>>>>, registry: R, loader: JRef<dyn BuiltInRegistriesRegistryBootstrap<T>>) -> R { todo!() } // leaf-server/src/minecraft/java/net/minecraft/core/registries/BuiltInRegistries.java:379
     pub fn boot_strap() { todo!() } // leaf-server/src/minecraft/java/net/minecraft/core/registries/BuiltInRegistries.java:390
-    pub fn boot_strap_1(runnable: JRef<dyn Runnable>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/core/registries/BuiltInRegistries.java:394
+    pub fn boot_strap_1(runnable: Arc<dyn Fn() + Send + Sync>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/core/registries/BuiltInRegistries.java:394
     pub fn create_contents() { todo!() } // leaf-server/src/minecraft/java/net/minecraft/core/registries/BuiltInRegistries.java:403
     pub fn freeze() { todo!() } // leaf-server/src/minecraft/java/net/minecraft/core/registries/BuiltInRegistries.java:422
     pub fn validate<T: JGeneric>(registry: JRef<dyn Registry<T>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/core/registries/BuiltInRegistries.java:432

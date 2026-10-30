@@ -11,7 +11,6 @@ use crate::io::papermc::paper::registry::paper_registry_builder::PaperRegistryBu
 use crate::io::papermc::paper::registry::registry_builder::RegistryBuilder;
 use crate::io::papermc::paper::registry::registry_builder_factory::RegistryBuilderFactory;
 use crate::io::papermc::paper::registry::typed_key::TypedKey;
-use crate::java::util::function::Consumer;
 use crate::net::minecraft::core::holder::Holder;
 use crate::net::minecraft::sounds::sound_event::SoundEvent;
 use crate::org::bukkit::sound::Sound;
@@ -66,7 +65,7 @@ impl PaperJukeboxSongRegistryEntryPaperBuilder {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(conversions: JRef<Conversions>, internal: Option<crate::net::minecraft::world::item::jukebox_song::JukeboxSong>) -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/PaperJukeboxSongRegistryEntry.java:71
     pub fn sound_event_1(&self, sound_event: JRef<dyn TypedKey<JRef<dyn Sound>>>) -> JRef<dyn JukeboxSongRegistryEntryBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/PaperJukeboxSongRegistryEntry.java:75
-    pub fn sound_event_1_2(&self, sound_event: JRef<dyn Consumer<JRef<dyn RegistryBuilderFactory<JRef<dyn Sound>, JRef<dyn SoundEventRegistryEntryBuilder>>>>>) -> JRef<dyn JukeboxSongRegistryEntryBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/PaperJukeboxSongRegistryEntry.java:81
+    pub fn sound_event_1_2(&self, sound_event: Arc<dyn Fn(JRef<dyn RegistryBuilderFactory<JRef<dyn Sound>, JRef<dyn SoundEventRegistryEntryBuilder>>>) + Send + Sync>) -> JRef<dyn JukeboxSongRegistryEntryBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/PaperJukeboxSongRegistryEntry.java:81
     pub fn sound_event_1_3(&self, sound_event: JRef<dyn RegistryHolder<JRef<dyn Sound>, JRef<dyn SoundEventRegistryEntry>>>) -> JRef<dyn JukeboxSongRegistryEntryBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/PaperJukeboxSongRegistryEntry.java:87
     pub fn description_1(&self, description: crate::net::kyori::adventure::text::Component) -> JRef<dyn JukeboxSongRegistryEntryBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/PaperJukeboxSongRegistryEntry.java:93
     pub fn length_in_seconds_1(&self, length_in_seconds: f32) -> JRef<dyn JukeboxSongRegistryEntryBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/PaperJukeboxSongRegistryEntry.java:99
@@ -80,7 +79,7 @@ impl PaperJukeboxSongRegistryEntryTrait for PaperJukeboxSongRegistryEntryPaperBu
 }
 impl JukeboxSongRegistryEntryBuilder for PaperJukeboxSongRegistryEntryPaperBuilder {
     fn sound_event_1(&self, sound_event: JRef<dyn TypedKey<JRef<dyn Sound>>>) -> JRef<dyn JukeboxSongRegistryEntryBuilder> { PaperJukeboxSongRegistryEntryPaperBuilder::sound_event_1(self, sound_event) }
-    fn sound_event_1_2(&self, sound_event: JRef<dyn Consumer<JRef<dyn RegistryBuilderFactory<JRef<dyn Sound>, JRef<dyn SoundEventRegistryEntryBuilder>>>>>) -> JRef<dyn JukeboxSongRegistryEntryBuilder> { PaperJukeboxSongRegistryEntryPaperBuilder::sound_event_1_2(self, sound_event) }
+    fn sound_event_1_2(&self, sound_event: Arc<dyn Fn(JRef<dyn RegistryBuilderFactory<JRef<dyn Sound>, JRef<dyn SoundEventRegistryEntryBuilder>>>) + Send + Sync>) -> JRef<dyn JukeboxSongRegistryEntryBuilder> { PaperJukeboxSongRegistryEntryPaperBuilder::sound_event_1_2(self, sound_event) }
     fn sound_event_1_3(&self, sound_event: JRef<dyn RegistryHolder<JRef<dyn Sound>, JRef<dyn SoundEventRegistryEntry>>>) -> JRef<dyn JukeboxSongRegistryEntryBuilder> { PaperJukeboxSongRegistryEntryPaperBuilder::sound_event_1_3(self, sound_event) }
     fn description_1(&self, description: crate::net::kyori::adventure::text::Component) -> JRef<dyn JukeboxSongRegistryEntryBuilder> { PaperJukeboxSongRegistryEntryPaperBuilder::description_1(self, description) }
     fn length_in_seconds_1(&self, length_in_seconds: f32) -> JRef<dyn JukeboxSongRegistryEntryBuilder> { PaperJukeboxSongRegistryEntryPaperBuilder::length_in_seconds_1(self, length_in_seconds) }

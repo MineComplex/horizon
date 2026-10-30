@@ -3,7 +3,6 @@
 use crate::prelude::*;
 use crate::com::mojang::serialization::Codec;
 use crate::com::mojang::serialization::MapCodec;
-use crate::java::lang::Throwable;
 use crate::net::minecraft::world::level::storage::loot::loot_context::LootContext;
 use crate::net::minecraft::world::level::storage::loot::providers::number::floats::context_float_provider::ContextFloatProvider;
 use crate::net::minecraft::world::level::storage::loot::validatable::Validatable;
@@ -26,7 +25,7 @@ impl ConstantValue {
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl ContextFloatProvider for ConstantValue {
-    fn get_float_unsafe(&self, context: JRef<LootContext>) -> Result<f32, Throwable> { ConstantValue::get_float_unsafe(self, context) }
+    fn get_float_unsafe(&self, context: JRef<LootContext>) -> Result<f32, anyhow::Error> { ConstantValue::get_float_unsafe(self, context) }
     fn codec(&self) -> MapCodec<JRef<dyn ContextFloatProvider>> { ConstantValue::codec(self) }
 }
 impl Validatable for ConstantValue {

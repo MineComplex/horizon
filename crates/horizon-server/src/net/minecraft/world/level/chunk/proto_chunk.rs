@@ -4,9 +4,6 @@ use crate::prelude::*;
 use crate::ca::spottedleaf::moonrise::patches::getblock::get_block_chunk::GetBlockChunk;
 use crate::ca::spottedleaf::moonrise::patches::starlight::chunk::starlight_chunk::StarlightChunk;
 use crate::ca::spottedleaf::moonrise::patches::starlight::light::swmr_nibble_array::SWMRNibbleArray;
-use crate::java::util::function::BiConsumer;
-use crate::java::util::function::Predicate;
-use crate::java::util::function::Supplier;
 use crate::net::minecraft::core::block_pos::BlockPos;
 use crate::net::minecraft::core::holder::Holder;
 use crate::net::minecraft::core::holder_lookup::HolderLookupProvider;
@@ -171,7 +168,7 @@ impl ChunkAccessTrait for ProtoChunk {
     fn set_block_entity_nbt(&self, entity_tag: JRef<CompoundTag>) { ChunkAccess::set_block_entity_nbt(self, entity_tag) }
     fn get_block_entity_nbt(&self, block_pos: BlockPos) -> Option<JRef<CompoundTag>> { ChunkAccess::get_block_entity_nbt(self, block_pos) }
     fn get_block_entity_nbt_for_saving(&self, block_pos: BlockPos, registry_access: JRef<dyn HolderLookupProvider>) -> Option<JRef<CompoundTag>> { ProtoChunk::get_block_entity_nbt_for_saving(self, block_pos, registry_access) }
-    fn find_blocks(&self, predicate: JRef<dyn Predicate<JRef<BlockState>>>, consumer: JRef<dyn BiConsumer<BlockPos, JRef<BlockState>>>) { ChunkAccess::find_blocks(self, predicate, consumer) }
+    fn find_blocks(&self, predicate: Arc<dyn Fn(JRef<BlockState>) -> bool + Send + Sync>, consumer: Arc<dyn Fn(BlockPos, JRef<BlockState>) + Send + Sync>) { ChunkAccess::find_blocks(self, predicate, consumer) }
     fn get_block_ticks(&self) -> JRef<dyn TickContainerAccess<JRef<dyn BlockTrait>>> { ProtoChunk::get_block_ticks(self) }
     fn get_fluid_ticks(&self) -> JRef<dyn TickContainerAccess<JRef<dyn FluidTrait>>> { ProtoChunk::get_fluid_ticks(self) }
     fn collect_biomes_in_palette(&self, output: &HashSet<JRef<dyn Holder<JRef<Biome>>>>) { ChunkAccess::collect_biomes_in_palette(self, output) }
@@ -185,7 +182,7 @@ impl ChunkAccessTrait for ProtoChunk {
     fn set_inhabited_time(&self, inhabited_time: i64) { ChunkAccess::set_inhabited_time(self, inhabited_time) }
     fn is_light_correct(&self) -> bool { ChunkAccess::is_light_correct(self) }
     fn set_light_correct(&self, is_light_correct: bool) { ChunkAccess::set_light_correct(self, is_light_correct) }
-    fn carver_biome(&self, source: JRef<dyn Supplier<JRef<BiomeGenerationSettings>>>) -> JRef<BiomeGenerationSettings> { ChunkAccess::carver_biome(self, source) }
+    fn carver_biome(&self, source: Arc<dyn Fn() -> JRef<BiomeGenerationSettings> + Send + Sync>) -> JRef<BiomeGenerationSettings> { ChunkAccess::carver_biome(self, source) }
     fn set_noise_biome(&self, quart_x: i32, quart_y: i32, quart_z: i32, biome: JRef<dyn Holder<JRef<Biome>>>) { ChunkAccess::set_noise_biome(self, quart_x, quart_y, quart_z, biome) }
     fn fill_biomes_from_noise(&self, biome_resolver: JRef<dyn BiomeResolver>) { ChunkAccess::fill_biomes_from_noise(self, biome_resolver) }
     fn get_below_zero_retrogen(&self) -> Option<JRef<BelowZeroRetrogen>> { ProtoChunk::get_below_zero_retrogen(self) }
@@ -199,7 +196,7 @@ impl GetBlockChunk for ProtoChunk {
     fn moonrise_get_fluid(&self, x: i32, y: i32, z: i32) -> JRef<FluidState> { ProtoChunk::moonrise_get_fluid(self, x, y, z) }
 }
 impl LightChunk for ProtoChunk {
-    fn find_block_light_sources(&self, consumer: JRef<dyn BiConsumer<BlockPos, JRef<BlockState>>>) { ChunkAccess::find_block_light_sources(self, consumer) }
+    fn find_block_light_sources(&self, consumer: Arc<dyn Fn(BlockPos, JRef<BlockState>) + Send + Sync>) { ChunkAccess::find_block_light_sources(self, consumer) }
     fn get_sky_light_sources(&self) -> JRef<ChunkSkyLightSources> { ChunkAccess::get_sky_light_sources(self) }
 }
 impl BlockGetter for ProtoChunk {

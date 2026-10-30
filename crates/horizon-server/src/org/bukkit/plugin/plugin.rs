@@ -3,7 +3,6 @@
 use crate::prelude::*;
 use crate::io::papermc::paper::plugin::lifecycle::event::lifecycle_event_manager::LifecycleEventManager;
 use crate::io::papermc::paper::plugin::lifecycle::event::lifecycle_event_owner::LifecycleEventOwner;
-use crate::java::io::InputStream;
 use crate::net::kyori::adventure::key::Namespaced;
 use crate::net::kyori::adventure::text::logger::slf4j::ComponentLogger;
 use crate::org::bukkit::command::tab_executor::TabExecutor;
@@ -21,7 +20,7 @@ pub trait Plugin: TabExecutor + LifecycleEventOwner + Namespaced {
     fn get_data_path(&self) -> std::path::PathBuf { todo!() } // default, paper-api/src/main/java/org/bukkit/plugin/Plugin.java:38
     fn get_description(&self) -> JRef<PluginDescriptionFile>; // paper-api/src/main/java/org/bukkit/plugin/Plugin.java:50
     fn get_config(&self) -> JRef<dyn FileConfigurationTrait>; // paper-api/src/main/java/org/bukkit/plugin/Plugin.java:71
-    fn get_resource(&self, filename: &str) -> Option<InputStream>; // paper-api/src/main/java/org/bukkit/plugin/Plugin.java:80
+    fn get_resource(&self, filename: &str) -> Option<Box<dyn std::io::Read + Send>>; // paper-api/src/main/java/org/bukkit/plugin/Plugin.java:80
     fn save_config(&self); // paper-api/src/main/java/org/bukkit/plugin/Plugin.java:86
     fn save_default_config(&self); // paper-api/src/main/java/org/bukkit/plugin/Plugin.java:94
     fn save_resource(&self, resource_path: &str, replace: bool); // paper-api/src/main/java/org/bukkit/plugin/Plugin.java:110
@@ -36,10 +35,10 @@ pub trait Plugin: TabExecutor + LifecycleEventOwner + Namespaced {
     fn set_naggable(&self, can_nag: bool); // paper-api/src/main/java/org/bukkit/plugin/Plugin.java:172
     fn get_default_world_generator(&self, world_name: &str, id: Option<String>) -> Option<JRef<dyn ChunkGeneratorTrait>>; // paper-api/src/main/java/org/bukkit/plugin/Plugin.java:183
     fn get_default_biome_provider(&self, world_name: &str, id: Option<String>) -> Option<JRef<dyn BiomeProviderTrait>>; // paper-api/src/main/java/org/bukkit/plugin/Plugin.java:195
-    fn get_logger(&self) -> crate::java::util::logging::Logger; // paper-api/src/main/java/org/bukkit/plugin/Plugin.java:205
+    fn get_logger(&self) -> (); // paper-api/src/main/java/org/bukkit/plugin/Plugin.java:205
     fn get_component_logger(&self) -> ComponentLogger { todo!() } // default, paper-api/src/main/java/org/bukkit/plugin/Plugin.java:209
-    fn get_slf4_j_logger(&self) -> crate::java::Logger { todo!() } // default, paper-api/src/main/java/org/bukkit/plugin/Plugin.java:216
-    fn get_log4_j_logger(&self) -> crate::java::Logger { todo!() } // default, paper-api/src/main/java/org/bukkit/plugin/Plugin.java:224
+    fn get_slf4_j_logger(&self) -> () { todo!() } // default, paper-api/src/main/java/org/bukkit/plugin/Plugin.java:216
+    fn get_log4_j_logger(&self) -> () { todo!() } // default, paper-api/src/main/java/org/bukkit/plugin/Plugin.java:224
     fn get_name(&self) -> String; // paper-api/src/main/java/org/bukkit/plugin/Plugin.java:239
     fn get_lifecycle_manager(&self) -> JRef<dyn LifecycleEventManager<JRef<dyn Plugin>>>; // paper-api/src/main/java/org/bukkit/plugin/Plugin.java:249
 }

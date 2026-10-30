@@ -3,12 +3,7 @@
 use crate::prelude::*;
 use crate::ca::spottedleaf::dataconverter::minecraft::datatypes::mc_data_type::MCDataTypeTrait;
 use crate::ca::spottedleaf::moonrise::patches::chunk_system::storage::chunk_system_simple_region_storage::ChunkSystemSimpleRegionStorage;
-use crate::com::mojang::datafixers::DataFixer;
 use crate::com::mojang::serialization::dynamic::Dynamic;
-use crate::java::lang::AutoCloseable;
-use crate::java::lang::Throwable;
-use crate::java::util::concurrent::CompletableFuture;
-use crate::java::util::function::Supplier;
 use crate::net::minecraft::nbt::compound_tag::CompoundTag;
 use crate::net::minecraft::nbt::tag::Tag;
 use crate::net::minecraft::util::datafix::data_fix_types::DataFixTypes;
@@ -21,20 +16,20 @@ use crate::net::minecraft::world::level::chunk_pos::ChunkPos;
 pub struct SimpleRegionStorage {
     pub this: Weak<dyn SimpleRegionStorageTrait>,
     pub storage: JRef<dyn RegionFileStorageTrait>, // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/SimpleRegionStorage.java:23
-    pub fixer_upper: DataFixer, // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/SimpleRegionStorage.java:24
+    pub fixer_upper: (), // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/SimpleRegionStorage.java:24
     pub data_fix_type: DataFixTypes, // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/SimpleRegionStorage.java:25
 }
-pub trait SimpleRegionStorageTrait: ChunkSystemSimpleRegionStorage + AutoCloseable {
+pub trait SimpleRegionStorageTrait: ChunkSystemSimpleRegionStorage {
     fn as_simple_region_storage(&self) -> &SimpleRegionStorage;
     fn is_old_chunk_around(&self, pos: ChunkPos, range: i32) -> bool; // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/SimpleRegionStorage.java:43
-    fn read(&self, pos: ChunkPos) -> CompletableFuture<Option<JRef<CompoundTag>>>; // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/SimpleRegionStorage.java:47
-    fn write(&self, pos: ChunkPos, value: JRef<CompoundTag>) -> CompletableFuture<()>; // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/SimpleRegionStorage.java:57
-    fn write_2(&self, pos: ChunkPos, supplier: JRef<dyn Supplier<JRef<CompoundTag>>>) -> CompletableFuture<()>; // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/SimpleRegionStorage.java:61
+    fn read(&self, pos: ChunkPos) -> crate::rt::CompletableFuture<Option<JRef<CompoundTag>>>; // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/SimpleRegionStorage.java:47
+    fn write(&self, pos: ChunkPos, value: JRef<CompoundTag>) -> crate::rt::CompletableFuture<()>; // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/SimpleRegionStorage.java:57
+    fn write_2(&self, pos: ChunkPos, supplier: Arc<dyn Fn() -> JRef<CompoundTag> + Send + Sync>) -> crate::rt::CompletableFuture<()>; // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/SimpleRegionStorage.java:61
     fn upgrade_chunk_tag(&self, chunk_tag: JRef<CompoundTag>, default_version: i32) -> JRef<CompoundTag>; // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/SimpleRegionStorage.java:136
     fn upgrade_chunk_tag_2(&self, chunk_tag: JRef<Dynamic<JRef<dyn Tag>>>, default_version: i32) -> JRef<Dynamic<JRef<dyn Tag>>>; // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/SimpleRegionStorage.java:140
     fn upgrade_chunk_tag_4(&self, chunk_tag: JRef<CompoundTag>, default_version: i32, data_fix_context_tag: Option<JRef<CompoundTag>>, target_version: i32) -> JRef<CompoundTag>; // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/SimpleRegionStorage.java:84
-    fn synchronize(&self, flush: bool) -> CompletableFuture<()>; // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/SimpleRegionStorage.java:157
-    fn close(&self) -> Result<(), Throwable>; // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/SimpleRegionStorage.java:169
+    fn synchronize(&self, flush: bool) -> crate::rt::CompletableFuture<()>; // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/SimpleRegionStorage.java:157
+    fn close(&self) -> Result<(), anyhow::Error>; // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/SimpleRegionStorage.java:169
     fn chunk_scanner(&self) -> JRef<dyn ChunkScanAccess>; // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/SimpleRegionStorage.java:174
     fn storage_info(&self) -> RegionStorageInfo; // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/SimpleRegionStorage.java:188
 }
@@ -44,21 +39,21 @@ impl std::ops::Deref for dyn SimpleRegionStorageTrait {
 }
 impl SimpleRegionStorage {
     pub fn this(&self) -> JRef<dyn SimpleRegionStorageTrait> { self.this.upgrade().expect("this") }
-    pub fn new_base<S: SimpleRegionStorageTrait + 'static>(this: &Weak<S>, info: RegionStorageInfo, folder: std::path::PathBuf, fixer_upper: DataFixer, sync_writes: bool, data_fix_type: DataFixTypes) -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/SimpleRegionStorage.java:34
-    pub fn new(info: RegionStorageInfo, folder: std::path::PathBuf, fixer_upper: DataFixer, sync_writes: bool, data_fix_type: DataFixTypes) -> JRef<Self> { Arc::new_cyclic(|this| Self::new_base(this, info, folder, fixer_upper, sync_writes, data_fix_type)) }
+    pub fn new_base<S: SimpleRegionStorageTrait + 'static>(this: &Weak<S>, info: RegionStorageInfo, folder: std::path::PathBuf, fixer_upper: (), sync_writes: bool, data_fix_type: DataFixTypes) -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/SimpleRegionStorage.java:34
+    pub fn new(info: RegionStorageInfo, folder: std::path::PathBuf, fixer_upper: (), sync_writes: bool, data_fix_type: DataFixTypes) -> JRef<Self> { Arc::new_cyclic(|this| Self::new_base(this, info, folder, fixer_upper, sync_writes, data_fix_type)) }
     pub fn moonrise_get_region_storage(&self) -> JRef<dyn RegionFileStorageTrait> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/SimpleRegionStorage.java:28
     pub fn is_old_chunk_around(&self, pos: ChunkPos, range: i32) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/SimpleRegionStorage.java:43
-    pub fn read(&self, pos: ChunkPos) -> CompletableFuture<Option<JRef<CompoundTag>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/SimpleRegionStorage.java:47
-    pub fn write(&self, pos: ChunkPos, value: JRef<CompoundTag>) -> CompletableFuture<()> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/SimpleRegionStorage.java:57
-    pub fn write_2(&self, pos: ChunkPos, supplier: JRef<dyn Supplier<JRef<CompoundTag>>>) -> CompletableFuture<()> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/SimpleRegionStorage.java:61
+    pub fn read(&self, pos: ChunkPos) -> crate::rt::CompletableFuture<Option<JRef<CompoundTag>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/SimpleRegionStorage.java:47
+    pub fn write(&self, pos: ChunkPos, value: JRef<CompoundTag>) -> crate::rt::CompletableFuture<()> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/SimpleRegionStorage.java:57
+    pub fn write_2(&self, pos: ChunkPos, supplier: Arc<dyn Fn() -> JRef<CompoundTag> + Send + Sync>) -> crate::rt::CompletableFuture<()> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/SimpleRegionStorage.java:61
     pub fn upgrade_chunk_tag(&self, chunk_tag: JRef<CompoundTag>, default_version: i32) -> JRef<CompoundTag> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/SimpleRegionStorage.java:136
     pub fn upgrade_chunk_tag_2(&self, chunk_tag: JRef<Dynamic<JRef<dyn Tag>>>, default_version: i32) -> JRef<Dynamic<JRef<dyn Tag>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/SimpleRegionStorage.java:140
     pub fn upgrade_chunk_tag_4(&self, chunk_tag: JRef<CompoundTag>, default_version: i32, data_fix_context_tag: Option<JRef<CompoundTag>>, target_version: i32) -> JRef<CompoundTag> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/SimpleRegionStorage.java:84
     pub fn get_data_converter_type(&self) -> JRef<dyn MCDataTypeTrait> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/SimpleRegionStorage.java:123
     pub fn inject_datafixing_context(chunk_tag: JRef<CompoundTag>, context_tag: Option<JRef<CompoundTag>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/SimpleRegionStorage.java:147
     pub fn remove_datafixing_context(chunk_tag: JRef<CompoundTag>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/SimpleRegionStorage.java:153
-    pub fn synchronize(&self, flush: bool) -> CompletableFuture<()> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/SimpleRegionStorage.java:157
-    pub fn close(&self) -> Result<(), Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/SimpleRegionStorage.java:169
+    pub fn synchronize(&self, flush: bool) -> crate::rt::CompletableFuture<()> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/SimpleRegionStorage.java:157
+    pub fn close(&self) -> Result<(), anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/SimpleRegionStorage.java:169
     pub fn chunk_scanner(&self) -> JRef<dyn ChunkScanAccess> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/SimpleRegionStorage.java:174
     pub fn storage_info(&self) -> RegionStorageInfo { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/storage/SimpleRegionStorage.java:188
 }
@@ -67,14 +62,14 @@ impl SimpleRegionStorage {
 impl SimpleRegionStorageTrait for SimpleRegionStorage {
     fn as_simple_region_storage(&self) -> &SimpleRegionStorage { self }
     fn is_old_chunk_around(&self, pos: ChunkPos, range: i32) -> bool { SimpleRegionStorage::is_old_chunk_around(self, pos, range) }
-    fn read(&self, pos: ChunkPos) -> CompletableFuture<Option<JRef<CompoundTag>>> { SimpleRegionStorage::read(self, pos) }
-    fn write(&self, pos: ChunkPos, value: JRef<CompoundTag>) -> CompletableFuture<()> { SimpleRegionStorage::write(self, pos, value) }
-    fn write_2(&self, pos: ChunkPos, supplier: JRef<dyn Supplier<JRef<CompoundTag>>>) -> CompletableFuture<()> { SimpleRegionStorage::write_2(self, pos, supplier) }
+    fn read(&self, pos: ChunkPos) -> crate::rt::CompletableFuture<Option<JRef<CompoundTag>>> { SimpleRegionStorage::read(self, pos) }
+    fn write(&self, pos: ChunkPos, value: JRef<CompoundTag>) -> crate::rt::CompletableFuture<()> { SimpleRegionStorage::write(self, pos, value) }
+    fn write_2(&self, pos: ChunkPos, supplier: Arc<dyn Fn() -> JRef<CompoundTag> + Send + Sync>) -> crate::rt::CompletableFuture<()> { SimpleRegionStorage::write_2(self, pos, supplier) }
     fn upgrade_chunk_tag(&self, chunk_tag: JRef<CompoundTag>, default_version: i32) -> JRef<CompoundTag> { SimpleRegionStorage::upgrade_chunk_tag(self, chunk_tag, default_version) }
     fn upgrade_chunk_tag_2(&self, chunk_tag: JRef<Dynamic<JRef<dyn Tag>>>, default_version: i32) -> JRef<Dynamic<JRef<dyn Tag>>> { SimpleRegionStorage::upgrade_chunk_tag_2(self, chunk_tag, default_version) }
     fn upgrade_chunk_tag_4(&self, chunk_tag: JRef<CompoundTag>, default_version: i32, data_fix_context_tag: Option<JRef<CompoundTag>>, target_version: i32) -> JRef<CompoundTag> { SimpleRegionStorage::upgrade_chunk_tag_4(self, chunk_tag, default_version, data_fix_context_tag, target_version) }
-    fn synchronize(&self, flush: bool) -> CompletableFuture<()> { SimpleRegionStorage::synchronize(self, flush) }
-    fn close(&self) -> Result<(), Throwable> { SimpleRegionStorage::close(self) }
+    fn synchronize(&self, flush: bool) -> crate::rt::CompletableFuture<()> { SimpleRegionStorage::synchronize(self, flush) }
+    fn close(&self) -> Result<(), anyhow::Error> { SimpleRegionStorage::close(self) }
     fn chunk_scanner(&self) -> JRef<dyn ChunkScanAccess> { SimpleRegionStorage::chunk_scanner(self) }
     fn storage_info(&self) -> RegionStorageInfo { SimpleRegionStorage::storage_info(self) }
 }

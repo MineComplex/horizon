@@ -14,9 +14,6 @@ use crate::com::mojang::brigadier::tree::command_node::CommandNode;
 use crate::com::mojang::brigadier::tree::command_node::CommandNodeTrait;
 use crate::com::mojang::brigadier::tree::literal_command_node::LiteralCommandNode;
 use crate::com::mojang::brigadier::tree::literal_command_node::LiteralCommandNodeTrait;
-use crate::java::lang::Throwable;
-use crate::java::util::concurrent::CompletableFuture;
-use crate::java::util::function::Predicate;
 
 // ---- class io.papermc.paper.command.brigadier.ShadowBrigNode (paper-server/src/main/java/io/papermc/paper/command/brigadier/ShadowBrigNode.java:8)
 pub struct ShadowBrigNode {
@@ -57,11 +54,11 @@ impl CommandNodeTrait<JObjectRef> for ShadowBrigNode {
     fn is_valid_input(&self, input: &str) -> bool { LiteralCommandNode::is_valid_input(self, input) }
     fn equals(&self, o: JObjectRef) -> bool { LiteralCommandNode::equals(self, o) }
     fn hash_code(&self) -> i32 { LiteralCommandNode::hash_code(self) }
-    fn get_requirement(&self) -> JRef<dyn Predicate<S>> { CommandNode::get_requirement(self) }
+    fn get_requirement(&self) -> Arc<dyn Fn(S) -> bool + Send + Sync> { CommandNode::get_requirement(self) }
     fn get_name(&self) -> String { LiteralCommandNode::get_name(self) }
     fn get_usage_text(&self) -> String { LiteralCommandNode::get_usage_text(self) }
-    fn parse(&self, reader: StringReader, context_builder: CommandContextBuilder<S>) -> Result<(), Throwable> { LiteralCommandNode::parse(self, reader, context_builder) }
-    fn list_suggestions(&self, context: CommandContext<S>, builder: SuggestionsBuilder) -> Result<CompletableFuture<Suggestions>, Throwable> { LiteralCommandNode::list_suggestions(self, context, builder) }
+    fn parse(&self, reader: StringReader, context_builder: CommandContextBuilder<S>) -> Result<(), anyhow::Error> { LiteralCommandNode::parse(self, reader, context_builder) }
+    fn list_suggestions(&self, context: CommandContext<S>, builder: SuggestionsBuilder) -> Result<crate::rt::CompletableFuture<Suggestions>, anyhow::Error> { LiteralCommandNode::list_suggestions(self, context, builder) }
     fn create_builder(&self) -> JRef<dyn ArgumentBuilderTrait<S, JObjectRef>> { LiteralCommandNode::create_builder(self) }
     fn get_sorted_key(&self) -> String { LiteralCommandNode::get_sorted_key(self) }
     fn get_relevant_nodes(&self, input: StringReader) -> Vec<JRef<dyn CommandNodeTrait<S>>> { CommandNode::get_relevant_nodes(self, input) }

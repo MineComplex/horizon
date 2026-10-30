@@ -6,11 +6,6 @@ use crate::ca::spottedleaf::moonrise::patches::chunk_system::level::chunk::chunk
 use crate::ca::spottedleaf::moonrise::patches::entity_tracker::entity_tracker_entity::EntityTrackerEntity;
 use crate::com::mojang::math::transformation::Transformation;
 use crate::com::mojang::serialization::Codec;
-use crate::java::util::function::BiConsumer;
-use crate::java::util::function::Consumer;
-use crate::java::util::function::IntFunction;
-use crate::java::util::function::Predicate;
-use crate::java::util::stream::Stream;
 use crate::net::caffeinemc::mods::lithium::common::world::in_world_tracking::maybe_in_level_object::MaybeInLevelObject;
 use crate::net::minecraft::commands::arguments::entity_anchor_argument::EntityAnchorArgumentAnchor;
 use crate::net::minecraft::commands::command_source_stack::CommandSourceStack;
@@ -110,10 +105,6 @@ use crate::net::minecraft::world::scores::score_holder::ScoreHolder;
 use crate::net::minecraft::world::scores::team::TeamTrait;
 use crate::org::bukkit::event::entity::entity_remove_event::EntityRemoveEventCause;
 use crate::org::bukkit::event::player::player_teleport_event::PlayerTeleportEventTeleportCause;
-use crate::org::joml::Quaternionf;
-use crate::org::joml::Quaternionfc;
-use crate::org::joml::Vector3f;
-use crate::org::joml::Vector3fc;
 
 // ---- class net.minecraft.world.entity.Display (leaf-server/src/minecraft/java/net/minecraft/world/entity/Display.java:43)
 pub struct Display {
@@ -166,14 +157,14 @@ impl std::ops::Deref for dyn DisplayTrait {
     fn deref(&self) -> &Display { self.as_display() }
 }
 pub const NO_BRIGHTNESS_OVERRIDE: i32 = -1; // leaf-server/src/minecraft/java/net/minecraft/world/entity/Display.java:45
-pub static EMPTY_QUATERNIONF: LazyLock<Quaternionf> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/entity/Display.java:46
+pub static EMPTY_QUATERNIONF: LazyLock<glam::Quat> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/entity/Display.java:46
 pub static DATA_TRANSFORMATION_INTERPOLATION_START_DELTA_TICKS_ID: LazyLock<EntityDataAccessor<i32>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/entity/Display.java:47
 pub static DATA_TRANSFORMATION_INTERPOLATION_DURATION_ID: LazyLock<EntityDataAccessor<i32>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/entity/Display.java:50
 pub static DATA_POS_ROT_INTERPOLATION_DURATION_ID: LazyLock<EntityDataAccessor<i32>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/entity/Display.java:53
-pub static DATA_TRANSLATION_ID: LazyLock<EntityDataAccessor<Vector3fc>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/entity/Display.java:56
-pub static DATA_SCALE_ID: LazyLock<EntityDataAccessor<Vector3fc>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/entity/Display.java:57
-pub static DATA_LEFT_ROTATION_ID: LazyLock<EntityDataAccessor<Quaternionfc>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/entity/Display.java:58
-pub static DATA_RIGHT_ROTATION_ID: LazyLock<EntityDataAccessor<Quaternionfc>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/entity/Display.java:59
+pub static DATA_TRANSLATION_ID: LazyLock<EntityDataAccessor<glam::Vec3>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/entity/Display.java:56
+pub static DATA_SCALE_ID: LazyLock<EntityDataAccessor<glam::Vec3>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/entity/Display.java:57
+pub static DATA_LEFT_ROTATION_ID: LazyLock<EntityDataAccessor<glam::Quat>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/entity/Display.java:58
+pub static DATA_RIGHT_ROTATION_ID: LazyLock<EntityDataAccessor<glam::Quat>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/entity/Display.java:59
 pub static DATA_BILLBOARD_RENDER_CONSTRAINTS_ID: LazyLock<EntityDataAccessor<i8>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/entity/Display.java:60
 pub static DATA_BRIGHTNESS_OVERRIDE_ID: LazyLock<EntityDataAccessor<i32>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/entity/Display.java:61
 pub static DATA_VIEW_RANGE_ID: LazyLock<EntityDataAccessor<f32>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/entity/Display.java:62
@@ -221,8 +212,8 @@ impl Display {
     pub fn should_render_at_sqr_distance(&self, distance_sqr: f64) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/Display.java:418
     pub fn get_team_color(&self) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/Display.java:423
     pub fn create_transformation(entity_data: JRef<SynchedEntityData>) -> JRef<Transformation> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/Display.java:144
-    pub fn initialize_display_watcher(items: &mut Vec<SynchedEntityDataDataValue<JObjectRef>>, translation: Vector3f, scale: Vector3f, render: DisplayBillboardConstraints, view_distance: f32) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/Display.java:187
-    pub fn apply_display_watcher(items: &mut Vec<SynchedEntityDataDataValue<JObjectRef>>, translation: Vector3f, scale: Vector3f, render: DisplayBillboardConstraints, view_distance: f32) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/Display.java:212
+    pub fn initialize_display_watcher(items: &mut Vec<SynchedEntityDataDataValue<JObjectRef>>, translation: glam::Vec3, scale: glam::Vec3, render: DisplayBillboardConstraints, view_distance: f32) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/Display.java:187
+    pub fn apply_display_watcher(items: &mut Vec<SynchedEntityDataDataValue<JObjectRef>>, translation: glam::Vec3, scale: glam::Vec3, render: DisplayBillboardConstraints, view_distance: f32) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/Display.java:212
     pub fn set_transformation(&self, transformation: JRef<Transformation>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/Display.java:243
     pub fn affected_by_culling(&self) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/Display.java:277
     pub fn render_state(&self) -> DisplayRenderState { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/Display.java:291
@@ -268,7 +259,7 @@ pub struct DisplayBillboardConstraintsData {
     pub name: String,
 }
 pub static BILLBOARD_CONSTRAINTS_CODEC: LazyLock<JRef<dyn Codec<DisplayBillboardConstraints>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/entity/Display.java:460
-pub static BILLBOARD_CONSTRAINTS_BY_ID: LazyLock<JRef<dyn IntFunction<DisplayBillboardConstraints>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/entity/Display.java:461
+pub static BILLBOARD_CONSTRAINTS_BY_ID: LazyLock<Arc<dyn Fn(i32) -> DisplayBillboardConstraints + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/entity/Display.java:461
 impl DisplayBillboardConstraints {
     pub const VALUES: [DisplayBillboardConstraints; 4] = [DisplayBillboardConstraints::FIXED, DisplayBillboardConstraints::VERTICAL, DisplayBillboardConstraints::HORIZONTAL, DisplayBillboardConstraints::CENTER];
     pub fn ordinal(self) -> i32 { self as i32 }
@@ -547,7 +538,7 @@ impl EntityTrait for DisplayBlockDisplay {
     fn spawn_at_location_2_2(&self, level: JRef<ServerLevel>, entity: JRef<ItemEntity>) -> Option<JRef<ItemEntity>> { crate::net::minecraft::world::entity::entity::Entity::spawn_at_location_2_2(self, level, entity) }
     fn spawn_at_location_3(&self, level: JRef<ServerLevel>, item_stack: JRef<ItemStack>, offset: Vec3) -> Option<JRef<ItemEntity>> { crate::net::minecraft::world::entity::entity::Entity::spawn_at_location_3(self, level, item_stack, offset) }
     fn spawn_at_location_3_2(&self, level: JRef<ServerLevel>, item_stack: JRef<ItemStack>, offset: f32) -> Option<JRef<ItemEntity>> { crate::net::minecraft::world::entity::entity::Entity::spawn_at_location_3_2(self, level, item_stack, offset) }
-    fn spawn_at_location_4(&self, level: JRef<ServerLevel>, item_stack: JRef<ItemStack>, offset: Vec3, delayed_add_consumer: JRef<dyn Consumer<JObjectRef>>) -> Option<JRef<ItemEntity>> { crate::net::minecraft::world::entity::entity::Entity::spawn_at_location_4(self, level, item_stack, offset, delayed_add_consumer) }
+    fn spawn_at_location_4(&self, level: JRef<ServerLevel>, item_stack: JRef<ItemStack>, offset: Vec3, delayed_add_consumer: Arc<dyn Fn(JObjectRef) + Send + Sync>) -> Option<JRef<ItemEntity>> { crate::net::minecraft::world::entity::entity::Entity::spawn_at_location_4(self, level, item_stack, offset, delayed_add_consumer) }
     fn is_alive(&self) -> bool { crate::net::minecraft::world::entity::entity::Entity::is_alive(self) }
     fn is_in_wall(&self) -> bool { crate::net::minecraft::world::entity::entity::Entity::is_in_wall(self) }
     fn interact(&self, player: JRef<dyn PlayerTrait>, hand: InteractionHand, location: Vec3) -> JRef<dyn InteractionResult> { crate::net::minecraft::world::entity::entity::Entity::interact(self, player, hand, location) }
@@ -584,7 +575,7 @@ impl EntityTrait for DisplayBlockDisplay {
     fn lerp_head_to(&self, y_rot: f32, steps: i32) { crate::net::minecraft::world::entity::entity::Entity::lerp_head_to(self, y_rot, steps) }
     fn get_pick_radius(&self) -> f32 { crate::net::minecraft::world::entity::entity::Entity::get_pick_radius(self) }
     fn get_look_angle(&self) -> Vec3 { crate::net::minecraft::world::entity::entity::Entity::get_look_angle(self) }
-    fn get_look_quaternion(&self) -> Quaternionf { crate::net::minecraft::world::entity::entity::Entity::get_look_quaternion(self) }
+    fn get_look_quaternion(&self) -> glam::Quat { crate::net::minecraft::world::entity::entity::Entity::get_look_quaternion(self) }
     fn get_head_look_angle(&self) -> Vec3 { crate::net::minecraft::world::entity::entity::Entity::get_head_look_angle(self) }
     fn get_hand_holding_item_angle(&self, item: JRef<dyn ItemTrait>) -> Vec3 { crate::net::minecraft::world::entity::entity::Entity::get_hand_holding_item_angle(self, item) }
     fn get_rotation_vector(&self) -> Vec2 { crate::net::minecraft::world::entity::entity::Entity::get_rotation_vector(self) }
@@ -619,7 +610,7 @@ impl EntityTrait for DisplayBlockDisplay {
     fn is_invisible(&self) -> bool { crate::net::minecraft::world::entity::entity::Entity::is_invisible(self) }
     fn is_invisible_to(&self, player: JRef<dyn PlayerTrait>) -> bool { crate::net::minecraft::world::entity::entity::Entity::is_invisible_to(self, player) }
     fn is_on_rails(&self) -> bool { crate::net::minecraft::world::entity::entity::Entity::is_on_rails(self) }
-    fn update_dynamic_game_event_listener(&self, action: JRef<dyn BiConsumer<JRef<DynamicGameEventListener<JObjectRef>>, JRef<ServerLevel>>>) { crate::net::minecraft::world::entity::entity::Entity::update_dynamic_game_event_listener(self, action) }
+    fn update_dynamic_game_event_listener(&self, action: Arc<dyn Fn(JRef<DynamicGameEventListener<JObjectRef>>, JRef<ServerLevel>) + Send + Sync>) { crate::net::minecraft::world::entity::entity::Entity::update_dynamic_game_event_listener(self, action) }
     fn get_team(&self) -> Option<JRef<PlayerTeam>> { crate::net::minecraft::world::entity::entity::Entity::get_team(self) }
     fn is_allied_to_1(&self, other: Option<JRef<dyn TeamTrait>>) -> bool { crate::net::minecraft::world::entity::entity::Entity::is_allied_to_1(self, other) }
     fn considers_entity_as_ally(&self, other: JRef<dyn EntityTrait>) -> bool { crate::net::minecraft::world::entity::entity::Entity::considers_entity_as_ally(self, other) }
@@ -705,7 +696,7 @@ impl EntityTrait for DisplayBlockDisplay {
     fn get_controlling_passenger(&self) -> Option<JRef<dyn LivingEntityTrait>> { crate::net::minecraft::world::entity::entity::Entity::get_controlling_passenger(self) }
     fn get_first_passenger(&self) -> Option<JRef<dyn EntityTrait>> { crate::net::minecraft::world::entity::entity::Entity::get_first_passenger(self) }
     fn has_passenger(&self, entity: JRef<dyn EntityTrait>) -> bool { crate::net::minecraft::world::entity::entity::Entity::has_passenger(self, entity) }
-    fn has_passenger_1(&self, test: JRef<dyn Predicate<JRef<dyn EntityTrait>>>) -> bool { crate::net::minecraft::world::entity::entity::Entity::has_passenger_1(self, test) }
+    fn has_passenger_1(&self, test: Arc<dyn Fn(JRef<dyn EntityTrait>) -> bool + Send + Sync>) -> bool { crate::net::minecraft::world::entity::entity::Entity::has_passenger_1(self, test) }
     fn get_indirect_passengers(&self) -> Vec<JRef<dyn EntityTrait>> { crate::net::minecraft::world::entity::entity::Entity::get_indirect_passengers(self) }
     fn count_player_passengers(&self) -> i32 { crate::net::minecraft::world::entity::entity::Entity::count_player_passengers(self) }
     fn has_exactly_one_player_passenger(&self) -> bool { crate::net::minecraft::world::entity::entity::Entity::has_exactly_one_player_passenger(self) }
@@ -807,8 +798,8 @@ impl EntityAccess for DisplayBlockDisplay {
     fn block_position(&self) -> BlockPos { crate::net::minecraft::world::entity::entity::Entity::block_position(self) }
     fn get_bounding_box(&self) -> AABB { crate::net::minecraft::world::entity::entity::Entity::get_bounding_box(self) }
     fn set_level_callback(&self, callback: JRef<dyn EntityInLevelCallback>) { crate::net::minecraft::world::entity::entity::Entity::set_level_callback(self, callback) }
-    fn get_self_and_passengers(&self) -> Stream<JRef<dyn EntityAccess>> { crate::net::minecraft::world::entity::entity::Entity::get_self_and_passengers(self) }
-    fn get_passengers_and_self(&self) -> Stream<JRef<dyn EntityAccess>> { crate::net::minecraft::world::entity::entity::Entity::get_passengers_and_self(self) }
+    fn get_self_and_passengers(&self) -> Box<dyn Iterator<Item = JRef<dyn EntityAccess>> + Send> { crate::net::minecraft::world::entity::entity::Entity::get_self_and_passengers(self) }
+    fn get_passengers_and_self(&self) -> Box<dyn Iterator<Item = JRef<dyn EntityAccess>> + Send> { crate::net::minecraft::world::entity::entity::Entity::get_passengers_and_self(self) }
     fn set_removed_2(&self, removal_reason: EntityRemovalReason, event_cause: EntityRemoveEventCause) { crate::net::minecraft::world::entity::entity::Entity::set_removed_2(self, removal_reason, event_cause) }
     fn should_be_saved(&self) -> bool { crate::net::minecraft::world::entity::entity::Entity::should_be_saved(self) }
     fn is_always_ticking(&self) -> bool { crate::net::minecraft::world::entity::entity::Entity::is_always_ticking(self) }
@@ -1180,7 +1171,7 @@ impl EntityTrait for DisplayItemDisplay {
     fn spawn_at_location_2_2(&self, level: JRef<ServerLevel>, entity: JRef<ItemEntity>) -> Option<JRef<ItemEntity>> { crate::net::minecraft::world::entity::entity::Entity::spawn_at_location_2_2(self, level, entity) }
     fn spawn_at_location_3(&self, level: JRef<ServerLevel>, item_stack: JRef<ItemStack>, offset: Vec3) -> Option<JRef<ItemEntity>> { crate::net::minecraft::world::entity::entity::Entity::spawn_at_location_3(self, level, item_stack, offset) }
     fn spawn_at_location_3_2(&self, level: JRef<ServerLevel>, item_stack: JRef<ItemStack>, offset: f32) -> Option<JRef<ItemEntity>> { crate::net::minecraft::world::entity::entity::Entity::spawn_at_location_3_2(self, level, item_stack, offset) }
-    fn spawn_at_location_4(&self, level: JRef<ServerLevel>, item_stack: JRef<ItemStack>, offset: Vec3, delayed_add_consumer: JRef<dyn Consumer<JObjectRef>>) -> Option<JRef<ItemEntity>> { crate::net::minecraft::world::entity::entity::Entity::spawn_at_location_4(self, level, item_stack, offset, delayed_add_consumer) }
+    fn spawn_at_location_4(&self, level: JRef<ServerLevel>, item_stack: JRef<ItemStack>, offset: Vec3, delayed_add_consumer: Arc<dyn Fn(JObjectRef) + Send + Sync>) -> Option<JRef<ItemEntity>> { crate::net::minecraft::world::entity::entity::Entity::spawn_at_location_4(self, level, item_stack, offset, delayed_add_consumer) }
     fn is_alive(&self) -> bool { crate::net::minecraft::world::entity::entity::Entity::is_alive(self) }
     fn is_in_wall(&self) -> bool { crate::net::minecraft::world::entity::entity::Entity::is_in_wall(self) }
     fn interact(&self, player: JRef<dyn PlayerTrait>, hand: InteractionHand, location: Vec3) -> JRef<dyn InteractionResult> { crate::net::minecraft::world::entity::entity::Entity::interact(self, player, hand, location) }
@@ -1217,7 +1208,7 @@ impl EntityTrait for DisplayItemDisplay {
     fn lerp_head_to(&self, y_rot: f32, steps: i32) { crate::net::minecraft::world::entity::entity::Entity::lerp_head_to(self, y_rot, steps) }
     fn get_pick_radius(&self) -> f32 { crate::net::minecraft::world::entity::entity::Entity::get_pick_radius(self) }
     fn get_look_angle(&self) -> Vec3 { crate::net::minecraft::world::entity::entity::Entity::get_look_angle(self) }
-    fn get_look_quaternion(&self) -> Quaternionf { crate::net::minecraft::world::entity::entity::Entity::get_look_quaternion(self) }
+    fn get_look_quaternion(&self) -> glam::Quat { crate::net::minecraft::world::entity::entity::Entity::get_look_quaternion(self) }
     fn get_head_look_angle(&self) -> Vec3 { crate::net::minecraft::world::entity::entity::Entity::get_head_look_angle(self) }
     fn get_hand_holding_item_angle(&self, item: JRef<dyn ItemTrait>) -> Vec3 { crate::net::minecraft::world::entity::entity::Entity::get_hand_holding_item_angle(self, item) }
     fn get_rotation_vector(&self) -> Vec2 { crate::net::minecraft::world::entity::entity::Entity::get_rotation_vector(self) }
@@ -1252,7 +1243,7 @@ impl EntityTrait for DisplayItemDisplay {
     fn is_invisible(&self) -> bool { crate::net::minecraft::world::entity::entity::Entity::is_invisible(self) }
     fn is_invisible_to(&self, player: JRef<dyn PlayerTrait>) -> bool { crate::net::minecraft::world::entity::entity::Entity::is_invisible_to(self, player) }
     fn is_on_rails(&self) -> bool { crate::net::minecraft::world::entity::entity::Entity::is_on_rails(self) }
-    fn update_dynamic_game_event_listener(&self, action: JRef<dyn BiConsumer<JRef<DynamicGameEventListener<JObjectRef>>, JRef<ServerLevel>>>) { crate::net::minecraft::world::entity::entity::Entity::update_dynamic_game_event_listener(self, action) }
+    fn update_dynamic_game_event_listener(&self, action: Arc<dyn Fn(JRef<DynamicGameEventListener<JObjectRef>>, JRef<ServerLevel>) + Send + Sync>) { crate::net::minecraft::world::entity::entity::Entity::update_dynamic_game_event_listener(self, action) }
     fn get_team(&self) -> Option<JRef<PlayerTeam>> { crate::net::minecraft::world::entity::entity::Entity::get_team(self) }
     fn is_allied_to_1(&self, other: Option<JRef<dyn TeamTrait>>) -> bool { crate::net::minecraft::world::entity::entity::Entity::is_allied_to_1(self, other) }
     fn considers_entity_as_ally(&self, other: JRef<dyn EntityTrait>) -> bool { crate::net::minecraft::world::entity::entity::Entity::considers_entity_as_ally(self, other) }
@@ -1338,7 +1329,7 @@ impl EntityTrait for DisplayItemDisplay {
     fn get_controlling_passenger(&self) -> Option<JRef<dyn LivingEntityTrait>> { crate::net::minecraft::world::entity::entity::Entity::get_controlling_passenger(self) }
     fn get_first_passenger(&self) -> Option<JRef<dyn EntityTrait>> { crate::net::minecraft::world::entity::entity::Entity::get_first_passenger(self) }
     fn has_passenger(&self, entity: JRef<dyn EntityTrait>) -> bool { crate::net::minecraft::world::entity::entity::Entity::has_passenger(self, entity) }
-    fn has_passenger_1(&self, test: JRef<dyn Predicate<JRef<dyn EntityTrait>>>) -> bool { crate::net::minecraft::world::entity::entity::Entity::has_passenger_1(self, test) }
+    fn has_passenger_1(&self, test: Arc<dyn Fn(JRef<dyn EntityTrait>) -> bool + Send + Sync>) -> bool { crate::net::minecraft::world::entity::entity::Entity::has_passenger_1(self, test) }
     fn get_indirect_passengers(&self) -> Vec<JRef<dyn EntityTrait>> { crate::net::minecraft::world::entity::entity::Entity::get_indirect_passengers(self) }
     fn count_player_passengers(&self) -> i32 { crate::net::minecraft::world::entity::entity::Entity::count_player_passengers(self) }
     fn has_exactly_one_player_passenger(&self) -> bool { crate::net::minecraft::world::entity::entity::Entity::has_exactly_one_player_passenger(self) }
@@ -1440,8 +1431,8 @@ impl EntityAccess for DisplayItemDisplay {
     fn block_position(&self) -> BlockPos { crate::net::minecraft::world::entity::entity::Entity::block_position(self) }
     fn get_bounding_box(&self) -> AABB { crate::net::minecraft::world::entity::entity::Entity::get_bounding_box(self) }
     fn set_level_callback(&self, callback: JRef<dyn EntityInLevelCallback>) { crate::net::minecraft::world::entity::entity::Entity::set_level_callback(self, callback) }
-    fn get_self_and_passengers(&self) -> Stream<JRef<dyn EntityAccess>> { crate::net::minecraft::world::entity::entity::Entity::get_self_and_passengers(self) }
-    fn get_passengers_and_self(&self) -> Stream<JRef<dyn EntityAccess>> { crate::net::minecraft::world::entity::entity::Entity::get_passengers_and_self(self) }
+    fn get_self_and_passengers(&self) -> Box<dyn Iterator<Item = JRef<dyn EntityAccess>> + Send> { crate::net::minecraft::world::entity::entity::Entity::get_self_and_passengers(self) }
+    fn get_passengers_and_self(&self) -> Box<dyn Iterator<Item = JRef<dyn EntityAccess>> + Send> { crate::net::minecraft::world::entity::entity::Entity::get_passengers_and_self(self) }
     fn set_removed_2(&self, removal_reason: EntityRemovalReason, event_cause: EntityRemoveEventCause) { crate::net::minecraft::world::entity::entity::Entity::set_removed_2(self, removal_reason, event_cause) }
     fn should_be_saved(&self) -> bool { crate::net::minecraft::world::entity::entity::Entity::should_be_saved(self) }
     fn is_always_ticking(&self) -> bool { crate::net::minecraft::world::entity::entity::Entity::is_always_ticking(self) }
@@ -1597,8 +1588,8 @@ impl DisplayTextDisplay {
     pub fn read_additional_save_data(&self, input: JRef<dyn ValueInput>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/Display.java:812
     pub fn add_additional_save_data(&self, output: JRef<dyn ValueOutput>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/Display.java:852
     pub fn update_render_sub_state(&self, should_interpolate: bool, progress: f32) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/Display.java:866
-    pub fn initialize_text_display_watcher(items: &mut Vec<SynchedEntityDataDataValue<JObjectRef>>, text: JRef<dyn Component>, translation: Vector3f, scale: Vector3f, render: DisplayBillboardConstraints, view_distance: f32, background_color: i32, text_opacity: i32, style_flags: i32) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/Display.java:723
-    pub fn apply_text_display_watcher(items: &mut Vec<SynchedEntityDataDataValue<JObjectRef>>, text: JRef<dyn Component>, translation: Vector3f, scale: Vector3f, render: DisplayBillboardConstraints, view_distance: f32, background_color: i32, text_opacity: i32, style_flags: i32) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/Display.java:742
+    pub fn initialize_text_display_watcher(items: &mut Vec<SynchedEntityDataDataValue<JObjectRef>>, text: JRef<dyn Component>, translation: glam::Vec3, scale: glam::Vec3, render: DisplayBillboardConstraints, view_distance: f32, background_color: i32, text_opacity: i32, style_flags: i32) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/Display.java:723
+    pub fn apply_text_display_watcher(items: &mut Vec<SynchedEntityDataDataValue<JObjectRef>>, text: JRef<dyn Component>, translation: glam::Vec3, scale: glam::Vec3, render: DisplayBillboardConstraints, view_distance: f32, background_color: i32, text_opacity: i32, style_flags: i32) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/Display.java:742
     pub fn get_text(&self) -> JRef<dyn Component> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/Display.java:768
     pub fn set_text(&self, text: JRef<dyn Component>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/Display.java:772
     pub fn get_line_width(&self) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/Display.java:776
@@ -1853,7 +1844,7 @@ impl EntityTrait for DisplayTextDisplay {
     fn spawn_at_location_2_2(&self, level: JRef<ServerLevel>, entity: JRef<ItemEntity>) -> Option<JRef<ItemEntity>> { crate::net::minecraft::world::entity::entity::Entity::spawn_at_location_2_2(self, level, entity) }
     fn spawn_at_location_3(&self, level: JRef<ServerLevel>, item_stack: JRef<ItemStack>, offset: Vec3) -> Option<JRef<ItemEntity>> { crate::net::minecraft::world::entity::entity::Entity::spawn_at_location_3(self, level, item_stack, offset) }
     fn spawn_at_location_3_2(&self, level: JRef<ServerLevel>, item_stack: JRef<ItemStack>, offset: f32) -> Option<JRef<ItemEntity>> { crate::net::minecraft::world::entity::entity::Entity::spawn_at_location_3_2(self, level, item_stack, offset) }
-    fn spawn_at_location_4(&self, level: JRef<ServerLevel>, item_stack: JRef<ItemStack>, offset: Vec3, delayed_add_consumer: JRef<dyn Consumer<JObjectRef>>) -> Option<JRef<ItemEntity>> { crate::net::minecraft::world::entity::entity::Entity::spawn_at_location_4(self, level, item_stack, offset, delayed_add_consumer) }
+    fn spawn_at_location_4(&self, level: JRef<ServerLevel>, item_stack: JRef<ItemStack>, offset: Vec3, delayed_add_consumer: Arc<dyn Fn(JObjectRef) + Send + Sync>) -> Option<JRef<ItemEntity>> { crate::net::minecraft::world::entity::entity::Entity::spawn_at_location_4(self, level, item_stack, offset, delayed_add_consumer) }
     fn is_alive(&self) -> bool { crate::net::minecraft::world::entity::entity::Entity::is_alive(self) }
     fn is_in_wall(&self) -> bool { crate::net::minecraft::world::entity::entity::Entity::is_in_wall(self) }
     fn interact(&self, player: JRef<dyn PlayerTrait>, hand: InteractionHand, location: Vec3) -> JRef<dyn InteractionResult> { crate::net::minecraft::world::entity::entity::Entity::interact(self, player, hand, location) }
@@ -1890,7 +1881,7 @@ impl EntityTrait for DisplayTextDisplay {
     fn lerp_head_to(&self, y_rot: f32, steps: i32) { crate::net::minecraft::world::entity::entity::Entity::lerp_head_to(self, y_rot, steps) }
     fn get_pick_radius(&self) -> f32 { crate::net::minecraft::world::entity::entity::Entity::get_pick_radius(self) }
     fn get_look_angle(&self) -> Vec3 { crate::net::minecraft::world::entity::entity::Entity::get_look_angle(self) }
-    fn get_look_quaternion(&self) -> Quaternionf { crate::net::minecraft::world::entity::entity::Entity::get_look_quaternion(self) }
+    fn get_look_quaternion(&self) -> glam::Quat { crate::net::minecraft::world::entity::entity::Entity::get_look_quaternion(self) }
     fn get_head_look_angle(&self) -> Vec3 { crate::net::minecraft::world::entity::entity::Entity::get_head_look_angle(self) }
     fn get_hand_holding_item_angle(&self, item: JRef<dyn ItemTrait>) -> Vec3 { crate::net::minecraft::world::entity::entity::Entity::get_hand_holding_item_angle(self, item) }
     fn get_rotation_vector(&self) -> Vec2 { crate::net::minecraft::world::entity::entity::Entity::get_rotation_vector(self) }
@@ -1925,7 +1916,7 @@ impl EntityTrait for DisplayTextDisplay {
     fn is_invisible(&self) -> bool { crate::net::minecraft::world::entity::entity::Entity::is_invisible(self) }
     fn is_invisible_to(&self, player: JRef<dyn PlayerTrait>) -> bool { crate::net::minecraft::world::entity::entity::Entity::is_invisible_to(self, player) }
     fn is_on_rails(&self) -> bool { crate::net::minecraft::world::entity::entity::Entity::is_on_rails(self) }
-    fn update_dynamic_game_event_listener(&self, action: JRef<dyn BiConsumer<JRef<DynamicGameEventListener<JObjectRef>>, JRef<ServerLevel>>>) { crate::net::minecraft::world::entity::entity::Entity::update_dynamic_game_event_listener(self, action) }
+    fn update_dynamic_game_event_listener(&self, action: Arc<dyn Fn(JRef<DynamicGameEventListener<JObjectRef>>, JRef<ServerLevel>) + Send + Sync>) { crate::net::minecraft::world::entity::entity::Entity::update_dynamic_game_event_listener(self, action) }
     fn get_team(&self) -> Option<JRef<PlayerTeam>> { crate::net::minecraft::world::entity::entity::Entity::get_team(self) }
     fn is_allied_to_1(&self, other: Option<JRef<dyn TeamTrait>>) -> bool { crate::net::minecraft::world::entity::entity::Entity::is_allied_to_1(self, other) }
     fn considers_entity_as_ally(&self, other: JRef<dyn EntityTrait>) -> bool { crate::net::minecraft::world::entity::entity::Entity::considers_entity_as_ally(self, other) }
@@ -2011,7 +2002,7 @@ impl EntityTrait for DisplayTextDisplay {
     fn get_controlling_passenger(&self) -> Option<JRef<dyn LivingEntityTrait>> { crate::net::minecraft::world::entity::entity::Entity::get_controlling_passenger(self) }
     fn get_first_passenger(&self) -> Option<JRef<dyn EntityTrait>> { crate::net::minecraft::world::entity::entity::Entity::get_first_passenger(self) }
     fn has_passenger(&self, entity: JRef<dyn EntityTrait>) -> bool { crate::net::minecraft::world::entity::entity::Entity::has_passenger(self, entity) }
-    fn has_passenger_1(&self, test: JRef<dyn Predicate<JRef<dyn EntityTrait>>>) -> bool { crate::net::minecraft::world::entity::entity::Entity::has_passenger_1(self, test) }
+    fn has_passenger_1(&self, test: Arc<dyn Fn(JRef<dyn EntityTrait>) -> bool + Send + Sync>) -> bool { crate::net::minecraft::world::entity::entity::Entity::has_passenger_1(self, test) }
     fn get_indirect_passengers(&self) -> Vec<JRef<dyn EntityTrait>> { crate::net::minecraft::world::entity::entity::Entity::get_indirect_passengers(self) }
     fn count_player_passengers(&self) -> i32 { crate::net::minecraft::world::entity::entity::Entity::count_player_passengers(self) }
     fn has_exactly_one_player_passenger(&self) -> bool { crate::net::minecraft::world::entity::entity::Entity::has_exactly_one_player_passenger(self) }
@@ -2113,8 +2104,8 @@ impl EntityAccess for DisplayTextDisplay {
     fn block_position(&self) -> BlockPos { crate::net::minecraft::world::entity::entity::Entity::block_position(self) }
     fn get_bounding_box(&self) -> AABB { crate::net::minecraft::world::entity::entity::Entity::get_bounding_box(self) }
     fn set_level_callback(&self, callback: JRef<dyn EntityInLevelCallback>) { crate::net::minecraft::world::entity::entity::Entity::set_level_callback(self, callback) }
-    fn get_self_and_passengers(&self) -> Stream<JRef<dyn EntityAccess>> { crate::net::minecraft::world::entity::entity::Entity::get_self_and_passengers(self) }
-    fn get_passengers_and_self(&self) -> Stream<JRef<dyn EntityAccess>> { crate::net::minecraft::world::entity::entity::Entity::get_passengers_and_self(self) }
+    fn get_self_and_passengers(&self) -> Box<dyn Iterator<Item = JRef<dyn EntityAccess>> + Send> { crate::net::minecraft::world::entity::entity::Entity::get_self_and_passengers(self) }
+    fn get_passengers_and_self(&self) -> Box<dyn Iterator<Item = JRef<dyn EntityAccess>> + Send> { crate::net::minecraft::world::entity::entity::Entity::get_passengers_and_self(self) }
     fn set_removed_2(&self, removal_reason: EntityRemovalReason, event_cause: EntityRemoveEventCause) { crate::net::minecraft::world::entity::entity::Entity::set_removed_2(self, removal_reason, event_cause) }
     fn should_be_saved(&self) -> bool { crate::net::minecraft::world::entity::entity::Entity::should_be_saved(self) }
     fn is_always_ticking(&self) -> bool { crate::net::minecraft::world::entity::entity::Entity::is_always_ticking(self) }

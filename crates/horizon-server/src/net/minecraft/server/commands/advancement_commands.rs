@@ -5,7 +5,6 @@ use crate::com::mojang::brigadier::command_dispatcher::CommandDispatcher;
 use crate::com::mojang::brigadier::context::CommandContext;
 use crate::com::mojang::brigadier::exceptions::Dynamic2CommandExceptionType;
 use crate::com::mojang::brigadier::exceptions::command_syntax_exception::CommandSyntaxExceptionTrait;
-use crate::java::lang::Throwable;
 use crate::net::minecraft::advancements::advancement_holder::AdvancementHolder;
 use crate::net::minecraft::advancements::advancement_node::AdvancementNode;
 use crate::net::minecraft::commands::command_source_stack::CommandSourceStack;
@@ -24,9 +23,9 @@ impl AdvancementCommands {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/AdvancementCommands.java:27
     pub fn register(dispatcher: JRef<CommandDispatcher<JRef<CommandSourceStack>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/AdvancementCommands.java:32
-    pub fn perform(source: JRef<CommandSourceStack>, players: &Vec<JRef<ServerPlayer>>, action: AdvancementCommandsAction, advancements: &Vec<AdvancementHolder>) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/AdvancementCommands.java:224
-    pub fn perform_5(source: JRef<CommandSourceStack>, players: &Vec<JRef<ServerPlayer>>, action: AdvancementCommandsAction, advancements: &Vec<AdvancementHolder>, show_advancements: bool) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/AdvancementCommands.java:233
-    pub fn perform_criterion(source: JRef<CommandSourceStack>, players: &Vec<JRef<ServerPlayer>>, action: AdvancementCommandsAction, holder: AdvancementHolder, criterion: &str) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/AdvancementCommands.java:261
+    pub fn perform(source: JRef<CommandSourceStack>, players: &Vec<JRef<ServerPlayer>>, action: AdvancementCommandsAction, advancements: &Vec<AdvancementHolder>) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/AdvancementCommands.java:224
+    pub fn perform_5(source: JRef<CommandSourceStack>, players: &Vec<JRef<ServerPlayer>>, action: AdvancementCommandsAction, advancements: &Vec<AdvancementHolder>, show_advancements: bool) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/AdvancementCommands.java:233
+    pub fn perform_criterion(source: JRef<CommandSourceStack>, players: &Vec<JRef<ServerPlayer>>, action: AdvancementCommandsAction, holder: AdvancementHolder, criterion: &str) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/AdvancementCommands.java:261
     pub fn get_advancements(context: CommandContext<JRef<CommandSourceStack>>, target: AdvancementHolder, mode: AdvancementCommandsMode) -> Vec<AdvancementHolder> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/AdvancementCommands.java:286
     pub fn add_children(parent: JRef<AdvancementNode>, output: &mut Vec<AdvancementHolder>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/AdvancementCommands.java:310
 }

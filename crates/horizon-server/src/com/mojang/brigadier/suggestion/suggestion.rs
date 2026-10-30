@@ -3,8 +3,6 @@
 use crate::prelude::*;
 use crate::com::mojang::brigadier::Message;
 use crate::com::mojang::brigadier::context::StringRange;
-use crate::java::lang::Comparable;
-use crate::java::util::Comparator;
 
 // ---- class com.mojang.brigadier.suggestion.Suggestion (leaf-server/src/minecraft/java/com/mojang/brigadier/suggestion/Suggestion.java:11)
 pub struct Suggestion {
@@ -13,7 +11,7 @@ pub struct Suggestion {
     pub text: String, // leaf-server/src/minecraft/java/com/mojang/brigadier/suggestion/Suggestion.java:13
     pub tooltip: JRef<dyn Message>, // leaf-server/src/minecraft/java/com/mojang/brigadier/suggestion/Suggestion.java:14
 }
-pub trait SuggestionTrait: Comparable<JRef<dyn SuggestionTrait>> {
+pub trait SuggestionTrait: JObject {
     fn as_suggestion(&self) -> &Suggestion;
     fn get_range(&self) -> StringRange; // leaf-server/src/minecraft/java/com/mojang/brigadier/suggestion/Suggestion.java:26
     fn get_text(&self) -> String; // leaf-server/src/minecraft/java/com/mojang/brigadier/suggestion/Suggestion.java:30
@@ -43,7 +41,7 @@ impl Suggestion {
     pub fn equals(&self, o: JObjectRef) -> bool { todo!() } // leaf-server/src/minecraft/java/com/mojang/brigadier/suggestion/Suggestion.java:53
     pub fn hash_code(&self) -> i32 { todo!() } // leaf-server/src/minecraft/java/com/mojang/brigadier/suggestion/Suggestion.java:65
     pub fn to_string(&self) -> String { todo!() } // leaf-server/src/minecraft/java/com/mojang/brigadier/suggestion/Suggestion.java:70
-    pub fn compare0(lhs: JRef<dyn SuggestionTrait>, rhs: JRef<dyn SuggestionTrait>, text_comparator: JRef<dyn Comparator<String>>) -> i32 { todo!() } // leaf-server/src/minecraft/java/com/mojang/brigadier/suggestion/Suggestion.java:80
+    pub fn compare0(lhs: JRef<dyn SuggestionTrait>, rhs: JRef<dyn SuggestionTrait>, text_comparator: Arc<dyn Fn(&String, &String) -> std::cmp::Ordering + Send + Sync>) -> i32 { todo!() } // leaf-server/src/minecraft/java/com/mojang/brigadier/suggestion/Suggestion.java:80
     pub fn compare_to(&self, o: JRef<dyn SuggestionTrait>) -> i32 { todo!() } // leaf-server/src/minecraft/java/com/mojang/brigadier/suggestion/Suggestion.java:93
     pub fn compare_to_ignore_case(&self, b: JRef<dyn SuggestionTrait>) -> i32 { todo!() } // leaf-server/src/minecraft/java/com/mojang/brigadier/suggestion/Suggestion.java:98
     pub fn expand(&self, command: &str, range: StringRange) -> JRef<dyn SuggestionTrait> { todo!() } // leaf-server/src/minecraft/java/com/mojang/brigadier/suggestion/Suggestion.java:102

@@ -4,11 +4,6 @@ use crate::prelude::*;
 use crate::ca::spottedleaf::moonrise::common::misc::single_user_area_map::SingleUserAreaMapTrait;
 use crate::ca::spottedleaf::moonrise::common::misc::staggered_rate_limiter::StaggeredRateLimiter;
 use crate::ca::spottedleaf::moonrise::patches::chunk_system::scheduling::chunk_holder_manager::ChunkHolderManagerTicketOperation;
-use crate::com::google::gson::JsonObject;
-use crate::it::unimi::dsi::fastutil::longs::LongComparator;
-use crate::java::lang::invoke::VarHandle;
-use crate::java::util::PriorityQueue;
-use crate::java::util::function::Function;
 use crate::net::minecraft::network::protocol::packet::Packet;
 use crate::net::minecraft::server::level::server_level::ServerLevel;
 use crate::net::minecraft::server::level::server_player::ServerPlayer;
@@ -53,17 +48,17 @@ pub struct RegionizedPlayerChunkLoaderViewDistanceHolder {
     pub this: Weak<Self>,
     pub view_distances: Mut<RegionizedPlayerChunkLoaderViewDistances>, // leaf-server/src/minecraft/java/ca/spottedleaf/moonrise/patches/chunk_system/player/RegionizedPlayerChunkLoader.java:63
 }
-pub static VIEW_DISTANCE_HOLDER_VIEW_DISTANCES_HANDLE: LazyLock<VarHandle> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/ca/spottedleaf/moonrise/patches/chunk_system/player/RegionizedPlayerChunkLoader.java:64
+pub static VIEW_DISTANCE_HOLDER_VIEW_DISTANCES_HANDLE: LazyLock<()> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/ca/spottedleaf/moonrise/patches/chunk_system/player/RegionizedPlayerChunkLoader.java:64
 impl RegionizedPlayerChunkLoaderViewDistanceHolder {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/ca/spottedleaf/moonrise/patches/chunk_system/player/RegionizedPlayerChunkLoader.java:66
     pub fn get_view_distances(&self) -> RegionizedPlayerChunkLoaderViewDistances { todo!() } // leaf-server/src/minecraft/java/ca/spottedleaf/moonrise/patches/chunk_system/player/RegionizedPlayerChunkLoader.java:70
     pub fn compare_and_exchange_view_distance(&self, expect: RegionizedPlayerChunkLoaderViewDistances, update: RegionizedPlayerChunkLoaderViewDistances) -> RegionizedPlayerChunkLoaderViewDistances { todo!() } // leaf-server/src/minecraft/java/ca/spottedleaf/moonrise/patches/chunk_system/player/RegionizedPlayerChunkLoader.java:74
-    pub fn update_view_distance(&self, update: JRef<dyn Function<RegionizedPlayerChunkLoaderViewDistances, RegionizedPlayerChunkLoaderViewDistances>>) { todo!() } // leaf-server/src/minecraft/java/ca/spottedleaf/moonrise/patches/chunk_system/player/RegionizedPlayerChunkLoader.java:78
+    pub fn update_view_distance(&self, update: Arc<dyn Fn(RegionizedPlayerChunkLoaderViewDistances) -> RegionizedPlayerChunkLoaderViewDistances + Send + Sync>) { todo!() } // leaf-server/src/minecraft/java/ca/spottedleaf/moonrise/patches/chunk_system/player/RegionizedPlayerChunkLoader.java:78
     pub fn set_tick_view_distance(&self, distance: i32) { todo!() } // leaf-server/src/minecraft/java/ca/spottedleaf/moonrise/patches/chunk_system/player/RegionizedPlayerChunkLoader.java:92
     pub fn set_load_view_distance(&self, distance: i32) { todo!() } // leaf-server/src/minecraft/java/ca/spottedleaf/moonrise/patches/chunk_system/player/RegionizedPlayerChunkLoader.java:98
     pub fn set_send_view_distance(&self, distance: i32) { todo!() } // leaf-server/src/minecraft/java/ca/spottedleaf/moonrise/patches/chunk_system/player/RegionizedPlayerChunkLoader.java:104
-    pub fn to_json(&self) -> JsonObject { todo!() } // leaf-server/src/minecraft/java/ca/spottedleaf/moonrise/patches/chunk_system/player/RegionizedPlayerChunkLoader.java:110
+    pub fn to_json(&self) -> serde_json::Map<String, serde_json::Value> { todo!() } // leaf-server/src/minecraft/java/ca/spottedleaf/moonrise/patches/chunk_system/player/RegionizedPlayerChunkLoader.java:110
 }
 crate::jobject!(RegionizedPlayerChunkLoaderViewDistanceHolder);
 // ---- record ca.spottedleaf.moonrise.patches.chunk_system.player.RegionizedPlayerChunkLoader.ViewDistances (leaf-server/src/minecraft/java/ca/spottedleaf/moonrise/patches/chunk_system/player/RegionizedPlayerChunkLoader.java:115)
@@ -79,7 +74,7 @@ impl RegionizedPlayerChunkLoaderViewDistances {
     pub fn set_tick_view_distance(&self, distance: i32) -> RegionizedPlayerChunkLoaderViewDistances { todo!() } // leaf-server/src/minecraft/java/ca/spottedleaf/moonrise/patches/chunk_system/player/RegionizedPlayerChunkLoader.java:120
     pub fn set_load_view_distance(&self, distance: i32) -> RegionizedPlayerChunkLoaderViewDistances { todo!() } // leaf-server/src/minecraft/java/ca/spottedleaf/moonrise/patches/chunk_system/player/RegionizedPlayerChunkLoader.java:127
     pub fn set_send_view_distance(&self, distance: i32) -> RegionizedPlayerChunkLoaderViewDistances { todo!() } // leaf-server/src/minecraft/java/ca/spottedleaf/moonrise/patches/chunk_system/player/RegionizedPlayerChunkLoader.java:135
-    pub fn to_json(&self) -> JsonObject { todo!() } // leaf-server/src/minecraft/java/ca/spottedleaf/moonrise/patches/chunk_system/player/RegionizedPlayerChunkLoader.java:143
+    pub fn to_json(&self) -> serde_json::Map<String, serde_json::Value> { todo!() } // leaf-server/src/minecraft/java/ca/spottedleaf/moonrise/patches/chunk_system/player/RegionizedPlayerChunkLoader.java:143
 }
 crate::jobject!(RegionizedPlayerChunkLoaderViewDistances);
 // ---- class ca.spottedleaf.moonrise.patches.chunk_system.player.RegionizedPlayerChunkLoader.PlayerChunkLoaderData (leaf-server/src/minecraft/java/ca/spottedleaf/moonrise/patches/chunk_system/player/RegionizedPlayerChunkLoader.java:321)
@@ -105,13 +100,13 @@ pub struct RegionizedPlayerChunkLoaderPlayerChunkLoaderData {
     pub chunk_send_limiter: JRef<StaggeredRateLimiter>, // leaf-server/src/minecraft/java/ca/spottedleaf/moonrise/patches/chunk_system/player/RegionizedPlayerChunkLoader.java:382
     pub chunk_load_ticket_limiter: JRef<StaggeredRateLimiter>, // leaf-server/src/minecraft/java/ca/spottedleaf/moonrise/patches/chunk_system/player/RegionizedPlayerChunkLoader.java:383
     pub chunk_generate_ticket_limiter: JRef<StaggeredRateLimiter>, // leaf-server/src/minecraft/java/ca/spottedleaf/moonrise/patches/chunk_system/player/RegionizedPlayerChunkLoader.java:384
-    pub queue_comparator: LongComparator, // leaf-server/src/minecraft/java/ca/spottedleaf/moonrise/patches/chunk_system/player/RegionizedPlayerChunkLoader.java:387
-    pub send_queue: Mut<PriorityQueue<i64>>, // leaf-server/src/minecraft/java/ca/spottedleaf/moonrise/patches/chunk_system/player/RegionizedPlayerChunkLoader.java:409
-    pub ticking_queue: Mut<PriorityQueue<i64>>, // leaf-server/src/minecraft/java/ca/spottedleaf/moonrise/patches/chunk_system/player/RegionizedPlayerChunkLoader.java:410
-    pub generating_queue: Mut<PriorityQueue<i64>>, // leaf-server/src/minecraft/java/ca/spottedleaf/moonrise/patches/chunk_system/player/RegionizedPlayerChunkLoader.java:411
-    pub gen_queue: Mut<PriorityQueue<i64>>, // leaf-server/src/minecraft/java/ca/spottedleaf/moonrise/patches/chunk_system/player/RegionizedPlayerChunkLoader.java:412
-    pub loading_queue: Mut<PriorityQueue<i64>>, // leaf-server/src/minecraft/java/ca/spottedleaf/moonrise/patches/chunk_system/player/RegionizedPlayerChunkLoader.java:413
-    pub load_queue: Mut<PriorityQueue<i64>>, // leaf-server/src/minecraft/java/ca/spottedleaf/moonrise/patches/chunk_system/player/RegionizedPlayerChunkLoader.java:414
+    pub queue_comparator: (), // leaf-server/src/minecraft/java/ca/spottedleaf/moonrise/patches/chunk_system/player/RegionizedPlayerChunkLoader.java:387
+    pub send_queue: Mut<std::collections::BinaryHeap<i64>>, // leaf-server/src/minecraft/java/ca/spottedleaf/moonrise/patches/chunk_system/player/RegionizedPlayerChunkLoader.java:409
+    pub ticking_queue: Mut<std::collections::BinaryHeap<i64>>, // leaf-server/src/minecraft/java/ca/spottedleaf/moonrise/patches/chunk_system/player/RegionizedPlayerChunkLoader.java:410
+    pub generating_queue: Mut<std::collections::BinaryHeap<i64>>, // leaf-server/src/minecraft/java/ca/spottedleaf/moonrise/patches/chunk_system/player/RegionizedPlayerChunkLoader.java:411
+    pub gen_queue: Mut<std::collections::BinaryHeap<i64>>, // leaf-server/src/minecraft/java/ca/spottedleaf/moonrise/patches/chunk_system/player/RegionizedPlayerChunkLoader.java:412
+    pub loading_queue: Mut<std::collections::BinaryHeap<i64>>, // leaf-server/src/minecraft/java/ca/spottedleaf/moonrise/patches/chunk_system/player/RegionizedPlayerChunkLoader.java:413
+    pub load_queue: Mut<std::collections::BinaryHeap<i64>>, // leaf-server/src/minecraft/java/ca/spottedleaf/moonrise/patches/chunk_system/player/RegionizedPlayerChunkLoader.java:414
     pub removed: Mut<bool>, // leaf-server/src/minecraft/java/ca/spottedleaf/moonrise/patches/chunk_system/player/RegionizedPlayerChunkLoader.java:416
     pub broadcast_map: JRef<dyn SingleUserAreaMapTrait<JRef<RegionizedPlayerChunkLoaderPlayerChunkLoaderData>>>, // leaf-server/src/minecraft/java/ca/spottedleaf/moonrise/patches/chunk_system/player/RegionizedPlayerChunkLoader.java:479
     pub load_ticket_cleanup: JRef<dyn SingleUserAreaMapTrait<JRef<RegionizedPlayerChunkLoaderPlayerChunkLoaderData>>>, // leaf-server/src/minecraft/java/ca/spottedleaf/moonrise/patches/chunk_system/player/RegionizedPlayerChunkLoader.java:490

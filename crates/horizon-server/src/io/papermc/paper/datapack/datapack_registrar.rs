@@ -5,8 +5,6 @@ use crate::io::papermc::paper::datapack::datapack::DatapackPosition;
 use crate::io::papermc::paper::datapack::discovered_datapack::DiscoveredDatapack;
 use crate::io::papermc::paper::plugin::configuration::plugin_meta::PluginMeta;
 use crate::io::papermc::paper::plugin::lifecycle::event::registrar::registrar::Registrar;
-use crate::java::lang::Throwable;
-use crate::java::util::function::Consumer;
 use crate::net::kyori::adventure::text::Component;
 use crate::prelude::*;
 
@@ -20,7 +18,7 @@ pub trait DatapackRegistrar: Registrar {
         &self,
         uri: &str,
         id: &str,
-    ) -> Result<Option<JRef<dyn DiscoveredDatapack>>, Throwable> {
+    ) -> Result<Option<JRef<dyn DiscoveredDatapack>>, anyhow::Error> {
         self.discover_pack_3(
             uri,
             id,
@@ -31,7 +29,7 @@ pub trait DatapackRegistrar: Registrar {
         &self,
         path: std::path::PathBuf,
         id: &str,
-    ) -> Result<Option<JRef<dyn DiscoveredDatapack>>, Throwable> {
+    ) -> Result<Option<JRef<dyn DiscoveredDatapack>>, anyhow::Error> {
         self.discover_pack_3_2(
             path,
             id,
@@ -42,28 +40,28 @@ pub trait DatapackRegistrar: Registrar {
         &self,
         uri: &str,
         id: &str,
-        configurer: JRef<dyn Consumer<JRef<dyn DatapackRegistrarConfigurer>>>,
-    ) -> Result<Option<JRef<dyn DiscoveredDatapack>>, Throwable>; // paper-api/src/main/java/io/papermc/paper/datapack/DatapackRegistrar.java:114
+        configurer: Arc<dyn Fn(JRef<dyn DatapackRegistrarConfigurer>) + Send + Sync>,
+    ) -> Result<Option<JRef<dyn DiscoveredDatapack>>, anyhow::Error>; // paper-api/src/main/java/io/papermc/paper/datapack/DatapackRegistrar.java:114
     fn discover_pack_3_2(
         &self,
         path: std::path::PathBuf,
         id: &str,
-        configurer: JRef<dyn Consumer<JRef<dyn DatapackRegistrarConfigurer>>>,
-    ) -> Result<Option<JRef<dyn DiscoveredDatapack>>, Throwable>; // paper-api/src/main/java/io/papermc/paper/datapack/DatapackRegistrar.java:139
+        configurer: Arc<dyn Fn(JRef<dyn DatapackRegistrarConfigurer>) + Send + Sync>,
+    ) -> Result<Option<JRef<dyn DiscoveredDatapack>>, anyhow::Error>; // paper-api/src/main/java/io/papermc/paper/datapack/DatapackRegistrar.java:139
     fn discover_pack_4(
         &self,
         plugin_meta: JRef<dyn PluginMeta>,
         uri: &str,
         id: &str,
-        configurer: JRef<dyn Consumer<JRef<dyn DatapackRegistrarConfigurer>>>,
-    ) -> Result<Option<JRef<dyn DiscoveredDatapack>>, Throwable>; // paper-api/src/main/java/io/papermc/paper/datapack/DatapackRegistrar.java:152
+        configurer: Arc<dyn Fn(JRef<dyn DatapackRegistrarConfigurer>) + Send + Sync>,
+    ) -> Result<Option<JRef<dyn DiscoveredDatapack>>, anyhow::Error>; // paper-api/src/main/java/io/papermc/paper/datapack/DatapackRegistrar.java:152
     fn discover_pack_4_2(
         &self,
         plugin_meta: JRef<dyn PluginMeta>,
         path: std::path::PathBuf,
         id: &str,
-        configurer: JRef<dyn Consumer<JRef<dyn DatapackRegistrarConfigurer>>>,
-    ) -> Result<Option<JRef<dyn DiscoveredDatapack>>, Throwable>; // paper-api/src/main/java/io/papermc/paper/datapack/DatapackRegistrar.java:165
+        configurer: Arc<dyn Fn(JRef<dyn DatapackRegistrarConfigurer>) + Send + Sync>,
+    ) -> Result<Option<JRef<dyn DiscoveredDatapack>>, anyhow::Error>; // paper-api/src/main/java/io/papermc/paper/datapack/DatapackRegistrar.java:165
 }
 // ---- interface io.papermc.paper.datapack.DatapackRegistrar.Configurer (paper-api/src/main/java/io/papermc/paper/datapack/DatapackRegistrar.java:170)
 pub trait DatapackRegistrarConfigurer: JObject {

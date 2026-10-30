@@ -4,7 +4,6 @@ use crate::prelude::*;
 use crate::com::mojang::brigadier::ImmutableStringReader;
 use crate::com::mojang::brigadier::StringReader;
 use crate::com::mojang::brigadier::exceptions::command_syntax_exception::CommandSyntaxExceptionTrait;
-use crate::java::lang::Throwable;
 use crate::net::minecraft::resources::identifier::Identifier;
 use crate::net::minecraft::util::parsing::packrat::commands::resource_suggestion::ResourceSuggestion;
 use crate::net::minecraft::util::parsing::packrat::delayed_exception::DelayedException;
@@ -22,7 +21,7 @@ pub struct ResourceLookupRule<C: JGeneric, V: JGeneric> {
 }
 pub trait ResourceLookupRuleTrait<C: JGeneric, V: JGeneric>: Rule<StringReader, V> + ResourceSuggestion {
     fn as_resource_lookup_rule(&self) -> &ResourceLookupRule<C, V>;
-    fn validate_element(&self, reader: ImmutableStringReader, id: JRef<Identifier>) -> Result<V, Throwable>; // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/ResourceLookupRule.java:42
+    fn validate_element(&self, reader: ImmutableStringReader, id: JRef<Identifier>) -> Result<V, anyhow::Error>; // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/ResourceLookupRule.java:42
 }
 impl<C: JGeneric, V: JGeneric> std::ops::Deref for dyn ResourceLookupRuleTrait<C, V> {
     type Target = ResourceLookupRule<C, V>;

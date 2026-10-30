@@ -9,15 +9,14 @@ use crate::io::papermc::paper::registry::tag::tag_key::TagKey;
 use crate::io::papermc::paper::registry::typed_key::TypedKey;
 use crate::io::papermc::paper::tag::post_flatten_tag_registrar::PostFlattenTagRegistrar;
 use crate::io::papermc::paper::tag::tag_event_config::TagEventConfig;
-use crate::java::util::function::Function;
 use crate::net::minecraft::resources::identifier::Identifier;
 
 // ---- class io.papermc.paper.tag.PaperPostFlattenTagRegistrar (paper-server/src/main/java/io/papermc/paper/tag/PaperPostFlattenTagRegistrar.java:26)
 pub struct PaperPostFlattenTagRegistrar<M: JGeneric, T: JGeneric> {
     pub this: Weak<Self>,
     pub tags: Mut<HashMap<JRef<Identifier>, Vec<M>>>, // paper-server/src/main/java/io/papermc/paper/tag/PaperPostFlattenTagRegistrar.java:30
-    pub from_id_converter: JRef<dyn Function<JRef<Identifier>, Option<M>>>, // paper-server/src/main/java/io/papermc/paper/tag/PaperPostFlattenTagRegistrar.java:31
-    pub to_id_converter: JRef<dyn Function<M, JRef<Identifier>>>, // paper-server/src/main/java/io/papermc/paper/tag/PaperPostFlattenTagRegistrar.java:32
+    pub from_id_converter: Arc<dyn Fn(JRef<Identifier>) -> Option<M> + Send + Sync>, // paper-server/src/main/java/io/papermc/paper/tag/PaperPostFlattenTagRegistrar.java:31
+    pub to_id_converter: Arc<dyn Fn(M) -> JRef<Identifier> + Send + Sync>, // paper-server/src/main/java/io/papermc/paper/tag/PaperPostFlattenTagRegistrar.java:32
     pub registry_key: JRef<dyn RegistryKey<T>>, // paper-server/src/main/java/io/papermc/paper/tag/PaperPostFlattenTagRegistrar.java:33
     pub _phantom: std::marker::PhantomData<(M, T,)>,
 }

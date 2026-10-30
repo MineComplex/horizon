@@ -3,7 +3,6 @@
 use crate::prelude::*;
 use crate::com::mojang::serialization::Codec;
 use crate::com::mojang::serialization::MapCodec;
-use crate::java::util::function::Function;
 use crate::net::minecraft::network::codec::stream_codec::StreamCodec;
 
 // ---- record net.minecraft.util.random.Weighted (leaf-server/src/minecraft/java/net/minecraft/util/random/Weighted.java:17)
@@ -18,5 +17,5 @@ impl<T: JGeneric> Weighted<T> {
     pub fn codec<E: JGeneric>(element_codec: JRef<dyn Codec<E>>) -> JRef<dyn Codec<Weighted<E>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/random/Weighted.java:27
     pub fn codec_1<E: JGeneric>(element_codec: MapCodec<E>) -> JRef<dyn Codec<Weighted<E>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/random/Weighted.java:31
     pub fn stream_codec<B: JGeneric, T: JGeneric>(value_codec: JRef<dyn StreamCodec<B, T>>) -> JRef<dyn StreamCodec<B, Weighted<T>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/random/Weighted.java:41
-    pub fn map<U: JGeneric>(&self, function: JRef<dyn Function<T, U>>) -> Weighted<U> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/random/Weighted.java:45
+    pub fn map<U: JGeneric>(&self, function: Arc<dyn Fn(T) -> U + Send + Sync>) -> Weighted<U> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/random/Weighted.java:45
 }

@@ -6,8 +6,6 @@ use crate::com::mojang::brigadier::context::CommandContext;
 use crate::com::mojang::brigadier::exceptions::DynamicCommandExceptionType;
 use crate::com::mojang::brigadier::suggestion::Suggestions;
 use crate::com::mojang::brigadier::suggestion::SuggestionsBuilder;
-use crate::java::lang::Throwable;
-use crate::java::util::concurrent::CompletableFuture;
 use crate::net::minecraft::commands::command_source_stack::CommandSourceStack;
 use crate::net::minecraft::world::scores::objective::Objective;
 
@@ -22,10 +20,10 @@ impl ObjectiveArgument {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/ObjectiveArgument.java:19
     pub fn objective() -> JRef<ObjectiveArgument> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/ObjectiveArgument.java:28
-    pub fn get_objective(context: CommandContext<JRef<CommandSourceStack>>, name: &str) -> Result<JRef<Objective>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/ObjectiveArgument.java:32
-    pub fn get_writable_objective(context: CommandContext<JRef<CommandSourceStack>>, name: &str) -> Result<JRef<Objective>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/ObjectiveArgument.java:43
-    pub fn parse(&self, reader: StringReader) -> Result<String, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/ObjectiveArgument.java:52
-    pub fn list_suggestions<S: JGeneric>(&self, context: CommandContext<S>, builder: SuggestionsBuilder) -> CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/ObjectiveArgument.java:57
+    pub fn get_objective(context: CommandContext<JRef<CommandSourceStack>>, name: &str) -> Result<JRef<Objective>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/ObjectiveArgument.java:32
+    pub fn get_writable_objective(context: CommandContext<JRef<CommandSourceStack>>, name: &str) -> Result<JRef<Objective>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/ObjectiveArgument.java:43
+    pub fn parse(&self, reader: StringReader) -> Result<String, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/ObjectiveArgument.java:52
+    pub fn list_suggestions<S: JGeneric>(&self, context: CommandContext<S>, builder: SuggestionsBuilder) -> crate::rt::CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/ObjectiveArgument.java:57
     pub fn get_examples(&self) -> Vec<String> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/ObjectiveArgument.java:67
 }
 crate::jobject!(ObjectiveArgument);

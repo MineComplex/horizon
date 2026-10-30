@@ -3,7 +3,6 @@
 use crate::prelude::*;
 use crate::com::mojang::serialization::Codec;
 use crate::com::mojang::serialization::MapCodec;
-use crate::io::netty::buffer::ByteBuf;
 use crate::net::minecraft::network::codec::stream_codec::StreamCodec;
 use crate::net::minecraft::resources::identifier::Identifier;
 
@@ -42,7 +41,7 @@ pub struct ClientAssetResourceTexture {
 }
 pub static RESOURCE_TEXTURE_CODEC: LazyLock<JRef<dyn Codec<ClientAssetResourceTexture>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/core/ClientAsset.java:20
 pub static RESOURCE_TEXTURE_DEFAULT_FIELD_CODEC: LazyLock<MapCodec<ClientAssetResourceTexture>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/core/ClientAsset.java:21
-pub static RESOURCE_TEXTURE_STREAM_CODEC: LazyLock<JRef<dyn StreamCodec<ByteBuf, ClientAssetResourceTexture>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/core/ClientAsset.java:22
+pub static RESOURCE_TEXTURE_STREAM_CODEC: LazyLock<JRef<dyn StreamCodec<bytes::BytesMut, ClientAssetResourceTexture>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/core/ClientAsset.java:22
 impl ClientAssetResourceTexture {
     pub fn new(texture: JRef<Identifier>) -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/core/ClientAsset.java:25
     pub fn new_2(id: JRef<Identifier>, texture_path: JRef<Identifier>) -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/core/ClientAsset.java:19

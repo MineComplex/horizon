@@ -3,7 +3,6 @@
 use crate::prelude::*;
 use crate::com::mojang::brigadier::command_dispatcher::CommandDispatcher;
 use crate::com::mojang::brigadier::exceptions::SimpleCommandExceptionType;
-use crate::java::lang::Throwable;
 use crate::net::minecraft::commands::command_build_context::CommandBuildContext;
 use crate::net::minecraft::commands::command_source_stack::CommandSourceStack;
 use crate::net::minecraft::world::damagesource::damage_source::DamageSource;
@@ -18,6 +17,6 @@ impl DamageCommand {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/DamageCommand.java:19
     pub fn register(dispatcher: JRef<CommandDispatcher<JRef<CommandSourceStack>>>, context: JRef<dyn CommandBuildContext>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/DamageCommand.java:22
-    pub fn damage(stack: JRef<CommandSourceStack>, target: JRef<dyn EntityTrait>, amount: f32, source: JRef<DamageSource>) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/DamageCommand.java:106
+    pub fn damage(stack: JRef<CommandSourceStack>, target: JRef<dyn EntityTrait>, amount: f32, source: JRef<DamageSource>) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/DamageCommand.java:106
 }
 crate::jobject!(DamageCommand);

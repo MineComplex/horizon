@@ -5,35 +5,30 @@ use crate::io::papermc::paper::threadedregions::scheduler::async_scheduler::Asyn
 use crate::io::papermc::paper::threadedregions::scheduler::scheduled_task::ScheduledTask;
 use crate::io::papermc::paper::threadedregions::scheduler::scheduled_task::ScheduledTaskCancelledState;
 use crate::io::papermc::paper::threadedregions::scheduler::scheduled_task::ScheduledTaskExecutionState;
-use crate::java::util::concurrent::Executor;
-use crate::java::util::concurrent::ScheduledExecutorService;
-use crate::java::util::concurrent::ScheduledFuture;
-use crate::java::util::concurrent::TimeUnit;
-use crate::java::util::function::Consumer;
 use crate::org::bukkit::plugin::plugin::Plugin;
 
 // ---- class io.papermc.paper.threadedregions.scheduler.FoliaAsyncScheduler (paper-server/src/main/java/io/papermc/paper/threadedregions/scheduler/FoliaAsyncScheduler.java:22)
 pub struct FoliaAsyncScheduler {
     pub this: Weak<Self>,
-    pub executors: JRef<dyn Executor>, // paper-server/src/main/java/io/papermc/paper/threadedregions/scheduler/FoliaAsyncScheduler.java:26
-    pub timer_thread: ScheduledExecutorService, // paper-server/src/main/java/io/papermc/paper/threadedregions/scheduler/FoliaAsyncScheduler.java:28
+    pub executors: crate::rt::Executor, // paper-server/src/main/java/io/papermc/paper/threadedregions/scheduler/FoliaAsyncScheduler.java:26
+    pub timer_thread: crate::rt::Executor, // paper-server/src/main/java/io/papermc/paper/threadedregions/scheduler/FoliaAsyncScheduler.java:28
     pub tasks: Mut<HashSet<JRef<FoliaAsyncSchedulerAsyncScheduledTask>>>, // paper-server/src/main/java/io/papermc/paper/threadedregions/scheduler/FoliaAsyncScheduler.java:43
 }
 impl FoliaAsyncScheduler {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/threadedregions/scheduler/FoliaAsyncScheduler.java:22
-    pub fn run_now(&self, plugin: JRef<dyn Plugin>, task: JRef<dyn Consumer<JRef<dyn ScheduledTask>>>) -> JRef<dyn ScheduledTask> { todo!() } // paper-server/src/main/java/io/papermc/paper/threadedregions/scheduler/FoliaAsyncScheduler.java:45
-    pub fn run_delayed(&self, plugin: JRef<dyn Plugin>, task: JRef<dyn Consumer<JRef<dyn ScheduledTask>>>, delay: i64, unit: TimeUnit) -> JRef<dyn ScheduledTask> { todo!() } // paper-server/src/main/java/io/papermc/paper/threadedregions/scheduler/FoliaAsyncScheduler.java:67
-    pub fn run_at_fixed_rate(&self, plugin: JRef<dyn Plugin>, task: JRef<dyn Consumer<JRef<dyn ScheduledTask>>>, initial_delay: i64, period: i64, unit: TimeUnit) -> JRef<dyn ScheduledTask> { todo!() } // paper-server/src/main/java/io/papermc/paper/threadedregions/scheduler/FoliaAsyncScheduler.java:84
+    pub fn run_now(&self, plugin: JRef<dyn Plugin>, task: Arc<dyn Fn(JRef<dyn ScheduledTask>) + Send + Sync>) -> JRef<dyn ScheduledTask> { todo!() } // paper-server/src/main/java/io/papermc/paper/threadedregions/scheduler/FoliaAsyncScheduler.java:45
+    pub fn run_delayed(&self, plugin: JRef<dyn Plugin>, task: Arc<dyn Fn(JRef<dyn ScheduledTask>) + Send + Sync>, delay: i64, unit: crate::rt::TimeUnit) -> JRef<dyn ScheduledTask> { todo!() } // paper-server/src/main/java/io/papermc/paper/threadedregions/scheduler/FoliaAsyncScheduler.java:67
+    pub fn run_at_fixed_rate(&self, plugin: JRef<dyn Plugin>, task: Arc<dyn Fn(JRef<dyn ScheduledTask>) + Send + Sync>, initial_delay: i64, period: i64, unit: crate::rt::TimeUnit) -> JRef<dyn ScheduledTask> { todo!() } // paper-server/src/main/java/io/papermc/paper/threadedregions/scheduler/FoliaAsyncScheduler.java:84
     pub fn cancel_tasks(&self, plugin: JRef<dyn Plugin>) { todo!() } // paper-server/src/main/java/io/papermc/paper/threadedregions/scheduler/FoliaAsyncScheduler.java:126
-    pub fn schedule_timer_task(&self, plugin: JRef<dyn Plugin>, task: JRef<dyn Consumer<JRef<dyn ScheduledTask>>>, initial_delay: i64, period: i64, unit: TimeUnit) -> JRef<FoliaAsyncSchedulerAsyncScheduledTask> { todo!() } // paper-server/src/main/java/io/papermc/paper/threadedregions/scheduler/FoliaAsyncScheduler.java:104
+    pub fn schedule_timer_task(&self, plugin: JRef<dyn Plugin>, task: Arc<dyn Fn(JRef<dyn ScheduledTask>) + Send + Sync>, initial_delay: i64, period: i64, unit: crate::rt::TimeUnit) -> JRef<FoliaAsyncSchedulerAsyncScheduledTask> { todo!() } // paper-server/src/main/java/io/papermc/paper/threadedregions/scheduler/FoliaAsyncScheduler.java:104
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl AsyncScheduler for FoliaAsyncScheduler {
-    fn run_now(&self, plugin: JRef<dyn Plugin>, task: JRef<dyn Consumer<JRef<dyn ScheduledTask>>>) -> JRef<dyn ScheduledTask> { FoliaAsyncScheduler::run_now(self, plugin, task) }
-    fn run_delayed(&self, plugin: JRef<dyn Plugin>, task: JRef<dyn Consumer<JRef<dyn ScheduledTask>>>, delay: i64, unit: TimeUnit) -> JRef<dyn ScheduledTask> { FoliaAsyncScheduler::run_delayed(self, plugin, task, delay, unit) }
-    fn run_at_fixed_rate(&self, plugin: JRef<dyn Plugin>, task: JRef<dyn Consumer<JRef<dyn ScheduledTask>>>, initial_delay: i64, period: i64, unit: TimeUnit) -> JRef<dyn ScheduledTask> { FoliaAsyncScheduler::run_at_fixed_rate(self, plugin, task, initial_delay, period, unit) }
+    fn run_now(&self, plugin: JRef<dyn Plugin>, task: Arc<dyn Fn(JRef<dyn ScheduledTask>) + Send + Sync>) -> JRef<dyn ScheduledTask> { FoliaAsyncScheduler::run_now(self, plugin, task) }
+    fn run_delayed(&self, plugin: JRef<dyn Plugin>, task: Arc<dyn Fn(JRef<dyn ScheduledTask>) + Send + Sync>, delay: i64, unit: crate::rt::TimeUnit) -> JRef<dyn ScheduledTask> { FoliaAsyncScheduler::run_delayed(self, plugin, task, delay, unit) }
+    fn run_at_fixed_rate(&self, plugin: JRef<dyn Plugin>, task: Arc<dyn Fn(JRef<dyn ScheduledTask>) + Send + Sync>, initial_delay: i64, period: i64, unit: crate::rt::TimeUnit) -> JRef<dyn ScheduledTask> { FoliaAsyncScheduler::run_at_fixed_rate(self, plugin, task, initial_delay, period, unit) }
     fn cancel_tasks(&self, plugin: JRef<dyn Plugin>) { FoliaAsyncScheduler::cancel_tasks(self, plugin) }
 }
 crate::jobject!(FoliaAsyncScheduler: dyn AsyncScheduler);
@@ -44,8 +39,8 @@ pub struct FoliaAsyncSchedulerAsyncScheduledTask {
     pub outer: Weak<FoliaAsyncScheduler>,
     pub plugin: JRef<dyn Plugin>, // paper-server/src/main/java/io/papermc/paper/threadedregions/scheduler/FoliaAsyncScheduler.java:146
     pub repeat_delay: i64, // paper-server/src/main/java/io/papermc/paper/threadedregions/scheduler/FoliaAsyncScheduler.java:147
-    pub run: Mut<JRef<dyn Consumer<JRef<dyn ScheduledTask>>>>, // paper-server/src/main/java/io/papermc/paper/threadedregions/scheduler/FoliaAsyncScheduler.java:148
-    pub delay: ScheduledFuture<JObjectRef>, // paper-server/src/main/java/io/papermc/paper/threadedregions/scheduler/FoliaAsyncScheduler.java:149
+    pub run: Mut<Arc<dyn Fn(JRef<dyn ScheduledTask>) + Send + Sync>>, // paper-server/src/main/java/io/papermc/paper/threadedregions/scheduler/FoliaAsyncScheduler.java:148
+    pub delay: crate::rt::CompletableFuture<JObjectRef>, // paper-server/src/main/java/io/papermc/paper/threadedregions/scheduler/FoliaAsyncScheduler.java:149
     pub state: Mut<i32>, // paper-server/src/main/java/io/papermc/paper/threadedregions/scheduler/FoliaAsyncScheduler.java:150
     pub schedule_target: Mut<i64>, // paper-server/src/main/java/io/papermc/paper/threadedregions/scheduler/FoliaAsyncScheduler.java:151
 }
@@ -57,12 +52,12 @@ pub const ASYNC_SCHEDULED_TASK_STATE_FINISHED: i32 = 4; // paper-server/src/main
 pub const ASYNC_SCHEDULED_TASK_STATE_CANCELLED: i32 = 5; // paper-server/src/main/java/io/papermc/paper/threadedregions/scheduler/FoliaAsyncScheduler.java:144
 impl FoliaAsyncSchedulerAsyncScheduledTask {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(plugin: JRef<dyn Plugin>, repeat_delay: i64, run: JRef<dyn Consumer<JRef<dyn ScheduledTask>>>, delay: ScheduledFuture<JObjectRef>, first_target: i64) -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/threadedregions/scheduler/FoliaAsyncScheduler.java:153
+    pub fn new(plugin: JRef<dyn Plugin>, repeat_delay: i64, run: Arc<dyn Fn(JRef<dyn ScheduledTask>) + Send + Sync>, delay: crate::rt::CompletableFuture<JObjectRef>, first_target: i64) -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/threadedregions/scheduler/FoliaAsyncScheduler.java:153
     pub fn get_owning_plugin(&self) -> JRef<dyn Plugin> { todo!() } // paper-server/src/main/java/io/papermc/paper/threadedregions/scheduler/FoliaAsyncScheduler.java:229
     pub fn is_repeating_task(&self) -> bool { todo!() } // paper-server/src/main/java/io/papermc/paper/threadedregions/scheduler/FoliaAsyncScheduler.java:234
     pub fn cancel(&self) -> ScheduledTaskCancelledState { todo!() } // paper-server/src/main/java/io/papermc/paper/threadedregions/scheduler/FoliaAsyncScheduler.java:239
     pub fn get_execution_state(&self) -> ScheduledTaskExecutionState { todo!() } // paper-server/src/main/java/io/papermc/paper/threadedregions/scheduler/FoliaAsyncScheduler.java:287
-    pub fn set_delay(&self, delay: ScheduledFuture<JObjectRef>) { todo!() } // paper-server/src/main/java/io/papermc/paper/threadedregions/scheduler/FoliaAsyncScheduler.java:163
+    pub fn set_delay(&self, delay: crate::rt::CompletableFuture<JObjectRef>) { todo!() } // paper-server/src/main/java/io/papermc/paper/threadedregions/scheduler/FoliaAsyncScheduler.java:163
     pub fn run(&self) { todo!() } // paper-server/src/main/java/io/papermc/paper/threadedregions/scheduler/FoliaAsyncScheduler.java:168
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that

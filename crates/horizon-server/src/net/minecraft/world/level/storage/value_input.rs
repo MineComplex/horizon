@@ -3,7 +3,6 @@
 use crate::prelude::*;
 use crate::com::mojang::serialization::Codec;
 use crate::com::mojang::serialization::MapCodec;
-use crate::java::util::stream::Stream;
 use crate::net::minecraft::core::holder_lookup::HolderLookupProvider;
 
 // ---- interface net.minecraft.world.level.storage.ValueInput (leaf-server/src/minecraft/java/net/minecraft/world/level/storage/ValueInput.java:9)
@@ -33,10 +32,10 @@ pub trait ValueInput: JObject {
 // ---- interface net.minecraft.world.level.storage.ValueInput.TypedInputList (leaf-server/src/minecraft/java/net/minecraft/world/level/storage/ValueInput.java:54)
 pub trait ValueInputTypedInputList<T: JGeneric>: JObject {
     fn is_empty(&self) -> bool; // leaf-server/src/minecraft/java/net/minecraft/world/level/storage/ValueInput.java:55
-    fn stream(&self) -> Stream<T>; // leaf-server/src/minecraft/java/net/minecraft/world/level/storage/ValueInput.java:57
+    fn stream(&self) -> Box<dyn Iterator<Item = T> + Send>; // leaf-server/src/minecraft/java/net/minecraft/world/level/storage/ValueInput.java:57
 }
 // ---- interface net.minecraft.world.level.storage.ValueInput.ValueInputList (leaf-server/src/minecraft/java/net/minecraft/world/level/storage/ValueInput.java:60)
 pub trait ValueInputValueInputList: JObject {
     fn is_empty(&self) -> bool; // leaf-server/src/minecraft/java/net/minecraft/world/level/storage/ValueInput.java:61
-    fn stream(&self) -> Stream<JRef<dyn ValueInput>>; // leaf-server/src/minecraft/java/net/minecraft/world/level/storage/ValueInput.java:63
+    fn stream(&self) -> Box<dyn Iterator<Item = JRef<dyn ValueInput>> + Send>; // leaf-server/src/minecraft/java/net/minecraft/world/level/storage/ValueInput.java:63
 }

@@ -5,7 +5,6 @@ use crate::com::destroystokyo::paper::exception::server_exception::ServerExcepti
 use crate::com::destroystokyo::paper::exception::server_exception::ServerExceptionTrait;
 use crate::com::destroystokyo::paper::exception::server_plugin_exception::ServerPluginException;
 use crate::com::destroystokyo::paper::exception::server_plugin_exception::ServerPluginExceptionTrait;
-use crate::java::lang::Throwable;
 use crate::org::bukkit::plugin::plugin::Plugin;
 use crate::org::bukkit::scheduler::bukkit_task::BukkitTask;
 use crate::prelude::*;
@@ -26,14 +25,14 @@ impl ServerSchedulerException {
     pub fn this(&self) -> JRef<Self> {
         self.this.upgrade().expect("this")
     }
-    pub fn new(cause: Throwable, task: JRef<dyn BukkitTask>) -> JRef<Self> {
+    pub fn new(cause: anyhow::Error, task: JRef<dyn BukkitTask>) -> JRef<Self> {
         Arc::new_cyclic(|this| ServerSchedulerException {
             base: ServerPluginException::new_base(this, cause, task.get_owner()),
             this: this.clone(),
             task,
         })
     } // paper-api/src/main/java/com/destroystokyo/paper/exception/ServerSchedulerException.java:19
-    pub fn new_3(message: &str, cause: Throwable, task: JRef<dyn BukkitTask>) -> JRef<Self> {
+    pub fn new_3(message: &str, cause: anyhow::Error, task: JRef<dyn BukkitTask>) -> JRef<Self> {
         Arc::new_cyclic(|this| ServerSchedulerException {
             base: ServerPluginException::new_base_3(this, message, cause, task.get_owner()),
             this: this.clone(),
@@ -42,7 +41,7 @@ impl ServerSchedulerException {
     } // paper-api/src/main/java/com/destroystokyo/paper/exception/ServerSchedulerException.java:14
     pub fn new_5(
         message: &str,
-        cause: Throwable,
+        cause: anyhow::Error,
         enable_suppression: bool,
         writable_stack_trace: bool,
         task: JRef<dyn BukkitTask>,

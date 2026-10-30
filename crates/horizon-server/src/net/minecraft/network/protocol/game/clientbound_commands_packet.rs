@@ -6,7 +6,6 @@ use crate::com::mojang::brigadier::builder::argument_builder::ArgumentBuilderTra
 use crate::com::mojang::brigadier::tree::ArgumentCommandNode;
 use crate::com::mojang::brigadier::tree::RootCommandNode;
 use crate::com::mojang::brigadier::tree::command_node::CommandNodeTrait;
-use crate::java::util::function::BiPredicate;
 use crate::net::minecraft::commands::command_build_context::CommandBuildContext;
 use crate::net::minecraft::commands::synchronization::argument_type_info::ArgumentTypeInfo;
 use crate::net::minecraft::commands::synchronization::argument_type_info::ArgumentTypeInfoTemplate;
@@ -40,7 +39,7 @@ impl ClientboundCommandsPacket {
     pub fn type_(&self) -> PacketType<JRef<ClientboundCommandsPacket>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/protocol/game/ClientboundCommandsPacket.java:191
     pub fn handle(&self, listener: JRef<dyn ClientGamePacketListener>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/protocol/game/ClientboundCommandsPacket.java:196
     pub fn validate_entries(entries: &Vec<ClientboundCommandsPacketEntry>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/protocol/game/ClientboundCommandsPacket.java:75
-    pub fn validate_entries_2(entries: &Vec<ClientboundCommandsPacketEntry>, validator: JRef<dyn BiPredicate<ClientboundCommandsPacketEntry, HashSet<i32>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/protocol/game/ClientboundCommandsPacket.java:62
+    pub fn validate_entries_2(entries: &Vec<ClientboundCommandsPacketEntry>, validator: Arc<dyn Fn(ClientboundCommandsPacketEntry, HashSet<i32>) -> bool + Send + Sync>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/protocol/game/ClientboundCommandsPacket.java:62
     pub fn enumerate_nodes<S: JGeneric>(root: RootCommandNode<S>) -> HashMap<JRef<dyn CommandNodeTrait<S>>, i32> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/protocol/game/ClientboundCommandsPacket.java:80
     pub fn create_entries<S: JGeneric>(node_to_id: &HashMap<JRef<dyn CommandNodeTrait<S>>, i32>, inspector: JRef<dyn ClientboundCommandsPacketNodeInspector<S>>) -> Vec<ClientboundCommandsPacketEntry> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/protocol/game/ClientboundCommandsPacket.java:103
     pub fn read_node(input: JRef<dyn FriendlyByteBufTrait>) -> ClientboundCommandsPacketEntry { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/protocol/game/ClientboundCommandsPacket.java:116

@@ -4,7 +4,6 @@ use crate::prelude::*;
 use crate::com::mojang::brigadier::command_dispatcher::CommandDispatcher;
 use crate::com::mojang::brigadier::exceptions::Dynamic2CommandExceptionType;
 use crate::com::mojang::brigadier::exceptions::SimpleCommandExceptionType;
-use crate::java::lang::Throwable;
 use crate::net::minecraft::commands::command_source_stack::CommandSourceStack;
 use crate::net::minecraft::resources::resource_key::ResourceKey;
 use crate::net::minecraft::server::commands::command_response_tracker::CommandResponseTrackerMessagesWithArg;
@@ -27,10 +26,10 @@ impl ForceLoadCommand {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ForceLoadCommand.java:22
     pub fn register(dispatcher: JRef<CommandDispatcher<JRef<CommandSourceStack>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ForceLoadCommand.java:61
-    pub fn query_force_load(source: JRef<CommandSourceStack>, pos: ColumnPos) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ForceLoadCommand.java:115
+    pub fn query_force_load(source: JRef<CommandSourceStack>, pos: ColumnPos) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ForceLoadCommand.java:115
     pub fn list_force_load(source: JRef<CommandSourceStack>) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ForceLoadCommand.java:133
     pub fn remove_all(source: JRef<CommandSourceStack>) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ForceLoadCommand.java:157
-    pub fn change_force_load(source: JRef<CommandSourceStack>, from: ColumnPos, to: ColumnPos, add: bool) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ForceLoadCommand.java:166
+    pub fn change_force_load(source: JRef<CommandSourceStack>, from: ColumnPos, to: ColumnPos, add: bool) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ForceLoadCommand.java:166
 }
 crate::jobject!(ForceLoadCommand);
 // ---- record net.minecraft.server.commands.ForceLoadCommand.ForceLoadParams (leaf-server/src/minecraft/java/net/minecraft/server/commands/ForceLoadCommand.java:199)

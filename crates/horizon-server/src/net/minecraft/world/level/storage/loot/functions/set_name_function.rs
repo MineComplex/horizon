@@ -3,7 +3,6 @@
 use crate::prelude::*;
 use crate::com::mojang::serialization::Codec;
 use crate::com::mojang::serialization::MapCodec;
-use crate::java::util::function::UnaryOperator;
 use crate::net::minecraft::core::component::data_component_type::DataComponentType;
 use crate::net::minecraft::core::holder::Holder;
 use crate::net::minecraft::network::chat::component::Component;
@@ -40,7 +39,7 @@ impl SetNameFunction {
     pub fn codec(&self) -> MapCodec<JRef<SetNameFunction>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/storage/loot/functions/SetNameFunction.java:59
     pub fn get_referenced_context_params(&self) -> HashSet<JRef<ContextKey<JObjectRef>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/storage/loot/functions/SetNameFunction.java:64
     pub fn run(&self, item_stack: JRef<ItemStack>, context: JRef<LootContext>) -> JRef<ItemStack> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/storage/loot/functions/SetNameFunction.java:90
-    pub fn create_resolver(context: JRef<LootContext>, entity_target: LootContextEntityTarget) -> JRef<dyn UnaryOperator<JRef<dyn Component>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/storage/loot/functions/SetNameFunction.java:69
+    pub fn create_resolver(context: JRef<LootContext>, entity_target: LootContextEntityTarget) -> Arc<dyn Fn(JRef<dyn Component>) -> JRef<dyn Component> + Send + Sync> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/storage/loot/functions/SetNameFunction.java:69
     pub fn set_name(value: JRef<dyn Component>, target: SetNameFunctionTarget) -> JRef<dyn LootItemConditionalFunctionBuilderTrait<JObjectRef>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/storage/loot/functions/SetNameFunction.java:96
     pub fn set_name_3(value: JRef<dyn Component>, target: SetNameFunctionTarget, resolution_context: LootContextEntityTarget) -> JRef<dyn LootItemConditionalFunctionBuilderTrait<JObjectRef>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/storage/loot/functions/SetNameFunction.java:100
 }

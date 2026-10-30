@@ -4,13 +4,6 @@ use crate::prelude::*;
 use crate::api_impl::legacy::enums::imposter_enum_map::ImposterEnumMap;
 use crate::api_impl::legacy::enums::imposter_enum_set::ImposterEnumSet;
 use crate::api_impl::util::api_version::ApiVersion;
-use crate::com::google::common::base::Converter;
-use crate::com::google::common::base::Optional;
-use crate::java::lang::Class;
-use crate::java::lang::EnumEnumDesc;
-use crate::java::lang::reflect::Field;
-use crate::java::util::function::Function;
-use crate::java::util::stream::Collector;
 use crate::org::bukkit::registry::Registry;
 use crate::api_prelude::*;
 
@@ -18,27 +11,27 @@ use crate::api_prelude::*;
 pub struct EnumEvil {
     pub this: Weak<Self>,
 }
-pub static REGISTRIES: LazyLock<HashMap<Class, EnumEvilLegacyRegistryData>> = LazyLock::new(|| todo!()); // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/enums/EnumEvil.java:49
+pub static REGISTRIES: LazyLock<HashMap<crate::rt::Class, EnumEvilLegacyRegistryData>> = LazyLock::new(|| todo!()); // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/enums/EnumEvil.java:49
 impl EnumEvil {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/enums/EnumEvil.java:43
-    pub fn get_registry_data(clazz: Class) -> EnumEvilLegacyRegistryData { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/enums/EnumEvil.java:66
-    pub fn get_registry(clazz: Class) -> JRef<dyn Registry<JObjectRef>> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/enums/EnumEvil.java:79
-    pub fn new_enum_map(object_class: Class) -> JRef<ImposterEnumMap> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/enums/EnumEvil.java:90
+    pub fn get_registry_data(clazz: crate::rt::Class) -> EnumEvilLegacyRegistryData { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/enums/EnumEvil.java:66
+    pub fn get_registry(clazz: crate::rt::Class) -> JRef<dyn Registry<JObjectRef>> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/enums/EnumEvil.java:79
+    pub fn new_enum_map(object_class: crate::rt::Class) -> JRef<ImposterEnumMap> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/enums/EnumEvil.java:90
     pub fn new_enum_map_1(map: &HashMap<JObjectRef, JObjectRef>) -> JRef<ImposterEnumMap> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/enums/EnumEvil.java:96
-    pub fn to_immutable_enum_set() -> Collector<JObjectRef, JObjectRef, JObjectRef> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/enums/EnumEvil.java:102
-    pub fn new_enum_set(iterable: &Vec<JObjectRef>, clazz: Class) -> JRef<ImposterEnumSet> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/enums/EnumEvil.java:107
+    pub fn to_immutable_enum_set() -> () { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/enums/EnumEvil.java:102
+    pub fn new_enum_set(iterable: &Vec<JObjectRef>, clazz: crate::rt::Class) -> JRef<ImposterEnumSet> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/enums/EnumEvil.java:107
     pub fn immutable_enum_set(iterable: &Vec<JObjectRef>) -> IndexSet<JObjectRef> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/enums/EnumEvil.java:119
     pub fn immutable_enum_set_2(first: JObjectRef, rest: &Vec<JObjectRef>) -> IndexSet<JObjectRef> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/enums/EnumEvil.java:124
-    pub fn get_field(value: JObjectRef) -> Field { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/enums/EnumEvil.java:129
-    pub fn get_if_present(clazz: Class, name: &str, api_version: JRef<ApiVersion>) -> Optional { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/enums/EnumEvil.java:142
-    pub fn string_converter(clazz: Class, api_version: JRef<ApiVersion>) -> Converter { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/enums/EnumEvil.java:157
-    pub fn get_enum_constants(clazz: Class) -> Vec<JObjectRef> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/enums/EnumEvil.java:166
+    pub fn get_field(value: JObjectRef) -> () { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/enums/EnumEvil.java:129
+    pub fn get_if_present(clazz: crate::rt::Class, name: &str, api_version: JRef<ApiVersion>) -> () { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/enums/EnumEvil.java:142
+    pub fn string_converter(clazz: crate::rt::Class, api_version: JRef<ApiVersion>) -> () { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/enums/EnumEvil.java:157
+    pub fn get_enum_constants(clazz: crate::rt::Class) -> Vec<JObjectRef> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/enums/EnumEvil.java:166
     pub fn name(object: JObjectRef) -> String { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/enums/EnumEvil.java:188
     pub fn compare_to(object: JObjectRef, other: JObjectRef) -> i32 { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/enums/EnumEvil.java:196
-    pub fn get_declaring_class(object: JObjectRef) -> Class { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/enums/EnumEvil.java:204
-    pub fn describe_constable(object: JObjectRef) -> Option<EnumEnumDesc> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/enums/EnumEvil.java:210
-    pub fn value_of(enum_class: Class, name: &str, api_version: JRef<ApiVersion>) -> JObjectRef { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/enums/EnumEvil.java:216
+    pub fn get_declaring_class(object: JObjectRef) -> crate::rt::Class { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/enums/EnumEvil.java:204
+    pub fn describe_constable(object: JObjectRef) -> Option<()> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/enums/EnumEvil.java:210
+    pub fn value_of(enum_class: crate::rt::Class, name: &str, api_version: JRef<ApiVersion>) -> JObjectRef { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/enums/EnumEvil.java:216
     pub fn to_string(object: JObjectRef) -> String { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/enums/EnumEvil.java:228
     pub fn ordinal(object: JObjectRef) -> i32 { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/enums/EnumEvil.java:232
 }
@@ -47,25 +40,25 @@ crate::jobject!(EnumEvil);
 #[derive(Clone)]
 pub struct EnumEvilLegacyRegistryData {
     pub registry: JRef<dyn Registry<JObjectRef>>,
-    pub function: JRef<dyn Function<String, JObjectRef>>,
+    pub function: Arc<dyn Fn(String) -> JObjectRef + Send + Sync>,
 }
 impl EnumEvilLegacyRegistryData {
     pub fn new() -> Self { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/enums/EnumEvil.java:240
-    pub fn new_2(registry: JRef<dyn Registry<JObjectRef>>, function: JRef<dyn Function<String, JObjectRef>>) -> Self { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/enums/EnumEvil.java:240
+    pub fn new_2(registry: JRef<dyn Registry<JObjectRef>>, function: Arc<dyn Fn(String) -> JObjectRef + Send + Sync>) -> Self { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/enums/EnumEvil.java:240
 }
 crate::jobject!(EnumEvilLegacyRegistryData);
 // ---- class org.bukkit.craftbukkit.legacy.enums.EnumEvil.StringConverter (paper-server/src/main/java/org/bukkit/craftbukkit/legacy/enums/EnumEvil.java:243)
 pub struct EnumEvilStringConverter<T: JGeneric> {
     pub this: Weak<Self>,
     pub api_version: JRef<ApiVersion>, // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/enums/EnumEvil.java:245
-    pub clazz: Class, // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/enums/EnumEvil.java:246
+    pub clazz: crate::rt::Class, // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/enums/EnumEvil.java:246
     pub registry_data: Mut<EnumEvilLegacyRegistryData>, // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/enums/EnumEvil.java:247
     pub _phantom: std::marker::PhantomData<(T,)>,
 }
 pub const STRING_CONVERTER_SERIAL_VERSION_UID: i64 = 0; // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/enums/EnumEvil.java:286
 impl<T: JGeneric> EnumEvilStringConverter<T> {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(api_version: JRef<ApiVersion>, clazz: Class) -> JRef<Self> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/enums/EnumEvil.java:249
+    pub fn new(api_version: JRef<ApiVersion>, clazz: crate::rt::Class) -> JRef<Self> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/enums/EnumEvil.java:249
     pub fn do_forward(&self, value: &str) -> T { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/enums/EnumEvil.java:254
     pub fn do_backward(&self, enum_value: T) -> String { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/enums/EnumEvil.java:263
     pub fn equals(&self, object: JObjectRef) -> bool { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/enums/EnumEvil.java:268

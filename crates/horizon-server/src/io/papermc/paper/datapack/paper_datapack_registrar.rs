@@ -9,8 +9,6 @@ use crate::io::papermc::paper::plugin::bootstrap::bootstrap_context::BootstrapCo
 use crate::io::papermc::paper::plugin::configuration::plugin_meta::PluginMeta;
 use crate::io::papermc::paper::plugin::lifecycle::event::registrar::paper_registrar::PaperRegistrar;
 use crate::io::papermc::paper::plugin::lifecycle::event::registrar::registrar::Registrar;
-use crate::java::lang::Throwable;
-use crate::java::util::function::Consumer;
 use crate::net::kyori::adventure::text::Component;
 use crate::net::minecraft::server::packs::repository::pack::Pack;
 use crate::net::minecraft::server::packs::repository::pack::PackPosition;
@@ -33,10 +31,10 @@ impl PaperDatapackRegistrar {
     pub fn get_discovered_pack(&self, name: &str) -> JRef<dyn DiscoveredDatapack> { todo!() } // paper-server/src/main/java/io/papermc/paper/datapack/PaperDatapackRegistrar.java:59
     pub fn remove_discovered_pack(&self, name: &str) -> bool { todo!() } // paper-server/src/main/java/io/papermc/paper/datapack/PaperDatapackRegistrar.java:67
     pub fn get_discovered_packs(&self) -> HashMap<String, JRef<dyn DiscoveredDatapack>> { todo!() } // paper-server/src/main/java/io/papermc/paper/datapack/PaperDatapackRegistrar.java:72
-    pub fn discover_pack_3(&self, uri: &str, id: &str, configurer: JRef<dyn Consumer<JRef<dyn DatapackRegistrarConfigurer>>>) -> Result<Option<JRef<dyn DiscoveredDatapack>>, Throwable> { todo!() } // paper-server/src/main/java/io/papermc/paper/datapack/PaperDatapackRegistrar.java:81
-    pub fn discover_pack_3_2(&self, path: std::path::PathBuf, id: &str, configurer: JRef<dyn Consumer<JRef<dyn DatapackRegistrarConfigurer>>>) -> Result<Option<JRef<dyn DiscoveredDatapack>>, Throwable> { todo!() } // paper-server/src/main/java/io/papermc/paper/datapack/PaperDatapackRegistrar.java:87
-    pub fn discover_pack_4(&self, plugin_meta: JRef<dyn PluginMeta>, uri: &str, id: &str, configurer: JRef<dyn Consumer<JRef<dyn DatapackRegistrarConfigurer>>>) -> Result<Option<JRef<dyn DiscoveredDatapack>>, Throwable> { todo!() } // paper-server/src/main/java/io/papermc/paper/datapack/PaperDatapackRegistrar.java:93
-    pub fn discover_pack_4_2(&self, plugin_meta: JRef<dyn PluginMeta>, path: std::path::PathBuf, id: &str, configurer: JRef<dyn Consumer<JRef<dyn DatapackRegistrarConfigurer>>>) -> Result<Option<JRef<dyn DiscoveredDatapack>>, Throwable> { todo!() } // paper-server/src/main/java/io/papermc/paper/datapack/PaperDatapackRegistrar.java:98
+    pub fn discover_pack_3(&self, uri: &str, id: &str, configurer: Arc<dyn Fn(JRef<dyn DatapackRegistrarConfigurer>) + Send + Sync>) -> Result<Option<JRef<dyn DiscoveredDatapack>>, anyhow::Error> { todo!() } // paper-server/src/main/java/io/papermc/paper/datapack/PaperDatapackRegistrar.java:81
+    pub fn discover_pack_3_2(&self, path: std::path::PathBuf, id: &str, configurer: Arc<dyn Fn(JRef<dyn DatapackRegistrarConfigurer>) + Send + Sync>) -> Result<Option<JRef<dyn DiscoveredDatapack>>, anyhow::Error> { todo!() } // paper-server/src/main/java/io/papermc/paper/datapack/PaperDatapackRegistrar.java:87
+    pub fn discover_pack_4(&self, plugin_meta: JRef<dyn PluginMeta>, uri: &str, id: &str, configurer: Arc<dyn Fn(JRef<dyn DatapackRegistrarConfigurer>) + Send + Sync>) -> Result<Option<JRef<dyn DiscoveredDatapack>>, anyhow::Error> { todo!() } // paper-server/src/main/java/io/papermc/paper/datapack/PaperDatapackRegistrar.java:93
+    pub fn discover_pack_4_2(&self, plugin_meta: JRef<dyn PluginMeta>, path: std::path::PathBuf, id: &str, configurer: Arc<dyn Fn(JRef<dyn DatapackRegistrarConfigurer>) + Send + Sync>) -> Result<Option<JRef<dyn DiscoveredDatapack>>, anyhow::Error> { todo!() } // paper-server/src/main/java/io/papermc/paper/datapack/PaperDatapackRegistrar.java:98
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
@@ -50,10 +48,10 @@ impl DatapackRegistrar for PaperDatapackRegistrar {
     fn get_discovered_pack(&self, name: &str) -> JRef<dyn DiscoveredDatapack> { PaperDatapackRegistrar::get_discovered_pack(self, name) }
     fn remove_discovered_pack(&self, name: &str) -> bool { PaperDatapackRegistrar::remove_discovered_pack(self, name) }
     fn get_discovered_packs(&self) -> HashMap<String, JRef<dyn DiscoveredDatapack>> { PaperDatapackRegistrar::get_discovered_packs(self) }
-    fn discover_pack_3(&self, uri: &str, id: &str, configurer: JRef<dyn Consumer<JRef<dyn DatapackRegistrarConfigurer>>>) -> Result<Option<JRef<dyn DiscoveredDatapack>>, Throwable> { PaperDatapackRegistrar::discover_pack_3(self, uri, id, configurer) }
-    fn discover_pack_3_2(&self, path: std::path::PathBuf, id: &str, configurer: JRef<dyn Consumer<JRef<dyn DatapackRegistrarConfigurer>>>) -> Result<Option<JRef<dyn DiscoveredDatapack>>, Throwable> { PaperDatapackRegistrar::discover_pack_3_2(self, path, id, configurer) }
-    fn discover_pack_4(&self, plugin_meta: JRef<dyn PluginMeta>, uri: &str, id: &str, configurer: JRef<dyn Consumer<JRef<dyn DatapackRegistrarConfigurer>>>) -> Result<Option<JRef<dyn DiscoveredDatapack>>, Throwable> { PaperDatapackRegistrar::discover_pack_4(self, plugin_meta, uri, id, configurer) }
-    fn discover_pack_4_2(&self, plugin_meta: JRef<dyn PluginMeta>, path: std::path::PathBuf, id: &str, configurer: JRef<dyn Consumer<JRef<dyn DatapackRegistrarConfigurer>>>) -> Result<Option<JRef<dyn DiscoveredDatapack>>, Throwable> { PaperDatapackRegistrar::discover_pack_4_2(self, plugin_meta, path, id, configurer) }
+    fn discover_pack_3(&self, uri: &str, id: &str, configurer: Arc<dyn Fn(JRef<dyn DatapackRegistrarConfigurer>) + Send + Sync>) -> Result<Option<JRef<dyn DiscoveredDatapack>>, anyhow::Error> { PaperDatapackRegistrar::discover_pack_3(self, uri, id, configurer) }
+    fn discover_pack_3_2(&self, path: std::path::PathBuf, id: &str, configurer: Arc<dyn Fn(JRef<dyn DatapackRegistrarConfigurer>) + Send + Sync>) -> Result<Option<JRef<dyn DiscoveredDatapack>>, anyhow::Error> { PaperDatapackRegistrar::discover_pack_3_2(self, path, id, configurer) }
+    fn discover_pack_4(&self, plugin_meta: JRef<dyn PluginMeta>, uri: &str, id: &str, configurer: Arc<dyn Fn(JRef<dyn DatapackRegistrarConfigurer>) + Send + Sync>) -> Result<Option<JRef<dyn DiscoveredDatapack>>, anyhow::Error> { PaperDatapackRegistrar::discover_pack_4(self, plugin_meta, uri, id, configurer) }
+    fn discover_pack_4_2(&self, plugin_meta: JRef<dyn PluginMeta>, path: std::path::PathBuf, id: &str, configurer: Arc<dyn Fn(JRef<dyn DatapackRegistrarConfigurer>) + Send + Sync>) -> Result<Option<JRef<dyn DiscoveredDatapack>>, anyhow::Error> { PaperDatapackRegistrar::discover_pack_4_2(self, plugin_meta, path, id, configurer) }
 }
 crate::jobject!(PaperDatapackRegistrar: dyn Registrar, dyn DatapackRegistrar);
 // ---- class io.papermc.paper.datapack.PaperDatapackRegistrar.ConfigurerImpl (paper-server/src/main/java/io/papermc/paper/datapack/PaperDatapackRegistrar.java:134)

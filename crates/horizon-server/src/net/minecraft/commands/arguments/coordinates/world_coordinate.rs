@@ -3,7 +3,6 @@
 use crate::prelude::*;
 use crate::com::mojang::brigadier::StringReader;
 use crate::com::mojang::brigadier::exceptions::SimpleCommandExceptionType;
-use crate::java::lang::Throwable;
 
 // ---- record net.minecraft.commands.arguments.coordinates.WorldCoordinate (leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/WorldCoordinate.java:8)
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Default)]
@@ -18,8 +17,8 @@ impl WorldCoordinate {
     pub fn new() -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/WorldCoordinate.java:8
     pub fn new_2(relative: bool, value: f64) -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/WorldCoordinate.java:8
     pub fn get(&self, original: f64) -> f64 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/WorldCoordinate.java:13
-    pub fn parse_double(reader: StringReader, center: bool) -> Result<WorldCoordinate, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/WorldCoordinate.java:17
-    pub fn parse_int(reader: StringReader) -> Result<WorldCoordinate, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/WorldCoordinate.java:41
+    pub fn parse_double(reader: StringReader, center: bool) -> Result<WorldCoordinate, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/WorldCoordinate.java:17
+    pub fn parse_int(reader: StringReader) -> Result<WorldCoordinate, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/WorldCoordinate.java:41
     pub fn is_relative(&self) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/WorldCoordinate.java:73
     pub fn is_relative_1(reader: StringReader) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/WorldCoordinate.java:61
 }

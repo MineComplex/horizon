@@ -3,8 +3,6 @@
 use crate::prelude::*;
 use crate::com::mojang::brigadier::command_dispatcher::CommandDispatcher;
 use crate::com::mojang::brigadier::exceptions::DynamicCommandExceptionType;
-use crate::com::mojang::datafixers::util::Pair;
-use crate::java::lang::Throwable;
 use crate::net::minecraft::commands::arguments::resource_or_tag_argument::ResourceOrTagArgumentResult;
 use crate::net::minecraft::commands::arguments::resource_or_tag_key_argument::ResourceOrTagKeyArgumentResult;
 use crate::net::minecraft::commands::command_build_context::CommandBuildContext;
@@ -35,12 +33,12 @@ impl LocateCommand {
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/LocateCommand.java:36
     pub fn register(dispatcher: JRef<CommandDispatcher<JRef<CommandSourceStack>>>, context: JRef<dyn CommandBuildContext>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/LocateCommand.java:56
     pub fn get_holders(resource_or_tag: JRef<dyn ResourceOrTagKeyArgumentResult<JRef<dyn StructureTrait>>>, registry: JRef<dyn Registry<JRef<dyn StructureTrait>>>) -> Option<JRef<dyn HolderSetListBackedTrait<JRef<dyn StructureTrait>>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/LocateCommand.java:89
-    pub fn locate_structure(source: JRef<CommandSourceStack>, resource_or_tag: JRef<dyn ResourceOrTagKeyArgumentResult<JRef<dyn StructureTrait>>>) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/LocateCommand.java:95
-    pub fn locate_biome(source: JRef<CommandSourceStack>, element_or_tag: JRef<dyn ResourceOrTagArgumentResult<JRef<Biome>>>) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/LocateCommand.java:113
-    pub fn locate_poi(source: JRef<CommandSourceStack>, resource_or_tag: JRef<dyn ResourceOrTagArgumentResult<PoiType>>) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/LocateCommand.java:125
-    pub fn show_locate_result(source: JRef<CommandSourceStack>, name: JRef<dyn ResourceOrTagArgumentResult<JObjectRef>>, source_pos: BlockPos, found: Pair<BlockPos, JRef<dyn Holder<JObjectRef>>>, success_message_key: &str, include_y: bool, task_duration: std::time::Duration) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/LocateCommand.java:139
-    pub fn show_locate_result_7(source: JRef<CommandSourceStack>, name: JRef<dyn ResourceOrTagKeyArgumentResult<JObjectRef>>, source_pos: BlockPos, found: Pair<BlockPos, JRef<dyn Holder<JObjectRef>>>, success_message_key: &str, include_y: bool, task_duration: std::time::Duration) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/LocateCommand.java:152
-    pub fn show_locate_result_7_2(source: JRef<CommandSourceStack>, source_pos: BlockPos, found: Pair<BlockPos, JRef<dyn Holder<JObjectRef>>>, success_message_key: &str, include_y: bool, found_name: &str, task_duration: std::time::Duration) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/LocateCommand.java:166
+    pub fn locate_structure(source: JRef<CommandSourceStack>, resource_or_tag: JRef<dyn ResourceOrTagKeyArgumentResult<JRef<dyn StructureTrait>>>) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/LocateCommand.java:95
+    pub fn locate_biome(source: JRef<CommandSourceStack>, element_or_tag: JRef<dyn ResourceOrTagArgumentResult<JRef<Biome>>>) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/LocateCommand.java:113
+    pub fn locate_poi(source: JRef<CommandSourceStack>, resource_or_tag: JRef<dyn ResourceOrTagArgumentResult<PoiType>>) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/LocateCommand.java:125
+    pub fn show_locate_result(source: JRef<CommandSourceStack>, name: JRef<dyn ResourceOrTagArgumentResult<JObjectRef>>, source_pos: BlockPos, found: (BlockPos, JRef<dyn Holder<JObjectRef>>), success_message_key: &str, include_y: bool, task_duration: std::time::Duration) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/LocateCommand.java:139
+    pub fn show_locate_result_7(source: JRef<CommandSourceStack>, name: JRef<dyn ResourceOrTagKeyArgumentResult<JObjectRef>>, source_pos: BlockPos, found: (BlockPos, JRef<dyn Holder<JObjectRef>>), success_message_key: &str, include_y: bool, task_duration: std::time::Duration) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/LocateCommand.java:152
+    pub fn show_locate_result_7_2(source: JRef<CommandSourceStack>, source_pos: BlockPos, found: (BlockPos, JRef<dyn Holder<JObjectRef>>), success_message_key: &str, include_y: bool, found_name: &str, task_duration: std::time::Duration) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/LocateCommand.java:166
     pub fn dist(x1: i32, z1: i32, x2: i32, z2: i32) -> f32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/LocateCommand.java:191
 }
 crate::jobject!(LocateCommand);

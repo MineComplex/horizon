@@ -3,8 +3,6 @@
 use crate::prelude::*;
 use crate::com::mojang::brigadier::command_dispatcher::CommandDispatcher;
 use crate::com::mojang::brigadier::exceptions::SimpleCommandExceptionType;
-use crate::java::lang::Throwable;
-use crate::java::util::function::Predicate;
 use crate::net::minecraft::commands::arguments::blocks::block_input::BlockInput;
 use crate::net::minecraft::commands::command_build_context::CommandBuildContext;
 use crate::net::minecraft::commands::command_source_stack::CommandSourceStack;
@@ -20,7 +18,7 @@ impl SetBlockCommand {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/SetBlockCommand.java:22
     pub fn register(dispatcher: JRef<CommandDispatcher<JRef<CommandSourceStack>>>, context: JRef<dyn CommandBuildContext>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/SetBlockCommand.java:25
-    pub fn set_block(source: JRef<CommandSourceStack>, pos: BlockPos, block: JRef<BlockInput>, mode: SetBlockCommandMode, predicate: Option<JRef<dyn Predicate<JRef<BlockInWorld>>>>, strict: bool) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/SetBlockCommand.java:101
+    pub fn set_block(source: JRef<CommandSourceStack>, pos: BlockPos, block: JRef<BlockInput>, mode: SetBlockCommandMode, predicate: Option<Arc<dyn Fn(JRef<BlockInWorld>) -> bool + Send + Sync>>, strict: bool) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/SetBlockCommand.java:101
 }
 crate::jobject!(SetBlockCommand);
 // ---- enum net.minecraft.server.commands.SetBlockCommand.Mode (leaf-server/src/minecraft/java/net/minecraft/server/commands/SetBlockCommand.java:140)

@@ -3,8 +3,6 @@
 use crate::prelude::*;
 use crate::com::mojang::serialization::Codec;
 use crate::com::mojang::serialization::MapCodec;
-use crate::java::lang::Throwable;
-use crate::java::util::stream::Stream;
 use crate::net::minecraft::commands::arguments::coordinates::coordinates::Coordinates;
 use crate::net::minecraft::commands::command_source_stack::CommandSourceStack;
 use crate::net::minecraft::nbt::compound_tag::CompoundTag;
@@ -21,13 +19,13 @@ pub static MAP_CODEC: LazyLock<MapCodec<BlockDataSource>> = LazyLock::new(|| tod
 impl BlockDataSource {
     pub fn new() -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/chat/contents/data/BlockDataSource.java:18
     pub fn new_1(coordinates: JRef<CompilableString<JRef<dyn Coordinates>>>) -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/chat/contents/data/BlockDataSource.java:18
-    pub fn get_data(&self, sender: JRef<CommandSourceStack>) -> Stream<JRef<CompoundTag>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/chat/contents/data/BlockDataSource.java:34
+    pub fn get_data(&self, sender: JRef<CommandSourceStack>) -> Box<dyn Iterator<Item = JRef<CompoundTag>> + Send> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/chat/contents/data/BlockDataSource.java:34
     pub fn codec(&self) -> MapCodec<BlockDataSource> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/chat/contents/data/BlockDataSource.java:48
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl DataSource for BlockDataSource {
-    fn get_data(&self, sender: JRef<CommandSourceStack>) -> Result<Stream<JRef<CompoundTag>>, Throwable> { BlockDataSource::get_data(self, sender) }
+    fn get_data(&self, sender: JRef<CommandSourceStack>) -> Result<Box<dyn Iterator<Item = JRef<CompoundTag>> + Send>, anyhow::Error> { BlockDataSource::get_data(self, sender) }
     fn codec(&self) -> MapCodec<JRef<dyn DataSource>> { BlockDataSource::codec(self) }
 }
 crate::jobject!(BlockDataSource: dyn DataSource);

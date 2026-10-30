@@ -3,7 +3,6 @@
 use crate::prelude::*;
 use crate::com::mojang::brigadier::exceptions::Dynamic2CommandExceptionType;
 use crate::com::mojang::brigadier::exceptions::DynamicCommandExceptionType;
-use crate::java::lang::Throwable;
 use crate::net::minecraft::core::component::data_component_patch::DataComponentPatch;
 use crate::net::minecraft::core::holder::Holder;
 use crate::net::minecraft::world::item::item::ItemTrait;
@@ -20,6 +19,6 @@ pub static ERROR_MALFORMED_ITEM: LazyLock<DynamicCommandExceptionType> = LazyLoc
 impl ItemInput {
     pub fn new() -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemInput.java:13
     pub fn new_2(item: JRef<dyn Holder<JRef<dyn ItemTrait>>>, components: JRef<DataComponentPatch>) -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemInput.java:13
-    pub fn create_item_stack(&self, count: i32) -> Result<JRef<ItemStack>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemInput.java:21
+    pub fn create_item_stack(&self, count: i32) -> Result<JRef<ItemStack>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemInput.java:21
 }
 crate::jobject!(ItemInput);

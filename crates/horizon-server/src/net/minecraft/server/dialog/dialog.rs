@@ -3,7 +3,6 @@
 use crate::prelude::*;
 use crate::com::mojang::serialization::Codec;
 use crate::com::mojang::serialization::MapCodec;
-use crate::io::netty::buffer::ByteBuf;
 use crate::net::minecraft::core::holder::Holder;
 use crate::net::minecraft::core::holder_set::HolderSet;
 use crate::net::minecraft::network::codec::stream_codec::StreamCodec;
@@ -22,4 +21,4 @@ pub static DIRECT_CODEC: LazyLock<JRef<dyn Codec<JRef<dyn Dialog>>>> = LazyLock:
 pub static CODEC: LazyLock<JRef<dyn Codec<JRef<dyn Holder<JRef<dyn Dialog>>>>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/dialog/Dialog.java:21
 pub static LIST_CODEC: LazyLock<JRef<dyn Codec<JRef<dyn HolderSet<JRef<dyn Dialog>>>>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/dialog/Dialog.java:22
 pub static STREAM_CODEC: LazyLock<JRef<dyn StreamCodec<JRef<RegistryFriendlyByteBuf>, JRef<dyn Holder<JRef<dyn Dialog>>>>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/dialog/Dialog.java:23
-pub static CONTEXT_FREE_STREAM_CODEC: LazyLock<JRef<dyn StreamCodec<ByteBuf, JRef<dyn Dialog>>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/dialog/Dialog.java:26
+pub static CONTEXT_FREE_STREAM_CODEC: LazyLock<JRef<dyn StreamCodec<bytes::BytesMut, JRef<dyn Dialog>>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/dialog/Dialog.java:26

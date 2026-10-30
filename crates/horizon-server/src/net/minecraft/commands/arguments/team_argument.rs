@@ -6,8 +6,6 @@ use crate::com::mojang::brigadier::context::CommandContext;
 use crate::com::mojang::brigadier::exceptions::DynamicCommandExceptionType;
 use crate::com::mojang::brigadier::suggestion::Suggestions;
 use crate::com::mojang::brigadier::suggestion::SuggestionsBuilder;
-use crate::java::lang::Throwable;
-use crate::java::util::concurrent::CompletableFuture;
 use crate::net::minecraft::commands::command_source_stack::CommandSourceStack;
 use crate::net::minecraft::world::scores::player_team::PlayerTeam;
 
@@ -21,9 +19,9 @@ impl TeamArgument {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/TeamArgument.java:19
     pub fn team() -> JRef<TeamArgument> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/TeamArgument.java:25
-    pub fn get_team(context: CommandContext<JRef<CommandSourceStack>>, name: &str) -> Result<JRef<PlayerTeam>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/TeamArgument.java:29
-    pub fn parse(&self, reader: StringReader) -> Result<String, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/TeamArgument.java:40
-    pub fn list_suggestions<S: JGeneric>(&self, context_builder: CommandContext<S>, builder: SuggestionsBuilder) -> CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/TeamArgument.java:45
+    pub fn get_team(context: CommandContext<JRef<CommandSourceStack>>, name: &str) -> Result<JRef<PlayerTeam>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/TeamArgument.java:29
+    pub fn parse(&self, reader: StringReader) -> Result<String, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/TeamArgument.java:40
+    pub fn list_suggestions<S: JGeneric>(&self, context_builder: CommandContext<S>, builder: SuggestionsBuilder) -> crate::rt::CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/TeamArgument.java:45
     pub fn get_examples(&self) -> Vec<String> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/TeamArgument.java:52
 }
 crate::jobject!(TeamArgument);

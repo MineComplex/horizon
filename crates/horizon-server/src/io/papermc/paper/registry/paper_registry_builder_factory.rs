@@ -5,7 +5,6 @@ use crate::io::papermc::paper::registry::data::util::conversions::Conversions;
 use crate::io::papermc::paper::registry::paper_registry_builder::PaperRegistryBuilderFiller;
 use crate::io::papermc::paper::registry::registry_builder_factory::RegistryBuilderFactory;
 use crate::io::papermc::paper::registry::typed_key::TypedKey;
-use crate::java::util::function::Function;
 use crate::net::minecraft::core::registry::Registry;
 use crate::net::minecraft::resources::resource_key::ResourceKey;
 
@@ -15,13 +14,13 @@ pub struct PaperRegistryBuilderFactory<M: JGeneric, A: JGeneric, B: JGeneric> {
     pub registry_key: JRef<ResourceKey<JRef<dyn Registry<M>>>>, // paper-server/src/main/java/io/papermc/paper/registry/PaperRegistryBuilderFactory.java:14
     pub conversions: JRef<Conversions>, // paper-server/src/main/java/io/papermc/paper/registry/PaperRegistryBuilderFactory.java:15
     pub builder_filler: JRef<dyn PaperRegistryBuilderFiller<M, A, B>>, // paper-server/src/main/java/io/papermc/paper/registry/PaperRegistryBuilderFactory.java:16
-    pub existing_value_getter: JRef<dyn Function<JRef<ResourceKey<M>>, Option<M>>>, // paper-server/src/main/java/io/papermc/paper/registry/PaperRegistryBuilderFactory.java:17
+    pub existing_value_getter: Arc<dyn Fn(JRef<ResourceKey<M>>) -> Option<M> + Send + Sync>, // paper-server/src/main/java/io/papermc/paper/registry/PaperRegistryBuilderFactory.java:17
     pub builder: Mut<Option<B>>, // paper-server/src/main/java/io/papermc/paper/registry/PaperRegistryBuilderFactory.java:18
     pub _phantom: std::marker::PhantomData<(M, A, B,)>,
 }
 impl<M: JGeneric, A: JGeneric, B: JGeneric> PaperRegistryBuilderFactory<M, A, B> {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(registry_key: JRef<ResourceKey<JRef<dyn Registry<M>>>>, conversions: JRef<Conversions>, builder_filler: JRef<dyn PaperRegistryBuilderFiller<M, A, B>>, existing_value_getter: JRef<dyn Function<JRef<ResourceKey<M>>, Option<M>>>) -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/PaperRegistryBuilderFactory.java:20
+    pub fn new(registry_key: JRef<ResourceKey<JRef<dyn Registry<M>>>>, conversions: JRef<Conversions>, builder_filler: JRef<dyn PaperRegistryBuilderFiller<M, A, B>>, existing_value_getter: Arc<dyn Fn(JRef<ResourceKey<M>>) -> Option<M> + Send + Sync>) -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/PaperRegistryBuilderFactory.java:20
     pub fn empty(&self) -> B { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/PaperRegistryBuilderFactory.java:45
     pub fn copy_from(&self, key: JRef<dyn TypedKey<A>>) -> B { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/PaperRegistryBuilderFactory.java:51
     pub fn validate(&self) { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/PaperRegistryBuilderFactory.java:32

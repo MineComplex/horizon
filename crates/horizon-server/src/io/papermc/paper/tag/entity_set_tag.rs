@@ -3,7 +3,6 @@
 use crate::prelude::*;
 use crate::io::papermc::paper::tag::base_tag::BaseTag;
 use crate::io::papermc::paper::tag::base_tag::BaseTagTrait;
-use crate::java::util::function::Predicate;
 use crate::org::bukkit::entity::entity_type::EntityType;
 use crate::org::bukkit::keyed::Keyed;
 use crate::org::bukkit::namespaced_key::NamespacedKey;
@@ -21,10 +20,10 @@ impl std::ops::Deref for EntitySetTag {
 }
 impl EntitySetTag {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(key: JRef<NamespacedKey>, filter: JRef<dyn Predicate<EntityType>>) -> JRef<Self> { todo!() } // paper-api/src/main/java/io/papermc/paper/tag/EntitySetTag.java:14
+    pub fn new(key: JRef<NamespacedKey>, filter: Arc<dyn Fn(EntityType) -> bool + Send + Sync>) -> JRef<Self> { todo!() } // paper-api/src/main/java/io/papermc/paper/tag/EntitySetTag.java:14
     pub fn new_2(key: JRef<NamespacedKey>, values: &Vec<EntityType>) -> JRef<Self> { todo!() } // paper-api/src/main/java/io/papermc/paper/tag/EntitySetTag.java:18
     pub fn new_2_(key: JRef<NamespacedKey>, values: &Vec<EntityType>) -> JRef<Self> { todo!() } // paper-api/src/main/java/io/papermc/paper/tag/EntitySetTag.java:22
-    pub fn new_3(key: JRef<NamespacedKey>, values: &Vec<EntityType>, global_predicates: &Vec<JRef<dyn Predicate<EntityType>>>) -> JRef<Self> { todo!() } // paper-api/src/main/java/io/papermc/paper/tag/EntitySetTag.java:26
+    pub fn new_3(key: JRef<NamespacedKey>, values: &Vec<EntityType>, global_predicates: &Vec<Arc<dyn Fn(EntityType) -> bool + Send + Sync>>) -> JRef<Self> { todo!() } // paper-api/src/main/java/io/papermc/paper/tag/EntitySetTag.java:26
     pub fn get_all_possible_values(&self) -> HashSet<EntityType> { todo!() } // paper-api/src/main/java/io/papermc/paper/tag/EntitySetTag.java:30
     pub fn get_name(&self, value: EntityType) -> String { todo!() } // paper-api/src/main/java/io/papermc/paper/tag/EntitySetTag.java:36
 }
@@ -37,14 +36,14 @@ impl BaseTagTrait<JObjectRef, JObjectRef> for EntitySetTag {
     fn add(&self, tags: &Vec<JRef<dyn Tag<T>>>) -> C { BaseTag::add(self, tags) }
     fn add_1(&self, values: &Vec<T>) -> C { BaseTag::add_1(self, values) }
     fn add_1_2(&self, collection: &Vec<T>) -> C { BaseTag::add_1_2(self, collection) }
-    fn add_1_3(&self, filter: JRef<dyn Predicate<T>>) -> C { BaseTag::add_1_3(self, filter) }
+    fn add_1_3(&self, filter: Arc<dyn Fn(T) -> bool + Send + Sync>) -> C { BaseTag::add_1_3(self, filter) }
     fn contains(&self, with: &str) -> C { BaseTag::contains(self, with) }
     fn ends_with(&self, with: &str) -> C { BaseTag::ends_with(self, with) }
     fn starts_with(&self, with: &str) -> C { BaseTag::starts_with(self, with) }
     fn not(&self, tags: &Vec<JRef<dyn Tag<T>>>) -> C { BaseTag::not(self, tags) }
     fn not_1(&self, values: &Vec<T>) -> C { BaseTag::not_1(self, values) }
     fn not_1_2(&self, values: &Vec<T>) -> C { BaseTag::not_1_2(self, values) }
-    fn not_1_3(&self, filter: JRef<dyn Predicate<T>>) -> C { BaseTag::not_1_3(self, filter) }
+    fn not_1_3(&self, filter: Arc<dyn Fn(T) -> bool + Send + Sync>) -> C { BaseTag::not_1_3(self, filter) }
     fn not_contains(&self, with: &str) -> C { BaseTag::not_contains(self, with) }
     fn not_ends_with(&self, with: &str) -> C { BaseTag::not_ends_with(self, with) }
     fn not_starts_with(&self, with: &str) -> C { BaseTag::not_starts_with(self, with) }

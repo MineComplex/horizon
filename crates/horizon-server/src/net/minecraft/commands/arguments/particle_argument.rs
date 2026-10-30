@@ -6,8 +6,6 @@ use crate::com::mojang::brigadier::context::CommandContext;
 use crate::com::mojang::brigadier::exceptions::DynamicCommandExceptionType;
 use crate::com::mojang::brigadier::suggestion::Suggestions;
 use crate::com::mojang::brigadier::suggestion::SuggestionsBuilder;
-use crate::java::lang::Throwable;
-use crate::java::util::concurrent::CompletableFuture;
 use crate::net::minecraft::commands::command_build_context::CommandBuildContext;
 use crate::net::minecraft::commands::command_source_stack::CommandSourceStack;
 use crate::net::minecraft::core::holder_lookup::HolderLookup;
@@ -30,11 +28,11 @@ impl ParticleArgument {
     pub fn new(context: JRef<dyn CommandBuildContext>) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/ParticleArgument.java:38
     pub fn particle(context: JRef<dyn CommandBuildContext>) -> JRef<ParticleArgument> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/ParticleArgument.java:42
     pub fn get_particle(context: CommandContext<JRef<CommandSourceStack>>, name: &str) -> JRef<dyn ParticleOptions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/ParticleArgument.java:46
-    pub fn parse(&self, reader: StringReader) -> Result<JRef<dyn ParticleOptions>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/ParticleArgument.java:50
+    pub fn parse(&self, reader: StringReader) -> Result<JRef<dyn ParticleOptions>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/ParticleArgument.java:50
     pub fn get_examples(&self) -> Vec<String> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/ParticleArgument.java:55
-    pub fn read_particle(reader: StringReader, registries: JRef<dyn HolderLookupProvider>) -> Result<JRef<dyn ParticleOptions>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/ParticleArgument.java:60
-    pub fn read_particle_4<T: JGeneric, O: JGeneric>(parser: JRef<TagParser<O>>, reader: StringReader, type_: JRef<dyn ParticleTypeTrait<T>>, registries: JRef<dyn HolderLookupProvider>) -> Result<T, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/ParticleArgument.java:71
-    pub fn read_particle_type(reader: StringReader, particles: JRef<dyn HolderLookup<JRef<dyn ParticleTypeTrait<JObjectRef>>>>) -> Result<JRef<dyn ParticleTypeTrait<JObjectRef>>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/ParticleArgument.java:65
-    pub fn list_suggestions<S: JGeneric>(&self, context: CommandContext<S>, builder: SuggestionsBuilder) -> CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/ParticleArgument.java:85
+    pub fn read_particle(reader: StringReader, registries: JRef<dyn HolderLookupProvider>) -> Result<JRef<dyn ParticleOptions>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/ParticleArgument.java:60
+    pub fn read_particle_4<T: JGeneric, O: JGeneric>(parser: JRef<TagParser<O>>, reader: StringReader, type_: JRef<dyn ParticleTypeTrait<T>>, registries: JRef<dyn HolderLookupProvider>) -> Result<T, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/ParticleArgument.java:71
+    pub fn read_particle_type(reader: StringReader, particles: JRef<dyn HolderLookup<JRef<dyn ParticleTypeTrait<JObjectRef>>>>) -> Result<JRef<dyn ParticleTypeTrait<JObjectRef>>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/ParticleArgument.java:65
+    pub fn list_suggestions<S: JGeneric>(&self, context: CommandContext<S>, builder: SuggestionsBuilder) -> crate::rt::CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/ParticleArgument.java:85
 }
 crate::jobject!(ParticleArgument);

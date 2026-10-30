@@ -4,7 +4,6 @@ use crate::prelude::*;
 use crate::io::papermc::paper::plugin::configuration::plugin_meta::PluginMeta;
 use crate::io::papermc::paper::plugin::provider::configuration::load_order_configuration::LoadOrderConfiguration;
 use crate::io::papermc::paper::plugin::provider::entrypoint::dependency_context::DependencyContext;
-use crate::java::util::jar::JarFile;
 use crate::net::kyori::adventure::text::logger::slf4j::ComponentLogger;
 
 // ---- interface io.papermc.paper.plugin.provider.PluginProvider (paper-server/src/main/java/io/papermc/paper/plugin/provider/PluginProvider.java:29)
@@ -12,7 +11,7 @@ pub trait PluginProvider<T: JGeneric>: JObject {
     fn get_source(&self) -> std::path::PathBuf; // paper-server/src/main/java/io/papermc/paper/plugin/provider/PluginProvider.java:32
     fn get_file_name(&self) -> std::path::PathBuf { todo!() } // default, paper-server/src/main/java/io/papermc/paper/plugin/provider/PluginProvider.java:35
     fn get_parent_source(&self) -> std::path::PathBuf { todo!() } // default, paper-server/src/main/java/io/papermc/paper/plugin/provider/PluginProvider.java:39
-    fn file(&self) -> JarFile; // paper-server/src/main/java/io/papermc/paper/plugin/provider/PluginProvider.java:43
+    fn file(&self) -> (); // paper-server/src/main/java/io/papermc/paper/plugin/provider/PluginProvider.java:43
     fn create_instance(&self) -> T; // paper-server/src/main/java/io/papermc/paper/plugin/provider/PluginProvider.java:45
     fn get_meta(&self) -> JRef<dyn PluginMeta>; // paper-server/src/main/java/io/papermc/paper/plugin/provider/PluginProvider.java:47
     fn get_logger(&self) -> ComponentLogger; // paper-server/src/main/java/io/papermc/paper/plugin/provider/PluginProvider.java:49

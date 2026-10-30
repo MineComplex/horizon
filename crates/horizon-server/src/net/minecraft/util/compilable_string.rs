@@ -6,8 +6,6 @@ use crate::com::mojang::brigadier::exceptions::DynamicCommandExceptionType;
 use crate::com::mojang::brigadier::exceptions::command_syntax_exception::CommandSyntaxExceptionTrait;
 use crate::com::mojang::serialization::Codec;
 use crate::com::mojang::serialization::DataResult;
-use crate::java::lang::Throwable;
-use crate::java::util::function::Function;
 
 // ---- class net.minecraft.util.CompilableString (leaf-server/src/minecraft/java/net/minecraft/util/CompilableString.java:12)
 pub struct CompilableString<T: JGeneric> {
@@ -19,7 +17,7 @@ pub struct CompilableString<T: JGeneric> {
 impl<T: JGeneric> CompilableString<T> {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(source: &str, compiled: T) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/CompilableString.java:16
-    pub fn codec<T: JGeneric>(compiler: JRef<dyn Function<String, DataResult<T>>>) -> JRef<dyn Codec<JRef<CompilableString<T>>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/CompilableString.java:21
+    pub fn codec<T: JGeneric>(compiler: Arc<dyn Fn(String) -> DataResult<T> + Send + Sync>) -> JRef<dyn Codec<JRef<CompilableString<T>>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/CompilableString.java:21
     pub fn source(&self) -> String { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/CompilableString.java:25
     pub fn compiled(&self) -> T { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/CompilableString.java:29
     pub fn equals(&self, o: JObjectRef) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/CompilableString.java:33
@@ -31,9 +29,9 @@ pub struct CompilableStringCommandParserHelper<T: JGeneric> {
     pub this: Weak<dyn CompilableStringCommandParserHelperTrait<T>>,
     pub _phantom: std::marker::PhantomData<(T,)>,
 }
-pub trait CompilableStringCommandParserHelperTrait<T: JGeneric>: Function<String, DataResult<T>> {
+pub trait CompilableStringCommandParserHelperTrait<T: JGeneric>: JObject {
     fn as_compilable_string_command_parser_helper(&self) -> &CompilableStringCommandParserHelper<T>;
-    fn parse(&self, reader: StringReader) -> Result<T, Throwable>; // leaf-server/src/minecraft/java/net/minecraft/util/CompilableString.java:71
+    fn parse(&self, reader: StringReader) -> Result<T, anyhow::Error>; // leaf-server/src/minecraft/java/net/minecraft/util/CompilableString.java:71
     fn error_message(&self, original: &str, exception: JRef<dyn CommandSyntaxExceptionTrait>) -> String; // leaf-server/src/minecraft/java/net/minecraft/util/CompilableString.java:73
 }
 impl<T: JGeneric> std::ops::Deref for dyn CompilableStringCommandParserHelperTrait<T> {

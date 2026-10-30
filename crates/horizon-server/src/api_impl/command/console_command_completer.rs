@@ -4,9 +4,6 @@ use crate::prelude::*;
 use crate::com::destroystokyo::paper::event::server::async_tab_complete_event::AsyncTabCompleteEventCompletion;
 use crate::io::papermc::paper::console::brigadier_command_completer::BrigadierCommandCompleter;
 use crate::net::minecraft::server::dedicated::dedicated_server::DedicatedServer;
-use crate::org::jline::reader::Candidate;
-use crate::org::jline::reader::LineReader;
-use crate::org::jline::reader::ParsedLine;
 use crate::api_prelude::*;
 
 // ---- class org.bukkit.craftbukkit.command.ConsoleCommandCompleter (paper-server/src/main/java/org/bukkit/craftbukkit/command/ConsoleCommandCompleter.java:17)
@@ -18,8 +15,8 @@ pub struct ConsoleCommandCompleter {
 impl ConsoleCommandCompleter {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(server: JRef<DedicatedServer>) -> JRef<Self> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/command/ConsoleCommandCompleter.java:21
-    pub fn complete(&self, reader: LineReader, line: JRef<dyn ParsedLine>, candidates: &Vec<Candidate>) { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/command/ConsoleCommandCompleter.java:27
+    pub fn complete(&self, reader: rustyline::DefaultEditor, line: (), candidates: &Vec<String>) { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/command/ConsoleCommandCompleter.java:27
     pub fn not_new_suggestion(&self, completions: &Vec<JRef<dyn AsyncTabCompleteEventCompletion>>, completion: &str) -> bool { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/command/ConsoleCommandCompleter.java:99
-    pub fn add_completions(&self, reader: LineReader, line: JRef<dyn ParsedLine>, candidates: &Vec<Candidate>, existing: &Vec<JRef<dyn AsyncTabCompleteEventCompletion>>) { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/command/ConsoleCommandCompleter.java:108
+    pub fn add_completions(&self, reader: rustyline::DefaultEditor, line: (), candidates: &Vec<String>, existing: &Vec<JRef<dyn AsyncTabCompleteEventCompletion>>) { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/command/ConsoleCommandCompleter.java:108
 }
 crate::jobject!(ConsoleCommandCompleter);

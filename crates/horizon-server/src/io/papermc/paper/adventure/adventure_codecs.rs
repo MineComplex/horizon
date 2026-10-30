@@ -3,10 +3,6 @@
 use crate::prelude::*;
 use crate::com::mojang::serialization::Codec;
 use crate::com::mojang::serialization::MapCodec;
-use crate::java::util::function::Consumer;
-use crate::java::util::function::Function;
-use crate::java::util::function::Predicate;
-use crate::java::util::function::Supplier;
 use crate::net::kyori::adventure::key::Key;
 use crate::net::kyori::adventure::nbt::api::BinaryTagHolder;
 use crate::net::kyori::adventure::text::Component;
@@ -44,7 +40,7 @@ pub static STREAM_COMPONENT_CODEC: LazyLock<JRef<dyn StreamCodec<JRef<RegistryFr
 pub static SHADOW_COLOR_CODEC: LazyLock<JRef<dyn Codec<ShadowColor>>> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/adventure/AdventureCodecs.java:97
 pub static TEXT_COLOR_CODEC: LazyLock<JRef<dyn Codec<TextColor>>> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/adventure/AdventureCodecs.java:99
 pub static KEY_CODEC: LazyLock<JRef<dyn Codec<JRef<dyn Key>>>> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/adventure/AdventureCodecs.java:115
-pub static TEXT_PAYLOAD_EXTRACTOR: LazyLock<JRef<dyn Function<ClickEvent, String>>> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/adventure/AdventureCodecs.java:119
+pub static TEXT_PAYLOAD_EXTRACTOR: LazyLock<Arc<dyn Fn(ClickEvent) -> String + Send + Sync>> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/adventure/AdventureCodecs.java:119
 pub static OPEN_URL_CODEC: LazyLock<MapCodec<ClickEvent>> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/adventure/AdventureCodecs.java:124
 pub static OPEN_FILE_CODEC: LazyLock<MapCodec<ClickEvent>> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/adventure/AdventureCodecs.java:131
 pub static RUN_COMMAND_CODEC: LazyLock<MapCodec<ClickEvent>> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/adventure/AdventureCodecs.java:134
@@ -61,9 +57,9 @@ pub static CHANGE_PAGE_CLICK_EVENT_TYPE: LazyLock<AdventureCodecsClickEventType>
 pub static COPY_TO_CLIPBOARD_CLICK_EVENT_TYPE: LazyLock<AdventureCodecsClickEventType> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/adventure/AdventureCodecs.java:162
 pub static SHOW_DIALOG_CLICK_EVENT_TYPE: LazyLock<AdventureCodecsClickEventType> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/adventure/AdventureCodecs.java:163
 pub static CUSTOM_CLICK_EVENT_TYPE: LazyLock<AdventureCodecsClickEventType> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/adventure/AdventureCodecs.java:164
-pub static CLICK_EVENT_TYPES: LazyLock<JRef<dyn Supplier<Vec<AdventureCodecsClickEventType>>>> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/adventure/AdventureCodecs.java:165
+pub static CLICK_EVENT_TYPES: LazyLock<Arc<dyn Fn() -> Vec<AdventureCodecsClickEventType> + Send + Sync>> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/adventure/AdventureCodecs.java:165
 pub static CLICK_EVENT_TYPE_CODEC: LazyLock<JRef<dyn Codec<AdventureCodecsClickEventType>>> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/adventure/AdventureCodecs.java:166
-pub static GET_CLICK_EVENT_TYPE: LazyLock<JRef<dyn Function<ClickEvent, AdventureCodecsClickEventType>>> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/adventure/AdventureCodecs.java:175
+pub static GET_CLICK_EVENT_TYPE: LazyLock<Arc<dyn Fn(ClickEvent) -> AdventureCodecsClickEventType + Send + Sync>> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/adventure/AdventureCodecs.java:175
 pub static CLICK_EVENT_CODEC: LazyLock<JRef<dyn Codec<ClickEvent>>> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/adventure/AdventureCodecs.java:187
 pub static SHOW_TEXT_CODEC: LazyLock<MapCodec<HoverEvent<Component>>> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/adventure/AdventureCodecs.java:192
 pub static SHOW_ENTITY_CODEC: LazyLock<MapCodec<HoverEvent<HoverEventShowEntity>>> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/adventure/AdventureCodecs.java:196
@@ -72,7 +68,7 @@ pub static SHOW_ENTITY_HOVER_EVENT_TYPE: LazyLock<AdventureCodecsHoverEventType<
 pub static SHOW_ITEM_HOVER_EVENT_TYPE: LazyLock<AdventureCodecsHoverEventType<HoverEventShowItem>> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/adventure/AdventureCodecs.java:212
 pub static SHOW_TEXT_HOVER_EVENT_TYPE: LazyLock<AdventureCodecsHoverEventType<Component>> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/adventure/AdventureCodecs.java:213
 pub static HOVER_EVENT_TYPE_CODEC: LazyLock<JRef<dyn Codec<AdventureCodecsHoverEventType<JObjectRef>>>> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/adventure/AdventureCodecs.java:214
-pub static GET_HOVER_EVENT_TYPE: LazyLock<JRef<dyn Function<HoverEvent<JObjectRef>, AdventureCodecsHoverEventType<JObjectRef>>>> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/adventure/AdventureCodecs.java:223
+pub static GET_HOVER_EVENT_TYPE: LazyLock<Arc<dyn Fn(HoverEvent<JObjectRef>) -> AdventureCodecsHoverEventType<JObjectRef> + Send + Sync>> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/adventure/AdventureCodecs.java:223
 pub static HOVER_EVENT_CODEC: LazyLock<JRef<dyn Codec<HoverEvent<JObjectRef>>>> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/adventure/AdventureCodecs.java:235
 pub static STYLE_MAP_CODEC: LazyLock<MapCodec<Style>> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/adventure/AdventureCodecs.java:240
 pub static TEXT_COMPONENT_MAP_CODEC: LazyLock<MapCodec<TextComponent>> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/adventure/AdventureCodecs.java:285
@@ -104,9 +100,9 @@ pub static BINARY_TAG_HOLDER_COMPOUND_CODEC: LazyLock<JRef<dyn Codec<BinaryTagHo
 impl AdventureCodecs {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/adventure/AdventureCodecs.java:578
-    pub fn style_boolean_consumer(builder: StyleBuilder, decoration: TextDecoration) -> JRef<dyn Consumer<bool>> { todo!() } // paper-server/src/main/java/io/papermc/paper/adventure/AdventureCodecs.java:273
-    pub fn decoration_getter(decoration: TextDecoration) -> JRef<dyn Function<Style, Option<bool>>> { todo!() } // paper-server/src/main/java/io/papermc/paper/adventure/AdventureCodecs.java:277
-    pub fn nullable_getter<R: JGeneric, T: JGeneric>(getter: JRef<dyn Function<R, T>>) -> JRef<dyn Function<R, Option<T>>> { todo!() } // paper-server/src/main/java/io/papermc/paper/adventure/AdventureCodecs.java:281
+    pub fn style_boolean_consumer(builder: StyleBuilder, decoration: TextDecoration) -> Arc<dyn Fn(bool) + Send + Sync> { todo!() } // paper-server/src/main/java/io/papermc/paper/adventure/AdventureCodecs.java:273
+    pub fn decoration_getter(decoration: TextDecoration) -> Arc<dyn Fn(Style) -> Option<bool> + Send + Sync> { todo!() } // paper-server/src/main/java/io/papermc/paper/adventure/AdventureCodecs.java:277
+    pub fn nullable_getter<R: JGeneric, T: JGeneric>(getter: Arc<dyn Fn(R) -> T + Send + Sync>) -> Arc<dyn Fn(R) -> Option<T> + Send + Sync> { todo!() } // paper-server/src/main/java/io/papermc/paper/adventure/AdventureCodecs.java:281
     pub fn create_codec(self_codec: JRef<dyn Codec<Component>>) -> JRef<dyn Codec<Component>> { todo!() } // paper-server/src/main/java/io/papermc/paper/adventure/AdventureCodecs.java:511
     pub fn try_collapse_to_string(component: Component) -> Option<String> { todo!() } // paper-server/src/main/java/io/papermc/paper/adventure/AdventureCodecs.java:544
     pub fn create_from_list(components: &Vec<Component>) -> Component { todo!() } // paper-server/src/main/java/io/papermc/paper/adventure/AdventureCodecs.java:553
@@ -227,13 +223,13 @@ impl<D: JGeneric> StringRepresentable for AdventureCodecsDataSourceType<D> {
 #[derive(Clone)]
 pub struct AdventureCodecsComponentType<C: JGeneric> {
     pub codec: MapCodec<C>,
-    pub test: JRef<dyn Predicate<Component>>,
+    pub test: Arc<dyn Fn(Component) -> bool + Send + Sync>,
     pub id: String,
     pub _phantom: std::marker::PhantomData<(C,)>,
 }
 impl<C: JGeneric> AdventureCodecsComponentType<C> {
     pub fn new() -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/adventure/AdventureCodecs.java:495
-    pub fn new_3(codec: MapCodec<C>, test: JRef<dyn Predicate<Component>>, id: &str) -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/adventure/AdventureCodecs.java:495
+    pub fn new_3(codec: MapCodec<C>, test: Arc<dyn Fn(Component) -> bool + Send + Sync>, id: &str) -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/adventure/AdventureCodecs.java:495
     pub fn get_serialized_name(&self) -> String { todo!() } // paper-server/src/main/java/io/papermc/paper/adventure/AdventureCodecs.java:497
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that

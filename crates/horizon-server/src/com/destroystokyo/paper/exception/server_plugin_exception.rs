@@ -3,7 +3,6 @@
 use crate::api_prelude::*;
 use crate::com::destroystokyo::paper::exception::server_exception::ServerException;
 use crate::com::destroystokyo::paper::exception::server_exception::ServerExceptionTrait;
-use crate::java::lang::Throwable;
 use crate::org::bukkit::plugin::plugin::Plugin;
 use crate::prelude::*;
 
@@ -35,7 +34,7 @@ impl ServerPluginException {
     }
     pub fn new_base<S: ServerPluginExceptionTrait + 'static>(
         this: &Weak<S>,
-        cause: Throwable,
+        cause: anyhow::Error,
         responsible_plugin: JRef<dyn Plugin>,
     ) -> Self {
         ServerPluginException {
@@ -44,13 +43,13 @@ impl ServerPluginException {
             responsible_plugin,
         }
     } // paper-api/src/main/java/com/destroystokyo/paper/exception/ServerPluginException.java:16
-    pub fn new(cause: Throwable, responsible_plugin: JRef<dyn Plugin>) -> JRef<Self> {
+    pub fn new(cause: anyhow::Error, responsible_plugin: JRef<dyn Plugin>) -> JRef<Self> {
         Arc::new_cyclic(|this| Self::new_base(this, cause, responsible_plugin))
     }
     pub fn new_base_3<S: ServerPluginExceptionTrait + 'static>(
         this: &Weak<S>,
         message: &str,
-        cause: Throwable,
+        cause: anyhow::Error,
         responsible_plugin: JRef<dyn Plugin>,
     ) -> Self {
         ServerPluginException {
@@ -61,7 +60,7 @@ impl ServerPluginException {
     } // paper-api/src/main/java/com/destroystokyo/paper/exception/ServerPluginException.java:11
     pub fn new_3(
         message: &str,
-        cause: Throwable,
+        cause: anyhow::Error,
         responsible_plugin: JRef<dyn Plugin>,
     ) -> JRef<Self> {
         Arc::new_cyclic(|this| Self::new_base_3(this, message, cause, responsible_plugin))
@@ -69,7 +68,7 @@ impl ServerPluginException {
     pub fn new_base_5<S: ServerPluginExceptionTrait + 'static>(
         this: &Weak<S>,
         message: &str,
-        cause: Throwable,
+        cause: anyhow::Error,
         enable_suppression: bool,
         writable_stack_trace: bool,
         responsible_plugin: JRef<dyn Plugin>,
@@ -88,7 +87,7 @@ impl ServerPluginException {
     } // paper-api/src/main/java/com/destroystokyo/paper/exception/ServerPluginException.java:21
     pub fn new_5(
         message: &str,
-        cause: Throwable,
+        cause: anyhow::Error,
         enable_suppression: bool,
         writable_stack_trace: bool,
         responsible_plugin: JRef<dyn Plugin>,

@@ -4,7 +4,6 @@ use crate::prelude::*;
 use crate::com::mojang::brigadier::command_dispatcher::CommandDispatcher;
 use crate::com::mojang::brigadier::exceptions::Dynamic2CommandExceptionType;
 use crate::com::mojang::brigadier::exceptions::Dynamic4CommandExceptionType;
-use crate::java::lang::Throwable;
 use crate::net::minecraft::commands::command_source_stack::CommandSourceStack;
 use crate::net::minecraft::server::level::server_level::ServerLevel;
 use crate::net::minecraft::util::random_source::RandomSource;
@@ -24,9 +23,9 @@ impl SpreadPlayersCommand {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/SpreadPlayersCommand.java:34
     pub fn register(dispatcher: JRef<CommandDispatcher<JRef<CommandSourceStack>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/SpreadPlayersCommand.java:46
-    pub fn spread_players(source: JRef<CommandSourceStack>, center: Vec2, spread_distance: f32, max_range: f32, max_height: i32, respect_teams: bool, entities: &Vec<JRef<dyn EntityTrait>>) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/SpreadPlayersCommand.java:102
+    pub fn spread_players(source: JRef<CommandSourceStack>, center: Vec2, spread_distance: f32, max_range: f32, max_height: i32, respect_teams: bool, entities: &Vec<JRef<dyn EntityTrait>>) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/SpreadPlayersCommand.java:102
     pub fn get_number_of_teams(players: &Vec<JRef<dyn EntityTrait>>) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/SpreadPlayersCommand.java:140
-    pub fn spread_positions(center: Vec2, spread_dist: f64, level: JRef<ServerLevel>, random: JRef<dyn RandomSource>, min_x: f64, min_z: f64, max_x: f64, max_z: f64, max_height: i32, positions: &Vec<JRef<SpreadPlayersCommandPosition>>, respect_teams: bool) -> Result<(), Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/SpreadPlayersCommand.java:154
+    pub fn spread_positions(center: Vec2, spread_dist: f64, level: JRef<ServerLevel>, random: JRef<dyn RandomSource>, min_x: f64, min_z: f64, max_x: f64, max_z: f64, max_height: i32, positions: &Vec<JRef<SpreadPlayersCommandPosition>>, respect_teams: bool) -> Result<(), anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/SpreadPlayersCommand.java:154
     pub fn set_player_positions(entities: &Vec<JRef<dyn EntityTrait>>, level: JRef<ServerLevel>, positions: &Vec<JRef<SpreadPlayersCommandPosition>>, max_height: i32, respect_teams: bool) -> f64 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/SpreadPlayersCommand.java:235
     pub fn create_initial_positions(random: JRef<dyn RandomSource>, count: i32, min_x: f64, min_z: f64, max_x: f64, max_z: f64) -> Vec<JRef<SpreadPlayersCommandPosition>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/SpreadPlayersCommand.java:285
 }

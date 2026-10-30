@@ -5,7 +5,6 @@ use crate::com::mojang::serialization::Codec;
 use crate::com::mojang::serialization::Decoder;
 use crate::com::mojang::serialization::MapCodec;
 use crate::io::papermc::paper::registry::registry_key::RegistryKey;
-use crate::java::util::function::Function;
 use crate::net::kyori::adventure::util::TriState;
 use crate::net::minecraft::server::packs::metadata::metadata_section_type::MetadataSectionType;
 
@@ -18,7 +17,7 @@ impl PaperCodecs {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/util/PaperCodecs.java:93
     pub fn lenient_codec<M: JGeneric>(name: &str, codec: JRef<dyn Codec<M>>) -> MapCodec<Option<M>> { todo!() } // paper-server/src/main/java/io/papermc/paper/util/PaperCodecs.java:42
-    pub fn registry_file_decoder_for<A: JGeneric, M: JGeneric>(direct_nms_decoder: Decoder<M>, direct_holder_converter: JRef<dyn Function<JObjectRef, A>>, registry_key: JRef<dyn RegistryKey<A>>, allow_inline: bool) -> Decoder<A> { todo!() } // paper-server/src/main/java/io/papermc/paper/util/PaperCodecs.java:57
+    pub fn registry_file_decoder_for<A: JGeneric, M: JGeneric>(direct_nms_decoder: Decoder<M>, direct_holder_converter: Arc<dyn Fn(JObjectRef) -> A + Send + Sync>, registry_key: JRef<dyn RegistryKey<A>>, allow_inline: bool) -> Decoder<A> { todo!() } // paper-server/src/main/java/io/papermc/paper/util/PaperCodecs.java:57
     pub fn pack_meta_codec<T: JGeneric>(type_: MetadataSectionType<T>) -> JRef<dyn Codec<T>> { todo!() } // paper-server/src/main/java/io/papermc/paper/util/PaperCodecs.java:87
 }
 crate::jobject!(PaperCodecs);

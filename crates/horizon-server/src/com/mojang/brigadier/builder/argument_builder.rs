@@ -6,14 +6,13 @@ use crate::com::mojang::brigadier::RedirectModifier;
 use crate::com::mojang::brigadier::SingleRedirectModifier;
 use crate::com::mojang::brigadier::tree::RootCommandNode;
 use crate::com::mojang::brigadier::tree::command_node::CommandNodeTrait;
-use crate::java::util::function::Predicate;
 
 // ---- class com.mojang.brigadier.builder.ArgumentBuilder (leaf-server/src/minecraft/java/com/mojang/brigadier/builder/ArgumentBuilder.java:16)
 pub struct ArgumentBuilder<S: JGeneric, T: JGeneric> {
     pub this: Weak<dyn ArgumentBuilderTrait<S, T>>,
     pub arguments: RootCommandNode<S>, // leaf-server/src/minecraft/java/com/mojang/brigadier/builder/ArgumentBuilder.java:25
     pub command: Mut<JRef<dyn Command<S>>>, // leaf-server/src/minecraft/java/com/mojang/brigadier/builder/ArgumentBuilder.java:26
-    pub requirement: Mut<JRef<dyn Predicate<S>>>, // leaf-server/src/minecraft/java/com/mojang/brigadier/builder/ArgumentBuilder.java:27
+    pub requirement: Mut<Arc<dyn Fn(S) -> bool + Send + Sync>>, // leaf-server/src/minecraft/java/com/mojang/brigadier/builder/ArgumentBuilder.java:27
     pub target: Mut<JRef<dyn CommandNodeTrait<S>>>, // leaf-server/src/minecraft/java/com/mojang/brigadier/builder/ArgumentBuilder.java:28
     pub modifier: Mut<JRef<dyn RedirectModifier<S>>>, // leaf-server/src/minecraft/java/com/mojang/brigadier/builder/ArgumentBuilder.java:29
     pub forks: Mut<bool>, // leaf-server/src/minecraft/java/com/mojang/brigadier/builder/ArgumentBuilder.java:30
@@ -27,8 +26,8 @@ pub trait ArgumentBuilderTrait<S: JGeneric, T: JGeneric>: JObject {
     fn get_arguments(&self) -> Vec<JRef<dyn CommandNodeTrait<S>>>; // leaf-server/src/minecraft/java/com/mojang/brigadier/builder/ArgumentBuilder.java:50
     fn executes(&self, command: JRef<dyn Command<S>>) -> T; // leaf-server/src/minecraft/java/com/mojang/brigadier/builder/ArgumentBuilder.java:54
     fn get_command(&self) -> JRef<dyn Command<S>>; // leaf-server/src/minecraft/java/com/mojang/brigadier/builder/ArgumentBuilder.java:59
-    fn requires(&self, requirement: JRef<dyn Predicate<S>>) -> T; // leaf-server/src/minecraft/java/com/mojang/brigadier/builder/ArgumentBuilder.java:63
-    fn get_requirement(&self) -> JRef<dyn Predicate<S>>; // leaf-server/src/minecraft/java/com/mojang/brigadier/builder/ArgumentBuilder.java:68
+    fn requires(&self, requirement: Arc<dyn Fn(S) -> bool + Send + Sync>) -> T; // leaf-server/src/minecraft/java/com/mojang/brigadier/builder/ArgumentBuilder.java:63
+    fn get_requirement(&self) -> Arc<dyn Fn(S) -> bool + Send + Sync>; // leaf-server/src/minecraft/java/com/mojang/brigadier/builder/ArgumentBuilder.java:68
     fn redirect(&self, target: JRef<dyn CommandNodeTrait<S>>) -> T; // leaf-server/src/minecraft/java/com/mojang/brigadier/builder/ArgumentBuilder.java:72
     fn redirect_2(&self, target: JRef<dyn CommandNodeTrait<S>>, modifier: SingleRedirectModifier<S>) -> T; // leaf-server/src/minecraft/java/com/mojang/brigadier/builder/ArgumentBuilder.java:76
     fn fork(&self, target: JRef<dyn CommandNodeTrait<S>>, modifier: JRef<dyn RedirectModifier<S>>) -> T; // leaf-server/src/minecraft/java/com/mojang/brigadier/builder/ArgumentBuilder.java:80
@@ -42,18 +41,18 @@ impl<S: JGeneric, T: JGeneric> std::ops::Deref for dyn ArgumentBuilderTrait<S, T
     type Target = ArgumentBuilder<S, T>;
     fn deref(&self) -> &ArgumentBuilder<S, T> { self.as_argument_builder() }
 }
-pub static DEFAULT_REQUIREMENT: LazyLock<JRef<dyn Predicate<JObjectRef>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/com/mojang/brigadier/builder/ArgumentBuilder.java:18
+pub static DEFAULT_REQUIREMENT: LazyLock<Arc<dyn Fn(JObjectRef) -> bool + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/com/mojang/brigadier/builder/ArgumentBuilder.java:18
 impl<S: JGeneric, T: JGeneric> ArgumentBuilder<S, T> {
     pub fn this(&self) -> JRef<dyn ArgumentBuilderTrait<S, T>> { self.this.upgrade().expect("this") }
     pub fn new_base<S: ArgumentBuilderTrait<S, T> + 'static>(this: &Weak<S>) -> Self { todo!() } // leaf-server/src/minecraft/java/com/mojang/brigadier/builder/ArgumentBuilder.java:16
-    pub fn default_requirement<S: JGeneric>() -> JRef<dyn Predicate<S>> { todo!() } // leaf-server/src/minecraft/java/com/mojang/brigadier/builder/ArgumentBuilder.java:20
+    pub fn default_requirement<S: JGeneric>() -> Arc<dyn Fn(S) -> bool + Send + Sync> { todo!() } // leaf-server/src/minecraft/java/com/mojang/brigadier/builder/ArgumentBuilder.java:20
     pub fn then(&self, argument: JRef<dyn ArgumentBuilderTrait<S, JObjectRef>>) -> T { todo!() } // leaf-server/src/minecraft/java/com/mojang/brigadier/builder/ArgumentBuilder.java:34
     pub fn then_1(&self, argument: JRef<dyn CommandNodeTrait<S>>) -> T { todo!() } // leaf-server/src/minecraft/java/com/mojang/brigadier/builder/ArgumentBuilder.java:42
     pub fn get_arguments(&self) -> Vec<JRef<dyn CommandNodeTrait<S>>> { todo!() } // leaf-server/src/minecraft/java/com/mojang/brigadier/builder/ArgumentBuilder.java:50
     pub fn executes(&self, command: JRef<dyn Command<S>>) -> T { todo!() } // leaf-server/src/minecraft/java/com/mojang/brigadier/builder/ArgumentBuilder.java:54
     pub fn get_command(&self) -> JRef<dyn Command<S>> { todo!() } // leaf-server/src/minecraft/java/com/mojang/brigadier/builder/ArgumentBuilder.java:59
-    pub fn requires(&self, requirement: JRef<dyn Predicate<S>>) -> T { todo!() } // leaf-server/src/minecraft/java/com/mojang/brigadier/builder/ArgumentBuilder.java:63
-    pub fn get_requirement(&self) -> JRef<dyn Predicate<S>> { todo!() } // leaf-server/src/minecraft/java/com/mojang/brigadier/builder/ArgumentBuilder.java:68
+    pub fn requires(&self, requirement: Arc<dyn Fn(S) -> bool + Send + Sync>) -> T { todo!() } // leaf-server/src/minecraft/java/com/mojang/brigadier/builder/ArgumentBuilder.java:63
+    pub fn get_requirement(&self) -> Arc<dyn Fn(S) -> bool + Send + Sync> { todo!() } // leaf-server/src/minecraft/java/com/mojang/brigadier/builder/ArgumentBuilder.java:68
     pub fn redirect(&self, target: JRef<dyn CommandNodeTrait<S>>) -> T { todo!() } // leaf-server/src/minecraft/java/com/mojang/brigadier/builder/ArgumentBuilder.java:72
     pub fn redirect_2(&self, target: JRef<dyn CommandNodeTrait<S>>, modifier: SingleRedirectModifier<S>) -> T { todo!() } // leaf-server/src/minecraft/java/com/mojang/brigadier/builder/ArgumentBuilder.java:76
     pub fn fork(&self, target: JRef<dyn CommandNodeTrait<S>>, modifier: JRef<dyn RedirectModifier<S>>) -> T { todo!() } // leaf-server/src/minecraft/java/com/mojang/brigadier/builder/ArgumentBuilder.java:80

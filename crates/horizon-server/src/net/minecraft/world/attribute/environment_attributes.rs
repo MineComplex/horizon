@@ -14,34 +14,32 @@ use crate::net::minecraft::world::attribute::environment_attribute::EnvironmentA
 use crate::net::minecraft::world::entity::schedule::activity::Activity;
 use crate::net::minecraft::world::level::biome::mob_spawn_settings::MobSpawnSettings;
 use crate::net::minecraft::world::level::moon_phase::MoonPhase;
-use crate::org::joml::Vector3fc;
-use crate::org::joml::Vector4fc;
 
 // ---- interface net.minecraft.world.attribute.EnvironmentAttributes (leaf-server/src/minecraft/java/net/minecraft/world/attribute/EnvironmentAttributes.java:19)
 pub trait EnvironmentAttributes: JObject {
 }
-pub static FOG_COLOR: LazyLock<JRef<EnvironmentAttribute<Vector3fc>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/attribute/EnvironmentAttributes.java:20
+pub static FOG_COLOR: LazyLock<JRef<EnvironmentAttribute<glam::Vec3>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/attribute/EnvironmentAttributes.java:20
 pub static FOG_START_DISTANCE: LazyLock<JRef<EnvironmentAttribute<f32>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/attribute/EnvironmentAttributes.java:23
 pub static FOG_END_DISTANCE: LazyLock<JRef<EnvironmentAttribute<f32>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/attribute/EnvironmentAttributes.java:26
 pub static SKY_FOG_END_DISTANCE: LazyLock<JRef<EnvironmentAttribute<f32>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/attribute/EnvironmentAttributes.java:34
 pub static CLOUD_FOG_END_DISTANCE: LazyLock<JRef<EnvironmentAttribute<f32>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/attribute/EnvironmentAttributes.java:42
-pub static WATER_FOG_COLOR: LazyLock<JRef<EnvironmentAttribute<Vector3fc>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/attribute/EnvironmentAttributes.java:50
+pub static WATER_FOG_COLOR: LazyLock<JRef<EnvironmentAttribute<glam::Vec3>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/attribute/EnvironmentAttributes.java:50
 pub static WATER_FOG_START_DISTANCE: LazyLock<JRef<EnvironmentAttribute<f32>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/attribute/EnvironmentAttributes.java:54
 pub static WATER_FOG_END_DISTANCE: LazyLock<JRef<EnvironmentAttribute<f32>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/attribute/EnvironmentAttributes.java:57
-pub static SKY_COLOR: LazyLock<JRef<EnvironmentAttribute<Vector3fc>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/attribute/EnvironmentAttributes.java:61
-pub static SUNRISE_SUNSET_COLOR: LazyLock<JRef<EnvironmentAttribute<Vector4fc>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/attribute/EnvironmentAttributes.java:64
-pub static CLOUD_COLOR: LazyLock<JRef<EnvironmentAttribute<Vector4fc>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/attribute/EnvironmentAttributes.java:68
+pub static SKY_COLOR: LazyLock<JRef<EnvironmentAttribute<glam::Vec3>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/attribute/EnvironmentAttributes.java:61
+pub static SUNRISE_SUNSET_COLOR: LazyLock<JRef<EnvironmentAttribute<glam::Vec4>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/attribute/EnvironmentAttributes.java:64
+pub static CLOUD_COLOR: LazyLock<JRef<EnvironmentAttribute<glam::Vec4>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/attribute/EnvironmentAttributes.java:68
 pub static CLOUD_HEIGHT: LazyLock<JRef<EnvironmentAttribute<f32>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/attribute/EnvironmentAttributes.java:72
 pub static SUN_ANGLE: LazyLock<JRef<EnvironmentAttribute<f32>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/attribute/EnvironmentAttributes.java:75
 pub static MOON_ANGLE: LazyLock<JRef<EnvironmentAttribute<f32>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/attribute/EnvironmentAttributes.java:78
 pub static STAR_ANGLE: LazyLock<JRef<EnvironmentAttribute<f32>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/attribute/EnvironmentAttributes.java:81
 pub static MOON_PHASE: LazyLock<JRef<EnvironmentAttribute<MoonPhase>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/attribute/EnvironmentAttributes.java:84
 pub static STAR_BRIGHTNESS: LazyLock<JRef<EnvironmentAttribute<f32>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/attribute/EnvironmentAttributes.java:87
-pub static BLOCK_LIGHT_TINT: LazyLock<JRef<EnvironmentAttribute<Vector3fc>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/attribute/EnvironmentAttributes.java:91
-pub static SKY_LIGHT_COLOR: LazyLock<JRef<EnvironmentAttribute<Vector3fc>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/attribute/EnvironmentAttributes.java:95
+pub static BLOCK_LIGHT_TINT: LazyLock<JRef<EnvironmentAttribute<glam::Vec3>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/attribute/EnvironmentAttributes.java:91
+pub static SKY_LIGHT_COLOR: LazyLock<JRef<EnvironmentAttribute<glam::Vec3>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/attribute/EnvironmentAttributes.java:95
 pub static SKY_LIGHT_FACTOR: LazyLock<JRef<EnvironmentAttribute<f32>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/attribute/EnvironmentAttributes.java:99
-pub static NIGHT_VISION_COLOR: LazyLock<JRef<EnvironmentAttribute<Vector3fc>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/attribute/EnvironmentAttributes.java:103
-pub static AMBIENT_LIGHT_COLOR: LazyLock<JRef<EnvironmentAttribute<Vector3fc>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/attribute/EnvironmentAttributes.java:107
+pub static NIGHT_VISION_COLOR: LazyLock<JRef<EnvironmentAttribute<glam::Vec3>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/attribute/EnvironmentAttributes.java:103
+pub static AMBIENT_LIGHT_COLOR: LazyLock<JRef<EnvironmentAttribute<glam::Vec3>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/attribute/EnvironmentAttributes.java:107
 pub static DEFAULT_DRIPSTONE_PARTICLE: LazyLock<JRef<EnvironmentAttribute<JRef<dyn ParticleOptions>>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/attribute/EnvironmentAttributes.java:111
 pub static AMBIENT_PARTICLES: LazyLock<JRef<EnvironmentAttribute<Vec<AmbientParticle>>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/attribute/EnvironmentAttributes.java:115
 pub static BACKGROUND_MUSIC: LazyLock<JRef<EnvironmentAttribute<BackgroundMusic>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/attribute/EnvironmentAttributes.java:118

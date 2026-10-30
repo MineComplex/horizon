@@ -5,8 +5,6 @@ use crate::api_impl::util::api_version::ApiVersion;
 use crate::com::destroystokyo::paper::event::block::anvil_damaged_event::AnvilDamagedEventDamageState;
 use crate::com::destroystokyo::paper::event::player::player_armor_change_event::PlayerArmorChangeEventSlotType;
 use crate::io::papermc::paper::event::player::player_item_cooldown_event::PlayerItemCooldownEvent;
-use crate::java::util::function::Consumer;
-use crate::java::util::function::Function;
 use crate::org::bukkit::block::block::Block;
 use crate::org::bukkit::block::block_state::BlockState;
 use crate::org::bukkit::block::data::block_data::BlockData;
@@ -146,10 +144,10 @@ impl MaterialRerouting {
     pub fn remove_ingredient_4(shapeless_recipe: JRef<ShapelessRecipe>, count: i32, material: Material, raw: i32) -> JRef<ShapelessRecipe> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/MaterialRerouting.java:414
     pub fn statistic(statistic: Statistic, material: Material) -> JRef<dyn Criteria> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/MaterialRerouting.java:423
     pub fn create_block_data(material: Material) -> JRef<dyn BlockData> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/MaterialRerouting.java:435
-    pub fn create_block_data_2(material: Material, consumer: JRef<dyn Consumer<JObjectRef>>) -> JRef<dyn BlockData> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/MaterialRerouting.java:440
+    pub fn create_block_data_2(material: Material, consumer: Arc<dyn Fn(JObjectRef) + Send + Sync>) -> JRef<dyn BlockData> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/MaterialRerouting.java:440
     pub fn create_block_data_2_2(material: Material, data: &str) -> JRef<dyn BlockData> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/MaterialRerouting.java:445
     pub fn create_block_data_2_3(server: JRef<dyn Server>, material: Material) -> JRef<dyn BlockData> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/MaterialRerouting.java:536
-    pub fn create_block_data_3(server: JRef<dyn Server>, material: Material, consumer: JRef<dyn Consumer<JObjectRef>>) -> JRef<dyn BlockData> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/MaterialRerouting.java:540
+    pub fn create_block_data_3(server: JRef<dyn Server>, material: Material, consumer: Arc<dyn Fn(JObjectRef) + Send + Sync>) -> JRef<dyn BlockData> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/MaterialRerouting.java:540
     pub fn create_block_data_3_2(server: JRef<dyn Server>, material: Material, data: &str) -> JRef<dyn BlockData> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/MaterialRerouting.java:544
     pub fn get_block_type(chunk_snapshot: JRef<dyn ChunkSnapshot>, x: i32, y: i32, z: i32, version: JRef<ApiVersion>) -> Material { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/MaterialRerouting.java:450
     pub fn increment_statistic(offline_player: JRef<dyn OfflinePlayer>, statistic: Statistic, material: Material) { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/MaterialRerouting.java:454
@@ -166,7 +164,7 @@ impl MaterialRerouting {
     pub fn get_blocks(tool_rule: JRef<dyn ToolComponentToolRule>, version: JRef<ApiVersion>) -> Vec<Material> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/MaterialRerouting.java:586
     pub fn set_blocks(tool_rule: JRef<dyn ToolComponentToolRule>, block: Material) { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/MaterialRerouting.java:590
     pub fn set_blocks_2(tool_rule: JRef<dyn ToolComponentToolRule>, blocks: &Vec<Material>) { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/MaterialRerouting.java:594
-    pub fn map_set<I: JGeneric, O: JGeneric>(input: &HashSet<I>, mapper: JRef<dyn Function<I, O>>) -> HashSet<O> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/MaterialRerouting.java:606
+    pub fn map_set<I: JGeneric, O: JGeneric>(input: &HashSet<I>, mapper: Arc<dyn Fn(I) -> O + Send + Sync>) -> HashSet<O> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/MaterialRerouting.java:606
     pub fn get_minecart_material(minecart: JRef<dyn Minecart>, version: JRef<ApiVersion>) -> Material { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/MaterialRerouting.java:615
     pub fn get_boat_material(boat: JRef<dyn Boat>, version: JRef<ApiVersion>) -> Material { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/MaterialRerouting.java:620
     pub fn get_infiniburn(world: JRef<dyn World>, version: JRef<ApiVersion>) -> Vec<Material> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/MaterialRerouting.java:630

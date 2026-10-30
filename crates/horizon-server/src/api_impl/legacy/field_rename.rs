@@ -3,7 +3,6 @@
 use crate::prelude::*;
 use crate::api_impl::legacy::fieldrename::field_rename_data::FieldRenameData;
 use crate::api_impl::util::api_version::ApiVersion;
-use crate::java::util::function::BiFunction;
 use crate::org::bukkit::attribute::attribute::Attribute;
 use crate::org::bukkit::block::banner::pattern_type::PatternType;
 use crate::org::bukkit::block::biome::Biome;
@@ -23,22 +22,22 @@ use crate::api_prelude::*;
 pub struct FieldRename {
     pub this: Weak<Self>,
 }
-pub static NONE: LazyLock<JRef<dyn BiFunction<JRef<NamespacedKey>, JRef<ApiVersion>, JRef<NamespacedKey>>>> = LazyLock::new(|| todo!()); // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/FieldRename.java:26
+pub static NONE: LazyLock<Arc<dyn Fn(JRef<NamespacedKey>, JRef<ApiVersion>) -> JRef<NamespacedKey> + Send + Sync>> = LazyLock::new(|| todo!()); // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/FieldRename.java:26
 pub static PATTERN_TYPE_DATA: LazyLock<FieldRenameData> = LazyLock::new(|| todo!()); // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/FieldRename.java:73
 pub static ENCHANTMENT_DATA: LazyLock<FieldRenameData> = LazyLock::new(|| todo!()); // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/FieldRename.java:98
-pub static ENCHANTMENT_RENAME: LazyLock<JRef<dyn BiFunction<JRef<NamespacedKey>, JRef<ApiVersion>, JRef<NamespacedKey>>>> = LazyLock::new(|| todo!()); // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/FieldRename.java:123
+pub static ENCHANTMENT_RENAME: LazyLock<Arc<dyn Fn(JRef<NamespacedKey>, JRef<ApiVersion>) -> JRef<NamespacedKey> + Send + Sync>> = LazyLock::new(|| todo!()); // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/FieldRename.java:123
 pub static BIOME_DATA: LazyLock<FieldRenameData> = LazyLock::new(|| todo!()); // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/FieldRename.java:138
-pub static BIOME_RENAME: LazyLock<JRef<dyn BiFunction<JRef<NamespacedKey>, JRef<ApiVersion>, JRef<NamespacedKey>>>> = LazyLock::new(|| todo!()); // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/FieldRename.java:155
+pub static BIOME_RENAME: LazyLock<Arc<dyn Fn(JRef<NamespacedKey>, JRef<ApiVersion>) -> JRef<NamespacedKey> + Send + Sync>> = LazyLock::new(|| todo!()); // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/FieldRename.java:155
 pub static ENTITY_TYPE_DATA: LazyLock<FieldRenameData> = LazyLock::new(|| todo!()); // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/FieldRename.java:170
-pub static ENTITY_TYPE_RENAME: LazyLock<JRef<dyn BiFunction<JRef<NamespacedKey>, JRef<ApiVersion>, JRef<NamespacedKey>>>> = LazyLock::new(|| todo!()); // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/FieldRename.java:208
+pub static ENTITY_TYPE_RENAME: LazyLock<Arc<dyn Fn(JRef<NamespacedKey>, JRef<ApiVersion>) -> JRef<NamespacedKey> + Send + Sync>> = LazyLock::new(|| todo!()); // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/FieldRename.java:208
 pub static POTION_EFFECT_TYPE_DATA: LazyLock<FieldRenameData> = LazyLock::new(|| todo!()); // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/FieldRename.java:230
 pub static POTION_TYPE_DATA: LazyLock<FieldRenameData> = LazyLock::new(|| todo!()); // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/FieldRename.java:256
 pub static MUSIC_INSTRUMENT_DATA: LazyLock<FieldRenameData> = LazyLock::new(|| todo!()); // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/FieldRename.java:278
 pub static PARTICLE_DATA: LazyLock<FieldRenameData> = LazyLock::new(|| todo!()); // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/FieldRename.java:296
-pub static PARTICLE_TYPE_RENAME: LazyLock<JRef<dyn BiFunction<JRef<NamespacedKey>, JRef<ApiVersion>, JRef<NamespacedKey>>>> = LazyLock::new(|| todo!()); // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/FieldRename.java:334
+pub static PARTICLE_TYPE_RENAME: LazyLock<Arc<dyn Fn(JRef<NamespacedKey>, JRef<ApiVersion>) -> JRef<NamespacedKey> + Send + Sync>> = LazyLock::new(|| todo!()); // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/FieldRename.java:334
 pub static LOOT_TABLES_DATA: LazyLock<FieldRenameData> = LazyLock::new(|| todo!()); // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/FieldRename.java:349
 pub static ATTRIBUTE_DATA: LazyLock<FieldRenameData> = LazyLock::new(|| todo!()); // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/FieldRename.java:367
-pub static ATTRIBUTE_RENAME: LazyLock<JRef<dyn BiFunction<JRef<NamespacedKey>, JRef<ApiVersion>, JRef<NamespacedKey>>>> = LazyLock::new(|| todo!()); // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/FieldRename.java:405
+pub static ATTRIBUTE_RENAME: LazyLock<Arc<dyn Fn(JRef<NamespacedKey>, JRef<ApiVersion>) -> JRef<NamespacedKey> + Send + Sync>> = LazyLock::new(|| todo!()); // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/FieldRename.java:405
 pub static MAP_CURSOR_TYPE_DATA: LazyLock<FieldRenameData> = LazyLock::new(|| todo!()); // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/FieldRename.java:420
 pub static ITEM_FLAG_DATA: LazyLock<FieldRenameData> = LazyLock::new(|| todo!()); // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/FieldRename.java:451
 pub static SOUND_DATA: LazyLock<FieldRenameData> = LazyLock::new(|| todo!()); // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/FieldRename.java:470

@@ -4,8 +4,6 @@ use crate::prelude::*;
 use crate::com::mojang::brigadier::context::CommandContext;
 use crate::io::papermc::paper::command::brigadier::argument::signed_message_resolver::SignedMessageResolver;
 use crate::io::papermc::paper::command::brigadier::command_source_stack::CommandSourceStack;
-use crate::java::lang::Throwable;
-use crate::java::util::concurrent::CompletableFuture;
 use crate::net::kyori::adventure::chat::SignedMessage;
 use crate::net::minecraft::commands::arguments::message_argument::MessageArgumentMessage;
 
@@ -18,12 +16,12 @@ impl SignedMessageResolverImpl {
     pub fn new() -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/command/brigadier/argument/SignedMessageResolverImpl.java:11
     pub fn new_1(message: MessageArgumentMessage) -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/command/brigadier/argument/SignedMessageResolverImpl.java:11
     pub fn content(&self) -> String { todo!() } // paper-server/src/main/java/io/papermc/paper/command/brigadier/argument/SignedMessageResolverImpl.java:14
-    pub fn resolve_signed_message(&self, argument_name: &str, erased: CommandContext) -> Result<CompletableFuture<JRef<dyn SignedMessage>>, Throwable> { todo!() } // paper-server/src/main/java/io/papermc/paper/command/brigadier/argument/SignedMessageResolverImpl.java:19
+    pub fn resolve_signed_message(&self, argument_name: &str, erased: CommandContext) -> Result<crate::rt::CompletableFuture<JRef<dyn SignedMessage>>, anyhow::Error> { todo!() } // paper-server/src/main/java/io/papermc/paper/command/brigadier/argument/SignedMessageResolverImpl.java:19
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl SignedMessageResolver for SignedMessageResolverImpl {
     fn content(&self) -> String { SignedMessageResolverImpl::content(self) }
-    fn resolve_signed_message(&self, argument_name: &str, context: CommandContext<JRef<dyn CommandSourceStack>>) -> Result<CompletableFuture<JRef<dyn SignedMessage>>, Throwable> { SignedMessageResolverImpl::resolve_signed_message(self, argument_name, context) }
+    fn resolve_signed_message(&self, argument_name: &str, context: CommandContext<JRef<dyn CommandSourceStack>>) -> Result<crate::rt::CompletableFuture<JRef<dyn SignedMessage>>, anyhow::Error> { SignedMessageResolverImpl::resolve_signed_message(self, argument_name, context) }
 }
 crate::jobject!(SignedMessageResolverImpl: dyn SignedMessageResolver);

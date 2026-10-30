@@ -5,9 +5,6 @@ use crate::com::mojang::brigadier::command_dispatcher::CommandDispatcher;
 use crate::com::mojang::brigadier::exceptions::DynamicCommandExceptionType;
 use crate::com::mojang::brigadier::exceptions::SimpleCommandExceptionType;
 use crate::com::mojang::brigadier::suggestion::SuggestionProvider;
-use crate::com::mojang::datafixers::util::Pair;
-use crate::com::mojang::datafixers::util::either::EitherTrait;
-use crate::java::lang::Throwable;
 use crate::net::minecraft::commands::command_source_stack::CommandSourceStack;
 use crate::net::minecraft::commands::functions::command_function::CommandFunction;
 use crate::net::minecraft::resources::identifier::Identifier;
@@ -24,7 +21,7 @@ impl ScheduleCommand {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ScheduleCommand.java:28
     pub fn register(dispatcher: JRef<CommandDispatcher<JRef<CommandSourceStack>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ScheduleCommand.java:38
-    pub fn schedule(source: JRef<CommandSourceStack>, callback: Pair<JRef<Identifier>, JRef<dyn EitherTrait<JRef<dyn CommandFunction<JRef<CommandSourceStack>>>, Vec<JRef<dyn CommandFunction<JRef<CommandSourceStack>>>>>>>, time: i32, replace: bool) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ScheduleCommand.java:93
-    pub fn remove(source: JRef<CommandSourceStack>, id: JRef<Identifier>) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ScheduleCommand.java:132
+    pub fn schedule(source: JRef<CommandSourceStack>, callback: (JRef<Identifier>, JRef<dyn EitherTrait<JRef<dyn CommandFunction<JRef<CommandSourceStack>>>, Vec<JRef<dyn CommandFunction<JRef<CommandSourceStack>>>>>>), time: i32, replace: bool) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ScheduleCommand.java:93
+    pub fn remove(source: JRef<CommandSourceStack>, id: JRef<Identifier>) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/ScheduleCommand.java:132
 }
 crate::jobject!(ScheduleCommand);

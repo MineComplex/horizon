@@ -3,12 +3,6 @@
 use crate::prelude::*;
 use crate::io::papermc::paper::configuration::type_::number::optional_num_serializer::OptionalNumSerializer;
 use crate::io::papermc::paper::configuration::type_::number::optional_num_serializer::OptionalNumSerializerTrait;
-use crate::java::lang::Class;
-use crate::java::lang::reflect::AnnotatedType;
-use crate::java::util::function::Function;
-use crate::java::util::function::IntPredicate;
-use crate::java::util::function::Predicate;
-use crate::org::spongepowered::configurate::serialize::ScalarSerializer;
 
 // ---- interface io.papermc.paper.configuration.type.number.IntOr (paper-server/src/main/java/io/papermc/paper/configuration/type/number/IntOr.java:13)
 pub trait IntOr: Send + Sync + 'static {
@@ -27,7 +21,7 @@ pub struct IntOrDefault {
 }
 pub static DEFAULT_USE_DEFAULT: LazyLock<IntOrDefault> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/configuration/type/number/IntOr.java:32
 pub const DEFAULT_DEFAULT_VALUE: &str = "default"; // paper-server/src/main/java/io/papermc/paper/configuration/type/number/IntOr.java:33
-pub static DEFAULT_SERIALIZER: LazyLock<ScalarSerializer<IntOrDefault>> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/configuration/type/number/IntOr.java:34
+pub static DEFAULT_SERIALIZER: LazyLock<()> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/configuration/type/number/IntOr.java:34
 impl IntOrDefault {
     pub fn new() -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/type/number/IntOr.java:31
     pub fn new_1(value: Option<i32>) -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/type/number/IntOr.java:31
@@ -45,11 +39,11 @@ pub struct IntOrDisabled {
 }
 pub static DISABLED_DISABLED: LazyLock<IntOrDisabled> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/configuration/type/number/IntOr.java:38
 pub const DISABLED_DISABLED_VALUE: &str = "disabled"; // paper-server/src/main/java/io/papermc/paper/configuration/type/number/IntOr.java:39
-pub static DISABLED_SERIALIZER: LazyLock<ScalarSerializer<IntOrDisabled>> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/configuration/type/number/IntOr.java:40
+pub static DISABLED_SERIALIZER: LazyLock<()> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/configuration/type/number/IntOr.java:40
 impl IntOrDisabled {
     pub fn new() -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/type/number/IntOr.java:37
     pub fn new_1(value: Option<i32>) -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/type/number/IntOr.java:37
-    pub fn test(&self, predicate: JRef<dyn IntPredicate>) -> bool { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/type/number/IntOr.java:42
+    pub fn test(&self, predicate: Arc<dyn Fn(i32) -> bool + Send + Sync>) -> bool { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/type/number/IntOr.java:42
     pub fn enabled(&self) -> bool { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/type/number/IntOr.java:46
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
@@ -70,11 +64,11 @@ impl<T: JGeneric> std::ops::Deref for IntOrSerializer<T> {
 }
 impl<T: JGeneric> IntOrSerializer<T> {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(class_of_t: Class, factory: JRef<dyn Function<Option<i32>, T>>, empty_serialized_value: &str, empty_value: T) -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/type/number/IntOr.java:53
+    pub fn new(class_of_t: crate::rt::Class, factory: Arc<dyn Fn(Option<i32>) -> T + Send + Sync>, empty_serialized_value: &str, empty_value: T) -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/type/number/IntOr.java:53
     pub fn full(&self, value: &str) -> Option<i32> { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/type/number/IntOr.java:57
     pub fn full_1(&self, num: f64) -> Option<i32> { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/type/number/IntOr.java:62
     pub fn below_zero(&self, value: Option<i32>) -> bool { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/type/number/IntOr.java:70
-    pub fn serialize(&self, type_: AnnotatedType, item: T, type_supported: JRef<dyn Predicate<Class>>) -> JObjectRef { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/type/number/IntOr.java:76
+    pub fn serialize(&self, type_: (), item: T, type_supported: Arc<dyn Fn(Class) -> bool + Send + Sync>) -> JObjectRef { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/type/number/IntOr.java:76
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

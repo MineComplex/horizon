@@ -15,9 +15,6 @@ use crate::com::mojang::brigadier::tree::command_node::CommandNodeTrait;
 use crate::com::mojang::brigadier::tree::literal_command_node::LiteralCommandNode;
 use crate::com::mojang::brigadier::tree::literal_command_node::LiteralCommandNodeTrait;
 use crate::io::papermc::paper::command::brigadier::command_source_stack::CommandSourceStack;
-use crate::java::lang::Throwable;
-use crate::java::util::concurrent::CompletableFuture;
-use crate::java::util::function::Predicate;
 use crate::org::bukkit::command::command::CommandTrait;
 
 // ---- class io.papermc.paper.command.brigadier.bukkit.BukkitCommandNode (paper-server/src/main/java/io/papermc/paper/command/brigadier/bukkit/BukkitCommandNode.java:29)
@@ -57,11 +54,11 @@ impl CommandNodeTrait<JObjectRef> for BukkitCommandNode {
     fn is_valid_input(&self, input: &str) -> bool { LiteralCommandNode::is_valid_input(self, input) }
     fn equals(&self, o: JObjectRef) -> bool { LiteralCommandNode::equals(self, o) }
     fn hash_code(&self) -> i32 { LiteralCommandNode::hash_code(self) }
-    fn get_requirement(&self) -> JRef<dyn Predicate<S>> { CommandNode::get_requirement(self) }
+    fn get_requirement(&self) -> Arc<dyn Fn(S) -> bool + Send + Sync> { CommandNode::get_requirement(self) }
     fn get_name(&self) -> String { LiteralCommandNode::get_name(self) }
     fn get_usage_text(&self) -> String { LiteralCommandNode::get_usage_text(self) }
-    fn parse(&self, reader: StringReader, context_builder: CommandContextBuilder<S>) -> Result<(), Throwable> { LiteralCommandNode::parse(self, reader, context_builder) }
-    fn list_suggestions(&self, context: CommandContext<S>, builder: SuggestionsBuilder) -> Result<CompletableFuture<Suggestions>, Throwable> { LiteralCommandNode::list_suggestions(self, context, builder) }
+    fn parse(&self, reader: StringReader, context_builder: CommandContextBuilder<S>) -> Result<(), anyhow::Error> { LiteralCommandNode::parse(self, reader, context_builder) }
+    fn list_suggestions(&self, context: CommandContext<S>, builder: SuggestionsBuilder) -> Result<crate::rt::CompletableFuture<Suggestions>, anyhow::Error> { LiteralCommandNode::list_suggestions(self, context, builder) }
     fn create_builder(&self) -> JRef<dyn ArgumentBuilderTrait<S, JObjectRef>> { LiteralCommandNode::create_builder(self) }
     fn get_sorted_key(&self) -> String { LiteralCommandNode::get_sorted_key(self) }
     fn get_relevant_nodes(&self, input: StringReader) -> Vec<JRef<dyn CommandNodeTrait<S>>> { CommandNode::get_relevant_nodes(self, input) }
@@ -81,7 +78,7 @@ pub struct BukkitCommandNodeBukkitBrigCommand {
 impl BukkitCommandNodeBukkitBrigCommand {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(command: JRef<dyn CommandTrait>, literal: &str) -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/command/brigadier/bukkit/BukkitCommandNode.java:70
-    pub fn run(&self, context: CommandContext<JRef<dyn CommandSourceStack>>) -> Result<i32, Throwable> { todo!() } // paper-server/src/main/java/io/papermc/paper/command/brigadier/bukkit/BukkitCommandNode.java:75
+    pub fn run(&self, context: CommandContext<JRef<dyn CommandSourceStack>>) -> Result<i32, anyhow::Error> { todo!() } // paper-server/src/main/java/io/papermc/paper/command/brigadier/bukkit/BukkitCommandNode.java:75
 }
 crate::jobject!(BukkitCommandNodeBukkitBrigCommand);
 // ---- class io.papermc.paper.command.brigadier.bukkit.BukkitCommandNode.BukkitBrigSuggestionProvider (paper-server/src/main/java/io/papermc/paper/command/brigadier/bukkit/BukkitCommandNode.java:90)
@@ -93,6 +90,6 @@ pub struct BukkitCommandNodeBukkitBrigSuggestionProvider {
 impl BukkitCommandNodeBukkitBrigSuggestionProvider {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(command: JRef<dyn CommandTrait>, literal: &str) -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/command/brigadier/bukkit/BukkitCommandNode.java:95
-    pub fn get_suggestions(&self, context: CommandContext<JRef<dyn CommandSourceStack>>, builder: SuggestionsBuilder) -> Result<CompletableFuture<Suggestions>, Throwable> { todo!() } // paper-server/src/main/java/io/papermc/paper/command/brigadier/bukkit/BukkitCommandNode.java:100
+    pub fn get_suggestions(&self, context: CommandContext<JRef<dyn CommandSourceStack>>, builder: SuggestionsBuilder) -> Result<crate::rt::CompletableFuture<Suggestions>, anyhow::Error> { todo!() } // paper-server/src/main/java/io/papermc/paper/command/brigadier/bukkit/BukkitCommandNode.java:100
 }
 crate::jobject!(BukkitCommandNodeBukkitBrigSuggestionProvider);

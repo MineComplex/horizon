@@ -7,14 +7,11 @@ use crate::com::mojang::brigadier::suggestion::Suggestions;
 use crate::com::mojang::brigadier::suggestion::SuggestionsBuilder;
 use crate::com::mojang::serialization::Codec;
 use crate::com::mojang::serialization::DynamicOps;
-use crate::java::lang::Throwable;
-use crate::java::util::concurrent::CompletableFuture;
-use crate::java::util::function::Function;
 
 // ---- interface net.minecraft.util.parsing.packrat.commands.CommandArgumentParser (leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/CommandArgumentParser.java:14)
 pub trait CommandArgumentParser<T: JGeneric>: JObject {
-    fn parse_for_commands(&self, reader: StringReader) -> Result<T, Throwable>; // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/CommandArgumentParser.java:15
-    fn parse_for_suggestions(&self, suggestions_builder: SuggestionsBuilder) -> CompletableFuture<Suggestions>; // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/CommandArgumentParser.java:17
-    fn map_result<S: JGeneric>(&self, mapper: JRef<dyn Function<T, S>>) -> JRef<dyn CommandArgumentParser<S>> where Self: Sized { todo!() } // default, leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/CommandArgumentParser.java:19
+    fn parse_for_commands(&self, reader: StringReader) -> Result<T, anyhow::Error>; // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/CommandArgumentParser.java:15
+    fn parse_for_suggestions(&self, suggestions_builder: SuggestionsBuilder) -> crate::rt::CompletableFuture<Suggestions>; // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/CommandArgumentParser.java:17
+    fn map_result<S: JGeneric>(&self, mapper: Arc<dyn Fn(T) -> S + Send + Sync>) -> JRef<dyn CommandArgumentParser<S>> where Self: Sized { todo!() } // default, leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/CommandArgumentParser.java:19
     fn with_codec<T: JGeneric, O: JGeneric>(&self, ops: JRef<dyn DynamicOps<O>>, value_parser: JRef<dyn CommandArgumentParser<O>>, codec: JRef<dyn Codec<T>>, exception_type: DynamicCommandExceptionType) -> JRef<dyn CommandArgumentParser<T>> where Self: Sized { todo!() } // default, leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/CommandArgumentParser.java:33
 }

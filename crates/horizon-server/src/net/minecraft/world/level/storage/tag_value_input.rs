@@ -4,8 +4,6 @@ use crate::prelude::*;
 use crate::com::mojang::serialization::Codec;
 use crate::com::mojang::serialization::DataResultError;
 use crate::com::mojang::serialization::MapCodec;
-use crate::java::util::JIterator;
-use crate::java::util::stream::Stream;
 use crate::net::minecraft::core::holder_lookup::HolderLookupProvider;
 use crate::net::minecraft::nbt::compound_tag::CompoundTag;
 use crate::net::minecraft::nbt::list_tag::ListTag;
@@ -97,15 +95,15 @@ impl TagValueInputCompoundListWrapper {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(problem_reporter: JRef<dyn ProblemReporter>, context: JRef<ValueInputContextHelper>, list: &Vec<JRef<CompoundTag>>) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/storage/TagValueInput.java:251
     pub fn is_empty(&self) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/storage/TagValueInput.java:261
-    pub fn stream(&self) -> Stream<JRef<dyn ValueInput>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/storage/TagValueInput.java:266
+    pub fn stream(&self) -> Box<dyn Iterator<Item = JRef<dyn ValueInput>> + Send> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/storage/TagValueInput.java:266
     pub fn wrap_child(&self, index: i32, compound_tag: JRef<CompoundTag>) -> JRef<dyn ValueInput> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/storage/TagValueInput.java:257
-    pub fn iterator(&self) -> JIterator<JRef<dyn ValueInput>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/storage/TagValueInput.java:271
+    pub fn iterator(&self) -> Box<dyn Iterator<Item = JRef<dyn ValueInput>> + Send> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/storage/TagValueInput.java:271
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl ValueInputValueInputList for TagValueInputCompoundListWrapper {
     fn is_empty(&self) -> bool { TagValueInputCompoundListWrapper::is_empty(self) }
-    fn stream(&self) -> Stream<JRef<dyn ValueInput>> { TagValueInputCompoundListWrapper::stream(self) }
+    fn stream(&self) -> Box<dyn Iterator<Item = JRef<dyn ValueInput>> + Send> { TagValueInputCompoundListWrapper::stream(self) }
 }
 crate::jobject!(TagValueInputCompoundListWrapper: dyn ValueInputValueInputList);
 // ---- record net.minecraft.world.level.storage.TagValueInput.DecodeFromFieldFailedProblem (leaf-server/src/minecraft/java/net/minecraft/world/level/storage/TagValueInput.java:289)
@@ -173,16 +171,16 @@ impl TagValueInputListWrapper {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(problem_reporter: JRef<dyn ProblemReporter>, name: &str, context: JRef<ValueInputContextHelper>, list: JRef<ListTag>) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/storage/TagValueInput.java:316
     pub fn is_empty(&self) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/storage/TagValueInput.java:323
-    pub fn stream(&self) -> Stream<JRef<dyn ValueInput>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/storage/TagValueInput.java:336
+    pub fn stream(&self) -> Box<dyn Iterator<Item = JRef<dyn ValueInput>> + Send> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/storage/TagValueInput.java:336
     pub fn reporter_for_child(&self, index: i32) -> JRef<dyn ProblemReporter> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/storage/TagValueInput.java:328
     pub fn report_index_unwrap_problem(&self, index: i32, value: JRef<dyn Tag>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/storage/TagValueInput.java:332
-    pub fn iterator(&self) -> JIterator<JRef<dyn ValueInput>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/storage/TagValueInput.java:348
+    pub fn iterator(&self) -> Box<dyn Iterator<Item = JRef<dyn ValueInput>> + Send> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/storage/TagValueInput.java:348
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl ValueInputValueInputList for TagValueInputListWrapper {
     fn is_empty(&self) -> bool { TagValueInputListWrapper::is_empty(self) }
-    fn stream(&self) -> Stream<JRef<dyn ValueInput>> { TagValueInputListWrapper::stream(self) }
+    fn stream(&self) -> Box<dyn Iterator<Item = JRef<dyn ValueInput>> + Send> { TagValueInputListWrapper::stream(self) }
 }
 crate::jobject!(TagValueInputListWrapper: dyn ValueInputValueInputList);
 // ---- class net.minecraft.world.level.storage.TagValueInput.TypedListWrapper (leaf-server/src/minecraft/java/net/minecraft/world/level/storage/TagValueInput.java:372)
@@ -199,15 +197,15 @@ impl<T: JGeneric> TagValueInputTypedListWrapper<T> {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(problem_reporter: JRef<dyn ProblemReporter>, name: &str, context: JRef<ValueInputContextHelper>, codec: JRef<dyn Codec<T>>, list: JRef<ListTag>) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/storage/TagValueInput.java:379
     pub fn is_empty(&self) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/storage/TagValueInput.java:389
-    pub fn stream(&self) -> Stream<T> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/storage/TagValueInput.java:398
+    pub fn stream(&self) -> Box<dyn Iterator<Item = T> + Send> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/storage/TagValueInput.java:398
     pub fn report_index_unwrap_problem(&self, index: i32, value: JRef<dyn Tag>, error: DataResultError<JObjectRef>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/storage/TagValueInput.java:394
-    pub fn iterator(&self) -> JIterator<T> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/storage/TagValueInput.java:412
+    pub fn iterator(&self) -> Box<dyn Iterator<Item = T> + Send> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/storage/TagValueInput.java:412
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl<T: JGeneric> ValueInputTypedInputList<T> for TagValueInputTypedListWrapper<T> {
     fn is_empty(&self) -> bool { TagValueInputTypedListWrapper::is_empty(self) }
-    fn stream(&self) -> Stream<T> { TagValueInputTypedListWrapper::stream(self) }
+    fn stream(&self) -> Box<dyn Iterator<Item = T> + Send> { TagValueInputTypedListWrapper::stream(self) }
 }
 // ---- record net.minecraft.world.level.storage.TagValueInput.UnexpectedListElementTypeProblem (leaf-server/src/minecraft/java/net/minecraft/world/level/storage/TagValueInput.java:442)
 #[derive(Clone)]

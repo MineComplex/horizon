@@ -3,7 +3,6 @@
 use crate::prelude::*;
 use crate::com::mojang::serialization::Codec;
 use crate::com::mojang::serialization::MapCodec;
-use crate::java::util::function::BiFunction;
 use crate::net::minecraft::core::holder::Holder;
 use crate::net::minecraft::core::holder_set::HolderSet;
 use crate::net::minecraft::world::item::item_stack::ItemStack;
@@ -21,13 +20,13 @@ pub struct SequenceFunction {
     pub base: LootItemConditionalFunction,
     pub this: Weak<Self>,
     pub functions: JRef<dyn HolderSet<JRef<dyn LootItemFunction>>>, // leaf-server/src/minecraft/java/net/minecraft/world/level/storage/loot/functions/SequenceFunction.java:23
-    pub composite_function: JRef<dyn BiFunction<JRef<ItemStack>, JRef<LootContext>, JRef<ItemStack>>>, // leaf-server/src/minecraft/java/net/minecraft/world/level/storage/loot/functions/SequenceFunction.java:24
+    pub composite_function: Arc<dyn Fn(JRef<ItemStack>, JRef<LootContext>) -> JRef<ItemStack> + Send + Sync>, // leaf-server/src/minecraft/java/net/minecraft/world/level/storage/loot/functions/SequenceFunction.java:24
 }
 impl std::ops::Deref for SequenceFunction {
     type Target = LootItemConditionalFunction;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static IDENTITY: LazyLock<JRef<dyn BiFunction<JRef<ItemStack>, JRef<LootContext>, JRef<ItemStack>>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/level/storage/loot/functions/SequenceFunction.java:18
+pub static IDENTITY: LazyLock<Arc<dyn Fn(JRef<ItemStack>, JRef<LootContext>) -> JRef<ItemStack> + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/level/storage/loot/functions/SequenceFunction.java:18
 pub static MAP_CODEC: LazyLock<MapCodec<JRef<SequenceFunction>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/level/storage/loot/functions/SequenceFunction.java:19
 pub static INLINE_CODEC: LazyLock<JRef<dyn Codec<JRef<SequenceFunction>>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/level/storage/loot/functions/SequenceFunction.java:22
 impl SequenceFunction {
@@ -38,7 +37,7 @@ impl SequenceFunction {
     pub fn validate(&self, output: JRef<ValidationContext>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/storage/loot/functions/SequenceFunction.java:81
     pub fn codec(&self) -> MapCodec<JRef<SequenceFunction>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/storage/loot/functions/SequenceFunction.java:87
     pub fn can_use_inline_codec(&self) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/storage/loot/functions/SequenceFunction.java:36
-    pub fn compose(functions: JRef<dyn HolderSet<JRef<dyn LootItemFunction>>>) -> JRef<dyn BiFunction<JRef<ItemStack>, JRef<LootContext>, JRef<ItemStack>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/storage/loot/functions/SequenceFunction.java:40
+    pub fn compose(functions: JRef<dyn HolderSet<JRef<dyn LootItemFunction>>>) -> Arc<dyn Fn(JRef<ItemStack>, JRef<LootContext>) -> JRef<ItemStack> + Send + Sync> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/storage/loot/functions/SequenceFunction.java:40
     pub fn of(functions: &Vec<JRef<dyn Holder<JRef<dyn LootItemFunction>>>>) -> JRef<SequenceFunction> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/storage/loot/functions/SequenceFunction.java:72
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that

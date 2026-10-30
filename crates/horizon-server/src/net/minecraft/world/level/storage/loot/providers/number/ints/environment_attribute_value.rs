@@ -3,7 +3,6 @@
 use crate::prelude::*;
 use crate::com::mojang::serialization::Codec;
 use crate::com::mojang::serialization::MapCodec;
-use crate::java::lang::Throwable;
 use crate::net::minecraft::world::attribute::environment_attribute::EnvironmentAttribute;
 use crate::net::minecraft::world::level::storage::loot::loot_context::LootContext;
 use crate::net::minecraft::world::level::storage::loot::loot_context_user::LootContextUser;
@@ -23,13 +22,13 @@ impl EnvironmentAttributeValue {
     pub fn new() -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/storage/loot/providers/number/ints/EnvironmentAttributeValue.java:11
     pub fn new_1(attribute: JRef<EnvironmentAttribute<JObjectRef>>) -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/storage/loot/providers/number/ints/EnvironmentAttributeValue.java:11
     pub fn codec(&self) -> MapCodec<EnvironmentAttributeValue> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/storage/loot/providers/number/ints/EnvironmentAttributeValue.java:20
-    pub fn get_int_unsafe(&self, context: JRef<LootContext>) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/storage/loot/providers/number/ints/EnvironmentAttributeValue.java:25
+    pub fn get_int_unsafe(&self, context: JRef<LootContext>) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/storage/loot/providers/number/ints/EnvironmentAttributeValue.java:25
     pub fn get_as_int<Value: JGeneric>(context: JRef<LootContext>, attribute: JRef<EnvironmentAttribute<Value>>) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/storage/loot/providers/number/ints/EnvironmentAttributeValue.java:30
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl ContextIntProvider for EnvironmentAttributeValue {
-    fn get_int_unsafe(&self, context: JRef<LootContext>) -> Result<i32, Throwable> { EnvironmentAttributeValue::get_int_unsafe(self, context) }
+    fn get_int_unsafe(&self, context: JRef<LootContext>) -> Result<i32, anyhow::Error> { EnvironmentAttributeValue::get_int_unsafe(self, context) }
     fn codec(&self) -> MapCodec<JRef<dyn ContextIntProvider>> { EnvironmentAttributeValue::codec(self) }
 }
 impl Validatable for EnvironmentAttributeValue {

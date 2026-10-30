@@ -21,7 +21,6 @@ use crate::io::papermc::paper::registry::data::dialog::input::single_option_dial
 use crate::io::papermc::paper::registry::data::dialog::input::single_option_dialog_input::SingleOptionDialogInputOptionEntry;
 use crate::io::papermc::paper::registry::data::dialog::input::text_dialog_input::TextDialogInput;
 use crate::io::papermc::paper::registry::data::dialog::input::text_dialog_input::TextDialogInputMultilineOptions;
-use crate::java::util::function::Function;
 use crate::net::minecraft::core::registry::Registry;
 
 // ---- class io.papermc.paper.registry.data.dialog.PaperDialogCodecs (paper-server/src/main/java/io/papermc/paper/registry/data/dialog/PaperDialogCodecs.java:41)
@@ -32,14 +31,14 @@ pub static COMMAND_TEMPLATE_ACTION_CODEC: LazyLock<MapCodec<JRef<dyn DialogActio
 pub static CUSTOM_ALL_ACTION_CODEC: LazyLock<MapCodec<JRef<dyn DialogActionCustomClickAction>>> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/PaperDialogCodecs.java:51
 pub static STATIC_ACTION_CODECS: LazyLock<HashMap<AdventureCodecsClickEventType, MapCodec<JRef<dyn DialogActionStaticAction>>>> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/PaperDialogCodecs.java:55
 pub static DIALOG_ACTION_TYPES: LazyLock<JRef<dyn Registry<MapCodec<JRef<dyn DialogAction>>>>> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/PaperDialogCodecs.java:56
-pub static GET_DIALOG_ACTION_TYPE: LazyLock<JRef<dyn Function<JRef<dyn DialogAction>, MapCodec<JRef<dyn DialogAction>>>>> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/PaperDialogCodecs.java:65
+pub static GET_DIALOG_ACTION_TYPE: LazyLock<Arc<dyn Fn(JRef<dyn DialogAction>) -> MapCodec<JRef<dyn DialogAction>> + Send + Sync>> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/PaperDialogCodecs.java:65
 pub static DIALOG_ACTION_CODEC: LazyLock<JRef<dyn Codec<JRef<dyn DialogAction>>>> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/PaperDialogCodecs.java:70
 pub static ACTION_BUTTON_CODEC: LazyLock<JRef<dyn Codec<JRef<dyn ActionButton>>>> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/PaperDialogCodecs.java:73
 pub static PLAIN_MESSAGE_BODY_CODEC: LazyLock<MapCodec<JRef<dyn PlainMessageDialogBody>>> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/PaperDialogCodecs.java:81
 pub static SIMPLE_PLAIN_MESSAGE_BODY_CODEC: LazyLock<JRef<dyn Codec<JRef<dyn PlainMessageDialogBody>>>> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/PaperDialogCodecs.java:86
 pub static ITEM_BODY_CODEC: LazyLock<MapCodec<JRef<dyn ItemDialogBody>>> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/PaperDialogCodecs.java:87
 pub static DIALOG_BODY_TYPES: LazyLock<JRef<dyn Registry<MapCodec<JRef<dyn DialogBody>>>>> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/PaperDialogCodecs.java:96
-pub static GET_DIALOG_BODY_TYPE: LazyLock<JRef<dyn Function<JRef<dyn DialogBody>, MapCodec<JRef<dyn DialogBody>>>>> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/PaperDialogCodecs.java:102
+pub static GET_DIALOG_BODY_TYPE: LazyLock<Arc<dyn Fn(JRef<dyn DialogBody>) -> MapCodec<JRef<dyn DialogBody>> + Send + Sync>> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/PaperDialogCodecs.java:102
 pub static DIALOG_BODY_CODEC: LazyLock<JRef<dyn Codec<JRef<dyn DialogBody>>>> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/PaperDialogCodecs.java:106
 pub static DIALOG_BODY_LIST_CODEC: LazyLock<JRef<dyn Codec<Vec<JRef<dyn DialogBody>>>>> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/PaperDialogCodecs.java:107
 pub static BOOLEAN_DIALOG_INPUT_TYPE_MAP_CODEC: LazyLock<MapCodec<JRef<dyn BooleanDialogInput>>> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/PaperDialogCodecs.java:110
@@ -50,7 +49,7 @@ pub static SINGLE_OPTION_DIALOG_INPUT_TYPE_MAP_CODEC: LazyLock<MapCodec<JRef<dyn
 pub static TEXT_DIALOG_INPUT_MULTILINE_OPTIONS_CODEC: LazyLock<JRef<dyn Codec<JRef<dyn TextDialogInputMultilineOptions>>>> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/PaperDialogCodecs.java:142
 pub static TEXT_DIALOG_INPUT_TYPE_MAP_CODEC: LazyLock<MapCodec<JRef<dyn TextDialogInput>>> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/PaperDialogCodecs.java:146
 pub static DIALOG_INPUT_TYPES: LazyLock<JRef<dyn Registry<MapCodec<JRef<dyn DialogInput>>>>> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/PaperDialogCodecs.java:157
-pub static GET_DIALOG_INPUT_TYPE_TYPE: LazyLock<JRef<dyn Function<JRef<dyn DialogInput>, MapCodec<JRef<dyn DialogInput>>>>> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/PaperDialogCodecs.java:165
+pub static GET_DIALOG_INPUT_TYPE_TYPE: LazyLock<Arc<dyn Fn(JRef<dyn DialogInput>) -> MapCodec<JRef<dyn DialogInput>> + Send + Sync>> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/PaperDialogCodecs.java:165
 pub static DIALOG_INPUT_CODEC: LazyLock<JRef<dyn Codec<JRef<dyn DialogInput>>>> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/PaperDialogCodecs.java:171
 pub static DIALOG_BASE_CODEC: LazyLock<JRef<dyn Codec<JRef<dyn DialogBase>>>> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/PaperDialogCodecs.java:174
 pub static DIALOG_CODEC: LazyLock<JRef<dyn Codec<JRef<dyn Dialog>>>> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/registry/data/dialog/PaperDialogCodecs.java:185

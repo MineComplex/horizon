@@ -6,7 +6,6 @@ use crate::io::papermc::paper::configuration::type_::fallback::fallback_value::F
 use crate::io::papermc::paper::configuration::type_::fallback::fallback_value::FallbackValueInt;
 use crate::io::papermc::paper::configuration::type_::fallback::fallback_value::FallbackValueIntTrait;
 use crate::io::papermc::paper::configuration::type_::fallback::fallback_value::FallbackValueTrait;
-use crate::java::lang::Throwable;
 
 // ---- class io.papermc.paper.configuration.type.fallback.AutosavePeriod (paper-server/src/main/java/io/papermc/paper/configuration/type/fallback/AutosavePeriod.java:11)
 pub struct AutosavePeriod {
@@ -20,7 +19,7 @@ impl std::ops::Deref for AutosavePeriod {
 impl AutosavePeriod {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(context_map: &HashMap<FallbackValueContextKey<JObjectRef>, JObjectRef>) -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/type/fallback/AutosavePeriod.java:17
-    pub fn new_2(context_map: &HashMap<FallbackValueContextKey<JObjectRef>, JObjectRef>, value: JObjectRef) -> Result<JRef<Self>, Throwable> { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/type/fallback/AutosavePeriod.java:13
+    pub fn new_2(context_map: &HashMap<FallbackValueContextKey<JObjectRef>, JObjectRef>, value: JObjectRef) -> Result<JRef<Self>, anyhow::Error> { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/type/fallback/AutosavePeriod.java:13
     pub fn process(&self, value: i32) -> Option<i32> { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/type/fallback/AutosavePeriod.java:21
     pub fn required(&self) -> HashSet<FallbackValueContextKey<JObjectRef>> { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/type/fallback/AutosavePeriod.java:26
     pub fn fallback(&self) -> i32 { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/type/fallback/AutosavePeriod.java:31

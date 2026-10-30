@@ -3,11 +3,6 @@
 use crate::prelude::*;
 use crate::com::mojang::serialization::Lifecycle;
 use crate::io::papermc::paper::registry::data::util::conversions::Conversions;
-use crate::java::lang::Throwable;
-use crate::java::util::concurrent::CompletableFuture;
-use crate::java::util::concurrent::Executor;
-use crate::java::util::function::Function;
-use crate::java::util::stream::Stream;
 use crate::net::minecraft::core::holder::Holder;
 use crate::net::minecraft::core::registration_info::RegistrationInfo;
 use crate::net::minecraft::core::registry::Registry;
@@ -32,11 +27,11 @@ impl<T: JGeneric> std::ops::Deref for ResourceManagerRegistryLoadTask<T> {
     type Target = RegistryLoadTask<T>;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static REGISTRATION_INFO_CACHE: LazyLock<JRef<dyn Function<Option<KnownPack>, RegistrationInfo>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/resources/ResourceManagerRegistryLoadTask.java:24
+pub static REGISTRATION_INFO_CACHE: LazyLock<Arc<dyn Fn(Option<KnownPack>) -> RegistrationInfo + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/resources/ResourceManagerRegistryLoadTask.java:24
 impl<T: JGeneric> ResourceManagerRegistryLoadTask<T> {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(data: RegistryDataLoaderRegistryData<T>, lifecycle: Lifecycle, loading_errors: &HashMap<JRef<ResourceKey<JObjectRef>>, Throwable>, resource_manager: JRef<dyn ResourceManager>) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/resources/ResourceManagerRegistryLoadTask.java:30
-    pub fn load(&self, context: JRef<dyn RegistryOpsRegistryInfoLookup>, executor: JRef<dyn Executor>) -> CompletableFuture<JObjectRef> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/resources/ResourceManagerRegistryLoadTask.java:40
+    pub fn new(data: RegistryDataLoaderRegistryData<T>, lifecycle: Lifecycle, loading_errors: &HashMap<JRef<ResourceKey<JObjectRef>>, anyhow::Error>, resource_manager: JRef<dyn ResourceManager>) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/resources/ResourceManagerRegistryLoadTask.java:30
+    pub fn load(&self, context: JRef<dyn RegistryOpsRegistryInfoLookup>, executor: crate::rt::Executor) -> crate::rt::CompletableFuture<JObjectRef> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/resources/ResourceManagerRegistryLoadTask.java:40
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
@@ -44,9 +39,9 @@ impl<T: JGeneric> RegistryLoadTaskTrait<JObjectRef> for ResourceManagerRegistryL
     fn as_registry_load_task(&self) -> &RegistryLoadTask<JObjectRef> { self }
     fn registry_key(&self) -> JRef<ResourceKey<JRef<dyn Registry<T>>>> { RegistryLoadTask::registry_key(self) }
     fn read_only_registry(&self) -> JRef<dyn Registry<T>> { RegistryLoadTask::read_only_registry(self) }
-    fn load(&self, context: JRef<dyn RegistryOpsRegistryInfoLookup>, executor: JRef<dyn Executor>) -> CompletableFuture<JObjectRef> { ResourceManagerRegistryLoadTask::load(self, context, executor) }
-    fn register_elements(&self, elements: Stream<RegistryLoadTaskPendingRegistration<T>>, conversions: JRef<Conversions>) { RegistryLoadTask::register_elements(self, elements, conversions) }
+    fn load(&self, context: JRef<dyn RegistryOpsRegistryInfoLookup>, executor: crate::rt::Executor) -> crate::rt::CompletableFuture<JObjectRef> { ResourceManagerRegistryLoadTask::load(self, context, executor) }
+    fn register_elements(&self, elements: Box<dyn Iterator<Item = RegistryLoadTaskPendingRegistration<T>> + Send>, conversions: JRef<Conversions>) { RegistryLoadTask::register_elements(self, elements, conversions) }
     fn register_tags(&self, pending_tags: &HashMap<TagKey<T>, Vec<JRef<dyn Holder<T>>>>) { RegistryLoadTask::register_tags(self, pending_tags) }
-    fn freeze_registry(&self, loading_errors: &mut HashMap<JRef<ResourceKey<JObjectRef>>, Throwable>) -> bool { RegistryLoadTask::freeze_registry(self, loading_errors) }
-    fn validate_registry(&self, loading_errors: &mut HashMap<JRef<ResourceKey<JObjectRef>>, Throwable>) -> Option<JRef<dyn Registry<T>>> { RegistryLoadTask::validate_registry(self, loading_errors) }
+    fn freeze_registry(&self, loading_errors: &mut HashMap<JRef<ResourceKey<JObjectRef>>, anyhow::Error>) -> bool { RegistryLoadTask::freeze_registry(self, loading_errors) }
+    fn validate_registry(&self, loading_errors: &mut HashMap<JRef<ResourceKey<JObjectRef>>, anyhow::Error>) -> Option<JRef<dyn Registry<T>>> { RegistryLoadTask::validate_registry(self, loading_errors) }
 }

@@ -3,7 +3,6 @@
 use crate::prelude::*;
 use crate::io::papermc::paper::inventory::recipe::item_or_exact::ItemOrExact;
 use crate::io::papermc::paper::inventory::recipe::item_or_exact::ItemOrExactItem;
-use crate::java::util::function::Predicate;
 use crate::net::minecraft::world::entity::player::stacked_contents::StackedContents;
 use crate::net::minecraft::world::item::crafting::crafting_input::CraftingInput;
 use crate::net::minecraft::world::item::crafting::recipe::Recipe;
@@ -15,7 +14,7 @@ pub struct StackedContentsExtrasMap {
     pub contents: JRef<StackedContents<JRef<dyn ItemOrExact>>>, // leaf-server/src/minecraft/java/io/papermc/paper/inventory/recipe/StackedContentsExtrasMap.java:19
     pub regular_removed: Mut<HashMap<ItemOrExactItem, i32>>, // leaf-server/src/minecraft/java/io/papermc/paper/inventory/recipe/StackedContentsExtrasMap.java:20
     pub exact_ingredients: Mut<HashSet<JRef<ItemStack>>>, // leaf-server/src/minecraft/java/io/papermc/paper/inventory/recipe/StackedContentsExtrasMap.java:21
-    pub predicate_ingredients: Mut<Vec<JRef<dyn Predicate<JRef<ItemStack>>>>>, // leaf-server/src/minecraft/java/io/papermc/paper/inventory/recipe/StackedContentsExtrasMap.java:22
+    pub predicate_ingredients: Mut<Vec<Arc<dyn Fn(JRef<ItemStack>) -> bool + Send + Sync>>>, // leaf-server/src/minecraft/java/io/papermc/paper/inventory/recipe/StackedContentsExtrasMap.java:22
 }
 impl StackedContentsExtrasMap {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }

@@ -6,7 +6,6 @@ use crate::com::mojang::brigadier::tree::literal_command_node::LiteralCommandNod
 use crate::io::papermc::paper::command::brigadier::command_source_stack::CommandSourceStack;
 use crate::io::papermc::paper::plugin::configuration::plugin_meta::PluginMeta;
 use crate::io::papermc::paper::plugin::provider::plugin_provider::PluginProvider;
-use crate::java::lang::reflect::Type;
 use crate::net::kyori::adventure::text::Component;
 use crate::net::kyori::adventure::text::TextComponent;
 use crate::net::kyori::adventure::text::format::TextColor;
@@ -25,7 +24,7 @@ pub static INFO_ICON_START: LazyLock<Component> = LazyLock::new(|| todo!()); // 
 pub static PLUGIN_TICK: LazyLock<Component> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/command/PaperPluginsCommand.java:62
 pub static PLUGIN_TICK_EMPTY: LazyLock<Component> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/command/PaperPluginsCommand.java:63
 pub static INFO_ICON_SERVER_PLUGIN: LazyLock<Component> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/command/PaperPluginsCommand.java:65
-pub static JAVA_PLUGIN_PROVIDER_TYPE: LazyLock<Type> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/command/PaperPluginsCommand.java:67
+pub static JAVA_PLUGIN_PROVIDER_TYPE: LazyLock<()> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/command/PaperPluginsCommand.java:67
 impl PaperPluginsCommand {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/command/PaperPluginsCommand.java:36

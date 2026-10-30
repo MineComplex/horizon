@@ -5,8 +5,6 @@ use crate::com::mojang::brigadier::command_dispatcher::CommandDispatcher;
 use crate::com::mojang::brigadier::context::ContextChain;
 use crate::com::mojang::brigadier::exceptions::SimpleCommandExceptionType;
 use crate::com::mojang::brigadier::exceptions::command_syntax_exception::CommandSyntaxExceptionTrait;
-use crate::java::io::PrintWriter;
-use crate::java::lang::Throwable;
 use crate::net::minecraft::commands::command_source::CommandSource;
 use crate::net::minecraft::commands::command_source_stack::CommandSourceStack;
 use crate::net::minecraft::commands::execution::chain_modifiers::ChainModifiers;
@@ -49,14 +47,14 @@ pub static TRACE_CUSTOM_EXECUTOR_RESPONSE_TRACE: LazyLock<CommandResponseTracker
 impl DebugCommandTraceCustomExecutor {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/DebugCommand.java:71
-    pub fn run_guarded(&self, source: JRef<CommandSourceStack>, current_step: ContextChain<JRef<CommandSourceStack>>, modifiers: ChainModifiers, context: JRef<dyn ExecutionControl<JRef<CommandSourceStack>>>) -> Result<(), Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/DebugCommand.java:81
+    pub fn run_guarded(&self, source: JRef<CommandSourceStack>, current_step: ContextChain<JRef<CommandSourceStack>>, modifiers: ChainModifiers, context: JRef<dyn ExecutionControl<JRef<CommandSourceStack>>>) -> Result<(), anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/DebugCommand.java:81
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl CustomCommandExecutorWithErrorHandlingTrait<JObjectRef> for DebugCommandTraceCustomExecutor {
     fn as_custom_command_executor_with_error_handling(&self) -> &CustomCommandExecutorWithErrorHandling<JObjectRef> { self }
     fn on_error(&self, e: JRef<dyn CommandSyntaxExceptionTrait>, sender: T, modifiers: ChainModifiers, tracer: Option<JRef<dyn TraceCallbacks>>) { CustomCommandExecutorWithErrorHandling::on_error(self, e, sender, modifiers, tracer) }
-    fn run_guarded(&self, sender: T, current_step: ContextChain<T>, modifiers: ChainModifiers, output: JRef<dyn ExecutionControl<T>>) -> Result<(), Throwable> { DebugCommandTraceCustomExecutor::run_guarded(self, sender, current_step, modifiers, output) }
+    fn run_guarded(&self, sender: T, current_step: ContextChain<T>, modifiers: ChainModifiers, output: JRef<dyn ExecutionControl<T>>) -> Result<(), anyhow::Error> { DebugCommandTraceCustomExecutor::run_guarded(self, sender, current_step, modifiers, output) }
 }
 impl CustomCommandExecutorCommandAdapter<JRef<CommandSourceStack>> for DebugCommandTraceCustomExecutor {
 }
@@ -67,14 +65,14 @@ crate::jobject!(DebugCommandTraceCustomExecutor);
 // ---- class net.minecraft.server.commands.DebugCommand.Tracer (leaf-server/src/minecraft/java/net/minecraft/server/commands/DebugCommand.java:137)
 pub struct DebugCommandTracer {
     pub this: Weak<Self>,
-    pub output: PrintWriter, // leaf-server/src/minecraft/java/net/minecraft/server/commands/DebugCommand.java:139
+    pub output: (), // leaf-server/src/minecraft/java/net/minecraft/server/commands/DebugCommand.java:139
     pub last_indent: Mut<i32>, // leaf-server/src/minecraft/java/net/minecraft/server/commands/DebugCommand.java:140
     pub waiting_for_result: Mut<bool>, // leaf-server/src/minecraft/java/net/minecraft/server/commands/DebugCommand.java:141
 }
 pub const TRACER_INDENT_OFFSET: i32 = 1; // leaf-server/src/minecraft/java/net/minecraft/server/commands/DebugCommand.java:138
 impl DebugCommandTracer {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(output: PrintWriter) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/DebugCommand.java:143
+    pub fn new(output: ()) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/DebugCommand.java:143
     pub fn on_command(&self, depth: i32, command: &str) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/DebugCommand.java:165
     pub fn on_return(&self, depth: i32, command: &str, result: i32) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/DebugCommand.java:174
     pub fn on_call(&self, depth: i32, function: JRef<Identifier>, size: i32) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/DebugCommand.java:189

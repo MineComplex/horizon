@@ -8,17 +8,10 @@ use crate::io::papermc::paper::math::position::Position;
 use crate::io::papermc::paper::threadedregions::scheduler::async_scheduler::AsyncScheduler;
 use crate::io::papermc::paper::threadedregions::scheduler::global_region_scheduler::GlobalRegionScheduler;
 use crate::io::papermc::paper::threadedregions::scheduler::region_scheduler::RegionScheduler;
-use crate::java::lang::Class;
-use crate::java::lang::Throwable;
-use crate::java::util::JIterator;
-use crate::java::util::Properties;
-use crate::java::util::function::Consumer;
-use crate::java::util::logging::Logger;
 use crate::net::kyori::adventure::audience::ForwardingAudience;
 use crate::net::kyori::adventure::key::Key;
 use crate::net::kyori::adventure::text::Component;
 use crate::net::kyori::adventure::text::minimessage::tag::resolver::TagResolver;
-use crate::net::md_5::bungee::api::chat::BaseComponent;
 use crate::org::bukkit::WarningWarningState;
 use crate::org::bukkit::advancement::advancement::Advancement;
 use crate::org::bukkit::block::block::Block;
@@ -118,10 +111,10 @@ pub trait Server: PluginMessageRecipient + ForwardingAudience {
     fn broadcast_message(&self, message: &str) -> i32 {
         self.broadcast_2(message, BROADCAST_CHANNEL_USERS)
     } // default, paper-api/src/main/java/org/bukkit/Server.java:396
-    fn broadcast(&self, component: BaseComponent) {
+    fn broadcast(&self, component: ()) {
         self.spigot().broadcast(component);
     } // default, paper-api/src/main/java/org/bukkit/Server.java:408
-    fn broadcast_1(&self, components: &Vec<BaseComponent>) {
+    fn broadcast_1(&self, components: &Vec<()>) {
         self.spigot().broadcast_1(components);
     } // default, paper-api/src/main/java/org/bukkit/Server.java:419
     fn broadcast_1_2(&self, message: Component) -> i32 {
@@ -234,14 +227,14 @@ pub trait Server: PluginMessageRecipient + ForwardingAudience {
     fn reload_data(&self); // paper-api/src/main/java/org/bukkit/Server.java:975
     fn update_resources(&self); // paper-api/src/main/java/org/bukkit/Server.java:983
     fn update_recipes(&self); // paper-api/src/main/java/org/bukkit/Server.java:990
-    fn get_logger(&self) -> Logger; // paper-api/src/main/java/org/bukkit/Server.java:1003
+    fn get_logger(&self) -> (); // paper-api/src/main/java/org/bukkit/Server.java:1003
     fn get_plugin_command(&self, name: &str) -> Option<JRef<PluginCommand>>; // paper-api/src/main/java/org/bukkit/Server.java:1016
     fn save_players(&self); // paper-api/src/main/java/org/bukkit/Server.java:1023
     fn dispatch_command(
         &self,
         sender: JRef<dyn CommandSender>,
         command_line: &str,
-    ) -> Result<bool, Throwable>; // paper-api/src/main/java/org/bukkit/Server.java:1035
+    ) -> Result<bool, anyhow::Error>; // paper-api/src/main/java/org/bukkit/Server.java:1035
     fn add_recipe(&self, recipe: Option<JRef<dyn Recipe>>) -> bool; // paper-api/src/main/java/org/bukkit/Server.java:1048
     fn add_recipe_2(&self, recipe: Option<JRef<dyn Recipe>>, resend_recipes: bool) -> bool {
         let _ = resend_recipes;
@@ -282,7 +275,7 @@ pub trait Server: PluginMessageRecipient + ForwardingAudience {
         world: JRef<dyn World>,
         player: JRef<dyn Player>,
     ) -> JRef<dyn ItemCraftResult>; // paper-api/src/main/java/org/bukkit/Server.java:1197
-    fn recipe_iterator(&self) -> JIterator<JRef<dyn Recipe>>; // paper-api/src/main/java/org/bukkit/Server.java:1225
+    fn recipe_iterator(&self) -> Box<dyn Iterator<Item = JRef<dyn Recipe>> + Send>; // paper-api/src/main/java/org/bukkit/Server.java:1225
     fn clear_recipes(&self); // paper-api/src/main/java/org/bukkit/Server.java:1231
     fn reset_recipes(&self); // paper-api/src/main/java/org/bukkit/Server.java:1236
     fn has_recipe(&self, key: JRef<NamespacedKey>) -> bool; // paper-api/src/main/java/org/bukkit/Server.java:1244
@@ -344,7 +337,7 @@ pub trait Server: PluginMessageRecipient + ForwardingAudience {
     fn get_console_sender(&self) -> JRef<dyn ConsoleCommandSender>; // paper-api/src/main/java/org/bukkit/Server.java:1616
     fn create_command_sender(
         &self,
-        feedback: JRef<dyn Consumer<JObjectRef>>,
+        feedback: Arc<dyn Fn(JObjectRef) + Send + Sync>,
     ) -> JRef<dyn CommandSender>; // paper-api/src/main/java/org/bukkit/Server.java:1626
     fn get_world_container(&self) -> std::path::PathBuf; // paper-api/src/main/java/org/bukkit/Server.java:1637
     fn get_level_directory(&self) -> std::path::PathBuf; // paper-api/src/main/java/org/bukkit/Server.java:1649
@@ -360,7 +353,7 @@ pub trait Server: PluginMessageRecipient + ForwardingAudience {
         &self,
         owner: Option<JRef<dyn InventoryHolder>>,
         size: i32,
-    ) -> Result<JRef<dyn Inventory>, Throwable>; // paper-api/src/main/java/org/bukkit/Server.java:1768
+    ) -> Result<JRef<dyn Inventory>, anyhow::Error>; // paper-api/src/main/java/org/bukkit/Server.java:1768
     fn create_inventory_3(
         &self,
         owner: Option<JRef<dyn InventoryHolder>>,
@@ -378,13 +371,13 @@ pub trait Server: PluginMessageRecipient + ForwardingAudience {
         owner: Option<JRef<dyn InventoryHolder>>,
         size: i32,
         title: Component,
-    ) -> Result<JRef<dyn Inventory>, Throwable>; // paper-api/src/main/java/org/bukkit/Server.java:1783
+    ) -> Result<JRef<dyn Inventory>, anyhow::Error>; // paper-api/src/main/java/org/bukkit/Server.java:1783
     fn create_inventory_3_4(
         &self,
         owner: Option<JRef<dyn InventoryHolder>>,
         size: i32,
         title: &str,
-    ) -> Result<JRef<dyn Inventory>, Throwable>; // paper-api/src/main/java/org/bukkit/Server.java:1799
+    ) -> Result<JRef<dyn Inventory>, anyhow::Error>; // paper-api/src/main/java/org/bukkit/Server.java:1799
     fn create_merchant(&self) -> JRef<dyn Merchant>; // paper-api/src/main/java/org/bukkit/Server.java:1843
     fn create_merchant_1(&self, title: Component) -> JRef<dyn Merchant>; // paper-api/src/main/java/org/bukkit/Server.java:1813
     fn create_merchant_1_2(&self, title: Option<String>) -> JRef<dyn Merchant>; // paper-api/src/main/java/org/bukkit/Server.java:1825
@@ -437,7 +430,7 @@ pub trait Server: PluginMessageRecipient + ForwardingAudience {
         style: BarStyle,
         flags: &Vec<BarFlag>,
     ) -> JRef<dyn KeyedBossBar>; // paper-api/src/main/java/org/bukkit/Server.java:2165
-    fn get_boss_bars(&self) -> JIterator<JRef<dyn KeyedBossBar>>; // paper-api/src/main/java/org/bukkit/Server.java:2182
+    fn get_boss_bars(&self) -> Box<dyn Iterator<Item = JRef<dyn KeyedBossBar>> + Send>; // paper-api/src/main/java/org/bukkit/Server.java:2182
     fn get_boss_bar(&self, key: JRef<NamespacedKey>) -> Option<JRef<dyn KeyedBossBar>>; // paper-api/src/main/java/org/bukkit/Server.java:2200
     fn remove_boss_bar(&self, key: JRef<NamespacedKey>) -> bool; // paper-api/src/main/java/org/bukkit/Server.java:2218
     fn get_entity(&self, uuid: Uuid) -> Option<JRef<dyn Entity>>; // paper-api/src/main/java/org/bukkit/Server.java:2226
@@ -451,28 +444,28 @@ pub trait Server: PluginMessageRecipient + ForwardingAudience {
     fn get_average_tick_time(&self) -> f64; // paper-api/src/main/java/org/bukkit/Server.java:2291
     fn get_command_map(&self) -> JRef<dyn CommandMap>; // paper-api/src/main/java/org/bukkit/Server.java:2303
     fn get_advancement(&self, key: JRef<NamespacedKey>) -> Option<JRef<dyn Advancement>>; // paper-api/src/main/java/org/bukkit/Server.java:2313
-    fn advancement_iterator(&self) -> JIterator<JRef<dyn Advancement>>; // paper-api/src/main/java/org/bukkit/Server.java:2322
+    fn advancement_iterator(&self) -> Box<dyn Iterator<Item = JRef<dyn Advancement>> + Send>; // paper-api/src/main/java/org/bukkit/Server.java:2322
     fn create_block_data(&self, material: Material) -> JRef<dyn BlockData>; // paper-api/src/main/java/org/bukkit/Server.java:2332
-    fn create_block_data_1(&self, data: &str) -> Result<JRef<dyn BlockData>, Throwable>; // paper-api/src/main/java/org/bukkit/Server.java:2354
+    fn create_block_data_1(&self, data: &str) -> Result<JRef<dyn BlockData>, anyhow::Error>; // paper-api/src/main/java/org/bukkit/Server.java:2354
     fn create_block_data_2(
         &self,
         material: Material,
-        consumer: Option<JRef<dyn Consumer<JObjectRef>>>,
+        consumer: Option<Arc<dyn Fn(JObjectRef) + Send + Sync>>,
     ) -> JRef<dyn BlockData>; // paper-api/src/main/java/org/bukkit/Server.java:2343
     fn create_block_data_2_2(
         &self,
         material: Option<Material>,
         data: Option<String>,
-    ) -> Result<JRef<dyn BlockData>, Throwable>; // paper-api/src/main/java/org/bukkit/Server.java:2370
+    ) -> Result<JRef<dyn BlockData>, anyhow::Error>; // paper-api/src/main/java/org/bukkit/Server.java:2370
     fn get_tag<T: JGeneric>(
         &self,
         registry: &str,
         tag: JRef<NamespacedKey>,
-        clazz: Class,
+        clazz: crate::rt::Class,
     ) -> Option<JRef<dyn Tag<T>>>
     where
         Self: Sized; // paper-api/src/main/java/org/bukkit/Server.java:2392
-    fn get_tags<T: JGeneric>(&self, registry: &str, clazz: Class) -> Vec<JRef<dyn Tag<T>>>
+    fn get_tags<T: JGeneric>(&self, registry: &str, clazz: crate::rt::Class) -> Vec<JRef<dyn Tag<T>>>
     where
         Self: Sized; // paper-api/src/main/java/org/bukkit/Server.java:2408
     fn get_loot_table(&self, key: JRef<NamespacedKey>) -> Option<JRef<dyn LootTable>>; // paper-api/src/main/java/org/bukkit/Server.java:2417
@@ -480,9 +473,9 @@ pub trait Server: PluginMessageRecipient + ForwardingAudience {
         &self,
         sender: JRef<dyn CommandSender>,
         selector: &str,
-    ) -> Result<Vec<JRef<dyn Entity>>, Throwable>; // paper-api/src/main/java/org/bukkit/Server.java:2440
+    ) -> Result<Vec<JRef<dyn Entity>>, anyhow::Error>; // paper-api/src/main/java/org/bukkit/Server.java:2440
     fn get_structure_manager(&self) -> JRef<dyn StructureManager>; // paper-api/src/main/java/org/bukkit/Server.java:2448
-    fn get_registry<T: JGeneric>(&self, t_class: Class) -> Option<JRef<dyn Registry<T>>>
+    fn get_registry<T: JGeneric>(&self, t_class: crate::rt::Class) -> Option<JRef<dyn Registry<T>>>
     where
         Self: Sized; // paper-api/src/main/java/org/bukkit/Server.java:2465
     fn get_unsafe(&self) -> JRef<dyn UnsafeValues>; // paper-api/src/main/java/org/bukkit/Server.java:2473
@@ -613,9 +606,9 @@ pub trait ServerSpigotTrait: JObject {
     fn get_paper_config(&self) -> JRef<YamlConfiguration>; // paper-api/src/main/java/org/bukkit/Server.java:2527
     fn get_gale_config(&self) -> JRef<YamlConfiguration>; // paper-api/src/main/java/org/bukkit/Server.java:2540
     fn get_purpur_config(&self) -> JRef<YamlConfiguration>; // paper-api/src/main/java/org/bukkit/Server.java:2550
-    fn get_server_properties(&self) -> Properties; // paper-api/src/main/java/org/bukkit/Server.java:2555
-    fn broadcast(&self, component: BaseComponent); // paper-api/src/main/java/org/bukkit/Server.java:2567
-    fn broadcast_1(&self, components: &Vec<BaseComponent>); // paper-api/src/main/java/org/bukkit/Server.java:2578
+    fn get_server_properties(&self) -> IndexMap<String, String>; // paper-api/src/main/java/org/bukkit/Server.java:2555
+    fn broadcast(&self, component: ()); // paper-api/src/main/java/org/bukkit/Server.java:2567
+    fn broadcast_1(&self, components: &Vec<()>); // paper-api/src/main/java/org/bukkit/Server.java:2578
     fn restart(&self); // paper-api/src/main/java/org/bukkit/Server.java:2588
 }
 impl std::ops::Deref for dyn ServerSpigotTrait {
@@ -652,14 +645,14 @@ impl ServerSpigot {
     pub fn get_purpur_config(&self) -> JRef<YamlConfiguration> {
         panic!("UnsupportedOperationException: Not supported yet.");
     } // paper-api/src/main/java/org/bukkit/Server.java:2550
-    pub fn get_server_properties(&self) -> Properties {
+    pub fn get_server_properties(&self) -> IndexMap<String, String> {
         panic!("UnsupportedOperationException: Not supported yet.");
     } // paper-api/src/main/java/org/bukkit/Server.java:2555
-    pub fn broadcast(&self, component: BaseComponent) {
+    pub fn broadcast(&self, component: ()) {
         let _ = component;
         panic!("UnsupportedOperationException: Not supported yet.");
     } // paper-api/src/main/java/org/bukkit/Server.java:2567
-    pub fn broadcast_1(&self, components: &Vec<BaseComponent>) {
+    pub fn broadcast_1(&self, components: &Vec<()>) {
         let _ = components;
         panic!("UnsupportedOperationException: Not supported yet.");
     } // paper-api/src/main/java/org/bukkit/Server.java:2578
@@ -691,13 +684,13 @@ impl ServerSpigotTrait for ServerSpigot {
     fn get_purpur_config(&self) -> JRef<YamlConfiguration> {
         ServerSpigot::get_purpur_config(self)
     }
-    fn get_server_properties(&self) -> Properties {
+    fn get_server_properties(&self) -> IndexMap<String, String> {
         ServerSpigot::get_server_properties(self)
     }
-    fn broadcast(&self, component: BaseComponent) {
+    fn broadcast(&self, component: ()) {
         ServerSpigot::broadcast(self, component)
     }
-    fn broadcast_1(&self, components: &Vec<BaseComponent>) {
+    fn broadcast_1(&self, components: &Vec<()>) {
         ServerSpigot::broadcast_1(self, components)
     }
     fn restart(&self) {

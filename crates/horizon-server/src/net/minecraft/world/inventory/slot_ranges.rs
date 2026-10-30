@@ -4,9 +4,6 @@ use crate::prelude::*;
 use crate::com::mojang::brigadier::StringReader;
 use crate::com::mojang::brigadier::exceptions::DynamicCommandExceptionType;
 use crate::com::mojang::serialization::Codec;
-use crate::java::lang::Throwable;
-use crate::java::util::function::Function;
-use crate::java::util::stream::Stream;
 use crate::net::minecraft::world::inventory::slot_range::SlotRange;
 
 // ---- class net.minecraft.world.inventory.SlotRanges (leaf-server/src/minecraft/java/net/minecraft/world/inventory/SlotRanges.java:21)
@@ -18,7 +15,7 @@ pub const MOB_INVENTORY_SIZE: i32 = 8; // leaf-server/src/minecraft/java/net/min
 pub static SLOTS: LazyLock<Vec<JRef<dyn SlotRange>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/inventory/SlotRanges.java:24
 pub static ERROR_UNKNOWN: LazyLock<DynamicCommandExceptionType> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/inventory/SlotRanges.java:54
 pub static CODEC: LazyLock<JRef<dyn Codec<JRef<dyn SlotRange>>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/inventory/SlotRanges.java:55
-pub static NAME_LOOKUP: LazyLock<JRef<dyn Function<String, JRef<dyn SlotRange>>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/inventory/SlotRanges.java:56
+pub static NAME_LOOKUP: LazyLock<Arc<dyn Fn(String) -> JRef<dyn SlotRange> + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/inventory/SlotRanges.java:56
 impl SlotRanges {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/inventory/SlotRanges.java:21
@@ -29,9 +26,9 @@ impl SlotRanges {
     pub fn add_slot_range(output: &mut Vec<JRef<dyn SlotRange>>, prefix: &str, offset: i32, size: i32) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/inventory/SlotRanges.java:74
     pub fn add_slots(output: &mut Vec<JRef<dyn SlotRange>>, name: &str, values: &Vec<i32>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/inventory/SlotRanges.java:86
     pub fn name_to_ids(name: &str) -> Option<JRef<dyn SlotRange>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/inventory/SlotRanges.java:90
-    pub fn all_names() -> Stream<String> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/inventory/SlotRanges.java:94
-    pub fn single_slot_names() -> Stream<String> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/inventory/SlotRanges.java:98
+    pub fn all_names() -> Box<dyn Iterator<Item = String> + Send> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/inventory/SlotRanges.java:94
+    pub fn single_slot_names() -> Box<dyn Iterator<Item = String> + Send> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/inventory/SlotRanges.java:98
     pub fn try_read(reader: StringReader) -> Option<JRef<dyn SlotRange>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/inventory/SlotRanges.java:102
-    pub fn read(reader: StringReader) -> Result<JRef<dyn SlotRange>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/inventory/SlotRanges.java:107
+    pub fn read(reader: StringReader) -> Result<JRef<dyn SlotRange>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/inventory/SlotRanges.java:107
 }
 crate::jobject!(SlotRanges);

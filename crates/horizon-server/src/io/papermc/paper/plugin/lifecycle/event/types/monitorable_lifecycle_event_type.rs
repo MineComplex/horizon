@@ -10,9 +10,6 @@ use crate::io::papermc::paper::plugin::lifecycle::event::types::abstract_lifecyc
 use crate::io::papermc::paper::plugin::lifecycle::event::types::abstract_lifecycle_event_type::AbstractLifecycleEventTypeTrait;
 use crate::io::papermc::paper::plugin::lifecycle::event::types::lifecycle_event_type::LifecycleEventType;
 use crate::io::papermc::paper::plugin::lifecycle::event::types::lifecycle_event_type::LifecycleEventTypeMonitorable;
-use crate::java::lang::Class;
-use crate::java::util::function::Consumer;
-use crate::java::util::function::Predicate;
 
 // ---- class io.papermc.paper.plugin.lifecycle.event.types.MonitorableLifecycleEventType (paper-server/src/main/java/io/papermc/paper/plugin/lifecycle/event/types/MonitorableLifecycleEventType.java:16)
 pub struct MonitorableLifecycleEventType<O: JGeneric, E: JGeneric> {
@@ -28,12 +25,12 @@ impl<O: JGeneric, E: JGeneric> std::ops::Deref for MonitorableLifecycleEventType
 }
 impl<O: JGeneric, E: JGeneric> MonitorableLifecycleEventType<O, E> {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(name: &str, owner_type: Class) -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/lifecycle/event/types/MonitorableLifecycleEventType.java:22
+    pub fn new(name: &str, owner_type: crate::rt::Class) -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/lifecycle/event/types/MonitorableLifecycleEventType.java:22
     pub fn has_handlers(&self) -> bool { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/lifecycle/event/types/MonitorableLifecycleEventType.java:26
     pub fn new_handler(&self, handler: JRef<dyn LifecycleEventHandler<JObjectRef>>) -> JRef<MonitorLifecycleEventHandlerConfigurationImpl<O, E>> { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/lifecycle/event/types/MonitorableLifecycleEventType.java:31
     pub fn register(&self, owner: O, config: JRef<dyn AbstractLifecycleEventHandlerConfigurationTrait<O, E>>) { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/lifecycle/event/types/MonitorableLifecycleEventType.java:36
-    pub fn for_each_handler(&self, event: E, consumer: JRef<dyn Consumer<AbstractLifecycleEventTypeRegisteredHandler<O, E>>>, predicate: JRef<dyn Predicate<AbstractLifecycleEventTypeRegisteredHandler<O, E>>>) { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/lifecycle/event/types/MonitorableLifecycleEventType.java:50
-    pub fn remove_matching(&self, predicate: JRef<dyn Predicate<AbstractLifecycleEventTypeRegisteredHandler<O, E>>>) { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/lifecycle/event/types/MonitorableLifecycleEventType.java:59
+    pub fn for_each_handler(&self, event: E, consumer: Arc<dyn Fn(AbstractLifecycleEventTypeRegisteredHandler<O, E>) + Send + Sync>, predicate: Arc<dyn Fn(AbstractLifecycleEventTypeRegisteredHandler<O, E>) -> bool + Send + Sync>) { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/lifecycle/event/types/MonitorableLifecycleEventType.java:50
+    pub fn remove_matching(&self, predicate: Arc<dyn Fn(AbstractLifecycleEventTypeRegisteredHandler<O, E>) -> bool + Send + Sync>) { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/lifecycle/event/types/MonitorableLifecycleEventType.java:59
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
@@ -41,8 +38,8 @@ impl<O: JGeneric, E: JGeneric> AbstractLifecycleEventTypeTrait<JObjectRef, JObje
     fn as_abstract_lifecycle_event_type(&self) -> &AbstractLifecycleEventType<JObjectRef, JObjectRef, JObjectRef> { self }
     fn blocks_reloading(&self, event_owner: O) -> bool { AbstractLifecycleEventType::blocks_reloading(self, event_owner) }
     fn has_handlers(&self) -> bool { MonitorableLifecycleEventType::has_handlers(self) }
-    fn for_each_handler(&self, event: E, consumer: JRef<dyn Consumer<AbstractLifecycleEventTypeRegisteredHandler<O, E>>>, predicate: JRef<dyn Predicate<AbstractLifecycleEventTypeRegisteredHandler<O, E>>>) { MonitorableLifecycleEventType::for_each_handler(self, event, consumer, predicate) }
-    fn remove_matching(&self, predicate: JRef<dyn Predicate<AbstractLifecycleEventTypeRegisteredHandler<O, E>>>) { MonitorableLifecycleEventType::remove_matching(self, predicate) }
+    fn for_each_handler(&self, event: E, consumer: Arc<dyn Fn(AbstractLifecycleEventTypeRegisteredHandler<O, E>) + Send + Sync>, predicate: Arc<dyn Fn(AbstractLifecycleEventTypeRegisteredHandler<O, E>) -> bool + Send + Sync>) { MonitorableLifecycleEventType::for_each_handler(self, event, consumer, predicate) }
+    fn remove_matching(&self, predicate: Arc<dyn Fn(AbstractLifecycleEventTypeRegisteredHandler<O, E>) -> bool + Send + Sync>) { MonitorableLifecycleEventType::remove_matching(self, predicate) }
     fn register(&self, owner: O, config: JRef<dyn AbstractLifecycleEventHandlerConfigurationTrait<O, E>>) { MonitorableLifecycleEventType::register(self, owner, config) }
 }
 impl<O: JGeneric, E: JGeneric> LifecycleEventTypeMonitorable<O, E> for MonitorableLifecycleEventType<O, E> {

@@ -13,11 +13,6 @@ use crate::io::papermc::paper::entity::look_anchor::LookAnchor;
 use crate::io::papermc::paper::entity::player_give_result::PlayerGiveResult;
 use crate::io::papermc::paper::entity::player_post_effects::PlayerPostEffects;
 use crate::io::papermc::paper::math::position::Position;
-use crate::java::lang::Throwable;
-use crate::java::time::Instant;
-use crate::java::util::Date;
-use crate::java::util::Locale;
-use crate::java::util::concurrent::CompletableFuture;
 use crate::net::kyori::adventure::bossbar::BossBar;
 use crate::net::kyori::adventure::bossbar::BossBarViewer;
 use crate::net::kyori::adventure::identity::Identified;
@@ -26,8 +21,6 @@ use crate::net::kyori::adventure::text::Component;
 use crate::net::kyori::adventure::text::object::ObjectContents;
 use crate::net::kyori::adventure::text::object::ObjectContentsLike;
 use crate::net::kyori::adventure::util::TriState;
-use crate::net::md_5::bungee::api::ChatMessageType;
-use crate::net::md_5::bungee::api::chat::BaseComponent;
 use crate::org::bukkit::advancement::advancement::Advancement;
 use crate::org::bukkit::advancement::advancement_progress::AdvancementProgress;
 use crate::org::bukkit::ban_entry::BanEntry;
@@ -101,12 +94,12 @@ pub trait Player: HumanEntity + Conversable + OfflinePlayer + PluginMessageRecip
     fn set_player_list_header(&self, header: Option<String>); // paper-api/src/main/java/org/bukkit/entity/Player.java:242
     fn set_player_list_footer(&self, footer: Option<String>); // paper-api/src/main/java/org/bukkit/entity/Player.java:251
     fn set_player_list_header_footer(&self, header: Option<String>, footer: Option<String>); // paper-api/src/main/java/org/bukkit/entity/Player.java:262
-    fn set_player_list_header_footer_2(&self, header: &Vec<BaseComponent>, footer: &Vec<BaseComponent>); // paper-api/src/main/java/org/bukkit/entity/Player.java:1621
-    fn set_player_list_header_footer_2_2(&self, header: BaseComponent, footer: BaseComponent); // paper-api/src/main/java/org/bukkit/entity/Player.java:1631
+    fn set_player_list_header_footer_2(&self, header: &Vec<()>, footer: &Vec<()>); // paper-api/src/main/java/org/bukkit/entity/Player.java:1621
+    fn set_player_list_header_footer_2_2(&self, header: (), footer: ()); // paper-api/src/main/java/org/bukkit/entity/Player.java:1631
     fn set_compass_target(&self, loc: JRef<Location>); // paper-api/src/main/java/org/bukkit/entity/Player.java:270
     fn get_compass_target(&self) -> JRef<Location>; // paper-api/src/main/java/org/bukkit/entity/Player.java:277
     fn is_transferred(&self) -> bool; // paper-api/src/main/java/org/bukkit/entity/Player.java:292
-    fn retrieve_cookie(&self, key: JRef<NamespacedKey>) -> CompletableFuture<Vec<i8>>; // paper-api/src/main/java/org/bukkit/entity/Player.java:303
+    fn retrieve_cookie(&self, key: JRef<NamespacedKey>) -> crate::rt::CompletableFuture<Vec<i8>>; // paper-api/src/main/java/org/bukkit/entity/Player.java:303
     fn store_cookie(&self, key: JRef<NamespacedKey>, value: &Vec<i8>); // paper-api/src/main/java/org/bukkit/entity/Player.java:312
     fn transfer(&self, host: &str, port: i32); // paper-api/src/main/java/org/bukkit/entity/Player.java:323
     fn kick_player(&self, message: Option<String>); // paper-api/src/main/java/org/bukkit/entity/Player.java:339
@@ -117,14 +110,14 @@ pub trait Player: HumanEntity + Conversable + OfflinePlayer + PluginMessageRecip
         self.kick_2(message, PlayerKickEventCause::PLUGIN);
     } // default, paper-api/src/main/java/org/bukkit/entity/Player.java:359
     fn kick_2(&self, message: Option<Component>, cause: PlayerKickEventCause); // paper-api/src/main/java/org/bukkit/entity/Player.java:369
-    fn ban_4<E: JGeneric>(&self, reason: Option<String>, expires: Option<Date>, source: Option<String>, kick_player: bool) -> Option<E> where Self: Sized; // paper-api/src/main/java/org/bukkit/entity/Player.java:384
-    fn ban_4_2<E: JGeneric>(&self, reason: Option<String>, expires: Option<Instant>, source: Option<String>, kick_player: bool) -> Option<E> where Self: Sized; // paper-api/src/main/java/org/bukkit/entity/Player.java:400
+    fn ban_4<E: JGeneric>(&self, reason: Option<String>, expires: Option<chrono::DateTime<chrono::Utc>>, source: Option<String>, kick_player: bool) -> Option<E> where Self: Sized; // paper-api/src/main/java/org/bukkit/entity/Player.java:384
+    fn ban_4_2<E: JGeneric>(&self, reason: Option<String>, expires: Option<std::time::SystemTime>, source: Option<String>, kick_player: bool) -> Option<E> where Self: Sized; // paper-api/src/main/java/org/bukkit/entity/Player.java:400
     fn ban_4_3<E: JGeneric>(&self, reason: Option<String>, duration: Option<std::time::Duration>, source: Option<String>, kick_player: bool) -> Option<E> where Self: Sized; // paper-api/src/main/java/org/bukkit/entity/Player.java:416
-    fn ban_ip(&self, reason: Option<String>, expires: Option<Date>, source: Option<String>, kick_player: bool) -> Option<JRef<dyn BanEntry<std::net::IpAddr>>>; // paper-api/src/main/java/org/bukkit/entity/Player.java:432
-    fn ban_ip_4(&self, reason: Option<String>, expires: Option<Instant>, source: Option<String>, kick_player: bool) -> Option<JRef<dyn BanEntry<std::net::IpAddr>>>; // paper-api/src/main/java/org/bukkit/entity/Player.java:448
+    fn ban_ip(&self, reason: Option<String>, expires: Option<chrono::DateTime<chrono::Utc>>, source: Option<String>, kick_player: bool) -> Option<JRef<dyn BanEntry<std::net::IpAddr>>>; // paper-api/src/main/java/org/bukkit/entity/Player.java:432
+    fn ban_ip_4(&self, reason: Option<String>, expires: Option<std::time::SystemTime>, source: Option<String>, kick_player: bool) -> Option<JRef<dyn BanEntry<std::net::IpAddr>>>; // paper-api/src/main/java/org/bukkit/entity/Player.java:448
     fn ban_ip_4_2(&self, reason: Option<String>, duration: Option<std::time::Duration>, source: Option<String>, kick_player: bool) -> Option<JRef<dyn BanEntry<std::net::IpAddr>>>; // paper-api/src/main/java/org/bukkit/entity/Player.java:464
     fn chat(&self, msg: &str); // paper-api/src/main/java/org/bukkit/entity/Player.java:472
-    fn perform_command(&self, command: &str) -> Result<bool, Throwable>; // paper-api/src/main/java/org/bukkit/entity/Player.java:482
+    fn perform_command(&self, command: &str) -> Result<bool, anyhow::Error>; // paper-api/src/main/java/org/bukkit/entity/Player.java:482
     fn is_sprinting(&self) -> bool; // paper-api/src/main/java/org/bukkit/entity/Player.java:519
     fn set_sprinting(&self, sprinting: bool); // paper-api/src/main/java/org/bukkit/entity/Player.java:526
     fn save_data(&self); // paper-api/src/main/java/org/bukkit/entity/Player.java:533
@@ -222,7 +215,7 @@ pub trait Player: HumanEntity + Conversable + OfflinePlayer + PluginMessageRecip
     } // default, paper-api/src/main/java/org/bukkit/entity/Player.java:1253
     fn send_sign_change_4(&self, loc: JRef<Location>, lines: &Vec<Component>, color: DyeColor, has_glowing_text: bool); // paper-api/src/main/java/org/bukkit/entity/Player.java:1200
     fn send_sign_change_4_2(&self, loc: JRef<Location>, lines: Option<Vec<String>>, color: DyeColor, has_glowing_text: bool); // paper-api/src/main/java/org/bukkit/entity/Player.java:1282
-    fn send_block_update(&self, loc: JRef<Location>, tile_state: JRef<dyn TileState>) -> Result<(), Throwable>; // paper-api/src/main/java/org/bukkit/entity/Player.java:1302
+    fn send_block_update(&self, loc: JRef<Location>, tile_state: JRef<dyn TileState>) -> Result<(), anyhow::Error>; // paper-api/src/main/java/org/bukkit/entity/Player.java:1302
     fn send_potion_effect_change(&self, entity: JRef<dyn LivingEntity>, effect: JRef<PotionEffect>); // paper-api/src/main/java/org/bukkit/entity/Player.java:1316
     fn send_potion_effect_change_remove(&self, entity: JRef<dyn LivingEntity>, type_: JRef<dyn PotionEffectTypeTrait>); // paper-api/src/main/java/org/bukkit/entity/Player.java:1328
     fn send_map(&self, map: JRef<dyn MapView>); // paper-api/src/main/java/org/bukkit/entity/Player.java:1336
@@ -235,10 +228,10 @@ pub trait Player: HumanEntity + Conversable + OfflinePlayer + PluginMessageRecip
     fn ban_player_full_2(&self, reason: Option<String>, source: Option<String>) -> Option<JRef<dyn BanEntry<JObjectRef>>> {
         self.ban_player_full_3(reason, None, source)
     } // default, paper-api/src/main/java/org/bukkit/entity/Player.java:1398
-    fn ban_player_full_2_2(&self, reason: Option<String>, expires: Option<Date>) -> Option<JRef<dyn BanEntry<JObjectRef>>> {
+    fn ban_player_full_2_2(&self, reason: Option<String>, expires: Option<chrono::DateTime<chrono::Utc>>) -> Option<JRef<dyn BanEntry<JObjectRef>>> {
         self.ban_player_full_3(reason, expires, None)
     } // default, paper-api/src/main/java/org/bukkit/entity/Player.java:1411
-    fn ban_player_full_3(&self, reason: Option<String>, expires: Option<Date>, source: Option<String>) -> Option<JRef<dyn BanEntry<JObjectRef>>> {
+    fn ban_player_full_3(&self, reason: Option<String>, expires: Option<chrono::DateTime<chrono::Utc>>, source: Option<String>) -> Option<JRef<dyn BanEntry<JObjectRef>>> {
         self.ban_player_3(reason.clone(), expires.clone(), source.clone());
         self.ban_player_ip_4(reason, expires, source, true)
     } // default, paper-api/src/main/java/org/bukkit/entity/Player.java:1425
@@ -251,19 +244,19 @@ pub trait Player: HumanEntity + Conversable + OfflinePlayer + PluginMessageRecip
     fn ban_player_ip_2_2(&self, reason: Option<String>, source: Option<String>) -> Option<JRef<dyn BanEntry<JObjectRef>>> {
         self.ban_player_ip_3_3(reason, None, source)
     } // default, paper-api/src/main/java/org/bukkit/entity/Player.java:1494
-    fn ban_player_ip_2_3(&self, reason: Option<String>, expires: Option<Date>) -> Option<JRef<dyn BanEntry<JObjectRef>>> {
+    fn ban_player_ip_2_3(&self, reason: Option<String>, expires: Option<chrono::DateTime<chrono::Utc>>) -> Option<JRef<dyn BanEntry<JObjectRef>>> {
         self.ban_player_ip_3_3(reason, expires, None)
     } // default, paper-api/src/main/java/org/bukkit/entity/Player.java:1507
     fn ban_player_ip_3(&self, reason: Option<String>, source: Option<String>, kick_player: bool) -> Option<JRef<dyn BanEntry<JObjectRef>>> {
         self.ban_player_ip_4(reason, None, source, kick_player)
     } // default, paper-api/src/main/java/org/bukkit/entity/Player.java:1454
-    fn ban_player_ip_3_2(&self, reason: Option<String>, expires: Option<Date>, kick_player: bool) -> Option<JRef<dyn BanEntry<JObjectRef>>> {
+    fn ban_player_ip_3_2(&self, reason: Option<String>, expires: Option<chrono::DateTime<chrono::Utc>>, kick_player: bool) -> Option<JRef<dyn BanEntry<JObjectRef>>> {
         self.ban_player_ip_4(reason, expires, None, kick_player)
     } // default, paper-api/src/main/java/org/bukkit/entity/Player.java:1468
-    fn ban_player_ip_3_3(&self, reason: Option<String>, expires: Option<Date>, source: Option<String>) -> Option<JRef<dyn BanEntry<JObjectRef>>> {
+    fn ban_player_ip_3_3(&self, reason: Option<String>, expires: Option<chrono::DateTime<chrono::Utc>>, source: Option<String>) -> Option<JRef<dyn BanEntry<JObjectRef>>> {
         self.ban_player_ip_4(reason, expires, source, true)
     } // default, paper-api/src/main/java/org/bukkit/entity/Player.java:1521
-    fn ban_player_ip_4(&self, reason: Option<String>, expires: Option<Date>, source: Option<String>, kick_player: bool) -> Option<JRef<dyn BanEntry<JObjectRef>>> {
+    fn ban_player_ip_4(&self, reason: Option<String>, expires: Option<chrono::DateTime<chrono::Utc>>, source: Option<String>, kick_player: bool) -> Option<JRef<dyn BanEntry<JObjectRef>>> {
         // PORT: Server.getBanList is generic (`where Self: Sized`), not callable on `dyn Server` until erased
         let ban_entry: Option<JRef<dyn BanEntry<JObjectRef>>> = Bukkit::get_server()
             .get_ban_list::<JRef<dyn BanList<JObjectRef>>>(BanListType::IP)
@@ -275,20 +268,20 @@ pub trait Player: HumanEntity + Conversable + OfflinePlayer + PluginMessageRecip
         ban_entry
     } // default, paper-api/src/main/java/org/bukkit/entity/Player.java:1536
     fn send_action_bar(&self, message: &str); // paper-api/src/main/java/org/bukkit/entity/Player.java:1554
-    fn send_action_bar_1(&self, message: &Vec<BaseComponent>); // paper-api/src/main/java/org/bukkit/entity/Player.java:1575
+    fn send_action_bar_1(&self, message: &Vec<()>); // paper-api/src/main/java/org/bukkit/entity/Player.java:1575
     fn send_action_bar_2(&self, alternate_char: char, message: &str); // paper-api/src/main/java/org/bukkit/entity/Player.java:1566
-    fn send_message_2_5(&self, position: ChatMessageType, components: &Vec<BaseComponent>) {
+    fn send_message_2_5(&self, position: (), components: &Vec<()>) {
         cast::<dyn PlayerSpigotTrait, _>(&self.spigot())
             .expect("Player.spigot() is a Player.Spigot")
             .send_message_2_4(position, components);
     } // default, paper-api/src/main/java/org/bukkit/entity/Player.java:1609
     fn set_title_times(&self, fade_in_ticks: i32, stay_ticks: i32, fade_out_ticks: i32); // paper-api/src/main/java/org/bukkit/entity/Player.java:1642
-    fn set_subtitle(&self, subtitle: &Vec<BaseComponent>); // paper-api/src/main/java/org/bukkit/entity/Player.java:1651
-    fn set_subtitle_1(&self, subtitle: BaseComponent); // paper-api/src/main/java/org/bukkit/entity/Player.java:1660
-    fn show_title(&self, title: &Vec<BaseComponent>); // paper-api/src/main/java/org/bukkit/entity/Player.java:1669
-    fn show_title_1(&self, title: BaseComponent); // paper-api/src/main/java/org/bukkit/entity/Player.java:1678
-    fn show_title_5(&self, title: &Vec<BaseComponent>, subtitle: &Vec<BaseComponent>, fade_in_ticks: i32, stay_ticks: i32, fade_out_ticks: i32); // paper-api/src/main/java/org/bukkit/entity/Player.java:1691
-    fn show_title_5_2(&self, title: BaseComponent, subtitle: BaseComponent, fade_in_ticks: i32, stay_ticks: i32, fade_out_ticks: i32); // paper-api/src/main/java/org/bukkit/entity/Player.java:1704
+    fn set_subtitle(&self, subtitle: &Vec<()>); // paper-api/src/main/java/org/bukkit/entity/Player.java:1651
+    fn set_subtitle_1(&self, subtitle: ()); // paper-api/src/main/java/org/bukkit/entity/Player.java:1660
+    fn show_title(&self, title: &Vec<()>); // paper-api/src/main/java/org/bukkit/entity/Player.java:1669
+    fn show_title_1(&self, title: ()); // paper-api/src/main/java/org/bukkit/entity/Player.java:1678
+    fn show_title_5(&self, title: &Vec<()>, subtitle: &Vec<()>, fade_in_ticks: i32, stay_ticks: i32, fade_out_ticks: i32); // paper-api/src/main/java/org/bukkit/entity/Player.java:1691
+    fn show_title_5_2(&self, title: (), subtitle: (), fade_in_ticks: i32, stay_ticks: i32, fade_out_ticks: i32); // paper-api/src/main/java/org/bukkit/entity/Player.java:1704
     fn send_title(&self, title: JRef<Title>); // paper-api/src/main/java/org/bukkit/entity/Player.java:1716
     fn send_title_2(&self, title: Option<String>, subtitle: Option<String>); // paper-api/src/main/java/org/bukkit/entity/Player.java:3072
     fn send_title_5(&self, title: Option<String>, subtitle: Option<String>, fade_in: i32, stay: i32, fade_out: i32); // paper-api/src/main/java/org/bukkit/entity/Player.java:3091
@@ -383,7 +376,7 @@ pub trait Player: HumanEntity + Conversable + OfflinePlayer + PluginMessageRecip
     fn set_resource_pack_5(&self, id: Uuid, url: &str, hash: Option<&Vec<i8>>, prompt: Option<String>, force: bool); // paper-api/src/main/java/org/bukkit/entity/Player.java:2648
     fn set_resource_pack_5_2(&self, uuid: Uuid, url: &str, hash: Option<&Vec<i8>>, prompt: Option<Component>, force: bool); // paper-api/src/main/java/org/bukkit/entity/Player.java:2697
     fn set_resource_pack_5_3(&self, uuid: Uuid, url: &str, hash: &str, resource_pack_prompt: Option<Component>, required: bool) {
-        // PORT: Adventure ResourcePackRequest/ResourcePackInfo and Audience.sendResourcePacks, java.net.URI
+        // PORT: Adventure ResourcePackRequest/ResourcePackInfo and Audience.sendResourcePacks, java.net.()
         self.send_resource_packs(
             crate::net::kyori::adventure::resource::ResourcePackRequest::resource_pack_request()
                 .required(required)
@@ -391,7 +384,7 @@ pub trait Player: HumanEntity + Conversable + OfflinePlayer + PluginMessageRecip
                 .prompt(resource_pack_prompt)
                 .packs(crate::net::kyori::adventure::resource::ResourcePackInfo::resource_pack_info(
                     uuid,
-                    crate::java::net::URI::create(url),
+                    URI::create(url),
                     hash,
                 )),
         );
@@ -407,14 +400,14 @@ pub trait Player: HumanEntity + Conversable + OfflinePlayer + PluginMessageRecip
     fn remove_resource_pack(&self, id: Uuid); // paper-api/src/main/java/org/bukkit/entity/Player.java:2928
     fn remove_resource_packs(&self); // paper-api/src/main/java/org/bukkit/entity/Player.java:2935
     fn get_scoreboard(&self) -> JRef<dyn Scoreboard>; // paper-api/src/main/java/org/bukkit/entity/Player.java:2942
-    fn set_scoreboard(&self, scoreboard: JRef<dyn Scoreboard>) -> Result<(), Throwable>; // paper-api/src/main/java/org/bukkit/entity/Player.java:2954
+    fn set_scoreboard(&self, scoreboard: JRef<dyn Scoreboard>) -> Result<(), anyhow::Error>; // paper-api/src/main/java/org/bukkit/entity/Player.java:2954
     fn get_world_border(&self) -> Option<JRef<dyn WorldBorder>>; // paper-api/src/main/java/org/bukkit/entity/Player.java:2962
     fn set_world_border(&self, border: Option<JRef<dyn WorldBorder>>); // paper-api/src/main/java/org/bukkit/entity/Player.java:2976
     fn send_health_update(&self); // paper-api/src/main/java/org/bukkit/entity/Player.java:2995
     fn send_health_update_3(&self, health: f64, food_level: i32, saturation: f32); // paper-api/src/main/java/org/bukkit/entity/Player.java:2988
     fn is_health_scaled(&self) -> bool; // paper-api/src/main/java/org/bukkit/entity/Player.java:3004
     fn set_health_scaled(&self, scale: bool); // paper-api/src/main/java/org/bukkit/entity/Player.java:3015
-    fn set_health_scale(&self, scale: f64) -> Result<(), Throwable>; // paper-api/src/main/java/org/bukkit/entity/Player.java:3029
+    fn set_health_scale(&self, scale: f64) -> Result<(), anyhow::Error>; // paper-api/src/main/java/org/bukkit/entity/Player.java:3029
     fn get_health_scale(&self) -> f64; // paper-api/src/main/java/org/bukkit/entity/Player.java:3039
     fn get_spectator_target(&self) -> Option<JRef<dyn Entity>>; // paper-api/src/main/java/org/bukkit/entity/Player.java:3048
     fn set_spectator_target(&self, entity: Option<JRef<dyn Entity>>); // paper-api/src/main/java/org/bukkit/entity/Player.java:3059
@@ -467,7 +460,7 @@ pub trait Player: HumanEntity + Conversable + OfflinePlayer + PluginMessageRecip
     fn spawn_particle_14<T: JGeneric>(&self, particle: Particle, x: f64, y: f64, z: f64, count: i32, offset_x: f64, offset_y: f64, offset_z: f64, speed_x: f64, speed_y: f64, speed_z: f64, data: Option<T>, force: bool, randomization_type: ParticleRandomizationType) where Self: Sized; // paper-api/src/main/java/org/bukkit/entity/Player.java:3394
     fn get_advancement_progress(&self, advancement: JRef<dyn Advancement>) -> JRef<dyn AdvancementProgress>; // paper-api/src/main/java/org/bukkit/entity/Player.java:3402
     fn get_client_view_distance(&self) -> i32; // paper-api/src/main/java/org/bukkit/entity/Player.java:3411
-    fn locale(&self) -> Locale; // paper-api/src/main/java/org/bukkit/entity/Player.java:3419
+    fn locale(&self) -> String; // paper-api/src/main/java/org/bukkit/entity/Player.java:3419
     fn get_ping(&self) -> i32; // paper-api/src/main/java/org/bukkit/entity/Player.java:3434
     fn get_locale(&self) -> String; // paper-api/src/main/java/org/bukkit/entity/Player.java:3448
     fn get_affects_spawning(&self) -> bool; // paper-api/src/main/java/org/bukkit/entity/Player.java:3457
@@ -572,10 +565,10 @@ pub trait PlayerSpigotTrait: EntitySpigotTrait {
     fn get_raw_address(&self) -> std::net::SocketAddr; // paper-api/src/main/java/org/bukkit/entity/Player.java:3731
     fn respawn(&self); // paper-api/src/main/java/org/bukkit/entity/Player.java:3738
     fn get_hidden_players(&self) -> HashSet<JRef<dyn Player>>; // paper-api/src/main/java/org/bukkit/entity/Player.java:3747
-    fn send_message_2_3(&self, position: ChatMessageType, component: BaseComponent); // paper-api/src/main/java/org/bukkit/entity/Player.java:3770
-    fn send_message_2_4(&self, position: ChatMessageType, components: &Vec<BaseComponent>); // paper-api/src/main/java/org/bukkit/entity/Player.java:3782
-    fn send_message_3(&self, position: ChatMessageType, sender: Option<Uuid>, component: BaseComponent); // paper-api/src/main/java/org/bukkit/entity/Player.java:3795
-    fn send_message_3_2(&self, position: ChatMessageType, sender: Option<Uuid>, components: &Vec<BaseComponent>); // paper-api/src/main/java/org/bukkit/entity/Player.java:3808
+    fn send_message_2_3(&self, position: (), component: ()); // paper-api/src/main/java/org/bukkit/entity/Player.java:3770
+    fn send_message_2_4(&self, position: (), components: &Vec<()>); // paper-api/src/main/java/org/bukkit/entity/Player.java:3782
+    fn send_message_3(&self, position: (), sender: Option<Uuid>, component: ()); // paper-api/src/main/java/org/bukkit/entity/Player.java:3795
+    fn send_message_3_2(&self, position: (), sender: Option<Uuid>, components: &Vec<()>); // paper-api/src/main/java/org/bukkit/entity/Player.java:3808
     fn get_ping(&self) -> i32; // paper-api/src/main/java/org/bukkit/entity/Player.java:3819
 }
 impl std::ops::Deref for dyn PlayerSpigotTrait {
@@ -590,10 +583,10 @@ impl PlayerSpigot {
         PlayerSpigot { base, this }
     } // paper-api/src/main/java/org/bukkit/entity/Player.java:3723
     pub fn new() -> JRef<Self> { Arc::new_cyclic(|this| Self::new_base(this)) }
-    pub fn send_message(&self, component: BaseComponent) {
+    pub fn send_message(&self, component: ()) {
         panic!("java.lang.UnsupportedOperationException: Not supported yet.");
     } // paper-api/src/main/java/org/bukkit/entity/Player.java:3751
-    pub fn send_message_1(&self, components: &Vec<BaseComponent>) {
+    pub fn send_message_1(&self, components: &Vec<()>) {
         panic!("java.lang.UnsupportedOperationException: Not supported yet.");
     } // paper-api/src/main/java/org/bukkit/entity/Player.java:3757
     pub fn get_raw_address(&self) -> std::net::SocketAddr {
@@ -605,16 +598,16 @@ impl PlayerSpigot {
     pub fn get_hidden_players(&self) -> HashSet<JRef<dyn Player>> {
         panic!("java.lang.UnsupportedOperationException: Not supported yet.");
     } // paper-api/src/main/java/org/bukkit/entity/Player.java:3747
-    pub fn send_message_2_3(&self, position: ChatMessageType, component: BaseComponent) {
+    pub fn send_message_2_3(&self, position: (), component: ()) {
         panic!("java.lang.UnsupportedOperationException: Not supported yet.");
     } // paper-api/src/main/java/org/bukkit/entity/Player.java:3770
-    pub fn send_message_2_4(&self, position: ChatMessageType, components: &Vec<BaseComponent>) {
+    pub fn send_message_2_4(&self, position: (), components: &Vec<()>) {
         panic!("java.lang.UnsupportedOperationException: Not supported yet.");
     } // paper-api/src/main/java/org/bukkit/entity/Player.java:3782
-    pub fn send_message_3(&self, position: ChatMessageType, sender: Option<Uuid>, component: BaseComponent) {
+    pub fn send_message_3(&self, position: (), sender: Option<Uuid>, component: ()) {
         panic!("java.lang.UnsupportedOperationException: Not supported yet.");
     } // paper-api/src/main/java/org/bukkit/entity/Player.java:3795
-    pub fn send_message_3_2(&self, position: ChatMessageType, sender: Option<Uuid>, components: &Vec<BaseComponent>) {
+    pub fn send_message_3_2(&self, position: (), sender: Option<Uuid>, components: &Vec<()>) {
         panic!("java.lang.UnsupportedOperationException: Not supported yet.");
     } // paper-api/src/main/java/org/bukkit/entity/Player.java:3808
     pub fn get_ping(&self) -> i32 {
@@ -628,10 +621,10 @@ impl PlayerSpigotTrait for PlayerSpigot {
     fn get_raw_address(&self) -> std::net::SocketAddr { PlayerSpigot::get_raw_address(self) }
     fn respawn(&self) { PlayerSpigot::respawn(self) }
     fn get_hidden_players(&self) -> HashSet<JRef<dyn Player>> { PlayerSpigot::get_hidden_players(self) }
-    fn send_message_2_3(&self, position: ChatMessageType, component: BaseComponent) { PlayerSpigot::send_message_2_3(self, position, component) }
-    fn send_message_2_4(&self, position: ChatMessageType, components: &Vec<BaseComponent>) { PlayerSpigot::send_message_2_4(self, position, components) }
-    fn send_message_3(&self, position: ChatMessageType, sender: Option<Uuid>, component: BaseComponent) { PlayerSpigot::send_message_3(self, position, sender, component) }
-    fn send_message_3_2(&self, position: ChatMessageType, sender: Option<Uuid>, components: &Vec<BaseComponent>) { PlayerSpigot::send_message_3_2(self, position, sender, components) }
+    fn send_message_2_3(&self, position: (), component: ()) { PlayerSpigot::send_message_2_3(self, position, component) }
+    fn send_message_2_4(&self, position: (), components: &Vec<()>) { PlayerSpigot::send_message_2_4(self, position, components) }
+    fn send_message_3(&self, position: (), sender: Option<Uuid>, component: ()) { PlayerSpigot::send_message_3(self, position, sender, component) }
+    fn send_message_3_2(&self, position: (), sender: Option<Uuid>, components: &Vec<()>) { PlayerSpigot::send_message_3_2(self, position, sender, components) }
     fn get_ping(&self) -> i32 { PlayerSpigot::get_ping(self) }
 }
 impl EntitySpigotTrait for PlayerSpigot {
@@ -639,9 +632,9 @@ impl EntitySpigotTrait for PlayerSpigot {
 }
 impl CommandSenderSpigotTrait for PlayerSpigot {
     fn as_command_sender_spigot(&self) -> &CommandSenderSpigot { self }
-    fn send_message(&self, component: BaseComponent) { PlayerSpigot::send_message(self, component) }
-    fn send_message_1(&self, components: &Vec<BaseComponent>) { PlayerSpigot::send_message_1(self, components) }
-    fn send_message_2(&self, sender: Option<Uuid>, component: BaseComponent) { CommandSenderSpigot::send_message_2(self, sender, component) }
-    fn send_message_2_2(&self, sender: Option<Uuid>, components: &Vec<BaseComponent>) { CommandSenderSpigot::send_message_2_2(self, sender, components) }
+    fn send_message(&self, component: ()) { PlayerSpigot::send_message(self, component) }
+    fn send_message_1(&self, components: &Vec<()>) { PlayerSpigot::send_message_1(self, components) }
+    fn send_message_2(&self, sender: Option<Uuid>, component: ()) { CommandSenderSpigot::send_message_2(self, sender, component) }
+    fn send_message_2_2(&self, sender: Option<Uuid>, components: &Vec<()>) { CommandSenderSpigot::send_message_2_2(self, sender, components) }
 }
 crate::jobject!(PlayerSpigot: dyn PlayerSpigotTrait, dyn EntitySpigotTrait, dyn CommandSenderSpigotTrait);

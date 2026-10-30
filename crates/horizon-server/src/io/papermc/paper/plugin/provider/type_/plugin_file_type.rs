@@ -6,8 +6,6 @@ use crate::io::papermc::paper::plugin::provider::configuration::paper_plugin_met
 use crate::io::papermc::paper::plugin::provider::type_::paper::paper_plugin_parent::PaperPluginParent;
 use crate::io::papermc::paper::plugin::provider::type_::plugin_type_factory::PluginTypeFactory;
 use crate::io::papermc::paper::plugin::provider::type_::spigot::spigot_plugin_provider::SpigotPluginProvider;
-use crate::java::lang::Throwable;
-use crate::java::util::jar::JarFile;
 use crate::org::bukkit::plugin::plugin_description_file::PluginDescriptionFile;
 
 // ---- class io.papermc.paper.plugin.provider.type.PluginFileType (paper-server/src/main/java/io/papermc/paper/plugin/provider/type/PluginFileType.java:23)
@@ -20,8 +18,8 @@ pub struct PluginFileType<T: JGeneric, C: JGeneric> {
 pub trait PluginFileTypeTrait<T: JGeneric, C: JGeneric>: JObject {
     fn as_plugin_file_type(&self) -> &PluginFileType<T, C>;
     fn register(&self, entrypoint_handler: JRef<dyn EntrypointHandler>, provider: T); // paper-server/src/main/java/io/papermc/paper/plugin/provider/type/PluginFileType.java:81
-    fn register_3(&self, entrypoint_handler: JRef<dyn EntrypointHandler>, file: JarFile, context: std::path::PathBuf) -> Result<T, Throwable>; // paper-server/src/main/java/io/papermc/paper/plugin/provider/type/PluginFileType.java:70
-    fn get_config(&self, file: JarFile) -> Result<C, Throwable>; // paper-server/src/main/java/io/papermc/paper/plugin/provider/type/PluginFileType.java:77
+    fn register_3(&self, entrypoint_handler: JRef<dyn EntrypointHandler>, file: (), context: std::path::PathBuf) -> Result<T, anyhow::Error>; // paper-server/src/main/java/io/papermc/paper/plugin/provider/type/PluginFileType.java:70
+    fn get_config(&self, file: ()) -> Result<C, anyhow::Error>; // paper-server/src/main/java/io/papermc/paper/plugin/provider/type/PluginFileType.java:77
 }
 impl<T: JGeneric, C: JGeneric> std::ops::Deref for dyn PluginFileTypeTrait<T, C> {
     type Target = PluginFileType<T, C>;
@@ -35,8 +33,8 @@ pub static VALUES: LazyLock<Vec<JRef<dyn PluginFileTypeTrait<JObjectRef, JObject
 impl<T: JGeneric, C: JGeneric> PluginFileType<T, C> {
     pub fn this(&self) -> JRef<dyn PluginFileTypeTrait<T, C>> { self.this.upgrade().expect("this") }
     pub fn new_base<S: PluginFileTypeTrait<T, C> + 'static>(this: &Weak<S>, config: &str, factory: JRef<dyn PluginTypeFactory<T, C>>) -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/provider/type/PluginFileType.java:52
-    pub fn guess_type(file: JarFile) -> Option<JRef<dyn PluginFileTypeTrait<JObjectRef, JObjectRef>>> { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/provider/type/PluginFileType.java:58
-    pub fn register_3(&self, entrypoint_handler: JRef<dyn EntrypointHandler>, file: JarFile, context: std::path::PathBuf) -> Result<T, Throwable> { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/provider/type/PluginFileType.java:70
-    pub fn get_config(&self, file: JarFile) -> Result<C, Throwable> { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/provider/type/PluginFileType.java:77
+    pub fn guess_type(file: ()) -> Option<JRef<dyn PluginFileTypeTrait<JObjectRef, JObjectRef>>> { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/provider/type/PluginFileType.java:58
+    pub fn register_3(&self, entrypoint_handler: JRef<dyn EntrypointHandler>, file: (), context: std::path::PathBuf) -> Result<T, anyhow::Error> { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/provider/type/PluginFileType.java:70
+    pub fn get_config(&self, file: ()) -> Result<C, anyhow::Error> { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/provider/type/PluginFileType.java:77
     pub fn get_config_types() -> Vec<String> { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/provider/type/PluginFileType.java:83
 }

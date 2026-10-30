@@ -5,8 +5,6 @@ use crate::com::mojang::brigadier::StringReader;
 use crate::com::mojang::brigadier::context::CommandContext;
 use crate::com::mojang::brigadier::suggestion::Suggestions;
 use crate::com::mojang::brigadier::suggestion::SuggestionsBuilder;
-use crate::java::lang::Throwable;
-use crate::java::util::concurrent::CompletableFuture;
 use crate::net::minecraft::commands::arguments::blocks::block_input::BlockInput;
 use crate::net::minecraft::commands::command_build_context::CommandBuildContext;
 use crate::net::minecraft::commands::command_source_stack::CommandSourceStack;
@@ -23,9 +21,9 @@ impl BlockStateArgument {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(context: JRef<dyn CommandBuildContext>) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockStateArgument.java:22
     pub fn block(context: JRef<dyn CommandBuildContext>) -> JRef<BlockStateArgument> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockStateArgument.java:26
-    pub fn parse(&self, reader: StringReader) -> Result<JRef<BlockInput>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockStateArgument.java:30
+    pub fn parse(&self, reader: StringReader) -> Result<JRef<BlockInput>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockStateArgument.java:30
     pub fn get_block(context: CommandContext<JRef<CommandSourceStack>>, name: &str) -> JRef<BlockInput> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockStateArgument.java:36
-    pub fn list_suggestions<S: JGeneric>(&self, context: CommandContext<S>, builder: SuggestionsBuilder) -> CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockStateArgument.java:40
+    pub fn list_suggestions<S: JGeneric>(&self, context: CommandContext<S>, builder: SuggestionsBuilder) -> crate::rt::CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockStateArgument.java:40
     pub fn get_examples(&self) -> Vec<String> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockStateArgument.java:45
 }
 crate::jobject!(BlockStateArgument);

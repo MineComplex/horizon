@@ -3,7 +3,6 @@
 use crate::prelude::*;
 use crate::com::mojang::serialization::Codec;
 use crate::com::mojang::serialization::MapCodec;
-use crate::java::util::function::Function;
 use crate::net::minecraft::core::holder_set::HolderSet;
 use crate::net::minecraft::world::item::slot::slot_collection::SlotCollection;
 use crate::net::minecraft::world::item::slot::slot_source::SlotSource;
@@ -14,7 +13,7 @@ use crate::net::minecraft::world::level::storage::loot::validation_context::Vali
 pub struct CompositeSlotSource {
     pub this: Weak<dyn CompositeSlotSourceTrait>,
     pub terms: JRef<dyn HolderSet<JRef<dyn SlotSource>>>, // leaf-server/src/minecraft/java/net/minecraft/world/item/slot/CompositeSlotSource.java:16
-    pub composite_slot_source: JRef<dyn Function<JRef<LootContext>, JRef<dyn SlotCollection>>>, // leaf-server/src/minecraft/java/net/minecraft/world/item/slot/CompositeSlotSource.java:17
+    pub composite_slot_source: Arc<dyn Fn(JRef<LootContext>) -> JRef<dyn SlotCollection> + Send + Sync>, // leaf-server/src/minecraft/java/net/minecraft/world/item/slot/CompositeSlotSource.java:17
 }
 pub trait CompositeSlotSourceTrait: SlotSource {
     fn as_composite_slot_source(&self) -> &CompositeSlotSource;
@@ -28,7 +27,7 @@ impl CompositeSlotSource {
     pub fn new_base<S: CompositeSlotSourceTrait + 'static>(this: &Weak<S>, terms: JRef<dyn HolderSet<JRef<dyn SlotSource>>>) -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/slot/CompositeSlotSource.java:19
     pub fn provide(&self, context: JRef<LootContext>) -> JRef<dyn SlotCollection> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/slot/CompositeSlotSource.java:71
     pub fn validate(&self, context: JRef<ValidationContext>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/slot/CompositeSlotSource.java:76
-    pub fn group(terms: JRef<dyn HolderSet<JRef<dyn SlotSource>>>) -> JRef<dyn Function<JRef<LootContext>, JRef<dyn SlotCollection>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/slot/CompositeSlotSource.java:24
-    pub fn create_codec<T: JGeneric>(factory: JRef<dyn Function<JRef<dyn HolderSet<JRef<dyn SlotSource>>>, T>>) -> MapCodec<T> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/slot/CompositeSlotSource.java:60
-    pub fn create_inline_codec<T: JGeneric>(factory: JRef<dyn Function<JRef<dyn HolderSet<JRef<dyn SlotSource>>>, T>>) -> JRef<dyn Codec<T>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/slot/CompositeSlotSource.java:64
+    pub fn group(terms: JRef<dyn HolderSet<JRef<dyn SlotSource>>>) -> Arc<dyn Fn(JRef<LootContext>) -> JRef<dyn SlotCollection> + Send + Sync> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/slot/CompositeSlotSource.java:24
+    pub fn create_codec<T: JGeneric>(factory: Arc<dyn Fn(JRef<dyn HolderSet<JRef<dyn SlotSource>>>) -> T + Send + Sync>) -> MapCodec<T> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/slot/CompositeSlotSource.java:60
+    pub fn create_inline_codec<T: JGeneric>(factory: Arc<dyn Fn(JRef<dyn HolderSet<JRef<dyn SlotSource>>>) -> T + Send + Sync>) -> JRef<dyn Codec<T>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/slot/CompositeSlotSource.java:64
 }

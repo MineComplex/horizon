@@ -5,7 +5,6 @@ use crate::com::destroystokyo::paper::exception::server_command_exception::Serve
 use crate::com::destroystokyo::paper::exception::server_command_exception::ServerCommandExceptionTrait;
 use crate::com::destroystokyo::paper::exception::server_exception::ServerException;
 use crate::com::destroystokyo::paper::exception::server_exception::ServerExceptionTrait;
-use crate::java::lang::Throwable;
 use crate::org::bukkit::command::command::CommandTrait;
 use crate::org::bukkit::command::command_sender::CommandSender;
 use crate::prelude::*;
@@ -26,7 +25,7 @@ impl ServerTabCompleteException {
         self.this.upgrade().expect("this")
     }
     pub fn new(
-        cause: Throwable,
+        cause: anyhow::Error,
         command: JRef<dyn CommandTrait>,
         command_sender: JRef<dyn CommandSender>,
         arguments: &Vec<String>,
@@ -38,7 +37,7 @@ impl ServerTabCompleteException {
     } // paper-api/src/main/java/com/destroystokyo/paper/exception/ServerTabCompleteException.java:15
     pub fn new_5(
         message: &str,
-        cause: Throwable,
+        cause: anyhow::Error,
         command: JRef<dyn CommandTrait>,
         command_sender: JRef<dyn CommandSender>,
         arguments: &Vec<String>,
@@ -57,7 +56,7 @@ impl ServerTabCompleteException {
     } // paper-api/src/main/java/com/destroystokyo/paper/exception/ServerTabCompleteException.java:11
     pub fn new_7(
         message: &str,
-        cause: Throwable,
+        cause: anyhow::Error,
         enable_suppression: bool,
         writable_stack_trace: bool,
         command: JRef<dyn CommandTrait>,

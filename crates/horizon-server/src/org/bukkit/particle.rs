@@ -3,7 +3,6 @@
 use crate::api_prelude::*;
 use crate::com::destroystokyo::paper::particle_builder::ParticleBuilder;
 use crate::io::papermc::paper::util::bound_checker::BoundChecker;
-use crate::java::lang::Class;
 use crate::org::bukkit::color::Color;
 use crate::org::bukkit::keyed::Keyed;
 use crate::org::bukkit::location::Location;
@@ -145,10 +144,10 @@ pub enum Particle {
 /// The fields each Particle constant is built with (Java: the enum constructor).
 pub struct ParticleData {
     pub key: JRef<NamespacedKey>,
-    pub data_type: Class,
+    pub data_type: crate::rt::Class,
 }
-/// Java: `Particle(String key, Class<?> data)`.
-fn particle_data(key: &str, data: Class) -> ParticleData {
+/// Java: `Particle(String key, crate::rt::Class data)`.
+fn particle_data(key: &str, data: crate::rt::Class) -> ParticleData {
     // Paper - all particles are registered
     // (key is never null here)
     ParticleData {
@@ -591,7 +590,7 @@ impl Particle {
         // key is never null: all particles are registered (Paper)
         self.data().key.clone()
     } // paper-api/src/main/java/org/bukkit/Particle.java:239
-    pub fn get_data_type(self) -> Class {
+    pub fn get_data_type(self) -> crate::rt::Class {
         self.data().data_type.clone()
     } // paper-api/src/main/java/org/bukkit/Particle.java:234
     pub fn builder(self) -> JRef<ParticleBuilder> {

@@ -4,8 +4,6 @@ use crate::prelude::*;
 use crate::io::papermc::paper::plugin::provider::classloader::class_loader_access::ClassLoaderAccess;
 use crate::io::papermc::paper::plugin::provider::classloader::configured_plugin_class_loader::ConfiguredPluginClassLoader;
 use crate::io::papermc::paper::plugin::provider::classloader::plugin_class_loader_group::PluginClassLoaderGroup;
-use crate::java::lang::Class;
-use crate::java::util::concurrent::locks::ReentrantReadWriteLock;
 
 // ---- class io.papermc.paper.plugin.entrypoint.classloader.group.LockingClassLoaderGroup (paper-server/src/main/java/io/papermc/paper/plugin/entrypoint/classloader/group/LockingClassLoaderGroup.java:14)
 pub struct LockingClassLoaderGroup {
@@ -16,7 +14,7 @@ pub struct LockingClassLoaderGroup {
 impl LockingClassLoaderGroup {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(parent: JRef<dyn PluginClassLoaderGroup>) -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/entrypoint/classloader/group/LockingClassLoaderGroup.java:20
-    pub fn get_class_by_name(&self, name: &str, resolve: bool, requester: JRef<dyn ConfiguredPluginClassLoader>) -> Option<Class> { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/entrypoint/classloader/group/LockingClassLoaderGroup.java:24
+    pub fn get_class_by_name(&self, name: &str, resolve: bool, requester: JRef<dyn ConfiguredPluginClassLoader>) -> Option<crate::rt::Class> { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/entrypoint/classloader/group/LockingClassLoaderGroup.java:24
     pub fn remove(&self, configured_plugin_class_loader: JRef<dyn ConfiguredPluginClassLoader>) { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/entrypoint/classloader/group/LockingClassLoaderGroup.java:47
     pub fn add(&self, configured_plugin_class_loader: JRef<dyn ConfiguredPluginClassLoader>) { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/entrypoint/classloader/group/LockingClassLoaderGroup.java:52
     pub fn get_access(&self) -> JRef<dyn ClassLoaderAccess> { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/entrypoint/classloader/group/LockingClassLoaderGroup.java:57
@@ -26,7 +24,7 @@ impl LockingClassLoaderGroup {
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl PluginClassLoaderGroup for LockingClassLoaderGroup {
-    fn get_class_by_name(&self, name: &str, resolve: bool, requester: JRef<dyn ConfiguredPluginClassLoader>) -> Option<Class> { LockingClassLoaderGroup::get_class_by_name(self, name, resolve, requester) }
+    fn get_class_by_name(&self, name: &str, resolve: bool, requester: JRef<dyn ConfiguredPluginClassLoader>) -> Option<crate::rt::Class> { LockingClassLoaderGroup::get_class_by_name(self, name, resolve, requester) }
     fn remove(&self, configured_plugin_class_loader: JRef<dyn ConfiguredPluginClassLoader>) { LockingClassLoaderGroup::remove(self, configured_plugin_class_loader) }
     fn add(&self, configured_plugin_class_loader: JRef<dyn ConfiguredPluginClassLoader>) { LockingClassLoaderGroup::add(self, configured_plugin_class_loader) }
     fn get_access(&self) -> JRef<dyn ClassLoaderAccess> { LockingClassLoaderGroup::get_access(self) }
@@ -36,10 +34,10 @@ crate::jobject!(LockingClassLoaderGroup: dyn PluginClassLoaderGroup);
 #[derive(Clone)]
 pub struct LockingClassLoaderGroupClassLockEntry {
     pub count: std::sync::atomic::AtomicI32,
-    pub reentrant_read_write_lock: ReentrantReadWriteLock,
+    pub reentrant_read_write_lock: (),
 }
 impl LockingClassLoaderGroupClassLockEntry {
     pub fn new() -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/entrypoint/classloader/group/LockingClassLoaderGroup.java:66
-    pub fn new_2(count: std::sync::atomic::AtomicI32, reentrant_read_write_lock: ReentrantReadWriteLock) -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/entrypoint/classloader/group/LockingClassLoaderGroup.java:66
+    pub fn new_2(count: std::sync::atomic::AtomicI32, reentrant_read_write_lock: ()) -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/entrypoint/classloader/group/LockingClassLoaderGroup.java:66
 }
 crate::jobject!(LockingClassLoaderGroupClassLockEntry);

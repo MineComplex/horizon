@@ -3,18 +3,17 @@
 use crate::prelude::*;
 use crate::io::papermc::paper::plugin::lifecycle::event::handler::configuration::lifecycle_event_handler_configuration::LifecycleEventHandlerConfiguration;
 use crate::io::papermc::paper::plugin::lifecycle::event::lifecycle_event_manager::LifecycleEventManager;
-use crate::java::util::function::BooleanSupplier;
 
 // ---- class io.papermc.paper.plugin.lifecycle.event.PaperLifecycleEventManager (paper-server/src/main/java/io/papermc/paper/plugin/lifecycle/event/PaperLifecycleEventManager.java:10)
 pub struct PaperLifecycleEventManager<O: JGeneric> {
     pub this: Weak<Self>,
     pub owner: O, // paper-server/src/main/java/io/papermc/paper/plugin/lifecycle/event/PaperLifecycleEventManager.java:13
-    pub registration_check: JRef<dyn BooleanSupplier>, // paper-server/src/main/java/io/papermc/paper/plugin/lifecycle/event/PaperLifecycleEventManager.java:14
+    pub registration_check: Arc<dyn Fn() -> bool + Send + Sync>, // paper-server/src/main/java/io/papermc/paper/plugin/lifecycle/event/PaperLifecycleEventManager.java:14
     pub _phantom: std::marker::PhantomData<(O,)>,
 }
 impl<O: JGeneric> PaperLifecycleEventManager<O> {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(owner: O, registration_check: JRef<dyn BooleanSupplier>) -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/lifecycle/event/PaperLifecycleEventManager.java:16
+    pub fn new(owner: O, registration_check: Arc<dyn Fn() -> bool + Send + Sync>) -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/lifecycle/event/PaperLifecycleEventManager.java:16
     pub fn register_event_handler(&self, handler_configuration: JRef<dyn LifecycleEventHandlerConfiguration<JObjectRef>>) { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/lifecycle/event/PaperLifecycleEventManager.java:21
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that

@@ -4,9 +4,6 @@ use crate::prelude::*;
 use crate::com::destroystokyo::paper::entity::villager::reputation::Reputation;
 use crate::com::destroystokyo::paper::entity::villager::reputation_type::ReputationType;
 use crate::com::mojang::serialization::Codec;
-use crate::java::util::function::DoublePredicate;
-use crate::java::util::function::Predicate;
-use crate::java::util::stream::Stream;
 use crate::net::minecraft::util::random_source::RandomSource;
 use crate::net::minecraft::world::entity::ai::gossip::gossip_type::GossipType;
 
@@ -23,13 +20,13 @@ impl GossipContainer {
     pub fn new_1(entries: &Vec<GossipContainerGossipEntry>) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/gossip/GossipContainer.java:38
     pub fn get_gossip_entries(&self) -> HashMap<Uuid, HashMap<GossipType, i32>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/gossip/GossipContainer.java:42
     pub fn decay(&self) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/gossip/GossipContainer.java:52
-    pub fn unpack(&self) -> Stream<GossipContainerGossipEntry> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/gossip/GossipContainer.java:64
+    pub fn unpack(&self) -> Box<dyn Iterator<Item = GossipContainerGossipEntry> + Send> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/gossip/GossipContainer.java:64
     pub fn decompress(&self) -> Vec<GossipContainerGossipEntry> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/gossip/GossipContainer.java:69
     pub fn select_gossips_for_transfer(&self, random: JRef<dyn RandomSource>, max_count: i32) -> Vec<GossipContainerGossipEntry> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/gossip/GossipContainer.java:82
     pub fn get_or_create(&self, target: Uuid) -> JRef<GossipContainerEntityGossips> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/gossip/GossipContainer.java:108
     pub fn transfer_from(&self, source: JRef<GossipContainer>, random: JRef<dyn RandomSource>, max_count: i32) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/gossip/GossipContainer.java:112
-    pub fn get_reputation(&self, entity: Uuid, types: JRef<dyn Predicate<GossipType>>) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/gossip/GossipContainer.java:123
-    pub fn get_count_for_type(&self, type_: GossipType, value_test: JRef<dyn DoublePredicate>) -> i64 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/gossip/GossipContainer.java:128
+    pub fn get_reputation(&self, entity: Uuid, types: Arc<dyn Fn(GossipType) -> bool + Send + Sync>) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/gossip/GossipContainer.java:123
+    pub fn get_count_for_type(&self, type_: GossipType, value_test: Arc<dyn Fn(f64) -> bool + Send + Sync>) -> i64 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/gossip/GossipContainer.java:128
     pub fn add(&self, target: Uuid, type_: GossipType, amount_to_add: i32) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/gossip/GossipContainer.java:132
     pub fn remove(&self, type_: GossipType) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/gossip/GossipContainer.java:155
     pub fn remove_2(&self, target: Uuid, type_: GossipType) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/gossip/GossipContainer.java:145
@@ -50,9 +47,9 @@ pub static ENTITY_GOSSIPS_TYPES: LazyLock<Vec<GossipType>> = LazyLock::new(|| to
 impl GossipContainerEntityGossips {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/gossip/GossipContainer.java:190
-    pub fn weighted_value(&self, types: JRef<dyn Predicate<GossipType>>) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/gossip/GossipContainer.java:193
+    pub fn weighted_value(&self, types: Arc<dyn Fn(GossipType) -> bool + Send + Sync>) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/gossip/GossipContainer.java:193
     pub fn decompress(&self, target: Uuid) -> Vec<GossipContainerGossipEntry> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/gossip/GossipContainer.java:204
-    pub fn unpack(&self, target: Uuid) -> Stream<GossipContainerGossipEntry> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/gossip/GossipContainer.java:213
+    pub fn unpack(&self, target: Uuid) -> Box<dyn Iterator<Item = GossipContainerGossipEntry> + Send> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/gossip/GossipContainer.java:213
     pub fn decay(&self) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/gossip/GossipContainer.java:217
     pub fn is_empty(&self) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/gossip/GossipContainer.java:231
     pub fn make_sure_value_isnt_too_low_or_too_high(&self, type_: GossipType) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/gossip/GossipContainer.java:235

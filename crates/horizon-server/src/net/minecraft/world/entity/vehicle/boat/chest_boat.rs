@@ -5,11 +5,6 @@ use crate::ca::spottedleaf::moonrise::patches::chunk_system::entity::chunk_syste
 use crate::ca::spottedleaf::moonrise::patches::chunk_system::level::chunk::chunk_data::ChunkData;
 use crate::ca::spottedleaf::moonrise::patches::entity_tracker::entity_tracker_entity::EntityTrackerEntity;
 use crate::com::destroystokyo::paper::loottable::paper_lootable_inventory_data::PaperLootableInventoryData;
-use crate::java::util::function::BiConsumer;
-use crate::java::util::function::Consumer;
-use crate::java::util::function::Predicate;
-use crate::java::util::function::Supplier;
-use crate::java::util::stream::Stream;
 use crate::net::caffeinemc::mods::lithium::api::inventory::lithium_cooldown_receiving_inventory::LithiumCooldownReceivingInventory;
 use crate::net::caffeinemc::mods::lithium::api::inventory::lithium_transfer_condition_inventory::LithiumTransferConditionInventory;
 use crate::net::caffeinemc::mods::lithium::common::world::in_world_tracking::maybe_in_level_object::MaybeInLevelObject;
@@ -128,7 +123,6 @@ use crate::org::bukkit::event::entity::entity_remove_event::EntityRemoveEventCau
 use crate::org::bukkit::event::player::player_teleport_event::PlayerTeleportEventTeleportCause;
 use crate::org::bukkit::inventory::inventory_holder::InventoryHolder;
 use crate::org::bukkit::location::Location;
-use crate::org::joml::Quaternionf;
 
 // ---- class net.minecraft.world.entity.vehicle.boat.ChestBoat (leaf-server/src/minecraft/java/net/minecraft/world/entity/vehicle/boat/ChestBoat.java:9)
 pub struct ChestBoat {
@@ -141,7 +135,7 @@ impl std::ops::Deref for ChestBoat {
 }
 impl ChestBoat {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(type_: JRef<EntityType<JRef<ChestBoat>>>, level: JRef<dyn LevelTrait>, drop_item: JRef<dyn Supplier<JRef<dyn ItemTrait>>>) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/vehicle/boat/ChestBoat.java:10
+    pub fn new(type_: JRef<EntityType<JRef<ChestBoat>>>, level: JRef<dyn LevelTrait>, drop_item: Arc<dyn Fn() -> JRef<dyn ItemTrait> + Send + Sync>) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/vehicle/boat/ChestBoat.java:10
     pub fn ride_height(&self, dimensions: EntityDimensions) -> f64 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/vehicle/boat/ChestBoat.java:14
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
@@ -388,7 +382,7 @@ impl EntityTrait for ChestBoat {
     fn spawn_at_location_2_2(&self, level: JRef<ServerLevel>, entity: JRef<ItemEntity>) -> Option<JRef<ItemEntity>> { crate::net::minecraft::world::entity::entity::Entity::spawn_at_location_2_2(self, level, entity) }
     fn spawn_at_location_3(&self, level: JRef<ServerLevel>, item_stack: JRef<ItemStack>, offset: Vec3) -> Option<JRef<ItemEntity>> { crate::net::minecraft::world::entity::entity::Entity::spawn_at_location_3(self, level, item_stack, offset) }
     fn spawn_at_location_3_2(&self, level: JRef<ServerLevel>, item_stack: JRef<ItemStack>, offset: f32) -> Option<JRef<ItemEntity>> { crate::net::minecraft::world::entity::entity::Entity::spawn_at_location_3_2(self, level, item_stack, offset) }
-    fn spawn_at_location_4(&self, level: JRef<ServerLevel>, item_stack: JRef<ItemStack>, offset: Vec3, delayed_add_consumer: JRef<dyn Consumer<JObjectRef>>) -> Option<JRef<ItemEntity>> { crate::net::minecraft::world::entity::entity::Entity::spawn_at_location_4(self, level, item_stack, offset, delayed_add_consumer) }
+    fn spawn_at_location_4(&self, level: JRef<ServerLevel>, item_stack: JRef<ItemStack>, offset: Vec3, delayed_add_consumer: Arc<dyn Fn(JObjectRef) + Send + Sync>) -> Option<JRef<ItemEntity>> { crate::net::minecraft::world::entity::entity::Entity::spawn_at_location_4(self, level, item_stack, offset, delayed_add_consumer) }
     fn is_alive(&self) -> bool { crate::net::minecraft::world::entity::entity::Entity::is_alive(self) }
     fn is_in_wall(&self) -> bool { crate::net::minecraft::world::entity::entity::Entity::is_in_wall(self) }
     fn interact(&self, player: JRef<dyn PlayerTrait>, hand: InteractionHand, location: Vec3) -> JRef<dyn InteractionResult> { AbstractChestBoat::interact(self, player, hand, location) }
@@ -425,7 +419,7 @@ impl EntityTrait for ChestBoat {
     fn lerp_head_to(&self, y_rot: f32, steps: i32) { crate::net::minecraft::world::entity::entity::Entity::lerp_head_to(self, y_rot, steps) }
     fn get_pick_radius(&self) -> f32 { crate::net::minecraft::world::entity::entity::Entity::get_pick_radius(self) }
     fn get_look_angle(&self) -> Vec3 { crate::net::minecraft::world::entity::entity::Entity::get_look_angle(self) }
-    fn get_look_quaternion(&self) -> Quaternionf { crate::net::minecraft::world::entity::entity::Entity::get_look_quaternion(self) }
+    fn get_look_quaternion(&self) -> glam::Quat { crate::net::minecraft::world::entity::entity::Entity::get_look_quaternion(self) }
     fn get_head_look_angle(&self) -> Vec3 { crate::net::minecraft::world::entity::entity::Entity::get_head_look_angle(self) }
     fn get_hand_holding_item_angle(&self, item: JRef<dyn ItemTrait>) -> Vec3 { crate::net::minecraft::world::entity::entity::Entity::get_hand_holding_item_angle(self, item) }
     fn get_rotation_vector(&self) -> Vec2 { crate::net::minecraft::world::entity::entity::Entity::get_rotation_vector(self) }
@@ -460,7 +454,7 @@ impl EntityTrait for ChestBoat {
     fn is_invisible(&self) -> bool { crate::net::minecraft::world::entity::entity::Entity::is_invisible(self) }
     fn is_invisible_to(&self, player: JRef<dyn PlayerTrait>) -> bool { crate::net::minecraft::world::entity::entity::Entity::is_invisible_to(self, player) }
     fn is_on_rails(&self) -> bool { crate::net::minecraft::world::entity::entity::Entity::is_on_rails(self) }
-    fn update_dynamic_game_event_listener(&self, action: JRef<dyn BiConsumer<JRef<DynamicGameEventListener<JObjectRef>>, JRef<ServerLevel>>>) { crate::net::minecraft::world::entity::entity::Entity::update_dynamic_game_event_listener(self, action) }
+    fn update_dynamic_game_event_listener(&self, action: Arc<dyn Fn(JRef<DynamicGameEventListener<JObjectRef>>, JRef<ServerLevel>) + Send + Sync>) { crate::net::minecraft::world::entity::entity::Entity::update_dynamic_game_event_listener(self, action) }
     fn get_team(&self) -> Option<JRef<PlayerTeam>> { crate::net::minecraft::world::entity::entity::Entity::get_team(self) }
     fn is_allied_to_1(&self, other: Option<JRef<dyn TeamTrait>>) -> bool { crate::net::minecraft::world::entity::entity::Entity::is_allied_to_1(self, other) }
     fn considers_entity_as_ally(&self, other: JRef<dyn EntityTrait>) -> bool { crate::net::minecraft::world::entity::entity::Entity::considers_entity_as_ally(self, other) }
@@ -546,7 +540,7 @@ impl EntityTrait for ChestBoat {
     fn get_controlling_passenger(&self) -> Option<JRef<dyn LivingEntityTrait>> { AbstractBoat::get_controlling_passenger(self) }
     fn get_first_passenger(&self) -> Option<JRef<dyn EntityTrait>> { crate::net::minecraft::world::entity::entity::Entity::get_first_passenger(self) }
     fn has_passenger(&self, entity: JRef<dyn EntityTrait>) -> bool { crate::net::minecraft::world::entity::entity::Entity::has_passenger(self, entity) }
-    fn has_passenger_1(&self, test: JRef<dyn Predicate<JRef<dyn EntityTrait>>>) -> bool { crate::net::minecraft::world::entity::entity::Entity::has_passenger_1(self, test) }
+    fn has_passenger_1(&self, test: Arc<dyn Fn(JRef<dyn EntityTrait>) -> bool + Send + Sync>) -> bool { crate::net::minecraft::world::entity::entity::Entity::has_passenger_1(self, test) }
     fn get_indirect_passengers(&self) -> Vec<JRef<dyn EntityTrait>> { crate::net::minecraft::world::entity::entity::Entity::get_indirect_passengers(self) }
     fn count_player_passengers(&self) -> i32 { crate::net::minecraft::world::entity::entity::Entity::count_player_passengers(self) }
     fn has_exactly_one_player_passenger(&self) -> bool { crate::net::minecraft::world::entity::entity::Entity::has_exactly_one_player_passenger(self) }
@@ -706,8 +700,8 @@ impl EntityAccess for ChestBoat {
     fn block_position(&self) -> BlockPos { crate::net::minecraft::world::entity::entity::Entity::block_position(self) }
     fn get_bounding_box(&self) -> AABB { crate::net::minecraft::world::entity::entity::Entity::get_bounding_box(self) }
     fn set_level_callback(&self, callback: JRef<dyn EntityInLevelCallback>) { crate::net::minecraft::world::entity::entity::Entity::set_level_callback(self, callback) }
-    fn get_self_and_passengers(&self) -> Stream<JRef<dyn EntityAccess>> { crate::net::minecraft::world::entity::entity::Entity::get_self_and_passengers(self) }
-    fn get_passengers_and_self(&self) -> Stream<JRef<dyn EntityAccess>> { crate::net::minecraft::world::entity::entity::Entity::get_passengers_and_self(self) }
+    fn get_self_and_passengers(&self) -> Box<dyn Iterator<Item = JRef<dyn EntityAccess>> + Send> { crate::net::minecraft::world::entity::entity::Entity::get_self_and_passengers(self) }
+    fn get_passengers_and_self(&self) -> Box<dyn Iterator<Item = JRef<dyn EntityAccess>> + Send> { crate::net::minecraft::world::entity::entity::Entity::get_passengers_and_self(self) }
     fn set_removed_2(&self, removal_reason: EntityRemovalReason, event_cause: EntityRemoveEventCause) { crate::net::minecraft::world::entity::entity::Entity::set_removed_2(self, removal_reason, event_cause) }
     fn should_be_saved(&self) -> bool { crate::net::minecraft::world::entity::entity::Entity::should_be_saved(self) }
     fn is_always_ticking(&self) -> bool { crate::net::minecraft::world::entity::entity::Entity::is_always_ticking(self) }

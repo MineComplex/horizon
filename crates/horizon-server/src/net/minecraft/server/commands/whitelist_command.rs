@@ -3,7 +3,6 @@
 use crate::prelude::*;
 use crate::com::mojang::brigadier::command_dispatcher::CommandDispatcher;
 use crate::com::mojang::brigadier::exceptions::SimpleCommandExceptionType;
-use crate::java::lang::Throwable;
 use crate::net::minecraft::commands::command_source_stack::CommandSourceStack;
 use crate::net::minecraft::server::players::name_and_id::NameAndId;
 
@@ -20,10 +19,10 @@ impl WhitelistCommand {
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/WhitelistCommand.java:19
     pub fn register(dispatcher: JRef<CommandDispatcher<JRef<CommandSourceStack>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/WhitelistCommand.java:33
     pub fn reload(source: JRef<CommandSourceStack>) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/WhitelistCommand.java:72
-    pub fn add_players(source: JRef<CommandSourceStack>, targets: &Vec<NameAndId>) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/WhitelistCommand.java:79
-    pub fn remove_players(source: JRef<CommandSourceStack>, targets: &Vec<NameAndId>) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/WhitelistCommand.java:99
-    pub fn enable_whitelist(source: JRef<CommandSourceStack>) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/WhitelistCommand.java:120
-    pub fn disable_whitelist(source: JRef<CommandSourceStack>) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/WhitelistCommand.java:131
+    pub fn add_players(source: JRef<CommandSourceStack>, targets: &Vec<NameAndId>) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/WhitelistCommand.java:79
+    pub fn remove_players(source: JRef<CommandSourceStack>, targets: &Vec<NameAndId>) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/WhitelistCommand.java:99
+    pub fn enable_whitelist(source: JRef<CommandSourceStack>) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/WhitelistCommand.java:120
+    pub fn disable_whitelist(source: JRef<CommandSourceStack>) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/WhitelistCommand.java:131
     pub fn show_list(source: JRef<CommandSourceStack>) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/WhitelistCommand.java:141
 }
 crate::jobject!(WhitelistCommand);

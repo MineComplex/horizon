@@ -3,8 +3,6 @@
 use crate::prelude::*;
 use crate::com::mojang::serialization::Codec;
 use crate::com::mojang::serialization::MapCodec;
-use crate::java::util::function::IntFunction;
-use crate::java::util::function::Predicate;
 use crate::net::minecraft::core::block_pos::BlockPos;
 use crate::net::minecraft::core::holder::Holder;
 use crate::net::minecraft::core::holder_set::HolderSet;
@@ -67,7 +65,7 @@ impl StructureTrait for MineshaftStructure {
     fn step(&self) -> GenerationStepDecoration { Structure::step(self) }
     fn terrain_adaptation(&self) -> TerrainAdjustment { Structure::terrain_adaptation(self) }
     fn adjust_bounding_box(&self, bounding_box: JRef<BoundingBox>) -> JRef<BoundingBox> { Structure::adjust_bounding_box(self, bounding_box) }
-    fn generate(&self, selected: JRef<dyn Holder<JRef<dyn StructureTrait>>>, dimension: JRef<ResourceKey<JRef<dyn LevelTrait>>>, registry_access: JRef<dyn RegistryAccess>, chunk_generator: JRef<dyn ChunkGeneratorTrait>, biome_source: JRef<dyn BiomeSourceTrait>, climate_sampler: ClimateSampler, random_state: JRef<RandomState>, structure_template_manager: JRef<StructureTemplateManager>, seed: i64, source_chunk_pos: ChunkPos, references: i32, height_accessor: JRef<dyn LevelHeightAccessor>, valid_biome: JRef<dyn Predicate<JRef<dyn Holder<JRef<Biome>>>>>) -> JRef<StructureStart> { Structure::generate(self, selected, dimension, registry_access, chunk_generator, biome_source, climate_sampler, random_state, structure_template_manager, seed, source_chunk_pos, references, height_accessor, valid_biome) }
+    fn generate(&self, selected: JRef<dyn Holder<JRef<dyn StructureTrait>>>, dimension: JRef<ResourceKey<JRef<dyn LevelTrait>>>, registry_access: JRef<dyn RegistryAccess>, chunk_generator: JRef<dyn ChunkGeneratorTrait>, biome_source: JRef<dyn BiomeSourceTrait>, climate_sampler: ClimateSampler, random_state: JRef<RandomState>, structure_template_manager: JRef<StructureTemplateManager>, seed: i64, source_chunk_pos: ChunkPos, references: i32, height_accessor: JRef<dyn LevelHeightAccessor>, valid_biome: Arc<dyn Fn(JRef<dyn Holder<JRef<Biome>>>) -> bool + Send + Sync>) -> JRef<StructureStart> { Structure::generate(self, selected, dimension, registry_access, chunk_generator, biome_source, climate_sampler, random_state, structure_template_manager, seed, source_chunk_pos, references, height_accessor, valid_biome) }
     fn after_place(&self, level: JRef<dyn WorldGenLevel>, structure_manager: JRef<dyn StructureManagerTrait>, generator: JRef<dyn ChunkGeneratorTrait>, random: JRef<dyn RandomSource>, chunk_bb: JRef<BoundingBox>, chunk_pos: ChunkPos, pieces: PiecesContainer) { Structure::after_place(self, level, structure_manager, generator, random, chunk_bb, chunk_pos, pieces) }
     fn get_lowest_y_in5by5_box(&self, context: StructureGenerationContext, block_x: i32, block_z: i32, rotation: Rotation) -> BlockPos { Structure::get_lowest_y_in5by5_box(self, context, block_x, block_z, rotation) }
     fn find_generation_point(&self, context: StructureGenerationContext) -> Option<StructureGenerationStub> { MineshaftStructure::find_generation_point(self, context) }
@@ -89,7 +87,7 @@ pub struct MineshaftStructureTypeData {
     pub fence_state: JRef<BlockState>,
 }
 pub static TYPE_CODEC: LazyLock<JRef<dyn Codec<MineshaftStructureType>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/structure/structures/MineshaftStructure.java:77
-pub static TYPE_BY_ID: LazyLock<JRef<dyn IntFunction<MineshaftStructureType>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/structure/structures/MineshaftStructure.java:78
+pub static TYPE_BY_ID: LazyLock<Arc<dyn Fn(i32) -> MineshaftStructureType + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/structure/structures/MineshaftStructure.java:78
 impl MineshaftStructureType {
     pub const VALUES: [MineshaftStructureType; 2] = [MineshaftStructureType::NORMAL, MineshaftStructureType::MESA];
     pub fn ordinal(self) -> i32 { self as i32 }

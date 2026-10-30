@@ -9,8 +9,6 @@ use crate::io::papermc::paper::plugin::provider::plugin_provider::PluginProvider
 use crate::io::papermc::paper::plugin::provider::provider_status::ProviderStatus;
 use crate::io::papermc::paper::plugin::provider::provider_status_holder::ProviderStatusHolder;
 use crate::io::papermc::paper::plugin::provider::type_::plugin_type_factory::PluginTypeFactory;
-use crate::java::util::jar::JarFile;
-use crate::java::util::logging::Logger;
 use crate::net::kyori::adventure::text::logger::slf4j::ComponentLogger;
 use crate::org::bukkit::plugin::java::java_plugin::JavaPluginTrait;
 use crate::org::bukkit::plugin::java::library_loader::LibraryLoader;
@@ -21,8 +19,8 @@ pub struct SpigotPluginProvider {
     pub this: Weak<Self>,
     pub path: std::path::PathBuf, // paper-server/src/main/java/io/papermc/paper/plugin/provider/type/spigot/SpigotPluginProvider.java:39
     pub description: JRef<PluginDescriptionFile>, // paper-server/src/main/java/io/papermc/paper/plugin/provider/type/spigot/SpigotPluginProvider.java:40
-    pub jar_file: JarFile, // paper-server/src/main/java/io/papermc/paper/plugin/provider/type/spigot/SpigotPluginProvider.java:41
-    pub logger: Logger, // paper-server/src/main/java/io/papermc/paper/plugin/provider/type/spigot/SpigotPluginProvider.java:42
+    pub jar_file: (), // paper-server/src/main/java/io/papermc/paper/plugin/provider/type/spigot/SpigotPluginProvider.java:41
+    pub logger: (), // paper-server/src/main/java/io/papermc/paper/plugin/provider/type/spigot/SpigotPluginProvider.java:42
     pub paper_library_paths: Mut<Vec<std::path::PathBuf>>, // paper-server/src/main/java/io/papermc/paper/plugin/provider/type/spigot/SpigotPluginProvider.java:43
     pub component_logger: ComponentLogger, // paper-server/src/main/java/io/papermc/paper/plugin/provider/type/spigot/SpigotPluginProvider.java:44
     pub status: Mut<ProviderStatus>, // paper-server/src/main/java/io/papermc/paper/plugin/provider/type/spigot/SpigotPluginProvider.java:45
@@ -32,9 +30,9 @@ pub static FACTORY: LazyLock<JRef<dyn PluginTypeFactory<JRef<SpigotPluginProvide
 pub static LIBRARY_LOADER: LazyLock<JRef<LibraryLoader>> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/plugin/provider/type/spigot/SpigotPluginProvider.java:38
 impl SpigotPluginProvider {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(path: std::path::PathBuf, file: JarFile, description: JRef<PluginDescriptionFile>, paper_library_paths: &Vec<std::path::PathBuf>) -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/provider/type/spigot/SpigotPluginProvider.java:48
+    pub fn new(path: std::path::PathBuf, file: (), description: JRef<PluginDescriptionFile>, paper_library_paths: &Vec<std::path::PathBuf>) -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/provider/type/spigot/SpigotPluginProvider.java:48
     pub fn get_source(&self) -> std::path::PathBuf { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/provider/type/spigot/SpigotPluginProvider.java:57
-    pub fn file(&self) -> JarFile { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/provider/type/spigot/SpigotPluginProvider.java:62
+    pub fn file(&self) -> () { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/provider/type/spigot/SpigotPluginProvider.java:62
     pub fn create_instance(&self) -> JRef<dyn JavaPluginTrait> { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/provider/type/spigot/SpigotPluginProvider.java:67
     pub fn get_meta(&self) -> JRef<PluginDescriptionFile> { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/provider/type/spigot/SpigotPluginProvider.java:147
     pub fn get_logger(&self) -> ComponentLogger { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/provider/type/spigot/SpigotPluginProvider.java:152
@@ -49,7 +47,7 @@ impl SpigotPluginProvider {
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl PluginProvider<JRef<dyn JavaPluginTrait>> for SpigotPluginProvider {
     fn get_source(&self) -> std::path::PathBuf { SpigotPluginProvider::get_source(self) }
-    fn file(&self) -> JarFile { SpigotPluginProvider::file(self) }
+    fn file(&self) -> () { SpigotPluginProvider::file(self) }
     fn create_instance(&self) -> T { SpigotPluginProvider::create_instance(self) }
     fn get_meta(&self) -> JRef<dyn PluginMeta> { SpigotPluginProvider::get_meta(self) }
     fn get_logger(&self) -> ComponentLogger { SpigotPluginProvider::get_logger(self) }

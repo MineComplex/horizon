@@ -3,8 +3,6 @@
 use crate::prelude::*;
 use crate::com::mojang::serialization::Codec;
 use crate::com::mojang::serialization::MapCodec;
-use crate::io::netty::buffer::ByteBuf;
-use crate::java::util::function::IntFunction;
 use crate::net::minecraft::network::codec::stream_codec::StreamCodec;
 use crate::net::minecraft::resources::identifier::Identifier;
 use crate::net::minecraft::util::string_representable::StringRepresentable;
@@ -18,7 +16,7 @@ pub struct AttributeModifier {
 }
 pub static MAP_CODEC: LazyLock<MapCodec<AttributeModifier>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/attributes/AttributeModifier.java:15
 pub static CODEC: LazyLock<JRef<dyn Codec<AttributeModifier>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/attributes/AttributeModifier.java:23
-pub static STREAM_CODEC: LazyLock<JRef<dyn StreamCodec<ByteBuf, AttributeModifier>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/attributes/AttributeModifier.java:24
+pub static STREAM_CODEC: LazyLock<JRef<dyn StreamCodec<bytes::BytesMut, AttributeModifier>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/attributes/AttributeModifier.java:24
 impl AttributeModifier {
     pub fn new() -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/attributes/AttributeModifier.java:14
     pub fn new_3(id: JRef<Identifier>, amount: f64, operation: AttributeModifierOperation) -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/attributes/AttributeModifier.java:14
@@ -37,8 +35,8 @@ pub struct AttributeModifierOperationData {
     pub name: String,
     pub id: i32,
 }
-pub static OPERATION_BY_ID: LazyLock<JRef<dyn IntFunction<AttributeModifierOperation>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/attributes/AttributeModifier.java:43
-pub static OPERATION_STREAM_CODEC: LazyLock<JRef<dyn StreamCodec<ByteBuf, AttributeModifierOperation>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/attributes/AttributeModifier.java:46
+pub static OPERATION_BY_ID: LazyLock<Arc<dyn Fn(i32) -> AttributeModifierOperation + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/attributes/AttributeModifier.java:43
+pub static OPERATION_STREAM_CODEC: LazyLock<JRef<dyn StreamCodec<bytes::BytesMut, AttributeModifierOperation>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/attributes/AttributeModifier.java:46
 pub static OPERATION_CODEC: LazyLock<JRef<dyn Codec<AttributeModifierOperation>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/attributes/AttributeModifier.java:47
 impl AttributeModifierOperation {
     pub const VALUES: [AttributeModifierOperation; 3] = [AttributeModifierOperation::ADD_VALUE, AttributeModifierOperation::ADD_MULTIPLIED_BASE, AttributeModifierOperation::ADD_MULTIPLIED_TOTAL];

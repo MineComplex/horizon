@@ -3,8 +3,6 @@
 use crate::prelude::*;
 use crate::com::mojang::brigadier::command_dispatcher::CommandDispatcher;
 use crate::com::mojang::brigadier::exceptions::SimpleCommandExceptionType;
-use crate::java::lang::Throwable;
-use crate::java::util::function::Predicate;
 use crate::net::minecraft::commands::command_source_stack::CommandSourceStack;
 use crate::net::minecraft::server::commands::command_response_tracker::CommandResponseTrackerMessages;
 use crate::net::minecraft::server::level::server_player::ServerPlayer;
@@ -17,14 +15,14 @@ pub struct RecipeCommand {
 }
 pub static ERROR_GIVE_FAILED: LazyLock<SimpleCommandExceptionType> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/RecipeCommand.java:20
 pub static ERROR_TAKE_FAILED: LazyLock<SimpleCommandExceptionType> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/RecipeCommand.java:21
-pub static LEARNABLE_RECIPE: LazyLock<JRef<dyn Predicate<JRef<dyn Recipe<JObjectRef>>>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/RecipeCommand.java:22
+pub static LEARNABLE_RECIPE: LazyLock<Arc<dyn Fn(JRef<dyn Recipe<JObjectRef>>) -> bool + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/RecipeCommand.java:22
 pub static RESPONSE_GIVE: LazyLock<CommandResponseTrackerMessages<JRef<ServerPlayer>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/RecipeCommand.java:23
 pub static RESPONSE_TAKE: LazyLock<CommandResponseTrackerMessages<JRef<ServerPlayer>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/RecipeCommand.java:28
 impl RecipeCommand {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/RecipeCommand.java:19
     pub fn register(dispatcher: JRef<CommandDispatcher<JRef<CommandSourceStack>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/RecipeCommand.java:34
-    pub fn give_recipes(source: JRef<CommandSourceStack>, players: &Vec<JRef<ServerPlayer>>, recipes: &Vec<RecipeHolder<JObjectRef>>) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/RecipeCommand.java:93
-    pub fn take_recipes(source: JRef<CommandSourceStack>, players: &Vec<JRef<ServerPlayer>>, recipes: &Vec<RecipeHolder<JObjectRef>>) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/RecipeCommand.java:103
+    pub fn give_recipes(source: JRef<CommandSourceStack>, players: &Vec<JRef<ServerPlayer>>, recipes: &Vec<RecipeHolder<JObjectRef>>) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/RecipeCommand.java:93
+    pub fn take_recipes(source: JRef<CommandSourceStack>, players: &Vec<JRef<ServerPlayer>>, recipes: &Vec<RecipeHolder<JObjectRef>>) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/RecipeCommand.java:103
 }
 crate::jobject!(RecipeCommand);

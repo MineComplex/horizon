@@ -4,7 +4,6 @@ use crate::prelude::*;
 use crate::io::papermc::paper::plugin::entrypoint::entrypoint_handler::EntrypointHandler;
 use crate::io::papermc::paper::plugin::provider::source::file_provider_source::FileProviderSource;
 use crate::io::papermc::paper::plugin::provider::source::provider_source::ProviderSource;
-use crate::java::lang::Throwable;
 
 // ---- class io.papermc.paper.plugin.provider.source.PluginFlagProviderSource (paper-server/src/main/java/io/papermc/paper/plugin/provider/source/PluginFlagProviderSource.java:14)
 pub struct PluginFlagProviderSource {
@@ -21,7 +20,7 @@ impl PluginFlagProviderSource {
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl ProviderSource<Vec<std::path::PathBuf>, Vec<std::path::PathBuf>> for PluginFlagProviderSource {
-    fn prepare_context(&self, context: I) -> Result<C, Throwable> { PluginFlagProviderSource::prepare_context(self, context) }
-    fn register_providers(&self, entrypoint_handler: JRef<dyn EntrypointHandler>, context: C) -> Result<(), Throwable> { PluginFlagProviderSource::register_providers(self, entrypoint_handler, context) }
+    fn prepare_context(&self, context: I) -> Result<C, anyhow::Error> { PluginFlagProviderSource::prepare_context(self, context) }
+    fn register_providers(&self, entrypoint_handler: JRef<dyn EntrypointHandler>, context: C) -> Result<(), anyhow::Error> { PluginFlagProviderSource::register_providers(self, entrypoint_handler, context) }
 }
 crate::jobject!(PluginFlagProviderSource);

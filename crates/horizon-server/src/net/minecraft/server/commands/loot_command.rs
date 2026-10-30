@@ -5,7 +5,6 @@ use crate::com::mojang::brigadier::builder::argument_builder::ArgumentBuilderTra
 use crate::com::mojang::brigadier::command_dispatcher::CommandDispatcher;
 use crate::com::mojang::brigadier::context::CommandContext;
 use crate::com::mojang::brigadier::exceptions::DynamicCommandExceptionType;
-use crate::java::lang::Throwable;
 use crate::net::minecraft::commands::command_build_context::CommandBuildContext;
 use crate::net::minecraft::commands::command_source_stack::CommandSourceStack;
 use crate::net::minecraft::core::block_pos::BlockPos;
@@ -38,28 +37,28 @@ impl LootCommand {
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/LootCommand.java:46
     pub fn register(dispatcher: JRef<CommandDispatcher<JRef<CommandSourceStack>>>, context: JRef<dyn CommandBuildContext>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/LootCommand.java:67
     pub fn add_targets<T: JGeneric>(root: T, tail: JRef<dyn LootCommandTailProvider>) -> T { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/LootCommand.java:180
-    pub fn block_distribute(source: JRef<CommandSourceStack>, pos: BlockPos, drops: &Vec<JRef<ItemStack>>, used_items: JRef<CommandResponseTracker<JRef<ItemStack>>>) -> Result<(), Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/LootCommand.java:271
+    pub fn block_distribute(source: JRef<CommandSourceStack>, pos: BlockPos, drops: &Vec<JRef<ItemStack>>, used_items: JRef<CommandResponseTracker<JRef<ItemStack>>>) -> Result<(), anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/LootCommand.java:271
     pub fn distribute_to_container(container: JRef<dyn Container>, item_stack: JRef<ItemStack>) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/LootCommand.java:284
-    pub fn block_replace(source: JRef<CommandSourceStack>, pos: BlockPos, start_slot: i32, slot_count: i32, drops: &Vec<JRef<ItemStack>>, used_items: JRef<CommandResponseTracker<JRef<ItemStack>>>) -> Result<(), Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/LootCommand.java:309
+    pub fn block_replace(source: JRef<CommandSourceStack>, pos: BlockPos, start_slot: i32, slot_count: i32, drops: &Vec<JRef<ItemStack>>, used_items: JRef<CommandResponseTracker<JRef<ItemStack>>>) -> Result<(), anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/LootCommand.java:309
     pub fn can_merge_items(a: JRef<ItemStack>, b: JRef<ItemStack>) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/LootCommand.java:333
     pub fn player_give(players: &Vec<JRef<ServerPlayer>>, drops: &Vec<JRef<ItemStack>>, used_items: JRef<CommandResponseTracker<JRef<ItemStack>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/LootCommand.java:337
     pub fn set_slots(entity: JRef<dyn EntityTrait>, items_to_set: &Vec<JRef<ItemStack>>, start_slot: i32, count: i32, used_items: JRef<CommandResponseTracker<JRef<ItemStack>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/LootCommand.java:347
     pub fn entity_replace(entities: &Vec<JRef<dyn EntityTrait>>, start_slot: i32, count: i32, drops: &Vec<JRef<ItemStack>>, used_items: JRef<CommandResponseTracker<JRef<ItemStack>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/LootCommand.java:359
     pub fn drop_in_world(source: JRef<CommandSourceStack>, pos: Vec3, drops: &Vec<JRef<ItemStack>>, used_items: JRef<CommandResponseTracker<JRef<ItemStack>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/LootCommand.java:376
-    pub fn get_source_hand_item(source: JRef<CommandSourceStack>, slot: EquipmentSlot) -> Result<JRef<ItemStack>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/LootCommand.java:388
-    pub fn drop_block_loot(context: CommandContext<JRef<CommandSourceStack>>, pos: BlockPos, tool: JRef<dyn ItemInstance>, output: JRef<dyn LootCommandDropConsumer>) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/LootCommand.java:397
-    pub fn drop_kill_loot(context: CommandContext<JRef<CommandSourceStack>>, target: JRef<dyn EntityTrait>, output: JRef<dyn LootCommandDropConsumer>) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/LootCommand.java:421
-    pub fn drop_chest_loot(context: CommandContext<JRef<CommandSourceStack>>, loot_table: JRef<dyn Holder<JRef<LootTable>>>, output: JRef<dyn LootCommandDropConsumer>) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/LootCommand.java:447
-    pub fn drop_fishing_loot(context: CommandContext<JRef<CommandSourceStack>>, loot_table: JRef<dyn Holder<JRef<LootTable>>>, pos: BlockPos, tool: JRef<dyn ItemInstance>, output: JRef<dyn LootCommandDropConsumer>) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/LootCommand.java:456
-    pub fn drop(context: CommandContext<JRef<CommandSourceStack>>, loot_table: JRef<dyn Holder<JRef<LootTable>>>, loot_params: JRef<LootParams>, output: JRef<dyn LootCommandDropConsumer>) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/LootCommand.java:472
+    pub fn get_source_hand_item(source: JRef<CommandSourceStack>, slot: EquipmentSlot) -> Result<JRef<ItemStack>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/LootCommand.java:388
+    pub fn drop_block_loot(context: CommandContext<JRef<CommandSourceStack>>, pos: BlockPos, tool: JRef<dyn ItemInstance>, output: JRef<dyn LootCommandDropConsumer>) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/LootCommand.java:397
+    pub fn drop_kill_loot(context: CommandContext<JRef<CommandSourceStack>>, target: JRef<dyn EntityTrait>, output: JRef<dyn LootCommandDropConsumer>) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/LootCommand.java:421
+    pub fn drop_chest_loot(context: CommandContext<JRef<CommandSourceStack>>, loot_table: JRef<dyn Holder<JRef<LootTable>>>, output: JRef<dyn LootCommandDropConsumer>) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/LootCommand.java:447
+    pub fn drop_fishing_loot(context: CommandContext<JRef<CommandSourceStack>>, loot_table: JRef<dyn Holder<JRef<LootTable>>>, pos: BlockPos, tool: JRef<dyn ItemInstance>, output: JRef<dyn LootCommandDropConsumer>) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/LootCommand.java:456
+    pub fn drop(context: CommandContext<JRef<CommandSourceStack>>, loot_table: JRef<dyn Holder<JRef<LootTable>>>, loot_params: JRef<LootParams>, output: JRef<dyn LootCommandDropConsumer>) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/LootCommand.java:472
 }
 crate::jobject!(LootCommand);
 // ---- interface net.minecraft.server.commands.LootCommand.DropConsumer (leaf-server/src/minecraft/java/net/minecraft/server/commands/LootCommand.java:482)
 pub trait LootCommandDropConsumer: Send + Sync + 'static {
-    fn accept(&self, context: CommandContext<JRef<CommandSourceStack>>, drops: &Vec<JRef<ItemStack>>, response: JRef<CommandResponseTracker<JRef<ItemStack>>>) -> Result<(), Throwable>; // leaf-server/src/minecraft/java/net/minecraft/server/commands/LootCommand.java:484
+    fn accept(&self, context: CommandContext<JRef<CommandSourceStack>>, drops: &Vec<JRef<ItemStack>>, response: JRef<CommandResponseTracker<JRef<ItemStack>>>) -> Result<(), anyhow::Error>; // leaf-server/src/minecraft/java/net/minecraft/server/commands/LootCommand.java:484
 }
-impl<F: Fn(CommandContext<JRef<CommandSourceStack>>, &Vec<JRef<ItemStack>>, JRef<CommandResponseTracker<JRef<ItemStack>>>) -> Result<(), Throwable> + Send + Sync + 'static> LootCommandDropConsumer for F {
-    fn accept(&self, context: CommandContext<JRef<CommandSourceStack>>, drops: &Vec<JRef<ItemStack>>, response: JRef<CommandResponseTracker<JRef<ItemStack>>>) -> Result<(), Throwable> { self(context, drops, response) }
+impl<F: Fn(CommandContext<JRef<CommandSourceStack>>, &Vec<JRef<ItemStack>>, JRef<CommandResponseTracker<JRef<ItemStack>>>) -> Result<(), anyhow::Error> + Send + Sync + 'static> LootCommandDropConsumer for F {
+    fn accept(&self, context: CommandContext<JRef<CommandSourceStack>>, drops: &Vec<JRef<ItemStack>>, response: JRef<CommandResponseTracker<JRef<ItemStack>>>) -> Result<(), anyhow::Error> { self(context, drops, response) }
 }
 // ---- interface net.minecraft.server.commands.LootCommand.TailProvider (leaf-server/src/minecraft/java/net/minecraft/server/commands/LootCommand.java:487)
 pub trait LootCommandTailProvider: Send + Sync + 'static {

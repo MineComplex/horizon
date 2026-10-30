@@ -3,8 +3,6 @@
 use crate::prelude::*;
 use crate::io::papermc::paper::plugin::configuration::plugin_meta::PluginMeta;
 use crate::io::papermc::paper::plugin::permission_manager::PermissionManager;
-use crate::java::lang::Class;
-use crate::java::lang::Throwable;
 use crate::org::bukkit::event::event::EventTrait;
 use crate::org::bukkit::event::event_priority::EventPriority;
 use crate::org::bukkit::event::listener::Listener;
@@ -14,20 +12,20 @@ use crate::api_prelude::*;
 
 // ---- interface org.bukkit.plugin.PluginManager (paper-api/src/main/java/org/bukkit/plugin/PluginManager.java:17)
 pub trait PluginManager: PermissionManager {
-    fn register_interface(&self, loader: Class) -> Result<(), Throwable>; // paper-api/src/main/java/org/bukkit/plugin/PluginManager.java:26
+    fn register_interface(&self, loader: crate::rt::Class) -> Result<(), anyhow::Error>; // paper-api/src/main/java/org/bukkit/plugin/PluginManager.java:26
     fn get_plugin(&self, name: &str) -> Option<JRef<dyn Plugin>>; // paper-api/src/main/java/org/bukkit/plugin/PluginManager.java:37
     fn get_plugins(&self) -> Vec<JRef<dyn Plugin>>; // paper-api/src/main/java/org/bukkit/plugin/PluginManager.java:45
     fn is_plugin_enabled(&self, name: &str) -> bool; // paper-api/src/main/java/org/bukkit/plugin/PluginManager.java:56
     fn is_plugin_enabled_1(&self, plugin: Option<JRef<dyn Plugin>>) -> bool; // paper-api/src/main/java/org/bukkit/plugin/PluginManager.java:64
-    fn load_plugin(&self, file: std::path::PathBuf) -> Result<Option<JRef<dyn Plugin>>, Throwable>; // paper-api/src/main/java/org/bukkit/plugin/PluginManager.java:81
+    fn load_plugin(&self, file: std::path::PathBuf) -> Result<Option<JRef<dyn Plugin>>, anyhow::Error>; // paper-api/src/main/java/org/bukkit/plugin/PluginManager.java:81
     fn load_plugins(&self, directory: std::path::PathBuf) -> Vec<JRef<dyn Plugin>>; // paper-api/src/main/java/org/bukkit/plugin/PluginManager.java:90
     fn load_plugins_1(&self, files: &Vec<std::path::PathBuf>) -> Vec<JRef<dyn Plugin>>; // paper-api/src/main/java/org/bukkit/plugin/PluginManager.java:99
     fn disable_plugins(&self); // paper-api/src/main/java/org/bukkit/plugin/PluginManager.java:105
     fn clear_plugins(&self); // paper-api/src/main/java/org/bukkit/plugin/PluginManager.java:110
-    fn call_event(&self, event: JRef<dyn EventTrait>) -> Result<(), Throwable>; // paper-api/src/main/java/org/bukkit/plugin/PluginManager.java:122
+    fn call_event(&self, event: JRef<dyn EventTrait>) -> Result<(), anyhow::Error>; // paper-api/src/main/java/org/bukkit/plugin/PluginManager.java:122
     fn register_events(&self, listener: JRef<dyn Listener>, plugin: JRef<dyn Plugin>); // paper-api/src/main/java/org/bukkit/plugin/PluginManager.java:130
-    fn register_event(&self, event: Class, listener: JRef<dyn Listener>, priority: EventPriority, executor: JRef<dyn EventExecutor>, plugin: JRef<dyn Plugin>); // paper-api/src/main/java/org/bukkit/plugin/PluginManager.java:141
-    fn register_event_6(&self, event: Class, listener: JRef<dyn Listener>, priority: EventPriority, executor: JRef<dyn EventExecutor>, plugin: JRef<dyn Plugin>, ignore_cancelled: bool); // paper-api/src/main/java/org/bukkit/plugin/PluginManager.java:153
+    fn register_event(&self, event: crate::rt::Class, listener: JRef<dyn Listener>, priority: EventPriority, executor: JRef<dyn EventExecutor>, plugin: JRef<dyn Plugin>); // paper-api/src/main/java/org/bukkit/plugin/PluginManager.java:141
+    fn register_event_6(&self, event: crate::rt::Class, listener: JRef<dyn Listener>, priority: EventPriority, executor: JRef<dyn EventExecutor>, plugin: JRef<dyn Plugin>, ignore_cancelled: bool); // paper-api/src/main/java/org/bukkit/plugin/PluginManager.java:153
     fn enable_plugin(&self, plugin: JRef<dyn Plugin>); // paper-api/src/main/java/org/bukkit/plugin/PluginManager.java:163
     fn disable_plugin(&self, plugin: JRef<dyn Plugin>); // paper-api/src/main/java/org/bukkit/plugin/PluginManager.java:172
     fn use_timings(&self) -> bool; // paper-api/src/main/java/org/bukkit/plugin/PluginManager.java:315

@@ -3,7 +3,6 @@
 use crate::prelude::*;
 use crate::com::mojang::brigadier::command_dispatcher::CommandDispatcher;
 use crate::com::mojang::brigadier::exceptions::SimpleCommandExceptionType;
-use crate::java::lang::Throwable;
 use crate::net::minecraft::commands::command_source_stack::CommandSourceStack;
 use crate::net::minecraft::world::phys::vec2::Vec2;
 
@@ -24,13 +23,13 @@ impl WorldBorderCommand {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/WorldBorderCommand.java:20
     pub fn register(dispatcher: JRef<CommandDispatcher<JRef<CommandSourceStack>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/WorldBorderCommand.java:49
-    pub fn set_damage_buffer(source: JRef<CommandSourceStack>, distance: f32) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/WorldBorderCommand.java:129
-    pub fn set_damage_amount(source: JRef<CommandSourceStack>, damage_per_block: f32) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/WorldBorderCommand.java:140
-    pub fn set_warning_time(source: JRef<CommandSourceStack>, ticks: i32) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/WorldBorderCommand.java:151
-    pub fn set_warning_distance(source: JRef<CommandSourceStack>, distance: i32) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/WorldBorderCommand.java:162
+    pub fn set_damage_buffer(source: JRef<CommandSourceStack>, distance: f32) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/WorldBorderCommand.java:129
+    pub fn set_damage_amount(source: JRef<CommandSourceStack>, damage_per_block: f32) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/WorldBorderCommand.java:140
+    pub fn set_warning_time(source: JRef<CommandSourceStack>, ticks: i32) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/WorldBorderCommand.java:151
+    pub fn set_warning_distance(source: JRef<CommandSourceStack>, distance: i32) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/WorldBorderCommand.java:162
     pub fn get_size(source: JRef<CommandSourceStack>) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/WorldBorderCommand.java:173
-    pub fn set_center(source: JRef<CommandSourceStack>, center: Vec2) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/WorldBorderCommand.java:179
-    pub fn set_size(source: JRef<CommandSourceStack>, distance: f64, ticks: i64) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/WorldBorderCommand.java:197
+    pub fn set_center(source: JRef<CommandSourceStack>, center: Vec2) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/WorldBorderCommand.java:179
+    pub fn set_size(source: JRef<CommandSourceStack>, distance: f64, ticks: i64) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/WorldBorderCommand.java:197
     pub fn format_ticks_to_seconds(ticks: i64) -> String { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/WorldBorderCommand.java:229
 }
 crate::jobject!(WorldBorderCommand);

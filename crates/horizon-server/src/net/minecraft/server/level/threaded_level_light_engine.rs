@@ -4,13 +4,6 @@ use crate::prelude::*;
 use crate::ca::spottedleaf::moonrise::patches::starlight::light::star_light_interface::StarLightInterface;
 use crate::ca::spottedleaf::moonrise::patches::starlight::light::star_light_interface::StarLightInterfaceLightQueueChunkTasksTrait;
 use crate::ca::spottedleaf::moonrise::patches::starlight::light::star_light_lighting_provider::StarLightLightingProvider;
-use crate::java::lang::Runnable;
-use crate::java::lang::Throwable;
-use crate::java::util::concurrent::CompletableFuture;
-use crate::java::util::function::Consumer;
-use crate::java::util::function::IntConsumer;
-use crate::java::util::function::IntSupplier;
-use crate::java::util::function::Supplier;
 use crate::net::minecraft::core::block_pos::BlockPos;
 use crate::net::minecraft::core::section_pos::SectionPos;
 use crate::net::minecraft::server::level::chunk_map::ChunkMap;
@@ -44,7 +37,7 @@ pub const DEFAULT_BATCH_SIZE: i32 = 1000; // leaf-server/src/minecraft/java/net/
 impl ThreadedLevelLightEngine {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(light_chunk_getter: JRef<dyn LightChunkGetter>, chunk_map: JRef<ChunkMap>, has_sky_light: bool, consecutive_executor: JRef<ConsecutiveExecutor>, task_dispatcher: JRef<ChunkTaskDispatcher>) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ThreadedLevelLightEngine.java:165
-    pub fn starlight_server_relight_chunks(&self, chunks0: &Vec<ChunkPos>, chunk_light_callback: JRef<dyn Consumer<ChunkPos>>, on_complete: JRef<dyn IntConsumer>) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ThreadedLevelLightEngine.java:68
+    pub fn starlight_server_relight_chunks(&self, chunks0: &Vec<ChunkPos>, chunk_light_callback: Arc<dyn Fn(ChunkPos) + Send + Sync>, on_complete: Arc<dyn Fn(i32) + Send + Sync>) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ThreadedLevelLightEngine.java:68
     pub fn run_light_updates(&self) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ThreadedLevelLightEngine.java:181
     pub fn check_block(&self, pos: BlockPos) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ThreadedLevelLightEngine.java:186
     pub fn update_section_status_2(&self, pos: SectionPos, section_empty: bool) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ThreadedLevelLightEngine.java:200
@@ -52,16 +45,16 @@ impl ThreadedLevelLightEngine {
     pub fn set_light_enabled(&self, pos: ChunkPos, enable: bool) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ThreadedLevelLightEngine.java:214
     pub fn queue_section_data(&self, layer: LightLayer, pos: SectionPos, data: Option<JRef<DataLayer>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ThreadedLevelLightEngine.java:219
     pub fn retain_data(&self, pos: ChunkPos, retain: bool) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ThreadedLevelLightEngine.java:232
-    pub fn queue_task_for_section(&self, chunk_x: i32, chunk_y: i32, chunk_z: i32, supplier: JRef<dyn Supplier<JRef<dyn StarLightInterfaceLightQueueChunkTasksTrait>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ThreadedLevelLightEngine.java:37
+    pub fn queue_task_for_section(&self, chunk_x: i32, chunk_y: i32, chunk_z: i32, supplier: Arc<dyn Fn() -> JRef<dyn StarLightInterfaceLightQueueChunkTasksTrait> + Send + Sync>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ThreadedLevelLightEngine.java:37
     pub fn close(&self) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ThreadedLevelLightEngine.java:177
     pub fn update_chunk_status(&self, pos: ChunkPos) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ThreadedLevelLightEngine.java:196
-    pub fn add_task(&self, chunk_x: i32, chunk_z: i32, type_: ThreadedLevelLightEngineTaskType, runnable: JRef<dyn Runnable>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ThreadedLevelLightEngine.java:224
-    pub fn add_task_5(&self, chunk_x: i32, chunk_z: i32, level: JRef<dyn IntSupplier>, type_: ThreadedLevelLightEngineTaskType, runnable: JRef<dyn Runnable>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ThreadedLevelLightEngine.java:228
-    pub fn initialize_light(&self, chunk: JRef<dyn ChunkAccessTrait>, lighted: bool) -> CompletableFuture<JRef<dyn ChunkAccessTrait>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ThreadedLevelLightEngine.java:237
-    pub fn light_chunk(&self, center_chunk: JRef<dyn ChunkAccessTrait>, lighted: bool) -> CompletableFuture<JRef<dyn ChunkAccessTrait>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ThreadedLevelLightEngine.java:241
+    pub fn add_task(&self, chunk_x: i32, chunk_z: i32, type_: ThreadedLevelLightEngineTaskType, runnable: Arc<dyn Fn() + Send + Sync>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ThreadedLevelLightEngine.java:224
+    pub fn add_task_5(&self, chunk_x: i32, chunk_z: i32, level: Arc<dyn Fn() -> i32 + Send + Sync>, type_: ThreadedLevelLightEngineTaskType, runnable: Arc<dyn Fn() + Send + Sync>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ThreadedLevelLightEngine.java:228
+    pub fn initialize_light(&self, chunk: JRef<dyn ChunkAccessTrait>, lighted: bool) -> crate::rt::CompletableFuture<JRef<dyn ChunkAccessTrait>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ThreadedLevelLightEngine.java:237
+    pub fn light_chunk(&self, center_chunk: JRef<dyn ChunkAccessTrait>, lighted: bool) -> crate::rt::CompletableFuture<JRef<dyn ChunkAccessTrait>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ThreadedLevelLightEngine.java:241
     pub fn try_schedule_update(&self) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ThreadedLevelLightEngine.java:245
     pub fn run_update(&self) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ThreadedLevelLightEngine.java:249
-    pub fn wait_for_pending_tasks(&self, chunk_x: i32, chunk_z: i32) -> CompletableFuture<JObjectRef> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ThreadedLevelLightEngine.java:253
+    pub fn wait_for_pending_tasks(&self, chunk_x: i32, chunk_z: i32) -> crate::rt::CompletableFuture<JObjectRef> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ThreadedLevelLightEngine.java:253
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
@@ -83,7 +76,7 @@ impl StarLightLightingProvider for ThreadedLevelLightEngine {
     fn starlight_client_update_light(&self, light_type: LightLayer, pos: SectionPos, nibble: JRef<DataLayer>, trust_edges: bool) { LevelLightEngine::starlight_client_update_light(self, light_type, pos, nibble, trust_edges) }
     fn starlight_client_remove_light_data(&self, chunk_pos: ChunkPos) { LevelLightEngine::starlight_client_remove_light_data(self, chunk_pos) }
     fn starlight_client_chunk_load(&self, pos: ChunkPos, chunk: JRef<dyn LevelChunkTrait>) { LevelLightEngine::starlight_client_chunk_load(self, pos, chunk) }
-    fn starlight_server_relight_chunks(&self, chunks: &Vec<ChunkPos>, chunk_light_callback: JRef<dyn Consumer<ChunkPos>>, on_complete: JRef<dyn IntConsumer>) -> Result<i32, Throwable> { ThreadedLevelLightEngine::starlight_server_relight_chunks(self, chunks, chunk_light_callback, on_complete) }
+    fn starlight_server_relight_chunks(&self, chunks: &Vec<ChunkPos>, chunk_light_callback: Arc<dyn Fn(ChunkPos) + Send + Sync>, on_complete: Arc<dyn Fn(i32) + Send + Sync>) -> Result<i32, anyhow::Error> { ThreadedLevelLightEngine::starlight_server_relight_chunks(self, chunks, chunk_light_callback, on_complete) }
 }
 impl LightEventListener for ThreadedLevelLightEngine {
     fn check_block(&self, pos: BlockPos) { ThreadedLevelLightEngine::check_block(self, pos) }

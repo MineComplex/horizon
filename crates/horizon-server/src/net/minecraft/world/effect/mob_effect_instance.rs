@@ -3,8 +3,6 @@
 use crate::prelude::*;
 use crate::com::mojang::serialization::Codec;
 use crate::com::mojang::serialization::MapCodec;
-use crate::it::unimi::dsi::fastutil::ints::Int2IntFunction;
-use crate::java::lang::Runnable;
 use crate::net::minecraft::core::holder::Holder;
 use crate::net::minecraft::core::particles::particle_options::ParticleOptions;
 use crate::net::minecraft::network::codec::stream_codec::StreamCodec;
@@ -52,14 +50,14 @@ impl MobEffectInstance {
     pub fn is_infinite_duration(&self) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/effect/MobEffectInstance.java:182
     pub fn ends_within(&self, ticks: i32) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/effect/MobEffectInstance.java:186
     pub fn with_scaled_duration(&self, scale: f32) -> JRef<MobEffectInstance> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/effect/MobEffectInstance.java:190
-    pub fn map_duration(&self, mapper: Int2IntFunction) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/effect/MobEffectInstance.java:196
+    pub fn map_duration(&self, mapper: Arc<dyn Fn(i32) -> i32 + Send + Sync>) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/effect/MobEffectInstance.java:196
     pub fn get_effect(&self) -> JRef<dyn Holder<JRef<dyn MobEffectTrait>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/effect/MobEffectInstance.java:200
     pub fn get_duration(&self) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/effect/MobEffectInstance.java:204
     pub fn get_amplifier(&self) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/effect/MobEffectInstance.java:208
     pub fn is_ambient(&self) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/effect/MobEffectInstance.java:212
     pub fn is_visible(&self) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/effect/MobEffectInstance.java:216
     pub fn show_icon(&self) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/effect/MobEffectInstance.java:220
-    pub fn tick_server(&self, server_level: JRef<ServerLevel>, target: JRef<dyn LivingEntityTrait>, on_effect_update: JRef<dyn Runnable>) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/effect/MobEffectInstance.java:224
+    pub fn tick_server(&self, server_level: JRef<ServerLevel>, target: JRef<dyn LivingEntityTrait>, on_effect_update: Arc<dyn Fn() + Send + Sync>) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/effect/MobEffectInstance.java:224
     pub fn tick_client(&self) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/effect/MobEffectInstance.java:244
     pub fn has_remaining_duration(&self) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/effect/MobEffectInstance.java:253
     pub fn tick_down_duration(&self) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/effect/MobEffectInstance.java:257

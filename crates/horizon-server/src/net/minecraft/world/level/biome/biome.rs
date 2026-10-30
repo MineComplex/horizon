@@ -3,7 +3,6 @@
 use crate::prelude::*;
 use crate::com::mojang::serialization::Codec;
 use crate::com::mojang::serialization::MapCodec;
-use crate::java::lang::ThreadLocal;
 use crate::net::minecraft::core::block_pos::BlockPos;
 use crate::net::minecraft::core::holder::Holder;
 use crate::net::minecraft::core::holder_set::HolderSet;
@@ -25,7 +24,7 @@ pub struct Biome {
     pub generation_settings: JRef<BiomeGenerationSettings>, // leaf-server/src/minecraft/java/net/minecraft/world/level/biome/Biome.java:75
     pub attributes: JRef<EnvironmentAttributeMap>, // leaf-server/src/minecraft/java/net/minecraft/world/level/biome/Biome.java:76
     pub special_effects: BiomeSpecialEffects, // leaf-server/src/minecraft/java/net/minecraft/world/level/biome/Biome.java:77
-    pub temperature_cache: ThreadLocal<IndexMap<i64, f32>>, // leaf-server/src/minecraft/java/net/minecraft/world/level/biome/Biome.java:78
+    pub temperature_cache: thread_local::ThreadLocal<IndexMap<i64, f32>>, // leaf-server/src/minecraft/java/net/minecraft/world/level/biome/Biome.java:78
 }
 pub static DIRECT_CODEC: LazyLock<JRef<dyn Codec<JRef<Biome>>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/level/biome/Biome.java:40
 pub static NETWORK_CODEC: LazyLock<JRef<dyn Codec<JRef<Biome>>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/level/biome/Biome.java:49

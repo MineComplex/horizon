@@ -3,8 +3,6 @@
 use crate::prelude::*;
 use crate::com::mojang::serialization::Codec;
 use crate::com::mojang::serialization::DataResult;
-use crate::java::util::function::Function;
-use crate::java::util::function::UnaryOperator;
 use crate::net::minecraft::network::chat::component::Component;
 use crate::net::minecraft::network::codec::stream_codec::StreamCodec;
 use crate::net::minecraft::network::registry_friendly_byte_buf::RegistryFriendlyByteBuf;
@@ -40,7 +38,7 @@ impl SignText {
     pub fn with_color(&self, color: DyeColor) -> JRef<SignText> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/entity/SignText.java:92
     pub fn has_message(&self, should_filter: bool) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/entity/SignText.java:96
     pub fn get_messages(&self, should_filter: bool) -> Vec<JRef<dyn Component>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/entity/SignText.java:100
-    pub fn get_render_messages(&self, should_filter: bool, prepare: JRef<dyn Function<JRef<dyn Component>, JRef<dyn FormattedCharSequence>>>) -> Vec<JRef<dyn FormattedCharSequence>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/entity/SignText.java:104
+    pub fn get_render_messages(&self, should_filter: bool, prepare: Arc<dyn Fn(JRef<dyn Component>) -> JRef<dyn FormattedCharSequence> + Send + Sync>) -> Vec<JRef<dyn FormattedCharSequence>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/entity/SignText.java:104
     pub fn filtered_messages_for_serialization(&self) -> Option<Vec<JRef<dyn Component>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/entity/SignText.java:118
     pub fn has_any_click_commands(&self, should_filter: bool) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/entity/SignText.java:122
     pub fn has_editable_text(&self, should_filter: bool) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/entity/SignText.java:134
@@ -64,8 +62,8 @@ impl SignTextMutable {
     pub fn as_immutable(&self) -> JRef<SignText> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/entity/SignText.java:185
     pub fn set_line(&self, index: i32, text: JRef<dyn Component>) -> JRef<SignTextMutable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/entity/SignText.java:195
     pub fn set_line_3(&self, index: i32, raw: JRef<dyn Component>, filtered: JRef<dyn Component>) -> JRef<SignTextMutable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/entity/SignText.java:189
-    pub fn modify_line(&self, index: i32, modifier: JRef<dyn UnaryOperator<JRef<dyn Component>>>) -> JRef<SignTextMutable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/entity/SignText.java:199
-    pub fn modify_lines(&self, modifier: JRef<dyn UnaryOperator<JRef<dyn Component>>>) -> JRef<SignTextMutable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/entity/SignText.java:205
+    pub fn modify_line(&self, index: i32, modifier: Arc<dyn Fn(JRef<dyn Component>) -> JRef<dyn Component> + Send + Sync>) -> JRef<SignTextMutable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/entity/SignText.java:199
+    pub fn modify_lines(&self, modifier: Arc<dyn Fn(JRef<dyn Component>) -> JRef<dyn Component> + Send + Sync>) -> JRef<SignTextMutable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/entity/SignText.java:205
     pub fn set_color(&self, color: DyeColor) -> JRef<SignTextMutable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/entity/SignText.java:213
     pub fn set_text_glowing(&self, flag: bool) -> JRef<SignTextMutable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/entity/SignText.java:218
     pub fn get_line(&self, index: i32, should_filter: bool) -> JRef<dyn Component> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/entity/SignText.java:224

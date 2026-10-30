@@ -3,7 +3,6 @@
 use crate::prelude::*;
 use crate::io::papermc::paper::persistence::persistent_data_container_view::PersistentDataContainerView;
 use crate::io::papermc::paper::persistence::persistent_data_key::PersistentDataKey;
-use crate::java::lang::Throwable;
 use crate::org::bukkit::namespaced_key::NamespacedKey;
 use crate::org::bukkit::persistence::persistent_data_type::PersistentDataType;
 use crate::api_prelude::*;
@@ -14,6 +13,6 @@ pub trait PersistentDataContainer: PersistentDataContainerView {
     fn set_3<P: JGeneric, C: JGeneric>(&self, key: JRef<NamespacedKey>, type_: JRef<dyn PersistentDataType<P, C>>, value: C) where Self: Sized; // paper-api/src/main/java/org/bukkit/persistence/PersistentDataContainer.java:35
     fn remove(&self, key: JRef<NamespacedKey>); // paper-api/src/main/java/org/bukkit/persistence/PersistentDataContainer.java:68
     fn remove_1(&self, data_key: JRef<dyn PersistentDataKey<JObjectRef>>) { todo!() } // default, paper-api/src/main/java/org/bukkit/persistence/PersistentDataContainer.java:76
-    fn read_from_bytes(&self, bytes: &Vec<i8>) -> Result<(), Throwable> { todo!() } // default, paper-api/src/main/java/org/bukkit/persistence/PersistentDataContainer.java:104
-    fn read_from_bytes_2(&self, bytes: &Vec<i8>, clear: bool) -> Result<(), Throwable>; // paper-api/src/main/java/org/bukkit/persistence/PersistentDataContainer.java:93
+    fn read_from_bytes(&self, bytes: &Vec<i8>) -> Result<(), anyhow::Error> { todo!() } // default, paper-api/src/main/java/org/bukkit/persistence/PersistentDataContainer.java:104
+    fn read_from_bytes_2(&self, bytes: &Vec<i8>, clear: bool) -> Result<(), anyhow::Error>; // paper-api/src/main/java/org/bukkit/persistence/PersistentDataContainer.java:93
 }

@@ -3,7 +3,6 @@
 use crate::prelude::*;
 use crate::ca::spottedleaf::moonrise::common::list::short_list::ShortList;
 use crate::ca::spottedleaf::moonrise::patches::block_counting::block_counting_chunk_section::BlockCountingChunkSection;
-use crate::java::util::function::Predicate;
 use crate::net::minecraft::core::holder::Holder;
 use crate::net::minecraft::network::friendly_byte_buf::FriendlyByteBufTrait;
 use crate::net::minecraft::world::level::biome::biome::Biome;
@@ -56,7 +55,7 @@ impl LevelChunkSection {
     pub fn read_biomes(&self, buffer: JRef<dyn FriendlyByteBufTrait>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/LevelChunkSection.java:274
     pub fn write(&self, buffer: JRef<dyn FriendlyByteBufTrait>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/LevelChunkSection.java:280
     pub fn get_serialized_size(&self) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/LevelChunkSection.java:287
-    pub fn maybe_has(&self, predicate: JRef<dyn Predicate<JRef<BlockState>>>) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/LevelChunkSection.java:291
+    pub fn maybe_has(&self, predicate: Arc<dyn Fn(JRef<BlockState>) -> bool + Send + Sync>) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/LevelChunkSection.java:291
     pub fn get_noise_biome(&self, quart_x: i32, quart_y: i32, quart_z: i32) -> JRef<dyn Holder<JRef<Biome>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/LevelChunkSection.java:295
     pub fn set_noise_biome(&self, quart_x: i32, quart_y: i32, quart_z: i32, biome: JRef<dyn Holder<JRef<Biome>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/LevelChunkSection.java:300
     pub fn fill_biomes_from_noise(&self, biome_resolver: JRef<dyn BiomeResolver>, quart_min_x: i32, quart_min_y: i32, quart_min_z: i32) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/LevelChunkSection.java:305

@@ -3,8 +3,6 @@
 use crate::prelude::*;
 use crate::ca::spottedleaf::moonrise::common::map::synchronised_long2_boolean_map::SynchronisedLong2BooleanMap;
 use crate::ca::spottedleaf::moonrise::common::map::synchronised_long2_object_map::SynchronisedLong2ObjectMap;
-use crate::com::mojang::datafixers::DataFixer;
-use crate::java::lang::ThreadLocal;
 use crate::net::minecraft::core::registry_access::RegistryAccess;
 use crate::net::minecraft::nbt::compound_tag::CompoundTag;
 use crate::net::minecraft::resources::resource_key::ResourceKey;
@@ -33,10 +31,10 @@ pub struct StructureCheck {
     pub chunk_generator: JRef<dyn ChunkGeneratorTrait>, // leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/structure/StructureCheck.java:52
     pub random_state: JRef<RandomState>, // leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/structure/StructureCheck.java:53
     pub height_accessor: JRef<dyn LevelHeightAccessor>, // leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/structure/StructureCheck.java:54
-    pub moonrise_climate_sampler: ThreadLocal<ClimateSampler>, // leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/structure/StructureCheck.java:55
+    pub moonrise_climate_sampler: thread_local::ThreadLocal<ClimateSampler>, // leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/structure/StructureCheck.java:55
     pub biome_source: JRef<dyn BiomeSourceTrait>, // leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/structure/StructureCheck.java:56
     pub seed: i64, // leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/structure/StructureCheck.java:57
-    pub fixer_upper: DataFixer, // leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/structure/StructureCheck.java:58
+    pub fixer_upper: (), // leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/structure/StructureCheck.java:58
     pub loaded_chunks_safe: JRef<SynchronisedLong2ObjectMap<HashMap<JRef<dyn StructureTrait>, i32>>>, // leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/structure/StructureCheck.java:63
     pub feature_checks_safe: dashmap::DashMap<JRef<dyn StructureTrait>, JRef<SynchronisedLong2BooleanMap>>, // leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/structure/StructureCheck.java:64
     pub chunks_without_starts_in_storage: Mut<HashSet<i64>>, // leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/structure/StructureCheck.java:66
@@ -48,7 +46,7 @@ pub const CHUNK_TOTAL_LIMIT: i32 = 50 * (2 * 100 + 1) * (2 * 100 + 1); // leaf-s
 pub const PER_FEATURE_CHECK_LIMIT: i32 = 50 * (2 * 100 + 1) * (2 * 100 + 1); // leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/structure/StructureCheck.java:62
 impl StructureCheck {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(level_stem: JRef<ResourceKey<LevelStem>>, storage_access: JRef<dyn ChunkScanAccess>, registry_access: JRef<dyn RegistryAccess>, structure_template_manager: JRef<StructureTemplateManager>, dimension: JRef<ResourceKey<JRef<dyn LevelTrait>>>, chunk_generator: JRef<dyn ChunkGeneratorTrait>, random_state: JRef<RandomState>, height_accessor: JRef<dyn LevelHeightAccessor>, biome_source: JRef<dyn BiomeSourceTrait>, seed: i64, fixer_upper: DataFixer) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/structure/StructureCheck.java:70
+    pub fn new(level_stem: JRef<ResourceKey<LevelStem>>, storage_access: JRef<dyn ChunkScanAccess>, registry_access: JRef<dyn RegistryAccess>, structure_template_manager: JRef<StructureTemplateManager>, dimension: JRef<ResourceKey<JRef<dyn LevelTrait>>>, chunk_generator: JRef<dyn ChunkGeneratorTrait>, random_state: JRef<RandomState>, height_accessor: JRef<dyn LevelHeightAccessor>, biome_source: JRef<dyn BiomeSourceTrait>, seed: i64, fixer_upper: ()) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/structure/StructureCheck.java:70
     pub fn get_salt_override(&self, type_: JRef<dyn StructureTrait>) -> Option<i32> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/structure/StructureCheck.java:99
     pub fn check_start(&self, pos: ChunkPos, structure: JRef<dyn StructureTrait>, placement: JRef<dyn StructurePlacement>, require_unreferenced: bool) -> StructureCheckResult { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/structure/StructureCheck.java:112
     pub fn can_create_structure(&self, pos: ChunkPos, structure: JRef<dyn StructureTrait>) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/structure/StructureCheck.java:144

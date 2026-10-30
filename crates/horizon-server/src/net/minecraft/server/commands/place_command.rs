@@ -5,7 +5,6 @@ use crate::com::mojang::brigadier::command_dispatcher::CommandDispatcher;
 use crate::com::mojang::brigadier::exceptions::DynamicCommandExceptionType;
 use crate::com::mojang::brigadier::exceptions::SimpleCommandExceptionType;
 use crate::com::mojang::brigadier::suggestion::SuggestionProvider;
-use crate::java::lang::Throwable;
 use crate::net::minecraft::commands::command_build_context::CommandBuildContext;
 use crate::net::minecraft::commands::command_source_stack::CommandSourceStack;
 use crate::net::minecraft::core::block_pos::BlockPos;
@@ -34,10 +33,10 @@ impl PlaceCommand {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/PlaceCommand.java:50
     pub fn register(dispatcher: JRef<CommandDispatcher<JRef<CommandSourceStack>>>, context: JRef<dyn CommandBuildContext>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/PlaceCommand.java:69
-    pub fn place_feature(source: JRef<CommandSourceStack>, feature_holder: JRef<dyn Holder<JRef<dyn Feature>>>, pos: BlockPos) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/PlaceCommand.java:258
-    pub fn place_jigsaw(source: JRef<CommandSourceStack>, pool: JRef<dyn Holder<JRef<StructureTemplatePool>>>, target: JRef<Identifier>, max_depth: i32, pos: BlockPos) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/PlaceCommand.java:278
-    pub fn place_structure(source: JRef<CommandSourceStack>, structure_holder: JRef<dyn HolderReferenceTrait<JRef<dyn StructureTrait>>>, pos: BlockPos) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/PlaceCommand.java:292
-    pub fn place_template(source: JRef<CommandSourceStack>, template: JRef<Identifier>, pos: BlockPos, rotation: Rotation, mirror: Mirror, integrity: f32, seed: i32, strict: bool) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/PlaceCommand.java:337
-    pub fn check_loaded(level: JRef<ServerLevel>, chunk_min: ChunkPos, chunk_max: ChunkPos) -> Result<(), Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/PlaceCommand.java:381
+    pub fn place_feature(source: JRef<CommandSourceStack>, feature_holder: JRef<dyn Holder<JRef<dyn Feature>>>, pos: BlockPos) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/PlaceCommand.java:258
+    pub fn place_jigsaw(source: JRef<CommandSourceStack>, pool: JRef<dyn Holder<JRef<StructureTemplatePool>>>, target: JRef<Identifier>, max_depth: i32, pos: BlockPos) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/PlaceCommand.java:278
+    pub fn place_structure(source: JRef<CommandSourceStack>, structure_holder: JRef<dyn HolderReferenceTrait<JRef<dyn StructureTrait>>>, pos: BlockPos) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/PlaceCommand.java:292
+    pub fn place_template(source: JRef<CommandSourceStack>, template: JRef<Identifier>, pos: BlockPos, rotation: Rotation, mirror: Mirror, integrity: f32, seed: i32, strict: bool) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/PlaceCommand.java:337
+    pub fn check_loaded(level: JRef<ServerLevel>, chunk_min: ChunkPos, chunk_max: ChunkPos) -> Result<(), anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/PlaceCommand.java:381
 }
 crate::jobject!(PlaceCommand);

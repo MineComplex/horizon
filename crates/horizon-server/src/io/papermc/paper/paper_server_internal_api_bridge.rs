@@ -10,11 +10,6 @@ use crate::io::papermc::paper::persistence::persistent_data_key::PersistentDataK
 use crate::io::papermc::paper::plugin::lifecycle::event::lifecycle_event_manager::LifecycleEventManager;
 use crate::io::papermc::paper::world::damagesource::combat_entry::CombatEntry;
 use crate::io::papermc::paper::world::damagesource::fall_location_type::FallLocationType;
-use crate::java::lang::Class;
-use crate::java::lang::Throwable;
-use crate::java::util::function::BooleanSupplier;
-use crate::java::util::function::Function;
-use crate::java::util::function::Predicate;
 use crate::net::kyori::adventure::key::Key;
 use crate::net::kyori::adventure::text::Component;
 use crate::net::kyori::adventure::text::flattener::ComponentFlattener;
@@ -50,11 +45,11 @@ impl PaperServerInternalAPIBridge {
     pub fn create_combat_entry(&self, entity: JRef<dyn LivingEntity>, damage_source: JRef<dyn crate::org::bukkit::damage::damage_source::DamageSource>, damage: f32) -> JRef<dyn CombatEntry> { todo!() } // paper-server/src/main/java/io/papermc/paper/PaperServerInternalAPIBridge.java:91
     pub fn create_combat_entry_4(&self, damage_source: JRef<dyn crate::org::bukkit::damage::damage_source::DamageSource>, damage: f32, fall_location_type: Option<JRef<dyn FallLocationType>>, fall_distance: f32) -> JRef<dyn CombatEntry> { todo!() } // paper-server/src/main/java/io/papermc/paper/PaperServerInternalAPIBridge.java:103
     pub fn create_combat_entry_4(&self, damage_source: JRef<crate::net::minecraft::world::damagesource::damage_source::DamageSource>, damage: f32, fall_location: FallLocation, fall_distance: f32) -> JRef<dyn CombatEntry> { todo!() } // paper-server/src/main/java/io/papermc/paper/PaperServerInternalAPIBridge.java:118
-    pub fn restricted(&self, predicate: JRef<dyn Predicate<JRef<dyn CommandSourceStack>>>, restricted: bool) -> JRef<dyn Predicate<JRef<dyn CommandSourceStack>>> { todo!() } // paper-server/src/main/java/io/papermc/paper/PaperServerInternalAPIBridge.java:129
+    pub fn restricted(&self, predicate: Arc<dyn Fn(JRef<dyn CommandSourceStack>) -> bool + Send + Sync>, restricted: bool) -> Arc<dyn Fn(JRef<dyn CommandSourceStack>) -> bool + Send + Sync> { todo!() } // paper-server/src/main/java/io/papermc/paper/PaperServerInternalAPIBridge.java:129
     pub fn default_mannequin_profile(&self) -> JRef<dyn ResolvableProfile> { todo!() } // paper-server/src/main/java/io/papermc/paper/PaperServerInternalAPIBridge.java:141
     pub fn all_skin_parts(&self) -> JRef<dyn SkinPartsMutable> { todo!() } // paper-server/src/main/java/io/papermc/paper/PaperServerInternalAPIBridge.java:146
     pub fn default_mannequin_description(&self) -> Component { todo!() } // paper-server/src/main/java/io/papermc/paper/PaperServerInternalAPIBridge.java:151
-    pub fn legacy_game_rule_bridge<MODERN: JGeneric, LEGACY: JGeneric>(&self, rule: JRef<dyn GameRuleTrait<MODERN>>, from_legacy_to_modern: JRef<dyn Function<LEGACY, MODERN>>, to_legacy_from_modern: JRef<dyn Function<MODERN, LEGACY>>, legacy_class: Class) -> JRef<dyn GameRuleTrait<LEGACY>> { todo!() } // paper-server/src/main/java/io/papermc/paper/PaperServerInternalAPIBridge.java:156
+    pub fn legacy_game_rule_bridge<MODERN: JGeneric, LEGACY: JGeneric>(&self, rule: JRef<dyn GameRuleTrait<MODERN>>, from_legacy_to_modern: Arc<dyn Fn(LEGACY) -> MODERN + Send + Sync>, to_legacy_from_modern: Arc<dyn Fn(MODERN) -> LEGACY + Send + Sync>, legacy_class: crate::rt::Class) -> JRef<dyn GameRuleTrait<LEGACY>> { todo!() } // paper-server/src/main/java/io/papermc/paper/PaperServerInternalAPIBridge.java:156
     pub fn valid_mannequin_poses(&self) -> HashSet<Pose> { todo!() } // paper-server/src/main/java/io/papermc/paper/PaperServerInternalAPIBridge.java:161
     pub fn create_occupancy(&self, enum_name_entry: &str) -> JRef<dyn PoiTypeOccupancy> { todo!() } // paper-server/src/main/java/io/papermc/paper/PaperServerInternalAPIBridge.java:166
     pub fn create_damage_source_builder(&self, damage_type: JRef<dyn DamageType>) -> JRef<dyn DamageSourceBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/PaperServerInternalAPIBridge.java:171
@@ -65,9 +60,9 @@ impl PaperServerInternalAPIBridge {
     pub fn has_default_entity_attributes(&self, entity_key: JRef<NamespacedKey>) -> bool { todo!() } // paper-server/src/main/java/io/papermc/paper/PaperServerInternalAPIBridge.java:199
     pub fn get_default_entity_attributes(&self, entity_key: JRef<NamespacedKey>) -> JRef<dyn Attributable> { todo!() } // paper-server/src/main/java/io/papermc/paper/PaperServerInternalAPIBridge.java:204
     pub fn get_statistic_criteria_key(&self, statistic: Statistic) -> String { todo!() } // paper-server/src/main/java/io/papermc/paper/PaperServerInternalAPIBridge.java:210
-    pub fn create_plugin_lifecycle_event_manager(&self, plugin: JRef<dyn JavaPluginTrait>, registration_check: JRef<dyn BooleanSupplier>) -> JRef<dyn LifecycleEventManager<JRef<dyn Plugin>>> { todo!() } // paper-server/src/main/java/io/papermc/paper/PaperServerInternalAPIBridge.java:216
+    pub fn create_plugin_lifecycle_event_manager(&self, plugin: JRef<dyn JavaPluginTrait>, registration_check: Arc<dyn Fn() -> bool + Send + Sync>) -> JRef<dyn LifecycleEventManager<JRef<dyn Plugin>>> { todo!() } // paper-server/src/main/java/io/papermc/paper/PaperServerInternalAPIBridge.java:216
     pub fn create_empty_stack(&self) -> JRef<ItemStack> { todo!() } // paper-server/src/main/java/io/papermc/paper/PaperServerInternalAPIBridge.java:221
-    pub fn resolve_with_context(&self, component: Component, context: Option<JRef<dyn CommandSender>>, scoreboard_subject: Option<JRef<dyn Entity>>, bypass_permissions: bool) -> Result<Component, Throwable> { todo!() } // paper-server/src/main/java/io/papermc/paper/PaperServerInternalAPIBridge.java:226
+    pub fn resolve_with_context(&self, component: Component, context: Option<JRef<dyn CommandSender>>, scoreboard_subject: Option<JRef<dyn Entity>>, bypass_permissions: bool) -> Result<Component, anyhow::Error> { todo!() } // paper-server/src/main/java/io/papermc/paper/PaperServerInternalAPIBridge.java:226
     pub fn component_flattener(&self) -> ComponentFlattener { todo!() } // paper-server/src/main/java/io/papermc/paper/PaperServerInternalAPIBridge.java:253
     pub fn create_persistent_data_key<C: JGeneric>(&self, key: JRef<dyn Key>, type_: JRef<dyn PersistentDataType<JObjectRef, C>>) -> JRef<dyn PersistentDataKey<C>> { todo!() } // paper-server/src/main/java/io/papermc/paper/PaperServerInternalAPIBridge.java:258
 }
@@ -77,11 +72,11 @@ impl InternalAPIBridge for PaperServerInternalAPIBridge {
     fn construct_legacy_custom_biome(&self) -> JRef<dyn Biome> { PaperServerInternalAPIBridge::construct_legacy_custom_biome(self) }
     fn create_combat_entry(&self, entity: JRef<dyn LivingEntity>, damage_source: JRef<dyn crate::org::bukkit::damage::damage_source::DamageSource>, damage: f32) -> JRef<dyn CombatEntry> { PaperServerInternalAPIBridge::create_combat_entry(self, entity, damage_source, damage) }
     fn create_combat_entry_4(&self, damage_source: JRef<dyn crate::org::bukkit::damage::damage_source::DamageSource>, damage: f32, fall_location_type: Option<JRef<dyn FallLocationType>>, fall_distance: f32) -> JRef<dyn CombatEntry> { PaperServerInternalAPIBridge::create_combat_entry_4(self, damage_source, damage, fall_location_type, fall_distance) }
-    fn restricted(&self, predicate: JRef<dyn Predicate<JRef<dyn CommandSourceStack>>>, restricted: bool) -> JRef<dyn Predicate<JRef<dyn CommandSourceStack>>> { PaperServerInternalAPIBridge::restricted(self, predicate, restricted) }
+    fn restricted(&self, predicate: Arc<dyn Fn(JRef<dyn CommandSourceStack>) -> bool + Send + Sync>, restricted: bool) -> Arc<dyn Fn(JRef<dyn CommandSourceStack>) -> bool + Send + Sync> { PaperServerInternalAPIBridge::restricted(self, predicate, restricted) }
     fn default_mannequin_profile(&self) -> JRef<dyn ResolvableProfile> { PaperServerInternalAPIBridge::default_mannequin_profile(self) }
     fn all_skin_parts(&self) -> JRef<dyn SkinPartsMutable> { PaperServerInternalAPIBridge::all_skin_parts(self) }
     fn default_mannequin_description(&self) -> Component { PaperServerInternalAPIBridge::default_mannequin_description(self) }
-    fn legacy_game_rule_bridge<MODERN: JGeneric, LEGACY: JGeneric>(&self, rule: JRef<dyn GameRuleTrait<MODERN>>, from_legacy_to_modern: JRef<dyn Function<LEGACY, MODERN>>, to_legacy_from_modern: JRef<dyn Function<MODERN, LEGACY>>, legacy_class: Class) -> JRef<dyn GameRuleTrait<LEGACY>> where Self: Sized { PaperServerInternalAPIBridge::legacy_game_rule_bridge::<MODERN, LEGACY>(self, rule, from_legacy_to_modern, to_legacy_from_modern, legacy_class) }
+    fn legacy_game_rule_bridge<MODERN: JGeneric, LEGACY: JGeneric>(&self, rule: JRef<dyn GameRuleTrait<MODERN>>, from_legacy_to_modern: Arc<dyn Fn(LEGACY) -> MODERN + Send + Sync>, to_legacy_from_modern: Arc<dyn Fn(MODERN) -> LEGACY + Send + Sync>, legacy_class: crate::rt::Class) -> JRef<dyn GameRuleTrait<LEGACY>> where Self: Sized { PaperServerInternalAPIBridge::legacy_game_rule_bridge::<MODERN, LEGACY>(self, rule, from_legacy_to_modern, to_legacy_from_modern, legacy_class) }
     fn valid_mannequin_poses(&self) -> HashSet<Pose> { PaperServerInternalAPIBridge::valid_mannequin_poses(self) }
     fn create_occupancy(&self, enum_name_entry: &str) -> JRef<dyn PoiTypeOccupancy> { PaperServerInternalAPIBridge::create_occupancy(self, enum_name_entry) }
     fn create_damage_source_builder(&self, damage_type: JRef<dyn DamageType>) -> JRef<dyn DamageSourceBuilder> { PaperServerInternalAPIBridge::create_damage_source_builder(self, damage_type) }
@@ -92,9 +87,9 @@ impl InternalAPIBridge for PaperServerInternalAPIBridge {
     fn has_default_entity_attributes(&self, entity_key: JRef<NamespacedKey>) -> bool { PaperServerInternalAPIBridge::has_default_entity_attributes(self, entity_key) }
     fn get_default_entity_attributes(&self, entity_key: JRef<NamespacedKey>) -> JRef<dyn Attributable> { PaperServerInternalAPIBridge::get_default_entity_attributes(self, entity_key) }
     fn get_statistic_criteria_key(&self, statistic: Statistic) -> String { PaperServerInternalAPIBridge::get_statistic_criteria_key(self, statistic) }
-    fn create_plugin_lifecycle_event_manager(&self, plugin: JRef<dyn JavaPluginTrait>, registration_check: JRef<dyn BooleanSupplier>) -> JRef<dyn LifecycleEventManager<JRef<dyn Plugin>>> { PaperServerInternalAPIBridge::create_plugin_lifecycle_event_manager(self, plugin, registration_check) }
+    fn create_plugin_lifecycle_event_manager(&self, plugin: JRef<dyn JavaPluginTrait>, registration_check: Arc<dyn Fn() -> bool + Send + Sync>) -> JRef<dyn LifecycleEventManager<JRef<dyn Plugin>>> { PaperServerInternalAPIBridge::create_plugin_lifecycle_event_manager(self, plugin, registration_check) }
     fn create_empty_stack(&self) -> JRef<ItemStack> { PaperServerInternalAPIBridge::create_empty_stack(self) }
-    fn resolve_with_context(&self, component: Component, context: Option<JRef<dyn CommandSender>>, scoreboard_subject: Option<JRef<dyn Entity>>, bypass_permissions: bool) -> Result<Component, Throwable> { PaperServerInternalAPIBridge::resolve_with_context(self, component, context, scoreboard_subject, bypass_permissions) }
+    fn resolve_with_context(&self, component: Component, context: Option<JRef<dyn CommandSender>>, scoreboard_subject: Option<JRef<dyn Entity>>, bypass_permissions: bool) -> Result<Component, anyhow::Error> { PaperServerInternalAPIBridge::resolve_with_context(self, component, context, scoreboard_subject, bypass_permissions) }
     fn component_flattener(&self) -> ComponentFlattener { PaperServerInternalAPIBridge::component_flattener(self) }
     fn create_persistent_data_key<C: JGeneric>(&self, key: JRef<dyn Key>, type_: JRef<dyn PersistentDataType<JObjectRef, C>>) -> JRef<dyn PersistentDataKey<C>> where Self: Sized { PaperServerInternalAPIBridge::create_persistent_data_key::<C>(self, key, type_) }
 }

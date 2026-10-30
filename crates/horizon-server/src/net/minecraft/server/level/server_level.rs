@@ -3,7 +3,6 @@
 use crate::prelude::*;
 use crate::alternate::current::wire::wire_handler::WireHandler;
 use crate::api_impl::persistence::craft_persistent_data_type_registry::CraftPersistentDataTypeRegistry;
-use crate::ca::spottedleaf::concurrentutil::util::Priority;
 use crate::ca::spottedleaf::moonrise::common::list::reference_list::ReferenceList;
 use crate::ca::spottedleaf::moonrise::common::misc::nearby_players::NearbyPlayers;
 use crate::ca::spottedleaf::moonrise::patches::chunk_system::io::datacontroller::chunk_data_controller::ChunkDataController;
@@ -20,22 +19,10 @@ use crate::ca::spottedleaf::moonrise::patches::chunk_system::player::regionized_
 use crate::ca::spottedleaf::moonrise::patches::chunk_system::scheduling::chunk_task_scheduler::ChunkTaskScheduler;
 use crate::ca::spottedleaf::moonrise::patches::chunk_system::world::chunk_system_entity_getter::ChunkSystemEntityGetter;
 use crate::ca::spottedleaf::moonrise::patches::chunk_tick_iteration::chunk_tick_server_level::ChunkTickServerLevel;
-use crate::com::mojang::datafixers::util::Pair;
 use crate::io::papermc::paper::configuration::world_configuration::WorldConfiguration;
 use crate::io::papermc::paper::entity::temptation::global_temptation_lookup::GlobalTemptationLookup;
 use crate::io::papermc::paper::world::paper_world_loader::PaperWorldLoaderLoadedWorldData;
 use crate::io::papermc::paper::world::saveddata::paper_level_overrides::PaperLevelOverrides;
-use crate::java::io::Writer;
-use crate::java::lang::Class;
-use crate::java::lang::Throwable;
-use crate::java::util::concurrent::ConcurrentLinkedQueue;
-use crate::java::util::concurrent::Executor;
-use crate::java::util::concurrent::ExecutorService;
-use crate::java::util::function::BooleanSupplier;
-use crate::java::util::function::Consumer;
-use crate::java::util::function::Function;
-use crate::java::util::function::Predicate;
-use crate::java::util::stream::Stream;
 use crate::net::minecraft::core::block_pos::BlockPos;
 use crate::net::minecraft::core::block_pos::BlockPosMutableBlockPos;
 use crate::net::minecraft::core::direction::Direction;
@@ -227,8 +214,8 @@ pub struct ServerLevel {
     pub structure_manager: JRef<dyn StructureManagerTrait>, // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:219
     pub structure_check: JRef<StructureCheck>, // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:220
     pub tick_time: bool, // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:221
-    pub tick_executor: ExecutorService, // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:223
-    pub async_read_request_queue: ConcurrentLinkedQueue<WorldReadRequest>, // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:224
+    pub tick_executor: crate::rt::Executor, // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:223
+    pub async_read_request_queue: crossbeam::queue::SegQueue<WorldReadRequest>, // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:224
     pub is_shutting_down: Mut<bool>, // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:225
     pub type_key: JRef<ResourceKey<LevelStem>>, // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:229
     pub bukkit_name: String, // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:230
@@ -291,7 +278,7 @@ pub static DATA_TYPE_REGISTRY: LazyLock<JRef<CraftPersistentDataTypeRegistry>> =
 pub static EMPTY_LEVEL_CHUNKS: LazyLock<Vec<JRef<dyn LevelChunkTrait>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:362
 impl ServerLevel {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(server: JRef<dyn MinecraftServerTrait>, executor: JRef<dyn Executor>, level_storage: JRef<LevelStorageSourceLevelStorageAccess>, world_gen_settings: JRef<WorldGenSettings>, dimension: JRef<ResourceKey<JRef<dyn LevelTrait>>>, level_stem: LevelStem, is_debug: bool, biome_zoom_seed: i64, custom_spawners: &Vec<JRef<dyn CustomSpawner>>, tick_time: bool, type_key: JRef<ResourceKey<LevelStem>>, env: WorldEnvironment, gen_: JRef<dyn ChunkGeneratorTrait>, biome_provider: JRef<dyn BiomeProviderTrait>, saved_data_storage: JRef<SavedDataStorage>, loaded_world_data: PaperWorldLoaderLoadedWorldData) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:654
+    pub fn new(server: JRef<dyn MinecraftServerTrait>, executor: crate::rt::Executor, level_storage: JRef<LevelStorageSourceLevelStorageAccess>, world_gen_settings: JRef<WorldGenSettings>, dimension: JRef<ResourceKey<JRef<dyn LevelTrait>>>, level_stem: LevelStem, is_debug: bool, biome_zoom_seed: i64, custom_spawners: &Vec<JRef<dyn CustomSpawner>>, tick_time: bool, type_key: JRef<ResourceKey<LevelStem>>, env: WorldEnvironment, gen_: JRef<dyn ChunkGeneratorTrait>, biome_provider: JRef<dyn BiomeProviderTrait>, saved_data_storage: JRef<SavedDataStorage>, loaded_world_data: PaperWorldLoaderLoadedWorldData) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:654
     pub fn get_chunk_if_loaded_2(&self, x: i32, z: i32) -> Option<JRef<dyn LevelChunkTrait>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:247
     pub fn get_type_key(&self) -> JRef<ResourceKey<LevelStem>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:252
     pub fn get_player_by_uuid(&self, uuid: Uuid) -> Option<JRef<dyn PlayerTrait>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:345
@@ -306,11 +293,11 @@ impl ServerLevel {
     pub fn moonrise_get_entity_chunk_data_controller(&self) -> JRef<dyn MoonriseRegionFileIORegionDataControllerTrait> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:416
     pub fn moonrise_get_region_chunk_shift(&self) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:421
     pub fn moonrise_get_player_chunk_loader(&self) -> JRef<RegionizedPlayerChunkLoader> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:426
-    pub fn moonrise_load_chunks_async(&self, pos: BlockPos, radius_blocks: i32, priority: Priority, on_load: JRef<dyn Consumer<Vec<JRef<dyn ChunkAccessTrait>>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:431
-    pub fn moonrise_load_chunks_async_5(&self, pos: BlockPos, radius_blocks: i32, chunk_status: JRef<ChunkStatus>, priority: Priority, on_load: JRef<dyn Consumer<Vec<JRef<dyn ChunkAccessTrait>>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:444
-    pub fn moonrise_load_chunks_async_6(&self, min_chunk_x: i32, max_chunk_x: i32, min_chunk_z: i32, max_chunk_z: i32, priority: Priority, on_load: JRef<dyn Consumer<Vec<JRef<dyn ChunkAccessTrait>>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:457
-    pub fn moonrise_load_chunks_async_7(&self, min_chunk_x: i32, max_chunk_x: i32, min_chunk_z: i32, max_chunk_z: i32, chunk_status: JRef<ChunkStatus>, priority: Priority, on_load: JRef<dyn Consumer<Vec<JRef<dyn ChunkAccessTrait>>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:464
-    pub fn moonrise_load_chunks_async_8(&self, min_chunk_x: i32, max_chunk_x: i32, min_chunk_z: i32, max_chunk_z: i32, chunk_status: JRef<ChunkStatus>, priority: Priority, on_load: JRef<dyn Consumer<Vec<JRef<dyn ChunkAccessTrait>>>>, on_each_load: JRef<dyn Consumer<JRef<dyn ChunkAccessTrait>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:471
+    pub fn moonrise_load_chunks_async(&self, pos: BlockPos, radius_blocks: i32, priority: crate::rt::Priority, on_load: Arc<dyn Fn(Vec<JRef<dyn ChunkAccessTrait>>) + Send + Sync>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:431
+    pub fn moonrise_load_chunks_async_5(&self, pos: BlockPos, radius_blocks: i32, chunk_status: JRef<ChunkStatus>, priority: crate::rt::Priority, on_load: Arc<dyn Fn(Vec<JRef<dyn ChunkAccessTrait>>) + Send + Sync>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:444
+    pub fn moonrise_load_chunks_async_6(&self, min_chunk_x: i32, max_chunk_x: i32, min_chunk_z: i32, max_chunk_z: i32, priority: crate::rt::Priority, on_load: Arc<dyn Fn(Vec<JRef<dyn ChunkAccessTrait>>) + Send + Sync>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:457
+    pub fn moonrise_load_chunks_async_7(&self, min_chunk_x: i32, max_chunk_x: i32, min_chunk_z: i32, max_chunk_z: i32, chunk_status: JRef<ChunkStatus>, priority: crate::rt::Priority, on_load: Arc<dyn Fn(Vec<JRef<dyn ChunkAccessTrait>>) + Send + Sync>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:464
+    pub fn moonrise_load_chunks_async_8(&self, min_chunk_x: i32, max_chunk_x: i32, min_chunk_z: i32, max_chunk_z: i32, chunk_status: JRef<ChunkStatus>, priority: crate::rt::Priority, on_load: Arc<dyn Fn(Vec<JRef<dyn ChunkAccessTrait>>) + Send + Sync>, on_each_load: Arc<dyn Fn(JRef<dyn ChunkAccessTrait>) + Send + Sync>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:471
     pub fn moonrise_get_view_distance_holder(&self) -> JRef<RegionizedPlayerChunkLoaderViewDistanceHolder> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:519
     pub fn moonrise_get_last_mid_tick_failure(&self) -> i64 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:524
     pub fn moonrise_set_last_mid_tick_failure(&self, time: i64) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:529
@@ -334,8 +321,8 @@ impl ServerLevel {
     pub fn get_scoreboard(&self) -> JRef<ServerScoreboard> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:1434
     pub fn get_current_difficulty_at(&self, pos: BlockPos) -> DifficultyInstance { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:1443
     pub fn may_interact(&self, entity: JRef<dyn EntityTrait>, pos: BlockPos) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:1694
-    pub fn get_entities<T: JGeneric>(&self, type_: JRef<dyn EntityTypeTest<JRef<dyn EntityTrait>, T>>, selector: JRef<dyn Predicate<JObjectRef>>) -> Vec<T> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:1763
-    pub fn get_entities_4<T: JGeneric>(&self, type_: JRef<dyn EntityTypeTest<JRef<dyn EntityTrait>, T>>, selector: JRef<dyn Predicate<JObjectRef>>, result: &mut Vec<JObjectRef>, max_results: i32) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:1773
+    pub fn get_entities<T: JGeneric>(&self, type_: JRef<dyn EntityTypeTest<JRef<dyn EntityTrait>, T>>, selector: Arc<dyn Fn(JObjectRef) -> bool + Send + Sync>) -> Vec<T> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:1763
+    pub fn get_entities_4<T: JGeneric>(&self, type_: JRef<dyn EntityTypeTest<JRef<dyn EntityTrait>, T>>, selector: Arc<dyn Fn(JObjectRef) -> bool + Send + Sync>, result: &mut Vec<JObjectRef>, max_results: i32) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:1773
     pub fn add_fresh_entity(&self, entity: JRef<dyn EntityTrait>) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:1816
     pub fn add_fresh_entity_2(&self, entity: JRef<dyn EntityTrait>, reason: CreatureSpawnEventSpawnReason) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:1822
     pub fn destroy_block_progress(&self, id: i32, block_pos: BlockPos, progress: i32) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:1966
@@ -374,7 +361,7 @@ impl ServerLevel {
     pub fn get_seed(&self) -> i64 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:3115
     pub fn get_level(&self) -> JRef<ServerLevel> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:3128
     pub fn get_entities_0(&self) -> JRef<dyn LevelEntityGetter<JRef<dyn EntityTrait>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:3170
-    pub fn close(&self) -> Result<(), Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:3225
+    pub fn close(&self) -> Result<(), anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:3225
     pub fn gather_chunk_source_stats(&self) -> String { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:3231
     pub fn enabled_features(&self) -> FeatureFlagSet { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:3282
     pub fn fill_report_details(&self, report: JRef<CrashReport>) -> JRef<CrashReportCategory> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:3313
@@ -383,8 +370,8 @@ impl ServerLevel {
     pub fn get_global_player_by_uuid(&self, uuid: Uuid) -> Option<JRef<dyn PlayerTrait>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:3517
     pub fn are_chunks_loaded_for_entity_move(&self, box_: AABB) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:258
     pub fn are_chunks_loaded_for_move(&self, box_: AABB) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:290
-    pub fn load_chunks_for_move_async(&self, box_: AABB, priority: Priority, on_load: JRef<dyn Consumer<Vec<JRef<dyn ChunkAccessTrait>>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:319
-    pub fn load_chunks(&self, min_chunk_x: i32, min_chunk_z: i32, max_chunk_x: i32, max_chunk_z: i32, priority: Priority, on_load: JRef<dyn Consumer<Vec<JRef<dyn ChunkAccessTrait>>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:337
+    pub fn load_chunks_for_move_async(&self, box_: AABB, priority: crate::rt::Priority, on_load: Arc<dyn Fn(Vec<JRef<dyn ChunkAccessTrait>>) + Send + Sync>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:319
+    pub fn load_chunks(&self, min_chunk_x: i32, min_chunk_z: i32, max_chunk_x: i32, max_chunk_z: i32, priority: crate::rt::Priority, on_load: Arc<dyn Fn(Vec<JRef<dyn ChunkAccessTrait>>) + Send + Sync>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:337
     pub fn set_dragon_fight(&self, fight: Option<JRef<EnderDragonFight>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:834
     pub fn uncached_biome_resolver(&self) -> JRef<dyn BiomeResolver> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:845
     pub fn structure_manager(&self) -> JRef<dyn StructureManagerTrait> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:849
@@ -393,7 +380,7 @@ impl ServerLevel {
     pub fn prepare_shutdown(&self) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:876
     pub fn process_async_read_requests(&self) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:891
     pub fn execute_read_request(&self, request: WorldReadRequest) -> JObjectRef { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:924
-    pub fn tick(&self, have_time: JRef<dyn BooleanSupplier>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:1007
+    pub fn tick(&self, have_time: Arc<dyn Fn() -> bool + Send + Sync>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:1007
     pub fn tick_time(&self) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:1146
     pub fn tick_custom_spawners(&self, spawn_enemies: bool) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:1154
     pub fn wake_up_all_players(&self) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:1160
@@ -423,10 +410,10 @@ impl ServerLevel {
     pub fn save(&self, progress_listener: Option<JRef<dyn ProgressListener>>, flush: bool, no_save: bool) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:1709
     pub fn save_4(&self, progress_listener: Option<JRef<dyn ProgressListener>>, flush: bool, no_save: bool, close: bool) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:1713
     pub fn save_level_data(&self, sync: bool) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:1753
-    pub fn get_entities_3_3<T: JGeneric>(&self, type_: JRef<dyn EntityTypeTest<JRef<dyn EntityTrait>, T>>, selector: JRef<dyn Predicate<JObjectRef>>, result: &Vec<JObjectRef>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:1769
+    pub fn get_entities_3_3<T: JGeneric>(&self, type_: JRef<dyn EntityTypeTest<JRef<dyn EntityTrait>, T>>, selector: Arc<dyn Fn(JObjectRef) -> bool + Send + Sync>, result: &Vec<JObjectRef>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:1769
     pub fn get_dragons(&self) -> Vec<JRef<EnderDragon>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:1788
-    pub fn get_players(&self, selector: JRef<dyn Predicate<JObjectRef>>) -> Vec<JRef<ServerPlayer>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:1792
-    pub fn get_players_2(&self, selector: JRef<dyn Predicate<JObjectRef>>, max_results: i32) -> Vec<JRef<ServerPlayer>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:1796
+    pub fn get_players(&self, selector: Arc<dyn Fn(JObjectRef) -> bool + Send + Sync>) -> Vec<JRef<ServerPlayer>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:1792
+    pub fn get_players_2(&self, selector: Arc<dyn Fn(JObjectRef) -> bool + Send + Sync>, max_results: i32) -> Vec<JRef<ServerPlayer>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:1796
     pub fn get_random_player(&self) -> Option<JRef<ServerPlayer>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:1811
     pub fn add_with_uuid(&self, entity: JRef<dyn EntityTrait>) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:1828
     pub fn add_with_uuid_2(&self, entity: JRef<dyn EntityTrait>, reason: CreatureSpawnEventSpawnReason) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:1833
@@ -444,7 +431,7 @@ impl ServerLevel {
     pub fn strike_lightning_2(&self, entitylightning: JRef<dyn EntityTrait>, cause: LightningStrikeEventCause) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:1955
     pub fn get_logical_height(&self) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:2093
     pub fn explode0(&self, source: Option<JRef<dyn EntityTrait>>, damage_source: Option<JRef<DamageSource>>, damage_calculator: Option<JRef<dyn ExplosionDamageCalculatorTrait>>, x: f64, y: f64, z: f64, r: f32, fire: bool, interaction_type: LevelExplosionInteraction, small_explosion_particles: JRef<dyn ParticleOptions>, large_explosion_particles: JRef<dyn ParticleOptions>, block_particles: JRef<dyn WeightedListTrait<ExplosionParticleInfo>>, explosion_sound: JRef<dyn Holder<SoundEvent>>) -> JRef<ServerExplosion> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:2223
-    pub fn explode0_14(&self, source: Option<JRef<dyn EntityTrait>>, damage_source: Option<JRef<DamageSource>>, damage_calculator: Option<JRef<dyn ExplosionDamageCalculatorTrait>>, x: f64, y: f64, z: f64, r: f32, fire: bool, interaction_type: LevelExplosionInteraction, small_explosion_particles: JRef<dyn ParticleOptions>, large_explosion_particles: JRef<dyn ParticleOptions>, block_particles: JRef<dyn WeightedListTrait<ExplosionParticleInfo>>, explosion_sound: JRef<dyn Holder<SoundEvent>>, configurator: JRef<dyn Consumer<JRef<ServerExplosion>>>) -> JRef<ServerExplosion> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:2240
+    pub fn explode0_14(&self, source: Option<JRef<dyn EntityTrait>>, damage_source: Option<JRef<DamageSource>>, damage_calculator: Option<JRef<dyn ExplosionDamageCalculatorTrait>>, x: f64, y: f64, z: f64, r: f32, fire: bool, interaction_type: LevelExplosionInteraction, small_explosion_particles: JRef<dyn ParticleOptions>, large_explosion_particles: JRef<dyn ParticleOptions>, block_particles: JRef<dyn WeightedListTrait<ExplosionParticleInfo>>, explosion_sound: JRef<dyn Holder<SoundEvent>>, configurator: Arc<dyn Fn(JRef<ServerExplosion>) + Send + Sync>) -> JRef<ServerExplosion> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:2240
     pub fn get_destroy_type(&self, game_rule: JRef<GameRule<bool>>) -> ExplosionBlockInteraction { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:2293
     pub fn run_block_events(&self) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:2302
     pub fn do_block_event(&self, event_data: BlockEventData) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:2329
@@ -472,7 +459,7 @@ impl ServerLevel {
     pub fn get_entity_or_part(&self, id: i32) -> Option<JRef<dyn EntityTrait>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:2797
     pub fn find_nearest_map_structure(&self, structure_tag: TagKey<JRef<dyn StructureTrait>>, origin: BlockPos, max_search_radius: i32, create_reference: bool) -> Option<BlockPos> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:2808
     pub fn find_nearest_map_structure_4(&self, structure_tag: JRef<dyn HolderSet<JRef<dyn StructureTrait>>>, origin: BlockPos, max_search_radius: i32, create_reference: bool) -> Option<BlockPos> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:2815
-    pub fn find_closest_biome3d(&self, biome_test: JRef<dyn Predicate<JRef<dyn Holder<JRef<Biome>>>>>, origin: BlockPos, max_search_radius: i32, sample_resolution_horizontal: i32, sample_resolution_vertical: i32) -> Option<Pair<BlockPos, JRef<dyn Holder<JRef<Biome>>>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:2824
+    pub fn find_closest_biome3d(&self, biome_test: Arc<dyn Fn(JRef<dyn Holder<JRef<Biome>>>) -> bool + Send + Sync>, origin: BlockPos, max_search_radius: i32, sample_resolution_horizontal: i32, sample_resolution_vertical: i32) -> Option<(BlockPos, JRef<dyn Holder<JRef<Biome>>>)> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:2824
     pub fn get_data_storage(&self) -> JRef<SavedDataStorage> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:2867
     pub fn set_map_data(&self, id: MapId, data: JRef<MapItemSavedData>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:2897
     pub fn get_free_map_id(&self) -> MapId { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:2906
@@ -487,9 +474,9 @@ impl ServerLevel {
     pub fn get_raid_at(&self, pos: BlockPos) -> Option<JRef<Raid>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:2995
     pub fn is_raided(&self, pos: BlockPos) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:2999
     pub fn on_reputation_event(&self, type_: JRef<dyn ReputationEventType>, source: JRef<dyn EntityTrait>, target: JRef<dyn ReputationEventHandler>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:3003
-    pub fn save_debug_report(&self, root_dir: std::path::PathBuf) -> Result<(), Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:3007
-    pub fn dump_entities(output: Writer, entities: &Vec<JRef<dyn EntityTrait>>) -> Result<(), Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:3059
-    pub fn dump_block_entity_tickers(&self, output: Writer) -> Result<(), Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:3087
+    pub fn save_debug_report(&self, root_dir: std::path::PathBuf) -> Result<(), anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:3007
+    pub fn dump_entities(output: Box<dyn std::io::Write + Send>, entities: &Vec<JRef<dyn EntityTrait>>) -> Result<(), anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:3059
+    pub fn dump_block_entity_tickers(&self, output: Box<dyn std::io::Write + Send>) -> Result<(), anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:3087
     pub fn clear_block_events(&self, bb: JRef<BoundingBox>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:3097
     pub fn get_all_entities(&self) -> Vec<JRef<dyn EntityTrait>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:3102
     pub fn to_string(&self) -> String { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:3106
@@ -497,11 +484,11 @@ impl ServerLevel {
     pub fn get_dragon_fight(&self) -> Option<JRef<EnderDragonFight>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:3120
     pub fn get_weather_data(&self) -> JRef<WeatherData> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:3124
     pub fn get_watchdog_stats(&self) -> String { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:3133
-    pub fn get_type_count<T: JGeneric>(values: &Vec<T>, type_getter: JRef<dyn Function<T, String>>) -> String { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:3149
-    pub fn add_legacy_chunk_entities(&self, loaded: Stream<JRef<dyn EntityTrait>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:3176
-    pub fn add_legacy_chunk_entities_2(&self, loaded: Stream<JRef<dyn EntityTrait>>, chunk_pos: ChunkPos) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:3180
-    pub fn add_world_gen_chunk_entities(&self, loaded: Stream<JRef<dyn EntityTrait>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:3185
-    pub fn add_world_gen_chunk_entities_2(&self, loaded: Stream<JRef<dyn EntityTrait>>, chunk_pos: ChunkPos) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:3189
+    pub fn get_type_count<T: JGeneric>(values: &Vec<T>, type_getter: Arc<dyn Fn(T) -> String + Send + Sync>) -> String { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:3149
+    pub fn add_legacy_chunk_entities(&self, loaded: Box<dyn Iterator<Item = JRef<dyn EntityTrait>> + Send>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:3176
+    pub fn add_legacy_chunk_entities_2(&self, loaded: Box<dyn Iterator<Item = JRef<dyn EntityTrait>> + Send>, chunk_pos: ChunkPos) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:3180
+    pub fn add_world_gen_chunk_entities(&self, loaded: Box<dyn Iterator<Item = JRef<dyn EntityTrait>> + Send>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:3185
+    pub fn add_world_gen_chunk_entities_2(&self, loaded: Box<dyn Iterator<Item = JRef<dyn EntityTrait>> + Send>, chunk_pos: ChunkPos) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:3189
     pub fn start_ticking_chunk(&self, level_chunk: JRef<dyn LevelChunkTrait>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:3194
     pub fn on_structure_starts_available(&self, chunk: JRef<dyn ChunkAccessTrait>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:3198
     pub fn get_path_type_cache(&self) -> JRef<PathTypeCache> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:3202
@@ -517,7 +504,7 @@ impl ServerLevel {
     pub fn can_spawn_entities_in_chunk(&self, pos: ChunkPos) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:3275
     pub fn get_game_rules(&self) -> JRef<GameRules> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:3287
     pub fn get_players_for_global_sound_gamerule(&self) -> Vec<JRef<ServerPlayer>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:3292
-    pub fn get_global_sound_range_squared(&self, range_function: JRef<dyn Function<JRef<dyn SpigotWorldConfigTrait>, i32>>) -> f64 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:3296
+    pub fn get_global_sound_range_squared(&self, range_function: Arc<dyn Fn(JRef<dyn SpigotWorldConfigTrait>) -> i32 + Send + Sync>) -> f64 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:3296
     pub fn check_captured_tree_state_for_observer_notify(&self, pos: BlockPos, craft_block_state: JRef<dyn crate::org::bukkit::block::block_state::BlockState>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:3302
     pub fn is_allowed_to_enter_portal(&self, to_level: JRef<dyn LevelTrait>) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:3344
     pub fn is_pvp_allowed(&self) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerLevel.java:3348
@@ -535,8 +522,8 @@ impl LevelTrait for ServerLevel {
     fn paper_config(&self) -> JRef<WorldConfiguration> { Level::paper_config(self) }
     fn gale_config(&self) -> JRef<GaleWorldConfiguration> { Level::gale_config(self) }
     fn reset_breeding_cooldowns(&self) { Level::reset_breeding_cooldowns(self) }
-    fn has_breeding_cooldown(&self, player: Uuid, animal_type: Class) -> bool { Level::has_breeding_cooldown(self, player, animal_type) }
-    fn add_breeding_cooldown(&self, player: Uuid, animal_type: Class) { Level::add_breeding_cooldown(self, player, animal_type) }
+    fn has_breeding_cooldown(&self, player: Uuid, animal_type: crate::rt::Class) -> bool { Level::has_breeding_cooldown(self, player, animal_type) }
+    fn add_breeding_cooldown(&self, player: Uuid, animal_type: crate::rt::Class) { Level::add_breeding_cooldown(self, player, animal_type) }
     fn get_world(&self) -> JRef<dyn World> { Level::get_world(self) }
     fn get_craft_server(&self) -> JRef<dyn Server> { Level::get_craft_server(self) }
     fn get_type_key(&self) -> JRef<ResourceKey<LevelStem>> { ServerLevel::get_type_key(self) }
@@ -589,8 +576,8 @@ impl LevelTrait for ServerLevel {
     fn set_respawn_data(&self, respawn_data: LevelDataRespawnData) { ServerLevel::set_respawn_data(self, respawn_data) }
     fn get_respawn_data(&self) -> LevelDataRespawnData { ServerLevel::get_respawn_data(self) }
     fn get_world_border_adjusted_respawn_data(&self, respawn_data: LevelDataRespawnData) -> LevelDataRespawnData { Level::get_world_border_adjusted_respawn_data(self, respawn_data) }
-    fn close(&self) -> Result<(), Throwable> { ServerLevel::close(self) }
-    fn for_each_entity(&self, except: Option<JRef<dyn EntityTrait>>, bb: AABB, selector: JRef<dyn Predicate<JObjectRef>>, consumer: JRef<dyn AbortableIterationConsumer<JRef<dyn EntityTrait>>>) -> bool { Level::for_each_entity(self, except, bb, selector, consumer) }
+    fn close(&self) -> Result<(), anyhow::Error> { ServerLevel::close(self) }
+    fn for_each_entity(&self, except: Option<JRef<dyn EntityTrait>>, bb: AABB, selector: Arc<dyn Fn(JObjectRef) -> bool + Send + Sync>, consumer: JRef<dyn AbortableIterationConsumer<JRef<dyn EntityTrait>>>) -> bool { Level::for_each_entity(self, except, bb, selector, consumer) }
     fn get_entities_0(&self) -> JRef<dyn LevelEntityGetter<JRef<dyn EntityTrait>>> { ServerLevel::get_entities_0(self) }
     fn get_chunk_entities(&self, chunk_x: i32, chunk_z: i32) -> Vec<JRef<dyn Entity>> { Level::get_chunk_entities(self, chunk_x, chunk_z) }
     fn get_pushable_entities(&self, pusher: JRef<dyn EntityTrait>, bounding_box: AABB) -> Vec<JRef<dyn EntityTrait>> { Level::get_pushable_entities(self, pusher, bounding_box) }
@@ -730,8 +717,8 @@ impl ChunkSystemLevelReader for ServerLevel {
 impl LevelSimulatedRW for ServerLevel {
 }
 impl LevelSimulatedReader for ServerLevel {
-    fn is_state_at_position(&self, pos: BlockPos, predicate: JRef<dyn Predicate<JRef<crate::net::minecraft::world::level::block::state::block_state::BlockState>>>) -> bool { Level::is_state_at_position(self, pos, predicate) }
-    fn is_fluid_at_position(&self, pos: BlockPos, predicate: JRef<dyn Predicate<JRef<FluidState>>>) -> bool { Level::is_fluid_at_position(self, pos, predicate) }
+    fn is_state_at_position(&self, pos: BlockPos, predicate: Arc<dyn Fn(JRef<crate::net::minecraft::world::level::block::state::block_state::BlockState>) -> bool + Send + Sync>) -> bool { Level::is_state_at_position(self, pos, predicate) }
+    fn is_fluid_at_position(&self, pos: BlockPos, predicate: Arc<dyn Fn(JRef<FluidState>) -> bool + Send + Sync>) -> bool { Level::is_fluid_at_position(self, pos, predicate) }
     fn get_block_entity<T: JGeneric>(&self, pos: BlockPos, type_: JRef<BlockEntityType<T>>) -> Option<T> where Self: Sized { Level::get_block_entity::<T>(self, pos, type_) }
     fn get_heightmap_pos(&self, type_: HeightmapTypes, pos: BlockPos) -> BlockPos { Level::get_heightmap_pos(self, type_, pos) }
 }
@@ -744,16 +731,16 @@ impl LevelWriter for ServerLevel {
 }
 impl EntityGetter for ServerLevel {
     fn get_entities(&self, except: Option<JRef<dyn EntityTrait>>, bb: AABB) -> Vec<JRef<dyn EntityTrait>> { ServerLevel::get_entities(self, except, bb) }
-    fn get_entities_3(&self, except: Option<JRef<dyn EntityTrait>>, bb: AABB, selector: JRef<dyn Predicate<JObjectRef>>) -> Vec<JRef<dyn EntityTrait>> { Level::get_entities_3(self, except, bb, selector) }
-    fn get_entities_3_2<T: JGeneric>(&self, type_: JRef<dyn EntityTypeTest<JRef<dyn EntityTrait>, T>>, bb: AABB, selector: JRef<dyn Predicate<JObjectRef>>) -> Vec<T> where Self: Sized { Level::get_entities_3_2::<T>(self, type_, bb, selector) }
-    fn get_entities_of_class_3<T: JGeneric>(&self, base_class: Class, bb: AABB, selector: JRef<dyn Predicate<JObjectRef>>) -> Vec<T> where Self: Sized { Level::get_entities_of_class_3::<T>(self, base_class, bb, selector) }
+    fn get_entities_3(&self, except: Option<JRef<dyn EntityTrait>>, bb: AABB, selector: Arc<dyn Fn(JObjectRef) -> bool + Send + Sync>) -> Vec<JRef<dyn EntityTrait>> { Level::get_entities_3(self, except, bb, selector) }
+    fn get_entities_3_2<T: JGeneric>(&self, type_: JRef<dyn EntityTypeTest<JRef<dyn EntityTrait>, T>>, bb: AABB, selector: Arc<dyn Fn(JObjectRef) -> bool + Send + Sync>) -> Vec<T> where Self: Sized { Level::get_entities_3_2::<T>(self, type_, bb, selector) }
+    fn get_entities_of_class_3<T: JGeneric>(&self, base_class: crate::rt::Class, bb: AABB, selector: Arc<dyn Fn(JObjectRef) -> bool + Send + Sync>) -> Vec<T> where Self: Sized { Level::get_entities_of_class_3::<T>(self, base_class, bb, selector) }
     fn players(&self) -> Vec<JRef<dyn PlayerTrait>> { ServerLevel::players(self) }
     fn is_unobstructed(&self, source: Option<JRef<dyn EntityTrait>>, shape: JRef<dyn VoxelShapeTrait>) -> bool { Level::is_unobstructed(self, source, shape) }
     fn get_player_by_uuid(&self, uuid: Uuid) -> Option<JRef<dyn PlayerTrait>> { ServerLevel::get_player_by_uuid(self, uuid) }
     fn get_global_player_by_uuid(&self, uuid: Uuid) -> Option<JRef<dyn PlayerTrait>> { ServerLevel::get_global_player_by_uuid(self, uuid) }
 }
 impl ChunkSystemEntityGetter for ServerLevel {
-    fn moonrise_get_hard_colliding_entities(&self, entity: JRef<dyn EntityTrait>, box_: AABB, predicate: JRef<dyn Predicate<JObjectRef>>) -> Vec<JRef<dyn EntityTrait>> { Level::moonrise_get_hard_colliding_entities(self, entity, box_, predicate) }
+    fn moonrise_get_hard_colliding_entities(&self, entity: JRef<dyn EntityTrait>, box_: AABB, predicate: Arc<dyn Fn(JObjectRef) -> bool + Send + Sync>) -> Vec<JRef<dyn EntityTrait>> { Level::moonrise_get_hard_colliding_entities(self, entity, box_, predicate) }
 }
 impl ScheduledTickAccess for ServerLevel {
     fn create_tick<T: JGeneric>(&self, pos: BlockPos, type_: T, tick_delay: i32) -> ScheduledTick<T> where Self: Sized { todo!("abstract ScheduledTickAccess.createTick") }
@@ -771,11 +758,11 @@ impl ChunkSystemServerLevel for ServerLevel {
     fn moonrise_get_entity_chunk_data_controller(&self) -> JRef<dyn MoonriseRegionFileIORegionDataControllerTrait> { ServerLevel::moonrise_get_entity_chunk_data_controller(self) }
     fn moonrise_get_region_chunk_shift(&self) -> i32 { ServerLevel::moonrise_get_region_chunk_shift(self) }
     fn moonrise_get_player_chunk_loader(&self) -> JRef<RegionizedPlayerChunkLoader> { ServerLevel::moonrise_get_player_chunk_loader(self) }
-    fn moonrise_load_chunks_async(&self, pos: BlockPos, radius_blocks: i32, priority: Priority, on_load: JRef<dyn Consumer<Vec<JRef<dyn ChunkAccessTrait>>>>) { ServerLevel::moonrise_load_chunks_async(self, pos, radius_blocks, priority, on_load) }
-    fn moonrise_load_chunks_async_5(&self, pos: BlockPos, radius_blocks: i32, chunk_status: JRef<ChunkStatus>, priority: Priority, on_load: JRef<dyn Consumer<Vec<JRef<dyn ChunkAccessTrait>>>>) { ServerLevel::moonrise_load_chunks_async_5(self, pos, radius_blocks, chunk_status, priority, on_load) }
-    fn moonrise_load_chunks_async_6(&self, min_chunk_x: i32, max_chunk_x: i32, min_chunk_z: i32, max_chunk_z: i32, priority: Priority, on_load: JRef<dyn Consumer<Vec<JRef<dyn ChunkAccessTrait>>>>) { ServerLevel::moonrise_load_chunks_async_6(self, min_chunk_x, max_chunk_x, min_chunk_z, max_chunk_z, priority, on_load) }
-    fn moonrise_load_chunks_async_7(&self, min_chunk_x: i32, max_chunk_x: i32, min_chunk_z: i32, max_chunk_z: i32, chunk_status: JRef<ChunkStatus>, priority: Priority, on_load: JRef<dyn Consumer<Vec<JRef<dyn ChunkAccessTrait>>>>) { ServerLevel::moonrise_load_chunks_async_7(self, min_chunk_x, max_chunk_x, min_chunk_z, max_chunk_z, chunk_status, priority, on_load) }
-    fn moonrise_load_chunks_async_8(&self, min_chunk_x: i32, max_chunk_x: i32, min_chunk_z: i32, max_chunk_z: i32, chunk_status: JRef<ChunkStatus>, priority: Priority, on_load: JRef<dyn Consumer<Vec<JRef<dyn ChunkAccessTrait>>>>, on_each_load: JRef<dyn Consumer<JRef<dyn ChunkAccessTrait>>>) { ServerLevel::moonrise_load_chunks_async_8(self, min_chunk_x, max_chunk_x, min_chunk_z, max_chunk_z, chunk_status, priority, on_load, on_each_load) }
+    fn moonrise_load_chunks_async(&self, pos: BlockPos, radius_blocks: i32, priority: crate::rt::Priority, on_load: Arc<dyn Fn(Vec<JRef<dyn ChunkAccessTrait>>) + Send + Sync>) { ServerLevel::moonrise_load_chunks_async(self, pos, radius_blocks, priority, on_load) }
+    fn moonrise_load_chunks_async_5(&self, pos: BlockPos, radius_blocks: i32, chunk_status: JRef<ChunkStatus>, priority: crate::rt::Priority, on_load: Arc<dyn Fn(Vec<JRef<dyn ChunkAccessTrait>>) + Send + Sync>) { ServerLevel::moonrise_load_chunks_async_5(self, pos, radius_blocks, chunk_status, priority, on_load) }
+    fn moonrise_load_chunks_async_6(&self, min_chunk_x: i32, max_chunk_x: i32, min_chunk_z: i32, max_chunk_z: i32, priority: crate::rt::Priority, on_load: Arc<dyn Fn(Vec<JRef<dyn ChunkAccessTrait>>) + Send + Sync>) { ServerLevel::moonrise_load_chunks_async_6(self, min_chunk_x, max_chunk_x, min_chunk_z, max_chunk_z, priority, on_load) }
+    fn moonrise_load_chunks_async_7(&self, min_chunk_x: i32, max_chunk_x: i32, min_chunk_z: i32, max_chunk_z: i32, chunk_status: JRef<ChunkStatus>, priority: crate::rt::Priority, on_load: Arc<dyn Fn(Vec<JRef<dyn ChunkAccessTrait>>) + Send + Sync>) { ServerLevel::moonrise_load_chunks_async_7(self, min_chunk_x, max_chunk_x, min_chunk_z, max_chunk_z, chunk_status, priority, on_load) }
+    fn moonrise_load_chunks_async_8(&self, min_chunk_x: i32, max_chunk_x: i32, min_chunk_z: i32, max_chunk_z: i32, chunk_status: JRef<ChunkStatus>, priority: crate::rt::Priority, on_load: Arc<dyn Fn(Vec<JRef<dyn ChunkAccessTrait>>) + Send + Sync>, on_each_load: Arc<dyn Fn(JRef<dyn ChunkAccessTrait>) + Send + Sync>) { ServerLevel::moonrise_load_chunks_async_8(self, min_chunk_x, max_chunk_x, min_chunk_z, max_chunk_z, chunk_status, priority, on_load, on_each_load) }
     fn moonrise_get_view_distance_holder(&self) -> JRef<RegionizedPlayerChunkLoaderViewDistanceHolder> { ServerLevel::moonrise_get_view_distance_holder(self) }
     fn moonrise_get_last_mid_tick_failure(&self) -> i64 { ServerLevel::moonrise_get_last_mid_tick_failure(self) }
     fn moonrise_set_last_mid_tick_failure(&self, time: i64) { ServerLevel::moonrise_set_last_mid_tick_failure(self, time) }

@@ -5,7 +5,6 @@ use crate::com::mojang::brigadier::command_dispatcher::CommandDispatcher;
 use crate::com::mojang::brigadier::exceptions::Dynamic2CommandExceptionType;
 use crate::com::mojang::brigadier::exceptions::DynamicCommandExceptionType;
 use crate::com::mojang::brigadier::exceptions::SimpleCommandExceptionType;
-use crate::java::lang::Throwable;
 use crate::net::minecraft::commands::command_source_stack::CommandSourceStack;
 use crate::net::minecraft::world::entity::entity::EntityTrait;
 
@@ -23,7 +22,7 @@ impl RideCommand {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/RideCommand.java:16
     pub fn register(dispatcher: JRef<CommandDispatcher<JRef<CommandSourceStack>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/RideCommand.java:36
-    pub fn mount(source: JRef<CommandSourceStack>, target: JRef<dyn EntityTrait>, vehicle: JRef<dyn EntityTrait>) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/RideCommand.java:54
-    pub fn dismount(source: JRef<CommandSourceStack>, target: JRef<dyn EntityTrait>) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/RideCommand.java:80
+    pub fn mount(source: JRef<CommandSourceStack>, target: JRef<dyn EntityTrait>, vehicle: JRef<dyn EntityTrait>) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/RideCommand.java:54
+    pub fn dismount(source: JRef<CommandSourceStack>, target: JRef<dyn EntityTrait>) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/RideCommand.java:80
 }
 crate::jobject!(RideCommand);

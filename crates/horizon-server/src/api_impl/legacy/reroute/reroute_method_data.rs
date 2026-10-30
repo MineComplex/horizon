@@ -4,18 +4,17 @@ use crate::prelude::*;
 use crate::api_impl::legacy::reroute::require_plugin_version_data::RequirePluginVersionData;
 use crate::api_impl::legacy::reroute::reroute_argument::RerouteArgument;
 use crate::api_impl::legacy::reroute::reroute_return::RerouteReturn;
-use crate::org::objectweb::asm::Type;
 use crate::api_prelude::*;
 
 // ---- record org.bukkit.craftbukkit.legacy.reroute.RerouteMethodData (paper-server/src/main/java/org/bukkit/craftbukkit/legacy/reroute/RerouteMethodData.java:7)
 #[derive(Clone)]
 pub struct RerouteMethodData {
     pub method_key: String,
-    pub source_desc: Type,
-    pub source_owner: Type,
+    pub source_desc: (),
+    pub source_owner: (),
     pub source_name: String,
     pub static_reroute: bool,
-    pub target_type: Type,
+    pub target_type: (),
     pub target_owner: String,
     pub target_name: String,
     pub arguments: Vec<RerouteArgument>,
@@ -25,6 +24,6 @@ pub struct RerouteMethodData {
 }
 impl RerouteMethodData {
     pub fn new() -> Self { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/reroute/RerouteMethodData.java:7
-    pub fn new_12(method_key: &str, source_desc: Type, source_owner: Type, source_name: &str, static_reroute: bool, target_type: Type, target_owner: &str, target_name: &str, arguments: &Vec<RerouteArgument>, reroute_return: RerouteReturn, is_in_bukkit: bool, required_plugin_version: Option<RequirePluginVersionData>) -> Self { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/reroute/RerouteMethodData.java:7
+    pub fn new_12(method_key: &str, source_desc: (), source_owner: (), source_name: &str, static_reroute: bool, target_type: (), target_owner: &str, target_name: &str, arguments: &Vec<RerouteArgument>, reroute_return: RerouteReturn, is_in_bukkit: bool, required_plugin_version: Option<RequirePluginVersionData>) -> Self { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/reroute/RerouteMethodData.java:7
 }
 crate::jobject!(RerouteMethodData);

@@ -14,8 +14,6 @@ use crate::io::papermc::paper::registry::event::registry_entry_add_event::Regist
 use crate::io::papermc::paper::registry::event::type_::registry_entry_add_configuration::RegistryEntryAddConfiguration;
 use crate::io::papermc::paper::registry::event::type_::registry_entry_add_event_type::RegistryEntryAddEventType;
 use crate::io::papermc::paper::registry::registry_key::RegistryKey;
-use crate::java::util::function::Consumer;
-use crate::java::util::function::Predicate;
 
 // ---- class io.papermc.paper.registry.event.type.RegistryEntryAddEventTypeImpl (paper-server/src/main/java/io/papermc/paper/registry/event/type/RegistryEntryAddEventTypeImpl.java:12)
 pub struct RegistryEntryAddEventTypeImpl<T: JGeneric, B: JGeneric> {
@@ -32,7 +30,7 @@ impl<T: JGeneric, B: JGeneric> RegistryEntryAddEventTypeImpl<T, B> {
     pub fn new(registry_key: JRef<dyn RegistryKey<T>>, event_name: &str) -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/event/type/RegistryEntryAddEventTypeImpl.java:14
     pub fn blocks_reloading(&self, event_owner: JRef<dyn BootstrapContext>) -> bool { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/event/type/RegistryEntryAddEventTypeImpl.java:18
     pub fn new_handler(&self, handler: JRef<dyn LifecycleEventHandler<JObjectRef>>) -> JRef<dyn RegistryEntryAddConfiguration<T>> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/event/type/RegistryEntryAddEventTypeImpl.java:23
-    pub fn for_each_handler(&self, event: JRef<dyn RegistryEntryAddEvent<T, B>>, consumer: JRef<dyn Consumer<AbstractLifecycleEventTypeRegisteredHandler<JRef<dyn BootstrapContext>, JRef<dyn RegistryEntryAddEvent<T, B>>>>>, predicate: JRef<dyn Predicate<AbstractLifecycleEventTypeRegisteredHandler<JRef<dyn BootstrapContext>, JRef<dyn RegistryEntryAddEvent<T, B>>>>>) { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/event/type/RegistryEntryAddEventTypeImpl.java:28
+    pub fn for_each_handler(&self, event: JRef<dyn RegistryEntryAddEvent<T, B>>, consumer: Arc<dyn Fn(AbstractLifecycleEventTypeRegisteredHandler<JRef<dyn BootstrapContext>, JRef<dyn RegistryEntryAddEvent<T, B>>>) + Send + Sync>, predicate: Arc<dyn Fn(AbstractLifecycleEventTypeRegisteredHandler<JRef<dyn BootstrapContext>, JRef<dyn RegistryEntryAddEvent<T, B>>>) -> bool + Send + Sync>) { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/event/type/RegistryEntryAddEventTypeImpl.java:28
     pub fn matches_target(&self, event: JRef<dyn RegistryEntryAddEvent<T, B>>, handler: AbstractLifecycleEventTypeRegisteredHandler<JRef<dyn BootstrapContext>, JRef<dyn RegistryEntryAddEvent<T, B>>>) -> bool { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/event/type/RegistryEntryAddEventTypeImpl.java:33
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
@@ -44,8 +42,8 @@ impl<T: JGeneric, B: JGeneric> AbstractLifecycleEventTypeTrait<JObjectRef, JObje
     fn as_abstract_lifecycle_event_type(&self) -> &AbstractLifecycleEventType<JObjectRef, JObjectRef, JObjectRef> { self }
     fn blocks_reloading(&self, event_owner: O) -> bool { RegistryEntryAddEventTypeImpl::blocks_reloading(self, event_owner) }
     fn has_handlers(&self) -> bool { PrioritizableLifecycleEventType::has_handlers(self) }
-    fn for_each_handler(&self, event: E, consumer: JRef<dyn Consumer<AbstractLifecycleEventTypeRegisteredHandler<O, E>>>, predicate: JRef<dyn Predicate<AbstractLifecycleEventTypeRegisteredHandler<O, E>>>) { RegistryEntryAddEventTypeImpl::for_each_handler(self, event, consumer, predicate) }
-    fn remove_matching(&self, predicate: JRef<dyn Predicate<AbstractLifecycleEventTypeRegisteredHandler<O, E>>>) { PrioritizableLifecycleEventType::remove_matching(self, predicate) }
+    fn for_each_handler(&self, event: E, consumer: Arc<dyn Fn(AbstractLifecycleEventTypeRegisteredHandler<O, E>) + Send + Sync>, predicate: Arc<dyn Fn(AbstractLifecycleEventTypeRegisteredHandler<O, E>) -> bool + Send + Sync>) { RegistryEntryAddEventTypeImpl::for_each_handler(self, event, consumer, predicate) }
+    fn remove_matching(&self, predicate: Arc<dyn Fn(AbstractLifecycleEventTypeRegisteredHandler<O, E>) -> bool + Send + Sync>) { PrioritizableLifecycleEventType::remove_matching(self, predicate) }
     fn register(&self, owner: O, config: JRef<dyn AbstractLifecycleEventHandlerConfigurationTrait<O, E>>) { PrioritizableLifecycleEventType::register(self, owner, config) }
 }
 impl<T: JGeneric, B: JGeneric> RegistryEntryAddEventType<T, B> for RegistryEntryAddEventTypeImpl<T, B> {

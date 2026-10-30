@@ -4,8 +4,6 @@ use crate::prelude::*;
 use crate::com::mojang::brigadier::StringReader;
 use crate::com::mojang::brigadier::suggestion::Suggestions;
 use crate::com::mojang::brigadier::suggestion::SuggestionsBuilder;
-use crate::java::lang::Throwable;
-use crate::java::util::concurrent::CompletableFuture;
 use crate::net::minecraft::util::parsing::packrat::commands::command_argument_parser::CommandArgumentParser;
 use crate::net::minecraft::util::parsing::packrat::dictionary::Dictionary;
 use crate::net::minecraft::util::parsing::packrat::named_rule::NamedRule;
@@ -20,13 +18,13 @@ pub struct Grammar<T: JGeneric> {
 }
 impl<T: JGeneric> Grammar<T> {
     pub fn new(rules: JRef<Dictionary<StringReader>>, top: JRef<dyn NamedRule<StringReader, T>>) -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/Grammar.java:19
-    pub fn parse_for_commands(&self, reader: StringReader) -> Result<T, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/Grammar.java:28
-    pub fn parse_for_suggestions(&self, suggestions_builder: SuggestionsBuilder) -> CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/Grammar.java:59
+    pub fn parse_for_commands(&self, reader: StringReader) -> Result<T, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/Grammar.java:28
+    pub fn parse_for_suggestions(&self, suggestions_builder: SuggestionsBuilder) -> crate::rt::CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/Grammar.java:59
     pub fn parse(&self, state: JRef<dyn ParseState<StringReader>>) -> Option<T> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/parsing/packrat/commands/Grammar.java:24
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl<T: JGeneric> CommandArgumentParser<T> for Grammar<T> {
-    fn parse_for_commands(&self, reader: StringReader) -> Result<T, Throwable> { Grammar::parse_for_commands(self, reader) }
-    fn parse_for_suggestions(&self, suggestions_builder: SuggestionsBuilder) -> CompletableFuture<Suggestions> { Grammar::parse_for_suggestions(self, suggestions_builder) }
+    fn parse_for_commands(&self, reader: StringReader) -> Result<T, anyhow::Error> { Grammar::parse_for_commands(self, reader) }
+    fn parse_for_suggestions(&self, suggestions_builder: SuggestionsBuilder) -> crate::rt::CompletableFuture<Suggestions> { Grammar::parse_for_suggestions(self, suggestions_builder) }
 }

@@ -11,12 +11,6 @@ use crate::com::mojang::brigadier::context::ContextChain;
 use crate::com::mojang::brigadier::exceptions::command_syntax_exception::CommandSyntaxExceptionTrait;
 use crate::com::mojang::brigadier::tree::RootCommandNode;
 use crate::com::mojang::brigadier::tree::command_node::CommandNodeTrait;
-use crate::java::lang::ThreadLocal;
-use crate::java::lang::Throwable;
-use crate::java::util::concurrent::ExecutorService;
-use crate::java::util::function::Consumer;
-use crate::java::util::function::Predicate;
-use crate::java::util::function::UnaryOperator;
 use crate::net::kyori::adventure::text::Component;
 use crate::net::kyori::adventure::text::TextComponentBuilder;
 use crate::net::minecraft::commands::command_build_context::CommandBuildContext;
@@ -35,34 +29,34 @@ pub struct Commands {
     pub dispatcher: JRef<CommandDispatcher<JRef<CommandSourceStack>>>, // leaf-server/src/minecraft/java/net/minecraft/commands/Commands.java:162
 }
 pub const COMMAND_PREFIX: &str = "/"; // leaf-server/src/minecraft/java/net/minecraft/commands/Commands.java:133
-pub static CURRENT_EXECUTION_CONTEXT: LazyLock<ThreadLocal<JRef<ExecutionContext<JRef<CommandSourceStack>>>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/Commands.java:134
+pub static CURRENT_EXECUTION_CONTEXT: LazyLock<thread_local::ThreadLocal<JRef<ExecutionContext<JRef<CommandSourceStack>>>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/Commands.java:134
 pub static LEVEL_ALL: LazyLock<JRef<dyn PermissionCheck>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/Commands.java:136
 pub static LEVEL_MODERATORS: LazyLock<JRef<dyn PermissionCheck>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/Commands.java:137
 pub static LEVEL_GAMEMASTERS: LazyLock<JRef<dyn PermissionCheck>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/Commands.java:138
 pub static LEVEL_ADMINS: LazyLock<JRef<dyn PermissionCheck>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/Commands.java:139
 pub static LEVEL_OWNERS: LazyLock<JRef<dyn PermissionCheck>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/Commands.java:140
 pub static COMMAND_NODE_INSPECTOR: LazyLock<JRef<dyn ClientboundCommandsPacketNodeInspector<JRef<CommandSourceStack>>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/Commands.java:141
-pub static COMMAND_SENDING_POOL: LazyLock<ExecutorService> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/Commands.java:419
+pub static COMMAND_SENDING_POOL: LazyLock<crate::rt::Executor> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/Commands.java:419
 impl Commands {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(command_selection: CommandsCommandSelection, context: JRef<dyn CommandBuildContext>) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/Commands.java:164
     pub fn new_3(command_selection: CommandsCommandSelection, context: JRef<dyn CommandBuildContext>, modern: bool) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/Commands.java:168
-    pub fn map_source<S: JGeneric>(parse: ParseResults<S>, source_operator: JRef<dyn UnaryOperator<S>>) -> ParseResults<S> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/Commands.java:297
+    pub fn map_source<S: JGeneric>(parse: ParseResults<S>, source_operator: Arc<dyn Fn(S) -> S + Send + Sync>) -> ParseResults<S> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/Commands.java:297
     pub fn perform_prefixed_command(&self, sender: JRef<CommandSourceStack>, command: &str) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/Commands.java:303
     pub fn trim_optional_prefix(command: &str) -> String { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/Commands.java:308
     pub fn perform_command(&self, command: ParseResults<JRef<CommandSourceStack>>, command_string: &str) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/Commands.java:312
     pub fn perform_command_3(&self, command: ParseResults<JRef<CommandSourceStack>>, command_string: &str, throw_command_error: bool) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/Commands.java:317
     pub fn finish_parsing(command: ParseResults<JRef<CommandSourceStack>>, command_string: &str, sender: JRef<CommandSourceStack>) -> Option<ContextChain<JRef<CommandSourceStack>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/Commands.java:359
-    pub fn execute_command_in_context(context: JRef<CommandSourceStack>, config: JRef<dyn Consumer<JRef<ExecutionContext<JRef<CommandSourceStack>>>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/Commands.java:382
+    pub fn execute_command_in_context(context: JRef<CommandSourceStack>, config: Arc<dyn Fn(JRef<ExecutionContext<JRef<CommandSourceStack>>>) + Send + Sync>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/Commands.java:382
     pub fn send_commands(&self, player: JRef<ServerPlayer>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/Commands.java:402
     pub fn send_async(&self, player: JRef<ServerPlayer>, dispatcher_root: RootCommandNode<JRef<CommandSourceStack>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/Commands.java:429
     pub fn run_sync(&self, player: JRef<ServerPlayer>, bukkit: &Vec<String>, root: RootCommandNode<JRef<CommandSourceStack>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/Commands.java:449
     pub fn fill_usable_commands<S: JGeneric>(source: JRef<dyn CommandNodeTrait<S>>, target: JRef<dyn CommandNodeTrait<S>>, command_filter: S, converted: &mut HashMap<JRef<dyn CommandNodeTrait<S>>, JRef<dyn CommandNodeTrait<S>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/Commands.java:476
     pub fn literal(literal: &str) -> LiteralArgumentBuilder<JRef<CommandSourceStack>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/Commands.java:537
     pub fn argument<T: JGeneric>(name: &str, type_: JRef<dyn ArgumentType<T>>) -> RequiredArgumentBuilder<JRef<CommandSourceStack>, T> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/Commands.java:541
-    pub fn create_validator(parser: JRef<dyn CommandsParseFunction>) -> JRef<dyn Predicate<String>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/Commands.java:545
+    pub fn create_validator(parser: JRef<dyn CommandsParseFunction>) -> Arc<dyn Fn(String) -> bool + Send + Sync> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/Commands.java:545
     pub fn get_dispatcher(&self) -> JRef<CommandDispatcher<JRef<CommandSourceStack>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/Commands.java:556
-    pub fn validate_parse_results<S: JGeneric>(command: ParseResults<S>) -> Result<(), Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/Commands.java:560
+    pub fn validate_parse_results<S: JGeneric>(command: ParseResults<S>) -> Result<(), anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/Commands.java:560
     pub fn get_parse_exception<S: JGeneric>(parse: ParseResults<S>) -> JRef<dyn CommandSyntaxExceptionTrait> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/Commands.java:567
     pub fn create_validation_context(registries: JRef<dyn HolderLookupProvider>) -> JRef<dyn CommandBuildContext> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/Commands.java:579
     pub fn get_unknown_command_message(builder: TextComponentBuilder, e: JRef<dyn CommandSyntaxExceptionTrait>, command_string: &str) -> Component { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/Commands.java:619
@@ -104,8 +98,8 @@ impl CommandsCommandSelection {
 crate::jobject!(CommandsCommandSelection);
 // ---- interface net.minecraft.commands.Commands.ParseFunction (leaf-server/src/minecraft/java/net/minecraft/commands/Commands.java:747)
 pub trait CommandsParseFunction: Send + Sync + 'static {
-    fn parse(&self, value: StringReader) -> Result<(), Throwable>; // leaf-server/src/minecraft/java/net/minecraft/commands/Commands.java:749
+    fn parse(&self, value: StringReader) -> Result<(), anyhow::Error>; // leaf-server/src/minecraft/java/net/minecraft/commands/Commands.java:749
 }
-impl<F: Fn(StringReader) -> Result<(), Throwable> + Send + Sync + 'static> CommandsParseFunction for F {
-    fn parse(&self, value: StringReader) -> Result<(), Throwable> { self(value) }
+impl<F: Fn(StringReader) -> Result<(), anyhow::Error> + Send + Sync + 'static> CommandsParseFunction for F {
+    fn parse(&self, value: StringReader) -> Result<(), anyhow::Error> { self(value) }
 }

@@ -5,14 +5,12 @@ use crate::ca::spottedleaf::moonrise::patches::blockstate_propertyaccess::proper
 use crate::com::mojang::serialization::Codec;
 use crate::com::mojang::serialization::DataResult;
 use crate::com::mojang::serialization::DynamicOps;
-use crate::java::lang::Class;
-use crate::java::util::stream::Stream;
 use crate::net::minecraft::world::level::block::state::state_holder::StateHolderTrait;
 
 // ---- class net.minecraft.world.level.block.state.properties.Property (leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/properties/Property.java:13)
 pub struct Property<T: JGeneric> {
     pub this: Weak<dyn PropertyTrait<T>>,
-    pub clazz: Class, // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/properties/Property.java:14
+    pub clazz: crate::rt::Class, // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/properties/Property.java:14
     pub name: String, // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/properties/Property.java:15
     pub hash_code: Mut<Option<i32>>, // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/properties/Property.java:16
     pub codec: JRef<dyn Codec<T>>, // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/properties/Property.java:17
@@ -25,12 +23,12 @@ pub trait PropertyTrait<T: JGeneric>: PropertyAccess<T> {
     fn as_property(&self) -> &Property<T>;
     fn value(&self, value: T) -> PropertyValue<T>; // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/properties/Property.java:60
     fn value_1(&self, state_holder: JRef<dyn StateHolderTrait<JObjectRef, JObjectRef>>) -> PropertyValue<T>; // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/properties/Property.java:64
-    fn get_all_values(&self) -> Stream<PropertyValue<T>>; // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/properties/Property.java:68
+    fn get_all_values(&self) -> Box<dyn Iterator<Item = PropertyValue<T>> + Send>; // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/properties/Property.java:68
     fn codec(&self) -> JRef<dyn Codec<T>>; // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/properties/Property.java:72
     fn value_codec(&self) -> JRef<dyn Codec<PropertyValue<T>>>; // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/properties/Property.java:76
     fn get_name(&self) -> String; // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/properties/Property.java:80
     fn get_name_1(&self, value: T) -> String; // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/properties/Property.java:90
-    fn get_value_class(&self) -> Class; // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/properties/Property.java:84
+    fn get_value_class(&self) -> crate::rt::Class; // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/properties/Property.java:84
     fn get_possible_values(&self) -> Vec<T>; // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/properties/Property.java:88
     fn get_value(&self, name: &str) -> Option<T>; // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/properties/Property.java:92
     fn get_internal_index(&self, value: T) -> i32; // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/properties/Property.java:94
@@ -45,17 +43,17 @@ impl<T: JGeneric> std::ops::Deref for dyn PropertyTrait<T> {
 pub static ID_GENERATOR: LazyLock<std::sync::atomic::AtomicI32> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/properties/Property.java:27
 impl<T: JGeneric> Property<T> {
     pub fn this(&self) -> JRef<dyn PropertyTrait<T>> { self.this.upgrade().expect("this") }
-    pub fn new_base<S: PropertyTrait<T> + 'static>(this: &Weak<S>, name: &str, clazz: Class) -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/properties/Property.java:54
+    pub fn new_base<S: PropertyTrait<T> + 'static>(this: &Weak<S>, name: &str, clazz: crate::rt::Class) -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/properties/Property.java:54
     pub fn moonrise_get_id(&self) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/properties/Property.java:31
     pub fn moonrise_get_by_id(&self, id: i32) -> T { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/properties/Property.java:36
     pub fn moonrise_set_by_id(&self, by_id: &Vec<T>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/properties/Property.java:42
     pub fn value(&self, value: T) -> PropertyValue<T> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/properties/Property.java:60
     pub fn value_1(&self, state_holder: JRef<dyn StateHolderTrait<JObjectRef, JObjectRef>>) -> PropertyValue<T> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/properties/Property.java:64
-    pub fn get_all_values(&self) -> Stream<PropertyValue<T>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/properties/Property.java:68
+    pub fn get_all_values(&self) -> Box<dyn Iterator<Item = PropertyValue<T>> + Send> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/properties/Property.java:68
     pub fn codec(&self) -> JRef<dyn Codec<T>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/properties/Property.java:72
     pub fn value_codec(&self) -> JRef<dyn Codec<PropertyValue<T>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/properties/Property.java:76
     pub fn get_name(&self) -> String { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/properties/Property.java:80
-    pub fn get_value_class(&self) -> Class { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/properties/Property.java:84
+    pub fn get_value_class(&self) -> crate::rt::Class { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/properties/Property.java:84
     pub fn to_string(&self) -> String { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/properties/Property.java:96
     pub fn equals(&self, o: JObjectRef) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/properties/Property.java:101
     pub fn hash_code(&self) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/properties/Property.java:106

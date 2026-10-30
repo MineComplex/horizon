@@ -3,14 +3,13 @@
 use crate::prelude::*;
 use crate::io::papermc::paper::registry::registry_builder_factory::RegistryBuilderFactory;
 use crate::io::papermc::paper::registry::typed_key::TypedKey;
-use crate::java::util::function::Consumer;
 use crate::api_prelude::*;
 
 // ---- interface io.papermc.paper.registry.event.WritableRegistry (paper-api/src/main/java/io/papermc/paper/registry/event/WritableRegistry.java:15)
 pub trait WritableRegistry<T: JGeneric, B: JGeneric>: Send + Sync + 'static {
-    fn register(&self, key: JRef<dyn TypedKey<T>>, value: JRef<dyn Consumer<JObjectRef>>) { todo!() } // default, paper-api/src/main/java/io/papermc/paper/registry/event/WritableRegistry.java:25
-    fn register_with(&self, key: JRef<dyn TypedKey<T>>, value: JRef<dyn Consumer<JRef<dyn RegistryBuilderFactory<T, B>>>>); // paper-api/src/main/java/io/papermc/paper/registry/event/WritableRegistry.java:38
+    fn register(&self, key: JRef<dyn TypedKey<T>>, value: Arc<dyn Fn(JObjectRef) + Send + Sync>) { todo!() } // default, paper-api/src/main/java/io/papermc/paper/registry/event/WritableRegistry.java:25
+    fn register_with(&self, key: JRef<dyn TypedKey<T>>, value: Arc<dyn Fn(JRef<dyn RegistryBuilderFactory<T, B>>) + Send + Sync>); // paper-api/src/main/java/io/papermc/paper/registry/event/WritableRegistry.java:38
 }
-impl<T: JGeneric, B: JGeneric, F: Fn(JRef<dyn TypedKey<T>>, JRef<dyn Consumer<JRef<dyn RegistryBuilderFactory<T, B>>>>) + Send + Sync + 'static> WritableRegistry<T, B> for F {
-    fn register_with(&self, key: JRef<dyn TypedKey<T>>, value: JRef<dyn Consumer<JRef<dyn RegistryBuilderFactory<T, B>>>>) { self(key, value) }
+impl<T: JGeneric, B: JGeneric, F: Fn(JRef<dyn TypedKey<T>>, Arc<dyn Fn(JRef<dyn RegistryBuilderFactory<T, B>>) + Send + Sync>) + Send + Sync + 'static> WritableRegistry<T, B> for F {
+    fn register_with(&self, key: JRef<dyn TypedKey<T>>, value: Arc<dyn Fn(JRef<dyn RegistryBuilderFactory<T, B>>) + Send + Sync>) { self(key, value) }
 }

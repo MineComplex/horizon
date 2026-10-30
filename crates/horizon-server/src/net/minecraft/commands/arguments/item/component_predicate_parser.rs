@@ -4,8 +4,6 @@ use crate::prelude::*;
 use crate::com::mojang::brigadier::ImmutableStringReader;
 use crate::com::mojang::brigadier::StringReader;
 use crate::com::mojang::serialization::dynamic::Dynamic;
-use crate::java::lang::Throwable;
-use crate::java::util::stream::Stream;
 use crate::net::minecraft::resources::identifier::Identifier;
 use crate::net::minecraft::util::parsing::packrat::commands::grammar::Grammar;
 use crate::net::minecraft::util::parsing::packrat::commands::resource_lookup_rule::ResourceLookupRule;
@@ -39,37 +37,37 @@ impl<T: JGeneric, C: JGeneric, P: JGeneric> std::ops::Deref for ComponentPredica
 impl<T: JGeneric, C: JGeneric, P: JGeneric> ComponentPredicateParserComponentLookupRule<T, C, P> {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(id_parser: JRef<dyn NamedRule<StringReader, JRef<Identifier>>>, context: JRef<dyn ComponentPredicateParserContext<T, C, P>>) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ComponentPredicateParser.java:129
-    pub fn validate_element(&self, reader: ImmutableStringReader, id: JRef<Identifier>) -> Result<C, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ComponentPredicateParser.java:133
-    pub fn possible_resources(&self) -> Stream<JRef<Identifier>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ComponentPredicateParser.java:138
+    pub fn validate_element(&self, reader: ImmutableStringReader, id: JRef<Identifier>) -> Result<C, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ComponentPredicateParser.java:133
+    pub fn possible_resources(&self) -> Box<dyn Iterator<Item = JRef<Identifier>> + Send> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ComponentPredicateParser.java:138
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl<T: JGeneric, C: JGeneric, P: JGeneric> ResourceLookupRuleTrait<JObjectRef, JObjectRef> for ComponentPredicateParserComponentLookupRule<T, C, P> {
     fn as_resource_lookup_rule(&self) -> &ResourceLookupRule<JObjectRef, JObjectRef> { self }
-    fn validate_element(&self, reader: ImmutableStringReader, id: JRef<Identifier>) -> Result<V, Throwable> { ComponentPredicateParserComponentLookupRule::validate_element(self, reader, id) }
+    fn validate_element(&self, reader: ImmutableStringReader, id: JRef<Identifier>) -> Result<V, anyhow::Error> { ComponentPredicateParserComponentLookupRule::validate_element(self, reader, id) }
 }
 impl<T: JGeneric, C: JGeneric, P: JGeneric> Rule<StringReader, V> for ComponentPredicateParserComponentLookupRule<T, C, P> {
     fn parse(&self, state: JRef<dyn ParseState<S>>) -> Option<T> { ResourceLookupRule::parse(self, state) }
 }
 impl<T: JGeneric, C: JGeneric, P: JGeneric> ResourceSuggestion for ComponentPredicateParserComponentLookupRule<T, C, P> {
-    fn possible_resources(&self) -> Stream<JRef<Identifier>> { ComponentPredicateParserComponentLookupRule::possible_resources(self) }
+    fn possible_resources(&self) -> Box<dyn Iterator<Item = JRef<Identifier>> + Send> { ComponentPredicateParserComponentLookupRule::possible_resources(self) }
 }
 impl<T: JGeneric, C: JGeneric, P: JGeneric> SuggestionSupplier<JObjectRef> for ComponentPredicateParserComponentLookupRule<T, C, P> {
-    fn possible_values(&self, state: JRef<dyn ParseState<S>>) -> Stream<String> { todo!("abstract SuggestionSupplier.possibleValues") }
+    fn possible_values(&self, state: JRef<dyn ParseState<S>>) -> Box<dyn Iterator<Item = String> + Send> { todo!("abstract SuggestionSupplier.possibleValues") }
 }
 // ---- interface net.minecraft.commands.arguments.item.ComponentPredicateParser.Context (leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ComponentPredicateParser.java:144)
 pub trait ComponentPredicateParserContext<T: JGeneric, C: JGeneric, P: JGeneric>: JObject {
-    fn for_element_type(&self, reader: ImmutableStringReader, id: JRef<Identifier>) -> Result<T, Throwable>; // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ComponentPredicateParser.java:145
-    fn list_element_types(&self) -> Stream<JRef<Identifier>>; // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ComponentPredicateParser.java:147
-    fn for_tag_type(&self, reader: ImmutableStringReader, id: JRef<Identifier>) -> Result<T, Throwable>; // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ComponentPredicateParser.java:149
-    fn list_tag_types(&self) -> Stream<JRef<Identifier>>; // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ComponentPredicateParser.java:151
-    fn lookup_component_type(&self, reader: ImmutableStringReader, id: JRef<Identifier>) -> Result<C, Throwable>; // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ComponentPredicateParser.java:153
-    fn list_component_types(&self) -> Stream<JRef<Identifier>>; // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ComponentPredicateParser.java:155
+    fn for_element_type(&self, reader: ImmutableStringReader, id: JRef<Identifier>) -> Result<T, anyhow::Error>; // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ComponentPredicateParser.java:145
+    fn list_element_types(&self) -> Box<dyn Iterator<Item = JRef<Identifier>> + Send>; // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ComponentPredicateParser.java:147
+    fn for_tag_type(&self, reader: ImmutableStringReader, id: JRef<Identifier>) -> Result<T, anyhow::Error>; // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ComponentPredicateParser.java:149
+    fn list_tag_types(&self) -> Box<dyn Iterator<Item = JRef<Identifier>> + Send>; // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ComponentPredicateParser.java:151
+    fn lookup_component_type(&self, reader: ImmutableStringReader, id: JRef<Identifier>) -> Result<C, anyhow::Error>; // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ComponentPredicateParser.java:153
+    fn list_component_types(&self) -> Box<dyn Iterator<Item = JRef<Identifier>> + Send>; // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ComponentPredicateParser.java:155
     fn create_component_test(&self, reader: ImmutableStringReader, component_type: C) -> T; // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ComponentPredicateParser.java:159
-    fn create_component_test_3(&self, reader: ImmutableStringReader, component_type: C, value: JRef<Dynamic<JObjectRef>>) -> Result<T, Throwable>; // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ComponentPredicateParser.java:157
-    fn lookup_predicate_type(&self, reader: ImmutableStringReader, id: JRef<Identifier>) -> Result<P, Throwable>; // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ComponentPredicateParser.java:161
-    fn list_predicate_types(&self) -> Stream<JRef<Identifier>>; // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ComponentPredicateParser.java:163
-    fn create_predicate_test(&self, reader: ImmutableStringReader, predicate_type: P, value: JRef<Dynamic<JObjectRef>>) -> Result<T, Throwable>; // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ComponentPredicateParser.java:165
+    fn create_component_test_3(&self, reader: ImmutableStringReader, component_type: C, value: JRef<Dynamic<JObjectRef>>) -> Result<T, anyhow::Error>; // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ComponentPredicateParser.java:157
+    fn lookup_predicate_type(&self, reader: ImmutableStringReader, id: JRef<Identifier>) -> Result<P, anyhow::Error>; // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ComponentPredicateParser.java:161
+    fn list_predicate_types(&self) -> Box<dyn Iterator<Item = JRef<Identifier>> + Send>; // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ComponentPredicateParser.java:163
+    fn create_predicate_test(&self, reader: ImmutableStringReader, predicate_type: P, value: JRef<Dynamic<JObjectRef>>) -> Result<T, anyhow::Error>; // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ComponentPredicateParser.java:165
     fn negate(&self, value: T) -> T; // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ComponentPredicateParser.java:167
     fn any_of(&self, alternatives: &Vec<T>) -> T; // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ComponentPredicateParser.java:169
 }
@@ -86,23 +84,23 @@ impl<T: JGeneric, C: JGeneric, P: JGeneric> std::ops::Deref for ComponentPredica
 impl<T: JGeneric, C: JGeneric, P: JGeneric> ComponentPredicateParserElementLookupRule<T, C, P> {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(id_parser: JRef<dyn NamedRule<StringReader, JRef<Identifier>>>, context: JRef<dyn ComponentPredicateParserContext<T, C, P>>) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ComponentPredicateParser.java:173
-    pub fn validate_element(&self, reader: ImmutableStringReader, id: JRef<Identifier>) -> Result<T, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ComponentPredicateParser.java:177
-    pub fn possible_resources(&self) -> Stream<JRef<Identifier>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ComponentPredicateParser.java:182
+    pub fn validate_element(&self, reader: ImmutableStringReader, id: JRef<Identifier>) -> Result<T, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ComponentPredicateParser.java:177
+    pub fn possible_resources(&self) -> Box<dyn Iterator<Item = JRef<Identifier>> + Send> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ComponentPredicateParser.java:182
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl<T: JGeneric, C: JGeneric, P: JGeneric> ResourceLookupRuleTrait<JObjectRef, JObjectRef> for ComponentPredicateParserElementLookupRule<T, C, P> {
     fn as_resource_lookup_rule(&self) -> &ResourceLookupRule<JObjectRef, JObjectRef> { self }
-    fn validate_element(&self, reader: ImmutableStringReader, id: JRef<Identifier>) -> Result<V, Throwable> { ComponentPredicateParserElementLookupRule::validate_element(self, reader, id) }
+    fn validate_element(&self, reader: ImmutableStringReader, id: JRef<Identifier>) -> Result<V, anyhow::Error> { ComponentPredicateParserElementLookupRule::validate_element(self, reader, id) }
 }
 impl<T: JGeneric, C: JGeneric, P: JGeneric> Rule<StringReader, V> for ComponentPredicateParserElementLookupRule<T, C, P> {
     fn parse(&self, state: JRef<dyn ParseState<S>>) -> Option<T> { ResourceLookupRule::parse(self, state) }
 }
 impl<T: JGeneric, C: JGeneric, P: JGeneric> ResourceSuggestion for ComponentPredicateParserElementLookupRule<T, C, P> {
-    fn possible_resources(&self) -> Stream<JRef<Identifier>> { ComponentPredicateParserElementLookupRule::possible_resources(self) }
+    fn possible_resources(&self) -> Box<dyn Iterator<Item = JRef<Identifier>> + Send> { ComponentPredicateParserElementLookupRule::possible_resources(self) }
 }
 impl<T: JGeneric, C: JGeneric, P: JGeneric> SuggestionSupplier<JObjectRef> for ComponentPredicateParserElementLookupRule<T, C, P> {
-    fn possible_values(&self, state: JRef<dyn ParseState<S>>) -> Stream<String> { todo!("abstract SuggestionSupplier.possibleValues") }
+    fn possible_values(&self, state: JRef<dyn ParseState<S>>) -> Box<dyn Iterator<Item = String> + Send> { todo!("abstract SuggestionSupplier.possibleValues") }
 }
 // ---- class net.minecraft.commands.arguments.item.ComponentPredicateParser.PredicateLookupRule (leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ComponentPredicateParser.java:188)
 pub struct ComponentPredicateParserPredicateLookupRule<T: JGeneric, C: JGeneric, P: JGeneric> {
@@ -117,23 +115,23 @@ impl<T: JGeneric, C: JGeneric, P: JGeneric> std::ops::Deref for ComponentPredica
 impl<T: JGeneric, C: JGeneric, P: JGeneric> ComponentPredicateParserPredicateLookupRule<T, C, P> {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(id_parser: JRef<dyn NamedRule<StringReader, JRef<Identifier>>>, context: JRef<dyn ComponentPredicateParserContext<T, C, P>>) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ComponentPredicateParser.java:189
-    pub fn validate_element(&self, reader: ImmutableStringReader, id: JRef<Identifier>) -> Result<P, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ComponentPredicateParser.java:193
-    pub fn possible_resources(&self) -> Stream<JRef<Identifier>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ComponentPredicateParser.java:198
+    pub fn validate_element(&self, reader: ImmutableStringReader, id: JRef<Identifier>) -> Result<P, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ComponentPredicateParser.java:193
+    pub fn possible_resources(&self) -> Box<dyn Iterator<Item = JRef<Identifier>> + Send> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ComponentPredicateParser.java:198
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl<T: JGeneric, C: JGeneric, P: JGeneric> ResourceLookupRuleTrait<JObjectRef, JObjectRef> for ComponentPredicateParserPredicateLookupRule<T, C, P> {
     fn as_resource_lookup_rule(&self) -> &ResourceLookupRule<JObjectRef, JObjectRef> { self }
-    fn validate_element(&self, reader: ImmutableStringReader, id: JRef<Identifier>) -> Result<V, Throwable> { ComponentPredicateParserPredicateLookupRule::validate_element(self, reader, id) }
+    fn validate_element(&self, reader: ImmutableStringReader, id: JRef<Identifier>) -> Result<V, anyhow::Error> { ComponentPredicateParserPredicateLookupRule::validate_element(self, reader, id) }
 }
 impl<T: JGeneric, C: JGeneric, P: JGeneric> Rule<StringReader, V> for ComponentPredicateParserPredicateLookupRule<T, C, P> {
     fn parse(&self, state: JRef<dyn ParseState<S>>) -> Option<T> { ResourceLookupRule::parse(self, state) }
 }
 impl<T: JGeneric, C: JGeneric, P: JGeneric> ResourceSuggestion for ComponentPredicateParserPredicateLookupRule<T, C, P> {
-    fn possible_resources(&self) -> Stream<JRef<Identifier>> { ComponentPredicateParserPredicateLookupRule::possible_resources(self) }
+    fn possible_resources(&self) -> Box<dyn Iterator<Item = JRef<Identifier>> + Send> { ComponentPredicateParserPredicateLookupRule::possible_resources(self) }
 }
 impl<T: JGeneric, C: JGeneric, P: JGeneric> SuggestionSupplier<JObjectRef> for ComponentPredicateParserPredicateLookupRule<T, C, P> {
-    fn possible_values(&self, state: JRef<dyn ParseState<S>>) -> Stream<String> { todo!("abstract SuggestionSupplier.possibleValues") }
+    fn possible_values(&self, state: JRef<dyn ParseState<S>>) -> Box<dyn Iterator<Item = String> + Send> { todo!("abstract SuggestionSupplier.possibleValues") }
 }
 // ---- class net.minecraft.commands.arguments.item.ComponentPredicateParser.TagLookupRule (leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ComponentPredicateParser.java:204)
 pub struct ComponentPredicateParserTagLookupRule<T: JGeneric, C: JGeneric, P: JGeneric> {
@@ -148,21 +146,21 @@ impl<T: JGeneric, C: JGeneric, P: JGeneric> std::ops::Deref for ComponentPredica
 impl<T: JGeneric, C: JGeneric, P: JGeneric> ComponentPredicateParserTagLookupRule<T, C, P> {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(id_parser: JRef<dyn NamedRule<StringReader, JRef<Identifier>>>, context: JRef<dyn ComponentPredicateParserContext<T, C, P>>) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ComponentPredicateParser.java:205
-    pub fn validate_element(&self, reader: ImmutableStringReader, id: JRef<Identifier>) -> Result<T, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ComponentPredicateParser.java:209
-    pub fn possible_resources(&self) -> Stream<JRef<Identifier>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ComponentPredicateParser.java:214
+    pub fn validate_element(&self, reader: ImmutableStringReader, id: JRef<Identifier>) -> Result<T, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ComponentPredicateParser.java:209
+    pub fn possible_resources(&self) -> Box<dyn Iterator<Item = JRef<Identifier>> + Send> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ComponentPredicateParser.java:214
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl<T: JGeneric, C: JGeneric, P: JGeneric> ResourceLookupRuleTrait<JObjectRef, JObjectRef> for ComponentPredicateParserTagLookupRule<T, C, P> {
     fn as_resource_lookup_rule(&self) -> &ResourceLookupRule<JObjectRef, JObjectRef> { self }
-    fn validate_element(&self, reader: ImmutableStringReader, id: JRef<Identifier>) -> Result<V, Throwable> { ComponentPredicateParserTagLookupRule::validate_element(self, reader, id) }
+    fn validate_element(&self, reader: ImmutableStringReader, id: JRef<Identifier>) -> Result<V, anyhow::Error> { ComponentPredicateParserTagLookupRule::validate_element(self, reader, id) }
 }
 impl<T: JGeneric, C: JGeneric, P: JGeneric> Rule<StringReader, V> for ComponentPredicateParserTagLookupRule<T, C, P> {
     fn parse(&self, state: JRef<dyn ParseState<S>>) -> Option<T> { ResourceLookupRule::parse(self, state) }
 }
 impl<T: JGeneric, C: JGeneric, P: JGeneric> ResourceSuggestion for ComponentPredicateParserTagLookupRule<T, C, P> {
-    fn possible_resources(&self) -> Stream<JRef<Identifier>> { ComponentPredicateParserTagLookupRule::possible_resources(self) }
+    fn possible_resources(&self) -> Box<dyn Iterator<Item = JRef<Identifier>> + Send> { ComponentPredicateParserTagLookupRule::possible_resources(self) }
 }
 impl<T: JGeneric, C: JGeneric, P: JGeneric> SuggestionSupplier<JObjectRef> for ComponentPredicateParserTagLookupRule<T, C, P> {
-    fn possible_values(&self, state: JRef<dyn ParseState<S>>) -> Stream<String> { todo!("abstract SuggestionSupplier.possibleValues") }
+    fn possible_values(&self, state: JRef<dyn ParseState<S>>) -> Box<dyn Iterator<Item = String> + Send> { todo!("abstract SuggestionSupplier.possibleValues") }
 }

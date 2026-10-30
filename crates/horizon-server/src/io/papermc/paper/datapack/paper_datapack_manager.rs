@@ -3,7 +3,6 @@
 use crate::prelude::*;
 use crate::io::papermc::paper::datapack::datapack::Datapack;
 use crate::io::papermc::paper::datapack::datapack_manager::DatapackManager;
-use crate::java::util::function::Predicate;
 use crate::net::minecraft::server::packs::repository::pack::Pack;
 use crate::net::minecraft::server::packs::repository::pack_repository::PackRepository;
 
@@ -19,7 +18,7 @@ impl PaperDatapackManager {
     pub fn get_pack(&self, name: &str) -> Option<JRef<dyn Datapack>> { todo!() } // paper-server/src/main/java/io/papermc/paper/datapack/PaperDatapackManager.java:26
     pub fn get_packs(&self) -> Vec<JRef<dyn Datapack>> { todo!() } // paper-server/src/main/java/io/papermc/paper/datapack/PaperDatapackManager.java:35
     pub fn get_enabled_packs(&self) -> Vec<JRef<dyn Datapack>> { todo!() } // paper-server/src/main/java/io/papermc/paper/datapack/PaperDatapackManager.java:41
-    pub fn transform_packs(packs: &Vec<JRef<Pack>>, enabled: JRef<dyn Predicate<JRef<Pack>>>) -> Vec<JRef<dyn Datapack>> { todo!() } // paper-server/src/main/java/io/papermc/paper/datapack/PaperDatapackManager.java:46
+    pub fn transform_packs(packs: &Vec<JRef<Pack>>, enabled: Arc<dyn Fn(JRef<Pack>) -> bool + Send + Sync>) -> Vec<JRef<dyn Datapack>> { todo!() } // paper-server/src/main/java/io/papermc/paper/datapack/PaperDatapackManager.java:46
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

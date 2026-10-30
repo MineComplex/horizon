@@ -5,8 +5,6 @@ use crate::ca::spottedleaf::moonrise::patches::chunk_system::level::entity::chun
 use crate::ca::spottedleaf::moonrise::patches::chunk_system::level::entity::entity_lookup::EntityLookup;
 use crate::ca::spottedleaf::moonrise::patches::chunk_system::level::entity::entity_lookup::EntityLookupChunkSlicesRegion;
 use crate::ca::spottedleaf::moonrise::patches::chunk_system::level::entity::entity_lookup::EntityLookupTrait;
-use crate::java::util::function::Consumer;
-use crate::java::util::function::Predicate;
 use crate::net::minecraft::server::level::full_chunk_status::FullChunkStatus;
 use crate::net::minecraft::util::abortable_iteration_consumer::AbortableIterationConsumer;
 use crate::net::minecraft::world::entity::entity::EntityTrait;
@@ -85,10 +83,10 @@ impl EntityLookupTrait for ClientEntityLookup {
     fn can_remove_entity(&self, entity: JRef<dyn EntityTrait>) -> bool { EntityLookup::can_remove_entity(self, entity) }
     fn remove_entity(&self, entity: JRef<dyn EntityTrait>) { EntityLookup::remove_entity(self, entity) }
     fn move_entity(&self, entity: JRef<dyn EntityTrait>, notification_mask: i32) -> JRef<ChunkEntitySlices> { EntityLookup::move_entity(self, entity, notification_mask) }
-    fn get_entities(&self, except: JRef<dyn EntityTrait>, box_: AABB, into: &Vec<JRef<dyn EntityTrait>>, predicate: JRef<dyn Predicate<JObjectRef>>) { EntityLookup::get_entities(self, except, box_, into, predicate) }
-    fn get_entities_5_2(&self, except: JRef<dyn EntityTrait>, box_: AABB, into: &Vec<JRef<dyn EntityTrait>>, predicate: JRef<dyn Predicate<JObjectRef>>, max_count: i32) { EntityLookup::get_entities_5_2(self, except, box_, into, predicate, max_count) }
-    fn for_each_entity(&self, except: JRef<dyn EntityTrait>, box_: AABB, predicate: JRef<dyn Predicate<JObjectRef>>, consumer: JRef<dyn AbortableIterationConsumer<JRef<dyn EntityTrait>>>) -> bool { EntityLookup::for_each_entity(self, except, box_, predicate, consumer) }
-    fn get_hard_colliding_entities(&self, except: JRef<dyn EntityTrait>, box_: AABB, into: &Vec<JRef<dyn EntityTrait>>, predicate: JRef<dyn Predicate<JObjectRef>>) { EntityLookup::get_hard_colliding_entities(self, except, box_, into, predicate) }
+    fn get_entities(&self, except: JRef<dyn EntityTrait>, box_: AABB, into: &Vec<JRef<dyn EntityTrait>>, predicate: Arc<dyn Fn(JObjectRef) -> bool + Send + Sync>) { EntityLookup::get_entities(self, except, box_, into, predicate) }
+    fn get_entities_5_2(&self, except: JRef<dyn EntityTrait>, box_: AABB, into: &Vec<JRef<dyn EntityTrait>>, predicate: Arc<dyn Fn(JObjectRef) -> bool + Send + Sync>, max_count: i32) { EntityLookup::get_entities_5_2(self, except, box_, into, predicate, max_count) }
+    fn for_each_entity(&self, except: JRef<dyn EntityTrait>, box_: AABB, predicate: Arc<dyn Fn(JObjectRef) -> bool + Send + Sync>, consumer: JRef<dyn AbortableIterationConsumer<JRef<dyn EntityTrait>>>) -> bool { EntityLookup::for_each_entity(self, except, box_, predicate, consumer) }
+    fn get_hard_colliding_entities(&self, except: JRef<dyn EntityTrait>, box_: AABB, into: &Vec<JRef<dyn EntityTrait>>, predicate: Arc<dyn Fn(JObjectRef) -> bool + Send + Sync>) { EntityLookup::get_hard_colliding_entities(self, except, box_, into, predicate) }
     fn entity_section_load(&self, chunk_x: i32, chunk_z: i32, slices: JRef<ChunkEntitySlices>) { EntityLookup::entity_section_load(self, chunk_x, chunk_z, slices) }
     fn entity_section_unload(&self, chunk_x: i32, chunk_z: i32) { EntityLookup::entity_section_unload(self, chunk_x, chunk_z) }
     fn get_chunk(&self, chunk_x: i32, chunk_z: i32) -> JRef<ChunkEntitySlices> { EntityLookup::get_chunk(self, chunk_x, chunk_z) }
@@ -102,7 +100,7 @@ impl LevelEntityGetter<JRef<dyn EntityTrait>> for ClientEntityLookup {
     fn get(&self, id: i32) -> Option<T> { EntityLookup::get(self, id) }
     fn get_1(&self, id: Uuid) -> Option<T> { EntityLookup::get_1(self, id) }
     fn get_2<U: JGeneric>(&self, type_: JRef<dyn EntityTypeTest<T, U>>, consumer: JRef<dyn AbortableIterationConsumer<U>>) where Self: Sized { EntityLookup::get_2::<U>(self, type_, consumer) }
-    fn get_2_2(&self, bb: AABB, output: JRef<dyn Consumer<T>>) { EntityLookup::get_2_2(self, bb, output) }
+    fn get_2_2(&self, bb: AABB, output: Arc<dyn Fn(T) + Send + Sync>) { EntityLookup::get_2_2(self, bb, output) }
     fn get_3<U: JGeneric>(&self, type_: JRef<dyn EntityTypeTest<T, U>>, bb: AABB, consumer: JRef<dyn AbortableIterationConsumer<U>>) where Self: Sized { EntityLookup::get_3::<U>(self, type_, bb, consumer) }
     fn get_all(&self) -> Vec<T> { EntityLookup::get_all(self) }
 }

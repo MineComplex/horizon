@@ -7,7 +7,6 @@ use crate::org::bukkit::game_event::GameEventTrait;
 use crate::org::bukkit::keyed::Keyed;
 use crate::org::bukkit::material_class::Material;
 use crate::org::bukkit::namespaced_key::NamespacedKey;
-use crate::java::lang::Class;
 use crate::api_prelude::*;
 
 // ---- interface org.bukkit.Tag (paper-api/src/main/java/org/bukkit/Tag.java:20)

@@ -13,13 +13,12 @@ use crate::io::papermc::paper::plugin::lifecycle::event::types::abstract_lifecyc
 use crate::io::papermc::paper::registry::event::registry_entry_add_event::RegistryEntryAddEvent;
 use crate::io::papermc::paper::registry::event::type_::registry_entry_add_configuration::RegistryEntryAddConfiguration;
 use crate::io::papermc::paper::registry::typed_key::TypedKey;
-use crate::java::util::function::Predicate;
 
 // ---- class io.papermc.paper.registry.event.type.RegistryEntryAddHandlerConfiguration (paper-server/src/main/java/io/papermc/paper/registry/event/type/RegistryEntryAddHandlerConfiguration.java:14)
 pub struct RegistryEntryAddHandlerConfiguration<T: JGeneric, B: JGeneric> {
     pub base: PrioritizedLifecycleEventHandlerConfigurationImpl<JRef<dyn BootstrapContext>, JRef<dyn RegistryEntryAddEvent<T, B>>>,
     pub this: Weak<Self>,
-    pub filter: Mut<Option<JRef<dyn Predicate<JRef<dyn TypedKey<T>>>>>>, // paper-server/src/main/java/io/papermc/paper/registry/event/type/RegistryEntryAddHandlerConfiguration.java:16
+    pub filter: Mut<Option<Arc<dyn Fn(JRef<dyn TypedKey<T>>) -> bool + Send + Sync>>>, // paper-server/src/main/java/io/papermc/paper/registry/event/type/RegistryEntryAddHandlerConfiguration.java:16
     pub _phantom: std::marker::PhantomData<(T, B,)>,
 }
 impl<T: JGeneric, B: JGeneric> std::ops::Deref for RegistryEntryAddHandlerConfiguration<T, B> {
@@ -29,10 +28,10 @@ impl<T: JGeneric, B: JGeneric> std::ops::Deref for RegistryEntryAddHandlerConfig
 impl<T: JGeneric, B: JGeneric> RegistryEntryAddHandlerConfiguration<T, B> {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(handler: JRef<dyn LifecycleEventHandler<JObjectRef>>, event_type: JRef<dyn AbstractLifecycleEventTypeTrait<JRef<dyn BootstrapContext>, JRef<dyn RegistryEntryAddEvent<T, B>>, JObjectRef>>) -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/event/type/RegistryEntryAddHandlerConfiguration.java:18
-    pub fn filter_1(&self, filter: JRef<dyn Predicate<JRef<dyn TypedKey<T>>>>) -> JRef<dyn RegistryEntryAddConfiguration<T>> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/event/type/RegistryEntryAddHandlerConfiguration.java:27
+    pub fn filter_1(&self, filter: Arc<dyn Fn(JRef<dyn TypedKey<T>>) -> bool + Send + Sync>) -> JRef<dyn RegistryEntryAddConfiguration<T>> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/event/type/RegistryEntryAddHandlerConfiguration.java:27
     pub fn priority(&self, priority: i32) -> JRef<dyn RegistryEntryAddConfiguration<T>> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/event/type/RegistryEntryAddHandlerConfiguration.java:33
     pub fn monitor(&self) -> JRef<dyn RegistryEntryAddConfiguration<T>> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/event/type/RegistryEntryAddHandlerConfiguration.java:38
-    pub fn filter_0(&self) -> Option<JRef<dyn Predicate<JRef<dyn TypedKey<T>>>>> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/event/type/RegistryEntryAddHandlerConfiguration.java:22
+    pub fn filter_0(&self) -> Option<Arc<dyn Fn(JRef<dyn TypedKey<T>>) -> bool + Send + Sync>> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/event/type/RegistryEntryAddHandlerConfiguration.java:22
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
@@ -45,7 +44,7 @@ impl<T: JGeneric, B: JGeneric> AbstractLifecycleEventHandlerConfigurationTrait<J
     fn handler(&self) -> JRef<dyn LifecycleEventHandler<JObjectRef>> { AbstractLifecycleEventHandlerConfiguration::handler(self) }
 }
 impl<T: JGeneric, B: JGeneric> RegistryEntryAddConfiguration<T> for RegistryEntryAddHandlerConfiguration<T, B> {
-    fn filter_1(&self, filter: JRef<dyn Predicate<JRef<dyn TypedKey<T>>>>) -> JRef<dyn RegistryEntryAddConfiguration<T>> { RegistryEntryAddHandlerConfiguration::filter_1(self, filter) }
+    fn filter_1(&self, filter: Arc<dyn Fn(JRef<dyn TypedKey<T>>) -> bool + Send + Sync>) -> JRef<dyn RegistryEntryAddConfiguration<T>> { RegistryEntryAddHandlerConfiguration::filter_1(self, filter) }
 }
 impl<T: JGeneric, B: JGeneric> PrioritizedLifecycleEventHandlerConfiguration<O> for RegistryEntryAddHandlerConfiguration<T, B> {
     fn priority(&self, priority: i32) -> JRef<dyn PrioritizedLifecycleEventHandlerConfiguration<O>> { RegistryEntryAddHandlerConfiguration::priority(self, priority) }

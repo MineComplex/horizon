@@ -3,7 +3,6 @@
 use crate::api_prelude::*;
 use crate::com::destroystokyo::paper::exception::server_exception::ServerException;
 use crate::com::destroystokyo::paper::exception::server_exception::ServerExceptionTrait;
-use crate::java::lang::Throwable;
 use crate::prelude::*;
 
 // ---- class com.destroystokyo.paper.exception.ServerInternalException (paper-api/src/main/java/com/destroystokyo/paper/exception/ServerInternalException.java:10)
@@ -27,13 +26,13 @@ impl ServerInternalException {
             this: this.clone(),
         })
     } // paper-api/src/main/java/com/destroystokyo/paper/exception/ServerInternalException.java:12
-    pub fn new_1(cause: Throwable) -> JRef<Self> {
+    pub fn new_1(cause: anyhow::Error) -> JRef<Self> {
         Arc::new_cyclic(|this| ServerInternalException {
             base: ServerException::new_base_1(this, cause),
             this: this.clone(),
         })
     } // paper-api/src/main/java/com/destroystokyo/paper/exception/ServerInternalException.java:20
-    pub fn new_2(message: &str, cause: Throwable) -> JRef<Self> {
+    pub fn new_2(message: &str, cause: anyhow::Error) -> JRef<Self> {
         Arc::new_cyclic(|this| ServerInternalException {
             base: ServerException::new_base_2(this, message, cause),
             this: this.clone(),
@@ -41,7 +40,7 @@ impl ServerInternalException {
     } // paper-api/src/main/java/com/destroystokyo/paper/exception/ServerInternalException.java:16
     pub fn new_4(
         message: &str,
-        cause: Throwable,
+        cause: anyhow::Error,
         enable_suppression: bool,
         writable_stack_trace: bool,
     ) -> JRef<Self> {
@@ -56,7 +55,7 @@ impl ServerInternalException {
             this: this.clone(),
         })
     } // paper-api/src/main/java/com/destroystokyo/paper/exception/ServerInternalException.java:24
-    pub fn report_internal_exception(cause: Throwable) {
+    pub fn report_internal_exception(cause: anyhow::Error) {
         let result = crate::org::bukkit::bukkit::Bukkit::get_plugin_manager().call_event(
     crate::com::destroystokyo::paper::event::server::server_exception_event::ServerExceptionEvent::new(
         ServerInternalException::new_1(cause),

@@ -4,7 +4,6 @@ use crate::prelude::*;
 use crate::com::mojang::brigadier::StringReader;
 use crate::com::mojang::brigadier::context::CommandContext;
 use crate::com::mojang::brigadier::exceptions::SimpleCommandExceptionType;
-use crate::java::lang::Throwable;
 use crate::net::minecraft::commands::command_source_stack::CommandSourceStack;
 use crate::net::minecraft::core::direction::DirectionAxis;
 
@@ -19,7 +18,7 @@ impl SwizzleArgument {
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/SwizzleArgument.java:15
     pub fn swizzle() -> JRef<SwizzleArgument> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/SwizzleArgument.java:19
     pub fn get_swizzle(context: CommandContext<JRef<CommandSourceStack>>, name: &str) -> HashSet<DirectionAxis> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/SwizzleArgument.java:23
-    pub fn parse(&self, reader: StringReader) -> Result<HashSet<DirectionAxis>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/SwizzleArgument.java:27
+    pub fn parse(&self, reader: StringReader) -> Result<HashSet<DirectionAxis>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/SwizzleArgument.java:27
     pub fn get_examples(&self) -> Vec<String> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/SwizzleArgument.java:50
 }
 crate::jobject!(SwizzleArgument);

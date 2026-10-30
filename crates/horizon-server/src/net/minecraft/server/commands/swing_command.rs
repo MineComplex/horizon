@@ -4,7 +4,6 @@ use crate::prelude::*;
 use crate::com::mojang::brigadier::builder::LiteralArgumentBuilder;
 use crate::com::mojang::brigadier::command_dispatcher::CommandDispatcher;
 use crate::com::mojang::brigadier::exceptions::SimpleCommandExceptionType;
-use crate::java::lang::Throwable;
 use crate::net::minecraft::commands::command_source_stack::CommandSourceStack;
 use crate::net::minecraft::server::commands::command_response_tracker::CommandResponseTrackerMessages;
 use crate::net::minecraft::world::entity::entity::EntityTrait;
@@ -23,7 +22,7 @@ impl SwingCommand {
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/SwingCommand.java:22
     pub fn register(dispatcher: JRef<CommandDispatcher<JRef<CommandSourceStack>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/SwingCommand.java:32
     pub fn hand_swing(name: &str, hand: InteractionHand) -> LiteralArgumentBuilder<JRef<CommandSourceStack>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/SwingCommand.java:46
-    pub fn swing(source: JRef<CommandSourceStack>, targets: &Vec<JRef<dyn EntityTrait>>, hand: InteractionHand) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/SwingCommand.java:75
-    pub fn swing_5(source: JRef<CommandSourceStack>, targets: &Vec<JRef<dyn EntityTrait>>, hand: InteractionHand, animation_type: SwingAnimationType, duration: i32) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/SwingCommand.java:79
+    pub fn swing(source: JRef<CommandSourceStack>, targets: &Vec<JRef<dyn EntityTrait>>, hand: InteractionHand) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/SwingCommand.java:75
+    pub fn swing_5(source: JRef<CommandSourceStack>, targets: &Vec<JRef<dyn EntityTrait>>, hand: InteractionHand, animation_type: SwingAnimationType, duration: i32) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/SwingCommand.java:79
 }
 crate::jobject!(SwingCommand);

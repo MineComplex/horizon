@@ -3,8 +3,6 @@
 use crate::prelude::*;
 use crate::io::papermc::paper::server_build_info::ServerBuildInfo;
 use crate::io::papermc::paper::server_build_info::ServerBuildInfoStringRepresentation;
-use crate::java::time::Instant;
-use crate::java::util::jar::Manifest;
 use crate::net::kyori::adventure::key::Key;
 
 // ---- record io.papermc.paper.ServerBuildInfoImpl (paper-server/src/main/java/io/papermc/paper/ServerBuildInfoImpl.java:16)
@@ -15,7 +13,7 @@ pub struct ServerBuildInfoImpl {
     pub minecraft_version_id: String,
     pub minecraft_version_name: String,
     pub build_number: Option<i32>,
-    pub build_time: Instant,
+    pub build_time: std::time::SystemTime,
     pub git_branch: Option<String>,
     pub git_commit: Option<String>,
 }
@@ -33,11 +31,11 @@ pub const BRAND_LEAF_NAME: &str = "Leaf"; // paper-server/src/main/java/io/paper
 pub const BUILD_DEV: &str = "DEV"; // paper-server/src/main/java/io/papermc/paper/ServerBuildInfoImpl.java:41
 impl ServerBuildInfoImpl {
     pub fn new() -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/ServerBuildInfoImpl.java:43
-    pub fn new_1(manifest: Manifest) -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/ServerBuildInfoImpl.java:47
-    pub fn new_8(brand_id: JRef<dyn Key>, brand_name: &str, minecraft_version_id: &str, minecraft_version_name: &str, build_number: Option<i32>, build_time: Instant, git_branch: Option<String>, git_commit: Option<String>) -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/ServerBuildInfoImpl.java:16
+    pub fn new_1(manifest: ()) -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/ServerBuildInfoImpl.java:47
+    pub fn new_8(brand_id: JRef<dyn Key>, brand_name: &str, minecraft_version_id: &str, minecraft_version_name: &str, build_number: Option<i32>, build_time: std::time::SystemTime, git_branch: Option<String>, git_commit: Option<String>) -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/ServerBuildInfoImpl.java:16
     pub fn is_brand_compatible(&self, brand_id: JRef<dyn Key>) -> bool { todo!() } // paper-server/src/main/java/io/papermc/paper/ServerBuildInfoImpl.java:68
     pub fn as_string(&self, representation: ServerBuildInfoStringRepresentation) -> String { todo!() } // paper-server/src/main/java/io/papermc/paper/ServerBuildInfoImpl.java:79
-    pub fn get_manifest_attribute(manifest: Manifest, name: &str) -> Option<String> { todo!() } // paper-server/src/main/java/io/papermc/paper/ServerBuildInfoImpl.java:112
+    pub fn get_manifest_attribute(manifest: (), name: &str) -> Option<String> { todo!() } // paper-server/src/main/java/io/papermc/paper/ServerBuildInfoImpl.java:112
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
@@ -48,7 +46,7 @@ impl ServerBuildInfo for ServerBuildInfoImpl {
     fn minecraft_version_id(&self) -> String { todo!("abstract ServerBuildInfo.minecraftVersionId") }
     fn minecraft_version_name(&self) -> String { todo!("abstract ServerBuildInfo.minecraftVersionName") }
     fn build_number(&self) -> Option<i32> { todo!("abstract ServerBuildInfo.buildNumber") }
-    fn build_time(&self) -> Instant { todo!("abstract ServerBuildInfo.buildTime") }
+    fn build_time(&self) -> std::time::SystemTime { todo!("abstract ServerBuildInfo.buildTime") }
     fn git_branch(&self) -> Option<String> { todo!("abstract ServerBuildInfo.gitBranch") }
     fn git_commit(&self) -> Option<String> { todo!("abstract ServerBuildInfo.gitCommit") }
     fn as_string(&self, representation: ServerBuildInfoStringRepresentation) -> String { ServerBuildInfoImpl::as_string(self, representation) }

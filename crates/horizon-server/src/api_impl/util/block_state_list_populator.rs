@@ -5,8 +5,6 @@ use crate::api_impl::util::captured_block::CapturedBlock;
 use crate::api_impl::util::dummy_level_accessor::DummyLevelAccessor;
 use crate::ca::spottedleaf::moonrise::patches::chunk_system::level::chunk_system_level_reader::ChunkSystemLevelReader;
 use crate::ca::spottedleaf::moonrise::patches::chunk_system::world::chunk_system_entity_getter::ChunkSystemEntityGetter;
-use crate::java::util::function::Consumer;
-use crate::java::util::function::Predicate;
 use crate::net::minecraft::core::block_pos::BlockPos;
 use crate::net::minecraft::core::holder::Holder;
 use crate::net::minecraft::core::particles::particle_options::ParticleOptions;
@@ -88,8 +86,8 @@ impl BlockStateListPopulator {
     pub fn get_level(&self) -> JRef<ServerLevel> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/util/BlockStateListPopulator.java:142
     pub fn get_min_y(&self) -> i32 { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/util/BlockStateListPopulator.java:147
     pub fn get_height(&self) -> i32 { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/util/BlockStateListPopulator.java:152
-    pub fn is_state_at_position(&self, pos: BlockPos, predicate: JRef<dyn Predicate<JRef<crate::net::minecraft::world::level::block::state::block_state::BlockState>>>) -> bool { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/util/BlockStateListPopulator.java:157
-    pub fn is_fluid_at_position(&self, pos: BlockPos, predicate: JRef<dyn Predicate<JRef<FluidState>>>) -> bool { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/util/BlockStateListPopulator.java:162
+    pub fn is_state_at_position(&self, pos: BlockPos, predicate: Arc<dyn Fn(JRef<crate::net::minecraft::world::level::block::state::block_state::BlockState>) -> bool + Send + Sync>) -> bool { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/util/BlockStateListPopulator.java:157
+    pub fn is_fluid_at_position(&self, pos: BlockPos, predicate: Arc<dyn Fn(JRef<FluidState>) -> bool + Send + Sync>) -> bool { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/util/BlockStateListPopulator.java:162
     pub fn dimension_type(&self) -> DimensionType { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/util/BlockStateListPopulator.java:167
     pub fn registry_access(&self) -> JRef<dyn RegistryAccess> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/util/BlockStateListPopulator.java:172
     pub fn get_level_data(&self) -> JRef<dyn LevelData> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/util/BlockStateListPopulator.java:178
@@ -100,11 +98,11 @@ impl BlockStateListPopulator {
     pub fn get_height_3(&self, type_: HeightmapTypes, x: i32, z: i32) -> i32 { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/util/BlockStateListPopulator.java:205
     pub fn get_raw_brightness(&self, pos: BlockPos, darkening: i32) -> i32 { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/util/BlockStateListPopulator.java:210
     pub fn get_brightness(&self, layer: LightLayer, pos: BlockPos) -> i32 { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/util/BlockStateListPopulator.java:215
-    pub fn iterate_snapshots(&self, callback: JRef<dyn Consumer<JRef<dyn crate::org::bukkit::block::block_state::BlockState>>>) { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/util/BlockStateListPopulator.java:98
+    pub fn iterate_snapshots(&self, callback: Arc<dyn Fn(JRef<dyn crate::org::bukkit::block::block_state::BlockState>) + Send + Sync>) { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/util/BlockStateListPopulator.java:98
     pub fn place_blocks(&self) { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/util/BlockStateListPopulator.java:110
-    pub fn place_blocks_1(&self, before_run: JRef<dyn Consumer<JObjectRef>>) { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/util/BlockStateListPopulator.java:118
-    pub fn place_some_blocks(&self, filter: JRef<dyn Predicate<JObjectRef>>) { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/util/BlockStateListPopulator.java:114
-    pub fn place_some_blocks_2(&self, before_run: JRef<dyn Consumer<JObjectRef>>, filter: JRef<dyn Predicate<JObjectRef>>) { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/util/BlockStateListPopulator.java:122
+    pub fn place_blocks_1(&self, before_run: Arc<dyn Fn(JObjectRef) + Send + Sync>) { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/util/BlockStateListPopulator.java:118
+    pub fn place_some_blocks(&self, filter: Arc<dyn Fn(JObjectRef) -> bool + Send + Sync>) { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/util/BlockStateListPopulator.java:114
+    pub fn place_some_blocks_2(&self, before_run: Arc<dyn Fn(JObjectRef) + Send + Sync>, filter: Arc<dyn Fn(JObjectRef) -> bool + Send + Sync>) { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/util/BlockStateListPopulator.java:122
     pub fn get_snapshot_blocks(&self) -> Vec<JRef<dyn crate::org::bukkit::block::block_state::BlockState>> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/util/BlockStateListPopulator.java:131
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
@@ -179,8 +177,8 @@ impl ChunkSystemLevelReader for BlockStateListPopulator {
 impl LevelSimulatedRW for BlockStateListPopulator {
 }
 impl LevelSimulatedReader for BlockStateListPopulator {
-    fn is_state_at_position(&self, pos: BlockPos, predicate: JRef<dyn Predicate<JRef<crate::net::minecraft::world::level::block::state::block_state::BlockState>>>) -> bool { BlockStateListPopulator::is_state_at_position(self, pos, predicate) }
-    fn is_fluid_at_position(&self, pos: BlockPos, predicate: JRef<dyn Predicate<JRef<FluidState>>>) -> bool { BlockStateListPopulator::is_fluid_at_position(self, pos, predicate) }
+    fn is_state_at_position(&self, pos: BlockPos, predicate: Arc<dyn Fn(JRef<crate::net::minecraft::world::level::block::state::block_state::BlockState>) -> bool + Send + Sync>) -> bool { BlockStateListPopulator::is_state_at_position(self, pos, predicate) }
+    fn is_fluid_at_position(&self, pos: BlockPos, predicate: Arc<dyn Fn(JRef<FluidState>) -> bool + Send + Sync>) -> bool { BlockStateListPopulator::is_fluid_at_position(self, pos, predicate) }
     fn get_block_entity<T: JGeneric>(&self, pos: BlockPos, type_: JRef<BlockEntityType<T>>) -> Option<T> where Self: Sized { BlockStateListPopulator::get_block_entity::<T>(self, pos, type_) }
     fn get_heightmap_pos(&self, type_: HeightmapTypes, pos: BlockPos) -> BlockPos { BlockStateListPopulator::get_heightmap_pos(self, type_, pos) }
 }
@@ -190,12 +188,12 @@ impl LevelWriter for BlockStateListPopulator {
     fn destroy_block_4(&self, pos: BlockPos, drop_resources: bool, breaker: Option<JRef<dyn EntityTrait>>, update_limit: i32) -> bool { BlockStateListPopulator::destroy_block_4(self, pos, drop_resources, breaker, update_limit) }
 }
 impl EntityGetter for BlockStateListPopulator {
-    fn get_entities_3(&self, except: Option<JRef<dyn EntityTrait>>, bb: AABB, selector: JRef<dyn Predicate<JObjectRef>>) -> Vec<JRef<dyn EntityTrait>> { DummyLevelAccessor::get_entities_3(self, except, bb, selector) }
-    fn get_entities_3_2<T: JGeneric>(&self, type_: JRef<dyn EntityTypeTest<JRef<dyn EntityTrait>, T>>, bb: AABB, selector: JRef<dyn Predicate<JObjectRef>>) -> Vec<T> where Self: Sized { DummyLevelAccessor::get_entities_3_2::<T>(self, type_, bb, selector) }
+    fn get_entities_3(&self, except: Option<JRef<dyn EntityTrait>>, bb: AABB, selector: Arc<dyn Fn(JObjectRef) -> bool + Send + Sync>) -> Vec<JRef<dyn EntityTrait>> { DummyLevelAccessor::get_entities_3(self, except, bb, selector) }
+    fn get_entities_3_2<T: JGeneric>(&self, type_: JRef<dyn EntityTypeTest<JRef<dyn EntityTrait>, T>>, bb: AABB, selector: Arc<dyn Fn(JObjectRef) -> bool + Send + Sync>) -> Vec<T> where Self: Sized { DummyLevelAccessor::get_entities_3_2::<T>(self, type_, bb, selector) }
     fn players(&self) -> Vec<JRef<dyn PlayerTrait>> { DummyLevelAccessor::players(self) }
 }
 impl ChunkSystemEntityGetter for BlockStateListPopulator {
-    fn moonrise_get_hard_colliding_entities(&self, entity: JRef<dyn EntityTrait>, box_: AABB, predicate: JRef<dyn Predicate<JObjectRef>>) -> Vec<JRef<dyn EntityTrait>> { todo!("abstract ChunkSystemEntityGetter.moonrise$getHardCollidingEntities") }
+    fn moonrise_get_hard_colliding_entities(&self, entity: JRef<dyn EntityTrait>, box_: AABB, predicate: Arc<dyn Fn(JObjectRef) -> bool + Send + Sync>) -> Vec<JRef<dyn EntityTrait>> { todo!("abstract ChunkSystemEntityGetter.moonrise$getHardCollidingEntities") }
 }
 impl ScheduledTickAccess for BlockStateListPopulator {
     fn create_tick<T: JGeneric>(&self, pos: BlockPos, type_: T, tick_delay: i32) -> ScheduledTick<T> where Self: Sized { todo!("abstract ScheduledTickAccess.createTick") }

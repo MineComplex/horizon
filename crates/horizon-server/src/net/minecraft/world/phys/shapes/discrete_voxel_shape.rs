@@ -7,7 +7,6 @@ use crate::com::mojang::math::octahedral_group::OctahedralGroup;
 use crate::net::minecraft::core::axis_cycle::AxisCycle;
 use crate::net::minecraft::core::direction::Direction;
 use crate::net::minecraft::core::direction::DirectionAxis;
-use crate::org::joml::Vector3i;
 
 // ---- class net.minecraft.world.phys.shapes.DiscreteVoxelShape (leaf-server/src/minecraft/java/net/minecraft/world/phys/shapes/DiscreteVoxelShape.java:8)
 pub struct DiscreteVoxelShape {
@@ -48,7 +47,7 @@ impl DiscreteVoxelShape {
     pub fn new_base<S: DiscreteVoxelShapeTrait + 'static>(this: &Weak<S>, x_size: i32, y_size: i32, z_size: i32) -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/phys/shapes/DiscreteVoxelShape.java:81
     pub fn moonrise_get_or_create_cached_shape_data(&self) -> CachedShapeData { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/phys/shapes/DiscreteVoxelShape.java:18
     pub fn rotate(&self, rotation: OctahedralGroup) -> JRef<dyn DiscreteVoxelShapeTrait> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/phys/shapes/DiscreteVoxelShape.java:91
-    pub fn fixup_coordinate(v: Vector3i, index: i32) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/phys/shapes/DiscreteVoxelShape.java:119
+    pub fn fixup_coordinate(v: glam::IVec3, index: i32) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/phys/shapes/DiscreteVoxelShape.java:119
     pub fn is_full_wide(&self, x: i32, y: i32, z: i32) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/phys/shapes/DiscreteVoxelShape.java:135
     pub fn is_full_wide_4(&self, transform: AxisCycle, x: i32, y: i32, z: i32) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/phys/shapes/DiscreteVoxelShape.java:129
     pub fn is_full_4(&self, transform: AxisCycle, x: i32, y: i32, z: i32) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/phys/shapes/DiscreteVoxelShape.java:139

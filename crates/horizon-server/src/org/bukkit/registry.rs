@@ -10,10 +10,6 @@ use crate::io::papermc::paper::registry::registry_key::RegistryKey;
 use crate::io::papermc::paper::registry::tag::tag::Tag;
 use crate::io::papermc::paper::registry::tag::tag_key::TagKey;
 use crate::io::papermc::paper::registry::typed_key::TypedKey;
-use crate::java::lang::Class;
-use crate::java::util::JIterator;
-use crate::java::util::function::Predicate;
-use crate::java::util::stream::Stream;
 use crate::net::kyori::adventure::key::Key;
 use crate::org::bukkit::advancement::advancement::Advancement;
 use crate::org::bukkit::art::Art;
@@ -58,7 +54,7 @@ use crate::prelude::*;
 // ---- interface org.bukkit.Registry (paper-api/src/main/java/org/bukkit/Registry.java:58)
 pub trait Registry<T: JGeneric>: JObject {
     /// `Iterable<T>.iterator()` (Registry extends Iterable).
-    fn iterator(&self) -> JIterator<T>;
+    fn iterator(&self) -> Box<dyn Iterator<Item = T> + Send>;
     fn get(&self, key: JRef<NamespacedKey>) -> Option<T>; // paper-api/src/main/java/org/bukkit/Registry.java:392
     fn get_1(&self, key: JRef<dyn Key>) -> Option<T> {
         // Paper start
@@ -122,8 +118,8 @@ pub trait Registry<T: JGeneric>: JObject {
     } // default, paper-api/src/main/java/org/bukkit/Registry.java:517
     fn get_tags(&self) -> Vec<JRef<dyn Tag<T>>>; // paper-api/src/main/java/org/bukkit/Registry.java:528
     // Paper end - RegistrySet API
-    fn stream(&self) -> Stream<T>; // paper-api/src/main/java/org/bukkit/Registry.java:549
-    fn key_stream(&self) -> Stream<JRef<NamespacedKey>>; // paper-api/src/main/java/org/bukkit/Registry.java:556
+    fn stream(&self) -> Box<dyn Iterator<Item = T> + Send>; // paper-api/src/main/java/org/bukkit/Registry.java:549
+    fn key_stream(&self) -> Box<dyn Iterator<Item = JRef<NamespacedKey>> + Send>; // paper-api/src/main/java/org/bukkit/Registry.java:556
     fn match_(&self, input: &str) -> Option<T> {
         // Preconditions.checkArgument(input != null, "input must not be null"): never null here
         let filtered = replace_whitespace_runs(&input.to_lowercase(), "_");
@@ -268,7 +264,7 @@ pub static SOUNDS: LazyLock<JRef<dyn Registry<JRef<dyn Sound>>>> =
 pub fn registry_for<A: JGeneric>(registry_key: JRef<dyn RegistryKey<A>>) -> JRef<dyn Registry<A>> {
     registry_access::registry_access().get_registry_1(registry_key)
 } // paper-api/src/main/java/org/bukkit/Registry.java:61
-pub fn legacy_registry_for<A: JGeneric>(clazz: Class) -> JRef<dyn Registry<A>> {
+pub fn legacy_registry_for<A: JGeneric>(clazz: crate::rt::Class) -> JRef<dyn Registry<A>> {
     // Objects.requireNonNull(..., () -> "No registry present for " + clazz.getSimpleName() + ". This is a bug.")
     registry_access::registry_access().get_registry::<A>(clazz)
 } // paper-api/src/main/java/org/bukkit/Registry.java:65
@@ -294,7 +290,7 @@ impl RegistryAdvancementRegistry {
     pub fn get(&self, key: JRef<NamespacedKey>) -> Option<JRef<dyn Advancement>> {
         Bukkit::get_advancement(key)
     }
-    pub fn iterator(&self) -> JIterator<JRef<dyn Advancement>> {
+    pub fn iterator(&self) -> Box<dyn Iterator<Item = JRef<dyn Advancement>> + Send> {
         Bukkit::advancement_iterator()
     }
 }
@@ -304,7 +300,7 @@ impl RegistryNotARegistryTrait<JRef<dyn Advancement>> for RegistryAdvancementReg
     }
 }
 impl Registry<JRef<dyn Advancement>> for RegistryAdvancementRegistry {
-    fn iterator(&self) -> JIterator<JRef<dyn Advancement>> {
+    fn iterator(&self) -> Box<dyn Iterator<Item = JRef<dyn Advancement>> + Send> {
         RegistryAdvancementRegistry::iterator(self)
     }
     fn get(&self, key: JRef<NamespacedKey>) -> Option<JRef<dyn Advancement>> {
@@ -325,10 +321,10 @@ impl Registry<JRef<dyn Advancement>> for RegistryAdvancementRegistry {
     fn get_tags(&self) -> Vec<JRef<dyn Tag<JRef<dyn Advancement>>>> {
         RegistryNotARegistry::get_tags(self)
     }
-    fn stream(&self) -> Stream<JRef<dyn Advancement>> {
+    fn stream(&self) -> Box<dyn Iterator<Item = JRef<dyn Advancement>> + Send> {
         RegistryNotARegistry::stream(self)
     }
-    fn key_stream(&self) -> Stream<JRef<NamespacedKey>> {
+    fn key_stream(&self) -> Box<dyn Iterator<Item = JRef<NamespacedKey>> + Send> {
         RegistryNotARegistry::key_stream(self)
     }
     fn size(&self) -> i32 {
@@ -358,7 +354,7 @@ impl RegistryBossBarsRegistry {
     pub fn get(&self, key: JRef<NamespacedKey>) -> Option<JRef<dyn KeyedBossBar>> {
         Bukkit::get_boss_bar(key)
     }
-    pub fn iterator(&self) -> JIterator<JRef<dyn KeyedBossBar>> {
+    pub fn iterator(&self) -> Box<dyn Iterator<Item = JRef<dyn KeyedBossBar>> + Send> {
         Bukkit::get_boss_bars()
     }
 }
@@ -368,7 +364,7 @@ impl RegistryNotARegistryTrait<JRef<dyn KeyedBossBar>> for RegistryBossBarsRegis
     }
 }
 impl Registry<JRef<dyn KeyedBossBar>> for RegistryBossBarsRegistry {
-    fn iterator(&self) -> JIterator<JRef<dyn KeyedBossBar>> {
+    fn iterator(&self) -> Box<dyn Iterator<Item = JRef<dyn KeyedBossBar>> + Send> {
         RegistryBossBarsRegistry::iterator(self)
     }
     fn get(&self, key: JRef<NamespacedKey>) -> Option<JRef<dyn KeyedBossBar>> {
@@ -389,10 +385,10 @@ impl Registry<JRef<dyn KeyedBossBar>> for RegistryBossBarsRegistry {
     fn get_tags(&self) -> Vec<JRef<dyn Tag<JRef<dyn KeyedBossBar>>>> {
         RegistryNotARegistry::get_tags(self)
     }
-    fn stream(&self) -> Stream<JRef<dyn KeyedBossBar>> {
+    fn stream(&self) -> Box<dyn Iterator<Item = JRef<dyn KeyedBossBar>> + Send> {
         RegistryNotARegistry::stream(self)
     }
-    fn key_stream(&self) -> Stream<JRef<NamespacedKey>> {
+    fn key_stream(&self) -> Box<dyn Iterator<Item = JRef<NamespacedKey>> + Send> {
         RegistryNotARegistry::key_stream(self)
     }
     fn size(&self) -> i32 {
@@ -419,8 +415,8 @@ impl RegistryMemoryModuleTypeRegistry {
             this: this.clone(),
         })
     }
-    pub fn iterator(&self) -> JIterator<JRef<MemoryKey<JObjectRef>>> {
-        // PORT: MemoryKey.values().iterator(): JIterator over a collection (java.util port)
+    pub fn iterator(&self) -> Box<dyn Iterator<Item = JRef<MemoryKey<JObjectRef>>> + Send> {
+        // PORT: MemoryKey.values().iterator(): Box<dyn Iterator<Item = JObjectRef> + Send> over a collection (java.util port)
         JIterator::from_vec(MemoryKey::<JObjectRef>::values().into_iter().collect())
     }
     pub fn size(&self) -> i32 {
@@ -436,7 +432,7 @@ impl RegistryNotARegistryTrait<JRef<MemoryKey<JObjectRef>>> for RegistryMemoryMo
     }
 }
 impl Registry<JRef<MemoryKey<JObjectRef>>> for RegistryMemoryModuleTypeRegistry {
-    fn iterator(&self) -> JIterator<JRef<MemoryKey<JObjectRef>>> {
+    fn iterator(&self) -> Box<dyn Iterator<Item = JRef<MemoryKey<JObjectRef>>> + Send> {
         RegistryMemoryModuleTypeRegistry::iterator(self)
     }
     fn get(&self, key: JRef<NamespacedKey>) -> Option<JRef<MemoryKey<JObjectRef>>> {
@@ -457,10 +453,10 @@ impl Registry<JRef<MemoryKey<JObjectRef>>> for RegistryMemoryModuleTypeRegistry 
     fn get_tags(&self) -> Vec<JRef<dyn Tag<JRef<MemoryKey<JObjectRef>>>>> {
         RegistryNotARegistry::get_tags(self)
     }
-    fn stream(&self) -> Stream<JRef<MemoryKey<JObjectRef>>> {
+    fn stream(&self) -> Box<dyn Iterator<Item = JRef<MemoryKey<JObjectRef>>> + Send> {
         RegistryNotARegistry::stream(self)
     }
-    fn key_stream(&self) -> Stream<JRef<NamespacedKey>> {
+    fn key_stream(&self) -> Box<dyn Iterator<Item = JRef<NamespacedKey>> + Send> {
         RegistryNotARegistry::key_stream(self)
     }
     fn size(&self) -> i32 {
@@ -473,7 +469,7 @@ crate::jobject!(RegistryMemoryModuleTypeRegistry: dyn RegistryNotARegistryTrait<
 pub struct RegistrySimpleRegistry<T: JGeneric> {
     pub base: RegistryNotARegistry<T>,
     pub this: Weak<dyn RegistrySimpleRegistryTrait<T>>,
-    pub type_: Class, // paper-api/src/main/java/org/bukkit/Registry.java:591
+    pub type_: crate::rt::Class, // paper-api/src/main/java/org/bukkit/Registry.java:591
     /// `ImmutableMap`: insertion-ordered.
     pub map: IndexMap<JRef<NamespacedKey>, T>, // paper-api/src/main/java/org/bukkit/Registry.java:592
     pub _phantom: std::marker::PhantomData<(T,)>,
@@ -486,7 +482,7 @@ impl<T: JGeneric> std::ops::Deref for RegistrySimpleRegistry<T> {
 }
 pub trait RegistrySimpleRegistryTrait<T: JGeneric>: RegistryNotARegistryTrait<T> {
     fn as_registry_simple_registry(&self) -> &RegistrySimpleRegistry<T>;
-    fn get_type(&self) -> Class; // paper-api/src/main/java/org/bukkit/Registry.java:631
+    fn get_type(&self) -> crate::rt::Class; // paper-api/src/main/java/org/bukkit/Registry.java:631
 }
 impl<T: JGeneric> std::ops::Deref for dyn RegistrySimpleRegistryTrait<T> {
     type Target = RegistrySimpleRegistry<T>;
@@ -498,23 +494,23 @@ impl<T: RegistryValue> RegistrySimpleRegistry<T> {
     pub fn this(&self) -> JRef<dyn RegistrySimpleRegistryTrait<T>> {
         self.this.upgrade().expect("this")
     }
-    /// `enum_constants` is `type.getEnumConstants()` (a Rust `Class` can't list them).
+    /// `enum_constants` is `type.getEnumConstants()` (a Rust `crate::rt::Class` can't list them).
     pub fn new_base<S: RegistrySimpleRegistryTrait<T> + 'static>(
         this: &Weak<S>,
-        type_: Class,
+        type_: crate::rt::Class,
         enum_constants: Vec<T>,
     ) -> Self {
         // Predicates.alwaysTrue()
         Self::new_base_2(this, type_, enum_constants, Arc::new(|_: T| true))
     } // paper-api/src/main/java/org/bukkit/Registry.java:594
-    pub fn new(type_: Class, enum_constants: Vec<T>) -> JRef<Self> {
+    pub fn new(type_: crate::rt::Class, enum_constants: Vec<T>) -> JRef<Self> {
         Arc::new_cyclic(|this| Self::new_base(this, type_, enum_constants))
     }
     pub fn new_base_2<S: RegistrySimpleRegistryTrait<T> + 'static>(
         this: &Weak<S>,
-        type_: Class,
+        type_: crate::rt::Class,
         enum_constants: Vec<T>,
-        predicate: JRef<dyn Predicate<T>>,
+        predicate: Arc<dyn Fn(T) -> bool + Send + Sync>,
     ) -> Self {
         let mut builder: IndexMap<JRef<NamespacedKey>, T> = IndexMap::new();
 
@@ -533,9 +529,9 @@ impl<T: RegistryValue> RegistrySimpleRegistry<T> {
         }
     } // paper-api/src/main/java/org/bukkit/Registry.java:598
     pub fn new_2(
-        type_: Class,
+        type_: crate::rt::Class,
         enum_constants: Vec<T>,
-        predicate: JRef<dyn Predicate<T>>,
+        predicate: Arc<dyn Fn(T) -> bool + Send + Sync>,
     ) -> JRef<Self> {
         Arc::new_cyclic(|this| Self::new_base_2(this, type_, enum_constants, predicate))
     }
@@ -545,15 +541,15 @@ impl<T: RegistryValue> RegistrySimpleRegistry<T> {
     pub fn size(&self) -> i32 {
         self.map.len() as i32
     } // paper-api/src/main/java/org/bukkit/Registry.java:616
-    pub fn key_stream(&self) -> Stream<JRef<NamespacedKey>> {
+    pub fn key_stream(&self) -> Box<dyn Iterator<Item = JRef<NamespacedKey>> + Send> {
         // PORT: Collection.stream() (java.util.stream port)
         Stream::from_vec(self.map.keys().cloned().collect())
     } // paper-api/src/main/java/org/bukkit/Registry.java:626
-    pub fn iterator(&self) -> JIterator<T> {
+    pub fn iterator(&self) -> Box<dyn Iterator<Item = T> + Send> {
         // PORT: Collection.iterator() (java.util port)
         JIterator::from_vec(self.map.values().cloned().collect())
     } // paper-api/src/main/java/org/bukkit/Registry.java:621
-    pub fn get_type(&self) -> Class {
+    pub fn get_type(&self) -> crate::rt::Class {
         self.type_.clone()
     } // paper-api/src/main/java/org/bukkit/Registry.java:631
 }
@@ -563,7 +559,7 @@ impl<T: RegistryValue> RegistrySimpleRegistryTrait<T> for RegistrySimpleRegistry
     fn as_registry_simple_registry(&self) -> &RegistrySimpleRegistry<T> {
         self
     }
-    fn get_type(&self) -> Class {
+    fn get_type(&self) -> crate::rt::Class {
         RegistrySimpleRegistry::get_type(self)
     }
 }
@@ -573,7 +569,7 @@ impl<T: RegistryValue> RegistryNotARegistryTrait<T> for RegistrySimpleRegistry<T
     }
 }
 impl<T: RegistryValue> Registry<T> for RegistrySimpleRegistry<T> {
-    fn iterator(&self) -> JIterator<T> {
+    fn iterator(&self) -> Box<dyn Iterator<Item = T> + Send> {
         RegistrySimpleRegistry::iterator(self)
     }
     fn get(&self, key: JRef<NamespacedKey>) -> Option<T> {
@@ -591,10 +587,10 @@ impl<T: RegistryValue> Registry<T> for RegistrySimpleRegistry<T> {
     fn get_tags(&self) -> Vec<JRef<dyn Tag<T>>> {
         RegistryNotARegistry::get_tags(self)
     }
-    fn stream(&self) -> Stream<T> {
+    fn stream(&self) -> Box<dyn Iterator<Item = T> + Send> {
         RegistryNotARegistry::stream(self)
     }
-    fn key_stream(&self) -> Stream<JRef<NamespacedKey>> {
+    fn key_stream(&self) -> Box<dyn Iterator<Item = JRef<NamespacedKey>> + Send> {
         RegistrySimpleRegistry::key_stream(self)
     }
     fn size(&self) -> i32 {
@@ -645,12 +641,12 @@ impl<A: RegistryValue> RegistryNotARegistry<A> {
             _phantom: std::marker::PhantomData,
         }
     } // paper-api/src/main/java/org/bukkit/Registry.java:641
-    pub fn stream(&self) -> Stream<A> {
+    pub fn stream(&self) -> Box<dyn Iterator<Item = A> + Send> {
         // StreamSupport.stream(this.spliterator(), false)
-        // PORT: a Stream over a JIterator (java.util.stream port)
+        // PORT: a Box<dyn Iterator<Item = JObjectRef> + Send> over a Box<dyn Iterator<Item = JObjectRef> + Send> (java.util.stream port)
         Stream::from_iterator(self.this().iterator())
     } // paper-api/src/main/java/org/bukkit/Registry.java:644
-    pub fn key_stream(&self) -> Stream<JRef<NamespacedKey>> {
+    pub fn key_stream(&self) -> Box<dyn Iterator<Item = JRef<NamespacedKey>> + Send> {
         let this = self.this();
         self.this()
             .stream()

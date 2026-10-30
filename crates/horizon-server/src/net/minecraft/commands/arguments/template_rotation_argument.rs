@@ -3,7 +3,6 @@
 use crate::prelude::*;
 use crate::com::mojang::brigadier::StringReader;
 use crate::com::mojang::brigadier::context::CommandContext;
-use crate::java::lang::Throwable;
 use crate::net::minecraft::commands::arguments::string_representable_argument::StringRepresentableArgument;
 use crate::net::minecraft::commands::arguments::string_representable_argument::StringRepresentableArgumentTrait;
 use crate::net::minecraft::commands::command_source_stack::CommandSourceStack;
@@ -28,7 +27,7 @@ impl TemplateRotationArgument {
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl StringRepresentableArgumentTrait<JObjectRef> for TemplateRotationArgument {
     fn as_string_representable_argument(&self) -> &StringRepresentableArgument<JObjectRef> { self }
-    fn parse(&self, reader: StringReader) -> Result<T, Throwable> { StringRepresentableArgument::parse(self, reader) }
+    fn parse(&self, reader: StringReader) -> Result<T, anyhow::Error> { StringRepresentableArgument::parse(self, reader) }
     fn get_examples(&self) -> Vec<String> { StringRepresentableArgument::get_examples(self) }
     fn convert_id(&self, id: &str) -> String { StringRepresentableArgument::convert_id(self, id) }
 }

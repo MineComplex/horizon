@@ -13,8 +13,6 @@ use crate::net::minecraft::world::attribute::bed_rule::BedRule;
 use crate::net::minecraft::world::entity::schedule::activity::Activity;
 use crate::net::minecraft::world::level::biome::mob_spawn_settings::MobSpawnSettings;
 use crate::net::minecraft::world::level::moon_phase::MoonPhase;
-use crate::org::joml::Vector3fc;
-use crate::org::joml::Vector4fc;
 
 // ---- interface net.minecraft.world.attribute.AttributeTypes (leaf-server/src/minecraft/java/net/minecraft/world/attribute/AttributeTypes.java:19)
 pub trait AttributeTypes: JObject {
@@ -23,8 +21,8 @@ pub static BOOLEAN: LazyLock<AttributeType<bool>> = LazyLock::new(|| todo!()); /
 pub static TRI_STATE: LazyLock<AttributeType<TriState>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/attribute/AttributeTypes.java:21
 pub static FLOAT: LazyLock<AttributeType<f32>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/attribute/AttributeTypes.java:22
 pub static ANGLE_DEGREES: LazyLock<AttributeType<f32>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/attribute/AttributeTypes.java:26
-pub static RGB_COLOR: LazyLock<AttributeType<Vector3fc>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/attribute/AttributeTypes.java:30
-pub static ARGB_COLOR: LazyLock<AttributeType<Vector4fc>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/attribute/AttributeTypes.java:33
+pub static RGB_COLOR: LazyLock<AttributeType<glam::Vec3>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/attribute/AttributeTypes.java:30
+pub static ARGB_COLOR: LazyLock<AttributeType<glam::Vec4>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/attribute/AttributeTypes.java:33
 pub static INTEGER: LazyLock<AttributeType<i32>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/attribute/AttributeTypes.java:36
 pub static MOON_PHASE: LazyLock<AttributeType<MoonPhase>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/attribute/AttributeTypes.java:42
 pub static ACTIVITY: LazyLock<AttributeType<Activity>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/attribute/AttributeTypes.java:43

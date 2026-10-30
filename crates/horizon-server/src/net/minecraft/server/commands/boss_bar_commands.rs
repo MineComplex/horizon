@@ -6,7 +6,6 @@ use crate::com::mojang::brigadier::context::CommandContext;
 use crate::com::mojang::brigadier::exceptions::DynamicCommandExceptionType;
 use crate::com::mojang::brigadier::exceptions::SimpleCommandExceptionType;
 use crate::com::mojang::brigadier::suggestion::SuggestionProvider;
-use crate::java::lang::Throwable;
 use crate::net::minecraft::commands::command_build_context::CommandBuildContext;
 use crate::net::minecraft::commands::command_source_stack::CommandSourceStack;
 use crate::net::minecraft::network::chat::component::Component;
@@ -39,16 +38,16 @@ impl BossBarCommands {
     pub fn get_max(source: JRef<CommandSourceStack>, boss_bar: JRef<CustomBossEvent>) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/BossBarCommands.java:183
     pub fn get_visible(source: JRef<CommandSourceStack>, boss_bar: JRef<CustomBossEvent>) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/BossBarCommands.java:188
     pub fn get_players(source: JRef<CommandSourceStack>, boss_bar: JRef<CustomBossEvent>) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/BossBarCommands.java:198
-    pub fn set_visible(source: JRef<CommandSourceStack>, boss_bar: JRef<CustomBossEvent>, visible: bool) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/BossBarCommands.java:216
-    pub fn set_value(source: JRef<CommandSourceStack>, boss_bar: JRef<CustomBossEvent>, value: i32) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/BossBarCommands.java:235
-    pub fn set_max(source: JRef<CommandSourceStack>, boss_bar: JRef<CustomBossEvent>, value: i32) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/BossBarCommands.java:245
-    pub fn set_color(source: JRef<CommandSourceStack>, boss_bar: JRef<CustomBossEvent>, color: BossEventBossBarColor) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/BossBarCommands.java:255
-    pub fn set_style(source: JRef<CommandSourceStack>, boss_bar: JRef<CustomBossEvent>, style: BossEventBossBarOverlay) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/BossBarCommands.java:265
-    pub fn set_name(source: JRef<CommandSourceStack>, boss_bar: JRef<CustomBossEvent>, name: JRef<dyn Component>) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/BossBarCommands.java:275
-    pub fn set_players(source: JRef<CommandSourceStack>, boss_bar: JRef<CustomBossEvent>, targets: &Vec<JRef<ServerPlayer>>) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/BossBarCommands.java:286
+    pub fn set_visible(source: JRef<CommandSourceStack>, boss_bar: JRef<CustomBossEvent>, visible: bool) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/BossBarCommands.java:216
+    pub fn set_value(source: JRef<CommandSourceStack>, boss_bar: JRef<CustomBossEvent>, value: i32) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/BossBarCommands.java:235
+    pub fn set_max(source: JRef<CommandSourceStack>, boss_bar: JRef<CustomBossEvent>, value: i32) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/BossBarCommands.java:245
+    pub fn set_color(source: JRef<CommandSourceStack>, boss_bar: JRef<CustomBossEvent>, color: BossEventBossBarColor) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/BossBarCommands.java:255
+    pub fn set_style(source: JRef<CommandSourceStack>, boss_bar: JRef<CustomBossEvent>, style: BossEventBossBarOverlay) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/BossBarCommands.java:265
+    pub fn set_name(source: JRef<CommandSourceStack>, boss_bar: JRef<CustomBossEvent>, name: JRef<dyn Component>) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/BossBarCommands.java:275
+    pub fn set_players(source: JRef<CommandSourceStack>, boss_bar: JRef<CustomBossEvent>, targets: &Vec<JRef<ServerPlayer>>) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/BossBarCommands.java:286
     pub fn list_bars(source: JRef<CommandSourceStack>) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/BossBarCommands.java:309
-    pub fn create_bar(source: JRef<CommandSourceStack>, id: JRef<Identifier>, name: JRef<dyn Component>) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/BossBarCommands.java:325
+    pub fn create_bar(source: JRef<CommandSourceStack>, id: JRef<Identifier>, name: JRef<dyn Component>) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/BossBarCommands.java:325
     pub fn remove_bar(source: JRef<CommandSourceStack>, boss_bar: JRef<CustomBossEvent>) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/BossBarCommands.java:338
-    pub fn get_boss_bar(context: CommandContext<JRef<CommandSourceStack>>) -> Result<JRef<CustomBossEvent>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/BossBarCommands.java:346
+    pub fn get_boss_bar(context: CommandContext<JRef<CommandSourceStack>>) -> Result<JRef<CustomBossEvent>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/BossBarCommands.java:346
 }
 crate::jobject!(BossBarCommands);

@@ -4,9 +4,6 @@ use crate::prelude::*;
 use crate::com::mojang::brigadier::command_dispatcher::CommandDispatcher;
 use crate::com::mojang::brigadier::tree::command_node::CommandNodeTrait;
 use crate::io::papermc::paper::command::brigadier::command_source_stack::CommandSourceStack;
-use crate::java::util::JIterator;
-use crate::java::util::function::Consumer;
-use crate::java::util::stream::Stream;
 use crate::org::bukkit::command::command::CommandTrait;
 
 // ---- class io.papermc.paper.command.brigadier.bukkit.BukkitBrigForwardingMap (paper-server/src/main/java/io/papermc/paper/command/brigadier/bukkit/BukkitBrigForwardingMap.java:30)
@@ -47,7 +44,7 @@ pub struct BukkitBrigForwardingMapValues {
 impl BukkitBrigForwardingMapValues {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/command/brigadier/bukkit/BukkitBrigForwardingMap.java:164
-    pub fn iterator(&self) -> JIterator<JRef<dyn CommandTrait>> { todo!() } // paper-server/src/main/java/io/papermc/paper/command/brigadier/bukkit/BukkitBrigForwardingMap.java:166
+    pub fn iterator(&self) -> Box<dyn Iterator<Item = JRef<dyn CommandTrait>> + Send> { todo!() } // paper-server/src/main/java/io/papermc/paper/command/brigadier/bukkit/BukkitBrigForwardingMap.java:166
     pub fn size(&self) -> i32 { todo!() } // paper-server/src/main/java/io/papermc/paper/command/brigadier/bukkit/BukkitBrigForwardingMap.java:204
     pub fn clear(&self) { todo!() } // paper-server/src/main/java/io/papermc/paper/command/brigadier/bukkit/BukkitBrigForwardingMap.java:209
 }
@@ -63,12 +60,12 @@ impl BukkitBrigForwardingMapKeySet {
     pub fn new() -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/command/brigadier/bukkit/BukkitBrigForwardingMap.java:216
     pub fn size(&self) -> i32 { todo!() } // paper-server/src/main/java/io/papermc/paper/command/brigadier/bukkit/BukkitBrigForwardingMap.java:218
     pub fn clear(&self) { todo!() } // paper-server/src/main/java/io/papermc/paper/command/brigadier/bukkit/BukkitBrigForwardingMap.java:223
-    pub fn iterator(&self) -> JIterator<String> { todo!() } // paper-server/src/main/java/io/papermc/paper/command/brigadier/bukkit/BukkitBrigForwardingMap.java:228
+    pub fn iterator(&self) -> Box<dyn Iterator<Item = String> + Send> { todo!() } // paper-server/src/main/java/io/papermc/paper/command/brigadier/bukkit/BukkitBrigForwardingMap.java:228
     pub fn contains(&self, o: JObjectRef) -> bool { todo!() } // paper-server/src/main/java/io/papermc/paper/command/brigadier/bukkit/BukkitBrigForwardingMap.java:233
     pub fn remove(&self, o: JObjectRef) -> bool { todo!() } // paper-server/src/main/java/io/papermc/paper/command/brigadier/bukkit/BukkitBrigForwardingMap.java:238
-    pub fn spliterator(&self) -> JIterator<String> { todo!() } // paper-server/src/main/java/io/papermc/paper/command/brigadier/bukkit/BukkitBrigForwardingMap.java:243
-    pub fn for_each(&self, action: JRef<dyn Consumer<JObjectRef>>) { todo!() } // paper-server/src/main/java/io/papermc/paper/command/brigadier/bukkit/BukkitBrigForwardingMap.java:248
-    pub fn entry_stream(&self) -> Stream<String> { todo!() } // paper-server/src/main/java/io/papermc/paper/command/brigadier/bukkit/BukkitBrigForwardingMap.java:253
+    pub fn spliterator(&self) -> Box<dyn Iterator<Item = String> + Send> { todo!() } // paper-server/src/main/java/io/papermc/paper/command/brigadier/bukkit/BukkitBrigForwardingMap.java:243
+    pub fn for_each(&self, action: Arc<dyn Fn(JObjectRef) + Send + Sync>) { todo!() } // paper-server/src/main/java/io/papermc/paper/command/brigadier/bukkit/BukkitBrigForwardingMap.java:248
+    pub fn entry_stream(&self) -> Box<dyn Iterator<Item = String> + Send> { todo!() } // paper-server/src/main/java/io/papermc/paper/command/brigadier/bukkit/BukkitBrigForwardingMap.java:253
 }
 crate::jobject!(BukkitBrigForwardingMapKeySet);
 // ---- class io.papermc.paper.command.brigadier.bukkit.BukkitBrigForwardingMap.EntrySet (paper-server/src/main/java/io/papermc/paper/command/brigadier/bukkit/BukkitBrigForwardingMap.java:258)
@@ -82,11 +79,11 @@ impl BukkitBrigForwardingMapEntrySet {
     pub fn new() -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/command/brigadier/bukkit/BukkitBrigForwardingMap.java:258
     pub fn size(&self) -> i32 { todo!() } // paper-server/src/main/java/io/papermc/paper/command/brigadier/bukkit/BukkitBrigForwardingMap.java:259
     pub fn clear(&self) { todo!() } // paper-server/src/main/java/io/papermc/paper/command/brigadier/bukkit/BukkitBrigForwardingMap.java:265
-    pub fn iterator(&self) -> JIterator<JObjectRef /* Entry */> { todo!() } // paper-server/src/main/java/io/papermc/paper/command/brigadier/bukkit/BukkitBrigForwardingMap.java:270
+    pub fn iterator(&self) -> Box<dyn Iterator<Item = JObjectRef /* Entry */> + Send> { todo!() } // paper-server/src/main/java/io/papermc/paper/command/brigadier/bukkit/BukkitBrigForwardingMap.java:270
     pub fn contains(&self, o: JObjectRef) -> bool { todo!() } // paper-server/src/main/java/io/papermc/paper/command/brigadier/bukkit/BukkitBrigForwardingMap.java:275
     pub fn remove(&self, o: JObjectRef) -> bool { todo!() } // paper-server/src/main/java/io/papermc/paper/command/brigadier/bukkit/BukkitBrigForwardingMap.java:286
-    pub fn spliterator(&self) -> JIterator<JObjectRef /* Entry */> { todo!() } // paper-server/src/main/java/io/papermc/paper/command/brigadier/bukkit/BukkitBrigForwardingMap.java:296
-    pub fn for_each(&self, action: JRef<dyn Consumer<JObjectRef>>) { todo!() } // paper-server/src/main/java/io/papermc/paper/command/brigadier/bukkit/BukkitBrigForwardingMap.java:301
-    pub fn entry_stream(&self) -> Stream<(String, JRef<dyn CommandTrait>)> { todo!() } // paper-server/src/main/java/io/papermc/paper/command/brigadier/bukkit/BukkitBrigForwardingMap.java:306
+    pub fn spliterator(&self) -> Box<dyn Iterator<Item = JObjectRef /* Entry */> + Send> { todo!() } // paper-server/src/main/java/io/papermc/paper/command/brigadier/bukkit/BukkitBrigForwardingMap.java:296
+    pub fn for_each(&self, action: Arc<dyn Fn(JObjectRef) + Send + Sync>) { todo!() } // paper-server/src/main/java/io/papermc/paper/command/brigadier/bukkit/BukkitBrigForwardingMap.java:301
+    pub fn entry_stream(&self) -> Box<dyn Iterator<Item = (String, JRef<dyn CommandTrait>)> + Send> { todo!() } // paper-server/src/main/java/io/papermc/paper/command/brigadier/bukkit/BukkitBrigForwardingMap.java:306
 }
 crate::jobject!(BukkitBrigForwardingMapEntrySet);

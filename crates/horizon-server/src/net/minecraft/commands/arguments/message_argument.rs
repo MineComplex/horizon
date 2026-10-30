@@ -4,9 +4,6 @@ use crate::prelude::*;
 use crate::com::mojang::brigadier::StringReader;
 use crate::com::mojang::brigadier::context::CommandContext;
 use crate::com::mojang::brigadier::exceptions::Dynamic2CommandExceptionType;
-use crate::java::lang::Throwable;
-use crate::java::util::concurrent::CompletableFuture;
-use crate::java::util::function::Consumer;
 use crate::net::minecraft::commands::arguments::selector::entity_selector::EntitySelector;
 use crate::net::minecraft::commands::arguments::signed_argument::SignedArgument;
 use crate::net::minecraft::commands::command_source_stack::CommandSourceStack;
@@ -23,14 +20,14 @@ impl MessageArgument {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/MessageArgument.java:27
     pub fn message() -> JRef<MessageArgument> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/MessageArgument.java:33
-    pub fn get_message(context: CommandContext<JRef<CommandSourceStack>>, name: &str) -> Result<JRef<dyn Component>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/MessageArgument.java:37
-    pub fn resolve_chat_message(context: CommandContext<JRef<CommandSourceStack>>, name: &str, task: JRef<dyn Consumer<PlayerChatMessage>>) -> Result<(), Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/MessageArgument.java:42
-    pub fn resolve_chat_message_4(message: MessageArgumentMessage, context: CommandContext<JRef<CommandSourceStack>>, name: &str, task: JRef<dyn Consumer<PlayerChatMessage>>) -> Result<(), Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/MessageArgument.java:48
-    pub fn resolve_signed_message(task: JRef<dyn Consumer<PlayerChatMessage>>, sender: JRef<CommandSourceStack>, signed_argument: PlayerChatMessage) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/MessageArgument.java:61
-    pub fn resolve_disguised_message(task: JRef<dyn Consumer<PlayerChatMessage>>, sender: JRef<CommandSourceStack>, argument: PlayerChatMessage) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/MessageArgument.java:73
-    pub fn filter_plain_text(sender: JRef<CommandSourceStack>, message: PlayerChatMessage) -> CompletableFuture<String> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/MessageArgument.java:81
-    pub fn parse(&self, reader: StringReader) -> Result<MessageArgumentMessage, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/MessageArgument.java:85
-    pub fn parse_2<S: JGeneric>(&self, reader: StringReader, source: Option<S>) -> Result<MessageArgumentMessage, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/MessageArgument.java:90
+    pub fn get_message(context: CommandContext<JRef<CommandSourceStack>>, name: &str) -> Result<JRef<dyn Component>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/MessageArgument.java:37
+    pub fn resolve_chat_message(context: CommandContext<JRef<CommandSourceStack>>, name: &str, task: Arc<dyn Fn(PlayerChatMessage) + Send + Sync>) -> Result<(), anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/MessageArgument.java:42
+    pub fn resolve_chat_message_4(message: MessageArgumentMessage, context: CommandContext<JRef<CommandSourceStack>>, name: &str, task: Arc<dyn Fn(PlayerChatMessage) + Send + Sync>) -> Result<(), anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/MessageArgument.java:48
+    pub fn resolve_signed_message(task: Arc<dyn Fn(PlayerChatMessage) + Send + Sync>, sender: JRef<CommandSourceStack>, signed_argument: PlayerChatMessage) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/MessageArgument.java:61
+    pub fn resolve_disguised_message(task: Arc<dyn Fn(PlayerChatMessage) + Send + Sync>, sender: JRef<CommandSourceStack>, argument: PlayerChatMessage) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/MessageArgument.java:73
+    pub fn filter_plain_text(sender: JRef<CommandSourceStack>, message: PlayerChatMessage) -> crate::rt::CompletableFuture<String> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/MessageArgument.java:81
+    pub fn parse(&self, reader: StringReader) -> Result<MessageArgumentMessage, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/MessageArgument.java:85
+    pub fn parse_2<S: JGeneric>(&self, reader: StringReader, source: Option<S>) -> Result<MessageArgumentMessage, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/MessageArgument.java:90
     pub fn get_examples(&self) -> Vec<String> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/MessageArgument.java:95
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
@@ -47,9 +44,9 @@ pub struct MessageArgumentMessage {
 impl MessageArgumentMessage {
     pub fn new() -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/MessageArgument.java:100
     pub fn new_2(text: &str, parts: &Vec<MessageArgumentPart>) -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/MessageArgument.java:100
-    pub fn resolve_component(&self, sender: JRef<CommandSourceStack>) -> Result<JRef<dyn Component>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/MessageArgument.java:101
-    pub fn to_component(&self, sender: JRef<CommandSourceStack>, allow_selectors: bool) -> Result<JRef<dyn Component>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/MessageArgument.java:105
-    pub fn parse_text(reader: StringReader, allow_selectors: bool) -> Result<MessageArgumentMessage, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/MessageArgument.java:130
+    pub fn resolve_component(&self, sender: JRef<CommandSourceStack>) -> Result<JRef<dyn Component>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/MessageArgument.java:101
+    pub fn to_component(&self, sender: JRef<CommandSourceStack>, allow_selectors: bool) -> Result<JRef<dyn Component>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/MessageArgument.java:105
+    pub fn parse_text(reader: StringReader, allow_selectors: bool) -> Result<MessageArgumentMessage, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/MessageArgument.java:130
 }
 crate::jobject!(MessageArgumentMessage);
 // ---- record net.minecraft.commands.arguments.MessageArgument.Part (leaf-server/src/minecraft/java/net/minecraft/commands/arguments/MessageArgument.java:177)
@@ -62,6 +59,6 @@ pub struct MessageArgumentPart {
 impl MessageArgumentPart {
     pub fn new() -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/MessageArgument.java:177
     pub fn new_3(start: i32, end: i32, selector: JRef<EntitySelector>) -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/MessageArgument.java:177
-    pub fn to_component(&self, sender: JRef<CommandSourceStack>) -> Result<JRef<dyn Component>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/MessageArgument.java:178
+    pub fn to_component(&self, sender: JRef<CommandSourceStack>) -> Result<JRef<dyn Component>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/MessageArgument.java:178
 }
 crate::jobject!(MessageArgumentPart);

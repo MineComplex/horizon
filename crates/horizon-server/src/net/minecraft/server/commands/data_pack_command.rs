@@ -6,7 +6,6 @@ use crate::com::mojang::brigadier::context::CommandContext;
 use crate::com::mojang::brigadier::exceptions::Dynamic2CommandExceptionType;
 use crate::com::mojang::brigadier::exceptions::DynamicCommandExceptionType;
 use crate::com::mojang::brigadier::suggestion::SuggestionProvider;
-use crate::java::lang::Throwable;
 use crate::net::minecraft::commands::command_build_context::CommandBuildContext;
 use crate::net::minecraft::commands::command_source_stack::CommandSourceStack;
 use crate::net::minecraft::network::chat::component::Component;
@@ -32,19 +31,19 @@ impl DataPackCommand {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/DataPackCommand.java:48
     pub fn register(dispatcher: JRef<CommandDispatcher<JRef<CommandSourceStack>>>, context: JRef<dyn CommandBuildContext>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/DataPackCommand.java:98
-    pub fn create_pack(source: JRef<CommandSourceStack>, id: &str, description: JRef<dyn Component>) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/DataPackCommand.java:174
-    pub fn enable_pack(source: JRef<CommandSourceStack>, unopened: JRef<Pack>, inserter: JRef<dyn DataPackCommandInserter>) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/DataPackCommand.java:222
+    pub fn create_pack(source: JRef<CommandSourceStack>, id: &str, description: JRef<dyn Component>) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/DataPackCommand.java:174
+    pub fn enable_pack(source: JRef<CommandSourceStack>, unopened: JRef<Pack>, inserter: JRef<dyn DataPackCommandInserter>) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/DataPackCommand.java:222
     pub fn disable_pack(source: JRef<CommandSourceStack>, unopened: JRef<Pack>) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/DataPackCommand.java:231
     pub fn list_packs(source: JRef<CommandSourceStack>) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/DataPackCommand.java:240
     pub fn list_available_packs(source: JRef<CommandSourceStack>) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/DataPackCommand.java:244
     pub fn list_enabled_packs(source: JRef<CommandSourceStack>) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/DataPackCommand.java:267
-    pub fn get_pack(context: CommandContext<JRef<CommandSourceStack>>, name: &str, enabling: bool) -> Result<JRef<Pack>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/DataPackCommand.java:285
+    pub fn get_pack(context: CommandContext<JRef<CommandSourceStack>>, name: &str, enabling: bool) -> Result<JRef<Pack>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/DataPackCommand.java:285
 }
 crate::jobject!(DataPackCommand);
 // ---- interface net.minecraft.server.commands.DataPackCommand.Inserter (leaf-server/src/minecraft/java/net/minecraft/server/commands/DataPackCommand.java:311)
 pub trait DataPackCommandInserter: Send + Sync + 'static {
-    fn apply(&self, selected: &Vec<JRef<Pack>>, pack: JRef<Pack>) -> Result<(), Throwable>; // leaf-server/src/minecraft/java/net/minecraft/server/commands/DataPackCommand.java:312
+    fn apply(&self, selected: &Vec<JRef<Pack>>, pack: JRef<Pack>) -> Result<(), anyhow::Error>; // leaf-server/src/minecraft/java/net/minecraft/server/commands/DataPackCommand.java:312
 }
-impl<F: Fn(&Vec<JRef<Pack>>, JRef<Pack>) -> Result<(), Throwable> + Send + Sync + 'static> DataPackCommandInserter for F {
-    fn apply(&self, selected: &Vec<JRef<Pack>>, pack: JRef<Pack>) -> Result<(), Throwable> { self(selected, pack) }
+impl<F: Fn(&Vec<JRef<Pack>>, JRef<Pack>) -> Result<(), anyhow::Error> + Send + Sync + 'static> DataPackCommandInserter for F {
+    fn apply(&self, selected: &Vec<JRef<Pack>>, pack: JRef<Pack>) -> Result<(), anyhow::Error> { self(selected, pack) }
 }

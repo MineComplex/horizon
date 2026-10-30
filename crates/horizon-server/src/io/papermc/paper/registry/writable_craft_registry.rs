@@ -6,7 +6,6 @@ use crate::io::papermc::paper::registry::entry::registry_entry_meta::RegistryEnt
 use crate::io::papermc::paper::registry::event::writable_registry::WritableRegistry;
 use crate::io::papermc::paper::registry::registry_builder_factory::RegistryBuilderFactory;
 use crate::io::papermc::paper::registry::typed_key::TypedKey;
-use crate::java::util::function::Consumer;
 use crate::net::minecraft::core::mapped_registry::MappedRegistryTrait;
 use crate::net::minecraft::core::registration_info::RegistrationInfo;
 
@@ -21,7 +20,7 @@ pub static FROM_PLUGIN: LazyLock<RegistrationInfo> = LazyLock::new(|| todo!()); 
 impl<M: JGeneric, T: JGeneric, B: JGeneric> WritableCraftRegistry<M, T, B> {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(registry: JRef<dyn MappedRegistryTrait<M>>, meta: RegistryEntryMetaBuildable<M, T, B>) -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/WritableCraftRegistry.java:22
-    pub fn register(&self, key: JRef<dyn TypedKey<T>>, value: JRef<dyn Consumer<JRef<dyn RegistryBuilderFactory<T, B>>>>, conversions: JRef<Conversions>) { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/WritableCraftRegistry.java:31
+    pub fn register(&self, key: JRef<dyn TypedKey<T>>, value: Arc<dyn Fn(JRef<dyn RegistryBuilderFactory<T, B>>) + Send + Sync>, conversions: JRef<Conversions>) { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/WritableCraftRegistry.java:31
     pub fn create_api_writable_registry(&self, conversions: JRef<Conversions>) -> JRef<dyn WritableRegistry<T, B>> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/WritableCraftRegistry.java:46
 }
 // ---- class io.papermc.paper.registry.WritableCraftRegistry.ApiWritableRegistry (paper-server/src/main/java/io/papermc/paper/registry/WritableCraftRegistry.java:50)
@@ -34,11 +33,11 @@ pub struct WritableCraftRegistryApiWritableRegistry {
 impl WritableCraftRegistryApiWritableRegistry {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(conversions: JRef<Conversions>) -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/WritableCraftRegistry.java:54
-    pub fn register_with(&self, key: JRef<dyn TypedKey<JObjectRef /* T */>>, value: JRef<dyn Consumer<JRef<dyn RegistryBuilderFactory<JObjectRef /* T */, JObjectRef /* B */>>>>) { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/WritableCraftRegistry.java:58
+    pub fn register_with(&self, key: JRef<dyn TypedKey<JObjectRef /* T */>>, value: Arc<dyn Fn(JRef<dyn RegistryBuilderFactory<JObjectRef /* T */, JObjectRef /* B */>>) + Send + Sync>) { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/WritableCraftRegistry.java:58
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl WritableRegistry<JObjectRef /* T */, JObjectRef /* B */> for WritableCraftRegistryApiWritableRegistry {
-    fn register_with(&self, key: JRef<dyn TypedKey<T>>, value: JRef<dyn Consumer<JRef<dyn RegistryBuilderFactory<T, B>>>>) { WritableCraftRegistryApiWritableRegistry::register_with(self, key, value) }
+    fn register_with(&self, key: JRef<dyn TypedKey<T>>, value: Arc<dyn Fn(JRef<dyn RegistryBuilderFactory<T, B>>) + Send + Sync>) { WritableCraftRegistryApiWritableRegistry::register_with(self, key, value) }
 }
 crate::jobject!(WritableCraftRegistryApiWritableRegistry);

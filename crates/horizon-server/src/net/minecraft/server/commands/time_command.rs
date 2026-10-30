@@ -7,8 +7,6 @@ use crate::com::mojang::brigadier::exceptions::Dynamic2CommandExceptionType;
 use crate::com::mojang::brigadier::exceptions::DynamicCommandExceptionType;
 use crate::com::mojang::brigadier::suggestion::Suggestions;
 use crate::com::mojang::brigadier::suggestion::SuggestionsBuilder;
-use crate::java::lang::Throwable;
-use crate::java::util::concurrent::CompletableFuture;
 use crate::net::minecraft::commands::command_build_context::CommandBuildContext;
 use crate::net::minecraft::commands::command_source_stack::CommandSourceStack;
 use crate::net::minecraft::core::holder::Holder;
@@ -37,26 +35,26 @@ impl TimeCommand {
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TimeCommand.java:35
     pub fn register(dispatcher: JRef<CommandDispatcher<JRef<CommandSourceStack>>>, context: JRef<dyn CommandBuildContext>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TimeCommand.java:62
     pub fn add_clock_nodes<A: JGeneric>(context: JRef<dyn CommandBuildContext>, node: A, clock_getter: JRef<dyn TimeCommandClockGetter>) -> A { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TimeCommand.java:80
-    pub fn suggest_time_markers(source: JRef<CommandSourceStack>, builder: SuggestionsBuilder, clock: JRef<dyn Holder<WorldClock>>) -> CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TimeCommand.java:134
-    pub fn suggest_timelines(source: JRef<CommandSourceStack>, builder: SuggestionsBuilder, clock: JRef<dyn Holder<WorldClock>>) -> CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TimeCommand.java:142
+    pub fn suggest_time_markers(source: JRef<CommandSourceStack>, builder: SuggestionsBuilder, clock: JRef<dyn Holder<WorldClock>>) -> crate::rt::CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TimeCommand.java:134
+    pub fn suggest_timelines(source: JRef<CommandSourceStack>, builder: SuggestionsBuilder, clock: JRef<dyn Holder<WorldClock>>) -> crate::rt::CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TimeCommand.java:142
     pub fn query_game_time(source: JRef<CommandSourceStack>) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TimeCommand.java:153
     pub fn query_time(source: JRef<CommandSourceStack>, clock: JRef<dyn Holder<WorldClock>>) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TimeCommand.java:159
-    pub fn query_timeline_ticks(source: JRef<CommandSourceStack>, clock: JRef<dyn Holder<WorldClock>>, timeline: JRef<dyn Holder<JRef<Timeline>>>) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TimeCommand.java:166
-    pub fn query_timeline_repetitions(source: JRef<CommandSourceStack>, clock: JRef<dyn Holder<WorldClock>>, timeline: JRef<dyn Holder<JRef<Timeline>>>) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TimeCommand.java:177
-    pub fn set_total_ticks(source: JRef<CommandSourceStack>, clock: JRef<dyn Holder<WorldClock>>, total_ticks: i32) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TimeCommand.java:188
+    pub fn query_timeline_ticks(source: JRef<CommandSourceStack>, clock: JRef<dyn Holder<WorldClock>>, timeline: JRef<dyn Holder<JRef<Timeline>>>) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TimeCommand.java:166
+    pub fn query_timeline_repetitions(source: JRef<CommandSourceStack>, clock: JRef<dyn Holder<WorldClock>>, timeline: JRef<dyn Holder<JRef<Timeline>>>) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TimeCommand.java:177
+    pub fn set_total_ticks(source: JRef<CommandSourceStack>, clock: JRef<dyn Holder<WorldClock>>, total_ticks: i32) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TimeCommand.java:188
     pub fn add_time(source: JRef<CommandSourceStack>, clock: JRef<dyn Holder<WorldClock>>, time: i32) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TimeCommand.java:210
-    pub fn set_time_to_time_marker(source: JRef<CommandSourceStack>, clock: JRef<dyn Holder<WorldClock>>, time_marker_id: JRef<ResourceKey<ClockTimeMarker>>) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TimeCommand.java:223
+    pub fn set_time_to_time_marker(source: JRef<CommandSourceStack>, clock: JRef<dyn Holder<WorldClock>>, time_marker_id: JRef<ResourceKey<ClockTimeMarker>>) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TimeCommand.java:223
     pub fn move_to_time_marker(clock: JRef<dyn Holder<WorldClock>>, time_marker_id: JRef<ResourceKey<ClockTimeMarker>>, clock_manager: JRef<ServerClockManager>, source: JRef<CommandSourceStack>) -> ServerClockManagerMoveResult { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TimeCommand.java:241
-    pub fn set_paused(source: JRef<CommandSourceStack>, clock: JRef<dyn Holder<WorldClock>>, paused: bool) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TimeCommand.java:254
-    pub fn set_rate(source: JRef<CommandSourceStack>, clock: JRef<dyn Holder<WorldClock>>, rate: f32) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TimeCommand.java:270
+    pub fn set_paused(source: JRef<CommandSourceStack>, clock: JRef<dyn Holder<WorldClock>>, paused: bool) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TimeCommand.java:254
+    pub fn set_rate(source: JRef<CommandSourceStack>, clock: JRef<dyn Holder<WorldClock>>, rate: f32) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TimeCommand.java:270
     pub fn wrap_time(ticks: i64) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TimeCommand.java:281
-    pub fn get_default_clock(source: JRef<CommandSourceStack>) -> Result<JRef<dyn Holder<WorldClock>>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TimeCommand.java:285
+    pub fn get_default_clock(source: JRef<CommandSourceStack>) -> Result<JRef<dyn Holder<WorldClock>>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TimeCommand.java:285
 }
 crate::jobject!(TimeCommand);
 // ---- interface net.minecraft.server.commands.TimeCommand.ClockGetter (leaf-server/src/minecraft/java/net/minecraft/server/commands/TimeCommand.java:290)
 pub trait TimeCommandClockGetter: Send + Sync + 'static {
-    fn get_clock(&self, context: CommandContext<JRef<CommandSourceStack>>) -> Result<JRef<dyn Holder<WorldClock>>, Throwable>; // leaf-server/src/minecraft/java/net/minecraft/server/commands/TimeCommand.java:291
+    fn get_clock(&self, context: CommandContext<JRef<CommandSourceStack>>) -> Result<JRef<dyn Holder<WorldClock>>, anyhow::Error>; // leaf-server/src/minecraft/java/net/minecraft/server/commands/TimeCommand.java:291
 }
-impl<F: Fn(CommandContext<JRef<CommandSourceStack>>) -> Result<JRef<dyn Holder<WorldClock>>, Throwable> + Send + Sync + 'static> TimeCommandClockGetter for F {
-    fn get_clock(&self, context: CommandContext<JRef<CommandSourceStack>>) -> Result<JRef<dyn Holder<WorldClock>>, Throwable> { self(context) }
+impl<F: Fn(CommandContext<JRef<CommandSourceStack>>) -> Result<JRef<dyn Holder<WorldClock>>, anyhow::Error> + Send + Sync + 'static> TimeCommandClockGetter for F {
+    fn get_clock(&self, context: CommandContext<JRef<CommandSourceStack>>) -> Result<JRef<dyn Holder<WorldClock>>, anyhow::Error> { self(context) }
 }

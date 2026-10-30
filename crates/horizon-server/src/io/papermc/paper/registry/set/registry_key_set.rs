@@ -3,7 +3,6 @@
 use crate::prelude::*;
 use crate::io::papermc::paper::registry::set::registry_set::RegistrySet;
 use crate::io::papermc::paper::registry::typed_key::TypedKey;
-use crate::java::util::JIterator;
 use crate::org::bukkit::registry::Registry;
 use crate::api_prelude::*;
 
@@ -12,5 +11,5 @@ pub trait RegistryKeySet<T: JGeneric>: RegistrySet<T> {
     fn values(&self) -> Vec<JRef<dyn TypedKey<T>>>; // paper-api/src/main/java/io/papermc/paper/registry/set/RegistryKeySet.java:40
     fn resolve(&self, registry: JRef<dyn Registry<T>>) -> Vec<T>; // paper-api/src/main/java/io/papermc/paper/registry/set/RegistryKeySet.java:51
     fn contains(&self, value_key: JRef<dyn TypedKey<T>>) -> bool; // paper-api/src/main/java/io/papermc/paper/registry/set/RegistryKeySet.java:59
-    fn iterator(&self) -> JIterator<JRef<dyn TypedKey<T>>> { todo!() } // default, paper-api/src/main/java/io/papermc/paper/registry/set/RegistryKeySet.java:61
+    fn iterator(&self) -> Box<dyn Iterator<Item = JRef<dyn TypedKey<T>>> + Send> { todo!() } // default, paper-api/src/main/java/io/papermc/paper/registry/set/RegistryKeySet.java:61
 }

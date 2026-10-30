@@ -7,9 +7,6 @@ use crate::com::mojang::brigadier::exceptions::DynamicCommandExceptionType;
 use crate::com::mojang::brigadier::exceptions::SimpleCommandExceptionType;
 use crate::com::mojang::brigadier::suggestion::Suggestions;
 use crate::com::mojang::brigadier::suggestion::SuggestionsBuilder;
-use crate::java::lang::Throwable;
-use crate::java::util::concurrent::CompletableFuture;
-use crate::java::util::function::Function;
 use crate::net::minecraft::commands::arguments::item::item_input::ItemInput;
 use crate::net::minecraft::core::component::data_component_type::DataComponentType;
 use crate::net::minecraft::core::holder::Holder;
@@ -37,13 +34,13 @@ pub const SYNTAX_END_COMPONENTS: char = ']'; // leaf-server/src/minecraft/java/n
 pub const SYNTAX_COMPONENT_SEPARATOR: char = ','; // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:52
 pub const SYNTAX_COMPONENT_ASSIGNMENT: char = '='; // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:53
 pub const SYNTAX_REMOVED_COMPONENT: char = '!'; // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:54
-pub static SUGGEST_NOTHING: LazyLock<JRef<dyn Function<SuggestionsBuilder, CompletableFuture<Suggestions>>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:55
+pub static SUGGEST_NOTHING: LazyLock<Arc<dyn Fn(SuggestionsBuilder) -> CompletableFuture<Suggestions> + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:55
 impl ItemParser {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(registries: JRef<dyn HolderLookupProvider>) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:60
-    pub fn parse(&self, reader: StringReader) -> Result<ItemInput, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:66
-    pub fn parse_2(&self, reader: StringReader, visitor: JRef<dyn ItemParserVisitor>) -> Result<(), Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:90
-    pub fn fill_suggestions(&self, builder: SuggestionsBuilder) -> CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:101
+    pub fn parse(&self, reader: StringReader) -> Result<ItemInput, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:66
+    pub fn parse_2(&self, reader: StringReader, visitor: JRef<dyn ItemParserVisitor>) -> Result<(), anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:90
+    pub fn fill_suggestions(&self, builder: SuggestionsBuilder) -> crate::rt::CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:101
 }
 crate::jobject!(ItemParser);
 // ---- class net.minecraft.commands.arguments.item.ItemParser.State (leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:115)
@@ -57,35 +54,35 @@ pub struct ItemParserState {
 impl ItemParserState {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(reader: StringReader, visitor: JRef<dyn ItemParserVisitor>) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:119
-    pub fn parse(&self) -> Result<(), Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:124
-    pub fn read_item(&self) -> Result<(), Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:134
-    pub fn read_components(&self) -> Result<(), Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:143
-    pub fn read_component_type(reader: StringReader) -> Result<JRef<dyn DataComponentType<JObjectRef>>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:193
-    pub fn read_component<T: JGeneric, O: JGeneric>(&self, tag_parser: JRef<TagParser<O>>, registry_ops: JRef<dyn RegistryOpsTrait<O>>, component_type: JRef<dyn DataComponentType<T>>) -> Result<(), Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:209
-    pub fn suggest_start_components(&self, builder: SuggestionsBuilder) -> CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:219
-    pub fn suggest_next_or_end_components(&self, builder: SuggestionsBuilder) -> CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:227
-    pub fn suggest_assignment(&self, builder: SuggestionsBuilder) -> CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:236
-    pub fn suggest_item(&self, builder: SuggestionsBuilder) -> CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:244
-    pub fn suggest_component_assignment_or_removal(&self, builder: SuggestionsBuilder) -> CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:248
-    pub fn suggest_component(&self, builder: SuggestionsBuilder) -> CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:253
-    pub fn suggest_component_2(&self, builder: SuggestionsBuilder, suffix: &str) -> CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:257
+    pub fn parse(&self) -> Result<(), anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:124
+    pub fn read_item(&self) -> Result<(), anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:134
+    pub fn read_components(&self) -> Result<(), anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:143
+    pub fn read_component_type(reader: StringReader) -> Result<JRef<dyn DataComponentType<JObjectRef>>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:193
+    pub fn read_component<T: JGeneric, O: JGeneric>(&self, tag_parser: JRef<TagParser<O>>, registry_ops: JRef<dyn RegistryOpsTrait<O>>, component_type: JRef<dyn DataComponentType<T>>) -> Result<(), anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:209
+    pub fn suggest_start_components(&self, builder: SuggestionsBuilder) -> crate::rt::CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:219
+    pub fn suggest_next_or_end_components(&self, builder: SuggestionsBuilder) -> crate::rt::CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:227
+    pub fn suggest_assignment(&self, builder: SuggestionsBuilder) -> crate::rt::CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:236
+    pub fn suggest_item(&self, builder: SuggestionsBuilder) -> crate::rt::CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:244
+    pub fn suggest_component_assignment_or_removal(&self, builder: SuggestionsBuilder) -> crate::rt::CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:248
+    pub fn suggest_component(&self, builder: SuggestionsBuilder) -> crate::rt::CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:253
+    pub fn suggest_component_2(&self, builder: SuggestionsBuilder, suffix: &str) -> crate::rt::CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:257
 }
 crate::jobject!(ItemParserState);
 // ---- class net.minecraft.commands.arguments.item.ItemParser.SuggestionsVisitor (leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:272)
 pub struct ItemParserSuggestionsVisitor {
     pub this: Weak<Self>,
-    pub suggestions: Mut<JRef<dyn Function<SuggestionsBuilder, CompletableFuture<Suggestions>>>>, // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:273
+    pub suggestions: Mut<Arc<dyn Fn(SuggestionsBuilder) -> CompletableFuture<Suggestions> + Send + Sync>>, // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:273
 }
 impl ItemParserSuggestionsVisitor {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:272
-    pub fn visit_suggestions(&self, suggestions: JRef<dyn Function<SuggestionsBuilder, CompletableFuture<Suggestions>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:275
-    pub fn resolve_suggestions(&self, builder: SuggestionsBuilder, reader: StringReader) -> CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:280
+    pub fn visit_suggestions(&self, suggestions: Arc<dyn Fn(SuggestionsBuilder) -> CompletableFuture<Suggestions> + Send + Sync>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:275
+    pub fn resolve_suggestions(&self, builder: SuggestionsBuilder, reader: StringReader) -> crate::rt::CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:280
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl ItemParserVisitor for ItemParserSuggestionsVisitor {
-    fn visit_suggestions(&self, suggestions: JRef<dyn Function<SuggestionsBuilder, CompletableFuture<Suggestions>>>) { ItemParserSuggestionsVisitor::visit_suggestions(self, suggestions) }
+    fn visit_suggestions(&self, suggestions: Arc<dyn Fn(SuggestionsBuilder) -> CompletableFuture<Suggestions> + Send + Sync>) { ItemParserSuggestionsVisitor::visit_suggestions(self, suggestions) }
 }
 crate::jobject!(ItemParserSuggestionsVisitor: dyn ItemParserVisitor);
 // ---- interface net.minecraft.commands.arguments.item.ItemParser.Visitor (leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:285)
@@ -93,5 +90,5 @@ pub trait ItemParserVisitor: JObject {
     fn visit_item(&self, item: JRef<dyn Holder<JRef<dyn ItemTrait>>>) { todo!() } // default, leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:286
     fn visit_component<T: JGeneric>(&self, type_: JRef<dyn DataComponentType<T>>, value: T) where Self: Sized { todo!() } // default, leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:289
     fn visit_removed_component<T: JGeneric>(&self, type_: JRef<dyn DataComponentType<T>>) where Self: Sized { todo!() } // default, leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:292
-    fn visit_suggestions(&self, suggestions: JRef<dyn Function<SuggestionsBuilder, CompletableFuture<Suggestions>>>) { todo!() } // default, leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:295
+    fn visit_suggestions(&self, suggestions: Arc<dyn Fn(SuggestionsBuilder) -> CompletableFuture<Suggestions> + Send + Sync>) { todo!() } // default, leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemParser.java:295
 }

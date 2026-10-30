@@ -6,37 +6,31 @@ use crate::io::papermc::paper::configuration::mapping::definition::Definition;
 use crate::io::papermc::paper::configuration::mapping::field_processor::FieldProcessorFactory;
 use crate::io::papermc::paper::configuration::mapping::inner_class_instance_supplier::InnerClassInstanceSupplier;
 use crate::io::papermc::paper::configuration::world_configuration::WorldConfiguration;
-use crate::java::lang::Class;
-use crate::java::lang::Throwable;
-use crate::java::lang::reflect::AnnotatedType;
-use crate::java::lang::reflect::Field;
-use crate::java::util::function::Supplier;
-use crate::org::spongepowered::configurate::objectmapping::FieldDiscoverer;
 
 // ---- class io.papermc.paper.configuration.mapping.InnerClassFieldDiscoverer (paper-server/src/main/java/io/papermc/paper/configuration/mapping/InnerClassFieldDiscoverer.java:23)
 pub struct InnerClassFieldDiscoverer {
     pub this: Weak<Self>,
     pub instance_supplier: JRef<InnerClassInstanceSupplier>, // paper-server/src/main/java/io/papermc/paper/configuration/mapping/InnerClassFieldDiscoverer.java:25
-    pub delegate: JRef<dyn FieldDiscoverer<HashMap<Field, JObjectRef>>>, // paper-server/src/main/java/io/papermc/paper/configuration/mapping/InnerClassFieldDiscoverer.java:26
-    pub field_processors: Mut<HashMap<Class, Vec<Definition<JObjectRef, JObjectRef, JRef<dyn FieldProcessorFactory<JObjectRef, JObjectRef>>>>>>, // paper-server/src/main/java/io/papermc/paper/configuration/mapping/InnerClassFieldDiscoverer.java:27
+    pub delegate: (), // paper-server/src/main/java/io/papermc/paper/configuration/mapping/InnerClassFieldDiscoverer.java:26
+    pub field_processors: Mut<HashMap<crate::rt::Class, Vec<Definition<JObjectRef, JObjectRef, JRef<dyn FieldProcessorFactory<JObjectRef, JObjectRef>>>>>>, // paper-server/src/main/java/io/papermc/paper/configuration/mapping/InnerClassFieldDiscoverer.java:27
 }
 impl InnerClassFieldDiscoverer {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(instance_supplier: JRef<InnerClassInstanceSupplier>, delegate: JRef<dyn FieldDiscoverer<HashMap<Field, JObjectRef>>>, field_processors: &HashMap<Class, Vec<Definition<JObjectRef, JObjectRef, JRef<dyn FieldProcessorFactory<JObjectRef, JObjectRef>>>>>) -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/mapping/InnerClassFieldDiscoverer.java:29
-    pub fn discover<V: JGeneric>(&self, target: AnnotatedType, collector: JObjectRef /* FieldCollector */) -> Result<Option<JObjectRef /* InstanceFactory */>, Throwable> { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/mapping/InnerClassFieldDiscoverer.java:35
-    pub fn create(overrides: &HashMap<Class, JObjectRef>, field_processors: &Vec<Definition<JObjectRef, JObjectRef, JRef<dyn FieldProcessorFactory<JObjectRef, JObjectRef>>>>) -> JRef<InnerClassFieldDiscoverer> { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/mapping/InnerClassFieldDiscoverer.java:83
-    pub fn world_config(world_configuration: JRef<WorldConfiguration>, field_processors: &Vec<Definition<JObjectRef, JObjectRef, JRef<dyn FieldProcessorFactory<JObjectRef, JObjectRef>>>>) -> JRef<dyn FieldDiscoverer<JObjectRef>> { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/mapping/InnerClassFieldDiscoverer.java:93
-    pub fn gale_world_config(context_map: JRef<ConfigurationsContextMap>, field_processors: &Vec<Definition<JObjectRef, JObjectRef, JRef<dyn FieldProcessorFactory<JObjectRef, JObjectRef>>>>) -> JRef<dyn FieldDiscoverer<JObjectRef>> { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/mapping/InnerClassFieldDiscoverer.java:101
-    pub fn global_config(field_processors: &Vec<Definition<JObjectRef, JObjectRef, JRef<dyn FieldProcessorFactory<JObjectRef, JObjectRef>>>>) -> JRef<dyn FieldDiscoverer<JObjectRef>> { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/mapping/InnerClassFieldDiscoverer.java:111
+    pub fn new(instance_supplier: JRef<InnerClassInstanceSupplier>, delegate: (), field_processors: &HashMap<crate::rt::Class, Vec<Definition<JObjectRef, JObjectRef, JRef<dyn FieldProcessorFactory<JObjectRef, JObjectRef>>>>>) -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/mapping/InnerClassFieldDiscoverer.java:29
+    pub fn discover<V: JGeneric>(&self, target: (), collector: JObjectRef /* FieldCollector */) -> Result<Option<JObjectRef /* InstanceFactory */>, anyhow::Error> { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/mapping/InnerClassFieldDiscoverer.java:35
+    pub fn create(overrides: &HashMap<crate::rt::Class, JObjectRef>, field_processors: &Vec<Definition<JObjectRef, JObjectRef, JRef<dyn FieldProcessorFactory<JObjectRef, JObjectRef>>>>) -> JRef<InnerClassFieldDiscoverer> { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/mapping/InnerClassFieldDiscoverer.java:83
+    pub fn world_config(world_configuration: JRef<WorldConfiguration>, field_processors: &Vec<Definition<JObjectRef, JObjectRef, JRef<dyn FieldProcessorFactory<JObjectRef, JObjectRef>>>>) -> () { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/mapping/InnerClassFieldDiscoverer.java:93
+    pub fn gale_world_config(context_map: JRef<ConfigurationsContextMap>, field_processors: &Vec<Definition<JObjectRef, JObjectRef, JRef<dyn FieldProcessorFactory<JObjectRef, JObjectRef>>>>) -> () { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/mapping/InnerClassFieldDiscoverer.java:101
+    pub fn global_config(field_processors: &Vec<Definition<JObjectRef, JObjectRef, JRef<dyn FieldProcessorFactory<JObjectRef, JObjectRef>>>>) -> () { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/mapping/InnerClassFieldDiscoverer.java:111
 }
 crate::jobject!(InnerClassFieldDiscoverer);
 // ---- record io.papermc.paper.configuration.mapping.InnerClassFieldDiscoverer.ImplicitProvider (paper-server/src/main/java/io/papermc/paper/configuration/mapping/InnerClassFieldDiscoverer.java:80)
 #[derive(Clone)]
 pub struct InnerClassFieldDiscovererImplicitProvider {
-    pub provider: JRef<dyn Supplier<JObjectRef>>,
+    pub provider: Arc<dyn Fn() -> JObjectRef + Send + Sync>,
 }
 impl InnerClassFieldDiscovererImplicitProvider {
     pub fn new() -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/mapping/InnerClassFieldDiscoverer.java:80
-    pub fn new_1(provider: JRef<dyn Supplier<JObjectRef>>) -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/mapping/InnerClassFieldDiscoverer.java:80
+    pub fn new_1(provider: Arc<dyn Fn() -> JObjectRef + Send + Sync>) -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/mapping/InnerClassFieldDiscoverer.java:80
 }
 crate::jobject!(InnerClassFieldDiscovererImplicitProvider);

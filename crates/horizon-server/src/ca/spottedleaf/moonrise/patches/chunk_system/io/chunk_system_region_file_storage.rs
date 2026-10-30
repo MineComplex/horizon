@@ -3,7 +3,6 @@
 use crate::prelude::*;
 use crate::ca::spottedleaf::moonrise::patches::chunk_system::io::moonrise_region_file_io::MoonriseRegionFileIORegionDataControllerReadData;
 use crate::ca::spottedleaf::moonrise::patches::chunk_system::io::moonrise_region_file_io::MoonriseRegionFileIORegionDataControllerWriteData;
-use crate::java::lang::Throwable;
 use crate::me::earthme::luminol::data::region_file::RegionFile;
 use crate::net::minecraft::nbt::compound_tag::CompoundTag;
 
@@ -11,9 +10,9 @@ use crate::net::minecraft::nbt::compound_tag::CompoundTag;
 pub trait ChunkSystemRegionFileStorage: JObject {
     fn moonrise_does_region_file_not_exist_no_io(&self, chunk_x: i32, chunk_z: i32) -> bool; // leaf-server/src/minecraft/java/ca/spottedleaf/moonrise/patches/chunk_system/io/ChunkSystemRegionFileStorage.java:9
     fn moonrise_get_region_file_if_loaded(&self, chunk_x: i32, chunk_z: i32) -> JRef<dyn RegionFile>; // leaf-server/src/minecraft/java/ca/spottedleaf/moonrise/patches/chunk_system/io/ChunkSystemRegionFileStorage.java:11
-    fn moonrise_get_region_file_if_exists(&self, chunk_x: i32, chunk_z: i32) -> Result<JRef<dyn RegionFile>, Throwable>; // leaf-server/src/minecraft/java/ca/spottedleaf/moonrise/patches/chunk_system/io/ChunkSystemRegionFileStorage.java:13
-    fn moonrise_start_write(&self, chunk_x: i32, chunk_z: i32, compound: JRef<CompoundTag>) -> Result<MoonriseRegionFileIORegionDataControllerWriteData, Throwable>; // leaf-server/src/minecraft/java/ca/spottedleaf/moonrise/patches/chunk_system/io/ChunkSystemRegionFileStorage.java:15
-    fn moonrise_finish_write(&self, chunk_x: i32, chunk_z: i32, write_data: MoonriseRegionFileIORegionDataControllerWriteData) -> Result<(), Throwable>; // leaf-server/src/minecraft/java/ca/spottedleaf/moonrise/patches/chunk_system/io/ChunkSystemRegionFileStorage.java:19
-    fn moonrise_read_data(&self, chunk_x: i32, chunk_z: i32) -> Result<MoonriseRegionFileIORegionDataControllerReadData, Throwable>; // leaf-server/src/minecraft/java/ca/spottedleaf/moonrise/patches/chunk_system/io/ChunkSystemRegionFileStorage.java:23
-    fn moonrise_finish_read(&self, chunk_x: i32, chunk_z: i32, read_data: MoonriseRegionFileIORegionDataControllerReadData) -> Result<JRef<CompoundTag>, Throwable>; // leaf-server/src/minecraft/java/ca/spottedleaf/moonrise/patches/chunk_system/io/ChunkSystemRegionFileStorage.java:28
+    fn moonrise_get_region_file_if_exists(&self, chunk_x: i32, chunk_z: i32) -> Result<JRef<dyn RegionFile>, anyhow::Error>; // leaf-server/src/minecraft/java/ca/spottedleaf/moonrise/patches/chunk_system/io/ChunkSystemRegionFileStorage.java:13
+    fn moonrise_start_write(&self, chunk_x: i32, chunk_z: i32, compound: JRef<CompoundTag>) -> Result<MoonriseRegionFileIORegionDataControllerWriteData, anyhow::Error>; // leaf-server/src/minecraft/java/ca/spottedleaf/moonrise/patches/chunk_system/io/ChunkSystemRegionFileStorage.java:15
+    fn moonrise_finish_write(&self, chunk_x: i32, chunk_z: i32, write_data: MoonriseRegionFileIORegionDataControllerWriteData) -> Result<(), anyhow::Error>; // leaf-server/src/minecraft/java/ca/spottedleaf/moonrise/patches/chunk_system/io/ChunkSystemRegionFileStorage.java:19
+    fn moonrise_read_data(&self, chunk_x: i32, chunk_z: i32) -> Result<MoonriseRegionFileIORegionDataControllerReadData, anyhow::Error>; // leaf-server/src/minecraft/java/ca/spottedleaf/moonrise/patches/chunk_system/io/ChunkSystemRegionFileStorage.java:23
+    fn moonrise_finish_read(&self, chunk_x: i32, chunk_z: i32, read_data: MoonriseRegionFileIORegionDataControllerReadData) -> Result<JRef<CompoundTag>, anyhow::Error>; // leaf-server/src/minecraft/java/ca/spottedleaf/moonrise/patches/chunk_system/io/ChunkSystemRegionFileStorage.java:28
 }

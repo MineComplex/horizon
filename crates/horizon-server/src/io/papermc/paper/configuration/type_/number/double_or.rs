@@ -3,12 +3,6 @@
 use crate::prelude::*;
 use crate::io::papermc::paper::configuration::type_::number::optional_num_serializer::OptionalNumSerializer;
 use crate::io::papermc::paper::configuration::type_::number::optional_num_serializer::OptionalNumSerializerTrait;
-use crate::java::lang::Class;
-use crate::java::lang::reflect::AnnotatedType;
-use crate::java::util::function::DoublePredicate;
-use crate::java::util::function::Function;
-use crate::java::util::function::Predicate;
-use crate::org::spongepowered::configurate::serialize::ScalarSerializer;
 
 // ---- interface io.papermc.paper.configuration.type.number.DoubleOr (paper-server/src/main/java/io/papermc/paper/configuration/type/number/DoubleOr.java:11)
 pub trait DoubleOr: Send + Sync + 'static {
@@ -26,7 +20,7 @@ pub struct DoubleOrDefault {
 }
 pub static DEFAULT_USE_DEFAULT: LazyLock<DoubleOrDefault> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/configuration/type/number/DoubleOr.java:24
 pub const DEFAULT_DEFAULT_VALUE: &str = "default"; // paper-server/src/main/java/io/papermc/paper/configuration/type/number/DoubleOr.java:25
-pub static DEFAULT_SERIALIZER: LazyLock<ScalarSerializer<DoubleOrDefault>> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/configuration/type/number/DoubleOr.java:26
+pub static DEFAULT_SERIALIZER: LazyLock<()> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/configuration/type/number/DoubleOr.java:26
 impl DoubleOrDefault {
     pub fn new() -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/type/number/DoubleOr.java:23
     pub fn new_1(value: Option<f64>) -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/type/number/DoubleOr.java:23
@@ -44,11 +38,11 @@ pub struct DoubleOrDisabled {
 }
 pub static DISABLED_DISABLED: LazyLock<DoubleOrDisabled> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/configuration/type/number/DoubleOr.java:30
 pub const DISABLED_DISABLED_VALUE: &str = "disabled"; // paper-server/src/main/java/io/papermc/paper/configuration/type/number/DoubleOr.java:31
-pub static DISABLED_SERIALIZER: LazyLock<ScalarSerializer<DoubleOrDisabled>> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/configuration/type/number/DoubleOr.java:32
+pub static DISABLED_SERIALIZER: LazyLock<()> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/configuration/type/number/DoubleOr.java:32
 impl DoubleOrDisabled {
     pub fn new() -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/type/number/DoubleOr.java:29
     pub fn new_1(value: Option<f64>) -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/type/number/DoubleOr.java:29
-    pub fn test(&self, predicate: JRef<dyn DoublePredicate>) -> bool { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/type/number/DoubleOr.java:34
+    pub fn test(&self, predicate: Arc<dyn Fn(f64) -> bool + Send + Sync>) -> bool { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/type/number/DoubleOr.java:34
     pub fn enabled(&self) -> bool { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/type/number/DoubleOr.java:38
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
@@ -69,11 +63,11 @@ impl<T: JGeneric> std::ops::Deref for DoubleOrSerializer<T> {
 }
 impl<T: JGeneric> DoubleOrSerializer<T> {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(class_of_t: Class, factory: JRef<dyn Function<Option<f64>, T>>, empty_serialized_value: &str, empty_value: T) -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/type/number/DoubleOr.java:44
+    pub fn new(class_of_t: crate::rt::Class, factory: Arc<dyn Fn(Option<f64>) -> T + Send + Sync>, empty_serialized_value: &str, empty_value: T) -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/type/number/DoubleOr.java:44
     pub fn full(&self, value: &str) -> Option<f64> { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/type/number/DoubleOr.java:58
     pub fn full_1(&self, num: f64) -> Option<f64> { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/type/number/DoubleOr.java:63
     pub fn below_zero(&self, value: Option<f64>) -> bool { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/type/number/DoubleOr.java:68
-    pub fn serialize(&self, type_: AnnotatedType, item: T, type_supported: JRef<dyn Predicate<Class>>) -> JObjectRef { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/type/number/DoubleOr.java:48
+    pub fn serialize(&self, type_: (), item: T, type_supported: Arc<dyn Fn(Class) -> bool + Send + Sync>) -> JObjectRef { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/type/number/DoubleOr.java:48
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

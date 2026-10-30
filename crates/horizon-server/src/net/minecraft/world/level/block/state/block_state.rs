@@ -4,12 +4,7 @@ use crate::prelude::*;
 use crate::ca::spottedleaf::moonrise::patches::blockstate_propertyaccess::property_access_state_holder::PropertyAccessStateHolder;
 use crate::ca::spottedleaf::moonrise::patches::collisions::block::collision_block_state::CollisionBlockState;
 use crate::ca::spottedleaf::moonrise::patches::starlight::blockstate::starlight_abstract_block_state::StarlightAbstractBlockState;
-use crate::com::mojang::datafixers::util::either::EitherTrait;
 use crate::com::mojang::serialization::Codec;
-use crate::java::lang::Comparable;
-use crate::java::util::function::BiConsumer;
-use crate::java::util::function::Predicate;
-use crate::java::util::stream::Stream;
 use crate::net::minecraft::core::block_pos::BlockPos;
 use crate::net::minecraft::core::direction::Direction;
 use crate::net::minecraft::core::holder::Holder;
@@ -74,11 +69,11 @@ impl std::ops::Deref for BlockState {
     fn deref(&self) -> &Self::Target { &self.base }
 }
 pub static FULL_CODEC: LazyLock<JRef<dyn Codec<JRef<BlockState>>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockState.java:10
-pub static CONSTANT_OR_DISPATCH_CODEC: LazyLock<JRef<dyn Codec<JRef<dyn EitherTrait<JRef<dyn BlockTrait>, JRef<BlockState>>>>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockState.java:12
+pub static CONSTANT_OR_DISPATCH_CODEC: LazyLock<JRef<dyn Codec<()>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockState.java:12
 pub static CODEC: LazyLock<JRef<dyn Codec<JRef<BlockState>>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockState.java:13
 impl BlockState {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(owner: JRef<dyn BlockTrait>, property_keys: &Vec<JRef<dyn PropertyTrait<JObjectRef>>>, property_values: &Vec<JRef<dyn Comparable<JObjectRef>>>) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockState.java:29
+    pub fn new(owner: JRef<dyn BlockTrait>, property_keys: &Vec<JRef<dyn PropertyTrait<JObjectRef>>>, property_values: &Vec<()>) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockState.java:29
     pub fn as_state(&self) -> JRef<BlockState> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockState.java:33
     pub fn get_bukkit_material(&self) -> Material { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockState.java:21
 }
@@ -91,7 +86,7 @@ impl BlockBehaviourBlockStateBaseTrait for BlockState {
     fn init_path_type(&self) { BlockBehaviourBlockStateBase::init_path_type(self) }
     fn init_tag_flag(&self) { BlockBehaviourBlockStateBase::init_tag_flag(self) }
     fn get_block(&self) -> JRef<dyn BlockTrait> { BlockBehaviourBlockStateBase::get_block(self) }
-    fn is_2(&self, tag: TagKey<JRef<dyn BlockTrait>>, predicate: JRef<dyn Predicate<JRef<dyn BlockBehaviourBlockStateBaseTrait>>>) -> bool { BlockBehaviourBlockStateBase::is_2(self, tag, predicate) }
+    fn is_2(&self, tag: TagKey<JRef<dyn BlockTrait>>, predicate: Arc<dyn Fn(JRef<dyn BlockBehaviourBlockStateBaseTrait>) -> bool + Send + Sync>) -> bool { BlockBehaviourBlockStateBase::is_2(self, tag, predicate) }
     fn is_solid(&self) -> bool { BlockBehaviourBlockStateBase::is_solid(self) }
     fn is_valid_spawn(&self, level: JRef<dyn BlockGetter>, pos: BlockPos, type_: JRef<EntityType<JObjectRef>>) -> bool { BlockBehaviourBlockStateBase::is_valid_spawn(self, level, pos, type_) }
     fn propagates_skylight_down(&self) -> bool { BlockBehaviourBlockStateBase::propagates_skylight_down(self) }
@@ -135,7 +130,7 @@ impl BlockBehaviourBlockStateBaseTrait for BlockState {
     fn on_place(&self, level: JRef<dyn LevelTrait>, pos: BlockPos, old_state: JRef<BlockState>, moved_by_piston: bool) { BlockBehaviourBlockStateBase::on_place(self, level, pos, old_state, moved_by_piston) }
     fn on_place_5(&self, level: JRef<dyn LevelTrait>, pos: BlockPos, old_state: JRef<BlockState>, moved_by_piston: bool, context: JRef<dyn UseOnContextTrait>) { BlockBehaviourBlockStateBase::on_place_5(self, level, pos, old_state, moved_by_piston, context) }
     fn affect_neighbors_after_removal(&self, level: JRef<ServerLevel>, pos: BlockPos, moved_by_piston: bool) { BlockBehaviourBlockStateBase::affect_neighbors_after_removal(self, level, pos, moved_by_piston) }
-    fn on_explosion_hit(&self, level: JRef<ServerLevel>, pos: BlockPos, explosion: JRef<dyn Explosion>, on_hit: JRef<dyn BiConsumer<JRef<ItemStack>, BlockPos>>) { BlockBehaviourBlockStateBase::on_explosion_hit(self, level, pos, explosion, on_hit) }
+    fn on_explosion_hit(&self, level: JRef<ServerLevel>, pos: BlockPos, explosion: JRef<dyn Explosion>, on_hit: Arc<dyn Fn(JRef<ItemStack>, BlockPos) + Send + Sync>) { BlockBehaviourBlockStateBase::on_explosion_hit(self, level, pos, explosion, on_hit) }
     fn tick(&self, level: JRef<ServerLevel>, pos: BlockPos, random: JRef<dyn RandomSource>) { BlockBehaviourBlockStateBase::tick(self, level, pos, random) }
     fn random_tick(&self, level: JRef<ServerLevel>, pos: BlockPos, random: JRef<dyn RandomSource>) { BlockBehaviourBlockStateBase::random_tick(self, level, pos, random) }
     fn entity_inside(&self, level: JRef<dyn LevelTrait>, pos: BlockPos, entity: JRef<dyn EntityTrait>, effect_applier: JRef<dyn InsideBlockEffectApplier>, is_precise: bool) { BlockBehaviourBlockStateBase::entity_inside(self, level, pos, entity, effect_applier, is_precise) }
@@ -179,11 +174,11 @@ impl StateHolderTrait<JObjectRef, JObjectRef> for BlockState {
     fn has_property(&self, property: JRef<dyn PropertyTrait<JObjectRef>>) -> bool { StateHolder::has_property(self, property) }
     fn initialize_neighbors(&self, neighbors: &Vec<Vec<S>>) { StateHolder::initialize_neighbors(self, neighbors) }
     fn is_singleton_state(&self) -> bool { StateHolder::is_singleton_state(self) }
-    fn get_values(&self) -> Stream<PropertyValue<JObjectRef>> { StateHolder::get_values(self) }
+    fn get_values(&self) -> Box<dyn Iterator<Item = PropertyValue<JObjectRef>> + Send> { StateHolder::get_values(self) }
 }
 impl TypedInstance<JRef<dyn BlockTrait>> for BlockState {
     fn type_holder(&self) -> JRef<dyn Holder<T>> { BlockBehaviourBlockStateBase::type_holder(self) }
-    fn tags(&self) -> Stream<TagKey<T>> { BlockBehaviourBlockStateBase::tags(self) }
+    fn tags(&self) -> Box<dyn Iterator<Item = TagKey<T>> + Send> { BlockBehaviourBlockStateBase::tags(self) }
     fn is(&self, tag: TagKey<T>) -> bool { BlockBehaviourBlockStateBase::is(self, tag) }
     fn is_1(&self, set: JRef<dyn HolderSet<T>>) -> bool { BlockBehaviourBlockStateBase::is_1(self, set) }
     fn is_1_3(&self, type_: JRef<dyn Holder<T>>) -> bool { BlockBehaviourBlockStateBase::is_1_3(self, type_) }

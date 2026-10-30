@@ -3,7 +3,6 @@
 use crate::prelude::*;
 use crate::com::mojang::brigadier::command_dispatcher::CommandDispatcher;
 use crate::com::mojang::brigadier::exceptions::SimpleCommandExceptionType;
-use crate::java::lang::Throwable;
 use crate::net::minecraft::commands::command_build_context::CommandBuildContext;
 use crate::net::minecraft::commands::command_source_stack::CommandSourceStack;
 use crate::net::minecraft::core::holder::HolderReferenceTrait;
@@ -24,7 +23,7 @@ impl SummonCommand {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/SummonCommand.java:29
     pub fn register(dispatcher: JRef<CommandDispatcher<JRef<CommandSourceStack>>>, context: JRef<dyn CommandBuildContext>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/SummonCommand.java:37
-    pub fn create_entity(source: JRef<CommandSourceStack>, type_: JRef<dyn HolderReferenceTrait<JRef<EntityType<JObjectRef>>>>, pos: Vec3, nbt: JRef<CompoundTag>, finalize: bool) -> Result<JRef<dyn EntityTrait>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/SummonCommand.java:77
-    pub fn spawn_entity(source: JRef<CommandSourceStack>, type_: JRef<dyn HolderReferenceTrait<JRef<EntityType<JObjectRef>>>>, pos: Vec3, nbt: JRef<CompoundTag>, finalize: bool) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/SummonCommand.java:112
+    pub fn create_entity(source: JRef<CommandSourceStack>, type_: JRef<dyn HolderReferenceTrait<JRef<EntityType<JObjectRef>>>>, pos: Vec3, nbt: JRef<CompoundTag>, finalize: bool) -> Result<JRef<dyn EntityTrait>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/SummonCommand.java:77
+    pub fn spawn_entity(source: JRef<CommandSourceStack>, type_: JRef<dyn HolderReferenceTrait<JRef<EntityType<JObjectRef>>>>, pos: Vec3, nbt: JRef<CompoundTag>, finalize: bool) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/SummonCommand.java:112
 }
 crate::jobject!(SummonCommand);

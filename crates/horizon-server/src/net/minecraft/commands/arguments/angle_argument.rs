@@ -4,7 +4,6 @@ use crate::prelude::*;
 use crate::com::mojang::brigadier::StringReader;
 use crate::com::mojang::brigadier::context::CommandContext;
 use crate::com::mojang::brigadier::exceptions::SimpleCommandExceptionType;
-use crate::java::lang::Throwable;
 use crate::net::minecraft::commands::command_source_stack::CommandSourceStack;
 
 // ---- class net.minecraft.commands.arguments.AngleArgument (leaf-server/src/minecraft/java/net/minecraft/commands/arguments/AngleArgument.java:15)
@@ -19,7 +18,7 @@ impl AngleArgument {
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/AngleArgument.java:15
     pub fn angle() -> JRef<AngleArgument> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/AngleArgument.java:20
     pub fn get_angle(context: CommandContext<JRef<CommandSourceStack>>, name: &str) -> f32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/AngleArgument.java:24
-    pub fn parse(&self, reader: StringReader) -> Result<AngleArgumentSingleAngle, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/AngleArgument.java:28
+    pub fn parse(&self, reader: StringReader) -> Result<AngleArgumentSingleAngle, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/AngleArgument.java:28
     pub fn get_examples(&self) -> Vec<String> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/AngleArgument.java:43
 }
 crate::jobject!(AngleArgument);

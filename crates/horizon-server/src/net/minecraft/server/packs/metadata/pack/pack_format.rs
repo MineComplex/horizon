@@ -4,7 +4,6 @@ use crate::prelude::*;
 use crate::com::mojang::serialization::Codec;
 use crate::com::mojang::serialization::DataResult;
 use crate::com::mojang::serialization::MapCodec;
-use crate::java::util::function::BiFunction;
 use crate::net::minecraft::server::packs::pack_type::PackType;
 use crate::net::minecraft::util::inclusive_range::InclusiveRange;
 
@@ -20,7 +19,7 @@ impl PackFormat {
     pub fn new() -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/packs/metadata/pack/PackFormat.java:20
     pub fn new_2(major: i32, minor: i32) -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/packs/metadata/pack/PackFormat.java:20
     pub fn full_codec(default_minor: i32) -> JRef<dyn Codec<PackFormat>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/packs/metadata/pack/PackFormat.java:25
-    pub fn validate_holder_list<ResultType: JGeneric, HolderType: JGeneric>(list: &Vec<HolderType>, last_pre_minor_version: i32, constructor: JRef<dyn BiFunction<HolderType, InclusiveRange<PackFormat>, ResultType>>) -> DataResult<Vec<ResultType>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/packs/metadata/pack/PackFormat.java:33
+    pub fn validate_holder_list<ResultType: JGeneric, HolderType: JGeneric>(list: &Vec<HolderType>, last_pre_minor_version: i32, constructor: Arc<dyn Fn(HolderType, InclusiveRange<PackFormat>) -> ResultType + Send + Sync>) -> DataResult<Vec<ResultType>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/packs/metadata/pack/PackFormat.java:33
     pub fn last_pre_minor_version(type_: PackType) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/packs/metadata/pack/PackFormat.java:62
     pub fn pack_codec(type_: PackType) -> MapCodec<InclusiveRange<PackFormat>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/packs/metadata/pack/PackFormat.java:70
     pub fn of(major: i32) -> PackFormat { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/packs/metadata/pack/PackFormat.java:83

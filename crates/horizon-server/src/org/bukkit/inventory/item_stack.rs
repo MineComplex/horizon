@@ -12,12 +12,6 @@ use crate::io::papermc::paper::inventory::tooltip::tooltip_context::TooltipConte
 use crate::io::papermc::paper::persistence::persistent_data_container_view::PersistentDataContainerView;
 use crate::io::papermc::paper::persistence::persistent_data_view_holder::PersistentDataViewHolder;
 use crate::io::papermc::paper::registry::set::registry_key_set::RegistryKeySet;
-use crate::java::lang::Class;
-use crate::java::lang::Throwable;
-use crate::java::util::Random;
-use crate::java::util::function::Consumer;
-use crate::java::util::function::Predicate;
-use crate::java::util::function::UnaryOperator;
 use crate::net::kyori::adventure::text::Component;
 use crate::net::kyori::adventure::text::event::HoverEvent;
 use crate::net::kyori::adventure::text::event::HoverEventShowItem;
@@ -48,7 +42,7 @@ impl ItemStack {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/inventory/ItemStack.java:98
     pub fn new_1(type_: Material) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/inventory/ItemStack.java:112
-    pub fn new_1_(stack: JRef<ItemStack>) -> Result<JRef<Self>, Throwable> { todo!() } // paper-api/src/main/java/org/bukkit/inventory/ItemStack.java:184
+    pub fn new_1_(stack: JRef<ItemStack>) -> Result<JRef<Self>, anyhow::Error> { todo!() } // paper-api/src/main/java/org/bukkit/inventory/ItemStack.java:184
     pub fn new_2(type_: Material, amount: i32) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/inventory/ItemStack.java:129
     pub fn new_3(type_: Material, amount: i32, damage: i16) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/inventory/ItemStack.java:142
     pub fn new_4(type_: Material, amount: i32, damage: i16, data: Option<i8>) -> JRef<Self> { todo!() } // paper-api/src/main/java/org/bukkit/inventory/ItemStack.java:154
@@ -64,7 +58,7 @@ impl ItemStack {
     pub fn set_data(&self, type_: JRef<dyn DataComponentTypeNonValued>) { todo!() } // paper-api/src/main/java/org/bukkit/inventory/ItemStack.java:1288
     pub fn of(type_: Material) -> JRef<ItemStack> { todo!() } // paper-api/src/main/java/org/bukkit/inventory/ItemStack.java:53
     pub fn of_2(type_: Material, amount: i32) -> JRef<ItemStack> { todo!() } // paper-api/src/main/java/org/bukkit/inventory/ItemStack.java:67
-    pub fn edit_persistent_data_container(&self, consumer: JRef<dyn Consumer<JRef<dyn PersistentDataContainer>>>) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/inventory/ItemStack.java:93
+    pub fn edit_persistent_data_container(&self, consumer: Arc<dyn Fn(JRef<dyn PersistentDataContainer>) + Send + Sync>) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/inventory/ItemStack.java:93
     pub fn get_type(&self) -> Material { todo!() } // paper-api/src/main/java/org/bukkit/inventory/ItemStack.java:198
     pub fn set_type(&self, type_: Material) { todo!() } // paper-api/src/main/java/org/bukkit/inventory/ItemStack.java:223
     pub fn with_type(&self, type_: Material) -> JRef<ItemStack> { todo!() } // paper-api/src/main/java/org/bukkit/inventory/ItemStack.java:235
@@ -90,14 +84,14 @@ impl ItemStack {
     pub fn remove_enchantment(&self, enchant: JRef<dyn EnchantmentTrait>) -> i32 { todo!() } // paper-api/src/main/java/org/bukkit/inventory/ItemStack.java:491
     pub fn remove_enchantments(&self) { todo!() } // paper-api/src/main/java/org/bukkit/inventory/ItemStack.java:498
     pub fn deserialize(args: &HashMap<String, JObjectRef>) -> JRef<ItemStack> { todo!() } // paper-api/src/main/java/org/bukkit/inventory/ItemStack.java:516
-    pub fn edit_meta(&self, consumer: JRef<dyn Consumer<JObjectRef>>) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/inventory/ItemStack.java:609
-    pub fn edit_meta_2<M: JGeneric>(&self, meta_class: Class, consumer: JRef<dyn Consumer<JObjectRef>>) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/inventory/ItemStack.java:628
+    pub fn edit_meta(&self, consumer: Arc<dyn Fn(JObjectRef) + Send + Sync>) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/inventory/ItemStack.java:609
+    pub fn edit_meta_2<M: JGeneric>(&self, meta_class: crate::rt::Class, consumer: Arc<dyn Fn(JObjectRef) + Send + Sync>) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/inventory/ItemStack.java:628
     pub fn get_item_meta(&self) -> JRef<dyn ItemMeta> { todo!() } // paper-api/src/main/java/org/bukkit/inventory/ItemStack.java:644
     pub fn has_item_meta(&self) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/inventory/ItemStack.java:654
     pub fn set_item_meta(&self, item_meta: Option<JRef<dyn ItemMeta>>) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/inventory/ItemStack.java:667
-    pub fn enchant_with_levels(&self, levels: i32, allow_treasure: bool, random: Random) -> JRef<ItemStack> { todo!() } // paper-api/src/main/java/org/bukkit/inventory/ItemStack.java:694
-    pub fn enchant_with_levels_3(&self, levels: i32, key_set: JRef<dyn RegistryKeySet<JRef<dyn EnchantmentTrait>>>, random: Random) -> JRef<ItemStack> { todo!() } // paper-api/src/main/java/org/bukkit/inventory/ItemStack.java:712
-    pub fn as_hover_event(&self, op: JRef<dyn UnaryOperator<HoverEventShowItem>>) -> HoverEvent<HoverEventShowItem> { todo!() } // paper-api/src/main/java/org/bukkit/inventory/ItemStack.java:723
+    pub fn enchant_with_levels(&self, levels: i32, allow_treasure: bool, random: rand::rngs::StdRng) -> JRef<ItemStack> { todo!() } // paper-api/src/main/java/org/bukkit/inventory/ItemStack.java:694
+    pub fn enchant_with_levels_3(&self, levels: i32, key_set: JRef<dyn RegistryKeySet<JRef<dyn EnchantmentTrait>>>, random: rand::rngs::StdRng) -> JRef<ItemStack> { todo!() } // paper-api/src/main/java/org/bukkit/inventory/ItemStack.java:712
+    pub fn as_hover_event(&self, op: Arc<dyn Fn(HoverEventShowItem) -> HoverEventShowItem + Send + Sync>) -> HoverEvent<HoverEventShowItem> { todo!() } // paper-api/src/main/java/org/bukkit/inventory/ItemStack.java:723
     pub fn display_name(&self) -> Component { todo!() } // paper-api/src/main/java/org/bukkit/inventory/ItemStack.java:736
     pub fn effective_name(&self) -> Component { todo!() } // paper-api/src/main/java/org/bukkit/inventory/ItemStack.java:747
     pub fn ensure_server_conversions(&self) -> JRef<ItemStack> { todo!() } // paper-api/src/main/java/org/bukkit/inventory/ItemStack.java:759
@@ -137,7 +131,7 @@ impl ItemStack {
     pub fn get_data_types(&self) -> HashSet<JRef<dyn DataComponentType>> { todo!() } // paper-api/src/main/java/org/bukkit/inventory/ItemStack.java:1225
     pub fn unset_data(&self, type_: JRef<dyn DataComponentType>) { todo!() } // paper-api/src/main/java/org/bukkit/inventory/ItemStack.java:1297
     pub fn reset_data(&self, type_: JRef<dyn DataComponentType>) { todo!() } // paper-api/src/main/java/org/bukkit/inventory/ItemStack.java:1307
-    pub fn copy_data_from(&self, source: JRef<ItemStack>, filter: JRef<dyn Predicate<JRef<dyn DataComponentType>>>) { todo!() } // paper-api/src/main/java/org/bukkit/inventory/ItemStack.java:1331
+    pub fn copy_data_from(&self, source: JRef<ItemStack>, filter: Arc<dyn Fn(JRef<dyn DataComponentType>) -> bool + Send + Sync>) { todo!() } // paper-api/src/main/java/org/bukkit/inventory/ItemStack.java:1331
     pub fn is_data_overridden(&self, type_: JRef<dyn DataComponentType>) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/inventory/ItemStack.java:1342
     pub fn matches_without_data(&self, item: JRef<ItemStack>, exclude_types: &HashSet<JRef<dyn DataComponentType>>) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/inventory/ItemStack.java:1354
     pub fn matches_without_data_3(&self, item: JRef<ItemStack>, exclude_types: &HashSet<JRef<dyn DataComponentType>>, ignore_count: bool) -> bool { todo!() } // paper-api/src/main/java/org/bukkit/inventory/ItemStack.java:1367

@@ -8,7 +8,6 @@ use crate::net::kyori::adventure::text::Component;
 use crate::net::kyori::adventure::text::minimessage::tag::resolver::TagResolver;
 use crate::net::kyori::adventure::text::minimessage::MiniMessage;
 use crate::net::kyori::adventure::text::serializer::legacy::LegacyComponentSerializer;
-use crate::net::md_5::bungee::api::chat::BaseComponent;
 use crate::org::bukkit::permissions::permissible::Permissible;
 use crate::org::bukkit::server::Server;
 use crate::api_prelude::*;
@@ -20,11 +19,11 @@ pub trait CommandSender: Audience + Permissible {
     fn send_message_1_2(&self, message: Component) {
         self.send_message(&LegacyComponentSerializer::legacy_section().serialize(&message));
     } // default, paper-api/src/main/java/org/bukkit/command/CommandSender.java:137
-    fn send_message_1_3(&self, component: BaseComponent) {
+    fn send_message_1_3(&self, component: ()) {
         self.send_message(&component.to_legacy_text());
     } // default, paper-api/src/main/java/org/bukkit/command/CommandSender.java:195
-    fn send_message_1_4(&self, components: &Vec<BaseComponent>) {
-        self.send_message(&crate::net::md_5::bungee::api::chat::TextComponent::new_1(components.clone()).to_legacy_text());
+    fn send_message_1_4(&self, components: &Vec<()>) {
+        self.send_message(&TextComponent::new_1(components.clone()).to_legacy_text());
     } // default, paper-api/src/main/java/org/bukkit/command/CommandSender.java:209
     fn send_message_2(&self, sender: Option<Uuid>, message: &str); // paper-api/src/main/java/org/bukkit/command/CommandSender.java:45
     fn send_message_2_2(&self, sender: Option<Uuid>, messages: &Vec<String>); // paper-api/src/main/java/org/bukkit/command/CommandSender.java:56
@@ -57,10 +56,10 @@ pub struct CommandSenderSpigot {
 }
 pub trait CommandSenderSpigotTrait: JObject {
     fn as_command_sender_spigot(&self) -> &CommandSenderSpigot;
-    fn send_message(&self, component: BaseComponent); // paper-api/src/main/java/org/bukkit/command/CommandSender.java:84
-    fn send_message_1(&self, components: &Vec<BaseComponent>); // paper-api/src/main/java/org/bukkit/command/CommandSender.java:95
-    fn send_message_2(&self, sender: Option<Uuid>, component: BaseComponent); // paper-api/src/main/java/org/bukkit/command/CommandSender.java:107
-    fn send_message_2_2(&self, sender: Option<Uuid>, components: &Vec<BaseComponent>); // paper-api/src/main/java/org/bukkit/command/CommandSender.java:119
+    fn send_message(&self, component: ()); // paper-api/src/main/java/org/bukkit/command/CommandSender.java:84
+    fn send_message_1(&self, components: &Vec<()>); // paper-api/src/main/java/org/bukkit/command/CommandSender.java:95
+    fn send_message_2(&self, sender: Option<Uuid>, component: ()); // paper-api/src/main/java/org/bukkit/command/CommandSender.java:107
+    fn send_message_2_2(&self, sender: Option<Uuid>, components: &Vec<()>); // paper-api/src/main/java/org/bukkit/command/CommandSender.java:119
 }
 impl std::ops::Deref for dyn CommandSenderSpigotTrait {
     type Target = CommandSenderSpigot;
@@ -73,16 +72,16 @@ impl CommandSenderSpigot {
         CommandSenderSpigot { this }
     } // paper-api/src/main/java/org/bukkit/command/CommandSender.java:76
     pub fn new() -> JRef<Self> { Arc::new_cyclic(|this| Self::new_base(this)) }
-    pub fn send_message(&self, component: BaseComponent) {
+    pub fn send_message(&self, component: ()) {
         panic!("java.lang.UnsupportedOperationException: Not supported yet.");
     } // paper-api/src/main/java/org/bukkit/command/CommandSender.java:84
-    pub fn send_message_1(&self, components: &Vec<BaseComponent>) {
+    pub fn send_message_1(&self, components: &Vec<()>) {
         panic!("java.lang.UnsupportedOperationException: Not supported yet.");
     } // paper-api/src/main/java/org/bukkit/command/CommandSender.java:95
-    pub fn send_message_2(&self, sender: Option<Uuid>, component: BaseComponent) {
+    pub fn send_message_2(&self, sender: Option<Uuid>, component: ()) {
         panic!("java.lang.UnsupportedOperationException: Not supported yet.");
     } // paper-api/src/main/java/org/bukkit/command/CommandSender.java:107
-    pub fn send_message_2_2(&self, sender: Option<Uuid>, components: &Vec<BaseComponent>) {
+    pub fn send_message_2_2(&self, sender: Option<Uuid>, components: &Vec<()>) {
         panic!("java.lang.UnsupportedOperationException: Not supported yet.");
     } // paper-api/src/main/java/org/bukkit/command/CommandSender.java:119
 }
@@ -90,9 +89,9 @@ impl CommandSenderSpigot {
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl CommandSenderSpigotTrait for CommandSenderSpigot {
     fn as_command_sender_spigot(&self) -> &CommandSenderSpigot { self }
-    fn send_message(&self, component: BaseComponent) { CommandSenderSpigot::send_message(self, component) }
-    fn send_message_1(&self, components: &Vec<BaseComponent>) { CommandSenderSpigot::send_message_1(self, components) }
-    fn send_message_2(&self, sender: Option<Uuid>, component: BaseComponent) { CommandSenderSpigot::send_message_2(self, sender, component) }
-    fn send_message_2_2(&self, sender: Option<Uuid>, components: &Vec<BaseComponent>) { CommandSenderSpigot::send_message_2_2(self, sender, components) }
+    fn send_message(&self, component: ()) { CommandSenderSpigot::send_message(self, component) }
+    fn send_message_1(&self, components: &Vec<()>) { CommandSenderSpigot::send_message_1(self, components) }
+    fn send_message_2(&self, sender: Option<Uuid>, component: ()) { CommandSenderSpigot::send_message_2(self, sender, component) }
+    fn send_message_2_2(&self, sender: Option<Uuid>, components: &Vec<()>) { CommandSenderSpigot::send_message_2_2(self, sender, components) }
 }
 crate::jobject!(CommandSenderSpigot: dyn CommandSenderSpigotTrait);

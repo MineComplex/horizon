@@ -3,24 +3,22 @@
 use crate::prelude::*;
 use crate::com::mojang::serialization::Codec;
 use crate::net::minecraft::world::attribute::modifier::attribute_modifier::AttributeModifier;
-use crate::org::joml::Vector3fc;
-use crate::org::joml::Vector4fc;
 
 // ---- interface net.minecraft.world.attribute.modifier.ColorModifier (leaf-server/src/minecraft/java/net/minecraft/world/attribute/modifier/ColorModifier.java:13)
 pub trait ColorModifier<Subject: JGeneric, Argument: JGeneric>: AttributeModifier<Subject, Argument> {
 }
-pub static ALPHA_BLEND_RGB: LazyLock<JRef<dyn ColorModifierArgbModifier<Vector3fc>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/attribute/modifier/ColorModifier.java:14
-pub static ALPHA_BLEND_ARGB: LazyLock<JRef<dyn ColorModifierArgbModifier<Vector4fc>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/attribute/modifier/ColorModifier.java:15
-pub static ADD_RGB: LazyLock<JRef<dyn ColorModifierRgbModifier<Vector3fc>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/attribute/modifier/ColorModifier.java:16
-pub static SUBTRACT_RGB: LazyLock<JRef<dyn ColorModifierRgbModifier<Vector3fc>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/attribute/modifier/ColorModifier.java:17
-pub static MULTIPLY_RGB: LazyLock<JRef<dyn ColorModifierRgbModifier<Vector3fc>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/attribute/modifier/ColorModifier.java:18
-pub static ADD_ARGB: LazyLock<JRef<dyn ColorModifierRgbModifier<Vector4fc>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/attribute/modifier/ColorModifier.java:19
-pub static SUBTRACT_ARGB: LazyLock<JRef<dyn ColorModifierRgbModifier<Vector4fc>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/attribute/modifier/ColorModifier.java:20
-pub static MULTIPLY_ARGB: LazyLock<JRef<dyn ColorModifierArgbModifier<Vector4fc>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/attribute/modifier/ColorModifier.java:21
-pub static BLEND_TO_GRAY_RGB: LazyLock<JRef<dyn ColorModifier<Vector3fc, ColorModifierBlendToGray>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/attribute/modifier/ColorModifier.java:22
-pub static BLEND_TO_GRAY_ARGB: LazyLock<JRef<dyn ColorModifier<Vector4fc, ColorModifierBlendToGray>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/attribute/modifier/ColorModifier.java:39
+pub static ALPHA_BLEND_RGB: LazyLock<JRef<dyn ColorModifierArgbModifier<glam::Vec3>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/attribute/modifier/ColorModifier.java:14
+pub static ALPHA_BLEND_ARGB: LazyLock<JRef<dyn ColorModifierArgbModifier<glam::Vec4>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/attribute/modifier/ColorModifier.java:15
+pub static ADD_RGB: LazyLock<JRef<dyn ColorModifierRgbModifier<glam::Vec3>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/attribute/modifier/ColorModifier.java:16
+pub static SUBTRACT_RGB: LazyLock<JRef<dyn ColorModifierRgbModifier<glam::Vec3>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/attribute/modifier/ColorModifier.java:17
+pub static MULTIPLY_RGB: LazyLock<JRef<dyn ColorModifierRgbModifier<glam::Vec3>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/attribute/modifier/ColorModifier.java:18
+pub static ADD_ARGB: LazyLock<JRef<dyn ColorModifierRgbModifier<glam::Vec4>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/attribute/modifier/ColorModifier.java:19
+pub static SUBTRACT_ARGB: LazyLock<JRef<dyn ColorModifierRgbModifier<glam::Vec4>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/attribute/modifier/ColorModifier.java:20
+pub static MULTIPLY_ARGB: LazyLock<JRef<dyn ColorModifierArgbModifier<glam::Vec4>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/attribute/modifier/ColorModifier.java:21
+pub static BLEND_TO_GRAY_RGB: LazyLock<JRef<dyn ColorModifier<glam::Vec3, ColorModifierBlendToGray>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/attribute/modifier/ColorModifier.java:22
+pub static BLEND_TO_GRAY_ARGB: LazyLock<JRef<dyn ColorModifier<glam::Vec4, ColorModifierBlendToGray>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/attribute/modifier/ColorModifier.java:39
 // ---- interface net.minecraft.world.attribute.modifier.ColorModifier.ArgbModifier (leaf-server/src/minecraft/java/net/minecraft/world/attribute/modifier/ColorModifier.java:57)
-pub trait ColorModifierArgbModifier<Subject: JGeneric>: ColorModifier<Subject, Vector4fc> {
+pub trait ColorModifierArgbModifier<Subject: JGeneric>: ColorModifier<Subject, glam::Vec4> {
 }
 // ---- record net.minecraft.world.attribute.modifier.ColorModifier.BlendToGray (leaf-server/src/minecraft/java/net/minecraft/world/attribute/modifier/ColorModifier.java:70)
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Default)]
@@ -36,5 +34,5 @@ impl ColorModifierBlendToGray {
 }
 crate::jobject!(ColorModifierBlendToGray);
 // ---- interface net.minecraft.world.attribute.modifier.ColorModifier.RgbModifier (leaf-server/src/minecraft/java/net/minecraft/world/attribute/modifier/ColorModifier.java:84)
-pub trait ColorModifierRgbModifier<Subject: JGeneric>: ColorModifier<Subject, Vector3fc> {
+pub trait ColorModifierRgbModifier<Subject: JGeneric>: ColorModifier<Subject, glam::Vec3> {
 }

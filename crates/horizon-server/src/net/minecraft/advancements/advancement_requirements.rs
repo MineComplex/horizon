@@ -3,8 +3,6 @@
 use crate::prelude::*;
 use crate::com::mojang::serialization::Codec;
 use crate::com::mojang::serialization::DataResult;
-use crate::io::netty::buffer::ByteBuf;
-use crate::java::util::function::Predicate;
 use crate::net::minecraft::network::codec::stream_codec::StreamCodec;
 
 // ---- record net.minecraft.advancements.AdvancementRequirements (leaf-server/src/minecraft/java/net/minecraft/advancements/AdvancementRequirements.java:15)
@@ -13,7 +11,7 @@ pub struct AdvancementRequirements {
     pub requirements: Vec<Vec<String>>,
 }
 pub static CODEC: LazyLock<JRef<dyn Codec<AdvancementRequirements>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/advancements/AdvancementRequirements.java:16
-pub static STREAM_CODEC: LazyLock<JRef<dyn StreamCodec<ByteBuf, AdvancementRequirements>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/advancements/AdvancementRequirements.java:20
+pub static STREAM_CODEC: LazyLock<JRef<dyn StreamCodec<bytes::BytesMut, AdvancementRequirements>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/advancements/AdvancementRequirements.java:20
 pub static EMPTY: LazyLock<AdvancementRequirements> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/advancements/AdvancementRequirements.java:24
 impl AdvancementRequirements {
     pub fn new() -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/advancements/AdvancementRequirements.java:15
@@ -21,9 +19,9 @@ impl AdvancementRequirements {
     pub fn all_of(criteria: &Vec<String>) -> AdvancementRequirements { todo!() } // leaf-server/src/minecraft/java/net/minecraft/advancements/AdvancementRequirements.java:26
     pub fn any_of(criteria: &Vec<String>) -> AdvancementRequirements { todo!() } // leaf-server/src/minecraft/java/net/minecraft/advancements/AdvancementRequirements.java:30
     pub fn size(&self) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/advancements/AdvancementRequirements.java:34
-    pub fn test(&self, predicate: JRef<dyn Predicate<String>>) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/advancements/AdvancementRequirements.java:38
-    pub fn count(&self, predicate: JRef<dyn Predicate<String>>) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/advancements/AdvancementRequirements.java:52
-    pub fn any_match(criteria: &Vec<String>, predicate: JRef<dyn Predicate<String>>) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/advancements/AdvancementRequirements.java:64
+    pub fn test(&self, predicate: Arc<dyn Fn(String) -> bool + Send + Sync>) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/advancements/AdvancementRequirements.java:38
+    pub fn count(&self, predicate: Arc<dyn Fn(String) -> bool + Send + Sync>) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/advancements/AdvancementRequirements.java:52
+    pub fn any_match(criteria: &Vec<String>, predicate: Arc<dyn Fn(String) -> bool + Send + Sync>) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/advancements/AdvancementRequirements.java:64
     pub fn validate(&self, expected_criteria: &HashSet<String>) -> DataResult<AdvancementRequirements> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/advancements/AdvancementRequirements.java:74
     pub fn is_empty(&self) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/advancements/AdvancementRequirements.java:99
     pub fn to_string(&self) -> String { todo!() } // leaf-server/src/minecraft/java/net/minecraft/advancements/AdvancementRequirements.java:103

@@ -7,12 +7,6 @@ use crate::io::papermc::paper::entity::poi::poi_type::PoiTypeOccupancy;
 use crate::io::papermc::paper::math::position::Position;
 use crate::io::papermc::paper::raytracing::positioned_ray_trace_configuration_builder::PositionedRayTraceConfigurationBuilder;
 use crate::io::papermc::paper::world::chunk::chunk_generation_state::ChunkGenerationState;
-use crate::java::lang::Class;
-use crate::java::lang::Runnable;
-use crate::java::lang::Throwable;
-use crate::java::util::concurrent::CompletableFuture;
-use crate::java::util::function::Consumer;
-use crate::java::util::function::Predicate;
 use crate::net::kyori::adventure::audience::Audience;
 use crate::net::kyori::adventure::audience::ForwardingAudience;
 use crate::org::bukkit::block::biome::Biome;
@@ -144,7 +138,7 @@ pub trait World: RegionAccessor + WorldInfo + PluginMessageRecipient + Metadatab
     } // default, paper-api/src/main/java/org/bukkit/World.java:481
     fn load_chunk_3(&self, x: i32, z: i32, generate: bool) -> bool; // paper-api/src/main/java/org/bukkit/World.java:498
     fn get_chunk_generation_state(&self, x: i32, z: i32) -> ChunkGenerationState; // paper-api/src/main/java/org/bukkit/World.java:419
-    fn get_chunk_generation_state_async(&self, x: i32, z: i32) -> CompletableFuture<ChunkGenerationState>; // paper-api/src/main/java/org/bukkit/World.java:449
+    fn get_chunk_generation_state_async(&self, x: i32, z: i32) -> crate::rt::CompletableFuture<ChunkGenerationState>; // paper-api/src/main/java/org/bukkit/World.java:449
     fn is_chunk_in_use(&self, x: i32, z: i32) -> bool; // paper-api/src/main/java/org/bukkit/World.java:463
     fn unload_chunk(&self, chunk: JRef<dyn Chunk>) -> bool {
         self.unload_chunk_2(chunk.get_x(), chunk.get_z())
@@ -173,15 +167,15 @@ pub trait World: RegionAccessor + WorldInfo + PluginMessageRecipient + Metadatab
     fn drop_item(&self, location: JRef<Location>, item: JRef<ItemStack>) -> JRef<dyn Item> {
         self.drop_item_3(location, item, None)
     } // default, paper-api/src/main/java/org/bukkit/World.java:740
-    fn drop_item_3(&self, location: JRef<Location>, item: JRef<ItemStack>, function: Option<JRef<dyn Consumer<JObjectRef>>>) -> JRef<dyn Item>; // paper-api/src/main/java/org/bukkit/World.java:754
+    fn drop_item_3(&self, location: JRef<Location>, item: JRef<ItemStack>, function: Option<Arc<dyn Fn(JObjectRef) + Send + Sync>>) -> JRef<dyn Item>; // paper-api/src/main/java/org/bukkit/World.java:754
     fn drop_item_naturally(&self, location: JRef<Location>, item: JRef<ItemStack>) -> JRef<dyn Item> {
         self.drop_item_naturally_3(location, item, None)
     } // default, paper-api/src/main/java/org/bukkit/World.java:764
-    fn drop_item_naturally_3(&self, location: JRef<Location>, item: JRef<ItemStack>, function: Option<JRef<dyn Consumer<JObjectRef>>>) -> JRef<dyn Item>; // paper-api/src/main/java/org/bukkit/World.java:778
+    fn drop_item_naturally_3(&self, location: JRef<Location>, item: JRef<ItemStack>, function: Option<Arc<dyn Fn(JObjectRef) + Send + Sync>>) -> JRef<dyn Item>; // paper-api/src/main/java/org/bukkit/World.java:778
     fn spawn_arrow(&self, location: JRef<Location>, direction: JRef<dyn VectorTrait>, speed: f32, spread: f32) -> JRef<dyn Arrow> where Self: Sized {
         self.spawn_arrow_5::<JRef<dyn Arrow>>(location, direction, speed, spread, Class(std::marker::PhantomData))
     } // default, paper-api/src/main/java/org/bukkit/World.java:790
-    fn spawn_arrow_5<T: JGeneric>(&self, location: JRef<Location>, direction: JRef<dyn VectorTrait>, speed: f32, spread: f32, clazz: Class) -> T where Self: Sized; // paper-api/src/main/java/org/bukkit/World.java:807
+    fn spawn_arrow_5<T: JGeneric>(&self, location: JRef<Location>, direction: JRef<dyn VectorTrait>, speed: f32, spread: f32, clazz: crate::rt::Class) -> T where Self: Sized; // paper-api/src/main/java/org/bukkit/World.java:807
     fn generate_tree_2(&self, location: JRef<Location>, type_: TreeType) -> bool; // paper-api/src/main/java/org/bukkit/World.java:819
     fn strike_lightning(&self, loc: JRef<Location>) -> JRef<dyn LightningStrike>; // paper-api/src/main/java/org/bukkit/World.java:842
     fn strike_lightning_effect(&self, loc: JRef<Location>) -> JRef<dyn LightningStrike>; // paper-api/src/main/java/org/bukkit/World.java:851
@@ -193,16 +187,16 @@ pub trait World: RegionAccessor + WorldInfo + PluginMessageRecipient + Metadatab
     fn get_nearby_living_entities_3(&self, loc: JRef<Location>, xz_radius: f64, y_radius: f64) -> Vec<JRef<dyn LivingEntity>> {
         get_nearby_entities_by_type_impl::<JRef<dyn LivingEntity>, Self>(self, None, loc, xz_radius, y_radius, xz_radius, None)
     } // default, paper-api/src/main/java/org/bukkit/World.java:957
-    fn get_nearby_living_entities_3_2(&self, loc: JRef<Location>, radius: f64, predicate: Option<JRef<dyn Predicate<JObjectRef>>>) -> Vec<JRef<dyn LivingEntity>> {
+    fn get_nearby_living_entities_3_2(&self, loc: JRef<Location>, radius: f64, predicate: Option<Arc<dyn Fn(JObjectRef) -> bool + Send + Sync>>) -> Vec<JRef<dyn LivingEntity>> {
         get_nearby_entities_by_type_impl::<JRef<dyn LivingEntity>, Self>(self, None, loc, radius, radius, radius, predicate)
     } // default, paper-api/src/main/java/org/bukkit/World.java:982
     fn get_nearby_living_entities_4(&self, loc: JRef<Location>, x_radius: f64, y_radius: f64, z_radius: f64) -> Vec<JRef<dyn LivingEntity>> {
         get_nearby_entities_by_type_impl::<JRef<dyn LivingEntity>, Self>(self, None, loc, x_radius, y_radius, z_radius, None)
     } // default, paper-api/src/main/java/org/bukkit/World.java:970
-    fn get_nearby_living_entities_4_2(&self, loc: JRef<Location>, xz_radius: f64, y_radius: f64, predicate: Option<JRef<dyn Predicate<JObjectRef>>>) -> Vec<JRef<dyn LivingEntity>> {
+    fn get_nearby_living_entities_4_2(&self, loc: JRef<Location>, xz_radius: f64, y_radius: f64, predicate: Option<Arc<dyn Fn(JObjectRef) -> bool + Send + Sync>>) -> Vec<JRef<dyn LivingEntity>> {
         get_nearby_entities_by_type_impl::<JRef<dyn LivingEntity>, Self>(self, None, loc, xz_radius, y_radius, xz_radius, predicate)
     } // default, paper-api/src/main/java/org/bukkit/World.java:995
-    fn get_nearby_living_entities_5(&self, loc: JRef<Location>, x_radius: f64, y_radius: f64, z_radius: f64, predicate: Option<JRef<dyn Predicate<JObjectRef>>>) -> Vec<JRef<dyn LivingEntity>> {
+    fn get_nearby_living_entities_5(&self, loc: JRef<Location>, x_radius: f64, y_radius: f64, z_radius: f64, predicate: Option<Arc<dyn Fn(JObjectRef) -> bool + Send + Sync>>) -> Vec<JRef<dyn LivingEntity>> {
         get_nearby_entities_by_type_impl::<JRef<dyn LivingEntity>, Self>(self, None, loc, x_radius, y_radius, z_radius, predicate)
     } // default, paper-api/src/main/java/org/bukkit/World.java:1009
     fn get_nearby_players(&self, loc: JRef<Location>, radius: f64) -> Vec<JRef<dyn Player>> {
@@ -211,40 +205,40 @@ pub trait World: RegionAccessor + WorldInfo + PluginMessageRecipient + Metadatab
     fn get_nearby_players_3(&self, loc: JRef<Location>, xz_radius: f64, y_radius: f64) -> Vec<JRef<dyn Player>> {
         get_nearby_entities_by_type_impl::<JRef<dyn Player>, Self>(self, None, loc, xz_radius, y_radius, xz_radius, None)
     } // default, paper-api/src/main/java/org/bukkit/World.java:1032
-    fn get_nearby_players_3_2(&self, loc: JRef<Location>, radius: f64, predicate: Option<JRef<dyn Predicate<JObjectRef>>>) -> Vec<JRef<dyn Player>> {
+    fn get_nearby_players_3_2(&self, loc: JRef<Location>, radius: f64, predicate: Option<Arc<dyn Fn(JObjectRef) -> bool + Send + Sync>>) -> Vec<JRef<dyn Player>> {
         get_nearby_entities_by_type_impl::<JRef<dyn Player>, Self>(self, None, loc, radius, radius, radius, predicate)
     } // default, paper-api/src/main/java/org/bukkit/World.java:1057
     fn get_nearby_players_4(&self, loc: JRef<Location>, x_radius: f64, y_radius: f64, z_radius: f64) -> Vec<JRef<dyn Player>> {
         get_nearby_entities_by_type_impl::<JRef<dyn Player>, Self>(self, None, loc, x_radius, y_radius, z_radius, None)
     } // default, paper-api/src/main/java/org/bukkit/World.java:1045
-    fn get_nearby_players_4_2(&self, loc: JRef<Location>, xz_radius: f64, y_radius: f64, predicate: Option<JRef<dyn Predicate<JObjectRef>>>) -> Vec<JRef<dyn Player>> {
+    fn get_nearby_players_4_2(&self, loc: JRef<Location>, xz_radius: f64, y_radius: f64, predicate: Option<Arc<dyn Fn(JObjectRef) -> bool + Send + Sync>>) -> Vec<JRef<dyn Player>> {
         get_nearby_entities_by_type_impl::<JRef<dyn Player>, Self>(self, None, loc, xz_radius, y_radius, xz_radius, predicate)
     } // default, paper-api/src/main/java/org/bukkit/World.java:1070
-    fn get_nearby_players_5(&self, loc: JRef<Location>, x_radius: f64, y_radius: f64, z_radius: f64, predicate: Option<JRef<dyn Predicate<JObjectRef>>>) -> Vec<JRef<dyn Player>> {
+    fn get_nearby_players_5(&self, loc: JRef<Location>, x_radius: f64, y_radius: f64, z_radius: f64, predicate: Option<Arc<dyn Fn(JObjectRef) -> bool + Send + Sync>>) -> Vec<JRef<dyn Player>> {
         get_nearby_entities_by_type_impl::<JRef<dyn Player>, Self>(self, None, loc, x_radius, y_radius, z_radius, predicate)
     } // default, paper-api/src/main/java/org/bukkit/World.java:1084
-    fn get_nearby_entities_by_type<T: JGeneric>(&self, clazz: Option<Class>, loc: JRef<Location>, radius: f64) -> Vec<T> where Self: Sized {
+    fn get_nearby_entities_by_type<T: JGeneric>(&self, clazz: Option<crate::rt::Class>, loc: JRef<Location>, radius: f64) -> Vec<T> where Self: Sized {
         self.get_nearby_entities_by_type_6(clazz, loc, radius, radius, radius, None)
     } // default, paper-api/src/main/java/org/bukkit/World.java:1097
-    fn get_nearby_entities_by_type_4<T: JGeneric>(&self, clazz: Option<Class>, loc: JRef<Location>, xz_radius: f64, y_radius: f64) -> Vec<T> where Self: Sized {
+    fn get_nearby_entities_by_type_4<T: JGeneric>(&self, clazz: Option<crate::rt::Class>, loc: JRef<Location>, xz_radius: f64, y_radius: f64) -> Vec<T> where Self: Sized {
         self.get_nearby_entities_by_type_6(clazz, loc, xz_radius, y_radius, xz_radius, None)
     } // default, paper-api/src/main/java/org/bukkit/World.java:1111
-    fn get_nearby_entities_by_type_4_2<T: JGeneric>(&self, clazz: Option<Class>, loc: JRef<Location>, radius: f64, predicate: Option<JRef<dyn Predicate<JObjectRef>>>) -> Vec<T> where Self: Sized {
+    fn get_nearby_entities_by_type_4_2<T: JGeneric>(&self, clazz: Option<crate::rt::Class>, loc: JRef<Location>, radius: f64, predicate: Option<Arc<dyn Fn(JObjectRef) -> bool + Send + Sync>>) -> Vec<T> where Self: Sized {
         self.get_nearby_entities_by_type_6(clazz, loc, radius, radius, radius, predicate)
     } // default, paper-api/src/main/java/org/bukkit/World.java:1140
-    fn get_nearby_entities_by_type_5<T: JGeneric>(&self, clazz: Option<Class>, loc: JRef<Location>, x_radius: f64, y_radius: f64, z_radius: f64) -> Vec<T> where Self: Sized {
+    fn get_nearby_entities_by_type_5<T: JGeneric>(&self, clazz: Option<crate::rt::Class>, loc: JRef<Location>, x_radius: f64, y_radius: f64, z_radius: f64) -> Vec<T> where Self: Sized {
         self.get_nearby_entities_by_type_6(clazz, loc, x_radius, y_radius, z_radius, None)
     } // default, paper-api/src/main/java/org/bukkit/World.java:1126
-    fn get_nearby_entities_by_type_5_2<T: JGeneric>(&self, clazz: Option<Class>, loc: JRef<Location>, xz_radius: f64, y_radius: f64, predicate: Option<JRef<dyn Predicate<JObjectRef>>>) -> Vec<T> where Self: Sized {
+    fn get_nearby_entities_by_type_5_2<T: JGeneric>(&self, clazz: Option<crate::rt::Class>, loc: JRef<Location>, xz_radius: f64, y_radius: f64, predicate: Option<Arc<dyn Fn(JObjectRef) -> bool + Send + Sync>>) -> Vec<T> where Self: Sized {
         self.get_nearby_entities_by_type_6(clazz, loc, xz_radius, y_radius, xz_radius, predicate)
     } // default, paper-api/src/main/java/org/bukkit/World.java:1155
-    fn get_nearby_entities_by_type_6<T: JGeneric>(&self, clazz: Option<Class>, loc: JRef<Location>, x_radius: f64, y_radius: f64, z_radius: f64, predicate: Option<JRef<dyn Predicate<JObjectRef>>>) -> Vec<T> where Self: Sized {
+    fn get_nearby_entities_by_type_6<T: JGeneric>(&self, clazz: Option<crate::rt::Class>, loc: JRef<Location>, x_radius: f64, y_radius: f64, z_radius: f64, predicate: Option<Arc<dyn Fn(JObjectRef) -> bool + Send + Sync>>) -> Vec<T> where Self: Sized {
         get_nearby_entities_by_type_impl::<T, Self>(self, clazz, loc, x_radius, y_radius, z_radius, predicate)
     } // default, paper-api/src/main/java/org/bukkit/World.java:1171
-    fn get_chunk_at_async(&self, loc: JRef<Location>) -> CompletableFuture<JRef<dyn Chunk>> {
+    fn get_chunk_at_async(&self, loc: JRef<Location>) -> crate::rt::CompletableFuture<JRef<dyn Chunk>> {
         self.get_chunk_at_async_3_5((loc.get_x().floor() as i32) >> 4, (loc.get_z().floor() as i32) >> 4, true)
     } // default, paper-api/src/main/java/org/bukkit/World.java:1475
-    fn get_chunk_at_async_1(&self, block: JRef<dyn Block>) -> CompletableFuture<JRef<dyn Chunk>> {
+    fn get_chunk_at_async_1(&self, block: JRef<dyn Block>) -> crate::rt::CompletableFuture<JRef<dyn Chunk>> {
         self.get_chunk_at_async_3_5(block.get_x() >> 4, block.get_z() >> 4, true)
     } // default, paper-api/src/main/java/org/bukkit/World.java:1514
     fn get_chunk_at_async_2(&self, loc: JRef<Location>, cb: JRef<dyn WorldChunkLoadCallback>) {
@@ -253,41 +247,41 @@ pub trait World: RegionAccessor + WorldInfo + PluginMessageRecipient + Metadatab
     fn get_chunk_at_async_2_2(&self, block: JRef<dyn Block>, cb: JRef<dyn WorldChunkLoadCallback>) {
         self.get_chunk_at_async_3(block.get_x() >> 4, block.get_z() >> 4, cb)
     } // default, paper-api/src/main/java/org/bukkit/World.java:1276
-    fn get_chunk_at_async_2_3(&self, loc: JRef<Location>, cb: JRef<dyn Consumer<JObjectRef>>) {
+    fn get_chunk_at_async_2_3(&self, loc: JRef<Location>, cb: Arc<dyn Fn(JObjectRef) + Send + Sync>) {
         self.get_chunk_at_async_4((loc.get_x().floor() as i32) >> 4, (loc.get_z().floor() as i32) >> 4, true, cb)
     } // default, paper-api/src/main/java/org/bukkit/World.java:1391
-    fn get_chunk_at_async_2_4(&self, block: JRef<dyn Block>, cb: JRef<dyn Consumer<JObjectRef>>) {
+    fn get_chunk_at_async_2_4(&self, block: JRef<dyn Block>, cb: Arc<dyn Fn(JObjectRef) + Send + Sync>) {
         self.get_chunk_at_async_4(block.get_x() >> 4, block.get_z() >> 4, true, cb)
     } // default, paper-api/src/main/java/org/bukkit/World.java:1434
-    fn get_chunk_at_async_2_5(&self, loc: JRef<Location>, gen_: bool) -> CompletableFuture<JRef<dyn Chunk>> {
+    fn get_chunk_at_async_2_5(&self, loc: JRef<Location>, gen_: bool) -> crate::rt::CompletableFuture<JRef<dyn Chunk>> {
         self.get_chunk_at_async_3_5((loc.get_x().floor() as i32) >> 4, (loc.get_z().floor() as i32) >> 4, gen_)
     } // default, paper-api/src/main/java/org/bukkit/World.java:1495
-    fn get_chunk_at_async_2_6(&self, block: JRef<dyn Block>, gen_: bool) -> CompletableFuture<JRef<dyn Chunk>> {
+    fn get_chunk_at_async_2_6(&self, block: JRef<dyn Block>, gen_: bool) -> crate::rt::CompletableFuture<JRef<dyn Chunk>> {
         self.get_chunk_at_async_3_5(block.get_x() >> 4, block.get_z() >> 4, gen_)
     } // default, paper-api/src/main/java/org/bukkit/World.java:1534
-    fn get_chunk_at_async_2_7(&self, x: i32, z: i32) -> CompletableFuture<JRef<dyn Chunk>> {
+    fn get_chunk_at_async_2_7(&self, x: i32, z: i32) -> crate::rt::CompletableFuture<JRef<dyn Chunk>> {
         self.get_chunk_at_async_3_5(x, z, true)
     } // default, paper-api/src/main/java/org/bukkit/World.java:1555
     fn get_chunk_at_async_3(&self, x: i32, z: i32, cb: JRef<dyn WorldChunkLoadCallback>) {
         self.get_chunk_at_async_3_2(x, z, chunk_load_callback_as_consumer(cb))
     } // default, paper-api/src/main/java/org/bukkit/World.java:1230
-    fn get_chunk_at_async_3_2(&self, x: i32, z: i32, cb: JRef<dyn Consumer<JObjectRef>>) {
+    fn get_chunk_at_async_3_2(&self, x: i32, z: i32, cb: Arc<dyn Fn(JObjectRef) + Send + Sync>) {
         self.get_chunk_at_async_4(x, z, true, cb)
     } // default, paper-api/src/main/java/org/bukkit/World.java:1299
-    fn get_chunk_at_async_3_3(&self, loc: JRef<Location>, gen_: bool, cb: JRef<dyn Consumer<JObjectRef>>) {
+    fn get_chunk_at_async_3_3(&self, loc: JRef<Location>, gen_: bool, cb: Arc<dyn Fn(JObjectRef) + Send + Sync>) {
         self.get_chunk_at_async_4((loc.get_x().floor() as i32) >> 4, (loc.get_z().floor() as i32) >> 4, gen_, cb)
     } // default, paper-api/src/main/java/org/bukkit/World.java:1413
-    fn get_chunk_at_async_3_4(&self, block: JRef<dyn Block>, gen_: bool, cb: JRef<dyn Consumer<JObjectRef>>) {
+    fn get_chunk_at_async_3_4(&self, block: JRef<dyn Block>, gen_: bool, cb: Arc<dyn Fn(JObjectRef) + Send + Sync>) {
         self.get_chunk_at_async_4(block.get_x() >> 4, block.get_z() >> 4, gen_, cb)
     } // default, paper-api/src/main/java/org/bukkit/World.java:1456
-    fn get_chunk_at_async_3_5(&self, x: i32, z: i32, gen_: bool) -> CompletableFuture<JRef<dyn Chunk>> {
+    fn get_chunk_at_async_3_5(&self, x: i32, z: i32, gen_: bool) -> crate::rt::CompletableFuture<JRef<dyn Chunk>> {
         self.get_chunk_at_async_4_2(x, z, gen_, false)
     } // default, paper-api/src/main/java/org/bukkit/World.java:1577
-    fn get_chunk_at_async_4(&self, x: i32, z: i32, gen_: bool, cb: JRef<dyn Consumer<JObjectRef>>) {
+    fn get_chunk_at_async_4(&self, x: i32, z: i32, gen_: bool, cb: Arc<dyn Fn(JObjectRef) + Send + Sync>) {
         self.get_chunk_at_async_5(x, z, gen_, false, cb)
     } // default, paper-api/src/main/java/org/bukkit/World.java:1322
-    fn get_chunk_at_async_4_2(&self, x: i32, z: i32, gen_: bool, urgent: bool) -> CompletableFuture<JRef<dyn Chunk>> {
-        let ret: CompletableFuture<JRef<dyn Chunk>> = CompletableFuture::new();
+    fn get_chunk_at_async_4_2(&self, x: i32, z: i32, gen_: bool, urgent: bool) -> crate::rt::CompletableFuture<JRef<dyn Chunk>> {
+        let ret: crate::rt::CompletableFuture<JRef<dyn Chunk>> = CompletableFuture::new();
         let complete = ret.clone();
         // ret::complete
         self.get_chunk_at_async_5(
@@ -301,21 +295,21 @@ pub trait World: RegionAccessor + WorldInfo + PluginMessageRecipient + Metadatab
         );
         ret
     } // default, paper-api/src/main/java/org/bukkit/World.java:1700
-    fn get_chunk_at_async_5(&self, x: i32, z: i32, gen_: bool, urgent: bool, cb: JRef<dyn Consumer<JObjectRef>>); // paper-api/src/main/java/org/bukkit/World.java:1346
-    fn get_chunks_at_async(&self, min_x: i32, min_z: i32, max_x: i32, max_z: i32, urgent: bool, cb: JRef<dyn Runnable>); // paper-api/src/main/java/org/bukkit/World.java:1371
-    fn get_chunk_at_async_urgently(&self, loc: JRef<Location>) -> CompletableFuture<JRef<dyn Chunk>> {
+    fn get_chunk_at_async_5(&self, x: i32, z: i32, gen_: bool, urgent: bool, cb: Arc<dyn Fn(JObjectRef) + Send + Sync>); // paper-api/src/main/java/org/bukkit/World.java:1346
+    fn get_chunks_at_async(&self, min_x: i32, min_z: i32, max_x: i32, max_z: i32, urgent: bool, cb: Arc<dyn Fn() + Send + Sync>); // paper-api/src/main/java/org/bukkit/World.java:1371
+    fn get_chunk_at_async_urgently(&self, loc: JRef<Location>) -> crate::rt::CompletableFuture<JRef<dyn Chunk>> {
         self.get_chunk_at_async_4_2((loc.get_x().floor() as i32) >> 4, (loc.get_z().floor() as i32) >> 4, true, true)
     } // default, paper-api/src/main/java/org/bukkit/World.java:1596
-    fn get_chunk_at_async_urgently_1(&self, block: JRef<dyn Block>) -> CompletableFuture<JRef<dyn Chunk>> {
+    fn get_chunk_at_async_urgently_1(&self, block: JRef<dyn Block>) -> crate::rt::CompletableFuture<JRef<dyn Chunk>> {
         self.get_chunk_at_async_4_2(block.get_x() >> 4, block.get_z() >> 4, true, true)
     } // default, paper-api/src/main/java/org/bukkit/World.java:1635
-    fn get_chunk_at_async_urgently_2(&self, loc: JRef<Location>, gen_: bool) -> CompletableFuture<JRef<dyn Chunk>> {
+    fn get_chunk_at_async_urgently_2(&self, loc: JRef<Location>, gen_: bool) -> crate::rt::CompletableFuture<JRef<dyn Chunk>> {
         self.get_chunk_at_async_4_2((loc.get_x().floor() as i32) >> 4, (loc.get_z().floor() as i32) >> 4, gen_, true)
     } // default, paper-api/src/main/java/org/bukkit/World.java:1616
-    fn get_chunk_at_async_urgently_2_2(&self, block: JRef<dyn Block>, gen_: bool) -> CompletableFuture<JRef<dyn Chunk>> {
+    fn get_chunk_at_async_urgently_2_2(&self, block: JRef<dyn Block>, gen_: bool) -> crate::rt::CompletableFuture<JRef<dyn Chunk>> {
         self.get_chunk_at_async_4_2(block.get_x() >> 4, block.get_z() >> 4, gen_, true)
     } // default, paper-api/src/main/java/org/bukkit/World.java:1655
-    fn get_chunk_at_async_urgently_2_3(&self, x: i32, z: i32) -> CompletableFuture<JRef<dyn Chunk>> {
+    fn get_chunk_at_async_urgently_2_3(&self, x: i32, z: i32) -> crate::rt::CompletableFuture<JRef<dyn Chunk>> {
         self.get_chunk_at_async_4_2(x, z, true, true)
     } // default, paper-api/src/main/java/org/bukkit/World.java:1676
     fn get_players(&self) -> Vec<JRef<dyn Player>>; // paper-api/src/main/java/org/bukkit/World.java:1712
@@ -325,11 +319,11 @@ pub trait World: RegionAccessor + WorldInfo + PluginMessageRecipient + Metadatab
     fn get_nearby_entities(&self, bounding_box: JRef<BoundingBox>) -> Vec<JRef<dyn Entity>> {
         self.get_nearby_entities_2(bounding_box, None)
     } // default, paper-api/src/main/java/org/bukkit/World.java:1785
-    fn get_nearby_entities_2(&self, bounding_box: JRef<BoundingBox>, filter: Option<JRef<dyn Predicate<JObjectRef>>>) -> Vec<JRef<dyn Entity>>; // paper-api/src/main/java/org/bukkit/World.java:1803
+    fn get_nearby_entities_2(&self, bounding_box: JRef<BoundingBox>, filter: Option<Arc<dyn Fn(JObjectRef) -> bool + Send + Sync>>) -> Vec<JRef<dyn Entity>>; // paper-api/src/main/java/org/bukkit/World.java:1803
     fn get_nearby_entities_4(&self, location: JRef<Location>, x: f64, y: f64, z: f64) -> Vec<JRef<dyn Entity>> {
         self.get_nearby_entities_5(location, x, y, z, None)
     } // default, paper-api/src/main/java/org/bukkit/World.java:1738
-    fn get_nearby_entities_5(&self, location: JRef<Location>, x: f64, y: f64, z: f64, filter: Option<JRef<dyn Predicate<JObjectRef>>>) -> Vec<JRef<dyn Entity>>; // paper-api/src/main/java/org/bukkit/World.java:1771
+    fn get_nearby_entities_5(&self, location: JRef<Location>, x: f64, y: f64, z: f64, filter: Option<Arc<dyn Fn(JObjectRef) -> bool + Send + Sync>>) -> Vec<JRef<dyn Entity>>; // paper-api/src/main/java/org/bukkit/World.java:1771
     fn get_entity(&self, uuid: Uuid) -> Option<JRef<dyn Entity>>; // paper-api/src/main/java/org/bukkit/World.java:1750
     fn ray_trace_entities(&self, start: JRef<Location>, direction: JRef<dyn VectorTrait>, max_distance: f64) -> Option<JRef<RayTraceResult>> {
         self.ray_trace_entities_4_2(start, direction, max_distance, None)
@@ -337,13 +331,13 @@ pub trait World: RegionAccessor + WorldInfo + PluginMessageRecipient + Metadatab
     fn ray_trace_entities_4(&self, start: JRef<Location>, direction: JRef<dyn VectorTrait>, max_distance: f64, ray_size: f64) -> Option<JRef<RayTraceResult>> {
         self.ray_trace_entities_5(start, direction, max_distance, ray_size, None)
     } // default, paper-api/src/main/java/org/bukkit/World.java:1844
-    fn ray_trace_entities_4_2(&self, start: JRef<Location>, direction: JRef<dyn VectorTrait>, max_distance: f64, filter: Option<JRef<dyn Predicate<JObjectRef>>>) -> Option<JRef<RayTraceResult>> {
+    fn ray_trace_entities_4_2(&self, start: JRef<Location>, direction: JRef<dyn VectorTrait>, max_distance: f64, filter: Option<Arc<dyn Fn(JObjectRef) -> bool + Send + Sync>>) -> Option<JRef<RayTraceResult>> {
         self.ray_trace_entities_5(start, direction, max_distance, 0.0, filter)
     } // default, paper-api/src/main/java/org/bukkit/World.java:1868
-    fn ray_trace_entities_5(&self, start: JRef<Location>, direction: JRef<dyn VectorTrait>, max_distance: f64, ray_size: f64, filter: Option<JRef<dyn Predicate<JObjectRef>>>) -> Option<JRef<RayTraceResult>> {
+    fn ray_trace_entities_5(&self, start: JRef<Location>, direction: JRef<dyn VectorTrait>, max_distance: f64, ray_size: f64, filter: Option<Arc<dyn Fn(JObjectRef) -> bool + Send + Sync>>) -> Option<JRef<RayTraceResult>> {
         self.ray_trace_entities_5_2(start, direction, max_distance, ray_size, filter)
     } // default, paper-api/src/main/java/org/bukkit/World.java:1890
-    fn ray_trace_entities_5_2(&self, start: JRef<dyn Position>, direction: JRef<dyn VectorTrait>, max_distance: f64, ray_size: f64, filter: Option<JRef<dyn Predicate<JObjectRef>>>) -> Option<JRef<RayTraceResult>>; // paper-api/src/main/java/org/bukkit/World.java:1913
+    fn ray_trace_entities_5_2(&self, start: JRef<dyn Position>, direction: JRef<dyn VectorTrait>, max_distance: f64, ray_size: f64, filter: Option<Arc<dyn Fn(JObjectRef) -> bool + Send + Sync>>) -> Option<JRef<RayTraceResult>>; // paper-api/src/main/java/org/bukkit/World.java:1913
     fn ray_trace_blocks(&self, start: JRef<Location>, direction: JRef<dyn VectorTrait>, max_distance: f64) -> Option<JRef<RayTraceResult>> {
         self.ray_trace_blocks_4(start, direction, max_distance, FluidCollisionMode::NEVER)
     } // default, paper-api/src/main/java/org/bukkit/World.java:1932
@@ -353,12 +347,12 @@ pub trait World: RegionAccessor + WorldInfo + PluginMessageRecipient + Metadatab
     fn ray_trace_blocks_5(&self, start: JRef<Location>, direction: JRef<dyn VectorTrait>, max_distance: f64, fluid_collision_mode: FluidCollisionMode, ignore_passable_blocks: bool) -> Option<JRef<RayTraceResult>> {
         self.ray_trace_blocks_6(start, direction, max_distance, fluid_collision_mode, ignore_passable_blocks, None)
     } // default, paper-api/src/main/java/org/bukkit/World.java:1973
-    fn ray_trace_blocks_6(&self, start: JRef<dyn Position>, direction: JRef<dyn VectorTrait>, max_distance: f64, fluid_collision_mode: FluidCollisionMode, ignore_passable_blocks: bool, can_collide: Option<JRef<dyn Predicate<JObjectRef>>>) -> Option<JRef<RayTraceResult>>; // paper-api/src/main/java/org/bukkit/World.java:1995
-    fn ray_trace(&self, builder_consumer: JRef<dyn Consumer<JRef<dyn PositionedRayTraceConfigurationBuilder>>>) -> Option<JRef<RayTraceResult>>; // paper-api/src/main/java/org/bukkit/World.java:2064
-    fn ray_trace_7(&self, start: JRef<Location>, direction: JRef<dyn VectorTrait>, max_distance: f64, fluid_collision_mode: FluidCollisionMode, ignore_passable_blocks: bool, ray_size: f64, filter: Option<JRef<dyn Predicate<JObjectRef>>>) -> Option<JRef<RayTraceResult>> {
+    fn ray_trace_blocks_6(&self, start: JRef<dyn Position>, direction: JRef<dyn VectorTrait>, max_distance: f64, fluid_collision_mode: FluidCollisionMode, ignore_passable_blocks: bool, can_collide: Option<Arc<dyn Fn(JObjectRef) -> bool + Send + Sync>>) -> Option<JRef<RayTraceResult>>; // paper-api/src/main/java/org/bukkit/World.java:1995
+    fn ray_trace(&self, builder_consumer: Arc<dyn Fn(JRef<dyn PositionedRayTraceConfigurationBuilder>) + Send + Sync>) -> Option<JRef<RayTraceResult>>; // paper-api/src/main/java/org/bukkit/World.java:2064
+    fn ray_trace_7(&self, start: JRef<Location>, direction: JRef<dyn VectorTrait>, max_distance: f64, fluid_collision_mode: FluidCollisionMode, ignore_passable_blocks: bool, ray_size: f64, filter: Option<Arc<dyn Fn(JObjectRef) -> bool + Send + Sync>>) -> Option<JRef<RayTraceResult>> {
         self.ray_trace_8(start, direction, max_distance, fluid_collision_mode, ignore_passable_blocks, ray_size, filter, None)
     } // default, paper-api/src/main/java/org/bukkit/World.java:2020
-    fn ray_trace_8(&self, start: JRef<dyn Position>, direction: JRef<dyn VectorTrait>, max_distance: f64, fluid_collision_mode: FluidCollisionMode, ignore_passable_blocks: bool, ray_size: f64, filter: Option<JRef<dyn Predicate<JObjectRef>>>, can_collide: Option<JRef<dyn Predicate<JObjectRef>>>) -> Option<JRef<RayTraceResult>>; // paper-api/src/main/java/org/bukkit/World.java:2050
+    fn ray_trace_8(&self, start: JRef<dyn Position>, direction: JRef<dyn VectorTrait>, max_distance: f64, fluid_collision_mode: FluidCollisionMode, ignore_passable_blocks: bool, ray_size: f64, filter: Option<Arc<dyn Fn(JObjectRef) -> bool + Send + Sync>>, can_collide: Option<Arc<dyn Fn(JObjectRef) -> bool + Send + Sync>>) -> Option<JRef<RayTraceResult>>; // paper-api/src/main/java/org/bukkit/World.java:2050
     fn get_spawn_location(&self) -> JRef<Location>; // paper-api/src/main/java/org/bukkit/World.java:2072
     fn set_spawn_location(&self, location: JRef<Location>) -> bool; // paper-api/src/main/java/org/bukkit/World.java:2084
     fn set_spawn_location_3(&self, x: i32, y: i32, z: i32) -> bool {
@@ -433,10 +427,10 @@ pub trait World: RegionAccessor + WorldInfo + PluginMessageRecipient + Metadatab
     } // default, paper-api/src/main/java/org/bukkit/World.java:2526
     fn save_1(&self, flush: bool); // paper-api/src/main/java/org/bukkit/World.java:2534
     fn get_populators(&self) -> Vec<JRef<dyn BlockPopulatorTrait>>; // paper-api/src/main/java/org/bukkit/World.java:2541
-    fn spawn_5<T: JGeneric>(&self, location: JRef<Location>, clazz: Class, spawn_reason: CreatureSpawnEventSpawnReason, randomize_data: bool, function: Option<JRef<dyn Consumer<JObjectRef>>>) -> Result<T, Throwable> where Self: Sized; // paper-api/src/main/java/org/bukkit/World.java:2580
-    fn spawn_falling_block(&self, location: JRef<Location>, data: JRef<dyn MaterialDataTrait>) -> Result<JRef<dyn FallingBlock>, Throwable>; // paper-api/src/main/java/org/bukkit/World.java:2598
-    fn spawn_falling_block_2(&self, location: JRef<Location>, data: JRef<dyn BlockData>) -> Result<JRef<dyn FallingBlock>, Throwable>; // paper-api/src/main/java/org/bukkit/World.java:2614
-    fn spawn_falling_block_3(&self, location: JRef<Location>, material: Material, data: i8) -> Result<JRef<dyn FallingBlock>, Throwable>; // paper-api/src/main/java/org/bukkit/World.java:2634
+    fn spawn_5<T: JGeneric>(&self, location: JRef<Location>, clazz: crate::rt::Class, spawn_reason: CreatureSpawnEventSpawnReason, randomize_data: bool, function: Option<Arc<dyn Fn(JObjectRef) + Send + Sync>>) -> Result<T, anyhow::Error> where Self: Sized; // paper-api/src/main/java/org/bukkit/World.java:2580
+    fn spawn_falling_block(&self, location: JRef<Location>, data: JRef<dyn MaterialDataTrait>) -> Result<JRef<dyn FallingBlock>, anyhow::Error>; // paper-api/src/main/java/org/bukkit/World.java:2598
+    fn spawn_falling_block_2(&self, location: JRef<Location>, data: JRef<dyn BlockData>) -> Result<JRef<dyn FallingBlock>, anyhow::Error>; // paper-api/src/main/java/org/bukkit/World.java:2614
+    fn spawn_falling_block_3(&self, location: JRef<Location>, material: Material, data: i8) -> Result<JRef<dyn FallingBlock>, anyhow::Error>; // paper-api/src/main/java/org/bukkit/World.java:2634
     fn play_effect(&self, location: JRef<Location>, effect: Effect, data: i32) {
         self.play_effect_4(location, effect, data, 64);
     } // default, paper-api/src/main/java/org/bukkit/World.java:2647
@@ -677,10 +671,10 @@ pub trait World: RegionAccessor + WorldInfo + PluginMessageRecipient + Metadatab
         self.locate_nearest_poi_4(origin, poi_type, radius, crate::io::papermc::paper::entity::poi::poi_type::OCCUPANCY_ANY.clone())
     } // default, paper-api/src/main/java/org/bukkit/World.java:4420
     fn locate_nearest_poi_4(&self, origin: JRef<Location>, poi_type: JRef<dyn PoiType>, radius: i32, occupancy: JRef<dyn PoiTypeOccupancy>) -> Option<JRef<Location>>; // paper-api/src/main/java/org/bukkit/World.java:4438
-    fn locate_all_poi_in_range(&self, origin: JRef<Location>, poi_type_predicate: JRef<dyn Predicate<JRef<dyn PoiType>>>, radius: i32) -> Vec<JRef<dyn PoiSearchResult>> {
+    fn locate_all_poi_in_range(&self, origin: JRef<Location>, poi_type_predicate: Arc<dyn Fn(JRef<dyn PoiType>) -> bool + Send + Sync>, radius: i32) -> Vec<JRef<dyn PoiSearchResult>> {
         self.locate_all_poi_in_range_4(origin, poi_type_predicate, radius, crate::io::papermc::paper::entity::poi::poi_type::OCCUPANCY_ANY.clone())
     } // default, paper-api/src/main/java/org/bukkit/World.java:4451
-    fn locate_all_poi_in_range_4(&self, origin: JRef<Location>, poi_type_predicate: JRef<dyn Predicate<JRef<dyn PoiType>>>, radius: i32, occupancy: JRef<dyn PoiTypeOccupancy>) -> Vec<JRef<dyn PoiSearchResult>>; // paper-api/src/main/java/org/bukkit/World.java:4471
+    fn locate_all_poi_in_range_4(&self, origin: JRef<Location>, poi_type_predicate: Arc<dyn Fn(JRef<dyn PoiType>) -> bool + Send + Sync>, radius: i32, occupancy: JRef<dyn PoiTypeOccupancy>) -> Vec<JRef<dyn PoiSearchResult>>; // paper-api/src/main/java/org/bukkit/World.java:4471
     fn get_coordinate_scale(&self) -> f64; // paper-api/src/main/java/org/bukkit/World.java:4479
     fn is_fixed_time(&self) -> bool; // paper-api/src/main/java/org/bukkit/World.java:4486
     fn get_infiniburn(&self) -> Vec<Material>; // paper-api/src/main/java/org/bukkit/World.java:4493
@@ -717,18 +711,18 @@ pub trait World: RegionAccessor + WorldInfo + PluginMessageRecipient + Metadatab
         0.0
     } // default, paper-api/src/main/java/org/bukkit/World.java:4851
 }
-/// `World.getNearbyEntitiesByType(Class, Location, double, double, double, Predicate)`'s default body, as a
+/// `World.getNearbyEntitiesByType(crate::rt::Class, Location, double, double, double, Arc<dyn Fn(JObjectRef) -> bool + Send + Sync>)`'s default body, as a
 /// function so the non-generic defaults (`getNearbyLivingEntities`, `getNearbyPlayers`) can run it on a
 /// `dyn World`. `clazz.isInstance(entity)` and the `(T)` cast are one checked cast to `T`; Java's unchecked
 /// cast with a null `clazz` keeps every entity, which here are the ones `T` can hold.
 fn get_nearby_entities_by_type_impl<T: JGeneric, W: World + ?Sized>(
     world: &W,
-    clazz: Option<Class>,
+    clazz: Option<crate::rt::Class>,
     loc: JRef<Location>,
     x_radius: f64,
     y_radius: f64,
     z_radius: f64,
-    predicate: Option<JRef<dyn Predicate<JObjectRef>>>,
+    predicate: Option<Arc<dyn Fn(JObjectRef) -> bool + Send + Sync>>,
 ) -> Vec<T> {
     let _ = clazz;
     let mut nearby: Vec<T> = Vec::new();
@@ -743,12 +737,12 @@ fn get_nearby_entities_by_type_impl<T: JGeneric, W: World + ?Sized>(
     }
     nearby
 } // paper-api/src/main/java/org/bukkit/World.java:1171
-/// `(java.util.function.Consumer<Chunk>) cb`: the callback as the `Consumer` the chunk loader takes.
-fn chunk_load_callback_as_consumer(cb: JRef<dyn WorldChunkLoadCallback>) -> JRef<dyn Consumer<JObjectRef>> {
+/// `(java.util.function.Arc<dyn Fn(Chunk) + Send + Sync>) cb`: the callback as the `Arc<dyn Fn(JObjectRef) + Send + Sync>` the chunk loader takes.
+fn chunk_load_callback_as_consumer(cb: JRef<dyn WorldChunkLoadCallback>) -> Arc<dyn Fn(JObjectRef) + Send + Sync> {
     Arc::new(move |chunk: JObjectRef| WorldChunkLoadCallback::accept(&*cb, cast::<dyn Chunk, _>(&chunk).expect("Chunk")))
 }
 // ---- interface org.bukkit.World.ChunkLoadCallback (paper-api/src/main/java/org/bukkit/World.java:1200)
-pub trait WorldChunkLoadCallback: Consumer<JRef<dyn Chunk>> {
+pub trait WorldChunkLoadCallback: JObject {
     fn on_load(&self, chunk: JRef<dyn Chunk>); // paper-api/src/main/java/org/bukkit/World.java:1202
     fn accept(&self, chunk: JRef<dyn Chunk>) {
         self.on_load(chunk);

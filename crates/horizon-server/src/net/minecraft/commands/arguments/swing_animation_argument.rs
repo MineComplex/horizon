@@ -6,8 +6,6 @@ use crate::com::mojang::brigadier::context::CommandContext;
 use crate::com::mojang::brigadier::exceptions::DynamicCommandExceptionType;
 use crate::com::mojang::brigadier::suggestion::Suggestions;
 use crate::com::mojang::brigadier::suggestion::SuggestionsBuilder;
-use crate::java::lang::Throwable;
-use crate::java::util::concurrent::CompletableFuture;
 use crate::net::minecraft::commands::command_source_stack::CommandSourceStack;
 use crate::net::minecraft::world::item::swing_animation_type::SwingAnimationType;
 
@@ -21,10 +19,10 @@ pub static ERROR_INVALID: LazyLock<DynamicCommandExceptionType> = LazyLock::new(
 impl SwingAnimationArgument {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/SwingAnimationArgument.java:20
-    pub fn parse(&self, reader: StringReader) -> Result<SwingAnimationType, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/SwingAnimationArgument.java:29
-    pub fn list_suggestions<S: JGeneric>(&self, context: CommandContext<S>, builder: SuggestionsBuilder) -> CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/SwingAnimationArgument.java:40
+    pub fn parse(&self, reader: StringReader) -> Result<SwingAnimationType, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/SwingAnimationArgument.java:29
+    pub fn list_suggestions<S: JGeneric>(&self, context: CommandContext<S>, builder: SuggestionsBuilder) -> crate::rt::CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/SwingAnimationArgument.java:40
     pub fn get_examples(&self) -> Vec<String> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/SwingAnimationArgument.java:47
     pub fn swing_animation_type() -> JRef<SwingAnimationArgument> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/SwingAnimationArgument.java:52
-    pub fn get_swing_animation_type(context: CommandContext<JRef<CommandSourceStack>>, name: &str) -> Result<SwingAnimationType, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/SwingAnimationArgument.java:56
+    pub fn get_swing_animation_type(context: CommandContext<JRef<CommandSourceStack>>, name: &str) -> Result<SwingAnimationType, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/SwingAnimationArgument.java:56
 }
 crate::jobject!(SwingAnimationArgument);

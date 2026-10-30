@@ -11,8 +11,6 @@ use crate::com::mojang::brigadier::suggestion::Suggestions;
 use crate::com::mojang::brigadier::suggestion::SuggestionsBuilder;
 use crate::com::mojang::serialization::Codec;
 use crate::com::mojang::serialization::DynamicOps;
-use crate::java::lang::Throwable;
-use crate::java::util::concurrent::CompletableFuture;
 use crate::net::minecraft::commands::command_build_context::CommandBuildContext;
 use crate::net::minecraft::commands::command_source_stack::CommandSourceStack;
 use crate::net::minecraft::core::holder::Holder;
@@ -42,7 +40,7 @@ pub struct ResourceOrIdArgument<T: JGeneric> {
 }
 pub trait ResourceOrIdArgumentTrait<T: JGeneric>: ArgumentType<JRef<dyn Holder<T>>> {
     fn as_resource_or_id_argument(&self) -> &ResourceOrIdArgument<T>;
-    fn parse(&self, reader: StringReader) -> Result<Option<JRef<dyn Holder<T>>>, Throwable>; // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/ResourceOrIdArgument.java:154
+    fn parse(&self, reader: StringReader) -> Result<Option<JRef<dyn Holder<T>>>, anyhow::Error>; // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/ResourceOrIdArgument.java:154
     fn get_examples(&self) -> Vec<String>; // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/ResourceOrIdArgument.java:171
 }
 impl<T: JGeneric> std::ops::Deref for dyn ResourceOrIdArgumentTrait<T> {
@@ -59,7 +57,7 @@ impl<T: JGeneric> ResourceOrIdArgument<T> {
     pub fn new(context: JRef<dyn CommandBuildContext>, registry_key: JRef<ResourceKey<JRef<dyn Registry<T>>>>, codec: JRef<dyn Codec<T>>) -> JRef<Self> { Arc::new_cyclic(|this| Self::new_base(this, context, registry_key, codec)) }
     pub fn create_grammar<T: JGeneric, O: JGeneric>(registry_key: JRef<ResourceKey<JRef<dyn Registry<T>>>>, ops: JRef<dyn DynamicOps<O>>) -> Grammar<JRef<dyn ResourceOrIdArgumentResult<T, O>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/ResourceOrIdArgument.java:72
     pub fn loot_table(context: JRef<dyn CommandBuildContext>) -> JRef<ResourceOrIdArgumentLootTableArgument> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/ResourceOrIdArgument.java:94
-    pub fn get_loot_table(context: CommandContext<JRef<CommandSourceStack>>, name: &str) -> Result<JRef<dyn Holder<JRef<LootTable>>>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/ResourceOrIdArgument.java:98
+    pub fn get_loot_table(context: CommandContext<JRef<CommandSourceStack>>, name: &str) -> Result<JRef<dyn Holder<JRef<LootTable>>>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/ResourceOrIdArgument.java:98
     pub fn loot_modifier(context: JRef<dyn CommandBuildContext>) -> JRef<ResourceOrIdArgumentLootModifierArgument> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/ResourceOrIdArgument.java:102
     pub fn get_loot_modifier(context: CommandContext<JRef<CommandSourceStack>>, name: &str) -> JRef<dyn Holder<JRef<dyn LootItemFunction>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/ResourceOrIdArgument.java:106
     pub fn loot_predicate(context: JRef<dyn CommandBuildContext>) -> JRef<ResourceOrIdArgumentLootPredicateArgument> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/ResourceOrIdArgument.java:110
@@ -69,20 +67,20 @@ impl<T: JGeneric> ResourceOrIdArgument<T> {
     pub fn int_provider(context: JRef<dyn CommandBuildContext>) -> JRef<ResourceOrIdArgumentContextIntProviderArgument> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/ResourceOrIdArgument.java:126
     pub fn get_int_provider(context: CommandContext<JRef<CommandSourceStack>>, name: &str) -> JRef<dyn Holder<JRef<dyn ContextIntProvider>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/ResourceOrIdArgument.java:130
     pub fn feature(context: JRef<dyn CommandBuildContext>) -> JRef<ResourceOrIdArgumentFeatureArgument> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/ResourceOrIdArgument.java:134
-    pub fn get_feature(context: CommandContext<JRef<CommandSourceStack>>, name: &str) -> Result<JRef<dyn Holder<JRef<dyn Feature>>>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/ResourceOrIdArgument.java:138
+    pub fn get_feature(context: CommandContext<JRef<CommandSourceStack>>, name: &str) -> Result<JRef<dyn Holder<JRef<dyn Feature>>>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/ResourceOrIdArgument.java:138
     pub fn dialog(context: JRef<dyn CommandBuildContext>) -> JRef<ResourceOrIdArgumentDialogArgument> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/ResourceOrIdArgument.java:142
     pub fn get_dialog(context: CommandContext<JRef<CommandSourceStack>>, name: &str) -> JRef<dyn Holder<JRef<dyn Dialog>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/ResourceOrIdArgument.java:146
     pub fn get_resource<T: JGeneric>(context: CommandContext<JRef<CommandSourceStack>>, name: &str) -> JRef<dyn Holder<T>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/ResourceOrIdArgument.java:150
-    pub fn parse(&self, reader: StringReader) -> Result<Option<JRef<dyn Holder<T>>>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/ResourceOrIdArgument.java:154
-    pub fn parse_3<O: JGeneric>(&self, reader: StringReader, grammar: Grammar<JRef<dyn ResourceOrIdArgumentResult<T, O>>>, ops: JRef<dyn DynamicOps<O>>) -> Result<JRef<dyn Holder<T>>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/ResourceOrIdArgument.java:159
-    pub fn list_suggestions<S: JGeneric>(&self, context: CommandContext<S>, builder: SuggestionsBuilder) -> CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/ResourceOrIdArgument.java:166
+    pub fn parse(&self, reader: StringReader) -> Result<Option<JRef<dyn Holder<T>>>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/ResourceOrIdArgument.java:154
+    pub fn parse_3<O: JGeneric>(&self, reader: StringReader, grammar: Grammar<JRef<dyn ResourceOrIdArgumentResult<T, O>>>, ops: JRef<dyn DynamicOps<O>>) -> Result<JRef<dyn Holder<T>>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/ResourceOrIdArgument.java:159
+    pub fn list_suggestions<S: JGeneric>(&self, context: CommandContext<S>, builder: SuggestionsBuilder) -> crate::rt::CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/ResourceOrIdArgument.java:166
     pub fn get_examples(&self) -> Vec<String> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/ResourceOrIdArgument.java:171
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl<T: JGeneric> ResourceOrIdArgumentTrait<JObjectRef> for ResourceOrIdArgument<T> {
     fn as_resource_or_id_argument(&self) -> &ResourceOrIdArgument<JObjectRef> { self }
-    fn parse(&self, reader: StringReader) -> Result<Option<JRef<dyn Holder<T>>>, Throwable> { ResourceOrIdArgument::parse(self, reader) }
+    fn parse(&self, reader: StringReader) -> Result<Option<JRef<dyn Holder<T>>>, anyhow::Error> { ResourceOrIdArgument::parse(self, reader) }
     fn get_examples(&self) -> Vec<String> { ResourceOrIdArgument::get_examples(self) }
 }
 // ---- class net.minecraft.commands.arguments.ResourceOrIdArgument.ContextFloatProviderArgument (leaf-server/src/minecraft/java/net/minecraft/commands/arguments/ResourceOrIdArgument.java:176)
@@ -102,7 +100,7 @@ impl ResourceOrIdArgumentContextFloatProviderArgument {
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl ResourceOrIdArgumentTrait<JObjectRef> for ResourceOrIdArgumentContextFloatProviderArgument {
     fn as_resource_or_id_argument(&self) -> &ResourceOrIdArgument<JObjectRef> { self }
-    fn parse(&self, reader: StringReader) -> Result<Option<JRef<dyn Holder<T>>>, Throwable> { ResourceOrIdArgument::parse(self, reader) }
+    fn parse(&self, reader: StringReader) -> Result<Option<JRef<dyn Holder<T>>>, anyhow::Error> { ResourceOrIdArgument::parse(self, reader) }
     fn get_examples(&self) -> Vec<String> { ResourceOrIdArgument::get_examples(self) }
 }
 crate::jobject!(ResourceOrIdArgumentContextFloatProviderArgument);
@@ -123,7 +121,7 @@ impl ResourceOrIdArgumentContextIntProviderArgument {
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl ResourceOrIdArgumentTrait<JObjectRef> for ResourceOrIdArgumentContextIntProviderArgument {
     fn as_resource_or_id_argument(&self) -> &ResourceOrIdArgument<JObjectRef> { self }
-    fn parse(&self, reader: StringReader) -> Result<Option<JRef<dyn Holder<T>>>, Throwable> { ResourceOrIdArgument::parse(self, reader) }
+    fn parse(&self, reader: StringReader) -> Result<Option<JRef<dyn Holder<T>>>, anyhow::Error> { ResourceOrIdArgument::parse(self, reader) }
     fn get_examples(&self) -> Vec<String> { ResourceOrIdArgument::get_examples(self) }
 }
 crate::jobject!(ResourceOrIdArgumentContextIntProviderArgument);
@@ -144,7 +142,7 @@ impl ResourceOrIdArgumentDialogArgument {
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl ResourceOrIdArgumentTrait<JObjectRef> for ResourceOrIdArgumentDialogArgument {
     fn as_resource_or_id_argument(&self) -> &ResourceOrIdArgument<JObjectRef> { self }
-    fn parse(&self, reader: StringReader) -> Result<Option<JRef<dyn Holder<T>>>, Throwable> { ResourceOrIdArgument::parse(self, reader) }
+    fn parse(&self, reader: StringReader) -> Result<Option<JRef<dyn Holder<T>>>, anyhow::Error> { ResourceOrIdArgument::parse(self, reader) }
     fn get_examples(&self) -> Vec<String> { ResourceOrIdArgument::get_examples(self) }
 }
 crate::jobject!(ResourceOrIdArgumentDialogArgument);
@@ -165,7 +163,7 @@ impl ResourceOrIdArgumentFeatureArgument {
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl ResourceOrIdArgumentTrait<JObjectRef> for ResourceOrIdArgumentFeatureArgument {
     fn as_resource_or_id_argument(&self) -> &ResourceOrIdArgument<JObjectRef> { self }
-    fn parse(&self, reader: StringReader) -> Result<Option<JRef<dyn Holder<T>>>, Throwable> { ResourceOrIdArgument::parse(self, reader) }
+    fn parse(&self, reader: StringReader) -> Result<Option<JRef<dyn Holder<T>>>, anyhow::Error> { ResourceOrIdArgument::parse(self, reader) }
     fn get_examples(&self) -> Vec<String> { ResourceOrIdArgument::get_examples(self) }
 }
 crate::jobject!(ResourceOrIdArgumentFeatureArgument);
@@ -178,12 +176,12 @@ pub struct ResourceOrIdArgumentInlineResult<T: JGeneric, O: JGeneric> {
 impl<T: JGeneric, O: JGeneric> ResourceOrIdArgumentInlineResult<T, O> {
     pub fn new() -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/ResourceOrIdArgument.java:200
     pub fn new_1(value: O) -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/ResourceOrIdArgument.java:200
-    pub fn parse(&self, reader: ImmutableStringReader, lookup: JRef<dyn HolderLookupProvider>, ops: JRef<dyn DynamicOps<O>>, codec: JRef<dyn Codec<T>>, element_lookup: JRef<dyn HolderLookupRegistryLookup<T>>) -> Result<JRef<dyn Holder<T>>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/ResourceOrIdArgument.java:201
+    pub fn parse(&self, reader: ImmutableStringReader, lookup: JRef<dyn HolderLookupProvider>, ops: JRef<dyn DynamicOps<O>>, codec: JRef<dyn Codec<T>>, element_lookup: JRef<dyn HolderLookupRegistryLookup<T>>) -> Result<JRef<dyn Holder<T>>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/ResourceOrIdArgument.java:201
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl<T: JGeneric, O: JGeneric> ResourceOrIdArgumentResult<T, O> for ResourceOrIdArgumentInlineResult<T, O> {
-    fn parse(&self, reader: ImmutableStringReader, lookup: JRef<dyn HolderLookupProvider>, ops: JRef<dyn DynamicOps<O>>, codec: JRef<dyn Codec<T>>, element_lookup: JRef<dyn HolderLookupRegistryLookup<T>>) -> Result<JRef<dyn Holder<T>>, Throwable> { ResourceOrIdArgumentInlineResult::parse(self, reader, lookup, ops, codec, element_lookup) }
+    fn parse(&self, reader: ImmutableStringReader, lookup: JRef<dyn HolderLookupProvider>, ops: JRef<dyn DynamicOps<O>>, codec: JRef<dyn Codec<T>>, element_lookup: JRef<dyn HolderLookupRegistryLookup<T>>) -> Result<JRef<dyn Holder<T>>, anyhow::Error> { ResourceOrIdArgumentInlineResult::parse(self, reader, lookup, ops, codec, element_lookup) }
 }
 // ---- class net.minecraft.commands.arguments.ResourceOrIdArgument.LootModifierArgument (leaf-server/src/minecraft/java/net/minecraft/commands/arguments/ResourceOrIdArgument.java:216)
 pub struct ResourceOrIdArgumentLootModifierArgument {
@@ -202,7 +200,7 @@ impl ResourceOrIdArgumentLootModifierArgument {
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl ResourceOrIdArgumentTrait<JObjectRef> for ResourceOrIdArgumentLootModifierArgument {
     fn as_resource_or_id_argument(&self) -> &ResourceOrIdArgument<JObjectRef> { self }
-    fn parse(&self, reader: StringReader) -> Result<Option<JRef<dyn Holder<T>>>, Throwable> { ResourceOrIdArgument::parse(self, reader) }
+    fn parse(&self, reader: StringReader) -> Result<Option<JRef<dyn Holder<T>>>, anyhow::Error> { ResourceOrIdArgument::parse(self, reader) }
     fn get_examples(&self) -> Vec<String> { ResourceOrIdArgument::get_examples(self) }
 }
 crate::jobject!(ResourceOrIdArgumentLootModifierArgument);
@@ -223,7 +221,7 @@ impl ResourceOrIdArgumentLootPredicateArgument {
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl ResourceOrIdArgumentTrait<JObjectRef> for ResourceOrIdArgumentLootPredicateArgument {
     fn as_resource_or_id_argument(&self) -> &ResourceOrIdArgument<JObjectRef> { self }
-    fn parse(&self, reader: StringReader) -> Result<Option<JRef<dyn Holder<T>>>, Throwable> { ResourceOrIdArgument::parse(self, reader) }
+    fn parse(&self, reader: StringReader) -> Result<Option<JRef<dyn Holder<T>>>, anyhow::Error> { ResourceOrIdArgument::parse(self, reader) }
     fn get_examples(&self) -> Vec<String> { ResourceOrIdArgument::get_examples(self) }
 }
 crate::jobject!(ResourceOrIdArgumentLootPredicateArgument);
@@ -244,7 +242,7 @@ impl ResourceOrIdArgumentLootTableArgument {
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl ResourceOrIdArgumentTrait<JObjectRef> for ResourceOrIdArgumentLootTableArgument {
     fn as_resource_or_id_argument(&self) -> &ResourceOrIdArgument<JObjectRef> { self }
-    fn parse(&self, reader: StringReader) -> Result<Option<JRef<dyn Holder<T>>>, Throwable> { ResourceOrIdArgument::parse(self, reader) }
+    fn parse(&self, reader: StringReader) -> Result<Option<JRef<dyn Holder<T>>>, anyhow::Error> { ResourceOrIdArgument::parse(self, reader) }
     fn get_examples(&self) -> Vec<String> { ResourceOrIdArgument::get_examples(self) }
 }
 crate::jobject!(ResourceOrIdArgumentLootTableArgument);
@@ -257,17 +255,17 @@ pub struct ResourceOrIdArgumentReferenceResult<T: JGeneric, O: JGeneric> {
 impl<T: JGeneric, O: JGeneric> ResourceOrIdArgumentReferenceResult<T, O> {
     pub fn new() -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/ResourceOrIdArgument.java:234
     pub fn new_1(key: JRef<ResourceKey<T>>) -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/ResourceOrIdArgument.java:234
-    pub fn parse(&self, reader: ImmutableStringReader, lookup: JRef<dyn HolderLookupProvider>, ops: JRef<dyn DynamicOps<O>>, codec: JRef<dyn Codec<T>>, element_lookup: JRef<dyn HolderLookupRegistryLookup<T>>) -> Result<JRef<dyn Holder<T>>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/ResourceOrIdArgument.java:235
+    pub fn parse(&self, reader: ImmutableStringReader, lookup: JRef<dyn HolderLookupProvider>, ops: JRef<dyn DynamicOps<O>>, codec: JRef<dyn Codec<T>>, element_lookup: JRef<dyn HolderLookupRegistryLookup<T>>) -> Result<JRef<dyn Holder<T>>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/ResourceOrIdArgument.java:235
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl<T: JGeneric, O: JGeneric> ResourceOrIdArgumentResult<T, O> for ResourceOrIdArgumentReferenceResult<T, O> {
-    fn parse(&self, reader: ImmutableStringReader, lookup: JRef<dyn HolderLookupProvider>, ops: JRef<dyn DynamicOps<O>>, codec: JRef<dyn Codec<T>>, element_lookup: JRef<dyn HolderLookupRegistryLookup<T>>) -> Result<JRef<dyn Holder<T>>, Throwable> { ResourceOrIdArgumentReferenceResult::parse(self, reader, lookup, ops, codec, element_lookup) }
+    fn parse(&self, reader: ImmutableStringReader, lookup: JRef<dyn HolderLookupProvider>, ops: JRef<dyn DynamicOps<O>>, codec: JRef<dyn Codec<T>>, element_lookup: JRef<dyn HolderLookupRegistryLookup<T>>) -> Result<JRef<dyn Holder<T>>, anyhow::Error> { ResourceOrIdArgumentReferenceResult::parse(self, reader, lookup, ops, codec, element_lookup) }
 }
 // ---- interface net.minecraft.commands.arguments.ResourceOrIdArgument.Result (leaf-server/src/minecraft/java/net/minecraft/commands/arguments/ResourceOrIdArgument.java:248)
 pub trait ResourceOrIdArgumentResult<T: JGeneric, O: JGeneric>: Send + Sync + 'static {
-    fn parse(&self, reader: ImmutableStringReader, lookup: JRef<dyn HolderLookupProvider>, ops: JRef<dyn DynamicOps<O>>, codec: JRef<dyn Codec<T>>, element_lookup: JRef<dyn HolderLookupRegistryLookup<T>>) -> Result<JRef<dyn Holder<T>>, Throwable>; // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/ResourceOrIdArgument.java:249
+    fn parse(&self, reader: ImmutableStringReader, lookup: JRef<dyn HolderLookupProvider>, ops: JRef<dyn DynamicOps<O>>, codec: JRef<dyn Codec<T>>, element_lookup: JRef<dyn HolderLookupRegistryLookup<T>>) -> Result<JRef<dyn Holder<T>>, anyhow::Error>; // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/ResourceOrIdArgument.java:249
 }
-impl<T: JGeneric, O: JGeneric, F: Fn(ImmutableStringReader, JRef<dyn HolderLookupProvider>, JRef<dyn DynamicOps<O>>, JRef<dyn Codec<T>>, JRef<dyn HolderLookupRegistryLookup<T>>) -> Result<JRef<dyn Holder<T>>, Throwable> + Send + Sync + 'static> ResourceOrIdArgumentResult<T, O> for F {
-    fn parse(&self, reader: ImmutableStringReader, lookup: JRef<dyn HolderLookupProvider>, ops: JRef<dyn DynamicOps<O>>, codec: JRef<dyn Codec<T>>, element_lookup: JRef<dyn HolderLookupRegistryLookup<T>>) -> Result<JRef<dyn Holder<T>>, Throwable> { self(reader, lookup, ops, codec, element_lookup) }
+impl<T: JGeneric, O: JGeneric, F: Fn(ImmutableStringReader, JRef<dyn HolderLookupProvider>, JRef<dyn DynamicOps<O>>, JRef<dyn Codec<T>>, JRef<dyn HolderLookupRegistryLookup<T>>) -> Result<JRef<dyn Holder<T>>, anyhow::Error> + Send + Sync + 'static> ResourceOrIdArgumentResult<T, O> for F {
+    fn parse(&self, reader: ImmutableStringReader, lookup: JRef<dyn HolderLookupProvider>, ops: JRef<dyn DynamicOps<O>>, codec: JRef<dyn Codec<T>>, element_lookup: JRef<dyn HolderLookupRegistryLookup<T>>) -> Result<JRef<dyn Holder<T>>, anyhow::Error> { self(reader, lookup, ops, codec, element_lookup) }
 }

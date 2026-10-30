@@ -7,8 +7,6 @@ use crate::io::papermc::paper::plugin::entrypoint::classloader::group::simple_li
 use crate::io::papermc::paper::plugin::provider::classloader::class_loader_access::ClassLoaderAccess;
 use crate::io::papermc::paper::plugin::provider::classloader::configured_plugin_class_loader::ConfiguredPluginClassLoader;
 use crate::io::papermc::paper::plugin::provider::classloader::plugin_class_loader_group::PluginClassLoaderGroup;
-use crate::java::lang::Class;
-use crate::java::lang::Throwable;
 
 // ---- class io.papermc.paper.plugin.entrypoint.classloader.group.DependencyBasedPluginClassLoaderGroup (paper-server/src/main/java/io/papermc/paper/plugin/entrypoint/classloader/group/DependencyBasedPluginClassLoaderGroup.java:9)
 pub struct DependencyBasedPluginClassLoaderGroup {
@@ -32,12 +30,12 @@ impl DependencyBasedPluginClassLoaderGroup {
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl SimpleListPluginClassLoaderGroupTrait for DependencyBasedPluginClassLoaderGroup {
     fn as_simple_list_plugin_class_loader_group(&self) -> &SimpleListPluginClassLoaderGroup { self }
-    fn lookup_class(&self, name: &str, resolve: bool, current: JRef<dyn ConfiguredPluginClassLoader>) -> Result<Class, Throwable> { SimpleListPluginClassLoaderGroup::lookup_class(self, name, resolve, current) }
+    fn lookup_class(&self, name: &str, resolve: bool, current: JRef<dyn ConfiguredPluginClassLoader>) -> Result<crate::rt::Class, anyhow::Error> { SimpleListPluginClassLoaderGroup::lookup_class(self, name, resolve, current) }
     fn get_class_loaders(&self) -> Vec<JRef<dyn ConfiguredPluginClassLoader>> { SimpleListPluginClassLoaderGroup::get_class_loaders(self) }
     fn to_string(&self) -> String { DependencyBasedPluginClassLoaderGroup::to_string(self) }
 }
 impl PluginClassLoaderGroup for DependencyBasedPluginClassLoaderGroup {
-    fn get_class_by_name(&self, name: &str, resolve: bool, requester: JRef<dyn ConfiguredPluginClassLoader>) -> Option<Class> { SimpleListPluginClassLoaderGroup::get_class_by_name(self, name, resolve, requester) }
+    fn get_class_by_name(&self, name: &str, resolve: bool, requester: JRef<dyn ConfiguredPluginClassLoader>) -> Option<crate::rt::Class> { SimpleListPluginClassLoaderGroup::get_class_by_name(self, name, resolve, requester) }
     fn remove(&self, configured_plugin_class_loader: JRef<dyn ConfiguredPluginClassLoader>) { SimpleListPluginClassLoaderGroup::remove(self, configured_plugin_class_loader) }
     fn add(&self, configured_plugin_class_loader: JRef<dyn ConfiguredPluginClassLoader>) { SimpleListPluginClassLoaderGroup::add(self, configured_plugin_class_loader) }
     fn get_access(&self) -> JRef<dyn ClassLoaderAccess> { DependencyBasedPluginClassLoaderGroup::get_access(self) }

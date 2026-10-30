@@ -3,8 +3,6 @@
 use crate::prelude::*;
 use crate::io::papermc::paper::threadedregions::scheduler::region_scheduler::RegionScheduler;
 use crate::io::papermc::paper::threadedregions::scheduler::scheduled_task::ScheduledTask;
-use crate::java::lang::Runnable;
-use crate::java::util::function::Consumer;
 use crate::org::bukkit::plugin::plugin::Plugin;
 use crate::org::bukkit::world::World;
 
@@ -15,17 +13,17 @@ pub struct FallbackRegionScheduler {
 impl FallbackRegionScheduler {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/threadedregions/scheduler/FallbackRegionScheduler.java:9
-    pub fn execute_5(&self, plugin: JRef<dyn Plugin>, world: JRef<dyn World>, chunk_x: i32, chunk_z: i32, run: JRef<dyn Runnable>) { todo!() } // paper-server/src/main/java/io/papermc/paper/threadedregions/scheduler/FallbackRegionScheduler.java:11
-    pub fn run_5(&self, plugin: JRef<dyn Plugin>, world: JRef<dyn World>, chunk_x: i32, chunk_z: i32, task: JRef<dyn Consumer<JRef<dyn ScheduledTask>>>) -> JRef<dyn ScheduledTask> { todo!() } // paper-server/src/main/java/io/papermc/paper/threadedregions/scheduler/FallbackRegionScheduler.java:16
-    pub fn run_delayed_6(&self, plugin: JRef<dyn Plugin>, world: JRef<dyn World>, chunk_x: i32, chunk_z: i32, task: JRef<dyn Consumer<JRef<dyn ScheduledTask>>>, delay_ticks: i64) -> JRef<dyn ScheduledTask> { todo!() } // paper-server/src/main/java/io/papermc/paper/threadedregions/scheduler/FallbackRegionScheduler.java:21
-    pub fn run_at_fixed_rate_7(&self, plugin: JRef<dyn Plugin>, world: JRef<dyn World>, chunk_x: i32, chunk_z: i32, task: JRef<dyn Consumer<JRef<dyn ScheduledTask>>>, initial_delay_ticks: i64, period_ticks: i64) -> JRef<dyn ScheduledTask> { todo!() } // paper-server/src/main/java/io/papermc/paper/threadedregions/scheduler/FallbackRegionScheduler.java:26
+    pub fn execute_5(&self, plugin: JRef<dyn Plugin>, world: JRef<dyn World>, chunk_x: i32, chunk_z: i32, run: Arc<dyn Fn() + Send + Sync>) { todo!() } // paper-server/src/main/java/io/papermc/paper/threadedregions/scheduler/FallbackRegionScheduler.java:11
+    pub fn run_5(&self, plugin: JRef<dyn Plugin>, world: JRef<dyn World>, chunk_x: i32, chunk_z: i32, task: Arc<dyn Fn(JRef<dyn ScheduledTask>) + Send + Sync>) -> JRef<dyn ScheduledTask> { todo!() } // paper-server/src/main/java/io/papermc/paper/threadedregions/scheduler/FallbackRegionScheduler.java:16
+    pub fn run_delayed_6(&self, plugin: JRef<dyn Plugin>, world: JRef<dyn World>, chunk_x: i32, chunk_z: i32, task: Arc<dyn Fn(JRef<dyn ScheduledTask>) + Send + Sync>, delay_ticks: i64) -> JRef<dyn ScheduledTask> { todo!() } // paper-server/src/main/java/io/papermc/paper/threadedregions/scheduler/FallbackRegionScheduler.java:21
+    pub fn run_at_fixed_rate_7(&self, plugin: JRef<dyn Plugin>, world: JRef<dyn World>, chunk_x: i32, chunk_z: i32, task: Arc<dyn Fn(JRef<dyn ScheduledTask>) + Send + Sync>, initial_delay_ticks: i64, period_ticks: i64) -> JRef<dyn ScheduledTask> { todo!() } // paper-server/src/main/java/io/papermc/paper/threadedregions/scheduler/FallbackRegionScheduler.java:26
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl RegionScheduler for FallbackRegionScheduler {
-    fn execute_5(&self, plugin: JRef<dyn Plugin>, world: JRef<dyn World>, chunk_x: i32, chunk_z: i32, run: JRef<dyn Runnable>) { FallbackRegionScheduler::execute_5(self, plugin, world, chunk_x, chunk_z, run) }
-    fn run_5(&self, plugin: JRef<dyn Plugin>, world: JRef<dyn World>, chunk_x: i32, chunk_z: i32, task: JRef<dyn Consumer<JRef<dyn ScheduledTask>>>) -> JRef<dyn ScheduledTask> { FallbackRegionScheduler::run_5(self, plugin, world, chunk_x, chunk_z, task) }
-    fn run_delayed_6(&self, plugin: JRef<dyn Plugin>, world: JRef<dyn World>, chunk_x: i32, chunk_z: i32, task: JRef<dyn Consumer<JRef<dyn ScheduledTask>>>, delay_ticks: i64) -> JRef<dyn ScheduledTask> { FallbackRegionScheduler::run_delayed_6(self, plugin, world, chunk_x, chunk_z, task, delay_ticks) }
-    fn run_at_fixed_rate_7(&self, plugin: JRef<dyn Plugin>, world: JRef<dyn World>, chunk_x: i32, chunk_z: i32, task: JRef<dyn Consumer<JRef<dyn ScheduledTask>>>, initial_delay_ticks: i64, period_ticks: i64) -> JRef<dyn ScheduledTask> { FallbackRegionScheduler::run_at_fixed_rate_7(self, plugin, world, chunk_x, chunk_z, task, initial_delay_ticks, period_ticks) }
+    fn execute_5(&self, plugin: JRef<dyn Plugin>, world: JRef<dyn World>, chunk_x: i32, chunk_z: i32, run: Arc<dyn Fn() + Send + Sync>) { FallbackRegionScheduler::execute_5(self, plugin, world, chunk_x, chunk_z, run) }
+    fn run_5(&self, plugin: JRef<dyn Plugin>, world: JRef<dyn World>, chunk_x: i32, chunk_z: i32, task: Arc<dyn Fn(JRef<dyn ScheduledTask>) + Send + Sync>) -> JRef<dyn ScheduledTask> { FallbackRegionScheduler::run_5(self, plugin, world, chunk_x, chunk_z, task) }
+    fn run_delayed_6(&self, plugin: JRef<dyn Plugin>, world: JRef<dyn World>, chunk_x: i32, chunk_z: i32, task: Arc<dyn Fn(JRef<dyn ScheduledTask>) + Send + Sync>, delay_ticks: i64) -> JRef<dyn ScheduledTask> { FallbackRegionScheduler::run_delayed_6(self, plugin, world, chunk_x, chunk_z, task, delay_ticks) }
+    fn run_at_fixed_rate_7(&self, plugin: JRef<dyn Plugin>, world: JRef<dyn World>, chunk_x: i32, chunk_z: i32, task: Arc<dyn Fn(JRef<dyn ScheduledTask>) + Send + Sync>, initial_delay_ticks: i64, period_ticks: i64) -> JRef<dyn ScheduledTask> { FallbackRegionScheduler::run_at_fixed_rate_7(self, plugin, world, chunk_x, chunk_z, task, initial_delay_ticks, period_ticks) }
 }
 crate::jobject!(FallbackRegionScheduler: dyn RegionScheduler);

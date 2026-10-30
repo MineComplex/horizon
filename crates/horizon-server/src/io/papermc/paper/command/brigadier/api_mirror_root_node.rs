@@ -6,7 +6,6 @@ use crate::com::mojang::brigadier::command_dispatcher::CommandDispatcher;
 use crate::com::mojang::brigadier::suggestion::SuggestionProvider;
 use crate::com::mojang::brigadier::tree::ArgumentCommandNode;
 use crate::com::mojang::brigadier::tree::command_node::CommandNodeTrait;
-use crate::java::lang::Class;
 
 // ---- class io.papermc.paper.command.brigadier.ApiMirrorRootNode (paper-server/src/main/java/io/papermc/paper/command/brigadier/ApiMirrorRootNode.java:40)
 pub struct ApiMirrorRootNode {
@@ -25,7 +24,7 @@ impl std::ops::Deref for dyn ApiMirrorRootNodeTrait {
     type Target = ApiMirrorRootNode;
     fn deref(&self) -> &ApiMirrorRootNode { self.as_api_mirror_root_node() }
 }
-pub static ARGUMENT_WHITELIST: LazyLock<HashSet<Class>> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/command/brigadier/ApiMirrorRootNode.java:47
+pub static ARGUMENT_WHITELIST: LazyLock<HashSet<crate::rt::Class>> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/command/brigadier/ApiMirrorRootNode.java:47
 impl ApiMirrorRootNode {
     pub fn this(&self) -> JRef<dyn ApiMirrorRootNodeTrait> { self.this.upgrade().expect("this") }
     pub fn new_base<S: ApiMirrorRootNodeTrait + 'static>(this: &Weak<S>) -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/command/brigadier/ApiMirrorRootNode.java:40

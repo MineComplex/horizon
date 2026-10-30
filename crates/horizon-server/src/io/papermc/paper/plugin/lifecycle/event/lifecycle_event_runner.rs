@@ -8,8 +8,6 @@ use crate::io::papermc::paper::plugin::lifecycle::event::registrar::reloadable_r
 use crate::io::papermc::paper::plugin::lifecycle::event::types::abstract_lifecycle_event_type::AbstractLifecycleEventTypeTrait;
 use crate::io::papermc::paper::plugin::lifecycle::event::types::lifecycle_event_type::LifecycleEventType;
 use crate::io::papermc::paper::plugin::lifecycle::event::types::owner_aware_lifecycle_event::OwnerAwareLifecycleEvent;
-use crate::java::lang::Class;
-use crate::java::util::function::Predicate;
 use crate::org::bukkit::plugin::plugin::Plugin;
 
 // ---- class io.papermc.paper.plugin.lifecycle.event.LifecycleEventRunner (paper-server/src/main/java/io/papermc/paper/plugin/lifecycle/event/LifecycleEventRunner.java:18)
@@ -26,11 +24,11 @@ impl LifecycleEventRunner {
     pub fn blocks_plugin_reloading(&self) -> bool { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/lifecycle/event/LifecycleEventRunner.java:37
     pub fn add_event_type<O: JGeneric, E: JGeneric, ET: JGeneric>(&self, event_type: ET) { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/lifecycle/event/LifecycleEventRunner.java:41
     pub fn call_event<O: JGeneric, E: JGeneric>(&self, event_type: JRef<dyn LifecycleEventType<O, JObjectRef, JObjectRef>>, event: E) { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/lifecycle/event/LifecycleEventRunner.java:45
-    pub fn call_event_3<O: JGeneric, E: JGeneric>(&self, event_type: JRef<dyn LifecycleEventType<O, JObjectRef, JObjectRef>>, event: E, owner_predicate: JRef<dyn Predicate<JObjectRef>>) { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/lifecycle/event/LifecycleEventRunner.java:49
+    pub fn call_event_3<O: JGeneric, E: JGeneric>(&self, event_type: JRef<dyn LifecycleEventType<O, JObjectRef, JObjectRef>>, event: E, owner_predicate: Arc<dyn Fn(JObjectRef) -> bool + Send + Sync>) { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/lifecycle/event/LifecycleEventRunner.java:49
     pub fn owner_aware_generic_helper<O: JGeneric>(event: JRef<dyn OwnerAwareLifecycleEvent<O>>, possible_owner: JRef<dyn LifecycleEventOwner>) { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/lifecycle/event/LifecycleEventRunner.java:68
     pub fn unregister_all_event_handlers_for(&self, plugin: JRef<dyn Plugin>) { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/lifecycle/event/LifecycleEventRunner.java:77
     pub fn remove_event_handlers_owned_by<O: JGeneric>(&self, event_type: JRef<dyn LifecycleEventType<O, JObjectRef, JObjectRef>>, possible_owner: JRef<dyn Plugin>) { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/lifecycle/event/LifecycleEventRunner.java:83
-    pub fn call_static_registrar_event<O: JGeneric, R: JGeneric>(&self, lifecycle_event_type: JRef<dyn LifecycleEventType<O, JRef<dyn RegistrarEvent<JObjectRef>>, JObjectRef>>, registrar: R, owner_class: Class) { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/lifecycle/event/LifecycleEventRunner.java:88
-    pub fn call_reloadable_registrar_event<O: JGeneric, R: JGeneric>(&self, lifecycle_event_type: JRef<dyn LifecycleEventType<O, JRef<dyn ReloadableRegistrarEvent<JObjectRef>>, JObjectRef>>, registrar: R, owner_class: Class, cause: ReloadableRegistrarEventCause) { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/lifecycle/event/LifecycleEventRunner.java:93
+    pub fn call_static_registrar_event<O: JGeneric, R: JGeneric>(&self, lifecycle_event_type: JRef<dyn LifecycleEventType<O, JRef<dyn RegistrarEvent<JObjectRef>>, JObjectRef>>, registrar: R, owner_class: crate::rt::Class) { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/lifecycle/event/LifecycleEventRunner.java:88
+    pub fn call_reloadable_registrar_event<O: JGeneric, R: JGeneric>(&self, lifecycle_event_type: JRef<dyn LifecycleEventType<O, JRef<dyn ReloadableRegistrarEvent<JObjectRef>>, JObjectRef>>, registrar: R, owner_class: crate::rt::Class, cause: ReloadableRegistrarEventCause) { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/lifecycle/event/LifecycleEventRunner.java:93
 }
 crate::jobject!(LifecycleEventRunner);

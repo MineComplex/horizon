@@ -3,7 +3,6 @@
 use crate::prelude::*;
 use crate::ca::spottedleaf::moonrise::patches::chunk_system::level::chunk_system_level_reader::ChunkSystemLevelReader;
 use crate::ca::spottedleaf::moonrise::patches::chunk_system::world::chunk_system_entity_getter::ChunkSystemEntityGetter;
-use crate::java::util::function::Predicate;
 use crate::net::minecraft::core::block_pos::BlockPos;
 use crate::net::minecraft::core::holder::Holder;
 use crate::net::minecraft::core::particles::particle_options::ParticleOptions;
@@ -84,8 +83,8 @@ impl DummyLevelAccessor {
     pub fn add_particle(&self, particle: JRef<dyn ParticleOptions>, x: f64, y: f64, z: f64, xd: f64, yd: f64, zd: f64) { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/util/DummyLevelAccessor.java:111
     pub fn level_event_4(&self, source: JRef<dyn EntityTrait>, type_: i32, pos: BlockPos, data: i32) { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/util/DummyLevelAccessor.java:116
     pub fn game_event(&self, game_event: JRef<dyn Holder<GameEvent>>, position: Vec3, context: GameEventContext) { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/util/DummyLevelAccessor.java:121
-    pub fn get_entities_3(&self, except: JRef<dyn EntityTrait>, bb: AABB, selector: JRef<dyn Predicate<JObjectRef>>) -> Vec<JRef<dyn EntityTrait>> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/util/DummyLevelAccessor.java:126
-    pub fn get_entities_3_2<T: JGeneric>(&self, type_: JRef<dyn EntityTypeTest<JRef<dyn EntityTrait>, T>>, bb: AABB, selector: JRef<dyn Predicate<JObjectRef>>) -> Vec<T> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/util/DummyLevelAccessor.java:131
+    pub fn get_entities_3(&self, except: JRef<dyn EntityTrait>, bb: AABB, selector: Arc<dyn Fn(JObjectRef) -> bool + Send + Sync>) -> Vec<JRef<dyn EntityTrait>> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/util/DummyLevelAccessor.java:126
+    pub fn get_entities_3_2<T: JGeneric>(&self, type_: JRef<dyn EntityTypeTest<JRef<dyn EntityTrait>, T>>, bb: AABB, selector: Arc<dyn Fn(JObjectRef) -> bool + Send + Sync>) -> Vec<T> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/util/DummyLevelAccessor.java:131
     pub fn players(&self) -> Vec<JRef<dyn PlayerTrait>> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/util/DummyLevelAccessor.java:136
     pub fn get_chunk_4(&self, chunk_x: i32, chunk_z: i32, target_status: JRef<ChunkStatus>, load_or_generate: bool) -> JRef<dyn ChunkAccessTrait> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/util/DummyLevelAccessor.java:141
     pub fn get_height_3(&self, type_: HeightmapTypes, x: i32, z: i32) -> i32 { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/util/DummyLevelAccessor.java:146
@@ -106,8 +105,8 @@ impl DummyLevelAccessor {
     pub fn get_block_state_if_loaded(&self, pos: BlockPos) -> JRef<BlockState> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/util/DummyLevelAccessor.java:221
     pub fn get_fluid_if_loaded(&self, pos: BlockPos) -> JRef<FluidState> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/util/DummyLevelAccessor.java:226
     pub fn get_world_border(&self) -> JRef<WorldBorder> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/util/DummyLevelAccessor.java:231
-    pub fn is_state_at_position(&self, pos: BlockPos, predicate: JRef<dyn Predicate<JRef<BlockState>>>) -> bool { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/util/DummyLevelAccessor.java:236
-    pub fn is_fluid_at_position(&self, pos: BlockPos, predicate: JRef<dyn Predicate<JRef<FluidState>>>) -> bool { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/util/DummyLevelAccessor.java:241
+    pub fn is_state_at_position(&self, pos: BlockPos, predicate: Arc<dyn Fn(JRef<BlockState>) -> bool + Send + Sync>) -> bool { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/util/DummyLevelAccessor.java:236
+    pub fn is_fluid_at_position(&self, pos: BlockPos, predicate: Arc<dyn Fn(JRef<FluidState>) -> bool + Send + Sync>) -> bool { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/util/DummyLevelAccessor.java:241
     pub fn set_block_4(&self, pos: BlockPos, block_state: JRef<BlockState>, update_flags: i32, update_limit: i32) -> bool { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/util/DummyLevelAccessor.java:246
     pub fn remove_block(&self, pos: BlockPos, moved_by_piston: bool) -> bool { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/util/DummyLevelAccessor.java:251
     pub fn destroy_block_4(&self, pos: BlockPos, drop_resources: bool, breaker: JRef<dyn EntityTrait>, update_limit: i32) -> bool { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/util/DummyLevelAccessor.java:256
@@ -183,8 +182,8 @@ impl ChunkSystemLevelReader for DummyLevelAccessor {
 impl LevelSimulatedRW for DummyLevelAccessor {
 }
 impl LevelSimulatedReader for DummyLevelAccessor {
-    fn is_state_at_position(&self, pos: BlockPos, predicate: JRef<dyn Predicate<JRef<BlockState>>>) -> bool { DummyLevelAccessor::is_state_at_position(self, pos, predicate) }
-    fn is_fluid_at_position(&self, pos: BlockPos, predicate: JRef<dyn Predicate<JRef<FluidState>>>) -> bool { DummyLevelAccessor::is_fluid_at_position(self, pos, predicate) }
+    fn is_state_at_position(&self, pos: BlockPos, predicate: Arc<dyn Fn(JRef<BlockState>) -> bool + Send + Sync>) -> bool { DummyLevelAccessor::is_state_at_position(self, pos, predicate) }
+    fn is_fluid_at_position(&self, pos: BlockPos, predicate: Arc<dyn Fn(JRef<FluidState>) -> bool + Send + Sync>) -> bool { DummyLevelAccessor::is_fluid_at_position(self, pos, predicate) }
     fn get_block_entity<T: JGeneric>(&self, pos: BlockPos, type_: JRef<BlockEntityType<T>>) -> Option<T> where Self: Sized { DummyLevelAccessor::get_block_entity::<T>(self, pos, type_) }
     fn get_heightmap_pos(&self, type_: HeightmapTypes, pos: BlockPos) -> BlockPos { todo!("abstract LevelSimulatedReader.getHeightmapPos") }
 }
@@ -194,12 +193,12 @@ impl LevelWriter for DummyLevelAccessor {
     fn destroy_block_4(&self, pos: BlockPos, drop_resources: bool, breaker: Option<JRef<dyn EntityTrait>>, update_limit: i32) -> bool { DummyLevelAccessor::destroy_block_4(self, pos, drop_resources, breaker, update_limit) }
 }
 impl EntityGetter for DummyLevelAccessor {
-    fn get_entities_3(&self, except: Option<JRef<dyn EntityTrait>>, bb: AABB, selector: JRef<dyn Predicate<JObjectRef>>) -> Vec<JRef<dyn EntityTrait>> { DummyLevelAccessor::get_entities_3(self, except, bb, selector) }
-    fn get_entities_3_2<T: JGeneric>(&self, type_: JRef<dyn EntityTypeTest<JRef<dyn EntityTrait>, T>>, bb: AABB, selector: JRef<dyn Predicate<JObjectRef>>) -> Vec<T> where Self: Sized { DummyLevelAccessor::get_entities_3_2::<T>(self, type_, bb, selector) }
+    fn get_entities_3(&self, except: Option<JRef<dyn EntityTrait>>, bb: AABB, selector: Arc<dyn Fn(JObjectRef) -> bool + Send + Sync>) -> Vec<JRef<dyn EntityTrait>> { DummyLevelAccessor::get_entities_3(self, except, bb, selector) }
+    fn get_entities_3_2<T: JGeneric>(&self, type_: JRef<dyn EntityTypeTest<JRef<dyn EntityTrait>, T>>, bb: AABB, selector: Arc<dyn Fn(JObjectRef) -> bool + Send + Sync>) -> Vec<T> where Self: Sized { DummyLevelAccessor::get_entities_3_2::<T>(self, type_, bb, selector) }
     fn players(&self) -> Vec<JRef<dyn PlayerTrait>> { DummyLevelAccessor::players(self) }
 }
 impl ChunkSystemEntityGetter for DummyLevelAccessor {
-    fn moonrise_get_hard_colliding_entities(&self, entity: JRef<dyn EntityTrait>, box_: AABB, predicate: JRef<dyn Predicate<JObjectRef>>) -> Vec<JRef<dyn EntityTrait>> { todo!("abstract ChunkSystemEntityGetter.moonrise$getHardCollidingEntities") }
+    fn moonrise_get_hard_colliding_entities(&self, entity: JRef<dyn EntityTrait>, box_: AABB, predicate: Arc<dyn Fn(JObjectRef) -> bool + Send + Sync>) -> Vec<JRef<dyn EntityTrait>> { todo!("abstract ChunkSystemEntityGetter.moonrise$getHardCollidingEntities") }
 }
 impl ScheduledTickAccess for DummyLevelAccessor {
     fn create_tick<T: JGeneric>(&self, pos: BlockPos, type_: T, tick_delay: i32) -> ScheduledTick<T> where Self: Sized { todo!("abstract ScheduledTickAccess.createTick") }

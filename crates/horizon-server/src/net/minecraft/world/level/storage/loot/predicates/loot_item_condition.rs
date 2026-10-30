@@ -3,7 +3,6 @@
 use crate::prelude::*;
 use crate::com::mojang::serialization::Codec;
 use crate::com::mojang::serialization::MapCodec;
-use crate::java::util::function::Predicate;
 use crate::net::minecraft::core::holder::Holder;
 use crate::net::minecraft::core::holder_set::HolderSet;
 use crate::net::minecraft::world::level::storage::loot::loot_context::LootContext;
@@ -12,7 +11,7 @@ use crate::net::minecraft::world::level::storage::loot::predicates::all_of_condi
 use crate::net::minecraft::world::level::storage::loot::predicates::any_of_condition::AnyOfConditionBuilder;
 
 // ---- interface net.minecraft.world.level.storage.loot.predicates.LootItemCondition (leaf-server/src/minecraft/java/net/minecraft/world/level/storage/loot/predicates/LootItemCondition.java:14)
-pub trait LootItemCondition: LootContextUser + Predicate<JRef<LootContext>> {
+pub trait LootItemCondition: LootContextUser {
     fn codec(&self) -> MapCodec<JRef<dyn LootItemCondition>>; // leaf-server/src/minecraft/java/net/minecraft/world/level/storage/loot/predicates/LootItemCondition.java:19
 }
 pub static DIRECT_CODEC: LazyLock<JRef<dyn Codec<JRef<dyn LootItemCondition>>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/level/storage/loot/predicates/LootItemCondition.java:15

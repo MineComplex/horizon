@@ -9,10 +9,6 @@ use crate::io::papermc::paper::plugin::lifecycle::event::types::abstract_lifecyc
 use crate::io::papermc::paper::plugin::lifecycle::event::types::abstract_lifecycle_event_type::AbstractLifecycleEventTypeTrait;
 use crate::io::papermc::paper::plugin::lifecycle::event::types::lifecycle_event_type::LifecycleEventType;
 use crate::io::papermc::paper::plugin::lifecycle::event::types::lifecycle_event_type::LifecycleEventTypePrioritizable;
-use crate::java::lang::Class;
-use crate::java::util::Comparator;
-use crate::java::util::function::Consumer;
-use crate::java::util::function::Predicate;
 
 // ---- class io.papermc.paper.plugin.lifecycle.event.types.PrioritizableLifecycleEventType (paper-server/src/main/java/io/papermc/paper/plugin/lifecycle/event/types/PrioritizableLifecycleEventType.java:18)
 pub struct PrioritizableLifecycleEventType<O: JGeneric, E: JGeneric, C: JGeneric> {
@@ -32,14 +28,14 @@ impl<O: JGeneric, E: JGeneric, C: JGeneric> std::ops::Deref for dyn Prioritizabl
     type Target = PrioritizableLifecycleEventType<O, E, C>;
     fn deref(&self) -> &PrioritizableLifecycleEventType<O, E, C> { self.as_prioritizable_lifecycle_event_type() }
 }
-pub static COMPARATOR: LazyLock<JRef<dyn Comparator<AbstractLifecycleEventTypeRegisteredHandler<JObjectRef, JObjectRef>>>> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/plugin/lifecycle/event/types/PrioritizableLifecycleEventType.java:25
+pub static COMPARATOR: LazyLock<Arc<dyn Fn(&AbstractLifecycleEventTypeRegisteredHandler<JObjectRef, JObjectRef>, &AbstractLifecycleEventTypeRegisteredHandler<JObjectRef, JObjectRef>) -> std::cmp::Ordering + Send + Sync>> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/plugin/lifecycle/event/types/PrioritizableLifecycleEventType.java:25
 impl<O: JGeneric, E: JGeneric, C: JGeneric> PrioritizableLifecycleEventType<O, E, C> {
     pub fn this(&self) -> JRef<dyn PrioritizableLifecycleEventTypeTrait<O, E, C>> { self.this.upgrade().expect("this") }
-    pub fn new_base<S: PrioritizableLifecycleEventTypeTrait<O, E, C> + 'static>(this: &Weak<S>, name: &str, owner_type: Class) -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/lifecycle/event/types/PrioritizableLifecycleEventType.java:39
+    pub fn new_base<S: PrioritizableLifecycleEventTypeTrait<O, E, C> + 'static>(this: &Weak<S>, name: &str, owner_type: crate::rt::Class) -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/lifecycle/event/types/PrioritizableLifecycleEventType.java:39
     pub fn has_handlers(&self) -> bool { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/lifecycle/event/types/PrioritizableLifecycleEventType.java:43
     pub fn register(&self, owner: O, config: JRef<dyn AbstractLifecycleEventHandlerConfigurationTrait<O, E>>) { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/lifecycle/event/types/PrioritizableLifecycleEventType.java:48
-    pub fn for_each_handler(&self, event: E, consumer: JRef<dyn Consumer<AbstractLifecycleEventTypeRegisteredHandler<O, E>>>, predicate: JRef<dyn Predicate<AbstractLifecycleEventTypeRegisteredHandler<O, E>>>) { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/lifecycle/event/types/PrioritizableLifecycleEventType.java:55
-    pub fn remove_matching(&self, predicate: JRef<dyn Predicate<AbstractLifecycleEventTypeRegisteredHandler<O, E>>>) { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/lifecycle/event/types/PrioritizableLifecycleEventType.java:64
+    pub fn for_each_handler(&self, event: E, consumer: Arc<dyn Fn(AbstractLifecycleEventTypeRegisteredHandler<O, E>) + Send + Sync>, predicate: Arc<dyn Fn(AbstractLifecycleEventTypeRegisteredHandler<O, E>) -> bool + Send + Sync>) { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/lifecycle/event/types/PrioritizableLifecycleEventType.java:55
+    pub fn remove_matching(&self, predicate: Arc<dyn Fn(AbstractLifecycleEventTypeRegisteredHandler<O, E>) -> bool + Send + Sync>) { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/lifecycle/event/types/PrioritizableLifecycleEventType.java:64
 }
 // ---- class io.papermc.paper.plugin.lifecycle.event.types.PrioritizableLifecycleEventType.Simple (paper-server/src/main/java/io/papermc/paper/plugin/lifecycle/event/types/PrioritizableLifecycleEventType.java:69)
 pub struct PrioritizableLifecycleEventTypeSimple<O: JGeneric, E: JGeneric> {
@@ -60,8 +56,8 @@ impl<O: JGeneric, E: JGeneric> std::ops::Deref for dyn PrioritizableLifecycleEve
 }
 impl<O: JGeneric, E: JGeneric> PrioritizableLifecycleEventTypeSimple<O, E> {
     pub fn this(&self) -> JRef<dyn PrioritizableLifecycleEventTypeSimpleTrait<O, E>> { self.this.upgrade().expect("this") }
-    pub fn new_base<S: PrioritizableLifecycleEventTypeSimpleTrait<O, E> + 'static>(this: &Weak<S>, name: &str, owner_type: Class) -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/lifecycle/event/types/PrioritizableLifecycleEventType.java:70
-    pub fn new(name: &str, owner_type: Class) -> JRef<Self> { Arc::new_cyclic(|this| Self::new_base(this, name, owner_type)) }
+    pub fn new_base<S: PrioritizableLifecycleEventTypeSimpleTrait<O, E> + 'static>(this: &Weak<S>, name: &str, owner_type: crate::rt::Class) -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/lifecycle/event/types/PrioritizableLifecycleEventType.java:70
+    pub fn new(name: &str, owner_type: crate::rt::Class) -> JRef<Self> { Arc::new_cyclic(|this| Self::new_base(this, name, owner_type)) }
     pub fn new_handler(&self, handler: JRef<dyn LifecycleEventHandler<JObjectRef>>) -> JRef<dyn PrioritizedLifecycleEventHandlerConfiguration<O>> { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/lifecycle/event/types/PrioritizableLifecycleEventType.java:74
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
@@ -76,8 +72,8 @@ impl<O: JGeneric, E: JGeneric> AbstractLifecycleEventTypeTrait<JObjectRef, JObje
     fn as_abstract_lifecycle_event_type(&self) -> &AbstractLifecycleEventType<JObjectRef, JObjectRef, JObjectRef> { self }
     fn blocks_reloading(&self, event_owner: O) -> bool { AbstractLifecycleEventType::blocks_reloading(self, event_owner) }
     fn has_handlers(&self) -> bool { PrioritizableLifecycleEventType::has_handlers(self) }
-    fn for_each_handler(&self, event: E, consumer: JRef<dyn Consumer<AbstractLifecycleEventTypeRegisteredHandler<O, E>>>, predicate: JRef<dyn Predicate<AbstractLifecycleEventTypeRegisteredHandler<O, E>>>) { PrioritizableLifecycleEventType::for_each_handler(self, event, consumer, predicate) }
-    fn remove_matching(&self, predicate: JRef<dyn Predicate<AbstractLifecycleEventTypeRegisteredHandler<O, E>>>) { PrioritizableLifecycleEventType::remove_matching(self, predicate) }
+    fn for_each_handler(&self, event: E, consumer: Arc<dyn Fn(AbstractLifecycleEventTypeRegisteredHandler<O, E>) + Send + Sync>, predicate: Arc<dyn Fn(AbstractLifecycleEventTypeRegisteredHandler<O, E>) -> bool + Send + Sync>) { PrioritizableLifecycleEventType::for_each_handler(self, event, consumer, predicate) }
+    fn remove_matching(&self, predicate: Arc<dyn Fn(AbstractLifecycleEventTypeRegisteredHandler<O, E>) -> bool + Send + Sync>) { PrioritizableLifecycleEventType::remove_matching(self, predicate) }
     fn register(&self, owner: O, config: JRef<dyn AbstractLifecycleEventHandlerConfigurationTrait<O, E>>) { PrioritizableLifecycleEventType::register(self, owner, config) }
 }
 impl<O: JGeneric, E: JGeneric> LifecycleEventTypePrioritizable<O, E> for PrioritizableLifecycleEventTypeSimple<O, E> {

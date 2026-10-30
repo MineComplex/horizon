@@ -10,7 +10,6 @@ use crate::io::papermc::paper::plugin::lifecycle::event::registrar::reloadable_r
 use crate::io::papermc::paper::plugin::lifecycle::event::types::lifecycle_event_type::LifecycleEventTypeMonitorable;
 use crate::io::papermc::paper::plugin::lifecycle::event::types::lifecycle_event_type::LifecycleEventTypePrioritizable;
 use crate::io::papermc::paper::plugin::lifecycle::event::types::tag_event_type_provider::TagEventTypeProvider;
-use crate::java::lang::Class;
 use crate::org::bukkit::plugin::plugin::Plugin;
 use crate::io::papermc::paper::plugin::lifecycle::event::types::lifecycle_event_type_provider;
 use crate::api_prelude::*;
@@ -43,11 +42,11 @@ impl LifecycleEvents {
         // BootstrapContext.class
         Self::prioritized::<JRef<dyn BootstrapContext>, E>(name, Class(std::marker::PhantomData))
     } // paper-api/src/main/java/io/papermc/paper/plugin/lifecycle/event/types/LifecycleEvents.java:60
-    pub fn monitor<O: JGeneric, E: JGeneric, O2: JGeneric>(name: &str, owner_type: Class) -> JRef<dyn LifecycleEventTypeMonitorable<O, E>> {
+    pub fn monitor<O: JGeneric, E: JGeneric, O2: JGeneric>(name: &str, owner_type: crate::rt::Class) -> JRef<dyn LifecycleEventTypeMonitorable<O, E>> {
         // PORT: LifecycleEventTypeProvider.monitor is a generic method (not callable on dyn LifecycleEventTypeProvider yet)
         lifecycle_event_type_provider::provider().monitor::<O, E>(name, owner_type)
     } // paper-api/src/main/java/io/papermc/paper/plugin/lifecycle/event/types/LifecycleEvents.java:65
-    pub fn prioritized<O: JGeneric, E: JGeneric>(name: &str, owner_type: Class) -> JRef<dyn LifecycleEventTypePrioritizable<O, E>> {
+    pub fn prioritized<O: JGeneric, E: JGeneric>(name: &str, owner_type: crate::rt::Class) -> JRef<dyn LifecycleEventTypePrioritizable<O, E>> {
         // PORT: LifecycleEventTypeProvider.prioritized is a generic method (not callable on dyn LifecycleEventTypeProvider yet)
         lifecycle_event_type_provider::provider().prioritized::<O, E>(name, owner_type)
     } // paper-api/src/main/java/io/papermc/paper/plugin/lifecycle/event/types/LifecycleEvents.java:70

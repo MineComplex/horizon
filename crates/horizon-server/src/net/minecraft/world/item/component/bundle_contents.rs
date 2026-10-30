@@ -3,9 +3,6 @@
 use crate::prelude::*;
 use crate::com::mojang::serialization::Codec;
 use crate::com::mojang::serialization::DataResult;
-use crate::java::util::function::Consumer;
-use crate::java::util::function::Supplier;
-use crate::java::util::stream::Stream;
 use crate::net::minecraft::network::codec::stream_codec::StreamCodec;
 use crate::net::minecraft::network::registry_friendly_byte_buf::RegistryFriendlyByteBuf;
 use crate::net::minecraft::world::entity::player::player::PlayerTrait;
@@ -23,37 +20,36 @@ use crate::net::minecraft::world::item::item_stack::ItemStack;
 use crate::net::minecraft::world::item::item_stack_template::ItemStackTemplate;
 use crate::net::minecraft::world::item::slot::slot_collection::SlotCollection;
 use crate::net::minecraft::world::item::slot::slot_selector::SlotSelector;
-use crate::org::apache::commons::lang3::math::Fraction;
 
 // ---- class net.minecraft.world.item.component.BundleContents (leaf-server/src/minecraft/java/net/minecraft/world/item/component/BundleContents.java:30)
 pub struct BundleContents {
     pub this: Weak<Self>,
     pub items: Mut<Vec<ItemStackTemplate>>, // leaf-server/src/minecraft/java/net/minecraft/world/item/component/BundleContents.java:41
     pub selected_item: i32, // leaf-server/src/minecraft/java/net/minecraft/world/item/component/BundleContents.java:42
-    pub weight: JRef<dyn Supplier<DataResult<Fraction>>>, // leaf-server/src/minecraft/java/net/minecraft/world/item/component/BundleContents.java:43
+    pub weight: Arc<dyn Fn() -> DataResult<Fraction> + Send + Sync>, // leaf-server/src/minecraft/java/net/minecraft/world/item/component/BundleContents.java:43
 }
 pub static EMPTY: LazyLock<JRef<BundleContents>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/item/component/BundleContents.java:31
 pub static CODEC: LazyLock<JRef<dyn Codec<JRef<BundleContents>>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/item/component/BundleContents.java:32
 pub static STREAM_CODEC: LazyLock<JRef<dyn StreamCodec<JRef<RegistryFriendlyByteBuf>, JRef<BundleContents>>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/item/component/BundleContents.java:33
-pub static BUNDLE_IN_BUNDLE_WEIGHT: LazyLock<Fraction> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/item/component/BundleContents.java:37
+pub static BUNDLE_IN_BUNDLE_WEIGHT: LazyLock<f64> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/item/component/BundleContents.java:37
 pub const NO_STACK_INDEX: i32 = -1; // leaf-server/src/minecraft/java/net/minecraft/world/item/component/BundleContents.java:38
 pub const NO_SELECTED_ITEM_INDEX: i32 = -1; // leaf-server/src/minecraft/java/net/minecraft/world/item/component/BundleContents.java:39
-pub static BEEHIVE_WEIGHT: LazyLock<DataResult<Fraction>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/item/component/BundleContents.java:40
+pub static BEEHIVE_WEIGHT: LazyLock<DataResult<f64>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/item/component/BundleContents.java:40
 impl BundleContents {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(items: &Vec<ItemStackTemplate>) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/component/BundleContents.java:56
     pub fn new_2(items: &Vec<ItemStackTemplate>, selected_item: i32) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/component/BundleContents.java:45
-    pub fn item_copies(&self) -> Stream<JRef<ItemStack>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/component/BundleContents.java:108
+    pub fn item_copies(&self) -> Box<dyn Iterator<Item = JRef<ItemStack>> + Send> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/component/BundleContents.java:108
     pub fn size(&self) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/component/BundleContents.java:117
-    pub fn copy_with_contents(&self, new_contents: Stream<JRef<ItemStack>>) -> JRef<BundleContents> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/component/BundleContents.java:138
+    pub fn copy_with_contents(&self, new_contents: Box<dyn Iterator<Item = JRef<ItemStack>> + Send>) -> JRef<BundleContents> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/component/BundleContents.java:138
     pub fn as_mutable(&self) -> JRef<BundleContentsMutable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/component/BundleContents.java:145
-    pub fn compute_content_weight(items: &Vec<JRef<dyn ItemInstance>>) -> DataResult<Fraction> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/component/BundleContents.java:60
-    pub fn get_weight(item: JRef<dyn ItemInstance>) -> DataResult<Fraction> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/component/BundleContents.java:79
+    pub fn compute_content_weight(items: &Vec<JRef<dyn ItemInstance>>) -> DataResult<f64> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/component/BundleContents.java:60
+    pub fn get_weight(item: JRef<dyn ItemInstance>) -> DataResult<f64> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/component/BundleContents.java:79
     pub fn can_item_be_in_bundle(item_to_add: JRef<ItemStack>) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/component/BundleContents.java:89
     pub fn get_max_amount_to_add(&self, stack: JRef<ItemStack>) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/component/BundleContents.java:94
     pub fn get_number_of_items_to_show(&self) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/component/BundleContents.java:100
     pub fn items(&self) -> Vec<ItemStackTemplate> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/component/BundleContents.java:113
-    pub fn weight(&self) -> DataResult<Fraction> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/component/BundleContents.java:122
+    pub fn weight(&self) -> DataResult<f64> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/component/BundleContents.java:122
     pub fn is_empty(&self) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/component/BundleContents.java:126
     pub fn get_selected_item_index(&self) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/component/BundleContents.java:130
     pub fn get_selected_item(&self) -> Option<ItemStackTemplate> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/component/BundleContents.java:134
@@ -64,9 +60,9 @@ impl BundleContents {
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl ContainerComponent<JRef<BundleContents>> for BundleContents {
-    fn item_copies(&self) -> Stream<JRef<ItemStack>> { BundleContents::item_copies(self) }
+    fn item_copies(&self) -> Box<dyn Iterator<Item = JRef<ItemStack>> + Send> { BundleContents::item_copies(self) }
     fn size(&self) -> i32 { BundleContents::size(self) }
-    fn copy_with_contents(&self, new_contents: Stream<JRef<ItemStack>>) -> T { BundleContents::copy_with_contents(self, new_contents) }
+    fn copy_with_contents(&self, new_contents: Box<dyn Iterator<Item = JRef<ItemStack>> + Send>) -> T { BundleContents::copy_with_contents(self, new_contents) }
     fn as_mutable(&self) -> JRef<dyn ContainerComponentMutable<T>> { BundleContents::as_mutable(self) }
 }
 impl TooltipComponent for BundleContents {
@@ -76,7 +72,7 @@ crate::jobject!(BundleContents: dyn TooltipComponent);
 pub struct BundleContentsMutable {
     pub base: GrowableMutableContainer<JRef<BundleContents>>,
     pub this: Weak<Self>,
-    pub weight: Mut<Fraction>, // leaf-server/src/minecraft/java/net/minecraft/world/item/component/BundleContents.java:177
+    pub weight: Mut<f64>, // leaf-server/src/minecraft/java/net/minecraft/world/item/component/BundleContents.java:177
     pub selected_item: Mut<i32>, // leaf-server/src/minecraft/java/net/minecraft/world/item/component/BundleContents.java:178
     pub needs_flattening: Mut<bool>, // leaf-server/src/minecraft/java/net/minecraft/world/item/component/BundleContents.java:179
 }
@@ -87,9 +83,9 @@ impl std::ops::Deref for BundleContentsMutable {
 impl BundleContentsMutable {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/component/BundleContents.java:187
-    pub fn new_3(items: &Vec<JRef<ItemStack>>, weight: Fraction, selected_item: i32) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/component/BundleContents.java:181
+    pub fn new_3(items: &Vec<JRef<ItemStack>>, weight: f64, selected_item: i32) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/component/BundleContents.java:181
     pub fn replace_slot_items_2(&self, new_items: JRef<dyn ItemProvider>, slot_selector: JRef<dyn SlotSelector>) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/component/BundleContents.java:307
-    pub fn modify_slots_2(&self, consumer: JRef<dyn Consumer<JObjectRef>>, slot_selector: JRef<dyn SlotSelector>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/component/BundleContents.java:313
+    pub fn modify_slots_2(&self, consumer: Arc<dyn Fn(JObjectRef) + Send + Sync>, slot_selector: JRef<dyn SlotSelector>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/component/BundleContents.java:313
     pub fn set_item(&self, slot: i32, item_stack: JRef<ItemStack>) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/component/BundleContents.java:319
     pub fn add_slot_with_item(&self, new_items: JRef<dyn ItemProvider>) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/component/BundleContents.java:333
     pub fn can_insert_new_slots(&self) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/component/BundleContents.java:365
@@ -97,17 +93,17 @@ impl BundleContentsMutable {
     pub fn clear_items(&self) -> JRef<BundleContentsMutable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/component/BundleContents.java:191
     pub fn find_stack_index_within_range(&self, items_to_add: JRef<ItemStack>, min_inclusive: i32, max_exclusive: i32) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/component/BundleContents.java:198
     pub fn find_stack_index(&self, items_to_add: JRef<ItemStack>) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/component/BundleContents.java:215
-    pub fn get_max_amount_to_add(&self, item_weight: Fraction) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/component/BundleContents.java:219
-    pub fn get_max_amount_to_add_2(stack: JRef<ItemStack>, weight: Fraction) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/component/BundleContents.java:226
+    pub fn get_max_amount_to_add(&self, item_weight: f64) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/component/BundleContents.java:219
+    pub fn get_max_amount_to_add_2(stack: JRef<ItemStack>, weight: f64) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/component/BundleContents.java:226
     pub fn try_insert(&self, items_to_add: JRef<ItemStack>) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/component/BundleContents.java:232
     pub fn try_transfer(&self, slot: JRef<dyn SlotTrait>, player: JRef<dyn PlayerTrait>) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/component/BundleContents.java:262
     pub fn toggle_selected_item(&self, selected_item: i32) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/component/BundleContents.java:273
     pub fn index_is_outside_allowed_bounds(&self, selected_item: i32) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/component/BundleContents.java:279
     pub fn remove_one(&self) -> Option<JRef<ItemStack>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/component/BundleContents.java:283
-    pub fn get_stacked_weight(stack: JRef<ItemStack>) -> Fraction { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/component/BundleContents.java:299
-    pub fn get_stacked_weight_2(weight: Fraction, count: i32) -> Fraction { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/component/BundleContents.java:295
-    pub fn weight(&self) -> Fraction { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/component/BundleContents.java:303
-    pub fn get_weight_with_added_items(weight: Fraction, items_to_add: JRef<ItemStack>) -> Option<Fraction> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/component/BundleContents.java:349
+    pub fn get_stacked_weight(stack: JRef<ItemStack>) -> f64 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/component/BundleContents.java:299
+    pub fn get_stacked_weight_2(weight: f64, count: i32) -> f64 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/component/BundleContents.java:295
+    pub fn weight(&self) -> f64 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/component/BundleContents.java:303
+    pub fn get_weight_with_added_items(weight: f64, items_to_add: JRef<ItemStack>) -> Option<f64> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/component/BundleContents.java:349
     pub fn merge_identical_stacks(&self) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/component/BundleContents.java:370
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
@@ -125,9 +121,9 @@ impl ContainerComponentMutable<T> for BundleContentsMutable {
     fn to_immutable(&self) -> T { BundleContentsMutable::to_immutable(self) }
 }
 impl SlotCollection for BundleContentsMutable {
-    fn item_copies(&self) -> Stream<JRef<ItemStack>> { SimpleMutableContainer::item_copies(self) }
+    fn item_copies(&self) -> Box<dyn Iterator<Item = JRef<ItemStack>> + Send> { SimpleMutableContainer::item_copies(self) }
     fn size(&self) -> i32 { SimpleMutableContainer::size(self) }
     fn replace_slot_items_2(&self, items: JRef<dyn ItemProvider>, slot_selector: JRef<dyn SlotSelector>) -> i32 { BundleContentsMutable::replace_slot_items_2(self, items, slot_selector) }
-    fn modify_slots_2(&self, consumer: JRef<dyn Consumer<JObjectRef>>, slot_selector: JRef<dyn SlotSelector>) { BundleContentsMutable::modify_slots_2(self, consumer, slot_selector) }
+    fn modify_slots_2(&self, consumer: Arc<dyn Fn(JObjectRef) + Send + Sync>, slot_selector: JRef<dyn SlotSelector>) { BundleContentsMutable::modify_slots_2(self, consumer, slot_selector) }
 }
 crate::jobject!(BundleContentsMutable: dyn SlotCollection);

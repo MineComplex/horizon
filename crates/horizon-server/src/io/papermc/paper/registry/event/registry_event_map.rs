@@ -5,7 +5,6 @@ use crate::io::papermc::paper::plugin::bootstrap::bootstrap_context::BootstrapCo
 use crate::io::papermc::paper::plugin::lifecycle::event::lifecycle_event::LifecycleEvent;
 use crate::io::papermc::paper::plugin::lifecycle::event::types::lifecycle_event_type::LifecycleEventType;
 use crate::io::papermc::paper::registry::registry_key::RegistryKey;
-use crate::java::util::function::BiFunction;
 
 // ---- class io.papermc.paper.registry.event.RegistryEventMap (paper-server/src/main/java/io/papermc/paper/registry/event/RegistryEventMap.java:14)
 pub struct RegistryEventMap {
@@ -16,7 +15,7 @@ pub struct RegistryEventMap {
 impl RegistryEventMap {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(name: &str) -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/event/RegistryEventMap.java:19
-    pub fn get_or_create<T: JGeneric, E: JGeneric, ET: JGeneric>(&self, registry_key: JRef<dyn RegistryKey<T>>, event_type_creator: JRef<dyn BiFunction<JObjectRef, JObjectRef, ET>>) -> ET { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/event/RegistryEventMap.java:23
+    pub fn get_or_create<T: JGeneric, E: JGeneric, ET: JGeneric>(&self, registry_key: JRef<dyn RegistryKey<T>>, event_type_creator: Arc<dyn Fn(JObjectRef, JObjectRef) -> ET + Send + Sync>) -> ET { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/event/RegistryEventMap.java:23
     pub fn get_event_type<T: JGeneric, E: JGeneric>(&self, registry_key: JRef<dyn RegistryKey<T>>) -> JRef<dyn LifecycleEventType<JRef<dyn BootstrapContext>, E, JObjectRef>> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/event/RegistryEventMap.java:35
     pub fn has_handlers(&self, registry_key: JRef<dyn RegistryKey<JObjectRef>>) -> bool { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/event/RegistryEventMap.java:40
 }

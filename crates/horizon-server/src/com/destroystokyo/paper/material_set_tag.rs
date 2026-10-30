@@ -3,8 +3,6 @@
 use crate::api_prelude::*;
 use crate::io::papermc::paper::tag::base_tag::BaseTag;
 use crate::io::papermc::paper::tag::base_tag::BaseTagTrait;
-use crate::java::lang::Class;
-use crate::java::util::function::Predicate;
 use crate::org::bukkit::block::block::Block;
 use crate::org::bukkit::block::block_state::BlockState;
 use crate::org::bukkit::block::data::block_data::BlockData;
@@ -27,8 +25,8 @@ impl std::ops::Deref for MaterialSetTag {
     }
 }
 /// `Stream.of(Material.values()).filter(filter).collect(toList())`.
-// PORT: java.util.function.Predicate needs test() (and closure impls)
-fn filtered(filter: &JRef<dyn Predicate<Material>>) -> Vec<Material> {
+// PORT: java.util.function.Arc<dyn Fn(JObjectRef) -> bool + Send + Sync> needs test() (and closure impls)
+fn filtered(filter: &Arc<dyn Fn(Material) -> bool + Send + Sync>) -> Vec<Material> {
     Material::VALUES
         .into_iter()
         .filter(|material| filter.test(*material))
@@ -38,7 +36,7 @@ impl MaterialSetTag {
     pub fn this(&self) -> JRef<Self> {
         self.this.upgrade().expect("this")
     }
-    pub fn new(filter: JRef<dyn Predicate<Material>>) -> JRef<Self> {
+    pub fn new(filter: Arc<dyn Fn(Material) -> bool + Send + Sync>) -> JRef<Self> {
         MaterialSetTag::new_2__(None, &filtered(&filter))
     } // paper-api/src/main/java/com/destroystokyo/paper/MaterialSetTag.java:29
     pub fn new_1(materials: &Vec<Material>) -> JRef<Self> {
@@ -49,7 +47,7 @@ impl MaterialSetTag {
     } // Material...
     pub fn new_2(
         key: Option<JRef<NamespacedKey>>,
-        filter: JRef<dyn Predicate<Material>>,
+        filter: Arc<dyn Fn(Material) -> bool + Send + Sync>,
     ) -> JRef<Self> {
         MaterialSetTag::new_2__(key, &filtered(&filter))
     }
@@ -59,19 +57,19 @@ impl MaterialSetTag {
     } // (key, Material...)
     pub fn new_2__(key: Option<JRef<NamespacedKey>>, materials: &Vec<Material>) -> JRef<Self> {
         let key = key.unwrap_or_else(NamespacedKey::random_key);
-        // ((Predicate<Material>) Material::isLegacy).negate()
-        // PORT: java.util.function.Predicate closure impls
-        let not_legacy: JRef<dyn Predicate<Material>> =
+        // ((Arc<dyn Fn(Material) -> bool + Send + Sync>) Material::isLegacy).negate()
+        // PORT: java.util.function.Arc<dyn Fn(JObjectRef) -> bool + Send + Sync> closure impls
+        let not_legacy: Arc<dyn Fn(Material) -> bool + Send + Sync> =
             Arc::new(|material: Material| !material.is_legacy());
         MaterialSetTag::new_3(Some(key), materials, &vec![not_legacy])
     } // (key, Collection<Material>)
     pub fn new_3(
         key: Option<JRef<NamespacedKey>>,
         materials: &Vec<Material>,
-        global_predicates: &Vec<JRef<dyn Predicate<Material>>>,
+        global_predicates: &Vec<Arc<dyn Fn(Material) -> bool + Send + Sync>>,
     ) -> JRef<Self> {
         let key = key.unwrap_or_else(NamespacedKey::random_key);
-        // PORT: java.lang.Class token (Material.class)
+        // PORT: java.lang.crate::rt::Class token (Material.class)
         let tag = Arc::new_cyclic(|this| MaterialSetTag {
             base: BaseTag::new_base_4(
                 this,
@@ -133,7 +131,7 @@ impl BaseTagTrait<Material, JRef<MaterialSetTag>> for MaterialSetTag {
     fn add_1_2(&self, collection: &Vec<Material>) -> JRef<MaterialSetTag> {
         BaseTag::add_1_2(self, collection)
     }
-    fn add_1_3(&self, filter: JRef<dyn Predicate<Material>>) -> JRef<MaterialSetTag> {
+    fn add_1_3(&self, filter: Arc<dyn Fn(Material) -> bool + Send + Sync>) -> JRef<MaterialSetTag> {
         BaseTag::add_1_3(self, filter)
     }
     fn contains(&self, with: &str) -> JRef<MaterialSetTag> {
@@ -154,7 +152,7 @@ impl BaseTagTrait<Material, JRef<MaterialSetTag>> for MaterialSetTag {
     fn not_1_2(&self, values: &Vec<Material>) -> JRef<MaterialSetTag> {
         BaseTag::not_1_2(self, values)
     }
-    fn not_1_3(&self, filter: JRef<dyn Predicate<Material>>) -> JRef<MaterialSetTag> {
+    fn not_1_3(&self, filter: Arc<dyn Fn(Material) -> bool + Send + Sync>) -> JRef<MaterialSetTag> {
         BaseTag::not_1_3(self, filter)
     }
     fn not_contains(&self, with: &str) -> JRef<MaterialSetTag> {

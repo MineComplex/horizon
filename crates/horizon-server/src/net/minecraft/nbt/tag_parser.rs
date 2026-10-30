@@ -5,7 +5,6 @@ use crate::com::mojang::brigadier::StringReader;
 use crate::com::mojang::brigadier::exceptions::SimpleCommandExceptionType;
 use crate::com::mojang::serialization::Codec;
 use crate::com::mojang::serialization::DynamicOps;
-use crate::java::lang::Throwable;
 use crate::net::minecraft::nbt::compound_tag::CompoundTag;
 use crate::net::minecraft::nbt::tag::Tag;
 use crate::net::minecraft::util::parsing::packrat::commands::grammar::Grammar;
@@ -29,10 +28,10 @@ impl<T: JGeneric> TagParser<T> {
     pub fn new(ops: JRef<dyn DynamicOps<T>>, grammar: Grammar<T>) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/nbt/TagParser.java:39
     pub fn get_ops(&self) -> JRef<dyn DynamicOps<T>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/nbt/TagParser.java:44
     pub fn create<T: JGeneric>(ops: JRef<dyn DynamicOps<T>>) -> JRef<TagParser<T>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/nbt/TagParser.java:48
-    pub fn cast_to_compound_or_throw(reader: StringReader, result: JRef<dyn Tag>) -> Result<JRef<CompoundTag>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/nbt/TagParser.java:52
-    pub fn parse_compound_fully(input: &str) -> Result<JRef<CompoundTag>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/nbt/TagParser.java:60
-    pub fn parse_fully(&self, input: &str) -> Result<T, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/nbt/TagParser.java:65
-    pub fn parse_fully_1(&self, reader: StringReader) -> Result<T, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/nbt/TagParser.java:69
-    pub fn parse_as_argument(&self, reader: StringReader) -> Result<T, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/nbt/TagParser.java:79
-    pub fn parse_compound_as_argument(reader: StringReader) -> Result<JRef<CompoundTag>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/nbt/TagParser.java:83
+    pub fn cast_to_compound_or_throw(reader: StringReader, result: JRef<dyn Tag>) -> Result<JRef<CompoundTag>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/nbt/TagParser.java:52
+    pub fn parse_compound_fully(input: &str) -> Result<JRef<CompoundTag>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/nbt/TagParser.java:60
+    pub fn parse_fully(&self, input: &str) -> Result<T, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/nbt/TagParser.java:65
+    pub fn parse_fully_1(&self, reader: StringReader) -> Result<T, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/nbt/TagParser.java:69
+    pub fn parse_as_argument(&self, reader: StringReader) -> Result<T, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/nbt/TagParser.java:79
+    pub fn parse_compound_as_argument(reader: StringReader) -> Result<JRef<CompoundTag>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/nbt/TagParser.java:83
 }

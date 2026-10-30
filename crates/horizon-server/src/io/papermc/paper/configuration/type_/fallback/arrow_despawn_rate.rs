@@ -6,7 +6,6 @@ use crate::io::papermc::paper::configuration::type_::fallback::fallback_value::F
 use crate::io::papermc::paper::configuration::type_::fallback::fallback_value::FallbackValueInt;
 use crate::io::papermc::paper::configuration::type_::fallback::fallback_value::FallbackValueIntTrait;
 use crate::io::papermc::paper::configuration::type_::fallback::fallback_value::FallbackValueTrait;
-use crate::java::lang::Throwable;
 use crate::org::spigotmc::spigot_world_config::SpigotWorldConfigTrait;
 
 // ---- class io.papermc.paper.configuration.type.fallback.ArrowDespawnRate (paper-server/src/main/java/io/papermc/paper/configuration/type/fallback/ArrowDespawnRate.java:10)
@@ -21,7 +20,7 @@ impl std::ops::Deref for ArrowDespawnRate {
 impl ArrowDespawnRate {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(context: &HashMap<FallbackValueContextKey<JObjectRef>, JObjectRef>) -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/type/fallback/ArrowDespawnRate.java:16
-    pub fn new_2(context: &HashMap<FallbackValueContextKey<JObjectRef>, JObjectRef>, value: JObjectRef) -> Result<JRef<Self>, Throwable> { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/type/fallback/ArrowDespawnRate.java:12
+    pub fn new_2(context: &HashMap<FallbackValueContextKey<JObjectRef>, JObjectRef>, value: JObjectRef) -> Result<JRef<Self>, anyhow::Error> { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/type/fallback/ArrowDespawnRate.java:12
     pub fn process(&self, value: i32) -> Option<i32> { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/type/fallback/ArrowDespawnRate.java:20
     pub fn required(&self) -> HashSet<FallbackValueContextKey<JObjectRef>> { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/type/fallback/ArrowDespawnRate.java:25
     pub fn fallback(&self) -> i32 { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/type/fallback/ArrowDespawnRate.java:30

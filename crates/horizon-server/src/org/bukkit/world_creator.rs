@@ -50,8 +50,8 @@ impl WorldCreator {
             None => Self::name_from_key(world_key.clone().unwrap()),
             Some(level_name) => level_name.clone(),
         };
-        // PORT: java.util.Random is a stub; `new Random().nextLong()`.
-        let seed = crate::java::util::Random::new().next_long();
+        // PORT: java.util.rand::rngs::StdRng is a stub; `new Random().nextLong()`.
+        let seed = Random::new().next_long();
         let key = match world_key {
             None => Self::default_world_key(level_name.as_deref().unwrap()),
             Some(world_key) => world_key,

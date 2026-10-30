@@ -3,7 +3,6 @@
 use crate::api_prelude::*;
 use crate::com::destroystokyo::paper::exception::server_exception::ServerException;
 use crate::com::destroystokyo::paper::exception::server_exception::ServerExceptionTrait;
-use crate::java::lang::Throwable;
 use crate::org::bukkit::command::command::CommandTrait;
 use crate::org::bukkit::command::command_sender::CommandSender;
 use crate::prelude::*;
@@ -40,7 +39,7 @@ impl ServerCommandException {
     }
     pub fn new_base<S: ServerCommandExceptionTrait + 'static>(
         this: &Weak<S>,
-        cause: Throwable,
+        cause: anyhow::Error,
         command: JRef<dyn CommandTrait>,
         command_sender: JRef<dyn CommandSender>,
         arguments: &Vec<String>,
@@ -54,7 +53,7 @@ impl ServerCommandException {
         }
     } // paper-api/src/main/java/com/destroystokyo/paper/exception/ServerCommandException.java:24
     pub fn new(
-        cause: Throwable,
+        cause: anyhow::Error,
         command: JRef<dyn CommandTrait>,
         command_sender: JRef<dyn CommandSender>,
         arguments: &Vec<String>,
@@ -64,7 +63,7 @@ impl ServerCommandException {
     pub fn new_base_5<S: ServerCommandExceptionTrait + 'static>(
         this: &Weak<S>,
         message: &str,
-        cause: Throwable,
+        cause: anyhow::Error,
         command: JRef<dyn CommandTrait>,
         command_sender: JRef<dyn CommandSender>,
         arguments: &Vec<String>,
@@ -79,7 +78,7 @@ impl ServerCommandException {
     } // paper-api/src/main/java/com/destroystokyo/paper/exception/ServerCommandException.java:17
     pub fn new_5(
         message: &str,
-        cause: Throwable,
+        cause: anyhow::Error,
         command: JRef<dyn CommandTrait>,
         command_sender: JRef<dyn CommandSender>,
         arguments: &Vec<String>,
@@ -91,7 +90,7 @@ impl ServerCommandException {
     pub fn new_base_7<S: ServerCommandExceptionTrait + 'static>(
         this: &Weak<S>,
         message: &str,
-        cause: Throwable,
+        cause: anyhow::Error,
         enable_suppression: bool,
         writable_stack_trace: bool,
         command: JRef<dyn CommandTrait>,
@@ -114,7 +113,7 @@ impl ServerCommandException {
     } // paper-api/src/main/java/com/destroystokyo/paper/exception/ServerCommandException.java:31
     pub fn new_7(
         message: &str,
-        cause: Throwable,
+        cause: anyhow::Error,
         enable_suppression: bool,
         writable_stack_trace: bool,
         command: JRef<dyn CommandTrait>,

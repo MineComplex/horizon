@@ -14,8 +14,6 @@ use crate::io::papermc::paper::plugin::lifecycle::event::types::prioritizable_li
 use crate::io::papermc::paper::plugin::lifecycle::event::types::prioritizable_lifecycle_event_type::PrioritizableLifecycleEventTypeSimpleTrait;
 use crate::io::papermc::paper::plugin::lifecycle::event::types::prioritizable_lifecycle_event_type::PrioritizableLifecycleEventTypeTrait;
 use crate::io::papermc::paper::registry::registry_key::RegistryKey;
-use crate::java::util::function::Consumer;
-use crate::java::util::function::Predicate;
 
 // ---- class io.papermc.paper.registry.event.type.RegistryLifecycleEventType (paper-server/src/main/java/io/papermc/paper/registry/event/type/RegistryLifecycleEventType.java:8)
 pub struct RegistryLifecycleEventType<T: JGeneric, E: JGeneric> {
@@ -44,8 +42,8 @@ impl<T: JGeneric, E: JGeneric> AbstractLifecycleEventTypeTrait<JObjectRef, JObje
     fn as_abstract_lifecycle_event_type(&self) -> &AbstractLifecycleEventType<JObjectRef, JObjectRef, JObjectRef> { self }
     fn blocks_reloading(&self, event_owner: O) -> bool { RegistryLifecycleEventType::blocks_reloading(self, event_owner) }
     fn has_handlers(&self) -> bool { PrioritizableLifecycleEventType::has_handlers(self) }
-    fn for_each_handler(&self, event: E, consumer: JRef<dyn Consumer<AbstractLifecycleEventTypeRegisteredHandler<O, E>>>, predicate: JRef<dyn Predicate<AbstractLifecycleEventTypeRegisteredHandler<O, E>>>) { PrioritizableLifecycleEventType::for_each_handler(self, event, consumer, predicate) }
-    fn remove_matching(&self, predicate: JRef<dyn Predicate<AbstractLifecycleEventTypeRegisteredHandler<O, E>>>) { PrioritizableLifecycleEventType::remove_matching(self, predicate) }
+    fn for_each_handler(&self, event: E, consumer: Arc<dyn Fn(AbstractLifecycleEventTypeRegisteredHandler<O, E>) + Send + Sync>, predicate: Arc<dyn Fn(AbstractLifecycleEventTypeRegisteredHandler<O, E>) -> bool + Send + Sync>) { PrioritizableLifecycleEventType::for_each_handler(self, event, consumer, predicate) }
+    fn remove_matching(&self, predicate: Arc<dyn Fn(AbstractLifecycleEventTypeRegisteredHandler<O, E>) -> bool + Send + Sync>) { PrioritizableLifecycleEventType::remove_matching(self, predicate) }
     fn register(&self, owner: O, config: JRef<dyn AbstractLifecycleEventHandlerConfigurationTrait<O, E>>) { PrioritizableLifecycleEventType::register(self, owner, config) }
 }
 impl<T: JGeneric, E: JGeneric> LifecycleEventTypePrioritizable<O, E> for RegistryLifecycleEventType<T, E> {

@@ -6,8 +6,6 @@ use crate::net::minecraft::core::direction::Direction;
 use crate::net::minecraft::core::direction::DirectionAxis;
 use crate::net::minecraft::core::front_and_top::FrontAndTop;
 use crate::net::minecraft::util::string_representable::StringRepresentable;
-use crate::org::joml::Matrix3fc;
-use crate::org::joml::Vector3i;
 
 // ---- enum com.mojang.math.OctahedralGroup (leaf-server/src/minecraft/java/com/mojang/math/OctahedralGroup.java:15)
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, PartialOrd, Ord)]
@@ -63,7 +61,7 @@ pub enum OctahedralGroup {
 }
 /// The fields each OctahedralGroup constant is built with (Java: the enum constructor).
 pub struct OctahedralGroupData {
-    pub transformation: Matrix3fc,
+    pub transformation: glam::Mat3,
     pub name: String,
     pub rotated_directions: Option<HashMap<Direction, Direction>>,
     pub invert_x: bool,
@@ -96,11 +94,11 @@ impl OctahedralGroup {
     pub fn trace_4(invert_x: bool, invert_y: bool, invert_z: bool, permutation: SymmetricGroup3) -> i32 { todo!() } // leaf-server/src/minecraft/java/com/mojang/math/OctahedralGroup.java:119
     pub fn compose(self, that: OctahedralGroup) -> OctahedralGroup { todo!() } // leaf-server/src/minecraft/java/com/mojang/math/OctahedralGroup.java:128
     pub fn inverse(self) -> OctahedralGroup { todo!() } // leaf-server/src/minecraft/java/com/mojang/math/OctahedralGroup.java:132
-    pub fn transformation(self) -> Matrix3fc { todo!() } // leaf-server/src/minecraft/java/com/mojang/math/OctahedralGroup.java:136
+    pub fn transformation(self) -> glam::Mat3 { todo!() } // leaf-server/src/minecraft/java/com/mojang/math/OctahedralGroup.java:136
     pub fn to_string(self) -> String { todo!() } // leaf-server/src/minecraft/java/com/mojang/math/OctahedralGroup.java:140
     pub fn initialize_rotation_directions(self) { todo!() } // leaf-server/src/minecraft/java/com/mojang/math/OctahedralGroup.java:150
     pub fn rotate(self, direction: Direction) -> Direction { todo!() } // leaf-server/src/minecraft/java/com/mojang/math/OctahedralGroup.java:164
-    pub fn rotate_1(self, v: Vector3i) -> Vector3i { todo!() } // leaf-server/src/minecraft/java/com/mojang/math/OctahedralGroup.java:169
+    pub fn rotate_1(self, v: glam::IVec3) -> glam::IVec3 { todo!() } // leaf-server/src/minecraft/java/com/mojang/math/OctahedralGroup.java:169
     pub fn rotate_1_2(self, input: FrontAndTop) -> FrontAndTop { todo!() } // leaf-server/src/minecraft/java/com/mojang/math/OctahedralGroup.java:189
     pub fn inverts(self, axis: DirectionAxis) -> bool { todo!() } // leaf-server/src/minecraft/java/com/mojang/math/OctahedralGroup.java:177
     pub fn permutation(self) -> SymmetricGroup3 { todo!() } // leaf-server/src/minecraft/java/com/mojang/math/OctahedralGroup.java:185

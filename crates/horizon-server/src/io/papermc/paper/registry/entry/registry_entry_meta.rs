@@ -10,9 +10,6 @@ use crate::io::papermc::paper::registry::paper_registry_builder::PaperRegistryBu
 use crate::io::papermc::paper::registry::registry_key::RegistryKey;
 use crate::io::papermc::paper::registry::typed_key::TypedKey;
 use crate::io::papermc::paper::registry::writable_craft_registry::WritableCraftRegistry;
-use crate::java::lang::Class;
-use crate::java::util::function::BiFunction;
-use crate::java::util::function::Supplier;
 use crate::net::minecraft::resources::resource_key::ResourceKey;
 use crate::org::bukkit::namespaced_key::NamespacedKey;
 
@@ -28,12 +25,12 @@ pub trait RegistryEntryMeta<M: JGeneric, A: JGeneric>: JObject {
 pub struct RegistryEntryMetaApiOnly<M: JGeneric, A: JGeneric> {
     pub mc_key: JRef<ResourceKey<JRef<dyn crate::net::minecraft::core::registry::Registry<M>>>>,
     pub api_key: JRef<dyn RegistryKey<A>>,
-    pub registry_supplier: JRef<dyn Supplier<JRef<dyn crate::org::bukkit::registry::Registry<A>>>>,
+    pub registry_supplier: Arc<dyn Fn() -> JRef<dyn crate::org::bukkit::registry::Registry<A>> + Send + Sync>,
     pub _phantom: std::marker::PhantomData<(M, A,)>,
 }
 impl<M: JGeneric, A: JGeneric> RegistryEntryMetaApiOnly<M, A> {
     pub fn new() -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/entry/RegistryEntryMeta.java:33
-    pub fn new_3(mc_key: JRef<ResourceKey<JRef<dyn crate::net::minecraft::core::registry::Registry<M>>>>, api_key: JRef<dyn RegistryKey<A>>, registry_supplier: JRef<dyn Supplier<JRef<dyn crate::org::bukkit::registry::Registry<A>>>>) -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/entry/RegistryEntryMeta.java:33
+    pub fn new_3(mc_key: JRef<ResourceKey<JRef<dyn crate::net::minecraft::core::registry::Registry<M>>>>, api_key: JRef<dyn RegistryKey<A>>, registry_supplier: Arc<dyn Fn() -> JRef<dyn crate::org::bukkit::registry::Registry<A>> + Send + Sync>) -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/entry/RegistryEntryMeta.java:33
     pub fn create_api_registry(&self, nms_registry: JRef<dyn crate::net::minecraft::core::registry::Registry<M>>) -> JRef<dyn crate::org::bukkit::registry::Registry<A>> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/entry/RegistryEntryMeta.java:35
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
@@ -45,29 +42,29 @@ impl<M: JGeneric, A: JGeneric> RegistryEntryMeta<M, A> for RegistryEntryMetaApiO
 }
 // ---- interface io.papermc.paper.registry.entry.RegistryEntryMeta.ServerSide (paper-server/src/main/java/io/papermc/paper/registry/entry/RegistryEntryMeta.java:41)
 pub trait RegistryEntryMetaServerSide<M: JGeneric, A: JGeneric>: RegistryEntryMeta<M, A> {
-    fn class_to_preload(&self) -> Class; // paper-server/src/main/java/io/papermc/paper/registry/entry/RegistryEntryMeta.java:43
+    fn class_to_preload(&self) -> crate::rt::Class; // paper-server/src/main/java/io/papermc/paper/registry/entry/RegistryEntryMeta.java:43
     fn registry_type_mapper(&self) -> JRef<RegistryTypeMapper<M, A>>; // paper-server/src/main/java/io/papermc/paper/registry/entry/RegistryEntryMeta.java:45
-    fn serialization_updater(&self) -> JRef<dyn BiFunction<JRef<NamespacedKey>, JRef<ApiVersion>, JRef<NamespacedKey>>>; // paper-server/src/main/java/io/papermc/paper/registry/entry/RegistryEntryMeta.java:47
+    fn serialization_updater(&self) -> Arc<dyn Fn(JRef<NamespacedKey>, JRef<ApiVersion>) -> JRef<NamespacedKey> + Send + Sync>; // paper-server/src/main/java/io/papermc/paper/registry/entry/RegistryEntryMeta.java:47
 }
 // ---- record io.papermc.paper.registry.entry.RegistryEntryMeta.Craft (paper-server/src/main/java/io/papermc/paper/registry/entry/RegistryEntryMeta.java:54)
 #[derive(Clone)]
 pub struct RegistryEntryMetaCraft<M: JGeneric, A: JGeneric> {
     pub mc_key: JRef<ResourceKey<JRef<dyn crate::net::minecraft::core::registry::Registry<M>>>>,
     pub api_key: JRef<dyn RegistryKey<A>>,
-    pub class_to_preload: Class,
+    pub class_to_preload: crate::rt::Class,
     pub registry_type_mapper: JRef<RegistryTypeMapper<M, A>>,
-    pub serialization_updater: JRef<dyn BiFunction<JRef<NamespacedKey>, JRef<ApiVersion>, JRef<NamespacedKey>>>,
+    pub serialization_updater: Arc<dyn Fn(JRef<NamespacedKey>, JRef<ApiVersion>) -> JRef<NamespacedKey> + Send + Sync>,
     pub _phantom: std::marker::PhantomData<(M, A,)>,
 }
 impl<M: JGeneric, A: JGeneric> RegistryEntryMetaCraft<M, A> {
-    pub fn new(mc_key: JRef<ResourceKey<JRef<dyn crate::net::minecraft::core::registry::Registry<M>>>>, api_key: JRef<dyn RegistryKey<A>>, class_to_preload: Class, registry_type_mapper: JRef<RegistryTypeMapper<M, A>>, serialization_updater: JRef<dyn BiFunction<JRef<NamespacedKey>, JRef<ApiVersion>, JRef<NamespacedKey>>>) -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/entry/RegistryEntryMeta.java:54
+    pub fn new(mc_key: JRef<ResourceKey<JRef<dyn crate::net::minecraft::core::registry::Registry<M>>>>, api_key: JRef<dyn RegistryKey<A>>, class_to_preload: crate::rt::Class, registry_type_mapper: JRef<RegistryTypeMapper<M, A>>, serialization_updater: Arc<dyn Fn(JRef<NamespacedKey>, JRef<ApiVersion>) -> JRef<NamespacedKey> + Send + Sync>) -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/entry/RegistryEntryMeta.java:54
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl<M: JGeneric, A: JGeneric> RegistryEntryMetaServerSide<M, A> for RegistryEntryMetaCraft<M, A> {
-    fn class_to_preload(&self) -> Class { todo!("abstract ServerSide.classToPreload") }
+    fn class_to_preload(&self) -> crate::rt::Class { todo!("abstract ServerSide.classToPreload") }
     fn registry_type_mapper(&self) -> JRef<RegistryTypeMapper<M, A>> { todo!("abstract ServerSide.registryTypeMapper") }
-    fn serialization_updater(&self) -> JRef<dyn BiFunction<JRef<NamespacedKey>, JRef<ApiVersion>, JRef<NamespacedKey>>> { todo!("abstract ServerSide.serializationUpdater") }
+    fn serialization_updater(&self) -> Arc<dyn Fn(JRef<NamespacedKey>, JRef<ApiVersion>) -> JRef<NamespacedKey> + Send + Sync> { todo!("abstract ServerSide.serializationUpdater") }
 }
 impl<M: JGeneric, A: JGeneric> RegistryEntryMeta<JObjectRef, JObjectRef> for RegistryEntryMetaCraft<M, A> {
     fn mc_key(&self) -> JRef<ResourceKey<JRef<dyn crate::net::minecraft::core::registry::Registry<M>>>> { todo!("abstract RegistryEntryMeta.mcKey") }
@@ -98,16 +95,16 @@ crate::jobject!(RegistryEntryMetaRegistryModificationApiSupport);
 pub struct RegistryEntryMetaBuildable<M: JGeneric, A: JGeneric, B: JGeneric> {
     pub mc_key: JRef<ResourceKey<JRef<dyn crate::net::minecraft::core::registry::Registry<M>>>>,
     pub api_key: JRef<dyn RegistryKey<A>>,
-    pub class_to_preload: Class,
+    pub class_to_preload: crate::rt::Class,
     pub registry_type_mapper: JRef<RegistryTypeMapper<M, A>>,
-    pub serialization_updater: JRef<dyn BiFunction<JRef<NamespacedKey>, JRef<ApiVersion>, JRef<NamespacedKey>>>,
+    pub serialization_updater: Arc<dyn Fn(JRef<NamespacedKey>, JRef<ApiVersion>) -> JRef<NamespacedKey> + Send + Sync>,
     pub builder_filler: JRef<dyn PaperRegistryBuilderFiller<M, A, B>>,
     pub modification_api_support: RegistryEntryMetaRegistryModificationApiSupport,
     pub _phantom: std::marker::PhantomData<(M, A, B,)>,
 }
 impl<M: JGeneric, A: JGeneric, B: JGeneric> RegistryEntryMetaBuildable<M, A, B> {
     pub fn new() -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/entry/RegistryEntryMeta.java:95
-    pub fn new_7(mc_key: JRef<ResourceKey<JRef<dyn crate::net::minecraft::core::registry::Registry<M>>>>, api_key: JRef<dyn RegistryKey<A>>, class_to_preload: Class, registry_type_mapper: JRef<RegistryTypeMapper<M, A>>, serialization_updater: JRef<dyn BiFunction<JRef<NamespacedKey>, JRef<ApiVersion>, JRef<NamespacedKey>>>, builder_filler: JRef<dyn PaperRegistryBuilderFiller<M, A, B>>, modification_api_support: RegistryEntryMetaRegistryModificationApiSupport) -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/entry/RegistryEntryMeta.java:95
+    pub fn new_7(mc_key: JRef<ResourceKey<JRef<dyn crate::net::minecraft::core::registry::Registry<M>>>>, api_key: JRef<dyn RegistryKey<A>>, class_to_preload: crate::rt::Class, registry_type_mapper: JRef<RegistryTypeMapper<M, A>>, serialization_updater: Arc<dyn Fn(JRef<NamespacedKey>, JRef<ApiVersion>) -> JRef<NamespacedKey> + Send + Sync>, builder_filler: JRef<dyn PaperRegistryBuilderFiller<M, A, B>>, modification_api_support: RegistryEntryMetaRegistryModificationApiSupport) -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/entry/RegistryEntryMeta.java:95
     pub fn create_api_registry(&self, nms_registry: JRef<dyn crate::net::minecraft::core::registry::Registry<M>>) -> JRef<dyn crate::org::bukkit::registry::Registry<A>> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/entry/RegistryEntryMeta.java:113
     pub fn create_entry_add_event(&self, key: JRef<dyn TypedKey<A>>, initial_builder: B, conversions: JRef<Conversions>) -> RegistryEntryAddEventImpl<A, B> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/entry/RegistryEntryMeta.java:105
     pub fn create_post_load_event(&self, writable_registry: JRef<WritableCraftRegistry<M, A, B>>, conversions: JRef<Conversions>) -> RegistryComposeEventImpl<A, B> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/entry/RegistryEntryMeta.java:109
@@ -115,9 +112,9 @@ impl<M: JGeneric, A: JGeneric, B: JGeneric> RegistryEntryMetaBuildable<M, A, B> 
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl<M: JGeneric, A: JGeneric, B: JGeneric> RegistryEntryMetaServerSide<M, A> for RegistryEntryMetaBuildable<M, A, B> {
-    fn class_to_preload(&self) -> Class { todo!("abstract ServerSide.classToPreload") }
+    fn class_to_preload(&self) -> crate::rt::Class { todo!("abstract ServerSide.classToPreload") }
     fn registry_type_mapper(&self) -> JRef<RegistryTypeMapper<M, A>> { todo!("abstract ServerSide.registryTypeMapper") }
-    fn serialization_updater(&self) -> JRef<dyn BiFunction<JRef<NamespacedKey>, JRef<ApiVersion>, JRef<NamespacedKey>>> { todo!("abstract ServerSide.serializationUpdater") }
+    fn serialization_updater(&self) -> Arc<dyn Fn(JRef<NamespacedKey>, JRef<ApiVersion>) -> JRef<NamespacedKey> + Send + Sync> { todo!("abstract ServerSide.serializationUpdater") }
 }
 impl<M: JGeneric, A: JGeneric, B: JGeneric> RegistryEntryMeta<JObjectRef, JObjectRef> for RegistryEntryMetaBuildable<M, A, B> {
     fn mc_key(&self) -> JRef<ResourceKey<JRef<dyn crate::net::minecraft::core::registry::Registry<M>>>> { todo!("abstract RegistryEntryMeta.mcKey") }

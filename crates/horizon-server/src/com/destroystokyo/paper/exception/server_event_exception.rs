@@ -5,7 +5,6 @@ use crate::com::destroystokyo::paper::exception::server_exception::ServerExcepti
 use crate::com::destroystokyo::paper::exception::server_exception::ServerExceptionTrait;
 use crate::com::destroystokyo::paper::exception::server_plugin_exception::ServerPluginException;
 use crate::com::destroystokyo::paper::exception::server_plugin_exception::ServerPluginExceptionTrait;
-use crate::java::lang::Throwable;
 use crate::org::bukkit::event::event::EventTrait;
 use crate::org::bukkit::event::listener::Listener;
 use crate::org::bukkit::plugin::plugin::Plugin;
@@ -29,7 +28,7 @@ impl ServerEventException {
         self.this.upgrade().expect("this")
     }
     pub fn new(
-        cause: Throwable,
+        cause: anyhow::Error,
         responsible_plugin: JRef<dyn Plugin>,
         listener: JRef<dyn Listener>,
         event: JRef<dyn EventTrait>,
@@ -43,7 +42,7 @@ impl ServerEventException {
     } // paper-api/src/main/java/com/destroystokyo/paper/exception/ServerEventException.java:23
     pub fn new_5(
         message: &str,
-        cause: Throwable,
+        cause: anyhow::Error,
         responsible_plugin: JRef<dyn Plugin>,
         listener: JRef<dyn Listener>,
         event: JRef<dyn EventTrait>,
@@ -57,7 +56,7 @@ impl ServerEventException {
     } // paper-api/src/main/java/com/destroystokyo/paper/exception/ServerEventException.java:17
     pub fn new_7(
         message: &str,
-        cause: Throwable,
+        cause: anyhow::Error,
         enable_suppression: bool,
         writable_stack_trace: bool,
         responsible_plugin: JRef<dyn Plugin>,

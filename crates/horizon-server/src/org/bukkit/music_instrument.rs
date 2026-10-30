@@ -6,7 +6,6 @@ use crate::io::papermc::paper::registry::registry_access;
 use crate::io::papermc::paper::registry::registry_access::RegistryAccess;
 use crate::io::papermc::paper::registry::registry_builder_factory::RegistryBuilderFactory;
 use crate::io::papermc::paper::registry::registry_key;
-use crate::java::util::function::Consumer;
 use crate::net::kyori::adventure::key::Key;
 use crate::net::kyori::adventure::text::Component;
 use crate::net::kyori::adventure::translation::Translatable;
@@ -63,14 +62,12 @@ impl MusicInstrument {
     } // paper-api/src/main/java/org/bukkit/MusicInstrument.java:115
     pub fn create(
         value: JRef<
-            dyn Consumer<
-                JRef<
+            Arc<dyn Fn(JRef<
                     dyn RegistryBuilderFactory<
                             JRef<dyn MusicInstrumentTrait>,
                             JRef<dyn InstrumentRegistryEntryBuilder>,
                         >,
-                >,
-            >,
+                >) + Send + Sync>,
         >,
     ) -> JRef<dyn MusicInstrumentTrait> {
         crate::io::papermc::paper::registry::data::inlined_registry_builder_provider::instance()

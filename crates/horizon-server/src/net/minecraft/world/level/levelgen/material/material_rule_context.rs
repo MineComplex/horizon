@@ -3,8 +3,6 @@
 use crate::prelude::*;
 use crate::ca::spottedleaf::moonrise::patches::chunk_gen::buffer_alloc::chunk_gen_material_rule_context::ChunkGenMaterialRuleContext;
 use crate::ca::spottedleaf::moonrise::patches::chunk_gen::buffer_alloc::thread_local_fixed_density_buffer_cache::ThreadLocalFixedDensityBufferCache;
-use crate::java::util::function::DoubleSupplier;
-use crate::java::util::function::Function;
 use crate::net::minecraft::core::block_pos::BlockPos;
 use crate::net::minecraft::core::block_pos::BlockPosMutableBlockPos;
 use crate::net::minecraft::core::holder::Holder;
@@ -32,13 +30,13 @@ pub struct MaterialRuleContext {
     pub random_state: JRef<RandomState>, // leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/material/MaterialRuleContext.java:32
     pub expected_volume: DensityVolume, // leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/material/MaterialRuleContext.java:33
     pub density_samplers: JRef<dyn DensitySamplerSet>, // leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/material/MaterialRuleContext.java:34
-    pub biome_getter: JRef<dyn Function<BlockPos, JRef<dyn Holder<JRef<Biome>>>>>, // leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/material/MaterialRuleContext.java:35
+    pub biome_getter: Arc<dyn Fn(BlockPos) -> JRef<dyn Holder<JRef<Biome>>> + Send + Sync>, // leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/material/MaterialRuleContext.java:35
     pub context: JRef<dyn WorldGenerationContextTrait>, // leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/material/MaterialRuleContext.java:36
     pub possible_biomes: Option<HashSet<JRef<dyn Holder<JRef<Biome>>>>>, // leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/material/MaterialRuleContext.java:37
     pub preliminary_surface_volume: DensityVolume, // leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/material/MaterialRuleContext.java:38
     pub preliminary_surface_buffer: Mut<Option<JRef<dyn DensityBufferTrait>>>, // leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/material/MaterialRuleContext.java:39
-    pub noise_samplers2d: Mut<HashMap<JRef<ResourceKey<JRef<NormalNoise>>>, JRef<dyn DoubleSupplier>>>, // leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/material/MaterialRuleContext.java:40
-    pub noise_samplers3d: Mut<HashMap<JRef<ResourceKey<JRef<NormalNoise>>>, JRef<dyn DoubleSupplier>>>, // leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/material/MaterialRuleContext.java:41
+    pub noise_samplers2d: Mut<HashMap<JRef<ResourceKey<JRef<NormalNoise>>>, Arc<dyn Fn() -> f64 + Send + Sync>>>, // leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/material/MaterialRuleContext.java:40
+    pub noise_samplers3d: Mut<HashMap<JRef<ResourceKey<JRef<NormalNoise>>>, Arc<dyn Fn() -> f64 + Send + Sync>>>, // leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/material/MaterialRuleContext.java:41
     pub last_update_xz: Mut<i64>, // leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/material/MaterialRuleContext.java:42
     pub block_x: Mut<i32>, // leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/material/MaterialRuleContext.java:43
     pub block_z: Mut<i32>, // leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/material/MaterialRuleContext.java:44
@@ -61,7 +59,7 @@ pub struct MaterialRuleContext {
 pub const HOW_FAR_BELOW_PRELIMINARY_SURFACE_LEVEL_TO_BUILD_SURFACE: i32 = 8; // leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/material/MaterialRuleContext.java:30
 impl MaterialRuleContext {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(system: JRef<MaterialSystem>, random_state: JRef<RandomState>, expected_volume: DensityVolume, density_samplers: JRef<dyn DensitySamplerSet>, biome_getter: JRef<dyn Function<BlockPos, JRef<dyn Holder<JRef<Biome>>>>>, context: JRef<dyn WorldGenerationContextTrait>, possible_biomes: Option<HashSet<JRef<dyn Holder<JRef<Biome>>>>>) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/material/MaterialRuleContext.java:75
+    pub fn new(system: JRef<MaterialSystem>, random_state: JRef<RandomState>, expected_volume: DensityVolume, density_samplers: JRef<dyn DensitySamplerSet>, biome_getter: Arc<dyn Fn(BlockPos) -> JRef<dyn Holder<JRef<Biome>>> + Send + Sync>, context: JRef<dyn WorldGenerationContextTrait>, possible_biomes: Option<HashSet<JRef<dyn Holder<JRef<Biome>>>>>) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/material/MaterialRuleContext.java:75
     pub fn moonrise_set_density_buffer_allocator(&self, allocator: JRef<ThreadLocalFixedDensityBufferCache>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/material/MaterialRuleContext.java:62
     pub fn moonrise_remove_density_buffer_allocator(&self) -> JRef<ThreadLocalFixedDensityBufferCache> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/material/MaterialRuleContext.java:67
     pub fn update_xz(&self, block_x: i32, block_z: i32, surface_gradient_x: i32, surface_gradient_z: i32) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/material/MaterialRuleContext.java:96
@@ -70,9 +68,9 @@ impl MaterialRuleContext {
     pub fn get_biome(&self) -> JRef<dyn Holder<JRef<Biome>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/material/MaterialRuleContext.java:124
     pub fn get_sea_level(&self) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/material/MaterialRuleContext.java:132
     pub fn get_min_surface_level(&self) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/material/MaterialRuleContext.java:136
-    pub fn get_noise_sampler(&self, noise_id: JRef<ResourceKey<JRef<NormalNoise>>>, is3d: bool) -> JRef<dyn DoubleSupplier> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/material/MaterialRuleContext.java:160
-    pub fn create_noise_sampler2d(&self, noise_id: JRef<ResourceKey<JRef<NormalNoise>>>) -> JRef<dyn DoubleSupplier> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/material/MaterialRuleContext.java:166
-    pub fn create_noise_sampler3d(&self, noise_id: JRef<ResourceKey<JRef<NormalNoise>>>) -> JRef<dyn DoubleSupplier> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/material/MaterialRuleContext.java:188
+    pub fn get_noise_sampler(&self, noise_id: JRef<ResourceKey<JRef<NormalNoise>>>, is3d: bool) -> Arc<dyn Fn() -> f64 + Send + Sync> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/material/MaterialRuleContext.java:160
+    pub fn create_noise_sampler2d(&self, noise_id: JRef<ResourceKey<JRef<NormalNoise>>>) -> Arc<dyn Fn() -> f64 + Send + Sync> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/material/MaterialRuleContext.java:166
+    pub fn create_noise_sampler3d(&self, noise_id: JRef<ResourceKey<JRef<NormalNoise>>>) -> Arc<dyn Fn() -> f64 + Send + Sync> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/material/MaterialRuleContext.java:188
     pub fn get_or_create_random_factory(&self, name: JRef<Identifier>) -> JRef<dyn PositionalRandomFactory> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/material/MaterialRuleContext.java:210
     pub fn get_densities_in_chunk(&self, function: JRef<dyn DensityFunction>, prefill: bool) -> JRef<dyn MaterialRulesDensityGetter> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/material/MaterialRuleContext.java:214
     pub fn possible_biomes(&self) -> Option<HashSet<JRef<dyn Holder<JRef<Biome>>>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/material/MaterialRuleContext.java:231

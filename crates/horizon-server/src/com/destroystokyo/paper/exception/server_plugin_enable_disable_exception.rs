@@ -5,7 +5,6 @@ use crate::com::destroystokyo::paper::exception::server_exception::ServerExcepti
 use crate::com::destroystokyo::paper::exception::server_exception::ServerExceptionTrait;
 use crate::com::destroystokyo::paper::exception::server_plugin_exception::ServerPluginException;
 use crate::com::destroystokyo::paper::exception::server_plugin_exception::ServerPluginExceptionTrait;
-use crate::java::lang::Throwable;
 use crate::org::bukkit::plugin::plugin::Plugin;
 use crate::prelude::*;
 
@@ -24,7 +23,7 @@ impl ServerPluginEnableDisableException {
     pub fn this(&self) -> JRef<Self> {
         self.this.upgrade().expect("this")
     }
-    pub fn new(cause: Throwable, responsible_plugin: JRef<dyn Plugin>) -> JRef<Self> {
+    pub fn new(cause: anyhow::Error, responsible_plugin: JRef<dyn Plugin>) -> JRef<Self> {
         Arc::new_cyclic(|this| ServerPluginEnableDisableException {
             base: ServerPluginException::new_base(this, cause, responsible_plugin),
             this: this.clone(),
@@ -32,7 +31,7 @@ impl ServerPluginEnableDisableException {
     } // paper-api/src/main/java/com/destroystokyo/paper/exception/ServerPluginEnableDisableException.java:13
     pub fn new_3(
         message: &str,
-        cause: Throwable,
+        cause: anyhow::Error,
         responsible_plugin: JRef<dyn Plugin>,
     ) -> JRef<Self> {
         Arc::new_cyclic(|this| ServerPluginEnableDisableException {
@@ -42,7 +41,7 @@ impl ServerPluginEnableDisableException {
     } // paper-api/src/main/java/com/destroystokyo/paper/exception/ServerPluginEnableDisableException.java:9
     pub fn new_5(
         message: &str,
-        cause: Throwable,
+        cause: anyhow::Error,
         enable_suppression: bool,
         writable_stack_trace: bool,
         responsible_plugin: JRef<dyn Plugin>,

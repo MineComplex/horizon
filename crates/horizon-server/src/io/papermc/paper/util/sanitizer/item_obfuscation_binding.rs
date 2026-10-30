@@ -3,7 +3,6 @@
 use crate::prelude::*;
 use crate::io::papermc::paper::configuration::global_configuration::GlobalConfigurationAnticheatObfuscationItems;
 use crate::io::papermc::paper::util::sanitizer::item_obfuscation_session::ItemObfuscationSessionObfuscationLevel;
-use crate::java::util::function::UnaryOperator;
 use crate::net::minecraft::core::component::data_component_type::DataComponentType;
 use crate::net::minecraft::resources::identifier::Identifier;
 use crate::net::minecraft::world::item::item_stack::ItemStack;
@@ -58,11 +57,11 @@ crate::jobject!(ItemObfuscationBindingBoundObfuscationConfigurationMutationTypeD
 // ---- record io.papermc.paper.util.sanitizer.ItemObfuscationBinding.BoundObfuscationConfiguration.MutationType.Sanitize (paper-server/src/main/java/io/papermc/paper/util/sanitizer/ItemObfuscationBinding.java:47)
 #[derive(Clone)]
 pub struct ItemObfuscationBindingBoundObfuscationConfigurationMutationTypeSanitize {
-    pub sanitizer: JRef<dyn UnaryOperator>,
+    pub sanitizer: Arc<dyn Fn(JObjectRef) -> JObjectRef + Send + Sync>,
 }
 impl ItemObfuscationBindingBoundObfuscationConfigurationMutationTypeSanitize {
     pub fn new() -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/util/sanitizer/ItemObfuscationBinding.java:47
-    pub fn new_1(sanitizer: JRef<dyn UnaryOperator>) -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/util/sanitizer/ItemObfuscationBinding.java:47
+    pub fn new_1(sanitizer: Arc<dyn Fn(JObjectRef) -> JObjectRef + Send + Sync>) -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/util/sanitizer/ItemObfuscationBinding.java:47
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

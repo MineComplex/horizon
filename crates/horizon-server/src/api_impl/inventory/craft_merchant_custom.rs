@@ -3,7 +3,6 @@
 use crate::prelude::*;
 use crate::api_impl::inventory::craft_merchant::CraftMerchant;
 use crate::io::papermc::paper::event::player::player_purchase_event::PlayerPurchaseEventTrait;
-use crate::java::lang::Throwable;
 use crate::net::minecraft::sounds::sound_event::SoundEvent;
 use crate::net::minecraft::world::entity::player::player::PlayerTrait;
 use crate::net::minecraft::world::item::item_stack::ItemStack;
@@ -33,8 +32,8 @@ impl CraftMerchant for CraftMerchantCustom {
 impl crate::org::bukkit::inventory::merchant::Merchant for CraftMerchantCustom {
     fn get_recipes(&self) -> Vec<JRef<MerchantRecipe>> { todo!("abstract Merchant.getRecipes") }
     fn set_recipes(&self, recipes: &Vec<JRef<MerchantRecipe>>) { todo!("abstract Merchant.setRecipes") }
-    fn get_recipe(&self, i: i32) -> Result<JRef<MerchantRecipe>, Throwable> { todo!("abstract Merchant.getRecipe") }
-    fn set_recipe(&self, i: i32, recipe: JRef<MerchantRecipe>) -> Result<(), Throwable> { todo!("abstract Merchant.setRecipe") }
+    fn get_recipe(&self, i: i32) -> Result<JRef<MerchantRecipe>, anyhow::Error> { todo!("abstract Merchant.getRecipe") }
+    fn set_recipe(&self, i: i32, recipe: JRef<MerchantRecipe>) -> Result<(), anyhow::Error> { todo!("abstract Merchant.setRecipe") }
     fn get_recipe_count(&self) -> i32 { todo!("abstract Merchant.getRecipeCount") }
     fn is_trading(&self) -> bool { todo!("abstract Merchant.isTrading") }
     fn get_trader(&self) -> Option<JRef<dyn HumanEntity>> { todo!("abstract Merchant.getTrader") }

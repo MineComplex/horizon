@@ -3,8 +3,6 @@
 use crate::prelude::*;
 use crate::com::mojang::math::octahedral_group::OctahedralGroup;
 use crate::com::mojang::serialization::Codec;
-use crate::io::netty::buffer::ByteBuf;
-use crate::java::util::function::IntFunction;
 use crate::net::minecraft::core::direction::Direction;
 use crate::net::minecraft::network::codec::stream_codec::StreamCodec;
 use crate::net::minecraft::util::random_source::RandomSource;
@@ -24,9 +22,9 @@ pub struct RotationData {
     pub id: String,
     pub rotation: OctahedralGroup,
 }
-pub static BY_ID: LazyLock<JRef<dyn IntFunction<Rotation>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/level/block/Rotation.java:23
+pub static BY_ID: LazyLock<Arc<dyn Fn(i32) -> Rotation + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/level/block/Rotation.java:23
 pub static CODEC: LazyLock<JRef<dyn Codec<Rotation>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/level/block/Rotation.java:24
-pub static STREAM_CODEC: LazyLock<JRef<dyn StreamCodec<ByteBuf, Rotation>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/level/block/Rotation.java:25
+pub static STREAM_CODEC: LazyLock<JRef<dyn StreamCodec<bytes::BytesMut, Rotation>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/level/block/Rotation.java:25
 pub static LEGACY_CODEC: LazyLock<JRef<dyn Codec<Rotation>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/level/block/Rotation.java:26
 impl Rotation {
     pub const VALUES: [Rotation; 4] = [Rotation::NONE, Rotation::CLOCKWISE_90, Rotation::CLOCKWISE_180, Rotation::COUNTERCLOCKWISE_90];

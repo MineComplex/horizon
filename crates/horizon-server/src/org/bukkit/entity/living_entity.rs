@@ -6,7 +6,6 @@ use crate::com::destroystokyo::paper::block::target_block_info::TargetBlockInfoF
 use crate::com::destroystokyo::paper::entity::target_entity_info::TargetEntityInfo;
 use crate::io::papermc::paper::entity::frictional::Frictional;
 use crate::io::papermc::paper::world::damagesource::combat_tracker::CombatTracker;
-use crate::java::lang::Throwable;
 use crate::net::kyori::adventure::key::Key;
 use crate::org::bukkit::attribute::attributable::Attributable;
 use crate::org::bukkit::block::block::Block;
@@ -182,7 +181,7 @@ pub trait LivingEntity: Attributable + Damageable + ProjectileSource + Frictiona
     fn set_can_pickup_items(&self, pickup: bool); // paper-api/src/main/java/org/bukkit/entity/LivingEntity.java:752
     fn get_can_pickup_items(&self) -> bool; // paper-api/src/main/java/org/bukkit/entity/LivingEntity.java:759
     fn is_leashed(&self) -> bool; // paper-api/src/main/java/org/bukkit/entity/LivingEntity.java:766
-    fn get_leash_holder(&self) -> Result<JRef<dyn Entity>, Throwable>; // paper-api/src/main/java/org/bukkit/entity/LivingEntity.java:774
+    fn get_leash_holder(&self) -> Result<JRef<dyn Entity>, anyhow::Error>; // paper-api/src/main/java/org/bukkit/entity/LivingEntity.java:774
     fn set_leash_holder(&self, holder: Option<JRef<dyn Entity>>) -> bool; // paper-api/src/main/java/org/bukkit/entity/LivingEntity.java:787
     fn is_gliding(&self) -> bool; // paper-api/src/main/java/org/bukkit/entity/LivingEntity.java:793
     fn set_gliding(&self, gliding: bool); // paper-api/src/main/java/org/bukkit/entity/LivingEntity.java:801

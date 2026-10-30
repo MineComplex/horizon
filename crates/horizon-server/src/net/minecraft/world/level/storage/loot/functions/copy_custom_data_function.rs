@@ -3,7 +3,6 @@
 use crate::prelude::*;
 use crate::com::mojang::serialization::Codec;
 use crate::com::mojang::serialization::MapCodec;
-use crate::java::util::function::Supplier;
 use crate::net::minecraft::commands::arguments::nbt_path_argument::NbtPathArgumentNbtPath;
 use crate::net::minecraft::core::holder::Holder;
 use crate::net::minecraft::nbt::tag::Tag;
@@ -105,7 +104,7 @@ pub static COPY_OPERATION_CODEC: LazyLock<JRef<dyn Codec<CopyCustomDataFunctionC
 impl CopyCustomDataFunctionCopyOperation {
     pub fn new() -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/storage/loot/functions/CopyCustomDataFunction.java:131
     pub fn new_3(source_path: JRef<NbtPathArgumentNbtPath>, target_path: JRef<NbtPathArgumentNbtPath>, op: CopyCustomDataFunctionMergeStrategy) -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/storage/loot/functions/CopyCustomDataFunction.java:131
-    pub fn apply(&self, target: JRef<dyn Supplier<JRef<dyn Tag>>>, source: JRef<dyn Tag>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/storage/loot/functions/CopyCustomDataFunction.java:141
+    pub fn apply(&self, target: Arc<dyn Fn() -> JRef<dyn Tag> + Send + Sync>, source: JRef<dyn Tag>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/storage/loot/functions/CopyCustomDataFunction.java:141
 }
 crate::jobject!(CopyCustomDataFunctionCopyOperation);
 // ---- enum net.minecraft.world.level.storage.loot.functions.CopyCustomDataFunction.MergeStrategy (leaf-server/src/minecraft/java/net/minecraft/world/level/storage/loot/functions/CopyCustomDataFunction.java:152)

@@ -3,7 +3,6 @@
 use crate::prelude::*;
 use crate::com::mojang::serialization::Codec;
 use crate::com::mojang::serialization::MapCodec;
-use crate::java::util::function::Function;
 use crate::net::minecraft::core::particles::block_particle_option::BlockParticleOption;
 use crate::net::minecraft::core::particles::color_particle_option::ColorParticleOption;
 use crate::net::minecraft::core::particles::dust_color_transition_options::DustColorTransitionOptions;
@@ -161,6 +160,6 @@ impl ParticleTypes {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/core/particles/ParticleTypes.java:13
     pub fn register(name: &str, override_limiter: bool) -> JRef<SimpleParticleType> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/core/particles/ParticleTypes.java:178
-    pub fn register_4<T: JGeneric>(name: &str, override_limiter: bool, codec: JRef<dyn Function<JRef<dyn ParticleTypeTrait<T>>, MapCodec<T>>>, stream_codec: JRef<dyn Function<JRef<dyn ParticleTypeTrait<T>>, JRef<dyn StreamCodec<JObjectRef, T>>>>) -> JRef<dyn ParticleTypeTrait<T>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/core/particles/ParticleTypes.java:182
+    pub fn register_4<T: JGeneric>(name: &str, override_limiter: bool, codec: Arc<dyn Fn(JRef<dyn ParticleTypeTrait<T>>) -> MapCodec<T> + Send + Sync>, stream_codec: Arc<dyn Fn(JRef<dyn ParticleTypeTrait<T>>) -> JRef<dyn StreamCodec<JObjectRef, T>> + Send + Sync>) -> JRef<dyn ParticleTypeTrait<T>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/core/particles/ParticleTypes.java:182
 }
 crate::jobject!(ParticleTypes);

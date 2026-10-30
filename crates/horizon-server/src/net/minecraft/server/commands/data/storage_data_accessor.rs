@@ -3,7 +3,6 @@
 use crate::prelude::*;
 use crate::com::mojang::brigadier::context::CommandContext;
 use crate::com::mojang::brigadier::suggestion::SuggestionProvider;
-use crate::java::lang::Throwable;
 use crate::net::minecraft::commands::arguments::nbt_path_argument::NbtPathArgumentNbtPath;
 use crate::net::minecraft::commands::command_source_stack::CommandSourceStack;
 use crate::net::minecraft::nbt::compound_tag::CompoundTag;
@@ -35,8 +34,8 @@ impl StorageDataAccessor {
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl DataAccessor for StorageDataAccessor {
-    fn set_data(&self, tag: JRef<CompoundTag>) -> Result<(), Throwable> { StorageDataAccessor::set_data(self, tag) }
-    fn get_data(&self) -> Result<JRef<CompoundTag>, Throwable> { StorageDataAccessor::get_data(self) }
+    fn set_data(&self, tag: JRef<CompoundTag>) -> Result<(), anyhow::Error> { StorageDataAccessor::set_data(self, tag) }
+    fn get_data(&self) -> Result<JRef<CompoundTag>, anyhow::Error> { StorageDataAccessor::get_data(self) }
     fn get_modified_success(&self) -> JRef<dyn Component> { StorageDataAccessor::get_modified_success(self) }
     fn get_print_success(&self, data: JRef<dyn Tag>) -> JRef<dyn Component> { StorageDataAccessor::get_print_success(self, data) }
     fn get_print_success_3(&self, path: JRef<NbtPathArgumentNbtPath>, scale: f64, value: i32) -> JRef<dyn Component> { StorageDataAccessor::get_print_success_3(self, path, scale, value) }

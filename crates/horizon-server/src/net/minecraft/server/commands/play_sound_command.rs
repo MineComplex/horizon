@@ -4,7 +4,6 @@ use crate::prelude::*;
 use crate::com::mojang::brigadier::builder::LiteralArgumentBuilder;
 use crate::com::mojang::brigadier::command_dispatcher::CommandDispatcher;
 use crate::com::mojang::brigadier::exceptions::SimpleCommandExceptionType;
-use crate::java::lang::Throwable;
 use crate::net::minecraft::commands::command_source_stack::CommandSourceStack;
 use crate::net::minecraft::resources::identifier::Identifier;
 use crate::net::minecraft::server::commands::command_response_tracker::CommandResponseTrackerMessagesWithArg;
@@ -24,6 +23,6 @@ impl PlaySoundCommand {
     pub fn register(dispatcher: JRef<CommandDispatcher<JRef<CommandSourceStack>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/PlaySoundCommand.java:37
     pub fn source(source: SoundSource) -> LiteralArgumentBuilder<JRef<CommandSourceStack>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/PlaySoundCommand.java:60
     pub fn get_calling_player_as_collection(player: Option<JRef<ServerPlayer>>) -> Vec<JRef<ServerPlayer>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/PlaySoundCommand.java:151
-    pub fn play_sound(source: JRef<CommandSourceStack>, players: &Vec<JRef<ServerPlayer>>, sound: JRef<Identifier>, sound_source: SoundSource, position: Vec3, volume: f32, pitch: f32, min_volume: f32) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/PlaySoundCommand.java:155
+    pub fn play_sound(source: JRef<CommandSourceStack>, players: &Vec<JRef<ServerPlayer>>, sound: JRef<Identifier>, sound_source: SoundSource, position: Vec3, volume: f32, pitch: f32, min_volume: f32) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/PlaySoundCommand.java:155
 }
 crate::jobject!(PlaySoundCommand);

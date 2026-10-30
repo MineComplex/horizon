@@ -3,13 +3,11 @@
 use crate::prelude::*;
 use crate::com::mojang::brigadier::context::CommandContext;
 use crate::io::papermc::paper::command::brigadier::command_source_stack::CommandSourceStack;
-use crate::java::lang::Throwable;
-use crate::java::util::concurrent::CompletableFuture;
 use crate::net::kyori::adventure::chat::SignedMessage;
 use crate::api_prelude::*;
 
 // ---- interface io.papermc.paper.command.brigadier.argument.SignedMessageResolver (paper-api/src/main/java/io/papermc/paper/command/brigadier/argument/SignedMessageResolver.java:15)
 pub trait SignedMessageResolver: JObject {
     fn content(&self) -> String; // paper-api/src/main/java/io/papermc/paper/command/brigadier/argument/SignedMessageResolver.java:23
-    fn resolve_signed_message(&self, argument_name: &str, context: CommandContext<JRef<dyn CommandSourceStack>>) -> Result<CompletableFuture<JRef<dyn SignedMessage>>, Throwable>; // paper-api/src/main/java/io/papermc/paper/command/brigadier/argument/SignedMessageResolver.java:37
+    fn resolve_signed_message(&self, argument_name: &str, context: CommandContext<JRef<dyn CommandSourceStack>>) -> Result<crate::rt::CompletableFuture<JRef<dyn SignedMessage>>, anyhow::Error>; // paper-api/src/main/java/io/papermc/paper/command/brigadier/argument/SignedMessageResolver.java:37
 }

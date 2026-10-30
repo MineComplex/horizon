@@ -3,8 +3,6 @@
 use crate::prelude::*;
 use crate::ca::spottedleaf::moonrise::common::util::tick_thread::TickThread;
 use crate::ca::spottedleaf::moonrise::common::util::tick_thread::TickThreadTrait;
-use crate::java::lang::management::ThreadInfo;
-use crate::java::util::logging::Logger;
 
 // ---- class org.spigotmc.WatchdogThread (paper-server/src/main/java/org/spigotmc/WatchdogThread.java:17)
 pub struct WatchdogThread {
@@ -33,7 +31,7 @@ impl WatchdogThread {
     pub fn tick() { todo!() } // paper-server/src/main/java/org/spigotmc/WatchdogThread.java:53
     pub fn do_stop() { todo!() } // paper-server/src/main/java/org/spigotmc/WatchdogThread.java:57
     pub fn run(&self) { todo!() } // paper-server/src/main/java/org/spigotmc/WatchdogThread.java:63
-    pub fn dump_thread(thread: ThreadInfo, logger: Logger) { todo!() } // paper-server/src/main/java/org/spigotmc/WatchdogThread.java:210
+    pub fn dump_thread(thread: (), logger: ()) { todo!() } // paper-server/src/main/java/org/spigotmc/WatchdogThread.java:210
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

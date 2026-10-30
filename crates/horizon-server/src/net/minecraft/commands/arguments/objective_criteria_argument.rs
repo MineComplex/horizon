@@ -6,8 +6,6 @@ use crate::com::mojang::brigadier::context::CommandContext;
 use crate::com::mojang::brigadier::exceptions::DynamicCommandExceptionType;
 use crate::com::mojang::brigadier::suggestion::Suggestions;
 use crate::com::mojang::brigadier::suggestion::SuggestionsBuilder;
-use crate::java::lang::Throwable;
-use crate::java::util::concurrent::CompletableFuture;
 use crate::net::minecraft::commands::command_source_stack::CommandSourceStack;
 use crate::net::minecraft::stats::stat_type::StatType;
 use crate::net::minecraft::world::scores::criteria::objective_criteria::ObjectiveCriteriaTrait;
@@ -23,8 +21,8 @@ impl ObjectiveCriteriaArgument {
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/ObjectiveCriteriaArgument.java:29
     pub fn criteria() -> JRef<ObjectiveCriteriaArgument> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/ObjectiveCriteriaArgument.java:32
     pub fn get_criteria(context: CommandContext<JRef<CommandSourceStack>>, name: &str) -> JRef<dyn ObjectiveCriteriaTrait> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/ObjectiveCriteriaArgument.java:36
-    pub fn parse(&self, reader: StringReader) -> Result<JRef<dyn ObjectiveCriteriaTrait>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/ObjectiveCriteriaArgument.java:40
-    pub fn list_suggestions<S: JGeneric>(&self, context: CommandContext<S>, builder: SuggestionsBuilder) -> CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/ObjectiveCriteriaArgument.java:55
+    pub fn parse(&self, reader: StringReader) -> Result<JRef<dyn ObjectiveCriteriaTrait>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/ObjectiveCriteriaArgument.java:40
+    pub fn list_suggestions<S: JGeneric>(&self, context: CommandContext<S>, builder: SuggestionsBuilder) -> crate::rt::CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/ObjectiveCriteriaArgument.java:55
     pub fn get_name<T: JGeneric>(&self, type_: JRef<StatType<T>>, value: JObjectRef) -> String { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/ObjectiveCriteriaArgument.java:69
     pub fn get_examples(&self) -> Vec<String> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/ObjectiveCriteriaArgument.java:73
 }

@@ -4,7 +4,6 @@ use crate::prelude::*;
 use crate::ca::spottedleaf::moonrise::patches::collisions::shape::cached_shape_data::CachedShapeData;
 use crate::ca::spottedleaf::moonrise::patches::collisions::shape::collision_discrete_voxel_shape::CollisionDiscreteVoxelShape;
 use crate::com::mojang::math::octahedral_group::OctahedralGroup;
-use crate::java::util::BitSet;
 use crate::net::minecraft::core::axis_cycle::AxisCycle;
 use crate::net::minecraft::core::direction::DirectionAxis;
 use crate::net::minecraft::world::phys::shapes::boolean_op::BooleanOp;
@@ -18,7 +17,7 @@ use crate::net::minecraft::world::phys::shapes::index_merger::IndexMerger;
 pub struct BitSetDiscreteVoxelShape {
     pub base: DiscreteVoxelShape,
     pub this: Weak<Self>,
-    pub storage: Mut<BitSet>, // leaf-server/src/minecraft/java/net/minecraft/world/phys/shapes/BitSetDiscreteVoxelShape.java:7
+    pub storage: Mut<bit_set::BitSet>, // leaf-server/src/minecraft/java/net/minecraft/world/phys/shapes/BitSetDiscreteVoxelShape.java:7
     pub x_min: Mut<i32>, // leaf-server/src/minecraft/java/net/minecraft/world/phys/shapes/BitSetDiscreteVoxelShape.java:8
     pub y_min: Mut<i32>, // leaf-server/src/minecraft/java/net/minecraft/world/phys/shapes/BitSetDiscreteVoxelShape.java:9
     pub z_min: Mut<i32>, // leaf-server/src/minecraft/java/net/minecraft/world/phys/shapes/BitSetDiscreteVoxelShape.java:10

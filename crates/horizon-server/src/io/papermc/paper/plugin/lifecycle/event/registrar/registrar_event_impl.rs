@@ -8,13 +8,12 @@ use crate::io::papermc::paper::plugin::lifecycle::event::registrar::registrar_ev
 use crate::io::papermc::paper::plugin::lifecycle::event::registrar::reloadable_registrar_event::ReloadableRegistrarEvent;
 use crate::io::papermc::paper::plugin::lifecycle::event::registrar::reloadable_registrar_event::ReloadableRegistrarEventCause;
 use crate::io::papermc::paper::plugin::lifecycle::event::types::owner_aware_lifecycle_event::OwnerAwareLifecycleEvent;
-use crate::java::lang::Class;
 
 // ---- class io.papermc.paper.plugin.lifecycle.event.registrar.RegistrarEventImpl (paper-server/src/main/java/io/papermc/paper/plugin/lifecycle/event/registrar/RegistrarEventImpl.java:10)
 pub struct RegistrarEventImpl<R: JGeneric, O: JGeneric> {
     pub this: Weak<dyn RegistrarEventImplTrait<R, O>>,
     pub registrar: R, // paper-server/src/main/java/io/papermc/paper/plugin/lifecycle/event/registrar/RegistrarEventImpl.java:13
-    pub owner_class: Class, // paper-server/src/main/java/io/papermc/paper/plugin/lifecycle/event/registrar/RegistrarEventImpl.java:14
+    pub owner_class: crate::rt::Class, // paper-server/src/main/java/io/papermc/paper/plugin/lifecycle/event/registrar/RegistrarEventImpl.java:14
     pub _phantom: std::marker::PhantomData<(R, O,)>,
 }
 pub trait RegistrarEventImplTrait<R: JGeneric, O: JGeneric>: PaperLifecycleEvent + OwnerAwareLifecycleEvent<O> + RegistrarEvent<R> {
@@ -27,8 +26,8 @@ impl<R: JGeneric, O: JGeneric> std::ops::Deref for dyn RegistrarEventImplTrait<R
 }
 impl<R: JGeneric, O: JGeneric> RegistrarEventImpl<R, O> {
     pub fn this(&self) -> JRef<dyn RegistrarEventImplTrait<R, O>> { self.this.upgrade().expect("this") }
-    pub fn new_base<S: RegistrarEventImplTrait<R, O> + 'static>(this: &Weak<S>, registrar: R, owner_class: Class) -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/lifecycle/event/registrar/RegistrarEventImpl.java:16
-    pub fn new(registrar: R, owner_class: Class) -> JRef<Self> { Arc::new_cyclic(|this| Self::new_base(this, registrar, owner_class)) }
+    pub fn new_base<S: RegistrarEventImplTrait<R, O> + 'static>(this: &Weak<S>, registrar: R, owner_class: crate::rt::Class) -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/lifecycle/event/registrar/RegistrarEventImpl.java:16
+    pub fn new(registrar: R, owner_class: crate::rt::Class) -> JRef<Self> { Arc::new_cyclic(|this| Self::new_base(this, registrar, owner_class)) }
     pub fn registrar(&self) -> R { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/lifecycle/event/registrar/RegistrarEventImpl.java:21
     pub fn set_owner(&self, owner: Option<O>) { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/lifecycle/event/registrar/RegistrarEventImpl.java:26
     pub fn cast_owner(&self, owner: JRef<dyn LifecycleEventOwner>) -> Option<O> { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/lifecycle/event/registrar/RegistrarEventImpl.java:31
@@ -66,7 +65,7 @@ impl<R: JGeneric, O: JGeneric> std::ops::Deref for RegistrarEventImplReloadableI
 }
 impl<R: JGeneric, O: JGeneric> RegistrarEventImplReloadableImpl<R, O> {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(registrar: R, owner_class: Class, cause: ReloadableRegistrarEventCause) -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/lifecycle/event/registrar/RegistrarEventImpl.java:53
+    pub fn new(registrar: R, owner_class: crate::rt::Class, cause: ReloadableRegistrarEventCause) -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/lifecycle/event/registrar/RegistrarEventImpl.java:53
     pub fn cause(&self) -> ReloadableRegistrarEventCause { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/lifecycle/event/registrar/RegistrarEventImpl.java:58
     pub fn to_string(&self) -> String { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/lifecycle/event/registrar/RegistrarEventImpl.java:63
 }

@@ -8,9 +8,6 @@ use crate::com::mojang::brigadier::exceptions::Dynamic2CommandExceptionType;
 use crate::com::mojang::brigadier::exceptions::DynamicCommandExceptionType;
 use crate::com::mojang::serialization::Decoder;
 use crate::com::mojang::serialization::dynamic::Dynamic;
-use crate::java::lang::Throwable;
-use crate::java::util::function::Predicate;
-use crate::java::util::stream::Stream;
 use crate::net::minecraft::commands::arguments::item::component_predicate_parser::ComponentPredicateParserContext;
 use crate::net::minecraft::commands::command_build_context::CommandBuildContext;
 use crate::net::minecraft::commands::command_source_stack::CommandSourceStack;
@@ -56,21 +53,21 @@ impl ItemPredicateArgument {
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl ParserBasedArgumentTrait<JObjectRef> for ItemPredicateArgument {
     fn as_parser_based_argument(&self) -> &ParserBasedArgument<JObjectRef> { self }
-    fn parse(&self, reader: StringReader) -> Result<T, Throwable> { ParserBasedArgument::parse(self, reader) }
+    fn parse(&self, reader: StringReader) -> Result<T, anyhow::Error> { ParserBasedArgument::parse(self, reader) }
 }
 crate::jobject!(ItemPredicateArgument);
 // ---- record net.minecraft.commands.arguments.item.ItemPredicateArgument.ComponentWrapper (leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemPredicateArgument.java:94)
 #[derive(Clone)]
 pub struct ItemPredicateArgumentComponentWrapper {
     pub id: JRef<Identifier>,
-    pub presence_checker: JRef<dyn Predicate<JRef<ItemStack>>>,
-    pub value_checker: Decoder<JRef<dyn Predicate<JRef<ItemStack>>>>,
+    pub presence_checker: Arc<dyn Fn(JRef<ItemStack>) -> bool + Send + Sync>,
+    pub value_checker: Decoder<Arc<dyn Fn(JRef<ItemStack>) -> bool + Send + Sync>>,
 }
 impl ItemPredicateArgumentComponentWrapper {
     pub fn new() -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemPredicateArgument.java:94
-    pub fn new_3(id: JRef<Identifier>, presence_checker: JRef<dyn Predicate<JRef<ItemStack>>>, value_checker: Decoder<JRef<dyn Predicate<JRef<ItemStack>>>>) -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemPredicateArgument.java:94
-    pub fn create<T: JGeneric>(reader: ImmutableStringReader, id: JRef<Identifier>, type_: JRef<dyn DataComponentType<T>>) -> Result<ItemPredicateArgumentComponentWrapper, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemPredicateArgument.java:95
-    pub fn decode(&self, reader: ImmutableStringReader, value: JRef<Dynamic<JObjectRef>>) -> Result<JRef<dyn Predicate<JRef<ItemStack>>>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemPredicateArgument.java:109
+    pub fn new_3(id: JRef<Identifier>, presence_checker: Arc<dyn Fn(JRef<ItemStack>) -> bool + Send + Sync>, value_checker: Decoder<Arc<dyn Fn(JRef<ItemStack>) -> bool + Send + Sync>>) -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemPredicateArgument.java:94
+    pub fn create<T: JGeneric>(reader: ImmutableStringReader, id: JRef<Identifier>, type_: JRef<dyn DataComponentType<T>>) -> Result<ItemPredicateArgumentComponentWrapper, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemPredicateArgument.java:95
+    pub fn decode(&self, reader: ImmutableStringReader, value: JRef<Dynamic<JObjectRef>>) -> Result<Arc<dyn Fn(JRef<ItemStack>) -> bool + Send + Sync>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemPredicateArgument.java:109
 }
 crate::jobject!(ItemPredicateArgumentComponentWrapper);
 // ---- class net.minecraft.commands.arguments.item.ItemPredicateArgument.Context (leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemPredicateArgument.java:117)
@@ -84,34 +81,34 @@ pub struct ItemPredicateArgumentContext {
 impl ItemPredicateArgumentContext {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(registries: JRef<dyn HolderLookupProvider>) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemPredicateArgument.java:124
-    pub fn for_element_type(&self, reader: ImmutableStringReader, id: JRef<Identifier>) -> Result<JRef<dyn Predicate<JRef<ItemStack>>>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemPredicateArgument.java:131
-    pub fn for_tag_type(&self, reader: ImmutableStringReader, id: JRef<Identifier>) -> Result<JRef<dyn Predicate<JRef<ItemStack>>>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemPredicateArgument.java:139
-    pub fn lookup_component_type(&self, reader: ImmutableStringReader, component_id: JRef<Identifier>) -> Result<ItemPredicateArgumentComponentWrapper, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemPredicateArgument.java:147
-    pub fn create_component_test_3(&self, reader: ImmutableStringReader, component_type: ItemPredicateArgumentComponentWrapper, value: JRef<Dynamic<JObjectRef>>) -> Result<JRef<dyn Predicate<JRef<ItemStack>>>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemPredicateArgument.java:161
-    pub fn create_component_test(&self, reader: ImmutableStringReader, component_type: ItemPredicateArgumentComponentWrapper) -> JRef<dyn Predicate<JRef<ItemStack>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemPredicateArgument.java:168
-    pub fn lookup_predicate_type(&self, reader: ImmutableStringReader, component_id: JRef<Identifier>) -> Result<ItemPredicateArgumentPredicateWrapper, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemPredicateArgument.java:173
-    pub fn create_predicate_test(&self, reader: ImmutableStringReader, predicate_type: ItemPredicateArgumentPredicateWrapper, value: JRef<Dynamic<JObjectRef>>) -> Result<JRef<dyn Predicate<JRef<ItemStack>>>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemPredicateArgument.java:189
-    pub fn list_element_types(&self) -> Stream<JRef<Identifier>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemPredicateArgument.java:196
-    pub fn list_tag_types(&self) -> Stream<JRef<Identifier>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemPredicateArgument.java:201
-    pub fn list_component_types(&self) -> Stream<JRef<Identifier>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemPredicateArgument.java:206
-    pub fn list_predicate_types(&self) -> Stream<JRef<Identifier>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemPredicateArgument.java:214
-    pub fn negate(&self, value: JRef<dyn Predicate<JRef<ItemStack>>>) -> JRef<dyn Predicate<JRef<ItemStack>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemPredicateArgument.java:219
-    pub fn any_of(&self, alternatives: &Vec<JRef<dyn Predicate<JRef<ItemStack>>>>) -> JRef<dyn Predicate<JRef<ItemStack>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemPredicateArgument.java:224
+    pub fn for_element_type(&self, reader: ImmutableStringReader, id: JRef<Identifier>) -> Result<Arc<dyn Fn(JRef<ItemStack>) -> bool + Send + Sync>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemPredicateArgument.java:131
+    pub fn for_tag_type(&self, reader: ImmutableStringReader, id: JRef<Identifier>) -> Result<Arc<dyn Fn(JRef<ItemStack>) -> bool + Send + Sync>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemPredicateArgument.java:139
+    pub fn lookup_component_type(&self, reader: ImmutableStringReader, component_id: JRef<Identifier>) -> Result<ItemPredicateArgumentComponentWrapper, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemPredicateArgument.java:147
+    pub fn create_component_test_3(&self, reader: ImmutableStringReader, component_type: ItemPredicateArgumentComponentWrapper, value: JRef<Dynamic<JObjectRef>>) -> Result<Arc<dyn Fn(JRef<ItemStack>) -> bool + Send + Sync>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemPredicateArgument.java:161
+    pub fn create_component_test(&self, reader: ImmutableStringReader, component_type: ItemPredicateArgumentComponentWrapper) -> Arc<dyn Fn(JRef<ItemStack>) -> bool + Send + Sync> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemPredicateArgument.java:168
+    pub fn lookup_predicate_type(&self, reader: ImmutableStringReader, component_id: JRef<Identifier>) -> Result<ItemPredicateArgumentPredicateWrapper, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemPredicateArgument.java:173
+    pub fn create_predicate_test(&self, reader: ImmutableStringReader, predicate_type: ItemPredicateArgumentPredicateWrapper, value: JRef<Dynamic<JObjectRef>>) -> Result<Arc<dyn Fn(JRef<ItemStack>) -> bool + Send + Sync>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemPredicateArgument.java:189
+    pub fn list_element_types(&self) -> Box<dyn Iterator<Item = JRef<Identifier>> + Send> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemPredicateArgument.java:196
+    pub fn list_tag_types(&self) -> Box<dyn Iterator<Item = JRef<Identifier>> + Send> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemPredicateArgument.java:201
+    pub fn list_component_types(&self) -> Box<dyn Iterator<Item = JRef<Identifier>> + Send> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemPredicateArgument.java:206
+    pub fn list_predicate_types(&self) -> Box<dyn Iterator<Item = JRef<Identifier>> + Send> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemPredicateArgument.java:214
+    pub fn negate(&self, value: Arc<dyn Fn(JRef<ItemStack>) -> bool + Send + Sync>) -> Arc<dyn Fn(JRef<ItemStack>) -> bool + Send + Sync> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemPredicateArgument.java:219
+    pub fn any_of(&self, alternatives: &Vec<Arc<dyn Fn(JRef<ItemStack>) -> bool + Send + Sync>>) -> Arc<dyn Fn(JRef<ItemStack>) -> bool + Send + Sync> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemPredicateArgument.java:224
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
-impl ComponentPredicateParserContext<JRef<dyn Predicate<JRef<ItemStack>>>, ItemPredicateArgumentComponentWrapper, ItemPredicateArgumentPredicateWrapper> for ItemPredicateArgumentContext {
-    fn for_element_type(&self, reader: ImmutableStringReader, id: JRef<Identifier>) -> Result<T, Throwable> { ItemPredicateArgumentContext::for_element_type(self, reader, id) }
-    fn list_element_types(&self) -> Stream<JRef<Identifier>> { ItemPredicateArgumentContext::list_element_types(self) }
-    fn for_tag_type(&self, reader: ImmutableStringReader, id: JRef<Identifier>) -> Result<T, Throwable> { ItemPredicateArgumentContext::for_tag_type(self, reader, id) }
-    fn list_tag_types(&self) -> Stream<JRef<Identifier>> { ItemPredicateArgumentContext::list_tag_types(self) }
-    fn lookup_component_type(&self, reader: ImmutableStringReader, id: JRef<Identifier>) -> Result<C, Throwable> { ItemPredicateArgumentContext::lookup_component_type(self, reader, id) }
-    fn list_component_types(&self) -> Stream<JRef<Identifier>> { ItemPredicateArgumentContext::list_component_types(self) }
+impl ComponentPredicateParserContext<Arc<dyn Fn(JRef<ItemStack>) -> bool + Send + Sync>, ItemPredicateArgumentComponentWrapper, ItemPredicateArgumentPredicateWrapper> for ItemPredicateArgumentContext {
+    fn for_element_type(&self, reader: ImmutableStringReader, id: JRef<Identifier>) -> Result<T, anyhow::Error> { ItemPredicateArgumentContext::for_element_type(self, reader, id) }
+    fn list_element_types(&self) -> Box<dyn Iterator<Item = JRef<Identifier>> + Send> { ItemPredicateArgumentContext::list_element_types(self) }
+    fn for_tag_type(&self, reader: ImmutableStringReader, id: JRef<Identifier>) -> Result<T, anyhow::Error> { ItemPredicateArgumentContext::for_tag_type(self, reader, id) }
+    fn list_tag_types(&self) -> Box<dyn Iterator<Item = JRef<Identifier>> + Send> { ItemPredicateArgumentContext::list_tag_types(self) }
+    fn lookup_component_type(&self, reader: ImmutableStringReader, id: JRef<Identifier>) -> Result<C, anyhow::Error> { ItemPredicateArgumentContext::lookup_component_type(self, reader, id) }
+    fn list_component_types(&self) -> Box<dyn Iterator<Item = JRef<Identifier>> + Send> { ItemPredicateArgumentContext::list_component_types(self) }
     fn create_component_test(&self, reader: ImmutableStringReader, component_type: C) -> T { ItemPredicateArgumentContext::create_component_test(self, reader, component_type) }
-    fn create_component_test_3(&self, reader: ImmutableStringReader, component_type: C, value: JRef<Dynamic<JObjectRef>>) -> Result<T, Throwable> { ItemPredicateArgumentContext::create_component_test_3(self, reader, component_type, value) }
-    fn lookup_predicate_type(&self, reader: ImmutableStringReader, id: JRef<Identifier>) -> Result<P, Throwable> { ItemPredicateArgumentContext::lookup_predicate_type(self, reader, id) }
-    fn list_predicate_types(&self) -> Stream<JRef<Identifier>> { ItemPredicateArgumentContext::list_predicate_types(self) }
-    fn create_predicate_test(&self, reader: ImmutableStringReader, predicate_type: P, value: JRef<Dynamic<JObjectRef>>) -> Result<T, Throwable> { ItemPredicateArgumentContext::create_predicate_test(self, reader, predicate_type, value) }
+    fn create_component_test_3(&self, reader: ImmutableStringReader, component_type: C, value: JRef<Dynamic<JObjectRef>>) -> Result<T, anyhow::Error> { ItemPredicateArgumentContext::create_component_test_3(self, reader, component_type, value) }
+    fn lookup_predicate_type(&self, reader: ImmutableStringReader, id: JRef<Identifier>) -> Result<P, anyhow::Error> { ItemPredicateArgumentContext::lookup_predicate_type(self, reader, id) }
+    fn list_predicate_types(&self) -> Box<dyn Iterator<Item = JRef<Identifier>> + Send> { ItemPredicateArgumentContext::list_predicate_types(self) }
+    fn create_predicate_test(&self, reader: ImmutableStringReader, predicate_type: P, value: JRef<Dynamic<JObjectRef>>) -> Result<T, anyhow::Error> { ItemPredicateArgumentContext::create_predicate_test(self, reader, predicate_type, value) }
     fn negate(&self, value: T) -> T { ItemPredicateArgumentContext::negate(self, value) }
     fn any_of(&self, alternatives: &Vec<T>) -> T { ItemPredicateArgumentContext::any_of(self, alternatives) }
 }
@@ -120,14 +117,14 @@ crate::jobject!(ItemPredicateArgumentContext);
 #[derive(Clone)]
 pub struct ItemPredicateArgumentPredicateWrapper {
     pub id: JRef<Identifier>,
-    pub type_: Decoder<JRef<dyn Predicate<JRef<ItemStack>>>>,
+    pub type_: Decoder<Arc<dyn Fn(JRef<ItemStack>) -> bool + Send + Sync>>,
 }
 impl ItemPredicateArgumentPredicateWrapper {
     pub fn new(holder: JRef<dyn HolderReferenceTrait<JRef<dyn DataComponentPredicateType<JObjectRef>>>>) -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemPredicateArgument.java:231
-    pub fn new_2(id: JRef<Identifier>, type_: Decoder<JRef<dyn Predicate<JRef<ItemStack>>>>) -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemPredicateArgument.java:230
-    pub fn decode(&self, reader: ImmutableStringReader, value: JRef<Dynamic<JObjectRef>>) -> Result<JRef<dyn Predicate<JRef<ItemStack>>>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemPredicateArgument.java:235
+    pub fn new_2(id: JRef<Identifier>, type_: Decoder<Arc<dyn Fn(JRef<ItemStack>) -> bool + Send + Sync>>) -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemPredicateArgument.java:230
+    pub fn decode(&self, reader: ImmutableStringReader, value: JRef<Dynamic<JObjectRef>>) -> Result<Arc<dyn Fn(JRef<ItemStack>) -> bool + Send + Sync>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemPredicateArgument.java:235
 }
 crate::jobject!(ItemPredicateArgumentPredicateWrapper);
 // ---- interface net.minecraft.commands.arguments.item.ItemPredicateArgument.Result (leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/ItemPredicateArgument.java:243)
-pub trait ItemPredicateArgumentResult: Predicate<JRef<ItemStack>> {
+pub trait ItemPredicateArgumentResult: JObject {
 }

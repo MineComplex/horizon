@@ -3,8 +3,6 @@
 use crate::prelude::*;
 use crate::ca::spottedleaf::moonrise::patches::blockstate_propertyaccess::property_access::PropertyAccess;
 use crate::com::mojang::serialization::Codec;
-use crate::java::lang::Class;
-use crate::java::util::stream::Stream;
 use crate::net::minecraft::world::level::block::state::properties::property::Property;
 use crate::net::minecraft::world::level::block::state::properties::property::PropertyTrait;
 use crate::net::minecraft::world::level::block::state::properties::property::PropertyValue;
@@ -39,12 +37,12 @@ impl PropertyTrait<JObjectRef> for BooleanProperty {
     fn as_property(&self) -> &Property<JObjectRef> { self }
     fn value(&self, value: T) -> PropertyValue<T> { Property::value(self, value) }
     fn value_1(&self, state_holder: JRef<dyn StateHolderTrait<JObjectRef, JObjectRef>>) -> PropertyValue<T> { Property::value_1(self, state_holder) }
-    fn get_all_values(&self) -> Stream<PropertyValue<T>> { Property::get_all_values(self) }
+    fn get_all_values(&self) -> Box<dyn Iterator<Item = PropertyValue<T>> + Send> { Property::get_all_values(self) }
     fn codec(&self) -> JRef<dyn Codec<T>> { Property::codec(self) }
     fn value_codec(&self) -> JRef<dyn Codec<PropertyValue<T>>> { Property::value_codec(self) }
     fn get_name(&self) -> String { Property::get_name(self) }
     fn get_name_1(&self, value: T) -> String { BooleanProperty::get_name_1(self, value) }
-    fn get_value_class(&self) -> Class { Property::get_value_class(self) }
+    fn get_value_class(&self) -> crate::rt::Class { Property::get_value_class(self) }
     fn get_possible_values(&self) -> Vec<T> { BooleanProperty::get_possible_values(self) }
     fn get_value(&self, name: &str) -> Option<T> { BooleanProperty::get_value(self, name) }
     fn get_internal_index(&self, value: T) -> i32 { BooleanProperty::get_internal_index(self, value) }

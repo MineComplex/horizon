@@ -4,7 +4,6 @@ use crate::prelude::*;
 use crate::com::mojang::serialization::Codec;
 use crate::com::mojang::serialization::DynamicOps;
 use crate::com::mojang::serialization::Keyable;
-use crate::java::util::stream::Stream;
 use crate::net::minecraft::core::component::data_component_lookup::DataComponentLookup;
 use crate::net::minecraft::core::holder::Holder;
 use crate::net::minecraft::core::holder::HolderReferenceTrait;
@@ -22,7 +21,7 @@ use crate::net::minecraft::util::random_source::RandomSource;
 pub trait Registry<T: JGeneric>: IdMap<T> + Keyable + HolderLookupRegistryLookup<T> {
     fn by_name_codec(&self) -> JRef<dyn Codec<T>> { todo!() } // default, leaf-server/src/minecraft/java/net/minecraft/core/Registry.java:29
     fn holder_by_name_codec(&self) -> JRef<dyn Codec<JRef<dyn Holder<T>>>> { todo!() } // default, leaf-server/src/minecraft/java/net/minecraft/core/Registry.java:33
-    fn keys<U: JGeneric>(&self, ops: JRef<dyn DynamicOps<U>>) -> Stream<U> where Self: Sized { todo!() } // default, leaf-server/src/minecraft/java/net/minecraft/core/Registry.java:54
+    fn keys<U: JGeneric>(&self, ops: JRef<dyn DynamicOps<U>>) -> Box<dyn Iterator<Item = U> + Send> where Self: Sized { todo!() } // default, leaf-server/src/minecraft/java/net/minecraft/core/Registry.java:54
     fn get_key(&self, thing: T) -> Option<JRef<Identifier>>; // leaf-server/src/minecraft/java/net/minecraft/core/Registry.java:59
     fn get_resource_key(&self, thing: T) -> Option<JRef<ResourceKey<T>>>; // leaf-server/src/minecraft/java/net/minecraft/core/Registry.java:61
     fn get_value(&self, key: Option<JRef<ResourceKey<T>>>) -> Option<T>; // leaf-server/src/minecraft/java/net/minecraft/core/Registry.java:66
@@ -36,7 +35,7 @@ pub trait Registry<T: JGeneric>: IdMap<T> + Keyable + HolderLookupRegistryLookup
     fn entry_set(&self) -> HashSet<(JRef<ResourceKey<T>>, T)>; // leaf-server/src/minecraft/java/net/minecraft/core/Registry.java:93
     fn registry_key_set(&self) -> HashSet<JRef<ResourceKey<T>>>; // leaf-server/src/minecraft/java/net/minecraft/core/Registry.java:95
     fn get_random(&self, random: JRef<dyn RandomSource>) -> Option<JRef<dyn HolderReferenceTrait<T>>>; // leaf-server/src/minecraft/java/net/minecraft/core/Registry.java:97
-    fn stream(&self) -> Stream<T> { todo!() } // default, leaf-server/src/minecraft/java/net/minecraft/core/Registry.java:99
+    fn stream(&self) -> Box<dyn Iterator<Item = T> + Send> { todo!() } // default, leaf-server/src/minecraft/java/net/minecraft/core/Registry.java:99
     fn contains_key(&self, key: JRef<Identifier>) -> bool; // leaf-server/src/minecraft/java/net/minecraft/core/Registry.java:103
     fn contains_key_1(&self, key: JRef<ResourceKey<T>>) -> bool; // leaf-server/src/minecraft/java/net/minecraft/core/Registry.java:105
     fn freeze(&self) -> JRef<dyn Registry<T>>; // leaf-server/src/minecraft/java/net/minecraft/core/Registry.java:128
@@ -45,7 +44,7 @@ pub trait Registry<T: JGeneric>: IdMap<T> + Keyable + HolderLookupRegistryLookup
     fn get_1_3(&self, id: JRef<Identifier>) -> Option<JRef<dyn HolderReferenceTrait<T>>>; // leaf-server/src/minecraft/java/net/minecraft/core/Registry.java:134
     fn wrap_as_holder(&self, value: T) -> JRef<dyn Holder<T>>; // leaf-server/src/minecraft/java/net/minecraft/core/Registry.java:136
     fn get_tag_or_empty(&self, id: TagKey<T>) -> Vec<JRef<dyn Holder<T>>> { todo!() } // default, leaf-server/src/minecraft/java/net/minecraft/core/Registry.java:138
-    fn get_tags(&self) -> Stream<JRef<dyn HolderSetNamedTrait<T>>>; // leaf-server/src/minecraft/java/net/minecraft/core/Registry.java:142
+    fn get_tags(&self) -> Box<dyn Iterator<Item = JRef<dyn HolderSetNamedTrait<T>>> + Send>; // leaf-server/src/minecraft/java/net/minecraft/core/Registry.java:142
     fn as_holder_id_map(&self) -> JRef<dyn IdMap<JRef<dyn Holder<T>>>> { todo!() } // default, leaf-server/src/minecraft/java/net/minecraft/core/Registry.java:144
     fn prepare_tag_reload(&self, tags: TagLoaderLoadResult<T>) -> JRef<dyn RegistryPendingTags<T>>; // leaf-server/src/minecraft/java/net/minecraft/core/Registry.java:168
     fn component_lookup(&self) -> JRef<DataComponentLookup<T>>; // leaf-server/src/minecraft/java/net/minecraft/core/Registry.java:170

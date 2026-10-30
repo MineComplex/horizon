@@ -5,8 +5,6 @@ use crate::com::mojang::brigadier::StringReader;
 use crate::com::mojang::brigadier::exceptions::DynamicCommandExceptionType;
 use crate::com::mojang::brigadier::exceptions::command_syntax_exception::CommandSyntaxExceptionTrait;
 use crate::com::mojang::serialization::DynamicOps;
-use crate::java::lang::Throwable;
-use crate::java::util::HexFormat;
 use crate::net::minecraft::util::parsing::packrat::commands::grammar::Grammar;
 use crate::net::minecraft::util::parsing::packrat::commands::greedy_predicate_parse_rule::GreedyPredicateParseRule;
 use crate::net::minecraft::util::parsing::packrat::commands::greedy_predicate_parse_rule::GreedyPredicateParseRuleTrait;
@@ -39,7 +37,7 @@ pub static ERROR_EXPECTED_HEX_NUMERAL: LazyLock<JRef<dyn DelayedException<JRef<d
 pub static ERROR_EMPTY_KEY: LazyLock<JRef<dyn DelayedException<JRef<dyn CommandSyntaxExceptionTrait>>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/nbt/SnbtGrammar.java:91
 pub static ERROR_LEADING_ZERO_NOT_ALLOWED: LazyLock<JRef<dyn DelayedException<JRef<dyn CommandSyntaxExceptionTrait>>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/nbt/SnbtGrammar.java:94
 pub static ERROR_INFINITY_NOT_ALLOWED: LazyLock<JRef<dyn DelayedException<JRef<dyn CommandSyntaxExceptionTrait>>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/nbt/SnbtGrammar.java:97
-pub static HEX_ESCAPE: LazyLock<HexFormat> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/nbt/SnbtGrammar.java:100
+pub static HEX_ESCAPE: LazyLock<()> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/nbt/SnbtGrammar.java:100
 pub static BINARY_NUMERAL: LazyLock<JRef<dyn NumberRunParseRuleTrait>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/nbt/SnbtGrammar.java:101
 pub static DECIMAL_NUMERAL: LazyLock<JRef<dyn NumberRunParseRuleTrait>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/nbt/SnbtGrammar.java:110
 pub static HEX_NUMERAL: LazyLock<JRef<dyn NumberRunParseRuleTrait>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/nbt/SnbtGrammar.java:119
@@ -49,7 +47,7 @@ pub static UNICODE_NAME: LazyLock<regex::Regex> = LazyLock::new(|| todo!()); // 
 impl SnbtGrammar {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/nbt/SnbtGrammar.java:42
-    pub fn create_number_parse_error(ex: Throwable) -> JRef<dyn DelayedException<JRef<dyn CommandSyntaxExceptionTrait>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/nbt/SnbtGrammar.java:145
+    pub fn create_number_parse_error(ex: anyhow::Error) -> JRef<dyn DelayedException<JRef<dyn CommandSyntaxExceptionTrait>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/nbt/SnbtGrammar.java:145
     pub fn escape_control_characters(c: char) -> Option<String> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/nbt/SnbtGrammar.java:149
     pub fn is_allowed_to_start_unquoted_string(c: char) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/nbt/SnbtGrammar.java:160
     pub fn can_start_number(c: char) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/nbt/SnbtGrammar.java:164

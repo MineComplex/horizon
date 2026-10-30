@@ -5,16 +5,6 @@ use crate::ca::spottedleaf::moonrise::common::misc::delayed26_way_distance_propa
 use crate::ca::spottedleaf::moonrise::patches::chunk_system::level::poi::chunk_system_poi_manager::ChunkSystemPoiManager;
 use crate::ca::spottedleaf::moonrise::patches::chunk_system::level::poi::poi_chunk::PoiChunk;
 use crate::ca::spottedleaf::moonrise::patches::chunk_system::level::storage::chunk_system_section_storage::ChunkSystemSectionStorage;
-use crate::com::mojang::datafixers::DataFixer;
-use crate::com::mojang::datafixers::util::Pair;
-use crate::java::lang::Throwable;
-use crate::java::util::concurrent::CompletableFuture;
-use crate::java::util::function::BiConsumer;
-use crate::java::util::function::BiPredicate;
-use crate::java::util::function::BooleanSupplier;
-use crate::java::util::function::LongPredicate;
-use crate::java::util::function::Predicate;
-use crate::java::util::stream::Stream;
 use crate::net::minecraft::core::block_pos::BlockPos;
 use crate::net::minecraft::core::holder::Holder;
 use crate::net::minecraft::core::registry_access::RegistryAccess;
@@ -60,7 +50,7 @@ pub const VILLAGE_SECTION_SIZE: i32 = 1; // leaf-server/src/minecraft/java/net/m
 pub const POI_DATA_SOURCE: i32 = 7; // leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/village/poi/PoiManager.java:56
 impl PoiManager {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(info: RegionStorageInfo, folder: std::path::PathBuf, fixer_upper: DataFixer, sync: bool, registry_access: JRef<dyn RegistryAccess>, error_reporter: JRef<dyn ChunkIOErrorReporter>, level_height_accessor: JRef<dyn LevelHeightAccessor>) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/village/poi/PoiManager.java:174
+    pub fn new(info: RegionStorageInfo, folder: std::path::PathBuf, fixer_upper: (), sync: bool, registry_access: JRef<dyn RegistryAccess>, error_reporter: JRef<dyn ChunkIOErrorReporter>, level_height_accessor: JRef<dyn LevelHeightAccessor>) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/village/poi/PoiManager.java:174
     pub fn get(&self, pos: i64) -> Option<JRef<PoiSection>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/village/poi/PoiManager.java:70
     pub fn get_or_load(&self, pos: i64) -> Option<JRef<PoiSection>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/village/poi/PoiManager.java:83
     pub fn get_or_create(&self, pos: i64) -> JRef<PoiSection> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/village/poi/PoiManager.java:105
@@ -68,29 +58,29 @@ impl PoiManager {
     pub fn moonrise_on_unload(&self, coordinate: i64) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/village/poi/PoiManager.java:128
     pub fn moonrise_load_in_poi_chunk(&self, poi_chunk: JRef<PoiChunk>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/village/poi/PoiManager.java:143
     pub fn moonrise_check_consistency(&self, chunk: JRef<dyn ChunkAccessTrait>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/village/poi/PoiManager.java:160
-    pub fn tick(&self, have_time: JRef<dyn BooleanSupplier>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/village/poi/PoiManager.java:441
+    pub fn tick(&self, have_time: Arc<dyn Fn() -> bool + Send + Sync>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/village/poi/PoiManager.java:441
     pub fn set_dirty(&self, section_pos: i64) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/village/poi/PoiManager.java:446
     pub fn on_section_load(&self, section_pos: i64) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/village/poi/PoiManager.java:460
     pub fn convert_between_levels(level: i32) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/village/poi/PoiManager.java:58
     pub fn update_distance_tracking(&self, section: i64) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/village/poi/PoiManager.java:62
     pub fn add(&self, pos: BlockPos, type_: JRef<dyn Holder<PoiType>>) -> Option<JRef<PoiRecord>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/village/poi/PoiManager.java:197
     pub fn remove(&self, pos: BlockPos) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/village/poi/PoiManager.java:201
-    pub fn get_count_in_range(&self, predicate: JRef<dyn Predicate<JRef<dyn Holder<PoiType>>>>, center: BlockPos, radius: i32, occupancy: PoiManagerOccupancy) -> i64 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/village/poi/PoiManager.java:205
+    pub fn get_count_in_range(&self, predicate: Arc<dyn Fn(JRef<dyn Holder<PoiType>>) -> bool + Send + Sync>, center: BlockPos, radius: i32, occupancy: PoiManagerOccupancy) -> i64 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/village/poi/PoiManager.java:205
     pub fn exists_at_position(&self, poi_type: JRef<ResourceKey<PoiType>>, block_pos: BlockPos) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/village/poi/PoiManager.java:209
-    pub fn get_in_square(&self, predicate: JRef<dyn Predicate<JRef<dyn Holder<PoiType>>>>, center: BlockPos, radius: i32, occupancy: PoiManagerOccupancy) -> Stream<JRef<PoiRecord>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/village/poi/PoiManager.java:213
-    pub fn get_in_range(&self, predicate: JRef<dyn Predicate<JRef<dyn Holder<PoiType>>>>, center: BlockPos, radius: i32, occupancy: PoiManagerOccupancy) -> Stream<JRef<PoiRecord>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/village/poi/PoiManager.java:227
-    pub fn get_in_chunk(&self, predicate: JRef<dyn Predicate<JRef<dyn Holder<PoiType>>>>, chunk_pos: ChunkPos, occupancy: PoiManagerOccupancy) -> Stream<JRef<PoiRecord>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/village/poi/PoiManager.java:241
-    pub fn find_all(&self, predicate: JRef<dyn Predicate<JRef<dyn Holder<PoiType>>>>, filter: JRef<dyn Predicate<BlockPos>>, center: BlockPos, radius: i32, occupancy: PoiManagerOccupancy) -> Stream<BlockPos> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/village/poi/PoiManager.java:250
-    pub fn find_all_with_type(&self, predicate: JRef<dyn Predicate<JRef<dyn Holder<PoiType>>>>, filter: JRef<dyn Predicate<BlockPos>>, center: BlockPos, radius: i32, occupancy: PoiManagerOccupancy) -> Stream<Pair<JRef<dyn Holder<PoiType>>, BlockPos>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/village/poi/PoiManager.java:268
-    pub fn find_all_closest_first_with_type(&self, predicate: JRef<dyn Predicate<JRef<dyn Holder<PoiType>>>>, filter: JRef<dyn Predicate<BlockPos>>, center: BlockPos, radius: i32, occupancy: PoiManagerOccupancy) -> Stream<Pair<JRef<dyn Holder<PoiType>>, BlockPos>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/village/poi/PoiManager.java:288
-    pub fn find(&self, predicate: JRef<dyn Predicate<JRef<dyn Holder<PoiType>>>>, filter: JRef<dyn Predicate<BlockPos>>, center: BlockPos, radius: i32, occupancy: PoiManagerOccupancy) -> Option<BlockPos> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/village/poi/PoiManager.java:312
-    pub fn find_closest(&self, predicate: JRef<dyn Predicate<JRef<dyn Holder<PoiType>>>>, center: BlockPos, radius: i32, occupancy: PoiManagerOccupancy) -> Option<BlockPos> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/village/poi/PoiManager.java:324
-    pub fn find_closest_5(&self, predicate: JRef<dyn Predicate<JRef<dyn Holder<PoiType>>>>, filter: JRef<dyn Predicate<BlockPos>>, center: BlockPos, radius: i32, occupancy: PoiManagerOccupancy) -> Option<BlockPos> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/village/poi/PoiManager.java:346
-    pub fn find_closest_with_type(&self, predicate: JRef<dyn Predicate<JRef<dyn Holder<PoiType>>>>, center: BlockPos, radius: i32, occupancy: PoiManagerOccupancy) -> Option<Pair<JRef<dyn Holder<PoiType>>, BlockPos>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/village/poi/PoiManager.java:335
-    pub fn take(&self, predicate: JRef<dyn Predicate<JRef<dyn Holder<PoiType>>>>, filter: JRef<dyn BiPredicate<JRef<dyn Holder<PoiType>>, BlockPos>>, center: BlockPos, radius: i32) -> Option<BlockPos> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/village/poi/PoiManager.java:361
-    pub fn get_random(&self, predicate: JRef<dyn Predicate<JRef<dyn Holder<PoiType>>>>, filter: JRef<dyn Predicate<BlockPos>>, occupancy: PoiManagerOccupancy, center: BlockPos, radius: i32, random: JRef<dyn RandomSource>) -> Option<BlockPos> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/village/poi/PoiManager.java:378
+    pub fn get_in_square(&self, predicate: Arc<dyn Fn(JRef<dyn Holder<PoiType>>) -> bool + Send + Sync>, center: BlockPos, radius: i32, occupancy: PoiManagerOccupancy) -> Box<dyn Iterator<Item = JRef<PoiRecord>> + Send> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/village/poi/PoiManager.java:213
+    pub fn get_in_range(&self, predicate: Arc<dyn Fn(JRef<dyn Holder<PoiType>>) -> bool + Send + Sync>, center: BlockPos, radius: i32, occupancy: PoiManagerOccupancy) -> Box<dyn Iterator<Item = JRef<PoiRecord>> + Send> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/village/poi/PoiManager.java:227
+    pub fn get_in_chunk(&self, predicate: Arc<dyn Fn(JRef<dyn Holder<PoiType>>) -> bool + Send + Sync>, chunk_pos: ChunkPos, occupancy: PoiManagerOccupancy) -> Box<dyn Iterator<Item = JRef<PoiRecord>> + Send> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/village/poi/PoiManager.java:241
+    pub fn find_all(&self, predicate: Arc<dyn Fn(JRef<dyn Holder<PoiType>>) -> bool + Send + Sync>, filter: Arc<dyn Fn(BlockPos) -> bool + Send + Sync>, center: BlockPos, radius: i32, occupancy: PoiManagerOccupancy) -> Box<dyn Iterator<Item = BlockPos> + Send> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/village/poi/PoiManager.java:250
+    pub fn find_all_with_type(&self, predicate: Arc<dyn Fn(JRef<dyn Holder<PoiType>>) -> bool + Send + Sync>, filter: Arc<dyn Fn(BlockPos) -> bool + Send + Sync>, center: BlockPos, radius: i32, occupancy: PoiManagerOccupancy) -> Box<dyn Iterator<Item = Pair<JRef<dyn Holder<PoiType>>, BlockPos>> + Send> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/village/poi/PoiManager.java:268
+    pub fn find_all_closest_first_with_type(&self, predicate: Arc<dyn Fn(JRef<dyn Holder<PoiType>>) -> bool + Send + Sync>, filter: Arc<dyn Fn(BlockPos) -> bool + Send + Sync>, center: BlockPos, radius: i32, occupancy: PoiManagerOccupancy) -> Box<dyn Iterator<Item = Pair<JRef<dyn Holder<PoiType>>, BlockPos>> + Send> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/village/poi/PoiManager.java:288
+    pub fn find(&self, predicate: Arc<dyn Fn(JRef<dyn Holder<PoiType>>) -> bool + Send + Sync>, filter: Arc<dyn Fn(BlockPos) -> bool + Send + Sync>, center: BlockPos, radius: i32, occupancy: PoiManagerOccupancy) -> Option<BlockPos> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/village/poi/PoiManager.java:312
+    pub fn find_closest(&self, predicate: Arc<dyn Fn(JRef<dyn Holder<PoiType>>) -> bool + Send + Sync>, center: BlockPos, radius: i32, occupancy: PoiManagerOccupancy) -> Option<BlockPos> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/village/poi/PoiManager.java:324
+    pub fn find_closest_5(&self, predicate: Arc<dyn Fn(JRef<dyn Holder<PoiType>>) -> bool + Send + Sync>, filter: Arc<dyn Fn(BlockPos) -> bool + Send + Sync>, center: BlockPos, radius: i32, occupancy: PoiManagerOccupancy) -> Option<BlockPos> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/village/poi/PoiManager.java:346
+    pub fn find_closest_with_type(&self, predicate: Arc<dyn Fn(JRef<dyn Holder<PoiType>>) -> bool + Send + Sync>, center: BlockPos, radius: i32, occupancy: PoiManagerOccupancy) -> Option<(JRef<dyn Holder<PoiType>>, BlockPos)> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/village/poi/PoiManager.java:335
+    pub fn take(&self, predicate: Arc<dyn Fn(JRef<dyn Holder<PoiType>>) -> bool + Send + Sync>, filter: Arc<dyn Fn(JRef<dyn Holder<PoiType>>, BlockPos) -> bool + Send + Sync>, center: BlockPos, radius: i32) -> Option<BlockPos> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/village/poi/PoiManager.java:361
+    pub fn get_random(&self, predicate: Arc<dyn Fn(JRef<dyn Holder<PoiType>>) -> bool + Send + Sync>, filter: Arc<dyn Fn(BlockPos) -> bool + Send + Sync>, occupancy: PoiManagerOccupancy, center: BlockPos, radius: i32, random: JRef<dyn RandomSource>) -> Option<BlockPos> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/village/poi/PoiManager.java:378
     pub fn release(&self, pos: BlockPos) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/village/poi/PoiManager.java:403
-    pub fn exists(&self, pos: BlockPos, predicate: JRef<dyn Predicate<JRef<dyn Holder<PoiType>>>>) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/village/poi/PoiManager.java:409
+    pub fn exists(&self, pos: BlockPos, predicate: Arc<dyn Fn(JRef<dyn Holder<PoiType>>) -> bool + Send + Sync>) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/village/poi/PoiManager.java:409
     pub fn get_type(&self, pos: BlockPos) -> Option<JRef<dyn Holder<PoiType>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/village/poi/PoiManager.java:413
     pub fn get_type_if_loaded(&self, pos: BlockPos) -> Option<JRef<dyn Holder<PoiType>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/village/poi/PoiManager.java:418
     pub fn get_debug_poi_info(&self, pos: BlockPos) -> Option<DebugPoiInfo> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/village/poi/PoiManager.java:423
@@ -98,25 +88,25 @@ impl PoiManager {
     pub fn is_village_center(&self, section_pos: i64) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/village/poi/PoiManager.java:435
     pub fn check_consistency_with_blocks(&self, section_pos: SectionPos, block_section: JRef<LevelChunkSection>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/village/poi/PoiManager.java:465
     pub fn may_have_poi(block_section: JRef<LevelChunkSection>) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/village/poi/PoiManager.java:478
-    pub fn update_from_section(&self, block_section: JRef<LevelChunkSection>, pos: SectionPos, output: JRef<dyn BiConsumer<BlockPos, JRef<dyn Holder<PoiType>>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/village/poi/PoiManager.java:482
+    pub fn update_from_section(&self, block_section: JRef<LevelChunkSection>, pos: SectionPos, output: Arc<dyn Fn(BlockPos, JRef<dyn Holder<PoiType>>) + Send + Sync>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/village/poi/PoiManager.java:482
     pub fn ensure_loaded_and_valid(&self, reader: JRef<dyn LevelReader>, center: BlockPos, radius: i32) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/village/poi/PoiManager.java:494
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl SectionStorageTrait<JObjectRef, JObjectRef> for PoiManager {
     fn as_section_storage(&self) -> &SectionStorage<JObjectRef, JObjectRef> { self }
-    fn tick(&self, have_time: JRef<dyn BooleanSupplier>) { PoiManager::tick(self, have_time) }
+    fn tick(&self, have_time: Arc<dyn Fn() -> bool + Send + Sync>) { PoiManager::tick(self, have_time) }
     fn flush_all(&self) { SectionStorage::flush_all(self) }
     fn has_work(&self) -> bool { SectionStorage::has_work(self) }
     fn get(&self, section_pos: i64) -> Option<R> { PoiManager::get(self, section_pos) }
     fn get_or_load(&self, section_pos: i64) -> Option<R> { PoiManager::get_or_load(self, section_pos) }
     fn outside_stored_range(&self, section_pos: i64) -> bool { SectionStorage::outside_stored_range(self, section_pos) }
     fn get_or_create(&self, section_pos: i64) -> R { PoiManager::get_or_create(self, section_pos) }
-    fn prefetch(&self, chunk_pos: ChunkPos) -> CompletableFuture<JObjectRef> { SectionStorage::prefetch(self, chunk_pos) }
+    fn prefetch(&self, chunk_pos: ChunkPos) -> crate::rt::CompletableFuture<JObjectRef> { SectionStorage::prefetch(self, chunk_pos) }
     fn on_section_load(&self, section_pos: i64) { PoiManager::on_section_load(self, section_pos) }
     fn set_dirty(&self, section_pos: i64) { PoiManager::set_dirty(self, section_pos) }
     fn flush(&self, chunk_pos: ChunkPos) { SectionStorage::flush(self, chunk_pos) }
-    fn close(&self) -> Result<(), Throwable> { SectionStorage::close(self) }
+    fn close(&self) -> Result<(), anyhow::Error> { SectionStorage::close(self) }
 }
 impl ChunkSystemPoiManager for PoiManager {
     fn moonrise_get_world(&self) -> JRef<ServerLevel> { PoiManager::moonrise_get_world(self) }
@@ -126,7 +116,7 @@ impl ChunkSystemPoiManager for PoiManager {
 }
 impl ChunkSystemSectionStorage for PoiManager {
     fn moonrise_get_region_storage(&self) -> JRef<dyn RegionFileStorageTrait> { SectionStorage::moonrise_get_region_storage(self) }
-    fn moonrise_close(&self) -> Result<(), Throwable> { SectionStorage::moonrise_close(self) }
+    fn moonrise_close(&self) -> Result<(), anyhow::Error> { SectionStorage::moonrise_close(self) }
 }
 crate::jobject!(PoiManager: dyn ChunkSystemPoiManager, dyn ChunkSystemSectionStorage);
 // ---- class net.minecraft.world.entity.ai.village.poi.PoiManager.DistanceTracker (leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/village/poi/PoiManager.java:505)
@@ -159,7 +149,7 @@ impl SectionTrackerTrait for PoiManagerDistanceTracker {
 impl DynamicGraphMinFixedPointTrait for PoiManagerDistanceTracker {
     fn as_dynamic_graph_min_fixed_point(&self) -> &DynamicGraphMinFixedPoint { self }
     fn remove_from_queue(&self, node: i64) { DynamicGraphMinFixedPoint::remove_from_queue(self, node) }
-    fn remove_if(&self, pred: JRef<dyn LongPredicate>) { DynamicGraphMinFixedPoint::remove_if(self, pred) }
+    fn remove_if(&self, pred: Arc<dyn Fn(i64) -> bool + Send + Sync>) { DynamicGraphMinFixedPoint::remove_if(self, pred) }
     fn check_node(&self, node: i64) { DynamicGraphMinFixedPoint::check_node(self, node) }
     fn check_edge(&self, from: i64, to: i64, new_level_from: i32, only_decreased: bool) { DynamicGraphMinFixedPoint::check_edge(self, from, to, new_level_from, only_decreased) }
     fn get_queue_size(&self) -> i32 { DynamicGraphMinFixedPoint::get_queue_size(self) }
@@ -180,7 +170,7 @@ pub enum PoiManagerOccupancy {
 }
 /// The fields each PoiManagerOccupancy constant is built with (Java: the enum constructor).
 pub struct PoiManagerOccupancyData {
-    pub test: JRef<dyn Predicate<JObjectRef>>,
+    pub test: Arc<dyn Fn(JObjectRef) -> bool + Send + Sync>,
 }
 impl PoiManagerOccupancy {
     pub const VALUES: [PoiManagerOccupancy; 3] = [PoiManagerOccupancy::HAS_SPACE, PoiManagerOccupancy::IS_OCCUPIED, PoiManagerOccupancy::ANY];
@@ -191,6 +181,6 @@ impl PoiManagerOccupancy {
     pub fn value_of(name: &str) -> Option<PoiManagerOccupancy> { Self::VALUES.into_iter().find(|v| v.name() == name) }
     /// The constructor arguments of each constant (see the Java enum constants).
     pub fn data(self) -> &'static PoiManagerOccupancyData { todo!("leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/village/poi/PoiManager.java:537") }
-    pub fn get_test(self) -> JRef<dyn Predicate<JObjectRef>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/village/poi/PoiManager.java:548
+    pub fn get_test(self) -> Arc<dyn Fn(JObjectRef) -> bool + Send + Sync> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/entity/ai/village/poi/PoiManager.java:548
 }
 crate::jobject!(PoiManagerOccupancy);

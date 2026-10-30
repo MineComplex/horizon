@@ -3,8 +3,6 @@
 use crate::prelude::*;
 use crate::com::mojang::serialization::Codec;
 use crate::com::mojang::serialization::MapCodec;
-use crate::java::util::function::Predicate;
-use crate::java::util::stream::Stream;
 use crate::net::minecraft::core::block_pos::BlockPos;
 use crate::net::minecraft::core::holder::Holder;
 use crate::net::minecraft::core::holder_set::HolderSet;
@@ -18,9 +16,9 @@ use crate::net::minecraft::world::level::world_gen_level::WorldGenLevel;
 pub trait Feature: JObject {
     fn codec(&self) -> MapCodec<JRef<dyn Feature>>; // leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/feature/Feature.java:26
     fn place(&self, level: JRef<dyn WorldGenLevel>, chunk_generator: JRef<dyn ChunkGeneratorTrait>, random: JRef<dyn RandomSource>, origin: BlockPos) -> bool; // leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/feature/Feature.java:28
-    fn get_sub_features(&self) -> Stream<JRef<dyn Holder<JRef<dyn Feature>>>> { todo!() } // default, leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/feature/Feature.java:30
+    fn get_sub_features(&self) -> Box<dyn Iterator<Item = JRef<dyn Holder<JRef<dyn Feature>>>> + Send> { todo!() } // default, leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/feature/Feature.java:30
     fn set_block(&self, level: JRef<dyn LevelWriter>, pos: BlockPos, block_state: JRef<BlockState>) { todo!() } // default, leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/feature/Feature.java:34
-    fn safe_set_block(&self, level: JRef<dyn WorldGenLevel>, pos: BlockPos, state: JRef<BlockState>, can_replace: JRef<dyn Predicate<JRef<BlockState>>>) { todo!() } // default, leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/feature/Feature.java:38
+    fn safe_set_block(&self, level: JRef<dyn WorldGenLevel>, pos: BlockPos, state: JRef<BlockState>, can_replace: Arc<dyn Fn(JRef<BlockState>) -> bool + Send + Sync>) { todo!() } // default, leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/feature/Feature.java:38
     fn mark_above_for_post_processing(&self, level: JRef<dyn WorldGenLevel>, place_pos: BlockPos) { todo!() } // default, leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/feature/Feature.java:44
 }
 pub static DIRECT_CODEC: LazyLock<JRef<dyn Codec<JRef<dyn Feature>>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/feature/Feature.java:22

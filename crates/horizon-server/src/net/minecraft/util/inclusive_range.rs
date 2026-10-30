@@ -3,7 +3,6 @@
 use crate::prelude::*;
 use crate::com::mojang::serialization::Codec;
 use crate::com::mojang::serialization::DataResult;
-use crate::java::util::function::Function;
 
 // ---- record net.minecraft.util.InclusiveRange (leaf-server/src/minecraft/java/net/minecraft/util/InclusiveRange.java:7)
 #[derive(Clone)]
@@ -19,7 +18,7 @@ impl<T: JGeneric> InclusiveRange<T> {
     pub fn codec<T: JGeneric>(element_codec: JRef<dyn Codec<T>>) -> JRef<dyn Codec<InclusiveRange<T>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/InclusiveRange.java:20
     pub fn codec_3<T: JGeneric>(element_codec: JRef<dyn Codec<T>>, min_allowed_inclusive: T, max_allowed_inclusive: T) -> JRef<dyn Codec<InclusiveRange<T>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/InclusiveRange.java:26
     pub fn create<T: JGeneric>(min_inclusive: T, max_inclusive: T) -> DataResult<InclusiveRange<T>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/InclusiveRange.java:59
-    pub fn map<S: JGeneric>(&self, mapper: JRef<dyn Function<JObjectRef, S>>) -> InclusiveRange<S> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/InclusiveRange.java:65
+    pub fn map<S: JGeneric>(&self, mapper: Arc<dyn Fn(JObjectRef) -> S + Send + Sync>) -> InclusiveRange<S> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/InclusiveRange.java:65
     pub fn is_value_in_range(&self, value: T) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/InclusiveRange.java:69
     pub fn contains(&self, sub_range: InclusiveRange<T>) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/InclusiveRange.java:73
     pub fn to_string(&self) -> String { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/InclusiveRange.java:77

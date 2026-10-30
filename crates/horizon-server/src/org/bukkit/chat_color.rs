@@ -154,36 +154,36 @@ impl ChatColor {
         &DATA[self as usize]
     }
     /// Each constant's body overrides `asBungee()` (the base body returns `RESET`).
-    pub fn as_bungee(self) -> crate::net::md_5::bungee::api::ChatColor {
+    pub fn as_bungee(self) -> () {
         match self {
-            ChatColor::BLACK => crate::net::md_5::bungee::api::chat_color::BLACK.clone(),
-            ChatColor::DARK_BLUE => crate::net::md_5::bungee::api::chat_color::DARK_BLUE.clone(),
-            ChatColor::DARK_GREEN => crate::net::md_5::bungee::api::chat_color::DARK_GREEN.clone(),
-            ChatColor::DARK_AQUA => crate::net::md_5::bungee::api::chat_color::DARK_AQUA.clone(),
-            ChatColor::DARK_RED => crate::net::md_5::bungee::api::chat_color::DARK_RED.clone(),
+            ChatColor::BLACK => ().clone(),
+            ChatColor::DARK_BLUE => ().clone(),
+            ChatColor::DARK_GREEN => ().clone(),
+            ChatColor::DARK_AQUA => ().clone(),
+            ChatColor::DARK_RED => ().clone(),
             ChatColor::DARK_PURPLE => {
-                crate::net::md_5::bungee::api::chat_color::DARK_PURPLE.clone()
+                ().clone()
             }
-            ChatColor::GOLD => crate::net::md_5::bungee::api::chat_color::GOLD.clone(),
-            ChatColor::GRAY => crate::net::md_5::bungee::api::chat_color::GRAY.clone(),
-            ChatColor::DARK_GRAY => crate::net::md_5::bungee::api::chat_color::DARK_GRAY.clone(),
-            ChatColor::BLUE => crate::net::md_5::bungee::api::chat_color::BLUE.clone(),
-            ChatColor::GREEN => crate::net::md_5::bungee::api::chat_color::GREEN.clone(),
-            ChatColor::AQUA => crate::net::md_5::bungee::api::chat_color::AQUA.clone(),
-            ChatColor::RED => crate::net::md_5::bungee::api::chat_color::RED.clone(),
+            ChatColor::GOLD => ().clone(),
+            ChatColor::GRAY => ().clone(),
+            ChatColor::DARK_GRAY => ().clone(),
+            ChatColor::BLUE => ().clone(),
+            ChatColor::GREEN => ().clone(),
+            ChatColor::AQUA => ().clone(),
+            ChatColor::RED => ().clone(),
             ChatColor::LIGHT_PURPLE => {
-                crate::net::md_5::bungee::api::chat_color::LIGHT_PURPLE.clone()
+                ().clone()
             }
-            ChatColor::YELLOW => crate::net::md_5::bungee::api::chat_color::YELLOW.clone(),
-            ChatColor::WHITE => crate::net::md_5::bungee::api::chat_color::WHITE.clone(),
-            ChatColor::MAGIC => crate::net::md_5::bungee::api::chat_color::MAGIC.clone(),
-            ChatColor::BOLD => crate::net::md_5::bungee::api::chat_color::BOLD.clone(),
+            ChatColor::YELLOW => ().clone(),
+            ChatColor::WHITE => ().clone(),
+            ChatColor::MAGIC => ().clone(),
+            ChatColor::BOLD => ().clone(),
             ChatColor::STRIKETHROUGH => {
-                crate::net::md_5::bungee::api::chat_color::STRIKETHROUGH.clone()
+                ().clone()
             }
-            ChatColor::UNDERLINE => crate::net::md_5::bungee::api::chat_color::UNDERLINE.clone(),
-            ChatColor::ITALIC => crate::net::md_5::bungee::api::chat_color::ITALIC.clone(),
-            ChatColor::RESET => crate::net::md_5::bungee::api::chat_color::RESET.clone(),
+            ChatColor::UNDERLINE => ().clone(),
+            ChatColor::ITALIC => ().clone(),
+            ChatColor::RESET => ().clone(),
         }
     }
     pub fn get_char(self) -> char {

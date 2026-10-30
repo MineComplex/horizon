@@ -3,7 +3,6 @@
 use crate::prelude::*;
 use crate::io::papermc::paper::plugin::loader::library::class_path_library::ClassPathLibrary;
 use crate::io::papermc::paper::plugin::loader::library::library_store::LibraryStore;
-use crate::java::lang::Throwable;
 use crate::io::papermc::paper::plugin::loader::library::library_loading_exception::LibraryLoadingException;
 use crate::api_prelude::*;
 
@@ -17,9 +16,9 @@ impl JarLibrary {
     pub fn new(path: std::path::PathBuf) -> JRef<Self> {
         Arc::new_cyclic(|this: &Weak<Self>| JarLibrary { this: this.clone(), path })
     } // paper-api/src/main/java/io/papermc/paper/plugin/loader/library/impl/JarLibrary.java:33
-    pub fn register(&self, store: JRef<dyn LibraryStore>) -> Result<(), Throwable> {
+    pub fn register(&self, store: JRef<dyn LibraryStore>) -> Result<(), anyhow::Error> {
         if !self.path.exists() {
-            // PORT: a checked exception object as a Throwable (Throwable::from_panic takes the exception payload)
+            // PORT: a checked exception object as a anyhow::Error (Throwable::from_panic takes the exception payload)
             return Err(Throwable::from_panic(Box::new(LibraryLoadingException::new(&format!("Could not find library at {}", self.path.display())))));
         }
         store.add_library(self.path.clone());
@@ -29,6 +28,6 @@ impl JarLibrary {
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl ClassPathLibrary for JarLibrary {
-    fn register(&self, store: JRef<dyn LibraryStore>) -> Result<(), Throwable> { JarLibrary::register(self, store) }
+    fn register(&self, store: JRef<dyn LibraryStore>) -> Result<(), anyhow::Error> { JarLibrary::register(self, store) }
 }
 crate::jobject!(JarLibrary: dyn ClassPathLibrary);

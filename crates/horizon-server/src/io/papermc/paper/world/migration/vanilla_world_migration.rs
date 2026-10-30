@@ -3,7 +3,6 @@
 use crate::prelude::*;
 use crate::com::mojang::serialization::dynamic::Dynamic;
 use crate::io::papermc::paper::world::migration::world_migration_context::WorldMigrationContext;
-use crate::java::lang::Throwable;
 use crate::net::minecraft::resources::resource_key::ResourceKey;
 use crate::net::minecraft::world::level::level::LevelTrait;
 use crate::net::minecraft::world::level::saveddata::saved_data_type::SavedDataType;
@@ -15,12 +14,12 @@ pub struct VanillaWorldMigration {
 impl VanillaWorldMigration {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/world/migration/VanillaWorldMigration.java:35
-    pub fn migrate(context: WorldMigrationContext) -> Result<(), Throwable> { todo!() } // paper-server/src/main/java/io/papermc/paper/world/migration/VanillaWorldMigration.java:38
-    pub fn migrate_saved_data(context: WorldMigrationContext) -> Result<(), Throwable> { todo!() } // paper-server/src/main/java/io/papermc/paper/world/migration/VanillaWorldMigration.java:59
-    pub fn delete_legacy_root_copy_if_migrated(context: WorldMigrationContext, type_: SavedDataType<JObjectRef>) -> Result<(), Throwable> { todo!() } // paper-server/src/main/java/io/papermc/paper/world/migration/VanillaWorldMigration.java:82
+    pub fn migrate(context: WorldMigrationContext) -> Result<(), anyhow::Error> { todo!() } // paper-server/src/main/java/io/papermc/paper/world/migration/VanillaWorldMigration.java:38
+    pub fn migrate_saved_data(context: WorldMigrationContext) -> Result<(), anyhow::Error> { todo!() } // paper-server/src/main/java/io/papermc/paper/world/migration/VanillaWorldMigration.java:59
+    pub fn delete_legacy_root_copy_if_migrated(context: WorldMigrationContext, type_: SavedDataType<JObjectRef>) -> Result<(), anyhow::Error> { todo!() } // paper-server/src/main/java/io/papermc/paper/world/migration/VanillaWorldMigration.java:82
     pub fn create_level_overrides(context: WorldMigrationContext, level_data: Option<JRef<Dynamic<JObjectRef>>>) { todo!() } // paper-server/src/main/java/io/papermc/paper/world/migration/VanillaWorldMigration.java:92
     pub fn migrate_legacy_pdc(context: WorldMigrationContext, level_data: Option<JRef<Dynamic<JObjectRef>>>) { todo!() } // paper-server/src/main/java/io/papermc/paper/world/migration/VanillaWorldMigration.java:112
-    pub fn migrate_legacy_world_metadata(context: WorldMigrationContext) -> Result<(), Throwable> { todo!() } // paper-server/src/main/java/io/papermc/paper/world/migration/VanillaWorldMigration.java:132
+    pub fn migrate_legacy_world_metadata(context: WorldMigrationContext) -> Result<(), anyhow::Error> { todo!() } // paper-server/src/main/java/io/papermc/paper/world/migration/VanillaWorldMigration.java:132
     pub fn resolve_explicit_paper_respawn_dimension(level_data: Option<JRef<Dynamic<JObjectRef>>>) -> Option<JRef<ResourceKey<JRef<dyn LevelTrait>>>> { todo!() } // paper-server/src/main/java/io/papermc/paper/world/migration/VanillaWorldMigration.java:145
     pub fn resolve_vanilla_respawn_dimension(level_data: Option<JRef<Dynamic<JObjectRef>>>) -> JRef<ResourceKey<JRef<dyn LevelTrait>>> { todo!() } // paper-server/src/main/java/io/papermc/paper/world/migration/VanillaWorldMigration.java:156
 }

@@ -5,11 +5,6 @@ use crate::io::papermc::paper::block::fluid::fluid_data::FluidData;
 use crate::io::papermc::paper::math::position::Position;
 use crate::io::papermc::paper::world::flag::feature_flag_set_holder::FeatureFlagSetHolder;
 use crate::io::papermc::paper::world::moon_phase::MoonPhase;
-use crate::java::lang::Class;
-use crate::java::lang::Throwable;
-use crate::java::util::Random;
-use crate::java::util::function::Consumer;
-use crate::java::util::function::Predicate;
 use crate::org::bukkit::block::biome::Biome;
 use crate::org::bukkit::block::block_state::BlockState;
 use crate::org::bukkit::block::data::block_data::BlockData;
@@ -119,20 +114,20 @@ pub trait RegionAccessor: Keyed + FeatureFlagSetHolder {
     fn set_type_4(&self, x: i32, y: i32, z: i32, material: Material) {
         self.set_block_data_4(x, y, z, material.create_block_data());
     } // default, paper-api/src/main/java/org/bukkit/RegionAccessor.java:263
-    fn generate_tree(&self, location: JRef<Location>, random: Random, type_: TreeType) -> bool; // paper-api/src/main/java/org/bukkit/RegionAccessor.java:275
+    fn generate_tree(&self, location: JRef<Location>, random: rand::rngs::StdRng, type_: TreeType) -> bool; // paper-api/src/main/java/org/bukkit/RegionAccessor.java:275
     fn generate_tree_4(
         &self,
         location: JRef<Location>,
-        random: Random,
+        random: rand::rngs::StdRng,
         type_: TreeType,
-        state_consumer: Option<JRef<dyn Consumer<JObjectRef>>>,
+        state_consumer: Option<Arc<dyn Fn(JObjectRef) + Send + Sync>>,
     ) -> bool; // paper-api/src/main/java/org/bukkit/RegionAccessor.java:295
     fn generate_tree_4_2(
         &self,
         location: JRef<Location>,
-        random: Random,
+        random: rand::rngs::StdRng,
         type_: TreeType,
-        state_predicate: Option<JRef<dyn Predicate<JObjectRef>>>,
+        state_predicate: Option<Arc<dyn Fn(JObjectRef) -> bool + Send + Sync>>,
     ) -> bool; // paper-api/src/main/java/org/bukkit/RegionAccessor.java:315
     fn spawn_entity(&self, location: JRef<Location>, type_: EntityType) -> JRef<dyn Entity> {
         // PORT: `spawn` is generic (`where Self: Sized`); integration gives the dyn-callable path
@@ -172,7 +167,7 @@ pub trait RegionAccessor: Keyed + FeatureFlagSetHolder {
         loc: JRef<Location>,
         type_: EntityType,
         reason: CreatureSpawnEventSpawnReason,
-        function: Option<JRef<dyn Consumer<JObjectRef>>>,
+        function: Option<Arc<dyn Fn(JObjectRef) + Send + Sync>>,
     ) -> JRef<dyn Entity> {
         let entity_class = type_.get_entity_class();
         assert!(
@@ -188,14 +183,14 @@ pub trait RegionAccessor: Keyed + FeatureFlagSetHolder {
     } // default, paper-api/src/main/java/org/bukkit/RegionAccessor.java:461
     fn get_entities(&self) -> Vec<JRef<dyn Entity>>; // paper-api/src/main/java/org/bukkit/RegionAccessor.java:360
     fn get_living_entities(&self) -> Vec<JRef<dyn LivingEntity>>; // paper-api/src/main/java/org/bukkit/RegionAccessor.java:368
-    fn get_entities_by_class<T: JGeneric>(&self, cls: Class) -> Vec<T>
+    fn get_entities_by_class<T: JGeneric>(&self, cls: crate::rt::Class) -> Vec<T>
     where
         Self: Sized; // paper-api/src/main/java/org/bukkit/RegionAccessor.java:380
-    fn get_entities_by_classes(&self, classes: &Vec<Class>) -> Vec<JRef<dyn Entity>>; // paper-api/src/main/java/org/bukkit/RegionAccessor.java:391
-    fn create_entity<T: JGeneric>(&self, location: JRef<Location>, clazz: Class) -> T
+    fn get_entities_by_classes(&self, classes: &Vec<crate::rt::Class>) -> Vec<JRef<dyn Entity>>; // paper-api/src/main/java/org/bukkit/RegionAccessor.java:391
+    fn create_entity<T: JGeneric>(&self, location: JRef<Location>, clazz: crate::rt::Class) -> T
     where
         Self: Sized; // paper-api/src/main/java/org/bukkit/RegionAccessor.java:409
-    fn spawn<T: JGeneric>(&self, location: JRef<Location>, clazz: Class) -> Result<T, Throwable>
+    fn spawn<T: JGeneric>(&self, location: JRef<Location>, clazz: crate::rt::Class) -> Result<T, anyhow::Error>
     where
         Self: Sized,
     {
@@ -204,9 +199,9 @@ pub trait RegionAccessor: Keyed + FeatureFlagSetHolder {
     fn spawn_3<T: JGeneric>(
         &self,
         location: JRef<Location>,
-        clazz: Class,
-        function: Option<JRef<dyn Consumer<JObjectRef>>>,
-    ) -> Result<T, Throwable>
+        clazz: crate::rt::Class,
+        function: Option<Arc<dyn Fn(JObjectRef) + Send + Sync>>,
+    ) -> Result<T, anyhow::Error>
     where
         Self: Sized,
     {
@@ -220,9 +215,9 @@ pub trait RegionAccessor: Keyed + FeatureFlagSetHolder {
     fn spawn_3_2<T: JGeneric>(
         &self,
         location: JRef<Location>,
-        clazz: Class,
+        clazz: crate::rt::Class,
         reason: CreatureSpawnEventSpawnReason,
-    ) -> Result<T, Throwable>
+    ) -> Result<T, anyhow::Error>
     where
         Self: Sized,
     {
@@ -231,10 +226,10 @@ pub trait RegionAccessor: Keyed + FeatureFlagSetHolder {
     fn spawn_4<T: JGeneric>(
         &self,
         location: JRef<Location>,
-        clazz: Class,
+        clazz: crate::rt::Class,
         reason: CreatureSpawnEventSpawnReason,
-        function: Option<JRef<dyn Consumer<JObjectRef>>>,
-    ) -> Result<T, Throwable>
+        function: Option<Arc<dyn Fn(JObjectRef) + Send + Sync>>,
+    ) -> Result<T, anyhow::Error>
     where
         Self: Sized,
     {
@@ -243,19 +238,19 @@ pub trait RegionAccessor: Keyed + FeatureFlagSetHolder {
     fn spawn_4_2<T: JGeneric>(
         &self,
         location: JRef<Location>,
-        clazz: Class,
-        function: Option<JRef<dyn Consumer<JObjectRef>>>,
+        clazz: crate::rt::Class,
+        function: Option<Arc<dyn Fn(JObjectRef) + Send + Sync>>,
         reason: CreatureSpawnEventSpawnReason,
-    ) -> Result<T, Throwable>
+    ) -> Result<T, anyhow::Error>
     where
         Self: Sized; // paper-api/src/main/java/org/bukkit/RegionAccessor.java:466
     fn spawn_4_3<T: JGeneric>(
         &self,
         location: JRef<Location>,
-        clazz: Class,
+        clazz: crate::rt::Class,
         randomize_data: bool,
-        function: Option<JRef<dyn Consumer<JObjectRef>>>,
-    ) -> Result<T, Throwable>
+        function: Option<Arc<dyn Fn(JObjectRef) + Send + Sync>>,
+    ) -> Result<T, anyhow::Error>
     where
         Self: Sized; // paper-api/src/main/java/org/bukkit/RegionAccessor.java:504
     fn get_highest_block_y_at(&self, location: JRef<Location>) -> i32; // paper-api/src/main/java/org/bukkit/RegionAccessor.java:524

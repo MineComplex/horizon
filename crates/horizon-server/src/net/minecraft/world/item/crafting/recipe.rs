@@ -3,7 +3,6 @@
 use crate::prelude::*;
 use crate::com::mojang::serialization::Codec;
 use crate::com::mojang::serialization::MapCodec;
-use crate::java::util::function::BiFunction;
 use crate::net::minecraft::core::holder::Holder;
 use crate::net::minecraft::core::holder_set::HolderSet;
 use crate::net::minecraft::network::codec::stream_codec::StreamCodec;
@@ -45,7 +44,7 @@ pub trait RecipeBookInfo<CategoryType: JGeneric>: JObject {
 pub fn book_info_map_codec<CategoryType: JGeneric, SelfType: JGeneric>(category_codec: JRef<dyn Codec<CategoryType>>, default_category: CategoryType, constructor: JRef<dyn RecipeBookInfoConstructor<CategoryType, SelfType>>) -> MapCodec<SelfType> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/Recipe.java:58
 pub fn book_info_stream_codec<CategoryType: JGeneric, SelfType: JGeneric>(category_codec: JRef<dyn StreamCodec<JObjectRef, CategoryType>>, constructor: JRef<dyn RecipeBookInfoConstructor<CategoryType, SelfType>>) -> JRef<dyn StreamCodec<JRef<RegistryFriendlyByteBuf>, SelfType>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/Recipe.java:70
 // ---- interface net.minecraft.world.item.crafting.Recipe.BookInfo.Constructor (leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/Recipe.java:77)
-pub trait RecipeBookInfoConstructor<CategoryType: JGeneric, SelfType: JGeneric>: BiFunction<CategoryType, String, SelfType> {
+pub trait RecipeBookInfoConstructor<CategoryType: JGeneric, SelfType: JGeneric>: JObject {
 }
 // ---- record net.minecraft.world.item.crafting.Recipe.CommonInfo (leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/Recipe.java:82)
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Default)]

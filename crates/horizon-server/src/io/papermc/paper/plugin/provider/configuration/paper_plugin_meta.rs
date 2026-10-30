@@ -6,8 +6,6 @@ use crate::io::papermc::paper::plugin::configuration::plugin_meta::PluginMeta;
 use crate::io::papermc::paper::plugin::provider::configuration::type_::dependency_configuration::DependencyConfiguration;
 use crate::io::papermc::paper::plugin::provider::configuration::type_::permission_configuration::PermissionConfiguration;
 use crate::io::papermc::paper::plugin::provider::configuration::type_::plugin_dependency_life_cycle::PluginDependencyLifeCycle;
-use crate::java::io::BufferedReader;
-use crate::java::lang::Throwable;
 use crate::org::bukkit::permissions::permission::Permission;
 use crate::org::bukkit::permissions::permission_default::PermissionDefault;
 use crate::org::bukkit::plugin::plugin_load_order::PluginLoadOrder;
@@ -52,7 +50,7 @@ impl PaperPluginMeta {
     pub fn get_permission_default(&self) -> PermissionDefault { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/provider/configuration/PaperPluginMeta.java:244
     pub fn get_api_version(&self) -> String { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/provider/configuration/PaperPluginMeta.java:249
     pub fn get_provided_plugins(&self) -> Vec<String> { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/provider/configuration/PaperPluginMeta.java:254
-    pub fn create(reader: BufferedReader) -> Result<JRef<PaperPluginMeta>, Throwable> { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/provider/configuration/PaperPluginMeta.java:74
+    pub fn create(reader: Box<dyn std::io::BufRead + Send>) -> Result<JRef<PaperPluginMeta>, anyhow::Error> { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/provider/configuration/PaperPluginMeta.java:74
     pub fn set_name(&self, name: &str) { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/provider/configuration/PaperPluginMeta.java:137
     pub fn set_version(&self, version: &str) { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/provider/configuration/PaperPluginMeta.java:153
     pub fn get_load_after_plugins(&self) -> Vec<String> { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/provider/configuration/PaperPluginMeta.java:195

@@ -3,7 +3,6 @@
 use crate::prelude::*;
 use crate::com::mojang::brigadier::StringReader;
 use crate::com::mojang::brigadier::context::CommandContext;
-use crate::java::lang::Throwable;
 use crate::net::minecraft::commands::command_source_stack::CommandSourceStack;
 use crate::net::minecraft::resources::identifier::Identifier;
 
@@ -17,7 +16,7 @@ impl IdentifierArgument {
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/IdentifierArgument.java:12
     pub fn id() -> JRef<IdentifierArgument> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/IdentifierArgument.java:15
     pub fn get_id(context: CommandContext<JRef<CommandSourceStack>>, name: &str) -> JRef<Identifier> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/IdentifierArgument.java:19
-    pub fn parse(&self, reader: StringReader) -> Result<JRef<Identifier>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/IdentifierArgument.java:23
+    pub fn parse(&self, reader: StringReader) -> Result<JRef<Identifier>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/IdentifierArgument.java:23
     pub fn get_examples(&self) -> Vec<String> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/IdentifierArgument.java:28
 }
 crate::jobject!(IdentifierArgument);

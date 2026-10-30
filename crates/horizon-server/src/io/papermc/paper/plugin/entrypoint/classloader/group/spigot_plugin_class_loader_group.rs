@@ -7,16 +7,13 @@ use crate::io::papermc::paper::plugin::entrypoint::classloader::group::simple_li
 use crate::io::papermc::paper::plugin::provider::classloader::class_loader_access::ClassLoaderAccess;
 use crate::io::papermc::paper::plugin::provider::classloader::configured_plugin_class_loader::ConfiguredPluginClassLoader;
 use crate::io::papermc::paper::plugin::provider::classloader::plugin_class_loader_group::PluginClassLoaderGroup;
-use crate::java::lang::Class;
-use crate::java::lang::Throwable;
-use crate::java::util::function::Predicate;
 use crate::org::bukkit::plugin::java::plugin_class_loader::PluginClassLoader;
 
 // ---- class io.papermc.paper.plugin.entrypoint.classloader.group.SpigotPluginClassLoaderGroup (paper-server/src/main/java/io/papermc/paper/plugin/entrypoint/classloader/group/SpigotPluginClassLoaderGroup.java:14)
 pub struct SpigotPluginClassLoaderGroup {
     pub base: SimpleListPluginClassLoaderGroup,
     pub this: Weak<Self>,
-    pub library_classloader_predicate: JRef<dyn Predicate<JRef<dyn ConfiguredPluginClassLoader>>>, // paper-server/src/main/java/io/papermc/paper/plugin/entrypoint/classloader/group/SpigotPluginClassLoaderGroup.java:17
+    pub library_classloader_predicate: Arc<dyn Fn(JRef<dyn ConfiguredPluginClassLoader>) -> bool + Send + Sync>, // paper-server/src/main/java/io/papermc/paper/plugin/entrypoint/classloader/group/SpigotPluginClassLoaderGroup.java:17
     pub plugin_class_loader: JRef<PluginClassLoader>, // paper-server/src/main/java/io/papermc/paper/plugin/entrypoint/classloader/group/SpigotPluginClassLoaderGroup.java:18
 }
 impl std::ops::Deref for SpigotPluginClassLoaderGroup {
@@ -25,11 +22,11 @@ impl std::ops::Deref for SpigotPluginClassLoaderGroup {
 }
 impl SpigotPluginClassLoaderGroup {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(global_plugin_class_loader_group: JRef<GlobalPluginClassLoaderGroup>, library_classloader_predicate: JRef<dyn Predicate<JRef<dyn ConfiguredPluginClassLoader>>>, plugin_class_loader: JRef<PluginClassLoader>) -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/entrypoint/classloader/group/SpigotPluginClassLoaderGroup.java:20
+    pub fn new(global_plugin_class_loader_group: JRef<GlobalPluginClassLoaderGroup>, library_classloader_predicate: Arc<dyn Fn(JRef<dyn ConfiguredPluginClassLoader>) -> bool + Send + Sync>, plugin_class_loader: JRef<PluginClassLoader>) -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/entrypoint/classloader/group/SpigotPluginClassLoaderGroup.java:20
     pub fn add(&self, configured_plugin_class_loader: JRef<dyn ConfiguredPluginClassLoader>) { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/entrypoint/classloader/group/SpigotPluginClassLoaderGroup.java:27
     pub fn remove(&self, configured_plugin_class_loader: JRef<dyn ConfiguredPluginClassLoader>) { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/entrypoint/classloader/group/SpigotPluginClassLoaderGroup.java:31
     pub fn get_access(&self) -> JRef<dyn ClassLoaderAccess> { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/entrypoint/classloader/group/SpigotPluginClassLoaderGroup.java:36
-    pub fn lookup_class(&self, name: &str, resolve: bool, current: JRef<dyn ConfiguredPluginClassLoader>) -> Result<Class, Throwable> { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/entrypoint/classloader/group/SpigotPluginClassLoaderGroup.java:41
+    pub fn lookup_class(&self, name: &str, resolve: bool, current: JRef<dyn ConfiguredPluginClassLoader>) -> Result<crate::rt::Class, anyhow::Error> { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/entrypoint/classloader/group/SpigotPluginClassLoaderGroup.java:41
     pub fn to_string(&self) -> String { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/entrypoint/classloader/group/SpigotPluginClassLoaderGroup.java:51
     pub fn get_plugin_class_loader(&self) -> JRef<PluginClassLoader> { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/entrypoint/classloader/group/SpigotPluginClassLoaderGroup.java:47
 }
@@ -37,12 +34,12 @@ impl SpigotPluginClassLoaderGroup {
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl SimpleListPluginClassLoaderGroupTrait for SpigotPluginClassLoaderGroup {
     fn as_simple_list_plugin_class_loader_group(&self) -> &SimpleListPluginClassLoaderGroup { self }
-    fn lookup_class(&self, name: &str, resolve: bool, current: JRef<dyn ConfiguredPluginClassLoader>) -> Result<Class, Throwable> { SpigotPluginClassLoaderGroup::lookup_class(self, name, resolve, current) }
+    fn lookup_class(&self, name: &str, resolve: bool, current: JRef<dyn ConfiguredPluginClassLoader>) -> Result<crate::rt::Class, anyhow::Error> { SpigotPluginClassLoaderGroup::lookup_class(self, name, resolve, current) }
     fn get_class_loaders(&self) -> Vec<JRef<dyn ConfiguredPluginClassLoader>> { SimpleListPluginClassLoaderGroup::get_class_loaders(self) }
     fn to_string(&self) -> String { SpigotPluginClassLoaderGroup::to_string(self) }
 }
 impl PluginClassLoaderGroup for SpigotPluginClassLoaderGroup {
-    fn get_class_by_name(&self, name: &str, resolve: bool, requester: JRef<dyn ConfiguredPluginClassLoader>) -> Option<Class> { SimpleListPluginClassLoaderGroup::get_class_by_name(self, name, resolve, requester) }
+    fn get_class_by_name(&self, name: &str, resolve: bool, requester: JRef<dyn ConfiguredPluginClassLoader>) -> Option<crate::rt::Class> { SimpleListPluginClassLoaderGroup::get_class_by_name(self, name, resolve, requester) }
     fn remove(&self, configured_plugin_class_loader: JRef<dyn ConfiguredPluginClassLoader>) { SpigotPluginClassLoaderGroup::remove(self, configured_plugin_class_loader) }
     fn add(&self, configured_plugin_class_loader: JRef<dyn ConfiguredPluginClassLoader>) { SpigotPluginClassLoaderGroup::add(self, configured_plugin_class_loader) }
     fn get_access(&self) -> JRef<dyn ClassLoaderAccess> { SpigotPluginClassLoaderGroup::get_access(self) }

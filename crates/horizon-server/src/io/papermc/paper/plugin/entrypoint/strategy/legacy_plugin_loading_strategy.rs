@@ -6,7 +6,6 @@ use crate::io::papermc::paper::plugin::entrypoint::strategy::provider_configurat
 use crate::io::papermc::paper::plugin::entrypoint::strategy::provider_loading_strategy::ProviderLoadingStrategy;
 use crate::io::papermc::paper::plugin::entrypoint::strategy::provider_loading_strategy::ProviderLoadingStrategyProviderPair;
 use crate::io::papermc::paper::plugin::provider::plugin_provider::PluginProvider;
-use crate::java::util::logging::Logger;
 
 // ---- class io.papermc.paper.plugin.entrypoint.strategy.LegacyPluginLoadingStrategy (paper-server/src/main/java/io/papermc/paper/plugin/entrypoint/strategy/LegacyPluginLoadingStrategy.java:24)
 pub struct LegacyPluginLoadingStrategy<T: JGeneric> {
@@ -14,7 +13,7 @@ pub struct LegacyPluginLoadingStrategy<T: JGeneric> {
     pub configuration: JRef<dyn ProviderConfiguration<T>>, // paper-server/src/main/java/io/papermc/paper/plugin/entrypoint/strategy/LegacyPluginLoadingStrategy.java:28
     pub _phantom: std::marker::PhantomData<(T,)>,
 }
-pub static LOGGER: LazyLock<Logger> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/plugin/entrypoint/strategy/LegacyPluginLoadingStrategy.java:27
+pub static LOGGER: LazyLock<()> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/plugin/entrypoint/strategy/LegacyPluginLoadingStrategy.java:27
 impl<T: JGeneric> LegacyPluginLoadingStrategy<T> {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(on_load: JRef<dyn ProviderConfiguration<T>>) -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/entrypoint/strategy/LegacyPluginLoadingStrategy.java:30

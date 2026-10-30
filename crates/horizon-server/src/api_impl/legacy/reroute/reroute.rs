@@ -3,9 +3,6 @@
 use crate::prelude::*;
 use crate::api_impl::legacy::reroute::reroute_method_data::RerouteMethodData;
 use crate::api_impl::util::api_version::ApiVersion;
-use crate::java::lang::Class;
-use crate::java::util::function::Consumer;
-use crate::org::objectweb::asm::Type;
 use crate::api_prelude::*;
 
 // ---- class org.bukkit.craftbukkit.legacy.reroute.Reroute (paper-server/src/main/java/org/bukkit/craftbukkit/legacy/reroute/Reroute.java:11)
@@ -16,7 +13,7 @@ pub struct Reroute {
 impl Reroute {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(reroute_data_map: &HashMap<String, JRef<RerouteRerouteDataHolder>>) -> JRef<Self> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/reroute/Reroute.java:16
-    pub fn apply(&self, plugin_version: JRef<ApiVersion>, owner: &str, name: &str, desc: &str, static_call: bool, consumer: JRef<dyn Consumer<RerouteMethodData>>) -> bool { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/reroute/Reroute.java:47
+    pub fn apply(&self, plugin_version: JRef<ApiVersion>, owner: &str, name: &str, desc: &str, static_call: bool, consumer: Arc<dyn Fn(RerouteMethodData) + Send + Sync>) -> bool { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/reroute/Reroute.java:47
 }
 crate::jobject!(Reroute);
 // ---- class org.bukkit.craftbukkit.legacy.reroute.Reroute.RerouteDataHolder (paper-server/src/main/java/org/bukkit/craftbukkit/legacy/reroute/Reroute.java:97)
@@ -27,8 +24,8 @@ pub struct RerouteRerouteDataHolder {
 impl RerouteRerouteDataHolder {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/reroute/Reroute.java:97
-    pub fn get(&self, clazz: Class) -> RerouteMethodData { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/reroute/Reroute.java:102
-    pub fn get_1(&self, owner: Type) -> RerouteMethodData { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/reroute/Reroute.java:106
+    pub fn get(&self, clazz: crate::rt::Class) -> RerouteMethodData { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/reroute/Reroute.java:102
+    pub fn get_1(&self, owner: ()) -> RerouteMethodData { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/reroute/Reroute.java:106
     pub fn add(&self, value: RerouteMethodData) { todo!() } // paper-server/src/main/java/org/bukkit/craftbukkit/legacy/reroute/Reroute.java:110
 }
 crate::jobject!(RerouteRerouteDataHolder);

@@ -10,12 +10,6 @@ use crate::com::mojang::brigadier::exceptions::SimpleCommandExceptionType;
 use crate::com::mojang::brigadier::suggestion::Suggestions;
 use crate::com::mojang::brigadier::suggestion::SuggestionsBuilder;
 use crate::io::papermc::paper::command::brigadier::paper_command_source_stack::PaperCommandSourceStack;
-use crate::java::lang::Throwable;
-use crate::java::util::concurrent::CompletableFuture;
-use crate::java::util::function::BinaryOperator;
-use crate::java::util::function::Predicate;
-use crate::java::util::function::Supplier;
-use crate::java::util::stream::Stream;
 use crate::net::minecraft::commands::arguments::entity_anchor_argument::EntityAnchorArgumentAnchor;
 use crate::net::minecraft::commands::command_result_callback::CommandResultCallback;
 use crate::net::minecraft::commands::command_signing_context::CommandSigningContext;
@@ -81,10 +75,10 @@ impl CommandSourceStack {
     pub fn callback(&self) -> JRef<dyn CommandResultCallback> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/CommandSourceStack.java:598
     pub fn get_online_player_names(&self) -> Vec<String> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/CommandSourceStack.java:603
     pub fn get_all_teams(&self) -> Vec<String> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/CommandSourceStack.java:608
-    pub fn get_available_sounds(&self) -> Stream<JRef<Identifier>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/CommandSourceStack.java:613
-    pub fn get_available_post_effects(&self) -> Stream<JRef<Identifier>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/CommandSourceStack.java:618
-    pub fn custom_suggestion(&self, context: CommandContext<JObjectRef>) -> CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/CommandSourceStack.java:623
-    pub fn suggest_registry_elements_5<E: JGeneric>(&self, key: JRef<ResourceKey<JRef<dyn Registry<E>>>>, elements: SharedSuggestionProviderElementSuggestionType, builder: SuggestionsBuilder, context: CommandContext<JObjectRef>, filter: JRef<dyn Predicate<E>>) -> CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/CommandSourceStack.java:628
+    pub fn get_available_sounds(&self) -> Box<dyn Iterator<Item = JRef<Identifier>> + Send> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/CommandSourceStack.java:613
+    pub fn get_available_post_effects(&self) -> Box<dyn Iterator<Item = JRef<Identifier>> + Send> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/CommandSourceStack.java:618
+    pub fn custom_suggestion(&self, context: CommandContext<JObjectRef>) -> crate::rt::CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/CommandSourceStack.java:623
+    pub fn suggest_registry_elements_5<E: JGeneric>(&self, key: JRef<ResourceKey<JRef<dyn Registry<E>>>>, elements: SharedSuggestionProviderElementSuggestionType, builder: SuggestionsBuilder, context: CommandContext<JObjectRef>, filter: Arc<dyn Fn(E) -> bool + Send + Sync>) -> crate::rt::CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/CommandSourceStack.java:628
     pub fn levels(&self) -> HashSet<JRef<ResourceKey<JRef<dyn LevelTrait>>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/CommandSourceStack.java:647
     pub fn registry_access(&self) -> JRef<dyn RegistryAccess> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/CommandSourceStack.java:652
     pub fn enabled_features(&self) -> FeatureFlagSet { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/CommandSourceStack.java:657
@@ -97,7 +91,7 @@ impl CommandSourceStack {
     pub fn with_entity(&self, entity: JRef<dyn EntityTrait>) -> JRef<crate::net::minecraft::commands::command_source_stack::CommandSourceStack> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/CommandSourceStack.java:170
     pub fn with_position(&self, pos: Vec3) -> JRef<crate::net::minecraft::commands::command_source_stack::CommandSourceStack> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/CommandSourceStack.java:190
     pub fn with_rotation(&self, rotation: Vec2) -> JRef<crate::net::minecraft::commands::command_source_stack::CommandSourceStack> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/CommandSourceStack.java:233
-    pub fn with_callback_2(&self, new_callback: JRef<dyn CommandResultCallback>, combiner: JRef<dyn BinaryOperator<JRef<dyn CommandResultCallback>>>) -> JRef<crate::net::minecraft::commands::command_source_stack::CommandSourceStack> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/CommandSourceStack.java:274
+    pub fn with_callback_2(&self, new_callback: JRef<dyn CommandResultCallback>, combiner: Arc<dyn Fn(JRef<dyn CommandResultCallback>, JRef<dyn CommandResultCallback>) -> JRef<dyn CommandResultCallback> + Send + Sync>) -> JRef<crate::net::minecraft::commands::command_source_stack::CommandSourceStack> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/CommandSourceStack.java:274
     pub fn with_suppressed_output(&self) -> JRef<crate::net::minecraft::commands::command_source_stack::CommandSourceStack> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/CommandSourceStack.java:279
     pub fn with_permission(&self, permissions: JRef<dyn PermissionSet>) -> JRef<crate::net::minecraft::commands::command_source_stack::CommandSourceStack> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/CommandSourceStack.java:299
     pub fn with_maximum_permission(&self, new_permissions: JRef<dyn PermissionSet>) -> JRef<crate::net::minecraft::commands::command_source_stack::CommandSourceStack> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/CommandSourceStack.java:319
@@ -114,8 +108,8 @@ impl CommandSourceStack {
     pub fn get_position(&self) -> Vec3 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/CommandSourceStack.java:454
     pub fn get_level(&self) -> JRef<ServerLevel> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/CommandSourceStack.java:458
     pub fn get_entity(&self) -> Option<JRef<dyn EntityTrait>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/CommandSourceStack.java:462
-    pub fn get_entity_or_exception(&self) -> Result<JRef<dyn EntityTrait>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/CommandSourceStack.java:466
-    pub fn get_player_or_exception(&self) -> Result<JRef<ServerPlayer>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/CommandSourceStack.java:474
+    pub fn get_entity_or_exception(&self) -> Result<JRef<dyn EntityTrait>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/CommandSourceStack.java:466
+    pub fn get_player_or_exception(&self) -> Result<JRef<ServerPlayer>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/CommandSourceStack.java:474
     pub fn get_player(&self) -> Option<JRef<ServerPlayer>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/CommandSourceStack.java:482
     pub fn is_player(&self) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/CommandSourceStack.java:486
     pub fn get_rotation(&self) -> Vec2 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/CommandSourceStack.java:490
@@ -129,7 +123,7 @@ impl CommandSourceStack {
     pub fn send_success_1(&self, message: crate::net::kyori::adventure::text::Component) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/CommandSourceStack.java:544
     pub fn send_success_2(&self, message: Option<String>, broadcast_to_ops: bool) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/CommandSourceStack.java:537
     pub fn send_success_2_2(&self, message: crate::net::kyori::adventure::text::Component, broadcast_to_ops: bool) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/CommandSourceStack.java:548
-    pub fn send_success_2_3(&self, message_supplier: JRef<dyn Supplier<JRef<dyn crate::net::minecraft::network::chat::component::Component>>>, broadcast: bool) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/CommandSourceStack.java:556
+    pub fn send_success_2_3(&self, message_supplier: Arc<dyn Fn() -> JRef<dyn crate::net::minecraft::network::chat::component::Component> + Send + Sync>, broadcast: bool) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/CommandSourceStack.java:556
     pub fn broadcast_to_admins(&self, message: JRef<dyn crate::net::minecraft::network::chat::component::Component>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/CommandSourceStack.java:571
     pub fn send_failure(&self, message: JRef<dyn crate::net::minecraft::network::chat::component::Component>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/CommandSourceStack.java:587
     pub fn send_failure_2(&self, message: JRef<dyn crate::net::minecraft::network::chat::component::Component>, with_style: bool) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/CommandSourceStack.java:591
@@ -140,13 +134,13 @@ impl CommandSourceStack {
 impl SharedSuggestionProvider for CommandSourceStack {
     fn get_online_player_names(&self) -> Vec<String> { crate::net::minecraft::commands::command_source_stack::CommandSourceStack::get_online_player_names(self) }
     fn get_all_teams(&self) -> Vec<String> { crate::net::minecraft::commands::command_source_stack::CommandSourceStack::get_all_teams(self) }
-    fn get_available_sounds(&self) -> Stream<JRef<Identifier>> { crate::net::minecraft::commands::command_source_stack::CommandSourceStack::get_available_sounds(self) }
-    fn get_available_post_effects(&self) -> Stream<JRef<Identifier>> { crate::net::minecraft::commands::command_source_stack::CommandSourceStack::get_available_post_effects(self) }
-    fn custom_suggestion(&self, context: CommandContext<JObjectRef>) -> CompletableFuture<Suggestions> { crate::net::minecraft::commands::command_source_stack::CommandSourceStack::custom_suggestion(self, context) }
+    fn get_available_sounds(&self) -> Box<dyn Iterator<Item = JRef<Identifier>> + Send> { crate::net::minecraft::commands::command_source_stack::CommandSourceStack::get_available_sounds(self) }
+    fn get_available_post_effects(&self) -> Box<dyn Iterator<Item = JRef<Identifier>> + Send> { crate::net::minecraft::commands::command_source_stack::CommandSourceStack::get_available_post_effects(self) }
+    fn custom_suggestion(&self, context: CommandContext<JObjectRef>) -> crate::rt::CompletableFuture<Suggestions> { crate::net::minecraft::commands::command_source_stack::CommandSourceStack::custom_suggestion(self, context) }
     fn levels(&self) -> HashSet<JRef<ResourceKey<JRef<dyn LevelTrait>>>> { crate::net::minecraft::commands::command_source_stack::CommandSourceStack::levels(self) }
     fn registry_access(&self) -> JRef<dyn RegistryAccess> { crate::net::minecraft::commands::command_source_stack::CommandSourceStack::registry_access(self) }
     fn enabled_features(&self) -> FeatureFlagSet { crate::net::minecraft::commands::command_source_stack::CommandSourceStack::enabled_features(self) }
-    fn suggest_registry_elements_5<E: JGeneric>(&self, key: JRef<ResourceKey<JRef<dyn Registry<E>>>>, elements: SharedSuggestionProviderElementSuggestionType, builder: SuggestionsBuilder, context: CommandContext<JObjectRef>, filter: JRef<dyn Predicate<E>>) -> CompletableFuture<Suggestions> where Self: Sized { crate::net::minecraft::commands::command_source_stack::CommandSourceStack::suggest_registry_elements_5::<E>(self, key, elements, builder, context, filter) }
+    fn suggest_registry_elements_5<E: JGeneric>(&self, key: JRef<ResourceKey<JRef<dyn Registry<E>>>>, elements: SharedSuggestionProviderElementSuggestionType, builder: SuggestionsBuilder, context: CommandContext<JObjectRef>, filter: Arc<dyn Fn(E) -> bool + Send + Sync>) -> crate::rt::CompletableFuture<Suggestions> where Self: Sized { crate::net::minecraft::commands::command_source_stack::CommandSourceStack::suggest_registry_elements_5::<E>(self, key, elements, builder, context, filter) }
 }
 impl PermissionSetSupplier for CommandSourceStack {
     fn permissions(&self) -> JRef<dyn PermissionSet> { crate::net::minecraft::commands::command_source_stack::CommandSourceStack::permissions(self) }
@@ -165,8 +159,8 @@ impl crate::io::papermc::paper::command::brigadier::command_source_stack::Comman
     fn get_location(&self) -> JRef<Location> { todo!("abstract CommandSourceStack.getLocation") }
     fn get_sender(&self) -> JRef<dyn CommandSender> { todo!("abstract CommandSourceStack.getSender") }
     fn get_executor(&self) -> Option<JRef<dyn Entity>> { todo!("abstract CommandSourceStack.getExecutor") }
-    fn get_player_or_throw(&self) -> Result<JRef<dyn Player>, Throwable> { todo!("abstract CommandSourceStack.getPlayerOrThrow") }
-    fn get_entity_or_throw(&self) -> Result<JRef<dyn Entity>, Throwable> { todo!("abstract CommandSourceStack.getEntityOrThrow") }
+    fn get_player_or_throw(&self) -> Result<JRef<dyn Player>, anyhow::Error> { todo!("abstract CommandSourceStack.getPlayerOrThrow") }
+    fn get_entity_or_throw(&self) -> Result<JRef<dyn Entity>, anyhow::Error> { todo!("abstract CommandSourceStack.getEntityOrThrow") }
     fn with_location(&self, location: JRef<Location>) -> JRef<dyn crate::io::papermc::paper::command::brigadier::command_source_stack::CommandSourceStack> { crate::net::minecraft::commands::command_source_stack::CommandSourceStack::with_location(self, location) }
     fn with_executor(&self, executor: JRef<dyn Entity>) -> JRef<dyn crate::io::papermc::paper::command::brigadier::command_source_stack::CommandSourceStack> { todo!("abstract CommandSourceStack.withExecutor") }
 }

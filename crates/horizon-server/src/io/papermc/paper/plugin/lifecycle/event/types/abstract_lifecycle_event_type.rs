@@ -4,23 +4,20 @@ use crate::prelude::*;
 use crate::io::papermc::paper::plugin::lifecycle::event::handler::configuration::abstract_lifecycle_event_handler_configuration::AbstractLifecycleEventHandlerConfigurationTrait;
 use crate::io::papermc::paper::plugin::lifecycle::event::handler::lifecycle_event_handler::LifecycleEventHandler;
 use crate::io::papermc::paper::plugin::lifecycle::event::types::lifecycle_event_type::LifecycleEventType;
-use crate::java::lang::Class;
-use crate::java::util::function::Consumer;
-use crate::java::util::function::Predicate;
 
 // ---- class io.papermc.paper.plugin.lifecycle.event.types.AbstractLifecycleEventType (paper-server/src/main/java/io/papermc/paper/plugin/lifecycle/event/types/AbstractLifecycleEventType.java:15)
 pub struct AbstractLifecycleEventType<O: JGeneric, E: JGeneric, C: JGeneric> {
     pub this: Weak<dyn AbstractLifecycleEventTypeTrait<O, E, C>>,
     pub name: String, // paper-server/src/main/java/io/papermc/paper/plugin/lifecycle/event/types/AbstractLifecycleEventType.java:18
-    pub owner_type: Class, // paper-server/src/main/java/io/papermc/paper/plugin/lifecycle/event/types/AbstractLifecycleEventType.java:19
+    pub owner_type: crate::rt::Class, // paper-server/src/main/java/io/papermc/paper/plugin/lifecycle/event/types/AbstractLifecycleEventType.java:19
     pub _phantom: std::marker::PhantomData<(O, E, C,)>,
 }
 pub trait AbstractLifecycleEventTypeTrait<O: JGeneric, E: JGeneric, C: JGeneric>: LifecycleEventType<O, E, C> {
     fn as_abstract_lifecycle_event_type(&self) -> &AbstractLifecycleEventType<O, E, C>;
     fn blocks_reloading(&self, event_owner: O) -> bool; // paper-server/src/main/java/io/papermc/paper/plugin/lifecycle/event/types/AbstractLifecycleEventType.java:38
     fn has_handlers(&self) -> bool; // paper-server/src/main/java/io/papermc/paper/plugin/lifecycle/event/types/AbstractLifecycleEventType.java:42
-    fn for_each_handler(&self, event: E, consumer: JRef<dyn Consumer<AbstractLifecycleEventTypeRegisteredHandler<O, E>>>, predicate: JRef<dyn Predicate<AbstractLifecycleEventTypeRegisteredHandler<O, E>>>); // paper-server/src/main/java/io/papermc/paper/plugin/lifecycle/event/types/AbstractLifecycleEventType.java:44
-    fn remove_matching(&self, predicate: JRef<dyn Predicate<AbstractLifecycleEventTypeRegisteredHandler<O, E>>>); // paper-server/src/main/java/io/papermc/paper/plugin/lifecycle/event/types/AbstractLifecycleEventType.java:46
+    fn for_each_handler(&self, event: E, consumer: Arc<dyn Fn(AbstractLifecycleEventTypeRegisteredHandler<O, E>) + Send + Sync>, predicate: Arc<dyn Fn(AbstractLifecycleEventTypeRegisteredHandler<O, E>) -> bool + Send + Sync>); // paper-server/src/main/java/io/papermc/paper/plugin/lifecycle/event/types/AbstractLifecycleEventType.java:44
+    fn remove_matching(&self, predicate: Arc<dyn Fn(AbstractLifecycleEventTypeRegisteredHandler<O, E>) -> bool + Send + Sync>); // paper-server/src/main/java/io/papermc/paper/plugin/lifecycle/event/types/AbstractLifecycleEventType.java:46
     fn register(&self, owner: O, config: JRef<dyn AbstractLifecycleEventHandlerConfigurationTrait<O, E>>); // paper-server/src/main/java/io/papermc/paper/plugin/lifecycle/event/types/AbstractLifecycleEventType.java:48
 }
 impl<O: JGeneric, E: JGeneric, C: JGeneric> std::ops::Deref for dyn AbstractLifecycleEventTypeTrait<O, E, C> {
@@ -29,7 +26,7 @@ impl<O: JGeneric, E: JGeneric, C: JGeneric> std::ops::Deref for dyn AbstractLife
 }
 impl<O: JGeneric, E: JGeneric, C: JGeneric> AbstractLifecycleEventType<O, E, C> {
     pub fn this(&self) -> JRef<dyn AbstractLifecycleEventTypeTrait<O, E, C>> { self.this.upgrade().expect("this") }
-    pub fn new_base<S: AbstractLifecycleEventTypeTrait<O, E, C> + 'static>(this: &Weak<S>, name: &str, owner_type: Class) -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/lifecycle/event/types/AbstractLifecycleEventType.java:21
+    pub fn new_base<S: AbstractLifecycleEventTypeTrait<O, E, C> + 'static>(this: &Weak<S>, name: &str, owner_type: crate::rt::Class) -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/lifecycle/event/types/AbstractLifecycleEventType.java:21
     pub fn name(&self) -> String { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/lifecycle/event/types/AbstractLifecycleEventType.java:27
     pub fn verify_owner(&self, owner: O) { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/lifecycle/event/types/AbstractLifecycleEventType.java:32
     pub fn blocks_reloading(&self, event_owner: O) -> bool { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/lifecycle/event/types/AbstractLifecycleEventType.java:38

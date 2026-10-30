@@ -3,7 +3,6 @@
 use crate::prelude::*;
 use crate::io::papermc::paper::registry::data::trim_pattern_registry_entry::TrimPatternRegistryEntryBuilder;
 use crate::io::papermc::paper::registry::registry_builder_factory::RegistryBuilderFactory;
-use crate::java::util::function::Consumer;
 use crate::net::kyori::adventure::text::Component;
 use crate::org::bukkit::keyed::Keyed;
 use crate::org::bukkit::translatable::Translatable;
@@ -31,7 +30,7 @@ pub static VEX: LazyLock<JRef<dyn TrimPattern>> = LazyLock::new(|| get_trim_patt
 pub static WARD: LazyLock<JRef<dyn TrimPattern>> = LazyLock::new(|| get_trim_pattern("ward")); // paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimPattern.java:65
 pub static WAYFINDER: LazyLock<JRef<dyn TrimPattern>> = LazyLock::new(|| get_trim_pattern("wayfinder")); // paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimPattern.java:67
 pub static WILD: LazyLock<JRef<dyn TrimPattern>> = LazyLock::new(|| get_trim_pattern("wild")); // paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimPattern.java:69
-pub fn create(value: JRef<dyn Consumer<JRef<dyn RegistryBuilderFactory<JRef<dyn TrimPattern>, JRef<dyn TrimPatternRegistryEntryBuilder>>>>>) -> JRef<dyn TrimPattern> {
+pub fn create(value: Arc<dyn Fn(JRef<dyn RegistryBuilderFactory<JRef<dyn TrimPattern>, JRef<dyn TrimPatternRegistryEntryBuilder>>>) + Send + Sync>) -> JRef<dyn TrimPattern> {
     crate::io::papermc::paper::registry::data::inlined_registry_builder_provider::instance().create_trim_pattern(value)
 } // paper-api/src/main/java/org/bukkit/inventory/meta/trim/TrimPattern.java:30
 pub fn get_trim_pattern(key: &str) -> JRef<dyn TrimPattern> {

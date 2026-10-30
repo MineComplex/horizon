@@ -5,9 +5,6 @@ use crate::io::papermc::paper::threadedregions::scheduler::global_region_schedul
 use crate::io::papermc::paper::threadedregions::scheduler::scheduled_task::ScheduledTask;
 use crate::io::papermc::paper::threadedregions::scheduler::scheduled_task::ScheduledTaskCancelledState;
 use crate::io::papermc::paper::threadedregions::scheduler::scheduled_task::ScheduledTaskExecutionState;
-use crate::java::lang::Runnable;
-use crate::java::lang::invoke::VarHandle;
-use crate::java::util::function::Consumer;
 use crate::org::bukkit::plugin::plugin::Plugin;
 
 // ---- class io.papermc.paper.threadedregions.scheduler.FoliaGlobalRegionScheduler (paper-server/src/main/java/io/papermc/paper/threadedregions/scheduler/FoliaGlobalRegionScheduler.java:14)
@@ -20,10 +17,10 @@ pub struct FoliaGlobalRegionScheduler {
 impl FoliaGlobalRegionScheduler {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/threadedregions/scheduler/FoliaGlobalRegionScheduler.java:14
-    pub fn execute(&self, plugin: JRef<dyn Plugin>, run: JRef<dyn Runnable>) { todo!() } // paper-server/src/main/java/io/papermc/paper/threadedregions/scheduler/FoliaGlobalRegionScheduler.java:40
-    pub fn run(&self, plugin: JRef<dyn Plugin>, task: JRef<dyn Consumer<JRef<dyn ScheduledTask>>>) -> JRef<dyn ScheduledTask> { todo!() } // paper-server/src/main/java/io/papermc/paper/threadedregions/scheduler/FoliaGlobalRegionScheduler.java:50
-    pub fn run_delayed(&self, plugin: JRef<dyn Plugin>, task: JRef<dyn Consumer<JRef<dyn ScheduledTask>>>, delay_ticks: i64) -> JRef<dyn ScheduledTask> { todo!() } // paper-server/src/main/java/io/papermc/paper/threadedregions/scheduler/FoliaGlobalRegionScheduler.java:55
-    pub fn run_at_fixed_rate(&self, plugin: JRef<dyn Plugin>, task: JRef<dyn Consumer<JRef<dyn ScheduledTask>>>, initial_delay_ticks: i64, period_ticks: i64) -> JRef<dyn ScheduledTask> { todo!() } // paper-server/src/main/java/io/papermc/paper/threadedregions/scheduler/FoliaGlobalRegionScheduler.java:79
+    pub fn execute(&self, plugin: JRef<dyn Plugin>, run: Arc<dyn Fn() + Send + Sync>) { todo!() } // paper-server/src/main/java/io/papermc/paper/threadedregions/scheduler/FoliaGlobalRegionScheduler.java:40
+    pub fn run(&self, plugin: JRef<dyn Plugin>, task: Arc<dyn Fn(JRef<dyn ScheduledTask>) + Send + Sync>) -> JRef<dyn ScheduledTask> { todo!() } // paper-server/src/main/java/io/papermc/paper/threadedregions/scheduler/FoliaGlobalRegionScheduler.java:50
+    pub fn run_delayed(&self, plugin: JRef<dyn Plugin>, task: Arc<dyn Fn(JRef<dyn ScheduledTask>) + Send + Sync>, delay_ticks: i64) -> JRef<dyn ScheduledTask> { todo!() } // paper-server/src/main/java/io/papermc/paper/threadedregions/scheduler/FoliaGlobalRegionScheduler.java:55
+    pub fn run_at_fixed_rate(&self, plugin: JRef<dyn Plugin>, task: Arc<dyn Fn(JRef<dyn ScheduledTask>) + Send + Sync>, initial_delay_ticks: i64, period_ticks: i64) -> JRef<dyn ScheduledTask> { todo!() } // paper-server/src/main/java/io/papermc/paper/threadedregions/scheduler/FoliaGlobalRegionScheduler.java:79
     pub fn cancel_tasks(&self, plugin: JRef<dyn Plugin>) { todo!() } // paper-server/src/main/java/io/papermc/paper/threadedregions/scheduler/FoliaGlobalRegionScheduler.java:106
     pub fn tick(&self) { todo!() } // paper-server/src/main/java/io/papermc/paper/threadedregions/scheduler/FoliaGlobalRegionScheduler.java:20
     pub fn schedule_internal(&self, task: JRef<FoliaGlobalRegionSchedulerGlobalScheduledTask>, delay: i64) { todo!() } // paper-server/src/main/java/io/papermc/paper/threadedregions/scheduler/FoliaGlobalRegionScheduler.java:127
@@ -31,10 +28,10 @@ impl FoliaGlobalRegionScheduler {
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl GlobalRegionScheduler for FoliaGlobalRegionScheduler {
-    fn execute(&self, plugin: JRef<dyn Plugin>, run: JRef<dyn Runnable>) { FoliaGlobalRegionScheduler::execute(self, plugin, run) }
-    fn run(&self, plugin: JRef<dyn Plugin>, task: JRef<dyn Consumer<JRef<dyn ScheduledTask>>>) -> JRef<dyn ScheduledTask> { FoliaGlobalRegionScheduler::run(self, plugin, task) }
-    fn run_delayed(&self, plugin: JRef<dyn Plugin>, task: JRef<dyn Consumer<JRef<dyn ScheduledTask>>>, delay_ticks: i64) -> JRef<dyn ScheduledTask> { FoliaGlobalRegionScheduler::run_delayed(self, plugin, task, delay_ticks) }
-    fn run_at_fixed_rate(&self, plugin: JRef<dyn Plugin>, task: JRef<dyn Consumer<JRef<dyn ScheduledTask>>>, initial_delay_ticks: i64, period_ticks: i64) -> JRef<dyn ScheduledTask> { FoliaGlobalRegionScheduler::run_at_fixed_rate(self, plugin, task, initial_delay_ticks, period_ticks) }
+    fn execute(&self, plugin: JRef<dyn Plugin>, run: Arc<dyn Fn() + Send + Sync>) { FoliaGlobalRegionScheduler::execute(self, plugin, run) }
+    fn run(&self, plugin: JRef<dyn Plugin>, task: Arc<dyn Fn(JRef<dyn ScheduledTask>) + Send + Sync>) -> JRef<dyn ScheduledTask> { FoliaGlobalRegionScheduler::run(self, plugin, task) }
+    fn run_delayed(&self, plugin: JRef<dyn Plugin>, task: Arc<dyn Fn(JRef<dyn ScheduledTask>) + Send + Sync>, delay_ticks: i64) -> JRef<dyn ScheduledTask> { FoliaGlobalRegionScheduler::run_delayed(self, plugin, task, delay_ticks) }
+    fn run_at_fixed_rate(&self, plugin: JRef<dyn Plugin>, task: Arc<dyn Fn(JRef<dyn ScheduledTask>) + Send + Sync>, initial_delay_ticks: i64, period_ticks: i64) -> JRef<dyn ScheduledTask> { FoliaGlobalRegionScheduler::run_at_fixed_rate(self, plugin, task, initial_delay_ticks, period_ticks) }
     fn cancel_tasks(&self, plugin: JRef<dyn Plugin>) { FoliaGlobalRegionScheduler::cancel_tasks(self, plugin) }
 }
 crate::jobject!(FoliaGlobalRegionScheduler: dyn GlobalRegionScheduler);
@@ -45,7 +42,7 @@ pub struct FoliaGlobalRegionSchedulerGlobalScheduledTask {
     pub outer: Weak<FoliaGlobalRegionScheduler>,
     pub plugin: JRef<dyn Plugin>, // paper-server/src/main/java/io/papermc/paper/threadedregions/scheduler/FoliaGlobalRegionScheduler.java:144
     pub repeat_delay: i64, // paper-server/src/main/java/io/papermc/paper/threadedregions/scheduler/FoliaGlobalRegionScheduler.java:145
-    pub run: Mut<JRef<dyn Consumer<JRef<dyn ScheduledTask>>>>, // paper-server/src/main/java/io/papermc/paper/threadedregions/scheduler/FoliaGlobalRegionScheduler.java:146
+    pub run: Mut<Arc<dyn Fn(JRef<dyn ScheduledTask>) + Send + Sync>>, // paper-server/src/main/java/io/papermc/paper/threadedregions/scheduler/FoliaGlobalRegionScheduler.java:146
     pub state: Mut<i32>, // paper-server/src/main/java/io/papermc/paper/threadedregions/scheduler/FoliaGlobalRegionScheduler.java:147
 }
 pub const GLOBAL_SCHEDULED_TASK_STATE_IDLE: i32 = 0; // paper-server/src/main/java/io/papermc/paper/threadedregions/scheduler/FoliaGlobalRegionScheduler.java:138
@@ -53,10 +50,10 @@ pub const GLOBAL_SCHEDULED_TASK_STATE_EXECUTING: i32 = 1; // paper-server/src/ma
 pub const GLOBAL_SCHEDULED_TASK_STATE_EXECUTING_CANCELLED: i32 = 2; // paper-server/src/main/java/io/papermc/paper/threadedregions/scheduler/FoliaGlobalRegionScheduler.java:140
 pub const GLOBAL_SCHEDULED_TASK_STATE_FINISHED: i32 = 3; // paper-server/src/main/java/io/papermc/paper/threadedregions/scheduler/FoliaGlobalRegionScheduler.java:141
 pub const GLOBAL_SCHEDULED_TASK_STATE_CANCELLED: i32 = 4; // paper-server/src/main/java/io/papermc/paper/threadedregions/scheduler/FoliaGlobalRegionScheduler.java:142
-pub static GLOBAL_SCHEDULED_TASK_STATE_HANDLE: LazyLock<VarHandle> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/threadedregions/scheduler/FoliaGlobalRegionScheduler.java:149
+pub static GLOBAL_SCHEDULED_TASK_STATE_HANDLE: LazyLock<()> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/threadedregions/scheduler/FoliaGlobalRegionScheduler.java:149
 impl FoliaGlobalRegionSchedulerGlobalScheduledTask {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(plugin: JRef<dyn Plugin>, repeat_delay: i64, run: JRef<dyn Consumer<JRef<dyn ScheduledTask>>>) -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/threadedregions/scheduler/FoliaGlobalRegionScheduler.java:151
+    pub fn new(plugin: JRef<dyn Plugin>, repeat_delay: i64, run: Arc<dyn Fn(JRef<dyn ScheduledTask>) + Send + Sync>) -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/threadedregions/scheduler/FoliaGlobalRegionScheduler.java:151
     pub fn get_owning_plugin(&self) -> JRef<dyn Plugin> { todo!() } // paper-server/src/main/java/io/papermc/paper/threadedregions/scheduler/FoliaGlobalRegionScheduler.java:197
     pub fn is_repeating_task(&self) -> bool { todo!() } // paper-server/src/main/java/io/papermc/paper/threadedregions/scheduler/FoliaGlobalRegionScheduler.java:202
     pub fn cancel(&self) -> ScheduledTaskCancelledState { todo!() } // paper-server/src/main/java/io/papermc/paper/threadedregions/scheduler/FoliaGlobalRegionScheduler.java:207

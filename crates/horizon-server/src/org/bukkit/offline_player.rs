@@ -3,10 +3,6 @@
 use crate::api_prelude::*;
 use crate::com::destroystokyo::paper::profile::player_profile::PlayerProfile;
 use crate::io::papermc::paper::persistence::persistent_data_view_holder::PersistentDataViewHolder;
-use crate::java::lang::Throwable;
-use crate::java::time::Instant;
-use crate::java::util::Date;
-use crate::java::util::concurrent::CompletableFuture;
 use crate::net::kyori::adventure::text::object::PlayerHeadObjectContentsBuilder;
 use crate::net::kyori::adventure::text::object::PlayerHeadObjectContentsSkinSource;
 use crate::org::bukkit::ban_entry::BanEntry;
@@ -49,14 +45,14 @@ pub trait OfflinePlayer:
     fn ban_player_2_2(
         &self,
         reason: Option<String>,
-        expires: Option<Date>,
+        expires: Option<chrono::DateTime<chrono::Utc>>,
     ) -> Option<JRef<dyn BanEntry<JObjectRef>>> {
         self.ban_player_3(reason, expires, None)
     } // default, paper-api/src/main/java/org/bukkit/OfflinePlayer.java:118
     fn ban_player_3(
         &self,
         reason: Option<String>,
-        expires: Option<Date>,
+        expires: Option<chrono::DateTime<chrono::Utc>>,
         source: Option<String>,
     ) -> Option<JRef<dyn BanEntry<JObjectRef>>> {
         self.ban_player_4(reason, expires, source, true)
@@ -64,7 +60,7 @@ pub trait OfflinePlayer:
     fn ban_player_4(
         &self,
         reason: Option<String>,
-        expires: Option<Date>,
+        expires: Option<chrono::DateTime<chrono::Utc>>,
         source: Option<String>,
         kick_if_online: bool,
     ) -> Option<JRef<dyn BanEntry<JObjectRef>>> {
@@ -87,7 +83,7 @@ pub trait OfflinePlayer:
     fn ban<E: JGeneric>(
         &self,
         reason: Option<String>,
-        expires: Option<Date>,
+        expires: Option<chrono::DateTime<chrono::Utc>>,
         source: Option<String>,
     ) -> Option<E>
     where
@@ -95,7 +91,7 @@ pub trait OfflinePlayer:
     fn ban_3<E: JGeneric>(
         &self,
         reason: Option<String>,
-        expires: Option<Instant>,
+        expires: Option<std::time::SystemTime>,
         source: Option<String>,
     ) -> Option<E>
     where
@@ -123,64 +119,64 @@ pub trait OfflinePlayer:
         self.get_respawn_location_1(false) // keep old behavior for offline players
     } // default, paper-api/src/main/java/org/bukkit/OfflinePlayer.java:299
     fn get_respawn_location_1(&self, load_location_and_validate: bool) -> Option<JRef<Location>>; // paper-api/src/main/java/org/bukkit/OfflinePlayer.java:312
-    fn increment_statistic(&self, statistic: Statistic) -> Result<(), Throwable>; // paper-api/src/main/java/org/bukkit/OfflinePlayer.java:325
-    fn increment_statistic_2(&self, statistic: Statistic, amount: i32) -> Result<(), Throwable>; // paper-api/src/main/java/org/bukkit/OfflinePlayer.java:350
+    fn increment_statistic(&self, statistic: Statistic) -> Result<(), anyhow::Error>; // paper-api/src/main/java/org/bukkit/OfflinePlayer.java:325
+    fn increment_statistic_2(&self, statistic: Statistic, amount: i32) -> Result<(), anyhow::Error>; // paper-api/src/main/java/org/bukkit/OfflinePlayer.java:350
     fn increment_statistic_2_2(
         &self,
         statistic: Statistic,
         material: Material,
-    ) -> Result<(), Throwable>; // paper-api/src/main/java/org/bukkit/OfflinePlayer.java:400
+    ) -> Result<(), anyhow::Error>; // paper-api/src/main/java/org/bukkit/OfflinePlayer.java:400
     fn increment_statistic_2_3(
         &self,
         statistic: Statistic,
         entity_type: EntityType,
-    ) -> Result<(), Throwable>; // paper-api/src/main/java/org/bukkit/OfflinePlayer.java:485
+    ) -> Result<(), anyhow::Error>; // paper-api/src/main/java/org/bukkit/OfflinePlayer.java:485
     fn increment_statistic_3(
         &self,
         statistic: Statistic,
         material: Material,
         amount: i32,
-    ) -> Result<(), Throwable>; // paper-api/src/main/java/org/bukkit/OfflinePlayer.java:442
+    ) -> Result<(), anyhow::Error>; // paper-api/src/main/java/org/bukkit/OfflinePlayer.java:442
     fn increment_statistic_3_2(
         &self,
         statistic: Statistic,
         entity_type: EntityType,
         amount: i32,
-    ) -> Result<(), Throwable>; // paper-api/src/main/java/org/bukkit/OfflinePlayer.java:527
-    fn decrement_statistic(&self, statistic: Statistic) -> Result<(), Throwable>; // paper-api/src/main/java/org/bukkit/OfflinePlayer.java:338
-    fn decrement_statistic_2(&self, statistic: Statistic, amount: i32) -> Result<(), Throwable>; // paper-api/src/main/java/org/bukkit/OfflinePlayer.java:362
+    ) -> Result<(), anyhow::Error>; // paper-api/src/main/java/org/bukkit/OfflinePlayer.java:527
+    fn decrement_statistic(&self, statistic: Statistic) -> Result<(), anyhow::Error>; // paper-api/src/main/java/org/bukkit/OfflinePlayer.java:338
+    fn decrement_statistic_2(&self, statistic: Statistic, amount: i32) -> Result<(), anyhow::Error>; // paper-api/src/main/java/org/bukkit/OfflinePlayer.java:362
     fn decrement_statistic_2_2(
         &self,
         statistic: Statistic,
         material: Material,
-    ) -> Result<(), Throwable>; // paper-api/src/main/java/org/bukkit/OfflinePlayer.java:415
+    ) -> Result<(), anyhow::Error>; // paper-api/src/main/java/org/bukkit/OfflinePlayer.java:415
     fn decrement_statistic_2_3(
         &self,
         statistic: Statistic,
         entity_type: EntityType,
-    ) -> Result<(), Throwable>; // paper-api/src/main/java/org/bukkit/OfflinePlayer.java:500
+    ) -> Result<(), anyhow::Error>; // paper-api/src/main/java/org/bukkit/OfflinePlayer.java:500
     fn decrement_statistic_3(
         &self,
         statistic: Statistic,
         material: Material,
         amount: i32,
-    ) -> Result<(), Throwable>; // paper-api/src/main/java/org/bukkit/OfflinePlayer.java:456
+    ) -> Result<(), anyhow::Error>; // paper-api/src/main/java/org/bukkit/OfflinePlayer.java:456
     fn decrement_statistic_3_2(&self, statistic: Statistic, entity_type: EntityType, amount: i32); // paper-api/src/main/java/org/bukkit/OfflinePlayer.java:541
-    fn set_statistic(&self, statistic: Statistic, new_value: i32) -> Result<(), Throwable>; // paper-api/src/main/java/org/bukkit/OfflinePlayer.java:374
+    fn set_statistic(&self, statistic: Statistic, new_value: i32) -> Result<(), anyhow::Error>; // paper-api/src/main/java/org/bukkit/OfflinePlayer.java:374
     fn set_statistic_3(
         &self,
         statistic: Statistic,
         material: Material,
         new_value: i32,
-    ) -> Result<(), Throwable>; // paper-api/src/main/java/org/bukkit/OfflinePlayer.java:470
+    ) -> Result<(), anyhow::Error>; // paper-api/src/main/java/org/bukkit/OfflinePlayer.java:470
     fn set_statistic_3_2(&self, statistic: Statistic, entity_type: EntityType, new_value: i32); // paper-api/src/main/java/org/bukkit/OfflinePlayer.java:555
-    fn get_statistic(&self, statistic: Statistic) -> Result<i32, Throwable>; // paper-api/src/main/java/org/bukkit/OfflinePlayer.java:385
-    fn get_statistic_2(&self, statistic: Statistic, material: Material) -> Result<i32, Throwable>; // paper-api/src/main/java/org/bukkit/OfflinePlayer.java:428
+    fn get_statistic(&self, statistic: Statistic) -> Result<i32, anyhow::Error>; // paper-api/src/main/java/org/bukkit/OfflinePlayer.java:385
+    fn get_statistic_2(&self, statistic: Statistic, material: Material) -> Result<i32, anyhow::Error>; // paper-api/src/main/java/org/bukkit/OfflinePlayer.java:428
     fn get_statistic_2_2(
         &self,
         statistic: Statistic,
         entity_type: EntityType,
-    ) -> Result<i32, Throwable>; // paper-api/src/main/java/org/bukkit/OfflinePlayer.java:513
+    ) -> Result<i32, anyhow::Error>; // paper-api/src/main/java/org/bukkit/OfflinePlayer.java:513
     fn get_last_death_location(&self) -> Option<JRef<Location>>; // paper-api/src/main/java/org/bukkit/OfflinePlayer.java:562
     fn get_location(&self) -> Option<JRef<Location>>; // paper-api/src/main/java/org/bukkit/OfflinePlayer.java:571
     fn apply_skin_to_player_head_contents(&self, builder: PlayerHeadObjectContentsBuilder) {
@@ -190,8 +186,8 @@ pub trait OfflinePlayer:
     fn set_allow_flight(&self, flight: bool); // paper-api/src/main/java/org/bukkit/OfflinePlayer.java:610
     fn is_flying(&self) -> bool; // paper-api/src/main/java/org/bukkit/OfflinePlayer.java:617
     fn set_flying(&self, value: bool); // paper-api/src/main/java/org/bukkit/OfflinePlayer.java:624
-    fn set_fly_speed(&self, value: f32) -> Result<(), Throwable>; // paper-api/src/main/java/org/bukkit/OfflinePlayer.java:634
-    fn set_walk_speed(&self, value: f32) -> Result<(), Throwable>; // paper-api/src/main/java/org/bukkit/OfflinePlayer.java:644
+    fn set_fly_speed(&self, value: f32) -> Result<(), anyhow::Error>; // paper-api/src/main/java/org/bukkit/OfflinePlayer.java:634
+    fn set_walk_speed(&self, value: f32) -> Result<(), anyhow::Error>; // paper-api/src/main/java/org/bukkit/OfflinePlayer.java:644
     fn get_fly_speed(&self) -> f32; // paper-api/src/main/java/org/bukkit/OfflinePlayer.java:651
     fn get_walk_speed(&self) -> f32; // paper-api/src/main/java/org/bukkit/OfflinePlayer.java:658
     fn teleport_offline(&self, destination: JRef<Location>) -> bool; // paper-api/src/main/java/org/bukkit/OfflinePlayer.java:666
@@ -200,10 +196,10 @@ pub trait OfflinePlayer:
         destination: JRef<Location>,
         cause: PlayerTeleportEventTeleportCause,
     ) -> bool; // paper-api/src/main/java/org/bukkit/OfflinePlayer.java:675
-    fn teleport_offline_async(&self, destination: JRef<Location>) -> CompletableFuture<bool>; // paper-api/src/main/java/org/bukkit/OfflinePlayer.java:683
+    fn teleport_offline_async(&self, destination: JRef<Location>) -> crate::rt::CompletableFuture<bool>; // paper-api/src/main/java/org/bukkit/OfflinePlayer.java:683
     fn teleport_offline_async_2(
         &self,
         destination: JRef<Location>,
         cause: PlayerTeleportEventTeleportCause,
-    ) -> CompletableFuture<bool>; // paper-api/src/main/java/org/bukkit/OfflinePlayer.java:692
+    ) -> crate::rt::CompletableFuture<bool>; // paper-api/src/main/java/org/bukkit/OfflinePlayer.java:692
 }

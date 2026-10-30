@@ -8,10 +8,6 @@ use crate::com::mojang::serialization::MapCodec;
 use crate::com::mojang::serialization::MapEncoder;
 use crate::com::mojang::serialization::MapLike;
 use crate::com::mojang::serialization::RecordBuilder;
-use crate::io::netty::buffer::ByteBuf;
-use crate::java::lang::ThreadLocal;
-use crate::java::util::function::Function;
-use crate::java::util::stream::Stream;
 use crate::net::minecraft::network::chat::component::Component;
 use crate::net::minecraft::network::chat::component_contents::ComponentContents;
 use crate::net::minecraft::network::chat::mutable_component::MutableComponent;
@@ -28,14 +24,14 @@ pub static STREAM_CODEC: LazyLock<JRef<dyn StreamCodec<JRef<RegistryFriendlyByte
 pub static OPTIONAL_STREAM_CODEC: LazyLock<JRef<dyn StreamCodec<JRef<RegistryFriendlyByteBuf>, Option<JRef<dyn Component>>>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/network/chat/ComponentSerialization.java:39
 pub static TRUSTED_STREAM_CODEC: LazyLock<JRef<dyn StreamCodec<JRef<RegistryFriendlyByteBuf>, JRef<dyn Component>>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/network/chat/ComponentSerialization.java:40
 pub static TRUSTED_OPTIONAL_STREAM_CODEC: LazyLock<JRef<dyn StreamCodec<JRef<RegistryFriendlyByteBuf>, Option<JRef<dyn Component>>>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/network/chat/ComponentSerialization.java:41
-pub static TRUSTED_CONTEXT_FREE_STREAM_CODEC: LazyLock<JRef<dyn StreamCodec<ByteBuf, JRef<dyn Component>>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/network/chat/ComponentSerialization.java:44
-pub static DONT_RENDER_TRANSLATABLES: LazyLock<ThreadLocal<bool>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/network/chat/ComponentSerialization.java:45
+pub static TRUSTED_CONTEXT_FREE_STREAM_CODEC: LazyLock<JRef<dyn StreamCodec<bytes::BytesMut, JRef<dyn Component>>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/network/chat/ComponentSerialization.java:44
+pub static DONT_RENDER_TRANSLATABLES: LazyLock<thread_local::ThreadLocal<bool>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/network/chat/ComponentSerialization.java:45
 impl ComponentSerialization {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/chat/ComponentSerialization.java:36
     pub fn flat_restricted_codec(max_flat_size: i32) -> JRef<dyn Codec<JRef<dyn Component>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/chat/ComponentSerialization.java:47
     pub fn create_from_list(list: &Vec<JRef<dyn Component>>) -> JRef<MutableComponent> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/chat/ComponentSerialization.java:76
-    pub fn create_legacy_component_matcher<T: JGeneric>(types: JRef<ExtraCodecsLateBoundIdMapper<String, MapCodec<T>>>, codec_getter: JRef<dyn Function<T, MapCodec<T>>>, type_field_name: &str) -> MapCodec<T> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/chat/ComponentSerialization.java:86
+    pub fn create_legacy_component_matcher<T: JGeneric>(types: JRef<ExtraCodecsLateBoundIdMapper<String, MapCodec<T>>>, codec_getter: Arc<dyn Fn(T) -> MapCodec<T> + Send + Sync>, type_field_name: &str) -> MapCodec<T> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/chat/ComponentSerialization.java:86
     pub fn create_codec(top_serializer: JRef<dyn Codec<JRef<dyn Component>>>) -> JRef<dyn Codec<JRef<dyn Component>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/chat/ComponentSerialization.java:97
     pub fn bootstrap(content_types: JRef<ExtraCodecsLateBoundIdMapper<String, MapCodec<JRef<dyn ComponentContents>>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/chat/ComponentSerialization.java:150
 }
@@ -44,15 +40,15 @@ crate::jobject!(ComponentSerialization);
 pub struct ComponentSerializationFuzzyCodec<T: JGeneric> {
     pub this: Weak<Self>,
     pub codecs: Mut<Vec<MapCodec<T>>>, // leaf-server/src/minecraft/java/net/minecraft/network/chat/ComponentSerialization.java:161
-    pub encoder_getter: JRef<dyn Function<T, MapEncoder<T>>>, // leaf-server/src/minecraft/java/net/minecraft/network/chat/ComponentSerialization.java:162
+    pub encoder_getter: Arc<dyn Fn(T) -> MapEncoder<T> + Send + Sync>, // leaf-server/src/minecraft/java/net/minecraft/network/chat/ComponentSerialization.java:162
     pub _phantom: std::marker::PhantomData<(T,)>,
 }
 impl<T: JGeneric> ComponentSerializationFuzzyCodec<T> {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(codecs: &Vec<MapCodec<T>>, encoder_getter: JRef<dyn Function<T, MapEncoder<T>>>) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/chat/ComponentSerialization.java:164
+    pub fn new(codecs: &Vec<MapCodec<T>>, encoder_getter: Arc<dyn Fn(T) -> MapEncoder<T> + Send + Sync>) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/chat/ComponentSerialization.java:164
     pub fn decode<S: JGeneric>(&self, ops: JRef<dyn DynamicOps<S>>, input: MapLike<S>) -> DataResult<T> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/chat/ComponentSerialization.java:169
     pub fn encode<S: JGeneric>(&self, input: T, ops: JRef<dyn DynamicOps<S>>, prefix: JRef<dyn RecordBuilder<S>>) -> JRef<dyn RecordBuilder<S>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/chat/ComponentSerialization.java:181
-    pub fn keys<S: JGeneric>(&self, ops: JRef<dyn DynamicOps<S>>) -> Stream<S> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/chat/ComponentSerialization.java:187
+    pub fn keys<S: JGeneric>(&self, ops: JRef<dyn DynamicOps<S>>) -> Box<dyn Iterator<Item = S> + Send> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/chat/ComponentSerialization.java:187
     pub fn to_string(&self) -> String { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/chat/ComponentSerialization.java:192
 }
 // ---- class net.minecraft.network.chat.ComponentSerialization.StrictEither (leaf-server/src/minecraft/java/net/minecraft/network/chat/ComponentSerialization.java:198)
@@ -68,5 +64,5 @@ impl<T: JGeneric> ComponentSerializationStrictEither<T> {
     pub fn new(type_field_name: &str, typed: MapCodec<T>, fuzzy: MapCodec<T>) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/chat/ComponentSerialization.java:203
     pub fn decode<O: JGeneric>(&self, ops: JRef<dyn DynamicOps<O>>, input: MapLike<O>) -> DataResult<T> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/chat/ComponentSerialization.java:209
     pub fn encode<O: JGeneric>(&self, input: T, ops: JRef<dyn DynamicOps<O>>, prefix: JRef<dyn RecordBuilder<O>>) -> JRef<dyn RecordBuilder<O>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/chat/ComponentSerialization.java:214
-    pub fn keys<T1: JGeneric>(&self, ops: JRef<dyn DynamicOps<T1>>) -> Stream<T1> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/chat/ComponentSerialization.java:219
+    pub fn keys<T1: JGeneric>(&self, ops: JRef<dyn DynamicOps<T1>>) -> Box<dyn Iterator<Item = T1> + Send> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/chat/ComponentSerialization.java:219
 }

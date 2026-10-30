@@ -3,7 +3,6 @@
 use crate::prelude::*;
 use crate::com::mojang::serialization::Codec;
 use crate::com::mojang::serialization::MapCodec;
-use crate::java::util::function::Supplier;
 use crate::net::minecraft::nbt::tag::Tag;
 use crate::net::minecraft::network::chat::click_event::ClickEvent;
 
@@ -20,4 +19,4 @@ pub trait ActionValueGetter: JObject {
 }
 pub fn value_getter_get_as_template_substitutions(parameters: &HashMap<String, JRef<dyn ActionValueGetter>>) -> HashMap<String, String> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/dialog/action/Action.java:26
 pub fn value_getter_of(value: &str) -> JRef<dyn ActionValueGetter> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/dialog/action/Action.java:30
-pub fn value_getter_of_1(value: JRef<dyn Supplier<String>>) -> JRef<dyn ActionValueGetter> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/dialog/action/Action.java:44
+pub fn value_getter_of_1(value: Arc<dyn Fn() -> String + Send + Sync>) -> JRef<dyn ActionValueGetter> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/dialog/action/Action.java:44

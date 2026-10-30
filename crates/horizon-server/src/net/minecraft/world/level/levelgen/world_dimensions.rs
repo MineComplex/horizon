@@ -3,7 +3,6 @@
 use crate::prelude::*;
 use crate::com::mojang::serialization::Lifecycle;
 use crate::com::mojang::serialization::MapCodec;
-use crate::java::util::stream::Stream;
 use crate::net::minecraft::core::holder::Holder;
 use crate::net::minecraft::core::holder_lookup::HolderLookup;
 use crate::net::minecraft::core::holder_lookup::HolderLookupProvider;
@@ -25,7 +24,7 @@ pub static CODEC: LazyLock<MapCodec<WorldDimensions>> = LazyLock::new(|| todo!()
 pub static BUILTIN_ORDER: LazyLock<HashSet<JRef<ResourceKey<LevelStem>>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/WorldDimensions.java:42
 impl WorldDimensions {
     pub fn new(registry: JRef<dyn Registry<LevelStem>>) -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/WorldDimensions.java:51
-    pub fn keys_in_order(known_keys: &HashSet<JRef<ResourceKey<LevelStem>>>) -> Stream<JRef<ResourceKey<LevelStem>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/WorldDimensions.java:55
+    pub fn keys_in_order(known_keys: &HashSet<JRef<ResourceKey<LevelStem>>>) -> Box<dyn Iterator<Item = JRef<ResourceKey<LevelStem>>> + Send> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/WorldDimensions.java:55
     pub fn replace_overworld_generator(&self, registries: JRef<dyn HolderLookupProvider>, generator: JRef<dyn ChunkGeneratorTrait>) -> WorldDimensions { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/WorldDimensions.java:59
     pub fn with_overworld(dimension_types: JRef<dyn HolderLookup<DimensionType>>, dimensions: &HashMap<JRef<ResourceKey<LevelStem>>, LevelStem>, generator: JRef<dyn ChunkGeneratorTrait>) -> HashMap<JRef<ResourceKey<LevelStem>>, LevelStem> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/WorldDimensions.java:65
     pub fn with_overworld_3(dimensions: &HashMap<JRef<ResourceKey<LevelStem>>, LevelStem>, type_: JRef<dyn Holder<DimensionType>>, generator: JRef<dyn ChunkGeneratorTrait>) -> HashMap<JRef<ResourceKey<LevelStem>>, LevelStem> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/WorldDimensions.java:73

@@ -7,7 +7,6 @@ use crate::io::papermc::paper::registry::data::instrument_registry_entry::Instru
 use crate::io::papermc::paper::registry::data::trim_material_registry_entry::TrimMaterialRegistryEntryBuilder;
 use crate::io::papermc::paper::registry::data::trim_pattern_registry_entry::TrimPatternRegistryEntryBuilder;
 use crate::io::papermc::paper::registry::registry_builder_factory::RegistryBuilderFactory;
-use crate::java::util::function::Consumer;
 use crate::org::bukkit::inventory::meta::trim::trim_material::TrimMaterial;
 use crate::org::bukkit::inventory::meta::trim::trim_pattern::TrimPattern;
 use crate::org::bukkit::music_instrument::MusicInstrumentTrait;
@@ -15,9 +14,9 @@ use crate::api_prelude::*;
 
 // ---- interface io.papermc.paper.registry.data.InlinedRegistryBuilderProvider (paper-api/src/main/java/io/papermc/paper/registry/data/InlinedRegistryBuilderProvider.java:17)
 pub trait InlinedRegistryBuilderProvider: JObject {
-    fn create_instrument(&self, value: JRef<dyn Consumer<JRef<dyn RegistryBuilderFactory<JRef<dyn MusicInstrumentTrait>, JRef<dyn InstrumentRegistryEntryBuilder>>>>>) -> JRef<dyn MusicInstrumentTrait>; // paper-api/src/main/java/io/papermc/paper/registry/data/InlinedRegistryBuilderProvider.java:28
-    fn create_dialog(&self, value: JRef<dyn Consumer<JRef<dyn RegistryBuilderFactory<JRef<dyn Dialog>, JRef<dyn DialogRegistryEntryBuilder>>>>>) -> JRef<dyn Dialog>; // paper-api/src/main/java/io/papermc/paper/registry/data/InlinedRegistryBuilderProvider.java:30
-    fn create_trim_material(&self, value: JRef<dyn Consumer<JRef<dyn RegistryBuilderFactory<JRef<dyn TrimMaterial>, JRef<dyn TrimMaterialRegistryEntryBuilder>>>>>) -> JRef<dyn TrimMaterial>; // paper-api/src/main/java/io/papermc/paper/registry/data/InlinedRegistryBuilderProvider.java:32
-    fn create_trim_pattern(&self, value: JRef<dyn Consumer<JRef<dyn RegistryBuilderFactory<JRef<dyn TrimPattern>, JRef<dyn TrimPatternRegistryEntryBuilder>>>>>) -> JRef<dyn TrimPattern>; // paper-api/src/main/java/io/papermc/paper/registry/data/InlinedRegistryBuilderProvider.java:34
+    fn create_instrument(&self, value: Arc<dyn Fn(JRef<dyn RegistryBuilderFactory<JRef<dyn MusicInstrumentTrait>, JRef<dyn InstrumentRegistryEntryBuilder>>>) + Send + Sync>) -> JRef<dyn MusicInstrumentTrait>; // paper-api/src/main/java/io/papermc/paper/registry/data/InlinedRegistryBuilderProvider.java:28
+    fn create_dialog(&self, value: Arc<dyn Fn(JRef<dyn RegistryBuilderFactory<JRef<dyn Dialog>, JRef<dyn DialogRegistryEntryBuilder>>>) + Send + Sync>) -> JRef<dyn Dialog>; // paper-api/src/main/java/io/papermc/paper/registry/data/InlinedRegistryBuilderProvider.java:30
+    fn create_trim_material(&self, value: Arc<dyn Fn(JRef<dyn RegistryBuilderFactory<JRef<dyn TrimMaterial>, JRef<dyn TrimMaterialRegistryEntryBuilder>>>) + Send + Sync>) -> JRef<dyn TrimMaterial>; // paper-api/src/main/java/io/papermc/paper/registry/data/InlinedRegistryBuilderProvider.java:32
+    fn create_trim_pattern(&self, value: Arc<dyn Fn(JRef<dyn RegistryBuilderFactory<JRef<dyn TrimPattern>, JRef<dyn TrimPatternRegistryEntryBuilder>>>) + Send + Sync>) -> JRef<dyn TrimPattern>; // paper-api/src/main/java/io/papermc/paper/registry/data/InlinedRegistryBuilderProvider.java:34
 }
 pub fn instance() -> JRef<dyn InlinedRegistryBuilderProvider> { todo!() } // paper-api/src/main/java/io/papermc/paper/registry/data/InlinedRegistryBuilderProvider.java:21

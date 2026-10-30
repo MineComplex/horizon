@@ -5,7 +5,6 @@ use crate::com::mojang::brigadier::StringReader;
 use crate::com::mojang::brigadier::context::CommandContext;
 use crate::com::mojang::brigadier::exceptions::DynamicCommandExceptionType;
 use crate::com::mojang::serialization::DynamicOps;
-use crate::java::lang::Throwable;
 use crate::net::minecraft::commands::command_build_context::CommandBuildContext;
 use crate::net::minecraft::commands::command_source_stack::CommandSourceStack;
 use crate::net::minecraft::core::holder_lookup::HolderLookupProvider;
@@ -39,6 +38,6 @@ impl StyleArgument {
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl ParserBasedArgumentTrait<JObjectRef> for StyleArgument {
     fn as_parser_based_argument(&self) -> &ParserBasedArgument<JObjectRef> { self }
-    fn parse(&self, reader: StringReader) -> Result<T, Throwable> { ParserBasedArgument::parse(self, reader) }
+    fn parse(&self, reader: StringReader) -> Result<T, anyhow::Error> { ParserBasedArgument::parse(self, reader) }
 }
 crate::jobject!(StyleArgument);

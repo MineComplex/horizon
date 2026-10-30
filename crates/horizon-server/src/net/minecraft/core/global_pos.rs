@@ -3,7 +3,6 @@
 use crate::prelude::*;
 use crate::com::mojang::serialization::Codec;
 use crate::com::mojang::serialization::MapCodec;
-use crate::io::netty::buffer::ByteBuf;
 use crate::net::minecraft::core::block_pos::BlockPos;
 use crate::net::minecraft::network::codec::stream_codec::StreamCodec;
 use crate::net::minecraft::resources::resource_key::ResourceKey;
@@ -17,7 +16,7 @@ pub struct GlobalPos {
 }
 pub static MAP_CODEC: LazyLock<MapCodec<GlobalPos>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/core/GlobalPos.java:13
 pub static CODEC: LazyLock<JRef<dyn Codec<GlobalPos>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/core/GlobalPos.java:17
-pub static STREAM_CODEC: LazyLock<JRef<dyn StreamCodec<ByteBuf, GlobalPos>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/core/GlobalPos.java:18
+pub static STREAM_CODEC: LazyLock<JRef<dyn StreamCodec<bytes::BytesMut, GlobalPos>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/core/GlobalPos.java:18
 impl GlobalPos {
     pub fn new() -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/core/GlobalPos.java:12
     pub fn new_2(dimension: JRef<ResourceKey<JRef<dyn LevelTrait>>>, pos: BlockPos) -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/core/GlobalPos.java:12

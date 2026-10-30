@@ -3,7 +3,6 @@
 use crate::prelude::*;
 use crate::ca::spottedleaf::moonrise::patches::block_counting::block_counting_bit_storage::BlockCountingBitStorage;
 use crate::ca::spottedleaf::moonrise::patches::block_counting::block_counting_entry::BlockCountingEntry;
-use crate::java::util::function::IntConsumer;
 use crate::net::minecraft::util::bit_storage::BitStorage;
 use crate::net::minecraft::world::level::block::state::block_state::BlockState;
 use crate::net::minecraft::world::level::chunk::palette::Palette;
@@ -23,7 +22,7 @@ impl ZeroBitStorage {
     pub fn get_raw(&self) -> Vec<i64> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/ZeroBitStorage.java:39
     pub fn get_size(&self) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/ZeroBitStorage.java:44
     pub fn get_bits(&self) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/ZeroBitStorage.java:49
-    pub fn get_all(&self, output: JRef<dyn IntConsumer>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/ZeroBitStorage.java:54
+    pub fn get_all(&self, output: Arc<dyn Fn(i32) + Send + Sync>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/ZeroBitStorage.java:54
     pub fn unpack(&self, output: &Vec<i32>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/ZeroBitStorage.java:61
     pub fn copy(&self) -> JRef<dyn BitStorage> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/ZeroBitStorage.java:66
     pub fn moonrise_count_blocks(&self, palette: JRef<dyn Palette<JRef<BlockState>>>) -> Vec<JRef<BlockCountingEntry>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/ZeroBitStorage.java:72
@@ -38,7 +37,7 @@ impl BitStorage for ZeroBitStorage {
     fn get_raw(&self) -> Vec<i64> { ZeroBitStorage::get_raw(self) }
     fn get_size(&self) -> i32 { ZeroBitStorage::get_size(self) }
     fn get_bits(&self) -> i32 { ZeroBitStorage::get_bits(self) }
-    fn get_all(&self, output: JRef<dyn IntConsumer>) { ZeroBitStorage::get_all(self, output) }
+    fn get_all(&self, output: Arc<dyn Fn(i32) + Send + Sync>) { ZeroBitStorage::get_all(self, output) }
     fn unpack(&self, output: &Vec<i32>) { ZeroBitStorage::unpack(self, output) }
     fn copy(&self) -> JRef<dyn BitStorage> { ZeroBitStorage::copy(self) }
 }

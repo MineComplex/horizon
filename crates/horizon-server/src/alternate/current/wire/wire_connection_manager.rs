@@ -5,7 +5,6 @@ use crate::alternate::current::wire::update_order::UpdateOrder;
 use crate::alternate::current::wire::wire_connection::WireConnection;
 use crate::alternate::current::wire::wire_handler::WireHandlerNodeProvider;
 use crate::alternate::current::wire::wire_node::WireNode;
-use crate::java::util::function::Consumer;
 
 // ---- class alternate.current.wire.WireConnectionManager (leaf-server/src/minecraft/java/alternate/current/wire/WireConnectionManager.java:9)
 pub struct WireConnectionManager {
@@ -25,7 +24,7 @@ impl WireConnectionManager {
     pub fn clear(&self) { todo!() } // leaf-server/src/minecraft/java/alternate/current/wire/WireConnectionManager.java:80
     pub fn add(&self, connection: JRef<WireConnection>) { todo!() } // leaf-server/src/minecraft/java/alternate/current/wire/WireConnectionManager.java:96
     pub fn add_4(&self, wire: JRef<WireNode>, i_dir: i32, offer: bool, accept: bool) { todo!() } // leaf-server/src/minecraft/java/alternate/current/wire/WireConnectionManager.java:92
-    pub fn for_each(&self, consumer: JRef<dyn Consumer<JRef<WireConnection>>>) { todo!() } // leaf-server/src/minecraft/java/alternate/current/wire/WireConnectionManager.java:117
-    pub fn for_each_3(&self, consumer: JRef<dyn Consumer<JRef<WireConnection>>>, update_order: UpdateOrder, i_flow_dir: i32) { todo!() } // leaf-server/src/minecraft/java/alternate/current/wire/WireConnectionManager.java:127
+    pub fn for_each(&self, consumer: Arc<dyn Fn(JRef<WireConnection>) + Send + Sync>) { todo!() } // leaf-server/src/minecraft/java/alternate/current/wire/WireConnectionManager.java:117
+    pub fn for_each_3(&self, consumer: Arc<dyn Fn(JRef<WireConnection>) + Send + Sync>, update_order: UpdateOrder, i_flow_dir: i32) { todo!() } // leaf-server/src/minecraft/java/alternate/current/wire/WireConnectionManager.java:127
 }
 crate::jobject!(WireConnectionManager);

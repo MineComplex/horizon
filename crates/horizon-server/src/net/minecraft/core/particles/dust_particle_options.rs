@@ -8,7 +8,6 @@ use crate::net::minecraft::core::particles::scalable_particle_options_base::Scal
 use crate::net::minecraft::core::particles::scalable_particle_options_base::ScalableParticleOptionsBaseTrait;
 use crate::net::minecraft::network::codec::stream_codec::StreamCodec;
 use crate::net::minecraft::network::registry_friendly_byte_buf::RegistryFriendlyByteBuf;
-use crate::org::joml::Vector3f;
 
 // ---- class net.minecraft.core.particles.DustParticleOptions (leaf-server/src/minecraft/java/net/minecraft/core/particles/DustParticleOptions.java:12)
 pub struct DustParticleOptions {
@@ -28,7 +27,7 @@ impl DustParticleOptions {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(color: i32, scale: f32) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/core/particles/DustParticleOptions.java:26
     pub fn get_type(&self) -> JRef<dyn ParticleTypeTrait<JRef<DustParticleOptions>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/core/particles/DustParticleOptions.java:31
-    pub fn get_color(&self) -> Vector3f { todo!() } // leaf-server/src/minecraft/java/net/minecraft/core/particles/DustParticleOptions.java:36
+    pub fn get_color(&self) -> glam::Vec3 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/core/particles/DustParticleOptions.java:36
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

@@ -3,12 +3,6 @@
 use crate::prelude::*;
 use crate::ca::spottedleaf::moonrise::patches::collisions::block::collision_block_state::CollisionBlockState;
 use crate::ca::spottedleaf::moonrise::patches::starlight::blockstate::starlight_abstract_block_state::StarlightAbstractBlockState;
-use crate::java::lang::Comparable;
-use crate::java::util::function::BiConsumer;
-use crate::java::util::function::Function;
-use crate::java::util::function::Predicate;
-use crate::java::util::function::ToIntFunction;
-use crate::java::util::stream::Stream;
 use crate::net::caffeinemc::mods::lithium::common::block::entity::shape_update_handling_block_behaviour::ShapeUpdateHandlingBlockBehaviour;
 use crate::net::minecraft::core::block_pos::BlockPos;
 use crate::net::minecraft::core::direction::Direction;
@@ -102,7 +96,7 @@ pub trait BlockBehaviourTrait: FeatureElement + ShapeUpdateHandlingBlockBehaviou
     fn on_place(&self, state: JRef<BlockState>, level: JRef<dyn LevelTrait>, pos: BlockPos, old_state: JRef<BlockState>, moved_by_piston: bool); // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:163
     fn on_place_6(&self, state: JRef<BlockState>, level: JRef<dyn LevelTrait>, pos: BlockPos, old_state: JRef<BlockState>, moved_by_piston: bool, context: JRef<dyn UseOnContextTrait>); // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:171
     fn affect_neighbors_after_removal(&self, state: JRef<BlockState>, level: JRef<ServerLevel>, pos: BlockPos, moved_by_piston: bool); // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:167
-    fn on_explosion_hit(&self, state: JRef<BlockState>, level: JRef<ServerLevel>, pos: BlockPos, explosion: JRef<dyn Explosion>, on_hit: JRef<dyn BiConsumer<JRef<ItemStack>, BlockPos>>); // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:176
+    fn on_explosion_hit(&self, state: JRef<BlockState>, level: JRef<ServerLevel>, pos: BlockPos, explosion: JRef<dyn Explosion>, on_hit: Arc<dyn Fn(JRef<ItemStack>, BlockPos) + Send + Sync>); // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:176
     fn use_without_item(&self, state: JRef<BlockState>, level: JRef<dyn LevelTrait>, pos: BlockPos, player: JRef<dyn PlayerTrait>, hit_result: JRef<BlockHitResult>) -> JRef<dyn InteractionResult>; // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:204
     fn use_item_on(&self, item_stack: JRef<ItemStack>, state: JRef<BlockState>, level: JRef<dyn LevelTrait>, pos: BlockPos, player: JRef<dyn PlayerTrait>, hand: InteractionHand, hit_result: JRef<BlockHitResult>) -> JRef<dyn InteractionResult>; // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:210
     fn show_as_interactable_in_spectator_mode(&self, state: JRef<BlockState>, level: JRef<dyn LevelTrait>, pos: BlockPos, hit_result: JRef<BlockHitResult>) -> bool; // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:222
@@ -172,7 +166,7 @@ impl BlockBehaviour {
     pub fn on_place(&self, state: JRef<BlockState>, level: JRef<dyn LevelTrait>, pos: BlockPos, old_state: JRef<BlockState>, moved_by_piston: bool) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:163
     pub fn on_place_6(&self, state: JRef<BlockState>, level: JRef<dyn LevelTrait>, pos: BlockPos, old_state: JRef<BlockState>, moved_by_piston: bool, context: JRef<dyn UseOnContextTrait>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:171
     pub fn affect_neighbors_after_removal(&self, state: JRef<BlockState>, level: JRef<ServerLevel>, pos: BlockPos, moved_by_piston: bool) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:167
-    pub fn on_explosion_hit(&self, state: JRef<BlockState>, level: JRef<ServerLevel>, pos: BlockPos, explosion: JRef<dyn Explosion>, on_hit: JRef<dyn BiConsumer<JRef<ItemStack>, BlockPos>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:176
+    pub fn on_explosion_hit(&self, state: JRef<BlockState>, level: JRef<ServerLevel>, pos: BlockPos, explosion: JRef<dyn Explosion>, on_hit: Arc<dyn Fn(JRef<ItemStack>, BlockPos) + Send + Sync>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:176
     pub fn use_without_item(&self, state: JRef<BlockState>, level: JRef<dyn LevelTrait>, pos: BlockPos, player: JRef<dyn PlayerTrait>, hit_result: JRef<BlockHitResult>) -> JRef<dyn InteractionResult> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:204
     pub fn use_item_on(&self, item_stack: JRef<ItemStack>, state: JRef<BlockState>, level: JRef<dyn LevelTrait>, pos: BlockPos, player: JRef<dyn PlayerTrait>, hand: InteractionHand, hit_result: JRef<BlockHitResult>) -> JRef<dyn InteractionResult> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:210
     pub fn show_as_interactable_in_spectator_mode(&self, state: JRef<BlockState>, level: JRef<dyn LevelTrait>, pos: BlockPos, hit_result: JRef<BlockHitResult>) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:222
@@ -243,7 +237,7 @@ pub struct BlockBehaviourBlockStateBase {
     pub is_suffocating: JRef<dyn BlockBehaviourStatePredicate>, // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:459
     pub is_view_blocking: JRef<dyn BlockBehaviourStateArgumentPredicate<AABB>>, // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:460
     pub post_process: JRef<dyn BlockBehaviourPostProcess>, // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:461
-    pub emissive_rendering: JRef<dyn Predicate<JRef<BlockState>>>, // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:462
+    pub emissive_rendering: Arc<dyn Fn(JRef<BlockState>) -> bool + Send + Sync>, // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:462
     pub offset_function: JRef<dyn BlockBehaviourOffsetFunction>, // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:463
     pub spawn_terrain_particles: bool, // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:464
     pub instrument: NoteBlockInstrument, // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:465
@@ -282,7 +276,7 @@ pub trait BlockBehaviourBlockStateBaseTrait: StateHolderTrait<JRef<dyn BlockTrai
     fn init_path_type(&self); // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:702
     fn init_tag_flag(&self); // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:705
     fn get_block(&self) -> JRef<dyn BlockTrait>; // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:710
-    fn is_2(&self, tag: TagKey<JRef<dyn BlockTrait>>, predicate: JRef<dyn Predicate<JRef<dyn BlockBehaviourBlockStateBaseTrait>>>) -> bool; // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:1080
+    fn is_2(&self, tag: TagKey<JRef<dyn BlockTrait>>, predicate: Arc<dyn Fn(JRef<dyn BlockBehaviourBlockStateBaseTrait>) -> bool + Send + Sync>) -> bool; // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:1080
     fn is_solid(&self) -> bool; // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:751
     fn is_valid_spawn(&self, level: JRef<dyn BlockGetter>, pos: BlockPos, type_: JRef<EntityType<JObjectRef>>) -> bool; // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:762
     fn propagates_skylight_down(&self) -> bool; // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:766
@@ -326,7 +320,7 @@ pub trait BlockBehaviourBlockStateBaseTrait: StateHolderTrait<JRef<dyn BlockTrai
     fn on_place(&self, level: JRef<dyn LevelTrait>, pos: BlockPos, old_state: JRef<BlockState>, moved_by_piston: bool); // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:969
     fn on_place_5(&self, level: JRef<dyn LevelTrait>, pos: BlockPos, old_state: JRef<BlockState>, moved_by_piston: bool, context: JRef<dyn UseOnContextTrait>); // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:974
     fn affect_neighbors_after_removal(&self, level: JRef<ServerLevel>, pos: BlockPos, moved_by_piston: bool); // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:979
-    fn on_explosion_hit(&self, level: JRef<ServerLevel>, pos: BlockPos, explosion: JRef<dyn Explosion>, on_hit: JRef<dyn BiConsumer<JRef<ItemStack>, BlockPos>>); // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:983
+    fn on_explosion_hit(&self, level: JRef<ServerLevel>, pos: BlockPos, explosion: JRef<dyn Explosion>, on_hit: Arc<dyn Fn(JRef<ItemStack>, BlockPos) + Send + Sync>); // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:983
     fn tick(&self, level: JRef<ServerLevel>, pos: BlockPos, random: JRef<dyn RandomSource>); // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:987
     fn random_tick(&self, level: JRef<ServerLevel>, pos: BlockPos, random: JRef<dyn RandomSource>); // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:991
     fn entity_inside(&self, level: JRef<dyn LevelTrait>, pos: BlockPos, entity: JRef<dyn EntityTrait>, effect_applier: JRef<dyn InsideBlockEffectApplier>, is_precise: bool); // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:995
@@ -374,7 +368,7 @@ pub static BLOCK_STATE_BASE_DIRECTIONS_CACHED: LazyLock<Vec<Direction>> = LazyLo
 pub static BLOCK_STATE_BASE_ID_GENERATOR: LazyLock<std::sync::atomic::AtomicI32> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:487
 impl BlockBehaviourBlockStateBase {
     pub fn this(&self) -> JRef<dyn BlockBehaviourBlockStateBaseTrait> { self.this.upgrade().expect("this") }
-    pub fn new_base<S: BlockBehaviourBlockStateBaseTrait + 'static>(this: &Weak<S>, owner: JRef<dyn BlockTrait>, property_keys: &Vec<JRef<dyn PropertyTrait<JObjectRef>>>, property_values: &Vec<JRef<dyn Comparable<JObjectRef>>>) -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:564
+    pub fn new_base<S: BlockBehaviourBlockStateBaseTrait + 'static>(this: &Weak<S>, owner: JRef<dyn BlockTrait>, property_keys: &Vec<JRef<dyn PropertyTrait<JObjectRef>>>, property_values: &Vec<()>) -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:564
     pub fn starlight_is_conditionally_full_opaque(&self) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:479
     pub fn moonrise_has_cache(&self) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:518
     pub fn moonrise_occludes_full_block(&self) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:523
@@ -385,7 +379,7 @@ impl BlockBehaviourBlockStateBase {
     pub fn moonrise_get_constant_context_collision_shape(&self) -> JRef<dyn VoxelShapeTrait> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:548
     pub fn moonrise_is_special_colliding_block(&self) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:553
     pub fn type_holder(&self) -> JRef<dyn Holder<JRef<dyn BlockTrait>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:714
-    pub fn tags(&self) -> Stream<TagKey<JRef<dyn BlockTrait>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:720
+    pub fn tags(&self) -> Box<dyn Iterator<Item = TagKey<JRef<dyn BlockTrait>>> + Send> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:720
     pub fn is(&self, tag: TagKey<JRef<dyn BlockTrait>>) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:725
     pub fn is_1(&self, set: JRef<dyn HolderSet<JRef<dyn BlockTrait>>>) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:730
     pub fn is_1_3(&self, type_: JRef<dyn Holder<JRef<dyn BlockTrait>>>) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:740
@@ -399,7 +393,7 @@ impl BlockBehaviourBlockStateBase {
     pub fn init_tag_flag(&self) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:705
     pub fn get_block(&self) -> JRef<dyn BlockTrait> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:710
     pub fn is_1_5(&self, raw_type: JRef<dyn BlockTrait>) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:735
-    pub fn is_2(&self, tag: TagKey<JRef<dyn BlockTrait>>, predicate: JRef<dyn Predicate<JRef<dyn BlockBehaviourBlockStateBaseTrait>>>) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:1080
+    pub fn is_2(&self, tag: TagKey<JRef<dyn BlockTrait>>, predicate: Arc<dyn Fn(JRef<dyn BlockBehaviourBlockStateBaseTrait>) -> bool + Send + Sync>) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:1080
     pub fn is_solid(&self) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:751
     pub fn is_destroyable(&self) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:757
     pub fn is_valid_spawn(&self, level: JRef<dyn BlockGetter>, pos: BlockPos, type_: JRef<EntityType<JObjectRef>>) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:762
@@ -454,7 +448,7 @@ impl BlockBehaviourBlockStateBase {
     pub fn on_place(&self, level: JRef<dyn LevelTrait>, pos: BlockPos, old_state: JRef<BlockState>, moved_by_piston: bool) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:969
     pub fn on_place_5(&self, level: JRef<dyn LevelTrait>, pos: BlockPos, old_state: JRef<BlockState>, moved_by_piston: bool, context: JRef<dyn UseOnContextTrait>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:974
     pub fn affect_neighbors_after_removal(&self, level: JRef<ServerLevel>, pos: BlockPos, moved_by_piston: bool) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:979
-    pub fn on_explosion_hit(&self, level: JRef<ServerLevel>, pos: BlockPos, explosion: JRef<dyn Explosion>, on_hit: JRef<dyn BiConsumer<JRef<ItemStack>, BlockPos>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:983
+    pub fn on_explosion_hit(&self, level: JRef<ServerLevel>, pos: BlockPos, explosion: JRef<dyn Explosion>, on_hit: Arc<dyn Fn(JRef<ItemStack>, BlockPos) + Send + Sync>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:983
     pub fn tick(&self, level: JRef<ServerLevel>, pos: BlockPos, random: JRef<dyn RandomSource>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:987
     pub fn random_tick(&self, level: JRef<ServerLevel>, pos: BlockPos, random: JRef<dyn RandomSource>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:991
     pub fn entity_inside(&self, level: JRef<dyn LevelTrait>, pos: BlockPos, entity: JRef<dyn EntityTrait>, effect_applier: JRef<dyn InsideBlockEffectApplier>, is_precise: bool) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:995
@@ -545,10 +539,10 @@ impl<F: Fn(JRef<BlockState>, JRef<dyn BlockGetter>, BlockPos) -> Option<BlockPos
 // ---- class net.minecraft.world.level.block.state.BlockBehaviour.Properties (leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:1230)
 pub struct BlockBehaviourProperties {
     pub this: Weak<Self>,
-    pub map_color: Mut<JRef<dyn Function<JRef<BlockState>, MapColor>>>, // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:1231
+    pub map_color: Mut<Arc<dyn Fn(JRef<BlockState>) -> MapColor + Send + Sync>>, // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:1231
     pub has_collision: Mut<bool>, // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:1232
     pub sound_type: Mut<SoundType>, // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:1233
-    pub light_emission: Mut<JRef<dyn ToIntFunction<JRef<BlockState>>>>, // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:1234
+    pub light_emission: Mut<Arc<dyn Fn(JRef<BlockState>) -> i32 + Send + Sync>>, // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:1234
     pub explosion_resistance: Mut<f32>, // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:1235
     pub destroy_time: Mut<f32>, // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:1236
     pub requires_correct_tool_for_drops: Mut<bool>, // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:1237
@@ -575,7 +569,7 @@ pub struct BlockBehaviourProperties {
     pub is_suffocating: Mut<JRef<dyn BlockBehaviourStatePredicate>>, // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:1265
     pub is_view_blocking: Mut<JRef<dyn BlockBehaviourStateArgumentPredicate<AABB>>>, // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:1267
     pub post_process: Mut<JRef<dyn BlockBehaviourPostProcess>>, // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:1268
-    pub emissive_rendering: Mut<JRef<dyn Predicate<JRef<BlockState>>>>, // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:1269
+    pub emissive_rendering: Mut<Arc<dyn Fn(JRef<BlockState>) -> bool + Send + Sync>>, // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:1269
     pub dynamic_shape: Mut<bool>, // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:1270
     pub required_features: Mut<FeatureFlagSet>, // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:1271
     pub offset_function: Mut<JRef<dyn BlockBehaviourOffsetFunction>>, // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:1272
@@ -589,7 +583,7 @@ impl BlockBehaviourProperties {
     pub fn of_legacy_copy(block: JRef<dyn BlockBehaviourTrait>) -> JRef<BlockBehaviourProperties> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:1296
     pub fn map_color(&self, dye_color: DyeColor) -> JRef<BlockBehaviourProperties> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:1328
     pub fn map_color_1(&self, map_color: MapColor) -> JRef<BlockBehaviourProperties> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:1333
-    pub fn map_color_1_2(&self, map_color: JRef<dyn Function<JRef<BlockState>, MapColor>>) -> JRef<BlockBehaviourProperties> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:1338
+    pub fn map_color_1_2(&self, map_color: Arc<dyn Fn(JRef<BlockState>) -> MapColor + Send + Sync>) -> JRef<BlockBehaviourProperties> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:1338
     pub fn no_collision(&self) -> JRef<BlockBehaviourProperties> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:1343
     pub fn no_occlusion(&self) -> JRef<BlockBehaviourProperties> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:1349
     pub fn friction(&self, friction: f32) -> JRef<BlockBehaviourProperties> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:1354
@@ -598,7 +592,7 @@ impl BlockBehaviourProperties {
     pub fn bounce_restitution(&self, bounce_restitution: f32) -> JRef<BlockBehaviourProperties> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:1369
     pub fn fall_distance_reduction(&self, fall_distance_reduction: f32) -> JRef<BlockBehaviourProperties> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:1374
     pub fn sound(&self, sound_type: SoundType) -> JRef<BlockBehaviourProperties> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:1379
-    pub fn light_level(&self, light_emission: JRef<dyn ToIntFunction<JRef<BlockState>>>) -> JRef<BlockBehaviourProperties> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:1384
+    pub fn light_level(&self, light_emission: Arc<dyn Fn(JRef<BlockState>) -> i32 + Send + Sync>) -> JRef<BlockBehaviourProperties> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:1384
     pub fn strength(&self, destroy_time: f32) -> JRef<BlockBehaviourProperties> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:1397
     pub fn strength_2(&self, destroy_time: f32, explosion_resistance: f32) -> JRef<BlockBehaviourProperties> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:1389
     pub fn instabreak(&self) -> JRef<BlockBehaviourProperties> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:1393
@@ -618,7 +612,7 @@ impl BlockBehaviourProperties {
     pub fn is_suffocating(&self, is_suffocating: JRef<dyn BlockBehaviourStatePredicate>) -> JRef<BlockBehaviourProperties> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:1467
     pub fn is_view_blocking(&self, is_view_blocking: JRef<dyn BlockBehaviourStateArgumentPredicate<AABB>>) -> JRef<BlockBehaviourProperties> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:1472
     pub fn post_process(&self, post_process: JRef<dyn BlockBehaviourPostProcess>) -> JRef<BlockBehaviourProperties> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:1477
-    pub fn emissive_rendering(&self, emissive_rendering: JRef<dyn Predicate<JRef<BlockState>>>) -> JRef<BlockBehaviourProperties> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:1482
+    pub fn emissive_rendering(&self, emissive_rendering: Arc<dyn Fn(JRef<BlockState>) -> bool + Send + Sync>) -> JRef<BlockBehaviourProperties> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:1482
     pub fn requires_correct_tool_for_drops(&self) -> JRef<BlockBehaviourProperties> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:1487
     pub fn destroy_time(&self, destroy_time: f32) -> JRef<BlockBehaviourProperties> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:1492
     pub fn explosion_resistance(&self, explosion_resistance: f32) -> JRef<BlockBehaviourProperties> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/block/state/BlockBehaviour.java:1497

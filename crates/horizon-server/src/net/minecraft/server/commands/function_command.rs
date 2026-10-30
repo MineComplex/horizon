@@ -7,7 +7,6 @@ use crate::com::mojang::brigadier::context::ContextChain;
 use crate::com::mojang::brigadier::exceptions::Dynamic2CommandExceptionType;
 use crate::com::mojang::brigadier::exceptions::DynamicCommandExceptionType;
 use crate::com::mojang::brigadier::suggestion::SuggestionProvider;
-use crate::java::lang::Throwable;
 use crate::net::minecraft::commands::arguments::nbt_path_argument::NbtPathArgumentNbtPath;
 use crate::net::minecraft::commands::command_result_callback::CommandResultCallback;
 use crate::net::minecraft::commands::command_source_stack::CommandSourceStack;
@@ -34,13 +33,13 @@ impl FunctionCommand {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/FunctionCommand.java:41
     pub fn register(dispatcher: JRef<CommandDispatcher<JRef<CommandSourceStack>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/FunctionCommand.java:64
-    pub fn get_argument_tag(path: JRef<NbtPathArgumentNbtPath>, accessor: JRef<dyn DataAccessor>) -> Result<JRef<CompoundTag>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/FunctionCommand.java:100
+    pub fn get_argument_tag(path: JRef<NbtPathArgumentNbtPath>, accessor: JRef<dyn DataAccessor>) -> Result<JRef<CompoundTag>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/FunctionCommand.java:100
     pub fn modify_sender_for_execution(sender: JRef<CommandSourceStack>) -> JRef<CommandSourceStack> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/FunctionCommand.java:109
-    pub fn queue_functions<T: JGeneric>(functions: &Vec<JRef<dyn CommandFunction<T>>>, arguments: Option<JRef<CompoundTag>>, original_source: T, function_source: T, output: JRef<dyn ExecutionControl<T>>, callbacks: JRef<dyn FunctionCommandCallbacks<T>>, modifiers: ChainModifiers) -> Result<(), Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/FunctionCommand.java:113
-    pub fn instantiate_and_queue_functions<T: JGeneric>(arguments: Option<JRef<CompoundTag>>, output: JRef<dyn ExecutionControl<T>>, dispatcher: JRef<CommandDispatcher<T>>, no_callback_source: T, function: JRef<dyn CommandFunction<T>>, id: JRef<Identifier>, function_result_collector: JRef<dyn CommandResultCallback>, return_parent_frame: bool) -> Result<(), Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/FunctionCommand.java:129
+    pub fn queue_functions<T: JGeneric>(functions: &Vec<JRef<dyn CommandFunction<T>>>, arguments: Option<JRef<CompoundTag>>, original_source: T, function_source: T, output: JRef<dyn ExecutionControl<T>>, callbacks: JRef<dyn FunctionCommandCallbacks<T>>, modifiers: ChainModifiers) -> Result<(), anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/FunctionCommand.java:113
+    pub fn instantiate_and_queue_functions<T: JGeneric>(arguments: Option<JRef<CompoundTag>>, output: JRef<dyn ExecutionControl<T>>, dispatcher: JRef<CommandDispatcher<T>>, no_callback_source: T, function: JRef<dyn CommandFunction<T>>, id: JRef<Identifier>, function_result_collector: JRef<dyn CommandResultCallback>, return_parent_frame: bool) -> Result<(), anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/FunctionCommand.java:129
     pub fn decorate_output_if_needed<T: JGeneric>(original_source: T, callbacks: JRef<dyn FunctionCommandCallbacks<T>>, id: JRef<Identifier>, callback: JRef<dyn CommandResultCallback>) -> JRef<dyn CommandResultCallback> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/FunctionCommand.java:147
-    pub fn queue_functions_as_return<T: JGeneric>(functions: &Vec<JRef<dyn CommandFunction<T>>>, arguments: Option<JRef<CompoundTag>>, original_source: T, function_source: T, output: JRef<dyn ExecutionControl<T>>, callbacks: JRef<dyn FunctionCommandCallbacks<T>>) -> Result<(), Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/FunctionCommand.java:156
-    pub fn queue_functions_no_return<T: JGeneric>(functions: &Vec<JRef<dyn CommandFunction<T>>>, arguments: Option<JRef<CompoundTag>>, original_source: T, function_source: T, output: JRef<dyn ExecutionControl<T>>, callbacks: JRef<dyn FunctionCommandCallbacks<T>>) -> Result<(), Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/FunctionCommand.java:179
+    pub fn queue_functions_as_return<T: JGeneric>(functions: &Vec<JRef<dyn CommandFunction<T>>>, arguments: Option<JRef<CompoundTag>>, original_source: T, function_source: T, output: JRef<dyn ExecutionControl<T>>, callbacks: JRef<dyn FunctionCommandCallbacks<T>>) -> Result<(), anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/FunctionCommand.java:156
+    pub fn queue_functions_no_return<T: JGeneric>(functions: &Vec<JRef<dyn CommandFunction<T>>>, arguments: Option<JRef<CompoundTag>>, original_source: T, function_source: T, output: JRef<dyn ExecutionControl<T>>, callbacks: JRef<dyn FunctionCommandCallbacks<T>>) -> Result<(), anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/FunctionCommand.java:179
 }
 crate::jobject!(FunctionCommand);
 // ---- interface net.minecraft.server.commands.FunctionCommand.Callbacks (leaf-server/src/minecraft/java/net/minecraft/server/commands/FunctionCommand.java:231)
@@ -61,7 +60,7 @@ impl std::ops::Deref for FunctionCommandFunctionCustomExecutor {
 }
 pub trait FunctionCommandFunctionCustomExecutorTrait: CustomCommandExecutorWithErrorHandlingTrait<JRef<CommandSourceStack>> + CustomCommandExecutorCommandAdapter<JRef<CommandSourceStack>> {
     fn as_function_command_function_custom_executor(&self) -> &FunctionCommandFunctionCustomExecutor;
-    fn arguments(&self, context: CommandContext<JRef<CommandSourceStack>>) -> Result<Option<JRef<CompoundTag>>, Throwable>; // leaf-server/src/minecraft/java/net/minecraft/server/commands/FunctionCommand.java:238
+    fn arguments(&self, context: CommandContext<JRef<CommandSourceStack>>) -> Result<Option<JRef<CompoundTag>>, anyhow::Error>; // leaf-server/src/minecraft/java/net/minecraft/server/commands/FunctionCommand.java:238
 }
 impl std::ops::Deref for dyn FunctionCommandFunctionCustomExecutorTrait {
     type Target = FunctionCommandFunctionCustomExecutor;
@@ -70,5 +69,5 @@ impl std::ops::Deref for dyn FunctionCommandFunctionCustomExecutorTrait {
 impl FunctionCommandFunctionCustomExecutor {
     pub fn this(&self) -> JRef<dyn FunctionCommandFunctionCustomExecutorTrait> { self.this.upgrade().expect("this") }
     pub fn new_base<S: FunctionCommandFunctionCustomExecutorTrait + 'static>(this: &Weak<S>) -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/FunctionCommand.java:235
-    pub fn run_guarded(&self, sender: JRef<CommandSourceStack>, current_step: ContextChain<JRef<CommandSourceStack>>, modifiers: ChainModifiers, output: JRef<dyn ExecutionControl<JRef<CommandSourceStack>>>) -> Result<(), Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/FunctionCommand.java:240
+    pub fn run_guarded(&self, sender: JRef<CommandSourceStack>, current_step: ContextChain<JRef<CommandSourceStack>>, modifiers: ChainModifiers, output: JRef<dyn ExecutionControl<JRef<CommandSourceStack>>>) -> Result<(), anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/FunctionCommand.java:240
 }

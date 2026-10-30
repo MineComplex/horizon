@@ -5,9 +5,6 @@ use crate::com::mojang::brigadier::StringReader;
 use crate::com::mojang::brigadier::context::CommandContext;
 use crate::com::mojang::brigadier::suggestion::Suggestions;
 use crate::com::mojang::brigadier::suggestion::SuggestionsBuilder;
-use crate::java::lang::Throwable;
-use crate::java::util::concurrent::CompletableFuture;
-use crate::java::util::function::Predicate;
 use crate::net::minecraft::commands::command_build_context::CommandBuildContext;
 use crate::net::minecraft::commands::command_source_stack::CommandSourceStack;
 use crate::net::minecraft::core::holder_lookup::HolderLookup;
@@ -28,10 +25,10 @@ impl BlockPredicateArgument {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(context: JRef<dyn CommandBuildContext>) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockPredicateArgument.java:34
     pub fn block_predicate(context: JRef<dyn CommandBuildContext>) -> JRef<BlockPredicateArgument> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockPredicateArgument.java:38
-    pub fn parse(&self, reader: StringReader) -> Result<JRef<dyn BlockPredicateArgumentResult>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockPredicateArgument.java:42
-    pub fn parse_2(blocks: JRef<dyn HolderLookup<JRef<dyn BlockTrait>>>, reader: StringReader) -> Result<JRef<dyn BlockPredicateArgumentResult>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockPredicateArgument.java:47
-    pub fn get_block_predicate(context: CommandContext<JRef<CommandSourceStack>>, name: &str) -> Result<JRef<dyn Predicate<JRef<BlockInWorld>>>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockPredicateArgument.java:55
-    pub fn list_suggestions<S: JGeneric>(&self, context: CommandContext<S>, builder: SuggestionsBuilder) -> CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockPredicateArgument.java:59
+    pub fn parse(&self, reader: StringReader) -> Result<JRef<dyn BlockPredicateArgumentResult>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockPredicateArgument.java:42
+    pub fn parse_2(blocks: JRef<dyn HolderLookup<JRef<dyn BlockTrait>>>, reader: StringReader) -> Result<JRef<dyn BlockPredicateArgumentResult>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockPredicateArgument.java:47
+    pub fn get_block_predicate(context: CommandContext<JRef<CommandSourceStack>>, name: &str) -> Result<Arc<dyn Fn(JRef<BlockInWorld>) -> bool + Send + Sync>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockPredicateArgument.java:55
+    pub fn list_suggestions<S: JGeneric>(&self, context: CommandContext<S>, builder: SuggestionsBuilder) -> crate::rt::CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockPredicateArgument.java:59
     pub fn get_examples(&self) -> Vec<String> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockPredicateArgument.java:64
 }
 crate::jobject!(BlockPredicateArgument);
@@ -55,7 +52,7 @@ impl BlockPredicateArgumentResult for BlockPredicateArgumentBlockPredicate {
 }
 crate::jobject!(BlockPredicateArgumentBlockPredicate: dyn BlockPredicateArgumentResult);
 // ---- interface net.minecraft.commands.arguments.blocks.BlockPredicateArgument.Result (leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockPredicateArgument.java:107)
-pub trait BlockPredicateArgumentResult: Predicate<JRef<BlockInWorld>> {
+pub trait BlockPredicateArgumentResult: JObject {
     fn requires_nbt(&self) -> bool; // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockPredicateArgument.java:108
 }
 // ---- class net.minecraft.commands.arguments.blocks.BlockPredicateArgument.TagPredicate (leaf-server/src/minecraft/java/net/minecraft/commands/arguments/blocks/BlockPredicateArgument.java:111)

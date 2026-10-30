@@ -3,8 +3,6 @@
 use crate::prelude::*;
 use crate::ca::spottedleaf::moonrise::patches::chunk_system::level::chunk_system_level_reader::ChunkSystemLevelReader;
 use crate::ca::spottedleaf::moonrise::patches::chunk_system::world::chunk_system_entity_getter::ChunkSystemEntityGetter;
-use crate::java::util::function::Predicate;
-use crate::java::util::function::Supplier;
 use crate::net::minecraft::core::block_pos::BlockPos;
 use crate::net::minecraft::core::holder::Holder;
 use crate::net::minecraft::core::particles::particle_options::ParticleOptions;
@@ -85,7 +83,7 @@ pub struct WorldGenRegion {
     pub fluid_ticks: JRef<WorldGenTickAccess<JRef<dyn FluidTrait>>>, // leaf-server/src/minecraft/java/net/minecraft/server/level/WorldGenRegion.java:78
     pub biome_manager: JRef<BiomeManager>, // leaf-server/src/minecraft/java/net/minecraft/server/level/WorldGenRegion.java:79
     pub generating_step: JRef<ChunkStep>, // leaf-server/src/minecraft/java/net/minecraft/server/level/WorldGenRegion.java:80
-    pub currently_generating: Mut<Option<JRef<dyn Supplier<String>>>>, // leaf-server/src/minecraft/java/net/minecraft/server/level/WorldGenRegion.java:81
+    pub currently_generating: Mut<Option<Arc<dyn Fn() -> String + Send + Sync>>>, // leaf-server/src/minecraft/java/net/minecraft/server/level/WorldGenRegion.java:81
     pub sub_tick_count: std::sync::atomic::AtomicI64, // leaf-server/src/minecraft/java/net/minecraft/server/level/WorldGenRegion.java:82
     pub environment_attributes: JRef<EnvironmentAttributeSystem>, // leaf-server/src/minecraft/java/net/minecraft/server/level/WorldGenRegion.java:83
     pub uncached_biome_resolver: JRef<dyn BiomeResolver>, // leaf-server/src/minecraft/java/net/minecraft/server/level/WorldGenRegion.java:84
@@ -100,7 +98,7 @@ impl WorldGenRegion {
     pub fn new(level: JRef<ServerLevel>, cache: JRef<StaticCache2D<JRef<dyn GenerationChunkHolderTrait>>>, generating_step: JRef<ChunkStep>, center: JRef<dyn ChunkAccessTrait>) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/WorldGenRegion.java:119
     pub fn get_brightness(&self, light_layer: LightLayer, block_pos: BlockPos) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/WorldGenRegion.java:97
     pub fn get_raw_brightness(&self, block_pos: BlockPos, subtract: i32) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/WorldGenRegion.java:109
-    pub fn set_currently_generating(&self, currently_generating: Option<JRef<dyn Supplier<String>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/WorldGenRegion.java:150
+    pub fn set_currently_generating(&self, currently_generating: Option<Arc<dyn Fn() -> String + Send + Sync>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/WorldGenRegion.java:150
     pub fn get_chunk(&self, pos: BlockPos) -> JRef<dyn ChunkAccessTrait> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/WorldGenRegion.java:156
     pub fn get_chunk_3(&self, chunk_x: i32, chunk_z: i32, status: JRef<ChunkStatus>) -> JRef<dyn ChunkAccessTrait> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/WorldGenRegion.java:161
     pub fn get_chunk_2(&self, chunk_x: i32, chunk_z: i32) -> JRef<dyn ChunkAccessTrait> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/WorldGenRegion.java:171
@@ -111,7 +109,7 @@ impl WorldGenRegion {
     pub fn get_fluid_if_loaded(&self, pos: BlockPos) -> Option<JRef<FluidState>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/WorldGenRegion.java:235
     pub fn get_block_state(&self, pos: BlockPos) -> JRef<BlockState> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/WorldGenRegion.java:243
     pub fn get_fluid_state(&self, pos: BlockPos) -> JRef<FluidState> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/WorldGenRegion.java:251
-    pub fn get_nearest_player_5(&self, x: f64, y: f64, z: f64, max_dist: f64, predicate: Option<JRef<dyn Predicate<JRef<dyn EntityTrait>>>>) -> Option<JRef<dyn PlayerTrait>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/WorldGenRegion.java:259
+    pub fn get_nearest_player_5(&self, x: f64, y: f64, z: f64, max_dist: f64, predicate: Option<Arc<dyn Fn(JRef<dyn EntityTrait>) -> bool + Send + Sync>>) -> Option<JRef<dyn PlayerTrait>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/WorldGenRegion.java:259
     pub fn get_sky_darken(&self) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/WorldGenRegion.java:264
     pub fn get_biome_manager(&self) -> JRef<BiomeManager> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/WorldGenRegion.java:269
     pub fn get_uncached_noise_biome(&self, quart_x: i32, quart_y: i32, quart_z: i32) -> JRef<dyn Holder<JRef<Biome>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/WorldGenRegion.java:274
@@ -144,10 +142,10 @@ impl WorldGenRegion {
     pub fn level_event_4(&self, source: Option<JRef<dyn EntityTrait>>, type_: i32, pos: BlockPos, data: i32) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/WorldGenRegion.java:578
     pub fn game_event(&self, game_event: JRef<dyn Holder<GameEvent>>, position: Vec3, context: GameEventContext) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/WorldGenRegion.java:582
     pub fn dimension_type(&self) -> DimensionType { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/WorldGenRegion.java:586
-    pub fn is_state_at_position(&self, pos: BlockPos, predicate: JRef<dyn Predicate<JRef<BlockState>>>) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/WorldGenRegion.java:591
-    pub fn is_fluid_at_position(&self, pos: BlockPos, predicate: JRef<dyn Predicate<JRef<FluidState>>>) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/WorldGenRegion.java:596
-    pub fn get_entities_3_2<T: JGeneric>(&self, type_: JRef<dyn EntityTypeTest<JRef<dyn EntityTrait>, T>>, bb: AABB, selector: JRef<dyn Predicate<JObjectRef>>) -> Vec<T> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/WorldGenRegion.java:601
-    pub fn get_entities_3(&self, except: Option<JRef<dyn EntityTrait>>, bb: AABB, selector: Option<JRef<dyn Predicate<JObjectRef>>>) -> Vec<JRef<dyn EntityTrait>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/WorldGenRegion.java:606
+    pub fn is_state_at_position(&self, pos: BlockPos, predicate: Arc<dyn Fn(JRef<BlockState>) -> bool + Send + Sync>) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/WorldGenRegion.java:591
+    pub fn is_fluid_at_position(&self, pos: BlockPos, predicate: Arc<dyn Fn(JRef<FluidState>) -> bool + Send + Sync>) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/WorldGenRegion.java:596
+    pub fn get_entities_3_2<T: JGeneric>(&self, type_: JRef<dyn EntityTypeTest<JRef<dyn EntityTrait>, T>>, bb: AABB, selector: Arc<dyn Fn(JObjectRef) -> bool + Send + Sync>) -> Vec<T> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/WorldGenRegion.java:601
+    pub fn get_entities_3(&self, except: Option<JRef<dyn EntityTrait>>, bb: AABB, selector: Option<Arc<dyn Fn(JObjectRef) -> bool + Send + Sync>>) -> Vec<JRef<dyn EntityTrait>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/WorldGenRegion.java:606
     pub fn players(&self) -> Vec<JRef<dyn PlayerTrait>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/WorldGenRegion.java:611
     pub fn get_min_y(&self) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/WorldGenRegion.java:616
     pub fn get_height(&self) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/WorldGenRegion.java:621
@@ -165,7 +163,7 @@ impl WorldGenRegion {
 impl WorldGenLevel for WorldGenRegion {
     fn get_seed(&self) -> i64 { WorldGenRegion::get_seed(self) }
     fn ensure_can_write(&self, pos: BlockPos) -> bool { WorldGenRegion::ensure_can_write(self, pos) }
-    fn set_currently_generating(&self, currently_generating: Option<JRef<dyn Supplier<String>>>) { WorldGenRegion::set_currently_generating(self, currently_generating) }
+    fn set_currently_generating(&self, currently_generating: Option<Arc<dyn Fn() -> String + Send + Sync>>) { WorldGenRegion::set_currently_generating(self, currently_generating) }
 }
 impl ServerLevelAccessor for WorldGenRegion {
     fn get_level(&self) -> JRef<ServerLevel> { WorldGenRegion::get_level(self) }
@@ -236,8 +234,8 @@ impl ChunkSystemLevelReader for WorldGenRegion {
 impl LevelSimulatedRW for WorldGenRegion {
 }
 impl LevelSimulatedReader for WorldGenRegion {
-    fn is_state_at_position(&self, pos: BlockPos, predicate: JRef<dyn Predicate<JRef<BlockState>>>) -> bool { WorldGenRegion::is_state_at_position(self, pos, predicate) }
-    fn is_fluid_at_position(&self, pos: BlockPos, predicate: JRef<dyn Predicate<JRef<FluidState>>>) -> bool { WorldGenRegion::is_fluid_at_position(self, pos, predicate) }
+    fn is_state_at_position(&self, pos: BlockPos, predicate: Arc<dyn Fn(JRef<BlockState>) -> bool + Send + Sync>) -> bool { WorldGenRegion::is_state_at_position(self, pos, predicate) }
+    fn is_fluid_at_position(&self, pos: BlockPos, predicate: Arc<dyn Fn(JRef<FluidState>) -> bool + Send + Sync>) -> bool { WorldGenRegion::is_fluid_at_position(self, pos, predicate) }
     fn get_block_entity<T: JGeneric>(&self, pos: BlockPos, type_: JRef<BlockEntityType<T>>) -> Option<T> where Self: Sized { WorldGenRegion::get_block_entity::<T>(self, pos, type_) }
     fn get_heightmap_pos(&self, type_: HeightmapTypes, pos: BlockPos) -> BlockPos { todo!("abstract LevelSimulatedReader.getHeightmapPos") }
 }
@@ -249,13 +247,13 @@ impl LevelWriter for WorldGenRegion {
     fn add_fresh_entity_2(&self, entity: JRef<dyn EntityTrait>, reason: CreatureSpawnEventSpawnReason) -> bool { WorldGenRegion::add_fresh_entity_2(self, entity, reason) }
 }
 impl EntityGetter for WorldGenRegion {
-    fn get_entities_3(&self, except: Option<JRef<dyn EntityTrait>>, bb: AABB, selector: JRef<dyn Predicate<JObjectRef>>) -> Vec<JRef<dyn EntityTrait>> { WorldGenRegion::get_entities_3(self, except, bb, selector) }
-    fn get_entities_3_2<T: JGeneric>(&self, type_: JRef<dyn EntityTypeTest<JRef<dyn EntityTrait>, T>>, bb: AABB, selector: JRef<dyn Predicate<JObjectRef>>) -> Vec<T> where Self: Sized { WorldGenRegion::get_entities_3_2::<T>(self, type_, bb, selector) }
+    fn get_entities_3(&self, except: Option<JRef<dyn EntityTrait>>, bb: AABB, selector: Arc<dyn Fn(JObjectRef) -> bool + Send + Sync>) -> Vec<JRef<dyn EntityTrait>> { WorldGenRegion::get_entities_3(self, except, bb, selector) }
+    fn get_entities_3_2<T: JGeneric>(&self, type_: JRef<dyn EntityTypeTest<JRef<dyn EntityTrait>, T>>, bb: AABB, selector: Arc<dyn Fn(JObjectRef) -> bool + Send + Sync>) -> Vec<T> where Self: Sized { WorldGenRegion::get_entities_3_2::<T>(self, type_, bb, selector) }
     fn players(&self) -> Vec<JRef<dyn PlayerTrait>> { WorldGenRegion::players(self) }
-    fn get_nearest_player_5(&self, x: f64, y: f64, z: f64, range: f64, predicate: Option<JRef<dyn Predicate<JRef<dyn EntityTrait>>>>) -> Option<JRef<dyn PlayerTrait>> { WorldGenRegion::get_nearest_player_5(self, x, y, z, range, predicate) }
+    fn get_nearest_player_5(&self, x: f64, y: f64, z: f64, range: f64, predicate: Option<Arc<dyn Fn(JRef<dyn EntityTrait>) -> bool + Send + Sync>>) -> Option<JRef<dyn PlayerTrait>> { WorldGenRegion::get_nearest_player_5(self, x, y, z, range, predicate) }
 }
 impl ChunkSystemEntityGetter for WorldGenRegion {
-    fn moonrise_get_hard_colliding_entities(&self, entity: JRef<dyn EntityTrait>, box_: AABB, predicate: JRef<dyn Predicate<JObjectRef>>) -> Vec<JRef<dyn EntityTrait>> { todo!("abstract ChunkSystemEntityGetter.moonrise$getHardCollidingEntities") }
+    fn moonrise_get_hard_colliding_entities(&self, entity: JRef<dyn EntityTrait>, box_: AABB, predicate: Arc<dyn Fn(JObjectRef) -> bool + Send + Sync>) -> Vec<JRef<dyn EntityTrait>> { todo!("abstract ChunkSystemEntityGetter.moonrise$getHardCollidingEntities") }
 }
 impl ScheduledTickAccess for WorldGenRegion {
     fn create_tick<T: JGeneric>(&self, pos: BlockPos, type_: T, tick_delay: i32) -> ScheduledTick<T> where Self: Sized { todo!("abstract ScheduledTickAccess.createTick") }

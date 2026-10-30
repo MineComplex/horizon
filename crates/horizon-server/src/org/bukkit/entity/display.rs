@@ -4,14 +4,13 @@ use crate::api_prelude::*;
 use crate::org::bukkit::color::Color;
 use crate::org::bukkit::entity::entity::Entity;
 use crate::org::bukkit::util::transformation::Transformation;
-use crate::org::joml::Matrix4f;
 use crate::prelude::*;
 
 // ---- interface org.bukkit.entity.Display (paper-api/src/main/java/org/bukkit/entity/Display.java:13)
 pub trait Display: Entity {
     fn get_transformation(&self) -> JRef<Transformation>; // paper-api/src/main/java/org/bukkit/entity/Display.java:20
     fn set_transformation(&self, transformation: JRef<Transformation>); // paper-api/src/main/java/org/bukkit/entity/Display.java:28
-    fn set_transformation_matrix(&self, transformation_matrix: Matrix4f); // paper-api/src/main/java/org/bukkit/entity/Display.java:35
+    fn set_transformation_matrix(&self, transformation_matrix: glam::Mat4); // paper-api/src/main/java/org/bukkit/entity/Display.java:35
     fn get_interpolation_duration(&self) -> i32; // paper-api/src/main/java/org/bukkit/entity/Display.java:42
     fn set_interpolation_duration(&self, duration: i32); // paper-api/src/main/java/org/bukkit/entity/Display.java:49
     fn get_teleport_duration(&self) -> i32; // paper-api/src/main/java/org/bukkit/entity/Display.java:61

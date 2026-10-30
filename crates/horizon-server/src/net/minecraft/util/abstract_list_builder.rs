@@ -4,7 +4,6 @@ use crate::prelude::*;
 use crate::com::mojang::serialization::DataResult;
 use crate::com::mojang::serialization::DynamicOps;
 use crate::com::mojang::serialization::ListBuilder;
-use crate::java::util::function::UnaryOperator;
 
 // ---- class net.minecraft.util.AbstractListBuilder (leaf-server/src/minecraft/java/net/minecraft/util/AbstractListBuilder.java:9)
 pub struct AbstractListBuilder<T: JGeneric, B: JGeneric> {
@@ -23,7 +22,7 @@ pub trait AbstractListBuilderTrait<T: JGeneric, B: JGeneric>: ListBuilder<T> {
     fn add(&self, value: T) -> JRef<dyn ListBuilder<T>>; // leaf-server/src/minecraft/java/net/minecraft/util/AbstractListBuilder.java:28
     fn add_1(&self, value: DataResult<T>) -> JRef<dyn ListBuilder<T>>; // leaf-server/src/minecraft/java/net/minecraft/util/AbstractListBuilder.java:34
     fn with_errors_from(&self, result: DataResult<JObjectRef>) -> JRef<dyn ListBuilder<T>>; // leaf-server/src/minecraft/java/net/minecraft/util/AbstractListBuilder.java:40
-    fn map_error(&self, on_error: JRef<dyn UnaryOperator<String>>) -> JRef<dyn ListBuilder<T>>; // leaf-server/src/minecraft/java/net/minecraft/util/AbstractListBuilder.java:46
+    fn map_error(&self, on_error: Arc<dyn Fn(String) -> String + Send + Sync>) -> JRef<dyn ListBuilder<T>>; // leaf-server/src/minecraft/java/net/minecraft/util/AbstractListBuilder.java:46
 }
 impl<T: JGeneric, B: JGeneric> std::ops::Deref for dyn AbstractListBuilderTrait<T, B> {
     type Target = AbstractListBuilder<T, B>;
@@ -37,5 +36,5 @@ impl<T: JGeneric, B: JGeneric> AbstractListBuilder<T, B> {
     pub fn add(&self, value: T) -> JRef<dyn ListBuilder<T>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/AbstractListBuilder.java:28
     pub fn add_1(&self, value: DataResult<T>) -> JRef<dyn ListBuilder<T>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/AbstractListBuilder.java:34
     pub fn with_errors_from(&self, result: DataResult<JObjectRef>) -> JRef<dyn ListBuilder<T>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/AbstractListBuilder.java:40
-    pub fn map_error(&self, on_error: JRef<dyn UnaryOperator<String>>) -> JRef<dyn ListBuilder<T>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/AbstractListBuilder.java:46
+    pub fn map_error(&self, on_error: Arc<dyn Fn(String) -> String + Send + Sync>) -> JRef<dyn ListBuilder<T>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/util/AbstractListBuilder.java:46
 }

@@ -9,18 +9,9 @@ use crate::ca::spottedleaf::moonrise::patches::chunk_system::player::regionized_
 use crate::ca::spottedleaf::moonrise::patches::entity_tracker::entity_tracker_entity::EntityTrackerEntity;
 use crate::com::destroystokyo::paper::event::entity::player_naturally_spawn_creatures_event::PlayerNaturallySpawnCreaturesEvent;
 use crate::com::destroystokyo::paper::event::player::player_set_spawn_event::PlayerSetSpawnEventCause;
-use crate::com::mojang::authlib::GameProfile;
-use crate::com::mojang::datafixers::util::either::EitherTrait;
 use crate::com::mojang::serialization::Codec;
 use crate::com::mojang::serialization::MapCodec;
 use crate::io::papermc::paper::event::entity::entity_knockback_event::EntityKnockbackEventCause;
-use crate::java::lang::Runnable;
-use crate::java::util::Locale;
-use crate::java::util::function::BiConsumer;
-use crate::java::util::function::Consumer;
-use crate::java::util::function::Function;
-use crate::java::util::function::Predicate;
-use crate::java::util::stream::Stream;
 use crate::net::caffeinemc::mods::lithium::common::world::in_world_tracking::maybe_in_level_object::MaybeInLevelObject;
 use crate::net::minecraft::commands::arguments::entity_anchor_argument::EntityAnchorArgumentAnchor;
 use crate::net::minecraft::commands::command_source::CommandSource;
@@ -214,7 +205,6 @@ use crate::net::minecraft::world::waypoints::waypoint::Waypoint;
 use crate::net::minecraft::world::waypoints::waypoint::WaypointIcon;
 use crate::net::minecraft::world::waypoints::waypoint_transmitter::WaypointTransmitter;
 use crate::net::minecraft::world::waypoints::waypoint_transmitter::WaypointTransmitterConnection;
-use crate::org::apache::commons::lang3::mutable::MutableBoolean;
 use crate::org::bukkit::entity::item::Item;
 use crate::org::bukkit::event::entity::entity_damage_event::EntityDamageEventTrait;
 use crate::org::bukkit::event::entity::entity_exhaustion_event::EntityExhaustionEventExhaustionReason;
@@ -230,7 +220,6 @@ use crate::org::bukkit::event::player::player_respawn_event::PlayerRespawnEventR
 use crate::org::bukkit::event::player::player_teleport_event::PlayerTeleportEventTeleportCause;
 use crate::org::bukkit::location::Location;
 use crate::org::bukkit::weather_type::WeatherType;
-use crate::org::joml::Quaternionf;
 
 // ---- class net.minecraft.server.level.ServerPlayer (leaf-server/src/minecraft/java/net/minecraft/server/level/ServerPlayer.java:210)
 pub struct ServerPlayer {
@@ -265,7 +254,7 @@ pub struct ServerPlayer {
     pub disconnected: Mut<bool>, // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerPlayer.java:260
     pub requested_view_distance: Mut<i32>, // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerPlayer.java:261
     pub language: Mut<String>, // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerPlayer.java:262
-    pub adventure_locale: Mut<Locale>, // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerPlayer.java:263
+    pub adventure_locale: Mut<String>, // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerPlayer.java:263
     pub starting_to_fall_position: Mut<Option<Vec3>>, // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerPlayer.java:264
     pub entered_nether_position: Mut<Option<Vec3>>, // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerPlayer.java:265
     pub entered_lava_on_vehicle_position: Mut<Option<Vec3>>, // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerPlayer.java:266
@@ -354,7 +343,7 @@ pub const DEFAULT_SPAWN_EXTRA_PARTICLES_ON_FALL: bool = false; // leaf-server/sr
 pub static MOBCATEGORY_TOTAL_ENUMS: LazyLock<i32> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerPlayer.java:422
 impl ServerPlayer {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(server: JRef<dyn MinecraftServerTrait>, level: JRef<ServerLevel>, game_profile: GameProfile, client_information: ClientInformation) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerPlayer.java:483
+    pub fn new(server: JRef<dyn MinecraftServerTrait>, level: JRef<ServerLevel>, game_profile: crate::rt::GameProfile, client_information: ClientInformation) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerPlayer.java:483
     pub fn moonrise_is_real_player(&self) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerPlayer.java:455
     pub fn moonrise_set_real_player(&self, real: bool) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerPlayer.java:460
     pub fn moonrise_get_chunk_loader(&self) -> JRef<RegionizedPlayerChunkLoaderPlayerChunkLoaderData> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerPlayer.java:465
@@ -383,7 +372,7 @@ impl ServerPlayer {
     pub fn force_set_rotation(&self, y_rot: f32, relative_y: bool, x_rot: f32, relative_x: bool) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerPlayer.java:1677
     pub fn broadcast_to_player(&self, player: JRef<ServerPlayer>) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerPlayer.java:1711
     pub fn take(&self, entity: JRef<dyn EntityTrait>, org_count: i32) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerPlayer.java:1716
-    pub fn start_sleep_in_bed_5(&self, bed_block: JRef<dyn AbstractBedBlockTrait>, bed_block_state: JRef<BlockState>, rule: BedRule, pos: BlockPos, force: bool) -> JRef<dyn EitherTrait<PlayerBedSleepingProblem, Unit>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerPlayer.java:1769
+    pub fn start_sleep_in_bed_5(&self, bed_block: JRef<dyn AbstractBedBlockTrait>, bed_block_state: JRef<BlockState>, rule: BedRule, pos: BlockPos, force: bool) -> () { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerPlayer.java:1769
     pub fn start_sleeping(&self, bed_position: BlockPos) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerPlayer.java:1816
     pub fn stop_sleep_in_bed(&self, forceful_wake_up: bool, update_level_list: bool) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerPlayer.java:1846
     pub fn is_invulnerable_to(&self, level: JRef<ServerLevel>, source: JRef<DamageSource>) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerPlayer.java:1866
@@ -432,7 +421,7 @@ impl ServerPlayer {
     pub fn can_be_collided_with(&self, entity: JRef<dyn EntityTrait>) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerPlayer.java:2679
     pub fn update_invisibility_status(&self) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerPlayer.java:2693
     pub fn process_portal_cooldown(&self) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerPlayer.java:2739
-    pub fn drop_5(&self, item_stack: JRef<ItemStack>, thrown_from_hand: bool, prediction: Prediction, call_event: bool, entity_operation: JRef<dyn Consumer<JRef<dyn Item>>>) -> Option<JRef<ItemEntity>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerPlayer.java:2851
+    pub fn drop_5(&self, item_stack: JRef<ItemStack>, thrown_from_hand: bool, prediction: Prediction, call_event: bool, entity_operation: Arc<dyn Fn(JRef<dyn Item>) + Send + Sync>) -> Option<JRef<ItemEntity>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerPlayer.java:2851
     pub fn is_text_filtering_enabled(&self) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerPlayer.java:2897
     pub fn may_interact(&self, level: JRef<ServerLevel>, pos: BlockPos) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerPlayer.java:2906
     pub fn update_using_item(&self, use_item: JRef<ItemStack>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerPlayer.java:2911
@@ -490,7 +479,7 @@ impl ServerPlayer {
     pub fn find_respawn_and_use_spawn_block(level: JRef<ServerLevel>, respawn_config: ServerPlayerRespawnConfig, consume_spawn_block: bool) -> Option<ServerPlayerRespawnPosAngle> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerPlayer.java:1534
     pub fn show_end_credits(&self) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerPlayer.java:1572
     pub fn trigger_dimension_change_triggers(&self, old_level: JRef<ServerLevel>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerPlayer.java:1683
-    pub fn get_bed_result(&self, pos: BlockPos, direction: Direction, rule: BedRule) -> JRef<dyn EitherTrait<PlayerBedSleepingProblem, Unit>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerPlayer.java:1723
+    pub fn get_bed_result(&self, pos: BlockPos, direction: Direction, rule: BedRule) -> () { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerPlayer.java:1723
     pub fn bed_in_range(&self, pos: BlockPos, direction: Direction) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerPlayer.java:1830
     pub fn is_reachable_bed_block(&self, bed_block_pos: BlockPos) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerPlayer.java:1834
     pub fn bed_blocked(&self, pos: BlockPos, direction: Direction) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerPlayer.java:1841
@@ -638,7 +627,7 @@ impl PlayerTrait for ServerPlayer {
     fn crit(&self, entity: JRef<dyn EntityTrait>) { ServerPlayer::crit(self, entity) }
     fn magic_crit(&self, entity: JRef<dyn EntityTrait>) { ServerPlayer::magic_crit(self, entity) }
     fn is_local_player(&self) -> bool { crate::net::minecraft::world::entity::player::player::Player::is_local_player(self) }
-    fn get_game_profile(&self) -> GameProfile { crate::net::minecraft::world::entity::player::player::Player::get_game_profile(self) }
+    fn get_game_profile(&self) -> crate::rt::GameProfile { crate::net::minecraft::world::entity::player::player::Player::get_game_profile(self) }
     fn name_and_id(&self) -> NameAndId { crate::net::minecraft::world::entity::player::player::Player::name_and_id(self) }
     fn get_inventory(&self) -> JRef<Inventory> { crate::net::minecraft::world::entity::player::player::Player::get_inventory(self) }
     fn get_abilities(&self) -> JRef<Abilities> { crate::net::minecraft::world::entity::player::player::Player::get_abilities(self) }
@@ -646,8 +635,8 @@ impl PlayerTrait for ServerPlayer {
     fn update_tutorial_inventory_action(&self, item_carried: JRef<ItemStack>, item_in_slot: JRef<ItemStack>, click_action: ClickAction) { crate::net::minecraft::world::entity::player::player::Player::update_tutorial_inventory_action(self, item_carried, item_in_slot, click_action) }
     fn has_container_open_0(&self) -> bool { crate::net::minecraft::world::entity::player::player::Player::has_container_open_0(self) }
     fn can_drop_items(&self) -> bool { crate::net::minecraft::world::entity::player::player::Player::can_drop_items(self) }
-    fn start_sleep_in_bed(&self, bed_block: JRef<dyn AbstractBedBlockTrait>, bed_block_state: JRef<BlockState>, rule: BedRule, pos: BlockPos) -> JRef<dyn EitherTrait<PlayerBedSleepingProblem, Unit>> { crate::net::minecraft::world::entity::player::player::Player::start_sleep_in_bed(self, bed_block, bed_block_state, rule, pos) }
-    fn start_sleep_in_bed_5(&self, bed_block: JRef<dyn AbstractBedBlockTrait>, bed_block_state: JRef<BlockState>, rule: BedRule, pos: BlockPos, force: bool) -> JRef<dyn EitherTrait<PlayerBedSleepingProblem, Unit>> { ServerPlayer::start_sleep_in_bed_5(self, bed_block, bed_block_state, rule, pos, force) }
+    fn start_sleep_in_bed(&self, bed_block: JRef<dyn AbstractBedBlockTrait>, bed_block_state: JRef<BlockState>, rule: BedRule, pos: BlockPos) -> () { crate::net::minecraft::world::entity::player::player::Player::start_sleep_in_bed(self, bed_block, bed_block_state, rule, pos) }
+    fn start_sleep_in_bed_5(&self, bed_block: JRef<dyn AbstractBedBlockTrait>, bed_block_state: JRef<BlockState>, rule: BedRule, pos: BlockPos, force: bool) -> () { ServerPlayer::start_sleep_in_bed_5(self, bed_block, bed_block_state, rule, pos, force) }
     fn stop_sleep_in_bed(&self, forceful_wake_up: bool, update_level_list: bool) { ServerPlayer::stop_sleep_in_bed(self, forceful_wake_up, update_level_list) }
     fn is_sleeping_long_enough(&self) -> bool { crate::net::minecraft::world::entity::player::player::Player::is_sleeping_long_enough(self) }
     fn get_sleep_timer(&self) -> i32 { crate::net::minecraft::world::entity::player::player::Player::get_sleep_timer(self) }
@@ -696,7 +685,7 @@ impl PlayerTrait for ServerPlayer {
     fn get_cooldowns(&self) -> JRef<dyn ItemCooldownsTrait> { crate::net::minecraft::world::entity::player::player::Player::get_cooldowns(self) }
     fn can_use_game_master_blocks(&self) -> bool { crate::net::minecraft::world::entity::player::player::Player::can_use_game_master_blocks(self) }
     fn permissions(&self) -> JRef<dyn PermissionSet> { ServerPlayer::permissions(self) }
-    fn try_ready_arrow(&self, bow: JRef<ItemStack>, itemstack: JRef<ItemStack>, cancelled: MutableBoolean) -> bool { crate::net::minecraft::world::entity::player::player::Player::try_ready_arrow(self, bow, itemstack, cancelled) }
+    fn try_ready_arrow(&self, bow: JRef<ItemStack>, itemstack: JRef<ItemStack>, cancelled: bool) -> bool { crate::net::minecraft::world::entity::player::player::Player::try_ready_arrow(self, bow, itemstack, cancelled) }
     fn is_scoping(&self) -> bool { crate::net::minecraft::world::entity::player::player::Player::is_scoping(self) }
     fn get_last_death_location(&self) -> Option<GlobalPos> { crate::net::minecraft::world::entity::player::player::Player::get_last_death_location(self) }
     fn set_last_death_location(&self, pos: Option<GlobalPos>) { crate::net::minecraft::world::entity::player::player::Player::set_last_death_location(self, pos) }
@@ -768,8 +757,8 @@ impl LivingEntityTrait for ServerPlayer {
     fn on_equip_item_4(&self, slot: EquipmentSlot, old_stack: JRef<ItemStack>, stack: JRef<ItemStack>, silent: bool) { LivingEntity::on_equip_item_4(self, slot, old_stack, stack, silent) }
     fn get_equip_sound(&self, slot: EquipmentSlot, stack: JRef<ItemStack>, equippable: Equippable) -> JRef<dyn Holder<SoundEvent>> { LivingEntity::get_equip_sound(self, slot, stack, equippable) }
     fn trigger_on_death_mob_effects(&self, level: JRef<ServerLevel>, reason: EntityRemovalReason) { LivingEntity::trigger_on_death_mob_effects(self, level, reason) }
-    fn drop_5(&self, item_stack: JRef<ItemStack>, thrown_from_hand: bool, prediction: Prediction, call_event: bool, entity_operation: JRef<dyn Consumer<JRef<dyn Item>>>) -> Option<JRef<ItemEntity>> { ServerPlayer::drop_5(self, item_stack, thrown_from_hand, prediction, call_event, entity_operation) }
-    fn drop_6(&self, item_stack: JRef<ItemStack>, thrown_from_hand: bool, prediction: Prediction, randomly: bool, call_event: bool, entity_operation: JRef<dyn Consumer<JRef<dyn Item>>>) -> Option<JRef<ItemEntity>> { LivingEntity::drop_6(self, item_stack, thrown_from_hand, prediction, randomly, call_event, entity_operation) }
+    fn drop_5(&self, item_stack: JRef<ItemStack>, thrown_from_hand: bool, prediction: Prediction, call_event: bool, entity_operation: Arc<dyn Fn(JRef<dyn Item>) + Send + Sync>) -> Option<JRef<ItemEntity>> { ServerPlayer::drop_5(self, item_stack, thrown_from_hand, prediction, call_event, entity_operation) }
+    fn drop_6(&self, item_stack: JRef<ItemStack>, thrown_from_hand: bool, prediction: Prediction, randomly: bool, call_event: bool, entity_operation: Arc<dyn Fn(JRef<dyn Item>) + Send + Sync>) -> Option<JRef<ItemEntity>> { LivingEntity::drop_6(self, item_stack, thrown_from_hand, prediction, randomly, call_event, entity_operation) }
     fn tick_effects(&self) { LivingEntity::tick_effects(self) }
     fn update_invisibility_status(&self) { ServerPlayer::update_invisibility_status(self) }
     fn get_visibility_percent(&self, server_level: JRef<ServerLevel>, targeting_entity: Option<JRef<dyn EntityTrait>>) -> f64 { LivingEntity::get_visibility_percent(self, server_level, targeting_entity) }
@@ -833,11 +822,11 @@ impl LivingEntityTrait for ServerPlayer {
     fn get_knockback(&self, target: JRef<dyn EntityTrait>, damage_source: JRef<DamageSource>) -> f32 { LivingEntity::get_knockback(self, target, damage_source) }
     fn drop_from_loot_table(&self, level: JRef<ServerLevel>, source: JRef<DamageSource>, player_killed: bool) { LivingEntity::drop_from_loot_table(self, level, source, player_killed) }
     fn drop_from_loot_table_4(&self, level: JRef<ServerLevel>, source: JRef<DamageSource>, player_killed: bool, loot_table: JRef<ResourceKey<JRef<LootTable>>>) { LivingEntity::drop_from_loot_table_4(self, level, source, player_killed, loot_table) }
-    fn drop_from_loot_table_4_2(&self, level: JRef<ServerLevel>, key: JRef<ResourceKey<JRef<LootTable>>>, params_builder: JRef<dyn Function<JRef<LootParamsBuilder>, JRef<LootParams>>>, consumer: JRef<dyn BiConsumer<JRef<ServerLevel>, JRef<ItemStack>>>) -> bool { LivingEntity::drop_from_loot_table_4_2(self, level, key, params_builder, consumer) }
-    fn drop_from_loot_table_5(&self, level: JRef<ServerLevel>, source: JRef<DamageSource>, player_killed: bool, loot_table: JRef<ResourceKey<JRef<LootTable>>>, item_stack_consumer: JRef<dyn Consumer<JRef<ItemStack>>>) { LivingEntity::drop_from_loot_table_5(self, level, source, player_killed, loot_table, item_stack_consumer) }
-    fn drop_from_entity_interact_loot_table(&self, level: JRef<ServerLevel>, key: JRef<ResourceKey<JRef<LootTable>>>, interacting_entity: Option<JRef<dyn EntityTrait>>, tool: JRef<dyn ItemInstance>, consumer: JRef<dyn BiConsumer<JRef<ServerLevel>, JRef<ItemStack>>>) -> bool { LivingEntity::drop_from_entity_interact_loot_table(self, level, key, interacting_entity, tool, consumer) }
-    fn drop_from_gift_loot_table(&self, level: JRef<ServerLevel>, key: JRef<ResourceKey<JRef<LootTable>>>, consumer: JRef<dyn BiConsumer<JRef<ServerLevel>, JRef<ItemStack>>>) -> bool { LivingEntity::drop_from_gift_loot_table(self, level, key, consumer) }
-    fn drop_from_shearing_loot_table(&self, level: JRef<ServerLevel>, key: JRef<ResourceKey<JRef<LootTable>>>, tool: JRef<dyn ItemInstance>, consumer: JRef<dyn BiConsumer<JRef<ServerLevel>, JRef<ItemStack>>>) { LivingEntity::drop_from_shearing_loot_table(self, level, key, tool, consumer) }
+    fn drop_from_loot_table_4_2(&self, level: JRef<ServerLevel>, key: JRef<ResourceKey<JRef<LootTable>>>, params_builder: Arc<dyn Fn(JRef<LootParamsBuilder>) -> JRef<LootParams> + Send + Sync>, consumer: Arc<dyn Fn(JRef<ServerLevel>, JRef<ItemStack>) + Send + Sync>) -> bool { LivingEntity::drop_from_loot_table_4_2(self, level, key, params_builder, consumer) }
+    fn drop_from_loot_table_5(&self, level: JRef<ServerLevel>, source: JRef<DamageSource>, player_killed: bool, loot_table: JRef<ResourceKey<JRef<LootTable>>>, item_stack_consumer: Arc<dyn Fn(JRef<ItemStack>) + Send + Sync>) { LivingEntity::drop_from_loot_table_5(self, level, source, player_killed, loot_table, item_stack_consumer) }
+    fn drop_from_entity_interact_loot_table(&self, level: JRef<ServerLevel>, key: JRef<ResourceKey<JRef<LootTable>>>, interacting_entity: Option<JRef<dyn EntityTrait>>, tool: JRef<dyn ItemInstance>, consumer: Arc<dyn Fn(JRef<ServerLevel>, JRef<ItemStack>) + Send + Sync>) -> bool { LivingEntity::drop_from_entity_interact_loot_table(self, level, key, interacting_entity, tool, consumer) }
+    fn drop_from_gift_loot_table(&self, level: JRef<ServerLevel>, key: JRef<ResourceKey<JRef<LootTable>>>, consumer: Arc<dyn Fn(JRef<ServerLevel>, JRef<ItemStack>) + Send + Sync>) -> bool { LivingEntity::drop_from_gift_loot_table(self, level, key, consumer) }
+    fn drop_from_shearing_loot_table(&self, level: JRef<ServerLevel>, key: JRef<ResourceKey<JRef<LootTable>>>, tool: JRef<dyn ItemInstance>, consumer: Arc<dyn Fn(JRef<ServerLevel>, JRef<ItemStack>) + Send + Sync>) { LivingEntity::drop_from_shearing_loot_table(self, level, key, tool, consumer) }
     fn knockback(&self, power: f64, xd: f64, zd: f64, source: JRef<DamageSource>, damage: f32) { LivingEntity::knockback(self, power, xd, zd, source, damage) }
     fn knockback_6(&self, power: f64, xd: f64, zd: f64, source: JRef<DamageSource>, damage: f32, comes_from_effect: bool) { LivingEntity::knockback_6(self, power, xd, zd, source, damage, comes_from_effect) }
     fn knockback_7(&self, power: f64, xd: f64, zd: f64, source: JRef<DamageSource>, damage: f32, attacker: Option<JRef<dyn EntityTrait>>, event_cause: EntityKnockbackEventCause) { LivingEntity::knockback_7(self, power, xd, zd, source, damage, attacker, event_cause) }
@@ -887,7 +876,7 @@ impl LivingEntityTrait for ServerPlayer {
     fn get_attack_range_with(&self, weapon_item: JRef<ItemStack>) -> AttackRange { LivingEntity::get_attack_range_with(self, weapon_item) }
     fn get_active_item(&self) -> JRef<ItemStack> { LivingEntity::get_active_item(self) }
     fn is_holding(&self, item: JRef<dyn ItemTrait>) -> bool { LivingEntity::is_holding(self, item) }
-    fn is_holding_1(&self, item_predicate: JRef<dyn Predicate<JRef<ItemStack>>>) -> bool { LivingEntity::is_holding_1(self, item_predicate) }
+    fn is_holding_1(&self, item_predicate: Arc<dyn Fn(JRef<ItemStack>) -> bool + Send + Sync>) -> bool { LivingEntity::is_holding_1(self, item_predicate) }
     fn get_item_in_hand(&self, hand: InteractionHand) -> JRef<ItemStack> { LivingEntity::get_item_in_hand(self, hand) }
     fn set_item_in_hand(&self, hand: InteractionHand, item_stack: JRef<ItemStack>) { LivingEntity::set_item_in_hand(self, hand, item_stack) }
     fn has_item_in_slot(&self, slot: EquipmentSlot) -> bool { LivingEntity::has_item_in_slot(self, slot) }
@@ -931,7 +920,7 @@ impl LivingEntityTrait for ServerPlayer {
     fn play_attack_sound(&self) { LivingEntity::play_attack_sound(self) }
     fn was_recently_stabbed(&self, target: JRef<dyn EntityTrait>, allowed_time: i32) -> bool { LivingEntity::was_recently_stabbed(self, target, allowed_time) }
     fn remember_stabbed_entity(&self, target: JRef<dyn EntityTrait>) { LivingEntity::remember_stabbed_entity(self, target) }
-    fn stabbed_entities(&self, filter: JRef<dyn Predicate<JRef<dyn EntityTrait>>>) -> i32 { LivingEntity::stabbed_entities(self, filter) }
+    fn stabbed_entities(&self, filter: Arc<dyn Fn(JRef<dyn EntityTrait>) -> bool + Send + Sync>) -> i32 { LivingEntity::stabbed_entities(self, filter) }
     fn stab_attack(&self, weapon_slot: EquipmentSlot, target: JRef<dyn EntityTrait>, base_damage: f32, deals_damage: bool, deals_knockback: bool, dismounts: bool) -> bool { crate::net::minecraft::world::entity::player::player::Player::stab_attack(self, weapon_slot, target, base_damage, deals_damage, deals_knockback, dismounts) }
     fn on_attack(&self) { LivingEntity::on_attack(self) }
     fn on_attack_1(&self, entity: JRef<dyn EntityTrait>) { crate::net::minecraft::world::entity::player::player::Player::on_attack_1(self, entity) }
@@ -992,9 +981,9 @@ impl LivingEntityTrait for ServerPlayer {
     fn is_fall_flying(&self) -> bool { LivingEntity::is_fall_flying(self) }
     fn get_fall_flying_ticks(&self) -> i32 { LivingEntity::get_fall_flying_ticks(self) }
     fn random_teleport(&self, xx: f64, yy: f64, zz: f64, show_particles: bool, avoidance_tag: TagKey<JRef<dyn BlockTrait>>) -> bool { LivingEntity::random_teleport(self, xx, yy, zz, show_particles, avoidance_tag) }
-    fn random_teleport_5(&self, xx: f64, yy: f64, zz: f64, show_particles: bool, is_invalid_position: JRef<dyn Predicate<JRef<BlockState>>>) -> bool { LivingEntity::random_teleport_5(self, xx, yy, zz, show_particles, is_invalid_position) }
+    fn random_teleport_5(&self, xx: f64, yy: f64, zz: f64, show_particles: bool, is_invalid_position: Arc<dyn Fn(JRef<BlockState>) -> bool + Send + Sync>) -> bool { LivingEntity::random_teleport_5(self, xx, yy, zz, show_particles, is_invalid_position) }
     fn random_teleport_6(&self, xx: f64, yy: f64, zz: f64, show_particles: bool, avoidance_tag: TagKey<JRef<dyn BlockTrait>>, cause: PlayerTeleportEventTeleportCause) -> LivingEntityRandomTeleportResult { LivingEntity::random_teleport_6(self, xx, yy, zz, show_particles, avoidance_tag, cause) }
-    fn random_teleport_6_2(&self, xx: f64, yy: f64, zz: f64, show_particles: bool, is_invalid_position: JRef<dyn Predicate<JRef<BlockState>>>, cause: PlayerTeleportEventTeleportCause) -> LivingEntityRandomTeleportResult { LivingEntity::random_teleport_6_2(self, xx, yy, zz, show_particles, is_invalid_position, cause) }
+    fn random_teleport_6_2(&self, xx: f64, yy: f64, zz: f64, show_particles: bool, is_invalid_position: Arc<dyn Fn(JRef<BlockState>) -> bool + Send + Sync>, cause: PlayerTeleportEventTeleportCause) -> LivingEntityRandomTeleportResult { LivingEntity::random_teleport_6_2(self, xx, yy, zz, show_particles, is_invalid_position, cause) }
     fn can_randomly_teleport_to(&self, x: f64, y: f64, z: f64) -> bool { LivingEntity::can_randomly_teleport_to(self, x, y, z) }
     fn is_affected_by_potions(&self) -> bool { LivingEntity::is_affected_by_potions(self) }
     fn attackable(&self) -> bool { LivingEntity::attackable(self) }
@@ -1230,7 +1219,7 @@ impl EntityTrait for ServerPlayer {
     fn spawn_at_location_2_2(&self, level: JRef<ServerLevel>, entity: JRef<ItemEntity>) -> Option<JRef<ItemEntity>> { crate::net::minecraft::world::entity::entity::Entity::spawn_at_location_2_2(self, level, entity) }
     fn spawn_at_location_3(&self, level: JRef<ServerLevel>, item_stack: JRef<ItemStack>, offset: Vec3) -> Option<JRef<ItemEntity>> { crate::net::minecraft::world::entity::entity::Entity::spawn_at_location_3(self, level, item_stack, offset) }
     fn spawn_at_location_3_2(&self, level: JRef<ServerLevel>, item_stack: JRef<ItemStack>, offset: f32) -> Option<JRef<ItemEntity>> { crate::net::minecraft::world::entity::entity::Entity::spawn_at_location_3_2(self, level, item_stack, offset) }
-    fn spawn_at_location_4(&self, level: JRef<ServerLevel>, item_stack: JRef<ItemStack>, offset: Vec3, delayed_add_consumer: JRef<dyn Consumer<JObjectRef>>) -> Option<JRef<ItemEntity>> { crate::net::minecraft::world::entity::entity::Entity::spawn_at_location_4(self, level, item_stack, offset, delayed_add_consumer) }
+    fn spawn_at_location_4(&self, level: JRef<ServerLevel>, item_stack: JRef<ItemStack>, offset: Vec3, delayed_add_consumer: Arc<dyn Fn(JObjectRef) + Send + Sync>) -> Option<JRef<ItemEntity>> { crate::net::minecraft::world::entity::entity::Entity::spawn_at_location_4(self, level, item_stack, offset, delayed_add_consumer) }
     fn is_alive(&self) -> bool { LivingEntity::is_alive(self) }
     fn is_in_wall(&self) -> bool { LivingEntity::is_in_wall(self) }
     fn interact(&self, player: JRef<dyn PlayerTrait>, hand: InteractionHand, location: Vec3) -> JRef<dyn InteractionResult> { crate::net::minecraft::world::entity::entity::Entity::interact(self, player, hand, location) }
@@ -1267,7 +1256,7 @@ impl EntityTrait for ServerPlayer {
     fn lerp_head_to(&self, y_rot: f32, steps: i32) { LivingEntity::lerp_head_to(self, y_rot, steps) }
     fn get_pick_radius(&self) -> f32 { crate::net::minecraft::world::entity::entity::Entity::get_pick_radius(self) }
     fn get_look_angle(&self) -> Vec3 { crate::net::minecraft::world::entity::entity::Entity::get_look_angle(self) }
-    fn get_look_quaternion(&self) -> Quaternionf { crate::net::minecraft::world::entity::entity::Entity::get_look_quaternion(self) }
+    fn get_look_quaternion(&self) -> glam::Quat { crate::net::minecraft::world::entity::entity::Entity::get_look_quaternion(self) }
     fn get_head_look_angle(&self) -> Vec3 { crate::net::minecraft::world::entity::entity::Entity::get_head_look_angle(self) }
     fn get_hand_holding_item_angle(&self, item: JRef<dyn ItemTrait>) -> Vec3 { crate::net::minecraft::world::entity::entity::Entity::get_hand_holding_item_angle(self, item) }
     fn get_rotation_vector(&self) -> Vec2 { crate::net::minecraft::world::entity::entity::Entity::get_rotation_vector(self) }
@@ -1302,7 +1291,7 @@ impl EntityTrait for ServerPlayer {
     fn is_invisible(&self) -> bool { crate::net::minecraft::world::entity::entity::Entity::is_invisible(self) }
     fn is_invisible_to(&self, player: JRef<dyn PlayerTrait>) -> bool { crate::net::minecraft::world::entity::entity::Entity::is_invisible_to(self, player) }
     fn is_on_rails(&self) -> bool { crate::net::minecraft::world::entity::entity::Entity::is_on_rails(self) }
-    fn update_dynamic_game_event_listener(&self, action: JRef<dyn BiConsumer<JRef<DynamicGameEventListener<JObjectRef>>, JRef<ServerLevel>>>) { crate::net::minecraft::world::entity::entity::Entity::update_dynamic_game_event_listener(self, action) }
+    fn update_dynamic_game_event_listener(&self, action: Arc<dyn Fn(JRef<DynamicGameEventListener<JObjectRef>>, JRef<ServerLevel>) + Send + Sync>) { crate::net::minecraft::world::entity::entity::Entity::update_dynamic_game_event_listener(self, action) }
     fn get_team(&self) -> Option<JRef<PlayerTeam>> { crate::net::minecraft::world::entity::entity::Entity::get_team(self) }
     fn is_allied_to_1(&self, other: Option<JRef<dyn TeamTrait>>) -> bool { crate::net::minecraft::world::entity::entity::Entity::is_allied_to_1(self, other) }
     fn considers_entity_as_ally(&self, other: JRef<dyn EntityTrait>) -> bool { crate::net::minecraft::world::entity::entity::Entity::considers_entity_as_ally(self, other) }
@@ -1388,7 +1377,7 @@ impl EntityTrait for ServerPlayer {
     fn get_controlling_passenger(&self) -> Option<JRef<dyn LivingEntityTrait>> { crate::net::minecraft::world::entity::entity::Entity::get_controlling_passenger(self) }
     fn get_first_passenger(&self) -> Option<JRef<dyn EntityTrait>> { crate::net::minecraft::world::entity::entity::Entity::get_first_passenger(self) }
     fn has_passenger(&self, entity: JRef<dyn EntityTrait>) -> bool { crate::net::minecraft::world::entity::entity::Entity::has_passenger(self, entity) }
-    fn has_passenger_1(&self, test: JRef<dyn Predicate<JRef<dyn EntityTrait>>>) -> bool { crate::net::minecraft::world::entity::entity::Entity::has_passenger_1(self, test) }
+    fn has_passenger_1(&self, test: Arc<dyn Fn(JRef<dyn EntityTrait>) -> bool + Send + Sync>) -> bool { crate::net::minecraft::world::entity::entity::Entity::has_passenger_1(self, test) }
     fn get_indirect_passengers(&self) -> Vec<JRef<dyn EntityTrait>> { crate::net::minecraft::world::entity::entity::Entity::get_indirect_passengers(self) }
     fn count_player_passengers(&self) -> i32 { crate::net::minecraft::world::entity::entity::Entity::count_player_passengers(self) }
     fn has_exactly_one_player_passenger(&self) -> bool { crate::net::minecraft::world::entity::entity::Entity::has_exactly_one_player_passenger(self) }
@@ -1517,8 +1506,8 @@ impl EntityAccess for ServerPlayer {
     fn block_position(&self) -> BlockPos { crate::net::minecraft::world::entity::entity::Entity::block_position(self) }
     fn get_bounding_box(&self) -> AABB { crate::net::minecraft::world::entity::entity::Entity::get_bounding_box(self) }
     fn set_level_callback(&self, callback: JRef<dyn EntityInLevelCallback>) { crate::net::minecraft::world::entity::entity::Entity::set_level_callback(self, callback) }
-    fn get_self_and_passengers(&self) -> Stream<JRef<dyn EntityAccess>> { crate::net::minecraft::world::entity::entity::Entity::get_self_and_passengers(self) }
-    fn get_passengers_and_self(&self) -> Stream<JRef<dyn EntityAccess>> { crate::net::minecraft::world::entity::entity::Entity::get_passengers_and_self(self) }
+    fn get_self_and_passengers(&self) -> Box<dyn Iterator<Item = JRef<dyn EntityAccess>> + Send> { crate::net::minecraft::world::entity::entity::Entity::get_self_and_passengers(self) }
+    fn get_passengers_and_self(&self) -> Box<dyn Iterator<Item = JRef<dyn EntityAccess>> + Send> { crate::net::minecraft::world::entity::entity::Entity::get_passengers_and_self(self) }
     fn set_removed_2(&self, removal_reason: EntityRemovalReason, event_cause: EntityRemoveEventCause) { crate::net::minecraft::world::entity::entity::Entity::set_removed_2(self, removal_reason, event_cause) }
     fn should_be_saved(&self) -> bool { crate::net::minecraft::world::entity::player::player::Player::should_be_saved(self) }
     fn is_always_ticking(&self) -> bool { crate::net::minecraft::world::entity::player::player::Player::is_always_ticking(self) }
@@ -1605,12 +1594,12 @@ pub struct ServerPlayerRespawnPosAngle {
     pub pitch: f32,
     pub is_bed_spawn: bool,
     pub is_anchor_spawn: bool,
-    pub consume_anchor_charge: Option<JRef<dyn Runnable>>,
+    pub consume_anchor_charge: Option<Arc<dyn Fn() + Send + Sync>>,
 }
 impl ServerPlayerRespawnPosAngle {
     pub fn new() -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerPlayer.java:3145
-    pub fn new_6(position: Vec3, yaw: f32, pitch: f32, is_bed_spawn: bool, is_anchor_spawn: bool, consume_anchor_charge: Option<JRef<dyn Runnable>>) -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerPlayer.java:3145
-    pub fn of(position: Vec3, look_at_block_pos: BlockPos, pitch: f32, is_bed_spawn: bool, is_anchor_spawn: bool, consume_anchor_charge: Option<JRef<dyn Runnable>>) -> ServerPlayerRespawnPosAngle { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerPlayer.java:3146
+    pub fn new_6(position: Vec3, yaw: f32, pitch: f32, is_bed_spawn: bool, is_anchor_spawn: bool, consume_anchor_charge: Option<Arc<dyn Fn() + Send + Sync>>) -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerPlayer.java:3145
+    pub fn of(position: Vec3, look_at_block_pos: BlockPos, pitch: f32, is_bed_spawn: bool, is_anchor_spawn: bool, consume_anchor_charge: Option<Arc<dyn Fn() + Send + Sync>>) -> ServerPlayerRespawnPosAngle { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerPlayer.java:3146
     pub fn calculate_look_at_yaw(position: Vec3, look_at_block_pos: BlockPos) -> f32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ServerPlayer.java:3151
 }
 crate::jobject!(ServerPlayerRespawnPosAngle);

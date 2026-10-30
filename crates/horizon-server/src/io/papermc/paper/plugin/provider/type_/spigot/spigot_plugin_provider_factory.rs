@@ -3,9 +3,6 @@
 use crate::prelude::*;
 use crate::io::papermc::paper::plugin::provider::type_::plugin_type_factory::PluginTypeFactory;
 use crate::io::papermc::paper::plugin::provider::type_::spigot::spigot_plugin_provider::SpigotPluginProvider;
-use crate::java::lang::Throwable;
-use crate::java::util::jar::JarEntry;
-use crate::java::util::jar::JarFile;
 use crate::org::bukkit::plugin::plugin_description_file::PluginDescriptionFile;
 
 // ---- class io.papermc.paper.plugin.provider.type.spigot.SpigotPluginProviderFactory (paper-server/src/main/java/io/papermc/paper/plugin/provider/type/spigot/SpigotPluginProviderFactory.java:25)
@@ -15,13 +12,13 @@ pub struct SpigotPluginProviderFactory {
 impl SpigotPluginProviderFactory {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/provider/type/spigot/SpigotPluginProviderFactory.java:25
-    pub fn build(&self, file: JarFile, configuration: JRef<PluginDescriptionFile>, source: std::path::PathBuf) -> Result<JRef<SpigotPluginProvider>, Throwable> { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/provider/type/spigot/SpigotPluginProviderFactory.java:27
-    pub fn create(&self, file: JarFile, config: JarEntry) -> Result<JRef<PluginDescriptionFile>, Throwable> { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/provider/type/spigot/SpigotPluginProviderFactory.java:63
+    pub fn build(&self, file: (), configuration: JRef<PluginDescriptionFile>, source: std::path::PathBuf) -> Result<JRef<SpigotPluginProvider>, anyhow::Error> { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/provider/type/spigot/SpigotPluginProviderFactory.java:27
+    pub fn create(&self, file: (), config: ()) -> Result<JRef<PluginDescriptionFile>, anyhow::Error> { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/provider/type/spigot/SpigotPluginProviderFactory.java:63
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl PluginTypeFactory<JRef<SpigotPluginProvider>, JRef<PluginDescriptionFile>> for SpigotPluginProviderFactory {
-    fn build(&self, file: JarFile, configuration: C, source: std::path::PathBuf) -> Result<T, Throwable> { SpigotPluginProviderFactory::build(self, file, configuration, source) }
-    fn create(&self, file: JarFile, config: JarEntry) -> Result<C, Throwable> { SpigotPluginProviderFactory::create(self, file, config) }
+    fn build(&self, file: (), configuration: C, source: std::path::PathBuf) -> Result<T, anyhow::Error> { SpigotPluginProviderFactory::build(self, file, configuration, source) }
+    fn create(&self, file: (), config: ()) -> Result<C, anyhow::Error> { SpigotPluginProviderFactory::create(self, file, config) }
 }
 crate::jobject!(SpigotPluginProviderFactory);

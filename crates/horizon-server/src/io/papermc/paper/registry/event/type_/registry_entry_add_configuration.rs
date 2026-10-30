@@ -4,11 +4,10 @@ use crate::prelude::*;
 use crate::io::papermc::paper::plugin::bootstrap::bootstrap_context::BootstrapContext;
 use crate::io::papermc::paper::plugin::lifecycle::event::handler::configuration::prioritized_lifecycle_event_handler_configuration::PrioritizedLifecycleEventHandlerConfiguration;
 use crate::io::papermc::paper::registry::typed_key::TypedKey;
-use crate::java::util::function::Predicate;
 use crate::api_prelude::*;
 
 // ---- interface io.papermc.paper.registry.event.type.RegistryEntryAddConfiguration (paper-api/src/main/java/io/papermc/paper/registry/event/type/RegistryEntryAddConfiguration.java:15)
 pub trait RegistryEntryAddConfiguration<T: JGeneric>: PrioritizedLifecycleEventHandlerConfiguration<JRef<dyn BootstrapContext>> {
     fn filter(&self, key: JRef<dyn TypedKey<T>>) -> JRef<dyn RegistryEntryAddConfiguration<T>> { todo!() } // default, paper-api/src/main/java/io/papermc/paper/registry/event/type/RegistryEntryAddConfiguration.java:24
-    fn filter_1(&self, filter: JRef<dyn Predicate<JRef<dyn TypedKey<T>>>>) -> JRef<dyn RegistryEntryAddConfiguration<T>>; // paper-api/src/main/java/io/papermc/paper/registry/event/type/RegistryEntryAddConfiguration.java:35
+    fn filter_1(&self, filter: Arc<dyn Fn(JRef<dyn TypedKey<T>>) -> bool + Send + Sync>) -> JRef<dyn RegistryEntryAddConfiguration<T>>; // paper-api/src/main/java/io/papermc/paper/registry/event/type/RegistryEntryAddConfiguration.java:35
 }

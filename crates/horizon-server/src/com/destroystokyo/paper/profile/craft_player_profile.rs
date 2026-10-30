@@ -3,10 +3,6 @@
 use crate::prelude::*;
 use crate::com::destroystokyo::paper::profile::profile_property::ProfileProperty;
 use crate::com::destroystokyo::paper::profile::shared_player_profile::SharedPlayerProfile;
-use crate::com::mojang::authlib::GameProfile;
-use crate::com::mojang::authlib::properties::Property;
-use crate::java::util::JIterator;
-use crate::java::util::concurrent::CompletableFuture;
 use crate::net::minecraft::server::players::name_and_id::NameAndId;
 use crate::net::minecraft::world::item::component::resolvable_profile::ResolvableProfileTrait;
 use crate::org::bukkit::configuration::serialization::configuration_serializable::ConfigurationSerializable;
@@ -18,14 +14,14 @@ pub struct CraftPlayerProfile {
     pub this: Weak<Self>,
     pub empty_name: Mut<bool>, // paper-server/src/main/java/com/destroystokyo/paper/profile/CraftPlayerProfile.java:44
     pub empty_uuid: Mut<bool>, // paper-server/src/main/java/com/destroystokyo/paper/profile/CraftPlayerProfile.java:45
-    pub profile: Mut<GameProfile>, // paper-server/src/main/java/com/destroystokyo/paper/profile/CraftPlayerProfile.java:46
+    pub profile: Mut<crate::rt::GameProfile>, // paper-server/src/main/java/com/destroystokyo/paper/profile/CraftPlayerProfile.java:46
     pub properties: JRef<CraftPlayerProfilePropertySet>, // paper-server/src/main/java/com/destroystokyo/paper/profile/CraftPlayerProfile.java:47
 }
 impl CraftPlayerProfile {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(player: JRef<dyn Player>) -> JRef<Self> { todo!() } // paper-server/src/main/java/com/destroystokyo/paper/profile/CraftPlayerProfile.java:49
     pub fn new_1(name_and_id: NameAndId) -> JRef<Self> { todo!() } // paper-server/src/main/java/com/destroystokyo/paper/profile/CraftPlayerProfile.java:59
-    pub fn new_1_(profile: GameProfile) -> JRef<Self> { todo!() } // paper-server/src/main/java/com/destroystokyo/paper/profile/CraftPlayerProfile.java:63
+    pub fn new_1_(profile: crate::rt::GameProfile) -> JRef<Self> { todo!() } // paper-server/src/main/java/com/destroystokyo/paper/profile/CraftPlayerProfile.java:63
     pub fn new_1__(resolvable_profile: JRef<dyn ResolvableProfileTrait>) -> JRef<Self> { todo!() } // paper-server/src/main/java/com/destroystokyo/paper/profile/CraftPlayerProfile.java:68
     pub fn new_2(id: Uuid, name: &str) -> JRef<Self> { todo!() } // paper-server/src/main/java/com/destroystokyo/paper/profile/CraftPlayerProfile.java:53
     pub fn has_property(&self, property: &str) -> bool { todo!() } // paper-server/src/main/java/com/destroystokyo/paper/profile/CraftPlayerProfile.java:76
@@ -41,28 +37,28 @@ impl CraftPlayerProfile {
     pub fn set_properties(&self, properties: &Vec<ProfileProperty>) { todo!() } // paper-server/src/main/java/com/destroystokyo/paper/profile/CraftPlayerProfile.java:159
     pub fn clear_properties(&self) { todo!() } // paper-server/src/main/java/com/destroystokyo/paper/profile/CraftPlayerProfile.java:164
     pub fn remove_property(&self, property: &str) -> bool { todo!() } // paper-server/src/main/java/com/destroystokyo/paper/profile/CraftPlayerProfile.java:169
-    pub fn get_property(&self, property: &str) -> Option<Property> { todo!() } // paper-server/src/main/java/com/destroystokyo/paper/profile/CraftPlayerProfile.java:174
-    pub fn set_property(&self, property_name: &str, property: Option<Property>) { todo!() } // paper-server/src/main/java/com/destroystokyo/paper/profile/CraftPlayerProfile.java:180
-    pub fn build_game_profile(&self) -> GameProfile { todo!() } // paper-server/src/main/java/com/destroystokyo/paper/profile/CraftPlayerProfile.java:190
+    pub fn get_property(&self, property: &str) -> Option<crate::rt::Property> { todo!() } // paper-server/src/main/java/com/destroystokyo/paper/profile/CraftPlayerProfile.java:174
+    pub fn set_property(&self, property_name: &str, property: Option<crate::rt::Property>) { todo!() } // paper-server/src/main/java/com/destroystokyo/paper/profile/CraftPlayerProfile.java:180
+    pub fn build_game_profile(&self) -> crate::rt::GameProfile { todo!() } // paper-server/src/main/java/com/destroystokyo/paper/profile/CraftPlayerProfile.java:190
     pub fn build_resolvable_profile(&self) -> JRef<dyn ResolvableProfileTrait> { todo!() } // paper-server/src/main/java/com/destroystokyo/paper/profile/CraftPlayerProfile.java:195
     pub fn clone(&self) -> JRef<CraftPlayerProfile> { todo!() } // paper-server/src/main/java/com/destroystokyo/paper/profile/CraftPlayerProfile.java:207
     pub fn is_complete(&self) -> bool { todo!() } // paper-server/src/main/java/com/destroystokyo/paper/profile/CraftPlayerProfile.java:213
-    pub fn update(&self) -> CompletableFuture<JRef<dyn crate::com::destroystokyo::paper::profile::player_profile::PlayerProfile>> { todo!() } // paper-server/src/main/java/com/destroystokyo/paper/profile/CraftPlayerProfile.java:218
+    pub fn update(&self) -> crate::rt::CompletableFuture<JRef<dyn crate::com::destroystokyo::paper::profile::player_profile::PlayerProfile>> { todo!() } // paper-server/src/main/java/com/destroystokyo/paper/profile/CraftPlayerProfile.java:218
     pub fn complete_from_cache(&self) -> bool { todo!() } // paper-server/src/main/java/com/destroystokyo/paper/profile/CraftPlayerProfile.java:227
     pub fn complete_from_cache_1(&self, online_mode: bool) -> bool { todo!() } // paper-server/src/main/java/com/destroystokyo/paper/profile/CraftPlayerProfile.java:232
     pub fn complete_from_cache_2(&self, lookup_uuid: bool, online_mode: bool) -> bool { todo!() } // paper-server/src/main/java/com/destroystokyo/paper/profile/CraftPlayerProfile.java:236
     pub fn complete_1(&self, textures: bool) -> bool { todo!() } // paper-server/src/main/java/com/destroystokyo/paper/profile/CraftPlayerProfile.java:287
     pub fn complete_2(&self, textures: bool, online_mode: bool) -> bool { todo!() } // paper-server/src/main/java/com/destroystokyo/paper/profile/CraftPlayerProfile.java:291
     pub fn serialize(&self) -> HashMap<String, JObjectRef> { todo!() } // paper-server/src/main/java/com/destroystokyo/paper/profile/CraftPlayerProfile.java:362
-    pub fn get_game_profile(&self) -> GameProfile { todo!() } // paper-server/src/main/java/com/destroystokyo/paper/profile/CraftPlayerProfile.java:107
-    pub fn get_game_profile_unsafe(&self) -> GameProfile { todo!() } // paper-server/src/main/java/com/destroystokyo/paper/profile/CraftPlayerProfile.java:111
-    pub fn copy_profile_properties(source: GameProfile, target: GameProfile) { todo!() } // paper-server/src/main/java/com/destroystokyo/paper/profile/CraftPlayerProfile.java:311
-    pub fn copy_profile_properties_3(source: GameProfile, target: GameProfile, clear_target: bool) { todo!() } // paper-server/src/main/java/com/destroystokyo/paper/profile/CraftPlayerProfile.java:315
-    pub fn create_auth_lib_profile(unique_id: Uuid, name: &str) -> GameProfile { todo!() } // paper-server/src/main/java/com/destroystokyo/paper/profile/CraftPlayerProfile.java:332
-    pub fn to_bukkit(property: Property) -> ProfileProperty { todo!() } // paper-server/src/main/java/com/destroystokyo/paper/profile/CraftPlayerProfile.java:341
-    pub fn as_bukkit_copy(game_profile: GameProfile) -> JRef<dyn crate::com::destroystokyo::paper::profile::player_profile::PlayerProfile> { todo!() } // paper-server/src/main/java/com/destroystokyo/paper/profile/CraftPlayerProfile.java:345
-    pub fn as_authlib(property: ProfileProperty) -> Property { todo!() } // paper-server/src/main/java/com/destroystokyo/paper/profile/CraftPlayerProfile.java:349
-    pub fn as_authlib_copy(profile: JRef<dyn crate::com::destroystokyo::paper::profile::player_profile::PlayerProfile>) -> GameProfile { todo!() } // paper-server/src/main/java/com/destroystokyo/paper/profile/CraftPlayerProfile.java:353
+    pub fn get_game_profile(&self) -> crate::rt::GameProfile { todo!() } // paper-server/src/main/java/com/destroystokyo/paper/profile/CraftPlayerProfile.java:107
+    pub fn get_game_profile_unsafe(&self) -> crate::rt::GameProfile { todo!() } // paper-server/src/main/java/com/destroystokyo/paper/profile/CraftPlayerProfile.java:111
+    pub fn copy_profile_properties(source: crate::rt::GameProfile, target: crate::rt::GameProfile) { todo!() } // paper-server/src/main/java/com/destroystokyo/paper/profile/CraftPlayerProfile.java:311
+    pub fn copy_profile_properties_3(source: crate::rt::GameProfile, target: crate::rt::GameProfile, clear_target: bool) { todo!() } // paper-server/src/main/java/com/destroystokyo/paper/profile/CraftPlayerProfile.java:315
+    pub fn create_auth_lib_profile(unique_id: Uuid, name: &str) -> crate::rt::GameProfile { todo!() } // paper-server/src/main/java/com/destroystokyo/paper/profile/CraftPlayerProfile.java:332
+    pub fn to_bukkit(property: crate::rt::Property) -> ProfileProperty { todo!() } // paper-server/src/main/java/com/destroystokyo/paper/profile/CraftPlayerProfile.java:341
+    pub fn as_bukkit_copy(game_profile: crate::rt::GameProfile) -> JRef<dyn crate::com::destroystokyo::paper::profile::player_profile::PlayerProfile> { todo!() } // paper-server/src/main/java/com/destroystokyo/paper/profile/CraftPlayerProfile.java:345
+    pub fn as_authlib(property: ProfileProperty) -> crate::rt::Property { todo!() } // paper-server/src/main/java/com/destroystokyo/paper/profile/CraftPlayerProfile.java:349
+    pub fn as_authlib_copy(profile: JRef<dyn crate::com::destroystokyo::paper::profile::player_profile::PlayerProfile>) -> crate::rt::GameProfile { todo!() } // paper-server/src/main/java/com/destroystokyo/paper/profile/CraftPlayerProfile.java:353
     pub fn as_resolvable_profile_copy(profile: JRef<dyn crate::com::destroystokyo::paper::profile::player_profile::PlayerProfile>) -> JRef<dyn ResolvableProfileTrait> { todo!() } // paper-server/src/main/java/com/destroystokyo/paper/profile/CraftPlayerProfile.java:358
     pub fn deserialize(map: &HashMap<String, JObjectRef>) -> JRef<CraftPlayerProfile> { todo!() } // paper-server/src/main/java/com/destroystokyo/paper/profile/CraftPlayerProfile.java:381
     pub fn equals(&self, o: JObjectRef) -> bool { todo!() } // paper-server/src/main/java/com/destroystokyo/paper/profile/CraftPlayerProfile.java:401
@@ -93,7 +89,7 @@ impl crate::org::bukkit::profile::player_profile::PlayerProfile for CraftPlayerP
     fn get_textures(&self) -> JRef<dyn PlayerTextures> { CraftPlayerProfile::get_textures(self) }
     fn set_textures(&self, textures: Option<JRef<dyn PlayerTextures>>) { CraftPlayerProfile::set_textures(self, textures) }
     fn is_complete(&self) -> bool { CraftPlayerProfile::is_complete(self) }
-    fn update(&self) -> CompletableFuture<JRef<dyn crate::org::bukkit::profile::player_profile::PlayerProfile>> { CraftPlayerProfile::update(self) }
+    fn update(&self) -> crate::rt::CompletableFuture<JRef<dyn crate::org::bukkit::profile::player_profile::PlayerProfile>> { CraftPlayerProfile::update(self) }
     fn clone(&self) -> JRef<dyn crate::org::bukkit::profile::player_profile::PlayerProfile> { CraftPlayerProfile::clone(self) }
 }
 impl ConfigurationSerializable for CraftPlayerProfile {
@@ -103,9 +99,9 @@ impl SharedPlayerProfile for CraftPlayerProfile {
     fn get_unique_id(&self) -> Option<Uuid> { CraftPlayerProfile::get_unique_id(self) }
     fn get_name(&self) -> Option<String> { CraftPlayerProfile::get_name(self) }
     fn remove_property(&self, property: &str) -> bool { CraftPlayerProfile::remove_property(self, property) }
-    fn get_property(&self, property_name: &str) -> Option<Property> { CraftPlayerProfile::get_property(self, property_name) }
-    fn set_property(&self, property_name: &str, property: Option<Property>) { CraftPlayerProfile::set_property(self, property_name, property) }
-    fn build_game_profile(&self) -> GameProfile { CraftPlayerProfile::build_game_profile(self) }
+    fn get_property(&self, property_name: &str) -> Option<crate::rt::Property> { CraftPlayerProfile::get_property(self, property_name) }
+    fn set_property(&self, property_name: &str, property: Option<crate::rt::Property>) { CraftPlayerProfile::set_property(self, property_name, property) }
+    fn build_game_profile(&self) -> crate::rt::GameProfile { CraftPlayerProfile::build_game_profile(self) }
     fn build_resolvable_profile(&self) -> JRef<dyn ResolvableProfileTrait> { CraftPlayerProfile::build_resolvable_profile(self) }
 }
 crate::jobject!(CraftPlayerProfile: dyn crate::com::destroystokyo::paper::profile::player_profile::PlayerProfile, dyn crate::org::bukkit::profile::player_profile::PlayerProfile, dyn ConfigurationSerializable, dyn SharedPlayerProfile);
@@ -118,7 +114,7 @@ pub struct CraftPlayerProfilePropertySet {
 impl CraftPlayerProfilePropertySet {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // paper-server/src/main/java/com/destroystokyo/paper/profile/CraftPlayerProfile.java:422
-    pub fn iterator(&self) -> JIterator<ProfileProperty> { todo!() } // paper-server/src/main/java/com/destroystokyo/paper/profile/CraftPlayerProfile.java:424
+    pub fn iterator(&self) -> Box<dyn Iterator<Item = ProfileProperty> + Send> { todo!() } // paper-server/src/main/java/com/destroystokyo/paper/profile/CraftPlayerProfile.java:424
     pub fn size(&self) -> i32 { todo!() } // paper-server/src/main/java/com/destroystokyo/paper/profile/CraftPlayerProfile.java:430
     pub fn add(&self, property: ProfileProperty) -> bool { todo!() } // paper-server/src/main/java/com/destroystokyo/paper/profile/CraftPlayerProfile.java:435
     pub fn add_all(&self, c: &Vec<ProfileProperty>) -> bool { todo!() } // paper-server/src/main/java/com/destroystokyo/paper/profile/CraftPlayerProfile.java:441
@@ -130,11 +126,11 @@ pub struct CraftPlayerProfilePropertySetProfilePropertyIterator {
     pub this: Weak<Self>,
     /// The enclosing instance (Java inner class).
     pub outer: Weak<CraftPlayerProfilePropertySet>,
-    pub iterator: JIterator<Property>, // paper-server/src/main/java/com/destroystokyo/paper/profile/CraftPlayerProfile.java:454
+    pub iterator: Box<dyn Iterator<Item = Property> + Send>, // paper-server/src/main/java/com/destroystokyo/paper/profile/CraftPlayerProfile.java:454
 }
 impl CraftPlayerProfilePropertySetProfilePropertyIterator {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(iterator: JIterator<Property>) -> JRef<Self> { todo!() } // paper-server/src/main/java/com/destroystokyo/paper/profile/CraftPlayerProfile.java:456
+    pub fn new(iterator: Box<dyn Iterator<Item = Property> + Send>) -> JRef<Self> { todo!() } // paper-server/src/main/java/com/destroystokyo/paper/profile/CraftPlayerProfile.java:456
     pub fn has_next(&self) -> bool { todo!() } // paper-server/src/main/java/com/destroystokyo/paper/profile/CraftPlayerProfile.java:460
     pub fn next(&self) -> ProfileProperty { todo!() } // paper-server/src/main/java/com/destroystokyo/paper/profile/CraftPlayerProfile.java:465
     pub fn remove(&self) { todo!() } // paper-server/src/main/java/com/destroystokyo/paper/profile/CraftPlayerProfile.java:470

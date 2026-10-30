@@ -6,8 +6,6 @@ use crate::net::minecraft::util::string_representable::StringRepresentable;
 use crate::net::minecraft::world::attribute::environment_attribute::EnvironmentAttribute;
 use crate::net::minecraft::world::attribute::lerp_function::LerpFunction;
 use crate::net::minecraft::world::level::biome::mob_spawn_settings::MobSpawnSettings;
-use crate::org::joml::Vector3fc;
-use crate::org::joml::Vector4fc;
 
 // ---- interface net.minecraft.world.attribute.modifier.AttributeModifier (leaf-server/src/minecraft/java/net/minecraft/world/attribute/modifier/AttributeModifier.java:13)
 pub trait AttributeModifier<Subject: JGeneric, Argument: JGeneric>: JObject {
@@ -17,8 +15,8 @@ pub trait AttributeModifier<Subject: JGeneric, Argument: JGeneric>: JObject {
 }
 pub static BOOLEAN_LIBRARY: LazyLock<HashMap<AttributeModifierOperationId, JRef<dyn AttributeModifier<bool, JObjectRef>>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/attribute/modifier/AttributeModifier.java:14
 pub static FLOAT_LIBRARY: LazyLock<HashMap<AttributeModifierOperationId, JRef<dyn AttributeModifier<f32, JObjectRef>>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/attribute/modifier/AttributeModifier.java:28
-pub static RGB_COLOR_LIBRARY: LazyLock<HashMap<AttributeModifierOperationId, JRef<dyn AttributeModifier<Vector3fc, JObjectRef>>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/attribute/modifier/AttributeModifier.java:42
-pub static ARGB_COLOR_LIBRARY: LazyLock<HashMap<AttributeModifierOperationId, JRef<dyn AttributeModifier<Vector4fc, JObjectRef>>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/attribute/modifier/AttributeModifier.java:54
+pub static RGB_COLOR_LIBRARY: LazyLock<HashMap<AttributeModifierOperationId, JRef<dyn AttributeModifier<glam::Vec3, JObjectRef>>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/attribute/modifier/AttributeModifier.java:42
+pub static ARGB_COLOR_LIBRARY: LazyLock<HashMap<AttributeModifierOperationId, JRef<dyn AttributeModifier<glam::Vec4, JObjectRef>>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/attribute/modifier/AttributeModifier.java:54
 pub static INTEGER_LIBRARY: LazyLock<HashMap<AttributeModifierOperationId, JRef<dyn AttributeModifier<i32, JObjectRef>>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/attribute/modifier/AttributeModifier.java:66
 pub static MOB_SPAWN_SETTINGS_LIBRARY: LazyLock<HashMap<AttributeModifierOperationId, JRef<dyn AttributeModifier<JRef<MobSpawnSettings>, JObjectRef>>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/attribute/modifier/AttributeModifier.java:78
 pub fn override_<Value: JGeneric>() -> JRef<dyn AttributeModifier<Value, Value>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/attribute/modifier/AttributeModifier.java:82

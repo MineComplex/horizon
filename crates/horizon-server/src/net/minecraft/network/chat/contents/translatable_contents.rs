@@ -4,8 +4,6 @@ use crate::prelude::*;
 use crate::com::mojang::serialization::Codec;
 use crate::com::mojang::serialization::DataResult;
 use crate::com::mojang::serialization::MapCodec;
-use crate::java::lang::Throwable;
-use crate::java::util::function::Consumer;
 use crate::net::minecraft::locale::language::LanguageTrait;
 use crate::net::minecraft::network::chat::component_contents::ComponentContents;
 use crate::net::minecraft::network::chat::formatted_text::FormattedText;
@@ -38,14 +36,14 @@ impl TranslatableContents {
     pub fn visit_2<T: JGeneric>(&self, output: JRef<dyn FormattedTextStyledContentConsumer<T>>, current_style: JRef<Style>) -> Option<T> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/chat/contents/TranslatableContents.java:164
     pub fn visit<T: JGeneric>(&self, output: JRef<dyn FormattedTextContentConsumer<T>>) -> Option<T> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/chat/contents/TranslatableContents.java:178
     pub fn visit<T: JGeneric>(&self, output: JRef<TranslatableContentsTranslatableContentConsumer<T>>) -> Option<T> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/chat/contents/TranslatableContents.java:188
-    pub fn resolve(&self, context: ResolutionContext, recursion_depth: i32) -> Result<JRef<MutableComponent>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/chat/contents/TranslatableContents.java:223
+    pub fn resolve(&self, context: ResolutionContext, recursion_depth: i32) -> Result<JRef<MutableComponent>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/chat/contents/TranslatableContents.java:223
     pub fn filter_allowed_arguments(result: Option<JObjectRef>) -> DataResult<JObjectRef> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/chat/contents/TranslatableContents.java:55
     pub fn is_allowed_primitive_argument(object: Option<JObjectRef>) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/chat/contents/TranslatableContents.java:59
     pub fn adjust_args(args: &Vec<JObjectRef>) -> Option<Vec<JObjectRef>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/chat/contents/TranslatableContents.java:63
     pub fn adjust_args_1(args: Option<Vec<JObjectRef>>) -> Vec<JObjectRef> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/chat/contents/TranslatableContents.java:67
     pub fn create(key: &str, fallback: Option<String>, args: Option<Vec<JObjectRef>>) -> JRef<TranslatableContents> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/chat/contents/TranslatableContents.java:71
     pub fn decompose(&self) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/chat/contents/TranslatableContents.java:86
-    pub fn decompose_template(&self, template: &str, decomposed_parts: JRef<dyn Consumer<JRef<dyn FormattedText>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/chat/contents/TranslatableContents.java:102
+    pub fn decompose_template(&self, template: &str, decomposed_parts: Arc<dyn Fn(JRef<dyn FormattedText>) + Send + Sync>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/chat/contents/TranslatableContents.java:102
     pub fn get_argument(&self, index: i32) -> JRef<dyn FormattedText> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/chat/contents/TranslatableContents.java:151
     pub fn equals(&self, o: JObjectRef) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/chat/contents/TranslatableContents.java:239
     pub fn hash_code(&self) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/chat/contents/TranslatableContents.java:248
@@ -59,7 +57,7 @@ impl TranslatableContents {
 impl ComponentContents for TranslatableContents {
     fn visit<T: JGeneric>(&self, output: JRef<dyn FormattedTextContentConsumer<T>>) -> Option<T> where Self: Sized { TranslatableContents::visit::<T>(self, output) }
     fn visit_2<T: JGeneric>(&self, output: JRef<dyn FormattedTextStyledContentConsumer<T>>, current_style: JRef<Style>) -> Option<T> where Self: Sized { TranslatableContents::visit_2::<T>(self, output, current_style) }
-    fn resolve(&self, context: ResolutionContext, recursion_depth: i32) -> Result<JRef<MutableComponent>, Throwable> { TranslatableContents::resolve(self, context, recursion_depth) }
+    fn resolve(&self, context: ResolutionContext, recursion_depth: i32) -> Result<JRef<MutableComponent>, anyhow::Error> { TranslatableContents::resolve(self, context, recursion_depth) }
     fn codec(&self) -> MapCodec<JRef<dyn ComponentContents>> { TranslatableContents::codec(self) }
 }
 crate::jobject!(TranslatableContents: dyn ComponentContents);
@@ -70,7 +68,7 @@ pub struct TranslatableContentsTranslatableContentConsumer<T: JGeneric> {
     pub visited: Mut<i32>, // leaf-server/src/minecraft/java/net/minecraft/network/chat/contents/TranslatableContents.java:207
     pub _phantom: std::marker::PhantomData<(T,)>,
 }
-pub static TRANSLATABLE_CONTENT_CONSUMER_NESTED_TOO_LONG: LazyLock<Throwable> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/network/chat/contents/TranslatableContents.java:204
+pub static TRANSLATABLE_CONTENT_CONSUMER_NESTED_TOO_LONG: LazyLock<anyhow::Error> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/network/chat/contents/TranslatableContents.java:204
 impl<T: JGeneric> TranslatableContentsTranslatableContentConsumer<T> {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(visitor: JRef<dyn FormattedTextContentConsumer<T>>) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/chat/contents/TranslatableContents.java:209

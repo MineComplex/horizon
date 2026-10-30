@@ -3,7 +3,6 @@
 use crate::prelude::*;
 use crate::io::papermc::paper::raytracing::block_collision_mode::BlockCollisionMode;
 use crate::io::papermc::paper::raytracing::ray_trace_target::RayTraceTarget;
-use crate::java::util::function::Predicate;
 use crate::org::bukkit::fluid_collision_mode::FluidCollisionMode;
 use crate::org::bukkit::location::Location;
 use crate::org::bukkit::util::vector::VectorTrait;
@@ -18,7 +17,7 @@ pub trait PositionedRayTraceConfigurationBuilder: JObject {
     fn block_collision_mode(&self, block_collision_mode: BlockCollisionMode) -> JRef<dyn PositionedRayTraceConfigurationBuilder>; // paper-api/src/main/java/io/papermc/paper/raytracing/PositionedRayTraceConfigurationBuilder.java:62
     fn ignore_passable_blocks(&self, ignore_passable_blocks: bool) -> JRef<dyn PositionedRayTraceConfigurationBuilder>; // paper-api/src/main/java/io/papermc/paper/raytracing/PositionedRayTraceConfigurationBuilder.java:72
     fn ray_size(&self, ray_size: f64) -> JRef<dyn PositionedRayTraceConfigurationBuilder>; // paper-api/src/main/java/io/papermc/paper/raytracing/PositionedRayTraceConfigurationBuilder.java:81
-    fn entity_filter(&self, entity_filter: JRef<dyn Predicate<JObjectRef>>) -> JRef<dyn PositionedRayTraceConfigurationBuilder>; // paper-api/src/main/java/io/papermc/paper/raytracing/PositionedRayTraceConfigurationBuilder.java:90
-    fn block_filter(&self, block_filter: JRef<dyn Predicate<JObjectRef>>) -> JRef<dyn PositionedRayTraceConfigurationBuilder>; // paper-api/src/main/java/io/papermc/paper/raytracing/PositionedRayTraceConfigurationBuilder.java:99
+    fn entity_filter(&self, entity_filter: Arc<dyn Fn(JObjectRef) -> bool + Send + Sync>) -> JRef<dyn PositionedRayTraceConfigurationBuilder>; // paper-api/src/main/java/io/papermc/paper/raytracing/PositionedRayTraceConfigurationBuilder.java:90
+    fn block_filter(&self, block_filter: Arc<dyn Fn(JObjectRef) -> bool + Send + Sync>) -> JRef<dyn PositionedRayTraceConfigurationBuilder>; // paper-api/src/main/java/io/papermc/paper/raytracing/PositionedRayTraceConfigurationBuilder.java:99
     fn targets(&self, first: RayTraceTarget, others: &Vec<RayTraceTarget>) -> JRef<dyn PositionedRayTraceConfigurationBuilder>; // paper-api/src/main/java/io/papermc/paper/raytracing/PositionedRayTraceConfigurationBuilder.java:109
 }

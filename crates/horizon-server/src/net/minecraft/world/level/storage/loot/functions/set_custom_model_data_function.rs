@@ -3,7 +3,6 @@
 use crate::prelude::*;
 use crate::com::mojang::serialization::Codec;
 use crate::com::mojang::serialization::MapCodec;
-use crate::java::util::function::Function;
 use crate::net::minecraft::core::holder::Holder;
 use crate::net::minecraft::world::item::item_stack::ItemStack;
 use crate::net::minecraft::world::level::storage::loot::functions::list_operation::ListOperationStandAlone;
@@ -40,7 +39,7 @@ impl SetCustomModelDataFunction {
     pub fn codec(&self) -> MapCodec<JRef<SetCustomModelDataFunction>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/storage/loot/functions/SetCustomModelDataFunction.java:65
     pub fn run(&self, item_stack: JRef<ItemStack>, context: JRef<LootContext>) -> JRef<ItemStack> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/storage/loot/functions/SetCustomModelDataFunction.java:81
     pub fn apply_2<T: JGeneric>(operation: Option<ListOperationStandAlone<T>>, current: &Vec<T>) -> Vec<T> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/storage/loot/functions/SetCustomModelDataFunction.java:70
-    pub fn apply_3<T: JGeneric, E: JGeneric>(operation: Option<ListOperationStandAlone<T>>, current: &Vec<E>, mapper: JRef<dyn Function<T, E>>) -> Vec<E> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/storage/loot/functions/SetCustomModelDataFunction.java:74
+    pub fn apply_3<T: JGeneric, E: JGeneric>(operation: Option<ListOperationStandAlone<T>>, current: &Vec<E>, mapper: Arc<dyn Fn(T) -> E + Send + Sync>) -> Vec<E> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/storage/loot/functions/SetCustomModelDataFunction.java:74
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

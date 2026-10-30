@@ -5,7 +5,6 @@ use crate::com::mojang::brigadier::command_dispatcher::CommandDispatcher;
 use crate::com::mojang::brigadier::exceptions::Dynamic2CommandExceptionType;
 use crate::com::mojang::brigadier::exceptions::DynamicCommandExceptionType;
 use crate::com::mojang::brigadier::exceptions::SimpleCommandExceptionType;
-use crate::java::lang::Throwable;
 use crate::net::minecraft::commands::command_build_context::CommandBuildContext;
 use crate::net::minecraft::commands::command_source_stack::CommandSourceStack;
 use crate::net::minecraft::core::holder::Holder;
@@ -27,6 +26,6 @@ impl EnchantCommand {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/EnchantCommand.java:24
     pub fn register(dispatcher: JRef<CommandDispatcher<JRef<CommandSourceStack>>>, context: JRef<dyn CommandBuildContext>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/EnchantCommand.java:48
-    pub fn enchant(source: JRef<CommandSourceStack>, targets: &Vec<JRef<dyn EntityTrait>>, enchantment_holder: JRef<dyn Holder<Enchantment>>, level: i32) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/EnchantCommand.java:75
+    pub fn enchant(source: JRef<CommandSourceStack>, targets: &Vec<JRef<dyn EntityTrait>>, enchantment_holder: JRef<dyn Holder<Enchantment>>, level: i32) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/EnchantCommand.java:75
 }
 crate::jobject!(EnchantCommand);

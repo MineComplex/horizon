@@ -3,8 +3,6 @@
 use crate::prelude::*;
 use crate::com::mojang::serialization::Codec;
 use crate::com::mojang::serialization::MapCodec;
-use crate::java::util::function::BiConsumer;
-use crate::java::util::stream::Stream;
 use crate::net::minecraft::resources::resource_key::ResourceKey;
 use crate::net::minecraft::util::random::weighted_list::WeightedListTrait;
 use crate::net::minecraft::util::random_source::RandomSource;
@@ -15,8 +13,8 @@ use crate::net::minecraft::world::level::levelgen::structure::pools::structure_t
 
 // ---- interface net.minecraft.world.level.levelgen.structure.pools.alias.PoolAliasBinding (leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/structure/pools/alias/PoolAliasBinding.java:16)
 pub trait PoolAliasBinding: JObject {
-    fn for_each_resolved(&self, random: JRef<dyn RandomSource>, alias_and_target_consumer: JRef<dyn BiConsumer<JRef<ResourceKey<JRef<StructureTemplatePool>>>, JRef<ResourceKey<JRef<StructureTemplatePool>>>>>); // leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/structure/pools/alias/PoolAliasBinding.java:19
-    fn all_targets(&self) -> Stream<JRef<ResourceKey<JRef<StructureTemplatePool>>>>; // leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/structure/pools/alias/PoolAliasBinding.java:23
+    fn for_each_resolved(&self, random: JRef<dyn RandomSource>, alias_and_target_consumer: Arc<dyn Fn(JRef<ResourceKey<JRef<StructureTemplatePool>>>, JRef<ResourceKey<JRef<StructureTemplatePool>>>) + Send + Sync>); // leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/structure/pools/alias/PoolAliasBinding.java:19
+    fn all_targets(&self) -> Box<dyn Iterator<Item = JRef<ResourceKey<JRef<StructureTemplatePool>>>> + Send>; // leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/structure/pools/alias/PoolAliasBinding.java:23
     fn codec(&self) -> MapCodec<JRef<dyn PoolAliasBinding>>; // leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/structure/pools/alias/PoolAliasBinding.java:47
 }
 pub static CODEC: LazyLock<JRef<dyn Codec<JRef<dyn PoolAliasBinding>>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/structure/pools/alias/PoolAliasBinding.java:17

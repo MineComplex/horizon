@@ -4,8 +4,6 @@ use crate::prelude::*;
 use crate::io::papermc::paper::plugin::entrypoint::entrypoint_handler::EntrypointHandler;
 use crate::io::papermc::paper::plugin::provider::source::file_provider_source::FileProviderSource;
 use crate::io::papermc::paper::plugin::provider::source::provider_source::ProviderSource;
-use crate::java::lang::Throwable;
-use crate::java::util::function::Consumer;
 
 // ---- class io.papermc.paper.plugin.provider.source.DirectoryProviderSource (paper-server/src/main/java/io/papermc/paper/plugin/provider/source/DirectoryProviderSource.java:17)
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Default)]
@@ -17,15 +15,15 @@ pub static INSTANCE_NO_CREATE: LazyLock<DirectoryProviderSource> = LazyLock::new
 pub static FILE_PROVIDER_SOURCE: LazyLock<JRef<FileProviderSource>> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/plugin/provider/source/DirectoryProviderSource.java:21
 impl DirectoryProviderSource {
     pub fn new(create_directory: bool) -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/provider/source/DirectoryProviderSource.java:26
-    pub fn prepare_context(&self, context: std::path::PathBuf) -> Result<Vec<std::path::PathBuf>, Throwable> { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/provider/source/DirectoryProviderSource.java:30
+    pub fn prepare_context(&self, context: std::path::PathBuf) -> Result<Vec<std::path::PathBuf>, anyhow::Error> { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/provider/source/DirectoryProviderSource.java:30
     pub fn register_providers(&self, entrypoint_handler: JRef<dyn EntrypointHandler>, context: &Vec<std::path::PathBuf>) { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/provider/source/DirectoryProviderSource.java:54
-    pub fn walk_files(&self, context: std::path::PathBuf, consumer: JRef<dyn Consumer<std::path::PathBuf>>) -> Result<(), Throwable> { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/provider/source/DirectoryProviderSource.java:67
+    pub fn walk_files(&self, context: std::path::PathBuf, consumer: Arc<dyn Fn(std::path::PathBuf) + Send + Sync>) -> Result<(), anyhow::Error> { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/provider/source/DirectoryProviderSource.java:67
     pub fn is_valid_file(&self, path: std::path::PathBuf) -> bool { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/provider/source/DirectoryProviderSource.java:73
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl ProviderSource<std::path::PathBuf, Vec<std::path::PathBuf>> for DirectoryProviderSource {
-    fn prepare_context(&self, context: I) -> Result<C, Throwable> { DirectoryProviderSource::prepare_context(self, context) }
-    fn register_providers(&self, entrypoint_handler: JRef<dyn EntrypointHandler>, context: C) -> Result<(), Throwable> { DirectoryProviderSource::register_providers(self, entrypoint_handler, context) }
+    fn prepare_context(&self, context: I) -> Result<C, anyhow::Error> { DirectoryProviderSource::prepare_context(self, context) }
+    fn register_providers(&self, entrypoint_handler: JRef<dyn EntrypointHandler>, context: C) -> Result<(), anyhow::Error> { DirectoryProviderSource::register_providers(self, entrypoint_handler, context) }
 }
 crate::jobject!(DirectoryProviderSource);

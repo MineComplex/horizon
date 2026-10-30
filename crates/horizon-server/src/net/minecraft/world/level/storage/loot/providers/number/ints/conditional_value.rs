@@ -3,7 +3,6 @@
 use crate::prelude::*;
 use crate::com::mojang::serialization::Codec;
 use crate::com::mojang::serialization::MapCodec;
-use crate::java::lang::Throwable;
 use crate::net::minecraft::core::holder::Holder;
 use crate::net::minecraft::world::level::storage::loot::loot_context::LootContext;
 use crate::net::minecraft::world::level::storage::loot::predicates::loot_item_condition::LootItemCondition;
@@ -30,7 +29,7 @@ impl ConditionalValue {
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl ContextIntProvider for ConditionalValue {
-    fn get_int_unsafe(&self, context: JRef<LootContext>) -> Result<i32, Throwable> { ConditionalValue::get_int_unsafe(self, context) }
+    fn get_int_unsafe(&self, context: JRef<LootContext>) -> Result<i32, anyhow::Error> { ConditionalValue::get_int_unsafe(self, context) }
     fn codec(&self) -> MapCodec<JRef<dyn ContextIntProvider>> { ConditionalValue::codec(self) }
 }
 impl Validatable for ConditionalValue {

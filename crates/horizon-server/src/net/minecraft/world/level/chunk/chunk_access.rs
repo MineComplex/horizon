@@ -4,9 +4,6 @@ use crate::prelude::*;
 use crate::api_impl::persistence::craft_persistent_data_type_registry::CraftPersistentDataTypeRegistry;
 use crate::ca::spottedleaf::moonrise::patches::starlight::chunk::starlight_chunk::StarlightChunk;
 use crate::ca::spottedleaf::moonrise::patches::starlight::light::swmr_nibble_array::SWMRNibbleArray;
-use crate::java::util::function::BiConsumer;
-use crate::java::util::function::Predicate;
-use crate::java::util::function::Supplier;
 use crate::net::minecraft::core::block_pos::BlockPos;
 use crate::net::minecraft::core::holder::Holder;
 use crate::net::minecraft::core::holder_lookup::HolderLookupProvider;
@@ -113,7 +110,7 @@ pub trait ChunkAccessTrait: LightChunk + StructureAccess + BiomeResolver + Starl
     fn set_block_entity_nbt(&self, entity_tag: JRef<CompoundTag>); // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/ChunkAccess.java:402
     fn get_block_entity_nbt(&self, block_pos: BlockPos) -> Option<JRef<CompoundTag>>; // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/ChunkAccess.java:409
     fn get_block_entity_nbt_for_saving(&self, block_pos: BlockPos, registry_access: JRef<dyn HolderLookupProvider>) -> Option<JRef<CompoundTag>>; // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/ChunkAccess.java:413
-    fn find_blocks(&self, predicate: JRef<dyn Predicate<JRef<BlockState>>>, consumer: JRef<dyn BiConsumer<BlockPos, JRef<BlockState>>>); // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/ChunkAccess.java:420
+    fn find_blocks(&self, predicate: Arc<dyn Fn(JRef<BlockState>) -> bool + Send + Sync>, consumer: Arc<dyn Fn(BlockPos, JRef<BlockState>) + Send + Sync>); // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/ChunkAccess.java:420
     fn get_block_ticks(&self) -> JRef<dyn TickContainerAccess<JRef<dyn BlockTrait>>>; // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/ChunkAccess.java:436
     fn get_fluid_ticks(&self) -> JRef<dyn TickContainerAccess<JRef<dyn FluidTrait>>>; // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/ChunkAccess.java:438
     fn collect_biomes_in_palette(&self, output: &HashSet<JRef<dyn Holder<JRef<Biome>>>>); // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/ChunkAccess.java:440
@@ -127,7 +124,7 @@ pub trait ChunkAccessTrait: LightChunk + StructureAccess + BiomeResolver + Starl
     fn set_inhabited_time(&self, inhabited_time: i64); // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/ChunkAccess.java:472
     fn is_light_correct(&self) -> bool; // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/ChunkAccess.java:486
     fn set_light_correct(&self, is_light_correct: bool); // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/ChunkAccess.java:490
-    fn carver_biome(&self, source: JRef<dyn Supplier<JRef<BiomeGenerationSettings>>>) -> JRef<BiomeGenerationSettings>; // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/ChunkAccess.java:557
+    fn carver_biome(&self, source: Arc<dyn Fn() -> JRef<BiomeGenerationSettings> + Send + Sync>) -> JRef<BiomeGenerationSettings>; // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/ChunkAccess.java:557
     fn set_noise_biome(&self, quart_x: i32, quart_y: i32, quart_z: i32, biome: JRef<dyn Holder<JRef<Biome>>>); // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/ChunkAccess.java:587
     fn fill_biomes_from_noise(&self, biome_resolver: JRef<dyn BiomeResolver>); // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/ChunkAccess.java:603
     fn get_below_zero_retrogen(&self) -> Option<JRef<BelowZeroRetrogen>>; // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/ChunkAccess.java:616
@@ -160,7 +157,7 @@ impl ChunkAccess {
     pub fn add_reference_for_structure(&self, structure: JRef<dyn StructureTrait>, reference: i64) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/ChunkAccess.java:321
     pub fn get_all_references(&self) -> HashMap<JRef<dyn StructureTrait>, HashSet<i64>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/ChunkAccess.java:327
     pub fn set_all_references(&self, data: &HashMap<JRef<dyn StructureTrait>, HashSet<i64>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/ChunkAccess.java:332
-    pub fn find_block_light_sources(&self, consumer: JRef<dyn BiConsumer<BlockPos, JRef<BlockState>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/ChunkAccess.java:415
+    pub fn find_block_light_sources(&self, consumer: Arc<dyn Fn(BlockPos, JRef<BlockState>) + Send + Sync>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/ChunkAccess.java:415
     pub fn get_min_y(&self) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/ChunkAccess.java:495
     pub fn get_height(&self) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/ChunkAccess.java:500
     pub fn get_max_y(&self) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/ChunkAccess.java:506
@@ -202,7 +199,7 @@ impl ChunkAccess {
     pub fn add_packed_post_process(&self, packed_offsets: &Vec<i16>, section_index: i32) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/ChunkAccess.java:398
     pub fn set_block_entity_nbt(&self, entity_tag: JRef<CompoundTag>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/ChunkAccess.java:402
     pub fn get_block_entity_nbt(&self, block_pos: BlockPos) -> Option<JRef<CompoundTag>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/ChunkAccess.java:409
-    pub fn find_blocks(&self, predicate: JRef<dyn Predicate<JRef<BlockState>>>, consumer: JRef<dyn BiConsumer<BlockPos, JRef<BlockState>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/ChunkAccess.java:420
+    pub fn find_blocks(&self, predicate: Arc<dyn Fn(JRef<BlockState>) -> bool + Send + Sync>, consumer: Arc<dyn Fn(BlockPos, JRef<BlockState>) + Send + Sync>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/ChunkAccess.java:420
     pub fn collect_biomes_in_palette(&self, output: &HashSet<JRef<dyn Holder<JRef<Biome>>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/ChunkAccess.java:440
     pub fn can_be_serialized(&self) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/ChunkAccess.java:446
     pub fn get_upgrade_data(&self) -> JRef<UpgradeData> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/ChunkAccess.java:452
@@ -214,7 +211,7 @@ impl ChunkAccess {
     pub fn get_or_create_offset_list(list: Option<Vec<Vec<i16>>>, section_index: i32) -> Vec<i16> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/ChunkAccess.java:476
     pub fn is_light_correct(&self) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/ChunkAccess.java:486
     pub fn set_light_correct(&self, is_light_correct: bool) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/ChunkAccess.java:490
-    pub fn carver_biome(&self, source: JRef<dyn Supplier<JRef<BiomeGenerationSettings>>>) -> JRef<BiomeGenerationSettings> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/ChunkAccess.java:557
+    pub fn carver_biome(&self, source: Arc<dyn Fn() -> JRef<BiomeGenerationSettings> + Send + Sync>) -> JRef<BiomeGenerationSettings> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/ChunkAccess.java:557
     pub fn set_noise_biome(&self, quart_x: i32, quart_y: i32, quart_z: i32, biome: JRef<dyn Holder<JRef<Biome>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/ChunkAccess.java:587
     pub fn fill_biomes_from_noise(&self, biome_resolver: JRef<dyn BiomeResolver>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/ChunkAccess.java:603
     pub fn get_below_zero_retrogen(&self) -> Option<JRef<BelowZeroRetrogen>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/ChunkAccess.java:616

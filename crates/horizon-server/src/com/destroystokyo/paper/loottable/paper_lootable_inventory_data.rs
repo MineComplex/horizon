@@ -4,7 +4,6 @@ use crate::prelude::*;
 use crate::com::destroystokyo::paper::loottable::lootable_inventory::LootableInventory;
 use crate::com::mojang::serialization::Codec;
 use crate::io::papermc::paper::configuration::world_configuration::WorldConfiguration;
-use crate::java::util::Random;
 use crate::net::minecraft::world::entity::player::player::PlayerTrait;
 use crate::net::minecraft::world::entity::vehicle::container_entity::ContainerEntity;
 use crate::net::minecraft::world::level::storage::value_input::ValueInput;
@@ -19,7 +18,7 @@ pub struct PaperLootableInventoryData {
     pub num_refills: Mut<i32>, // paper-server/src/main/java/com/destroystokyo/paper/loottable/PaperLootableInventoryData.java:33
     pub looted_players: Mut<Option<HashMap<Uuid, i64>>>, // paper-server/src/main/java/com/destroystokyo/paper/loottable/PaperLootableInventoryData.java:34
 }
-pub static RANDOM: LazyLock<Random> = LazyLock::new(|| todo!()); // paper-server/src/main/java/com/destroystokyo/paper/loottable/PaperLootableInventoryData.java:29
+pub static RANDOM: LazyLock<rand::rngs::StdRng> = LazyLock::new(|| todo!()); // paper-server/src/main/java/com/destroystokyo/paper/loottable/PaperLootableInventoryData.java:29
 pub static CONTAINER: LazyLock<JRef<dyn PaperLootableInventoryDataLootTableInterface<JRef<dyn RandomizableContainer>>>> = LazyLock::new(|| todo!()); // paper-server/src/main/java/com/destroystokyo/paper/loottable/PaperLootableInventoryData.java:102
 pub static ENTITY: LazyLock<JRef<dyn PaperLootableInventoryDataLootTableInterface<JRef<dyn ContainerEntity>>>> = LazyLock::new(|| todo!()); // paper-server/src/main/java/com/destroystokyo/paper/loottable/PaperLootableInventoryData.java:124
 pub const ROOT: &str = "Paper.LootableData"; // paper-server/src/main/java/com/destroystokyo/paper/loottable/PaperLootableInventoryData.java:165

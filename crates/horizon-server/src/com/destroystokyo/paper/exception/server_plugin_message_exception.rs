@@ -5,7 +5,6 @@ use crate::com::destroystokyo::paper::exception::server_exception::ServerExcepti
 use crate::com::destroystokyo::paper::exception::server_exception::ServerExceptionTrait;
 use crate::com::destroystokyo::paper::exception::server_plugin_exception::ServerPluginException;
 use crate::com::destroystokyo::paper::exception::server_plugin_exception::ServerPluginExceptionTrait;
-use crate::java::lang::Throwable;
 use crate::org::bukkit::entity::player::Player;
 use crate::org::bukkit::plugin::plugin::Plugin;
 use crate::prelude::*;
@@ -29,7 +28,7 @@ impl ServerPluginMessageException {
         self.this.upgrade().expect("this")
     }
     pub fn new(
-        cause: Throwable,
+        cause: anyhow::Error,
         responsible_plugin: JRef<dyn Plugin>,
         player: JRef<dyn Player>,
         channel: &str,
@@ -45,7 +44,7 @@ impl ServerPluginMessageException {
     } // paper-api/src/main/java/com/destroystokyo/paper/exception/ServerPluginMessageException.java:24
     pub fn new_6(
         message: &str,
-        cause: Throwable,
+        cause: anyhow::Error,
         responsible_plugin: JRef<dyn Plugin>,
         player: JRef<dyn Player>,
         channel: &str,
@@ -61,7 +60,7 @@ impl ServerPluginMessageException {
     } // paper-api/src/main/java/com/destroystokyo/paper/exception/ServerPluginMessageException.java:17
     pub fn new_8(
         message: &str,
-        cause: Throwable,
+        cause: anyhow::Error,
         enable_suppression: bool,
         writable_stack_trace: bool,
         responsible_plugin: JRef<dyn Plugin>,

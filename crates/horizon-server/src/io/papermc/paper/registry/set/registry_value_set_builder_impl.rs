@@ -6,7 +6,6 @@ use crate::io::papermc::paper::registry::registry_builder_factory::RegistryBuild
 use crate::io::papermc::paper::registry::registry_key::RegistryKey;
 use crate::io::papermc::paper::registry::set::registry_value_set::RegistryValueSet;
 use crate::io::papermc::paper::registry::set::registry_value_set_builder::RegistryValueSetBuilder;
-use crate::java::util::function::Consumer;
 
 // ---- class io.papermc.paper.registry.set.RegistryValueSetBuilderImpl (paper-server/src/main/java/io/papermc/paper/registry/set/RegistryValueSetBuilderImpl.java:12)
 pub struct RegistryValueSetBuilderImpl<M: JGeneric, API: JGeneric, BUILDER: JGeneric> {
@@ -19,12 +18,12 @@ pub struct RegistryValueSetBuilderImpl<M: JGeneric, API: JGeneric, BUILDER: JGen
 impl<M: JGeneric, API: JGeneric, BUILDER: JGeneric> RegistryValueSetBuilderImpl<M, API, BUILDER> {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(registry_key: JRef<dyn RegistryKey<API>>, conversions: JRef<Conversions>) -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/set/RegistryValueSetBuilderImpl.java:18
-    pub fn add(&self, builder: JRef<dyn Consumer<JRef<dyn RegistryBuilderFactory<API, BUILDER>>>>) -> JRef<dyn RegistryValueSetBuilder<API, BUILDER>> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/set/RegistryValueSetBuilderImpl.java:23
+    pub fn add(&self, builder: Arc<dyn Fn(JRef<dyn RegistryBuilderFactory<API, BUILDER>>) + Send + Sync>) -> JRef<dyn RegistryValueSetBuilder<API, BUILDER>> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/set/RegistryValueSetBuilderImpl.java:23
     pub fn build(&self) -> JRef<dyn RegistryValueSet<API>> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/set/RegistryValueSetBuilderImpl.java:29
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl<M: JGeneric, API: JGeneric, BUILDER: JGeneric> RegistryValueSetBuilder<API, BUILDER> for RegistryValueSetBuilderImpl<M, API, BUILDER> {
-    fn add(&self, builder: JRef<dyn Consumer<JRef<dyn RegistryBuilderFactory<API, ENTRY_BUILDER>>>>) -> JRef<dyn RegistryValueSetBuilder<API, ENTRY_BUILDER>> { RegistryValueSetBuilderImpl::add(self, builder) }
+    fn add(&self, builder: Arc<dyn Fn(JRef<dyn RegistryBuilderFactory<API, ENTRY_BUILDER>>) + Send + Sync>) -> JRef<dyn RegistryValueSetBuilder<API, ENTRY_BUILDER>> { RegistryValueSetBuilderImpl::add(self, builder) }
     fn build(&self) -> JRef<dyn RegistryValueSet<API>> { RegistryValueSetBuilderImpl::build(self) }
 }

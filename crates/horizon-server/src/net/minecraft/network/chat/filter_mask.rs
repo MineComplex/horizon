@@ -3,10 +3,6 @@
 use crate::prelude::*;
 use crate::com::mojang::serialization::Codec;
 use crate::com::mojang::serialization::MapCodec;
-use crate::io::netty::buffer::ByteBuf;
-use crate::java::util::BitSet;
-use crate::java::util::function::IntFunction;
-use crate::java::util::function::Supplier;
 use crate::net::minecraft::network::chat::component::Component;
 use crate::net::minecraft::network::chat::style::Style;
 use crate::net::minecraft::network::codec::stream_codec::StreamCodec;
@@ -15,22 +11,22 @@ use crate::net::minecraft::util::string_representable::StringRepresentable;
 // ---- class net.minecraft.network.chat.FilterMask (leaf-server/src/minecraft/java/net/minecraft/network/chat/FilterMask.java:19)
 pub struct FilterMask {
     pub this: Weak<Self>,
-    pub mask: Mut<BitSet>, // leaf-server/src/minecraft/java/net/minecraft/network/chat/FilterMask.java:28
+    pub mask: Mut<bit_set::BitSet>, // leaf-server/src/minecraft/java/net/minecraft/network/chat/FilterMask.java:28
     pub type_: FilterMaskType, // leaf-server/src/minecraft/java/net/minecraft/network/chat/FilterMask.java:29
 }
 pub static CODEC: LazyLock<JRef<dyn Codec<JRef<FilterMask>>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/network/chat/FilterMask.java:20
-pub static STREAM_CODEC: LazyLock<JRef<dyn StreamCodec<ByteBuf, JRef<FilterMask>>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/network/chat/FilterMask.java:21
+pub static STREAM_CODEC: LazyLock<JRef<dyn StreamCodec<bytes::BytesMut, JRef<FilterMask>>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/network/chat/FilterMask.java:21
 pub static FULLY_FILTERED: LazyLock<JRef<FilterMask>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/network/chat/FilterMask.java:22
 pub static PASS_THROUGH: LazyLock<JRef<FilterMask>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/network/chat/FilterMask.java:23
 pub static FILTERED_STYLE: LazyLock<JRef<Style>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/network/chat/FilterMask.java:24
 pub const HASH: char = '#'; // leaf-server/src/minecraft/java/net/minecraft/network/chat/FilterMask.java:27
 impl FilterMask {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(mask: BitSet) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/chat/FilterMask.java:36
+    pub fn new(mask: bit_set::BitSet) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/chat/FilterMask.java:36
     pub fn new_1(length: i32) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/chat/FilterMask.java:41
-    pub fn new_2(mask: BitSet, type_: FilterMaskType) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/chat/FilterMask.java:31
+    pub fn new_2(mask: bit_set::BitSet, type_: FilterMaskType) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/chat/FilterMask.java:31
     pub fn type_(&self) -> FilterMaskType { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/chat/FilterMask.java:45
-    pub fn mask(&self) -> BitSet { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/chat/FilterMask.java:49
+    pub fn mask(&self) -> bit_set::BitSet { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/chat/FilterMask.java:49
     pub fn set_filtered(&self, index: i32) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/chat/FilterMask.java:53
     pub fn apply(&self, text: &str) -> Option<String> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/chat/FilterMask.java:57
     pub fn apply_with_formatting(&self, text: &str) -> Option<JRef<dyn Component>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/chat/FilterMask.java:75
@@ -51,11 +47,11 @@ pub enum FilterMaskType {
 pub struct FilterMaskTypeData {
     pub id: i32,
     pub serialized_name: String,
-    pub codec: JRef<dyn Supplier<MapCodec<JRef<FilterMask>>>>,
-    pub stream_codec: JRef<dyn Supplier<JRef<dyn StreamCodec<ByteBuf, JRef<FilterMask>>>>>,
+    pub codec: Arc<dyn Fn() -> MapCodec<JRef<FilterMask>> + Send + Sync>,
+    pub stream_codec: Arc<dyn Fn() -> JRef<dyn StreamCodec<ByteBuf, JRef<FilterMask>>> + Send + Sync>,
 }
-pub static TYPE_ID_MAP: LazyLock<JRef<dyn IntFunction<FilterMaskType>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/network/chat/FilterMask.java:140
-pub static TYPE_STREAM_CODEC: LazyLock<JRef<dyn StreamCodec<ByteBuf, FilterMaskType>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/network/chat/FilterMask.java:141
+pub static TYPE_ID_MAP: LazyLock<Arc<dyn Fn(i32) -> FilterMaskType + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/network/chat/FilterMask.java:140
+pub static TYPE_STREAM_CODEC: LazyLock<JRef<dyn StreamCodec<bytes::BytesMut, FilterMaskType>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/network/chat/FilterMask.java:141
 impl FilterMaskType {
     pub const VALUES: [FilterMaskType; 3] = [FilterMaskType::PASS_THROUGH, FilterMaskType::FULLY_FILTERED, FilterMaskType::PARTIALLY_FILTERED];
     pub fn ordinal(self) -> i32 { self as i32 }
@@ -67,7 +63,7 @@ impl FilterMaskType {
     pub fn data(self) -> &'static FilterMaskTypeData { todo!("leaf-server/src/minecraft/java/net/minecraft/network/chat/FilterMask.java:130") }
     pub fn get_serialized_name(self) -> String { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/chat/FilterMask.java:156
     pub fn codec(self) -> MapCodec<JRef<FilterMask>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/chat/FilterMask.java:161
-    pub fn stream_codec(self) -> JRef<dyn StreamCodec<ByteBuf, JRef<FilterMask>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/chat/FilterMask.java:165
+    pub fn stream_codec(self) -> JRef<dyn StreamCodec<bytes::BytesMut, JRef<FilterMask>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/network/chat/FilterMask.java:165
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.

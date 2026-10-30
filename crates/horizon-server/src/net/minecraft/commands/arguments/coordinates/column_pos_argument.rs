@@ -6,8 +6,6 @@ use crate::com::mojang::brigadier::context::CommandContext;
 use crate::com::mojang::brigadier::exceptions::SimpleCommandExceptionType;
 use crate::com::mojang::brigadier::suggestion::Suggestions;
 use crate::com::mojang::brigadier::suggestion::SuggestionsBuilder;
-use crate::java::lang::Throwable;
-use crate::java::util::concurrent::CompletableFuture;
 use crate::net::minecraft::commands::arguments::coordinates::coordinates::Coordinates;
 use crate::net::minecraft::commands::command_source_stack::CommandSourceStack;
 use crate::net::minecraft::server::level::column_pos::ColumnPos;
@@ -23,8 +21,8 @@ impl ColumnPosArgument {
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/ColumnPosArgument.java:21
     pub fn column_pos() -> JRef<ColumnPosArgument> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/ColumnPosArgument.java:25
     pub fn get_column_pos(context: CommandContext<JRef<CommandSourceStack>>, name: &str) -> ColumnPos { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/ColumnPosArgument.java:29
-    pub fn parse(&self, reader: StringReader) -> Result<JRef<dyn Coordinates>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/ColumnPosArgument.java:34
-    pub fn list_suggestions<S: JGeneric>(&self, context: CommandContext<S>, builder: SuggestionsBuilder) -> CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/ColumnPosArgument.java:52
+    pub fn parse(&self, reader: StringReader) -> Result<JRef<dyn Coordinates>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/ColumnPosArgument.java:34
+    pub fn list_suggestions<S: JGeneric>(&self, context: CommandContext<S>, builder: SuggestionsBuilder) -> crate::rt::CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/ColumnPosArgument.java:52
     pub fn get_examples(&self) -> Vec<String> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/ColumnPosArgument.java:69
 }
 crate::jobject!(ColumnPosArgument);

@@ -13,9 +13,6 @@ use crate::com::mojang::brigadier::suggestion::Suggestions;
 use crate::com::mojang::brigadier::suggestion::SuggestionsBuilder;
 use crate::com::mojang::brigadier::tree::command_node::CommandNode;
 use crate::com::mojang::brigadier::tree::command_node::CommandNodeTrait;
-use crate::java::lang::Throwable;
-use crate::java::util::concurrent::CompletableFuture;
-use crate::java::util::function::Predicate;
 
 // ---- class com.mojang.brigadier.tree.LiteralCommandNode (leaf-server/src/minecraft/java/com/mojang/brigadier/tree/LiteralCommandNode.java:23)
 pub struct LiteralCommandNode<S: JGeneric> {
@@ -41,12 +38,12 @@ impl<S: JGeneric> std::ops::Deref for dyn LiteralCommandNodeTrait<S> {
 }
 impl<S: JGeneric> LiteralCommandNode<S> {
     pub fn this(&self) -> JRef<dyn LiteralCommandNodeTrait<S>> { self.this.upgrade().expect("this") }
-    pub fn new_base<S: LiteralCommandNodeTrait<S> + 'static>(this: &Weak<S>, literal: &str, command: JRef<dyn Command<S>>, requirement: JRef<dyn Predicate<S>>, redirect: JRef<dyn CommandNodeTrait<S>>, modifier: JRef<dyn RedirectModifier<S>>, forks: bool) -> Self { todo!() } // leaf-server/src/minecraft/java/com/mojang/brigadier/tree/LiteralCommandNode.java:28
-    pub fn new(literal: &str, command: JRef<dyn Command<S>>, requirement: JRef<dyn Predicate<S>>, redirect: JRef<dyn CommandNodeTrait<S>>, modifier: JRef<dyn RedirectModifier<S>>, forks: bool) -> JRef<Self> { Arc::new_cyclic(|this| Self::new_base(this, literal, command, requirement, redirect, modifier, forks)) }
+    pub fn new_base<S: LiteralCommandNodeTrait<S> + 'static>(this: &Weak<S>, literal: &str, command: JRef<dyn Command<S>>, requirement: Arc<dyn Fn(S) -> bool + Send + Sync>, redirect: JRef<dyn CommandNodeTrait<S>>, modifier: JRef<dyn RedirectModifier<S>>, forks: bool) -> Self { todo!() } // leaf-server/src/minecraft/java/com/mojang/brigadier/tree/LiteralCommandNode.java:28
+    pub fn new(literal: &str, command: JRef<dyn Command<S>>, requirement: Arc<dyn Fn(S) -> bool + Send + Sync>, redirect: JRef<dyn CommandNodeTrait<S>>, modifier: JRef<dyn RedirectModifier<S>>, forks: bool) -> JRef<Self> { Arc::new_cyclic(|this| Self::new_base(this, literal, command, requirement, redirect, modifier, forks)) }
     pub fn get_name(&self) -> String { todo!() } // leaf-server/src/minecraft/java/com/mojang/brigadier/tree/LiteralCommandNode.java:45
-    pub fn parse(&self, reader: StringReader, context_builder: CommandContextBuilder<S>) -> Result<(), Throwable> { todo!() } // leaf-server/src/minecraft/java/com/mojang/brigadier/tree/LiteralCommandNode.java:50
+    pub fn parse(&self, reader: StringReader, context_builder: CommandContextBuilder<S>) -> Result<(), anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/com/mojang/brigadier/tree/LiteralCommandNode.java:50
     pub fn parse(&self, reader: StringReader, second_pass: bool) -> i32 { todo!() } // leaf-server/src/minecraft/java/com/mojang/brigadier/tree/LiteralCommandNode.java:68
-    pub fn list_suggestions(&self, context: CommandContext<S>, builder: SuggestionsBuilder) -> CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/com/mojang/brigadier/tree/LiteralCommandNode.java:86
+    pub fn list_suggestions(&self, context: CommandContext<S>, builder: SuggestionsBuilder) -> crate::rt::CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/com/mojang/brigadier/tree/LiteralCommandNode.java:86
     pub fn is_valid_input(&self, input: &str) -> bool { todo!() } // leaf-server/src/minecraft/java/com/mojang/brigadier/tree/LiteralCommandNode.java:95
     pub fn equals(&self, o: JObjectRef) -> bool { todo!() } // leaf-server/src/minecraft/java/com/mojang/brigadier/tree/LiteralCommandNode.java:100
     pub fn get_usage_text(&self) -> String { todo!() } // leaf-server/src/minecraft/java/com/mojang/brigadier/tree/LiteralCommandNode.java:111
@@ -78,11 +75,11 @@ impl<S: JGeneric> CommandNodeTrait<JObjectRef> for LiteralCommandNode<S> {
     fn is_valid_input(&self, input: &str) -> bool { LiteralCommandNode::is_valid_input(self, input) }
     fn equals(&self, o: JObjectRef) -> bool { LiteralCommandNode::equals(self, o) }
     fn hash_code(&self) -> i32 { LiteralCommandNode::hash_code(self) }
-    fn get_requirement(&self) -> JRef<dyn Predicate<S>> { CommandNode::get_requirement(self) }
+    fn get_requirement(&self) -> Arc<dyn Fn(S) -> bool + Send + Sync> { CommandNode::get_requirement(self) }
     fn get_name(&self) -> String { LiteralCommandNode::get_name(self) }
     fn get_usage_text(&self) -> String { LiteralCommandNode::get_usage_text(self) }
-    fn parse(&self, reader: StringReader, context_builder: CommandContextBuilder<S>) -> Result<(), Throwable> { LiteralCommandNode::parse(self, reader, context_builder) }
-    fn list_suggestions(&self, context: CommandContext<S>, builder: SuggestionsBuilder) -> Result<CompletableFuture<Suggestions>, Throwable> { LiteralCommandNode::list_suggestions(self, context, builder) }
+    fn parse(&self, reader: StringReader, context_builder: CommandContextBuilder<S>) -> Result<(), anyhow::Error> { LiteralCommandNode::parse(self, reader, context_builder) }
+    fn list_suggestions(&self, context: CommandContext<S>, builder: SuggestionsBuilder) -> Result<crate::rt::CompletableFuture<Suggestions>, anyhow::Error> { LiteralCommandNode::list_suggestions(self, context, builder) }
     fn create_builder(&self) -> JRef<dyn ArgumentBuilderTrait<S, JObjectRef>> { LiteralCommandNode::create_builder(self) }
     fn get_sorted_key(&self) -> String { LiteralCommandNode::get_sorted_key(self) }
     fn get_relevant_nodes(&self, input: StringReader) -> Vec<JRef<dyn CommandNodeTrait<S>>> { CommandNode::get_relevant_nodes(self, input) }

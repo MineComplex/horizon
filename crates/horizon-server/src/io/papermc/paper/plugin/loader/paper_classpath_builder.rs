@@ -6,8 +6,6 @@ use crate::io::papermc::paper::plugin::entrypoint::classloader::paper_plugin_cla
 use crate::io::papermc::paper::plugin::loader::library::class_path_library::ClassPathLibrary;
 use crate::io::papermc::paper::plugin::loader::plugin_classpath_builder::PluginClasspathBuilder;
 use crate::io::papermc::paper::plugin::provider::configuration::paper_plugin_meta::PaperPluginMeta;
-use crate::java::util::jar::JarFile;
-use crate::java::util::logging::Logger;
 
 // ---- class io.papermc.paper.plugin.loader.PaperClasspathBuilder (paper-server/src/main/java/io/papermc/paper/plugin/loader/PaperClasspathBuilder.java:19)
 pub struct PaperClasspathBuilder {
@@ -20,7 +18,7 @@ impl PaperClasspathBuilder {
     pub fn new(context: JRef<dyn PluginProviderContext>) -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/loader/PaperClasspathBuilder.java:25
     pub fn get_context(&self) -> JRef<dyn PluginProviderContext> { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/loader/PaperClasspathBuilder.java:29
     pub fn add_library(&self, class_path_library: JRef<dyn ClassPathLibrary>) -> JRef<dyn PluginClasspathBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/loader/PaperClasspathBuilder.java:34
-    pub fn build_class_loader(&self, logger: Logger, source: std::path::PathBuf, jar_file: JarFile, configuration: JRef<PaperPluginMeta>) -> JRef<PaperPluginClassLoader> { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/loader/PaperClasspathBuilder.java:40
+    pub fn build_class_loader(&self, logger: (), source: std::path::PathBuf, jar_file: (), configuration: JRef<PaperPluginMeta>) -> JRef<PaperPluginClassLoader> { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/loader/PaperClasspathBuilder.java:40
     pub fn build_library_paths(&self) -> Vec<std::path::PathBuf> { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/loader/PaperClasspathBuilder.java:60
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that

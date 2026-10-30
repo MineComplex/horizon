@@ -5,8 +5,6 @@ use crate::com::mojang::brigadier::context::CommandContext;
 use crate::com::mojang::brigadier::suggestion::SuggestionProvider;
 use crate::com::mojang::brigadier::suggestion::Suggestions;
 use crate::com::mojang::brigadier::suggestion::SuggestionsBuilder;
-use crate::java::lang::Throwable;
-use crate::java::util::concurrent::CompletableFuture;
 use crate::net::minecraft::commands::shared_suggestion_provider::SharedSuggestionProvider;
 use crate::net::minecraft::resources::identifier::Identifier;
 
@@ -38,6 +36,6 @@ pub struct SuggestionProvidersRegisteredSuggestion {
 impl SuggestionProvidersRegisteredSuggestion {
     pub fn new() -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/synchronization/SuggestionProviders.java:59
     pub fn new_2(name: JRef<Identifier>, delegate: JRef<dyn SuggestionProvider<JRef<dyn SharedSuggestionProvider>>>) -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/synchronization/SuggestionProviders.java:59
-    pub fn get_suggestions(&self, context: CommandContext<JRef<dyn SharedSuggestionProvider>>, builder: SuggestionsBuilder) -> Result<CompletableFuture<Suggestions>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/synchronization/SuggestionProviders.java:61
+    pub fn get_suggestions(&self, context: CommandContext<JRef<dyn SharedSuggestionProvider>>, builder: SuggestionsBuilder) -> Result<crate::rt::CompletableFuture<Suggestions>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/synchronization/SuggestionProviders.java:61
 }
 crate::jobject!(SuggestionProvidersRegisteredSuggestion);

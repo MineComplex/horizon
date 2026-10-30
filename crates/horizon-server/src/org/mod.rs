@@ -1,13 +1,5 @@
-pub mod apache;
 pub mod bukkit;
 pub mod dreeam;
-pub mod eclipse;
 pub mod galemc;
-pub mod jline;
-pub mod joml;
-pub mod objectweb;
 pub mod purpurmc;
-pub mod slf4j;
 pub mod spigotmc;
-pub mod spongepowered;
-pub mod yaml;

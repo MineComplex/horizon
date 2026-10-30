@@ -6,8 +6,6 @@ use crate::com::mojang::brigadier::context::CommandContext;
 use crate::com::mojang::brigadier::exceptions::DynamicCommandExceptionType;
 use crate::com::mojang::brigadier::suggestion::Suggestions;
 use crate::com::mojang::brigadier::suggestion::SuggestionsBuilder;
-use crate::java::lang::Throwable;
-use crate::java::util::concurrent::CompletableFuture;
 use crate::net::minecraft::commands::command_source_stack::CommandSourceStack;
 
 // ---- class net.minecraft.commands.arguments.SlotArgument (leaf-server/src/minecraft/java/net/minecraft/commands/arguments/SlotArgument.java:19)
@@ -21,8 +19,8 @@ impl SlotArgument {
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/SlotArgument.java:19
     pub fn slot() -> JRef<SlotArgument> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/SlotArgument.java:25
     pub fn get_slot(context: CommandContext<JRef<CommandSourceStack>>, name: &str) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/SlotArgument.java:29
-    pub fn parse(&self, reader: StringReader) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/SlotArgument.java:33
-    pub fn list_suggestions<S: JGeneric>(&self, context_builder: CommandContext<S>, builder: SuggestionsBuilder) -> CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/SlotArgument.java:43
+    pub fn parse(&self, reader: StringReader) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/SlotArgument.java:33
+    pub fn list_suggestions<S: JGeneric>(&self, context_builder: CommandContext<S>, builder: SuggestionsBuilder) -> crate::rt::CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/SlotArgument.java:43
     pub fn get_examples(&self) -> Vec<String> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/SlotArgument.java:48
 }
 crate::jobject!(SlotArgument);

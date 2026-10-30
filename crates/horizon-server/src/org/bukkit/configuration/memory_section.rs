@@ -7,7 +7,6 @@
 // PORT: boxed values as JObjectRef need `jobject!(String)`, `jobject!(i32)`... and
 // `jobject!(Vec<JObjectRef>)`, `jobject!(IndexMap<String, JObjectRef>)` in java::runtime.
 use crate::prelude::*;
-use crate::java::lang::Class;
 use crate::org::bukkit::color::Color;
 use crate::org::bukkit::configuration::configuration::Configuration;
 use crate::org::bukkit::configuration::configuration_section::ConfigurationSection;
@@ -756,13 +755,13 @@ impl MemorySection {
     } // paper-api/src/main/java/org/bukkit/configuration/MemorySection.java:692
     // Bukkit
     // Generic methods type-erased (PORTING.md): `T` is returned as the `Object` it is; callers cast.
-    pub fn get_object(&self, path: &str, clazz: Class) -> Option<JObjectRef> {
+    pub fn get_object(&self, path: &str, clazz: crate::rt::Class) -> Option<JObjectRef> {
         let def = self.this().get_default(path);
-        // PORT: Class::is_instance (Class<T>.isInstance) in the java.lang port.
+        // PORT: Class::is_instance (crate::rt::Class.isInstance) in the java.lang port.
         let def = def.filter(|d| clazz.is_instance(d));
         self.get_object_3(path, clazz, def)
     } // paper-api/src/main/java/org/bukkit/configuration/MemorySection.java:712
-    pub fn get_object_3(&self, path: &str, clazz: Class, def: Option<JObjectRef>) -> Option<JObjectRef> {
+    pub fn get_object_3(&self, path: &str, clazz: crate::rt::Class, def: Option<JObjectRef>) -> Option<JObjectRef> {
         let val = self.this().get_2(path, def.clone());
         match val {
             Some(val) if clazz.is_instance(&val) => Some(val),
@@ -771,10 +770,10 @@ impl MemorySection {
     } // paper-api/src/main/java/org/bukkit/configuration/MemorySection.java:720
     /// Erased to `Object` rather than `ConfigurationSerializable` (which is not a `JObject`, so callers could
     /// not cast it on to the class they asked for).
-    pub fn get_serializable(&self, path: &str, clazz: Class) -> Option<JObjectRef> {
+    pub fn get_serializable(&self, path: &str, clazz: crate::rt::Class) -> Option<JObjectRef> {
         self.get_object(path, clazz)
     } // paper-api/src/main/java/org/bukkit/configuration/MemorySection.java:729
-    pub fn get_serializable_3(&self, path: &str, clazz: Class, def: Option<JObjectRef>) -> Option<JObjectRef> {
+    pub fn get_serializable_3(&self, path: &str, clazz: crate::rt::Class, def: Option<JObjectRef>) -> Option<JObjectRef> {
         self.get_object_3(path, clazz, def)
     } // paper-api/src/main/java/org/bukkit/configuration/MemorySection.java:735
     pub fn get_vector(&self, path: &str) -> Option<JRef<dyn VectorTrait>> {
@@ -1092,10 +1091,10 @@ impl ConfigurationSection for MemorySection {
     fn get_character_list(&self, path: &str) -> Vec<char> { MemorySection::get_character_list(self, path) }
     fn get_short_list(&self, path: &str) -> Vec<i16> { MemorySection::get_short_list(self, path) }
     fn get_map_list(&self, path: &str) -> Vec<IndexMap<String, JObjectRef>> { MemorySection::get_map_list(self, path) }
-    fn get_object(&self, path: &str, clazz: Class) -> Option<JObjectRef> { MemorySection::get_object(self, path, clazz) }
-    fn get_object_3(&self, path: &str, clazz: Class, def: Option<JObjectRef>) -> Option<JObjectRef> { MemorySection::get_object_3(self, path, clazz, def) }
-    fn get_serializable(&self, path: &str, clazz: Class) -> Option<JObjectRef> { MemorySection::get_serializable(self, path, clazz) }
-    fn get_serializable_3(&self, path: &str, clazz: Class, def: Option<JObjectRef>) -> Option<JObjectRef> { MemorySection::get_serializable_3(self, path, clazz, def) }
+    fn get_object(&self, path: &str, clazz: crate::rt::Class) -> Option<JObjectRef> { MemorySection::get_object(self, path, clazz) }
+    fn get_object_3(&self, path: &str, clazz: crate::rt::Class, def: Option<JObjectRef>) -> Option<JObjectRef> { MemorySection::get_object_3(self, path, clazz, def) }
+    fn get_serializable(&self, path: &str, clazz: crate::rt::Class) -> Option<JObjectRef> { MemorySection::get_serializable(self, path, clazz) }
+    fn get_serializable_3(&self, path: &str, clazz: crate::rt::Class, def: Option<JObjectRef>) -> Option<JObjectRef> { MemorySection::get_serializable_3(self, path, clazz, def) }
     fn get_vector(&self, path: &str) -> Option<JRef<dyn VectorTrait>> { MemorySection::get_vector(self, path) }
     fn get_vector_2(&self, path: &str, def: Option<JRef<dyn VectorTrait>>) -> Option<JRef<dyn VectorTrait>> { MemorySection::get_vector_2(self, path, def) }
     fn is_vector(&self, path: &str) -> bool { MemorySection::is_vector(self, path) }

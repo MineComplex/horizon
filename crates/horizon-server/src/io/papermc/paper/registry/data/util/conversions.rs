@@ -6,7 +6,6 @@ use crate::io::papermc::paper::adventure::wrapper_aware_serializer::WrapperAware
 use crate::io::papermc::paper::registry::entry::registry_entry_meta::RegistryEntryMetaBuildable;
 use crate::io::papermc::paper::registry::paper_registry_builder_factory::PaperRegistryBuilderFactory;
 use crate::io::papermc::paper::registry::registry_key::RegistryKey;
-use crate::java::util::function::Consumer;
 use crate::net::minecraft::core::holder::Holder;
 use crate::net::minecraft::core::holder::HolderReferenceTrait;
 use crate::net::minecraft::resources::registry_ops::RegistryOpsRegistryInfoLookup;
@@ -31,8 +30,8 @@ impl Conversions {
     pub fn as_vanilla(&self, adventure: Option<crate::net::kyori::adventure::text::Component>) -> JRef<dyn crate::net::minecraft::network::chat::component::Component> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/util/Conversions.java:63
     pub fn as_adventure(&self, vanilla: JRef<dyn crate::net::minecraft::network::chat::component::Component>) -> crate::net::kyori::adventure::text::Component { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/util/Conversions.java:69
     pub fn get_direct_holder_buildable_meta<M: JGeneric, A: JGeneric, B: JGeneric>(registry_key: JRef<dyn RegistryKey<A>>) -> RegistryEntryMetaBuildable<M, A, B> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/util/Conversions.java:73
-    pub fn create_api_instance_from_builder<M: JGeneric, A: JGeneric, B: JGeneric>(&self, registry_key: JRef<dyn RegistryKey<A>>, value: JRef<dyn Consumer<JObjectRef>>) -> A { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/util/Conversions.java:79
-    pub fn create_holder_from_builder<M: JGeneric, A: JGeneric, B: JGeneric>(&self, registry_key: JRef<dyn RegistryKey<A>>, value: JRef<dyn Consumer<JObjectRef>>) -> JRef<dyn Holder<M>> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/util/Conversions.java:86
+    pub fn create_api_instance_from_builder<M: JGeneric, A: JGeneric, B: JGeneric>(&self, registry_key: JRef<dyn RegistryKey<A>>, value: Arc<dyn Fn(JObjectRef) + Send + Sync>) -> A { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/util/Conversions.java:79
+    pub fn create_holder_from_builder<M: JGeneric, A: JGeneric, B: JGeneric>(&self, registry_key: JRef<dyn RegistryKey<A>>, value: Arc<dyn Fn(JObjectRef) + Send + Sync>) -> JRef<dyn Holder<M>> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/util/Conversions.java:86
     pub fn create_registry_builder_factory<M: JGeneric, A: JGeneric, B: JGeneric>(&self, registry_key: JRef<dyn RegistryKey<A>>, buildable_meta: RegistryEntryMetaBuildable<M, A, B>) -> JRef<PaperRegistryBuilderFactory<M, A, B>> { todo!() } // paper-server/src/main/java/io/papermc/paper/registry/data/util/Conversions.java:93
 }
 crate::jobject!(Conversions);

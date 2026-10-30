@@ -8,20 +8,17 @@ use crate::com::mojang::brigadier::exceptions::DynamicCommandExceptionType;
 use crate::com::mojang::brigadier::suggestion::Suggestions;
 use crate::com::mojang::brigadier::suggestion::SuggestionsBuilder;
 use crate::com::mojang::serialization::Codec;
-use crate::java::lang::Throwable;
-use crate::java::util::concurrent::CompletableFuture;
-use crate::java::util::function::Supplier;
 
 // ---- class net.minecraft.commands.arguments.StringRepresentableArgument (leaf-server/src/minecraft/java/net/minecraft/commands/arguments/StringRepresentableArgument.java:22)
 pub struct StringRepresentableArgument<T: JGeneric> {
     pub this: Weak<dyn StringRepresentableArgumentTrait<T>>,
     pub codec: JRef<dyn Codec<T>>, // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/StringRepresentableArgument.java:26
-    pub values: JRef<dyn Supplier<Vec<T>>>, // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/StringRepresentableArgument.java:27
+    pub values: Arc<dyn Fn() -> Vec<T> + Send + Sync>, // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/StringRepresentableArgument.java:27
     pub _phantom: std::marker::PhantomData<(T,)>,
 }
 pub trait StringRepresentableArgumentTrait<T: JGeneric>: ArgumentType<T> {
     fn as_string_representable_argument(&self) -> &StringRepresentableArgument<T>;
-    fn parse(&self, reader: StringReader) -> Result<T, Throwable>; // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/StringRepresentableArgument.java:34
+    fn parse(&self, reader: StringReader) -> Result<T, anyhow::Error>; // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/StringRepresentableArgument.java:34
     fn get_examples(&self) -> Vec<String>; // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/StringRepresentableArgument.java:51
     fn convert_id(&self, id: &str) -> String; // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/StringRepresentableArgument.java:60
 }
@@ -32,10 +29,10 @@ impl<T: JGeneric> std::ops::Deref for dyn StringRepresentableArgumentTrait<T> {
 pub static ERROR_INVALID_VALUE: LazyLock<DynamicCommandExceptionType> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/StringRepresentableArgument.java:23
 impl<T: JGeneric> StringRepresentableArgument<T> {
     pub fn this(&self) -> JRef<dyn StringRepresentableArgumentTrait<T>> { self.this.upgrade().expect("this") }
-    pub fn new_base<S: StringRepresentableArgumentTrait<T> + 'static>(this: &Weak<S>, codec: JRef<dyn Codec<T>>, values: JRef<dyn Supplier<Vec<T>>>) -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/StringRepresentableArgument.java:29
-    pub fn new(codec: JRef<dyn Codec<T>>, values: JRef<dyn Supplier<Vec<T>>>) -> JRef<Self> { Arc::new_cyclic(|this| Self::new_base(this, codec, values)) }
-    pub fn parse(&self, reader: StringReader) -> Result<T, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/StringRepresentableArgument.java:34
-    pub fn list_suggestions<S: JGeneric>(&self, context: CommandContext<S>, builder: SuggestionsBuilder) -> CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/StringRepresentableArgument.java:40
+    pub fn new_base<S: StringRepresentableArgumentTrait<T> + 'static>(this: &Weak<S>, codec: JRef<dyn Codec<T>>, values: Arc<dyn Fn() -> Vec<T> + Send + Sync>) -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/StringRepresentableArgument.java:29
+    pub fn new(codec: JRef<dyn Codec<T>>, values: Arc<dyn Fn() -> Vec<T> + Send + Sync>) -> JRef<Self> { Arc::new_cyclic(|this| Self::new_base(this, codec, values)) }
+    pub fn parse(&self, reader: StringReader) -> Result<T, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/StringRepresentableArgument.java:34
+    pub fn list_suggestions<S: JGeneric>(&self, context: CommandContext<S>, builder: SuggestionsBuilder) -> crate::rt::CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/StringRepresentableArgument.java:40
     pub fn get_examples(&self) -> Vec<String> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/StringRepresentableArgument.java:51
     pub fn convert_id(&self, id: &str) -> String { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/StringRepresentableArgument.java:60
 }
@@ -43,7 +40,7 @@ impl<T: JGeneric> StringRepresentableArgument<T> {
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl<T: JGeneric> StringRepresentableArgumentTrait<JObjectRef> for StringRepresentableArgument<T> {
     fn as_string_representable_argument(&self) -> &StringRepresentableArgument<JObjectRef> { self }
-    fn parse(&self, reader: StringReader) -> Result<T, Throwable> { StringRepresentableArgument::parse(self, reader) }
+    fn parse(&self, reader: StringReader) -> Result<T, anyhow::Error> { StringRepresentableArgument::parse(self, reader) }
     fn get_examples(&self) -> Vec<String> { StringRepresentableArgument::get_examples(self) }
     fn convert_id(&self, id: &str) -> String { StringRepresentableArgument::convert_id(self, id) }
 }

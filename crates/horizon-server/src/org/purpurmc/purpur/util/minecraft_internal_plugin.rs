@@ -4,8 +4,6 @@ use crate::prelude::*;
 use crate::io::papermc::paper::plugin::configuration::plugin_meta::PluginMeta;
 use crate::io::papermc::paper::plugin::lifecycle::event::lifecycle_event_manager::LifecycleEventManager;
 use crate::io::papermc::paper::plugin::lifecycle::event::lifecycle_event_owner::LifecycleEventOwner;
-use crate::java::io::InputStream;
-use crate::java::util::logging::Logger;
 use crate::org::bukkit::command::command::CommandTrait;
 use crate::org::bukkit::command::command_executor::CommandExecutor;
 use crate::org::bukkit::command::command_sender::CommandSender;
@@ -41,7 +39,7 @@ impl MinecraftInternalPlugin {
     pub fn get_description(&self) -> JRef<PluginDescriptionFile> { todo!() } // leaf-server/src/minecraft/java/org/purpurmc/purpur/util/MinecraftInternalPlugin.java:40
     pub fn get_plugin_meta(&self) -> JRef<dyn PluginMeta> { todo!() } // leaf-server/src/minecraft/java/org/purpurmc/purpur/util/MinecraftInternalPlugin.java:45
     pub fn get_config(&self) -> JRef<dyn FileConfigurationTrait> { todo!() } // leaf-server/src/minecraft/java/org/purpurmc/purpur/util/MinecraftInternalPlugin.java:50
-    pub fn get_resource(&self, filename: &str) -> InputStream { todo!() } // leaf-server/src/minecraft/java/org/purpurmc/purpur/util/MinecraftInternalPlugin.java:55
+    pub fn get_resource(&self, filename: &str) -> Box<dyn std::io::Read + Send> { todo!() } // leaf-server/src/minecraft/java/org/purpurmc/purpur/util/MinecraftInternalPlugin.java:55
     pub fn save_config(&self) { todo!() } // leaf-server/src/minecraft/java/org/purpurmc/purpur/util/MinecraftInternalPlugin.java:60
     pub fn save_default_config(&self) { todo!() } // leaf-server/src/minecraft/java/org/purpurmc/purpur/util/MinecraftInternalPlugin.java:65
     pub fn save_resource(&self, resource_path: &str, replace: bool) { todo!() } // leaf-server/src/minecraft/java/org/purpurmc/purpur/util/MinecraftInternalPlugin.java:70
@@ -72,7 +70,7 @@ impl Plugin for MinecraftInternalPlugin {
     fn get_data_folder(&self) -> std::path::PathBuf { MinecraftInternalPlugin::get_data_folder(self) }
     fn get_description(&self) -> JRef<PluginDescriptionFile> { MinecraftInternalPlugin::get_description(self) }
     fn get_config(&self) -> JRef<dyn FileConfigurationTrait> { MinecraftInternalPlugin::get_config(self) }
-    fn get_resource(&self, filename: &str) -> Option<InputStream> { MinecraftInternalPlugin::get_resource(self, filename) }
+    fn get_resource(&self, filename: &str) -> Option<Box<dyn std::io::Read + Send>> { MinecraftInternalPlugin::get_resource(self, filename) }
     fn save_config(&self) { MinecraftInternalPlugin::save_config(self) }
     fn save_default_config(&self) { MinecraftInternalPlugin::save_default_config(self) }
     fn save_resource(&self, resource_path: &str, replace: bool) { MinecraftInternalPlugin::save_resource(self, resource_path, replace) }
@@ -87,7 +85,7 @@ impl Plugin for MinecraftInternalPlugin {
     fn set_naggable(&self, can_nag: bool) { MinecraftInternalPlugin::set_naggable(self, can_nag) }
     fn get_default_world_generator(&self, world_name: &str, id: Option<String>) -> Option<JRef<dyn ChunkGeneratorTrait>> { MinecraftInternalPlugin::get_default_world_generator(self, world_name, id) }
     fn get_default_biome_provider(&self, world_name: &str, id: Option<String>) -> Option<JRef<dyn BiomeProviderTrait>> { MinecraftInternalPlugin::get_default_biome_provider(self, world_name, id) }
-    fn get_logger(&self) -> Logger { MinecraftInternalPlugin::get_logger(self) }
+    fn get_logger(&self) -> () { MinecraftInternalPlugin::get_logger(self) }
     fn get_name(&self) -> String { PluginBase::get_name(self) }
     fn get_lifecycle_manager(&self) -> JRef<dyn LifecycleEventManager<JRef<dyn Plugin>>> { MinecraftInternalPlugin::get_lifecycle_manager(self) }
 }

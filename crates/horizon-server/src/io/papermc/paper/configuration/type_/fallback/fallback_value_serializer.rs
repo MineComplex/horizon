@@ -3,11 +3,6 @@
 use crate::prelude::*;
 use crate::io::papermc::paper::configuration::type_::fallback::fallback_value::FallbackValueContextKey;
 use crate::io::papermc::paper::configuration::type_::fallback::fallback_value::FallbackValueTrait;
-use crate::java::lang::Class;
-use crate::java::lang::Throwable;
-use crate::java::lang::reflect::Type;
-use crate::java::util::function::Predicate;
-use crate::java::util::function::Supplier;
 use crate::net::minecraft::server::minecraft_server::MinecraftServerTrait;
 use crate::org::spigotmc::spigot_world_config::SpigotWorldConfigTrait;
 
@@ -16,19 +11,19 @@ pub struct FallbackValueSerializer {
     pub this: Weak<Self>,
     pub context_map: Mut<HashMap<FallbackValueContextKey<JObjectRef>, JObjectRef>>, // paper-server/src/main/java/io/papermc/paper/configuration/type/fallback/FallbackValueSerializer.java:34
 }
-pub static REGISTRY: LazyLock<HashMap<Class, JRef<dyn FallbackValueSerializerFallbackCreator<JObjectRef>>>> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/configuration/type/fallback/FallbackValueSerializer.java:17
+pub static REGISTRY: LazyLock<HashMap<crate::rt::Class, JRef<dyn FallbackValueSerializerFallbackCreator<JObjectRef>>>> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/configuration/type/fallback/FallbackValueSerializer.java:17
 impl FallbackValueSerializer {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(context_map: &HashMap<FallbackValueContextKey<JObjectRef>, JObjectRef>) -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/type/fallback/FallbackValueSerializer.java:24
-    pub fn deserialize(&self, type_: Type, obj: JObjectRef) -> Result<JRef<dyn FallbackValueTrait>, Throwable> { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/type/fallback/FallbackValueSerializer.java:36
-    pub fn serialize(&self, item: JRef<dyn FallbackValueTrait>, type_supported: JRef<dyn Predicate<Class>>) -> JObjectRef { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/type/fallback/FallbackValueSerializer.java:45
-    pub fn create(config: JRef<dyn SpigotWorldConfigTrait>, server: JRef<dyn Supplier<JRef<dyn MinecraftServerTrait>>>) -> JRef<FallbackValueSerializer> { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/type/fallback/FallbackValueSerializer.java:50
+    pub fn deserialize(&self, type_: (), obj: JObjectRef) -> Result<JRef<dyn FallbackValueTrait>, anyhow::Error> { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/type/fallback/FallbackValueSerializer.java:36
+    pub fn serialize(&self, item: JRef<dyn FallbackValueTrait>, type_supported: Arc<dyn Fn(Class) -> bool + Send + Sync>) -> JObjectRef { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/type/fallback/FallbackValueSerializer.java:45
+    pub fn create(config: JRef<dyn SpigotWorldConfigTrait>, server: Arc<dyn Fn() -> JRef<dyn MinecraftServerTrait> + Send + Sync>) -> JRef<FallbackValueSerializer> { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/type/fallback/FallbackValueSerializer.java:50
 }
 crate::jobject!(FallbackValueSerializer);
 // ---- interface io.papermc.paper.configuration.type.fallback.FallbackValueSerializer.FallbackCreator (paper-server/src/main/java/io/papermc/paper/configuration/type/fallback/FallbackValueSerializer.java:29)
 pub trait FallbackValueSerializerFallbackCreator<T: JGeneric>: Send + Sync + 'static {
-    fn create(&self, context: &HashMap<FallbackValueContextKey<JObjectRef>, JObjectRef>, value: JObjectRef) -> Result<T, Throwable>; // paper-server/src/main/java/io/papermc/paper/configuration/type/fallback/FallbackValueSerializer.java:31
+    fn create(&self, context: &HashMap<FallbackValueContextKey<JObjectRef>, JObjectRef>, value: JObjectRef) -> Result<T, anyhow::Error>; // paper-server/src/main/java/io/papermc/paper/configuration/type/fallback/FallbackValueSerializer.java:31
 }
-impl<T: JGeneric, F: Fn(&HashMap<FallbackValueContextKey<JObjectRef>, JObjectRef>, JObjectRef) -> Result<T, Throwable> + Send + Sync + 'static> FallbackValueSerializerFallbackCreator<T> for F {
-    fn create(&self, context: &HashMap<FallbackValueContextKey<JObjectRef>, JObjectRef>, value: JObjectRef) -> Result<T, Throwable> { self(context, value) }
+impl<T: JGeneric, F: Fn(&HashMap<FallbackValueContextKey<JObjectRef>, JObjectRef>, JObjectRef) -> Result<T, anyhow::Error> + Send + Sync + 'static> FallbackValueSerializerFallbackCreator<T> for F {
+    fn create(&self, context: &HashMap<FallbackValueContextKey<JObjectRef>, JObjectRef>, value: JObjectRef) -> Result<T, anyhow::Error> { self(context, value) }
 }

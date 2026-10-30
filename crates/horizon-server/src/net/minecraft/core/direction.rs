@@ -4,10 +4,6 @@ use crate::prelude::*;
 use crate::ca::spottedleaf::moonrise::patches::collisions::util::collision_direction::CollisionDirection;
 use crate::com::mojang::serialization::Codec;
 use crate::com::mojang::serialization::DataResult;
-use crate::io::netty::buffer::ByteBuf;
-use crate::java::util::JIterator;
-use crate::java::util::function::IntFunction;
-use crate::java::util::stream::Stream;
 use crate::net::minecraft::core::directional::Directional;
 use crate::net::minecraft::core::vec3i::Vec3i;
 use crate::net::minecraft::network::codec::stream_codec::StreamCodec;
@@ -16,10 +12,6 @@ use crate::net::minecraft::util::string_representable::StringRepresentable;
 use crate::net::minecraft::util::string_representable::StringRepresentableEnumCodec;
 use crate::net::minecraft::world::entity::entity::EntityTrait;
 use crate::net::minecraft::world::phys::vec3::Vec3;
-use crate::org::joml::Matrix4fc;
-use crate::org::joml::Quaternionf;
-use crate::org::joml::Vector3f;
-use crate::org::joml::Vector3fc;
 
 // ---- enum net.minecraft.core.Direction (leaf-server/src/minecraft/java/net/minecraft/core/Direction.java:32)
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, PartialOrd, Ord)]
@@ -41,12 +33,12 @@ pub struct DirectionData {
     pub axis_direction: DirectionAxisDirection,
     pub normal: Vec3i,
     pub normal_vec3: Vec3,
-    pub normal_vec3f: Vector3fc,
+    pub normal_vec3f: glam::Vec3,
     pub adj_x: i32,
     pub adj_y: i32,
     pub adj_z: i32,
     pub opposite: Direction,
-    pub rotation: Quaternionf,
+    pub rotation: glam::Quat,
     pub id: i32,
     pub step_x: i32,
     pub step_y: i32,
@@ -54,8 +46,8 @@ pub struct DirectionData {
 }
 pub static CODEC: LazyLock<JRef<StringRepresentableEnumCodec<Direction>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/core/Direction.java:40
 pub static VERTICAL_CODEC: LazyLock<JRef<dyn Codec<Direction>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/core/Direction.java:41
-pub static BY_ID: LazyLock<JRef<dyn IntFunction<Direction>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/core/Direction.java:42
-pub static STREAM_CODEC: LazyLock<JRef<dyn StreamCodec<ByteBuf, Direction>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/core/Direction.java:43
+pub static BY_ID: LazyLock<Arc<dyn Fn(i32) -> Direction + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/core/Direction.java:42
+pub static STREAM_CODEC: LazyLock<JRef<dyn StreamCodec<bytes::BytesMut, Direction>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/core/Direction.java:43
 pub static LEGACY_ID_CODEC: LazyLock<JRef<dyn Codec<Direction>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/core/Direction.java:44
 pub static LEGACY_ID_CODEC_2D: LazyLock<JRef<dyn Codec<Direction>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/core/Direction.java:46
 pub static YXZ_AXIS_ORDER: LazyLock<Vec<DirectionAxis>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/core/Direction.java:48
@@ -79,14 +71,14 @@ impl Direction {
     pub fn get_step_z(self) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/core/Direction.java:315
     pub fn get_step(self) -> Vec3i { todo!() } // leaf-server/src/minecraft/java/net/minecraft/core/Direction.java:320
     pub fn get_serialized_name(self) -> String { todo!() } // leaf-server/src/minecraft/java/net/minecraft/core/Direction.java:418
-    pub fn get_rotation_uncached(self) -> Quaternionf { todo!() } // leaf-server/src/minecraft/java/net/minecraft/core/Direction.java:80
+    pub fn get_rotation_uncached(self) -> glam::Quat { todo!() } // leaf-server/src/minecraft/java/net/minecraft/core/Direction.java:80
     pub fn ordered_by_nearest(entity: JRef<dyn EntityTrait>) -> Vec<Direction> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/core/Direction.java:137
     pub fn make_direction_array(axis1: Direction, axis2: Direction, axis3: Direction) -> Vec<Direction> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/core/Direction.java:168
-    pub fn rotate(matrix: Matrix4fc, facing: Direction) -> Direction { todo!() } // leaf-server/src/minecraft/java/net/minecraft/core/Direction.java:172
+    pub fn rotate(matrix: glam::Mat4, facing: Direction) -> Direction { todo!() } // leaf-server/src/minecraft/java/net/minecraft/core/Direction.java:172
     pub fn all_shuffled(random: JRef<dyn RandomSource>) -> Vec<Direction> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/core/Direction.java:177
-    pub fn stream() -> Stream<Direction> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/core/Direction.java:181
+    pub fn stream() -> Box<dyn Iterator<Item = Direction> + Send> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/core/Direction.java:181
     pub fn get_y_rot(direction: Direction) -> f32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/core/Direction.java:185
-    pub fn get_rotation(self) -> Quaternionf { todo!() } // leaf-server/src/minecraft/java/net/minecraft/core/Direction.java:195
+    pub fn get_rotation(self) -> glam::Quat { todo!() } // leaf-server/src/minecraft/java/net/minecraft/core/Direction.java:195
     pub fn get3_d_data_value(self) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/core/Direction.java:205
     pub fn get2_d_data_value(self) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/core/Direction.java:209
     pub fn get_axis_direction(self) -> DirectionAxisDirection { todo!() } // leaf-server/src/minecraft/java/net/minecraft/core/Direction.java:213
@@ -100,7 +92,7 @@ impl Direction {
     pub fn get_counter_clock_wise_x(self) -> Direction { todo!() } // leaf-server/src/minecraft/java/net/minecraft/core/Direction.java:265
     pub fn get_clock_wise_z(self) -> Direction { todo!() } // leaf-server/src/minecraft/java/net/minecraft/core/Direction.java:275
     pub fn get_counter_clock_wise_z(self) -> Direction { todo!() } // leaf-server/src/minecraft/java/net/minecraft/core/Direction.java:285
-    pub fn step(self) -> Vector3f { todo!() } // leaf-server/src/minecraft/java/net/minecraft/core/Direction.java:325
+    pub fn step(self) -> glam::Vec3 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/core/Direction.java:325
     pub fn get_name(self) -> String { todo!() } // leaf-server/src/minecraft/java/net/minecraft/core/Direction.java:329
     pub fn get_axis(self) -> DirectionAxis { todo!() } // leaf-server/src/minecraft/java/net/minecraft/core/Direction.java:333
     pub fn by_name(name: &str) -> Option<Direction> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/core/Direction.java:337
@@ -121,7 +113,7 @@ impl Direction {
     pub fn axis_step_order(movement: Vec3) -> Vec<DirectionAxis> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/core/Direction.java:437
     pub fn get_unit_vec3i(self) -> Vec3i { todo!() } // leaf-server/src/minecraft/java/net/minecraft/core/Direction.java:441
     pub fn get_unit_vec3(self) -> Vec3 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/core/Direction.java:445
-    pub fn get_unit_vec3f(self) -> Vector3fc { todo!() } // leaf-server/src/minecraft/java/net/minecraft/core/Direction.java:449
+    pub fn get_unit_vec3f(self) -> glam::Vec3 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/core/Direction.java:449
     pub fn is_facing_angle(self, y_angle: f32) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/core/Direction.java:453
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
@@ -232,8 +224,8 @@ impl DirectionPlane {
     pub fn get_random_direction(self, random: JRef<dyn RandomSource>) -> Direction { todo!() } // leaf-server/src/minecraft/java/net/minecraft/core/Direction.java:602
     pub fn get_random_axis(self, random: JRef<dyn RandomSource>) -> DirectionAxis { todo!() } // leaf-server/src/minecraft/java/net/minecraft/core/Direction.java:606
     pub fn test(self, input: Option<Direction>) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/core/Direction.java:610
-    pub fn iterator(self) -> JIterator<Direction> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/core/Direction.java:615
-    pub fn stream(self) -> Stream<Direction> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/core/Direction.java:620
+    pub fn iterator(self) -> Box<dyn Iterator<Item = Direction> + Send> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/core/Direction.java:615
+    pub fn stream(self) -> Box<dyn Iterator<Item = Direction> + Send> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/core/Direction.java:620
     pub fn shuffled_copy(self, random: JRef<dyn RandomSource>) -> Vec<Direction> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/core/Direction.java:624
     pub fn length(self) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/core/Direction.java:628
 }

@@ -7,8 +7,6 @@ use crate::net::minecraft::core::direction::DirectionAxis;
 use crate::net::minecraft::world::level::levelgen::structure::bounding_box::BoundingBox;
 use crate::net::minecraft::world::phys::block_hit_result::BlockHitResult;
 use crate::net::minecraft::world::phys::vec3::Vec3;
-use crate::org::joml::Vector3f;
-use crate::org::joml::Vector3fc;
 
 // ---- class net.minecraft.world.phys.AABB (leaf-server/src/minecraft/java/net/minecraft/world/phys/AABB.java:13)
 #[derive(Clone, Copy, PartialEq, Debug, Default)]
@@ -47,7 +45,7 @@ impl AABB {
     pub fn minmax(&self, other: AABB) -> AABB { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/phys/AABB.java:223
     pub fn move_(&self, pos: BlockPos) -> AABB { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/phys/AABB.java:237
     pub fn move_1(&self, pos: Vec3) -> AABB { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/phys/AABB.java:243
-    pub fn move_1_2(&self, pos: Vector3f) -> AABB { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/phys/AABB.java:247
+    pub fn move_1_2(&self, pos: glam::Vec3) -> AABB { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/phys/AABB.java:247
     pub fn move_3(&self, xa: f64, ya: f64, za: f64) -> AABB { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/phys/AABB.java:233
     pub fn intersects(&self, aabb: AABB) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/phys/AABB.java:251
     pub fn intersects_1(&self, pos: BlockPos) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/phys/AABB.java:265
@@ -96,7 +94,7 @@ pub struct AABBBuilder {
 impl AABBBuilder {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/phys/AABB.java:503
-    pub fn include(&self, v: Vector3fc) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/phys/AABB.java:512
+    pub fn include(&self, v: glam::Vec3) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/phys/AABB.java:512
     pub fn is_defined(&self) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/phys/AABB.java:522
     pub fn build(&self) -> AABB { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/phys/AABB.java:526
 }

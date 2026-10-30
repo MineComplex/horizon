@@ -9,11 +9,6 @@ use crate::io::papermc::paper::persistence::persistent_data_key::PersistentDataK
 use crate::io::papermc::paper::plugin::lifecycle::event::lifecycle_event_manager::LifecycleEventManager;
 use crate::io::papermc::paper::world::damagesource::combat_entry::CombatEntry;
 use crate::io::papermc::paper::world::damagesource::fall_location_type::FallLocationType;
-use crate::java::lang::Class;
-use crate::java::lang::Throwable;
-use crate::java::util::function::BooleanSupplier;
-use crate::java::util::function::Function;
-use crate::java::util::function::Predicate;
 use crate::net::kyori::adventure::key::Key;
 use crate::net::kyori::adventure::text::Component;
 use crate::net::kyori::adventure::text::flattener::ComponentFlattener;
@@ -56,18 +51,18 @@ pub trait InternalAPIBridge: JObject {
     ) -> JRef<dyn CombatEntry>; // paper-api/src/main/java/io/papermc/paper/InternalAPIBridge.java:71
     fn restricted(
         &self,
-        predicate: JRef<dyn Predicate<JRef<dyn CommandSourceStack>>>,
+        predicate: Arc<dyn Fn(JRef<dyn CommandSourceStack>) -> bool + Send + Sync>,
         restricted: bool,
-    ) -> JRef<dyn Predicate<JRef<dyn CommandSourceStack>>>; // paper-api/src/main/java/io/papermc/paper/InternalAPIBridge.java:82
+    ) -> Arc<dyn Fn(JRef<dyn CommandSourceStack>) -> bool + Send + Sync>; // paper-api/src/main/java/io/papermc/paper/InternalAPIBridge.java:82
     fn default_mannequin_profile(&self) -> JRef<dyn ResolvableProfile>; // paper-api/src/main/java/io/papermc/paper/InternalAPIBridge.java:84
     fn all_skin_parts(&self) -> JRef<dyn SkinPartsMutable>; // paper-api/src/main/java/io/papermc/paper/InternalAPIBridge.java:86
     fn default_mannequin_description(&self) -> Component; // paper-api/src/main/java/io/papermc/paper/InternalAPIBridge.java:89
     fn legacy_game_rule_bridge<MODERN: JGeneric, LEGACY: JGeneric>(
         &self,
         rule: JRef<dyn GameRuleTrait<MODERN>>,
-        from_legacy_to_modern: JRef<dyn Function<LEGACY, MODERN>>,
-        to_legacy_from_modern: JRef<dyn Function<MODERN, LEGACY>>,
-        legacy_class: Class,
+        from_legacy_to_modern: Arc<dyn Fn(LEGACY) -> MODERN + Send + Sync>,
+        to_legacy_from_modern: Arc<dyn Fn(MODERN) -> LEGACY + Send + Sync>,
+        legacy_class: crate::rt::Class,
     ) -> JRef<dyn GameRuleTrait<LEGACY>>
     where
         Self: Sized; // paper-api/src/main/java/io/papermc/paper/InternalAPIBridge.java:91
@@ -90,7 +85,7 @@ pub trait InternalAPIBridge: JObject {
     fn create_plugin_lifecycle_event_manager(
         &self,
         plugin: JRef<dyn JavaPluginTrait>,
-        registration_check: JRef<dyn BooleanSupplier>,
+        registration_check: Arc<dyn Fn() -> bool + Send + Sync>,
     ) -> JRef<dyn LifecycleEventManager<JRef<dyn Plugin>>>; // paper-api/src/main/java/io/papermc/paper/InternalAPIBridge.java:113
     fn create_empty_stack(&self) -> JRef<ItemStack>; // paper-api/src/main/java/io/papermc/paper/InternalAPIBridge.java:115
     fn resolve_with_context(
@@ -99,7 +94,7 @@ pub trait InternalAPIBridge: JObject {
         context: Option<JRef<dyn CommandSender>>,
         scoreboard_subject: Option<JRef<dyn Entity>>,
         bypass_permissions: bool,
-    ) -> Result<Component, Throwable>; // paper-api/src/main/java/io/papermc/paper/InternalAPIBridge.java:117
+    ) -> Result<Component, anyhow::Error>; // paper-api/src/main/java/io/papermc/paper/InternalAPIBridge.java:117
     fn component_flattener(&self) -> ComponentFlattener; // paper-api/src/main/java/io/papermc/paper/InternalAPIBridge.java:119
     fn create_persistent_data_key<C: JGeneric>(
         &self,

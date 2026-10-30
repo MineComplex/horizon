@@ -3,8 +3,6 @@
 use crate::prelude::*;
 use crate::com::mojang::brigadier::builder::argument_builder::ArgumentBuilderTrait;
 use crate::com::mojang::brigadier::context::CommandContext;
-use crate::java::lang::Throwable;
-use crate::java::util::function::Consumer;
 use crate::net::minecraft::commands::command_source_stack::CommandSourceStack;
 use crate::net::minecraft::world::level::storage::loot::loot_context::LootContext;
 use crate::net::minecraft::world::level::storage::loot::loot_params::LootParams;
@@ -23,17 +21,17 @@ impl LootContextSources {
 crate::jobject!(LootContextSources);
 // ---- interface net.minecraft.server.commands.LootContextSources.ContextDecorator (leaf-server/src/minecraft/java/net/minecraft/server/commands/LootContextSources.java:59)
 pub trait LootContextSourcesContextDecorator: Send + Sync + 'static {
-    fn customize(&self, context: CommandContext<JRef<CommandSourceStack>>, params: JRef<LootParamsBuilder>) -> Result<JRef<LootParams>, Throwable>; // leaf-server/src/minecraft/java/net/minecraft/server/commands/LootContextSources.java:61
-    fn create_params(&self, context: CommandContext<JRef<CommandSourceStack>>) -> Result<JRef<LootParams>, Throwable> { todo!() } // default, leaf-server/src/minecraft/java/net/minecraft/server/commands/LootContextSources.java:63
-    fn create_context(&self, context: CommandContext<JRef<CommandSourceStack>>) -> Result<JRef<LootContext>, Throwable> { todo!() } // default, leaf-server/src/minecraft/java/net/minecraft/server/commands/LootContextSources.java:72
+    fn customize(&self, context: CommandContext<JRef<CommandSourceStack>>, params: JRef<LootParamsBuilder>) -> Result<JRef<LootParams>, anyhow::Error>; // leaf-server/src/minecraft/java/net/minecraft/server/commands/LootContextSources.java:61
+    fn create_params(&self, context: CommandContext<JRef<CommandSourceStack>>) -> Result<JRef<LootParams>, anyhow::Error> { todo!() } // default, leaf-server/src/minecraft/java/net/minecraft/server/commands/LootContextSources.java:63
+    fn create_context(&self, context: CommandContext<JRef<CommandSourceStack>>) -> Result<JRef<LootContext>, anyhow::Error> { todo!() } // default, leaf-server/src/minecraft/java/net/minecraft/server/commands/LootContextSources.java:72
 }
-impl<F: Fn(CommandContext<JRef<CommandSourceStack>>, JRef<LootParamsBuilder>) -> Result<JRef<LootParams>, Throwable> + Send + Sync + 'static> LootContextSourcesContextDecorator for F {
-    fn customize(&self, context: CommandContext<JRef<CommandSourceStack>>, params: JRef<LootParamsBuilder>) -> Result<JRef<LootParams>, Throwable> { self(context, params) }
+impl<F: Fn(CommandContext<JRef<CommandSourceStack>>, JRef<LootParamsBuilder>) -> Result<JRef<LootParams>, anyhow::Error> + Send + Sync + 'static> LootContextSourcesContextDecorator for F {
+    fn customize(&self, context: CommandContext<JRef<CommandSourceStack>>, params: JRef<LootParamsBuilder>) -> Result<JRef<LootParams>, anyhow::Error> { self(context, params) }
 }
 // ---- interface net.minecraft.server.commands.LootContextSources.NodeVisitor (leaf-server/src/minecraft/java/net/minecraft/server/commands/LootContextSources.java:78)
 pub trait LootContextSourcesNodeVisitor: Send + Sync + 'static {
-    fn visit(&self, context_decorator: JRef<dyn LootContextSourcesContextDecorator>, output: JRef<dyn Consumer<JRef<dyn ArgumentBuilderTrait<JRef<CommandSourceStack>, JObjectRef>>>>); // leaf-server/src/minecraft/java/net/minecraft/server/commands/LootContextSources.java:80
+    fn visit(&self, context_decorator: JRef<dyn LootContextSourcesContextDecorator>, output: Arc<dyn Fn(JRef<dyn ArgumentBuilderTrait<JRef<CommandSourceStack>, JObjectRef>>) + Send + Sync>); // leaf-server/src/minecraft/java/net/minecraft/server/commands/LootContextSources.java:80
 }
-impl<F: Fn(JRef<dyn LootContextSourcesContextDecorator>, JRef<dyn Consumer<JRef<dyn ArgumentBuilderTrait<JRef<CommandSourceStack>, JObjectRef>>>>) + Send + Sync + 'static> LootContextSourcesNodeVisitor for F {
-    fn visit(&self, context_decorator: JRef<dyn LootContextSourcesContextDecorator>, output: JRef<dyn Consumer<JRef<dyn ArgumentBuilderTrait<JRef<CommandSourceStack>, JObjectRef>>>>) { self(context_decorator, output) }
+impl<F: Fn(JRef<dyn LootContextSourcesContextDecorator>, Arc<dyn Fn(JRef<dyn ArgumentBuilderTrait<JRef<CommandSourceStack>, JObjectRef>>) + Send + Sync>) + Send + Sync + 'static> LootContextSourcesNodeVisitor for F {
+    fn visit(&self, context_decorator: JRef<dyn LootContextSourcesContextDecorator>, output: Arc<dyn Fn(JRef<dyn ArgumentBuilderTrait<JRef<CommandSourceStack>, JObjectRef>>) + Send + Sync>) { self(context_decorator, output) }
 }

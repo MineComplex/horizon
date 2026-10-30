@@ -6,8 +6,6 @@ use crate::com::mojang::brigadier::context::CommandContext;
 use crate::com::mojang::brigadier::exceptions::SimpleCommandExceptionType;
 use crate::com::mojang::brigadier::suggestion::Suggestions;
 use crate::com::mojang::brigadier::suggestion::SuggestionsBuilder;
-use crate::java::lang::Throwable;
-use crate::java::util::concurrent::CompletableFuture;
 use crate::net::minecraft::commands::arguments::coordinates::coordinates::Coordinates;
 use crate::net::minecraft::commands::command_source_stack::CommandSourceStack;
 use crate::net::minecraft::core::block_pos::BlockPos;
@@ -25,12 +23,12 @@ impl BlockPosArgument {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/BlockPosArgument.java:22
     pub fn block_pos() -> JRef<BlockPosArgument> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/BlockPosArgument.java:28
-    pub fn get_loaded_block_pos(context: CommandContext<JRef<CommandSourceStack>>, name: &str) -> Result<BlockPos, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/BlockPosArgument.java:32
-    pub fn get_loaded_block_pos_3(context: CommandContext<JRef<CommandSourceStack>>, level: JRef<ServerLevel>, name: &str) -> Result<BlockPos, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/BlockPosArgument.java:37
+    pub fn get_loaded_block_pos(context: CommandContext<JRef<CommandSourceStack>>, name: &str) -> Result<BlockPos, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/BlockPosArgument.java:32
+    pub fn get_loaded_block_pos_3(context: CommandContext<JRef<CommandSourceStack>>, level: JRef<ServerLevel>, name: &str) -> Result<BlockPos, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/BlockPosArgument.java:37
     pub fn get_block_pos(context: CommandContext<JRef<CommandSourceStack>>, name: &str) -> BlockPos { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/BlockPosArgument.java:48
-    pub fn get_spawnable_pos(context: CommandContext<JRef<CommandSourceStack>>, name: &str) -> Result<BlockPos, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/BlockPosArgument.java:52
-    pub fn parse(&self, reader: StringReader) -> Result<JRef<dyn Coordinates>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/BlockPosArgument.java:61
-    pub fn list_suggestions<S: JGeneric>(&self, context: CommandContext<S>, builder: SuggestionsBuilder) -> CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/BlockPosArgument.java:66
+    pub fn get_spawnable_pos(context: CommandContext<JRef<CommandSourceStack>>, name: &str) -> Result<BlockPos, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/BlockPosArgument.java:52
+    pub fn parse(&self, reader: StringReader) -> Result<JRef<dyn Coordinates>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/BlockPosArgument.java:61
+    pub fn list_suggestions<S: JGeneric>(&self, context: CommandContext<S>, builder: SuggestionsBuilder) -> crate::rt::CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/BlockPosArgument.java:66
     pub fn get_examples(&self) -> Vec<String> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/BlockPosArgument.java:83
 }
 crate::jobject!(BlockPosArgument);

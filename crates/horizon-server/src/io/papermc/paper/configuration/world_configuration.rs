@@ -14,9 +14,6 @@ use crate::io::papermc::paper::configuration::type_::number::double_or::DoubleOr
 use crate::io::papermc::paper::configuration::type_::number::double_or::DoubleOrDisabled;
 use crate::io::papermc::paper::configuration::type_::number::int_or::IntOrDefault;
 use crate::io::papermc::paper::configuration::type_::number::int_or::IntOrDisabled;
-use crate::it::unimi::dsi::fastutil::objects::List;
-use crate::it::unimi::dsi::fastutil::objects::Map;
-use crate::java::lang::Throwable;
 use crate::net::minecraft::commands::arguments::nbt_path_argument::NbtPathArgumentNbtPath;
 use crate::net::minecraft::core::holder::Holder;
 use crate::net::minecraft::resources::identifier::Identifier;
@@ -221,12 +218,12 @@ pub struct WorldConfigurationEntitiesSpawning {
     pub creative_arrow_despawn_rate: Mut<JRef<ArrowDespawnRate>>, // paper-server/src/main/java/io/papermc/paper/configuration/WorldConfiguration.java:120
     pub max_arrow_despawn_invulnerability: Mut<IntOrDisabled>, // paper-server/src/main/java/io/papermc/paper/configuration/WorldConfiguration.java:121
     pub filter_bad_tile_entity_nbt_from_falling_blocks: Mut<bool>, // paper-server/src/main/java/io/papermc/paper/configuration/WorldConfiguration.java:122
-    pub filtered_entity_tag_nbt_paths: Mut<List<JRef<NbtPathArgumentNbtPath>>>, // paper-server/src/main/java/io/papermc/paper/configuration/WorldConfiguration.java:123
+    pub filtered_entity_tag_nbt_paths: Mut<()>, // paper-server/src/main/java/io/papermc/paper/configuration/WorldConfiguration.java:123
     pub disable_mob_spawner_spawn_egg_transformation: Mut<bool>, // paper-server/src/main/java/io/papermc/paper/configuration/WorldConfiguration.java:124
     pub per_player_mob_spawns: Mut<bool>, // paper-server/src/main/java/io/papermc/paper/configuration/WorldConfiguration.java:125
     pub scan_for_legacy_ender_dragon: Mut<bool>, // paper-server/src/main/java/io/papermc/paper/configuration/WorldConfiguration.java:126
     pub spawn_limits: Mut<HashMap<MobCategory, i32>>, // paper-server/src/main/java/io/papermc/paper/configuration/WorldConfiguration.java:127
-    pub despawn_ranges: Mut<Map<MobCategory, WorldConfigurationEntitiesSpawningDespawnRangePair>>, // paper-server/src/main/java/io/papermc/paper/configuration/WorldConfiguration.java:129
+    pub despawn_ranges: Mut<()>, // paper-server/src/main/java/io/papermc/paper/configuration/WorldConfiguration.java:129
     pub despawn_range_shape: Mut<DespawnRangeShape>, // paper-server/src/main/java/io/papermc/paper/configuration/WorldConfiguration.java:131
     pub ticks_per_spawn: Mut<HashMap<MobCategory, i32>>, // paper-server/src/main/java/io/papermc/paper/configuration/WorldConfiguration.java:132
     pub spawning_throttle: Mut<JRef<WorldConfigurationEntitiesSpawningSpawningThrottle>>, // paper-server/src/main/java/io/papermc/paper/configuration/WorldConfiguration.java:136
@@ -249,7 +246,7 @@ impl std::ops::Deref for WorldConfigurationEntitiesSpawning {
 impl WorldConfigurationEntitiesSpawning {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/WorldConfiguration.java:118
-    pub fn precompute_despawn_distances(&self) -> Result<(), Throwable> { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/WorldConfiguration.java:161
+    pub fn precompute_despawn_distances(&self) -> Result<(), anyhow::Error> { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/WorldConfiguration.java:161
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
@@ -486,7 +483,7 @@ pub struct WorldConfigurationEntitiesBehavior {
     pub piglins_guard_chests: Mut<bool>, // paper-server/src/main/java/io/papermc/paper/configuration/WorldConfiguration.java:239
     pub baby_zombie_movement_modifier: Mut<f64>, // paper-server/src/main/java/io/papermc/paper/configuration/WorldConfiguration.java:240
     pub allow_spider_world_border_climbing: Mut<bool>, // paper-server/src/main/java/io/papermc/paper/configuration/WorldConfiguration.java:241
-    pub door_breaking_difficulty: Mut<Map<JRef<EntityType<JObjectRef>>, List<Difficulty>>>, // paper-server/src/main/java/io/papermc/paper/configuration/WorldConfiguration.java:244
+    pub door_breaking_difficulty: Mut<()>, // paper-server/src/main/java/io/papermc/paper/configuration/WorldConfiguration.java:244
     pub disable_creeper_lingering_effect: Mut<bool>, // paper-server/src/main/java/io/papermc/paper/configuration/WorldConfiguration.java:252
     pub ender_dragons_death_always_places_dragon_egg: Mut<bool>, // paper-server/src/main/java/io/papermc/paper/configuration/WorldConfiguration.java:253
     pub phantoms_do_not_spawn_on_creative_players: Mut<bool>, // paper-server/src/main/java/io/papermc/paper/configuration/WorldConfiguration.java:254
@@ -508,7 +505,7 @@ impl std::ops::Deref for WorldConfigurationEntitiesBehavior {
     type Target = ConfigurationPart;
     fn deref(&self) -> &Self::Target { &self.base }
 }
-pub static ENTITIES_BEHAVIOR_ZOMBIE_LIKE: LazyLock<List<JRef<EntityType<JObjectRef>>>> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/configuration/WorldConfiguration.java:243
+pub static ENTITIES_BEHAVIOR_ZOMBIE_LIKE: LazyLock<()> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/configuration/WorldConfiguration.java:243
 impl WorldConfigurationEntitiesBehavior {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/WorldConfiguration.java:233

@@ -6,8 +6,6 @@ use crate::com::mojang::brigadier::command_dispatcher::CommandDispatcher;
 use crate::com::mojang::brigadier::context::CommandContext;
 use crate::com::mojang::brigadier::exceptions::Dynamic2CommandExceptionType;
 use crate::com::mojang::brigadier::exceptions::SimpleCommandExceptionType;
-use crate::java::lang::Throwable;
-use crate::java::util::function::Predicate;
 use crate::net::minecraft::commands::arguments::blocks::block_input::BlockInput;
 use crate::net::minecraft::commands::command_build_context::CommandBuildContext;
 use crate::net::minecraft::commands::command_source_stack::CommandSourceStack;
@@ -28,8 +26,8 @@ impl FillCommand {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/FillCommand.java:31
     pub fn register(dispatcher: JRef<CommandDispatcher<JRef<CommandSourceStack>>>, context: JRef<dyn CommandBuildContext>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/FillCommand.java:38
-    pub fn wrap_with_mode(context: JRef<dyn CommandBuildContext>, builder: JRef<dyn ArgumentBuilderTrait<JRef<CommandSourceStack>, JObjectRef>>, from: JRef<dyn InCommandFunction<CommandContext<JRef<CommandSourceStack>>, BlockPos>>, to: JRef<dyn InCommandFunction<CommandContext<JRef<CommandSourceStack>>, BlockPos>>, block: JRef<dyn InCommandFunction<CommandContext<JRef<CommandSourceStack>>, JRef<BlockInput>>>, filter: JRef<dyn FillCommandNullableCommandFunction<CommandContext<JRef<CommandSourceStack>>, JRef<dyn Predicate<JRef<BlockInWorld>>>>>) -> JRef<dyn ArgumentBuilderTrait<JRef<CommandSourceStack>, JObjectRef>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/FillCommand.java:101
-    pub fn fill_blocks(source: JRef<CommandSourceStack>, region: JRef<BoundingBox>, target: JRef<BlockInput>, mode: FillCommandMode, predicate: Option<JRef<dyn Predicate<JRef<BlockInWorld>>>>, strict: bool) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/FillCommand.java:158
+    pub fn wrap_with_mode(context: JRef<dyn CommandBuildContext>, builder: JRef<dyn ArgumentBuilderTrait<JRef<CommandSourceStack>, JObjectRef>>, from: JRef<dyn InCommandFunction<CommandContext<JRef<CommandSourceStack>>, BlockPos>>, to: JRef<dyn InCommandFunction<CommandContext<JRef<CommandSourceStack>>, BlockPos>>, block: JRef<dyn InCommandFunction<CommandContext<JRef<CommandSourceStack>>, JRef<BlockInput>>>, filter: JRef<dyn FillCommandNullableCommandFunction<CommandContext<JRef<CommandSourceStack>>, Arc<dyn Fn(JRef<BlockInWorld>) -> bool + Send + Sync>>>) -> JRef<dyn ArgumentBuilderTrait<JRef<CommandSourceStack>, JObjectRef>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/FillCommand.java:101
+    pub fn fill_blocks(source: JRef<CommandSourceStack>, region: JRef<BoundingBox>, target: JRef<BlockInput>, mode: FillCommandMode, predicate: Option<Arc<dyn Fn(JRef<BlockInWorld>) -> bool + Send + Sync>>, strict: bool) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/FillCommand.java:158
 }
 crate::jobject!(FillCommand);
 // ---- interface net.minecraft.server.commands.FillCommand.Affector (leaf-server/src/minecraft/java/net/minecraft/server/commands/FillCommand.java:225)
@@ -74,8 +72,8 @@ impl FillCommandMode {
 crate::jobject!(FillCommandMode);
 // ---- interface net.minecraft.server.commands.FillCommand.NullableCommandFunction (leaf-server/src/minecraft/java/net/minecraft/server/commands/FillCommand.java:274)
 pub trait FillCommandNullableCommandFunction<T: JGeneric, R: JGeneric>: Send + Sync + 'static {
-    fn apply(&self, t: T) -> Result<Option<R>, Throwable>; // leaf-server/src/minecraft/java/net/minecraft/server/commands/FillCommand.java:276
+    fn apply(&self, t: T) -> Result<Option<R>, anyhow::Error>; // leaf-server/src/minecraft/java/net/minecraft/server/commands/FillCommand.java:276
 }
-impl<T: JGeneric, R: JGeneric, F: Fn(T) -> Result<Option<R>, Throwable> + Send + Sync + 'static> FillCommandNullableCommandFunction<T, R> for F {
-    fn apply(&self, t: T) -> Result<Option<R>, Throwable> { self(t) }
+impl<T: JGeneric, R: JGeneric, F: Fn(T) -> Result<Option<R>, anyhow::Error> + Send + Sync + 'static> FillCommandNullableCommandFunction<T, R> for F {
+    fn apply(&self, t: T) -> Result<Option<R>, anyhow::Error> { self(t) }
 }

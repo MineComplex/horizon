@@ -11,11 +11,6 @@ use crate::io::papermc::paper::configuration::mapping::definition::Definition;
 use crate::io::papermc::paper::configuration::mapping::field_processor::FieldProcessorFactory;
 use crate::io::papermc::paper::configuration::transformation::transformations::TransformationsDefaultsAware;
 use crate::io::papermc::paper::configuration::world_configuration::WorldConfiguration;
-use crate::java::lang::Throwable;
-use crate::java::lang::annotation::Annotation;
-use crate::java::lang::reflect::Type;
-use crate::java::util::function::Function;
-use crate::java::util::function::Supplier;
 use crate::net::minecraft::core::registry_access::RegistryAccess;
 use crate::net::minecraft::resources::identifier::Identifier;
 use crate::net::minecraft::server::level::server_level::ServerLevel;
@@ -23,12 +18,6 @@ use crate::net::minecraft::server::minecraft_server::MinecraftServerTrait;
 use crate::net::minecraft::world::level::gamerules::game_rules::GameRules;
 use crate::org::bukkit::configuration::file::yaml_configuration::YamlConfiguration;
 use crate::org::spigotmc::spigot_world_config::SpigotWorldConfigTrait;
-use crate::org::spongepowered::configurate::ConfigurationNode;
-use crate::org::spongepowered::configurate::ConfigurationOptions;
-use crate::org::spongepowered::configurate::objectmapping::ObjectMapper;
-use crate::org::spongepowered::configurate::serialize::SerializationException;
-use crate::org::spongepowered::configurate::util::CheckedFunction;
-use crate::org::spongepowered::configurate::yaml::YamlConfigurationLoaderBuilder;
 
 // ---- class io.papermc.paper.configuration.PaperConfigurations (paper-server/src/main/java/io/papermc/paper/configuration/PaperConfigurations.java:90)
 pub struct PaperConfigurations {
@@ -46,68 +35,68 @@ pub const CONFIG_DIR: &str = "config"; // paper-server/src/main/java/io/papermc/
 pub const BACKUP_DIR: &str = "legacy-backup"; // paper-server/src/main/java/io/papermc/paper/configuration/PaperConfigurations.java:98
 pub static GLOBAL_HEADER: LazyLock<String> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/configuration/PaperConfigurations.java:100
 pub static WORLD_DEFAULTS_HEADER: LazyLock<String> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/configuration/PaperConfigurations.java:116
-pub static WORLD_HEADER: LazyLock<JRef<dyn Function<JRef<ConfigurationsContextMap>, String>>> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/configuration/PaperConfigurations.java:132
+pub static WORLD_HEADER: LazyLock<Arc<dyn Fn(JRef<ConfigurationsContextMap>) -> String + Send + Sync>> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/configuration/PaperConfigurations.java:132
 pub static MOVED_NOTICE: LazyLock<String> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/configuration/PaperConfigurations.java:144
-pub static SPIGOT_WORLD_DEFAULTS: LazyLock<JRef<dyn Supplier<JRef<dyn SpigotWorldConfigTrait>>>> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/configuration/PaperConfigurations.java:152
-pub static SPIGOT_WORLD_CONFIG_CONTEXT_KEY: LazyLock<ConfigurationsContextKey<JRef<dyn Supplier<JRef<dyn SpigotWorldConfigTrait>>>>> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/configuration/PaperConfigurations.java:159
+pub static SPIGOT_WORLD_DEFAULTS: LazyLock<Arc<dyn Fn() -> JRef<dyn SpigotWorldConfigTrait> + Send + Sync>> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/configuration/PaperConfigurations.java:152
+pub static SPIGOT_WORLD_CONFIG_CONTEXT_KEY: LazyLock<ConfigurationsContextKey<Arc<dyn Fn() -> JRef<dyn SpigotWorldConfigTrait> + Send + Sync>>> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/configuration/PaperConfigurations.java:159
 pub static DEFAULT_AWARE_TRANSFORMATIONS: LazyLock<Vec<JRef<dyn TransformationsDefaultsAware>>> = LazyLock::new(|| todo!()); // paper-server/src/main/java/io/papermc/paper/configuration/PaperConfigurations.java:305
 impl PaperConfigurations {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(global_folder: std::path::PathBuf) -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/PaperConfigurations.java:162
     pub fn global_config_version(&self) -> i32 { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/PaperConfigurations.java:166
     pub fn world_config_version(&self) -> i32 { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/PaperConfigurations.java:171
-    pub fn create_loader_builder(&self) -> YamlConfigurationLoaderBuilder { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/PaperConfigurations.java:176
+    pub fn create_loader_builder(&self) -> () { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/PaperConfigurations.java:176
     pub fn create_global_object_mapper_factory_builder(&self) -> ObjectMapper::FactoryBuilder { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/PaperConfigurations.java:199
-    pub fn create_global_loader_builder(&self, registry_access: JRef<dyn RegistryAccess>) -> YamlConfigurationLoaderBuilder { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/PaperConfigurations.java:208
-    pub fn initialize_global_configuration(&self, registry_access: JRef<dyn RegistryAccess>) -> Result<JRef<GlobalConfiguration>, Throwable> { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/PaperConfigurations.java:223
+    pub fn create_global_loader_builder(&self, registry_access: JRef<dyn RegistryAccess>) -> () { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/PaperConfigurations.java:208
+    pub fn initialize_global_configuration(&self, registry_access: JRef<dyn RegistryAccess>) -> Result<JRef<GlobalConfiguration>, anyhow::Error> { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/PaperConfigurations.java:223
     pub fn create_default_context_map(&self, registry_access: JRef<dyn RegistryAccess>) -> JRef<ConfigurationsContextMapBuilder> { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/PaperConfigurations.java:230
     pub fn create_world_object_mapper_factory_builder(&self, context_map: JRef<ConfigurationsContextMap>) -> ObjectMapper::FactoryBuilder { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/PaperConfigurations.java:236
-    pub fn create_world_config_loader_builder(&self, context_map: JRef<ConfigurationsContextMap>) -> YamlConfigurationLoaderBuilder { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/PaperConfigurations.java:251
-    pub fn apply_world_config_transformations(&self, context_map: JRef<ConfigurationsContextMap>, node: ConfigurationNode, defaults_node: Option<ConfigurationNode>) -> Result<(), Throwable> { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/PaperConfigurations.java:274
-    pub fn apply_global_config_transformations(&self, node: ConfigurationNode) -> Result<(), Throwable> { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/PaperConfigurations.java:289
-    pub fn apply_defaults_aware_world_config_transformations(&self, context_map: JRef<ConfigurationsContextMap>, world_node: ConfigurationNode, defaults_node: ConfigurationNode) -> Result<(), Throwable> { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/PaperConfigurations.java:309
+    pub fn create_world_config_loader_builder(&self, context_map: JRef<ConfigurationsContextMap>) -> () { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/PaperConfigurations.java:251
+    pub fn apply_world_config_transformations(&self, context_map: JRef<ConfigurationsContextMap>, node: serde_yaml::Value, defaults_node: Option<serde_yaml::Value>) -> Result<(), anyhow::Error> { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/PaperConfigurations.java:274
+    pub fn apply_global_config_transformations(&self, node: serde_yaml::Value) -> Result<(), anyhow::Error> { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/PaperConfigurations.java:289
+    pub fn apply_defaults_aware_world_config_transformations(&self, context_map: JRef<ConfigurationsContextMap>, world_node: serde_yaml::Value, defaults_node: serde_yaml::Value) -> Result<(), anyhow::Error> { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/PaperConfigurations.java:309
     pub fn create_world_config(&self, context_map: JRef<ConfigurationsContextMap>) -> JRef<WorldConfiguration> { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/PaperConfigurations.java:317
-    pub fn is_config_type(&self, type_: Type) -> bool { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/PaperConfigurations.java:327
+    pub fn is_config_type(&self, type_: ()) -> bool { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/PaperConfigurations.java:327
     pub fn get_world_configuration_current_version(&self) -> i32 { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/PaperConfigurations.java:481
-    pub fn default_options(options: ConfigurationOptions) -> ConfigurationOptions { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/PaperConfigurations.java:182
+    pub fn default_options(options: ()) -> () { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/PaperConfigurations.java:182
     pub fn default_global_factory_builder(builder: ObjectMapper::FactoryBuilder) -> ObjectMapper::FactoryBuilder { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/PaperConfigurations.java:204
-    pub fn default_global_options(registry_access: JRef<dyn RegistryAccess>, options: ConfigurationOptions) -> ConfigurationOptions { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/PaperConfigurations.java:214
+    pub fn default_global_options(registry_access: JRef<dyn RegistryAccess>, options: ()) -> () { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/PaperConfigurations.java:214
     pub fn create_world_config_instance(context_map: JRef<ConfigurationsContextMap>) -> JRef<WorldConfiguration> { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/PaperConfigurations.java:244
     pub fn reload_configs(&self, server: JRef<dyn MinecraftServerTrait>) { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/PaperConfigurations.java:332
-    pub fn default_field_processors() -> Vec<Definition<Annotation, JObjectRef, JRef<dyn FieldProcessorFactory<JObjectRef, JObjectRef>>>> { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/PaperConfigurations.java:344
+    pub fn default_field_processors() -> Vec<Definition<(), JObjectRef, JRef<dyn FieldProcessorFactory<JObjectRef, JObjectRef>>>> { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/PaperConfigurations.java:344
     pub fn create_world_context_map(level: JRef<ServerLevel>) -> JRef<ConfigurationsContextMap> { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/PaperConfigurations.java:350
     pub fn create_world_context_map_5(dir: std::path::PathBuf, world_key: JRef<Identifier>, spigot_config: JRef<dyn SpigotWorldConfigTrait>, registry_access: JRef<dyn RegistryAccess>, game_rules: JRef<GameRules>) -> JRef<ConfigurationsContextMap> { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/PaperConfigurations.java:354
-    pub fn setup(legacy_config: std::path::PathBuf, config_dir: std::path::PathBuf, world_folder: std::path::PathBuf, spigot_config: std::path::PathBuf) -> Result<JRef<PaperConfigurations>, Throwable> { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/PaperConfigurations.java:364
-    pub fn convert(legacy_config: std::path::PathBuf, config_dir: std::path::PathBuf, world_folder: std::path::PathBuf, spigot_config: std::path::PathBuf) -> Result<(), Throwable> { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/PaperConfigurations.java:404
+    pub fn setup(legacy_config: std::path::PathBuf, config_dir: std::path::PathBuf, world_folder: std::path::PathBuf, spigot_config: std::path::PathBuf) -> Result<JRef<PaperConfigurations>, anyhow::Error> { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/PaperConfigurations.java:364
+    pub fn convert(legacy_config: std::path::PathBuf, config_dir: std::path::PathBuf, world_folder: std::path::PathBuf, spigot_config: std::path::PathBuf) -> Result<(), anyhow::Error> { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/PaperConfigurations.java:404
     pub fn needs_converting(legacy_config: std::path::PathBuf) -> bool { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/PaperConfigurations.java:448
-    pub fn load_legacy_config_file(config_file: std::path::PathBuf) -> Result<JRef<YamlConfiguration>, Throwable> { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/PaperConfigurations.java:452
-    pub fn create_for_testing(registry_access: JRef<dyn RegistryAccess>) -> ConfigurationNode { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/PaperConfigurations.java:465
-    pub fn create_directories_symlink_aware(path: std::path::PathBuf) -> Result<(), Throwable> { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/PaperConfigurations.java:474
+    pub fn load_legacy_config_file(config_file: std::path::PathBuf) -> Result<JRef<YamlConfiguration>, anyhow::Error> { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/PaperConfigurations.java:452
+    pub fn create_for_testing(registry_access: JRef<dyn RegistryAccess>) -> serde_yaml::Value { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/PaperConfigurations.java:465
+    pub fn create_directories_symlink_aware(path: std::path::PathBuf) -> Result<(), anyhow::Error> { todo!() } // paper-server/src/main/java/io/papermc/paper/configuration/PaperConfigurations.java:474
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl ConfigurationsTrait<JObjectRef, JObjectRef> for PaperConfigurations {
     fn as_configurations(&self) -> &Configurations<JObjectRef, JObjectRef> { self }
     fn create_object_mapper(&self) -> ObjectMapper::FactoryBuilder { Configurations::create_object_mapper(self) }
-    fn create_loader_builder(&self) -> YamlConfigurationLoaderBuilder { PaperConfigurations::create_loader_builder(self) }
-    fn is_config_type(&self, type_: Type) -> bool { PaperConfigurations::is_config_type(self, type_) }
+    fn create_loader_builder(&self) -> () { PaperConfigurations::create_loader_builder(self) }
+    fn is_config_type(&self, type_: ()) -> bool { PaperConfigurations::is_config_type(self, type_) }
     fn global_config_version(&self) -> i32 { PaperConfigurations::global_config_version(self) }
     fn world_config_version(&self) -> i32 { PaperConfigurations::world_config_version(self) }
     fn create_global_object_mapper_factory_builder(&self) -> ObjectMapper::FactoryBuilder { PaperConfigurations::create_global_object_mapper_factory_builder(self) }
-    fn create_global_loader_builder(&self, registry_access: JRef<dyn RegistryAccess>) -> YamlConfigurationLoaderBuilder { PaperConfigurations::create_global_loader_builder(self, registry_access) }
-    fn initialize_global_configuration(&self, registry_access: JRef<dyn RegistryAccess>) -> Result<G, Throwable> { PaperConfigurations::initialize_global_configuration(self, registry_access) }
-    fn initialize_global_configuration_2(&self, registry_access: JRef<dyn RegistryAccess>, creator: JRef<dyn CheckedFunction<ConfigurationNode, G, SerializationException>>) -> Result<G, Throwable> { Configurations::initialize_global_configuration_2(self, registry_access, creator) }
-    fn verify_global_config_version(&self, global_node: ConfigurationNode) { Configurations::verify_global_config_version(self, global_node) }
-    fn apply_global_config_transformations(&self, node: ConfigurationNode) -> Result<(), Throwable> { PaperConfigurations::apply_global_config_transformations(self, node) }
+    fn create_global_loader_builder(&self, registry_access: JRef<dyn RegistryAccess>) -> () { PaperConfigurations::create_global_loader_builder(self, registry_access) }
+    fn initialize_global_configuration(&self, registry_access: JRef<dyn RegistryAccess>) -> Result<G, anyhow::Error> { PaperConfigurations::initialize_global_configuration(self, registry_access) }
+    fn initialize_global_configuration_2(&self, registry_access: JRef<dyn RegistryAccess>, creator: ()) -> Result<G, anyhow::Error> { Configurations::initialize_global_configuration_2(self, registry_access, creator) }
+    fn verify_global_config_version(&self, global_node: serde_yaml::Value) { Configurations::verify_global_config_version(self, global_node) }
+    fn apply_global_config_transformations(&self, node: serde_yaml::Value) -> Result<(), anyhow::Error> { PaperConfigurations::apply_global_config_transformations(self, node) }
     fn create_default_context_map(&self, registry_access: JRef<dyn RegistryAccess>) -> JRef<ConfigurationsContextMapBuilder> { PaperConfigurations::create_default_context_map(self, registry_access) }
-    fn initialize_world_defaults_configuration(&self, registry_access: JRef<dyn RegistryAccess>) -> Result<(), Throwable> { Configurations::initialize_world_defaults_configuration(self, registry_access) }
+    fn initialize_world_defaults_configuration(&self, registry_access: JRef<dyn RegistryAccess>) -> Result<(), anyhow::Error> { Configurations::initialize_world_defaults_configuration(self, registry_access) }
     fn create_world_object_mapper_factory_builder(&self, context_map: JRef<ConfigurationsContextMap>) -> ObjectMapper::FactoryBuilder { PaperConfigurations::create_world_object_mapper_factory_builder(self, context_map) }
-    fn create_world_config_loader_builder(&self, context_map: JRef<ConfigurationsContextMap>) -> YamlConfigurationLoaderBuilder { PaperConfigurations::create_world_config_loader_builder(self, context_map) }
-    fn create_world_config(&self, context_map: JRef<ConfigurationsContextMap>) -> Result<W, Throwable> { PaperConfigurations::create_world_config(self, context_map) }
-    fn create_world_config_2(&self, context_map: JRef<ConfigurationsContextMap>, creator: JRef<dyn CheckedFunction<ConfigurationNode, W, SerializationException>>) -> Result<W, Throwable> { Configurations::create_world_config_2(self, context_map, creator) }
-    fn verify_world_config_version(&self, context_map: JRef<ConfigurationsContextMap>, world_node: ConfigurationNode) { Configurations::verify_world_config_version(self, context_map, world_node) }
-    fn apply_world_config_transformations(&self, context_map: JRef<ConfigurationsContextMap>, node: ConfigurationNode, defaults_node: Option<ConfigurationNode>) -> Result<(), Throwable> { PaperConfigurations::apply_world_config_transformations(self, context_map, node, defaults_node) }
-    fn apply_defaults_aware_world_config_transformations(&self, context_map: JRef<ConfigurationsContextMap>, world_node: ConfigurationNode, defaults_node: ConfigurationNode) -> Result<(), Throwable> { PaperConfigurations::apply_defaults_aware_world_config_transformations(self, context_map, world_node, defaults_node) }
+    fn create_world_config_loader_builder(&self, context_map: JRef<ConfigurationsContextMap>) -> () { PaperConfigurations::create_world_config_loader_builder(self, context_map) }
+    fn create_world_config(&self, context_map: JRef<ConfigurationsContextMap>) -> Result<W, anyhow::Error> { PaperConfigurations::create_world_config(self, context_map) }
+    fn create_world_config_2(&self, context_map: JRef<ConfigurationsContextMap>, creator: ()) -> Result<W, anyhow::Error> { Configurations::create_world_config_2(self, context_map, creator) }
+    fn verify_world_config_version(&self, context_map: JRef<ConfigurationsContextMap>, world_node: serde_yaml::Value) { Configurations::verify_world_config_version(self, context_map, world_node) }
+    fn apply_world_config_transformations(&self, context_map: JRef<ConfigurationsContextMap>, node: serde_yaml::Value, defaults_node: Option<serde_yaml::Value>) -> Result<(), anyhow::Error> { PaperConfigurations::apply_world_config_transformations(self, context_map, node, defaults_node) }
+    fn apply_defaults_aware_world_config_transformations(&self, context_map: JRef<ConfigurationsContextMap>, world_node: serde_yaml::Value, defaults_node: serde_yaml::Value) -> Result<(), anyhow::Error> { PaperConfigurations::apply_defaults_aware_world_config_transformations(self, context_map, world_node, defaults_node) }
     fn get_world_config_file(&self, level: JRef<ServerLevel>) -> std::path::PathBuf { Configurations::get_world_config_file(self, level) }
     fn get_global_config_file(&self) -> std::path::PathBuf { Configurations::get_global_config_file(self) }
     fn create_legacy_object(&self, server: JRef<dyn MinecraftServerTrait>) -> JRef<YamlConfiguration> { Configurations::create_legacy_object(self, server) }

@@ -3,8 +3,6 @@
 use crate::prelude::*;
 use crate::com::mojang::brigadier::command_dispatcher::CommandDispatcher;
 use crate::com::mojang::brigadier::exceptions::DynamicCommandExceptionType;
-use crate::java::util::function::ToIntFunction;
-use crate::java::util::stream::Stream;
 use crate::net::minecraft::commands::command_source_stack::CommandSourceStack;
 use crate::net::minecraft::core::holder::HolderReferenceTrait;
 use crate::net::minecraft::core::holder_lookup::HolderLookup;
@@ -20,8 +18,8 @@ pub struct SpawnArmorTrimsCommand {
 }
 pub static VANILLA_TRIM_PATTERNS: LazyLock<Vec<JRef<ResourceKey<TrimPattern>>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/SpawnArmorTrimsCommand.java:37
 pub static VANILLA_TRIM_MATERIALS: LazyLock<Vec<JRef<ResourceKey<TrimMaterial>>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/SpawnArmorTrimsCommand.java:57
-pub static TRIM_PATTERN_ORDER: LazyLock<JRef<dyn ToIntFunction<JRef<ResourceKey<TrimPattern>>>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/SpawnArmorTrimsCommand.java:70
-pub static TRIM_MATERIAL_ORDER: LazyLock<JRef<dyn ToIntFunction<JRef<ResourceKey<TrimMaterial>>>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/SpawnArmorTrimsCommand.java:71
+pub static TRIM_PATTERN_ORDER: LazyLock<Arc<dyn Fn(JRef<ResourceKey<TrimPattern>>) -> i32 + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/SpawnArmorTrimsCommand.java:70
+pub static TRIM_MATERIAL_ORDER: LazyLock<Arc<dyn Fn(JRef<ResourceKey<TrimMaterial>>) -> i32 + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/SpawnArmorTrimsCommand.java:71
 pub static ERROR_INVALID_PATTERN: LazyLock<DynamicCommandExceptionType> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/commands/SpawnArmorTrimsCommand.java:72
 impl SpawnArmorTrimsCommand {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
@@ -29,7 +27,7 @@ impl SpawnArmorTrimsCommand {
     pub fn register(dispatcher: JRef<CommandDispatcher<JRef<CommandSourceStack>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/SpawnArmorTrimsCommand.java:76
     pub fn spawn_all_armor_trims(source: JRef<CommandSourceStack>, player: JRef<dyn PlayerTrait>) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/SpawnArmorTrimsCommand.java:94
     pub fn spawn_armor_trim(source: JRef<CommandSourceStack>, player: JRef<dyn PlayerTrait>, pattern: JRef<ResourceKey<TrimPattern>>) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/SpawnArmorTrimsCommand.java:98
-    pub fn spawn_armor_trims(source: JRef<CommandSourceStack>, player: JRef<dyn PlayerTrait>, patterns: Stream<JRef<dyn HolderReferenceTrait<TrimPattern>>>) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/SpawnArmorTrimsCommand.java:102
+    pub fn spawn_armor_trims(source: JRef<CommandSourceStack>, player: JRef<dyn PlayerTrait>, patterns: Box<dyn Iterator<Item = JRef<dyn HolderReferenceTrait<TrimPattern>>> + Send>) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/SpawnArmorTrimsCommand.java:102
     pub fn find_equippable_items_with_assets(items: JRef<dyn HolderLookup<JRef<dyn ItemTrait>>>) -> Vec<JRef<dyn HolderReferenceTrait<JRef<dyn ItemTrait>>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/SpawnArmorTrimsCommand.java:151
 }
 crate::jobject!(SpawnArmorTrimsCommand);

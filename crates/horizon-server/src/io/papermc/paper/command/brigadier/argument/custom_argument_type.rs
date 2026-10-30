@@ -6,14 +6,12 @@ use crate::com::mojang::brigadier::arguments::ArgumentType;
 use crate::com::mojang::brigadier::context::CommandContext;
 use crate::com::mojang::brigadier::suggestion::Suggestions;
 use crate::com::mojang::brigadier::suggestion::SuggestionsBuilder;
-use crate::java::lang::Throwable;
-use crate::java::util::concurrent::CompletableFuture;
 use crate::prelude::*;
 
 // ---- interface io.papermc.paper.command.brigadier.argument.CustomArgumentType (paper-api/src/main/java/io/papermc/paper/command/brigadier/argument/CustomArgumentType.java:25)
 pub trait CustomArgumentType<T: JGeneric, N: JGeneric>: ArgumentType<T> {
-    fn parse(&self, reader: StringReader) -> Result<T, Throwable>; // paper-api/src/main/java/io/papermc/paper/command/brigadier/argument/CustomArgumentType.java:39
-    fn parse_2<S: JGeneric>(&self, reader: StringReader, source: S) -> Result<T, Throwable>
+    fn parse(&self, reader: StringReader) -> Result<T, anyhow::Error>; // paper-api/src/main/java/io/papermc/paper/command/brigadier/argument/CustomArgumentType.java:39
+    fn parse_2<S: JGeneric>(&self, reader: StringReader, source: S) -> Result<T, anyhow::Error>
     where
         Self: Sized,
     {
@@ -28,7 +26,7 @@ pub trait CustomArgumentType<T: JGeneric, N: JGeneric>: ArgumentType<T> {
         &self,
         context: CommandContext<S>,
         builder: SuggestionsBuilder,
-    ) -> CompletableFuture<Suggestions>
+    ) -> crate::rt::CompletableFuture<Suggestions>
     where
         Self: Sized,
     {
@@ -38,8 +36,8 @@ pub trait CustomArgumentType<T: JGeneric, N: JGeneric>: ArgumentType<T> {
 }
 // ---- interface io.papermc.paper.command.brigadier.argument.CustomArgumentType.Converted (paper-api/src/main/java/io/papermc/paper/command/brigadier/argument/CustomArgumentType.java:107)
 pub trait CustomArgumentTypeConverted<T: JGeneric, N: JGeneric>: CustomArgumentType<T, N> {
-    fn convert(&self, native_type: N) -> Result<T, Throwable>; // paper-api/src/main/java/io/papermc/paper/command/brigadier/argument/CustomArgumentType.java:129
-    fn convert_2<S: JGeneric>(&self, native_type: N, source: S) -> Result<T, Throwable>
+    fn convert(&self, native_type: N) -> Result<T, anyhow::Error>; // paper-api/src/main/java/io/papermc/paper/command/brigadier/argument/CustomArgumentType.java:129
+    fn convert_2<S: JGeneric>(&self, native_type: N, source: S) -> Result<T, anyhow::Error>
     where
         Self: Sized,
     {
@@ -54,7 +52,7 @@ pub trait CustomArgumentTypeConverted<T: JGeneric, N: JGeneric>: CustomArgumentT
 pub fn converted_parse<T: JGeneric, N: JGeneric, C: CustomArgumentTypeConverted<T, N> + ?Sized>(
     this: &C,
     reader: StringReader,
-) -> Result<T, Throwable> {
+) -> Result<T, anyhow::Error> {
     this.convert(this.get_native_type().parse(reader)?)
 }
 /// `Converted.parse(StringReader, S)`: `return this.convert(this.getNativeType().parse(reader, source), source);`
@@ -67,7 +65,7 @@ pub fn converted_parse_2<
     this: &C,
     reader: StringReader,
     source: S,
-) -> Result<T, Throwable> {
+) -> Result<T, anyhow::Error> {
     this.convert_2(
         this.get_native_type().parse_2(reader, source.clone())?,
         source,

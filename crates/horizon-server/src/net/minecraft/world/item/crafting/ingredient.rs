@@ -3,8 +3,6 @@
 use crate::prelude::*;
 use crate::com::mojang::serialization::Codec;
 use crate::io::papermc::paper::inventory::recipe::item_or_exact::ItemOrExact;
-use crate::java::util::function::Predicate;
-use crate::java::util::stream::Stream;
 use crate::net::minecraft::core::holder::Holder;
 use crate::net::minecraft::core::holder_set::HolderSet;
 use crate::net::minecraft::network::codec::stream_codec::StreamCodec;
@@ -19,7 +17,7 @@ use crate::net::minecraft::world::level::item_like::ItemLike;
 pub struct Ingredient {
     pub this: Weak<Self>,
     pub values: JRef<dyn HolderSet<JRef<dyn ItemTrait>>>, // leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/Ingredient.java:35
-    pub stack_predicate: Mut<JRef<dyn Predicate<JRef<ItemStack>>>>, // leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/Ingredient.java:36
+    pub stack_predicate: Mut<Arc<dyn Fn(JRef<ItemStack>) -> bool + Send + Sync>>, // leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/Ingredient.java:36
     pub item_stacks: Mut<HashSet<JRef<ItemStack>>>, // leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/Ingredient.java:38
 }
 pub static CONTENTS_STREAM_CODEC: LazyLock<JRef<dyn StreamCodec<JRef<RegistryFriendlyByteBuf>, JRef<Ingredient>>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/Ingredient.java:26
@@ -34,14 +32,14 @@ impl Ingredient {
     pub fn item_stacks(&self) -> HashSet<JRef<ItemStack>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/Ingredient.java:44
     pub fn of_stacks(stacks: &Vec<JRef<ItemStack>>) -> JRef<Ingredient> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/Ingredient.java:48
     pub fn test_optional_ingredient(ingredient: Option<JRef<Ingredient>>, stack: JRef<ItemStack>) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/Ingredient.java:72
-    pub fn items(&self) -> Stream<JRef<dyn Holder<JRef<dyn ItemTrait>>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/Ingredient.java:76
+    pub fn items(&self) -> Box<dyn Iterator<Item = JRef<dyn Holder<JRef<dyn ItemTrait>>>> + Send> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/Ingredient.java:76
     pub fn is_empty(&self) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/Ingredient.java:81
     pub fn test(&self, input: JRef<ItemStack>) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/Ingredient.java:85
     pub fn equals(&self, o: JObjectRef) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/Ingredient.java:122
     pub fn hash_code(&self) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/Ingredient.java:127
     pub fn of(item_like: JRef<dyn ItemLike>) -> JRef<Ingredient> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/Ingredient.java:132
     pub fn of_1(items: &Vec<JRef<dyn ItemLike>>) -> JRef<Ingredient> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/Ingredient.java:136
-    pub fn of_1_2(stream: Stream<JRef<dyn ItemLike>>) -> JRef<Ingredient> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/Ingredient.java:140
+    pub fn of_1_2(stream: Box<dyn Iterator<Item = JRef<dyn ItemLike>> + Send>) -> JRef<Ingredient> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/Ingredient.java:140
     pub fn of_1_3(tag: JRef<dyn HolderSet<JRef<dyn ItemTrait>>>) -> JRef<Ingredient> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/Ingredient.java:144
     pub fn display(&self) -> JRef<dyn SlotDisplay> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/Ingredient.java:148
     pub fn optional_ingredient_to_display(ingredient: Option<JRef<Ingredient>>) -> JRef<dyn SlotDisplay> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/crafting/Ingredient.java:157

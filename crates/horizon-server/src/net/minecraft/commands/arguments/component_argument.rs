@@ -5,7 +5,6 @@ use crate::com::mojang::brigadier::StringReader;
 use crate::com::mojang::brigadier::context::CommandContext;
 use crate::com::mojang::brigadier::exceptions::DynamicCommandExceptionType;
 use crate::com::mojang::serialization::DynamicOps;
-use crate::java::lang::Throwable;
 use crate::net::minecraft::commands::command_build_context::CommandBuildContext;
 use crate::net::minecraft::commands::command_source_stack::CommandSourceStack;
 use crate::net::minecraft::core::holder_lookup::HolderLookupProvider;
@@ -33,8 +32,8 @@ impl ComponentArgument {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(registries: JRef<dyn HolderLookupProvider>) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/ComponentArgument.java:31
     pub fn get_raw_component(context: CommandContext<JRef<CommandSourceStack>>, name: &str) -> JRef<dyn Component> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/ComponentArgument.java:35
-    pub fn get_resolved_component(context: CommandContext<JRef<CommandSourceStack>>, name: &str) -> Result<JRef<dyn Component>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/ComponentArgument.java:45
-    pub fn get_resolved_component_3(context: CommandContext<JRef<CommandSourceStack>>, name: &str, content_entity: JRef<dyn EntityTrait>) -> Result<JRef<dyn Component>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/ComponentArgument.java:39
+    pub fn get_resolved_component(context: CommandContext<JRef<CommandSourceStack>>, name: &str) -> Result<JRef<dyn Component>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/ComponentArgument.java:45
+    pub fn get_resolved_component_3(context: CommandContext<JRef<CommandSourceStack>>, name: &str, content_entity: JRef<dyn EntityTrait>) -> Result<JRef<dyn Component>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/ComponentArgument.java:39
     pub fn text_component(context: JRef<dyn CommandBuildContext>) -> JRef<ComponentArgument> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/ComponentArgument.java:49
     pub fn get_examples(&self) -> Vec<String> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/ComponentArgument.java:53
 }
@@ -42,6 +41,6 @@ impl ComponentArgument {
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl ParserBasedArgumentTrait<JObjectRef> for ComponentArgument {
     fn as_parser_based_argument(&self) -> &ParserBasedArgument<JObjectRef> { self }
-    fn parse(&self, reader: StringReader) -> Result<T, Throwable> { ParserBasedArgument::parse(self, reader) }
+    fn parse(&self, reader: StringReader) -> Result<T, anyhow::Error> { ParserBasedArgument::parse(self, reader) }
 }
 crate::jobject!(ComponentArgument);

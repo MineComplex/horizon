@@ -4,7 +4,6 @@ use crate::api_prelude::*;
 use crate::com::mojang::brigadier::context::CommandContext;
 use crate::io::papermc::paper::registry::registry_key::RegistryKey;
 use crate::io::papermc::paper::registry::typed_key::TypedKey;
-use crate::java::lang::Class;
 use crate::prelude::*;
 
 // ---- class io.papermc.paper.command.brigadier.argument.RegistryArgumentExtractor (paper-api/src/main/java/io/papermc/paper/command/brigadier/argument/RegistryArgumentExtractor.java:10)
@@ -23,7 +22,7 @@ impl RegistryArgumentExtractor {
         registry_key: JRef<dyn RegistryKey<T>>,
         name: &str,
     ) -> JRef<dyn TypedKey<T>> {
-        // PORT: java.lang.Class<T> tokens (`TypedKey.class`) are stand-ins
+        // PORT: java.lang.crate::rt::Class tokens (`TypedKey.class`) are stand-ins
         let typed_key: JRef<dyn TypedKey<T>> =
             context.get_argument(name, Class(std::marker::PhantomData));
         // RegistryKey.equals: registry keys are RegistryKeyImpl constants, so identity

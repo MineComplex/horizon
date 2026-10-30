@@ -26,7 +26,6 @@ use crate::net::minecraft::world::level::levelgen::structure::templatesystem::li
 use crate::net::minecraft::world::level::levelgen::structure::templatesystem::structure_template_manager::StructureTemplateManager;
 use crate::net::minecraft::world::level::levelgen::worldgen_random::WorldgenRandomTrait;
 use crate::net::minecraft::world::phys::shapes::voxel_shape::VoxelShapeTrait;
-use crate::org::apache::commons::lang3::mutable::MutableObject;
 
 // ---- class net.minecraft.world.level.levelgen.structure.pools.JigsawPlacement (leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/structure/pools/JigsawPlacement.java:47)
 pub struct JigsawPlacement {
@@ -47,12 +46,12 @@ crate::jobject!(JigsawPlacement);
 #[derive(Clone)]
 pub struct JigsawPlacementPieceState {
     pub piece: JRef<PoolElementStructurePiece>,
-    pub free: MutableObject<JRef<dyn VoxelShapeTrait>>,
+    pub free: JRef<dyn VoxelShapeTrait>,
     pub depth: i32,
 }
 impl JigsawPlacementPieceState {
     pub fn new() -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/structure/pools/JigsawPlacement.java:281
-    pub fn new_3(piece: JRef<PoolElementStructurePiece>, free: MutableObject<JRef<dyn VoxelShapeTrait>>, depth: i32) -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/structure/pools/JigsawPlacement.java:281
+    pub fn new_3(piece: JRef<PoolElementStructurePiece>, free: JRef<dyn VoxelShapeTrait>, depth: i32) -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/structure/pools/JigsawPlacement.java:281
 }
 crate::jobject!(JigsawPlacementPieceState);
 // ---- class net.minecraft.world.level.levelgen.structure.pools.JigsawPlacement.Placer (leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/structure/pools/JigsawPlacement.java:284)
@@ -69,6 +68,6 @@ pub struct JigsawPlacementPlacer {
 impl JigsawPlacementPlacer {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(pools: JRef<dyn Registry<JRef<StructureTemplatePool>>>, max_depth: i32, chunk_generator: JRef<dyn ChunkGeneratorTrait>, structure_template_manager: JRef<StructureTemplateManager>, pieces: &Vec<JObjectRef>, random: JRef<dyn RandomSource>) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/structure/pools/JigsawPlacement.java:293
-    pub fn try_placing_children(&self, source_piece: JRef<PoolElementStructurePiece>, context_free: MutableObject<JRef<dyn VoxelShapeTrait>>, depth: i32, do_expansion_hack: bool, height_accessor: JRef<dyn LevelHeightAccessor>, random_state: JRef<RandomState>, pool_alias_lookup: JRef<dyn PoolAliasLookup>, liquid_settings: LiquidSettings) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/structure/pools/JigsawPlacement.java:309
+    pub fn try_placing_children(&self, source_piece: JRef<PoolElementStructurePiece>, context_free: JRef<dyn VoxelShapeTrait>, depth: i32, do_expansion_hack: bool, height_accessor: JRef<dyn LevelHeightAccessor>, random_state: JRef<RandomState>, pool_alias_lookup: JRef<dyn PoolAliasLookup>, liquid_settings: LiquidSettings) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/levelgen/structure/pools/JigsawPlacement.java:309
 }
 crate::jobject!(JigsawPlacementPlacer);

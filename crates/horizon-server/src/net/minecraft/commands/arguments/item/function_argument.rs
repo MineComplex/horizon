@@ -4,9 +4,6 @@ use crate::prelude::*;
 use crate::com::mojang::brigadier::StringReader;
 use crate::com::mojang::brigadier::context::CommandContext;
 use crate::com::mojang::brigadier::exceptions::DynamicCommandExceptionType;
-use crate::com::mojang::datafixers::util::Pair;
-use crate::com::mojang::datafixers::util::either::EitherTrait;
-use crate::java::lang::Throwable;
 use crate::net::minecraft::commands::command_source_stack::CommandSourceStack;
 use crate::net::minecraft::commands::functions::command_function::CommandFunction;
 use crate::net::minecraft::resources::identifier::Identifier;
@@ -22,18 +19,18 @@ impl FunctionArgument {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/FunctionArgument.java:18
     pub fn functions() -> JRef<FunctionArgument> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/FunctionArgument.java:27
-    pub fn parse(&self, reader: StringReader) -> Result<JRef<dyn FunctionArgumentResult>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/FunctionArgument.java:31
-    pub fn get_function(c: CommandContext<JRef<CommandSourceStack>>, id: JRef<Identifier>) -> Result<JRef<dyn CommandFunction<JRef<CommandSourceStack>>>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/FunctionArgument.java:77
-    pub fn get_function_tag(c: CommandContext<JRef<CommandSourceStack>>, id: JRef<Identifier>) -> Result<Vec<JRef<dyn CommandFunction<JRef<CommandSourceStack>>>>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/FunctionArgument.java:81
-    pub fn get_functions(context: CommandContext<JRef<CommandSourceStack>>, name: &str) -> Result<Vec<JRef<dyn CommandFunction<JRef<CommandSourceStack>>>>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/FunctionArgument.java:90
-    pub fn get_function_or_tag(context: CommandContext<JRef<CommandSourceStack>>, name: &str) -> Result<Pair<JRef<Identifier>, JRef<dyn EitherTrait<JRef<dyn CommandFunction<JRef<CommandSourceStack>>>, Vec<JRef<dyn CommandFunction<JRef<CommandSourceStack>>>>>>>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/FunctionArgument.java:94
-    pub fn get_function_collection(context: CommandContext<JRef<CommandSourceStack>>, name: &str) -> Result<Pair<JRef<Identifier>, Vec<JRef<dyn CommandFunction<JRef<CommandSourceStack>>>>>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/FunctionArgument.java:100
+    pub fn parse(&self, reader: StringReader) -> Result<JRef<dyn FunctionArgumentResult>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/FunctionArgument.java:31
+    pub fn get_function(c: CommandContext<JRef<CommandSourceStack>>, id: JRef<Identifier>) -> Result<JRef<dyn CommandFunction<JRef<CommandSourceStack>>>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/FunctionArgument.java:77
+    pub fn get_function_tag(c: CommandContext<JRef<CommandSourceStack>>, id: JRef<Identifier>) -> Result<Vec<JRef<dyn CommandFunction<JRef<CommandSourceStack>>>>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/FunctionArgument.java:81
+    pub fn get_functions(context: CommandContext<JRef<CommandSourceStack>>, name: &str) -> Result<Vec<JRef<dyn CommandFunction<JRef<CommandSourceStack>>>>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/FunctionArgument.java:90
+    pub fn get_function_or_tag(context: CommandContext<JRef<CommandSourceStack>>, name: &str) -> Result<(JRef<Identifier>, JRef<dyn EitherTrait<JRef<dyn CommandFunction<JRef<CommandSourceStack>>>, Vec<JRef<dyn CommandFunction<JRef<CommandSourceStack>>>>>>), anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/FunctionArgument.java:94
+    pub fn get_function_collection(context: CommandContext<JRef<CommandSourceStack>>, name: &str) -> Result<(JRef<Identifier>, Vec<JRef<dyn CommandFunction<JRef<CommandSourceStack>>>>), anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/FunctionArgument.java:100
     pub fn get_examples(&self) -> Vec<String> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/FunctionArgument.java:106
 }
 crate::jobject!(FunctionArgument);
 // ---- interface net.minecraft.commands.arguments.item.FunctionArgument.Result (leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/FunctionArgument.java:111)
 pub trait FunctionArgumentResult: JObject {
-    fn create(&self, context: CommandContext<JRef<CommandSourceStack>>) -> Result<Vec<JRef<dyn CommandFunction<JRef<CommandSourceStack>>>>, Throwable>; // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/FunctionArgument.java:112
-    fn unwrap(&self, context: CommandContext<JRef<CommandSourceStack>>) -> Result<Pair<JRef<Identifier>, JRef<dyn EitherTrait<JRef<dyn CommandFunction<JRef<CommandSourceStack>>>, Vec<JRef<dyn CommandFunction<JRef<CommandSourceStack>>>>>>>, Throwable>; // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/FunctionArgument.java:114
-    fn unwrap_to_collection(&self, context: CommandContext<JRef<CommandSourceStack>>) -> Result<Pair<JRef<Identifier>, Vec<JRef<dyn CommandFunction<JRef<CommandSourceStack>>>>>, Throwable>; // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/FunctionArgument.java:118
+    fn create(&self, context: CommandContext<JRef<CommandSourceStack>>) -> Result<Vec<JRef<dyn CommandFunction<JRef<CommandSourceStack>>>>, anyhow::Error>; // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/FunctionArgument.java:112
+    fn unwrap(&self, context: CommandContext<JRef<CommandSourceStack>>) -> Result<(JRef<Identifier>, JRef<dyn EitherTrait<JRef<dyn CommandFunction<JRef<CommandSourceStack>>>, Vec<JRef<dyn CommandFunction<JRef<CommandSourceStack>>>>>>), anyhow::Error>; // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/FunctionArgument.java:114
+    fn unwrap_to_collection(&self, context: CommandContext<JRef<CommandSourceStack>>) -> Result<(JRef<Identifier>, Vec<JRef<dyn CommandFunction<JRef<CommandSourceStack>>>>), anyhow::Error>; // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/item/FunctionArgument.java:118
 }

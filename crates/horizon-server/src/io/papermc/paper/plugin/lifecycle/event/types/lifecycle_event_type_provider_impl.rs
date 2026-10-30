@@ -6,7 +6,6 @@ use crate::io::papermc::paper::plugin::lifecycle::event::types::lifecycle_event_
 use crate::io::papermc::paper::plugin::lifecycle::event::types::lifecycle_event_type_provider::LifecycleEventTypeProvider;
 use crate::io::papermc::paper::plugin::lifecycle::event::types::paper_tag_event_type_provider::PaperTagEventTypeProvider;
 use crate::io::papermc::paper::plugin::lifecycle::event::types::tag_event_type_provider::TagEventTypeProvider;
-use crate::java::lang::Class;
 
 // ---- class io.papermc.paper.plugin.lifecycle.event.types.LifecycleEventTypeProviderImpl (paper-server/src/main/java/io/papermc/paper/plugin/lifecycle/event/types/LifecycleEventTypeProviderImpl.java:9)
 pub struct LifecycleEventTypeProviderImpl {
@@ -16,16 +15,16 @@ pub struct LifecycleEventTypeProviderImpl {
 impl LifecycleEventTypeProviderImpl {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/lifecycle/event/types/LifecycleEventTypeProviderImpl.java:9
-    pub fn monitor<O: JGeneric, E: JGeneric>(&self, name: &str, owner_type: Class) -> JRef<dyn LifecycleEventTypeMonitorable<O, E>> { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/lifecycle/event/types/LifecycleEventTypeProviderImpl.java:18
-    pub fn prioritized<O: JGeneric, E: JGeneric>(&self, name: &str, owner_type: Class) -> JRef<dyn LifecycleEventTypePrioritizable<O, E>> { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/lifecycle/event/types/LifecycleEventTypeProviderImpl.java:23
+    pub fn monitor<O: JGeneric, E: JGeneric>(&self, name: &str, owner_type: crate::rt::Class) -> JRef<dyn LifecycleEventTypeMonitorable<O, E>> { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/lifecycle/event/types/LifecycleEventTypeProviderImpl.java:18
+    pub fn prioritized<O: JGeneric, E: JGeneric>(&self, name: &str, owner_type: crate::rt::Class) -> JRef<dyn LifecycleEventTypePrioritizable<O, E>> { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/lifecycle/event/types/LifecycleEventTypeProviderImpl.java:23
     pub fn tag_provider(&self) -> JRef<PaperTagEventTypeProvider> { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/lifecycle/event/types/LifecycleEventTypeProviderImpl.java:28
     pub fn instance() -> JRef<LifecycleEventTypeProviderImpl> { todo!() } // paper-server/src/main/java/io/papermc/paper/plugin/lifecycle/event/types/LifecycleEventTypeProviderImpl.java:12
 }
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl LifecycleEventTypeProvider for LifecycleEventTypeProviderImpl {
-    fn monitor<O: JGeneric, E: JGeneric>(&self, name: &str, owner_type: Class) -> JRef<dyn LifecycleEventTypeMonitorable<O, E>> where Self: Sized { LifecycleEventTypeProviderImpl::monitor::<O, E>(self, name, owner_type) }
-    fn prioritized<O: JGeneric, E: JGeneric>(&self, name: &str, owner_type: Class) -> JRef<dyn LifecycleEventTypePrioritizable<O, E>> where Self: Sized { LifecycleEventTypeProviderImpl::prioritized::<O, E>(self, name, owner_type) }
+    fn monitor<O: JGeneric, E: JGeneric>(&self, name: &str, owner_type: crate::rt::Class) -> JRef<dyn LifecycleEventTypeMonitorable<O, E>> where Self: Sized { LifecycleEventTypeProviderImpl::monitor::<O, E>(self, name, owner_type) }
+    fn prioritized<O: JGeneric, E: JGeneric>(&self, name: &str, owner_type: crate::rt::Class) -> JRef<dyn LifecycleEventTypePrioritizable<O, E>> where Self: Sized { LifecycleEventTypeProviderImpl::prioritized::<O, E>(self, name, owner_type) }
     fn tag_provider(&self) -> JRef<dyn TagEventTypeProvider> { LifecycleEventTypeProviderImpl::tag_provider(self) }
 }
 crate::jobject!(LifecycleEventTypeProviderImpl: dyn LifecycleEventTypeProvider);

@@ -4,10 +4,6 @@ use crate::prelude::*;
 use crate::ca::spottedleaf::moonrise::patches::bitstorage::palette_readout_cache::PaletteReadoutCache;
 use crate::com::mojang::serialization::Codec;
 use crate::com::mojang::serialization::DataResult;
-use crate::java::lang::ThreadLocal;
-use crate::java::lang::invoke::VarHandle;
-use crate::java::util::function::Consumer;
-use crate::java::util::function::Predicate;
 use crate::net::minecraft::core::id_map::IdMap;
 use crate::net::minecraft::network::friendly_byte_buf::FriendlyByteBufTrait;
 use crate::net::minecraft::util::bit_storage::BitStorage;
@@ -27,8 +23,8 @@ pub struct PalettedContainer<T: JGeneric> {
     pub _phantom: std::marker::PhantomData<(T,)>,
 }
 pub const MIN_PALETTE_BITS: i32 = 0; // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/PalettedContainer.java:26
-pub static DATA_HANDLE: LazyLock<VarHandle> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/PalettedContainer.java:32
-pub static READOUT_CACHE: LazyLock<ThreadLocal<JRef<PaletteReadoutCache>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/PalettedContainer.java:273
+pub static DATA_HANDLE: LazyLock<()> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/PalettedContainer.java:32
+pub static READOUT_CACHE: LazyLock<thread_local::ThreadLocal<JRef<PaletteReadoutCache>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/PalettedContainer.java:273
 pub const DEBUG_PACKING: bool = false; // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/PalettedContainer.java:276
 impl<T: JGeneric> PalettedContainer<T> {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
@@ -37,13 +33,13 @@ impl<T: JGeneric> PalettedContainer<T> {
     pub fn new_4(strategy: JRef<dyn StrategyTrait<T>>, data_configuration: JRef<dyn Configuration>, storage: JRef<dyn BitStorage>, palette: JRef<dyn Palette<T>>) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/PalettedContainer.java:89
     pub fn on_resize(&self, bits: i32, last_added_value: T) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/PalettedContainer.java:118
     pub fn get(&self, x: i32, y: i32, z: i32) -> T { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/PalettedContainer.java:165
-    pub fn get_all(&self, consumer: JRef<dyn Consumer<T>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/PalettedContainer.java:187
+    pub fn get_all(&self, consumer: Arc<dyn Fn(T) + Send + Sync>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/PalettedContainer.java:187
     pub fn write(&self, buffer: JRef<dyn FriendlyByteBufTrait>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/PalettedContainer.java:209
     pub fn pack(&self, strategy: JRef<dyn StrategyTrait<T>>) -> PalettedContainerROPackedData<T> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/PalettedContainer.java:293
     pub fn get_serialized_size(&self) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/PalettedContainer.java:392
     pub fn bits_per_entry(&self) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/PalettedContainer.java:397
-    pub fn maybe_has(&self, predicate: JRef<dyn Predicate<T>>) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/PalettedContainer.java:402
-    pub fn for_each_in_palette(&self, consumer: JRef<dyn Consumer<T>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/PalettedContainer.java:407
+    pub fn maybe_has(&self, predicate: Arc<dyn Fn(T) -> bool + Send + Sync>) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/PalettedContainer.java:402
+    pub fn for_each_in_palette(&self, consumer: Arc<dyn Fn(T) + Send + Sync>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/PalettedContainer.java:407
     pub fn copy(&self) -> JRef<PalettedContainer<T>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/PalettedContainer.java:414
     pub fn recreate(&self) -> JRef<PalettedContainer<T>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/PalettedContainer.java:419
     pub fn count(&self, output: JRef<dyn PalettedContainerCountConsumer<T>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/PalettedContainer.java:424
@@ -75,12 +71,12 @@ impl<T: JGeneric> PaletteResize<T> for PalettedContainer<T> {
 }
 impl<T: JGeneric> PalettedContainerRO<T> for PalettedContainer<T> {
     fn get(&self, x: i32, y: i32, z: i32) -> T { PalettedContainer::get(self, x, y, z) }
-    fn get_all(&self, consumer: JRef<dyn Consumer<T>>) { PalettedContainer::get_all(self, consumer) }
+    fn get_all(&self, consumer: Arc<dyn Fn(T) + Send + Sync>) { PalettedContainer::get_all(self, consumer) }
     fn write(&self, buffer: JRef<dyn FriendlyByteBufTrait>) { PalettedContainer::write(self, buffer) }
     fn get_serialized_size(&self) -> i32 { PalettedContainer::get_serialized_size(self) }
     fn bits_per_entry(&self) -> i32 { PalettedContainer::bits_per_entry(self) }
-    fn maybe_has(&self, predicate: JRef<dyn Predicate<T>>) -> bool { PalettedContainer::maybe_has(self, predicate) }
-    fn for_each_in_palette(&self, consumer: JRef<dyn Consumer<T>>) { PalettedContainer::for_each_in_palette(self, consumer) }
+    fn maybe_has(&self, predicate: Arc<dyn Fn(T) -> bool + Send + Sync>) -> bool { PalettedContainer::maybe_has(self, predicate) }
+    fn for_each_in_palette(&self, consumer: Arc<dyn Fn(T) + Send + Sync>) { PalettedContainer::for_each_in_palette(self, consumer) }
     fn count(&self, output: JRef<dyn PalettedContainerCountConsumer<T>>) { PalettedContainer::count(self, output) }
     fn copy(&self) -> JRef<PalettedContainer<T>> { PalettedContainer::copy(self) }
     fn recreate(&self) -> JRef<PalettedContainer<T>> { PalettedContainer::recreate(self) }

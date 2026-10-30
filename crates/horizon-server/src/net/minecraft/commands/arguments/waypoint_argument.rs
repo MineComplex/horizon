@@ -3,7 +3,6 @@
 use crate::prelude::*;
 use crate::com::mojang::brigadier::context::CommandContext;
 use crate::com::mojang::brigadier::exceptions::SimpleCommandExceptionType;
-use crate::java::lang::Throwable;
 use crate::net::minecraft::commands::command_source_stack::CommandSourceStack;
 use crate::net::minecraft::world::waypoints::waypoint_transmitter::WaypointTransmitter;
 
@@ -15,6 +14,6 @@ pub static ERROR_NOT_A_WAYPOINT: LazyLock<SimpleCommandExceptionType> = LazyLock
 impl WaypointArgument {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/WaypointArgument.java:11
-    pub fn get_waypoint(context: CommandContext<JRef<CommandSourceStack>>, name: &str) -> Result<JRef<dyn WaypointTransmitter>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/WaypointArgument.java:14
+    pub fn get_waypoint(context: CommandContext<JRef<CommandSourceStack>>, name: &str) -> Result<JRef<dyn WaypointTransmitter>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/WaypointArgument.java:14
 }
 crate::jobject!(WaypointArgument);

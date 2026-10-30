@@ -5,10 +5,6 @@ use crate::ca::spottedleaf::moonrise::common::misc::position_counting_area_map::
 use crate::ca::spottedleaf::moonrise::patches::chunk_system::level::chunk::chunk_system_distance_manager::ChunkSystemDistanceManager;
 use crate::ca::spottedleaf::moonrise::patches::chunk_system::scheduling::chunk_holder_manager::ChunkHolderManager;
 use crate::ca::spottedleaf::moonrise::patches::chunk_tick_iteration::chunk_tick_distance_manager::ChunkTickDistanceManager;
-use crate::it::unimi::dsi::fastutil::longs::LongConsumer;
-use crate::java::util::JIterator;
-use crate::java::util::concurrent::Executor;
-use crate::java::util::function::LongPredicate;
 use crate::net::minecraft::core::section_pos::SectionPos;
 use crate::net::minecraft::server::level::chunk_holder::ChunkHolder;
 use crate::net::minecraft::server::level::chunk_map::ChunkMap;
@@ -42,8 +38,8 @@ pub trait DistanceManagerTrait: ChunkSystemDistanceManager + ChunkTickDistanceMa
     fn update_simulation_distance(&self, new_distance: i32); // leaf-server/src/minecraft/java/net/minecraft/server/level/DistanceManager.java:152
     fn get_natural_spawn_chunk_count(&self) -> i32; // leaf-server/src/minecraft/java/net/minecraft/server/level/DistanceManager.java:161
     fn has_players_nearby(&self, pos: i64) -> TriState; // leaf-server/src/minecraft/java/net/minecraft/server/level/DistanceManager.java:165
-    fn for_each_entity_ticking_chunk(&self, consumer: LongConsumer); // leaf-server/src/minecraft/java/net/minecraft/server/level/DistanceManager.java:170
-    fn get_spawn_candidate_chunks(&self) -> JIterator<i64>; // leaf-server/src/minecraft/java/net/minecraft/server/level/DistanceManager.java:185
+    fn for_each_entity_ticking_chunk(&self, consumer: Arc<dyn Fn(i64) + Send + Sync>); // leaf-server/src/minecraft/java/net/minecraft/server/level/DistanceManager.java:170
+    fn get_spawn_candidate_chunks(&self) -> Box<dyn Iterator<Item = i64> + Send>; // leaf-server/src/minecraft/java/net/minecraft/server/level/DistanceManager.java:185
     fn get_debug_status(&self) -> String; // leaf-server/src/minecraft/java/net/minecraft/server/level/DistanceManager.java:189
     fn has_tickets(&self) -> bool; // leaf-server/src/minecraft/java/net/minecraft/server/level/DistanceManager.java:193
 }
@@ -54,7 +50,7 @@ impl std::ops::Deref for dyn DistanceManagerTrait {
 pub static PLAYER_TICKET_LEVEL: LazyLock<i32> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/level/DistanceManager.java:36
 impl DistanceManager {
     pub fn this(&self) -> JRef<dyn DistanceManagerTrait> { self.this.upgrade().expect("this") }
-    pub fn new_base<S: DistanceManagerTrait + 'static>(this: &Weak<S>, ticket_storage: JRef<TicketStorage>, executor: JRef<dyn Executor>, main_thread_executor: JRef<dyn Executor>) -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/DistanceManager.java:43
+    pub fn new_base<S: DistanceManagerTrait + 'static>(this: &Weak<S>, ticket_storage: JRef<TicketStorage>, executor: crate::rt::Executor, main_thread_executor: crate::rt::Executor) -> Self { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/DistanceManager.java:43
     pub fn moonrise_get_chunk_holder_manager(&self) -> JRef<ChunkHolderManager> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/DistanceManager.java:51
     pub fn moonrise_add_player(&self, player: JRef<ServerPlayer>, pos: SectionPos) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/DistanceManager.java:60
     pub fn moonrise_remove_player(&self, player: JRef<ServerPlayer>, pos: SectionPos) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/DistanceManager.java:66
@@ -71,8 +67,8 @@ impl DistanceManager {
     pub fn update_simulation_distance(&self, new_distance: i32) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/DistanceManager.java:152
     pub fn get_natural_spawn_chunk_count(&self) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/DistanceManager.java:161
     pub fn has_players_nearby(&self, pos: i64) -> TriState { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/DistanceManager.java:165
-    pub fn for_each_entity_ticking_chunk(&self, consumer: LongConsumer) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/DistanceManager.java:170
-    pub fn get_spawn_candidate_chunks(&self) -> JIterator<i64> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/DistanceManager.java:185
+    pub fn for_each_entity_ticking_chunk(&self, consumer: Arc<dyn Fn(i64) + Send + Sync>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/DistanceManager.java:170
+    pub fn get_spawn_candidate_chunks(&self) -> Box<dyn Iterator<Item = i64> + Send> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/DistanceManager.java:185
     pub fn get_debug_status(&self) -> String { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/DistanceManager.java:189
     pub fn has_tickets(&self) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/DistanceManager.java:193
 }
@@ -109,7 +105,7 @@ impl ChunkTrackerTrait for DistanceManagerFixedPlayerDistanceChunkTracker {
 impl DynamicGraphMinFixedPointTrait for DistanceManagerFixedPlayerDistanceChunkTracker {
     fn as_dynamic_graph_min_fixed_point(&self) -> &DynamicGraphMinFixedPoint { self }
     fn remove_from_queue(&self, node: i64) { DynamicGraphMinFixedPoint::remove_from_queue(self, node) }
-    fn remove_if(&self, pred: JRef<dyn LongPredicate>) { DynamicGraphMinFixedPoint::remove_if(self, pred) }
+    fn remove_if(&self, pred: Arc<dyn Fn(i64) -> bool + Send + Sync>) { DynamicGraphMinFixedPoint::remove_if(self, pred) }
     fn check_node(&self, node: i64) { DynamicGraphMinFixedPoint::check_node(self, node) }
     fn check_edge(&self, from: i64, to: i64, new_level_from: i32, only_decreased: bool) { DynamicGraphMinFixedPoint::check_edge(self, from, to, new_level_from, only_decreased) }
     fn get_queue_size(&self) -> i32 { DynamicGraphMinFixedPoint::get_queue_size(self) }

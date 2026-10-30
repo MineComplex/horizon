@@ -6,9 +6,6 @@ use crate::com::mojang::brigadier::context::CommandContext;
 use crate::com::mojang::brigadier::exceptions::DynamicCommandExceptionType;
 use crate::com::mojang::brigadier::suggestion::Suggestions;
 use crate::com::mojang::brigadier::suggestion::SuggestionsBuilder;
-use crate::java::lang::Throwable;
-use crate::java::util::concurrent::CompletableFuture;
-use crate::java::util::function::BiFunction;
 use crate::net::minecraft::commands::command_source_stack::CommandSourceStack;
 use crate::net::minecraft::world::entity::entity::EntityTrait;
 use crate::net::minecraft::world::phys::vec3::Vec3;
@@ -24,8 +21,8 @@ impl EntityAnchorArgument {
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/EntityAnchorArgument.java:24
     pub fn get_anchor(context: CommandContext<JRef<CommandSourceStack>>, name: &str) -> EntityAnchorArgumentAnchor { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/EntityAnchorArgument.java:30
     pub fn anchor() -> JRef<EntityAnchorArgument> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/EntityAnchorArgument.java:34
-    pub fn parse(&self, reader: StringReader) -> Result<EntityAnchorArgumentAnchor, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/EntityAnchorArgument.java:38
-    pub fn list_suggestions<S: JGeneric>(&self, context: CommandContext<S>, builder: SuggestionsBuilder) -> CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/EntityAnchorArgument.java:51
+    pub fn parse(&self, reader: StringReader) -> Result<EntityAnchorArgumentAnchor, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/EntityAnchorArgument.java:38
+    pub fn list_suggestions<S: JGeneric>(&self, context: CommandContext<S>, builder: SuggestionsBuilder) -> crate::rt::CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/EntityAnchorArgument.java:51
     pub fn get_examples(&self) -> Vec<String> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/EntityAnchorArgument.java:56
 }
 crate::jobject!(EntityAnchorArgument);
@@ -38,7 +35,7 @@ pub enum EntityAnchorArgumentAnchor {
 /// The fields each EntityAnchorArgumentAnchor constant is built with (Java: the enum constructor).
 pub struct EntityAnchorArgumentAnchorData {
     pub name: String,
-    pub transform: JRef<dyn BiFunction<Vec3, JRef<dyn EntityTrait>, Vec3>>,
+    pub transform: Arc<dyn Fn(Vec3, JRef<dyn EntityTrait>) -> Vec3 + Send + Sync>,
 }
 pub static ANCHOR_BY_NAME: LazyLock<HashMap<String, EntityAnchorArgumentAnchor>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/EntityAnchorArgument.java:65
 impl EntityAnchorArgumentAnchor {

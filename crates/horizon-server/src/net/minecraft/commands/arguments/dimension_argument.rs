@@ -6,8 +6,6 @@ use crate::com::mojang::brigadier::context::CommandContext;
 use crate::com::mojang::brigadier::exceptions::DynamicCommandExceptionType;
 use crate::com::mojang::brigadier::suggestion::Suggestions;
 use crate::com::mojang::brigadier::suggestion::SuggestionsBuilder;
-use crate::java::lang::Throwable;
-use crate::java::util::concurrent::CompletableFuture;
 use crate::net::minecraft::commands::command_source_stack::CommandSourceStack;
 use crate::net::minecraft::resources::identifier::Identifier;
 use crate::net::minecraft::server::level::server_level::ServerLevel;
@@ -21,10 +19,10 @@ pub static ERROR_INVALID_VALUE: LazyLock<DynamicCommandExceptionType> = LazyLock
 impl DimensionArgument {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/DimensionArgument.java:23
-    pub fn parse(&self, reader: StringReader) -> Result<JRef<Identifier>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/DimensionArgument.java:31
-    pub fn list_suggestions<S: JGeneric>(&self, context: CommandContext<S>, builder: SuggestionsBuilder) -> CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/DimensionArgument.java:36
+    pub fn parse(&self, reader: StringReader) -> Result<JRef<Identifier>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/DimensionArgument.java:31
+    pub fn list_suggestions<S: JGeneric>(&self, context: CommandContext<S>, builder: SuggestionsBuilder) -> crate::rt::CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/DimensionArgument.java:36
     pub fn get_examples(&self) -> Vec<String> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/DimensionArgument.java:43
     pub fn dimension() -> JRef<DimensionArgument> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/DimensionArgument.java:48
-    pub fn get_dimension(context: CommandContext<JRef<CommandSourceStack>>, name: &str) -> Result<JRef<ServerLevel>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/DimensionArgument.java:52
+    pub fn get_dimension(context: CommandContext<JRef<CommandSourceStack>>, name: &str) -> Result<JRef<ServerLevel>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/DimensionArgument.java:52
 }
 crate::jobject!(DimensionArgument);

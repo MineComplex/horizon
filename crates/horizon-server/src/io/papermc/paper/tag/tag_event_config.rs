@@ -8,7 +8,6 @@ use crate::io::papermc::paper::plugin::lifecycle::event::types::abstract_lifecyc
 use crate::io::papermc::paper::registry::registry_key::RegistryKey;
 use crate::io::papermc::paper::tag::post_flatten_tag_registrar::PostFlattenTagRegistrar;
 use crate::io::papermc::paper::tag::pre_flatten_tag_registrar::PreFlattenTagRegistrar;
-use crate::java::util::function::Function;
 use crate::net::minecraft::resources::identifier::Identifier;
 
 // ---- record io.papermc.paper.tag.TagEventConfig (paper-server/src/main/java/io/papermc/paper/tag/TagEventConfig.java:14)
@@ -17,12 +16,12 @@ pub struct TagEventConfig<M: JGeneric, A: JGeneric> {
     pub pre_flatten: Option<JRef<dyn AbstractLifecycleEventTypeTrait<JRef<dyn BootstrapContext>, JRef<dyn ReloadableRegistrarEvent<JRef<dyn PreFlattenTagRegistrar<A>>>>, JObjectRef>>>,
     pub post_flatten: Option<JRef<dyn AbstractLifecycleEventTypeTrait<JRef<dyn BootstrapContext>, JRef<dyn ReloadableRegistrarEvent<JRef<dyn PostFlattenTagRegistrar<A>>>>, JObjectRef>>>,
     pub cause: ReloadableRegistrarEventCause,
-    pub from_id_converter: JRef<dyn Function<JRef<Identifier>, Option<M>>>,
-    pub to_id_converter: JRef<dyn Function<M, JRef<Identifier>>>,
+    pub from_id_converter: Arc<dyn Fn(JRef<Identifier>) -> Option<M> + Send + Sync>,
+    pub to_id_converter: Arc<dyn Fn(M) -> JRef<Identifier> + Send + Sync>,
     pub api_registry_key: JRef<dyn RegistryKey<A>>,
     pub _phantom: std::marker::PhantomData<(M, A,)>,
 }
 impl<M: JGeneric, A: JGeneric> TagEventConfig<M, A> {
     pub fn new() -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/tag/TagEventConfig.java:14
-    pub fn new_6(pre_flatten: Option<JRef<dyn AbstractLifecycleEventTypeTrait<JRef<dyn BootstrapContext>, JRef<dyn ReloadableRegistrarEvent<JRef<dyn PreFlattenTagRegistrar<A>>>>, JObjectRef>>>, post_flatten: Option<JRef<dyn AbstractLifecycleEventTypeTrait<JRef<dyn BootstrapContext>, JRef<dyn ReloadableRegistrarEvent<JRef<dyn PostFlattenTagRegistrar<A>>>>, JObjectRef>>>, cause: ReloadableRegistrarEventCause, from_id_converter: JRef<dyn Function<JRef<Identifier>, Option<M>>>, to_id_converter: JRef<dyn Function<M, JRef<Identifier>>>, api_registry_key: JRef<dyn RegistryKey<A>>) -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/tag/TagEventConfig.java:14
+    pub fn new_6(pre_flatten: Option<JRef<dyn AbstractLifecycleEventTypeTrait<JRef<dyn BootstrapContext>, JRef<dyn ReloadableRegistrarEvent<JRef<dyn PreFlattenTagRegistrar<A>>>>, JObjectRef>>>, post_flatten: Option<JRef<dyn AbstractLifecycleEventTypeTrait<JRef<dyn BootstrapContext>, JRef<dyn ReloadableRegistrarEvent<JRef<dyn PostFlattenTagRegistrar<A>>>>, JObjectRef>>>, cause: ReloadableRegistrarEventCause, from_id_converter: Arc<dyn Fn(JRef<Identifier>) -> Option<M> + Send + Sync>, to_id_converter: Arc<dyn Fn(M) -> JRef<Identifier> + Send + Sync>, api_registry_key: JRef<dyn RegistryKey<A>>) -> Self { todo!() } // paper-server/src/main/java/io/papermc/paper/tag/TagEventConfig.java:14
 }

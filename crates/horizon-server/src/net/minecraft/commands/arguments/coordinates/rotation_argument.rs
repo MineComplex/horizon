@@ -4,7 +4,6 @@ use crate::prelude::*;
 use crate::com::mojang::brigadier::StringReader;
 use crate::com::mojang::brigadier::context::CommandContext;
 use crate::com::mojang::brigadier::exceptions::SimpleCommandExceptionType;
-use crate::java::lang::Throwable;
 use crate::net::minecraft::commands::arguments::coordinates::coordinates::Coordinates;
 use crate::net::minecraft::commands::command_source_stack::CommandSourceStack;
 
@@ -19,7 +18,7 @@ impl RotationArgument {
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/RotationArgument.java:13
     pub fn rotation() -> JRef<RotationArgument> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/RotationArgument.java:17
     pub fn get_rotation(context: CommandContext<JRef<CommandSourceStack>>, name: &str) -> JRef<dyn Coordinates> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/RotationArgument.java:21
-    pub fn parse(&self, reader: StringReader) -> Result<JRef<dyn Coordinates>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/RotationArgument.java:25
+    pub fn parse(&self, reader: StringReader) -> Result<JRef<dyn Coordinates>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/RotationArgument.java:25
     pub fn get_examples(&self) -> Vec<String> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/coordinates/RotationArgument.java:43
 }
 crate::jobject!(RotationArgument);

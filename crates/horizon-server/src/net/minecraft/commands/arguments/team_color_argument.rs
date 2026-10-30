@@ -6,8 +6,6 @@ use crate::com::mojang::brigadier::context::CommandContext;
 use crate::com::mojang::brigadier::exceptions::DynamicCommandExceptionType;
 use crate::com::mojang::brigadier::suggestion::Suggestions;
 use crate::com::mojang::brigadier::suggestion::SuggestionsBuilder;
-use crate::java::lang::Throwable;
-use crate::java::util::concurrent::CompletableFuture;
 use crate::net::minecraft::commands::command_source_stack::CommandSourceStack;
 use crate::net::minecraft::world::scores::team_color::TeamColor;
 
@@ -22,8 +20,8 @@ impl TeamColorArgument {
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/TeamColorArgument.java:24
     pub fn team_color() -> JRef<TeamColorArgument> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/TeamColorArgument.java:27
     pub fn get_team_color(context: CommandContext<JRef<CommandSourceStack>>, name: &str) -> TeamColor { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/TeamColorArgument.java:31
-    pub fn parse(&self, reader: StringReader) -> Result<TeamColor, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/TeamColorArgument.java:35
-    pub fn list_suggestions<S: JGeneric>(&self, context_builder: CommandContext<S>, builder: SuggestionsBuilder) -> CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/TeamColorArgument.java:46
+    pub fn parse(&self, reader: StringReader) -> Result<TeamColor, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/TeamColorArgument.java:35
+    pub fn list_suggestions<S: JGeneric>(&self, context_builder: CommandContext<S>, builder: SuggestionsBuilder) -> crate::rt::CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/TeamColorArgument.java:46
     pub fn get_examples(&self) -> Vec<String> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/TeamColorArgument.java:51
 }
 crate::jobject!(TeamColorArgument);

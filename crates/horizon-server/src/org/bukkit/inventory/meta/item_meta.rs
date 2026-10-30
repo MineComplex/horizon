@@ -3,9 +3,7 @@
 use crate::prelude::*;
 use crate::com::destroystokyo::paper::namespaced::Namespaced;
 use crate::io::papermc::paper::registry::set::registry_key_set::RegistryKeySet;
-use crate::java::lang::Cloneable;
 use crate::net::kyori::adventure::text::Component;
-use crate::net::md_5::bungee::api::chat::BaseComponent;
 use crate::org::bukkit::attribute::attribute::Attribute;
 use crate::org::bukkit::attribute::attribute_modifier::AttributeModifier;
 use crate::org::bukkit::configuration::serialization::configuration_serializable::ConfigurationSerializable;
@@ -29,7 +27,7 @@ use crate::org::bukkit::tag_class::Tag;
 use crate::api_prelude::*;
 
 // ---- interface org.bukkit.inventory.meta.ItemMeta (paper-api/src/main/java/org/bukkit/inventory/meta/ItemMeta.java:44)
-pub trait ItemMeta: Cloneable + ConfigurationSerializable + PersistentDataHolder {
+pub trait ItemMeta: ConfigurationSerializable + PersistentDataHolder {
     fn has_custom_name(&self) -> bool; // paper-api/src/main/java/org/bukkit/inventory/meta/ItemMeta.java:52
     fn custom_name(&self) -> Component; // paper-api/src/main/java/org/bukkit/inventory/meta/ItemMeta.java:61
     fn custom_name_1(&self, custom_name: Component); // paper-api/src/main/java/org/bukkit/inventory/meta/ItemMeta.java:68
@@ -37,9 +35,9 @@ pub trait ItemMeta: Cloneable + ConfigurationSerializable + PersistentDataHolder
     fn display_name(&self) -> Component { self.custom_name() } // default, paper-api/src/main/java/org/bukkit/inventory/meta/ItemMeta.java:89
     fn display_name_1(&self, display_name: Component) { self.custom_name_1(display_name); } // default, paper-api/src/main/java/org/bukkit/inventory/meta/ItemMeta.java:100
     fn get_display_name(&self) -> String; // paper-api/src/main/java/org/bukkit/inventory/meta/ItemMeta.java:115
-    fn get_display_name_component(&self) -> Vec<BaseComponent>; // paper-api/src/main/java/org/bukkit/inventory/meta/ItemMeta.java:129
+    fn get_display_name_component(&self) -> Vec<()>; // paper-api/src/main/java/org/bukkit/inventory/meta/ItemMeta.java:129
     fn set_display_name(&self, name: Option<String>); // paper-api/src/main/java/org/bukkit/inventory/meta/ItemMeta.java:139
-    fn set_display_name_component(&self, component: Option<Vec<BaseComponent>>); // paper-api/src/main/java/org/bukkit/inventory/meta/ItemMeta.java:149
+    fn set_display_name_component(&self, component: Option<Vec<()>>); // paper-api/src/main/java/org/bukkit/inventory/meta/ItemMeta.java:149
     fn has_item_name(&self) -> bool; // paper-api/src/main/java/org/bukkit/inventory/meta/ItemMeta.java:160
     fn item_name(&self) -> Component; // paper-api/src/main/java/org/bukkit/inventory/meta/ItemMeta.java:175
     fn item_name_1(&self, name: Option<Component>); // paper-api/src/main/java/org/bukkit/inventory/meta/ItemMeta.java:186
@@ -52,9 +50,9 @@ pub trait ItemMeta: Cloneable + ConfigurationSerializable + PersistentDataHolder
     fn lore(&self) -> Option<Vec<Component>>; // paper-api/src/main/java/org/bukkit/inventory/meta/ItemMeta.java:262
     fn lore_1(&self, lore: Option<Vec<Component>>); // paper-api/src/main/java/org/bukkit/inventory/meta/ItemMeta.java:269
     fn get_lore(&self) -> Option<Vec<String>>; // paper-api/src/main/java/org/bukkit/inventory/meta/ItemMeta.java:281
-    fn get_lore_components(&self) -> Option<Vec<Vec<BaseComponent>>>; // paper-api/src/main/java/org/bukkit/inventory/meta/ItemMeta.java:294
+    fn get_lore_components(&self) -> Option<Vec<Vec<()>>>; // paper-api/src/main/java/org/bukkit/inventory/meta/ItemMeta.java:294
     fn set_lore(&self, lore: Option<Vec<String>>); // paper-api/src/main/java/org/bukkit/inventory/meta/ItemMeta.java:305
-    fn set_lore_components(&self, lore: Option<Vec<Vec<BaseComponent>>>); // paper-api/src/main/java/org/bukkit/inventory/meta/ItemMeta.java:315
+    fn set_lore_components(&self, lore: Option<Vec<Vec<()>>>); // paper-api/src/main/java/org/bukkit/inventory/meta/ItemMeta.java:315
     fn has_custom_model_data(&self) -> bool; // paper-api/src/main/java/org/bukkit/inventory/meta/ItemMeta.java:330
     fn get_custom_model_data(&self) -> i32; // paper-api/src/main/java/org/bukkit/inventory/meta/ItemMeta.java:348
     fn get_custom_model_data_component(&self) -> JRef<dyn CustomModelDataComponent>; // paper-api/src/main/java/org/bukkit/inventory/meta/ItemMeta.java:363

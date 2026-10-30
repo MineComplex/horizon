@@ -3,7 +3,6 @@
 use crate::prelude::*;
 use crate::com::mojang::serialization::Codec;
 use crate::com::mojang::serialization::MapCodec;
-use crate::java::lang::Throwable;
 use crate::net::minecraft::world::attribute::environment_attribute::EnvironmentAttribute;
 use crate::net::minecraft::world::level::storage::loot::loot_context::LootContext;
 use crate::net::minecraft::world::level::storage::loot::loot_context_user::LootContextUser;
@@ -29,7 +28,7 @@ impl EnvironmentAttributeValue {
 // ---- generated hierarchy glue (tools/leaf_port/gen.py): forwards each virtual method to the class that
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl ContextFloatProvider for EnvironmentAttributeValue {
-    fn get_float_unsafe(&self, context: JRef<LootContext>) -> Result<f32, Throwable> { EnvironmentAttributeValue::get_float_unsafe(self, context) }
+    fn get_float_unsafe(&self, context: JRef<LootContext>) -> Result<f32, anyhow::Error> { EnvironmentAttributeValue::get_float_unsafe(self, context) }
     fn codec(&self) -> MapCodec<JRef<dyn ContextFloatProvider>> { EnvironmentAttributeValue::codec(self) }
 }
 impl Validatable for EnvironmentAttributeValue {

@@ -6,9 +6,6 @@ use crate::ca::spottedleaf::moonrise::patches::chunk_system::scheduling::new_chu
 use crate::ca::spottedleaf::moonrise::patches::getblock::get_block_chunk::GetBlockChunk;
 use crate::ca::spottedleaf::moonrise::patches::starlight::chunk::starlight_chunk::StarlightChunk;
 use crate::ca::spottedleaf::moonrise::patches::starlight::light::swmr_nibble_array::SWMRNibbleArray;
-use crate::java::util::function::BiConsumer;
-use crate::java::util::function::Predicate;
-use crate::java::util::function::Supplier;
 use crate::net::minecraft::core::block_pos::BlockPos;
 use crate::net::minecraft::core::holder::Holder;
 use crate::net::minecraft::core::holder_lookup::HolderLookupProvider;
@@ -62,7 +59,7 @@ pub struct LevelChunk {
     pub tickers_in_level: Mut<HashMap<BlockPos, JRef<LevelChunkRebindableTickingBlockEntityWrapper>>>, // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/LevelChunk.java:84
     pub loaded: Mut<bool>, // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/LevelChunk.java:85
     pub level: JRef<ServerLevel>, // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/LevelChunk.java:86
-    pub full_status: Mut<Option<JRef<dyn Supplier<FullChunkStatus>>>>, // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/LevelChunk.java:87
+    pub full_status: Mut<Option<Arc<dyn Fn() -> FullChunkStatus + Send + Sync>>>, // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/LevelChunk.java:87
     pub post_load: Mut<JRef<dyn LevelChunkPostLoadProcessor>>, // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/LevelChunk.java:88
     pub game_event_listener_registry_sections: Mut<Vec<JRef<dyn GameEventListenerRegistry>>>, // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/LevelChunk.java:90
     pub block_ticks: JRef<LevelChunkTicks<JRef<dyn BlockTrait>>>, // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/LevelChunk.java:102
@@ -106,7 +103,7 @@ pub trait LevelChunkTrait: ChunkAccessTrait + ChunkSystemLevelChunk + StarlightC
     fn register_tick_container_in_level(&self, level: JRef<ServerLevel>); // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/LevelChunk.java:900
     fn unregister_tick_container_from_level(&self, level: JRef<ServerLevel>); // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/LevelChunk.java:905
     fn get_full_status(&self) -> FullChunkStatus; // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/LevelChunk.java:915
-    fn set_full_status(&self, full_status: JRef<dyn Supplier<FullChunkStatus>>); // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/LevelChunk.java:919
+    fn set_full_status(&self, full_status: Arc<dyn Fn() -> FullChunkStatus + Send + Sync>); // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/LevelChunk.java:919
     fn clear_all_block_entities(&self); // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/LevelChunk.java:923
     fn register_all_block_entities_after_level_load(&self); // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/LevelChunk.java:930
 }
@@ -182,7 +179,7 @@ impl LevelChunk {
     pub fn register_tick_container_in_level(&self, level: JRef<ServerLevel>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/LevelChunk.java:900
     pub fn unregister_tick_container_from_level(&self, level: JRef<ServerLevel>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/LevelChunk.java:905
     pub fn get_full_status(&self) -> FullChunkStatus { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/LevelChunk.java:915
-    pub fn set_full_status(&self, full_status: JRef<dyn Supplier<FullChunkStatus>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/LevelChunk.java:919
+    pub fn set_full_status(&self, full_status: Arc<dyn Fn() -> FullChunkStatus + Send + Sync>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/LevelChunk.java:919
     pub fn clear_all_block_entities(&self) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/LevelChunk.java:923
     pub fn register_all_block_entities_after_level_load(&self) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/LevelChunk.java:930
     pub fn add_game_event_listener<T: JGeneric>(&self, block_entity: T, level: JRef<ServerLevel>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/level/chunk/LevelChunk.java:941
@@ -212,7 +209,7 @@ impl LevelChunkTrait for LevelChunk {
     fn register_tick_container_in_level(&self, level: JRef<ServerLevel>) { LevelChunk::register_tick_container_in_level(self, level) }
     fn unregister_tick_container_from_level(&self, level: JRef<ServerLevel>) { LevelChunk::unregister_tick_container_from_level(self, level) }
     fn get_full_status(&self) -> FullChunkStatus { LevelChunk::get_full_status(self) }
-    fn set_full_status(&self, full_status: JRef<dyn Supplier<FullChunkStatus>>) { LevelChunk::set_full_status(self, full_status) }
+    fn set_full_status(&self, full_status: Arc<dyn Fn() -> FullChunkStatus + Send + Sync>) { LevelChunk::set_full_status(self, full_status) }
     fn clear_all_block_entities(&self) { LevelChunk::clear_all_block_entities(self) }
     fn register_all_block_entities_after_level_load(&self) { LevelChunk::register_all_block_entities_after_level_load(self) }
 }
@@ -251,7 +248,7 @@ impl ChunkAccessTrait for LevelChunk {
     fn set_block_entity_nbt(&self, entity_tag: JRef<CompoundTag>) { ChunkAccess::set_block_entity_nbt(self, entity_tag) }
     fn get_block_entity_nbt(&self, block_pos: BlockPos) -> Option<JRef<CompoundTag>> { ChunkAccess::get_block_entity_nbt(self, block_pos) }
     fn get_block_entity_nbt_for_saving(&self, block_pos: BlockPos, registry_access: JRef<dyn HolderLookupProvider>) -> Option<JRef<CompoundTag>> { LevelChunk::get_block_entity_nbt_for_saving(self, block_pos, registry_access) }
-    fn find_blocks(&self, predicate: JRef<dyn Predicate<JRef<BlockState>>>, consumer: JRef<dyn BiConsumer<BlockPos, JRef<BlockState>>>) { ChunkAccess::find_blocks(self, predicate, consumer) }
+    fn find_blocks(&self, predicate: Arc<dyn Fn(JRef<BlockState>) -> bool + Send + Sync>, consumer: Arc<dyn Fn(BlockPos, JRef<BlockState>) + Send + Sync>) { ChunkAccess::find_blocks(self, predicate, consumer) }
     fn get_block_ticks(&self) -> JRef<dyn TickContainerAccess<JRef<dyn BlockTrait>>> { LevelChunk::get_block_ticks(self) }
     fn get_fluid_ticks(&self) -> JRef<dyn TickContainerAccess<JRef<dyn FluidTrait>>> { LevelChunk::get_fluid_ticks(self) }
     fn collect_biomes_in_palette(&self, output: &HashSet<JRef<dyn Holder<JRef<Biome>>>>) { ChunkAccess::collect_biomes_in_palette(self, output) }
@@ -265,7 +262,7 @@ impl ChunkAccessTrait for LevelChunk {
     fn set_inhabited_time(&self, inhabited_time: i64) { ChunkAccess::set_inhabited_time(self, inhabited_time) }
     fn is_light_correct(&self) -> bool { ChunkAccess::is_light_correct(self) }
     fn set_light_correct(&self, is_light_correct: bool) { ChunkAccess::set_light_correct(self, is_light_correct) }
-    fn carver_biome(&self, source: JRef<dyn Supplier<JRef<BiomeGenerationSettings>>>) -> JRef<BiomeGenerationSettings> { ChunkAccess::carver_biome(self, source) }
+    fn carver_biome(&self, source: Arc<dyn Fn() -> JRef<BiomeGenerationSettings> + Send + Sync>) -> JRef<BiomeGenerationSettings> { ChunkAccess::carver_biome(self, source) }
     fn set_noise_biome(&self, quart_x: i32, quart_y: i32, quart_z: i32, biome: JRef<dyn Holder<JRef<Biome>>>) { ChunkAccess::set_noise_biome(self, quart_x, quart_y, quart_z, biome) }
     fn fill_biomes_from_noise(&self, biome_resolver: JRef<dyn BiomeResolver>) { ChunkAccess::fill_biomes_from_noise(self, biome_resolver) }
     fn get_below_zero_retrogen(&self) -> Option<JRef<BelowZeroRetrogen>> { ChunkAccess::get_below_zero_retrogen(self) }
@@ -294,7 +291,7 @@ impl GetBlockChunk for LevelChunk {
     fn moonrise_get_fluid(&self, x: i32, y: i32, z: i32) -> JRef<FluidState> { LevelChunk::moonrise_get_fluid(self, x, y, z) }
 }
 impl LightChunk for LevelChunk {
-    fn find_block_light_sources(&self, consumer: JRef<dyn BiConsumer<BlockPos, JRef<BlockState>>>) { ChunkAccess::find_block_light_sources(self, consumer) }
+    fn find_block_light_sources(&self, consumer: Arc<dyn Fn(BlockPos, JRef<BlockState>) + Send + Sync>) { ChunkAccess::find_block_light_sources(self, consumer) }
     fn get_sky_light_sources(&self) -> JRef<ChunkSkyLightSources> { ChunkAccess::get_sky_light_sources(self) }
 }
 impl BlockGetter for LevelChunk {

@@ -90,14 +90,11 @@ pub use crate::com::destroystokyo::paper::loottable::paper_lootable_entity_inven
 pub use crate::com::destroystokyo::paper::loottable::paper_lootable_inventory::PaperLootableInventory as _;
 pub use crate::com::destroystokyo::paper::loottable::paper_lootable_inventory_data::PaperLootableInventoryDataLootTableInterface as _;
 pub use crate::com::destroystokyo::paper::profile::shared_player_profile::SharedPlayerProfile as _;
-pub use crate::com::mojang::authlib::services::minecraft_services_discovery_service::MinecraftServicesDiscoveryServiceTrait as _;
-pub use crate::com::mojang::authlib::services::minecraft_services_profile_repository::MinecraftServicesProfileRepositoryTrait as _;
 pub use crate::com::mojang::brigadier::builder::argument_builder::ArgumentBuilderTrait as _;
 pub use crate::com::mojang::brigadier::exceptions::command_syntax_exception::CommandSyntaxExceptionTrait as _;
 pub use crate::com::mojang::brigadier::suggestion::suggestion::SuggestionTrait as _;
 pub use crate::com::mojang::brigadier::tree::command_node::CommandNodeTrait as _;
 pub use crate::com::mojang::brigadier::tree::literal_command_node::LiteralCommandNodeTrait as _;
-pub use crate::com::mojang::datafixers::util::either::EitherTrait as _;
 pub use crate::com::mojang::math::axis::Axis as _;
 pub use crate::io::papermc::paper::adventure::adventure_codecs::AdventureCodecsNbtComponentDataSource as _;
 pub use crate::io::papermc::paper::adventure::chat_processor::ChatProcessorOutgoingChat as _;
@@ -1540,7 +1537,6 @@ pub use crate::org::dreeam::leaf::util::queue::cache_padded1::CachePadded1Trait 
 pub use crate::org::dreeam::leaf::util::queue::read_counter::ReadCounterTrait as _;
 pub use crate::org::dreeam::leaf::util::queue::write_counter::WriteCounterTrait as _;
 pub use crate::org::galemc::gale::configuration::gale_removed_configurations::GaleRemovedConfigurations as _;
-pub use crate::org::jline::utils::shutdown_hooks::ShutdownHooksTask as _;
 pub use crate::org::purpurmc::purpur::controller::flying_move_controller_wasd::FlyingMoveControllerWASDTrait as _;
 pub use crate::org::purpurmc::purpur::controller::look_controller_wasd::LookControllerWASDTrait as _;
 pub use crate::org::purpurmc::purpur::controller::move_controller_wasd::MoveControllerWASDTrait as _;

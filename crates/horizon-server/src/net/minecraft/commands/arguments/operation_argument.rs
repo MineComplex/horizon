@@ -6,8 +6,6 @@ use crate::com::mojang::brigadier::context::CommandContext;
 use crate::com::mojang::brigadier::exceptions::SimpleCommandExceptionType;
 use crate::com::mojang::brigadier::suggestion::Suggestions;
 use crate::com::mojang::brigadier::suggestion::SuggestionsBuilder;
-use crate::java::lang::Throwable;
-use crate::java::util::concurrent::CompletableFuture;
 use crate::net::minecraft::commands::command_source_stack::CommandSourceStack;
 use crate::net::minecraft::world::scores::score_access::ScoreAccess;
 
@@ -22,20 +20,20 @@ impl OperationArgument {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/OperationArgument.java:19
     pub fn operation() -> JRef<OperationArgument> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/OperationArgument.java:26
-    pub fn get_operation(op: &str) -> Result<JRef<dyn OperationArgumentOperation>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/OperationArgument.java:59
+    pub fn get_operation(op: &str) -> Result<JRef<dyn OperationArgumentOperation>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/OperationArgument.java:59
     pub fn get_operation_2(context: CommandContext<JRef<CommandSourceStack>>, name: &str) -> JRef<dyn OperationArgumentOperation> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/OperationArgument.java:30
-    pub fn parse(&self, reader: StringReader) -> Result<JRef<dyn OperationArgumentOperation>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/OperationArgument.java:34
-    pub fn list_suggestions<S: JGeneric>(&self, context: CommandContext<S>, builder: SuggestionsBuilder) -> CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/OperationArgument.java:49
+    pub fn parse(&self, reader: StringReader) -> Result<JRef<dyn OperationArgumentOperation>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/OperationArgument.java:34
+    pub fn list_suggestions<S: JGeneric>(&self, context: CommandContext<S>, builder: SuggestionsBuilder) -> crate::rt::CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/OperationArgument.java:49
     pub fn get_examples(&self) -> Vec<String> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/OperationArgument.java:54
-    pub fn get_simple_operation(op: &str) -> Result<JRef<dyn OperationArgumentSimpleOperation>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/OperationArgument.java:67
+    pub fn get_simple_operation(op: &str) -> Result<JRef<dyn OperationArgumentSimpleOperation>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/OperationArgument.java:67
 }
 crate::jobject!(OperationArgument);
 // ---- interface net.minecraft.commands.arguments.OperationArgument.Operation (leaf-server/src/minecraft/java/net/minecraft/commands/arguments/OperationArgument.java:93)
 pub trait OperationArgumentOperation: Send + Sync + 'static {
-    fn apply(&self, a: JRef<dyn ScoreAccess>, b: JRef<dyn ScoreAccess>) -> Result<(), Throwable>; // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/OperationArgument.java:95
+    fn apply(&self, a: JRef<dyn ScoreAccess>, b: JRef<dyn ScoreAccess>) -> Result<(), anyhow::Error>; // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/OperationArgument.java:95
 }
-impl<F: Fn(JRef<dyn ScoreAccess>, JRef<dyn ScoreAccess>) -> Result<(), Throwable> + Send + Sync + 'static> OperationArgumentOperation for F {
-    fn apply(&self, a: JRef<dyn ScoreAccess>, b: JRef<dyn ScoreAccess>) -> Result<(), Throwable> { self(a, b) }
+impl<F: Fn(JRef<dyn ScoreAccess>, JRef<dyn ScoreAccess>) -> Result<(), anyhow::Error> + Send + Sync + 'static> OperationArgumentOperation for F {
+    fn apply(&self, a: JRef<dyn ScoreAccess>, b: JRef<dyn ScoreAccess>) -> Result<(), anyhow::Error> { self(a, b) }
 }
 // ---- interface net.minecraft.commands.arguments.OperationArgument.SimpleOperation (leaf-server/src/minecraft/java/net/minecraft/commands/arguments/OperationArgument.java:98)
 pub trait OperationArgumentSimpleOperation: OperationArgumentOperation {

@@ -7,7 +7,6 @@ use crate::org::dreeam::leaf::orebfuscator::config::block_parser::BlockParserCon
 use crate::org::dreeam::leaf::orebfuscator::config::config_issues::ConfigIssues;
 use crate::org::dreeam::leaf::orebfuscator::config::world_config::WorldConfig;
 use crate::org::dreeam::leaf::orebfuscator::config::world_config::WorldConfigTrait;
-use crate::org::joml::Matrix4f;
 
 // ---- class org.dreeam.leaf.orebfuscator.config.ProximityConfig (leaf-server/src/main/java/org/dreeam/leaf/orebfuscator/config/ProximityConfig.java:17)
 pub struct ProximityConfig {
@@ -16,7 +15,7 @@ pub struct ProximityConfig {
     pub distance: i32, // leaf-server/src/main/java/org/dreeam/leaf/orebfuscator/config/ProximityConfig.java:20
     pub frustum_culling_enabled: bool, // leaf-server/src/main/java/org/dreeam/leaf/orebfuscator/config/ProximityConfig.java:22
     pub frustum_culling_min_distance_squared: f32, // leaf-server/src/main/java/org/dreeam/leaf/orebfuscator/config/ProximityConfig.java:23
-    pub frustum_culling_projection_matrix: Matrix4f, // leaf-server/src/main/java/org/dreeam/leaf/orebfuscator/config/ProximityConfig.java:24
+    pub frustum_culling_projection_matrix: glam::Mat4, // leaf-server/src/main/java/org/dreeam/leaf/orebfuscator/config/ProximityConfig.java:24
     pub ray_cast_check_enabled: bool, // leaf-server/src/main/java/org/dreeam/leaf/orebfuscator/config/ProximityConfig.java:26
     pub ray_cast_check_only_check_center: bool, // leaf-server/src/main/java/org/dreeam/leaf/orebfuscator/config/ProximityConfig.java:27
     pub default_block_flags: Mut<i32>, // leaf-server/src/main/java/org/dreeam/leaf/orebfuscator/config/ProximityConfig.java:29
@@ -34,7 +33,7 @@ impl ProximityConfig {
     pub fn distance(&self) -> i32 { todo!() } // leaf-server/src/main/java/org/dreeam/leaf/orebfuscator/config/ProximityConfig.java:114
     pub fn frustum_culling_enabled(&self) -> bool { todo!() } // leaf-server/src/main/java/org/dreeam/leaf/orebfuscator/config/ProximityConfig.java:118
     pub fn frustum_culling_min_distance_squared(&self) -> f32 { todo!() } // leaf-server/src/main/java/org/dreeam/leaf/orebfuscator/config/ProximityConfig.java:122
-    pub fn frustum_culling_projection_matrix(&self) -> Matrix4f { todo!() } // leaf-server/src/main/java/org/dreeam/leaf/orebfuscator/config/ProximityConfig.java:129
+    pub fn frustum_culling_projection_matrix(&self) -> glam::Mat4 { todo!() } // leaf-server/src/main/java/org/dreeam/leaf/orebfuscator/config/ProximityConfig.java:129
     pub fn ray_cast_check_enabled(&self) -> bool { todo!() } // leaf-server/src/main/java/org/dreeam/leaf/orebfuscator/config/ProximityConfig.java:133
     pub fn ray_cast_check_only_check_center(&self) -> bool { todo!() } // leaf-server/src/main/java/org/dreeam/leaf/orebfuscator/config/ProximityConfig.java:137
     pub fn hidden_blocks(&self) -> HashMap<BlockParserConfigBlockValue, i32> { todo!() } // leaf-server/src/main/java/org/dreeam/leaf/orebfuscator/config/ProximityConfig.java:141

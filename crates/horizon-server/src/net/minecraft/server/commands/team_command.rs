@@ -3,7 +3,6 @@
 use crate::prelude::*;
 use crate::com::mojang::brigadier::command_dispatcher::CommandDispatcher;
 use crate::com::mojang::brigadier::exceptions::SimpleCommandExceptionType;
-use crate::java::lang::Throwable;
 use crate::net::minecraft::commands::command_build_context::CommandBuildContext;
 use crate::net::minecraft::commands::command_source_stack::CommandSourceStack;
 use crate::net::minecraft::network::chat::component::Component;
@@ -36,20 +35,20 @@ impl TeamCommand {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TeamCommand.java:28
     pub fn register(dispatcher: JRef<CommandDispatcher<JRef<CommandSourceStack>>>, context: JRef<dyn CommandBuildContext>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TeamCommand.java:71
-    pub fn leave_team(source: JRef<CommandSourceStack>, members: &Vec<JRef<dyn ScoreHolder>>) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TeamCommand.java:280
-    pub fn join_team(source: JRef<CommandSourceStack>, team: JRef<PlayerTeam>, members: &Vec<JRef<dyn ScoreHolder>>) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TeamCommand.java:291
-    pub fn set_name_tag_visibility(source: JRef<CommandSourceStack>, team: JRef<PlayerTeam>, visibility: TeamVisibility) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TeamCommand.java:302
-    pub fn set_death_message_visibility(source: JRef<CommandSourceStack>, team: JRef<PlayerTeam>, visibility: TeamVisibility) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TeamCommand.java:314
-    pub fn set_collision(source: JRef<CommandSourceStack>, team: JRef<PlayerTeam>, collision: TeamCollisionRule) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TeamCommand.java:327
-    pub fn set_friendly_sight(source: JRef<CommandSourceStack>, team: JRef<PlayerTeam>, allowed: bool) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TeamCommand.java:339
-    pub fn set_friendly_fire(source: JRef<CommandSourceStack>, team: JRef<PlayerTeam>, allowed: bool) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TeamCommand.java:356
-    pub fn set_display_name(source: JRef<CommandSourceStack>, team: JRef<PlayerTeam>, display_name: JRef<dyn Component>) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TeamCommand.java:372
-    pub fn set_color(source: JRef<CommandSourceStack>, team: JRef<PlayerTeam>, color: TeamColor) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TeamCommand.java:382
-    pub fn clear_color(source: JRef<CommandSourceStack>, team: JRef<PlayerTeam>) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TeamCommand.java:393
-    pub fn empty_team(source: JRef<CommandSourceStack>, team: JRef<PlayerTeam>) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TeamCommand.java:404
+    pub fn leave_team(source: JRef<CommandSourceStack>, members: &Vec<JRef<dyn ScoreHolder>>) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TeamCommand.java:280
+    pub fn join_team(source: JRef<CommandSourceStack>, team: JRef<PlayerTeam>, members: &Vec<JRef<dyn ScoreHolder>>) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TeamCommand.java:291
+    pub fn set_name_tag_visibility(source: JRef<CommandSourceStack>, team: JRef<PlayerTeam>, visibility: TeamVisibility) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TeamCommand.java:302
+    pub fn set_death_message_visibility(source: JRef<CommandSourceStack>, team: JRef<PlayerTeam>, visibility: TeamVisibility) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TeamCommand.java:314
+    pub fn set_collision(source: JRef<CommandSourceStack>, team: JRef<PlayerTeam>, collision: TeamCollisionRule) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TeamCommand.java:327
+    pub fn set_friendly_sight(source: JRef<CommandSourceStack>, team: JRef<PlayerTeam>, allowed: bool) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TeamCommand.java:339
+    pub fn set_friendly_fire(source: JRef<CommandSourceStack>, team: JRef<PlayerTeam>, allowed: bool) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TeamCommand.java:356
+    pub fn set_display_name(source: JRef<CommandSourceStack>, team: JRef<PlayerTeam>, display_name: JRef<dyn Component>) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TeamCommand.java:372
+    pub fn set_color(source: JRef<CommandSourceStack>, team: JRef<PlayerTeam>, color: TeamColor) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TeamCommand.java:382
+    pub fn clear_color(source: JRef<CommandSourceStack>, team: JRef<PlayerTeam>) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TeamCommand.java:393
+    pub fn empty_team(source: JRef<CommandSourceStack>, team: JRef<PlayerTeam>) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TeamCommand.java:404
     pub fn delete_team(source: JRef<CommandSourceStack>, team: JRef<PlayerTeam>) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TeamCommand.java:419
-    pub fn create_team(source: JRef<CommandSourceStack>, name: &str) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TeamCommand.java:426
-    pub fn create_team_3(source: JRef<CommandSourceStack>, name: &str, display_name: JRef<dyn Component>) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TeamCommand.java:430
+    pub fn create_team(source: JRef<CommandSourceStack>, name: &str) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TeamCommand.java:426
+    pub fn create_team_3(source: JRef<CommandSourceStack>, name: &str, display_name: JRef<dyn Component>) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TeamCommand.java:430
     pub fn list_members(source: JRef<CommandSourceStack>, team: JRef<PlayerTeam>) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TeamCommand.java:442
     pub fn list_teams(source: JRef<CommandSourceStack>) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TeamCommand.java:458
     pub fn set_prefix(source: JRef<CommandSourceStack>, team: JRef<PlayerTeam>, prefix: JRef<dyn Component>) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TeamCommand.java:474

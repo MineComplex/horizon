@@ -9,8 +9,6 @@ use crate::com::mojang::brigadier::context::CommandContextBuilder;
 use crate::com::mojang::brigadier::suggestion::SuggestionProvider;
 use crate::com::mojang::brigadier::tree::command_node::CommandNodeTrait;
 use crate::io::papermc::paper::command::brigadier::command_source_stack::CommandSourceStack;
-use crate::java::lang::Throwable;
-use crate::java::util::function::Predicate;
 
 // ---- class io.papermc.paper.command.brigadier.argument.WrappedArgumentCommandNode (paper-server/src/main/java/io/papermc/paper/command/brigadier/argument/WrappedArgumentCommandNode.java:21)
 pub struct WrappedArgumentCommandNode<NMS: JGeneric, API: JGeneric> {
@@ -20,6 +18,6 @@ pub struct WrappedArgumentCommandNode<NMS: JGeneric, API: JGeneric> {
 }
 impl<NMS: JGeneric, API: JGeneric> WrappedArgumentCommandNode<NMS, API> {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
-    pub fn new(name: &str, pure_argument_type: JRef<dyn ArgumentType<API>>, nms_native_type: JRef<dyn ArgumentType<NMS>>, command: JRef<dyn Command<JRef<dyn CommandSourceStack>>>, requirement: JRef<dyn Predicate<JRef<dyn CommandSourceStack>>>, redirect: JRef<dyn CommandNodeTrait<JRef<dyn CommandSourceStack>>>, modifier: JRef<dyn RedirectModifier<JRef<dyn CommandSourceStack>>>, forks: bool, custom_suggestions: JRef<dyn SuggestionProvider<JRef<dyn CommandSourceStack>>>) -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/command/brigadier/argument/WrappedArgumentCommandNode.java:25
-    pub fn parse(&self, reader: StringReader, context_builder: CommandContextBuilder<JRef<dyn CommandSourceStack>>) -> Result<(), Throwable> { todo!() } // paper-server/src/main/java/io/papermc/paper/command/brigadier/argument/WrappedArgumentCommandNode.java:46
+    pub fn new(name: &str, pure_argument_type: JRef<dyn ArgumentType<API>>, nms_native_type: JRef<dyn ArgumentType<NMS>>, command: JRef<dyn Command<JRef<dyn CommandSourceStack>>>, requirement: Arc<dyn Fn(JRef<dyn CommandSourceStack>) -> bool + Send + Sync>, redirect: JRef<dyn CommandNodeTrait<JRef<dyn CommandSourceStack>>>, modifier: JRef<dyn RedirectModifier<JRef<dyn CommandSourceStack>>>, forks: bool, custom_suggestions: JRef<dyn SuggestionProvider<JRef<dyn CommandSourceStack>>>) -> JRef<Self> { todo!() } // paper-server/src/main/java/io/papermc/paper/command/brigadier/argument/WrappedArgumentCommandNode.java:25
+    pub fn parse(&self, reader: StringReader, context_builder: CommandContextBuilder<JRef<dyn CommandSourceStack>>) -> Result<(), anyhow::Error> { todo!() } // paper-server/src/main/java/io/papermc/paper/command/brigadier/argument/WrappedArgumentCommandNode.java:46
 }

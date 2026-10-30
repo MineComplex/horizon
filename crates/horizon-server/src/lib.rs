@@ -18,4 +18,5 @@
 pub mod api_prelude;
 pub mod prelude;
 pub mod prelude_traits;
+pub mod rt;
 include!("generated_mods.rs");

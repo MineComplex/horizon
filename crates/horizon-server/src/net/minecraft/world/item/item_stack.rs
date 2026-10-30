@@ -4,11 +4,6 @@ use crate::prelude::*;
 use crate::com::mojang::serialization::Codec;
 use crate::com::mojang::serialization::DataResult;
 use crate::com::mojang::serialization::MapCodec;
-use crate::java::util::function::BiConsumer;
-use crate::java::util::function::BiFunction;
-use crate::java::util::function::Consumer;
-use crate::java::util::function::Predicate;
-use crate::java::util::function::UnaryOperator;
 use crate::net::caffeinemc::mods::lithium::common::util::change_tracking::change_publisher::ChangePublisher;
 use crate::net::caffeinemc::mods::lithium::common::util::change_tracking::change_subscriber::ChangeSubscriber;
 use crate::net::minecraft::core::block_pos::BlockPos;
@@ -60,7 +55,6 @@ use crate::net::minecraft::world::level::block::state::pattern::block_in_world::
 use crate::net::minecraft::world::level::gameevent::game_event::GameEvent;
 use crate::net::minecraft::world::level::item_like::ItemLike;
 use crate::net::minecraft::world::level::level::LevelTrait;
-use crate::org::apache::commons::lang3::function::TriConsumer;
 
 // ---- class net.minecraft.world.item.ItemStack (leaf-server/src/minecraft/java/net/minecraft/world/item/ItemStack.java:103)
 pub struct ItemStack {
@@ -118,7 +112,7 @@ impl ItemStack {
     pub fn split(&self, amount: i32) -> JRef<ItemStack> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/ItemStack.java:346
     pub fn copy_and_clear(&self) -> JRef<ItemStack> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/ItemStack.java:353
     pub fn get_item(&self) -> JRef<dyn ItemTrait> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/ItemStack.java:363
-    pub fn is_1_5(&self, item: JRef<dyn Predicate<JRef<dyn Holder<JRef<dyn ItemTrait>>>>>) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/ItemStack.java:372
+    pub fn is_1_5(&self, item: Arc<dyn Fn(JRef<dyn Holder<JRef<dyn ItemTrait>>>) -> bool + Send + Sync>) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/ItemStack.java:372
     pub fn use_on(&self, context: JRef<dyn UseOnContextTrait>) -> JRef<dyn InteractionResult> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/ItemStack.java:376
     pub fn get_destroy_speed(&self, state: JRef<BlockState>) -> f32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/ItemStack.java:556
     pub fn use_(&self, level: JRef<dyn LevelTrait>, player: JRef<dyn PlayerTrait>, hand: InteractionHand) -> JRef<dyn InteractionResult> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/ItemStack.java:560
@@ -135,12 +129,12 @@ impl ItemStack {
     pub fn next_damage_will_break(&self) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/ItemStack.java:643
     pub fn hurt_and_break(&self, amount: i32, owner: JRef<dyn LivingEntityTrait>, hand: InteractionHand) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/ItemStack.java:752
     pub fn hurt_and_break_3(&self, amount: i32, owner: JRef<dyn LivingEntityTrait>, slot: EquipmentSlot) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/ItemStack.java:756
-    pub fn hurt_and_break_4(&self, amount: i32, level: JRef<ServerLevel>, player: Option<JRef<dyn LivingEntityTrait>>, on_break: JRef<dyn Consumer<JRef<ItemStack>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/ItemStack.java:647
+    pub fn hurt_and_break_4(&self, amount: i32, level: JRef<ServerLevel>, player: Option<JRef<dyn LivingEntityTrait>>, on_break: Arc<dyn Fn(JRef<ItemStack>) + Send + Sync>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/ItemStack.java:647
     pub fn hurt_and_break_4_2(&self, amount: i32, owner: JRef<dyn LivingEntityTrait>, slot: EquipmentSlot, force: bool) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/ItemStack.java:760
-    pub fn hurt_and_break_5(&self, amount: i32, level: JRef<ServerLevel>, player: Option<JRef<dyn LivingEntityTrait>>, on_break: JRef<dyn Consumer<JRef<ItemStack>>>, force: bool) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/ItemStack.java:652
+    pub fn hurt_and_break_5(&self, amount: i32, level: JRef<ServerLevel>, player: Option<JRef<dyn LivingEntityTrait>>, on_break: Arc<dyn Fn(JRef<ItemStack>) + Send + Sync>, force: bool) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/ItemStack.java:652
     pub fn process_durability_change(&self, amount: i32, level: JRef<ServerLevel>, player: Option<JRef<dyn LivingEntityTrait>>) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/ItemStack.java:680
     pub fn process_durability_change_4(&self, amount: i32, level: JRef<ServerLevel>, player: Option<JRef<dyn LivingEntityTrait>>, force: bool) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/ItemStack.java:684
-    pub fn apply_damage(&self, new_damage: i32, player: Option<JRef<dyn LivingEntityTrait>>, on_break: JRef<dyn Consumer<JRef<ItemStack>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/ItemStack.java:695
+    pub fn apply_damage(&self, new_damage: i32, player: Option<JRef<dyn LivingEntityTrait>>, on_break: Arc<dyn Fn(JRef<ItemStack>) + Send + Sync>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/ItemStack.java:695
     pub fn hurt_without_breaking(&self, amount: i32, player: JRef<dyn PlayerTrait>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/ItemStack.java:721
     pub fn hurt_and_convert_on_break(&self, amount: i32, new_item: JRef<dyn ItemLike>, owner: JRef<dyn LivingEntityTrait>, slot: EquipmentSlot) -> JRef<ItemStack> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/ItemStack.java:769
     pub fn is_bar_visible(&self) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/ItemStack.java:783
@@ -163,7 +157,7 @@ impl ItemStack {
     pub fn list_matches(left: &Vec<JRef<ItemStack>>, right: &Vec<JRef<ItemStack>>) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/ItemStack.java:892
     pub fn is_same_item(a: JRef<ItemStack>, b: JRef<ItemStack>) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/ItemStack.java:907
     pub fn is_same_item_same_components(a: JRef<ItemStack>, b: JRef<ItemStack>) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/ItemStack.java:911
-    pub fn matches_ignoring_components(a: JRef<ItemStack>, b: JRef<ItemStack>, ignored_predicate: JRef<dyn Predicate<JRef<dyn DataComponentType<JObjectRef>>>>) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/ItemStack.java:915
+    pub fn matches_ignoring_components(a: JRef<ItemStack>, b: JRef<ItemStack>, ignored_predicate: Arc<dyn Fn(JRef<dyn DataComponentType<JObjectRef>>) -> bool + Send + Sync>) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/ItemStack.java:915
     pub fn lenient_optional_field_of(name: &str) -> MapCodec<JRef<ItemStack>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/ItemStack.java:951
     pub fn hash_item_and_components(item: Option<JRef<ItemStack>>) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/ItemStack.java:956
     pub fn hash_stack_list(items: &Vec<JRef<ItemStack>>) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/ItemStack.java:965
@@ -180,8 +174,8 @@ impl ItemStack {
     pub fn set<T: JGeneric>(&self, value: TypedDataComponent<T>) -> T { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/ItemStack.java:1039
     pub fn set_2<T: JGeneric>(&self, type_: JRef<dyn DataComponentType<T>>, value: Option<T>) -> T { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/ItemStack.java:1035
     pub fn copy_from<T: JGeneric>(&self, type_: JRef<dyn DataComponentType<T>>, source: JRef<dyn DataComponentGetter>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/ItemStack.java:1043
-    pub fn update<T: JGeneric>(&self, type_: JRef<dyn DataComponentType<T>>, default_value: T, function: JRef<dyn UnaryOperator<T>>) -> T { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/ItemStack.java:1051
-    pub fn update_4<T: JGeneric, U: JGeneric>(&self, type_: JRef<dyn DataComponentType<T>>, default_value: T, value: U, combiner: JRef<dyn BiFunction<T, U, T>>) -> T { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/ItemStack.java:1047
+    pub fn update<T: JGeneric>(&self, type_: JRef<dyn DataComponentType<T>>, default_value: T, function: Arc<dyn Fn(T) -> T + Send + Sync>) -> T { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/ItemStack.java:1051
+    pub fn update_4<T: JGeneric, U: JGeneric>(&self, type_: JRef<dyn DataComponentType<T>>, default_value: T, value: U, combiner: Arc<dyn Fn(T, U) -> T + Send + Sync>) -> T { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/ItemStack.java:1047
     pub fn remove<T: JGeneric>(&self, type_: JRef<dyn DataComponentType<T>>) -> T { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/ItemStack.java:1056
     pub fn apply_components_and_validate(&self, patch: JRef<DataComponentPatch>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/ItemStack.java:1060
     pub fn apply_components(&self, patch: JRef<DataComponentPatch>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/ItemStack.java:1070
@@ -190,12 +184,12 @@ impl ItemStack {
     pub fn get_custom_name(&self) -> Option<JRef<dyn Component>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/ItemStack.java:1083
     pub fn get_item_name(&self) -> JRef<dyn Component> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/ItemStack.java:1100
     pub fn get_styled_hover_name(&self) -> JRef<dyn Component> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/ItemStack.java:1104
-    pub fn add_to_tooltip<T: JGeneric>(&self, type_: JRef<dyn DataComponentType<T>>, context: JRef<dyn ItemTooltipContext>, display: TooltipDisplay, consumer: JRef<dyn Consumer<JRef<dyn Component>>>, flag: JRef<dyn TooltipFlag>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/ItemStack.java:1127
-    pub fn add_to_tooltip_6<T: JGeneric>(&self, type_: JRef<dyn DataComponentType<T>>, tooltip_getter: JRef<dyn TooltipProviderGetter<T>>, context: JRef<dyn ItemTooltipContext>, display: TooltipDisplay, consumer: JRef<dyn Consumer<JRef<dyn Component>>>, flag: JRef<dyn TooltipFlag>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/ItemStack.java:1113
+    pub fn add_to_tooltip<T: JGeneric>(&self, type_: JRef<dyn DataComponentType<T>>, context: JRef<dyn ItemTooltipContext>, display: TooltipDisplay, consumer: Arc<dyn Fn(JRef<dyn Component>) + Send + Sync>, flag: JRef<dyn TooltipFlag>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/ItemStack.java:1127
+    pub fn add_to_tooltip_6<T: JGeneric>(&self, type_: JRef<dyn DataComponentType<T>>, tooltip_getter: JRef<dyn TooltipProviderGetter<T>>, context: JRef<dyn ItemTooltipContext>, display: TooltipDisplay, consumer: Arc<dyn Fn(JRef<dyn Component>) + Send + Sync>, flag: JRef<dyn TooltipFlag>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/ItemStack.java:1113
     pub fn get_tooltip_lines(&self, context: JRef<dyn ItemTooltipContext>, player: Option<JRef<dyn PlayerTrait>>, tooltip_flag: JRef<dyn TooltipFlag>) -> Vec<JRef<dyn Component>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/ItemStack.java:1137
-    pub fn add_details_to_tooltip(&self, context: JRef<dyn ItemTooltipContext>, display: TooltipDisplay, player: Option<JRef<dyn PlayerTrait>>, tooltip_flag: JRef<dyn TooltipFlag>, builder: JRef<dyn Consumer<JRef<dyn Component>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/ItemStack.java:1150
-    pub fn add_unit_component_to_tooltip(&self, data_component_type: JRef<dyn DataComponentType<JObjectRef>>, component: JRef<dyn Component>, display: TooltipDisplay, builder: JRef<dyn Consumer<JRef<dyn Component>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/ItemStack.java:1229
-    pub fn add_attribute_tooltips(&self, consumer: JRef<dyn Consumer<JRef<dyn Component>>>, display: TooltipDisplay, player: Option<JRef<dyn PlayerTrait>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/ItemStack.java:1237
+    pub fn add_details_to_tooltip(&self, context: JRef<dyn ItemTooltipContext>, display: TooltipDisplay, player: Option<JRef<dyn PlayerTrait>>, tooltip_flag: JRef<dyn TooltipFlag>, builder: Arc<dyn Fn(JRef<dyn Component>) + Send + Sync>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/ItemStack.java:1150
+    pub fn add_unit_component_to_tooltip(&self, data_component_type: JRef<dyn DataComponentType<JObjectRef>>, component: JRef<dyn Component>, display: TooltipDisplay, builder: Arc<dyn Fn(JRef<dyn Component>) + Send + Sync>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/ItemStack.java:1229
+    pub fn add_attribute_tooltips(&self, consumer: Arc<dyn Fn(JRef<dyn Component>) + Send + Sync>, display: TooltipDisplay, player: Option<JRef<dyn PlayerTrait>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/ItemStack.java:1237
     pub fn has_foil(&self) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/ItemStack.java:1256
     pub fn get_rarity(&self) -> Rarity { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/ItemStack.java:1261
     pub fn is_enchantable(&self) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/ItemStack.java:1274
@@ -203,8 +197,8 @@ impl ItemStack {
     pub fn is_enchanted(&self) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/ItemStack.java:1287
     pub fn has_enchantment(&self, enchantment: JRef<dyn Holder<Enchantment>>) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/ItemStack.java:1292
     pub fn get_enchantments(&self) -> JRef<ItemEnchantments> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/ItemStack.java:1297
-    pub fn for_each_modifier(&self, slot: EquipmentSlotGroup, consumer: JRef<dyn TriConsumer<JRef<dyn Holder<JRef<dyn AttributeTrait>>>, AttributeModifier, JRef<dyn ItemAttributeModifiersDisplay>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/ItemStack.java:1301
-    pub fn for_each_modifier_2(&self, slot: EquipmentSlot, consumer: JRef<dyn BiConsumer<JRef<dyn Holder<JRef<dyn AttributeTrait>>>, AttributeModifier>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/ItemStack.java:1307
+    pub fn for_each_modifier(&self, slot: EquipmentSlotGroup, consumer: Arc<dyn Fn(JRef<dyn Holder<JRef<dyn AttributeTrait>>>, AttributeModifier, JRef<dyn ItemAttributeModifiersDisplay>) + Send + Sync>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/ItemStack.java:1301
+    pub fn for_each_modifier_2(&self, slot: EquipmentSlot, consumer: Arc<dyn Fn(JRef<dyn Holder<JRef<dyn AttributeTrait>>>, AttributeModifier) + Send + Sync>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/ItemStack.java:1307
     pub fn set_item(&self, item: JRef<dyn ItemTrait>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/ItemStack.java:1314
     pub fn get_display_name(&self) -> JRef<dyn Component> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/ItemStack.java:1332
     pub fn get_attack_animation(&self) -> SwingAnimation { todo!() } // leaf-server/src/minecraft/java/net/minecraft/world/item/ItemStack.java:1346

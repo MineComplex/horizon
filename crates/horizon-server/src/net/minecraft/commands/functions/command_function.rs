@@ -3,7 +3,6 @@
 use crate::prelude::*;
 use crate::com::mojang::brigadier::StringReader;
 use crate::com::mojang::brigadier::command_dispatcher::CommandDispatcher;
-use crate::java::lang::Throwable;
 use crate::net::minecraft::commands::execution::unbound_entry_action::UnboundEntryAction;
 use crate::net::minecraft::commands::functions::instantiated_function::InstantiatedFunction;
 use crate::net::minecraft::nbt::compound_tag::CompoundTag;
@@ -12,9 +11,9 @@ use crate::net::minecraft::resources::identifier::Identifier;
 // ---- interface net.minecraft.commands.functions.CommandFunction (leaf-server/src/minecraft/java/net/minecraft/commands/functions/CommandFunction.java:19)
 pub trait CommandFunction<T: JGeneric>: JObject {
     fn id(&self) -> JRef<Identifier>; // leaf-server/src/minecraft/java/net/minecraft/commands/functions/CommandFunction.java:20
-    fn instantiate(&self, arguments: Option<JRef<CompoundTag>>, dispatcher: JRef<CommandDispatcher<T>>) -> Result<JRef<dyn InstantiatedFunction<T>>, Throwable>; // leaf-server/src/minecraft/java/net/minecraft/commands/functions/CommandFunction.java:22
+    fn instantiate(&self, arguments: Option<JRef<CompoundTag>>, dispatcher: JRef<CommandDispatcher<T>>) -> Result<JRef<dyn InstantiatedFunction<T>>, anyhow::Error>; // leaf-server/src/minecraft/java/net/minecraft/commands/functions/CommandFunction.java:22
 }
 pub fn should_concatenate_next_line(line: &str) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/functions/CommandFunction.java:24
 pub fn from_lines<T: JGeneric>(id: JRef<Identifier>, dispatcher: JRef<CommandDispatcher<T>>, compilation_context: T, lines: &Vec<String>) -> JRef<dyn CommandFunction<T>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/functions/CommandFunction.java:29
 pub fn check_command_line_length(line: &str) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/functions/CommandFunction.java:95
-pub fn parse_command<T: JGeneric>(dispatcher: JRef<CommandDispatcher<T>>, compilation_context: T, input: StringReader) -> Result<JRef<dyn UnboundEntryAction<T>>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/functions/CommandFunction.java:102
+pub fn parse_command<T: JGeneric>(dispatcher: JRef<CommandDispatcher<T>>, compilation_context: T, input: StringReader) -> Result<JRef<dyn UnboundEntryAction<T>>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/functions/CommandFunction.java:102

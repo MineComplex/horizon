@@ -6,12 +6,6 @@ use crate::com::mojang::brigadier::exceptions::DynamicCommandExceptionType;
 use crate::com::mojang::brigadier::exceptions::SimpleCommandExceptionType;
 use crate::com::mojang::brigadier::suggestion::Suggestions;
 use crate::com::mojang::brigadier::suggestion::SuggestionsBuilder;
-use crate::java::lang::Throwable;
-use crate::java::util::concurrent::CompletableFuture;
-use crate::java::util::function::BiConsumer;
-use crate::java::util::function::BiFunction;
-use crate::java::util::function::Consumer;
-use crate::java::util::function::Predicate;
 use crate::net::minecraft::advancements::predicates::min_max_bounds::MinMaxBoundsDoubles;
 use crate::net::minecraft::advancements::predicates::min_max_bounds::MinMaxBoundsFloatDegrees;
 use crate::net::minecraft::advancements::predicates::min_max_bounds::MinMaxBoundsInts;
@@ -43,13 +37,13 @@ pub struct EntitySelectorParser {
     pub delta_z: Mut<Option<f64>>, // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/EntitySelectorParser.java:89
     pub rot_x: Mut<MinMaxBoundsFloatDegrees>, // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/EntitySelectorParser.java:90
     pub rot_y: Mut<MinMaxBoundsFloatDegrees>, // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/EntitySelectorParser.java:91
-    pub predicates: Mut<Vec<JRef<dyn Predicate<JRef<dyn EntityTrait>>>>>, // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/EntitySelectorParser.java:92
-    pub order: Mut<JRef<dyn BiConsumer<Vec3, Vec<JRef<dyn EntityTrait>>>>>, // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/EntitySelectorParser.java:93
+    pub predicates: Mut<Vec<Arc<dyn Fn(JRef<dyn EntityTrait>) -> bool + Send + Sync>>>, // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/EntitySelectorParser.java:92
+    pub order: Mut<Arc<dyn Fn(Vec3, Vec<JRef<dyn EntityTrait>>) + Send + Sync>>, // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/EntitySelectorParser.java:93
     pub current_entity: Mut<bool>, // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/EntitySelectorParser.java:94
     pub player_name: Mut<Option<String>>, // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/EntitySelectorParser.java:95
     pub start_position: Mut<i32>, // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/EntitySelectorParser.java:96
     pub entity_uuid: Mut<Option<Uuid>>, // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/EntitySelectorParser.java:97
-    pub suggestions: Mut<JRef<dyn BiFunction<SuggestionsBuilder, JRef<dyn Consumer<SuggestionsBuilder>>, CompletableFuture<Suggestions>>>>, // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/EntitySelectorParser.java:98
+    pub suggestions: Mut<Arc<dyn Fn(SuggestionsBuilder, JRef<dyn Consumer<SuggestionsBuilder>>) -> CompletableFuture<Suggestions> + Send + Sync>>, // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/EntitySelectorParser.java:98
     pub name_option: JRef<InvertableSetOptionState>, // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/EntitySelectorParser.java:99
     pub limited_option: JRef<SetOnceOptionState>, // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/EntitySelectorParser.java:100
     pub sorted_option: JRef<SetOnceOptionState>, // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/EntitySelectorParser.java:101
@@ -80,10 +74,10 @@ pub static ERROR_SELECTORS_NOT_ALLOWED: LazyLock<SimpleCommandExceptionType> = L
 pub static ERROR_MISSING_SELECTOR_TYPE: LazyLock<SimpleCommandExceptionType> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/EntitySelectorParser.java:60
 pub static ERROR_EXPECTED_END_OF_OPTIONS: LazyLock<SimpleCommandExceptionType> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/EntitySelectorParser.java:63
 pub static ERROR_EXPECTED_OPTION_VALUE: LazyLock<DynamicCommandExceptionType> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/EntitySelectorParser.java:66
-pub static ORDER_NEAREST: LazyLock<JRef<dyn BiConsumer<Vec3, Vec<JRef<dyn EntityTrait>>>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/EntitySelectorParser.java:69
-pub static ORDER_FURTHEST: LazyLock<JRef<dyn BiConsumer<Vec3, Vec<JRef<dyn EntityTrait>>>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/EntitySelectorParser.java:72
-pub static ORDER_RANDOM: LazyLock<JRef<dyn BiConsumer<Vec3, Vec<JRef<dyn EntityTrait>>>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/EntitySelectorParser.java:75
-pub static SUGGEST_NOTHING: LazyLock<JRef<dyn BiFunction<SuggestionsBuilder, JRef<dyn Consumer<SuggestionsBuilder>>, CompletableFuture<Suggestions>>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/EntitySelectorParser.java:76
+pub static ORDER_NEAREST: LazyLock<Arc<dyn Fn(Vec3, Vec<JRef<dyn EntityTrait>>) + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/EntitySelectorParser.java:69
+pub static ORDER_FURTHEST: LazyLock<Arc<dyn Fn(Vec3, Vec<JRef<dyn EntityTrait>>) + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/EntitySelectorParser.java:72
+pub static ORDER_RANDOM: LazyLock<Arc<dyn Fn(Vec3, Vec<JRef<dyn EntityTrait>>) + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/EntitySelectorParser.java:75
+pub static SUGGEST_NOTHING: LazyLock<Arc<dyn Fn(SuggestionsBuilder, JRef<dyn Consumer<SuggestionsBuilder>>) -> CompletableFuture<Suggestions> + Send + Sync>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/EntitySelectorParser.java:76
 impl EntitySelectorParser {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new(reader: StringReader, allow_selectors: bool) -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/EntitySelectorParser.java:110
@@ -92,14 +86,14 @@ impl EntitySelectorParser {
     pub fn get_selector(&self) -> JRef<EntitySelector> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/EntitySelectorParser.java:129
     pub fn create_aabb(&self, x: f64, y: f64, z: f64) -> AABB { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/EntitySelectorParser.java:166
     pub fn finalize_predicates(&self) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/EntitySelectorParser.java:179
-    pub fn create_rotation_predicate(&self, range: MinMaxBoundsFloatDegrees, function: JRef<dyn ToFloatFunction<JRef<dyn EntityTrait>>>) -> JRef<dyn Predicate<JRef<dyn EntityTrait>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/EntitySelectorParser.java:193
-    pub fn parse_selector(&self, override_permissions: bool) -> Result<(), Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/EntitySelectorParser.java:203
-    pub fn parse_name_or_uuid(&self) -> Result<(), Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/EntitySelectorParser.java:270
-    pub fn parse_options(&self) -> Result<(), Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/EntitySelectorParser.java:294
+    pub fn create_rotation_predicate(&self, range: MinMaxBoundsFloatDegrees, function: JRef<dyn ToFloatFunction<JRef<dyn EntityTrait>>>) -> Arc<dyn Fn(JRef<dyn EntityTrait>) -> bool + Send + Sync> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/EntitySelectorParser.java:193
+    pub fn parse_selector(&self, override_permissions: bool) -> Result<(), anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/EntitySelectorParser.java:203
+    pub fn parse_name_or_uuid(&self) -> Result<(), anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/EntitySelectorParser.java:270
+    pub fn parse_options(&self) -> Result<(), anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/EntitySelectorParser.java:294
     pub fn should_invert_value(&self) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/EntitySelectorParser.java:336
     pub fn is_tag(&self) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/EntitySelectorParser.java:347
     pub fn get_reader(&self) -> StringReader { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/EntitySelectorParser.java:358
-    pub fn add_predicate(&self, predicate: JRef<dyn Predicate<JRef<dyn EntityTrait>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/EntitySelectorParser.java:362
+    pub fn add_predicate(&self, predicate: Arc<dyn Fn(JRef<dyn EntityTrait>) -> bool + Send + Sync>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/EntitySelectorParser.java:362
     pub fn set_world_limited(&self) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/EntitySelectorParser.java:366
     pub fn get_distance(&self) -> MinMaxBoundsDoubles { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/EntitySelectorParser.java:370
     pub fn set_distance(&self, distance: MinMaxBoundsDoubles) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/EntitySelectorParser.java:374
@@ -123,22 +117,22 @@ impl EntitySelectorParser {
     pub fn get_delta_z(&self) -> Option<f64> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/EntitySelectorParser.java:446
     pub fn set_max_results(&self, max_results: i32) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/EntitySelectorParser.java:450
     pub fn set_includes_entities(&self, includes_entities: bool) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/EntitySelectorParser.java:454
-    pub fn get_order(&self) -> JRef<dyn BiConsumer<Vec3, Vec<JRef<dyn EntityTrait>>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/EntitySelectorParser.java:458
-    pub fn set_order(&self, order: JRef<dyn BiConsumer<Vec3, Vec<JRef<dyn EntityTrait>>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/EntitySelectorParser.java:462
-    pub fn parse(&self) -> Result<JRef<EntitySelector>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/EntitySelectorParser.java:466
-    pub fn parse_1(&self, override_permissions: bool) -> Result<JRef<EntitySelector>, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/EntitySelectorParser.java:471
+    pub fn get_order(&self) -> Arc<dyn Fn(Vec3, Vec<JRef<dyn EntityTrait>>) + Send + Sync> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/EntitySelectorParser.java:458
+    pub fn set_order(&self, order: Arc<dyn Fn(Vec3, Vec<JRef<dyn EntityTrait>>) + Send + Sync>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/EntitySelectorParser.java:462
+    pub fn parse(&self) -> Result<JRef<EntitySelector>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/EntitySelectorParser.java:466
+    pub fn parse_1(&self, override_permissions: bool) -> Result<JRef<EntitySelector>, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/EntitySelectorParser.java:471
     pub fn fill_selector_suggestions(builder: SuggestionsBuilder) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/EntitySelectorParser.java:490
-    pub fn suggest_name_or_selector(&self, builder: SuggestionsBuilder, names: JRef<dyn Consumer<SuggestionsBuilder>>) -> CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/EntitySelectorParser.java:499
-    pub fn suggest_name(&self, builder: SuggestionsBuilder, names: JRef<dyn Consumer<SuggestionsBuilder>>) -> CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/EntitySelectorParser.java:508
-    pub fn suggest_selector(&self, builder: SuggestionsBuilder, names: JRef<dyn Consumer<SuggestionsBuilder>>) -> CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/EntitySelectorParser.java:514
-    pub fn suggest_open_options(&self, builder: SuggestionsBuilder, names: JRef<dyn Consumer<SuggestionsBuilder>>) -> CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/EntitySelectorParser.java:521
-    pub fn suggest_options_key_or_close(&self, builder: SuggestionsBuilder, names: JRef<dyn Consumer<SuggestionsBuilder>>) -> CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/EntitySelectorParser.java:526
-    pub fn suggest_options_key(&self, builder: SuggestionsBuilder, names: JRef<dyn Consumer<SuggestionsBuilder>>) -> CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/EntitySelectorParser.java:532
-    pub fn suggest_options_next_or_close(&self, builder: SuggestionsBuilder, names: JRef<dyn Consumer<SuggestionsBuilder>>) -> CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/EntitySelectorParser.java:537
-    pub fn suggest_equals(&self, builder: SuggestionsBuilder, names: JRef<dyn Consumer<SuggestionsBuilder>>) -> CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/EntitySelectorParser.java:543
+    pub fn suggest_name_or_selector(&self, builder: SuggestionsBuilder, names: Arc<dyn Fn(SuggestionsBuilder) + Send + Sync>) -> crate::rt::CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/EntitySelectorParser.java:499
+    pub fn suggest_name(&self, builder: SuggestionsBuilder, names: Arc<dyn Fn(SuggestionsBuilder) + Send + Sync>) -> crate::rt::CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/EntitySelectorParser.java:508
+    pub fn suggest_selector(&self, builder: SuggestionsBuilder, names: Arc<dyn Fn(SuggestionsBuilder) + Send + Sync>) -> crate::rt::CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/EntitySelectorParser.java:514
+    pub fn suggest_open_options(&self, builder: SuggestionsBuilder, names: Arc<dyn Fn(SuggestionsBuilder) + Send + Sync>) -> crate::rt::CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/EntitySelectorParser.java:521
+    pub fn suggest_options_key_or_close(&self, builder: SuggestionsBuilder, names: Arc<dyn Fn(SuggestionsBuilder) + Send + Sync>) -> crate::rt::CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/EntitySelectorParser.java:526
+    pub fn suggest_options_key(&self, builder: SuggestionsBuilder, names: Arc<dyn Fn(SuggestionsBuilder) + Send + Sync>) -> crate::rt::CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/EntitySelectorParser.java:532
+    pub fn suggest_options_next_or_close(&self, builder: SuggestionsBuilder, names: Arc<dyn Fn(SuggestionsBuilder) + Send + Sync>) -> crate::rt::CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/EntitySelectorParser.java:537
+    pub fn suggest_equals(&self, builder: SuggestionsBuilder, names: Arc<dyn Fn(SuggestionsBuilder) + Send + Sync>) -> crate::rt::CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/EntitySelectorParser.java:543
     pub fn is_current_entity(&self) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/EntitySelectorParser.java:548
-    pub fn set_suggestions(&self, suggestions: JRef<dyn BiFunction<SuggestionsBuilder, JRef<dyn Consumer<SuggestionsBuilder>>, CompletableFuture<Suggestions>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/EntitySelectorParser.java:552
-    pub fn fill_suggestions(&self, builder: SuggestionsBuilder, names: JRef<dyn Consumer<SuggestionsBuilder>>) -> CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/EntitySelectorParser.java:556
+    pub fn set_suggestions(&self, suggestions: Arc<dyn Fn(SuggestionsBuilder, JRef<dyn Consumer<SuggestionsBuilder>>) -> CompletableFuture<Suggestions> + Send + Sync>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/EntitySelectorParser.java:552
+    pub fn fill_suggestions(&self, builder: SuggestionsBuilder, names: Arc<dyn Fn(SuggestionsBuilder) + Send + Sync>) -> crate::rt::CompletableFuture<Suggestions> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/EntitySelectorParser.java:556
     pub fn name_option(&self) -> JRef<InvertableSetOptionState> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/EntitySelectorParser.java:560
     pub fn limited_option(&self) -> JRef<SetOnceOptionState> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/EntitySelectorParser.java:564
     pub fn sorted_option(&self) -> JRef<SetOnceOptionState> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/commands/arguments/selector/EntitySelectorParser.java:568

@@ -3,7 +3,6 @@
 use crate::prelude::*;
 use crate::com::mojang::brigadier::command_dispatcher::CommandDispatcher;
 use crate::com::mojang::brigadier::exceptions::SimpleCommandExceptionType;
-use crate::java::lang::Throwable;
 use crate::net::minecraft::commands::command_source_stack::CommandSourceStack;
 use crate::net::minecraft::server::commands::command_response_tracker::CommandResponseTrackerMessagesWithArgs;
 use crate::net::minecraft::server::level::server_player::ServerPlayer;
@@ -18,6 +17,6 @@ impl TransferCommand {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
     pub fn new() -> JRef<Self> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TransferCommand.java:17
     pub fn register(dispatcher: JRef<CommandDispatcher<JRef<CommandSourceStack>>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TransferCommand.java:27
-    pub fn transfer(source: JRef<CommandSourceStack>, hostname: &str, port: i32, players: &Vec<JRef<ServerPlayer>>) -> Result<i32, Throwable> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TransferCommand.java:62
+    pub fn transfer(source: JRef<CommandSourceStack>, hostname: &str, port: i32, players: &Vec<JRef<ServerPlayer>>) -> Result<i32, anyhow::Error> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/commands/TransferCommand.java:62
 }
 crate::jobject!(TransferCommand);

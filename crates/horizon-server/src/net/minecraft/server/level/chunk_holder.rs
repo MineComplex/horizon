@@ -4,12 +4,6 @@ use crate::prelude::*;
 use crate::ca::spottedleaf::moonrise::common::list::reference_list::ReferenceList;
 use crate::ca::spottedleaf::moonrise::patches::chunk_system::level::chunk::chunk_system_chunk_holder::ChunkSystemChunkHolder;
 use crate::ca::spottedleaf::moonrise::patches::chunk_system::scheduling::new_chunk_holder::NewChunkHolder;
-use crate::com::mojang::datafixers::util::Pair;
-use crate::java::util::BitSet;
-use crate::java::util::concurrent::CompletableFuture;
-use crate::java::util::concurrent::Executor;
-use crate::java::util::function::IntConsumer;
-use crate::java::util::function::IntSupplier;
 use crate::net::minecraft::core::block_pos::BlockPos;
 use crate::net::minecraft::network::protocol::packet::Packet;
 use crate::net::minecraft::server::level::chunk_generation_task::ChunkGenerationTask;
@@ -40,8 +34,8 @@ pub struct ChunkHolder {
     pub level_height_accessor: JRef<dyn LevelHeightAccessor>, // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkHolder.java:35
     pub has_changed_sections: Mut<bool>, // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkHolder.java:37
     pub changed_blocks_per_section: Option<Vec<HashSet<i16>>>, // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkHolder.java:38
-    pub block_changed_light_section_filter: Mut<BitSet>, // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkHolder.java:39
-    pub sky_changed_light_section_filter: Mut<BitSet>, // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkHolder.java:40
+    pub block_changed_light_section_filter: Mut<bit_set::BitSet>, // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkHolder.java:39
+    pub sky_changed_light_section_filter: Mut<bit_set::BitSet>, // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkHolder.java:40
     pub light_engine: JRef<dyn LevelLightEngineTrait>, // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkHolder.java:41
     pub player_provider: JRef<dyn ChunkHolderPlayerProvider>, // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkHolder.java:43
     pub new_chunk_holder: Mut<JRef<NewChunkHolder>>, // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkHolder.java:47
@@ -52,7 +46,7 @@ impl std::ops::Deref for ChunkHolder {
     fn deref(&self) -> &Self::Target { &self.base }
 }
 pub static UNLOADED_LEVEL_CHUNK: LazyLock<JRef<dyn ChunkResult<JRef<dyn LevelChunkTrait>>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkHolder.java:33
-pub static UNLOADED_LEVEL_CHUNK_FUTURE: LazyLock<CompletableFuture<JRef<dyn ChunkResult<JRef<dyn LevelChunkTrait>>>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkHolder.java:34
+pub static UNLOADED_LEVEL_CHUNK_FUTURE: LazyLock<crate::rt::CompletableFuture<JRef<dyn ChunkResult<JRef<dyn LevelChunkTrait>>>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkHolder.java:34
 pub static EMPTY_PLAYER_ARRAY: LazyLock<Vec<JRef<ServerPlayer>>> = LazyLock::new(|| todo!()); // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkHolder.java:49
 impl ChunkHolder {
     pub fn this(&self) -> JRef<Self> { self.this.upgrade().expect("this") }
@@ -65,21 +59,21 @@ impl ChunkHolder {
     pub fn moonrise_has_chunk_been_sent_1(&self, to: JRef<ServerPlayer>) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkHolder.java:85
     pub fn moonrise_get_players(&self, only_on_watch_distance_edge: bool) -> Vec<JRef<ServerPlayer>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkHolder.java:90
     pub fn moonrise_get_full_chunk(&self) -> JRef<dyn LevelChunkTrait> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkHolder.java:105
-    pub fn add_save_dependency(&self, sync: CompletableFuture<JObjectRef>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkHolder.java:218
+    pub fn add_save_dependency(&self, sync: crate::rt::CompletableFuture<JObjectRef>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkHolder.java:218
     pub fn get_ticket_level(&self) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkHolder.java:341
     pub fn get_queue_level(&self) -> i32 { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkHolder.java:346
     pub fn get_chunk_map(&self) -> JRef<ChunkMap> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkHolder.java:52
     pub fn is_radius_loaded(&self, radius: i32) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkHolder.java:115
     pub fn get_full_chunk_now(&self) -> JRef<dyn LevelChunkTrait> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkHolder.java:158
     pub fn get_full_chunk_now_unchecked(&self) -> JRef<dyn LevelChunkTrait> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkHolder.java:164
-    pub fn get_ticking_chunk_future(&self) -> CompletableFuture<JRef<dyn ChunkResult<JRef<dyn LevelChunkTrait>>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkHolder.java:169
-    pub fn get_entity_ticking_chunk_future(&self) -> CompletableFuture<JRef<dyn ChunkResult<JRef<dyn LevelChunkTrait>>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkHolder.java:173
-    pub fn get_full_chunk_future(&self) -> CompletableFuture<JRef<dyn ChunkResult<JRef<dyn LevelChunkTrait>>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkHolder.java:177
+    pub fn get_ticking_chunk_future(&self) -> crate::rt::CompletableFuture<JRef<dyn ChunkResult<JRef<dyn LevelChunkTrait>>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkHolder.java:169
+    pub fn get_entity_ticking_chunk_future(&self) -> crate::rt::CompletableFuture<JRef<dyn ChunkResult<JRef<dyn LevelChunkTrait>>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkHolder.java:173
+    pub fn get_full_chunk_future(&self) -> crate::rt::CompletableFuture<JRef<dyn ChunkResult<JRef<dyn LevelChunkTrait>>>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkHolder.java:177
     pub fn get_ticking_chunk(&self) -> Option<JRef<dyn LevelChunkTrait>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkHolder.java:181
     pub fn get_chunk_to_send(&self) -> Option<JRef<dyn LevelChunkTrait>> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkHolder.java:192
-    pub fn get_send_sync_future(&self) -> CompletableFuture<JObjectRef> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkHolder.java:202
-    pub fn add_send_dependency(&self, sync: CompletableFuture<JObjectRef>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkHolder.java:206
-    pub fn get_save_sync_future(&self) -> CompletableFuture<JObjectRef> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkHolder.java:210
+    pub fn get_send_sync_future(&self) -> crate::rt::CompletableFuture<JObjectRef> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkHolder.java:202
+    pub fn add_send_dependency(&self, sync: crate::rt::CompletableFuture<JObjectRef>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkHolder.java:206
+    pub fn get_save_sync_future(&self) -> crate::rt::CompletableFuture<JObjectRef> { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkHolder.java:210
     pub fn is_ready_for_saving(&self) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkHolder.java:214
     pub fn block_changed(&self, pos: BlockPos) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkHolder.java:223
     pub fn section_light_changed(&self, layer: LightLayer, chunk_y: i32) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkHolder.java:243
@@ -90,10 +84,10 @@ impl ChunkHolder {
     pub fn broadcast(&self, players: &Vec<JRef<ServerPlayer>>, packet: JRef<dyn Packet<JObjectRef>>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkHolder.java:337
     pub fn set_queue_level(&self, queue_level: i32) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkHolder.java:351
     pub fn set_ticket_level(&self, ticket_level: i32) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkHolder.java:355
-    pub fn schedule_full_chunk_promotion(&self, scheduler: JRef<ChunkMap>, task: CompletableFuture<JRef<dyn ChunkResult<JRef<dyn LevelChunkTrait>>>>, main_thread_executor: JRef<dyn Executor>, status: FullChunkStatus) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkHolder.java:359
+    pub fn schedule_full_chunk_promotion(&self, scheduler: JRef<ChunkMap>, task: crate::rt::CompletableFuture<JRef<dyn ChunkResult<JRef<dyn LevelChunkTrait>>>>, main_thread_executor: crate::rt::Executor, status: FullChunkStatus) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkHolder.java:359
     pub fn demote_full_chunk(&self, scheduler: JRef<ChunkMap>, status: FullChunkStatus) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkHolder.java:365
     pub fn call_event_if_unloading(&self, chunk_map: JRef<ChunkMap>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkHolder.java:372
-    pub fn update_futures(&self, scheduler: JRef<ChunkMap>, main_thread_executor: JRef<dyn Executor>) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkHolder.java:377
+    pub fn update_futures(&self, scheduler: JRef<ChunkMap>, main_thread_executor: crate::rt::Executor) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkHolder.java:377
     pub fn was_accessible_since_last_save(&self) -> bool { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkHolder.java:381
     pub fn refresh_accessibility(&self) { todo!() } // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkHolder.java:385
 }
@@ -101,12 +95,12 @@ impl ChunkHolder {
 // ---- declares it nearest to this one; keep the signatures in step with the trait.
 impl GenerationChunkHolderTrait for ChunkHolder {
     fn as_generation_chunk_holder(&self) -> &GenerationChunkHolder { self }
-    fn schedule_chunk_generation_task(&self, status: JRef<ChunkStatus>, scheduler: JRef<ChunkMap>) -> CompletableFuture<JRef<dyn ChunkResult<JRef<dyn ChunkAccessTrait>>>> { GenerationChunkHolder::schedule_chunk_generation_task(self, status, scheduler) }
-    fn apply_step(&self, step: JRef<ChunkStep>, chunk_map: JRef<dyn GeneratingChunkMap>, cache: JRef<StaticCache2D<JRef<dyn GenerationChunkHolderTrait>>>) -> CompletableFuture<JRef<dyn ChunkResult<JRef<dyn ChunkAccessTrait>>>> { GenerationChunkHolder::apply_step(self, step, chunk_map, cache) }
+    fn schedule_chunk_generation_task(&self, status: JRef<ChunkStatus>, scheduler: JRef<ChunkMap>) -> crate::rt::CompletableFuture<JRef<dyn ChunkResult<JRef<dyn ChunkAccessTrait>>>> { GenerationChunkHolder::schedule_chunk_generation_task(self, status, scheduler) }
+    fn apply_step(&self, step: JRef<ChunkStep>, chunk_map: JRef<dyn GeneratingChunkMap>, cache: JRef<StaticCache2D<JRef<dyn GenerationChunkHolderTrait>>>) -> crate::rt::CompletableFuture<JRef<dyn ChunkResult<JRef<dyn ChunkAccessTrait>>>> { GenerationChunkHolder::apply_step(self, step, chunk_map, cache) }
     fn update_highest_allowed_status(&self, scheduler: JRef<ChunkMap>) { GenerationChunkHolder::update_highest_allowed_status(self, scheduler) }
     fn replace_proto_chunk(&self, chunk: JRef<ImposterProtoChunk>) { GenerationChunkHolder::replace_proto_chunk(self, chunk) }
     fn remove_task(&self, task: JRef<ChunkGenerationTask>) { GenerationChunkHolder::remove_task(self, task) }
-    fn add_save_dependency(&self, sync: CompletableFuture<JObjectRef>) { ChunkHolder::add_save_dependency(self, sync) }
+    fn add_save_dependency(&self, sync: crate::rt::CompletableFuture<JObjectRef>) { ChunkHolder::add_save_dependency(self, sync) }
     fn increase_generation_ref_count(&self) { GenerationChunkHolder::increase_generation_ref_count(self) }
     fn decrease_generation_ref_count(&self) { GenerationChunkHolder::decrease_generation_ref_count(self) }
     fn get_chunk_if_present_unchecked(&self, status: JRef<ChunkStatus>) -> Option<JRef<dyn ChunkAccessTrait>> { GenerationChunkHolder::get_chunk_if_present_unchecked(self, status) }
@@ -117,7 +111,7 @@ impl GenerationChunkHolderTrait for ChunkHolder {
     fn get_full_status(&self) -> FullChunkStatus { GenerationChunkHolder::get_full_status(self) }
     fn get_ticket_level(&self) -> i32 { ChunkHolder::get_ticket_level(self) }
     fn get_queue_level(&self) -> i32 { ChunkHolder::get_queue_level(self) }
-    fn get_all_futures(&self) -> Vec<Pair<JRef<ChunkStatus>, CompletableFuture<JRef<dyn ChunkResult<JRef<dyn ChunkAccessTrait>>>>>> { GenerationChunkHolder::get_all_futures(self) }
+    fn get_all_futures(&self) -> Vec<(JRef<ChunkStatus>, CompletableFuture<JRef<dyn ChunkResult<JRef<dyn ChunkAccessTrait>>>>)> { GenerationChunkHolder::get_all_futures(self) }
     fn get_latest_status(&self) -> Option<JRef<ChunkStatus>> { GenerationChunkHolder::get_latest_status(self) }
 }
 impl ChunkSystemChunkHolder for ChunkHolder {
@@ -133,10 +127,10 @@ impl ChunkSystemChunkHolder for ChunkHolder {
 crate::jobject!(ChunkHolder: dyn GenerationChunkHolderTrait, dyn ChunkSystemChunkHolder);
 // ---- interface net.minecraft.server.level.ChunkHolder.LevelChangeListener (leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkHolder.java:389)
 pub trait ChunkHolderLevelChangeListener: Send + Sync + 'static {
-    fn on_level_change(&self, pos: ChunkPos, old_level: JRef<dyn IntSupplier>, new_level: i32, set_queue_level: JRef<dyn IntConsumer>); // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkHolder.java:391
+    fn on_level_change(&self, pos: ChunkPos, old_level: Arc<dyn Fn() -> i32 + Send + Sync>, new_level: i32, set_queue_level: Arc<dyn Fn(i32) + Send + Sync>); // leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkHolder.java:391
 }
-impl<F: Fn(ChunkPos, JRef<dyn IntSupplier>, i32, JRef<dyn IntConsumer>) + Send + Sync + 'static> ChunkHolderLevelChangeListener for F {
-    fn on_level_change(&self, pos: ChunkPos, old_level: JRef<dyn IntSupplier>, new_level: i32, set_queue_level: JRef<dyn IntConsumer>) { self(pos, old_level, new_level, set_queue_level) }
+impl<F: Fn(ChunkPos, Arc<dyn Fn() -> i32 + Send + Sync>, i32, Arc<dyn Fn(i32) + Send + Sync>) + Send + Sync + 'static> ChunkHolderLevelChangeListener for F {
+    fn on_level_change(&self, pos: ChunkPos, old_level: Arc<dyn Fn() -> i32 + Send + Sync>, new_level: i32, set_queue_level: Arc<dyn Fn(i32) + Send + Sync>) { self(pos, old_level, new_level, set_queue_level) }
 }
 // ---- interface net.minecraft.server.level.ChunkHolder.PlayerProvider (leaf-server/src/minecraft/java/net/minecraft/server/level/ChunkHolder.java:394)
 pub trait ChunkHolderPlayerProvider: Send + Sync + 'static {
