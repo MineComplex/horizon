@@ -78,6 +78,8 @@ pub enum ArgumentType {
     Operation,
     /// `team_color`: a colour name.
     TeamColor,
+    /// `hex_color`: `RGB` or `RRGGBB`, parsed to an opaque ARGB `Integer` (`0xFFRRGGBB`).
+    HexColor,
 }
 
 impl ArgumentType {
@@ -215,6 +217,8 @@ impl ArgumentType {
             Self::Uuid => ArgumentValue::Uuid(parse_uuid(reader)?),
             Self::Operation => ArgumentValue::Operation(ScoreOperation::parse(reader)?),
             Self::TeamColor => ArgumentValue::TeamColor(TeamColor::parse(reader)?),
+            // An `Integer`, as in vanilla.
+            Self::HexColor => ArgumentValue::Integer(parse_hex_color(reader)?),
         })
     }
 
@@ -235,6 +239,7 @@ impl ArgumentType {
                 suggest_matching(builder, ScoreOperation::ALL.iter().map(|op| op.symbol()))
             }
             Self::TeamColor => suggest_matching(builder, TeamColor::ALL.iter().map(|c| c.name())),
+            Self::HexColor => suggest_matching(builder, HEX_COLOR_EXAMPLES.iter().copied()),
             _ => {}
         }
     }
@@ -272,8 +277,31 @@ impl ArgumentType {
             Self::Uuid => &["dd12be42-52a9-4a91-a8a1-11c01849e498"],
             Self::Operation => &["=", ">", "<"],
             Self::TeamColor => &["red", "green"],
+            Self::HexColor => HEX_COLOR_EXAMPLES,
         }
     }
+}
+
+const HEX_COLOR_EXAMPLES: &[&str] = &["F00", "FF0000"];
+
+/// `HexColorArgument.parse`: an unquoted word of 3 digits (each doubled: `F00` = `FF0000`) or 6, to an
+/// opaque ARGB colour (`ARGB.color(r, g, b)`).
+///
+/// A deliberate difference from vanilla, decided by the user: vanilla checks only the length and
+/// hands the digits to `Integer.parseInt`, so `GGG` throws a `NumberFormatException` that Brigadier
+/// reports as `command.exception` (and `-10000` parses as a negative component). Here any character
+/// that is not a hex digit is the argument's own syntax error, `argument.hexcolor.invalid`, as a wrong
+/// length already is in vanilla (cursor after the word, as `createWithContext(reader, ...)`).
+fn parse_hex_color(reader: &mut StringReader) -> Result<i32, CommandError> {
+    let text = reader.read_unquoted_string();
+    let digit = |c: u8| char::from(c).to_digit(16);
+    let digits: Option<Vec<u32>> = text.bytes().map(digit).collect();
+    let rgb = match (text.len(), digits.as_deref()) {
+        (3, Some(&[r, g, b])) => [r * 17, g * 17, b * 17],
+        (6, Some(&[r1, r2, g1, g2, b1, b2])) => [r1 * 16 + r2, g1 * 16 + g2, b1 * 16 + b2],
+        _ => return Err(CommandError::hex_color_invalid(text).at(reader)),
+    };
+    Ok((0xFF00_0000u32 | rgb[0] << 16 | rgb[1] << 8 | rgb[2]) as i32)
 }
 
 /// A parsed argument value.

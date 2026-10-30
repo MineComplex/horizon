@@ -26,6 +26,16 @@ borrow checker. Every `Arc`, lock and trait object has a concrete reason, writte
 - Left out entirely: data fixing (26.3 worlds only: DFU datafixers, `util.datafix`, DataConverter), Sentry,
   spark, oshi, the status protocol (Velocity answers pings), Query, RCON, JSON-RPC management, JFR, secure
   seed, and the API remnants of these (list-ping events, server icon/MOTD, remote console sender).
+- Deliberate differences from Leaf (decided by the user, 2026-10-30):
+  - no EULA check (Leaf deletes it too);
+  - MineComplex's built-in `custom_enchantments` datapack (Leaf's `0070-Custom-datapack.patch`) is cut:
+    only the vanilla pack and Paper's `paper` pack are loaded, so enchantments and their tags are
+    vanilla's;
+  - `hex_color` command arguments: any non-hex character is the argument's syntax error
+    (`argument.hexcolor.invalid`) instead of vanilla's `NumberFormatException` reported as
+    `command.exception`;
+  - no packet-rate kick, as in Leaf (it deletes Paper's limiter); our own per-connection inbound byte
+    budget only applies backpressure.
 - `src/azalea/`: code taken from azalea (MIT) as modules, not dependencies.
 
 ## What gets ported, and what never does

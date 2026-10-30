@@ -311,3 +311,52 @@ fn context_getters() {
     assert_eq!(id.as_deref(), Some("00000001-0002-0003-0004-000000000005"));
     assert_eq!(ctx.angle("pos"), None);
 }
+
+/// `hex_color`: valid input as vanilla's arithmetic gives it (`ARGB.color`), and the user's decision
+/// that any non-hex character is `argument.hexcolor.invalid` (vanilla: a `NumberFormatException`
+/// reported as `command.exception`).
+#[test]
+fn hex_color_parses_and_rejects_with_a_syntax_error() {
+    let parse = |input: &str| {
+        let mut reader = StringReader::new(input);
+        ArgumentType::HexColor
+            .parse(&mut reader)
+            .map(|v| (v, reader.cursor()))
+    };
+    let ok = |input: &str| match parse(input).unwrap() {
+        (ArgumentValue::Integer(v), _) => v as u32,
+        other => panic!("{other:?}"),
+    };
+    assert_eq!(ok("F00"), 0xFFFF_0000);
+    assert_eq!(ok("f00"), 0xFFFF_0000);
+    assert_eq!(ok("FF0000"), 0xFFFF_0000);
+    assert_eq!(ok("123456"), 0xFF12_3456);
+    assert_eq!(ok("abc"), 0xFFAA_BBCC);
+    assert_eq!(ok("000 rest"), 0xFF00_0000);
+    for (input, cursor) in [
+        ("FFFF", 4),
+        ("", 0),
+        ("GGG", 3),
+        ("12345G", 6),
+        ("-10000", 6),
+        ("+FF", 3),
+    ] {
+        let error = parse(input).unwrap_err();
+        assert_eq!(error.key(), "argument.hexcolor.invalid", "{input:?}");
+        assert_eq!(error.cursor(), cursor, "{input:?}");
+    }
+
+    let suggestions = |typed: &str| {
+        let mut builder = SuggestionsBuilder::new(typed, 0);
+        ArgumentType::HexColor.list_suggestions(&mut builder);
+        builder
+            .build()
+            .list
+            .into_iter()
+            .map(|s| s.text)
+            .collect::<Vec<_>>()
+    };
+    assert_eq!(suggestions(""), ["F00", "FF0000"]);
+    assert_eq!(suggestions("ff"), ["FF0000"]);
+    assert_eq!(ArgumentType::HexColor.examples(), ["F00", "FF0000"]);
+}

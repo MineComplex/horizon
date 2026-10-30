@@ -215,6 +215,10 @@ impl CommandError {
     pub fn color_invalid(name: &str) -> Self {
         Self::new("argument.color.invalid", vec![name.into_arg()])
     }
+    /// `HexColorArgument.ERROR_INVALID_HEX`.
+    pub fn hex_color_invalid(value: &str) -> Self {
+        Self::new("argument.hexcolor.invalid", vec![value.into_arg()])
+    }
 }
 
 /// `getMessage`: the translated message, then ` at position N: <context>` when it has a position.

@@ -961,6 +961,11 @@ impl<'a, K: Copy> CommandContext<'a, K> {
         }
     }
 
+    /// `HexColorArgument.getHexColor`: the opaque ARGB colour (`0xFFRRGGBB` as an `i32`).
+    pub fn hex_color(&self, name: &str) -> Option<i32> {
+        self.integer(name)
+    }
+
     pub fn team_color(&self, name: &str) -> Option<TeamColor> {
         match self.argument(name)? {
             ArgumentValue::TeamColor(v) => Some(*v),
